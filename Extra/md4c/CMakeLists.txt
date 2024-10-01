@@ -1,0 +1,1 @@
+add_library(md4c src/md4c.h src/md4c.c)

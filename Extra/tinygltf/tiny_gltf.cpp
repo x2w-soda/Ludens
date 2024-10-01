@@ -1,0 +1,14 @@
+#define TINYGLTF_IMPLEMENTATION
+#define TINYGLTF_USE_RAPIDJSON
+#define TINYGLTF_USE_RAPIDJSON_CRTALLOCATOR
+#define TINYGLTF_NO_INCLUDE_STB_IMAGE
+#define TINYGLTF_NO_INCLUDE_STB_IMAGE_WRITE
+#define TINYGLTF_NO_INCLUDE_RAPIDJSON
+#include <stb/stb_image.h>
+#include <stb/stb_image_write.h>
+#include <rapidjson/document.h>
+#include <rapidjson/prettywriter.h>
+#include <rapidjson/rapidjson.h>
+#include <rapidjson/stringbuffer.h>
+#include <rapidjson/writer.h>
+#include <tinygltf/tiny_gltf.h>

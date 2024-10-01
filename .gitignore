@@ -1,0 +1,9 @@
+**/Build
+**/build
+Extra/lua
+Extra/entt
+Ludens/Reader
+Ludens/Core/Scene
+Ludens/Core/Lua
+Docs
+Doxyfile.in
