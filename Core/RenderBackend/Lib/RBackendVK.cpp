@@ -258,6 +258,7 @@ void vk_destroy_device(RDeviceObj* self)
     // we destroy all the cached layouts here.
     RPipelineLayoutFactory::destroy_all({self});
     RSetLayoutFactory::destroy_all({self});
+    RPassFactory::destroy_all({self});
 
     for (uint32_t i = 0; i < FRAMES_IN_FLIGHT; i++)
     {

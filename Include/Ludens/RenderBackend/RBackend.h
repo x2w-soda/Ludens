@@ -102,6 +102,7 @@ struct RPassInfo
 /// @brief render pass handle
 struct RPass : RHandle<struct RPassObj>
 {
+    uint32_t hash() const;
 };
 
 /// @brief framebuffer creation info
@@ -344,7 +345,13 @@ struct RDevice : RHandle<struct RDeviceObj>
     RQueue get_graphics_queue();
 };
 
+/// @brief get a 32 bit hash of render pass
+uint32_t hash32_pass_info(const RPassInfo& passI);
+
+/// @brief get a 32 bit hash of resource set layout
 uint32_t hash32_set_layout_info(const RSetLayoutInfo& layoutI);
+
+/// @brief get a 32 bit hash of pipeline layout
 uint32_t hash32_pipeline_layout_info(const RPipelineLayoutInfo& layoutI);
 
 } // namespace LD

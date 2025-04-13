@@ -80,7 +80,11 @@ void RDevice::destroy_image(RImage image)
 
 RPass RDevice::create_pass(const RPassInfo& passI)
 {
-    return mObj->create_pass(mObj, passI);
+    RPass pass = mObj->create_pass(mObj, passI);
+
+    static_cast<RPassObj*>(pass)->hash = hash32_pass_info(passI);
+
+    return pass;
 }
 
 void RDevice::destroy_pass(RPass pass)
@@ -243,6 +247,77 @@ RCommandList RCommandPool::allocate()
     return mObj->allocate(mObj);
 }
 
+uint32_t hash32_pass_info(const RPassInfo& passI)
+{
+    std::string str = std::to_string(passI.colorAttachmentCount);
+
+    for (uint32_t i = 0; i < passI.colorAttachmentCount; i++)
+    {
+        const RPassColorAttachment* attachment = passI.colorAttachments + i;
+        str.push_back('c');
+        str += std::to_string((int)attachment->colorFormat);
+        str.push_back('l');
+        str += std::to_string((int)attachment->colorLoadOp);
+        str.push_back('s');
+        str += std::to_string((int)attachment->colorStoreOp);
+        str.push_back('i');
+        str += std::to_string((int)attachment->initialLayout);
+        str.push_back('p');
+        str += std::to_string((int)attachment->passLayout);
+        str.push_back('f');
+        str += std::to_string((int)attachment->finalLayout);
+    }
+
+    if (passI.depthStencilAttachment)
+    {
+        const RPassDepthStencilAttachment* attachment = passI.depthStencilAttachment;
+        str.push_back('d');
+        str += std::to_string((int)attachment->depthStencilFormat);
+        str.push_back('l');
+        str += std::to_string((int)attachment->depthLoadOp);
+        str.push_back('s');
+        str += std::to_string((int)attachment->depthStoreOp);
+        str.push_back('l');
+        str += std::to_string((int)attachment->stencilLoadOp);
+        str.push_back('s');
+        str += std::to_string((int)attachment->stencilStoreOp);
+        str.push_back('i');
+        str += std::to_string((int)attachment->initialLayout);
+        str.push_back('p');
+        str += std::to_string((int)attachment->passLayout);
+        str.push_back('f');
+        str += std::to_string((int)attachment->finalLayout);
+    }
+
+    if (passI.srcDependency)
+    {
+        const RPassDependency* dep = passI.srcDependency;
+        str.push_back('S');
+        str += std::to_string(dep->srcStageMask);
+        str.push_back('_');
+        str += std::to_string(dep->dstStageMask);
+        str.push_back('_');
+        str += std::to_string(dep->srcAccessMask);
+        str.push_back('_');
+        str += std::to_string(dep->dstAccessMask);
+    }
+
+    if (passI.dstDependency)
+    {
+        const RPassDependency* dep = passI.dstDependency;
+        str.push_back('D');
+        str += std::to_string(dep->srcStageMask);
+        str.push_back('_');
+        str += std::to_string(dep->dstStageMask);
+        str.push_back('_');
+        str += std::to_string(dep->srcAccessMask);
+        str.push_back('_');
+        str += std::to_string(dep->dstAccessMask);
+    }
+
+    return hash32_FNV_1a(str.data(), str.size());
+}
+
 uint32_t hash32_set_layout_info(const RSetLayoutInfo& layoutI)
 {
     std::string str = std::to_string(layoutI.bindingCount);
@@ -275,6 +350,11 @@ uint32_t hash32_pipeline_layout_info(const RPipelineLayoutInfo& layoutI)
 
     // TODO: this truncates since std::size_t is most likely 8 bytes on 64-bit systems
     return (uint32_t)hash;
+}
+
+uint32_t RPass::hash() const
+{
+    return mObj->hash;
 }
 
 uint32_t RSetLayout::hash() const

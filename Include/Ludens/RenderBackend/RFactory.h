@@ -2,9 +2,40 @@
 
 #include "RBackend.h"
 #include <initializer_list>
+#include <optional>
 #include <unordered_map>
 
 namespace LD {
+
+/// @brief creates render passes on behalf of a render device
+class RPassFactory
+{
+public:
+    RPassFactory() = delete;
+    RPassFactory(RDevice device);
+
+    RPassFactory& add_color_attachment(const RPassColorAttachment& attachment);
+    RPassFactory& add_depth_stencil_attachment(const RPassDepthStencilAttachment& attachment);
+    RPassFactory& add_src_pass_dependency(const RPassDependency& dep);
+    RPassFactory& add_dst_pass_dependency(const RPassDependency& dep);
+
+    RPass build();
+
+    /// @brief find a previously created render pass by its hash
+    /// @return the corresponding render pass if present, or a null handle if not found
+    static RPass find_by_hash(uint32_t hash);
+
+    static void destroy_all(RDevice device);
+
+private:
+    RDevice mDevice;
+    std::vector<RPassColorAttachment> mColorAttachments;
+    std::optional<RPassDepthStencilAttachment> mDepthStencilAttachment;
+    std::optional<RPassDependency> mSrcPassDependency;
+    std::optional<RPassDependency> mDstPassDependency;
+
+    static std::unordered_map<uint32_t, RPass> sPasses;
+};
 
 /// @brief creates resource set layouts on behalf of a render device
 class RSetLayoutFactory

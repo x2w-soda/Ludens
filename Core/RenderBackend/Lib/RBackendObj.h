@@ -61,6 +61,8 @@ struct RImageObj
 
 struct RPassObj
 {
+    uint32_t hash;
+
     struct
     {
         VkRenderPass handle;

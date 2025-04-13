@@ -2,8 +2,80 @@
 
 namespace LD {
 
+std::unordered_map<uint32_t, RPass> RPassFactory::sPasses;
 std::unordered_map<uint32_t, RSetLayout> RSetLayoutFactory::sSetLayouts;
 std::unordered_map<uint32_t, RPipelineLayout> RPipelineLayoutFactory::sPipelineLayouts;
+
+RPassFactory::RPassFactory(RDevice device)
+    : mDevice(device)
+{
+}
+
+RPassFactory& RPassFactory::add_color_attachment(const RPassColorAttachment& attachment)
+{
+    mColorAttachments.push_back(attachment);
+
+    return *this;
+}
+
+RPassFactory& RPassFactory::add_depth_stencil_attachment(const RPassDepthStencilAttachment& attachment)
+{
+    mDepthStencilAttachment = attachment;
+
+    return *this;
+}
+
+RPassFactory& RPassFactory::add_src_pass_dependency(const RPassDependency& dep)
+{
+    mSrcPassDependency = dep;
+
+    return *this;
+}
+
+RPassFactory& RPassFactory::add_dst_pass_dependency(const RPassDependency& dep)
+{
+    mDstPassDependency = dep;
+
+    return *this;
+}
+
+RPass RPassFactory::build()
+{
+    RPassInfo passI{
+        .colorAttachmentCount = (uint32_t)mColorAttachments.size(),
+        .colorAttachments = mColorAttachments.data(),
+        .depthStencilAttachment = mDepthStencilAttachment ? std::addressof(*mDepthStencilAttachment) : nullptr,
+        .srcDependency = mSrcPassDependency ? std::addressof(*mSrcPassDependency) : nullptr,
+        .dstDependency = mDstPassDependency ? std::addressof(*mDstPassDependency) : nullptr,
+    };
+
+    RPass pass = find_by_hash(hash32_pass_info(passI));
+    if (pass)
+        return pass;
+
+    pass = mDevice.create_pass(passI);
+    sPasses[pass.hash()] = pass;
+
+    return pass;
+}
+
+RPass RPassFactory::find_by_hash(uint32_t hash)
+{
+    if (sPasses.find(hash) != sPasses.end())
+        return sPasses[hash];
+
+    return {};
+}
+
+void RPassFactory::destroy_all(RDevice device)
+{
+    for (auto& ite : sPasses)
+        device.destroy_pass(ite.second);
+
+    printf("RPassFactory destroyed %d unique render passes\n", (int)sPasses.size());
+
+    sPasses.clear();
+}
 
 RSetLayoutFactory::RSetLayoutFactory(RDevice device)
     : mDevice(device)
