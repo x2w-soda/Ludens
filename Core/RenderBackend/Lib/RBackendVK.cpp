@@ -6,6 +6,7 @@
 #include <Ludens/RenderBackend/RFactory.h>
 #include <Ludens/System/Memory.h>
 #include <array>
+#include <cstring>
 #include <set>
 #include <string>
 #include <vector>
@@ -67,16 +68,23 @@ RPipeline vk_device_create_pipeline(RDeviceObj* self, const RPipelineInfo& pipel
 static void vk_device_destroy_pipeline(RDeviceObj* self, RPipeline pipeline);
 static uint32_t vk_device_next_frame(RDeviceObj* self, RSemaphore& imageAcquired, RSemaphore& presentReady, RFence& frameComplete);
 static void vk_device_present_frame(RDeviceObj* self);
-static RImage vk_device_get_swapchain_color_attachment(RDeviceObj* self, uint32_t frameIdx);
+static RImage vk_device_get_swapchain_color_attachment(RDeviceObj* self, uint32_t imageIdx);
+static uint32_t vk_device_get_swapchain_image_count(RDeviceObj* self);
 static RQueue vk_device_get_graphics_queue(RDeviceObj* self);
+
+static void vk_buffer_map(RBufferObj* self);
+static void vk_buffer_map_write(RBufferObj* self, uint64_t offset, uint64_t size, const void* data);
+static void vk_buffer_unmap(RBufferObj* self);
 
 static void vk_command_list_free(RCommandListObj* self);
 static void vk_command_list_begin(RCommandListObj* self, bool oneTimeSubmit);
 static void vk_command_list_end(RCommandListObj* self);
 static void vk_command_list_cmd_begin_pass(RCommandListObj* self, const RPassBeginInfo& passBI);
 static void vk_command_list_cmd_bind_graphics_pipeline(RCommandListObj* self, RPipeline pipeline);
+static void vk_command_list_cmd_bind_vertex_buffers(RCommandListObj* self, uint32_t firstBinding, uint32_t bindingCount, RBuffer* buffers);
 static void vk_command_list_cmd_draw(RCommandListObj* self, const RDrawInfo& drawI);
 static void vk_command_list_cmd_end_pass(RCommandListObj* self);
+static void vk_command_list_cmd_copy_buffer(RCommandListObj* self, RBuffer srcBuffer, RBuffer dstBuffer, uint32_t regionCount, const RBufferCopy* regions);
 
 static RCommandList vk_command_pool_allocate(RCommandPoolObj* self);
 
@@ -331,13 +339,51 @@ static void vk_device_destroy_fence(RDeviceObj* self, RFence fence)
 
 static RBuffer vk_device_create_buffer(RDeviceObj* self, const RBufferInfo& bufferI)
 {
-    // TODO:
-    return {};
+    RBufferObj* obj = (RBufferObj*)heap_malloc(sizeof(RBufferObj), MEMORY_USAGE_RENDER);
+    obj->init_vk_api();
+
+    VmaAllocationCreateFlags vmaFlags = 0;
+    VkMemoryPropertyFlags vkProps = 0;
+    VkBufferUsageFlags vkUsage = 0;
+    RUtil::cast_buffer_type_vk(bufferI.type, vkUsage);
+
+    if (bufferI.transferSrc)
+        vkUsage |= VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+
+    if (bufferI.transferDst)
+        vkUsage |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+
+    if (bufferI.hostVisible)
+    {
+        vkProps |= (VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+        vmaFlags |= VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT;
+    }
+
+    VkBufferCreateInfo bufferCI{
+        .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+        .size = (VkDeviceSize)bufferI.size,
+        .usage = vkUsage,
+        .sharingMode = VK_SHARING_MODE_EXCLUSIVE, // TODO:
+        .queueFamilyIndexCount = 0,
+    };
+    VmaAllocationCreateInfo allocationCI{
+        .flags = vmaFlags,
+        .usage = VMA_MEMORY_USAGE_AUTO,
+        .requiredFlags = vkProps,
+    };
+
+    VK_CHECK(vmaCreateBuffer(self->vk.vma, &bufferCI, &allocationCI, &obj->vk.handle, &obj->vk.vma, nullptr));
+
+    return {obj};
 }
 
 static void vk_device_destroy_buffer(RDeviceObj* self, RBuffer buffer)
 {
-    // TODO:
+    RBufferObj* obj = (RBufferObj*)buffer;
+
+    vmaDestroyBuffer(self->vk.vma, obj->vk.handle, obj->vk.vma);
+
+    heap_free(obj);
 }
 
 static RImage vk_device_create_image(RDeviceObj* self, const RImageInfo& imageI)
@@ -803,14 +849,40 @@ static void vk_device_present_frame(RDeviceObj* self)
     VK_CHECK(vkQueuePresentKHR(queueHandle, &presentI));
 }
 
-static RImage vk_device_get_swapchain_color_attachment(RDeviceObj* self, uint32_t frameIdx)
+static RImage vk_device_get_swapchain_color_attachment(RDeviceObj* self, uint32_t imageIdx)
 {
-    return self->vk.swapchain.colorAttachments[frameIdx];
+    return self->vk.swapchain.colorAttachments[imageIdx];
+}
+
+static uint32_t vk_device_get_swapchain_image_count(RDeviceObj* self)
+{
+    return (uint32_t)self->vk.swapchain.images.size();
 }
 
 static RQueue vk_device_get_graphics_queue(RDeviceObj* self)
 {
     return self->vk.queueGraphics;
+}
+
+static void vk_buffer_map(RBufferObj* self)
+{
+    RDeviceObj* deviceObj = (RDeviceObj*)self->device;
+
+    VK_CHECK(vmaMapMemory(deviceObj->vk.vma, self->vk.vma, &self->hostMap));
+}
+
+static void vk_buffer_map_write(RBufferObj* self, uint64_t offset, uint64_t size, const void* data)
+{
+    char* dst = (char*)self->hostMap + offset;
+
+    memcpy(dst, data, size);
+}
+
+static void vk_buffer_unmap(RBufferObj* self)
+{
+    RDeviceObj* deviceObj = (RDeviceObj*)self->device;
+
+    vmaUnmapMemory(deviceObj->vk.vma, self->vk.vma);
 }
 
 static void vk_command_list_free(RCommandListObj* self)
@@ -877,6 +949,20 @@ static void vk_command_list_cmd_bind_graphics_pipeline(RCommandListObj* self, RP
     vkCmdBindPipeline(self->vk.handle, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineObj->vk.handle);
 }
 
+static void vk_command_list_cmd_bind_vertex_buffers(RCommandListObj* self, uint32_t firstBinding, uint32_t bindingCount, RBuffer* buffers)
+{
+    std::vector<VkBuffer> bufferHandles(bindingCount);
+    std::vector<VkDeviceSize> bufferOffsets(bindingCount);
+
+    for (uint32_t i = 0; i < bindingCount; i++)
+    {
+        bufferHandles[i] = static_cast<RBufferObj*>(buffers[i])->vk.handle;
+        bufferOffsets[i] = 0;
+    }
+
+    vkCmdBindVertexBuffers(self->vk.handle, firstBinding, bindingCount, bufferHandles.data(), bufferOffsets.data());
+}
+
 static void vk_command_list_cmd_draw(RCommandListObj* self, const RDrawInfo& drawI)
 {
     vkCmdDraw(self->vk.handle, drawI.vertexCount, drawI.instanceCount, drawI.vertexStart, drawI.instanceStart);
@@ -885,6 +971,22 @@ static void vk_command_list_cmd_draw(RCommandListObj* self, const RDrawInfo& dra
 static void vk_command_list_cmd_end_pass(RCommandListObj* self)
 {
     vkCmdEndRenderPass(self->vk.handle);
+}
+
+static void vk_command_list_cmd_copy_buffer(RCommandListObj* self, RBuffer srcBuffer, RBuffer dstBuffer, uint32_t regionCount, const RBufferCopy* regions)
+{
+    VkBuffer srcBufferHandle = static_cast<RBufferObj*>(srcBuffer)->vk.handle;
+    VkBuffer dstBufferHandle = static_cast<RBufferObj*>(dstBuffer)->vk.handle;
+
+    std::vector<VkBufferCopy> copies(regionCount);
+    for (uint32_t i = 0; i < regionCount; i++)
+    {
+        copies[i].srcOffset = regions[i].srcOffset;
+        copies[i].dstOffset = regions[i].dstOffset;
+        copies[i].size = regions[i].size;
+    }
+
+    vkCmdCopyBuffer(self->vk.handle, srcBufferHandle, dstBufferHandle, regionCount, copies.data());
 }
 
 static RCommandList vk_command_pool_allocate(RCommandPoolObj* self)
@@ -913,7 +1015,7 @@ static void vk_queue_wait_idle(RQueueObj* self)
 
 static void vk_queue_submit(RQueueObj* self, const RSubmitInfo& submitI, RFence fence)
 {
-    VkFence fenceHandle = static_cast<RFenceObj*>(fence)->vk.handle;
+    VkFence fenceHandle = fence ? static_cast<RFenceObj*>(fence)->vk.handle : VK_NULL_HANDLE;
 
     std::vector<VkSemaphore> semaphoreHandles(submitI.waitCount + submitI.signalCount);
 
@@ -1199,6 +1301,13 @@ static void destroy_queue(RQueue queue)
     heap_free(obj);
 }
 
+void RBufferObj::init_vk_api()
+{
+    map = &vk_buffer_map;
+    map_write = &vk_buffer_map_write;
+    unmap = &vk_buffer_unmap;
+}
+
 void RCommandListObj::init_vk_api()
 {
     free = &vk_command_list_free;
@@ -1206,8 +1315,10 @@ void RCommandListObj::init_vk_api()
     end = &vk_command_list_end;
     cmd_begin_pass = &vk_command_list_cmd_begin_pass;
     cmd_bind_graphics_pipeline = &vk_command_list_cmd_bind_graphics_pipeline;
+    cmd_bind_vertex_buffers = &vk_command_list_cmd_bind_vertex_buffers;
     cmd_draw = &vk_command_list_cmd_draw;
     cmd_end_pass = &vk_command_list_cmd_end_pass;
+    cmd_copy_buffer = &vk_command_list_cmd_copy_buffer;
 }
 
 void RCommandPoolObj::init_vk_api()
@@ -1248,6 +1359,7 @@ void RDeviceObj::init_vk_api()
     next_frame = &vk_device_next_frame;
     present_frame = &vk_device_present_frame;
     get_swapchain_color_attachment = &vk_device_get_swapchain_color_attachment;
+    get_swapchain_image_count = &vk_device_get_swapchain_image_count;
     get_graphics_queue = &vk_device_get_graphics_queue;
 }
 

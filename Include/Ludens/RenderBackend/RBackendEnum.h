@@ -42,6 +42,19 @@ enum RBindingType
     RBINDING_TYPE_COMBINED_IMAGE_SAMPLER = 0,
 };
 
+enum RBindingInputRate
+{
+    RBINDING_INPUT_RATE_VERTEX = 0, /// new attributes are polled for each vertex (gl_VertexIndex)
+    RBINDING_INPUT_RATE_INSTANCE,   /// new attributes are polled for each instance (gl_VertexInstance)
+};
+
+/// each buffer is assigned exactly one type for simplicity
+enum RBufferType
+{
+    RBUFFER_TYPE_TRANSFER = 0, /// also known as staging buffers, used to upload data to GPU-only VRAM
+    RBUFFER_TYPE_VERTEX,       /// vertex buffer, VBO
+};
+
 enum RShaderType
 {
     RSHADER_TYPE_VERTEX_SHADER = 0,

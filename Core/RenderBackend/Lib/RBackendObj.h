@@ -42,6 +42,16 @@ struct Swapchain
 
 struct RBufferObj
 {
+    RDevice device;
+    RBufferInfo info;
+    void* hostMap;
+
+    void (*map)(RBufferObj* self);
+    void (*map_write)(RBufferObj* self, uint64_t offset, uint64_t size, const void* data);
+    void (*unmap)(RBufferObj* self);
+
+    void init_vk_api();
+
     struct
     {
         VmaAllocation vma;
@@ -87,8 +97,10 @@ struct RCommandListObj
     void (*end)(RCommandListObj* self);
     void (*cmd_begin_pass)(RCommandListObj* self, const RPassBeginInfo& passBI);
     void (*cmd_bind_graphics_pipeline)(RCommandListObj* self, RPipeline pipeline);
+    void (*cmd_bind_vertex_buffers)(RCommandListObj* self, uint32_t firstBinding, uint32_t bindingCount, RBuffer* buffers);
     void (*cmd_draw)(RCommandListObj* self, const RDrawInfo& drawI);
     void (*cmd_end_pass)(RCommandListObj* self);
+    void (*cmd_copy_buffer)(RCommandListObj* self, RBuffer srcBuffer, RBuffer dstBuffer, uint32_t regionCount, const RBufferCopy* regions);
 
     void init_vk_api();
 
@@ -222,6 +234,7 @@ struct RDeviceObj
     uint32_t (*next_frame)(RDeviceObj* self, RSemaphore& imageAcquired, RSemaphore& presentReady, RFence& frameComplete);
     void (*present_frame)(RDeviceObj* self);
     RImage (*get_swapchain_color_attachment)(RDeviceObj* self, uint32_t frameIdx);
+    uint32_t (*get_swapchain_image_count)(RDeviceObj* self);
     RQueue (*get_graphics_queue)(RDeviceObj* self);
 
     void init_vk_api();

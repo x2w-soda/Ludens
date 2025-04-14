@@ -32,15 +32,30 @@ struct RFence : RHandle<struct RFenceObj>
 {
 };
 
+/// @brief describes a buffer copy region
+struct RBufferCopy
+{
+    uint64_t srcOffset;
+    uint64_t dstOffset;
+    uint64_t size;
+};
+
 /// @brief renderer buffer creation info
 struct RBufferInfo
 {
-    uint32_t size;
+    RBufferType type;
+    uint64_t size;
+    bool transferDst;
+    bool transferSrc;
+    bool hostVisible;
 };
 
 /// @brief renderer buffer handle
 struct RBuffer : RHandle<struct RBufferObj>
 {
+    void map();
+    void map_write(uint64_t offset, uint64_t size, const void* data);
+    void unmap();
 };
 
 /// @brief renderer image creation info
@@ -127,6 +142,12 @@ union RClearColorValue {
     float float32[4];
     int32_t int32[4];
     uint32_t uint32[4];
+
+    // clang-format off 
+    RClearColorValue(float r, float g, float b, float a) { float32[0] = r; float32[1] = g; float32[2] = b; float32[3] = a; }
+    RClearColorValue(int32_t r, int32_t g, int32_t b, int32_t a) { int32[0] = r; int32[1] = g; int32[2] = b; int32[3] = a; }
+    RClearColorValue(uint32_t r, uint32_t g, uint32_t b, uint32_t a) { uint32[0] = r; uint32[1] = g; uint32[2] = b; uint32[3] = a; }
+    // clang-format on
 };
 
 /// @brief render pass instance creation info, used during command list recording
@@ -193,7 +214,8 @@ struct RVertexAttribute
 
 struct RVertexBinding
 {
-    uint32_t stride;  // vertex stride
+    RBindingInputRate inputRate; // attribute input rate
+    uint32_t stride;             // vertex stride
 };
 
 /// @brief graphics pipeline creation info
@@ -237,11 +259,16 @@ struct RCommandList : RHandle<struct RCommandListObj>
 
     void cmd_bind_graphics_pipeline(RPipeline pipeline);
 
+    void cmd_bind_vertex_buffers(uint32_t firstBinding, uint32_t bindingCount, RBuffer* buffers);
+
     /// @brief draw vertices
     void cmd_draw(const RDrawInfo& drawI);
 
     /// @brief end the current render pass instance
     void cmd_end_pass();
+
+    /// @brief a transfer command to copy from buffer to buffer
+    void cmd_copy_buffer(RBuffer srcBuffer, RBuffer dstBuffer, uint32_t regionCount, const RBufferCopy* regions);
 };
 
 /// @brief command pool creation info
@@ -261,11 +288,11 @@ struct RCommandPool : RHandle<struct RCommandPoolObj>
 struct RSubmitInfo
 {
     uint32_t waitCount;   /// number of semaphores to wait before any of the command lists begin execution
-    uint32_t listCount;   /// number of command lists to submit
-    uint32_t signalCount; /// number of semaphores to signal after all command lists complete execution
     RPipelineStageBits* waitStages;
     RSemaphore* waits;
+    uint32_t listCount;   /// number of command lists to submit
     RCommandList* lists;
+    uint32_t signalCount; /// number of semaphores to signal after all command lists complete execution
     RSemaphore* signals;
 };
 
@@ -340,7 +367,9 @@ struct RDevice : RHandle<struct RDeviceObj>
     /// @brief waits until presentReady semaphore is signaled and blocks until presentation is complete
     void present_frame();
 
-    RImage get_swapchain_color_attachment(uint32_t frameIdx);
+    RImage get_swapchain_color_attachment(uint32_t imageIdx);
+
+    uint32_t get_swapchain_image_count();
 
     RQueue get_graphics_queue();
 };

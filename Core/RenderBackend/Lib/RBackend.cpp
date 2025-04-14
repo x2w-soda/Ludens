@@ -60,7 +60,14 @@ void RDevice::destroy_fence(RFence fence)
 
 RBuffer RDevice::create_buffer(const RBufferInfo& bufferI)
 {
-    return mObj->create_buffer(mObj, bufferI);
+    RBuffer buffer = mObj->create_buffer(mObj, bufferI);
+
+    RBufferObj* bufferObj = static_cast<RBufferObj*>(buffer);
+    bufferObj->info = bufferI;
+    bufferObj->device = *this;
+    bufferObj->hostMap = nullptr;
+
+    return buffer;
 }
 
 void RDevice::destroy_buffer(RBuffer buffer)
@@ -183,9 +190,39 @@ RImage RDevice::get_swapchain_color_attachment(uint32_t frameIdx)
     return mObj->get_swapchain_color_attachment(mObj, frameIdx);
 }
 
+uint32_t RDevice::get_swapchain_image_count()
+{
+    return mObj->get_swapchain_image_count(mObj);
+}
+
 RQueue RDevice::get_graphics_queue()
 {
     return mObj->get_graphics_queue(mObj);
+}
+
+void RBuffer::map()
+{
+    LD_ASSERT(mObj->info.hostVisible);
+    LD_ASSERT(mObj->hostMap == nullptr);
+
+    mObj->map(mObj);
+}
+
+void RBuffer::map_write(uint64_t offset, uint64_t size, const void* data)
+{
+    LD_ASSERT(mObj->hostMap != nullptr);
+    LD_ASSERT(offset + size <= mObj->info.size);
+
+    mObj->map_write(mObj, offset, size, data);
+}
+
+void RBuffer::unmap()
+{
+    LD_ASSERT(mObj->hostMap != nullptr);
+
+    mObj->unmap(mObj);
+
+    mObj->hostMap = nullptr;
 }
 
 uint32_t RFramebuffer::width() const
@@ -228,6 +265,11 @@ void RCommandList::cmd_bind_graphics_pipeline(RPipeline pipeline)
     mObj->cmd_bind_graphics_pipeline(mObj, pipeline);
 }
 
+void RCommandList::cmd_bind_vertex_buffers(uint32_t firstBinding, uint32_t bindingCount, RBuffer* buffers)
+{
+    mObj->cmd_bind_vertex_buffers(mObj, firstBinding, bindingCount, buffers);
+}
+
 void RCommandList::cmd_draw(const RDrawInfo& drawI)
 {
     mObj->cmd_draw(mObj, drawI);
@@ -236,6 +278,11 @@ void RCommandList::cmd_draw(const RDrawInfo& drawI)
 void RCommandList::cmd_end_pass()
 {
     mObj->cmd_end_pass(mObj);
+}
+
+void RCommandList::cmd_copy_buffer(RBuffer srcBuffer, RBuffer dstBuffer, uint32_t regionCount, const RBufferCopy* regions)
+{
+    mObj->cmd_copy_buffer(mObj, srcBuffer, dstBuffer, regionCount, regions);
 }
 
 RCommandList RCommandPool::allocate()

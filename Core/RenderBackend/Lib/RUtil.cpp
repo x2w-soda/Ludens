@@ -239,6 +239,22 @@ void cast_vertex_binding_vk(const RVertexBinding& inBinding, uint32_t inIndex, V
     outBinding.stride = inBinding.stride;
 }
 
+// clang-format off
+struct
+{
+    RBufferType type;
+    VkBufferUsageFlagBits vkUsage;
+} bufferTypeTable[] = {
+    { RBUFFER_TYPE_TRANSFER, (VkBufferUsageFlagBits)0 },
+    { RBUFFER_TYPE_VERTEX,   VK_BUFFER_USAGE_VERTEX_BUFFER_BIT },
+};
+// clang-format on
+
+void cast_buffer_type_vk(const RBufferType& inType, VkBufferUsageFlags& outFlags)
+{
+    outFlags = bufferTypeTable[(int)inType].vkUsage;
+}
+
 void print_vk_queue_flags(const VkQueueFlags& inFlags, std::string& out)
 {
     out.clear();
