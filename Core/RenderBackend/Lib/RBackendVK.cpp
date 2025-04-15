@@ -345,13 +345,7 @@ static RBuffer vk_device_create_buffer(RDeviceObj* self, const RBufferInfo& buff
     VmaAllocationCreateFlags vmaFlags = 0;
     VkMemoryPropertyFlags vkProps = 0;
     VkBufferUsageFlags vkUsage = 0;
-    RUtil::cast_buffer_type_vk(bufferI.type, vkUsage);
-
-    if (bufferI.transferSrc)
-        vkUsage |= VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
-
-    if (bufferI.transferDst)
-        vkUsage |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
+    RUtil::cast_buffer_usage_vk(bufferI.usage, vkUsage);
 
     if (bufferI.hostVisible)
     {
@@ -1034,7 +1028,7 @@ static void vk_queue_submit(RQueueObj* self, const RSubmitInfo& submitI, RFence 
 
     std::vector<VkPipelineStageFlags> waitStages(submitI.waitCount);
     for (i = 0; i < submitI.waitCount; i++)
-        RUtil::cast_pipeline_stage_bits_vk(submitI.waitStages[i], waitStages[i]);
+        RUtil::cast_pipeline_stage_flags_vk(submitI.waitStages[i], waitStages[i]);
 
     VkSubmitInfo submit{
         .sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,

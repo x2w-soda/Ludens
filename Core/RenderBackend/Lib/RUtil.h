@@ -36,15 +36,15 @@ void cast_attachment_load_op_vk(const RAttachmentLoadOp& inOp, VkAttachmentLoadO
 void cast_attachment_store_op_vk(const RAttachmentStoreOp& inOp, VkAttachmentStoreOp& outOp);
 void cast_pass_color_attachment_vk(const RPassColorAttachment& inAttachment, VkAttachmentDescription& outDesc);
 void cast_pass_depth_stencil_attachment_vk(const RPassDepthStencilAttachment& inAttachment, VkAttachmentDescription& outDesc);
-void cast_pipeline_stage_bits_vk(const RPipelineStageBits& inBits, VkPipelineStageFlags& outBits);
-void cast_access_bits_vk(const RAccessBits& inBits, VkAccessFlags& outBits);
+void cast_pipeline_stage_flags_vk(const RPipelineStageFlags& inFlags, VkPipelineStageFlags& outFlags);
+void cast_access_flags_vk(const RAccessFlags& inFlags, VkAccessFlags& outFlags);
 void cast_pass_dependency_vk(const RPassDependency& inDep, const uint32_t inSrcSubpass, const uint32_t inDstSubpass, VkSubpassDependency& outDep);
 void cast_shader_type_vk(const RShaderType& inType, VkShaderStageFlagBits& outType);
 void cast_binding_type_vk(const RBindingType& inType, VkDescriptorType& outType);
 void cast_set_layout_binding_vk(const RSetBindingInfo& inBinding, VkDescriptorSetLayoutBinding& outBinding);
 void cast_vertex_attribute_vk(const RVertexAttribute& inAttr, uint32_t inLocation, VkVertexInputAttributeDescription& outAttr);
 void cast_vertex_binding_vk(const RVertexBinding& inBinding, uint32_t inIndex, VkVertexInputBindingDescription& outBinding);
-void cast_buffer_type_vk(const RBufferType& inType, VkBufferUsageFlags& outFlags);
+void cast_buffer_usage_vk(const RBufferUsageFlags& inUsage, VkBufferUsageFlags& outUsage);
 
 void print_vk_queue_flags(const VkQueueFlags& inFlags, std::string& out);
 void print_vk_present_mode(const VkPresentModeKHR& inMode, std::string& out);

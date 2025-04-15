@@ -48,11 +48,12 @@ enum RBindingInputRate
     RBINDING_INPUT_RATE_INSTANCE,   /// new attributes are polled for each instance (gl_VertexInstance)
 };
 
-/// each buffer is assigned exactly one type for simplicity
-enum RBufferType
+using RBufferUsageFlags = uint32_t;
+enum RBufferUsageBit : RBufferUsageFlags
 {
-    RBUFFER_TYPE_TRANSFER = 0, /// also known as staging buffers, used to upload data to GPU-only VRAM
-    RBUFFER_TYPE_VERTEX,       /// vertex buffer, VBO
+    RBUFFER_USAGE_TRANSFER_SRC_BIT = 1, /// src buffer for transfer commands
+    RBUFFER_USAGE_TRANSFER_DST_BIT = 2, /// dst buffer for transfer commands
+    RBUFFER_USAGE_VERTEX_BIT = 4,       /// vertex buffer (VBO) usage
 };
 
 enum RShaderType
@@ -61,13 +62,15 @@ enum RShaderType
     RSHADER_TYPE_FRAGMENT_SHADER,
 };
 
-enum RPipelineStageBits : uint32_t
+using RPipelineStageFlags = uint32_t;
+enum RPipelineStageBit : RPipelineStageFlags
 {
     RPIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT = 1,
     RPIPELINE_STAGE_BITS_ENUM_LAST_BIT = 2,
 };
 
-enum RAccessBits : uint32_t
+using RAccessFlags = uint32_t;
+enum RAccessBit : RAccessFlags
 {
     RACCESS_COLOR_ATTACHMENT_READ_BIT = 1,
     RACCESS_COLOR_ATTACHMENT_WRITE_BIT = 2,

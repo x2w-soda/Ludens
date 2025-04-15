@@ -131,28 +131,28 @@ void cast_pass_depth_stencil_attachment_vk(const RPassDepthStencilAttachment& in
 // clang-format off
 struct
 {
-    RPipelineStageBits bit;
+    RPipelineStageBit bit;
     VkPipelineStageFlagBits vkBit;
 } pipelineStageBitsTable[] = {
     { RPIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT },
 };
 // clang-format on
 
-void cast_pipeline_stage_bits_vk(const RPipelineStageBits& inBits, VkPipelineStageFlags& outBits)
+void cast_pipeline_stage_flags_vk(const RPipelineStageFlags& inFlags, VkPipelineStageFlags& outFlags)
 {
-    outBits = VK_PIPELINE_STAGE_NONE;
+    outFlags = VK_PIPELINE_STAGE_NONE;
 
     for (uint32_t bit = 1, i = 0; bit < RPIPELINE_STAGE_BITS_ENUM_LAST_BIT; bit <<= 1, i++)
     {
-        if (inBits & bit)
-            outBits |= pipelineStageBitsTable[i].vkBit;
+        if (inFlags & bit)
+            outFlags |= pipelineStageBitsTable[i].vkBit;
     }
 }
 
 // clang-format off
 struct
 {
-    RAccessBits bit;
+    RAccessBit bit;
     VkAccessFlagBits vkBit;
 } accessBitsTable[] = {
     { RACCESS_COLOR_ATTACHMENT_READ_BIT,  VK_ACCESS_COLOR_ATTACHMENT_READ_BIT },
@@ -160,14 +160,14 @@ struct
 };
 // clang-format on
 
-void cast_access_bits_vk(const RAccessBits& inBits, VkAccessFlags& outBits)
+void cast_access_flags_vk(const RAccessFlags& inFlags, VkAccessFlags& outFlags)
 {
-    outBits = VK_ACCESS_NONE;
+    outFlags = VK_ACCESS_NONE;
 
     for (uint32_t bit = 1, i = 0; bit < RACCESS_BITS_ENUM_LAST_BIT; bit <<= 1, i++)
     {
-        if (inBits & bit)
-            outBits |= accessBitsTable[i].vkBit;
+        if (inFlags & bit)
+            outFlags |= accessBitsTable[i].vkBit;
     }
 }
 
@@ -176,10 +176,10 @@ void cast_pass_dependency_vk(const RPassDependency& inDep, const uint32_t inSrcS
     outDep.dependencyFlags = 0;
     outDep.srcSubpass = inSrcSubpass;
     outDep.dstSubpass = inDstSubpass;
-    cast_pipeline_stage_bits_vk(inDep.srcStageMask, outDep.srcStageMask);
-    cast_pipeline_stage_bits_vk(inDep.dstStageMask, outDep.dstStageMask);
-    cast_access_bits_vk(inDep.srcAccessMask, outDep.srcAccessMask);
-    cast_access_bits_vk(inDep.dstAccessMask, outDep.dstAccessMask);
+    cast_pipeline_stage_flags_vk(inDep.srcStageMask, outDep.srcStageMask);
+    cast_pipeline_stage_flags_vk(inDep.dstStageMask, outDep.dstStageMask);
+    cast_access_flags_vk(inDep.srcAccessMask, outDep.srcAccessMask);
+    cast_access_flags_vk(inDep.dstAccessMask, outDep.dstAccessMask);
 }
 
 // clang-format off
@@ -242,17 +242,28 @@ void cast_vertex_binding_vk(const RVertexBinding& inBinding, uint32_t inIndex, V
 // clang-format off
 struct
 {
-    RBufferType type;
+    RBufferUsageBit usage;
     VkBufferUsageFlagBits vkUsage;
-} bufferTypeTable[] = {
-    { RBUFFER_TYPE_TRANSFER, (VkBufferUsageFlagBits)0 },
-    { RBUFFER_TYPE_VERTEX,   VK_BUFFER_USAGE_VERTEX_BUFFER_BIT },
+} bufferUsageTable[] = {
+    { RBUFFER_USAGE_TRANSFER_SRC_BIT, VK_BUFFER_USAGE_TRANSFER_SRC_BIT },
+    { RBUFFER_USAGE_TRANSFER_DST_BIT, VK_BUFFER_USAGE_TRANSFER_DST_BIT },
+    { RBUFFER_USAGE_VERTEX_BIT,       VK_BUFFER_USAGE_VERTEX_BUFFER_BIT },
+    { RBUFFER_USAGE_INDEX_BIT,        VK_BUFFER_USAGE_INDEX_BUFFER_BIT },
 };
 // clang-format on
 
-void cast_buffer_type_vk(const RBufferType& inType, VkBufferUsageFlags& outFlags)
+void cast_buffer_usage_vk(const RBufferUsageFlags& inUsage, VkBufferUsageFlags& outUsage)
 {
-    outFlags = bufferTypeTable[(int)inType].vkUsage;
+    const int len = sizeof(bufferUsageTable) / sizeof(*bufferUsageTable);
+    VkBufferUsageFlags vkUsage = 0;
+
+    for (int i = 0; i < len; i++)
+    {
+        if (inUsage & bufferUsageTable[i].usage)
+            vkUsage |= bufferUsageTable[i].vkUsage;
+    }
+
+    outUsage = vkUsage;
 }
 
 void print_vk_queue_flags(const VkQueueFlags& inFlags, std::string& out)

@@ -43,10 +43,8 @@ struct RBufferCopy
 /// @brief renderer buffer creation info
 struct RBufferInfo
 {
-    RBufferType type;
+    RBufferUsageFlags usage;
     uint64_t size;
-    bool transferDst;
-    bool transferSrc;
     bool hostVisible;
 };
 
@@ -98,10 +96,10 @@ struct RPassDepthStencilAttachment
 
 struct RPassDependency
 {
-    RPipelineStageBits srcStageMask;
-    RPipelineStageBits dstStageMask;
-    RAccessBits srcAccessMask;
-    RAccessBits dstAccessMask;
+    RPipelineStageFlags srcStageMask;
+    RPipelineStageFlags dstStageMask;
+    RAccessFlags srcAccessMask;
+    RAccessFlags dstAccessMask;
 };
 
 /// @brief render pass creation info
@@ -288,7 +286,7 @@ struct RCommandPool : RHandle<struct RCommandPoolObj>
 struct RSubmitInfo
 {
     uint32_t waitCount;   /// number of semaphores to wait before any of the command lists begin execution
-    RPipelineStageBits* waitStages;
+    RPipelineStageFlags* waitStages;
     RSemaphore* waits;
     uint32_t listCount;   /// number of command lists to submit
     RCommandList* lists;
