@@ -20,8 +20,11 @@ enum RFormat
 enum RImageLayout
 {
     RIMAGE_LAYOUT_UNDEFINED = 0,
-    RIMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+    RIMAGE_LAYOUT_COLOR_ATTACHMENT,
     RIMAGE_LAYOUT_PRESENT_SRC,
+    RIMAGE_LAYOUT_SHADER_READ_ONLY,
+    RIMAGE_LAYOUT_TRANSFER_SRC,
+    RIMAGE_LAYOUT_TRANSFER_DST,
 };
 
 enum RAttachmentLoadOp
@@ -57,6 +60,19 @@ enum RBufferUsageBit : RBufferUsageFlags
     RBUFFER_USAGE_INDEX_BIT = 8,
 };
 
+enum RImageType
+{
+    RIMAGE_TYPE_2D = 0,
+};
+
+using RImageUsageFlags = uint32_t;
+enum RImageUsageBit : RImageUsageFlags
+{
+    RIMAGE_USAGE_TRANSFER_SRC_BIT = 1, // src image for transfer commands
+    RIMAGE_USAGE_TRANSFER_DST_BIT = 2, // dst image for transfer commands
+    RIMAGE_USAGE_SAMPLED_BIT = 4,
+};
+
 enum RShaderType
 {
     RSHADER_TYPE_VERTEX_SHADER = 0,
@@ -66,8 +82,11 @@ enum RShaderType
 using RPipelineStageFlags = uint32_t;
 enum RPipelineStageBit : RPipelineStageFlags
 {
-    RPIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT = 1,
-    RPIPELINE_STAGE_BITS_ENUM_LAST_BIT = 2,
+    RPIPELINE_STAGE_TOP_OF_PIPE_BIT = 1,
+    RPIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT = 2,
+    RPIPELINE_STAGE_TRANSFER_BIT = 4,
+    RPIPELINE_STAGE_BOTTOM_OF_PIPE_BIT = 8,
+    RPIPELINE_STAGE_BITS_ENUM_LAST_BIT = 16,
 };
 
 using RAccessFlags = uint32_t;
@@ -75,7 +94,9 @@ enum RAccessBit : RAccessFlags
 {
     RACCESS_COLOR_ATTACHMENT_READ_BIT = 1,
     RACCESS_COLOR_ATTACHMENT_WRITE_BIT = 2,
-    RACCESS_BITS_ENUM_LAST_BIT = 4,
+    RACCESS_TRANSFER_READ_BIT = 4,
+    RACCESS_TRANSFER_WRITE_BIT = 8,
+    RACCESS_BITS_ENUM_LAST_BIT = 16,
 };
 
 /// @brief bit size of unsigned integer indices

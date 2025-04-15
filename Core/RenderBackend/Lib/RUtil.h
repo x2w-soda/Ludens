@@ -28,8 +28,11 @@ inline VkRect2D make_scissor(uint32_t width, uint32_t height)
     };
 }
 
+uint32_t get_format_texel_size(const RFormat& format);
+
 void cast_clear_color_value_vk(const RClearColorValue& inValue, VkClearColorValue& outValue);
 void cast_format_vk(const RFormat& inFormat, VkFormat& outFormat);
+void cast_format_image_aspect_vk(const RFormat& inFormat, VkImageAspectFlags& outFlags);
 void cast_glsl_type_vk(const RGLSLType& inType, VkFormat& outFormat);
 void cast_image_layout_vk(const RImageLayout& inLayout, VkImageLayout& outLayout);
 void cast_attachment_load_op_vk(const RAttachmentLoadOp& inOp, VkAttachmentLoadOp& outOp);
@@ -45,6 +48,8 @@ void cast_set_layout_binding_vk(const RSetBindingInfo& inBinding, VkDescriptorSe
 void cast_vertex_attribute_vk(const RVertexAttribute& inAttr, uint32_t inLocation, VkVertexInputAttributeDescription& outAttr);
 void cast_vertex_binding_vk(const RVertexBinding& inBinding, uint32_t inIndex, VkVertexInputBindingDescription& outBinding);
 void cast_buffer_usage_vk(const RBufferUsageFlags& inUsage, VkBufferUsageFlags& outUsage);
+void cast_image_usage_vk(const RImageUsageFlags& inUsage, VkImageUsageFlags& outUsage);
+void cast_image_type_vk(const RImageType& inType, VkImageType& outType);
 void cast_index_type_vk(const RIndexType& inType, VkIndexType& outType);
 
 void print_vk_queue_flags(const VkQueueFlags& inFlags, std::string& out);

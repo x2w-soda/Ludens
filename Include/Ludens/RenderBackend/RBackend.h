@@ -40,6 +40,15 @@ struct RBufferCopy
     uint64_t size;
 };
 
+/// @brief describes a copy region between a buffer and an image
+struct RBufferImageCopy
+{
+    uint64_t bufferOffset;
+    uint32_t imageWidth;
+    uint32_t imageHeight;
+    uint32_t imageDepth;
+};
+
 /// @brief renderer buffer creation info
 struct RBufferInfo
 {
@@ -65,15 +74,37 @@ struct RBuffer : RHandle<struct RBufferObj>
 /// @brief renderer image creation info
 struct RImageInfo
 {
+    RImageUsageFlags usage;
+    RImageType type;
+    RFormat format;
     uint32_t width;
     uint32_t height;
     uint32_t depth;
-    RFormat format;
 };
 
 /// @brief renderer image handle
 struct RImage : RHandle<struct RImageObj>
 {
+    /// @brief the usage of the image
+    RImageUsageFlags usage() const;
+
+    /// @brief the type of the image
+    RImageType type() const;
+
+    /// @brief the format of the image
+    RFormat format() const;
+
+    /// @brief the width of the image
+    uint32_t width() const;
+
+    /// @brief the height of the image
+    uint32_t height() const;
+
+    /// @brief the depth of the image
+    uint32_t depth() const;
+
+    /// @brief inferred byte size of mipmap level 0 from image format, width, height, depth, and layers
+    uint64_t size() const;
 };
 
 /// @brief description of how a color attachment is used in a render pass
@@ -276,6 +307,15 @@ struct RDrawIndexedInfo
     uint32_t instanceStart; /// the starting gl_InstanceIndex
 };
 
+struct RImageMemoryBarrier
+{
+    RImage image;
+    RImageLayout oldLayout;
+    RImageLayout newLayout;
+    RAccessFlags srcAccess;
+    RAccessFlags dstAccess;
+};
+
 /// @brief command list handle
 struct RCommandList : RHandle<struct RCommandListObj>
 {
@@ -303,8 +343,14 @@ struct RCommandList : RHandle<struct RCommandListObj>
     /// @brief end the current render pass instance
     void cmd_end_pass();
 
+    /// @brief add an image memory barrier
+    void cmd_image_memory_barrier(RPipelineStageFlags srcStages, RPipelineStageFlags dstStages, const RImageMemoryBarrier& barrier);
+
     /// @brief a transfer command to copy from buffer to buffer
     void cmd_copy_buffer(RBuffer srcBuffer, RBuffer dstBuffer, uint32_t regionCount, const RBufferCopy* regions);
+
+    /// @brief a transfer command to copy from buffer to image
+    void cmd_copy_buffer_to_image(RBuffer srcBuffer, RImage dstImage, RImageLayout dstImageLayout, uint32_t regionCount, const RBufferImageCopy* regions);
 };
 
 /// @brief command pool creation info

@@ -86,7 +86,9 @@ static void vk_command_list_cmd_bind_index_buffer(RCommandListObj* self, RBuffer
 static void vk_command_list_cmd_draw(RCommandListObj* self, const RDrawInfo& drawI);
 static void vk_command_list_cmd_draw_indexed(RCommandListObj* self, const RDrawIndexedInfo& drawI);
 static void vk_command_list_cmd_end_pass(RCommandListObj* self);
+static void vk_command_list_cmd_image_memory_barrier(RCommandListObj* self, RPipelineStageFlags srcStages, RPipelineStageFlags dstStages, const RImageMemoryBarrier& barrier);
 static void vk_command_list_cmd_copy_buffer(RCommandListObj* self, RBuffer srcBuffer, RBuffer dstBuffer, uint32_t regionCount, const RBufferCopy* regions);
+static void vk_command_list_cmd_copy_buffer_to_image(RCommandListObj* self, RBuffer srcBuffer, RImage dstImage, RImageLayout dstImageLayout, uint32_t regionCount, const RBufferImageCopy* regions);
 
 static RCommandList vk_command_pool_allocate(RCommandPoolObj* self);
 
@@ -384,16 +386,44 @@ static void vk_device_destroy_buffer(RDeviceObj* self, RBuffer buffer)
 
 static RImage vk_device_create_image(RDeviceObj* self, const RImageInfo& imageI)
 {
-    // TODO:
     RImageObj* obj = (RImageObj*)heap_malloc(sizeof(RImageObj), MEMORY_USAGE_RENDER);
+
+    VkFormat vkFormat;
+    VkImageType vkType;
+    VkImageUsageFlags vkUsage;
+    RUtil::cast_format_vk(imageI.format, vkFormat);
+    RUtil::cast_image_type_vk(imageI.type, vkType);
+    RUtil::cast_image_usage_vk(imageI.usage, vkUsage);
+
+    VkImageCreateInfo imageCI{
+        .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+        .imageType = vkType,
+        .format = vkFormat,
+        .extent = {.width = imageI.width, .height = imageI.height, .depth = imageI.depth},
+        .mipLevels = 1,
+        .arrayLayers = 1,
+        .samples = VK_SAMPLE_COUNT_1_BIT,
+        .tiling = VK_IMAGE_TILING_OPTIMAL,
+        .usage = vkUsage,
+        .sharingMode = VK_SHARING_MODE_EXCLUSIVE, // TODO:
+        .queueFamilyIndexCount = 0,
+        .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+    };
+
+    VmaAllocationCreateInfo allocationCI{
+        .usage = VMA_MEMORY_USAGE_AUTO,
+    };
+
+    VK_CHECK(vmaCreateImage(self->vk.vma, &imageCI, &allocationCI, &obj->vk.handle, &obj->vk.vma, nullptr));
 
     return {obj};
 }
 
 static void vk_device_destroy_image(RDeviceObj* self, RImage image)
 {
-    // TODO:
     RImageObj* obj = (RImageObj*)image;
+
+    vmaDestroyImage(self->vk.vma, obj->vk.handle, obj->vk.vma);
 
     heap_free(obj);
 }
@@ -984,6 +1014,47 @@ static void vk_command_list_cmd_end_pass(RCommandListObj* self)
     vkCmdEndRenderPass(self->vk.handle);
 }
 
+static void vk_command_list_cmd_image_memory_barrier(RCommandListObj* self, RPipelineStageFlags srcStages, RPipelineStageFlags dstStages, const RImageMemoryBarrier& barrier)
+{
+    VkPipelineStageFlags vkSrcStages;
+    VkPipelineStageFlags vkDstStages;
+    VkImageLayout vkOldLayout;
+    VkImageLayout vkNewLayout;
+    VkAccessFlags vkSrcAccess;
+    VkAccessFlags vkDstAccess;
+    VkImageAspectFlags vkAspect;
+
+    RUtil::cast_pipeline_stage_flags_vk(srcStages, vkSrcStages);
+    RUtil::cast_pipeline_stage_flags_vk(dstStages, vkDstStages);
+    RUtil::cast_image_layout_vk(barrier.oldLayout, vkOldLayout);
+    RUtil::cast_image_layout_vk(barrier.newLayout, vkNewLayout);
+    RUtil::cast_access_flags_vk(barrier.srcAccess, vkSrcAccess);
+    RUtil::cast_access_flags_vk(barrier.dstAccess, vkDstAccess);
+    RUtil::cast_format_image_aspect_vk(barrier.image.format(), vkAspect);
+
+    VkImageSubresourceRange range{
+        .aspectMask = vkAspect,
+        .baseMipLevel = 0,
+        .levelCount = 1,
+        .baseArrayLayer = 0,
+        .layerCount = 1,
+    };
+
+    VkImageMemoryBarrier vkBarrier{
+        .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
+        .srcAccessMask = vkSrcAccess,
+        .dstAccessMask = vkDstAccess,
+        .oldLayout = vkOldLayout,
+        .newLayout = vkNewLayout,
+        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .image = static_cast<const RImageObj*>(barrier.image)->vk.handle,
+        .subresourceRange = range,
+    };
+
+    vkCmdPipelineBarrier(self->vk.handle, vkSrcStages, vkDstStages, 0, 0, nullptr, 0, nullptr, 1, &vkBarrier);
+}
+
 static void vk_command_list_cmd_copy_buffer(RCommandListObj* self, RBuffer srcBuffer, RBuffer dstBuffer, uint32_t regionCount, const RBufferCopy* regions)
 {
     VkBuffer srcBufferHandle = static_cast<RBufferObj*>(srcBuffer)->vk.handle;
@@ -998,6 +1069,34 @@ static void vk_command_list_cmd_copy_buffer(RCommandListObj* self, RBuffer srcBu
     }
 
     vkCmdCopyBuffer(self->vk.handle, srcBufferHandle, dstBufferHandle, regionCount, copies.data());
+}
+
+static void vk_command_list_cmd_copy_buffer_to_image(RCommandListObj* self, RBuffer srcBuffer, RImage dstImage, RImageLayout dstImageLayout, uint32_t regionCount, const RBufferImageCopy* regions)
+{
+    VkBuffer srcBufferHandle = static_cast<RBufferObj*>(srcBuffer)->vk.handle;
+    VkImage dstImageHandle = static_cast<RImageObj*>(dstImage)->vk.handle;
+    VkImageLayout vkLayout;
+    VkImageAspectFlags vkAspects;
+
+    RUtil::cast_image_layout_vk(dstImageLayout, vkLayout);
+    RUtil::cast_format_image_aspect_vk(dstImage.format(), vkAspects);
+
+    std::vector<VkBufferImageCopy> copies(regionCount);
+    for (uint32_t i = 0; i < regionCount; i++)
+    {
+        copies[i].bufferOffset = regions[i].bufferOffset;
+        copies[i].bufferRowLength = 0;
+        copies[i].bufferImageHeight = 0;
+        copies[i].imageExtent.width = regions[i].imageWidth;
+        copies[i].imageExtent.height = regions[i].imageHeight;
+        copies[i].imageExtent.depth = regions[i].imageDepth;
+        copies[i].imageSubresource.aspectMask = vkAspects;
+        copies[i].imageSubresource.baseArrayLayer = 0;
+        copies[i].imageSubresource.layerCount = 1;
+        copies[i].imageSubresource.mipLevel = 0;
+    }
+
+    vkCmdCopyBufferToImage(self->vk.handle, srcBufferHandle, dstImageHandle, vkLayout, regionCount, copies.data());
 }
 
 static RCommandList vk_command_pool_allocate(RCommandPoolObj* self)
@@ -1331,7 +1430,9 @@ void RCommandListObj::init_vk_api()
     cmd_draw = &vk_command_list_cmd_draw;
     cmd_draw_indexed = &vk_command_list_cmd_draw_indexed;
     cmd_end_pass = &vk_command_list_cmd_end_pass;
+    cmd_image_memory_barrier = &vk_command_list_cmd_image_memory_barrier;
     cmd_copy_buffer = &vk_command_list_cmd_copy_buffer;
+    cmd_copy_buffer_to_image = &vk_command_list_cmd_copy_buffer_to_image;
 }
 
 void RCommandPoolObj::init_vk_api()

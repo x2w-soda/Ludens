@@ -20,17 +20,29 @@ void cast_clear_color_value_vk(const RClearColorValue& inValue, VkClearColorValu
 struct
 {
     RFormat format;
+    uint32_t texelSize;
     VkFormat vkFormat;
+    VkImageAspectFlags vkImageAspects;
 } formatTable[] = {
-    { RFORMAT_UNDEFINED, VK_FORMAT_UNDEFINED },
-    { RFORMAT_BGRA8,     VK_FORMAT_B8G8R8A8_UNORM },
-    { RFORMAT_RGBA8,     VK_FORMAT_R8G8B8A8_UNORM },
+    { RFORMAT_UNDEFINED, 0, VK_FORMAT_UNDEFINED,        (VkImageAspectFlags)0,      },
+    { RFORMAT_BGRA8,     4, VK_FORMAT_B8G8R8A8_UNORM,    VK_IMAGE_ASPECT_COLOR_BIT, },
+    { RFORMAT_RGBA8,     4, VK_FORMAT_R8G8B8A8_UNORM,    VK_IMAGE_ASPECT_COLOR_BIT, },
 };
 // clang-format on
 
 void cast_format_vk(const RFormat& inFormat, VkFormat& outFormat)
 {
     outFormat = formatTable[(int)inFormat].vkFormat;
+}
+
+void cast_format_image_aspect_vk(const RFormat& inFormat, VkImageAspectFlags& outFlags)
+{
+    outFlags = formatTable[(int)inFormat].vkImageAspects;
+}
+
+uint32_t get_format_texel_size(const RFormat& format)
+{
+    return formatTable[(int)format].texelSize;
 }
 
 // clang-format off
@@ -57,9 +69,12 @@ struct
     RImageLayout imageLayout;
     VkImageLayout vkImageLayout;
 } imageLayoutTable[] = {
-    { RIMAGE_LAYOUT_UNDEFINED,                VK_IMAGE_LAYOUT_UNDEFINED },
-    { RIMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, },
-    { RIMAGE_LAYOUT_PRESENT_SRC,              VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, },
+    { RIMAGE_LAYOUT_UNDEFINED,         VK_IMAGE_LAYOUT_UNDEFINED },
+    { RIMAGE_LAYOUT_COLOR_ATTACHMENT,  VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, },
+    { RIMAGE_LAYOUT_PRESENT_SRC,       VK_IMAGE_LAYOUT_PRESENT_SRC_KHR, },
+    { RIMAGE_LAYOUT_SHADER_READ_ONLY,  VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, },
+    { RIMAGE_LAYOUT_TRANSFER_SRC,      VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, },
+    { RIMAGE_LAYOUT_TRANSFER_DST,      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, },
 };
 // clang-format on
 
@@ -134,7 +149,10 @@ struct
     RPipelineStageBit bit;
     VkPipelineStageFlagBits vkBit;
 } pipelineStageBitsTable[] = {
+    { RPIPELINE_STAGE_TOP_OF_PIPE_BIT,             VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT },
     { RPIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT },
+    { RPIPELINE_STAGE_TRANSFER_BIT,                VK_PIPELINE_STAGE_TRANSFER_BIT },
+    { RPIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,          VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT },
 };
 // clang-format on
 
@@ -157,6 +175,8 @@ struct
 } accessBitsTable[] = {
     { RACCESS_COLOR_ATTACHMENT_READ_BIT,  VK_ACCESS_COLOR_ATTACHMENT_READ_BIT },
     { RACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT },
+    { RACCESS_TRANSFER_READ_BIT,          VK_ACCESS_TRANSFER_READ_BIT },
+    { RACCESS_TRANSFER_WRITE_BIT,         VK_ACCESS_TRANSFER_WRITE_BIT },
 };
 // clang-format on
 
@@ -264,6 +284,47 @@ void cast_buffer_usage_vk(const RBufferUsageFlags& inUsage, VkBufferUsageFlags& 
     }
 
     outUsage = vkUsage;
+}
+
+// clang-format off
+struct
+{
+    RImageUsageBit usage;
+    VkImageUsageFlagBits vkUsage;
+} imageUsageTable[] = {
+    { RIMAGE_USAGE_TRANSFER_SRC_BIT,  VK_IMAGE_USAGE_TRANSFER_SRC_BIT },
+    { RIMAGE_USAGE_TRANSFER_DST_BIT,  VK_IMAGE_USAGE_TRANSFER_DST_BIT },
+    { RIMAGE_USAGE_SAMPLED_BIT,       VK_IMAGE_USAGE_SAMPLED_BIT },
+};
+// clang-format on
+
+void cast_image_usage_vk(const RImageUsageFlags& inUsage, VkImageUsageFlags& outUsage)
+{
+    const int len = sizeof(imageUsageTable) / sizeof(*imageUsageTable);
+    VkImageUsageFlags vkUsage = 0;
+
+    for (int i = 0; i < len; i++)
+    {
+        if (inUsage & imageUsageTable[i].usage)
+            vkUsage |= imageUsageTable[i].vkUsage;
+    }
+
+    outUsage = vkUsage;
+}
+
+// clang-format off
+struct
+{
+    RImageType type;
+    VkImageType vkType;
+} imageTypeTable[] = {
+    { RIMAGE_TYPE_2D,  VK_IMAGE_TYPE_2D},
+};
+// clang-format on
+
+void cast_image_type_vk(const RImageType& inType, VkImageType& outType)
+{
+    outType = imageTypeTable[(int)inType].vkType;
 }
 
 // clang-format off

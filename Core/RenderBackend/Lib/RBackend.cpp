@@ -1,4 +1,5 @@
 #include "RBackendObj.h"
+#include "RUtil.h"
 #include <Ludens/DSA/Hash.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/RenderBackend/RBackend.h>
@@ -77,7 +78,12 @@ void RDevice::destroy_buffer(RBuffer buffer)
 
 RImage RDevice::create_image(const RImageInfo& imageI)
 {
-    return mObj->create_image(mObj, imageI);
+    RImage image = mObj->create_image(mObj, imageI);
+
+    RImageObj* imageObj = static_cast<RImageObj*>(image);
+    imageObj->info = imageI;
+
+    return image;
 }
 
 void RDevice::destroy_image(RImage image)
@@ -200,6 +206,44 @@ RQueue RDevice::get_graphics_queue()
     return mObj->get_graphics_queue(mObj);
 }
 
+RImageUsageFlags RImage::usage() const
+{
+    return mObj->info.usage;
+}
+
+RImageType RImage::type() const
+{
+    return mObj->info.type;
+}
+
+RFormat RImage::format() const
+{
+    return mObj->info.format;
+}
+
+uint32_t RImage::width() const
+{
+    return mObj->info.width;
+}
+
+uint32_t RImage::height() const
+{
+    return mObj->info.height;
+}
+
+uint32_t RImage::depth() const
+{
+    return mObj->info.depth;
+}
+
+uint64_t RImage::size() const
+{
+    uint32_t texelSize = RUtil::get_format_texel_size(mObj->info.format);
+    uint64_t layerSize = mObj->info.width * mObj->info.height * mObj->info.depth;
+
+    return layerSize * texelSize;
+}
+
 uint64_t RBuffer::size() const
 {
     return mObj->info.size;
@@ -305,9 +349,25 @@ void RCommandList::cmd_end_pass()
     mObj->cmd_end_pass(mObj);
 }
 
+void RCommandList::cmd_image_memory_barrier(RPipelineStageFlags srcStages, RPipelineStageFlags dstStages, const RImageMemoryBarrier& barrier)
+{
+    mObj->cmd_image_memory_barrier(mObj, srcStages, dstStages, barrier);
+}
+
 void RCommandList::cmd_copy_buffer(RBuffer srcBuffer, RBuffer dstBuffer, uint32_t regionCount, const RBufferCopy* regions)
 {
+    LD_ASSERT(srcBuffer.usage() & RBUFFER_USAGE_TRANSFER_SRC_BIT);
+    LD_ASSERT(dstBuffer.usage() & RBUFFER_USAGE_TRANSFER_DST_BIT);
+
     mObj->cmd_copy_buffer(mObj, srcBuffer, dstBuffer, regionCount, regions);
+}
+
+void RCommandList::cmd_copy_buffer_to_image(RBuffer srcBuffer, RImage dstImage, RImageLayout dstImageLayout, uint32_t regionCount, const RBufferImageCopy* regions)
+{
+    LD_ASSERT(srcBuffer.usage() & RBUFFER_USAGE_TRANSFER_SRC_BIT);
+    LD_ASSERT(dstImage.usage() & RIMAGE_USAGE_TRANSFER_DST_BIT);
+
+    mObj->cmd_copy_buffer_to_image(mObj, srcBuffer, dstImage, dstImageLayout, regionCount, regions);
 }
 
 RCommandList RCommandPool::allocate()
