@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <Ludens/RenderBackend/RBackend.h>
 
 namespace LD {
 
@@ -23,8 +24,9 @@ public:
 
     ~Application();
 
-    /// @brief Application entry point, returns after Window is closed
-    void Run();
+    bool is_window_open();
+    void poll_events();
+    RDevice get_rdevice();
 
 private:
     struct Window* mWindow;

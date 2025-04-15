@@ -46,12 +46,19 @@ Application::~Application()
     glfwTerminate();
 }
 
-void Application::Run()
+bool Application::is_window_open()
 {
-    while (!glfwWindowShouldClose(mWindow->handle))
-    {
-        glfwPollEvents();
-    }
+    return !glfwWindowShouldClose(mWindow->handle);
+}
+
+void Application::poll_events()
+{
+    glfwPollEvents();
+}
+
+RDevice Application::get_rdevice()
+{
+    return mWindow->rdevice;
 }
 
 } // namespace LD
