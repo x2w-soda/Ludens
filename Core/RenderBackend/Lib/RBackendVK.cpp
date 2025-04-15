@@ -82,7 +82,9 @@ static void vk_command_list_end(RCommandListObj* self);
 static void vk_command_list_cmd_begin_pass(RCommandListObj* self, const RPassBeginInfo& passBI);
 static void vk_command_list_cmd_bind_graphics_pipeline(RCommandListObj* self, RPipeline pipeline);
 static void vk_command_list_cmd_bind_vertex_buffers(RCommandListObj* self, uint32_t firstBinding, uint32_t bindingCount, RBuffer* buffers);
+static void vk_command_list_cmd_bind_index_buffer(RCommandListObj* self, RBuffer buffer, RIndexType indexType);
 static void vk_command_list_cmd_draw(RCommandListObj* self, const RDrawInfo& drawI);
+static void vk_command_list_cmd_draw_indexed(RCommandListObj* self, const RDrawIndexedInfo& drawI);
 static void vk_command_list_cmd_end_pass(RCommandListObj* self);
 static void vk_command_list_cmd_copy_buffer(RCommandListObj* self, RBuffer srcBuffer, RBuffer dstBuffer, uint32_t regionCount, const RBufferCopy* regions);
 
@@ -957,9 +959,24 @@ static void vk_command_list_cmd_bind_vertex_buffers(RCommandListObj* self, uint3
     vkCmdBindVertexBuffers(self->vk.handle, firstBinding, bindingCount, bufferHandles.data(), bufferOffsets.data());
 }
 
+static void vk_command_list_cmd_bind_index_buffer(RCommandListObj* self, RBuffer buffer, RIndexType indexType)
+{
+    VkBuffer bufferHandle = static_cast<RBufferObj*>(buffer)->vk.handle;
+    VkIndexType vkIndexType;
+
+    RUtil::cast_index_type_vk(indexType, vkIndexType);
+
+    vkCmdBindIndexBuffer(self->vk.handle, bufferHandle, 0, vkIndexType);
+}
+
 static void vk_command_list_cmd_draw(RCommandListObj* self, const RDrawInfo& drawI)
 {
     vkCmdDraw(self->vk.handle, drawI.vertexCount, drawI.instanceCount, drawI.vertexStart, drawI.instanceStart);
+}
+
+static void vk_command_list_cmd_draw_indexed(RCommandListObj* self, const RDrawIndexedInfo& drawI)
+{
+    vkCmdDrawIndexed(self->vk.handle, drawI.indexCount, drawI.instanceCount, drawI.indexStart, 0, drawI.instanceStart);
 }
 
 static void vk_command_list_cmd_end_pass(RCommandListObj* self)
@@ -1310,7 +1327,9 @@ void RCommandListObj::init_vk_api()
     cmd_begin_pass = &vk_command_list_cmd_begin_pass;
     cmd_bind_graphics_pipeline = &vk_command_list_cmd_bind_graphics_pipeline;
     cmd_bind_vertex_buffers = &vk_command_list_cmd_bind_vertex_buffers;
+    cmd_bind_index_buffer = &vk_command_list_cmd_bind_index_buffer;
     cmd_draw = &vk_command_list_cmd_draw;
+    cmd_draw_indexed = &vk_command_list_cmd_draw_indexed;
     cmd_end_pass = &vk_command_list_cmd_end_pass;
     cmd_copy_buffer = &vk_command_list_cmd_copy_buffer;
 }

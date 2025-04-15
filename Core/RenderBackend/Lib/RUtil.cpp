@@ -266,6 +266,22 @@ void cast_buffer_usage_vk(const RBufferUsageFlags& inUsage, VkBufferUsageFlags& 
     outUsage = vkUsage;
 }
 
+// clang-format off
+struct
+{
+    RIndexType type;
+    VkIndexType vkType;
+} indexTypeTable[] = {
+    { RINDEX_TYPE_U16, VK_INDEX_TYPE_UINT16 },
+    { RINDEX_TYPE_U32, VK_INDEX_TYPE_UINT32 },
+};
+// clang-format on
+
+void cast_index_type_vk(const RIndexType& inType, VkIndexType& outType)
+{
+    outType = indexTypeTable[(int)inType].vkType;
+}
+
 void print_vk_queue_flags(const VkQueueFlags& inFlags, std::string& out)
 {
     out.clear();

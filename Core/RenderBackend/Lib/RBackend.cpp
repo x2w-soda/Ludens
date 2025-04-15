@@ -200,6 +200,16 @@ RQueue RDevice::get_graphics_queue()
     return mObj->get_graphics_queue(mObj);
 }
 
+uint64_t RBuffer::size() const
+{
+    return mObj->info.size;
+}
+
+RBufferUsageFlags RBuffer::usage() const
+{
+    return mObj->info.usage;
+}
+
 void RBuffer::map()
 {
     LD_ASSERT(mObj->info.hostVisible);
@@ -267,12 +277,27 @@ void RCommandList::cmd_bind_graphics_pipeline(RPipeline pipeline)
 
 void RCommandList::cmd_bind_vertex_buffers(uint32_t firstBinding, uint32_t bindingCount, RBuffer* buffers)
 {
+    for (uint32_t i = 0; i < bindingCount; i++)
+        LD_ASSERT(buffers[i].usage() & RBUFFER_USAGE_VERTEX_BIT);
+
     mObj->cmd_bind_vertex_buffers(mObj, firstBinding, bindingCount, buffers);
+}
+
+void RCommandList::cmd_bind_index_buffer(RBuffer buffer, RIndexType indexType)
+{
+    LD_ASSERT(buffer.usage() & RBUFFER_USAGE_INDEX_BIT);
+
+    mObj->cmd_bind_index_buffer(mObj, buffer, indexType);
 }
 
 void RCommandList::cmd_draw(const RDrawInfo& drawI)
 {
     mObj->cmd_draw(mObj, drawI);
+}
+
+void RCommandList::cmd_draw_indices(const RDrawIndexedInfo& drawI)
+{
+    mObj->cmd_draw_indexed(mObj, drawI);
 }
 
 void RCommandList::cmd_end_pass()

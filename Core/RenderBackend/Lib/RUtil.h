@@ -45,6 +45,7 @@ void cast_set_layout_binding_vk(const RSetBindingInfo& inBinding, VkDescriptorSe
 void cast_vertex_attribute_vk(const RVertexAttribute& inAttr, uint32_t inLocation, VkVertexInputAttributeDescription& outAttr);
 void cast_vertex_binding_vk(const RVertexBinding& inBinding, uint32_t inIndex, VkVertexInputBindingDescription& outBinding);
 void cast_buffer_usage_vk(const RBufferUsageFlags& inUsage, VkBufferUsageFlags& outUsage);
+void cast_index_type_vk(const RIndexType& inType, VkIndexType& outType);
 
 void print_vk_queue_flags(const VkQueueFlags& inFlags, std::string& out);
 void print_vk_present_mode(const VkPresentModeKHR& inMode, std::string& out);

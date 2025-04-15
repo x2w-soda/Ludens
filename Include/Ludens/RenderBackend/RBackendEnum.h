@@ -54,6 +54,7 @@ enum RBufferUsageBit : RBufferUsageFlags
     RBUFFER_USAGE_TRANSFER_SRC_BIT = 1, /// src buffer for transfer commands
     RBUFFER_USAGE_TRANSFER_DST_BIT = 2, /// dst buffer for transfer commands
     RBUFFER_USAGE_VERTEX_BIT = 4,       /// vertex buffer (VBO) usage
+    RBUFFER_USAGE_INDEX_BIT = 8,
 };
 
 enum RShaderType
@@ -75,6 +76,13 @@ enum RAccessBit : RAccessFlags
     RACCESS_COLOR_ATTACHMENT_READ_BIT = 1,
     RACCESS_COLOR_ATTACHMENT_WRITE_BIT = 2,
     RACCESS_BITS_ENUM_LAST_BIT = 4,
+};
+
+/// @brief bit size of unsigned integer indices
+enum RIndexType
+{
+    RINDEX_TYPE_U16 = 0,
+    RINDEX_TYPE_U32,
 };
 
 enum RGLSLType

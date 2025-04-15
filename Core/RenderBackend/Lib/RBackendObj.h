@@ -98,7 +98,9 @@ struct RCommandListObj
     void (*cmd_begin_pass)(RCommandListObj* self, const RPassBeginInfo& passBI);
     void (*cmd_bind_graphics_pipeline)(RCommandListObj* self, RPipeline pipeline);
     void (*cmd_bind_vertex_buffers)(RCommandListObj* self, uint32_t firstBinding, uint32_t bindingCount, RBuffer* buffers);
+    void (*cmd_bind_index_buffer)(RCommandListObj* self, RBuffer buffer, RIndexType indexType);
     void (*cmd_draw)(RCommandListObj* self, const RDrawInfo& drawI);
+    void (*cmd_draw_indexed)(RCommandListObj* self, const RDrawIndexedInfo& drawI);
     void (*cmd_end_pass)(RCommandListObj* self);
     void (*cmd_copy_buffer)(RCommandListObj* self, RBuffer srcBuffer, RBuffer dstBuffer, uint32_t regionCount, const RBufferCopy* regions);
 
