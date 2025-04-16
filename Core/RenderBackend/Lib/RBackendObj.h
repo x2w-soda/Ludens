@@ -1,10 +1,13 @@
 #pragma once
 
 #include <Ludens/RenderBackend/RBackend.h>
+#include <Ludens/System/Allocator.h>
 #include <cstdint>
 #include <vector>
 #include <vk_mem_alloc.h>    // hide from user
 #include <vulkan/vulkan.hpp> // hide from user
+
+#define PIPELINE_LAYOUT_MAX_RESOURCE_SETS 4
 
 namespace LD {
 
@@ -69,6 +72,7 @@ struct RImageObj
         VmaAllocation vma;
         VkImage handle;
         VkImageView viewHandle;
+        VkSampler samplerHandle;
     } vk;
 };
 
@@ -100,6 +104,7 @@ struct RCommandListObj
     void (*end)(RCommandListObj* self);
     void (*cmd_begin_pass)(RCommandListObj* self, const RPassBeginInfo& passBI);
     void (*cmd_bind_graphics_pipeline)(RCommandListObj* self, RPipeline pipeline);
+    void (*cmd_bind_graphics_sets)(RCommandListObj* self, RPipelineLayout layout, uint32_t firstSet, uint32_t setCount, RSet* sets);
     void (*cmd_bind_vertex_buffers)(RCommandListObj* self, uint32_t firstBinding, uint32_t bindingCount, RBuffer* buffers);
     void (*cmd_bind_index_buffer)(RCommandListObj* self, RBuffer buffer, RIndexType indexType);
     void (*cmd_draw)(RCommandListObj* self, const RDrawInfo& drawI);
@@ -155,9 +160,35 @@ struct RSetLayoutObj
     } vk;
 };
 
+struct RSetObj
+{
+    struct
+    {
+        VkDescriptorSet handle;
+    } vk;
+};
+
+struct RSetPoolObj
+{
+    LinearAllocator setLA;
+
+    RSet (*allocate)(RSetPoolObj* self, RSetLayout layout, RSetObj* setObj);
+    void (*reset)(RSetPoolObj* self);
+
+    void init_vk_api();
+
+    struct
+    {
+        VkDevice device;
+        VkDescriptorPool handle;
+    } vk;
+};
+
 struct RPipelineLayoutObj
 {
     uint32_t hash;
+    uint32_t set_count;
+    RSetLayout set_layouts[PIPELINE_LAYOUT_MAX_RESOURCE_SETS];
 
     struct
     {
@@ -167,6 +198,8 @@ struct RPipelineLayoutObj
 
 struct RPipelineObj
 {
+    RPipelineLayout layout;
+
     struct
     {
         VkPipeline handle;
@@ -229,6 +262,9 @@ struct RDeviceObj
     RShader (*create_shader)(RDeviceObj* self, const RShaderInfo& shaderI);
     void (*destroy_shader)(RDeviceObj* self, RShader shader);
 
+    RSetPool (*create_set_pool)(RDeviceObj* self, const RSetPoolInfo& poolI);
+    void (*destroy_set_pool)(RDeviceObj* self, RSetPool pool);
+
     RSetLayout (*create_set_layout)(RDeviceObj* self, const RSetLayoutInfo& layoutI);
     void (*destroy_set_layout)(RDeviceObj* self, RSetLayout layout);
 
@@ -237,6 +273,8 @@ struct RDeviceObj
 
     RPipeline (*create_pipeline)(RDeviceObj* self, const RPipelineInfo& pipelineI);
     void (*destroy_pipeline)(RDeviceObj* self, RPipeline pipeline);
+
+    void (*update_set_images)(RDeviceObj* self, uint32_t updateCount, const RSetImageUpdateInfo* updates);
 
     uint32_t (*next_frame)(RDeviceObj* self, RSemaphore& imageAcquired, RSemaphore& presentReady, RFence& frameComplete);
     void (*present_frame)(RDeviceObj* self);

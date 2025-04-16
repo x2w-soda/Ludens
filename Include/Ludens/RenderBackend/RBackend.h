@@ -245,6 +245,37 @@ struct RSetLayout : RHandle<struct RSetLayoutObj>
     uint32_t hash() const;
 };
 
+/// @brief describes a type of resource that can be allocated from set pool
+struct RSetPoolResource
+{
+    RBindingType type;
+    uint32_t count;
+};
+
+/// @brief resource set handle
+struct RSet : RHandle<struct RSetObj>
+{
+};
+
+/// @brief resource set pool creation info
+struct RSetPoolInfo
+{
+    uint32_t maxSets;
+    uint32_t resourceCount;
+    RSetPoolResource* resources;
+};
+
+/// @brief resource set pool handle, used to allocate resource sets
+struct RSetPool : RHandle<struct RSetPoolObj>
+{
+    /// @brief allocate a resource set
+    RSet allocate(RSetLayout layout);
+
+    /// @brief returns all allocated set to the pool
+    /// @warning all set handles previously allocated will become out of scope
+    void reset();
+};
+
 /// @brief pipeline layout handle
 struct RPipelineLayoutInfo
 {
@@ -256,6 +287,12 @@ struct RPipelineLayoutInfo
 struct RPipelineLayout : RHandle<struct RPipelineLayoutObj>
 {
     uint32_t hash() const;
+
+    /// @brief get number of resource set layouts
+    uint32_t resource_set_count() const;
+
+    /// @brief get the layout of the resource set at index
+    RSetLayout resource_set_layout(int32_t index) const;
 };
 
 struct RVertexAttribute
@@ -287,6 +324,8 @@ struct RPipelineInfo
 /// @brief graphics pipeline handle
 struct RPipeline : RHandle<struct RPipelineObj>
 {
+    /// @brief get the layout of the pipeline
+    RPipelineLayout layout() const;
 };
 
 /// @brief vertex draw call information
@@ -329,6 +368,8 @@ struct RCommandList : RHandle<struct RCommandListObj>
     void cmd_begin_pass(const RPassBeginInfo& passBI);
 
     void cmd_bind_graphics_pipeline(RPipeline pipeline);
+
+    void cmd_bind_graphics_sets(RPipelineLayout layout, uint32_t firstSet, uint32_t setCount, RSet* sets);
 
     void cmd_bind_vertex_buffers(uint32_t firstBinding, uint32_t bindingCount, RBuffer* buffers);
 
@@ -390,6 +431,17 @@ struct RQueue : RHandle<struct RQueueObj>
     void submit(const RSubmitInfo& submitI, RFence fence);
 };
 
+struct RSetImageUpdateInfo
+{
+    RSet set;                      /// the resource set to update
+    uint32_t dstBinding;           /// the binding within the set
+    uint32_t dstArrayIndex;        /// the starting array index of the binding
+    uint32_t imageCount;           /// number of image bindings to update
+    RBindingType imageBindingType; /// binding type
+    RImage* images;                /// array of image handles
+    RImageLayout* imageLayouts;    /// array of current image layouts
+};
+
 /// @brief render device creation info
 struct RDeviceInfo
 {
@@ -427,6 +479,9 @@ struct RDevice : RHandle<struct RDeviceObj>
     RShader create_shader(const RShaderInfo& shaderI);
     void destroy_shader(RShader shader);
 
+    RSetPool create_set_pool(const RSetPoolInfo& poolI);
+    void destroy_set_pool(RSetPool pool);
+
     RSetLayout create_set_layout(const RSetLayoutInfo& layoutI);
     void destroy_set_layout(RSetLayout layout);
 
@@ -435,6 +490,8 @@ struct RDevice : RHandle<struct RDeviceObj>
 
     RPipeline create_pipeline(const RPipelineInfo& pipelineI);
     void destroy_pipeline(RPipeline);
+
+    void update_set_images(uint32_t updateCount, const RSetImageUpdateInfo* updates);
 
     /// @brief The most important function of the render device, defines the
     ///        GPU frame boundaries. Blocks until the frame-complete fence of

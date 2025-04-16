@@ -143,6 +143,16 @@ void RDevice::destroy_shader(RShader shader)
     mObj->destroy_shader(mObj, shader);
 }
 
+RSetPool RDevice::create_set_pool(const RSetPoolInfo& poolI)
+{
+    return mObj->create_set_pool(mObj, poolI);
+}
+
+void RDevice::destroy_set_pool(RSetPool pool)
+{
+    mObj->destroy_set_pool(mObj, pool);
+}
+
 RSetLayout RDevice::create_set_layout(const RSetLayoutInfo& layoutI)
 {
     RSetLayout layout = mObj->create_set_layout(mObj, layoutI);
@@ -159,6 +169,8 @@ void RDevice::destroy_set_layout(RSetLayout layout)
 
 RPipelineLayout RDevice::create_pipeline_layout(const RPipelineLayoutInfo& layoutI)
 {
+    LD_ASSERT(layoutI.setLayoutCount <= PIPELINE_LAYOUT_MAX_RESOURCE_SETS);
+
     RPipelineLayout layout = mObj->create_pipeline_layout(mObj, layoutI);
 
     static_cast<RPipelineLayoutObj*>(layout)->hash = hash32_pipeline_layout_info(layoutI);
@@ -179,6 +191,11 @@ RPipeline RDevice::create_pipeline(const RPipelineInfo& pipelineI)
 void RDevice::destroy_pipeline(RPipeline pipeline)
 {
     mObj->destroy_pipeline(mObj, pipeline);
+}
+
+void RDevice::update_set_images(uint32_t updateCount, const RSetImageUpdateInfo* updates)
+{
+    mObj->update_set_images(mObj, updateCount, updates);
 }
 
 uint32_t RDevice::next_frame(RSemaphore& imageAcquired, RSemaphore& presentReady, RFence& frameComplete)
@@ -317,6 +334,11 @@ void RCommandList::cmd_begin_pass(const RPassBeginInfo& passBI)
 void RCommandList::cmd_bind_graphics_pipeline(RPipeline pipeline)
 {
     mObj->cmd_bind_graphics_pipeline(mObj, pipeline);
+}
+
+void RCommandList::cmd_bind_graphics_sets(RPipelineLayout layout, uint32_t firstSet, uint32_t setCount, RSet* sets)
+{
+    mObj->cmd_bind_graphics_sets(mObj, layout, firstSet, setCount, sets);
 }
 
 void RCommandList::cmd_bind_vertex_buffers(uint32_t firstBinding, uint32_t bindingCount, RBuffer* buffers)
@@ -494,9 +516,39 @@ uint32_t RSetLayout::hash() const
     return mObj->hash;
 }
 
+RSet RSetPool::allocate(RSetLayout layout)
+{
+    RSetObj* setObj = (RSetObj*)mObj->setLA.allocate(sizeof(RSetObj));
+
+    return mObj->allocate(mObj, layout, setObj);
+}
+
+void RSetPool::reset()
+{
+    return mObj->reset(mObj);
+}
+
 uint32_t RPipelineLayout::hash() const
 {
     return mObj->hash;
+}
+
+uint32_t RPipelineLayout::resource_set_count() const
+{
+    return mObj->set_count;
+}
+
+RSetLayout RPipelineLayout::resource_set_layout(int32_t index) const
+{
+    if (index >= mObj->set_count)
+        return {};
+
+    return mObj->set_layouts[index];
+}
+
+RPipelineLayout RPipeline::layout() const
+{
+    return mObj->layout;
 }
 
 } // namespace LD

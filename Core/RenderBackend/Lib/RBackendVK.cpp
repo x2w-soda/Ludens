@@ -60,12 +60,15 @@ static RCommandPool vk_device_create_command_pool(RDeviceObj* self, const RComma
 static void vk_device_destroy_command_pool(RDeviceObj* self, RCommandPool pool);
 static RShader vk_device_create_shader(RDeviceObj* self, const RShaderInfo& shaderI);
 static void vk_device_destroy_shader(RDeviceObj* self, RShader shader);
-RSetLayout vk_device_create_set_layout(RDeviceObj* self, const RSetLayoutInfo& layoutI);
+static RSetPool vk_device_create_set_pool(RDeviceObj* self, const RSetPoolInfo& poolI);
+static void vk_device_destroy_set_pool(RDeviceObj* self, RSetPool pool);
+static RSetLayout vk_device_create_set_layout(RDeviceObj* self, const RSetLayoutInfo& layoutI);
 static void vk_device_destroy_set_layout(RDeviceObj* self, RSetLayout layout);
-RPipelineLayout vk_device_create_pipeline_layout(RDeviceObj* self, const RPipelineLayoutInfo& layoutI);
+static RPipelineLayout vk_device_create_pipeline_layout(RDeviceObj* self, const RPipelineLayoutInfo& layoutI);
 static void vk_device_destroy_pipeline_layout(RDeviceObj* self, RPipelineLayout layout);
-RPipeline vk_device_create_pipeline(RDeviceObj* self, const RPipelineInfo& pipelineI);
+static RPipeline vk_device_create_pipeline(RDeviceObj* self, const RPipelineInfo& pipelineI);
 static void vk_device_destroy_pipeline(RDeviceObj* self, RPipeline pipeline);
+static void vk_device_update_set_images(RDeviceObj* self, uint32_t updateCount, const RSetImageUpdateInfo* updates);
 static uint32_t vk_device_next_frame(RDeviceObj* self, RSemaphore& imageAcquired, RSemaphore& presentReady, RFence& frameComplete);
 static void vk_device_present_frame(RDeviceObj* self);
 static RImage vk_device_get_swapchain_color_attachment(RDeviceObj* self, uint32_t imageIdx);
@@ -91,6 +94,9 @@ static void vk_command_list_cmd_copy_buffer(RCommandListObj* self, RBuffer srcBu
 static void vk_command_list_cmd_copy_buffer_to_image(RCommandListObj* self, RBuffer srcBuffer, RImage dstImage, RImageLayout dstImageLayout, uint32_t regionCount, const RBufferImageCopy* regions);
 
 static RCommandList vk_command_pool_allocate(RCommandPoolObj* self);
+
+static RSet vk_set_pool_allocate(RSetPoolObj* self, RSetLayout layout, RSetObj* setObj);
+static void vk_set_pool_reset(RSetPoolObj* self);
 
 static void vk_queue_wait_idle(RQueueObj* self);
 static void vk_queue_submit(RQueueObj* self, const RSubmitInfo& submitI, RFence fence);
@@ -391,9 +397,11 @@ static RImage vk_device_create_image(RDeviceObj* self, const RImageInfo& imageI)
     VkFormat vkFormat;
     VkImageType vkType;
     VkImageUsageFlags vkUsage;
+    VkImageAspectFlags vkAspect;
     RUtil::cast_format_vk(imageI.format, vkFormat);
     RUtil::cast_image_type_vk(imageI.type, vkType);
     RUtil::cast_image_usage_vk(imageI.usage, vkUsage);
+    RUtil::cast_format_image_aspect_vk(imageI.format, vkAspect);
 
     VkImageCreateInfo imageCI{
         .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
@@ -416,6 +424,43 @@ static RImage vk_device_create_image(RDeviceObj* self, const RImageInfo& imageI)
 
     VK_CHECK(vmaCreateImage(self->vk.vma, &imageCI, &allocationCI, &obj->vk.handle, &obj->vk.vma, nullptr));
 
+    VkImageSubresourceRange viewRange{
+        .aspectMask = vkAspect,
+        .baseMipLevel = 0,
+        .levelCount = VK_REMAINING_MIP_LEVELS,
+        .baseArrayLayer = 0,
+        .layerCount = VK_REMAINING_ARRAY_LAYERS,
+    };
+
+    VkImageViewCreateInfo viewCI{
+        .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+        .image = obj->vk.handle,
+        .viewType = VK_IMAGE_VIEW_TYPE_2D, // TODO:
+        .format = vkFormat,
+        .subresourceRange = viewRange,
+    };
+
+    VK_CHECK(vkCreateImageView(self->vk.device, &viewCI, nullptr, &obj->vk.viewHandle));
+
+    if (vkUsage & VK_IMAGE_USAGE_SAMPLED_BIT)
+    {
+        VkSamplerCreateInfo samplerCI{
+            .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+            .magFilter = VK_FILTER_LINEAR,
+            .minFilter = VK_FILTER_LINEAR,
+            .mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR,
+            .addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+            .addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+            .addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+            .mipLodBias = 0.0f,
+            .minLod = 0.0f,
+            .maxLod = 1.0f,
+        };
+
+        VK_CHECK(vkCreateSampler(self->vk.device, &samplerCI, nullptr, &obj->vk.samplerHandle));
+    } else
+        obj->vk.samplerHandle = VK_NULL_HANDLE;
+
     return {obj};
 }
 
@@ -423,6 +468,10 @@ static void vk_device_destroy_image(RDeviceObj* self, RImage image)
 {
     RImageObj* obj = (RImageObj*)image;
 
+    if (obj->vk.samplerHandle != VK_NULL_HANDLE)
+        vkDestroySampler(self->vk.device, obj->vk.samplerHandle, nullptr);
+
+    vkDestroyImageView(self->vk.device, obj->vk.viewHandle, nullptr);
     vmaDestroyImage(self->vk.vma, obj->vk.handle, obj->vk.vma);
 
     heap_free(obj);
@@ -610,6 +659,46 @@ static void vk_device_destroy_shader(RDeviceObj* self, RShader shader)
     heap_free(shaderObj);
 }
 
+static RSetPool vk_device_create_set_pool(RDeviceObj* self, const RSetPoolInfo& poolI)
+{
+    RSetPoolObj* poolObj = (RSetPoolObj*)heap_malloc(sizeof(RSetPoolObj), MEMORY_USAGE_RENDER);
+    new (&poolObj->setLA) LinearAllocator();
+    poolObj->init_vk_api();
+    poolObj->setLA.create(sizeof(RSetObj) * poolI.maxSets, MEMORY_USAGE_RENDER);
+    poolObj->vk.device = self->vk.device;
+
+    std::vector<VkDescriptorPoolSize> poolSizes(poolI.resourceCount);
+    for (uint32_t i = 0; i < poolI.resourceCount; i++)
+    {
+        VkDescriptorType vkType;
+        RUtil::cast_binding_type_vk(poolI.resources[i].type, vkType);
+        poolSizes[i].type = vkType;
+        poolSizes[i].descriptorCount = poolI.resources[i].count;
+    }
+
+    VkDescriptorPoolCreateInfo poolCI{
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+        .maxSets = poolI.maxSets,
+        .poolSizeCount = poolI.resourceCount,
+        .pPoolSizes = poolSizes.data(),
+    };
+
+    VK_CHECK(vkCreateDescriptorPool(self->vk.device, &poolCI, nullptr, &poolObj->vk.handle));
+
+    return {poolObj};
+}
+
+static void vk_device_destroy_set_pool(RDeviceObj* self, RSetPool pool)
+{
+    RSetPoolObj* poolObj = (RSetPoolObj*)pool;
+    poolObj->setLA.destroy();
+
+    vkDestroyDescriptorPool(self->vk.device, poolObj->vk.handle, nullptr);
+
+    poolObj->setLA.~LinearAllocator();
+    heap_free(poolObj);
+}
+
 RSetLayout vk_device_create_set_layout(RDeviceObj* self, const RSetLayoutInfo& layoutI)
 {
     RSetLayoutObj* obj = (RSetLayoutObj*)heap_malloc(sizeof(RSetLayoutObj), MEMORY_USAGE_RENDER);
@@ -641,6 +730,10 @@ void vk_device_destroy_set_layout(RDeviceObj* self, RSetLayout layout)
 RPipelineLayout vk_device_create_pipeline_layout(RDeviceObj* self, const RPipelineLayoutInfo& layoutI)
 {
     RPipelineLayoutObj* layoutObj = (RPipelineLayoutObj*)heap_malloc(sizeof(RPipelineLayoutObj), MEMORY_USAGE_RENDER);
+    layoutObj->set_count = layoutI.setLayoutCount;
+
+    for (uint32_t i = 0; i < layoutObj->set_count; i++)
+        layoutObj->set_layouts[i] = layoutI.setLayouts[i];
 
     // NOTE: Here we make the simplification that all pipelines use the minimum 128 bytes
     //       of push constant as a single range. Different pipelines will alias these bytes as
@@ -681,6 +774,7 @@ static void vk_device_destroy_pipeline_layout(RDeviceObj* self, RPipelineLayout 
 RPipeline vk_device_create_pipeline(RDeviceObj* self, const RPipelineInfo& pipelineI)
 {
     RPipelineObj* pipelineObj = (RPipelineObj*)heap_malloc(sizeof(RPipelineObj), MEMORY_USAGE_RENDER);
+    pipelineObj->layout = pipelineI.layout;
 
     std::vector<VkPipelineShaderStageCreateInfo> stageCI(pipelineI.shaderCount);
     for (uint32_t i = 0; i < pipelineI.shaderCount; i++)
@@ -824,6 +918,53 @@ static void vk_device_destroy_pipeline(RDeviceObj* self, RPipeline pipeline)
     vkDestroyPipeline(self->vk.device, pipelineObj->vk.handle, nullptr);
 
     heap_free(pipelineObj);
+}
+
+static void vk_device_update_set_images(RDeviceObj* self, uint32_t updateCount, const RSetImageUpdateInfo* updates)
+{
+    std::vector<VkDescriptorImageInfo> imageI;
+    std::vector<VkWriteDescriptorSet> writes(updateCount);
+
+    for (uint32_t i = 0; i < updateCount; i++)
+    {
+        const RSetImageUpdateInfo& update = updates[i];
+
+        for (uint32_t j = 0; j < update.imageCount; j++)
+        {
+            RImageObj* imageObj = static_cast<RImageObj*>(update.images[j]);
+            VkImageLayout vkLayout;
+            RUtil::cast_image_layout_vk(update.imageLayouts[j], vkLayout);
+
+            imageI.push_back({
+                .sampler = imageObj->vk.samplerHandle,
+                .imageView = imageObj->vk.viewHandle,
+                .imageLayout = vkLayout,
+            });
+        }
+    }
+
+    uint32_t imageInfoBase = 0;
+
+    for (uint32_t i = 0; i < updateCount; i++)
+    {
+        VkDescriptorType descriptorType;
+        RUtil::cast_binding_type_vk(updates[i].imageBindingType, descriptorType);
+
+        writes[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        writes[i].pNext = nullptr;
+        writes[i].dstSet = static_cast<const RSetObj*>(updates[i].set)->vk.handle;
+        writes[i].dstBinding = updates[i].dstBinding;
+        writes[i].dstArrayElement = updates[i].dstArrayIndex;
+        writes[i].descriptorCount = updates[i].imageCount;
+        writes[i].descriptorType = descriptorType;
+        writes[i].pImageInfo = imageI.data() + imageInfoBase;
+        writes[i].pBufferInfo = nullptr;
+        writes[i].pTexelBufferView = nullptr;
+
+        imageInfoBase += updates[i].imageCount;
+    }
+
+    vkUpdateDescriptorSets(self->vk.device, updateCount, writes.data(), 0, nullptr);
 }
 
 static uint32_t vk_device_next_frame(RDeviceObj* self, RSemaphore& imageAcquired, RSemaphore& presentReady, RFence& frameComplete)
@@ -975,6 +1116,16 @@ static void vk_command_list_cmd_bind_graphics_pipeline(RCommandListObj* self, RP
     vkCmdBindPipeline(self->vk.handle, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineObj->vk.handle);
 }
 
+static void vk_command_list_cmd_bind_graphics_sets(RCommandListObj* self, RPipelineLayout layout, uint32_t setStart, uint32_t setCount, RSet* sets)
+{
+    RPipelineLayoutObj* layoutObj = (RPipelineLayoutObj*)layout;
+    std::vector<VkDescriptorSet> setHandles(setCount);
+    for (uint32_t i = 0; i < setCount; i++)
+        setHandles[i] = static_cast<RSetObj*>(sets[i])->vk.handle;
+
+    vkCmdBindDescriptorSets(self->vk.handle, VK_PIPELINE_BIND_POINT_GRAPHICS, layoutObj->vk.handle, setStart, setCount, setHandles.data(), 0, nullptr);
+}
+
 static void vk_command_list_cmd_bind_vertex_buffers(RCommandListObj* self, uint32_t firstBinding, uint32_t bindingCount, RBuffer* buffers)
 {
     std::vector<VkBuffer> bufferHandles(bindingCount);
@@ -1116,6 +1267,27 @@ static RCommandList vk_command_pool_allocate(RCommandPoolObj* self)
     VK_CHECK(vkAllocateCommandBuffers(self->vk.device, &bufferAI, &obj->vk.handle));
 
     return {obj};
+}
+
+static RSet vk_set_pool_allocate(RSetPoolObj* self, RSetLayout layout, RSetObj* setObj)
+{
+    VkDescriptorSetLayout layoutHandle = static_cast<RSetLayoutObj*>(layout)->vk.handle;
+
+    VkDescriptorSetAllocateInfo setAI{
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+        .descriptorPool = self->vk.handle,
+        .descriptorSetCount = 1,
+        .pSetLayouts = &layoutHandle,
+    };
+
+    VK_CHECK(vkAllocateDescriptorSets(self->vk.device, &setAI, &setObj->vk.handle));
+
+    return {setObj};
+}
+
+static void vk_set_pool_reset(RSetPoolObj* self)
+{
+    VK_CHECK(vkResetDescriptorPool(self->vk.device, self->vk.handle, 0));
 }
 
 static void vk_queue_wait_idle(RQueueObj* self)
@@ -1425,6 +1597,7 @@ void RCommandListObj::init_vk_api()
     end = &vk_command_list_end;
     cmd_begin_pass = &vk_command_list_cmd_begin_pass;
     cmd_bind_graphics_pipeline = &vk_command_list_cmd_bind_graphics_pipeline;
+    cmd_bind_graphics_sets = &vk_command_list_cmd_bind_graphics_sets;
     cmd_bind_vertex_buffers = &vk_command_list_cmd_bind_vertex_buffers;
     cmd_bind_index_buffer = &vk_command_list_cmd_bind_index_buffer;
     cmd_draw = &vk_command_list_cmd_draw;
@@ -1438,6 +1611,12 @@ void RCommandListObj::init_vk_api()
 void RCommandPoolObj::init_vk_api()
 {
     allocate = &vk_command_pool_allocate;
+}
+
+void RSetPoolObj::init_vk_api()
+{
+    allocate = &vk_set_pool_allocate;
+    reset = &vk_set_pool_reset;
 }
 
 void RQueueObj::init_vk_api()
@@ -1464,12 +1643,15 @@ void RDeviceObj::init_vk_api()
     destroy_command_pool = &vk_device_destroy_command_pool;
     create_shader = &vk_device_create_shader;
     destroy_shader = &vk_device_destroy_shader;
+    create_set_pool = &vk_device_create_set_pool;
+    destroy_set_pool = &vk_device_destroy_set_pool;
     create_set_layout = &vk_device_create_set_layout;
     destroy_set_layout = &vk_device_destroy_set_layout;
     create_pipeline_layout = &vk_device_create_pipeline_layout;
     destroy_pipeline_layout = &vk_device_destroy_pipeline_layout;
     create_pipeline = &vk_device_create_pipeline;
     destroy_pipeline = &vk_device_destroy_pipeline;
+    update_set_images = &vk_device_update_set_images;
     next_frame = &vk_device_next_frame;
     present_frame = &vk_device_present_frame;
     get_swapchain_color_attachment = &vk_device_get_swapchain_color_attachment;
