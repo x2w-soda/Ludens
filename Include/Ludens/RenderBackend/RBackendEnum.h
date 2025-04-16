@@ -17,6 +17,19 @@ enum RFormat
     RFORMAT_RGBA8,
 };
 
+enum RFilter
+{
+    RFILTER_NEAREST = 0,
+    RFILTER_LINEAR,
+};
+
+enum RSamplerAddressMode
+{
+    RSAMPLER_ADDRESS_MODE_REPEAT = 0,
+    RSAMPLER_ADDRESS_MODE_MIRRORED_REPEAT,
+    RSAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+};
+
 enum RImageLayout
 {
     RIMAGE_LAYOUT_UNDEFINED = 0,

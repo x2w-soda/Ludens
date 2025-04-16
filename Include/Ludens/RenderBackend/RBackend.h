@@ -71,6 +71,13 @@ struct RBuffer : RHandle<struct RBufferObj>
     void unmap();
 };
 
+struct RSamplerInfo
+{
+    RFilter filter;
+    RFilter mipmapFilter;
+    RSamplerAddressMode addressMode;
+};
+
 /// @brief renderer image creation info
 struct RImageInfo
 {
@@ -80,6 +87,7 @@ struct RImageInfo
     uint32_t width;
     uint32_t height;
     uint32_t depth;
+    RSamplerInfo sampler; /// if usage contains RIMAGE_USAGE_SAMPLED_BIT, this describes the sampler
 };
 
 /// @brief renderer image handle

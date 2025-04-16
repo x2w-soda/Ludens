@@ -444,14 +444,21 @@ static RImage vk_device_create_image(RDeviceObj* self, const RImageInfo& imageI)
 
     if (vkUsage & VK_IMAGE_USAGE_SAMPLED_BIT)
     {
+        VkFilter vkFilter;
+        VkSamplerMipmapMode vkMipmapMode;
+        VkSamplerAddressMode vkAddressMode;
+        RUtil::cast_filter_vk(imageI.sampler.filter, vkFilter);
+        RUtil::cast_filter_mipmap_mode_vk(imageI.sampler.mipmapFilter, vkMipmapMode);
+        RUtil::cast_sampler_address_mode_vk(imageI.sampler.addressMode, vkAddressMode);
+
         VkSamplerCreateInfo samplerCI{
             .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
-            .magFilter = VK_FILTER_LINEAR,
-            .minFilter = VK_FILTER_LINEAR,
-            .mipmapMode = VK_SAMPLER_MIPMAP_MODE_LINEAR,
-            .addressModeU = VK_SAMPLER_ADDRESS_MODE_REPEAT,
-            .addressModeV = VK_SAMPLER_ADDRESS_MODE_REPEAT,
-            .addressModeW = VK_SAMPLER_ADDRESS_MODE_REPEAT,
+            .magFilter = vkFilter,
+            .minFilter = vkFilter,
+            .mipmapMode = vkMipmapMode,
+            .addressModeU = vkAddressMode,
+            .addressModeV = vkAddressMode,
+            .addressModeW = vkAddressMode,
             .mipLodBias = 0.0f,
             .minLod = 0.0f,
             .maxLod = 1.0f,

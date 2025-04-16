@@ -31,6 +31,9 @@ inline VkRect2D make_scissor(uint32_t width, uint32_t height)
 uint32_t get_format_texel_size(const RFormat& format);
 
 void cast_clear_color_value_vk(const RClearColorValue& inValue, VkClearColorValue& outValue);
+void cast_filter_vk(const RFilter& inFilter, VkFilter& outFilter);
+void cast_filter_mipmap_mode_vk(const RFilter& inFilter, VkSamplerMipmapMode& outMipmapMode);
+void cast_sampler_address_mode_vk(const RSamplerAddressMode& inMode, VkSamplerAddressMode& outMode);
 void cast_format_vk(const RFormat& inFormat, VkFormat& outFormat);
 void cast_format_image_aspect_vk(const RFormat& inFormat, VkImageAspectFlags& outFlags);
 void cast_glsl_type_vk(const RGLSLType& inType, VkFormat& outFormat);

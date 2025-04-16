@@ -19,6 +19,45 @@ void cast_clear_color_value_vk(const RClearColorValue& inValue, VkClearColorValu
 // clang-format off
 struct
 {
+    RFilter filter;
+    VkFilter vkFilter;
+    VkSamplerMipmapMode vkMipmapMode;
+} filterTable[] = {
+    { RFILTER_NEAREST, VK_FILTER_NEAREST, VK_SAMPLER_MIPMAP_MODE_NEAREST },
+    { RFILTER_LINEAR,  VK_FILTER_LINEAR,  VK_SAMPLER_MIPMAP_MODE_LINEAR },
+};
+// clang-format on
+
+void cast_filter_vk(const RFilter& inFilter, VkFilter& outFilter)
+{
+    outFilter = filterTable[(int)inFilter].vkFilter;
+}
+
+void cast_filter_mipmap_mode_vk(const RFilter& inFilter, VkSamplerMipmapMode& outMipmapMode)
+{
+    outMipmapMode = filterTable[(int)inFilter].vkMipmapMode;
+}
+
+// clang-format off
+struct
+{
+    RSamplerAddressMode mode;
+    VkSamplerAddressMode vkMode;
+} samplerAddressModeTable[] = {
+    { RSAMPLER_ADDRESS_MODE_REPEAT,           VK_SAMPLER_ADDRESS_MODE_REPEAT },
+    { RSAMPLER_ADDRESS_MODE_MIRRORED_REPEAT,  VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT },
+    { RSAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,    VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE },
+};
+// clang-format on
+
+void cast_sampler_address_mode_vk(const RSamplerAddressMode& inMode, VkSamplerAddressMode& outMode)
+{
+    outMode = samplerAddressModeTable[(int)inMode].vkMode;
+}
+
+// clang-format off
+struct
+{
     RFormat format;
     uint32_t texelSize;
     VkFormat vkFormat;
