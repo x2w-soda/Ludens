@@ -10,7 +10,7 @@ struct MemoryHeader
     MemoryUsage usage;
 };
 
-static MemoryProfile sProfile[2];
+static MemoryProfile sProfile[3];
 
 void* heap_malloc(std::size_t size, MemoryUsage usage)
 {
