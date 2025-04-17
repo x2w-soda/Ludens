@@ -1,4 +1,5 @@
-set(MODULE_NAME LDRender)
+set(MODULE_NAME LDRenderBackend)
+set(MODULE_TEST_NAME LDRenderBackendTest)
 
 # Fetch Vulkan Memory Allocator
 FetchContent_Declare(
@@ -40,12 +41,16 @@ set(MODULE_LIB
   Lib/RUtil.cpp
 )
 
+set(MODULE_TEST
+  Test/RenderBackendTest.cpp
+)
+
 add_library(${MODULE_NAME} STATIC
 	${MODULE_INCLUDE}
 	${MODULE_LIB}
 )
 
-target_link_directories(${MODULE_NAME} PRIVATE
+target_link_directories(${MODULE_NAME} PUBLIC
   ${LUDENS_VULKAN_LIB_DIR}
 )
 
@@ -56,7 +61,21 @@ target_include_directories(${MODULE_NAME} PRIVATE
   ${vma_SOURCE_DIR}/include
 )
 
-target_link_libraries(${MODULE_NAME} PRIVATE
+target_link_libraries(${MODULE_NAME} PUBLIC
   ${LUDENS_VULKAN_SDK_LIBS}
   ${Vulkan_LIBRARIES}
+)
+
+add_executable(${MODULE_TEST_NAME}
+  ${MODULE_TEST}
+)
+
+target_link_libraries(${MODULE_TEST_NAME} PRIVATE
+  ${MODULE_NAME}
+  LDSystem
+)
+
+target_include_directories(${MODULE_TEST_NAME} PRIVATE
+  ${LUDENS_INCLUDE_DIR}
+  ${LUDENS_SOURCE_DIR}
 )

@@ -112,6 +112,20 @@ enum RAccessBit : RAccessFlags
     RACCESS_BITS_ENUM_LAST_BIT = 16,
 };
 
+enum RPolygonMode
+{
+    RPOLYGON_MODE_FILL = 0,
+    RPOLYGON_MODE_LINE,
+    RPOLYGON_MODE_POINT,
+};
+
+enum RCullMode
+{
+    RCULL_MODE_NONE = 0,
+    RCULL_MODE_FRONT,
+    RCULL_MODE_BACK,
+};
+
 /// @brief bit size of unsigned integer indices
 enum RIndexType
 {

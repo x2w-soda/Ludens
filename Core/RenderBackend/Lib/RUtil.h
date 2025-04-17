@@ -54,6 +54,8 @@ void cast_buffer_usage_vk(const RBufferUsageFlags& inUsage, VkBufferUsageFlags& 
 void cast_image_usage_vk(const RImageUsageFlags& inUsage, VkImageUsageFlags& outUsage);
 void cast_image_type_vk(const RImageType& inType, VkImageType& outType);
 void cast_index_type_vk(const RIndexType& inType, VkIndexType& outType);
+void cast_polygon_mode_vk(const RPolygonMode& inMode, VkPolygonMode& outMode);
+void cast_cull_mode_vk(const RCullMode& inMode, VkCullModeFlags& outMode);
 
 void print_vk_queue_flags(const VkQueueFlags& inFlags, std::string& out);
 void print_vk_present_mode(const VkPresentModeKHR& inMode, std::string& out);

@@ -229,6 +229,7 @@ void vk_create_device(RDeviceObj* self, const RDeviceInfo& deviceI)
         .pQueueCreateInfos = queueCI.data(),
         .enabledExtensionCount = (uint32_t)desiredDeviceExts.size(),
         .ppEnabledExtensionNames = desiredDeviceExts.data(),
+        .pEnabledFeatures = &pdevice.deviceFeatures,
     };
     VK_CHECK(vkCreateDevice(self->vk.pdevice.handle, &deviceCI, nullptr, &self->vk.device));
 
@@ -849,18 +850,22 @@ RPipeline vk_device_create_pipeline(RDeviceObj* self, const RPipelineInfo& pipel
         .pScissors = &scissor,
     };
 
+    VkCullModeFlags vkCullMode;
+    VkPolygonMode vkPolygonMode;
+    RUtil::cast_cull_mode_vk(pipelineI.rasterization.cullMode, vkCullMode);
+    RUtil::cast_polygon_mode_vk(pipelineI.rasterization.polygonMode, vkPolygonMode);
     VkPipelineRasterizationStateCreateInfo rasterizationSCI{
         .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
         .depthClampEnable = VK_FALSE,
         .rasterizerDiscardEnable = VK_FALSE,
-        .polygonMode = VK_POLYGON_MODE_FILL,
-        .cullMode = VK_CULL_MODE_NONE, // TODO:
+        .polygonMode = vkPolygonMode,
+        .cullMode = vkCullMode,
         .frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE,
         .depthBiasEnable = VK_FALSE,
         .depthBiasConstantFactor = 0.0f,
         .depthBiasClamp = 0.0f,
         .depthBiasSlopeFactor = 0.0f,
-        .lineWidth = 1.0f,
+        .lineWidth = pipelineI.rasterization.lineWidth,
     };
 
     VkPipelineDepthStencilStateCreateInfo depthStencilSCI{
@@ -1358,6 +1363,8 @@ static void choose_physical_device(RDeviceObj* obj)
 
         vkGetPhysicalDeviceProperties(pdevice.handle, &pdevice.deviceProps);
         printf("VkPhysicalDevice: %s\n", pdevice.deviceProps.deviceName);
+
+        vkGetPhysicalDeviceFeatures(pdevice.handle, &pdevice.deviceFeatures);
 
         // queue families on this physical device
         uint32_t familyCount;

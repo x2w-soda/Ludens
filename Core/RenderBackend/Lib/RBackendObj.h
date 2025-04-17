@@ -16,6 +16,7 @@ struct PhysicalDevice
 {
     VkPhysicalDevice handle = VK_NULL_HANDLE;
     VkPhysicalDeviceProperties deviceProps;
+    VkPhysicalDeviceFeatures deviceFeatures;
     VkSurfaceCapabilitiesKHR surfaceCaps;
     std::vector<VkSurfaceFormatKHR> surfaceFormats;
     std::vector<VkFormat> depthStencilFormats; /// formats with VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT

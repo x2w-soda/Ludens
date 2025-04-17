@@ -382,6 +382,40 @@ void cast_index_type_vk(const RIndexType& inType, VkIndexType& outType)
     outType = indexTypeTable[(int)inType].vkType;
 }
 
+// clang-format off
+struct
+{
+    RPolygonMode mode;
+    VkPolygonMode vkMode;
+} polygonModeTable[] = {
+    { RPOLYGON_MODE_FILL,  VK_POLYGON_MODE_FILL },
+    { RPOLYGON_MODE_LINE,  VK_POLYGON_MODE_LINE },
+    { RPOLYGON_MODE_POINT, VK_POLYGON_MODE_POINT },
+};
+// clang-format on
+
+void cast_polygon_mode_vk(const RPolygonMode& inMode, VkPolygonMode& outMode)
+{
+    outMode = polygonModeTable[(int)inMode].vkMode;
+}
+
+// clang-format off
+struct
+{
+    RCullMode mode;
+    VkCullModeFlags vkMode;
+} cullModeTable[] = {
+    { RCULL_MODE_NONE,  VK_CULL_MODE_NONE },
+    { RCULL_MODE_FRONT, VK_CULL_MODE_FRONT_BIT },
+    { RCULL_MODE_BACK,  VK_CULL_MODE_BACK_BIT },
+};
+// clang-format on
+
+void cast_cull_mode_vk(const RCullMode& inMode, VkCullModeFlags& outMode)
+{
+    outMode = cullModeTable[(int)inMode].vkMode;
+}
+
 void print_vk_queue_flags(const VkQueueFlags& inFlags, std::string& out)
 {
     out.clear();

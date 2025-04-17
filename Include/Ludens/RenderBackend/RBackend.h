@@ -316,6 +316,14 @@ struct RVertexBinding
     uint32_t stride;             // vertex stride
 };
 
+/// @brief graphics pipeline rasterization state info
+struct RPipelineRasterizationInfo
+{
+    RPolygonMode polygonMode;
+    RCullMode cullMode;
+    float lineWidth = 1.0f; /// used for RPOLYGON_MODE_LINE
+};
+
 /// @brief graphics pipeline creation info
 struct RPipelineInfo
 {
@@ -327,6 +335,7 @@ struct RPipelineInfo
     RVertexBinding* vertexBindings;
     RPipelineLayout layout;
     RPass pass;
+    RPipelineRasterizationInfo rasterization;
 };
 
 /// @brief graphics pipeline handle
@@ -529,5 +538,8 @@ uint32_t hash32_set_layout_info(const RSetLayoutInfo& layoutI);
 
 /// @brief get a 32 bit hash of pipeline layout
 uint32_t hash32_pipeline_layout_info(const RPipelineLayoutInfo& layoutI);
+
+/// @brief get a 32 bit hash of pipeline rasterization state
+uint32_t hash32_pipeline_rasterization_state(const RPipelineRasterizationInfo& ratserizationI);
 
 } // namespace LD

@@ -506,6 +506,24 @@ uint32_t hash32_pipeline_layout_info(const RPipelineLayoutInfo& layoutI)
     return (uint32_t)hash;
 }
 
+uint32_t hash32_pipeline_rasterization_state(const RPipelineRasterizationInfo& rasterizationI)
+{
+    std::string str;
+
+    str.push_back('c');
+    str += std::to_string((int)rasterizationI.cullMode);
+    str.push_back('p');
+    str += std::to_string((int)rasterizationI.polygonMode);
+
+    if (rasterizationI.polygonMode == RPOLYGON_MODE_LINE)
+    {
+        str.push_back('l');
+        str += std::to_string(rasterizationI.lineWidth);
+    }
+
+    return hash32_FNV_1a(str.data(), str.size());
+}
+
 uint32_t RPass::hash() const
 {
     return mObj->hash;
