@@ -1,4 +1,4 @@
-#include "RUtil.h"
+#include "RUtilInternal.h"
 #include <Ludens/Header/Assert.h>
 #include <cstring>
 

@@ -1,6 +1,6 @@
 #include "RBackendObj.h"
 #include "RShaderCompiler.h"
-#include "RUtil.h"
+#include "RUtilInternal.h"
 #include <Ludens/Header/Assert.h>
 #include <Ludens/RenderBackend/RBackend.h>
 #include <Ludens/RenderBackend/RFactory.h>
@@ -880,7 +880,7 @@ RPipeline vk_device_create_pipeline(RDeviceObj* self, const RPipelineInfo& pipel
     };
 
     uint32_t blendAttachmentCount = pipelineI.blend.colorAttachmentCount;
-    const RPipelineBlendColorAttachment* blendStates = pipelineI.blend.colorAttachments;
+    const RPipelineBlendState* blendStates = pipelineI.blend.colorAttachments;
     std::vector<VkPipelineColorBlendAttachmentState> vkBlendStates(blendAttachmentCount);
     for (uint32_t i = 0; i < blendAttachmentCount; i++)
     {

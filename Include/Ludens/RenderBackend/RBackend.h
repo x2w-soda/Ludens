@@ -329,7 +329,7 @@ struct RPipelineRasterizationInfo
 };
 
 /// @brief describes the blend state of a color attachment
-struct RPipelineBlendColorAttachment
+struct RPipelineBlendState
 {
     bool enabled;
     RBlendFactor srcColorFactor;
@@ -344,7 +344,7 @@ struct RPipelineBlendColorAttachment
 struct RPipelineBlendInfo
 {
     uint32_t colorAttachmentCount = 0; /// disable blending for all attachments if zero
-    RPipelineBlendColorAttachment* colorAttachments;
+    RPipelineBlendState* colorAttachments;
 };
 
 /// @brief graphics pipeline creation info
