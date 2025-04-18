@@ -459,6 +459,16 @@ struct RSetImageUpdateInfo
     RImageLayout* imageLayouts;    /// array of current image layouts
 };
 
+struct RSetBufferUpdateInfo
+{
+    RSet set;                /// the resource set to update
+    uint32_t dstBinding;
+    uint32_t dstArrayIndex;
+    uint32_t bufferCount;
+    RBindingType bufferBindingType;  /// binding type of the buffer
+    RBuffer* buffers;
+};
+
 /// @brief render device creation info
 struct RDeviceInfo
 {
@@ -509,6 +519,8 @@ struct RDevice : RHandle<struct RDeviceObj>
     void destroy_pipeline(RPipeline);
 
     void update_set_images(uint32_t updateCount, const RSetImageUpdateInfo* updates);
+
+    void update_set_buffers(uint32_t updateCount, const RSetBufferUpdateInfo* updates);
 
     /// @brief The most important function of the render device, defines the
     ///        GPU frame boundaries. Blocks until the frame-complete fence of

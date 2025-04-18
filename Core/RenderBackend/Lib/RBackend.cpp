@@ -198,6 +198,11 @@ void RDevice::update_set_images(uint32_t updateCount, const RSetImageUpdateInfo*
     mObj->update_set_images(mObj, updateCount, updates);
 }
 
+void RDevice::update_set_buffers(uint32_t updateCount, const RSetBufferUpdateInfo* updates)
+{
+    mObj->update_set_buffers(mObj, updateCount, updates);
+}
+
 uint32_t RDevice::next_frame(RSemaphore& imageAcquired, RSemaphore& presentReady, RFence& frameComplete)
 {
     return mObj->next_frame(mObj, imageAcquired, presentReady, frameComplete);

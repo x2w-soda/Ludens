@@ -277,6 +277,8 @@ struct RDeviceObj
 
     void (*update_set_images)(RDeviceObj* self, uint32_t updateCount, const RSetImageUpdateInfo* updates);
 
+    void (*update_set_buffers)(RDeviceObj* self, uint32_t updateCount, const RSetBufferUpdateInfo* updates);
+
     uint32_t (*next_frame)(RDeviceObj* self, RSemaphore& imageAcquired, RSemaphore& presentReady, RFence& frameComplete);
     void (*present_frame)(RDeviceObj* self);
     RImage (*get_swapchain_color_attachment)(RDeviceObj* self, uint32_t frameIdx);

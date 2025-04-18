@@ -69,6 +69,7 @@ static void vk_device_destroy_pipeline_layout(RDeviceObj* self, RPipelineLayout 
 static RPipeline vk_device_create_pipeline(RDeviceObj* self, const RPipelineInfo& pipelineI);
 static void vk_device_destroy_pipeline(RDeviceObj* self, RPipeline pipeline);
 static void vk_device_update_set_images(RDeviceObj* self, uint32_t updateCount, const RSetImageUpdateInfo* updates);
+static void vk_device_update_set_buffers(RDeviceObj* self, uint32_t updateCount, const RSetBufferUpdateInfo* updates);
 static uint32_t vk_device_next_frame(RDeviceObj* self, RSemaphore& imageAcquired, RSemaphore& presentReady, RFence& frameComplete);
 static void vk_device_present_frame(RDeviceObj* self);
 static RImage vk_device_get_swapchain_color_attachment(RDeviceObj* self, uint32_t imageIdx);
@@ -979,6 +980,51 @@ static void vk_device_update_set_images(RDeviceObj* self, uint32_t updateCount, 
     vkUpdateDescriptorSets(self->vk.device, updateCount, writes.data(), 0, nullptr);
 }
 
+static void vk_device_update_set_buffers(RDeviceObj* self, uint32_t updateCount, const RSetBufferUpdateInfo* updates)
+{
+    std::vector<VkDescriptorBufferInfo> bufferI;
+    std::vector<VkWriteDescriptorSet> writes(updateCount);
+
+    for (uint32_t i = 0; i < updateCount; i++)
+    {
+        const RSetBufferUpdateInfo& update = updates[i];
+
+        for (uint32_t j = 0; j < update.bufferCount; j++)
+        {
+            RBufferObj* bufferObj = static_cast<RBufferObj*>(update.buffers[j]);
+
+            bufferI.push_back({
+                .buffer = bufferObj->vk.handle,
+                .offset = 0,
+                .range = bufferObj->info.size,
+            });
+        }
+    }
+
+    uint32_t bufferInfoBase = 0;
+
+    for (uint32_t i = 0; i < updateCount; i++)
+    {
+        VkDescriptorType descriptorType;
+        RUtil::cast_binding_type_vk(updates[i].bufferBindingType, descriptorType);
+
+        writes[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+        writes[i].pNext = nullptr;
+        writes[i].dstSet = static_cast<const RSetObj*>(updates[i].set)->vk.handle;
+        writes[i].dstBinding = updates[i].dstBinding;
+        writes[i].dstArrayElement = updates[i].dstArrayIndex;
+        writes[i].descriptorCount = updates[i].bufferCount;
+        writes[i].descriptorType = descriptorType;
+        writes[i].pImageInfo = nullptr;
+        writes[i].pBufferInfo = bufferI.data() + bufferInfoBase;
+        writes[i].pTexelBufferView = nullptr;
+
+        bufferInfoBase += updates[i].bufferCount;
+    }
+
+    vkUpdateDescriptorSets(self->vk.device, updateCount, writes.data(), 0, nullptr);
+}
+
 static uint32_t vk_device_next_frame(RDeviceObj* self, RSemaphore& imageAcquired, RSemaphore& presentReady, RFence& frameComplete)
 {
     self->vk.frameIdx = (self->vk.frameIdx + 1) % FRAMES_IN_FLIGHT;
@@ -1666,6 +1712,7 @@ void RDeviceObj::init_vk_api()
     create_pipeline = &vk_device_create_pipeline;
     destroy_pipeline = &vk_device_destroy_pipeline;
     update_set_images = &vk_device_update_set_images;
+    update_set_buffers = &vk_device_update_set_buffers;
     next_frame = &vk_device_next_frame;
     present_frame = &vk_device_present_frame;
     get_swapchain_color_attachment = &vk_device_get_swapchain_color_attachment;

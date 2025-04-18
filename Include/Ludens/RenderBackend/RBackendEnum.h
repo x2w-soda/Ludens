@@ -13,6 +13,7 @@ enum RDeviceBackend
 enum RFormat
 {
     RFORMAT_UNDEFINED = 0,
+    RFORMAT_R8,
     RFORMAT_BGRA8,
     RFORMAT_RGBA8,
 };
@@ -56,6 +57,7 @@ enum RAttachmentStoreOp
 enum RBindingType
 {
     RBINDING_TYPE_COMBINED_IMAGE_SAMPLER = 0,
+    RBINDING_TYPE_UNIFORM_BUFFER,
 };
 
 enum RBindingInputRate
@@ -70,7 +72,8 @@ enum RBufferUsageBit : RBufferUsageFlags
     RBUFFER_USAGE_TRANSFER_SRC_BIT = 1, /// src buffer for transfer commands
     RBUFFER_USAGE_TRANSFER_DST_BIT = 2, /// dst buffer for transfer commands
     RBUFFER_USAGE_VERTEX_BIT = 4,       /// vertex buffer (VBO) usage
-    RBUFFER_USAGE_INDEX_BIT = 8,
+    RBUFFER_USAGE_INDEX_BIT = 8,        /// index buffer (IBO) usage
+    RBUFFER_USAGE_UNIFORM_BIT = 16      /// uniform buffer (UBO) usage
 };
 
 enum RImageType
@@ -139,6 +142,7 @@ enum RGLSLType
     RGLSL_TYPE_VEC2,
     RGLSL_TYPE_VEC3,
     RGLSL_TYPE_VEC4,
+    RGLSL_TYPE_UINT,
 };
 
 } // namespace LD
