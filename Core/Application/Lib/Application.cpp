@@ -1,5 +1,7 @@
+#include "InputInternal.h"
 #include <GLFW/glfw3.h> // hide from user
 #include <Ludens/Application/Application.h>
+#include <Ludens/Application/Input.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/RenderBackend/RBackend.h>
 #include <Ludens/RenderBackend/RFactory.h>
@@ -12,7 +14,25 @@ struct Window
     uint32_t width;
     uint32_t height;
     RDevice rdevice;
+
+    static void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
 };
+
+// Input.cpp
+namespace Input {
+extern uint8_t sKeyState[];
+} // namespace Input
+
+void Window::key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
+{
+    if (action == GLFW_REPEAT)
+        return;
+
+    if (action == GLFW_PRESS)
+        Input::sKeyState[key] |= (KEY_PRESSED_BIT | KEY_PRESSED_THIS_FRAME_BIT);
+    else if (action == GLFW_RELEASE)
+        Input::sKeyState[key] = KEY_RELEASED_THIS_FRAME_BIT;
+}
 
 Application::Application(const ApplicationInfo& appI)
 {
@@ -26,6 +46,7 @@ Application::Application(const ApplicationInfo& appI)
     mWindow->handle = glfwCreateWindow((int)appI.width, (int)appI.height, appI.name, nullptr, nullptr);
     mWindow->width = appI.width;
     mWindow->height = appI.height;
+    glfwSetKeyCallback(mWindow->handle, &Window::key_callback);
 
     RDeviceInfo rdeviceI{
         .backend = RDEVICE_BACKEND_VULKAN,
@@ -53,6 +74,8 @@ bool Application::is_window_open()
 
 void Application::poll_events()
 {
+    Input::frame_boundary();
+
     glfwPollEvents();
 }
 

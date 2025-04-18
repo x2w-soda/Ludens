@@ -2,10 +2,13 @@ set(MODULE_NAME LDApplication)
 
 set(MODULE_INCLUDE
 	${LUDENS_INCLUDE_DIR}/Ludens/Application/Application.h
+	${LUDENS_INCLUDE_DIR}/Ludens/Application/Input.h
 )
 
 set(MODULE_LIB
 	Lib/Application.cpp
+	Lib/Input.cpp
+	Lib/InputInternal.h
 )
 
 add_library(${MODULE_NAME}
