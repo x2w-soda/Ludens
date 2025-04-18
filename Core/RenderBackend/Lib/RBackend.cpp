@@ -95,7 +95,10 @@ RPass RDevice::create_pass(const RPassInfo& passI)
 {
     RPass pass = mObj->create_pass(mObj, passI);
 
-    static_cast<RPassObj*>(pass)->hash = hash32_pass_info(passI);
+    RPassObj* passObj = static_cast<RPassObj*>(pass);
+    passObj->hash = hash32_pass_info(passI);
+    passObj->colorAttachmentCount = passI.colorAttachmentCount;
+    passObj->hasDepthStencilAttachment = passI.depthStencilAttachment != nullptr;
 
     return pass;
 }
@@ -532,6 +535,16 @@ uint32_t hash32_pipeline_rasterization_state(const RPipelineRasterizationInfo& r
 uint32_t RPass::hash() const
 {
     return mObj->hash;
+}
+
+uint32_t RPass::color_attachment_count() const
+{
+    return mObj->colorAttachmentCount;
+}
+
+bool RPass::has_depth_stencil_attachment() const
+{
+    return mObj->hasDepthStencilAttachment;
 }
 
 uint32_t RSetLayout::hash() const

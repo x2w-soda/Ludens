@@ -129,6 +129,25 @@ enum RCullMode
     RCULL_MODE_BACK,
 };
 
+enum RBlendFactor
+{
+    RBLEND_FACTOR_ZERO = 0,
+    RBLEND_FACTOR_ONE,
+    RBLEND_FACTOR_SRC_ALPHA,
+    RBLEND_FACTOR_DST_ALPHA,
+    RBLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+    RBLEND_FACTOR_ONE_MINUS_DST_ALPHA,
+};
+
+enum RBlendOp
+{
+    RBLEND_OP_ADD = 0,
+    RBLEND_OP_SUBTRACT,
+    RBLEND_OP_REVERSE_SUBTRACT,
+    RBLEND_OP_MIN,
+    RBLEND_OP_MAX,
+};
+
 /// @brief bit size of unsigned integer indices
 enum RIndexType
 {

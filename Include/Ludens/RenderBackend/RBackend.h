@@ -161,6 +161,10 @@ struct RPassInfo
 struct RPass : RHandle<struct RPassObj>
 {
     uint32_t hash() const;
+
+    uint32_t color_attachment_count() const;
+    
+    bool has_depth_stencil_attachment() const;
 };
 
 /// @brief framebuffer creation info
@@ -324,6 +328,25 @@ struct RPipelineRasterizationInfo
     float lineWidth = 1.0f; /// used for RPOLYGON_MODE_LINE
 };
 
+/// @brief describes the blend state of a color attachment
+struct RPipelineBlendColorAttachment
+{
+    bool enabled;
+    RBlendFactor srcColorFactor;
+    RBlendFactor dstColorFactor;
+    RBlendFactor srcAlphaFactor;
+    RBlendFactor dstAlphaFactor;
+    RBlendOp colorBlendOp;
+    RBlendOp alphaBlendOp;
+};
+
+/// @brief graphics pipeline blend state info
+struct RPipelineBlendInfo
+{
+    uint32_t colorAttachmentCount = 0; /// disable blending for all attachments if zero
+    RPipelineBlendColorAttachment* colorAttachments;
+};
+
 /// @brief graphics pipeline creation info
 struct RPipelineInfo
 {
@@ -336,6 +359,7 @@ struct RPipelineInfo
     RPipelineLayout layout;
     RPass pass;
     RPipelineRasterizationInfo rasterization;
+    RPipelineBlendInfo blend;
 };
 
 /// @brief graphics pipeline handle

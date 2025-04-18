@@ -879,16 +879,30 @@ RPipeline vk_device_create_pipeline(RDeviceObj* self, const RPipelineInfo& pipel
         .maxDepthBounds = 1.0f,
     };
 
-    VkPipelineColorBlendAttachmentState attachmentState{
-        .blendEnable = VK_FALSE,
-        .colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT,
-    };
+    uint32_t blendAttachmentCount = pipelineI.blend.colorAttachmentCount;
+    const RPipelineBlendColorAttachment* blendStates = pipelineI.blend.colorAttachments;
+    std::vector<VkPipelineColorBlendAttachmentState> vkBlendStates(blendAttachmentCount);
+    for (uint32_t i = 0; i < blendAttachmentCount; i++)
+    {
+        vkBlendStates[i].blendEnable = (VkBool32)blendStates[i].enabled;
+        vkBlendStates[i].colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+
+        if (!vkBlendStates[i].blendEnable)
+            continue;
+
+        RUtil::cast_blend_factor_vk(blendStates[i].srcColorFactor, vkBlendStates[i].srcColorBlendFactor);
+        RUtil::cast_blend_factor_vk(blendStates[i].dstColorFactor, vkBlendStates[i].dstColorBlendFactor);
+        RUtil::cast_blend_factor_vk(blendStates[i].srcAlphaFactor, vkBlendStates[i].srcAlphaBlendFactor);
+        RUtil::cast_blend_factor_vk(blendStates[i].dstAlphaFactor, vkBlendStates[i].dstAlphaBlendFactor);
+        RUtil::cast_blend_op_vk(blendStates[i].colorBlendOp, vkBlendStates[i].colorBlendOp);
+        RUtil::cast_blend_op_vk(blendStates[i].alphaBlendOp, vkBlendStates[i].alphaBlendOp);
+    }
 
     VkPipelineColorBlendStateCreateInfo colorBlendSCI{
         .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
         .logicOpEnable = VK_FALSE,
-        .attachmentCount = 1,
-        .pAttachments = &attachmentState,
+        .attachmentCount = (uint32_t)vkBlendStates.size(),
+        .pAttachments = vkBlendStates.data(),
     };
 
     std::array<VkDynamicState, 2> dynamicStates = {

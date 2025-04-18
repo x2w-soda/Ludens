@@ -56,6 +56,8 @@ void cast_image_type_vk(const RImageType& inType, VkImageType& outType);
 void cast_index_type_vk(const RIndexType& inType, VkIndexType& outType);
 void cast_polygon_mode_vk(const RPolygonMode& inMode, VkPolygonMode& outMode);
 void cast_cull_mode_vk(const RCullMode& inMode, VkCullModeFlags& outMode);
+void cast_blend_factor_vk(const RBlendFactor& inFactor, VkBlendFactor& outFactor);
+void cast_blend_op_vk(const RBlendOp& inOp, VkBlendOp& outOp);
 
 void print_vk_queue_flags(const VkQueueFlags& inFlags, std::string& out);
 void print_vk_present_mode(const VkPresentModeKHR& inMode, std::string& out);

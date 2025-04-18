@@ -420,6 +420,45 @@ void cast_cull_mode_vk(const RCullMode& inMode, VkCullModeFlags& outMode)
     outMode = cullModeTable[(int)inMode].vkMode;
 }
 
+// clang-format off
+struct
+{
+    RBlendFactor factor;
+    VkBlendFactor vkFactor;
+} blendFactorTable[] = {
+	{ RBLEND_FACTOR_ZERO,                VK_BLEND_FACTOR_ZERO,                },
+	{ RBLEND_FACTOR_ONE,                 VK_BLEND_FACTOR_ONE,                 },
+	{ RBLEND_FACTOR_SRC_ALPHA,           VK_BLEND_FACTOR_SRC_ALPHA,           },
+	{ RBLEND_FACTOR_DST_ALPHA,           VK_BLEND_FACTOR_DST_ALPHA,           },
+	{ RBLEND_FACTOR_ONE_MINUS_SRC_ALPHA, VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA, },
+	{ RBLEND_FACTOR_ONE_MINUS_DST_ALPHA, VK_BLEND_FACTOR_ONE_MINUS_DST_ALPHA, },
+};
+// clang-format on
+
+void cast_blend_factor_vk(const RBlendFactor& inFactor, VkBlendFactor& outFactor)
+{
+    outFactor = blendFactorTable[(int)inFactor].vkFactor;
+}
+
+// clang-format off
+struct
+{
+    RBlendOp op;
+    VkBlendOp vkOp;
+} blendOpTable[] = {
+	{ RBLEND_OP_ADD,              VK_BLEND_OP_ADD,              },
+	{ RBLEND_OP_SUBTRACT,         VK_BLEND_OP_SUBTRACT,         },
+	{ RBLEND_OP_REVERSE_SUBTRACT, VK_BLEND_OP_REVERSE_SUBTRACT, },
+	{ RBLEND_OP_MIN,              VK_BLEND_OP_MIN,              },
+	{ RBLEND_OP_MAX,              VK_BLEND_OP_MAX,              },
+};
+// clang-format on
+
+void cast_blend_op_vk(const RBlendOp& inOp, VkBlendOp& outOp)
+{
+    outOp = blendOpTable[(int)inOp].vkOp;
+}
+
 void print_vk_queue_flags(const VkQueueFlags& inFlags, std::string& out)
 {
     out.clear();

@@ -80,6 +80,8 @@ struct RImageObj
 struct RPassObj
 {
     uint32_t hash;
+    uint32_t colorAttachmentCount;
+    bool hasDepthStencilAttachment;
 
     struct
     {
