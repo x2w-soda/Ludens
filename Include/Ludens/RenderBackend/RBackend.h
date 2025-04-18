@@ -563,6 +563,8 @@ struct RDevice : RHandle<struct RDeviceObj>
 
     uint32_t get_swapchain_image_count();
 
+    uint32_t get_frames_in_flight_count();
+
     RQueue get_graphics_queue();
 };
 

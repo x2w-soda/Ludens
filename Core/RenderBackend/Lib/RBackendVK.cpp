@@ -74,6 +74,7 @@ static uint32_t vk_device_next_frame(RDeviceObj* self, RSemaphore& imageAcquired
 static void vk_device_present_frame(RDeviceObj* self);
 static RImage vk_device_get_swapchain_color_attachment(RDeviceObj* self, uint32_t imageIdx);
 static uint32_t vk_device_get_swapchain_image_count(RDeviceObj* self);
+static uint32_t vk_device_get_frames_in_flight_count(RDeviceObj* self);
 static RQueue vk_device_get_graphics_queue(RDeviceObj* self);
 
 static void vk_buffer_map(RBufferObj* self);
@@ -1098,6 +1099,11 @@ static uint32_t vk_device_get_swapchain_image_count(RDeviceObj* self)
     return (uint32_t)self->vk.swapchain.images.size();
 }
 
+static uint32_t vk_device_get_frames_in_flight_count(RDeviceObj* self)
+{
+    return FRAMES_IN_FLIGHT;
+}
+
 static RQueue vk_device_get_graphics_queue(RDeviceObj* self)
 {
     return self->vk.queueGraphics;
@@ -1731,6 +1737,7 @@ void RDeviceObj::init_vk_api()
     present_frame = &vk_device_present_frame;
     get_swapchain_color_attachment = &vk_device_get_swapchain_color_attachment;
     get_swapchain_image_count = &vk_device_get_swapchain_image_count;
+    get_frames_in_flight_count = &vk_device_get_frames_in_flight_count;
     get_graphics_queue = &vk_device_get_graphics_queue;
 }
 

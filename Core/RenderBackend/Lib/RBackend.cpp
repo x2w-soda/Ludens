@@ -1,5 +1,5 @@
 #include "RBackendObj.h"
-#include "RUtil.h"
+#include "RUtilInternal.h"
 #include <Ludens/DSA/Hash.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/RenderBackend/RBackend.h>
@@ -224,6 +224,11 @@ RImage RDevice::get_swapchain_color_attachment(uint32_t frameIdx)
 uint32_t RDevice::get_swapchain_image_count()
 {
     return mObj->get_swapchain_image_count(mObj);
+}
+
+uint32_t RDevice::get_frames_in_flight_count()
+{
+    return mObj->get_frames_in_flight_count(mObj);
 }
 
 RQueue RDevice::get_graphics_queue()
