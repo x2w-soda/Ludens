@@ -11,6 +11,15 @@
 
 namespace LD {
 
+struct RObjectID
+{
+    // NOTE: not atomic, currently only main thread
+    //       may create and destroy objects
+    static uint64_t sCounter;
+
+    inline static uint64_t get() { return sCounter++; }
+};
+
 /// @brief Vulkan physical device properties
 struct PhysicalDevice
 {
@@ -46,6 +55,7 @@ struct Swapchain
 
 struct RBufferObj
 {
+    uint64_t rid;
     RDevice device;
     RBufferInfo info;
     void* hostMap;
@@ -65,6 +75,7 @@ struct RBufferObj
 
 struct RImageObj
 {
+    uint64_t rid;
     RDevice device;
     RImageInfo info;
 
@@ -79,6 +90,7 @@ struct RImageObj
 
 struct RPassObj
 {
+    uint64_t rid;
     uint32_t hash;
     uint32_t colorAttachmentCount;
     bool hasDepthStencilAttachment;
@@ -91,6 +103,7 @@ struct RPassObj
 
 struct RFramebufferObj
 {
+    uint64_t rid;
     uint32_t width;
     uint32_t height;
 
@@ -102,6 +115,7 @@ struct RFramebufferObj
 
 struct RCommandListObj
 {
+    uint64_t rid;
     void (*free)(RCommandListObj* self);
     void (*begin)(RCommandListObj* self, bool oneTimeSubmit);
     void (*end)(RCommandListObj* self);
@@ -130,6 +144,7 @@ struct RCommandListObj
 
 struct RCommandPoolObj
 {
+    uint64_t rid;
     RCommandList (*allocate)(RCommandPoolObj* self);
 
     void init_vk_api();
@@ -145,6 +160,7 @@ struct RCommandPoolObj
 
 struct RShaderObj
 {
+    uint64_t rid;
     RShaderType type;
 
     struct
@@ -155,6 +171,7 @@ struct RShaderObj
 
 struct RSetLayoutObj
 {
+    uint64_t rid;
     uint32_t hash;
 
     struct
@@ -173,6 +190,7 @@ struct RSetObj
 
 struct RSetPoolObj
 {
+    uint64_t rid;
     LinearAllocator setLA;
 
     RSet (*allocate)(RSetPoolObj* self, RSetLayout layout, RSetObj* setObj);
@@ -189,6 +207,7 @@ struct RSetPoolObj
 
 struct RPipelineLayoutObj
 {
+    uint64_t rid;
     uint32_t hash;
     uint32_t set_count;
     RSetLayout set_layouts[PIPELINE_LAYOUT_MAX_RESOURCE_SETS];
@@ -201,6 +220,7 @@ struct RPipelineLayoutObj
 
 struct RPipelineObj
 {
+    uint64_t rid;
     RPipelineLayout layout;
 
     struct
@@ -225,6 +245,8 @@ struct RQueueObj
 
 struct RSemaphoreObj
 {
+    uint64_t rid;
+
     struct
     {
         VkSemaphore handle;
@@ -233,6 +255,8 @@ struct RSemaphoreObj
 
 struct RFenceObj
 {
+    uint64_t rid;
+
     struct
     {
         VkFence handle;
@@ -241,40 +265,43 @@ struct RFenceObj
 
 struct RDeviceObj
 {
-    RSemaphore (*create_semaphore)(RDeviceObj* self);
+    uint64_t rid;
+    RDeviceBackend backend;
+
+    RSemaphore (*create_semaphore)(RDeviceObj* self, RSemaphoreObj* semaphoreObj);
     void (*destroy_semaphore)(RDeviceObj* self, RSemaphore semaphore);
 
-    RFence (*create_fence)(RDeviceObj* self, bool createSignaled);
+    RFence (*create_fence)(RDeviceObj* self, bool createSignaled, RFenceObj* fenceObj);
     void (*destroy_fence)(RDeviceObj* self, RFence fence);
 
-    RBuffer (*create_buffer)(RDeviceObj* self, const RBufferInfo& bufferI);
+    RBuffer (*create_buffer)(RDeviceObj* self, const RBufferInfo& bufferI, RBufferObj* bufferObj);
     void (*destroy_buffer)(RDeviceObj* self, RBuffer buffer);
 
-    RImage (*create_image)(RDeviceObj* self, const RImageInfo& imageI);
+    RImage (*create_image)(RDeviceObj* self, const RImageInfo& imageI, RImageObj* imageObj);
     void (*destroy_image)(RDeviceObj* self, RImage image);
 
-    RPass (*create_pass)(RDeviceObj* self, const RPassInfo& passI);
+    RPass (*create_pass)(RDeviceObj* self, const RPassInfo& passI, RPassObj* passObj);
     void (*destroy_pass)(RDeviceObj* self, RPass pass);
 
-    RFramebuffer (*create_framebuffer)(RDeviceObj* self, const RFramebufferInfo& fbI);
+    RFramebuffer (*create_framebuffer)(RDeviceObj* self, const RFramebufferInfo& fbI, RFramebufferObj* framebufferObj);
     void (*destroy_framebuffer)(RDeviceObj* self, RFramebuffer fb);
 
-    RCommandPool (*create_command_pool)(RDeviceObj* self, const RCommandPoolInfo& poolI);
+    RCommandPool (*create_command_pool)(RDeviceObj* self, const RCommandPoolInfo& poolI, RCommandPoolObj* poolObj);
     void (*destroy_command_pool)(RDeviceObj* self, RCommandPool pool);
 
-    RShader (*create_shader)(RDeviceObj* self, const RShaderInfo& shaderI);
+    RShader (*create_shader)(RDeviceObj* self, const RShaderInfo& shaderI, RShaderObj* shaderObj);
     void (*destroy_shader)(RDeviceObj* self, RShader shader);
 
-    RSetPool (*create_set_pool)(RDeviceObj* self, const RSetPoolInfo& poolI);
+    RSetPool (*create_set_pool)(RDeviceObj* self, const RSetPoolInfo& poolI, RSetPoolObj* poolObj);
     void (*destroy_set_pool)(RDeviceObj* self, RSetPool pool);
 
-    RSetLayout (*create_set_layout)(RDeviceObj* self, const RSetLayoutInfo& layoutI);
+    RSetLayout (*create_set_layout)(RDeviceObj* self, const RSetLayoutInfo& layoutI, RSetLayoutObj* layoutObj);
     void (*destroy_set_layout)(RDeviceObj* self, RSetLayout layout);
 
-    RPipelineLayout (*create_pipeline_layout)(RDeviceObj* self, const RPipelineLayoutInfo& layoutI);
+    RPipelineLayout (*create_pipeline_layout)(RDeviceObj* self, const RPipelineLayoutInfo& layoutI, RPipelineLayoutObj* layoutObj);
     void (*destroy_pipeline_layout)(RDeviceObj* self, RPipelineLayout layout);
 
-    RPipeline (*create_pipeline)(RDeviceObj* self, const RPipelineInfo& pipelineI);
+    RPipeline (*create_pipeline)(RDeviceObj* self, const RPipelineInfo& pipelineI, RPipelineObj* pipelineObj);
     void (*destroy_pipeline)(RDeviceObj* self, RPipeline pipeline);
 
     void (*update_set_images)(RDeviceObj* self, uint32_t updateCount, const RSetImageUpdateInfo* updates);
@@ -289,8 +316,6 @@ struct RDeviceObj
     RQueue (*get_graphics_queue)(RDeviceObj* self);
 
     void init_vk_api();
-
-    RDeviceBackend backend;
 
     struct
     {
