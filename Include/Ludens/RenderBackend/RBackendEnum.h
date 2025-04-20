@@ -87,6 +87,7 @@ enum RImageUsageBit : RImageUsageFlags
     RIMAGE_USAGE_TRANSFER_SRC_BIT = 1, // src image for transfer commands
     RIMAGE_USAGE_TRANSFER_DST_BIT = 2, // dst image for transfer commands
     RIMAGE_USAGE_SAMPLED_BIT = 4,
+    RIMAGE_USAGE_COLOR_ATTACHMENT_BIT = 8,
 };
 
 enum RShaderType

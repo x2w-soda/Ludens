@@ -67,6 +67,16 @@ Application::~Application()
     glfwTerminate();
 }
 
+uint32_t Application::width() const
+{
+    return mWindow ? mWindow->width : 0;
+}
+
+uint32_t Application::height() const
+{
+    return mWindow ? mWindow->height : 0;
+}
+
 bool Application::is_window_open()
 {
     return !glfwWindowShouldClose(mWindow->handle);

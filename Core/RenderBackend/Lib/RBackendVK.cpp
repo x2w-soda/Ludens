@@ -1537,6 +1537,7 @@ static RImage create_swapchain_color_attachment(RDeviceObj* deviceObj, VkImage i
 
     obj->vk.handle = image;
     obj->vk.vma = nullptr; // unrelated to VMA
+    obj->info; // TODO: RImage methods will read from info
 
     VkImageSubresourceRange range{
         .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,

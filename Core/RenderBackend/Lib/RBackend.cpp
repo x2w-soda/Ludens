@@ -130,6 +130,7 @@ RFramebuffer RDevice::create_framebuffer(const RFramebufferInfo& fbI)
     framebufferObj->rid = RObjectID::get();
     framebufferObj->width = fbI.width;
     framebufferObj->height = fbI.height;
+    framebufferObj->pass = fbI.pass;
 
     return mObj->create_framebuffer(mObj, fbI, framebufferObj);
 }
@@ -371,6 +372,11 @@ uint32_t RFramebuffer::width() const
 uint32_t RFramebuffer::height() const
 {
     return mObj->height;
+}
+
+RPass RFramebuffer::pass() const
+{
+    return mObj->pass;
 }
 
 void RCommandList::free()

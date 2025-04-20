@@ -21,5 +21,15 @@ inline RPipelineBlendState make_default_blend_state()
     };
 }
 
+inline RClearColorValue make_clear_color(float r, float g, float b, float a)
+{
+    RClearColorValue value;
+    value.float32[0] = r;
+    value.float32[1] = g;
+    value.float32[2] = b;
+    value.float32[3] = a;
+    return value;
+}
+
 } // namespace RUtil
 } // namespace LD

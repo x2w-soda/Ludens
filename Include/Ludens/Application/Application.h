@@ -24,6 +24,12 @@ public:
 
     ~Application();
 
+    /// @brief get window width
+    uint32_t width() const;
+
+    /// @brief get window height
+    uint32_t height() const;
+
     bool is_window_open();
     void poll_events();
     RDevice get_rdevice();

@@ -14,6 +14,10 @@ public:
     RHandle() : mObj(nullptr) {}
     RHandle(TObject* obj) : mObj(obj) {}
 
+    /// @brief get an id unique to each RHandle
+    /// @warning does not check for null handle before derefencing
+    inline uint64_t rid() const { return *(uint64_t*)mObj; }
+
     operator bool() const { return mObj != nullptr; }
     operator TObject*() { return mObj; }
     operator const TObject*() const { return mObj; }
@@ -188,36 +192,13 @@ struct RFramebuffer : RHandle<struct RFramebufferObj>
 {
     uint32_t width() const;
     uint32_t height() const;
+    RPass pass() const;
 };
 
 union RClearColorValue {
     float float32[4];
     int32_t int32[4];
     uint32_t uint32[4];
-
-    // clang-format off
-    RClearColorValue(float r, float g, float b, float a)
-    {
-        float32[0] = r;
-        float32[1] = g;
-        float32[2] = b;
-        float32[3] = a;
-    }
-    RClearColorValue(int32_t r, int32_t g, int32_t b, int32_t a)
-    {
-        int32[0] = r;
-        int32[1] = g;
-        int32[2] = b;
-        int32[3] = a;
-    }
-    RClearColorValue(uint32_t r, uint32_t g, uint32_t b, uint32_t a)
-    {
-        uint32[0] = r;
-        uint32[1] = g;
-        uint32[2] = b;
-        uint32[3] = a;
-    }
-    // clang-format on
 };
 
 /// @brief render pass instance creation info, used during command list recording

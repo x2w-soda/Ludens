@@ -106,6 +106,7 @@ struct RFramebufferObj
     uint64_t rid;
     uint32_t width;
     uint32_t height;
+    RPass pass;
 
     struct
     {
