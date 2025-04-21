@@ -291,6 +291,11 @@ RQueue RDevice::get_graphics_queue()
     return mObj->get_graphics_queue(mObj);
 }
 
+void RDevice::wait_idle()
+{
+    return mObj->wait_idle(mObj);
+}
+
 RImageUsageFlags RImage::usage() const
 {
     return mObj->info.usage;
@@ -465,6 +470,11 @@ void RCommandList::cmd_copy_buffer_to_image(RBuffer srcBuffer, RImage dstImage, 
     mObj->cmd_copy_buffer_to_image(mObj, srcBuffer, dstImage, dstImageLayout, regionCount, regions);
 }
 
+void RCommandList::cmd_blit_image(RImage srcImage, RImageLayout srcImageLayout, RImage dstImage, RImageLayout dstImageLayout, uint32_t regionCount, const RImageBlit* regions, RFilter filter)
+{
+    mObj->cmd_blit_image(mObj, srcImage, srcImageLayout, dstImage, dstImageLayout, regionCount, regions, filter);
+}
+
 RCommandList RCommandPool::allocate()
 {
     // NOTE: command pools (and its allocated command buffers) are never
@@ -626,6 +636,8 @@ RSet RSetPool::allocate(RSetLayout layout)
 
 void RSetPool::reset()
 {
+    mObj->setLA.free();
+
     return mObj->reset(mObj);
 }
 

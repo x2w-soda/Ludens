@@ -3,6 +3,7 @@
 #include <cstring>
 
 // clang-format off
+#define ARRAY_SIZE(A)  (sizeof(A) / sizeof(*A))
 #define KASE(E, V) case E: V = #E; break
 // clang-format on
 
@@ -73,6 +74,20 @@ struct
 void cast_format_vk(const RFormat& inFormat, VkFormat& outFormat)
 {
     outFormat = formatTable[(int)inFormat].vkFormat;
+}
+
+void cast_format_from_vk(const VkFormat& inFormat, RFormat& outFormat)
+{
+    for (size_t i = 0; i < ARRAY_SIZE(formatTable); i++)
+    {
+        if (formatTable[i].vkFormat == inFormat)
+        {
+            outFormat = formatTable[i].format;
+            return;
+        }
+    }
+
+    LD_UNREACHABLE;
 }
 
 void cast_format_image_aspect_vk(const RFormat& inFormat, VkImageAspectFlags& outFlags)
@@ -191,6 +206,9 @@ struct
     VkPipelineStageFlagBits vkBit;
 } pipelineStageBitsTable[] = {
     { RPIPELINE_STAGE_TOP_OF_PIPE_BIT,             VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT },
+    { RPIPELINE_STAGE_DRAW_INDIRECT_BIT,           VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT },
+    { RPIPELINE_STAGE_VERTEX_SHADER_BIT,           VK_PIPELINE_STAGE_VERTEX_SHADER_BIT },
+    { RPIPELINE_STAGE_FRAGMENT_SHADER_BIT,         VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT },
     { RPIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT },
     { RPIPELINE_STAGE_TRANSFER_BIT,                VK_PIPELINE_STAGE_TRANSFER_BIT },
     { RPIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,          VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT },
@@ -214,6 +232,9 @@ struct
     RAccessBit bit;
     VkAccessFlagBits vkBit;
 } accessBitsTable[] = {
+    { RACCESS_INDIRECT_COMMAND_READ_BIT,  VK_ACCESS_INDIRECT_COMMAND_READ_BIT },
+    { RACCESS_INDEX_READ_BIT,             VK_ACCESS_INDEX_READ_BIT },
+    { RACCESS_SHADER_READ_BIT,            VK_ACCESS_SHADER_READ_BIT },
     { RACCESS_COLOR_ATTACHMENT_READ_BIT,  VK_ACCESS_COLOR_ATTACHMENT_READ_BIT },
     { RACCESS_COLOR_ATTACHMENT_WRITE_BIT, VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT },
     { RACCESS_TRANSFER_READ_BIT,          VK_ACCESS_TRANSFER_READ_BIT },

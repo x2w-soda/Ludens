@@ -58,6 +58,17 @@ struct RBufferImageCopy
     uint32_t imageDepth;
 };
 
+/// @brief describes a copy region between images in a blit operation
+struct RImageBlit
+{
+    struct
+    {
+        uint32_t x;
+        uint32_t y;
+        uint32_t z;
+    } srcMinOffset, srcMaxOffset, dstMinOffset, dstMaxOffset;
+};
+
 /// @brief renderer buffer creation info
 struct RBufferInfo
 {
@@ -419,6 +430,9 @@ struct RCommandList : RHandle<struct RCommandListObj>
 
     /// @brief a transfer command to copy from buffer to image
     void cmd_copy_buffer_to_image(RBuffer srcBuffer, RImage dstImage, RImageLayout dstImageLayout, uint32_t regionCount, const RBufferImageCopy* regions);
+
+    /// @brief a transfer command to copy between images, potentially performing format conversion
+    void cmd_blit_image(RImage srcImage, RImageLayout srcImageLayout, RImage dstImage, RImageLayout dstImageLayout, uint32_t regionCount, const RImageBlit* regions, RFilter filter);
 };
 
 /// @brief command pool creation info
@@ -552,6 +566,8 @@ struct RDevice : RHandle<struct RDeviceObj>
     uint32_t get_frames_in_flight_count();
 
     RQueue get_graphics_queue();
+
+    void wait_idle();
 };
 
 /// @brief get a 32 bit hash of render pass

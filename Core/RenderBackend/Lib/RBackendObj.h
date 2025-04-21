@@ -131,6 +131,7 @@ struct RCommandListObj
     void (*cmd_image_memory_barrier)(RCommandListObj* self, RPipelineStageFlags srcStages, RPipelineStageFlags dstStages, const RImageMemoryBarrier& barrier);
     void (*cmd_copy_buffer)(RCommandListObj* self, RBuffer srcBuffer, RBuffer dstBuffer, uint32_t regionCount, const RBufferCopy* regions);
     void (*cmd_copy_buffer_to_image)(RCommandListObj* self, RBuffer srcBuffer, RImage dstImage, RImageLayout dstImageLayout, uint32_t regionCount, const RBufferImageCopy* regions);
+    void (*cmd_blit_image)(RCommandListObj* self, RImage srcImage, RImageLayout srcImageLayout, RImage dstImage, RImageLayout dstImageLayout, uint32_t regionCount, const RImageBlit* regions, RFilter filter);
 
     void init_vk_api();
 
@@ -315,6 +316,7 @@ struct RDeviceObj
     uint32_t (*get_swapchain_image_count)(RDeviceObj* self);
     uint32_t (*get_frames_in_flight_count)(RDeviceObj* self);
     RQueue (*get_graphics_queue)(RDeviceObj* self);
+    void (*wait_idle)(RDeviceObj* self);
 
     void init_vk_api();
 

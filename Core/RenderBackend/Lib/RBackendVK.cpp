@@ -79,6 +79,7 @@ static RImage vk_device_get_swapchain_color_attachment(RDeviceObj* self, uint32_
 static uint32_t vk_device_get_swapchain_image_count(RDeviceObj* self);
 static uint32_t vk_device_get_frames_in_flight_count(RDeviceObj* self);
 static RQueue vk_device_get_graphics_queue(RDeviceObj* self);
+static void vk_device_wait_idle(RDeviceObj* self);
 
 static void vk_buffer_map(RBufferObj* self);
 static void vk_buffer_map_write(RBufferObj* self, uint64_t offset, uint64_t size, const void* data);
@@ -97,6 +98,7 @@ static void vk_command_list_cmd_end_pass(RCommandListObj* self);
 static void vk_command_list_cmd_image_memory_barrier(RCommandListObj* self, RPipelineStageFlags srcStages, RPipelineStageFlags dstStages, const RImageMemoryBarrier& barrier);
 static void vk_command_list_cmd_copy_buffer(RCommandListObj* self, RBuffer srcBuffer, RBuffer dstBuffer, uint32_t regionCount, const RBufferCopy* regions);
 static void vk_command_list_cmd_copy_buffer_to_image(RCommandListObj* self, RBuffer srcBuffer, RImage dstImage, RImageLayout dstImageLayout, uint32_t regionCount, const RBufferImageCopy* regions);
+static void vk_command_list_cmd_blit_image(RCommandListObj* self, RImage srcImage, RImageLayout srcImageLayout, RImage dstImage, RImageLayout dstImageLayout, uint32_t regionCount, const RImageBlit* regions, RFilter filter);
 
 static RCommandList vk_command_pool_allocate(RCommandPoolObj* self);
 
@@ -109,7 +111,7 @@ static void vk_queue_submit(RQueueObj* self, const RSubmitInfo& submitI, RFence 
 static void choose_physical_device(RDeviceObj* obj);
 static void configure_swapchain(RDeviceObj* obj, SwapchainInfo* swapchainI);
 static void create_swapchain(RDeviceObj* obj, const SwapchainInfo& swapchainI);
-static RImage create_swapchain_color_attachment(RDeviceObj* deviceObj, VkImage image, VkFormat colorFormat);
+static RImage create_swapchain_color_attachment(RDeviceObj* deviceObj, VkImage image, VkFormat colorFormat, uint32_t width, uint32_t height);
 static void destroy_swapchain(RDeviceObj* obj);
 static void destroy_swapchain_color_attachment(RDeviceObj* deviceObj, RImage attachment);
 static void create_vma_allocator(RDeviceObj* obj);
@@ -1061,6 +1063,11 @@ static RQueue vk_device_get_graphics_queue(RDeviceObj* self)
     return self->vk.queueGraphics;
 }
 
+static void vk_device_wait_idle(RDeviceObj* self)
+{
+    VK_CHECK(vkDeviceWaitIdle(self->vk.device));
+}
+
 static void vk_buffer_map(RBufferObj* self)
 {
     RDeviceObj* deviceObj = (RDeviceObj*)self->device;
@@ -1280,6 +1287,50 @@ static void vk_command_list_cmd_copy_buffer_to_image(RCommandListObj* self, RBuf
     vkCmdCopyBufferToImage(self->vk.handle, srcBufferHandle, dstImageHandle, vkLayout, regionCount, copies.data());
 }
 
+static void vk_command_list_cmd_blit_image(RCommandListObj* self, RImage srcImage, RImageLayout srcImageLayout, RImage dstImage, RImageLayout dstImageLayout, uint32_t regionCount, const RImageBlit* regions, RFilter filter)
+{
+    RImageObj* srcImageObj = (RImageObj*)srcImage;
+    RImageObj* dstImageObj = (RImageObj*)dstImage;
+
+    VkImageLayout srcLayout;
+    VkImageLayout dstLayout;
+    VkImageAspectFlags srcAspect;
+    VkImageAspectFlags dstAspect;
+    VkFilter vkFilter;
+    RUtil::cast_image_layout_vk(srcImageLayout, srcLayout);
+    RUtil::cast_image_layout_vk(dstImageLayout, dstLayout);
+    RUtil::cast_format_image_aspect_vk(srcImage.format(), srcAspect);
+    RUtil::cast_format_image_aspect_vk(srcImage.format(), dstAspect);
+    RUtil::cast_filter_vk(filter, vkFilter);
+
+    std::vector<VkImageBlit> blits(regionCount);
+    for (uint32_t i = 0; i < regionCount; i++)
+    {
+        blits[i].srcOffsets[0].x = regions[i].srcMinOffset.x;
+        blits[i].srcOffsets[0].y = regions[i].srcMinOffset.y;
+        blits[i].srcOffsets[0].z = regions[i].srcMinOffset.z;
+        blits[i].srcOffsets[1].x = regions[i].srcMaxOffset.x;
+        blits[i].srcOffsets[1].y = regions[i].srcMaxOffset.y;
+        blits[i].srcOffsets[1].z = regions[i].srcMaxOffset.z;
+        blits[i].dstOffsets[0].x = regions[i].dstMinOffset.x;
+        blits[i].dstOffsets[0].y = regions[i].dstMinOffset.y;
+        blits[i].dstOffsets[0].z = regions[i].dstMinOffset.z;
+        blits[i].dstOffsets[1].x = regions[i].dstMaxOffset.x;
+        blits[i].dstOffsets[1].y = regions[i].dstMaxOffset.y;
+        blits[i].dstOffsets[1].z = regions[i].dstMaxOffset.z;
+        blits[i].srcSubresource.aspectMask = srcAspect;
+        blits[i].srcSubresource.mipLevel = 0;
+        blits[i].srcSubresource.baseArrayLayer = 0;
+        blits[i].srcSubresource.layerCount = 1;
+        blits[i].dstSubresource.aspectMask = dstAspect;
+        blits[i].dstSubresource.mipLevel = 0;
+        blits[i].dstSubresource.baseArrayLayer = 0;
+        blits[i].dstSubresource.layerCount = 1;
+    }
+
+    vkCmdBlitImage(self->vk.handle, srcImageObj->vk.handle, srcLayout, dstImageObj->vk.handle, dstLayout, regionCount, blits.data(), vkFilter);
+}
+
 static RCommandList vk_command_pool_allocate(RCommandPoolObj* self)
 {
     VkCommandBufferAllocateInfo bufferAI{
@@ -1490,7 +1541,7 @@ static void create_swapchain(RDeviceObj* obj, const SwapchainInfo& swapchainI)
         .imageColorSpace = swapchainI.imageColorSpace,
         .imageExtent = pdevice.surfaceCaps.currentExtent,
         .imageArrayLayers = 1,
-        .imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+        .imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, // TODO: transfer dst not guaranteed
         .preTransform = pdevice.surfaceCaps.currentTransform,
         .compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
         .presentMode = swapchainI.presentMode,
@@ -1518,10 +1569,12 @@ static void create_swapchain(RDeviceObj* obj, const SwapchainInfo& swapchainI)
     swp.images.resize(imageCount);
     VK_CHECK(vkGetSwapchainImagesKHR(obj->vk.device, swp.handle, &imageCount, swp.images.data()));
 
+    VkExtent2D swpExtent = swapchainCI.imageExtent;
+
     // create RImage color attachments that can be used to create a swapchain framebuffer
     swp.colorAttachments.resize(imageCount);
     for (uint32_t i = 0; i < imageCount; i++)
-        swp.colorAttachments[i] = create_swapchain_color_attachment(obj, swp.images[i], swp.info.imageFormat);
+        swp.colorAttachments[i] = create_swapchain_color_attachment(obj, swp.images[i], swp.info.imageFormat, swpExtent.width, swpExtent.height);
 
     printf("Vulkan swapchain with %d images (hint %d, min %d, max %d)\n", (int)swp.images.size(),
            (int)swapchainImageHint, (int)surfaceMinImageCount, (int)surfaceMaxImageCount);
@@ -1531,13 +1584,21 @@ static void create_swapchain(RDeviceObj* obj, const SwapchainInfo& swapchainI)
     printf("Vulkan swapchain present mode  %s\n", presentMode.c_str());
 }
 
-static RImage create_swapchain_color_attachment(RDeviceObj* deviceObj, VkImage image, VkFormat colorFormat)
+static RImage create_swapchain_color_attachment(RDeviceObj* deviceObj, VkImage image, VkFormat colorFormat, uint32_t width, uint32_t height)
 {
     RImageObj* obj = (RImageObj*)heap_malloc(sizeof(RImageObj), MEMORY_USAGE_RENDER);
-
+    obj->rid = RObjectID::get();
     obj->vk.handle = image;
     obj->vk.vma = nullptr; // unrelated to VMA
-    obj->info; // TODO: RImage methods will read from info
+
+    RFormat format;
+    RUtil::cast_format_from_vk(colorFormat, format);
+    obj->info.format = format;
+    obj->info.width = width;
+    obj->info.height = height;
+    obj->info.depth = 1;
+    obj->info.type = RIMAGE_TYPE_2D;
+    obj->info.usage = RIMAGE_USAGE_COLOR_ATTACHMENT_BIT | RIMAGE_USAGE_TRANSFER_DST_BIT; // TODO: transfer dst not guaranteed
 
     VkImageSubresourceRange range{
         .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
@@ -1639,6 +1700,7 @@ void RCommandListObj::init_vk_api()
     cmd_image_memory_barrier = &vk_command_list_cmd_image_memory_barrier;
     cmd_copy_buffer = &vk_command_list_cmd_copy_buffer;
     cmd_copy_buffer_to_image = &vk_command_list_cmd_copy_buffer_to_image;
+    cmd_blit_image = &vk_command_list_cmd_blit_image;
 }
 
 void RCommandPoolObj::init_vk_api()
@@ -1692,6 +1754,7 @@ void RDeviceObj::init_vk_api()
     get_swapchain_image_count = &vk_device_get_swapchain_image_count;
     get_frames_in_flight_count = &vk_device_get_frames_in_flight_count;
     get_graphics_queue = &vk_device_get_graphics_queue;
+    wait_idle = &vk_device_wait_idle;
 }
 
 } // namespace LD
