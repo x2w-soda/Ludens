@@ -157,6 +157,7 @@ add_subdirectory(${LUDENS_EXTRA_DIR}/stb)
 add_subdirectory(Core/System)
 add_subdirectory(Core/Serial)
 add_subdirectory(Core/DSA)
+add_subdirectory(Core/Media)
 add_subdirectory(Core/RenderBackend)
 add_subdirectory(Core/Application)
 
@@ -165,6 +166,7 @@ target_link_directories(LDCore INTERFACE
   LDSystem
   LDSerial
   LDDSA
+  LDMedia
   LDRenderBackend
   LDApplication
 )
