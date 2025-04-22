@@ -48,7 +48,7 @@ set(ZLIB_BUILD_STATIC   ON)
 set(ZLIB_BUILD_SHARED   OFF)
 FetchContent_Populate(zlib)
 message(STATUS "LUDENS ZLIB SOURCE DIR:     ${zlib_SOURCE_DIR}")
-add_subdirectory(${zlib_SOURCE_DIR})
+add_subdirectory(${zlib_SOURCE_DIR} zlib_build)
 
 set(ZLIB_LIBRARY       zlibstatic         CACHE INTERNAL "")
 set(ZLIB_INCLUDE_DIR   ${zlib_SOURCE_DIR} CACHE INTERNAL "")
@@ -67,7 +67,7 @@ set(PNG_SHARED   OFF CACHE BOOL "" FORCE)
 set(PNG_TESTS    OFF CACHE BOOL "" FORCE)
 FetchContent_Populate(libpng)
 message(STATUS "LUDENS LIBPNG SOURCE DIR:   ${libpng_SOURCE_DIR}")
-add_subdirectory(${libpng_SOURCE_DIR})
+add_subdirectory(${libpng_SOURCE_DIR} libpng_build)
 configure_file("${libpng_SOURCE_DIR}/scripts/pnglibconf.h.prebuilt" "${libpng_SOURCE_DIR}/pnglibconf.h" COPYONLY)
 
 set(PNG_LIBRARY png_static                   CACHE INTERNAL "")
@@ -88,7 +88,7 @@ set(FT_DISABLE_BROTLI     ON CACHE BOOL "" FORCE)
 set(SKIP_INSTALL_ALL      ON CACHE BOOL "" FORCE)
 FetchContent_Populate(freetype)
 message(STATUS "LUDENS freetype SOURCE DIR: ${freetype_SOURCE_DIR}")
-add_subdirectory(${freetype_SOURCE_DIR})
+add_subdirectory(${freetype_SOURCE_DIR} freetype_build)
 
 set(FREETYPE_LIBRARY freetype CACHE INTERNAL "")
 set(FREETYPE_INCLUDE_DIR_ft2build "${freetype_INCLUDE_DIR}/include" CACHE INTERNAL "")
@@ -117,7 +117,7 @@ set(MSDFGEN_DISABLE_SVG     ON  CACHE BOOL "" FORCE)
 set(MSDFGEN_DYNAMIC_RUNTIME ON  CACHE BOOL "" FORCE)
 FetchContent_Populate(msdfgen)
 message(STATUS "LUDENS msdfgen SOURCE DIR: ${msdfgen_SOURCE_DIR}")
-add_subdirectory(${msdfgen_SOURCE_DIR})
+add_subdirectory(${msdfgen_SOURCE_DIR} msdfgen_build)
 
 
 ## Fetch msdf atlas gen
@@ -134,7 +134,26 @@ set(MSDF_ATLAS_NO_ARTERY_FONT     ON  CACHE BOOL "" FORCE)
 set(MSDF_ATLAS_DYNAMIC_RUNTIME    ON  CACHE BOOL "" FORCE)
 FetchContent_Populate(msdfatlasgen)
 message(STATUS "LUDENS msdf-atlas-gen SOURCE DIR: ${msdfgen_SOURCE_DIR}")
-add_subdirectory(${msdfatlasgen_SOURCE_DIR})
+add_subdirectory(${msdfatlasgen_SOURCE_DIR} msdfatlasgen_build)
+
+## Fetch tinygltf
+
+FetchContent_Declare(
+  tinygltf
+  GIT_REPOSITORY https://github.com/syoyo/tinygltf.git
+  GIT_TAG v2.9.5
+)
+
+set(TINYGLTF_BUILD_LOADER_EXAMPLE     OFF CACHE BOOL "" FORCE)
+set(TINYGLTF_BUILD_GL_EXAMPLES        OFF CACHE BOOL "" FORCE)
+set(TINYGLTF_BUILD_VALIDATOR_EXAMPLE  OFF CACHE BOOL "" FORCE)
+set(TINYGLTF_BUILD_BUILDER_EXAMPLE    OFF CACHE BOOL "" FORCE)
+set(TINYGLTF_HEADER_ONLY              OFF CACHE BOOL "" FORCE)
+set(TINYGLTF_INSTALL                  OFF CACHE BOOL "" FORCE)
+set(TINYGLTF_INSTALL_VENDOR           OFF CACHE BOOL "" FORCE)
+FetchContent_Populate(tinygltf)
+message(STATUS "LUDENS tinygltf SOURCE DIR: ${tinygltf_SOURCE_DIR}")
+add_subdirectory(${tinygltf_SOURCE_DIR} tinygltf_build)
 
 # Find Vulkan
 # - require SPIRV-Cross for reflection
