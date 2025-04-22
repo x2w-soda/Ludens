@@ -5,6 +5,19 @@
 namespace LD {
 namespace RUtil {
 
+inline RImageInfo make_2d_image_info(RImageUsageFlags usage, RFormat format, uint32_t width, uint32_t height, RSamplerInfo sampler = {})
+{
+    return {
+        .usage = usage,
+        .type = RIMAGE_TYPE_2D,
+        .format = format,
+        .width = width,
+        .height = height,
+        .depth = 1,
+        .sampler = sampler,
+    };
+}
+
 /// @brief Creates a 'default' blend state, using the alpha channel to linearly interpolate colors.
 ///        dstAlpha = srcAlpha,
 ///        dstColor = srcAlpha * srcColor + (1 - srcAlpha) * dstColor

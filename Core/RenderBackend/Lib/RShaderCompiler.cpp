@@ -77,10 +77,13 @@ bool RShaderCompiler::compile(RShaderType type, const char* glsl, std::vector<ui
 
     switch (type)
     {
-    case RSHADER_TYPE_VERTEX_SHADER:
+    case RSHADER_TYPE_COMPUTE:
+        stage = EShLangCompute;
+        break;
+    case RSHADER_TYPE_VERTEX:
         stage = EShLangVertex;
         break;
-    case RSHADER_TYPE_FRAGMENT_SHADER:
+    case RSHADER_TYPE_FRAGMENT:
         stage = EShLangFragment;
         break;
     default:

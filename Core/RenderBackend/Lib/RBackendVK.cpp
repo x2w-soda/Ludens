@@ -70,6 +70,7 @@ static void vk_device_destroy_set_layout(RDeviceObj* self, RSetLayout layout);
 static RPipelineLayout vk_device_create_pipeline_layout(RDeviceObj* self, const RPipelineLayoutInfo& layoutI, RPipelineLayoutObj* obj);
 static void vk_device_destroy_pipeline_layout(RDeviceObj* self, RPipelineLayout layout);
 static RPipeline vk_device_create_pipeline(RDeviceObj* self, const RPipelineInfo& pipelineI, RPipelineObj* obj);
+static RPipeline vk_device_create_compute_pipeline(RDeviceObj* self, const RComputePipelineInfo& pipelineI, RPipelineObj* pipelineObj);
 static void vk_device_destroy_pipeline(RDeviceObj* self, RPipeline pipeline);
 static void vk_device_update_set_images(RDeviceObj* self, uint32_t updateCount, const RSetImageUpdateInfo* updates);
 static void vk_device_update_set_buffers(RDeviceObj* self, uint32_t updateCount, const RSetBufferUpdateInfo* updates);
@@ -90,8 +91,12 @@ static void vk_command_list_begin(RCommandListObj* self, bool oneTimeSubmit);
 static void vk_command_list_end(RCommandListObj* self);
 static void vk_command_list_cmd_begin_pass(RCommandListObj* self, const RPassBeginInfo& passBI);
 static void vk_command_list_cmd_bind_graphics_pipeline(RCommandListObj* self, RPipeline pipeline);
+static void vk_command_list_cmd_bind_graphics_sets(RCommandListObj* self, RPipelineLayout layout, uint32_t setStart, uint32_t setCount, RSet* sets);
+static void vk_command_list_cmd_bind_compute_pipeline(RCommandListObj* self, RPipeline pipeline);
+static void vk_command_list_cmd_bind_compute_sets(RCommandListObj* self, RPipelineLayout layout, uint32_t setStart, uint32_t setCount, RSet* sets);
 static void vk_command_list_cmd_bind_vertex_buffers(RCommandListObj* self, uint32_t firstBinding, uint32_t bindingCount, RBuffer* buffers);
 static void vk_command_list_cmd_bind_index_buffer(RCommandListObj* self, RBuffer buffer, RIndexType indexType);
+static void vk_command_list_cmd_dispatch(RCommandListObj* self, uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ);
 static void vk_command_list_cmd_draw(RCommandListObj* self, const RDrawInfo& drawI);
 static void vk_command_list_cmd_draw_indexed(RCommandListObj* self, const RDrawIndexedInfo& drawI);
 static void vk_command_list_cmd_end_pass(RCommandListObj* self);
@@ -895,6 +900,31 @@ RPipeline vk_device_create_pipeline(RDeviceObj* self, const RPipelineInfo& pipel
     return {pipelineObj};
 }
 
+static RPipeline vk_device_create_compute_pipeline(RDeviceObj* self, const RComputePipelineInfo& pipelineI, RPipelineObj* pipelineObj)
+{
+    const RShaderObj* shaderObj = static_cast<const RShaderObj*>(pipelineI.shader);
+    const RPipelineLayoutObj* layoutObj = static_cast<const RPipelineLayoutObj*>(pipelineI.layout);
+
+    VkPipelineShaderStageCreateInfo stage{
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+        .flags = 0,
+        .stage = VK_SHADER_STAGE_COMPUTE_BIT,
+        .module = shaderObj->vk.handle,
+        .pName = LD_GLSL_ENTRY_POINT,
+        .pSpecializationInfo = nullptr,
+    };
+
+    VkComputePipelineCreateInfo pipelineCI{
+        .sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
+        .stage = stage,
+        .layout = layoutObj->vk.handle,
+    };
+
+    VK_CHECK(vkCreateComputePipelines(self->vk.device, VK_NULL_HANDLE, 1, &pipelineCI, nullptr, &pipelineObj->vk.handle));
+
+    return {pipelineObj};
+}
+
 static void vk_device_destroy_pipeline(RDeviceObj* self, RPipeline pipeline)
 {
     RPipelineObj* pipelineObj = (RPipelineObj*)pipeline;
@@ -1163,6 +1193,23 @@ static void vk_command_list_cmd_bind_graphics_sets(RCommandListObj* self, RPipel
     vkCmdBindDescriptorSets(self->vk.handle, VK_PIPELINE_BIND_POINT_GRAPHICS, layoutObj->vk.handle, setStart, setCount, setHandles.data(), 0, nullptr);
 }
 
+static void vk_command_list_cmd_bind_compute_pipeline(RCommandListObj* self, RPipeline pipeline)
+{
+    RPipelineObj* pipelineObj = (RPipelineObj*)pipeline;
+
+    vkCmdBindPipeline(self->vk.handle, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineObj->vk.handle);
+}
+
+static void vk_command_list_cmd_bind_compute_sets(RCommandListObj* self, RPipelineLayout layout, uint32_t setStart, uint32_t setCount, RSet* sets)
+{
+    RPipelineLayoutObj* layoutObj = (RPipelineLayoutObj*)layout;
+    std::vector<VkDescriptorSet> setHandles(setCount);
+    for (uint32_t i = 0; i < setCount; i++)
+        setHandles[i] = static_cast<RSetObj*>(sets[i])->vk.handle;
+
+    vkCmdBindDescriptorSets(self->vk.handle, VK_PIPELINE_BIND_POINT_COMPUTE, layoutObj->vk.handle, setStart, setCount, setHandles.data(), 0, nullptr);
+}
+
 static void vk_command_list_cmd_bind_vertex_buffers(RCommandListObj* self, uint32_t firstBinding, uint32_t bindingCount, RBuffer* buffers)
 {
     std::vector<VkBuffer> bufferHandles(bindingCount);
@@ -1185,6 +1232,11 @@ static void vk_command_list_cmd_bind_index_buffer(RCommandListObj* self, RBuffer
     RUtil::cast_index_type_vk(indexType, vkIndexType);
 
     vkCmdBindIndexBuffer(self->vk.handle, bufferHandle, 0, vkIndexType);
+}
+
+static void vk_command_list_cmd_dispatch(RCommandListObj* self, uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ)
+{
+    vkCmdDispatch(self->vk.handle, groupCountX, groupCountY, groupCountZ);
 }
 
 static void vk_command_list_cmd_draw(RCommandListObj* self, const RDrawInfo& drawI)
@@ -1692,8 +1744,11 @@ void RCommandListObj::init_vk_api()
     cmd_begin_pass = &vk_command_list_cmd_begin_pass;
     cmd_bind_graphics_pipeline = &vk_command_list_cmd_bind_graphics_pipeline;
     cmd_bind_graphics_sets = &vk_command_list_cmd_bind_graphics_sets;
+    cmd_bind_compute_pipeline = &vk_command_list_cmd_bind_compute_pipeline;
+    cmd_bind_compute_sets = &vk_command_list_cmd_bind_compute_sets;
     cmd_bind_vertex_buffers = &vk_command_list_cmd_bind_vertex_buffers;
     cmd_bind_index_buffer = &vk_command_list_cmd_bind_index_buffer;
+    cmd_dispatch = &vk_command_list_cmd_dispatch;
     cmd_draw = &vk_command_list_cmd_draw;
     cmd_draw_indexed = &vk_command_list_cmd_draw_indexed;
     cmd_end_pass = &vk_command_list_cmd_end_pass;
@@ -1745,6 +1800,7 @@ void RDeviceObj::init_vk_api()
     create_pipeline_layout = &vk_device_create_pipeline_layout;
     destroy_pipeline_layout = &vk_device_destroy_pipeline_layout;
     create_pipeline = &vk_device_create_pipeline;
+    create_compute_pipeline = &vk_device_create_compute_pipeline;
     destroy_pipeline = &vk_device_destroy_pipeline;
     update_set_images = &vk_device_update_set_images;
     update_set_buffers = &vk_device_update_set_buffers;

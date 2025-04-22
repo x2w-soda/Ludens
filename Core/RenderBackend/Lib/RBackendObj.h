@@ -123,8 +123,11 @@ struct RCommandListObj
     void (*cmd_begin_pass)(RCommandListObj* self, const RPassBeginInfo& passBI);
     void (*cmd_bind_graphics_pipeline)(RCommandListObj* self, RPipeline pipeline);
     void (*cmd_bind_graphics_sets)(RCommandListObj* self, RPipelineLayout layout, uint32_t firstSet, uint32_t setCount, RSet* sets);
+    void (*cmd_bind_compute_pipeline)(RCommandListObj* self, RPipeline pipeline);
+    void (*cmd_bind_compute_sets)(RCommandListObj* self, RPipelineLayout layout, uint32_t firstSet, uint32_t setCount, RSet* sets);
     void (*cmd_bind_vertex_buffers)(RCommandListObj* self, uint32_t firstBinding, uint32_t bindingCount, RBuffer* buffers);
     void (*cmd_bind_index_buffer)(RCommandListObj* self, RBuffer buffer, RIndexType indexType);
+    void (*cmd_dispatch)(RCommandListObj* self, uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ);
     void (*cmd_draw)(RCommandListObj* self, const RDrawInfo& drawI);
     void (*cmd_draw_indexed)(RCommandListObj* self, const RDrawIndexedInfo& drawI);
     void (*cmd_end_pass)(RCommandListObj* self);
@@ -304,6 +307,7 @@ struct RDeviceObj
     void (*destroy_pipeline_layout)(RDeviceObj* self, RPipelineLayout layout);
 
     RPipeline (*create_pipeline)(RDeviceObj* self, const RPipelineInfo& pipelineI, RPipelineObj* pipelineObj);
+    RPipeline (*create_compute_pipeline)(RDeviceObj* self, const RComputePipelineInfo& pipelineI, RPipelineObj* pipelineObj);
     void (*destroy_pipeline)(RDeviceObj* self, RPipeline pipeline);
 
     void (*update_set_images)(RDeviceObj* self, uint32_t updateCount, const RSetImageUpdateInfo* updates);

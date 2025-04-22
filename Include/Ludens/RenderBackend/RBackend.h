@@ -359,6 +359,13 @@ struct RPipelineInfo
     RPipelineBlendInfo blend;
 };
 
+/// @brief compute pipeline creation info
+struct RComputePipelineInfo
+{
+    RPipelineLayout layout;
+    RShader shader;
+};
+
 /// @brief graphics pipeline handle
 struct RPipeline : RHandle<struct RPipelineObj>
 {
@@ -409,9 +416,16 @@ struct RCommandList : RHandle<struct RCommandListObj>
 
     void cmd_bind_graphics_sets(RPipelineLayout layout, uint32_t firstSet, uint32_t setCount, RSet* sets);
 
+    void cmd_bind_compute_pipeline(RPipeline pipeline);
+
+    void cmd_bind_compute_sets(RPipelineLayout layout, uint32_t firstSet, uint32_t setCount, RSet* sets);
+
     void cmd_bind_vertex_buffers(uint32_t firstBinding, uint32_t bindingCount, RBuffer* buffers);
 
     void cmd_bind_index_buffer(RBuffer buffer, RIndexType indexType);
+
+    /// @brief dispatch compute workgroup
+    void cmd_dispatch(uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ);
 
     /// @brief draw vertices
     void cmd_draw(const RDrawInfo& drawI);
@@ -540,6 +554,7 @@ struct RDevice : RHandle<struct RDeviceObj>
     void destroy_pipeline_layout(RPipelineLayout layout);
 
     RPipeline create_pipeline(const RPipelineInfo& pipelineI);
+    RPipeline create_compute_pipeline(const RComputePipelineInfo& pipelineI);
     void destroy_pipeline(RPipeline);
 
     void update_set_images(uint32_t updateCount, const RSetImageUpdateInfo* updates);

@@ -244,6 +244,15 @@ RPipeline RDevice::create_pipeline(const RPipelineInfo& pipelineI)
     return mObj->create_pipeline(mObj, pipelineI, pipelineObj);
 }
 
+RPipeline RDevice::create_compute_pipeline(const RComputePipelineInfo& pipelineI)
+{
+    RPipelineObj* pipelineObj = (RPipelineObj*)heap_malloc(sizeof(RPipelineObj), MEMORY_USAGE_RENDER);
+    pipelineObj->rid = RObjectID::get();
+    pipelineObj->layout = pipelineI.layout;
+
+    return mObj->create_compute_pipeline(mObj, pipelineI, pipelineObj);
+}
+
 void RDevice::destroy_pipeline(RPipeline pipeline)
 {
     mObj->destroy_pipeline(mObj, pipeline);
@@ -419,6 +428,16 @@ void RCommandList::cmd_bind_graphics_sets(RPipelineLayout layout, uint32_t first
     mObj->cmd_bind_graphics_sets(mObj, layout, firstSet, setCount, sets);
 }
 
+void RCommandList::cmd_bind_compute_pipeline(RPipeline pipeline)
+{
+    mObj->cmd_bind_compute_pipeline(mObj, pipeline);
+}
+
+void RCommandList::cmd_bind_compute_sets(RPipelineLayout layout, uint32_t firstSet, uint32_t setCount, RSet* sets)
+{
+    mObj->cmd_bind_compute_sets(mObj, layout, firstSet, setCount, sets);
+}
+
 void RCommandList::cmd_bind_vertex_buffers(uint32_t firstBinding, uint32_t bindingCount, RBuffer* buffers)
 {
     for (uint32_t i = 0; i < bindingCount; i++)
@@ -432,6 +451,11 @@ void RCommandList::cmd_bind_index_buffer(RBuffer buffer, RIndexType indexType)
     LD_ASSERT(buffer.usage() & RBUFFER_USAGE_INDEX_BIT);
 
     mObj->cmd_bind_index_buffer(mObj, buffer, indexType);
+}
+
+void RCommandList::cmd_dispatch(uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ)
+{
+    mObj->cmd_dispatch(mObj, groupCountX, groupCountY, groupCountZ);
 }
 
 void RCommandList::cmd_draw(const RDrawInfo& drawI)
