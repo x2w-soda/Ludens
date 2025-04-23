@@ -779,9 +779,11 @@ RPipeline vk_device_create_pipeline(RDeviceObj* self, const RPipelineInfo& pipel
         .pVertexAttributeDescriptions = attributeD.data(),
     };
 
+    VkPrimitiveTopology vkPrimitive;
+    RUtil::cast_primitive_topology_vk(pipelineI.primitiveTopology, vkPrimitive);
     VkPipelineInputAssemblyStateCreateInfo inputAsmSCI{
         .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
-        .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,
+        .topology = vkPrimitive,
         .primitiveRestartEnable = VK_FALSE,
     };
 

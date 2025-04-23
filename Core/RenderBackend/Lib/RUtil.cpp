@@ -273,6 +273,7 @@ struct
     RShaderType type;
     VkShaderStageFlagBits vkType;
 } shaderTypeTable[] = {
+    { RSHADER_TYPE_COMPUTE,  VK_SHADER_STAGE_COMPUTE_BIT },
     { RSHADER_TYPE_VERTEX,   VK_SHADER_STAGE_VERTEX_BIT },
     { RSHADER_TYPE_FRAGMENT, VK_SHADER_STAGE_FRAGMENT_BIT },
 };
@@ -292,6 +293,7 @@ struct
     { RBINDING_TYPE_COMBINED_IMAGE_SAMPLER, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER },
     { RBINDING_TYPE_STORAGE_IMAGE,          VK_DESCRIPTOR_TYPE_STORAGE_IMAGE },
     { RBINDING_TYPE_UNIFORM_BUFFER,         VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER },
+    { RBINDING_TYPE_STORAGE_BUFFER,         VK_DESCRIPTOR_TYPE_STORAGE_BUFFER },
 };
 // clang-format on
 
@@ -337,6 +339,7 @@ struct
     { RBUFFER_USAGE_VERTEX_BIT,       VK_BUFFER_USAGE_VERTEX_BUFFER_BIT },
     { RBUFFER_USAGE_INDEX_BIT,        VK_BUFFER_USAGE_INDEX_BUFFER_BIT },
     { RBUFFER_USAGE_UNIFORM_BIT,      VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT },
+    { RBUFFER_USAGE_STORAGE_BIT,      VK_BUFFER_USAGE_STORAGE_BUFFER_BIT },
 };
 // clang-format on
 
@@ -411,6 +414,22 @@ struct
 void cast_index_type_vk(const RIndexType& inType, VkIndexType& outType)
 {
     outType = indexTypeTable[(int)inType].vkType;
+}
+
+// clang-format off
+struct
+{
+    RPrimitiveTopology topo;
+    VkPrimitiveTopology vkTopo;
+} primitiveTopologyTable[] = {
+    { RPRIMITIVE_TOPOLOGY_TRIANGLE_LIST,   VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST },
+    { RPRIMITIVE_TOPOLOGY_POINT_LIST,      VK_PRIMITIVE_TOPOLOGY_POINT_LIST },
+};
+// clang-format on
+
+void cast_primitive_topology_vk(const RPrimitiveTopology& inTopo, VkPrimitiveTopology& outTopo)
+{
+    outTopo = primitiveTopologyTable[(int)inTopo].vkTopo;
 }
 
 // clang-format off

@@ -353,6 +353,7 @@ struct RPipelineInfo
     RVertexAttribute* vertexAttributes;
     uint32_t vertexBindingCount;
     RVertexBinding* vertexBindings;
+    RPrimitiveTopology primitiveTopology;
     RPipelineLayout layout;
     RPass pass;
     RPipelineRasterizationInfo rasterization;

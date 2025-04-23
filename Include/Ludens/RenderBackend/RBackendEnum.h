@@ -60,6 +60,7 @@ enum RBindingType
     RBINDING_TYPE_COMBINED_IMAGE_SAMPLER = 0,
     RBINDING_TYPE_STORAGE_IMAGE,
     RBINDING_TYPE_UNIFORM_BUFFER,
+    RBINDING_TYPE_STORAGE_BUFFER,
 };
 
 enum RBindingInputRate
@@ -75,7 +76,8 @@ enum RBufferUsageBit : RBufferUsageFlags
     RBUFFER_USAGE_TRANSFER_DST_BIT = 2, /// dst buffer for transfer commands
     RBUFFER_USAGE_VERTEX_BIT = 4,       /// vertex buffer (VBO) usage
     RBUFFER_USAGE_INDEX_BIT = 8,        /// index buffer (IBO) usage
-    RBUFFER_USAGE_UNIFORM_BIT = 16      /// uniform buffer (UBO) usage
+    RBUFFER_USAGE_UNIFORM_BIT = 16,     /// uniform buffer (UBO) usage
+    RBUFFER_USAGE_STORAGE_BIT = 32,     /// storage buffer (SSBO) usage
 };
 
 enum RImageType
@@ -126,6 +128,12 @@ enum RAccessBit : RAccessFlags
     RACCESS_TRANSFER_READ_BIT = 64,
     RACCESS_TRANSFER_WRITE_BIT = 128,
     RACCESS_BITS_ENUM_LAST_BIT = 256,
+};
+
+enum RPrimitiveTopology
+{
+    RPRIMITIVE_TOPOLOGY_TRIANGLE_LIST = 0,
+    RPRIMITIVE_TOPOLOGY_POINT_LIST,
 };
 
 enum RPolygonMode

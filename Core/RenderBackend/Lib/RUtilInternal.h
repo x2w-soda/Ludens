@@ -55,6 +55,7 @@ void cast_buffer_usage_vk(const RBufferUsageFlags& inUsage, VkBufferUsageFlags& 
 void cast_image_usage_vk(const RImageUsageFlags& inUsage, VkImageUsageFlags& outUsage);
 void cast_image_type_vk(const RImageType& inType, VkImageType& outType);
 void cast_index_type_vk(const RIndexType& inType, VkIndexType& outType);
+void cast_primitive_topology_vk(const RPrimitiveTopology& inTopo, VkPrimitiveTopology& outTopo);
 void cast_polygon_mode_vk(const RPolygonMode& inMode, VkPolygonMode& outMode);
 void cast_cull_mode_vk(const RCullMode& inMode, VkCullModeFlags& outMode);
 void cast_blend_factor_vk(const RBlendFactor& inFactor, VkBlendFactor& outFactor);
