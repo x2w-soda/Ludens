@@ -473,6 +473,11 @@ void RCommandList::cmd_end_pass()
     mObj->cmd_end_pass(mObj);
 }
 
+void RCommandList::cmd_buffer_memory_barrier(RPipelineStageFlags srcStages, RPipelineStageFlags dstStages, const RBufferMemoryBarrier& barrier)
+{
+    mObj->cmd_buffer_memory_barrier(mObj, srcStages, dstStages, barrier);
+}
+
 void RCommandList::cmd_image_memory_barrier(RPipelineStageFlags srcStages, RPipelineStageFlags dstStages, const RImageMemoryBarrier& barrier)
 {
     mObj->cmd_image_memory_barrier(mObj, srcStages, dstStages, barrier);

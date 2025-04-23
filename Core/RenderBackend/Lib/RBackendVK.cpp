@@ -100,6 +100,7 @@ static void vk_command_list_cmd_dispatch(RCommandListObj* self, uint32_t groupCo
 static void vk_command_list_cmd_draw(RCommandListObj* self, const RDrawInfo& drawI);
 static void vk_command_list_cmd_draw_indexed(RCommandListObj* self, const RDrawIndexedInfo& drawI);
 static void vk_command_list_cmd_end_pass(RCommandListObj* self);
+static void vk_command_list_cmd_buffer_memory_barrier(RCommandListObj* self, RPipelineStageFlags srcStages, RPipelineStageFlags dstStages, const RBufferMemoryBarrier& barrier);
 static void vk_command_list_cmd_image_memory_barrier(RCommandListObj* self, RPipelineStageFlags srcStages, RPipelineStageFlags dstStages, const RImageMemoryBarrier& barrier);
 static void vk_command_list_cmd_copy_buffer(RCommandListObj* self, RBuffer srcBuffer, RBuffer dstBuffer, uint32_t regionCount, const RBufferCopy* regions);
 static void vk_command_list_cmd_copy_buffer_to_image(RCommandListObj* self, RBuffer srcBuffer, RImage dstImage, RImageLayout dstImageLayout, uint32_t regionCount, const RBufferImageCopy* regions);
@@ -1256,6 +1257,32 @@ static void vk_command_list_cmd_end_pass(RCommandListObj* self)
     vkCmdEndRenderPass(self->vk.handle);
 }
 
+static void vk_command_list_cmd_buffer_memory_barrier(RCommandListObj* self, RPipelineStageFlags srcStages, RPipelineStageFlags dstStages, const RBufferMemoryBarrier& barrier)
+{
+    VkPipelineStageFlags vkSrcStages;
+    VkPipelineStageFlags vkDstStages;
+    VkAccessFlags vkSrcAccess;
+    VkAccessFlags vkDstAccess;
+
+    RUtil::cast_pipeline_stage_flags_vk(srcStages, vkSrcStages);
+    RUtil::cast_pipeline_stage_flags_vk(dstStages, vkDstStages);
+    RUtil::cast_access_flags_vk(barrier.srcAccess, vkSrcAccess);
+    RUtil::cast_access_flags_vk(barrier.dstAccess, vkDstAccess);
+
+    VkBufferMemoryBarrier vkBarrier{
+        .sType = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER,
+        .srcAccessMask = vkSrcAccess,
+        .dstAccessMask = vkDstAccess,
+        .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+        .buffer = static_cast<const RBufferObj*>(barrier.buffer)->vk.handle,
+        .offset = 0,
+        .size = VK_WHOLE_SIZE,
+    };
+
+    vkCmdPipelineBarrier(self->vk.handle, vkSrcStages, vkDstStages, 0, 0, nullptr, 1, &vkBarrier, 0, nullptr);
+}
+
 static void vk_command_list_cmd_image_memory_barrier(RCommandListObj* self, RPipelineStageFlags srcStages, RPipelineStageFlags dstStages, const RImageMemoryBarrier& barrier)
 {
     VkPipelineStageFlags vkSrcStages;
@@ -1754,6 +1781,7 @@ void RCommandListObj::init_vk_api()
     cmd_draw = &vk_command_list_cmd_draw;
     cmd_draw_indexed = &vk_command_list_cmd_draw_indexed;
     cmd_end_pass = &vk_command_list_cmd_end_pass;
+    cmd_buffer_memory_barrier = &vk_command_list_cmd_buffer_memory_barrier;
     cmd_image_memory_barrier = &vk_command_list_cmd_image_memory_barrier;
     cmd_copy_buffer = &vk_command_list_cmd_copy_buffer;
     cmd_copy_buffer_to_image = &vk_command_list_cmd_copy_buffer_to_image;

@@ -392,6 +392,13 @@ struct RDrawIndexedInfo
     uint32_t instanceStart; /// the starting gl_InstanceIndex
 };
 
+struct RBufferMemoryBarrier
+{
+    RBuffer buffer;
+    RAccessFlags srcAccess;
+    RAccessFlags dstAccess;
+};
+
 struct RImageMemoryBarrier
 {
     RImage image;
@@ -436,6 +443,9 @@ struct RCommandList : RHandle<struct RCommandListObj>
 
     /// @brief end the current render pass instance
     void cmd_end_pass();
+
+    /// @brief add a buffer memory barrier
+    void cmd_buffer_memory_barrier(RPipelineStageFlags srcStages, RPipelineStageFlags dstStages, const RBufferMemoryBarrier& barrier);
 
     /// @brief add an image memory barrier
     void cmd_image_memory_barrier(RPipelineStageFlags srcStages, RPipelineStageFlags dstStages, const RImageMemoryBarrier& barrier);

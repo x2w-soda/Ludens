@@ -131,6 +131,7 @@ struct RCommandListObj
     void (*cmd_draw)(RCommandListObj* self, const RDrawInfo& drawI);
     void (*cmd_draw_indexed)(RCommandListObj* self, const RDrawIndexedInfo& drawI);
     void (*cmd_end_pass)(RCommandListObj* self);
+    void (*cmd_buffer_memory_barrier)(RCommandListObj* self, RPipelineStageFlags srcStages, RPipelineStageFlags dstStages, const RBufferMemoryBarrier& barrier);
     void (*cmd_image_memory_barrier)(RCommandListObj* self, RPipelineStageFlags srcStages, RPipelineStageFlags dstStages, const RImageMemoryBarrier& barrier);
     void (*cmd_copy_buffer)(RCommandListObj* self, RBuffer srcBuffer, RBuffer dstBuffer, uint32_t regionCount, const RBufferCopy* regions);
     void (*cmd_copy_buffer_to_image)(RCommandListObj* self, RBuffer srcBuffer, RImage dstImage, RImageLayout dstImageLayout, uint32_t regionCount, const RBufferImageCopy* regions);
