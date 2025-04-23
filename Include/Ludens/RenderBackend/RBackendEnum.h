@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Ludens/Header/Bitwise.h>
 #include <cstdint>
 
 namespace LD {
@@ -72,12 +73,12 @@ enum RBindingInputRate
 using RBufferUsageFlags = uint32_t;
 enum RBufferUsageBit : RBufferUsageFlags
 {
-    RBUFFER_USAGE_TRANSFER_SRC_BIT = 1, /// src buffer for transfer commands
-    RBUFFER_USAGE_TRANSFER_DST_BIT = 2, /// dst buffer for transfer commands
-    RBUFFER_USAGE_VERTEX_BIT = 4,       /// vertex buffer (VBO) usage
-    RBUFFER_USAGE_INDEX_BIT = 8,        /// index buffer (IBO) usage
-    RBUFFER_USAGE_UNIFORM_BIT = 16,     /// uniform buffer (UBO) usage
-    RBUFFER_USAGE_STORAGE_BIT = 32,     /// storage buffer (SSBO) usage
+    RBUFFER_USAGE_TRANSFER_SRC_BIT = LD_BIT(0), /// src buffer for transfer commands
+    RBUFFER_USAGE_TRANSFER_DST_BIT = LD_BIT(1), /// dst buffer for transfer commands
+    RBUFFER_USAGE_VERTEX_BIT = LD_BIT(2),       /// vertex buffer (VBO) usage
+    RBUFFER_USAGE_INDEX_BIT = LD_BIT(3),        /// index buffer (IBO) usage
+    RBUFFER_USAGE_UNIFORM_BIT = LD_BIT(4),      /// uniform buffer (UBO) usage
+    RBUFFER_USAGE_STORAGE_BIT = LD_BIT(5),      /// storage buffer (SSBO) usage
 };
 
 enum RImageType
@@ -88,11 +89,11 @@ enum RImageType
 using RImageUsageFlags = uint32_t;
 enum RImageUsageBit : RImageUsageFlags
 {
-    RIMAGE_USAGE_TRANSFER_SRC_BIT = 1, // src image for transfer commands
-    RIMAGE_USAGE_TRANSFER_DST_BIT = 2, // dst image for transfer commands
-    RIMAGE_USAGE_SAMPLED_BIT = 4,
-    RIMAGE_USAGE_STORAGE_BIT = 8,
-    RIMAGE_USAGE_COLOR_ATTACHMENT_BIT = 16,
+    RIMAGE_USAGE_TRANSFER_SRC_BIT = LD_BIT(0), // src image for transfer commands
+    RIMAGE_USAGE_TRANSFER_DST_BIT = LD_BIT(1), // dst image for transfer commands
+    RIMAGE_USAGE_SAMPLED_BIT = LD_BIT(2),
+    RIMAGE_USAGE_STORAGE_BIT = LD_BIT(3),
+    RIMAGE_USAGE_COLOR_ATTACHMENT_BIT = LD_BIT(4),
 };
 
 enum RShaderType
@@ -105,31 +106,31 @@ enum RShaderType
 using RPipelineStageFlags = uint32_t;
 enum RPipelineStageBit : RPipelineStageFlags
 {
-    RPIPELINE_STAGE_TOP_OF_PIPE_BIT = 1,
-    RPIPELINE_STAGE_DRAW_INDIRECT_BIT = 2,
-    RPIPELINE_STAGE_VERTEX_INPUT_BIT = 4,
-    RPIPELINE_STAGE_VERTEX_SHADER_BIT = 8,
-    RPIPELINE_STAGE_FRAGMENT_SHADER_BIT = 16,
-    RPIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT = 32,
-    RPIPELINE_STAGE_COMPUTE_SHADER_BIT = 64,
-    RPIPELINE_STAGE_TRANSFER_BIT = 128,
-    RPIPELINE_STAGE_BOTTOM_OF_PIPE_BIT = 256,
-    RPIPELINE_STAGE_BITS_ENUM_LAST_BIT = 512,
+    RPIPELINE_STAGE_TOP_OF_PIPE_BIT = LD_BIT(0),
+    RPIPELINE_STAGE_DRAW_INDIRECT_BIT = LD_BIT(1),
+    RPIPELINE_STAGE_VERTEX_INPUT_BIT = LD_BIT(2),
+    RPIPELINE_STAGE_VERTEX_SHADER_BIT = LD_BIT(3),
+    RPIPELINE_STAGE_FRAGMENT_SHADER_BIT = LD_BIT(4),
+    RPIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT = LD_BIT(5),
+    RPIPELINE_STAGE_COMPUTE_SHADER_BIT = LD_BIT(6),
+    RPIPELINE_STAGE_TRANSFER_BIT = LD_BIT(7),
+    RPIPELINE_STAGE_BOTTOM_OF_PIPE_BIT = LD_BIT(8),
+    RPIPELINE_STAGE_BITS_ENUM_LAST_BIT = LD_BIT(9),
 };
 
 using RAccessFlags = uint32_t;
 enum RAccessBit : RAccessFlags
 {
-    RACCESS_INDIRECT_COMMAND_READ_BIT = 1,
-    RACCESS_INDEX_READ_BIT = 2,
-    RACCESS_VERTEX_ATTRIBUTE_READ_BIT = 4,
-    RACCESS_SHADER_READ_BIT = 8,
-    RACCESS_SHADER_WRITE_BIT = 16,
-    RACCESS_COLOR_ATTACHMENT_READ_BIT = 32,
-    RACCESS_COLOR_ATTACHMENT_WRITE_BIT = 64,
-    RACCESS_TRANSFER_READ_BIT = 128,
-    RACCESS_TRANSFER_WRITE_BIT = 256,
-    RACCESS_BITS_ENUM_LAST_BIT = 512,
+    RACCESS_INDIRECT_COMMAND_READ_BIT = LD_BIT(0),
+    RACCESS_INDEX_READ_BIT = LD_BIT(1),
+    RACCESS_VERTEX_ATTRIBUTE_READ_BIT = LD_BIT(2),
+    RACCESS_SHADER_READ_BIT = LD_BIT(3),
+    RACCESS_SHADER_WRITE_BIT = LD_BIT(4),
+    RACCESS_COLOR_ATTACHMENT_READ_BIT = LD_BIT(5),
+    RACCESS_COLOR_ATTACHMENT_WRITE_BIT = LD_BIT(6),
+    RACCESS_TRANSFER_READ_BIT = LD_BIT(7),
+    RACCESS_TRANSFER_WRITE_BIT = LD_BIT(8),
+    RACCESS_BITS_ENUM_LAST_BIT = LD_BIT(9),
 };
 
 enum RPrimitiveTopology
