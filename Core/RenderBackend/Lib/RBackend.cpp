@@ -463,7 +463,7 @@ void RCommandList::cmd_draw(const RDrawInfo& drawI)
     mObj->cmd_draw(mObj, drawI);
 }
 
-void RCommandList::cmd_draw_indices(const RDrawIndexedInfo& drawI)
+void RCommandList::cmd_draw_indexed(const RDrawIndexedInfo& drawI)
 {
     mObj->cmd_draw_indexed(mObj, drawI);
 }

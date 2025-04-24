@@ -77,6 +77,11 @@ uint32_t Application::height() const
     return mWindow ? mWindow->height : 0;
 }
 
+float Application::aspect_ratio() const
+{
+    return mWindow ? (float)mWindow->width / (float)mWindow->height : 0.0f;
+}
+
 bool Application::is_window_open()
 {
     return !glfwWindowShouldClose(mWindow->handle);

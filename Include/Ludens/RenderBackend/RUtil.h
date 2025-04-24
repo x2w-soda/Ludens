@@ -44,5 +44,30 @@ inline RClearColorValue make_clear_color(float r, float g, float b, float a)
     return value;
 }
 
+inline RSetBufferUpdateInfo make_single_set_buffer_udpate_info(RSet set, uint32_t dstBinding, RBindingType bindingType, RBuffer buffer)
+{
+    RSetBufferUpdateInfo updateI{};
+    updateI.set = set;
+    updateI.dstBinding = dstBinding;
+    updateI.dstArrayIndex = 0;
+    updateI.bufferCount = 1;
+    updateI.bufferBindingType = bindingType;
+    updateI.buffers = &buffer;
+    return updateI;
+}
+
+inline RSetImageUpdateInfo make_single_set_image_update_info(RSet set, uint32_t dstBinding, RBindingType bindingType, RImageLayout imageLayout, RImage image)
+{
+    RSetImageUpdateInfo updateI{};
+    updateI.set = set;
+    updateI.dstBinding = dstBinding;
+    updateI.dstArrayIndex = 0;
+    updateI.imageBindingType = bindingType;
+    updateI.imageCount = 1;
+    updateI.imageLayouts = &imageLayout;
+    updateI.images = &image;
+    return updateI;
+}
+
 } // namespace RUtil
 } // namespace LD

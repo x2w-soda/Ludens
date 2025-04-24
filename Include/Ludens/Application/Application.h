@@ -30,6 +30,9 @@ public:
     /// @brief get window height
     uint32_t height() const;
 
+    /// @brief get window aspect ratio
+    float aspect_ratio() const;
+
     bool is_window_open();
     void poll_events();
     RDevice get_rdevice();

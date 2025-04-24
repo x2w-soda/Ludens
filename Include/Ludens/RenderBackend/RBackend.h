@@ -439,7 +439,7 @@ struct RCommandList : RHandle<struct RCommandListObj>
     void cmd_draw(const RDrawInfo& drawI);
 
     /// @brief indexed draw call
-    void cmd_draw_indices(const RDrawIndexedInfo& drawI);
+    void cmd_draw_indexed(const RDrawIndexedInfo& drawI);
 
     /// @brief end the current render pass instance
     void cmd_end_pass();
