@@ -154,6 +154,7 @@ set(TINYGLTF_INSTALL_VENDOR           OFF CACHE BOOL "" FORCE)
 FetchContent_Populate(tinygltf)
 message(STATUS "LUDENS tinygltf SOURCE DIR: ${tinygltf_SOURCE_DIR}")
 add_subdirectory(${tinygltf_SOURCE_DIR} tinygltf_build)
+target_link_libraries(tinygltf PUBLIC stb)
 
 # Find Vulkan
 # - require SPIRV-Cross for reflection
@@ -173,6 +174,7 @@ add_subdirectory(${LUDENS_EXTRA_DIR}/stb)
 # - strict dependency ordering
 # - user facing API in ${LUDENS_INCLUDE_DIR}
 
+add_subdirectory(Core/Header)
 add_subdirectory(Core/System)
 add_subdirectory(Core/Serial)
 add_subdirectory(Core/DSA)
