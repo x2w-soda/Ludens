@@ -95,6 +95,7 @@ RImage RDevice::create_image(const RImageInfo& imageI)
     RImageObj* imageObj = (RImageObj*)heap_malloc(sizeof(RImageObj), MEMORY_USAGE_RENDER);
     imageObj->rid = RObjectID::get();
     imageObj->info = imageI;
+    imageObj->device = *this;
 
     return mObj->create_image(mObj, imageI, imageObj);
 }
