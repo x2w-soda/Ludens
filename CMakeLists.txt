@@ -191,3 +191,23 @@ target_link_directories(LDCore INTERFACE
   LDRenderBackend
   LDApplication
 )
+
+# Doxygen
+
+find_package(Doxygen REQUIRED)
+set(LUDENS_DOXYFILE_IN  "${LUDENS_SOURCE_DIR}/Doxyfile.in")
+set(LUDENS_DOXYFILE_OUT "${CMAKE_BINARY_DIR}/Doxyfile")
+set(LUDENS_DOXYGEN_DIR  "${CMAKE_BINARY_DIR}/Doc")
+message(STATUS "LUDENS DOXFILE IN:          ${LUDENS_DOXYFILE_IN}")
+message(STATUS "LUDENS DOXFILE OUT:         ${LUDENS_DOXYFILE_OUT}")
+message(STATUS "LUDENS DOXGEN DIR:          ${LUDENS_DOXYGEN_DIR}")
+
+set(LUDENS_DOXYGEN_INPUT "\"${LUDENS_SOURCE_DIR}/Core\" \"${LUDENS_SOURCE_DIR}/Include\"")
+
+configure_file(${LUDENS_DOXYFILE_IN} ${LUDENS_DOXYFILE_OUT} @ONLY)
+
+add_custom_target(ld_doxygen
+  COMMAND ${DOXYGEN_EXECUTABLE} ${DOXYFILE_OUT}
+  WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+  COMMENT "generating documentation with Doxygen"
+)
