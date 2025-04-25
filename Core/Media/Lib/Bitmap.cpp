@@ -1,7 +1,9 @@
-#include <Ludens/System/Memory.h>
 #include <Ludens/Media/Bitmap.h>
+#include <Ludens/System/Memory.h>
 #include <cstring>
+#include <filesystem>
 #include <stb/stb_image.h>
+#include <stb/stb_image_write.h>
 
 namespace LD {
 
@@ -91,6 +93,33 @@ char* Bitmap::data()
 const char* Bitmap::data() const
 {
     return (const char*)mObj->data;
+}
+
+bool save_bitmap_to_disk(const BitmapView& view, const char* c_path)
+{
+    namespace fs = std::filesystem;
+
+    fs::path path(c_path);
+    std::string ext = path.extension().string();
+
+    if (ext == ".png")
+    {
+        int success = stbi_write_png(c_path, view.width, view.height, view.channel, view.data, 0);
+        if (!success)
+        {
+            printf("save_bitmap_to_disk: stbi_write_png error\n");
+            return false;
+        }
+        printf("save_bitmap_to_disk: %s\n", c_path);
+        return true;
+    }
+    else
+    {
+        printf("save_bitmap_to_disk: unsupported extension: %s\n", ext.c_str());
+        return false;
+    }
+
+    return false;
 }
 
 } // namespace LD

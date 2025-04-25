@@ -104,6 +104,7 @@ static void vk_command_list_cmd_buffer_memory_barrier(RCommandListObj* self, RPi
 static void vk_command_list_cmd_image_memory_barrier(RCommandListObj* self, RPipelineStageFlags srcStages, RPipelineStageFlags dstStages, const RImageMemoryBarrier& barrier);
 static void vk_command_list_cmd_copy_buffer(RCommandListObj* self, RBuffer srcBuffer, RBuffer dstBuffer, uint32_t regionCount, const RBufferCopy* regions);
 static void vk_command_list_cmd_copy_buffer_to_image(RCommandListObj* self, RBuffer srcBuffer, RImage dstImage, RImageLayout dstImageLayout, uint32_t regionCount, const RBufferImageCopy* regions);
+static void vk_command_list_cmd_copy_image_to_buffer(RCommandListObj* self, RImage srcImage, RImageLayout srcImageLayout, RBuffer dstBuffer, uint32_t regionCount, const RBufferImageCopy* regions);
 static void vk_command_list_cmd_blit_image(RCommandListObj* self, RImage srcImage, RImageLayout srcImageLayout, RImage dstImage, RImageLayout dstImageLayout, uint32_t regionCount, const RImageBlit* regions, RFilter filter);
 
 static RCommandList vk_command_pool_allocate(RCommandPoolObj* self);
@@ -1108,6 +1109,13 @@ static void vk_buffer_map(RBufferObj* self)
     VK_CHECK(vmaMapMemory(deviceObj->vk.vma, self->vk.vma, &self->hostMap));
 }
 
+static void* vk_buffer_map_read(RBufferObj* self, uint64_t offset, uint64_t size)
+{
+    char* src = (char*)self->hostMap + offset;
+
+    return (void*)src;
+}
+
 static void vk_buffer_map_write(RBufferObj* self, uint64_t offset, uint64_t size, const void* data)
 {
     char* dst = (char*)self->hostMap + offset;
@@ -1366,6 +1374,34 @@ static void vk_command_list_cmd_copy_buffer_to_image(RCommandListObj* self, RBuf
     }
 
     vkCmdCopyBufferToImage(self->vk.handle, srcBufferHandle, dstImageHandle, vkLayout, regionCount, copies.data());
+}
+
+static void vk_command_list_cmd_copy_image_to_buffer(RCommandListObj* self, RImage srcImage, RImageLayout srcImageLayout, RBuffer dstBuffer, uint32_t regionCount, const RBufferImageCopy* regions)
+{
+    VkBuffer dstBufferHandle = static_cast<RBufferObj*>(dstBuffer)->vk.handle;
+    VkImage srcImageHandle = static_cast<RImageObj*>(srcImage)->vk.handle;
+    VkImageLayout vkLayout;
+    VkImageAspectFlags vkAspects;
+
+    RUtil::cast_image_layout_vk(srcImageLayout, vkLayout);
+    RUtil::cast_format_image_aspect_vk(srcImage.format(), vkAspects);
+
+    std::vector<VkBufferImageCopy> copies(regionCount);
+    for (uint32_t i = 0; i < regionCount; i++)
+    {
+        copies[i].bufferOffset = regions[i].bufferOffset;
+        copies[i].bufferRowLength = 0;
+        copies[i].bufferImageHeight = 0;
+        copies[i].imageExtent.width = regions[i].imageWidth;
+        copies[i].imageExtent.height = regions[i].imageHeight;
+        copies[i].imageExtent.depth = regions[i].imageDepth;
+        copies[i].imageSubresource.aspectMask = vkAspects;
+        copies[i].imageSubresource.baseArrayLayer = 0;
+        copies[i].imageSubresource.layerCount = 1;
+        copies[i].imageSubresource.mipLevel = 0;
+    }
+
+    vkCmdCopyImageToBuffer(self->vk.handle, srcImageHandle, vkLayout, dstBufferHandle, regionCount, copies.data());
 }
 
 static void vk_command_list_cmd_blit_image(RCommandListObj* self, RImage srcImage, RImageLayout srcImageLayout, RImage dstImage, RImageLayout dstImageLayout, uint32_t regionCount, const RImageBlit* regions, RFilter filter)
@@ -1761,6 +1797,7 @@ static void destroy_queue(RQueue queue)
 void RBufferObj::init_vk_api()
 {
     map = &vk_buffer_map;
+    map_read = &vk_buffer_map_read;
     map_write = &vk_buffer_map_write;
     unmap = &vk_buffer_unmap;
 }
@@ -1785,6 +1822,7 @@ void RCommandListObj::init_vk_api()
     cmd_image_memory_barrier = &vk_command_list_cmd_image_memory_barrier;
     cmd_copy_buffer = &vk_command_list_cmd_copy_buffer;
     cmd_copy_buffer_to_image = &vk_command_list_cmd_copy_buffer_to_image;
+    cmd_copy_image_to_buffer = &vk_command_list_cmd_copy_image_to_buffer;
     cmd_blit_image = &vk_command_list_cmd_blit_image;
 }
 

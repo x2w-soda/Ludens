@@ -61,6 +61,7 @@ struct RBufferObj
     void* hostMap;
 
     void (*map)(RBufferObj* self);
+    void* (*map_read)(RBufferObj* self, uint64_t offset, uint64_t size);
     void (*map_write)(RBufferObj* self, uint64_t offset, uint64_t size, const void* data);
     void (*unmap)(RBufferObj* self);
 
@@ -135,6 +136,7 @@ struct RCommandListObj
     void (*cmd_image_memory_barrier)(RCommandListObj* self, RPipelineStageFlags srcStages, RPipelineStageFlags dstStages, const RImageMemoryBarrier& barrier);
     void (*cmd_copy_buffer)(RCommandListObj* self, RBuffer srcBuffer, RBuffer dstBuffer, uint32_t regionCount, const RBufferCopy* regions);
     void (*cmd_copy_buffer_to_image)(RCommandListObj* self, RBuffer srcBuffer, RImage dstImage, RImageLayout dstImageLayout, uint32_t regionCount, const RBufferImageCopy* regions);
+    void (*cmd_copy_image_to_buffer)(RCommandListObj* self, RImage srcImage, RImageLayout srcImageLayout, RBuffer dstBuffer, uint32_t regionCount, const RBufferImageCopy* regions);
     void (*cmd_blit_image)(RCommandListObj* self, RImage srcImage, RImageLayout srcImageLayout, RImage dstImage, RImageLayout dstImageLayout, uint32_t regionCount, const RImageBlit* regions, RFilter filter);
 
     void init_vk_api();

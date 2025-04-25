@@ -362,6 +362,14 @@ void RBuffer::map()
     mObj->map(mObj);
 }
 
+void* RBuffer::map_read(uint32_t offset, uint64_t size)
+{
+    LD_ASSERT(mObj->hostMap != nullptr);
+    LD_ASSERT(offset + size <= mObj->info.size);
+
+    return mObj->map_read(mObj, offset, size);
+}
+
 void RBuffer::map_write(uint64_t offset, uint64_t size, const void* data)
 {
     LD_ASSERT(mObj->hostMap != nullptr);
@@ -498,6 +506,14 @@ void RCommandList::cmd_copy_buffer_to_image(RBuffer srcBuffer, RImage dstImage, 
     LD_ASSERT(dstImage.usage() & RIMAGE_USAGE_TRANSFER_DST_BIT);
 
     mObj->cmd_copy_buffer_to_image(mObj, srcBuffer, dstImage, dstImageLayout, regionCount, regions);
+}
+
+void RCommandList::cmd_copy_image_to_buffer(RImage srcImage, RImageLayout srcImageLayout, RBuffer dstBuffer, uint32_t regionCount, const RBufferImageCopy* regions)
+{
+    LD_ASSERT(srcImage.usage() & RIMAGE_USAGE_TRANSFER_SRC_BIT);
+    LD_ASSERT(dstBuffer.usage() & RBUFFER_USAGE_TRANSFER_DST_BIT);
+
+    mObj->cmd_copy_image_to_buffer(mObj, srcImage, srcImageLayout, dstBuffer, regionCount, regions);
 }
 
 void RCommandList::cmd_blit_image(RImage srcImage, RImageLayout srcImageLayout, RImage dstImage, RImageLayout dstImageLayout, uint32_t regionCount, const RImageBlit* regions, RFilter filter)

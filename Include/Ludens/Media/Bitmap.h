@@ -43,4 +43,6 @@ struct Bitmap : Handle<struct BitmapObj>
     const char* data() const;
 };
 
+bool save_bitmap_to_disk(const BitmapView& view, const char* path);
+
 } // namespace LD

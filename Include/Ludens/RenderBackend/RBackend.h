@@ -87,6 +87,7 @@ struct RBuffer : RHandle<struct RBufferObj>
     RBufferUsageFlags usage() const;
 
     void map();
+    void* map_read(uint32_t offset, uint64_t size);
     void map_write(uint64_t offset, uint64_t size, const void* data);
     void unmap();
 };
@@ -455,6 +456,9 @@ struct RCommandList : RHandle<struct RCommandListObj>
 
     /// @brief a transfer command to copy from buffer to image
     void cmd_copy_buffer_to_image(RBuffer srcBuffer, RImage dstImage, RImageLayout dstImageLayout, uint32_t regionCount, const RBufferImageCopy* regions);
+
+    /// @brief a transfer command to copy from image to buffer
+    void cmd_copy_image_to_buffer(RImage srcImage, RImageLayout srcImageLayout, RBuffer dstBuffer, uint32_t regionCount, const RBufferImageCopy* regions);
 
     /// @brief a transfer command to copy between images, potentially performing format conversion
     void cmd_blit_image(RImage srcImage, RImageLayout srcImageLayout, RImage dstImage, RImageLayout dstImageLayout, uint32_t regionCount, const RImageBlit* regions, RFilter filter);
