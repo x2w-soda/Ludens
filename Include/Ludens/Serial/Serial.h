@@ -30,7 +30,10 @@ public:
         mBuffer.write(bytes, 4);
     }
 
-    inline void write_f32(float f) { write_u32(*(uint32_t*)&f); }
+    inline void write_f32(float f)
+    {
+        mBuffer.write((char*)&f, 4);
+    }
 
 	inline void read_u16(uint16_t& u16)
 	{
@@ -52,7 +55,11 @@ public:
         mReadPos += 4;
     }
 
-    inline void read_f32(float& f) { read_u32(*(uint32_t*)&f); }
+    inline void read_f32(float& f)
+    {
+        f = *(float*)mBuffer.read(mReadPos);
+        mReadPos += 4;
+    }
 
     inline size_t size() const { return mBuffer.size(); }
 
