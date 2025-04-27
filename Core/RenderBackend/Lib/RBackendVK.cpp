@@ -527,13 +527,13 @@ static void vk_device_create_pass(RDeviceObj* self, const RPassInfo& passI, RPas
     };
 
     uint32_t dependencyCount = 0;
-    VkSubpassDependency subpassDep[2];
+    VkSubpassDependency subpassDep;
 
-    if (passI.srcDependency)
-        RUtil::cast_pass_dependency_vk(*passI.srcDependency, VK_SUBPASS_EXTERNAL, 0, subpassDep[dependencyCount++]);
-
-    if (passI.dstDependency)
-        RUtil::cast_pass_dependency_vk(*passI.dstDependency, 0, VK_SUBPASS_EXTERNAL, subpassDep[dependencyCount++]);
+    if (passI.dependency)
+    {
+        dependencyCount = 1;
+        RUtil::cast_pass_dependency_vk(*passI.dependency, VK_SUBPASS_EXTERNAL, 0, subpassDep);
+    }
 
     VkRenderPassCreateInfo renderPassCI{
         .sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
@@ -542,7 +542,7 @@ static void vk_device_create_pass(RDeviceObj* self, const RPassInfo& passI, RPas
         .subpassCount = 1,
         .pSubpasses = &subpassDesc,
         .dependencyCount = dependencyCount,
-        .pDependencies = subpassDep,
+        .pDependencies = &subpassDep,
     };
 
     VK_CHECK(vkCreateRenderPass(self->vk.device, &renderPassCI, nullptr, &obj->vk.handle));

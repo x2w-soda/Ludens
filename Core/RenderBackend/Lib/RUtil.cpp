@@ -180,11 +180,15 @@ void cast_pass_color_attachment_vk(const RPassColorAttachment& inAttachment, VkA
     outDesc.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
     outDesc.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 
+    VkImageLayout vkPassLayout;
+
     cast_format_vk(inAttachment.colorFormat, outDesc.format);
     cast_attachment_load_op_vk(inAttachment.colorLoadOp, outDesc.loadOp);
     cast_attachment_store_op_vk(inAttachment.colorStoreOp, outDesc.storeOp);
     cast_image_layout_vk(inAttachment.initialLayout, outDesc.initialLayout);
-    cast_image_layout_vk(inAttachment.finalLayout, outDesc.finalLayout);
+    cast_image_layout_vk(inAttachment.passLayout, vkPassLayout);
+
+    outDesc.finalLayout = vkPassLayout;
 }
 
 void cast_pass_depth_stencil_attachment_vk(const RPassDepthStencilAttachment& inAttachment, VkAttachmentDescription& outDesc)
@@ -192,12 +196,16 @@ void cast_pass_depth_stencil_attachment_vk(const RPassDepthStencilAttachment& in
     outDesc.flags = 0;
     outDesc.samples = VK_SAMPLE_COUNT_1_BIT;
 
+    VkImageLayout vkPassLayout;
+
     cast_attachment_load_op_vk(inAttachment.depthLoadOp, outDesc.loadOp);
     cast_attachment_store_op_vk(inAttachment.depthStoreOp, outDesc.storeOp);
     cast_attachment_load_op_vk(inAttachment.stencilLoadOp, outDesc.stencilLoadOp);
     cast_attachment_store_op_vk(inAttachment.stencilStoreOp, outDesc.stencilStoreOp);
     cast_image_layout_vk(inAttachment.initialLayout, outDesc.initialLayout);
-    cast_image_layout_vk(inAttachment.finalLayout, outDesc.finalLayout);
+    cast_image_layout_vk(inAttachment.passLayout, vkPassLayout);
+
+    outDesc.finalLayout = vkPassLayout;
 }
 
 // clang-format off

@@ -144,7 +144,6 @@ struct RPassColorAttachment
     RAttachmentStoreOp colorStoreOp;
     RImageLayout initialLayout; /// the color layout after previous render pass, or RIMAGE_LAYOUT_UNDEFINED
     RImageLayout passLayout;    /// the color layout to transition to when the render pass begins
-    RImageLayout finalLayout;   /// the color layout to transition to after the render pass ends
 };
 
 /// @brief description of how a depth stencil attachment is used in a render pass
@@ -157,7 +156,6 @@ struct RPassDepthStencilAttachment
     RAttachmentStoreOp stencilStoreOp;
     RImageLayout initialLayout; /// the depth stencil layout after previous render pass, or RIMAGE_LAYOUT_UNDEFINED
     RImageLayout passLayout;    /// the depth stencil layout to transition to when the render pass begins
-    RImageLayout finalLayout;   /// the depth stencil layout to transition to when after render pass ends
 };
 
 struct RPassDependency
@@ -174,8 +172,9 @@ struct RPassInfo
     uint32_t colorAttachmentCount;
     RPassColorAttachment* colorAttachments;
     RPassDepthStencilAttachment* depthStencilAttachment;
-    RPassDependency* srcDependency; /// if not null, describes how we depend on the previous (src) render pass
-    RPassDependency* dstDependency; /// if not null, describes how the next (dst) render pass depends on us
+    /// render pass dependency protects the attachments and transitions the image layouts,
+    /// comparable to an image memory barrier.
+    RPassDependency* dependency;
 };
 
 /// @brief framebuffer creation info

@@ -518,8 +518,6 @@ uint32_t hash32_pass_info(const RPassInfo& passI)
         str += std::to_string((int)attachment->initialLayout);
         str.push_back('p');
         str += std::to_string((int)attachment->passLayout);
-        str.push_back('f');
-        str += std::to_string((int)attachment->finalLayout);
     }
 
     if (passI.depthStencilAttachment)
@@ -539,26 +537,11 @@ uint32_t hash32_pass_info(const RPassInfo& passI)
         str += std::to_string((int)attachment->initialLayout);
         str.push_back('p');
         str += std::to_string((int)attachment->passLayout);
-        str.push_back('f');
-        str += std::to_string((int)attachment->finalLayout);
     }
 
-    if (passI.srcDependency)
+    if (passI.dependency)
     {
-        const RPassDependency* dep = passI.srcDependency;
-        str.push_back('S');
-        str += std::to_string(dep->srcStageMask);
-        str.push_back('_');
-        str += std::to_string(dep->dstStageMask);
-        str.push_back('_');
-        str += std::to_string(dep->srcAccessMask);
-        str.push_back('_');
-        str += std::to_string(dep->dstAccessMask);
-    }
-
-    if (passI.dstDependency)
-    {
-        const RPassDependency* dep = passI.dstDependency;
+        const RPassDependency* dep = passI.dependency;
         str.push_back('D');
         str += std::to_string(dep->srcStageMask);
         str.push_back('_');
