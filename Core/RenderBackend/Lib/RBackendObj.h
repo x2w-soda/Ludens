@@ -208,8 +208,9 @@ struct RSetPoolObj
     uint64_t rid;
     LinearAllocator setLA;
     RDeviceObj* deviceObj;
+    RSetLayoutObj* layoutObj;
 
-    RSet (*allocate)(RSetPoolObj* self, const RSetLayoutInfo& layout, RSetObj* setObj);
+    RSet (*allocate)(RSetPoolObj* self, RSetObj* setObj);
     void (*reset)(RSetPoolObj* self);
 
     void init_vk_api();

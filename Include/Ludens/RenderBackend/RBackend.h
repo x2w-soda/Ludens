@@ -238,13 +238,6 @@ struct RSetLayoutInfo
     RSetBindingInfo* bindings;
 };
 
-/// @brief describes a type of resource that can be allocated from set pool
-struct RSetPoolResource
-{
-    RBindingType type;
-    uint32_t count;
-};
-
 /// @brief resource set handle
 struct RSet : RHandle<struct RSetObj>
 {
@@ -253,16 +246,15 @@ struct RSet : RHandle<struct RSetObj>
 /// @brief resource set pool creation info
 struct RSetPoolInfo
 {
+    RSetLayoutInfo layout;
     uint32_t maxSets;
-    uint32_t resourceCount;
-    RSetPoolResource* resources;
 };
 
 /// @brief resource set pool handle, used to allocate resource sets
 struct RSetPool : RHandle<struct RSetPoolObj>
 {
     /// @brief allocate a resource set
-    RSet allocate(const RSetLayoutInfo& layout);
+    RSet allocate();
 
     /// @brief returns all allocated set to the pool
     /// @warning all set handles previously allocated will become out of scope

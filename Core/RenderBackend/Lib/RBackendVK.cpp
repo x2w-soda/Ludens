@@ -108,7 +108,7 @@ static void vk_command_list_cmd_blit_image(RCommandListObj* self, RImage srcImag
 
 static RCommandList vk_command_pool_allocate(RCommandPoolObj* self);
 
-static RSet vk_set_pool_allocate(RSetPoolObj* self, const RSetLayoutInfo& layout, RSetObj* setObj);
+static RSet vk_set_pool_allocate(RSetPoolObj* self, RSetObj* setObj);
 static void vk_set_pool_reset(RSetPoolObj* self);
 
 static void vk_queue_wait_idle(RQueueObj* self);
@@ -650,19 +650,20 @@ static RSetPool vk_device_create_set_pool(RDeviceObj* self, const RSetPoolInfo& 
     poolObj->init_vk_api();
     poolObj->vk.device = self->vk.device;
 
-    std::vector<VkDescriptorPoolSize> poolSizes(poolI.resourceCount);
-    for (uint32_t i = 0; i < poolI.resourceCount; i++)
+    std::vector<VkDescriptorPoolSize> poolSizes(poolI.layout.bindingCount);
+
+    for (uint32_t i = 0; i < poolI.layout.bindingCount; i++)
     {
         VkDescriptorType vkType;
-        RUtil::cast_binding_type_vk(poolI.resources[i].type, vkType);
+        RUtil::cast_binding_type_vk(poolI.layout.bindings[i].type, vkType);
         poolSizes[i].type = vkType;
-        poolSizes[i].descriptorCount = poolI.resources[i].count;
+        poolSizes[i].descriptorCount = poolI.maxSets;
     }
 
     VkDescriptorPoolCreateInfo poolCI{
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
         .maxSets = poolI.maxSets,
-        .poolSizeCount = poolI.resourceCount,
+        .poolSizeCount = (uint32_t)poolSizes.size(),
         .pPoolSizes = poolSizes.data(),
     };
 
@@ -1454,15 +1455,13 @@ static RCommandList vk_command_pool_allocate(RCommandPoolObj* self)
     return {obj};
 }
 
-static RSet vk_set_pool_allocate(RSetPoolObj* self, const RSetLayoutInfo& layout, RSetObj* setObj)
+static RSet vk_set_pool_allocate(RSetPoolObj* self, RSetObj* setObj)
 {
-    RSetLayoutObj* layoutObj = self->deviceObj->get_or_create_set_layout_obj(layout);
-
     VkDescriptorSetAllocateInfo setAI{
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
         .descriptorPool = self->vk.handle,
         .descriptorSetCount = 1,
-        .pSetLayouts = &layoutObj->vk.handle,
+        .pSetLayouts = &self->layoutObj->vk.handle,
     };
 
     VK_CHECK(vkAllocateDescriptorSets(self->vk.device, &setAI, &setObj->vk.handle));

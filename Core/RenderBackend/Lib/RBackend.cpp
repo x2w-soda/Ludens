@@ -192,6 +192,7 @@ RSetPool RDevice::create_set_pool(const RSetPoolInfo& poolI)
     RSetPoolObj* poolObj = (RSetPoolObj*)heap_malloc(sizeof(RSetPoolObj), MEMORY_USAGE_RENDER);
     poolObj->rid = RObjectID::get();
     poolObj->deviceObj = mObj;
+    poolObj->layoutObj = mObj->get_or_create_set_layout_obj(poolI.layout);
     new (&poolObj->setLA) LinearAllocator();
     poolObj->setLA.create(sizeof(RSetObj) * poolI.maxSets, MEMORY_USAGE_RENDER);
 
@@ -625,11 +626,11 @@ uint32_t hash32_pipeline_rasterization_state(const RPipelineRasterizationInfo& r
     return hash32_FNV_1a(str.data(), str.size());
 }
 
-RSet RSetPool::allocate(const RSetLayoutInfo& layout)
+RSet RSetPool::allocate()
 {
     RSetObj* setObj = (RSetObj*)mObj->setLA.allocate(sizeof(RSetObj));
 
-    return mObj->allocate(mObj, layout, setObj);
+    return mObj->allocate(mObj, setObj);
 }
 
 void RSetPool::reset()
