@@ -107,7 +107,7 @@ struct RFramebufferObj
     uint64_t rid;
     uint32_t width;
     uint32_t height;
-    RPass pass;
+    RPassObj* passObj;
 
     struct
     {
@@ -115,17 +115,21 @@ struct RFramebufferObj
     } vk;
 };
 
+struct RPipelineLayoutObj;
+
 struct RCommandListObj
 {
     uint64_t rid;
+    RDeviceObj* deviceObj;
+
     void (*free)(RCommandListObj* self);
     void (*begin)(RCommandListObj* self, bool oneTimeSubmit);
     void (*end)(RCommandListObj* self);
     void (*cmd_begin_pass)(RCommandListObj* self, const RPassBeginInfo& passBI);
     void (*cmd_bind_graphics_pipeline)(RCommandListObj* self, RPipeline pipeline);
-    void (*cmd_bind_graphics_sets)(RCommandListObj* self, RPipelineLayout layout, uint32_t firstSet, uint32_t setCount, RSet* sets);
+    void (*cmd_bind_graphics_sets)(RCommandListObj* self, RPipelineLayoutObj* layoutObj, uint32_t firstSet, uint32_t setCount, RSet* sets);
     void (*cmd_bind_compute_pipeline)(RCommandListObj* self, RPipeline pipeline);
-    void (*cmd_bind_compute_sets)(RCommandListObj* self, RPipelineLayout layout, uint32_t firstSet, uint32_t setCount, RSet* sets);
+    void (*cmd_bind_compute_sets)(RCommandListObj* self, RPipelineLayoutObj* layoutObj, uint32_t firstSet, uint32_t setCount, RSet* sets);
     void (*cmd_bind_vertex_buffers)(RCommandListObj* self, uint32_t firstBinding, uint32_t bindingCount, RBuffer* buffers);
     void (*cmd_bind_index_buffer)(RCommandListObj* self, RBuffer buffer, RIndexType indexType);
     void (*cmd_dispatch)(RCommandListObj* self, uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ);
@@ -153,6 +157,8 @@ struct RCommandListObj
 struct RCommandPoolObj
 {
     uint64_t rid;
+    RDeviceObj* deviceObj;
+
     RCommandList (*allocate)(RCommandPoolObj* self);
 
     void init_vk_api();
@@ -181,6 +187,7 @@ struct RSetLayoutObj
 {
     uint64_t rid;
     uint32_t hash;
+    RDeviceObj* deviceObj;
 
     struct
     {
@@ -200,8 +207,9 @@ struct RSetPoolObj
 {
     uint64_t rid;
     LinearAllocator setLA;
+    RDeviceObj* deviceObj;
 
-    RSet (*allocate)(RSetPoolObj* self, RSetLayout layout, RSetObj* setObj);
+    RSet (*allocate)(RSetPoolObj* self, const RSetLayoutInfo& layout, RSetObj* setObj);
     void (*reset)(RSetPoolObj* self);
 
     void init_vk_api();
@@ -217,8 +225,8 @@ struct RPipelineLayoutObj
 {
     uint64_t rid;
     uint32_t hash;
-    uint32_t set_count;
-    RSetLayout set_layouts[PIPELINE_LAYOUT_MAX_RESOURCE_SETS];
+    uint32_t setCount;
+    RSetLayoutObj* setLayoutObjs[PIPELINE_LAYOUT_MAX_RESOURCE_SETS];
 
     struct
     {
@@ -229,7 +237,7 @@ struct RPipelineLayoutObj
 struct RPipelineObj
 {
     uint64_t rid;
-    RPipelineLayout layout;
+    RPipelineLayoutObj* layoutObj;
 
     struct
     {
@@ -288,8 +296,8 @@ struct RDeviceObj
     RImage (*create_image)(RDeviceObj* self, const RImageInfo& imageI, RImageObj* imageObj);
     void (*destroy_image)(RDeviceObj* self, RImage image);
 
-    RPass (*create_pass)(RDeviceObj* self, const RPassInfo& passI, RPassObj* passObj);
-    void (*destroy_pass)(RDeviceObj* self, RPass pass);
+    void (*create_pass)(RDeviceObj* self, const RPassInfo& passI, RPassObj* passObj);
+    void (*destroy_pass)(RDeviceObj* self, RPassObj* passObj);
 
     RFramebuffer (*create_framebuffer)(RDeviceObj* self, const RFramebufferInfo& fbI, RFramebufferObj* framebufferObj);
     void (*destroy_framebuffer)(RDeviceObj* self, RFramebuffer fb);
@@ -303,11 +311,11 @@ struct RDeviceObj
     RSetPool (*create_set_pool)(RDeviceObj* self, const RSetPoolInfo& poolI, RSetPoolObj* poolObj);
     void (*destroy_set_pool)(RDeviceObj* self, RSetPool pool);
 
-    RSetLayout (*create_set_layout)(RDeviceObj* self, const RSetLayoutInfo& layoutI, RSetLayoutObj* layoutObj);
-    void (*destroy_set_layout)(RDeviceObj* self, RSetLayout layout);
+    void (*create_set_layout)(RDeviceObj* self, const RSetLayoutInfo& layoutI, RSetLayoutObj* layoutObj);
+    void (*destroy_set_layout)(RDeviceObj* self, RSetLayoutObj* layout);
 
-    RPipelineLayout (*create_pipeline_layout)(RDeviceObj* self, const RPipelineLayoutInfo& layoutI, RPipelineLayoutObj* layoutObj);
-    void (*destroy_pipeline_layout)(RDeviceObj* self, RPipelineLayout layout);
+    void (*create_pipeline_layout)(RDeviceObj* self, const RPipelineLayoutInfo& layoutI, RPipelineLayoutObj* layoutObj);
+    void (*destroy_pipeline_layout)(RDeviceObj* self, RPipelineLayoutObj* layoutObj);
 
     RPipeline (*create_pipeline)(RDeviceObj* self, const RPipelineInfo& pipelineI, RPipelineObj* pipelineObj);
     RPipeline (*create_compute_pipeline)(RDeviceObj* self, const RComputePipelineInfo& pipelineI, RPipelineObj* pipelineObj);
@@ -326,6 +334,10 @@ struct RDeviceObj
     void (*wait_idle)(RDeviceObj* self);
 
     void init_vk_api();
+
+    RPassObj* get_or_create_pass_obj(const RPassInfo& passI);
+    RSetLayoutObj* get_or_create_set_layout_obj(const RSetLayoutInfo& layoutI);
+    RPipelineLayoutObj* get_or_create_pipeline_layout_obj(const RPipelineLayoutInfo& layoutI);
 
     struct
     {

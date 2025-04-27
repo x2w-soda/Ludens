@@ -178,16 +178,6 @@ struct RPassInfo
     RPassDependency* dstDependency; /// if not null, describes how the next (dst) render pass depends on us
 };
 
-/// @brief render pass handle
-struct RPass : RHandle<struct RPassObj>
-{
-    uint32_t hash() const;
-
-    uint32_t color_attachment_count() const;
-    
-    bool has_depth_stencil_attachment() const;
-};
-
 /// @brief framebuffer creation info
 struct RFramebufferInfo
 {
@@ -196,7 +186,7 @@ struct RFramebufferInfo
     uint32_t colorAttachmentCount;
     RImage* colorAttachments;
     RImage depthStencilAttachment;
-    RPass pass;
+    RPassInfo pass;
 };
 
 /// @brief framebuffer handle
@@ -204,7 +194,6 @@ struct RFramebuffer : RHandle<struct RFramebufferObj>
 {
     uint32_t width() const;
     uint32_t height() const;
-    RPass pass() const;
 };
 
 union RClearColorValue {
@@ -219,7 +208,7 @@ struct RPassBeginInfo
     uint32_t clearColorCount;
     RClearColorValue* clearColors;
     RFramebuffer framebuffer;
-    RPass pass;
+    RPassInfo pass;
 };
 
 /// @brief shader module creation info
@@ -242,17 +231,11 @@ struct RSetBindingInfo
     uint32_t arrayCount; /// if greater than one, the binding array size
 };
 
-/// @brief resource set layout creation info
+/// @brief resource set layout info
 struct RSetLayoutInfo
 {
     uint32_t bindingCount;
     RSetBindingInfo* bindings;
-};
-
-/// @brief resource set layout handle, describes all resource bindings within the resource set
-struct RSetLayout : RHandle<struct RSetLayoutObj>
-{
-    uint32_t hash() const;
 };
 
 /// @brief describes a type of resource that can be allocated from set pool
@@ -279,7 +262,7 @@ struct RSetPoolInfo
 struct RSetPool : RHandle<struct RSetPoolObj>
 {
     /// @brief allocate a resource set
-    RSet allocate(RSetLayout layout);
+    RSet allocate(const RSetLayoutInfo& layout);
 
     /// @brief returns all allocated set to the pool
     /// @warning all set handles previously allocated will become out of scope
@@ -290,19 +273,7 @@ struct RSetPool : RHandle<struct RSetPoolObj>
 struct RPipelineLayoutInfo
 {
     uint32_t setLayoutCount; /// number of sets the pipeline layout
-    RSetLayout* setLayouts;  /// layout of each set, starting at index zero
-};
-
-/// @brief pipeline layout handle
-struct RPipelineLayout : RHandle<struct RPipelineLayoutObj>
-{
-    uint32_t hash() const;
-
-    /// @brief get number of resource set layouts
-    uint32_t resource_set_count() const;
-
-    /// @brief get the layout of the resource set at index
-    RSetLayout resource_set_layout(int32_t index) const;
+    RSetLayoutInfo* setLayouts;  /// layout of each set, starting at index zero
 };
 
 struct RVertexAttribute
@@ -355,8 +326,8 @@ struct RPipelineInfo
     uint32_t vertexBindingCount;
     RVertexBinding* vertexBindings;
     RPrimitiveTopology primitiveTopology;
-    RPipelineLayout layout;
-    RPass pass;
+    const RPipelineLayoutInfo& layout;
+    RPassInfo pass;
     RPipelineRasterizationInfo rasterization;
     RPipelineBlendInfo blend;
 };
@@ -364,15 +335,13 @@ struct RPipelineInfo
 /// @brief compute pipeline creation info
 struct RComputePipelineInfo
 {
-    RPipelineLayout layout;
+    const RPipelineLayoutInfo& layout;
     RShader shader;
 };
 
 /// @brief graphics pipeline handle
 struct RPipeline : RHandle<struct RPipelineObj>
 {
-    /// @brief get the layout of the pipeline
-    RPipelineLayout layout() const;
 };
 
 /// @brief vertex draw call information
@@ -423,11 +392,11 @@ struct RCommandList : RHandle<struct RCommandListObj>
 
     void cmd_bind_graphics_pipeline(RPipeline pipeline);
 
-    void cmd_bind_graphics_sets(RPipelineLayout layout, uint32_t firstSet, uint32_t setCount, RSet* sets);
+    void cmd_bind_graphics_sets(const RPipelineLayoutInfo& layout, uint32_t firstSet, uint32_t setCount, RSet* sets);
 
     void cmd_bind_compute_pipeline(RPipeline pipeline);
 
-    void cmd_bind_compute_sets(RPipelineLayout layout, uint32_t firstSet, uint32_t setCount, RSet* sets);
+    void cmd_bind_compute_sets(const RPipelineLayoutInfo& layout, uint32_t firstSet, uint32_t setCount, RSet* sets);
 
     void cmd_bind_vertex_buffers(uint32_t firstBinding, uint32_t bindingCount, RBuffer* buffers);
 
@@ -547,9 +516,6 @@ struct RDevice : RHandle<struct RDeviceObj>
     RImage create_image(const RImageInfo& imageI);
     void destroy_image(RImage image);
 
-    RPass create_pass(const RPassInfo& passI);
-    void destroy_pass(RPass pass);
-
     RFramebuffer create_framebuffer(const RFramebufferInfo& fbI);
     void destroy_framebuffer(RFramebuffer fbI);
 
@@ -561,12 +527,6 @@ struct RDevice : RHandle<struct RDeviceObj>
 
     RSetPool create_set_pool(const RSetPoolInfo& poolI);
     void destroy_set_pool(RSetPool pool);
-
-    RSetLayout create_set_layout(const RSetLayoutInfo& layoutI);
-    void destroy_set_layout(RSetLayout layout);
-
-    RPipelineLayout create_pipeline_layout(const RPipelineLayoutInfo& layoutI);
-    void destroy_pipeline_layout(RPipelineLayout layout);
 
     RPipeline create_pipeline(const RPipelineInfo& pipelineI);
     RPipeline create_compute_pipeline(const RComputePipelineInfo& pipelineI);

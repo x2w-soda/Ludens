@@ -4,7 +4,6 @@
 #include <Ludens/Application/Input.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/RenderBackend/RBackend.h>
-#include <Ludens/RenderBackend/RFactory.h>
 
 namespace LD {
 

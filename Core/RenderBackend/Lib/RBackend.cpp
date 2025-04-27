@@ -4,9 +4,13 @@
 #include <Ludens/Header/Assert.h>
 #include <Ludens/RenderBackend/RBackend.h>
 #include <Ludens/System/Memory.h>
+#include <unordered_map>
 
 namespace LD {
 
+std::unordered_map<uint32_t, RPassObj*> sPasses;
+std::unordered_map<uint32_t, RSetLayoutObj*> sSetLayouts;
+std::unordered_map<uint32_t, RPipelineLayoutObj*> sPipelineLayouts;
 uint64_t RObjectID::sCounter = 0;
 
 void RQueue::wait_idle()
@@ -34,7 +38,30 @@ RDevice RDevice::create(const RDeviceInfo& info)
 
 void RDevice::destroy(RDevice device)
 {
-    if (device.mObj->backend == RDEVICE_BACKEND_VULKAN)
+    RDeviceObj* obj = device.mObj;
+
+    for (auto& ite : sPipelineLayouts)
+    {
+        obj->destroy_pipeline_layout(obj, ite.second);
+        heap_free(ite.second);
+    }
+    sPipelineLayouts.clear();
+
+    for (auto& ite : sSetLayouts)
+    {
+        obj->destroy_set_layout(obj, ite.second);
+        heap_free(ite.second);
+    }
+    sSetLayouts.clear();
+
+    for (auto& ite : sPasses)
+    {
+        obj->destroy_pass(obj, ite.second);
+        heap_free(ite.second);
+    }
+    sPasses.clear();
+
+    if (obj->backend == RDEVICE_BACKEND_VULKAN)
         vk_destroy_device(device.mObj);
     else
         LD_UNREACHABLE;
@@ -107,31 +134,13 @@ void RDevice::destroy_image(RImage image)
     heap_free((RImageObj*)image);
 }
 
-RPass RDevice::create_pass(const RPassInfo& passI)
-{
-    RPassObj* passObj = (RPassObj*)heap_malloc(sizeof(RPassObj), MEMORY_USAGE_RENDER);
-    passObj->rid = RObjectID::get();
-    passObj->hash = hash32_pass_info(passI);
-    passObj->colorAttachmentCount = passI.colorAttachmentCount;
-    passObj->hasDepthStencilAttachment = passI.depthStencilAttachment != nullptr;
-
-    return mObj->create_pass(mObj, passI, passObj);
-}
-
-void RDevice::destroy_pass(RPass pass)
-{
-    mObj->destroy_pass(mObj, pass);
-
-    heap_free((RPassObj*)pass);
-}
-
 RFramebuffer RDevice::create_framebuffer(const RFramebufferInfo& fbI)
 {
     RFramebufferObj* framebufferObj = (RFramebufferObj*)heap_malloc(sizeof(RFramebufferObj), MEMORY_USAGE_RENDER);
     framebufferObj->rid = RObjectID::get();
     framebufferObj->width = fbI.width;
     framebufferObj->height = fbI.height;
-    framebufferObj->pass = fbI.pass;
+    framebufferObj->passObj = mObj->get_or_create_pass_obj(fbI.pass);
 
     return mObj->create_framebuffer(mObj, fbI, framebufferObj);
 }
@@ -147,6 +156,7 @@ RCommandPool RDevice::create_command_pool(const RCommandPoolInfo& poolI)
 {
     RCommandPoolObj* poolObj = (RCommandPoolObj*)heap_malloc(sizeof(RCommandPoolObj), MEMORY_USAGE_RENDER);
     poolObj->rid = RObjectID::get();
+    poolObj->deviceObj = mObj;
 
     return mObj->create_command_pool(mObj, poolI, poolObj);
 }
@@ -181,6 +191,7 @@ RSetPool RDevice::create_set_pool(const RSetPoolInfo& poolI)
 {
     RSetPoolObj* poolObj = (RSetPoolObj*)heap_malloc(sizeof(RSetPoolObj), MEMORY_USAGE_RENDER);
     poolObj->rid = RObjectID::get();
+    poolObj->deviceObj = mObj;
     new (&poolObj->setLA) LinearAllocator();
     poolObj->setLA.create(sizeof(RSetObj) * poolI.maxSets, MEMORY_USAGE_RENDER);
 
@@ -198,49 +209,11 @@ void RDevice::destroy_set_pool(RSetPool pool)
     heap_free((RSetPoolObj*)pool);
 }
 
-RSetLayout RDevice::create_set_layout(const RSetLayoutInfo& layoutI)
-{
-    RSetLayoutObj* layoutObj = (RSetLayoutObj*)heap_malloc(sizeof(RSetLayoutObj), MEMORY_USAGE_RENDER);
-    layoutObj->rid;
-    layoutObj->hash = hash32_set_layout_info(layoutI);
-
-    return mObj->create_set_layout(mObj, layoutI, layoutObj);
-}
-
-void RDevice::destroy_set_layout(RSetLayout layout)
-{
-    mObj->destroy_set_layout(mObj, layout);
-
-    heap_free((RSetLayoutObj*)layout);
-}
-
-RPipelineLayout RDevice::create_pipeline_layout(const RPipelineLayoutInfo& layoutI)
-{
-    LD_ASSERT(layoutI.setLayoutCount <= PIPELINE_LAYOUT_MAX_RESOURCE_SETS);
-
-    RPipelineLayoutObj* layoutObj = (RPipelineLayoutObj*)heap_malloc(sizeof(RPipelineLayoutObj), MEMORY_USAGE_RENDER);
-    layoutObj->rid = RObjectID::get();
-    layoutObj->hash = hash32_pipeline_layout_info(layoutI);
-    layoutObj->set_count = layoutI.setLayoutCount;
-
-    for (uint32_t i = 0; i < layoutObj->set_count; i++)
-        layoutObj->set_layouts[i] = layoutI.setLayouts[i];
-
-    return mObj->create_pipeline_layout(mObj, layoutI, layoutObj);
-}
-
-void RDevice::destroy_pipeline_layout(RPipelineLayout layout)
-{
-    mObj->destroy_pipeline_layout(mObj, layout);
-
-    heap_free((RPipelineLayoutObj*)layout);
-}
-
 RPipeline RDevice::create_pipeline(const RPipelineInfo& pipelineI)
 {
     RPipelineObj* pipelineObj = (RPipelineObj*)heap_malloc(sizeof(RPipelineObj), MEMORY_USAGE_RENDER);
     pipelineObj->rid = RObjectID::get();
-    pipelineObj->layout = pipelineI.layout;
+    pipelineObj->layoutObj = mObj->get_or_create_pipeline_layout_obj(pipelineI.layout);
 
     return mObj->create_pipeline(mObj, pipelineI, pipelineObj);
 }
@@ -249,7 +222,7 @@ RPipeline RDevice::create_compute_pipeline(const RComputePipelineInfo& pipelineI
 {
     RPipelineObj* pipelineObj = (RPipelineObj*)heap_malloc(sizeof(RPipelineObj), MEMORY_USAGE_RENDER);
     pipelineObj->rid = RObjectID::get();
-    pipelineObj->layout = pipelineI.layout;
+    pipelineObj->layoutObj = mObj->get_or_create_pipeline_layout_obj(pipelineI.layout);
 
     return mObj->create_compute_pipeline(mObj, pipelineI, pipelineObj);
 }
@@ -397,11 +370,6 @@ uint32_t RFramebuffer::height() const
     return mObj->height;
 }
 
-RPass RFramebuffer::pass() const
-{
-    return mObj->pass;
-}
-
 void RCommandList::free()
 {
     mObj->poolObj->commandBufferCount--;
@@ -432,9 +400,11 @@ void RCommandList::cmd_bind_graphics_pipeline(RPipeline pipeline)
     mObj->cmd_bind_graphics_pipeline(mObj, pipeline);
 }
 
-void RCommandList::cmd_bind_graphics_sets(RPipelineLayout layout, uint32_t firstSet, uint32_t setCount, RSet* sets)
+void RCommandList::cmd_bind_graphics_sets(const RPipelineLayoutInfo& layout, uint32_t firstSet, uint32_t setCount, RSet* sets)
 {
-    mObj->cmd_bind_graphics_sets(mObj, layout, firstSet, setCount, sets);
+    RPipelineLayoutObj* layoutObj = mObj->deviceObj->get_or_create_pipeline_layout_obj(layout);
+
+    mObj->cmd_bind_graphics_sets(mObj, layoutObj, firstSet, setCount, sets);
 }
 
 void RCommandList::cmd_bind_compute_pipeline(RPipeline pipeline)
@@ -442,9 +412,11 @@ void RCommandList::cmd_bind_compute_pipeline(RPipeline pipeline)
     mObj->cmd_bind_compute_pipeline(mObj, pipeline);
 }
 
-void RCommandList::cmd_bind_compute_sets(RPipelineLayout layout, uint32_t firstSet, uint32_t setCount, RSet* sets)
+void RCommandList::cmd_bind_compute_sets(const RPipelineLayoutInfo& layout, uint32_t firstSet, uint32_t setCount, RSet* sets)
 {
-    mObj->cmd_bind_compute_sets(mObj, layout, firstSet, setCount, sets);
+    RPipelineLayoutObj* layoutObj = mObj->deviceObj->get_or_create_pipeline_layout_obj(layout);
+
+    mObj->cmd_bind_compute_sets(mObj, layoutObj, firstSet, setCount, sets);
 }
 
 void RCommandList::cmd_bind_vertex_buffers(uint32_t firstBinding, uint32_t bindingCount, RBuffer* buffers)
@@ -626,10 +598,10 @@ uint32_t hash32_pipeline_layout_info(const RPipelineLayoutInfo& layoutI)
     // NOTE: if a pipeline layout only has a single set layout,
     //       the pipeline layout hash will be equivalent to
     //       the set layout hash, but this shouldn't be an issue.
-    std::size_t hash = layoutI.setLayouts[0].hash();
+    std::size_t hash = (std::size_t)hash32_set_layout_info(layoutI.setLayouts[0]);
 
     for (uint32_t i = 1; i < layoutI.setLayoutCount; i++)
-        hash_combine(hash, layoutI.setLayouts[i].hash());
+        hash_combine(hash, hash32_set_layout_info(layoutI.setLayouts[i]));
 
     // TODO: this truncates since std::size_t is most likely 8 bytes on 64-bit systems
     return (uint32_t)hash;
@@ -653,27 +625,7 @@ uint32_t hash32_pipeline_rasterization_state(const RPipelineRasterizationInfo& r
     return hash32_FNV_1a(str.data(), str.size());
 }
 
-uint32_t RPass::hash() const
-{
-    return mObj->hash;
-}
-
-uint32_t RPass::color_attachment_count() const
-{
-    return mObj->colorAttachmentCount;
-}
-
-bool RPass::has_depth_stencil_attachment() const
-{
-    return mObj->hasDepthStencilAttachment;
-}
-
-uint32_t RSetLayout::hash() const
-{
-    return mObj->hash;
-}
-
-RSet RSetPool::allocate(RSetLayout layout)
+RSet RSetPool::allocate(const RSetLayoutInfo& layout)
 {
     RSetObj* setObj = (RSetObj*)mObj->setLA.allocate(sizeof(RSetObj));
 
@@ -687,27 +639,60 @@ void RSetPool::reset()
     return mObj->reset(mObj);
 }
 
-uint32_t RPipelineLayout::hash() const
+RPassObj* RDeviceObj::get_or_create_pass_obj(const RPassInfo& passI)
 {
-    return mObj->hash;
+    uint32_t passHash = hash32_pass_info(passI);
+
+    if (!sPasses.contains(passHash))
+    {
+        RPassObj* passObj = (RPassObj*)heap_malloc(sizeof(RPassObj), MEMORY_USAGE_RENDER);
+        passObj->rid = RObjectID::get();
+        passObj->hash = passHash;
+        passObj->colorAttachmentCount = passI.colorAttachmentCount;
+        passObj->hasDepthStencilAttachment = passI.depthStencilAttachment != nullptr;
+        this->create_pass(this, passI, passObj);
+        sPasses[passHash] = passObj;
+    }
+
+    return sPasses[passHash];
 }
 
-uint32_t RPipelineLayout::resource_set_count() const
+RSetLayoutObj* RDeviceObj::get_or_create_set_layout_obj(const RSetLayoutInfo& layoutI)
 {
-    return mObj->set_count;
+    uint32_t layoutHash = hash32_set_layout_info(layoutI);
+
+    if (!sSetLayouts.contains(layoutHash))
+    {
+        RSetLayoutObj* layoutObj = (RSetLayoutObj*)heap_malloc(sizeof(RSetLayoutObj), MEMORY_USAGE_RENDER);
+        layoutObj->rid = RObjectID::get();
+        layoutObj->hash = layoutHash;
+        layoutObj->deviceObj = this;
+        this->create_set_layout(this, layoutI, layoutObj);
+        sSetLayouts[layoutHash] = layoutObj;
+    }
+
+    return sSetLayouts[layoutHash];
 }
 
-RSetLayout RPipelineLayout::resource_set_layout(int32_t index) const
+RPipelineLayoutObj* RDeviceObj::get_or_create_pipeline_layout_obj(const RPipelineLayoutInfo& layoutI)
 {
-    if (index >= mObj->set_count)
-        return {};
+    LD_ASSERT(layoutI.setLayoutCount <= PIPELINE_LAYOUT_MAX_RESOURCE_SETS);
 
-    return mObj->set_layouts[index];
-}
+    uint32_t layoutHash = hash32_pipeline_layout_info(layoutI);
 
-RPipelineLayout RPipeline::layout() const
-{
-    return mObj->layout;
+    if (!sPipelineLayouts.contains(layoutHash))
+    {
+        RPipelineLayoutObj* layoutObj = (RPipelineLayoutObj*)heap_malloc(sizeof(RPipelineLayoutObj), MEMORY_USAGE_RENDER);
+        layoutObj->rid = RObjectID::get();
+        layoutObj->hash = layoutHash;
+        layoutObj->setCount = layoutI.setLayoutCount;
+        for (uint32_t i = 0; i < layoutObj->setCount; i++)
+            layoutObj->setLayoutObjs[i] = this->get_or_create_set_layout_obj(layoutI.setLayouts[i]);
+        this->create_pipeline_layout(this, layoutI, layoutObj);
+        sPipelineLayouts[layoutHash] = layoutObj;
+    }
+
+    return sPipelineLayouts[layoutHash];
 }
 
 } // namespace LD

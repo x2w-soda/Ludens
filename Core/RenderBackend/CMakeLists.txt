@@ -27,7 +27,6 @@ set(LUDENS_VULKAN_SDK_LIBS
 set(MODULE_INCLUDE
   "${LUDENS_INCLUDE_DIR}/Ludens/RenderBackend/RBackend.h"
   "${LUDENS_INCLUDE_DIR}/Ludens/RenderBackend/RBackendEnum.h"
-  "${LUDENS_INCLUDE_DIR}/Ludens/RenderBackend/RFactory.h"
   "${LUDENS_INCLUDE_DIR}/Ludens/RenderBackend/RUtil.h"
 )
 
@@ -35,7 +34,6 @@ set(MODULE_LIB
   Lib/RBackendObj.h
 	Lib/RBackendVK.cpp
   Lib/RBackend.cpp
-  Lib/RFactory.cpp
   Lib/RShaderCompiler.h
   Lib/RShaderCompiler.cpp
   Lib/RUtilInternal.h

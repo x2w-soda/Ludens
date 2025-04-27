@@ -3,7 +3,6 @@
 #include "RUtilInternal.h"
 #include <Ludens/Header/Assert.h>
 #include <Ludens/RenderBackend/RBackend.h>
-#include <Ludens/RenderBackend/RFactory.h>
 #include <Ludens/System/Memory.h>
 #include <array>
 #include <cstring>
@@ -55,8 +54,8 @@ static RBuffer vk_device_create_buffer(RDeviceObj* self, const RBufferInfo& buff
 static void vk_device_destroy_buffer(RDeviceObj* self, RBuffer buffer);
 static RImage vk_device_create_image(RDeviceObj* self, const RImageInfo& imageI, RImageObj* obj);
 static void vk_device_destroy_image(RDeviceObj* self, RImage image);
-static RPass vk_device_create_pass(RDeviceObj* self, const RPassInfo& passI, RPassObj* obj);
-static void vk_device_destroy_pass(RDeviceObj* self, RPass pass);
+static void vk_device_create_pass(RDeviceObj* self, const RPassInfo& passI, RPassObj* obj);
+static void vk_device_destroy_pass(RDeviceObj* self, RPassObj* obj);
 static RFramebuffer vk_device_create_framebuffer(RDeviceObj* self, const RFramebufferInfo& fbI, RFramebufferObj* obj);
 static void vk_device_destroy_framebuffer(RDeviceObj* self, RFramebuffer fb);
 static RCommandPool vk_device_create_command_pool(RDeviceObj* self, const RCommandPoolInfo& poolI, RCommandPoolObj* obj);
@@ -65,10 +64,10 @@ static RShader vk_device_create_shader(RDeviceObj* self, const RShaderInfo& shad
 static void vk_device_destroy_shader(RDeviceObj* self, RShader shader);
 static RSetPool vk_device_create_set_pool(RDeviceObj* self, const RSetPoolInfo& poolI, RSetPoolObj* obj);
 static void vk_device_destroy_set_pool(RDeviceObj* self, RSetPool pool);
-static RSetLayout vk_device_create_set_layout(RDeviceObj* self, const RSetLayoutInfo& layoutI, RSetLayoutObj* obj);
-static void vk_device_destroy_set_layout(RDeviceObj* self, RSetLayout layout);
-static RPipelineLayout vk_device_create_pipeline_layout(RDeviceObj* self, const RPipelineLayoutInfo& layoutI, RPipelineLayoutObj* obj);
-static void vk_device_destroy_pipeline_layout(RDeviceObj* self, RPipelineLayout layout);
+static void vk_device_create_set_layout(RDeviceObj* self, const RSetLayoutInfo& layoutI, RSetLayoutObj* obj);
+static void vk_device_destroy_set_layout(RDeviceObj* self, RSetLayoutObj* layoutObj);
+static void vk_device_create_pipeline_layout(RDeviceObj* self, const RPipelineLayoutInfo& layoutI, RPipelineLayoutObj* obj);
+static void vk_device_destroy_pipeline_layout(RDeviceObj* self, RPipelineLayoutObj* layoutObj);
 static RPipeline vk_device_create_pipeline(RDeviceObj* self, const RPipelineInfo& pipelineI, RPipelineObj* obj);
 static RPipeline vk_device_create_compute_pipeline(RDeviceObj* self, const RComputePipelineInfo& pipelineI, RPipelineObj* pipelineObj);
 static void vk_device_destroy_pipeline(RDeviceObj* self, RPipeline pipeline);
@@ -91,9 +90,9 @@ static void vk_command_list_begin(RCommandListObj* self, bool oneTimeSubmit);
 static void vk_command_list_end(RCommandListObj* self);
 static void vk_command_list_cmd_begin_pass(RCommandListObj* self, const RPassBeginInfo& passBI);
 static void vk_command_list_cmd_bind_graphics_pipeline(RCommandListObj* self, RPipeline pipeline);
-static void vk_command_list_cmd_bind_graphics_sets(RCommandListObj* self, RPipelineLayout layout, uint32_t setStart, uint32_t setCount, RSet* sets);
+static void vk_command_list_cmd_bind_graphics_sets(RCommandListObj* self, RPipelineLayoutObj* layoutObj, uint32_t setStart, uint32_t setCount, RSet* sets);
 static void vk_command_list_cmd_bind_compute_pipeline(RCommandListObj* self, RPipeline pipeline);
-static void vk_command_list_cmd_bind_compute_sets(RCommandListObj* self, RPipelineLayout layout, uint32_t setStart, uint32_t setCount, RSet* sets);
+static void vk_command_list_cmd_bind_compute_sets(RCommandListObj* self, RPipelineLayoutObj* layoutObj, uint32_t setStart, uint32_t setCount, RSet* sets);
 static void vk_command_list_cmd_bind_vertex_buffers(RCommandListObj* self, uint32_t firstBinding, uint32_t bindingCount, RBuffer* buffers);
 static void vk_command_list_cmd_bind_index_buffer(RCommandListObj* self, RBuffer buffer, RIndexType indexType);
 static void vk_command_list_cmd_dispatch(RCommandListObj* self, uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ);
@@ -109,7 +108,7 @@ static void vk_command_list_cmd_blit_image(RCommandListObj* self, RImage srcImag
 
 static RCommandList vk_command_pool_allocate(RCommandPoolObj* self);
 
-static RSet vk_set_pool_allocate(RSetPoolObj* self, RSetLayout layout, RSetObj* setObj);
+static RSet vk_set_pool_allocate(RSetPoolObj* self, const RSetLayoutInfo& layout, RSetObj* setObj);
 static void vk_set_pool_reset(RSetPoolObj* self);
 
 static void vk_queue_wait_idle(RQueueObj* self);
@@ -291,12 +290,6 @@ void vk_create_device(RDeviceObj* self, const RDeviceInfo& deviceI)
 void vk_destroy_device(RDeviceObj* self)
 {
     vkDeviceWaitIdle(self->vk.device);
-
-    // if the user of RenderBackend module has leveraged the RFactory.h API,
-    // we destroy all the cached layouts here.
-    RPipelineLayoutFactory::destroy_all({self});
-    RSetLayoutFactory::destroy_all({self});
-    RPassFactory::destroy_all({self});
 
     for (uint32_t i = 0; i < FRAMES_IN_FLIGHT; i++)
     {
@@ -492,7 +485,7 @@ static void vk_device_destroy_image(RDeviceObj* self, RImage image)
 // NOTE: the RPass is simplified to contain only a single Vulkan subpass,
 //       multiple subpasses may be useful for tiled renderers commonly
 //       found in mobile devices, but we keep the render pass API simple for now.
-static RPass vk_device_create_pass(RDeviceObj* self, const RPassInfo& passI, RPassObj* obj)
+static void vk_device_create_pass(RDeviceObj* self, const RPassInfo& passI, RPassObj* obj)
 {
     std::vector<VkAttachmentDescription> attachmentD(passI.colorAttachmentCount);
     std::vector<VkAttachmentReference> colorAttachmentRefs(passI.colorAttachmentCount);
@@ -552,15 +545,11 @@ static RPass vk_device_create_pass(RDeviceObj* self, const RPassInfo& passI, RPa
     };
 
     VK_CHECK(vkCreateRenderPass(self->vk.device, &renderPassCI, nullptr, &obj->vk.handle));
-
-    return {obj};
 }
 
-static void vk_device_destroy_pass(RDeviceObj* self, RPass pass)
+static void vk_device_destroy_pass(RDeviceObj* self, RPassObj* passObj)
 {
-    RPassObj* obj = (RPassObj*)pass;
-
-    vkDestroyRenderPass(self->vk.device, obj->vk.handle, nullptr);
+    vkDestroyRenderPass(self->vk.device, passObj->vk.handle, nullptr);
 }
 
 static RFramebuffer vk_device_create_framebuffer(RDeviceObj* self, const RFramebufferInfo& fbI, RFramebufferObj* obj)
@@ -579,9 +568,11 @@ static RFramebuffer vk_device_create_framebuffer(RDeviceObj* self, const RFrameb
         attachments.push_back(imageObj->vk.viewHandle);
     }
 
+    RPassObj* passObj = self->get_or_create_pass_obj(fbI.pass);
+
     VkFramebufferCreateInfo fbCI{
         .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
-        .renderPass = static_cast<const RPassObj*>(fbI.pass)->vk.handle,
+        .renderPass = passObj->vk.handle,
         .attachmentCount = (uint32_t)attachments.size(),
         .pAttachments = attachments.data(),
         .width = fbI.width,
@@ -687,7 +678,7 @@ static void vk_device_destroy_set_pool(RDeviceObj* self, RSetPool pool)
     vkDestroyDescriptorPool(self->vk.device, poolObj->vk.handle, nullptr);
 }
 
-RSetLayout vk_device_create_set_layout(RDeviceObj* self, const RSetLayoutInfo& layoutI, RSetLayoutObj* obj)
+void vk_device_create_set_layout(RDeviceObj* self, const RSetLayoutInfo& layoutI, RSetLayoutObj* obj)
 {
     std::vector<VkDescriptorSetLayoutBinding> bindings(layoutI.bindingCount);
     for (uint32_t i = 0; i < layoutI.bindingCount; i++)
@@ -700,18 +691,14 @@ RSetLayout vk_device_create_set_layout(RDeviceObj* self, const RSetLayoutInfo& l
     };
 
     VK_CHECK(vkCreateDescriptorSetLayout(self->vk.device, &layoutCI, nullptr, &obj->vk.handle));
-
-    return {obj};
 }
 
-void vk_device_destroy_set_layout(RDeviceObj* self, RSetLayout layout)
+void vk_device_destroy_set_layout(RDeviceObj* self, RSetLayoutObj* layoutObj)
 {
-    RSetLayoutObj* layoutObj = (RSetLayoutObj*)layout;
-
     vkDestroyDescriptorSetLayout(self->vk.device, layoutObj->vk.handle, nullptr);
 }
 
-RPipelineLayout vk_device_create_pipeline_layout(RDeviceObj* self, const RPipelineLayoutInfo& layoutI, RPipelineLayoutObj* layoutObj)
+void vk_device_create_pipeline_layout(RDeviceObj* self, const RPipelineLayoutInfo& layoutI, RPipelineLayoutObj* layoutObj)
 {
     // NOTE: Here we make the simplification that all pipelines use the minimum 128 bytes
     //       of push constant as a single range. Different pipelines will alias these bytes as
@@ -724,8 +711,8 @@ RPipelineLayout vk_device_create_pipeline_layout(RDeviceObj* self, const RPipeli
     };
 
     std::vector<VkDescriptorSetLayout> setLayoutHandles(layoutI.setLayoutCount);
-    for (uint32_t i = 0; i < layoutI.setLayoutCount; i++)
-        setLayoutHandles[i] = static_cast<RSetLayoutObj*>(layoutI.setLayouts[i])->vk.handle;
+    for (uint32_t i = 0; i < layoutObj->setCount; i++)
+        setLayoutHandles[i] = layoutObj->setLayoutObjs[i]->vk.handle;
 
     VkPipelineLayoutCreateInfo layoutCI{
         .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
@@ -736,14 +723,10 @@ RPipelineLayout vk_device_create_pipeline_layout(RDeviceObj* self, const RPipeli
     };
 
     VK_CHECK(vkCreatePipelineLayout(self->vk.device, &layoutCI, nullptr, &layoutObj->vk.handle));
-
-    return {layoutObj};
 }
 
-static void vk_device_destroy_pipeline_layout(RDeviceObj* self, RPipelineLayout layout)
+static void vk_device_destroy_pipeline_layout(RDeviceObj* self, RPipelineLayoutObj* layoutObj)
 {
-    RPipelineLayoutObj* layoutObj = (RPipelineLayoutObj*)layout;
-
     vkDestroyPipelineLayout(self->vk.device, layoutObj->vk.handle, nullptr);
 }
 
@@ -882,6 +865,9 @@ RPipeline vk_device_create_pipeline(RDeviceObj* self, const RPipelineInfo& pipel
         .pDynamicStates = dynamicStates.data(),
     };
 
+    RPipelineLayoutObj* layoutObj = self->get_or_create_pipeline_layout_obj(pipelineI.layout);
+    RPassObj* passObj = self->get_or_create_pass_obj(pipelineI.pass);
+
     VkGraphicsPipelineCreateInfo pipelineCI{
         .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
         .stageCount = (uint32_t)stageCI.size(),
@@ -895,8 +881,8 @@ RPipeline vk_device_create_pipeline(RDeviceObj* self, const RPipelineInfo& pipel
         .pDepthStencilState = &depthStencilSCI,
         .pColorBlendState = &colorBlendSCI,
         .pDynamicState = &dynamicSCI,
-        .layout = static_cast<const RPipelineLayoutObj*>(pipelineI.layout)->vk.handle,
-        .renderPass = static_cast<const RPassObj*>(pipelineI.pass)->vk.handle,
+        .layout = layoutObj->vk.handle,
+        .renderPass = passObj->vk.handle,
     };
 
     VK_CHECK(vkCreateGraphicsPipelines(self->vk.device, VK_NULL_HANDLE, 1, &pipelineCI, nullptr, &pipelineObj->vk.handle));
@@ -907,7 +893,7 @@ RPipeline vk_device_create_pipeline(RDeviceObj* self, const RPipelineInfo& pipel
 static RPipeline vk_device_create_compute_pipeline(RDeviceObj* self, const RComputePipelineInfo& pipelineI, RPipelineObj* pipelineObj)
 {
     const RShaderObj* shaderObj = static_cast<const RShaderObj*>(pipelineI.shader);
-    const RPipelineLayoutObj* layoutObj = static_cast<const RPipelineLayoutObj*>(pipelineI.layout);
+    RPipelineLayoutObj* layoutObj = self->get_or_create_pipeline_layout_obj(pipelineI.layout);
 
     VkPipelineShaderStageCreateInfo stage{
         .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
@@ -1166,9 +1152,11 @@ static void vk_command_list_cmd_begin_pass(RCommandListObj* self, const RPassBeg
     for (uint32_t i = 0; i < passBI.clearColorCount; i++)
         RUtil::cast_clear_color_value_vk(passBI.clearColors[i], clearValues[i].color);
 
+    RPassObj* passObj = self->deviceObj->get_or_create_pass_obj(passBI.pass);
+
     VkRenderPassBeginInfo vkBI{
         .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-        .renderPass = static_cast<const RPassObj*>(passBI.pass)->vk.handle,
+        .renderPass = passObj->vk.handle,
         .framebuffer = static_cast<const RFramebufferObj*>(passBI.framebuffer)->vk.handle,
         .renderArea = renderArea,
         .clearValueCount = (uint32_t)clearValues.size(),
@@ -1194,9 +1182,8 @@ static void vk_command_list_cmd_bind_graphics_pipeline(RCommandListObj* self, RP
     vkCmdBindPipeline(self->vk.handle, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineObj->vk.handle);
 }
 
-static void vk_command_list_cmd_bind_graphics_sets(RCommandListObj* self, RPipelineLayout layout, uint32_t setStart, uint32_t setCount, RSet* sets)
+static void vk_command_list_cmd_bind_graphics_sets(RCommandListObj* self, RPipelineLayoutObj* layoutObj, uint32_t setStart, uint32_t setCount, RSet* sets)
 {
-    RPipelineLayoutObj* layoutObj = (RPipelineLayoutObj*)layout;
     std::vector<VkDescriptorSet> setHandles(setCount);
     for (uint32_t i = 0; i < setCount; i++)
         setHandles[i] = static_cast<RSetObj*>(sets[i])->vk.handle;
@@ -1211,9 +1198,8 @@ static void vk_command_list_cmd_bind_compute_pipeline(RCommandListObj* self, RPi
     vkCmdBindPipeline(self->vk.handle, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineObj->vk.handle);
 }
 
-static void vk_command_list_cmd_bind_compute_sets(RCommandListObj* self, RPipelineLayout layout, uint32_t setStart, uint32_t setCount, RSet* sets)
+static void vk_command_list_cmd_bind_compute_sets(RCommandListObj* self, RPipelineLayoutObj* layoutObj, uint32_t setStart, uint32_t setCount, RSet* sets)
 {
-    RPipelineLayoutObj* layoutObj = (RPipelineLayoutObj*)layout;
     std::vector<VkDescriptorSet> setHandles(setCount);
     for (uint32_t i = 0; i < setCount; i++)
         setHandles[i] = static_cast<RSetObj*>(sets[i])->vk.handle;
@@ -1460,6 +1446,7 @@ static RCommandList vk_command_pool_allocate(RCommandPoolObj* self)
     RCommandListObj* obj = (RCommandListObj*)heap_malloc(sizeof(RCommandListObj), MEMORY_USAGE_RENDER);
     obj->init_vk_api();
     obj->vk.device = self->vk.device;
+    obj->deviceObj = self->deviceObj;
     obj->poolObj = self;
 
     VK_CHECK(vkAllocateCommandBuffers(self->vk.device, &bufferAI, &obj->vk.handle));
@@ -1467,15 +1454,15 @@ static RCommandList vk_command_pool_allocate(RCommandPoolObj* self)
     return {obj};
 }
 
-static RSet vk_set_pool_allocate(RSetPoolObj* self, RSetLayout layout, RSetObj* setObj)
+static RSet vk_set_pool_allocate(RSetPoolObj* self, const RSetLayoutInfo& layout, RSetObj* setObj)
 {
-    VkDescriptorSetLayout layoutHandle = static_cast<RSetLayoutObj*>(layout)->vk.handle;
+    RSetLayoutObj* layoutObj = self->deviceObj->get_or_create_set_layout_obj(layout);
 
     VkDescriptorSetAllocateInfo setAI{
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
         .descriptorPool = self->vk.handle,
         .descriptorSetCount = 1,
-        .pSetLayouts = &layoutHandle,
+        .pSetLayouts = &layoutObj->vk.handle,
     };
 
     VK_CHECK(vkAllocateDescriptorSets(self->vk.device, &setAI, &setObj->vk.handle));
