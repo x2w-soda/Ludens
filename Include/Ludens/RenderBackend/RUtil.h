@@ -69,5 +69,25 @@ inline RSetImageUpdateInfo make_single_set_image_update_info(RSet set, uint32_t 
     return updateI;
 }
 
+inline RImageMemoryBarrier make_image_memory_barrier(RImage image, RImageLayout oldLayout, RImageLayout newLayout, RAccessFlags srcAccess, RAccessFlags dstAccess)
+{
+    return {
+        .image = image,
+        .oldLayout = oldLayout,
+        .newLayout = newLayout,
+        .srcAccess = srcAccess,
+        .dstAccess = dstAccess,
+    };
+}
+
+inline RBufferMemoryBarrier make_buffer_memory_barrier(RBuffer buffer, RAccessFlags srcAccess, RAccessFlags dstAccess)
+{
+    return {
+        .buffer = buffer,
+        .srcAccess = srcAccess,
+        .dstAccess = dstAccess,
+    };
+}
+
 } // namespace RUtil
 } // namespace LD

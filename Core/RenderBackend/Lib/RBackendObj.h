@@ -102,9 +102,27 @@ struct RPassObj
     } vk;
 };
 
+// NOTE: Framebuffer is managed internally by the render backend,
+//       user does not manage framebuffer lifetimes. While the
+//       backend graphics API does need to create and invalidate
+//       framebuffers, the user may lazily begin render passes and
+//       recreate images at will.
+struct RFramebufferInfo
+{
+    uint32_t width;
+    uint32_t height;
+    uint32_t colorAttachmentCount;
+    RImage* colorAttachments;
+    RImage depthStencilAttachment;
+    RPassInfo pass;
+};
+
+uint32_t hash32_framebuffer_info(const RFramebufferInfo& framebufferI);
+
 struct RFramebufferObj
 {
     uint64_t rid;
+    uint32_t hash;
     uint32_t width;
     uint32_t height;
     RPassObj* passObj;
@@ -299,8 +317,8 @@ struct RDeviceObj
     void (*create_pass)(RDeviceObj* self, const RPassInfo& passI, RPassObj* passObj);
     void (*destroy_pass)(RDeviceObj* self, RPassObj* passObj);
 
-    RFramebuffer (*create_framebuffer)(RDeviceObj* self, const RFramebufferInfo& fbI, RFramebufferObj* framebufferObj);
-    void (*destroy_framebuffer)(RDeviceObj* self, RFramebuffer fb);
+    void (*create_framebuffer)(RDeviceObj* self, const RFramebufferInfo& fbI, RFramebufferObj* framebufferObj);
+    void (*destroy_framebuffer)(RDeviceObj* self, RFramebufferObj* framebufferObj);
 
     RCommandPool (*create_command_pool)(RDeviceObj* self, const RCommandPoolInfo& poolI, RCommandPoolObj* poolObj);
     void (*destroy_command_pool)(RDeviceObj* self, RCommandPool pool);
@@ -327,6 +345,8 @@ struct RDeviceObj
 
     uint32_t (*next_frame)(RDeviceObj* self, RSemaphore& imageAcquired, RSemaphore& presentReady, RFence& frameComplete);
     void (*present_frame)(RDeviceObj* self);
+    RFormat (*get_swapchain_color_format)(RDeviceObj* self);
+    RFormat (*get_swapchain_depth_stencil_format)(RDeviceObj* self);
     RImage (*get_swapchain_color_attachment)(RDeviceObj* self, uint32_t frameIdx);
     uint32_t (*get_swapchain_image_count)(RDeviceObj* self);
     uint32_t (*get_frames_in_flight_count)(RDeviceObj* self);
@@ -338,6 +358,7 @@ struct RDeviceObj
     RPassObj* get_or_create_pass_obj(const RPassInfo& passI);
     RSetLayoutObj* get_or_create_set_layout_obj(const RSetLayoutInfo& layoutI);
     RPipelineLayoutObj* get_or_create_pipeline_layout_obj(const RPipelineLayoutInfo& layoutI);
+    RFramebufferObj* get_or_create_framebuffer_obj(const RFramebufferInfo& framebufferI);
 
     struct
     {

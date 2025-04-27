@@ -56,8 +56,8 @@ static RImage vk_device_create_image(RDeviceObj* self, const RImageInfo& imageI,
 static void vk_device_destroy_image(RDeviceObj* self, RImage image);
 static void vk_device_create_pass(RDeviceObj* self, const RPassInfo& passI, RPassObj* obj);
 static void vk_device_destroy_pass(RDeviceObj* self, RPassObj* obj);
-static RFramebuffer vk_device_create_framebuffer(RDeviceObj* self, const RFramebufferInfo& fbI, RFramebufferObj* obj);
-static void vk_device_destroy_framebuffer(RDeviceObj* self, RFramebuffer fb);
+static void vk_device_create_framebuffer(RDeviceObj* self, const RFramebufferInfo& fbI, RFramebufferObj* obj);
+static void vk_device_destroy_framebuffer(RDeviceObj* self, RFramebufferObj* obj);
 static RCommandPool vk_device_create_command_pool(RDeviceObj* self, const RCommandPoolInfo& poolI, RCommandPoolObj* obj);
 static void vk_device_destroy_command_pool(RDeviceObj* self, RCommandPool pool);
 static RShader vk_device_create_shader(RDeviceObj* self, const RShaderInfo& shaderI, RShaderObj* obj);
@@ -75,7 +75,6 @@ static void vk_device_update_set_images(RDeviceObj* self, uint32_t updateCount, 
 static void vk_device_update_set_buffers(RDeviceObj* self, uint32_t updateCount, const RSetBufferUpdateInfo* updates);
 static uint32_t vk_device_next_frame(RDeviceObj* self, RSemaphore& imageAcquired, RSemaphore& presentReady, RFence& frameComplete);
 static void vk_device_present_frame(RDeviceObj* self);
-static RImage vk_device_get_swapchain_color_attachment(RDeviceObj* self, uint32_t imageIdx);
 static uint32_t vk_device_get_swapchain_image_count(RDeviceObj* self);
 static uint32_t vk_device_get_frames_in_flight_count(RDeviceObj* self);
 static RQueue vk_device_get_graphics_queue(RDeviceObj* self);
@@ -553,7 +552,7 @@ static void vk_device_destroy_pass(RDeviceObj* self, RPassObj* passObj)
     vkDestroyRenderPass(self->vk.device, passObj->vk.handle, nullptr);
 }
 
-static RFramebuffer vk_device_create_framebuffer(RDeviceObj* self, const RFramebufferInfo& fbI, RFramebufferObj* obj)
+static void vk_device_create_framebuffer(RDeviceObj* self, const RFramebufferInfo& fbI, RFramebufferObj* obj)
 {
     uint32_t attachmentCount = fbI.colorAttachmentCount;
     std::vector<VkImageView> attachments(attachmentCount);
@@ -569,11 +568,9 @@ static RFramebuffer vk_device_create_framebuffer(RDeviceObj* self, const RFrameb
         attachments.push_back(imageObj->vk.viewHandle);
     }
 
-    RPassObj* passObj = self->get_or_create_pass_obj(fbI.pass);
-
     VkFramebufferCreateInfo fbCI{
         .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
-        .renderPass = passObj->vk.handle,
+        .renderPass = obj->passObj->vk.handle,
         .attachmentCount = (uint32_t)attachments.size(),
         .pAttachments = attachments.data(),
         .width = fbI.width,
@@ -581,14 +578,10 @@ static RFramebuffer vk_device_create_framebuffer(RDeviceObj* self, const RFrameb
         .layers = 1,
     };
     VK_CHECK(vkCreateFramebuffer(self->vk.device, &fbCI, nullptr, &obj->vk.handle));
-
-    return {obj};
 }
 
-static void vk_device_destroy_framebuffer(RDeviceObj* self, RFramebuffer fb)
+static void vk_device_destroy_framebuffer(RDeviceObj* self, RFramebufferObj* obj)
 {
-    RFramebufferObj* obj = (RFramebufferObj*)fb;
-
     vkDestroyFramebuffer(self->vk.device, obj->vk.handle, nullptr);
 }
 
@@ -1142,23 +1135,36 @@ static void vk_command_list_end(RCommandListObj* self)
 
 static void vk_command_list_cmd_begin_pass(RCommandListObj* self, const RPassBeginInfo& passBI)
 {
+    RFramebufferInfo framebufferI{
+        .width = passBI.width,
+        .height = passBI.height,
+        .colorAttachmentCount = passBI.colorAttachmentCount,
+        .colorAttachments = passBI.colorAttachments,
+        .depthStencilAttachment = passBI.depthStencilAttachment,
+        .pass = passBI.pass,
+    };
+
+    RFramebufferObj* framebufferObj = self->deviceObj->get_or_create_framebuffer_obj(framebufferI);
+
     VkRect2D renderArea;
     renderArea.offset.x = 0;
     renderArea.offset.y = 0;
-    renderArea.extent.width = passBI.framebuffer.width();
-    renderArea.extent.height = passBI.framebuffer.height();
+    renderArea.extent.width = passBI.width;
+    renderArea.extent.height = passBI.height;
 
-    std::vector<VkClearValue> clearValues(passBI.clearColorCount);
-
-    for (uint32_t i = 0; i < passBI.clearColorCount; i++)
-        RUtil::cast_clear_color_value_vk(passBI.clearColors[i], clearValues[i].color);
+    std::vector<VkClearValue> clearValues(passBI.colorAttachmentCount);
+    for (uint32_t i = 0; i < passBI.colorAttachmentCount; i++)
+    {
+        if (passBI.pass.colorAttachments[i].colorLoadOp == RATTACHMENT_LOAD_OP_CLEAR)
+            RUtil::cast_clear_color_value_vk(passBI.clearColors[i], clearValues[i].color);
+    }
 
     RPassObj* passObj = self->deviceObj->get_or_create_pass_obj(passBI.pass);
 
     VkRenderPassBeginInfo vkBI{
         .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
         .renderPass = passObj->vk.handle,
-        .framebuffer = static_cast<const RFramebufferObj*>(passBI.framebuffer)->vk.handle,
+        .framebuffer = framebufferObj->vk.handle,
         .renderArea = renderArea,
         .clearValueCount = (uint32_t)clearValues.size(),
         .pClearValues = clearValues.data(),

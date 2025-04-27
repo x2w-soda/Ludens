@@ -11,6 +11,7 @@ namespace LD {
 std::unordered_map<uint32_t, RPassObj*> sPasses;
 std::unordered_map<uint32_t, RSetLayoutObj*> sSetLayouts;
 std::unordered_map<uint32_t, RPipelineLayoutObj*> sPipelineLayouts;
+std::unordered_map<uint32_t, RFramebufferObj*> sFramebuffers;
 uint64_t RObjectID::sCounter = 0;
 
 void RQueue::wait_idle()
@@ -60,6 +61,13 @@ void RDevice::destroy(RDevice device)
         heap_free(ite.second);
     }
     sPasses.clear();
+
+    for (auto& ite : sFramebuffers)
+    {
+        obj->destroy_framebuffer(obj, ite.second);
+        heap_free(ite.second);
+    }
+    sFramebuffers.clear();
 
     if (obj->backend == RDEVICE_BACKEND_VULKAN)
         vk_destroy_device(device.mObj);
@@ -132,24 +140,6 @@ void RDevice::destroy_image(RImage image)
     mObj->destroy_image(mObj, image);
 
     heap_free((RImageObj*)image);
-}
-
-RFramebuffer RDevice::create_framebuffer(const RFramebufferInfo& fbI)
-{
-    RFramebufferObj* framebufferObj = (RFramebufferObj*)heap_malloc(sizeof(RFramebufferObj), MEMORY_USAGE_RENDER);
-    framebufferObj->rid = RObjectID::get();
-    framebufferObj->width = fbI.width;
-    framebufferObj->height = fbI.height;
-    framebufferObj->passObj = mObj->get_or_create_pass_obj(fbI.pass);
-
-    return mObj->create_framebuffer(mObj, fbI, framebufferObj);
-}
-
-void RDevice::destroy_framebuffer(RFramebuffer fb)
-{
-    mObj->destroy_framebuffer(mObj, fb);
-
-    heap_free((RFramebufferObj*)fb);
 }
 
 RCommandPool RDevice::create_command_pool(const RCommandPoolInfo& poolI)
@@ -258,6 +248,16 @@ void RDevice::present_frame()
     return mObj->present_frame(mObj);
 }
 
+RFormat RDevice::get_swapchain_color_format()
+{
+    return mObj->get_swapchain_color_format(mObj);
+}
+
+RFormat RDevice::get_swapchain_depth_stencil_format()
+{
+    return mObj->get_swapchain_depth_stencil_format(mObj);
+}
+
 RImage RDevice::get_swapchain_color_attachment(uint32_t frameIdx)
 {
     return mObj->get_swapchain_color_attachment(mObj, frameIdx);
@@ -362,16 +362,6 @@ void RBuffer::unmap()
     mObj->unmap(mObj);
 
     mObj->hostMap = nullptr;
-}
-
-uint32_t RFramebuffer::width() const
-{
-    return mObj->width;
-}
-
-uint32_t RFramebuffer::height() const
-{
-    return mObj->height;
 }
 
 void RCommandList::begin()
@@ -490,6 +480,7 @@ void RCommandList::cmd_blit_image(RImage srcImage, RImageLayout srcImageLayout, 
 RCommandList RCommandPool::allocate()
 {
     RCommandListObj* listObj = (RCommandListObj*)mObj->listLA.allocate(sizeof(RCommandListObj)); // TODO: grow the LA, currently has fixed size
+    listObj->deviceObj = mObj->deviceObj;
 
     return mObj->allocate(mObj, listObj);
 }
@@ -589,6 +580,24 @@ uint32_t hash32_pipeline_layout_info(const RPipelineLayoutInfo& layoutI)
     return (uint32_t)hash;
 }
 
+uint32_t hash32_framebuffer_info(const RFramebufferInfo& framebufferI)
+{
+    std::size_t hash = (std::size_t)hash32_pass_info(framebufferI.pass);
+
+    // invalidation by size
+    hash_combine(hash, framebufferI.width);
+    hash_combine(hash, framebufferI.height);
+
+    // invalidation by any referenced attachments
+    for (uint32_t i = 0; i < framebufferI.colorAttachmentCount; i++)
+        hash_combine(hash, framebufferI.colorAttachments[i].rid());
+
+    if (framebufferI.depthStencilAttachment)
+        hash_combine(hash, framebufferI.depthStencilAttachment.rid());
+
+    return (uint32_t)hash;
+}
+
 uint32_t hash32_pipeline_rasterization_state(const RPipelineRasterizationInfo& rasterizationI)
 {
     std::string str;
@@ -675,6 +684,25 @@ RPipelineLayoutObj* RDeviceObj::get_or_create_pipeline_layout_obj(const RPipelin
     }
 
     return sPipelineLayouts[layoutHash];
+}
+
+RFramebufferObj* RDeviceObj::get_or_create_framebuffer_obj(const RFramebufferInfo& framebufferI)
+{
+    uint32_t framebufferHash = hash32_framebuffer_info(framebufferI);
+
+    if (!sFramebuffers.contains(framebufferHash))
+    {
+        RFramebufferObj* framebufferObj = (RFramebufferObj*)heap_malloc(sizeof(RFramebufferObj), MEMORY_USAGE_RENDER);
+        framebufferObj->rid = RObjectID::get();
+        framebufferObj->hash = framebufferHash;
+        framebufferObj->width = framebufferI.width;
+        framebufferObj->height = framebufferI.height;
+        framebufferObj->passObj = this->get_or_create_pass_obj(framebufferI.pass);
+        this->create_framebuffer(this, framebufferI, framebufferObj);
+        sFramebuffers[framebufferHash] = framebufferObj;
+    }
+
+    return sFramebuffers[framebufferHash];
 }
 
 } // namespace LD

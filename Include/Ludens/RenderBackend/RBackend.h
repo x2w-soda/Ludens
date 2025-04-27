@@ -177,24 +177,6 @@ struct RPassInfo
     RPassDependency* dependency;
 };
 
-/// @brief framebuffer creation info
-struct RFramebufferInfo
-{
-    uint32_t width;
-    uint32_t height;
-    uint32_t colorAttachmentCount;
-    RImage* colorAttachments;
-    RImage depthStencilAttachment;
-    RPassInfo pass;
-};
-
-/// @brief framebuffer handle
-struct RFramebuffer : RHandle<struct RFramebufferObj>
-{
-    uint32_t width() const;
-    uint32_t height() const;
-};
-
 union RClearColorValue {
     float float32[4];
     int32_t int32[4];
@@ -204,10 +186,18 @@ union RClearColorValue {
 /// @brief render pass instance creation info, used during command list recording
 struct RPassBeginInfo
 {
-    uint32_t clearColorCount;
+    uint32_t width;                /// render area width
+    uint32_t height;               /// render area height
+    uint32_t colorAttachmentCount; /// number of color attachments used in this render pass
+
+    RImage* colorAttachments;      /// an array of valid image handles
+
+    /// @brief if the i'th color attachment in this pass uses RATTACHMENT_LOAD_OP_CLEAR,
+    ///        clearColors[i] will be used to clear the attachment when the pass begins.
     RClearColorValue* clearColors;
-    RFramebuffer framebuffer;
-    RPassInfo pass;
+
+    RImage depthStencilAttachment; /// if not a null handle, the depth stencil attachment for this pass
+    RPassInfo pass;                /// render pass description
 };
 
 /// @brief shader module creation info
@@ -263,8 +253,8 @@ struct RSetPool : RHandle<struct RSetPoolObj>
 /// @brief pipeline layout handle
 struct RPipelineLayoutInfo
 {
-    uint32_t setLayoutCount; /// number of sets the pipeline layout
-    RSetLayoutInfo* setLayouts;  /// layout of each set, starting at index zero
+    uint32_t setLayoutCount;    /// number of sets the pipeline layout
+    RSetLayoutInfo* setLayouts; /// layout of each set, starting at index zero
 };
 
 struct RVertexAttribute
@@ -474,11 +464,11 @@ struct RSetImageUpdateInfo
 
 struct RSetBufferUpdateInfo
 {
-    RSet set;                /// the resource set to update
+    RSet set; /// the resource set to update
     uint32_t dstBinding;
     uint32_t dstArrayIndex;
     uint32_t bufferCount;
-    RBindingType bufferBindingType;  /// binding type of the buffer
+    RBindingType bufferBindingType; /// binding type of the buffer
     RBuffer* buffers;
 };
 
@@ -506,9 +496,6 @@ struct RDevice : RHandle<struct RDeviceObj>
 
     RImage create_image(const RImageInfo& imageI);
     void destroy_image(RImage image);
-
-    RFramebuffer create_framebuffer(const RFramebufferInfo& fbI);
-    void destroy_framebuffer(RFramebuffer fbI);
 
     RCommandPool create_command_pool(const RCommandPoolInfo& poolI);
     void destroy_command_pool(RCommandPool pool);
@@ -539,6 +526,10 @@ struct RDevice : RHandle<struct RDeviceObj>
 
     /// @brief waits until presentReady semaphore is signaled and blocks until presentation is complete
     void present_frame();
+
+    RFormat get_swapchain_color_format();
+
+    RFormat get_swapchain_depth_stencil_format();
 
     RImage get_swapchain_color_attachment(uint32_t imageIdx);
 
