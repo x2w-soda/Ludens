@@ -201,3 +201,30 @@ TEST_CASE("Vec4 method")
     CHECK(v2.z == 6);
     CHECK(v2.w == 7);
 }
+
+TEST_CASE("Quat ctor")
+{
+    Quat q;
+    CHECK(q.x == 0.0f);
+    CHECK(q.y == 0.0f);
+    CHECK(q.z == 0.0f);
+    CHECK(q.w == 1.0f);
+
+    q = Quat(1, 2, 3, 4);
+    CHECK(q.x == 1.0f);
+    CHECK(q.y == 2.0f);
+    CHECK(q.z == 3.0f);
+    CHECK(q.w == 4.0f);
+}
+
+TEST_CASE("Quat method")
+{
+    int iData[4] = {1, 2, 3, 4};
+
+    // memory order is X, Y, Z, W
+    Quat q = Quat::from_data(iData);
+    CHECK(q.x == 1.0f);
+    CHECK(q.y == 2.0f);
+    CHECK(q.z == 3.0f);
+    CHECK(q.w == 4.0f);
+}
