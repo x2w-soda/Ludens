@@ -37,7 +37,6 @@ struct PhysicalDevice
 struct SwapchainInfo
 {
     VkFormat imageFormat;
-    VkFormat depthStencilFormat;
     VkPresentModeKHR presentMode;
     VkColorSpaceKHR imageColorSpace;
 };
@@ -345,8 +344,8 @@ struct RDeviceObj
 
     uint32_t (*next_frame)(RDeviceObj* self, RSemaphore& imageAcquired, RSemaphore& presentReady, RFence& frameComplete);
     void (*present_frame)(RDeviceObj* self);
+    void (*get_depth_stencil_formats)(RDeviceObj* self, RFormat* format, uint32_t& count);
     RFormat (*get_swapchain_color_format)(RDeviceObj* self);
-    RFormat (*get_swapchain_depth_stencil_format)(RDeviceObj* self);
     RImage (*get_swapchain_color_attachment)(RDeviceObj* self, uint32_t frameIdx);
     uint32_t (*get_swapchain_image_count)(RDeviceObj* self);
     uint32_t (*get_frames_in_flight_count)(RDeviceObj* self);

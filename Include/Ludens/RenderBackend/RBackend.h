@@ -177,10 +177,17 @@ struct RPassInfo
     RPassDependency* dependency;
 };
 
-union RClearColorValue {
+union RClearColorValue
+{
     float float32[4];
     int32_t int32[4];
     uint32_t uint32[4];
+};
+
+struct RClearDepthStencilValue
+{
+    float depth;
+    uint32_t stencil;
 };
 
 /// @brief render pass instance creation info, used during command list recording
@@ -188,16 +195,19 @@ struct RPassBeginInfo
 {
     uint32_t width;                /// render area width
     uint32_t height;               /// render area height
+    RImage depthStencilAttachment; /// if not a null handle, the depth stencil attachment for this pass
     uint32_t colorAttachmentCount; /// number of color attachments used in this render pass
-
     RImage* colorAttachments;      /// an array of valid image handles
 
     /// @brief if the i'th color attachment in this pass uses RATTACHMENT_LOAD_OP_CLEAR,
     ///        clearColors[i] will be used to clear the attachment when the pass begins.
     RClearColorValue* clearColors;
 
-    RImage depthStencilAttachment; /// if not a null handle, the depth stencil attachment for this pass
-    RPassInfo pass;                /// render pass description
+    /// @brief if depthStencilAttachment is not a null handle and uses RATTACHMENT_LOAD_OP_CLEAR,
+    //         this value is used to clear the attachment when the pass begins.
+    RClearDepthStencilValue clearDepthStencil;
+
+    RPassInfo pass; /// render pass description
 };
 
 /// @brief shader module creation info
@@ -527,9 +537,9 @@ struct RDevice : RHandle<struct RDeviceObj>
     /// @brief waits until presentReady semaphore is signaled and blocks until presentation is complete
     void present_frame();
 
-    RFormat get_swapchain_color_format();
+    void get_depth_stencil_formats(RFormat* formats, uint32_t& count);
 
-    RFormat get_swapchain_depth_stencil_format();
+    RFormat get_swapchain_color_format();
 
     RImage get_swapchain_color_attachment(uint32_t imageIdx);
 

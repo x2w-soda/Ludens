@@ -248,14 +248,14 @@ void RDevice::present_frame()
     return mObj->present_frame(mObj);
 }
 
+void RDevice::get_depth_stencil_formats(RFormat* formats, uint32_t& count)
+{
+    mObj->get_depth_stencil_formats(mObj, formats, count);
+}
+
 RFormat RDevice::get_swapchain_color_format()
 {
     return mObj->get_swapchain_color_format(mObj);
-}
-
-RFormat RDevice::get_swapchain_depth_stencil_format()
-{
-    return mObj->get_swapchain_depth_stencil_format(mObj);
 }
 
 RImage RDevice::get_swapchain_color_attachment(uint32_t frameIdx)

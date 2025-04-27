@@ -75,6 +75,9 @@ static void vk_device_update_set_images(RDeviceObj* self, uint32_t updateCount, 
 static void vk_device_update_set_buffers(RDeviceObj* self, uint32_t updateCount, const RSetBufferUpdateInfo* updates);
 static uint32_t vk_device_next_frame(RDeviceObj* self, RSemaphore& imageAcquired, RSemaphore& presentReady, RFence& frameComplete);
 static void vk_device_present_frame(RDeviceObj* self);
+static void vk_device_get_depth_stencil_formats(RDeviceObj* self, RFormat* formats, uint32_t& count);
+static RFormat vk_device_get_swapchain_color_format(RDeviceObj* self);
+static RImage vk_device_get_swapchain_color_attachment(RDeviceObj* self, uint32_t imageIdx);
 static uint32_t vk_device_get_swapchain_image_count(RDeviceObj* self);
 static uint32_t vk_device_get_frames_in_flight_count(RDeviceObj* self);
 static RQueue vk_device_get_graphics_queue(RDeviceObj* self);
@@ -511,7 +514,7 @@ static void vk_device_create_pass(RDeviceObj* self, const RPassInfo& passI, RPas
         RUtil::cast_image_layout_vk(passI.depthStencilAttachment->passLayout, passLayout);
         RUtil::cast_pass_depth_stencil_attachment_vk(*passI.depthStencilAttachment, attachmentD.back());
 
-        depthStencilAttachmentRef.attachment = (uint32_t)attachmentD.size();
+        depthStencilAttachmentRef.attachment = (uint32_t)attachmentD.size() - 1;
         depthStencilAttachmentRef.layout = passLayout;
     }
 
@@ -814,8 +817,9 @@ RPipeline vk_device_create_pipeline(RDeviceObj* self, const RPipelineInfo& pipel
 
     VkPipelineDepthStencilStateCreateInfo depthStencilSCI{
         .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
-        .depthTestEnable = VK_FALSE,
-        .depthWriteEnable = VK_FALSE,
+        .depthTestEnable = VK_TRUE,
+        .depthWriteEnable = VK_TRUE,
+        .depthCompareOp = VK_COMPARE_OP_LESS,
         .depthBoundsTestEnable = VK_FALSE,
         .stencilTestEnable = VK_FALSE,
         .minDepthBounds = 0.0f,
@@ -1057,6 +1061,25 @@ static void vk_device_present_frame(RDeviceObj* self)
     VK_CHECK(vkQueuePresentKHR(queueHandle, &presentI));
 }
 
+static void vk_device_get_depth_stencil_formats(RDeviceObj* self, RFormat* formats, uint32_t& count)
+{
+    count = (uint32_t)self->vk.pdevice.depthStencilFormats.size();
+
+    if (!formats)
+        return;
+
+    for (uint32_t i = 0; i < count; i++)
+        RUtil::cast_format_from_vk(self->vk.pdevice.depthStencilFormats[i], formats[i]);
+}
+
+static RFormat vk_device_get_swapchain_color_format(RDeviceObj* self)
+{
+    RFormat format;
+    RUtil::cast_format_from_vk(self->vk.swapchain.info.imageFormat, format);
+
+    return format;
+}
+
 static RImage vk_device_get_swapchain_color_attachment(RDeviceObj* self, uint32_t imageIdx)
 {
     return self->vk.swapchain.colorAttachments[imageIdx];
@@ -1157,6 +1180,14 @@ static void vk_command_list_cmd_begin_pass(RCommandListObj* self, const RPassBeg
     {
         if (passBI.pass.colorAttachments[i].colorLoadOp == RATTACHMENT_LOAD_OP_CLEAR)
             RUtil::cast_clear_color_value_vk(passBI.clearColors[i], clearValues[i].color);
+    }
+
+    if (passBI.depthStencilAttachment && passBI.pass.depthStencilAttachment->depthLoadOp == RATTACHMENT_LOAD_OP_CLEAR)
+    {
+        VkClearValue clearValue;
+        clearValue.depthStencil.depth = passBI.clearDepthStencil.depth;
+        clearValue.depthStencil.stencil = passBI.clearDepthStencil.stencil;
+        clearValues.push_back(clearValue);
     }
 
     RPassObj* passObj = self->deviceObj->get_or_create_pass_obj(passBI.pass);
@@ -1603,19 +1634,6 @@ static void configure_swapchain(RDeviceObj* obj, SwapchainInfo* swapchainI)
         }
     }
 
-    // configure depth stencil format
-    LD_ASSERT(!pdevice.depthStencilFormats.empty());
-    swapchainI->depthStencilFormat = pdevice.depthStencilFormats[0];
-
-    for (VkFormat format : pdevice.depthStencilFormats)
-    {
-        if (format == VK_FORMAT_D32_SFLOAT_S8_UINT)
-        {
-            swapchainI->depthStencilFormat = format;
-            break;
-        }
-    }
-
     // configure present mode
     swapchainI->presentMode = VK_PRESENT_MODE_FIFO_KHR; // guaranteed support; vsynced
 
@@ -1868,6 +1886,8 @@ void RDeviceObj::init_vk_api()
     update_set_buffers = &vk_device_update_set_buffers;
     next_frame = &vk_device_next_frame;
     present_frame = &vk_device_present_frame;
+    get_depth_stencil_formats = &vk_device_get_depth_stencil_formats;
+    get_swapchain_color_format = &vk_device_get_swapchain_color_format;
     get_swapchain_color_attachment = &vk_device_get_swapchain_color_attachment;
     get_swapchain_image_count = &vk_device_get_swapchain_image_count;
     get_frames_in_flight_count = &vk_device_get_frames_in_flight_count;
