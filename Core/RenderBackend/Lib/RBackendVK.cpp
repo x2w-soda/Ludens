@@ -106,7 +106,8 @@ static void vk_command_list_cmd_copy_buffer_to_image(RCommandListObj* self, RBuf
 static void vk_command_list_cmd_copy_image_to_buffer(RCommandListObj* self, RImage srcImage, RImageLayout srcImageLayout, RBuffer dstBuffer, uint32_t regionCount, const RBufferImageCopy* regions);
 static void vk_command_list_cmd_blit_image(RCommandListObj* self, RImage srcImage, RImageLayout srcImageLayout, RImage dstImage, RImageLayout dstImageLayout, uint32_t regionCount, const RImageBlit* regions, RFilter filter);
 
-static RCommandList vk_command_pool_allocate(RCommandPoolObj* self);
+static RCommandList vk_command_pool_allocate(RCommandPoolObj* self, RCommandListObj* listObj);
+static void vk_command_pool_reset(RCommandPoolObj* self);
 
 static RSet vk_set_pool_allocate(RSetPoolObj* self, RSetObj* setObj);
 static void vk_set_pool_reset(RSetPoolObj* self);
@@ -594,13 +595,12 @@ static void vk_device_destroy_framebuffer(RDeviceObj* self, RFramebuffer fb)
 static RCommandPool vk_device_create_command_pool(RDeviceObj* self, const RCommandPoolInfo& poolI, RCommandPoolObj* obj)
 {
     obj->init_vk_api();
-    obj->commandBufferCount = 0;
     obj->vk.device = self->vk.device;
 
     VkCommandPoolCreateInfo poolCI{
         .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-        .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
-        .queueFamilyIndex = self->vk.familyIdxGraphics, // TODO: parameterize?
+        .flags = 0,
+        .queueFamilyIndex = self->vk.familyIdxGraphics, // TODO: parameterize against poolI.queueType
     };
 
     if (poolI.hintTransient)
@@ -1435,7 +1435,7 @@ static void vk_command_list_cmd_blit_image(RCommandListObj* self, RImage srcImag
     vkCmdBlitImage(self->vk.handle, srcImageObj->vk.handle, srcLayout, dstImageObj->vk.handle, dstLayout, regionCount, blits.data(), vkFilter);
 }
 
-static RCommandList vk_command_pool_allocate(RCommandPoolObj* self)
+static RCommandList vk_command_pool_allocate(RCommandPoolObj* self, RCommandListObj* listObj)
 {
     VkCommandBufferAllocateInfo bufferAI{
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
@@ -1444,15 +1444,17 @@ static RCommandList vk_command_pool_allocate(RCommandPoolObj* self)
         .commandBufferCount = 1,
     };
 
-    RCommandListObj* obj = (RCommandListObj*)heap_malloc(sizeof(RCommandListObj), MEMORY_USAGE_RENDER);
-    obj->init_vk_api();
-    obj->vk.device = self->vk.device;
-    obj->deviceObj = self->deviceObj;
-    obj->poolObj = self;
+    listObj->init_vk_api();
+    listObj->vk.device = self->vk.device;
 
-    VK_CHECK(vkAllocateCommandBuffers(self->vk.device, &bufferAI, &obj->vk.handle));
+    VK_CHECK(vkAllocateCommandBuffers(self->vk.device, &bufferAI, &listObj->vk.handle));
 
-    return {obj};
+    return {listObj};
+}
+
+static void vk_command_pool_reset(RCommandPoolObj* self)
+{
+    VK_CHECK(vkResetCommandPool(self->vk.device, self->vk.handle, 0));
 }
 
 static RSet vk_set_pool_allocate(RSetPoolObj* self, RSetObj* setObj)
@@ -1790,7 +1792,6 @@ void RBufferObj::init_vk_api()
 
 void RCommandListObj::init_vk_api()
 {
-    free = &vk_command_list_free;
     begin = &vk_command_list_begin;
     end = &vk_command_list_end;
     cmd_begin_pass = &vk_command_list_cmd_begin_pass;
@@ -1815,6 +1816,7 @@ void RCommandListObj::init_vk_api()
 void RCommandPoolObj::init_vk_api()
 {
     allocate = &vk_command_pool_allocate;
+    reset = &vk_command_pool_reset;
 }
 
 void RSetPoolObj::init_vk_api()

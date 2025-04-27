@@ -373,9 +373,6 @@ struct RImageMemoryBarrier
 /// @brief command list handle
 struct RCommandList : RHandle<struct RCommandListObj>
 {
-    /// @brief free this command list, the handle becomes null afterwards
-    void free();
-
     void begin();
     void end();
 
@@ -428,14 +425,17 @@ struct RCommandList : RHandle<struct RCommandListObj>
 /// @brief command pool creation info
 struct RCommandPoolInfo
 {
+    RQueueType queueType;
     bool hintTransient; /// hint to the implementation that command lists allocated from this pool will be short lived
 };
 
 /// @brief command pool handle, used to allocate command lists
 struct RCommandPool : RHandle<struct RCommandPoolObj>
 {
-    /// @brief allocate a command list, user must call it's free() method later.
+    /// @brief allocate a command list
     RCommandList allocate();
+
+    void reset();
 };
 
 /// @brief describes the workload to send to GPU

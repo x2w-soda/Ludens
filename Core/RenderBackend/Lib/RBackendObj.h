@@ -122,7 +122,6 @@ struct RCommandListObj
     uint64_t rid;
     RDeviceObj* deviceObj;
 
-    void (*free)(RCommandListObj* self);
     void (*begin)(RCommandListObj* self, bool oneTimeSubmit);
     void (*end)(RCommandListObj* self);
     void (*cmd_begin_pass)(RCommandListObj* self, const RPassBeginInfo& passBI);
@@ -157,13 +156,13 @@ struct RCommandListObj
 struct RCommandPoolObj
 {
     uint64_t rid;
+    LinearAllocator listLA;
     RDeviceObj* deviceObj;
 
-    RCommandList (*allocate)(RCommandPoolObj* self);
+    RCommandList (*allocate)(RCommandPoolObj* self, RCommandListObj* listObj);
+    void (*reset)(RCommandPoolObj* self);
 
     void init_vk_api();
-
-    uint32_t commandBufferCount; /// number of command buffers allocated and not yet freed
 
     struct
     {

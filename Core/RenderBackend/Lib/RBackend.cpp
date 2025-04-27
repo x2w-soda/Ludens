@@ -157,6 +157,8 @@ RCommandPool RDevice::create_command_pool(const RCommandPoolInfo& poolI)
     RCommandPoolObj* poolObj = (RCommandPoolObj*)heap_malloc(sizeof(RCommandPoolObj), MEMORY_USAGE_RENDER);
     poolObj->rid = RObjectID::get();
     poolObj->deviceObj = mObj;
+    new (&poolObj->listLA) LinearAllocator();
+    poolObj->listLA.create(sizeof(RCommandListObj), MEMORY_USAGE_RENDER); // LA will later realloc if needed
 
     return mObj->create_command_pool(mObj, poolI, poolObj);
 }
@@ -164,11 +166,12 @@ RCommandPool RDevice::create_command_pool(const RCommandPoolInfo& poolI)
 void RDevice::destroy_command_pool(RCommandPool pool)
 {
     RCommandPoolObj* poolObj = (RCommandPoolObj*)pool;
-    LD_ASSERT(poolObj->commandBufferCount == 0);
 
     mObj->destroy_command_pool(mObj, pool);
 
-    heap_free((RCommandPoolObj*)pool);
+    poolObj->listLA.destroy();
+    poolObj->listLA.~LinearAllocator();
+    heap_free(poolObj);
 }
 
 RShader RDevice::create_shader(const RShaderInfo& shaderI)
@@ -371,16 +374,6 @@ uint32_t RFramebuffer::height() const
     return mObj->height;
 }
 
-void RCommandList::free()
-{
-    mObj->poolObj->commandBufferCount--;
-
-    mObj->free(mObj);
-
-    // nulify the handle
-    mObj = nullptr;
-}
-
 void RCommandList::begin()
 {
     mObj->begin(mObj, false);
@@ -496,11 +489,16 @@ void RCommandList::cmd_blit_image(RImage srcImage, RImageLayout srcImageLayout, 
 
 RCommandList RCommandPool::allocate()
 {
-    // NOTE: command pools (and its allocated command buffers) are never
-    //       shared among threads, so this counter doesn't have to be atomic
-    mObj->commandBufferCount++;
+    RCommandListObj* listObj = (RCommandListObj*)mObj->listLA.allocate(sizeof(RCommandListObj)); // TODO: grow the LA, currently has fixed size
 
-    return mObj->allocate(mObj);
+    return mObj->allocate(mObj, listObj);
+}
+
+void RCommandPool::reset()
+{
+    mObj->listLA.free();
+
+    mObj->reset(mObj);
 }
 
 uint32_t hash32_pass_info(const RPassInfo& passI)

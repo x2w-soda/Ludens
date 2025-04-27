@@ -11,6 +11,11 @@ enum RDeviceBackend
     RDEVICE_BACKEND_VULKAN = 0,
 };
 
+enum RQueueType
+{
+    RQUEUE_TYPE_GRAPHICS = 0,
+};
+
 enum RFormat
 {
     RFORMAT_UNDEFINED = 0,
