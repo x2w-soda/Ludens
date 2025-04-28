@@ -1,8 +1,8 @@
 #pragma once
 
-#define KEY_PRESSED_BIT 0x1
-#define KEY_PRESSED_THIS_FRAME_BIT 0x2
-#define KEY_RELEASED_THIS_FRAME_BIT 0x4
+#define PRESSED_BIT 0x1
+#define PRESSED_THIS_FRAME_BIT 0x2
+#define RELEASED_THIS_FRAME_BIT 0x4
 
 namespace LD {
 namespace Input {

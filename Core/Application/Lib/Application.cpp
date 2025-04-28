@@ -15,11 +15,15 @@ struct Window
     RDevice rdevice;
 
     static void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
+    static void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
 };
 
 // Input.cpp
 namespace Input {
 extern uint8_t sKeyState[];
+extern uint8_t sMouseState[];
+extern float sMouseCursorX;
+extern float sMouseCursorY;
 } // namespace Input
 
 void Window::key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
@@ -28,9 +32,20 @@ void Window::key_callback(GLFWwindow* window, int key, int scancode, int action,
         return;
 
     if (action == GLFW_PRESS)
-        Input::sKeyState[key] |= (KEY_PRESSED_BIT | KEY_PRESSED_THIS_FRAME_BIT);
+        Input::sKeyState[key] |= (PRESSED_BIT | PRESSED_THIS_FRAME_BIT);
     else if (action == GLFW_RELEASE)
-        Input::sKeyState[key] = KEY_RELEASED_THIS_FRAME_BIT;
+        Input::sKeyState[key] = RELEASED_THIS_FRAME_BIT;
+}
+
+void Window::mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
+{
+    if (action == GLFW_REPEAT)
+        return;
+
+    if (action == GLFW_PRESS)
+        Input::sMouseState[button] |= (PRESSED_BIT | PRESSED_THIS_FRAME_BIT);
+    else if (action == GLFW_RELEASE)
+        Input::sMouseState[button] = RELEASED_THIS_FRAME_BIT;
 }
 
 Application::Application(const ApplicationInfo& appI)
@@ -46,6 +61,7 @@ Application::Application(const ApplicationInfo& appI)
     mWindow->width = appI.width;
     mWindow->height = appI.height;
     glfwSetKeyCallback(mWindow->handle, &Window::key_callback);
+    glfwSetMouseButtonCallback(mWindow->handle, &Window::mouse_button_callback);
 
     RDeviceInfo rdeviceI{
         .backend = RDEVICE_BACKEND_VULKAN,
@@ -90,12 +106,22 @@ void Application::poll_events()
 {
     Input::frame_boundary();
 
+    double xpos, ypos;
+    glfwGetCursorPos(mWindow->handle, &xpos, &ypos);
+    Input::sMouseCursorX = (float)xpos;
+    Input::sMouseCursorY = (float)ypos;
+
     glfwPollEvents();
 }
 
 RDevice Application::get_rdevice()
 {
     return mWindow->rdevice;
+}
+
+double Application::get_time()
+{
+    return glfwGetTime();
 }
 
 } // namespace LD

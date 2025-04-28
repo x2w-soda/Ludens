@@ -23,7 +23,15 @@ Model Model::load_gltf_model(const char* path)
 
 void Model::destroy(Model model)
 {
-    heap_delete((ModelObj*)model);
+    ModelObj* obj = model;
+
+    for (Bitmap texture : obj->textures)
+        Bitmap::destroy(texture);
+
+    for (MeshNode* node : obj->nodes)
+        heap_delete(node);
+
+    heap_delete(obj);
 }
 
 MeshVertex* Model::get_vertices(int& vertexCount)

@@ -37,6 +37,9 @@ public:
     void poll_events();
     RDevice get_rdevice();
 
+    /// @brief get time in seconds since the Application is created
+    double get_time();
+
 private:
     struct Window* mWindow;
 };
