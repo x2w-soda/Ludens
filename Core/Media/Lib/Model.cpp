@@ -9,6 +9,8 @@ namespace LD {
 Model Model::load_gltf_model(const char* path)
 {
     ModelObj* obj = heap_new<ModelObj>(MEMORY_USAGE_MEDIA);
+    obj->hasCalculatedAABB = false;
+
     TinygltfLoader loader;
 
     bool result = loader.load_from_file(obj, path);
@@ -92,6 +94,39 @@ MeshMaterial* Model::get_materials(int& materialCount)
 
     materialCount = (int)mObj->materials.size();
     return mObj->materials.data();
+}
+
+void Model::get_aabb(Vec3& minPos, Vec3& maxPos)
+{
+    if (mObj->hasCalculatedAABB)
+    {
+        minPos = mObj->minPos;
+        maxPos = mObj->maxPos;
+        return;
+    }
+
+    if (mObj->vertices.empty())
+    {
+        printf("Model::get_aabb model not loaded\n");
+        return;
+    }
+
+    mObj->hasCalculatedAABB = true;
+
+    minPos = maxPos = mObj->vertices[0].pos;
+
+    for (const MeshVertex& vertex : mObj->vertices)
+    {
+        minPos.x = std::min<float>(minPos.x, vertex.pos.x);
+        minPos.y = std::min<float>(minPos.y, vertex.pos.y);
+        minPos.z = std::min<float>(minPos.z, vertex.pos.z);
+        maxPos.x = std::max<float>(maxPos.x, vertex.pos.x);
+        maxPos.y = std::max<float>(maxPos.y, vertex.pos.y);
+        maxPos.z = std::max<float>(maxPos.z, vertex.pos.z);
+    }
+
+    mObj->minPos = minPos;
+    mObj->maxPos = maxPos;
 }
 
 } // namespace LD

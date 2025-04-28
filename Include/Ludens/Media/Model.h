@@ -51,11 +51,28 @@ struct Model : Handle<struct ModelObj>
     static Model load_gltf_model(const char* path);
     static void destroy(Model model);
 
+    /// @brief get model vertices
+    /// @warning the returned pointer is transient
     MeshVertex* get_vertices(int& vertexCount);
+
+    /// @brief get model 32-bit indices
+    /// @warning the returned pointer is transient
     uint32_t* get_indices(int& indexCount);
+
+    /// @brief get model root nodes
+    /// @warning the returned pointer is transient
     MeshNode** get_roots(int& rootCount);
+
+    /// @brief get model textures
+    /// @warning the returned pointer is transient
     Bitmap* get_textures(int& textureCount);
+
+    /// @brief get model materials
+    /// @warning the returned pointer is transient
     MeshMaterial* get_materials(int& materialCount);
+
+    /// @brief get model local space AABB
+    void get_aabb(Vec3& minPos, Vec3& maxPos);
 };
 
 } // namespace LD
