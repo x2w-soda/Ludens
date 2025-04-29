@@ -103,6 +103,7 @@ enum RImageUsageBit : RImageUsageFlags
     RIMAGE_USAGE_STORAGE_BIT = LD_BIT(3),
     RIMAGE_USAGE_COLOR_ATTACHMENT_BIT = LD_BIT(4),
     RIMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT = LD_BIT(5),
+    RIMAGE_USAGE_TRANSIENT_BIT = LD_BIT(6),
 };
 
 enum RShaderType
@@ -150,6 +151,18 @@ enum RPrimitiveTopology
 {
     RPRIMITIVE_TOPOLOGY_TRIANGLE_LIST = 0,
     RPRIMITIVE_TOPOLOGY_POINT_LIST,
+};
+
+using RSampleCountFlags = uint32_t;
+enum RSampleCountBit : RSampleCountFlags
+{
+    RSAMPLE_COUNT_1_BIT = LD_BIT(0),
+    RSAMPLE_COUNT_2_BIT = LD_BIT(1),
+    RSAMPLE_COUNT_4_BIT = LD_BIT(2),
+    RSAMPLE_COUNT_8_BIT = LD_BIT(3),
+    RSAMPLE_COUNT_16_BIT = LD_BIT(4),
+    RSAMPLE_COUNT_32_BIT = LD_BIT(5),
+    RSAMPLE_COUNT_64_BIT = LD_BIT(6),
 };
 
 enum RPolygonMode

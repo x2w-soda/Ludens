@@ -10,6 +10,7 @@ inline RImageInfo make_2d_image_info(RImageUsageFlags usage, RFormat format, uin
     return {
         .usage = usage,
         .type = RIMAGE_TYPE_2D,
+        .samples = RSAMPLE_COUNT_1_BIT,
         .format = format,
         .width = width,
         .height = height,

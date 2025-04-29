@@ -76,6 +76,7 @@ static void vk_device_update_set_buffers(RDeviceObj* self, uint32_t updateCount,
 static uint32_t vk_device_next_frame(RDeviceObj* self, RSemaphore& imageAcquired, RSemaphore& presentReady, RFence& frameComplete);
 static void vk_device_present_frame(RDeviceObj* self);
 static void vk_device_get_depth_stencil_formats(RDeviceObj* self, RFormat* formats, uint32_t& count);
+static RSampleCountBit vk_device_get_max_sample_count(RDeviceObj* self);
 static RFormat vk_device_get_swapchain_color_format(RDeviceObj* self);
 static RImage vk_device_get_swapchain_color_attachment(RDeviceObj* self, uint32_t imageIdx);
 static uint32_t vk_device_get_swapchain_image_count(RDeviceObj* self);
@@ -401,10 +402,12 @@ static RImage vk_device_create_image(RDeviceObj* self, const RImageInfo& imageI,
     VkImageType vkType;
     VkImageUsageFlags vkUsage;
     VkImageAspectFlags vkAspect;
+    VkSampleCountFlagBits vkSamples;
     RUtil::cast_format_vk(imageI.format, vkFormat);
     RUtil::cast_image_type_vk(imageI.type, vkType);
     RUtil::cast_image_usage_vk(imageI.usage, vkUsage);
     RUtil::cast_format_image_aspect_vk(imageI.format, vkAspect);
+    RUtil::cast_sample_count_vk(imageI.samples, vkSamples);
 
     VkImageCreateInfo imageCI{
         .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
@@ -413,7 +416,7 @@ static RImage vk_device_create_image(RDeviceObj* self, const RImageInfo& imageI,
         .extent = {.width = imageI.width, .height = imageI.height, .depth = imageI.depth},
         .mipLevels = 1,
         .arrayLayers = 1,
-        .samples = VK_SAMPLE_COUNT_1_BIT,
+        .samples = vkSamples,
         .tiling = VK_IMAGE_TILING_OPTIMAL,
         .usage = vkUsage,
         .sharingMode = VK_SHARING_MODE_EXCLUSIVE, // TODO:
@@ -492,19 +495,18 @@ static void vk_device_create_pass(RDeviceObj* self, const RPassInfo& passI, RPas
 {
     std::vector<VkAttachmentDescription> attachmentD(passI.colorAttachmentCount);
     std::vector<VkAttachmentReference> colorAttachmentRefs(passI.colorAttachmentCount);
+    std::vector<VkAttachmentReference> colorResolveAttachmentRefs(passI.colorAttachmentCount);
     VkAttachmentReference depthStencilAttachmentRef;
 
     for (uint32_t i = 0; i < passI.colorAttachmentCount; i++)
     {
         VkImageLayout passLayout;
         RUtil::cast_image_layout_vk(passI.colorAttachments[i].passLayout, passLayout);
-        RUtil::cast_pass_color_attachment_vk(passI.colorAttachments[i], attachmentD[i]);
+        RUtil::cast_pass_color_attachment_vk(passI.colorAttachments[i], passI.samples, attachmentD[i]);
 
         colorAttachmentRefs[i].attachment = i;
         colorAttachmentRefs[i].layout = passLayout;
     }
-
-    // NOTE: the depth stencil attachment, if present, will always come last.
 
     if (passI.depthStencilAttachment)
     {
@@ -512,10 +514,27 @@ static void vk_device_create_pass(RDeviceObj* self, const RPassInfo& passI, RPas
 
         VkImageLayout passLayout;
         RUtil::cast_image_layout_vk(passI.depthStencilAttachment->passLayout, passLayout);
-        RUtil::cast_pass_depth_stencil_attachment_vk(*passI.depthStencilAttachment, attachmentD.back());
+        RUtil::cast_pass_depth_stencil_attachment_vk(*passI.depthStencilAttachment, passI.samples, attachmentD.back());
 
         depthStencilAttachmentRef.attachment = (uint32_t)attachmentD.size() - 1;
         depthStencilAttachmentRef.layout = passLayout;
+    }
+
+    if (passI.colorResolveAttachments)
+    {
+        for (uint32_t i = 0; i < passI.colorAttachmentCount; i++)
+        {
+            VkAttachmentDescription description;
+            RFormat colorFormat = passI.colorAttachments[i].colorFormat;
+            VkImageLayout passLayout;
+            
+            RUtil::cast_image_layout_vk(passI.colorResolveAttachments[i].passLayout, passLayout);
+            RUtil::cast_pass_color_resolve_attachment_vk(passI.colorResolveAttachments[i], colorFormat, description);
+            attachmentD.push_back(description);
+
+            colorResolveAttachmentRefs[i].attachment = (uint32_t)attachmentD.size() - 1;
+            colorResolveAttachmentRefs[i].layout = passLayout;
+        }
     }
 
     VkSubpassDescription subpassDesc{
@@ -523,8 +542,8 @@ static void vk_device_create_pass(RDeviceObj* self, const RPassInfo& passI, RPas
         .inputAttachmentCount = 0,
         .colorAttachmentCount = (uint32_t)colorAttachmentRefs.size(),
         .pColorAttachments = colorAttachmentRefs.data(),
-        .pResolveAttachments = nullptr,
-        .pDepthStencilAttachment = (passI.depthStencilAttachment) ? &depthStencilAttachmentRef : nullptr,
+        .pResolveAttachments = passI.colorResolveAttachments ? colorResolveAttachmentRefs.data() : nullptr,
+        .pDepthStencilAttachment = passI.depthStencilAttachment ? &depthStencilAttachmentRef : nullptr,
         .preserveAttachmentCount = 0,
     };
 
@@ -557,18 +576,26 @@ static void vk_device_destroy_pass(RDeviceObj* self, RPassObj* passObj)
 
 static void vk_device_create_framebuffer(RDeviceObj* self, const RFramebufferInfo& fbI, RFramebufferObj* obj)
 {
-    uint32_t attachmentCount = fbI.colorAttachmentCount;
-    std::vector<VkImageView> attachments(attachmentCount);
-    for (uint32_t i = 0; i < attachmentCount; i++)
+    std::vector<VkImageView> attachments(fbI.colorAttachmentCount);
+    for (uint32_t i = 0; i < fbI.colorAttachmentCount; i++)
     {
-        RImageObj* imageObj = (RImageObj*)fbI.colorAttachments[i];
+        RImageObj* imageObj = fbI.colorAttachments[i];
         attachments[i] = imageObj->vk.viewHandle;
     }
 
     if (fbI.depthStencilAttachment)
     {
-        const RImageObj* imageObj = (const RImageObj*)fbI.depthStencilAttachment;
+        const RImageObj* imageObj = fbI.depthStencilAttachment;
         attachments.push_back(imageObj->vk.viewHandle);
+    }
+
+    if (fbI.colorResolveAttachments)
+    {
+        for (uint32_t i = 0; i < fbI.colorAttachmentCount; i++)
+        {
+            const RImageObj* imageObj = fbI.colorResolveAttachments[i];
+            attachments.push_back(imageObj->vk.viewHandle);
+        }
     }
 
     VkFramebufferCreateInfo fbCI{
@@ -769,11 +796,13 @@ RPipeline vk_device_create_pipeline(RDeviceObj* self, const RPipelineInfo& pipel
         .primitiveRestartEnable = VK_FALSE,
     };
 
+    VkSampleCountFlagBits rasterizationSamples;
+    RUtil::cast_sample_count_vk(pipelineI.pass.samples, rasterizationSamples);
+
     VkPipelineMultisampleStateCreateInfo multisampleSCI{
         .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
-        .rasterizationSamples = VK_SAMPLE_COUNT_1_BIT,
+        .rasterizationSamples = rasterizationSamples,
         .sampleShadingEnable = VK_FALSE,
-        .minSampleShading = 1.0f,
         .pSampleMask = nullptr,
         .alphaToCoverageEnable = VK_FALSE,
         .alphaToOneEnable = VK_FALSE,
@@ -1072,6 +1101,15 @@ static void vk_device_get_depth_stencil_formats(RDeviceObj* self, RFormat* forma
         RUtil::cast_format_from_vk(self->vk.pdevice.depthStencilFormats[i], formats[i]);
 }
 
+static RSampleCountBit vk_device_get_max_sample_count(RDeviceObj* self)
+{
+    RSampleCountBit sampleCount;
+    VkSampleCountFlagBits vkSampleCount = (VkSampleCountFlagBits)self->vk.pdevice.msaaCount;
+    RUtil::cast_sample_count_from_vk(vkSampleCount, sampleCount);
+
+    return sampleCount;
+}
+
 static RFormat vk_device_get_swapchain_color_format(RDeviceObj* self)
 {
     RFormat format;
@@ -1163,6 +1201,7 @@ static void vk_command_list_cmd_begin_pass(RCommandListObj* self, const RPassBeg
         .height = passBI.height,
         .colorAttachmentCount = passBI.colorAttachmentCount,
         .colorAttachments = passBI.colorAttachments,
+        .colorResolveAttachments = passBI.colorResolveAttachments,
         .depthStencilAttachment = passBI.depthStencilAttachment,
         .pass = passBI.pass,
     };
@@ -1575,6 +1614,23 @@ static void choose_physical_device(RDeviceObj* obj)
         vkGetPhysicalDeviceProperties(pdevice.handle, &pdevice.deviceProps);
         printf("VkPhysicalDevice: %s\n", pdevice.deviceProps.deviceName);
 
+        const VkPhysicalDeviceLimits& limits = pdevice.deviceProps.limits;
+
+        VkSampleCountFlags count = limits.framebufferColorSampleCounts & limits.framebufferDepthSampleCounts;
+        pdevice.msaaCount = VK_SAMPLE_COUNT_1_BIT;
+        if (count & VK_SAMPLE_COUNT_64_BIT)
+            pdevice.msaaCount = VK_SAMPLE_COUNT_64_BIT;
+        else if (count & VK_SAMPLE_COUNT_32_BIT)
+            pdevice.msaaCount = VK_SAMPLE_COUNT_32_BIT;
+        else if (count & VK_SAMPLE_COUNT_16_BIT)
+            pdevice.msaaCount = VK_SAMPLE_COUNT_16_BIT;
+        else if (count & VK_SAMPLE_COUNT_8_BIT)
+            pdevice.msaaCount = VK_SAMPLE_COUNT_8_BIT;
+        else if (count & VK_SAMPLE_COUNT_4_BIT)
+            pdevice.msaaCount = VK_SAMPLE_COUNT_4_BIT;
+        else if (count & VK_SAMPLE_COUNT_2_BIT)
+            pdevice.msaaCount = VK_SAMPLE_COUNT_2_BIT;
+
         vkGetPhysicalDeviceFeatures(pdevice.handle, &pdevice.deviceFeatures);
 
         // queue families on this physical device
@@ -1887,6 +1943,7 @@ void RDeviceObj::init_vk_api()
     next_frame = &vk_device_next_frame;
     present_frame = &vk_device_present_frame;
     get_depth_stencil_formats = &vk_device_get_depth_stencil_formats;
+    get_max_sample_count = &vk_device_get_max_sample_count;
     get_swapchain_color_format = &vk_device_get_swapchain_color_format;
     get_swapchain_color_attachment = &vk_device_get_swapchain_color_attachment;
     get_swapchain_image_count = &vk_device_get_swapchain_image_count;

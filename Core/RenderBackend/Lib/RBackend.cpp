@@ -253,6 +253,11 @@ void RDevice::get_depth_stencil_formats(RFormat* formats, uint32_t& count)
     mObj->get_depth_stencil_formats(mObj, formats, count);
 }
 
+RSampleCountBit RDevice::get_max_sample_count()
+{
+    return mObj->get_max_sample_count(mObj);
+}
+
 RFormat RDevice::get_swapchain_color_format()
 {
     return mObj->get_swapchain_color_format(mObj);
@@ -496,6 +501,9 @@ uint32_t hash32_pass_info(const RPassInfo& passI)
 {
     std::string str = std::to_string(passI.colorAttachmentCount);
 
+    str.push_back('m');
+    str += std::to_string((int)passI.samples);
+
     for (uint32_t i = 0; i < passI.colorAttachmentCount; i++)
     {
         const RPassColorAttachment* attachment = passI.colorAttachments + i;
@@ -509,6 +517,19 @@ uint32_t hash32_pass_info(const RPassInfo& passI)
         str += std::to_string((int)attachment->initialLayout);
         str.push_back('p');
         str += std::to_string((int)attachment->passLayout);
+
+        if (passI.colorResolveAttachments)
+        {
+            const RPassResolveAttachment* resolve = passI.colorResolveAttachments + i;
+            str.push_back('l');
+            str += std::to_string((int)resolve->loadOp);
+            str.push_back('s');
+            str += std::to_string((int)resolve->storeOp);
+            str.push_back('i');
+            str += std::to_string((int)resolve->initialLayout);
+            str.push_back('p');
+            str += std::to_string((int)resolve->passLayout);
+        }
     }
 
     if (passI.depthStencilAttachment)
@@ -590,7 +611,12 @@ uint32_t hash32_framebuffer_info(const RFramebufferInfo& framebufferI)
 
     // invalidation by any referenced attachments
     for (uint32_t i = 0; i < framebufferI.colorAttachmentCount; i++)
+    {
         hash_combine(hash, framebufferI.colorAttachments[i].rid());
+
+        if (framebufferI.colorResolveAttachments)
+            hash_combine(hash, framebufferI.colorResolveAttachments[i].rid());
+    }
 
     if (framebufferI.depthStencilAttachment)
         hash_combine(hash, framebufferI.depthStencilAttachment.rid());

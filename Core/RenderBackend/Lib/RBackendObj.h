@@ -27,6 +27,7 @@ struct PhysicalDevice
     VkPhysicalDeviceProperties deviceProps;
     VkPhysicalDeviceFeatures deviceFeatures;
     VkSurfaceCapabilitiesKHR surfaceCaps;
+    VkSampleCountFlags msaaCount;
     std::vector<VkSurfaceFormatKHR> surfaceFormats;
     std::vector<VkFormat> depthStencilFormats; /// formats with VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT
     std::vector<VkQueueFamilyProperties> familyProps;
@@ -112,6 +113,7 @@ struct RFramebufferInfo
     uint32_t height;
     uint32_t colorAttachmentCount;
     RImage* colorAttachments;
+    RImage* colorResolveAttachments;
     RImage depthStencilAttachment;
     RPassInfo pass;
 };
@@ -345,6 +347,7 @@ struct RDeviceObj
     uint32_t (*next_frame)(RDeviceObj* self, RSemaphore& imageAcquired, RSemaphore& presentReady, RFence& frameComplete);
     void (*present_frame)(RDeviceObj* self);
     void (*get_depth_stencil_formats)(RDeviceObj* self, RFormat* format, uint32_t& count);
+    RSampleCountBit (*get_max_sample_count)(RDeviceObj* self);
     RFormat (*get_swapchain_color_format)(RDeviceObj* self);
     RImage (*get_swapchain_color_attachment)(RDeviceObj* self, uint32_t frameIdx);
     uint32_t (*get_swapchain_image_count)(RDeviceObj* self);

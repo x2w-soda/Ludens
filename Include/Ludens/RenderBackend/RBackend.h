@@ -104,6 +104,7 @@ struct RImageInfo
 {
     RImageUsageFlags usage;
     RImageType type;
+    RSampleCountBit samples;
     RFormat format;
     uint32_t width;
     uint32_t height;
@@ -158,6 +159,17 @@ struct RPassDepthStencilAttachment
     RImageLayout passLayout;    /// the depth stencil layout to transition to when the render pass begins
 };
 
+/// @brief description of how a resolve attachment is used in a render pass,
+///        while the image format is not specified here, it is expected to
+///        be identical to the corresponding color/depth multisampled attachment.
+struct RPassResolveAttachment
+{
+    RAttachmentLoadOp loadOp;   /// how the color/depth contents are treated when the render pass begins
+    RAttachmentStoreOp storeOp; /// how the color/depth contents are treated when the render pass ends
+    RImageLayout initialLayout; /// the resolve attachment layout before the render pass, or RIMAGE_LAYOUT_UNDEFINED
+    RImageLayout passLayout;    /// the resolve attachment layout to transition to when the render pass begins
+};
+
 struct RPassDependency
 {
     RPipelineStageFlags srcStageMask;
@@ -169,9 +181,21 @@ struct RPassDependency
 /// @brief render pass creation info
 struct RPassInfo
 {
+    /// if not equal to RSAMPLE_COUNT_1_BIT, implies that all colorAttachments (and depthStencilAttachment if not null)
+    /// are multisampled, and the color attachments are resolved with colorResolveAttachments
+    RSampleCountBit samples;
+
     uint32_t colorAttachmentCount;
+
     RPassColorAttachment* colorAttachments;
+
+    /// if not null, an array of colorAttachmentCount resolve attachments,
+    /// and colorAttachments is expected to be an array of multisampled images
+    RPassResolveAttachment* colorResolveAttachments;
+
+    /// if not null, the depth stencil attachment used for depth and stencil tests
     RPassDepthStencilAttachment* depthStencilAttachment;
+
     /// render pass dependency protects the attachments and transitions the image layouts,
     /// comparable to an image memory barrier.
     RPassDependency* dependency;
@@ -193,11 +217,12 @@ struct RClearDepthStencilValue
 /// @brief render pass instance creation info, used during command list recording
 struct RPassBeginInfo
 {
-    uint32_t width;                /// render area width
-    uint32_t height;               /// render area height
-    RImage depthStencilAttachment; /// if not a null handle, the depth stencil attachment for this pass
-    uint32_t colorAttachmentCount; /// number of color attachments used in this render pass
-    RImage* colorAttachments;      /// an array of valid image handles
+    uint32_t width;                  /// render area width
+    uint32_t height;                 /// render area height
+    RImage depthStencilAttachment;   /// if not a null handle, the depth stencil attachment for this pass
+    uint32_t colorAttachmentCount;   /// number of color attachments used in this render pass
+    RImage* colorAttachments;        /// an array of valid image handles
+    RImage* colorResolveAttachments; /// if not null, an array of colorAttachmentCount resolve attachments for colorAttachments
 
     /// @brief if the i'th color attachment in this pass uses RATTACHMENT_LOAD_OP_CLEAR,
     ///        clearColors[i] will be used to clear the attachment when the pass begins.
@@ -538,6 +563,10 @@ struct RDevice : RHandle<struct RDeviceObj>
     void present_frame();
 
     void get_depth_stencil_formats(RFormat* formats, uint32_t& count);
+
+    /// @brief get maximum multisample bits supported by both color and depth attachments,
+    ///        if RSAMPLE_COUNT_1_BIT is returned then MSAA is not supported.
+    RSampleCountBit get_max_sample_count();
 
     RFormat get_swapchain_color_format();
 

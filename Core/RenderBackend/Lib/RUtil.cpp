@@ -176,16 +176,16 @@ void cast_attachment_store_op_vk(const RAttachmentStoreOp& inOp, VkAttachmentSto
     outOp = attachmentStoreOpTable[(int)inOp].vkStoreOp;
 }
 
-void cast_pass_color_attachment_vk(const RPassColorAttachment& inAttachment, VkAttachmentDescription& outDesc)
+void cast_pass_color_attachment_vk(const RPassColorAttachment& inAttachment, const RSampleCountBit& inSamples, VkAttachmentDescription& outDesc)
 {
     outDesc.flags = 0;
-    outDesc.samples = VK_SAMPLE_COUNT_1_BIT;
     outDesc.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
     outDesc.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
 
     VkImageLayout vkPassLayout;
 
     cast_format_vk(inAttachment.colorFormat, outDesc.format);
+    cast_sample_count_vk(inSamples, outDesc.samples);
     cast_attachment_load_op_vk(inAttachment.colorLoadOp, outDesc.loadOp);
     cast_attachment_store_op_vk(inAttachment.colorStoreOp, outDesc.storeOp);
     cast_image_layout_vk(inAttachment.initialLayout, outDesc.initialLayout);
@@ -194,14 +194,32 @@ void cast_pass_color_attachment_vk(const RPassColorAttachment& inAttachment, VkA
     outDesc.finalLayout = vkPassLayout;
 }
 
-void cast_pass_depth_stencil_attachment_vk(const RPassDepthStencilAttachment& inAttachment, VkAttachmentDescription& outDesc)
+void cast_pass_color_resolve_attachment_vk(const RPassResolveAttachment& inAttachment, const RFormat& inColorFormat, VkAttachmentDescription& outDesc)
 {
     outDesc.flags = 0;
     outDesc.samples = VK_SAMPLE_COUNT_1_BIT;
+    outDesc.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
+    outDesc.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
+
+    VkImageLayout vkPassLayout;
+
+    cast_format_vk(inColorFormat, outDesc.format);
+    cast_attachment_load_op_vk(inAttachment.loadOp, outDesc.loadOp);
+    cast_attachment_store_op_vk(inAttachment.storeOp, outDesc.storeOp);
+    cast_image_layout_vk(inAttachment.initialLayout, outDesc.initialLayout);
+    cast_image_layout_vk(inAttachment.passLayout, vkPassLayout);
+
+    outDesc.finalLayout = vkPassLayout;
+}
+
+void cast_pass_depth_stencil_attachment_vk(const RPassDepthStencilAttachment& inAttachment, const RSampleCountBit& inSamples, VkAttachmentDescription& outDesc)
+{
+    outDesc.flags = 0;
 
     VkImageLayout vkPassLayout;
 
     cast_format_vk(inAttachment.depthStencilFormat, outDesc.format);
+    cast_sample_count_vk(inSamples, outDesc.samples);
     cast_attachment_load_op_vk(inAttachment.depthLoadOp, outDesc.loadOp);
     cast_attachment_store_op_vk(inAttachment.depthStoreOp, outDesc.storeOp);
     cast_attachment_load_op_vk(inAttachment.stencilLoadOp, outDesc.stencilLoadOp);
@@ -387,6 +405,7 @@ struct
     { RIMAGE_USAGE_STORAGE_BIT,                  VK_IMAGE_USAGE_STORAGE_BIT },
     { RIMAGE_USAGE_COLOR_ATTACHMENT_BIT,         VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT },
     { RIMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT },
+    { RIMAGE_USAGE_TRANSIENT_BIT,                VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT },
 };
 // clang-format on
 
@@ -449,6 +468,24 @@ struct
 void cast_primitive_topology_vk(const RPrimitiveTopology& inTopo, VkPrimitiveTopology& outTopo)
 {
     outTopo = primitiveTopologyTable[(int)inTopo].vkTopo;
+}
+
+static_assert(RSAMPLE_COUNT_1_BIT == VK_SAMPLE_COUNT_1_BIT);
+static_assert(RSAMPLE_COUNT_2_BIT == VK_SAMPLE_COUNT_2_BIT);
+static_assert(RSAMPLE_COUNT_4_BIT == VK_SAMPLE_COUNT_4_BIT);
+static_assert(RSAMPLE_COUNT_8_BIT == VK_SAMPLE_COUNT_8_BIT);
+static_assert(RSAMPLE_COUNT_16_BIT == VK_SAMPLE_COUNT_16_BIT);
+static_assert(RSAMPLE_COUNT_32_BIT == VK_SAMPLE_COUNT_32_BIT);
+static_assert(RSAMPLE_COUNT_64_BIT == VK_SAMPLE_COUNT_64_BIT);
+
+void cast_sample_count_vk(const RSampleCountBit& inBit, VkSampleCountFlagBits& outBit)
+{
+    outBit = (VkSampleCountFlagBits)inBit;
+}
+
+void cast_sample_count_from_vk(const VkSampleCountFlagBits& inBit, RSampleCountBit& outBit)
+{
+    outBit = (RSampleCountBit)inBit;
 }
 
 // clang-format off
