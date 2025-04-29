@@ -71,6 +71,7 @@ static void vk_device_destroy_pipeline_layout(RDeviceObj* self, RPipelineLayoutO
 static RPipeline vk_device_create_pipeline(RDeviceObj* self, const RPipelineInfo& pipelineI, RPipelineObj* obj);
 static RPipeline vk_device_create_compute_pipeline(RDeviceObj* self, const RComputePipelineInfo& pipelineI, RPipelineObj* pipelineObj);
 static void vk_device_destroy_pipeline(RDeviceObj* self, RPipeline pipeline);
+static void vk_device_pipeline_variant_pass(RDeviceObj* self, RPipelineObj* pipelineObj, const RPassInfo& passI);
 static void vk_device_update_set_images(RDeviceObj* self, uint32_t updateCount, const RSetImageUpdateInfo* updates);
 static void vk_device_update_set_buffers(RDeviceObj* self, uint32_t updateCount, const RSetBufferUpdateInfo* updates);
 static uint32_t vk_device_next_frame(RDeviceObj* self, RSemaphore& imageAcquired, RSemaphore& presentReady, RFence& frameComplete);
@@ -527,7 +528,7 @@ static void vk_device_create_pass(RDeviceObj* self, const RPassInfo& passI, RPas
             VkAttachmentDescription description;
             RFormat colorFormat = passI.colorAttachments[i].colorFormat;
             VkImageLayout passLayout;
-            
+
             RUtil::cast_image_layout_vk(passI.colorResolveAttachments[i].passLayout, passLayout);
             RUtil::cast_pass_color_resolve_attachment_vk(passI.colorResolveAttachments[i], colorFormat, description);
             attachmentD.push_back(description);
@@ -756,81 +757,61 @@ static void vk_device_destroy_pipeline_layout(RDeviceObj* self, RPipelineLayoutO
 
 RPipeline vk_device_create_pipeline(RDeviceObj* self, const RPipelineInfo& pipelineI, RPipelineObj* pipelineObj)
 {
-    std::vector<VkPipelineShaderStageCreateInfo> stageCI(pipelineI.shaderCount);
+    // NOTE: here we only initialize the base pipeline properties,
+    //       the actual graphics pipeline is created when variant properties
+    //       such as the render pass is known at a later stage.
+
+    pipelineObj->vk.shaderStageCI.resize(pipelineI.shaderCount);
+
     for (uint32_t i = 0; i < pipelineI.shaderCount; i++)
     {
         RShaderObj* shaderObj = (RShaderObj*)pipelineI.shaders[i];
         VkShaderStageFlagBits shaderStage;
         RUtil::cast_shader_type_vk(shaderObj->type, shaderStage);
 
-        stageCI[i].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
-        stageCI[i].pNext = nullptr;
-        stageCI[i].pName = LD_GLSL_ENTRY_POINT;
-        stageCI[i].flags = 0;
-        stageCI[i].module = shaderObj->vk.handle;
-        stageCI[i].pSpecializationInfo = nullptr;
-        stageCI[i].stage = shaderStage;
+        pipelineObj->vk.shaderStageCI[i].sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
+        pipelineObj->vk.shaderStageCI[i].pNext = nullptr;
+        pipelineObj->vk.shaderStageCI[i].pName = LD_GLSL_ENTRY_POINT;
+        pipelineObj->vk.shaderStageCI[i].flags = 0;
+        pipelineObj->vk.shaderStageCI[i].module = shaderObj->vk.handle;
+        pipelineObj->vk.shaderStageCI[i].pSpecializationInfo = nullptr;
+        pipelineObj->vk.shaderStageCI[i].stage = shaderStage;
     }
 
-    std::vector<VkVertexInputAttributeDescription> attributeD(pipelineI.vertexAttributeCount);
+    pipelineObj->vk.attributeD.resize(pipelineI.vertexAttributeCount);
     for (uint32_t i = 0; i < pipelineI.vertexAttributeCount; i++)
-        RUtil::cast_vertex_attribute_vk(pipelineI.vertexAttributes[i], i, attributeD[i]);
+        RUtil::cast_vertex_attribute_vk(pipelineI.vertexAttributes[i], i, pipelineObj->vk.attributeD[i]);
 
-    std::vector<VkVertexInputBindingDescription> bindingD(pipelineI.vertexBindingCount);
+    pipelineObj->vk.bindingD.resize(pipelineI.vertexBindingCount);
     for (uint32_t i = 0; i < pipelineI.vertexBindingCount; i++)
-        RUtil::cast_vertex_binding_vk(pipelineI.vertexBindings[i], i, bindingD[i]);
+        RUtil::cast_vertex_binding_vk(pipelineI.vertexBindings[i], i, pipelineObj->vk.bindingD[i]);
 
-    VkPipelineVertexInputStateCreateInfo vertexInputSCI{
+    pipelineObj->vk.vertexInputSCI = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
-        .vertexBindingDescriptionCount = (uint32_t)bindingD.size(),
-        .pVertexBindingDescriptions = bindingD.data(),
-        .vertexAttributeDescriptionCount = (uint32_t)attributeD.size(),
-        .pVertexAttributeDescriptions = attributeD.data(),
+        .vertexBindingDescriptionCount = (uint32_t)pipelineObj->vk.bindingD.size(),
+        .pVertexBindingDescriptions = pipelineObj->vk.bindingD.data(),
+        .vertexAttributeDescriptionCount = (uint32_t)pipelineObj->vk.attributeD.size(),
+        .pVertexAttributeDescriptions = pipelineObj->vk.attributeD.data(),
     };
 
     VkPrimitiveTopology vkPrimitive;
     RUtil::cast_primitive_topology_vk(pipelineI.primitiveTopology, vkPrimitive);
-    VkPipelineInputAssemblyStateCreateInfo inputAsmSCI{
+    pipelineObj->vk.inputAsmSCI = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_INPUT_ASSEMBLY_STATE_CREATE_INFO,
         .topology = vkPrimitive,
         .primitiveRestartEnable = VK_FALSE,
     };
 
-    VkSampleCountFlagBits rasterizationSamples;
-    RUtil::cast_sample_count_vk(pipelineI.pass.samples, rasterizationSamples);
-
-    VkPipelineMultisampleStateCreateInfo multisampleSCI{
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
-        .rasterizationSamples = rasterizationSamples,
-        .sampleShadingEnable = VK_FALSE,
-        .pSampleMask = nullptr,
-        .alphaToCoverageEnable = VK_FALSE,
-        .alphaToOneEnable = VK_FALSE,
-    };
-
-    VkPipelineTessellationStateCreateInfo tessellationSCI{
+    pipelineObj->vk.tessellationSCI = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_STATE_CREATE_INFO,
         .patchControlPoints = 0,
-    };
-
-    uint32_t swpWidth = self->vk.swapchain.width;
-    uint32_t swpHeight = self->vk.swapchain.height;
-    VkViewport viewport = RUtil::make_viewport(swpWidth, swpHeight);
-    VkRect2D scissor = RUtil::make_scissor(swpWidth, swpHeight);
-
-    VkPipelineViewportStateCreateInfo viewportSCI{
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
-        .viewportCount = 1,
-        .pViewports = &viewport,
-        .scissorCount = 1,
-        .pScissors = &scissor,
     };
 
     VkCullModeFlags vkCullMode;
     VkPolygonMode vkPolygonMode;
     RUtil::cast_cull_mode_vk(pipelineI.rasterization.cullMode, vkCullMode);
     RUtil::cast_polygon_mode_vk(pipelineI.rasterization.polygonMode, vkPolygonMode);
-    VkPipelineRasterizationStateCreateInfo rasterizationSCI{
+    pipelineObj->vk.rasterizationSCI = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
         .depthClampEnable = VK_FALSE,
         .rasterizerDiscardEnable = VK_FALSE,
@@ -844,7 +825,7 @@ RPipeline vk_device_create_pipeline(RDeviceObj* self, const RPipelineInfo& pipel
         .lineWidth = pipelineI.rasterization.lineWidth,
     };
 
-    VkPipelineDepthStencilStateCreateInfo depthStencilSCI{
+    pipelineObj->vk.depthStencilSCI = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
         .depthTestEnable = VK_TRUE,
         .depthWriteEnable = VK_TRUE,
@@ -857,62 +838,31 @@ RPipeline vk_device_create_pipeline(RDeviceObj* self, const RPipelineInfo& pipel
 
     uint32_t blendAttachmentCount = pipelineI.blend.colorAttachmentCount;
     const RPipelineBlendState* blendStates = pipelineI.blend.colorAttachments;
-    std::vector<VkPipelineColorBlendAttachmentState> vkBlendStates(blendAttachmentCount);
+    pipelineObj->vk.blendStates.resize(blendAttachmentCount);
     for (uint32_t i = 0; i < blendAttachmentCount; i++)
     {
-        vkBlendStates[i].blendEnable = (VkBool32)blendStates[i].enabled;
-        vkBlendStates[i].colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+        VkPipelineColorBlendAttachmentState& vkBlendState = pipelineObj->vk.blendStates[i];
 
-        if (!vkBlendStates[i].blendEnable)
+        vkBlendState.blendEnable = (VkBool32)blendStates[i].enabled;
+        vkBlendState.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+
+        if (!vkBlendState.blendEnable)
             continue;
 
-        RUtil::cast_blend_factor_vk(blendStates[i].srcColorFactor, vkBlendStates[i].srcColorBlendFactor);
-        RUtil::cast_blend_factor_vk(blendStates[i].dstColorFactor, vkBlendStates[i].dstColorBlendFactor);
-        RUtil::cast_blend_factor_vk(blendStates[i].srcAlphaFactor, vkBlendStates[i].srcAlphaBlendFactor);
-        RUtil::cast_blend_factor_vk(blendStates[i].dstAlphaFactor, vkBlendStates[i].dstAlphaBlendFactor);
-        RUtil::cast_blend_op_vk(blendStates[i].colorBlendOp, vkBlendStates[i].colorBlendOp);
-        RUtil::cast_blend_op_vk(blendStates[i].alphaBlendOp, vkBlendStates[i].alphaBlendOp);
+        RUtil::cast_blend_factor_vk(blendStates[i].srcColorFactor, vkBlendState.srcColorBlendFactor);
+        RUtil::cast_blend_factor_vk(blendStates[i].dstColorFactor, vkBlendState.dstColorBlendFactor);
+        RUtil::cast_blend_factor_vk(blendStates[i].srcAlphaFactor, vkBlendState.srcAlphaBlendFactor);
+        RUtil::cast_blend_factor_vk(blendStates[i].dstAlphaFactor, vkBlendState.dstAlphaBlendFactor);
+        RUtil::cast_blend_op_vk(blendStates[i].colorBlendOp, vkBlendState.colorBlendOp);
+        RUtil::cast_blend_op_vk(blendStates[i].alphaBlendOp, vkBlendState.alphaBlendOp);
     }
 
-    VkPipelineColorBlendStateCreateInfo colorBlendSCI{
+    pipelineObj->vk.colorBlendSCI = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
         .logicOpEnable = VK_FALSE,
-        .attachmentCount = (uint32_t)vkBlendStates.size(),
-        .pAttachments = vkBlendStates.data(),
+        .attachmentCount = (uint32_t)pipelineObj->vk.blendStates.size(),
+        .pAttachments = pipelineObj->vk.blendStates.data(),
     };
-
-    std::array<VkDynamicState, 2> dynamicStates = {
-        VK_DYNAMIC_STATE_VIEWPORT,
-        VK_DYNAMIC_STATE_SCISSOR,
-    };
-
-    VkPipelineDynamicStateCreateInfo dynamicSCI{
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
-        .dynamicStateCount = (uint32_t)dynamicStates.size(),
-        .pDynamicStates = dynamicStates.data(),
-    };
-
-    RPipelineLayoutObj* layoutObj = self->get_or_create_pipeline_layout_obj(pipelineI.layout);
-    RPassObj* passObj = self->get_or_create_pass_obj(pipelineI.pass);
-
-    VkGraphicsPipelineCreateInfo pipelineCI{
-        .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
-        .stageCount = (uint32_t)stageCI.size(),
-        .pStages = stageCI.data(),
-        .pVertexInputState = &vertexInputSCI,
-        .pInputAssemblyState = &inputAsmSCI,
-        .pTessellationState = &tessellationSCI,
-        .pViewportState = &viewportSCI,
-        .pRasterizationState = &rasterizationSCI,
-        .pMultisampleState = &multisampleSCI,
-        .pDepthStencilState = &depthStencilSCI,
-        .pColorBlendState = &colorBlendSCI,
-        .pDynamicState = &dynamicSCI,
-        .layout = layoutObj->vk.handle,
-        .renderPass = passObj->vk.handle,
-    };
-
-    VK_CHECK(vkCreateGraphicsPipelines(self->vk.device, VK_NULL_HANDLE, 1, &pipelineCI, nullptr, &pipelineObj->vk.handle));
 
     return {pipelineObj};
 }
@@ -937,7 +887,11 @@ static RPipeline vk_device_create_compute_pipeline(RDeviceObj* self, const RComp
         .layout = layoutObj->vk.handle,
     };
 
-    VK_CHECK(vkCreateComputePipelines(self->vk.device, VK_NULL_HANDLE, 1, &pipelineCI, nullptr, &pipelineObj->vk.handle));
+    VkPipeline vkHandle;
+    VK_CHECK(vkCreateComputePipelines(self->vk.device, VK_NULL_HANDLE, 1, &pipelineCI, nullptr, &vkHandle));
+
+    // compute pipelines currently have no variant properties
+    pipelineObj->vk.handles[0] = vkHandle;
 
     return {pipelineObj};
 }
@@ -946,7 +900,76 @@ static void vk_device_destroy_pipeline(RDeviceObj* self, RPipeline pipeline)
 {
     RPipelineObj* pipelineObj = (RPipelineObj*)pipeline;
 
-    vkDestroyPipeline(self->vk.device, pipelineObj->vk.handle, nullptr);
+    // destroy all variants
+    for (auto& ite : pipelineObj->vk.handles)
+        vkDestroyPipeline(self->vk.device, ite.second, nullptr);
+}
+
+static void vk_device_pipeline_variant_pass(RDeviceObj* self, RPipelineObj* pipelineObj, const RPassInfo& passI)
+{
+    RPassObj* passObj = self->get_or_create_pass_obj(passI);
+    pipelineObj->vk.variantHash = passObj->hash;
+
+    if (pipelineObj->vk.handles.contains(pipelineObj->vk.variantHash))
+        return;
+
+    uint32_t swpWidth = self->vk.swapchain.width;
+    uint32_t swpHeight = self->vk.swapchain.height;
+    VkViewport viewport = RUtil::make_viewport(swpWidth, swpHeight);
+    VkRect2D scissor = RUtil::make_scissor(swpWidth, swpHeight);
+
+    VkPipelineViewportStateCreateInfo viewportSCI{
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
+        .viewportCount = 1,
+        .pViewports = &viewport,
+        .scissorCount = 1,
+        .pScissors = &scissor,
+    };
+
+    VkSampleCountFlagBits rasterizationSamples;
+    RUtil::cast_sample_count_vk(passI.samples, rasterizationSamples);
+    VkPipelineMultisampleStateCreateInfo multisampleSCI{
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
+        .rasterizationSamples = rasterizationSamples,
+        .sampleShadingEnable = VK_FALSE,
+        .pSampleMask = nullptr,
+        .alphaToCoverageEnable = VK_FALSE,
+        .alphaToOneEnable = VK_FALSE,
+    };
+
+    std::array<VkDynamicState, 2> dynamicStates = {
+        VK_DYNAMIC_STATE_VIEWPORT,
+        VK_DYNAMIC_STATE_SCISSOR,
+    };
+
+    VkPipelineDynamicStateCreateInfo dynamicSCI{
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
+        .dynamicStateCount = (uint32_t)dynamicStates.size(),
+        .pDynamicStates = dynamicStates.data(),
+    };
+
+    VkGraphicsPipelineCreateInfo pipelineCI{
+        .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+        .stageCount = (uint32_t)pipelineObj->vk.shaderStageCI.size(),
+        .pStages = pipelineObj->vk.shaderStageCI.data(),
+        .pVertexInputState = &pipelineObj->vk.vertexInputSCI,
+        .pInputAssemblyState = &pipelineObj->vk.inputAsmSCI,
+        .pTessellationState = &pipelineObj->vk.tessellationSCI,
+        .pViewportState = &viewportSCI,
+        .pRasterizationState = &pipelineObj->vk.rasterizationSCI,
+        .pMultisampleState = &multisampleSCI,
+        .pDepthStencilState = &pipelineObj->vk.depthStencilSCI,
+        .pColorBlendState = &pipelineObj->vk.colorBlendSCI,
+        .pDynamicState = &dynamicSCI,
+        .layout = pipelineObj->layoutObj->vk.handle,
+        .renderPass = passObj->vk.handle,
+    };
+
+    VkPipeline vkHandle;
+
+    VK_CHECK(vkCreateGraphicsPipelines(self->vk.device, VK_NULL_HANDLE, 1, &pipelineCI, nullptr, &vkHandle));
+
+    pipelineObj->vk.handles[pipelineObj->vk.variantHash] = vkHandle;
 }
 
 static void vk_device_update_set_images(RDeviceObj* self, uint32_t updateCount, const RSetImageUpdateInfo* updates)
@@ -1256,7 +1279,10 @@ static void vk_command_list_cmd_bind_graphics_pipeline(RCommandListObj* self, RP
 {
     RPipelineObj* pipelineObj = (RPipelineObj*)pipeline;
 
-    vkCmdBindPipeline(self->vk.handle, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineObj->vk.handle);
+    LD_ASSERT(pipelineObj->vk.handles.contains(pipelineObj->vk.variantHash));
+    VkPipeline vkHandle = pipelineObj->vk.handles[pipelineObj->vk.variantHash];
+
+    vkCmdBindPipeline(self->vk.handle, VK_PIPELINE_BIND_POINT_GRAPHICS, vkHandle);
 }
 
 static void vk_command_list_cmd_bind_graphics_sets(RCommandListObj* self, RPipelineLayoutObj* layoutObj, uint32_t setStart, uint32_t setCount, RSet* sets)
@@ -1272,7 +1298,10 @@ static void vk_command_list_cmd_bind_compute_pipeline(RCommandListObj* self, RPi
 {
     RPipelineObj* pipelineObj = (RPipelineObj*)pipeline;
 
-    vkCmdBindPipeline(self->vk.handle, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineObj->vk.handle);
+    LD_ASSERT(pipelineObj->vk.handles.contains(0));
+    VkPipeline vkHandle = pipelineObj->vk.handles[0];
+
+    vkCmdBindPipeline(self->vk.handle, VK_PIPELINE_BIND_POINT_COMPUTE, vkHandle);
 }
 
 static void vk_command_list_cmd_bind_compute_sets(RCommandListObj* self, RPipelineLayoutObj* layoutObj, uint32_t setStart, uint32_t setCount, RSet* sets)
@@ -1938,6 +1967,7 @@ void RDeviceObj::init_vk_api()
     create_pipeline = &vk_device_create_pipeline;
     create_compute_pipeline = &vk_device_create_compute_pipeline;
     destroy_pipeline = &vk_device_destroy_pipeline;
+    pipeline_variant_pass = &vk_device_pipeline_variant_pass;
     update_set_images = &vk_device_update_set_images;
     update_set_buffers = &vk_device_update_set_buffers;
     next_frame = &vk_device_next_frame;

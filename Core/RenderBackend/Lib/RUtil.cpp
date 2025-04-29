@@ -1,3 +1,4 @@
+#include "RBackendObj.h"
 #include "RUtilInternal.h"
 #include <Ludens/Header/Assert.h>
 #include <cstring>
@@ -100,6 +101,40 @@ void cast_format_image_aspect_vk(const RFormat& inFormat, VkImageAspectFlags& ou
 uint32_t get_format_texel_size(const RFormat& format)
 {
     return formatTable[(int)format].texelSize;
+}
+
+void save_pass_info(const RPassInfo& inInfo, RPassInfoData& outData)
+{
+    outData.samples = inInfo.samples;
+    outData.colorAttachmentCount = inInfo.colorAttachmentCount;
+    outData.colorAttachments.resize(inInfo.colorAttachmentCount);
+    outData.colorResolveAttachments.clear();
+    outData.depthStencilAttachment.reset();
+    outData.dependency.reset();
+
+    std::copy(inInfo.colorAttachments, inInfo.colorAttachments + inInfo.colorAttachmentCount, outData.colorAttachments.begin());
+
+    if (inInfo.colorResolveAttachments)
+    {
+        outData.colorResolveAttachments.resize(inInfo.colorAttachmentCount);
+        std::copy(inInfo.colorResolveAttachments, inInfo.colorResolveAttachments + inInfo.colorAttachmentCount, outData.colorResolveAttachments.begin());
+    }
+
+    if (inInfo.depthStencilAttachment)
+        outData.depthStencilAttachment = *inInfo.depthStencilAttachment;
+
+    if (inInfo.dependency)
+        outData.dependency = *inInfo.dependency;
+}
+
+void load_pass_info(const RPassInfoData& inData, RPassInfo& outInfo)
+{
+    outInfo.samples = inData.samples;
+    outInfo.colorAttachmentCount = inData.colorAttachmentCount;
+    outInfo.colorAttachments = inData.colorAttachments.data();
+    outInfo.colorResolveAttachments = inData.colorResolveAttachments.empty() ? nullptr : inData.colorResolveAttachments.data();
+    outInfo.depthStencilAttachment = inData.depthStencilAttachment ? std::to_address(inData.depthStencilAttachment) : nullptr;
+    outInfo.dependency = inData.dependency ? std::to_address(inData.dependency) : nullptr;
 }
 
 // clang-format off

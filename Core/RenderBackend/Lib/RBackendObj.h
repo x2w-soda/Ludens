@@ -3,6 +3,8 @@
 #include <Ludens/RenderBackend/RBackend.h>
 #include <Ludens/System/Allocator.h>
 #include <cstdint>
+#include <optional>
+#include <unordered_map>
 #include <vector>
 #include <vk_mem_alloc.h>    // hide from user
 #include <vulkan/vulkan.hpp> // hide from user
@@ -89,6 +91,18 @@ struct RImageObj
     } vk;
 };
 
+/// @brief while RPassInfo contains transient pointer members,
+///        this data representation is safe to be read at any time.
+struct RPassInfoData
+{
+    RSampleCountBit samples;
+    uint32_t colorAttachmentCount;
+    std::vector<RPassColorAttachment> colorAttachments;
+    std::vector<RPassResolveAttachment> colorResolveAttachments;
+    std::optional<RPassDepthStencilAttachment> depthStencilAttachment;
+    std::optional<RPassDependency> dependency;
+};
+
 struct RPassObj
 {
     uint64_t rid;
@@ -140,6 +154,7 @@ struct RCommandListObj
 {
     uint64_t rid;
     RDeviceObj* deviceObj;
+    RPassInfoData currentPass;
 
     void (*begin)(RCommandListObj* self, bool oneTimeSubmit);
     void (*end)(RCommandListObj* self);
@@ -175,7 +190,7 @@ struct RCommandListObj
 struct RCommandPoolObj
 {
     uint64_t rid;
-    LinearAllocator listLA;
+    std::vector<RCommandList> lists;
     RDeviceObj* deviceObj;
 
     RCommandList (*allocate)(RCommandPoolObj* self, RCommandListObj* listObj);
@@ -260,7 +275,18 @@ struct RPipelineObj
 
     struct
     {
-        VkPipeline handle;
+        std::vector<VkPipelineShaderStageCreateInfo> shaderStageCI;
+        std::vector<VkVertexInputAttributeDescription> attributeD;
+        std::vector<VkVertexInputBindingDescription> bindingD;
+        std::vector<VkPipelineColorBlendAttachmentState> blendStates;
+        std::unordered_map<uint32_t, VkPipeline> handles;
+        VkPipelineVertexInputStateCreateInfo vertexInputSCI;
+        VkPipelineInputAssemblyStateCreateInfo inputAsmSCI;
+        VkPipelineTessellationStateCreateInfo tessellationSCI;
+        VkPipelineRasterizationStateCreateInfo rasterizationSCI;
+        VkPipelineDepthStencilStateCreateInfo depthStencilSCI;
+        VkPipelineColorBlendStateCreateInfo colorBlendSCI;
+        uint32_t variantHash;
     } vk;
 };
 
@@ -339,6 +365,7 @@ struct RDeviceObj
     RPipeline (*create_pipeline)(RDeviceObj* self, const RPipelineInfo& pipelineI, RPipelineObj* pipelineObj);
     RPipeline (*create_compute_pipeline)(RDeviceObj* self, const RComputePipelineInfo& pipelineI, RPipelineObj* pipelineObj);
     void (*destroy_pipeline)(RDeviceObj* self, RPipeline pipeline);
+    void (*pipeline_variant_pass)(RDeviceObj* self, RPipelineObj* pipelineObj, const RPassInfo& passI);
 
     void (*update_set_images)(RDeviceObj* self, uint32_t updateCount, const RSetImageUpdateInfo* updates);
 

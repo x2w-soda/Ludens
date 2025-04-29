@@ -144,11 +144,9 @@ void RDevice::destroy_image(RImage image)
 
 RCommandPool RDevice::create_command_pool(const RCommandPoolInfo& poolI)
 {
-    RCommandPoolObj* poolObj = (RCommandPoolObj*)heap_malloc(sizeof(RCommandPoolObj), MEMORY_USAGE_RENDER);
+    RCommandPoolObj* poolObj = heap_new<RCommandPoolObj>(MEMORY_USAGE_RENDER);
     poolObj->rid = RObjectID::get();
     poolObj->deviceObj = mObj;
-    new (&poolObj->listLA) LinearAllocator();
-    poolObj->listLA.create(sizeof(RCommandListObj), MEMORY_USAGE_RENDER); // LA will later realloc if needed
 
     return mObj->create_command_pool(mObj, poolI, poolObj);
 }
@@ -157,11 +155,12 @@ void RDevice::destroy_command_pool(RCommandPool pool)
 {
     RCommandPoolObj* poolObj = (RCommandPoolObj*)pool;
 
+    for (RCommandList list : poolObj->lists)
+        heap_delete((RCommandListObj*)list);
+
     mObj->destroy_command_pool(mObj, pool);
 
-    poolObj->listLA.destroy();
-    poolObj->listLA.~LinearAllocator();
-    heap_free(poolObj);
+    heap_delete(poolObj);
 }
 
 RShader RDevice::create_shader(const RShaderInfo& shaderI)
@@ -205,16 +204,18 @@ void RDevice::destroy_set_pool(RSetPool pool)
 
 RPipeline RDevice::create_pipeline(const RPipelineInfo& pipelineI)
 {
-    RPipelineObj* pipelineObj = (RPipelineObj*)heap_malloc(sizeof(RPipelineObj), MEMORY_USAGE_RENDER);
+    RPipelineObj* pipelineObj = heap_new<RPipelineObj>(MEMORY_USAGE_RENDER);
     pipelineObj->rid = RObjectID::get();
     pipelineObj->layoutObj = mObj->get_or_create_pipeline_layout_obj(pipelineI.layout);
 
+    // NOTE: the exact render pass is only known during command recording,
+    //       this only creates a shell object and the actual graphics API handle is not created yet.
     return mObj->create_pipeline(mObj, pipelineI, pipelineObj);
 }
 
 RPipeline RDevice::create_compute_pipeline(const RComputePipelineInfo& pipelineI)
 {
-    RPipelineObj* pipelineObj = (RPipelineObj*)heap_malloc(sizeof(RPipelineObj), MEMORY_USAGE_RENDER);
+    RPipelineObj* pipelineObj = heap_new<RPipelineObj>(MEMORY_USAGE_RENDER);
     pipelineObj->rid = RObjectID::get();
     pipelineObj->layoutObj = mObj->get_or_create_pipeline_layout_obj(pipelineI.layout);
 
@@ -225,7 +226,7 @@ void RDevice::destroy_pipeline(RPipeline pipeline)
 {
     mObj->destroy_pipeline(mObj, pipeline);
 
-    heap_free((RPipelineObj*)pipeline);
+    heap_delete((RPipelineObj*)pipeline);
 }
 
 void RDevice::update_set_images(uint32_t updateCount, const RSetImageUpdateInfo* updates)
@@ -381,11 +382,20 @@ void RCommandList::end()
 
 void RCommandList::cmd_begin_pass(const RPassBeginInfo& passBI)
 {
+    // save pass information for later, used to invalidate graphics pipelines in cmd_bind_graphics_pipeline
+    RUtil::save_pass_info(passBI.pass, mObj->currentPass);
+
     mObj->cmd_begin_pass(mObj, passBI);
 }
 
 void RCommandList::cmd_bind_graphics_pipeline(RPipeline pipeline)
 {
+    RPassInfo passI;
+    RUtil::load_pass_info(mObj->currentPass, passI);
+
+    // get or create graphics pipeline variant
+    mObj->deviceObj->pipeline_variant_pass(mObj->deviceObj, (RPipelineObj*)pipeline, passI);
+
     mObj->cmd_bind_graphics_pipeline(mObj, pipeline);
 }
 
@@ -484,16 +494,16 @@ void RCommandList::cmd_blit_image(RImage srcImage, RImageLayout srcImageLayout, 
 
 RCommandList RCommandPool::allocate()
 {
-    RCommandListObj* listObj = (RCommandListObj*)mObj->listLA.allocate(sizeof(RCommandListObj)); // TODO: grow the LA, currently has fixed size
+    RCommandListObj* listObj = heap_new<RCommandListObj>(MEMORY_USAGE_RENDER);
     listObj->deviceObj = mObj->deviceObj;
+
+    mObj->lists.push_back({listObj});
 
     return mObj->allocate(mObj, listObj);
 }
 
 void RCommandPool::reset()
 {
-    mObj->listLA.free();
-
     mObj->reset(mObj);
 }
 
@@ -723,8 +733,8 @@ RFramebufferObj* RDeviceObj::get_or_create_framebuffer_obj(const RFramebufferInf
         framebufferObj->hash = framebufferHash;
         framebufferObj->width = framebufferI.width;
         framebufferObj->height = framebufferI.height;
-        framebufferObj->passObj = this->get_or_create_pass_obj(framebufferI.pass);
-        this->create_framebuffer(this, framebufferI, framebufferObj);
+        framebufferObj->passObj = get_or_create_pass_obj(framebufferI.pass);
+        create_framebuffer(this, framebufferI, framebufferObj);
         sFramebuffers[framebufferHash] = framebufferObj;
     }
 

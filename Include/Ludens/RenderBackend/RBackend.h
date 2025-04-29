@@ -187,18 +187,18 @@ struct RPassInfo
 
     uint32_t colorAttachmentCount;
 
-    RPassColorAttachment* colorAttachments;
+    const RPassColorAttachment* colorAttachments;
 
     /// if not null, an array of colorAttachmentCount resolve attachments,
     /// and colorAttachments is expected to be an array of multisampled images
-    RPassResolveAttachment* colorResolveAttachments;
+    const RPassResolveAttachment* colorResolveAttachments;
 
     /// if not null, the depth stencil attachment used for depth and stencil tests
-    RPassDepthStencilAttachment* depthStencilAttachment;
+    const RPassDepthStencilAttachment* depthStencilAttachment;
 
     /// render pass dependency protects the attachments and transitions the image layouts,
     /// comparable to an image memory barrier.
-    RPassDependency* dependency;
+    const RPassDependency* dependency;
 };
 
 union RClearColorValue
@@ -342,8 +342,7 @@ struct RPipelineInfo
     uint32_t vertexBindingCount;
     RVertexBinding* vertexBindings;
     RPrimitiveTopology primitiveTopology;
-    const RPipelineLayoutInfo& layout;
-    RPassInfo pass;
+    RPipelineLayoutInfo layout;
     RPipelineRasterizationInfo rasterization;
     RPipelineBlendInfo blend;
 };
@@ -351,7 +350,7 @@ struct RPipelineInfo
 /// @brief compute pipeline creation info
 struct RComputePipelineInfo
 {
-    const RPipelineLayoutInfo& layout;
+    RPipelineLayoutInfo layout;
     RShader shader;
 };
 
