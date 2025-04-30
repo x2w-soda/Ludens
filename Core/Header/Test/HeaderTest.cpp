@@ -1,7 +1,8 @@
+#include <Ludens/Header/Math/Mat4.h>
+#include <Ludens/Header/Math/Quat.h>
 #include <Ludens/Header/Math/Vec2.h>
 #include <Ludens/Header/Math/Vec3.h>
 #include <Ludens/Header/Math/Vec4.h>
-#include <Ludens/Header/Math/Quat.h>
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <Extra/doctest/doctest.h>
 
@@ -94,6 +95,25 @@ TEST_CASE("Vec3 member")
     CHECK(v.z == 7);
 }
 
+TEST_CASE("Vec3 operator")
+{
+    IVec3 v1(1, 2, 3);
+    IVec3 v2(5, -6, 7);
+
+    CHECK(v1 == IVec3(1, 2, 3));
+    CHECK(v1 != v2);
+
+    CHECK(v1 + v2 == IVec3(6, -4, 10));
+    CHECK(v1 - v2 == IVec3(-4, 8, -4));
+    CHECK(v1 * v2 == IVec3(5, -12, 21));
+    CHECK(v1 / v2 == IVec3(0, 0, 0));
+
+    CHECK(v1 + 3 == IVec3(4, 5, 6));
+    CHECK(v1 - 3 == IVec3(-2, -1, 0));
+    CHECK(v1 * 3 == IVec3(3, 6, 9));
+    CHECK(v1 / 3 == IVec3(0, 0, 1));
+}
+
 TEST_CASE("Vec3 method")
 {
     IVec3 v1(1, 2, 3);
@@ -178,6 +198,25 @@ TEST_CASE("Vec4 member")
     CHECK(v.w == 8);
 }
 
+TEST_CASE("Vec4 operator")
+{
+    IVec4 v1(1, 2, 3, 4);
+    IVec4 v2(5, -6, 7, 8);
+
+    CHECK(v1 == IVec4(1, 2, 3, 4));
+    CHECK(v1 != v2);
+
+    CHECK(v1 + v2 == IVec4(6, -4, 10, 12));
+    CHECK(v1 - v2 == IVec4(-4, 8, -4, -4));
+    CHECK(v1 * v2 == IVec4(5, -12, 21, 32));
+    CHECK(v1 / v2 == IVec4(0, 0, 0, 0));
+
+    CHECK(v1 + 3 == IVec4(4, 5, 6, 7));
+    CHECK(v1 - 3 == IVec4(-2, -1, 0, 1));
+    CHECK(v1 * 3 == IVec4(3, 6, 9, 12));
+    CHECK(v1 / 3 == IVec4(0, 0, 1, 1));
+}
+
 TEST_CASE("Vec4 method")
 {
     IVec4 v1(1, 2, 3, 4);
@@ -227,4 +266,60 @@ TEST_CASE("Quat method")
     CHECK(q.y == 2.0f);
     CHECK(q.z == 3.0f);
     CHECK(q.w == 4.0f);
+}
+
+static const IMat4 sMat4Pattern = {
+    {1, 2, 3, 4},
+    {0, 1, 2, 3},
+    {0, 0, 1, 2},
+    {0, 0, 0, 1},
+};
+
+TEST_CASE("Mat4 ctor")
+{
+    IMat4 m;
+    CHECK(m[0] == IVec4(0, 0, 0, 0));
+    CHECK(m[1] == IVec4(0, 0, 0, 0));
+    CHECK(m[2] == IVec4(0, 0, 0, 0));
+    CHECK(m[3] == IVec4(0, 0, 0, 0));
+
+    m = IMat4(IVec4(1), IVec4(2), IVec4(3), IVec4(4));
+    CHECK(m[0] == IVec4(1, 1, 1, 1));
+    CHECK(m[1] == IVec4(2, 2, 2, 2));
+    CHECK(m[2] == IVec4(3, 3, 3, 3));
+    CHECK(m[3] == IVec4(4, 4, 4, 4));
+
+    m = IMat4(3);
+    CHECK(m[0] == IVec4(3, 0, 0, 0));
+    CHECK(m[1] == IVec4(0, 3, 0, 0));
+    CHECK(m[2] == IVec4(0, 0, 3, 0));
+    CHECK(m[3] == IVec4(0, 0, 0, 3));
+}
+
+TEST_CASE("Mat4 operator")
+{
+    IVec4 v1(1, 2, 3, 4);
+
+    IMat4 m = IMat4(2) * IMat4(3);
+    CHECK(m[0] == IVec4(6, 0, 0, 0));
+    CHECK(m[1] == IVec4(0, 6, 0, 0));
+    CHECK(m[2] == IVec4(0, 0, 6, 0));
+    CHECK(m[3] == IVec4(0, 0, 0, 6));
+
+    IVec4 v2 = m * v1;
+    CHECK(v2 == IVec4(6, 12, 18, 24));
+}
+
+TEST_CASE("Mat4 method")
+{
+    Vec4 p1(3, 2, 4, 1);
+
+    Vec4 p2 = Mat4::translate({2, -1, 3}) * p1;
+    CHECK(p2 == Vec4(5, 1, 7, 1));
+
+    p2 = Mat4::scale({3, -2, 4}) * p1;
+    CHECK(p2 == Vec4(9, -4, 16, 1));
+
+    Vec4 p3 = Mat4::rotate(LD_PI_2, Vec3(0, 0, 1)) * Vec4(2, 10, 7, 1);
+    CHECK(p3 == Vec4(-10, 2, 7, 1));
 }
