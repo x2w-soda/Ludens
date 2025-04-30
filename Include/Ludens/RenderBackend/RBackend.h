@@ -575,6 +575,9 @@ struct RDevice : RHandle<struct RDeviceObj>
 
     uint32_t get_frames_in_flight_count();
 
+    /// @brief get a frame index in the half open range [0, frames_in_flight_count)
+    uint32_t get_frame_index();
+
     RQueue get_graphics_queue();
 
     void wait_idle();

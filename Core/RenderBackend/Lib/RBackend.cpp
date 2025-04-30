@@ -28,6 +28,7 @@ RDevice RDevice::create(const RDeviceInfo& info)
 {
     RDeviceObj* obj = (RDeviceObj*)heap_malloc(sizeof(RDeviceObj), MEMORY_USAGE_RENDER);
     obj->rid = RObjectID::get();
+    obj->frameIndex = 0;
 
     if (info.backend == RDEVICE_BACKEND_VULKAN)
         vk_create_device(obj, info);
@@ -241,6 +242,9 @@ void RDevice::update_set_buffers(uint32_t updateCount, const RSetBufferUpdateInf
 
 uint32_t RDevice::next_frame(RSemaphore& imageAcquired, RSemaphore& presentReady, RFence& frameComplete)
 {
+    uint32_t framesInFlightCount = mObj->get_frames_in_flight_count(mObj);
+    mObj->frameIndex = (mObj->frameIndex + 1) % framesInFlightCount;
+
     return mObj->next_frame(mObj, imageAcquired, presentReady, frameComplete);
 }
 
@@ -277,6 +281,11 @@ uint32_t RDevice::get_swapchain_image_count()
 uint32_t RDevice::get_frames_in_flight_count()
 {
     return mObj->get_frames_in_flight_count(mObj);
+}
+
+uint32_t RDevice::get_frame_index()
+{
+    return mObj->frameIndex;
 }
 
 RQueue RDevice::get_graphics_queue()

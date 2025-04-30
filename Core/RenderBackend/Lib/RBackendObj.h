@@ -327,6 +327,7 @@ struct RFenceObj
 struct RDeviceObj
 {
     uint64_t rid;
+    uint32_t frameIndex;
     RDeviceBackend backend;
 
     RSemaphore (*create_semaphore)(RDeviceObj* self, RSemaphoreObj* semaphoreObj);
