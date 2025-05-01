@@ -1,5 +1,6 @@
 #include <Ludens/Header/Math/Mat4.h>
 #include <Ludens/Header/Math/Quat.h>
+#include <Ludens/Header/Math/Rect.h>
 #include <Ludens/Header/Math/Vec2.h>
 #include <Ludens/Header/Math/Vec3.h>
 #include <Ludens/Header/Math/Vec4.h>
@@ -56,6 +57,15 @@ TEST_CASE("Vec2 method")
     CHECK(v1.y == 3);
     CHECK(v2.x == 4);
     CHECK(v2.y == 5);
+}
+
+TEST_CASE("Vec2 operator")
+{
+    IVec2 v1(1, 2);
+    IVec2 v2(3, -4);
+
+    CHECK(v1 == IVec2(1, 2));
+    CHECK(v1 != v2);
 }
 
 TEST_CASE("Vec3 ctor")
@@ -274,6 +284,34 @@ static const IMat4 sMat4Pattern = {
     {0, 0, 1, 2},
     {0, 0, 0, 1},
 };
+
+TEST_CASE("Rect ctor")
+{
+    IRect r;
+    CHECK(r.x == 0);
+    CHECK(r.y == 0);
+    CHECK(r.w == 0);
+    CHECK(r.h == 0);
+
+    r = IRect(1, 2, 3, 4);
+    CHECK(r.x == 1);
+    CHECK(r.y == 2);
+    CHECK(r.w == 3);
+    CHECK(r.h == 4);
+}
+
+TEST_CASE("Rect method")
+{
+    IRect r(1, 2, 3, 4);
+    CHECK(r.get_pos() == IVec2(1, 2));
+    CHECK(r.get_size() == IVec2(3, 4));
+
+    CHECK(!r.contains({1, 1}));
+    CHECK(r.contains({1, 2}));
+    CHECK(r.contains({2, 4}));
+    CHECK(r.contains({4, 6}));
+    CHECK(!r.contains({4, 7}));
+}
 
 TEST_CASE("Mat4 ctor")
 {

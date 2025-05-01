@@ -33,6 +33,22 @@ struct TVec2
 };
 // clang-format on
 
+/// @brief compare each component in vector, using epsilon tolerance for floating point precision
+template <typename T>
+inline bool operator==(const TVec2<T>& lhs, const TVec2<T>& rhs)
+{
+    if constexpr (std::is_same_v<T, float>)
+    {
+        return std::abs(lhs.x - rhs.x) < LD_EPSILON_F32 &&
+               std::abs(lhs.y - rhs.y) < LD_EPSILON_F32;
+    } else if constexpr (std::is_same_v<T, double>)
+    {
+        return std::abs(lhs.x - rhs.x) < LD_EPSILON_F64 &&
+               std::abs(lhs.y - rhs.y) < LD_EPSILON_F64;
+    } else
+        return lhs.x == rhs.x && lhs.y == rhs.y;
+}
+
 using Vec2 = TVec2<float>;
 using IVec2 = TVec2<int>;
 

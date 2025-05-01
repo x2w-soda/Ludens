@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Ludens/Header/Math/Math.h>
 #include <Ludens/Header/Math/Vec2.h>
 
 namespace LD {

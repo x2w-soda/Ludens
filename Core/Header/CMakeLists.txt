@@ -12,6 +12,7 @@ set(MODULE_INCLUDE
     ${LUDENS_INCLUDE_DIR}/Ludens/Header/Math/Vec4.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Header/Math/Quat.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Header/Math/Mat4.h
+    ${LUDENS_INCLUDE_DIR}/Ludens/Header/Math/Rect.h
 )
 
 set(MODULE_TEST
