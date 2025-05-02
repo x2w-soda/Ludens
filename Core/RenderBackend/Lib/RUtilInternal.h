@@ -58,12 +58,14 @@ void cast_vertex_binding_vk(const RVertexBinding& inBinding, uint32_t inIndex, V
 void cast_buffer_usage_vk(const RBufferUsageFlags& inUsage, VkBufferUsageFlags& outUsage);
 void cast_image_usage_vk(const RImageUsageFlags& inUsage, VkImageUsageFlags& outUsage);
 void cast_image_type_vk(const RImageType& inType, VkImageType& outType);
+void cast_image_view_type_vk(const RImageType& inType, VkImageViewType& outType);
 void cast_index_type_vk(const RIndexType& inType, VkIndexType& outType);
 void cast_primitive_topology_vk(const RPrimitiveTopology& inTopo, VkPrimitiveTopology& outTopo);
 void cast_sample_count_vk(const RSampleCountBit& inBit, VkSampleCountFlagBits& outBit);
 void cast_sample_count_from_vk(const VkSampleCountFlagBits& inBit, RSampleCountBit& outBit);
 void cast_polygon_mode_vk(const RPolygonMode& inMode, VkPolygonMode& outMode);
 void cast_cull_mode_vk(const RCullMode& inMode, VkCullModeFlags& outMode);
+void cast_compare_op_vk(const RCompareOp& inOp, VkCompareOp& outOp);
 void cast_blend_factor_vk(const RBlendFactor& inFactor, VkBlendFactor& outFactor);
 void cast_blend_op_vk(const RBlendOp& inOp, VkBlendOp& outOp);
 

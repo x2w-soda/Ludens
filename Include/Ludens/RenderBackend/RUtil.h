@@ -12,8 +12,24 @@ inline RImageInfo make_2d_image_info(RImageUsageFlags usage, RFormat format, uin
         .type = RIMAGE_TYPE_2D,
         .samples = RSAMPLE_COUNT_1_BIT,
         .format = format,
+        .layers = 1,
         .width = width,
         .height = height,
+        .depth = 1,
+        .sampler = sampler,
+    };
+}
+
+inline RImageInfo make_cube_image_info(RImageUsageFlags usage, RFormat format, uint32_t size, RSamplerInfo sampler = {})
+{
+    return {
+        .usage = usage,
+        .type = RIMAGE_TYPE_CUBE,
+        .samples = RSAMPLE_COUNT_1_BIT,
+        .format = format,
+        .layers = 6,
+        .width = size,
+        .height = size,
         .depth = 1,
         .sampler = sampler,
     };

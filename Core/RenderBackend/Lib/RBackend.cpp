@@ -128,6 +128,10 @@ void RDevice::destroy_buffer(RBuffer buffer)
 
 RImage RDevice::create_image(const RImageInfo& imageI)
 {
+    // early sanity checks
+    LD_ASSERT(!(imageI.type == RIMAGE_TYPE_2D && imageI.layers != 1));
+    LD_ASSERT(!(imageI.type == RIMAGE_TYPE_CUBE && imageI.layers != 6));
+
     RImageObj* imageObj = (RImageObj*)heap_malloc(sizeof(RImageObj), MEMORY_USAGE_RENDER);
     imageObj->rid = RObjectID::get();
     imageObj->info = imageI;
@@ -328,12 +332,17 @@ uint32_t RImage::depth() const
     return mObj->info.depth;
 }
 
+uint32_t RImage::layers() const
+{
+    return mObj->info.layers;
+}
+
 uint64_t RImage::size() const
 {
     uint32_t texelSize = RUtil::get_format_texel_size(mObj->info.format);
     uint64_t layerSize = mObj->info.width * mObj->info.height * mObj->info.depth;
 
-    return layerSize * texelSize;
+    return mObj->info.layers * layerSize * texelSize;
 }
 
 uint64_t RBuffer::size() const

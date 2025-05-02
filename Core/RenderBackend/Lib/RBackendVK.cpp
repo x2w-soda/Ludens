@@ -401,22 +401,29 @@ static RImage vk_device_create_image(RDeviceObj* self, const RImageInfo& imageI,
 {
     VkFormat vkFormat;
     VkImageType vkType;
+    VkImageViewType vkViewType;
     VkImageUsageFlags vkUsage;
     VkImageAspectFlags vkAspect;
     VkSampleCountFlagBits vkSamples;
     RUtil::cast_format_vk(imageI.format, vkFormat);
     RUtil::cast_image_type_vk(imageI.type, vkType);
+    RUtil::cast_image_view_type_vk(imageI.type, vkViewType);
     RUtil::cast_image_usage_vk(imageI.usage, vkUsage);
     RUtil::cast_format_image_aspect_vk(imageI.format, vkAspect);
     RUtil::cast_sample_count_vk(imageI.samples, vkSamples);
 
+    VkImageCreateFlags imageFlags = 0;
+    if (imageI.type == RIMAGE_TYPE_CUBE)
+        imageFlags |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT;
+
     VkImageCreateInfo imageCI{
         .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+        .flags = imageFlags,
         .imageType = vkType,
         .format = vkFormat,
         .extent = {.width = imageI.width, .height = imageI.height, .depth = imageI.depth},
         .mipLevels = 1,
-        .arrayLayers = 1,
+        .arrayLayers = imageI.layers,
         .samples = vkSamples,
         .tiling = VK_IMAGE_TILING_OPTIMAL,
         .usage = vkUsage,
@@ -442,7 +449,7 @@ static RImage vk_device_create_image(RDeviceObj* self, const RImageInfo& imageI,
     VkImageViewCreateInfo viewCI{
         .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
         .image = obj->vk.handle,
-        .viewType = VK_IMAGE_VIEW_TYPE_2D, // TODO:
+        .viewType = vkViewType,
         .format = vkFormat,
         .subresourceRange = viewRange,
     };
@@ -825,13 +832,15 @@ RPipeline vk_device_create_pipeline(RDeviceObj* self, const RPipelineInfo& pipel
         .lineWidth = pipelineI.rasterization.lineWidth,
     };
 
+    VkCompareOp vkDepthCompareOp;
+    RUtil::cast_compare_op_vk(pipelineI.depthStencil.depthCompareOp, vkDepthCompareOp);
     pipelineObj->vk.depthStencilSCI = {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
-        .depthTestEnable = VK_TRUE,
-        .depthWriteEnable = VK_TRUE,
-        .depthCompareOp = VK_COMPARE_OP_LESS,
+        .depthTestEnable = pipelineI.depthStencil.depthTestEnabled,
+        .depthWriteEnable = pipelineI.depthStencil.depthWriteEnabled,
+        .depthCompareOp = vkDepthCompareOp,
         .depthBoundsTestEnable = VK_FALSE,
-        .stencilTestEnable = VK_FALSE,
+        .stencilTestEnable = VK_FALSE, // TODO:
         .minDepthBounds = 0.0f,
         .maxDepthBounds = 1.0f,
     };
@@ -1404,9 +1413,9 @@ static void vk_command_list_cmd_image_memory_barrier(RCommandListObj* self, RPip
     VkImageSubresourceRange range{
         .aspectMask = vkAspect,
         .baseMipLevel = 0,
-        .levelCount = 1,
+        .levelCount = VK_REMAINING_MIP_LEVELS,
         .baseArrayLayer = 0,
-        .layerCount = 1,
+        .layerCount = VK_REMAINING_ARRAY_LAYERS,
     };
 
     VkImageMemoryBarrier vkBarrier{
@@ -1461,7 +1470,7 @@ static void vk_command_list_cmd_copy_buffer_to_image(RCommandListObj* self, RBuf
         copies[i].imageExtent.depth = regions[i].imageDepth;
         copies[i].imageSubresource.aspectMask = vkAspects;
         copies[i].imageSubresource.baseArrayLayer = 0;
-        copies[i].imageSubresource.layerCount = 1;
+        copies[i].imageSubresource.layerCount = regions[i].imageLayers;
         copies[i].imageSubresource.mipLevel = 0;
     }
 
@@ -1489,7 +1498,7 @@ static void vk_command_list_cmd_copy_image_to_buffer(RCommandListObj* self, RIma
         copies[i].imageExtent.depth = regions[i].imageDepth;
         copies[i].imageSubresource.aspectMask = vkAspects;
         copies[i].imageSubresource.baseArrayLayer = 0;
-        copies[i].imageSubresource.layerCount = 1;
+        copies[i].imageSubresource.layerCount = regions[i].imageLayers;
         copies[i].imageSubresource.mipLevel = 0;
     }
 

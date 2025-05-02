@@ -92,6 +92,7 @@ enum RBufferUsageBit : RBufferUsageFlags
 enum RImageType
 {
     RIMAGE_TYPE_2D = 0,
+    RIMAGE_TYPE_CUBE,
 };
 
 using RImageUsageFlags = uint32_t;
@@ -177,6 +178,18 @@ enum RCullMode
     RCULL_MODE_NONE = 0,
     RCULL_MODE_FRONT,
     RCULL_MODE_BACK,
+};
+
+enum RCompareOp
+{
+    RCOMPARE_OP_NEVER = 0,
+    RCOMPARE_OP_LESS,
+    RCOMPARE_OP_EQUAL,
+    RCOMPARE_OP_LESS_OR_EQUAL,
+    RCOMPARE_OP_GREATER,
+    RCOMPARE_OP_NOT_EQUAL,
+    RCOMPARE_OP_GREATER_OR_EQUAL,
+    RCOMPARE_OP_ALWAYS,
 };
 
 enum RBlendFactor

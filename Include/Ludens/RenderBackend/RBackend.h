@@ -56,6 +56,7 @@ struct RBufferImageCopy
     uint32_t imageWidth;
     uint32_t imageHeight;
     uint32_t imageDepth;
+    uint32_t imageLayers;
 };
 
 /// @brief describes a copy region between images in a blit operation
@@ -106,6 +107,7 @@ struct RImageInfo
     RImageType type;
     RSampleCountBit samples;
     RFormat format;
+    uint32_t layers;
     uint32_t width;
     uint32_t height;
     uint32_t depth;
@@ -132,6 +134,9 @@ struct RImage : RHandle<struct RImageObj>
 
     /// @brief the depth of the image
     uint32_t depth() const;
+
+    /// @brief number of layers in the image
+    uint32_t layers() const;
 
     /// @brief inferred byte size of mipmap level 0 from image format, width, height, depth, and layers
     uint64_t size() const;
@@ -313,6 +318,14 @@ struct RPipelineRasterizationInfo
     float lineWidth = 1.0f; /// used for RPOLYGON_MODE_LINE
 };
 
+/// @brief graphics pipeline depth stencil state info
+struct RPipelineDepthStencilInfo
+{
+    bool depthTestEnabled;
+    bool depthWriteEnabled;
+    RCompareOp depthCompareOp;
+};
+
 /// @brief describes the blend state of a color attachment
 struct RPipelineBlendState
 {
@@ -344,6 +357,7 @@ struct RPipelineInfo
     RPrimitiveTopology primitiveTopology;
     RPipelineLayoutInfo layout;
     RPipelineRasterizationInfo rasterization;
+    RPipelineDepthStencilInfo depthStencil;
     RPipelineBlendInfo blend;
 };
 

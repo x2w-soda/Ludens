@@ -463,14 +463,21 @@ struct
 {
     RImageType type;
     VkImageType vkType;
+    VkImageViewType vkViewType;
 } imageTypeTable[] = {
-    { RIMAGE_TYPE_2D,  VK_IMAGE_TYPE_2D},
+    { RIMAGE_TYPE_2D,    VK_IMAGE_TYPE_2D, VK_IMAGE_VIEW_TYPE_2D },
+    { RIMAGE_TYPE_CUBE,  VK_IMAGE_TYPE_2D, VK_IMAGE_VIEW_TYPE_CUBE },
 };
 // clang-format on
 
 void cast_image_type_vk(const RImageType& inType, VkImageType& outType)
 {
     outType = imageTypeTable[(int)inType].vkType;
+}
+
+void cast_image_view_type_vk(const RImageType& inType, VkImageViewType& outType)
+{
+    outType = imageTypeTable[(int)inType].vkViewType;
 }
 
 // clang-format off
@@ -555,6 +562,28 @@ struct
 void cast_cull_mode_vk(const RCullMode& inMode, VkCullModeFlags& outMode)
 {
     outMode = cullModeTable[(int)inMode].vkMode;
+}
+
+// clang-format off
+struct
+{
+    RCompareOp op;
+    VkCompareOp vkOp;
+} compareOpTable[] = {
+    { RCOMPARE_OP_NEVER,            VK_COMPARE_OP_NEVER },
+    { RCOMPARE_OP_LESS,             VK_COMPARE_OP_LESS },
+    { RCOMPARE_OP_EQUAL,            VK_COMPARE_OP_EQUAL },
+    { RCOMPARE_OP_LESS_OR_EQUAL,    VK_COMPARE_OP_LESS_OR_EQUAL },
+    { RCOMPARE_OP_GREATER,          VK_COMPARE_OP_GREATER },
+    { RCOMPARE_OP_NOT_EQUAL,        VK_COMPARE_OP_NOT_EQUAL },
+    { RCOMPARE_OP_GREATER_OR_EQUAL, VK_COMPARE_OP_GREATER_OR_EQUAL },
+    { RCOMPARE_OP_ALWAYS,           VK_COMPARE_OP_ALWAYS },
+};
+// clang-format on
+
+void cast_compare_op_vk(const RCompareOp& inOp, VkCompareOp& outOp)
+{
+    outOp = compareOpTable[(int)inOp].vkOp;
 }
 
 // clang-format off

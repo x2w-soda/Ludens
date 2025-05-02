@@ -1,5 +1,7 @@
 #pragma once
 
+#include <Ludens/Header/Math/Math.h>
+
 namespace LD {
 
 // clang-format off
