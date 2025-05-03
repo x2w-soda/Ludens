@@ -15,6 +15,8 @@ static_assert(GLFW_MOUSE_BUTTON_MIDDLE == MOUSE_BUTTON_MIDDLE);
 
 uint8_t sKeyState[KEY_CODE_ENUM_LAST];
 uint8_t sMouseState[MOUSE_BUTTON_ENUM_LAST];
+float sMouseCursorDeltaX;
+float sMouseCursorDeltaY;
 float sMouseCursorX;
 float sMouseCursorY;
 
@@ -61,6 +63,14 @@ void get_mouse_position(float& x, float& y)
 {
     x = sMouseCursorX;
     y = sMouseCursorY;
+}
+
+bool get_mouse_motion(float& dx, float& dy)
+{
+    dx = sMouseCursorDeltaX;
+    dy = sMouseCursorDeltaY;
+
+    return dx || dy;
 }
 
 } // namespace Input

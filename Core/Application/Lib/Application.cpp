@@ -22,6 +22,8 @@ struct Window
 namespace Input {
 extern uint8_t sKeyState[];
 extern uint8_t sMouseState[];
+extern float sMouseCursorDeltaX;
+extern float sMouseCursorDeltaY;
 extern float sMouseCursorX;
 extern float sMouseCursorY;
 } // namespace Input
@@ -108,6 +110,18 @@ void Application::poll_events()
 
     double xpos, ypos;
     glfwGetCursorPos(mWindow->handle, &xpos, &ypos);
+
+    static bool sIsFirstFrame = true;
+
+    if (sIsFirstFrame)
+    {
+        sIsFirstFrame = false;
+        Input::sMouseCursorX = (float)xpos;
+        Input::sMouseCursorY = (float)ypos;
+    }
+
+    Input::sMouseCursorDeltaX = xpos - Input::sMouseCursorX;
+    Input::sMouseCursorDeltaY = ypos - Input::sMouseCursorY;
     Input::sMouseCursorX = (float)xpos;
     Input::sMouseCursorY = (float)ypos;
 

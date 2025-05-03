@@ -159,5 +159,8 @@ bool get_mouse_up(MouseButton button);
 /// @brief get the mouse cursor position in screen space
 void get_mouse_position(float& x, float& y);
 
+/// @brief get the mouse cursor position difference with the last frame
+bool get_mouse_motion(float& dx, float& dy);
+
 } // namespace Input
 } // namespace LD
