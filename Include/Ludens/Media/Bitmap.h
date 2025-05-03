@@ -30,6 +30,10 @@ struct Bitmap : Handle<struct BitmapObj>
     /// @brief create bitmap from file on disk
     static Bitmap create_from_path(const char* path);
 
+    /// @brief create 6 layered bitmap from 6 paths to each face
+    /// @param paths an array of 6 paths
+    static Bitmap create_cubemap_from_paths(const char** paths);
+
     /// @brief destroy bitmap
     static void destroy(Bitmap bitmap);
 

@@ -1,3 +1,4 @@
+#include <Ludens/Header/Bitwise.h>
 #include <Ludens/Media/Bitmap.h>
 #include <Ludens/System/Memory.h>
 #include <cstring>
@@ -7,13 +8,20 @@
 
 namespace LD {
 
+using BitmapFlags = uint32_t;
+enum BitmapFlagBit : BitmapFlags
+{
+    BITMAP_FLAG_USE_STB_FREE = LD_BIT(0),
+    BITMAP_FLAG_USE_HEAP_FREE = LD_BIT(1),
+};
+
 struct BitmapObj
 {
+    uint32_t flags;
     uint32_t width;
     uint32_t height;
     BitmapChannel channel;
     char* data;
-    bool fromStb;
 };
 
 Bitmap Bitmap::create_from_data(uint32_t width, uint32_t height, BitmapChannel channel, const void* data)
@@ -21,11 +29,11 @@ Bitmap Bitmap::create_from_data(uint32_t width, uint32_t height, BitmapChannel c
     uint64_t dataSize = width * height * channel;
 
     BitmapObj* obj = (BitmapObj*)heap_malloc(sizeof(BitmapObj) + dataSize, MEMORY_USAGE_MEDIA);
+    obj->flags = 0;
     obj->width = width;
     obj->height = height;
     obj->channel = channel;
     obj->data = (char*)(obj + 1);
-    obj->fromStb = false;
 
     memcpy(obj->data, data, dataSize);
 
@@ -42,20 +50,88 @@ Bitmap Bitmap::create_from_path(const char* path)
     if (!obj->data)
         return {};
 
+    obj->flags = BITMAP_FLAG_USE_STB_FREE;
     obj->width = (uint32_t)x;
     obj->height = (uint32_t)y;
     obj->channel = BITMAP_CHANNEL_RGBA;
-    obj->fromStb = true;
 
     return {obj};
+}
+
+Bitmap Bitmap::create_cubemap_from_paths(const char** paths)
+{
+    BitmapObj* obj = (BitmapObj*)heap_malloc(sizeof(BitmapObj), MEMORY_USAGE_MEDIA);
+    uint32_t size = 0;
+    uint32_t layerSize = 0;
+    char* dst = nullptr;
+    char* tmp = nullptr;
+
+    for (int i = 0; i < 6; i++)
+    {
+        int x, y, ch;
+        tmp = (char*)stbi_load(paths[i], &x, &y, &ch, STBI_rgb_alpha);
+
+        if (!tmp)
+        {
+            printf("cubemap face not found: %s\n", paths[i]);
+            goto failure;
+        }
+
+        if (x != y)
+        {
+            printf("cubemap face %d is not a cube: %dx%d\n", i, x, y);
+            goto failure;
+        }
+
+        if (i == 0)
+        {
+            size = (uint32_t)x;
+            layerSize = size * size * 4;
+            dst = obj->data = (char*)heap_malloc(6 * layerSize, MEMORY_USAGE_MEDIA);
+        }
+        else if (x != size || y != size)
+        {
+            printf("cubemap faces vary in size, expected %dx%d for face %d, found %dx%d\n", (int)size, (int)size, i, x, y);
+            goto failure;
+        }
+
+        // copy into contiguous memory
+        memcpy(dst, tmp, layerSize);
+        stbi_image_free(tmp);
+
+        dst += layerSize;
+    }
+
+    obj->flags = BITMAP_FLAG_USE_HEAP_FREE;
+    obj->width = size;
+    obj->height = size;
+    obj->channel = BITMAP_CHANNEL_RGBA;
+
+    return {obj};
+
+failure:
+
+    if (tmp)
+        stbi_image_free(tmp);
+
+    if (obj)
+    {
+        if (obj->data)
+            heap_free(obj->data);
+        heap_free(obj);
+    }
+
+    return {};
 }
 
 void Bitmap::destroy(Bitmap bitmap)
 {
     BitmapObj* obj = (BitmapObj*)bitmap;
 
-    if (obj->fromStb)
+    if (obj->data && (obj->flags & BITMAP_FLAG_USE_STB_FREE))
         stbi_image_free(obj->data);
+    else if (obj->data && (obj->flags & BITMAP_FLAG_USE_HEAP_FREE))
+        heap_free(obj->data);
 
     heap_free(obj);
 }

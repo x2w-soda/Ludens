@@ -12,7 +12,7 @@
 # endif
 #endif
 
-#ifndef LD_ASSERT
+#ifndef NDEBUG
 #define LD_ASSERT(EXPR)                                                        \
     do                                                                         \
         if (!(EXPR))                                                           \
@@ -21,6 +21,8 @@
             LD_DEBUG_BREAK;                                                    \
         }                                                                      \
     while (0)
+#else
+#define LD_ASSERT
 #endif
 
 #ifndef LD_UNREACHABLE
