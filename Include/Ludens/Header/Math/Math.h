@@ -15,3 +15,4 @@
 #define LD_TAN(X) std::tan(X)
 
 #define LD_ABS(X) std::abs(X)
+#define LD_SQRT(X) std::sqrt(X)

@@ -85,6 +85,16 @@ TEST_CASE("Vec3 ctor")
     CHECK(v.y == 2);
     CHECK(v.z == 3);
 
+    v = IVec3(IVec2(1, 2), 3);
+    CHECK(v.x == 1);
+    CHECK(v.y == 2);
+    CHECK(v.z == 3);
+
+    v = IVec3(1, IVec2(2, 3));
+    CHECK(v.x == 1);
+    CHECK(v.y == 2);
+    CHECK(v.z == 3);
+
     IVec3 v2 = v;
     CHECK(v2.x == 1);
     CHECK(v2.y == 2);
@@ -122,6 +132,15 @@ TEST_CASE("Vec3 operator")
     CHECK(v1 - 3 == IVec3(-2, -1, 0));
     CHECK(v1 * 3 == IVec3(3, 6, 9));
     CHECK(v1 / 3 == IVec3(0, 0, 1));
+
+    v1 += IVec3(3, 4, 5);
+    CHECK(v1 == IVec3(4, 6, 8));
+    v1 -= IVec3(2, 2, 2);
+    CHECK(v1 == IVec3(2, 4, 6));
+    v1 *= IVec3(3);
+    CHECK(v1 == IVec3(6, 12, 18));
+    v1 /= IVec3(2);
+    CHECK(v1 == IVec3(3, 6, 9));
 }
 
 TEST_CASE("Vec3 method")
@@ -133,6 +152,14 @@ TEST_CASE("Vec3 method")
 
     CHECK(IVec3::dot(v1, v2) == 8);
     CHECK(IVec3::dot(v2, v1) == 8);
+
+    CHECK(IVec3::cross(IVec3(1, 0, 0), IVec3(0, 1, 0)) == IVec3(0, 0, 1));
+    CHECK(IVec3::cross(IVec3(0, 1, 0), IVec3(1, 0, 0)) == IVec3(0, 0, -1));
+    CHECK(IVec3::cross(v1, v2) == IVec3(17, 2, -7));
+
+    CHECK(Vec3::normalize(Vec3(-3.0f, 0.0f, 0.0f)) == Vec3(-1.0f, 0.0f, 0.0f));
+    CHECK(Vec3::normalize(Vec3(7.0f, -24.0f, 0.0f)) == Vec3(0.28f, -0.96f, 0.0f));
+    CHECK(Vec3::normalize(Vec3(0.0f, 3.0f, -4.0f)) == Vec3(0.0f, 0.6f, -0.8f));
 
     unsigned long long ullData[3] = {1, 2, 3};
     double f64Data[3] = {4.0, 5.0, 6.0};

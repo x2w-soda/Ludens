@@ -1,8 +1,15 @@
 #pragma once
 
 #include <Ludens/Header/Math/Math.h>
-#include <Ludens/Header/Math/Vec4.h>
 #include <Ludens/Header/Math/Vec3.h>
+#include <Ludens/Header/Math/Vec4.h>
+
+// This controls whether the projection matrix should
+// perform a handedness flip. The projection matrices of
+// GLM performs a flip since its matrices are right-handed
+// by default and OpenGL NDC is left-handed. This macro
+// decides whether we should follow this quirk.
+#define LD_PROJECTION_FLIP_HANDEDNESS 0
 
 namespace LD {
 
@@ -65,6 +72,48 @@ struct TMat4
         scale[2].z = axis.z;
 
         return scale;
+    }
+
+    /// @brief create a view matrix
+    /// @param eyePos world space position of the eye
+    /// @param targetPos world space position of the target
+    /// @param up a directional vector used to derive sideway direction of the eye
+    static inline TMat4<T> look_at(const TVec3<T>& eyePos, const TVec3<T>& targetPos, const TVec3<T>& up)
+    {
+        TVec3<T> eyeDir = TVec3<T>::normalize(targetPos - eyePos);
+        TVec3<T> eyeSide = TVec3<T>::normalize(TVec3<T>::cross(eyeDir, up));
+        TVec3<T> eyeUp = TVec3<T>::cross(eyeSide, eyeDir);
+
+        TMat4 view(1);
+        view[0].x = eyeSide.x;
+        view[1].x = eyeSide.y;
+        view[2].x = eyeSide.z;
+        view[0].y = eyeUp.x;
+        view[1].y = eyeUp.y;
+        view[2].y = eyeUp.z;
+        view[0].z = -eyeDir.x;
+        view[1].z = -eyeDir.y;
+        view[2].z = -eyeDir.z;
+        view[3].x = -TVec3<T>::dot(eyeSide, eyePos);
+        view[3].y = -TVec3<T>::dot(eyeUp, eyePos);
+        view[3].z = TVec3<T>::dot(eyeDir, eyePos);
+
+        return view;
+    }
+
+    /// @brief create a perspective projection matrix
+    static inline TMat4<T> perspective(T fovRadians, T aspect, T clipNear, T clipFar)
+    {
+        T tanFov2 = LD_TAN(fovRadians / static_cast<T>(2));
+
+        TMat4 proj((T)0);
+        proj[0].x = (T)1 / (aspect * tanFov2);
+        proj[1].y = (LD_PROJECTION_FLIP_HANDEDNESS ? (T)1 : (T)-1) / (tanFov2);
+        proj[2].z = -(clipFar + clipNear) / (clipFar - clipNear);
+        proj[2].w = -(T)1;
+        proj[3].z = -((T)2 * clipFar * clipNear) / (clipFar - clipNear);
+
+        return proj;
     }
 };
 
