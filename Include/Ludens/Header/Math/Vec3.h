@@ -23,6 +23,9 @@ struct TVec3
 
     inline T length_squared() const { return x * x + y * y + z * z; }
 
+    /// @brief get the length of the vector
+    inline T length() const { return (T)LD_SQRT(x * x + y * y + z * z); }
+
     /// @brief create from array of 3 scalar elements
     template <typename TElement>
     static TVec3 from_data(const TElement* a)
@@ -46,9 +49,10 @@ struct TVec3
     }
 
     /// @brief normalize a vector
+    /// @warning does not check for zero length division
     static TVec3 normalize(const TVec3& v)
     {
-        return v / LD_SQRT(v.x * v.x + v.y * v.y + v.z * v.z);
+        return v / (T)LD_SQRT(v.x * v.x + v.y * v.y + v.z * v.z);
     }
 };
 

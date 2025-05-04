@@ -43,11 +43,20 @@ TEST_CASE("Vec2 method")
 {
     IVec2 v1(1, 2);
     IVec2 v2(2, -3);
+    IVec2 v3(7, -24);
 
     CHECK(v2.length_squared() == 13);
+    CHECK(v3.length_squared() == 625);
+    CHECK(v3.length() == 25);
+    CHECK(IVec2(0).length() == 0);
+    CHECK(IVec2(0).length_squared() == 0);
 
     CHECK(IVec2::dot(v1, v2) == -4);
     CHECK(IVec2::dot(v2, v1) == -4);
+
+    CHECK(Vec2::normalize(Vec2(7.0f, -24.0f)) == Vec2(0.28f, -0.96f));
+    CHECK(Vec2::normalize(Vec2(-3.0f, 0.0f)) == Vec2(-1.0f, 0.0f));
+    CHECK(Vec2::normalize(Vec2(3.0f, -4.0f)) == Vec2(0.6f, -0.8f));
 
     unsigned long long ullData[2] = {2, 3};
     double f64Data[2] = {4.0, 5.0};
@@ -66,6 +75,25 @@ TEST_CASE("Vec2 operator")
 
     CHECK(v1 == IVec2(1, 2));
     CHECK(v1 != v2);
+
+    CHECK(v1 + v2 == IVec2(4, -2));
+    CHECK(v1 - v2 == IVec2(-2, 6));
+    CHECK(v1 * v2 == IVec2(3, -8));
+    CHECK(v1 / v2 == IVec2(0, 0));
+
+    CHECK(v1 + 3 == IVec2(4, 5));
+    CHECK(v1 - 3 == IVec2(-2, -1));
+    CHECK(v1 * 3 == IVec2(3, 6));
+    CHECK(v1 / 3 == IVec2(0, 0));
+
+    v1 += IVec2(3, 4);
+    CHECK(v1 == IVec2(4, 6));
+    v1 -= IVec2(2, 2);
+    CHECK(v1 == IVec2(2, 4));
+    v1 *= IVec2(3);
+    CHECK(v1 == IVec2(6, 12));
+    v1 /= IVec2(2);
+    CHECK(v1 == IVec2(3, 6));
 }
 
 TEST_CASE("Vec3 ctor")
@@ -147,8 +175,12 @@ TEST_CASE("Vec3 method")
 {
     IVec3 v1(1, 2, 3);
     IVec3 v2(2, -3, 4);
+    IVec3 v3(3, -4, 0);
 
     CHECK(v2.length_squared() == 29);
+    CHECK(v3.length() == 5);
+    CHECK(IVec3(0).length() == 0);
+    CHECK(IVec3(0).length_squared() == 0);
 
     CHECK(IVec3::dot(v1, v2) == 8);
     CHECK(IVec3::dot(v2, v1) == 8);
@@ -252,17 +284,35 @@ TEST_CASE("Vec4 operator")
     CHECK(v1 - 3 == IVec4(-2, -1, 0, 1));
     CHECK(v1 * 3 == IVec4(3, 6, 9, 12));
     CHECK(v1 / 3 == IVec4(0, 0, 1, 1));
+
+    v1 += IVec4(3, 4, 5, 6);
+    CHECK(v1 == IVec4(4, 6, 8, 10));
+    v1 -= IVec4(2);
+    CHECK(v1 == IVec4(2, 4, 6, 8));
+    v1 *= IVec4(3);
+    CHECK(v1 == IVec4(6, 12, 18, 24));
+    v1 /= IVec4(2);
+    CHECK(v1 == IVec4(3, 6, 9, 12));
 }
 
 TEST_CASE("Vec4 method")
 {
     IVec4 v1(1, 2, 3, 4);
     IVec4 v2(2, -3, 4, 5);
+    IVec4 v3(10, -4, 2, -1);
+    Vec4 v4(9, 3, -3, 1);
 
+    CHECK(v1.length_squared() == 30);
     CHECK(v2.length_squared() == 54);
+    CHECK(v3.length_squared() == 121);
+    CHECK(v3.length() == 11);
+    CHECK(IVec4(0).length() == 0);
+    CHECK(IVec4(0).length_squared() == 0);
 
     CHECK(IVec4::dot(v1, v2) == 28);
     CHECK(IVec4::dot(v2, v1) == 28);
+
+    CHECK(Vec4::normalize(v4) == Vec4(0.9f, 0.3f, -0.3f, 0.1f));
 
     unsigned long long ullData[4] = {1, 2, 3, 4};
     double f64Data[4] = {4.0, 5.0, 6.0, 7.0};

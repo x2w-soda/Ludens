@@ -23,9 +23,12 @@ struct TVec4
 	TVec4(T x, const TVec3<T>& v) : x(x), y(v.x), z(v.y), w(v.z) {}
     // clang-format on
 
-	inline T length_squared() const { return x*x + y*y + z*z + w*w; }
+    inline T length_squared() const { return x * x + y * y + z * z + w * w; }
 
-	/// @brief create from array of 4 scalar elements
+    /// @brief get the length of the vector
+    inline T length() const { return (T)LD_SQRT(x * x + y * y + z * z + w * w); }
+
+    /// @brief create from array of 4 scalar elements
     template <typename TElement>
     static TVec4 from_data(const TElement* a)
     {
@@ -37,10 +40,17 @@ struct TVec4
     }
 
     /// @brief dot product between two vectors
-	static T dot(const TVec4& lhs, const TVec4& rhs)
-	{
-		return lhs.x * rhs.x + lhs.y * rhs.y + lhs.z * rhs.z + lhs.w * rhs.w;
-	}
+    static T dot(const TVec4& lhs, const TVec4& rhs)
+    {
+        return lhs.x * rhs.x + lhs.y * rhs.y + lhs.z * rhs.z + lhs.w * rhs.w;
+    }
+
+    /// @brief normalize a vector
+    /// @warning does not check for zero length division
+    static TVec4 normalize(const TVec4& v)
+    {
+        return v / (T)LD_SQRT(v.x * v.x + v.y * v.y + v.z * v.z + v.w * v.w);
+    }
 };
 
 /// @brief compare each component in vector, using epsilon tolerance for floating point precision
@@ -53,13 +63,15 @@ inline bool operator==(const TVec4<T>& lhs, const TVec4<T>& rhs)
                std::abs(lhs.y - rhs.y) < LD_EPSILON_F32 &&
                std::abs(lhs.z - rhs.z) < LD_EPSILON_F32 &&
                std::abs(lhs.w - rhs.w) < LD_EPSILON_F32;
-    } else if constexpr (std::is_same_v<T, double>)
+    }
+    else if constexpr (std::is_same_v<T, double>)
     {
         return std::abs(lhs.x - rhs.x) < LD_EPSILON_F64 &&
                std::abs(lhs.y - rhs.y) < LD_EPSILON_F64 &&
                std::abs(lhs.z - rhs.z) < LD_EPSILON_F64 &&
                std::abs(lhs.w - rhs.w) < LD_EPSILON_F64;
-    } else
+    }
+    else
         return lhs.x == rhs.x && lhs.y == rhs.y && lhs.z == rhs.z && lhs.w == rhs.w;
 }
 
@@ -70,21 +82,27 @@ inline bool operator==(const TVec4<T>& lhs, const TVec4<T>& rhs)
         return TVec4<T>(v.x OP s, v.y OP s, v.z OP s, v.w OP s); \
     }
 
-#define LD_VEC4_ARITH(OP)                                                                \
+#define LD_VEC4_ARITH(OP, OP_ASSIGN)                                                     \
     template <typename T>                                                                \
     inline TVec4<T> operator OP(const TVec4<T>& lhs, const TVec4<T>& rhs)                \
     {                                                                                    \
         return TVec4<T>(lhs.x OP rhs.x, lhs.y OP rhs.y, lhs.z OP rhs.z, lhs.w OP rhs.w); \
+    }                                                                                    \
+    template <typename T>                                                                \
+    inline TVec4<T>& operator OP_ASSIGN(TVec4<T>& lhs, const TVec4<T>& rhs)              \
+    {                                                                                    \
+        lhs = lhs OP rhs;                                                                \
+        return lhs;                                                                      \
     }
 
 LD_VEC4_SCALAR(+);
 LD_VEC4_SCALAR(-);
 LD_VEC4_SCALAR(*);
 LD_VEC4_SCALAR(/);
-LD_VEC4_ARITH(+);
-LD_VEC4_ARITH(-);
-LD_VEC4_ARITH(*);
-LD_VEC4_ARITH(/);
+LD_VEC4_ARITH(+, +=);
+LD_VEC4_ARITH(-, -=);
+LD_VEC4_ARITH(*, *=);
+LD_VEC4_ARITH(/, /=);
 
 #undef LD_VEC4_ARITH
 #undef LD_VEC4_SCALAR
