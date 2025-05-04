@@ -96,6 +96,13 @@ inline bool operator==(const TVec3<T>& lhs, const TVec3<T>& rhs)
         return lhs;                                                         \
     }
 
+#define LD_VEC3_UNARY(OP)                        \
+    template <typename T>                        \
+    inline TVec3<T> operator OP(TVec3<T>& v)     \
+    {                                            \
+        return TVec3<T>(OP v.x, OP v.y, OP v.z); \
+    }
+
 LD_VEC3_SCALAR(+);
 LD_VEC3_SCALAR(-);
 LD_VEC3_SCALAR(*);
@@ -104,7 +111,10 @@ LD_VEC3_ARITH(+, +=);
 LD_VEC3_ARITH(-, -=);
 LD_VEC3_ARITH(*, *=);
 LD_VEC3_ARITH(/, /=);
+LD_VEC3_UNARY(+);
+LD_VEC3_UNARY(-);
 
+#undef LD_VEC3_UNARY
 #undef LD_VEC3_ARITH
 #undef LD_VEC3_SCALAR
 

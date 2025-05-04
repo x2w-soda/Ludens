@@ -94,6 +94,9 @@ TEST_CASE("Vec2 operator")
     CHECK(v1 == IVec2(6, 12));
     v1 /= IVec2(2);
     CHECK(v1 == IVec2(3, 6));
+
+    CHECK(+v1 == v1);
+    CHECK(-v1 == v1 * -1);
 }
 
 TEST_CASE("Vec3 ctor")
@@ -169,6 +172,9 @@ TEST_CASE("Vec3 operator")
     CHECK(v1 == IVec3(6, 12, 18));
     v1 /= IVec3(2);
     CHECK(v1 == IVec3(3, 6, 9));
+
+    CHECK(+v1 == v1);
+    CHECK(-v1 == v1 * -1);
 }
 
 TEST_CASE("Vec3 method")
@@ -293,6 +299,9 @@ TEST_CASE("Vec4 operator")
     CHECK(v1 == IVec4(6, 12, 18, 24));
     v1 /= IVec4(2);
     CHECK(v1 == IVec4(3, 6, 9, 12));
+
+    CHECK(+v1 == v1);
+    CHECK(-v1 == v1 * -1);
 }
 
 TEST_CASE("Vec4 method")

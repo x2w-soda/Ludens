@@ -95,6 +95,13 @@ inline bool operator==(const TVec4<T>& lhs, const TVec4<T>& rhs)
         return lhs;                                                                      \
     }
 
+#define LD_VEC4_UNARY(OP)                                \
+    template <typename T>                                \
+    inline TVec4<T> operator OP(TVec4<T>& v)             \
+    {                                                    \
+        return TVec4<T>(OP v.x, OP v.y, OP v.z, OP v.w); \
+    }
+
 LD_VEC4_SCALAR(+);
 LD_VEC4_SCALAR(-);
 LD_VEC4_SCALAR(*);
@@ -103,7 +110,10 @@ LD_VEC4_ARITH(+, +=);
 LD_VEC4_ARITH(-, -=);
 LD_VEC4_ARITH(*, *=);
 LD_VEC4_ARITH(/, /=);
+LD_VEC4_UNARY(+);
+LD_VEC4_UNARY(-);
 
+#undef LD_VEC4_UNARY
 #undef LD_VEC4_ARITH
 #undef LD_VEC4_SCALAR
 
