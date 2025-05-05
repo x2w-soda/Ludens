@@ -1,5 +1,6 @@
 #include "RBackendObj.h"
 #include "RUtilInternal.h"
+#include <Ludens/Profiler/Profiler.h>
 #include <Ludens/DSA/Hash.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/RenderBackend/RBackend.h>
@@ -16,16 +17,22 @@ uint64_t RObjectID::sCounter = 0;
 
 void RQueue::wait_idle()
 {
+    LD_PROFILE_SCOPE;
+
     mObj->wait_idle(mObj);
 }
 
 void RQueue::submit(const RSubmitInfo& submitI, RFence fence)
 {
+    LD_PROFILE_SCOPE;
+
     mObj->submit(mObj, submitI, fence);
 }
 
 RDevice RDevice::create(const RDeviceInfo& info)
 {
+    LD_PROFILE_SCOPE;
+
     RDeviceObj* obj = (RDeviceObj*)heap_malloc(sizeof(RDeviceObj), MEMORY_USAGE_RENDER);
     obj->rid = RObjectID::get();
     obj->frameIndex = 0;
@@ -40,6 +47,8 @@ RDevice RDevice::create(const RDeviceInfo& info)
 
 void RDevice::destroy(RDevice device)
 {
+    LD_PROFILE_SCOPE;
+
     RDeviceObj* obj = device.mObj;
 
     for (auto& ite : sPipelineLayouts)
@@ -47,6 +56,7 @@ void RDevice::destroy(RDevice device)
         obj->destroy_pipeline_layout(obj, ite.second);
         heap_free(ite.second);
     }
+    printf("RDevice destroyed %d pipeline layouts\n", (int)sPipelineLayouts.size());
     sPipelineLayouts.clear();
 
     for (auto& ite : sSetLayouts)
@@ -54,6 +64,7 @@ void RDevice::destroy(RDevice device)
         obj->destroy_set_layout(obj, ite.second);
         heap_free(ite.second);
     }
+    printf("RDevice destroyed %d set layouts\n", (int)sSetLayouts.size());
     sSetLayouts.clear();
 
     for (auto& ite : sPasses)
@@ -61,6 +72,7 @@ void RDevice::destroy(RDevice device)
         obj->destroy_pass(obj, ite.second);
         heap_free(ite.second);
     }
+    printf("RDevice destroyed %d passes\n", (int)sPasses.size());
     sPasses.clear();
 
     for (auto& ite : sFramebuffers)
@@ -68,6 +80,7 @@ void RDevice::destroy(RDevice device)
         obj->destroy_framebuffer(obj, ite.second);
         heap_free(ite.second);
     }
+    printf("RDevice destroyed %d framebuffers\n", (int)sFramebuffers.size());
     sFramebuffers.clear();
 
     if (obj->backend == RDEVICE_BACKEND_VULKAN)
@@ -246,6 +259,8 @@ void RDevice::update_set_buffers(uint32_t updateCount, const RSetBufferUpdateInf
 
 uint32_t RDevice::next_frame(RSemaphore& imageAcquired, RSemaphore& presentReady, RFence& frameComplete)
 {
+    LD_PROFILE_SCOPE;
+
     uint32_t framesInFlightCount = mObj->get_frames_in_flight_count(mObj);
     mObj->frameIndex = (mObj->frameIndex + 1) % framesInFlightCount;
 
@@ -254,6 +269,8 @@ uint32_t RDevice::next_frame(RSemaphore& imageAcquired, RSemaphore& presentReady
 
 void RDevice::present_frame()
 {
+    LD_PROFILE_SCOPE;
+
     return mObj->present_frame(mObj);
 }
 

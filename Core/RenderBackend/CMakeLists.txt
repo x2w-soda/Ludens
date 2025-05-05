@@ -63,6 +63,7 @@ target_include_directories(${MODULE_NAME} PRIVATE
 target_link_libraries(${MODULE_NAME} PUBLIC
   ${LUDENS_VULKAN_SDK_LIBS}
   ${Vulkan_LIBRARIES}
+  LDProfiler
 )
 
 add_executable(${MODULE_TEST_NAME}

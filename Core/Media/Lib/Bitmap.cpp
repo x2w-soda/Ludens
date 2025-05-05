@@ -1,5 +1,6 @@
 #include <Ludens/Header/Bitwise.h>
 #include <Ludens/Media/Bitmap.h>
+#include <Ludens/Profiler/Profiler.h>
 #include <Ludens/System/Memory.h>
 #include <cstring>
 #include <filesystem>
@@ -26,6 +27,8 @@ struct BitmapObj
 
 Bitmap Bitmap::create_from_data(uint32_t width, uint32_t height, BitmapChannel channel, const void* data)
 {
+    LD_PROFILE_SCOPE;
+
     uint64_t dataSize = width * height * channel;
 
     BitmapObj* obj = (BitmapObj*)heap_malloc(sizeof(BitmapObj) + dataSize, MEMORY_USAGE_MEDIA);
@@ -42,6 +45,8 @@ Bitmap Bitmap::create_from_data(uint32_t width, uint32_t height, BitmapChannel c
 
 Bitmap Bitmap::create_from_path(const char* path)
 {
+    LD_PROFILE_SCOPE;
+
     BitmapObj* obj = (BitmapObj*)heap_malloc(sizeof(BitmapObj), MEMORY_USAGE_MEDIA);
 
     int x, y, ch;
@@ -60,6 +65,8 @@ Bitmap Bitmap::create_from_path(const char* path)
 
 Bitmap Bitmap::create_cubemap_from_paths(const char** paths)
 {
+    LD_PROFILE_SCOPE;
+
     BitmapObj* obj = (BitmapObj*)heap_malloc(sizeof(BitmapObj), MEMORY_USAGE_MEDIA);
     uint32_t size = 0;
     uint32_t layerSize = 0;
@@ -126,6 +133,8 @@ failure:
 
 void Bitmap::destroy(Bitmap bitmap)
 {
+    LD_PROFILE_SCOPE;
+
     BitmapObj* obj = (BitmapObj*)bitmap;
 
     if (obj->data && (obj->flags & BITMAP_FLAG_USE_STB_FREE))
@@ -173,6 +182,8 @@ const char* Bitmap::data() const
 
 bool save_bitmap_to_disk(const BitmapView& view, const char* c_path)
 {
+    LD_PROFILE_SCOPE;
+
     namespace fs = std::filesystem;
 
     fs::path path(c_path);

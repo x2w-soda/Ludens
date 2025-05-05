@@ -172,7 +172,11 @@ void vk_create_device(RDeviceObj* self, const RDeviceInfo& deviceI)
     VkInstanceCreateInfo instanceCI{
         .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
         .pApplicationInfo = &appI,
+#ifndef NDEBUG
         .enabledLayerCount = (uint32_t)desiredLayers.size(),
+#else
+        .enabledLayerCount = 0,
+#endif
         .ppEnabledLayerNames = desiredLayers.data(),
         .enabledExtensionCount = (uint32_t)desiredInstanceExts.size(),
         .ppEnabledExtensionNames = desiredInstanceExts.data(),

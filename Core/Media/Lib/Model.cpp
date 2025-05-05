@@ -1,6 +1,7 @@
 #include "ModelObj.h"
 #include "TinygltfLoader.h"
 #include <Ludens/Media/Model.h>
+#include <Ludens/Profiler/Profiler.h>
 #include <Ludens/System/Memory.h>
 #include <iostream>
 
@@ -8,6 +9,8 @@ namespace LD {
 
 Model Model::load_gltf_model(const char* path)
 {
+    LD_PROFILE_SCOPE;
+
     ModelObj* obj = heap_new<ModelObj>(MEMORY_USAGE_MEDIA);
     obj->hasCalculatedAABB = false;
 
@@ -25,6 +28,8 @@ Model Model::load_gltf_model(const char* path)
 
 void Model::destroy(Model model)
 {
+    LD_PROFILE_SCOPE;
+
     ModelObj* obj = model;
 
     for (Bitmap texture : obj->textures)
@@ -98,6 +103,8 @@ MeshMaterial* Model::get_materials(int& materialCount)
 
 void Model::get_aabb(Vec3& minPos, Vec3& maxPos)
 {
+    LD_PROFILE_SCOPE;
+
     if (mObj->hasCalculatedAABB)
     {
         minPos = mObj->minPos;
