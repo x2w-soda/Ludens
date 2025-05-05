@@ -5,10 +5,13 @@ project(Ludens LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-message(STATUS "CMAKE_CXX_COMPILER_ID:  ${CMAKE_CXX_COMPILER_ID}")
-message(STATUS "CMAKE_CXX_COMPILER:     ${CMAKE_CXX_COMPILER}")
-message(STATUS "CMAKE_C_COMPILER_ID:    ${CMAKE_C_COMPILER_ID}")
-message(STATUS "CMAKE_C_COMPILER:       ${CMAKE_C_COMPILER}")
+option(LD_COMPILE_WITH_PROFILER "compile with profiler" ON)
+message(STATUS "LD_COMPILE_WITH_PROFILER:  ${LD_COMPILE_WITH_PROFILER}")
+
+message(STATUS "CMAKE_CXX_COMPILER_ID:     ${CMAKE_CXX_COMPILER_ID}")
+message(STATUS "CMAKE_CXX_COMPILER:        ${CMAKE_CXX_COMPILER}")
+message(STATUS "CMAKE_C_COMPILER_ID:       ${CMAKE_C_COMPILER_ID}")
+message(STATUS "CMAKE_C_COMPILER:          ${CMAKE_C_COMPILER}")
 
 # Build Environment
 
@@ -17,10 +20,10 @@ set(LUDENS_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/Include)
 set(LUDENS_EXTRA_DIR ${CMAKE_CURRENT_SOURCE_DIR}/Extra)
 set(LUDENS_BUILD_DIR ${CMAKE_BINARY_DIR})
 
-message(STATUS "LUDENS SOURCE DIR  ${LUDENS_SOURCE_DIR}")
-message(STATUS "LUDENS INCLUDE DIR ${LUDENS_INCLUDE_DIR}")
-message(STATUS "LUDENS EXTRA DIR   ${LUDENS_EXTRA_DIR}")
-message(STATUS "LUDENS BUILD DIR   ${LUDENS_BUILD_DIR}")
+message(STATUS "LUDENS SOURCE DIR          ${LUDENS_SOURCE_DIR}")
+message(STATUS "LUDENS INCLUDE DIR         ${LUDENS_INCLUDE_DIR}")
+message(STATUS "LUDENS EXTRA DIR           ${LUDENS_EXTRA_DIR}")
+message(STATUS "LUDENS BUILD DIR           ${LUDENS_BUILD_DIR}")
 
 # Fetch Large Dependencies
 # - smaller or single file dependencies are already in ${LUDENS_EXTRA_DIR}
@@ -161,6 +164,21 @@ message(STATUS "LUDENS tinygltf SOURCE DIR: ${tinygltf_SOURCE_DIR}")
 add_subdirectory(${tinygltf_SOURCE_DIR} tinygltf_build)
 target_link_libraries(tinygltf PUBLIC stb)
 
+## Fetch Tracy Profiler
+FetchContent_Declare(
+  tracy
+  GIT_REPOSITORY https://github.com/wolfpld/tracy.git
+  GIT_TAG v0.11.1
+)
+FetchContent_Populate(tracy)
+message(STATUS "LUDENS tracy SOURCE DIR:    ${tracy_SOURCE_DIR}")
+if (LD_COMPILE_WITH_PROFILER)
+  set(TRACY_ENABLE ON CACHE INTERNAL "")
+  add_subdirectory(${tracy_SOURCE_DIR} tracy_build)
+else()
+  set(TRACY_ENABLE OFF CACHE INTERNAL "")
+endif()
+
 # Find Vulkan
 # - require SPIRV-Cross for reflection
 # - require glslang for SPIRV compilation
@@ -180,6 +198,7 @@ add_subdirectory(${LUDENS_EXTRA_DIR}/stb)
 # - user facing API in ${LUDENS_INCLUDE_DIR}
 
 add_subdirectory(Core/Header)
+add_subdirectory(Core/Profiler)
 add_subdirectory(Core/System)
 add_subdirectory(Core/Serial)
 add_subdirectory(Core/DSA)
