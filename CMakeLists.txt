@@ -204,6 +204,7 @@ add_subdirectory(Core/Serial)
 add_subdirectory(Core/DSA)
 add_subdirectory(Core/Media)
 add_subdirectory(Core/RenderBackend)
+add_subdirectory(Core/RenderGraph)
 add_subdirectory(Core/Application)
 
 add_library(LDCore INTERFACE)
