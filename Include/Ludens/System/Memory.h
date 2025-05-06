@@ -12,6 +12,7 @@ enum MemoryUsage : uint32_t
     MEMORY_USAGE_MEDIA,
     MEMORY_USAGE_RENDER,
     MEMORY_USAGE_UI,
+    MEMORY_USAGE_ENUM_LAST,
 };
 
 struct MemoryProfile
