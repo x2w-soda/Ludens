@@ -427,6 +427,13 @@ void RCommandList::cmd_begin_pass(const RPassBeginInfo& passBI)
     mObj->cmd_begin_pass(mObj, passBI);
 }
 
+void RCommandList::cmd_push_constant(const RPipelineLayoutInfo& layout, uint32_t offset, uint32_t size, const void* data)
+{
+    RPipelineLayoutObj* layoutObj = mObj->deviceObj->get_or_create_pipeline_layout_obj(layout);
+
+    mObj->cmd_push_constant(mObj, layoutObj, offset, size, data);
+}
+
 void RCommandList::cmd_bind_graphics_pipeline(RPipeline pipeline)
 {
     RPassInfo passI;

@@ -416,6 +416,9 @@ struct RCommandList : RHandle<struct RCommandListObj>
     /// @brief begin a render pass instance
     void cmd_begin_pass(const RPassBeginInfo& passBI);
 
+    /// @brief update push constants
+    void cmd_push_constant(const RPipelineLayoutInfo& layout, uint32_t offset, uint32_t size, const void* data);
+
     void cmd_bind_graphics_pipeline(RPipeline pipeline);
 
     void cmd_bind_graphics_sets(const RPipelineLayoutInfo& layout, uint32_t firstSet, uint32_t setCount, RSet* sets);

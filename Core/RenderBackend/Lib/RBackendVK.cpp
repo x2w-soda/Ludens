@@ -93,6 +93,7 @@ static void vk_command_list_free(RCommandListObj* self);
 static void vk_command_list_begin(RCommandListObj* self, bool oneTimeSubmit);
 static void vk_command_list_end(RCommandListObj* self);
 static void vk_command_list_cmd_begin_pass(RCommandListObj* self, const RPassBeginInfo& passBI);
+static void vk_command_list_cmd_push_constant(RCommandListObj* self, RPipelineLayoutObj* layoutObj, uint32_t offset, uint32_t size, const void* data);
 static void vk_command_list_cmd_bind_graphics_pipeline(RCommandListObj* self, RPipeline pipeline);
 static void vk_command_list_cmd_bind_graphics_sets(RCommandListObj* self, RPipelineLayoutObj* layoutObj, uint32_t setStart, uint32_t setCount, RSet* sets);
 static void vk_command_list_cmd_bind_compute_pipeline(RCommandListObj* self, RPipeline pipeline);
@@ -483,7 +484,8 @@ static RImage vk_device_create_image(RDeviceObj* self, const RImageInfo& imageI,
         };
 
         VK_CHECK(vkCreateSampler(self->vk.device, &samplerCI, nullptr, &obj->vk.samplerHandle));
-    } else
+    }
+    else
         obj->vk.samplerHandle = VK_NULL_HANDLE;
 
     return {obj};
@@ -1288,6 +1290,11 @@ static void vk_command_list_cmd_begin_pass(RCommandListObj* self, const RPassBeg
     vkCmdSetScissor(self->vk.handle, 0, 1, &scissor);
 }
 
+static void vk_command_list_cmd_push_constant(RCommandListObj* self, RPipelineLayoutObj* layoutObj, uint32_t offset, uint32_t size, const void* data)
+{
+    vkCmdPushConstants(self->vk.handle, layoutObj->vk.handle, VK_SHADER_STAGE_ALL, offset, size, data);
+}
+
 static void vk_command_list_cmd_bind_graphics_pipeline(RCommandListObj* self, RPipeline pipeline)
 {
     RPipelineObj* pipelineObj = (RPipelineObj*)pipeline;
@@ -1782,7 +1789,8 @@ static void create_swapchain(RDeviceObj* obj, const SwapchainInfo& swapchainI)
     {
         swapchainCI.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
         swapchainCI.queueFamilyIndexCount = 0;
-    } else
+    }
+    else
     {
         swapchainCI.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
         swapchainCI.queueFamilyIndexCount = (uint32_t)familyIndices.size();
@@ -1917,6 +1925,7 @@ void RCommandListObj::init_vk_api()
     begin = &vk_command_list_begin;
     end = &vk_command_list_end;
     cmd_begin_pass = &vk_command_list_cmd_begin_pass;
+    cmd_push_constant = &vk_command_list_cmd_push_constant;
     cmd_bind_graphics_pipeline = &vk_command_list_cmd_bind_graphics_pipeline;
     cmd_bind_graphics_sets = &vk_command_list_cmd_bind_graphics_sets;
     cmd_bind_compute_pipeline = &vk_command_list_cmd_bind_compute_pipeline;

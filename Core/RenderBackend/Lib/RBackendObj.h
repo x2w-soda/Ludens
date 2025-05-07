@@ -159,6 +159,7 @@ struct RCommandListObj
     void (*begin)(RCommandListObj* self, bool oneTimeSubmit);
     void (*end)(RCommandListObj* self);
     void (*cmd_begin_pass)(RCommandListObj* self, const RPassBeginInfo& passBI);
+    void (*cmd_push_constant)(RCommandListObj* self, RPipelineLayoutObj* layoutObj, uint32_t offset, uint32_t size, const void* data);
     void (*cmd_bind_graphics_pipeline)(RCommandListObj* self, RPipeline pipeline);
     void (*cmd_bind_graphics_sets)(RCommandListObj* self, RPipelineLayoutObj* layoutObj, uint32_t firstSet, uint32_t setCount, RSet* sets);
     void (*cmd_bind_compute_pipeline)(RCommandListObj* self, RPipeline pipeline);
