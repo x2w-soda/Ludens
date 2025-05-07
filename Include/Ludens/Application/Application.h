@@ -40,6 +40,9 @@ public:
     /// @brief get time in seconds since the Application is created
     double get_time();
 
+    void set_cursor_mode_normal();
+    void set_cursor_mode_disabled();
+
 private:
     struct Window* mWindow;
 };

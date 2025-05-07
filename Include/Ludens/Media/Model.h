@@ -1,12 +1,13 @@
 #pragma once
 
 #include <Ludens/Header/Handle.h>
+#include <Ludens/Header/Math/Quat.h>
 #include <Ludens/Header/Math/Vec2.h>
 #include <Ludens/Header/Math/Vec3.h>
 #include <Ludens/Header/Math/Vec4.h>
-#include <Ludens/Header/Math/Quat.h>
-#include <vector>
+#include <Ludens/Media/Bitmap.h>
 #include <string>
+#include <vector>
 
 namespace LD {
 
@@ -53,23 +54,26 @@ struct Model : Handle<struct ModelObj>
 
     /// @brief get model vertices
     /// @warning the returned pointer is transient
-    MeshVertex* get_vertices(int& vertexCount);
+    MeshVertex* get_vertices(uint32_t& vertexCount);
 
     /// @brief get model 32-bit indices
     /// @warning the returned pointer is transient
-    uint32_t* get_indices(int& indexCount);
+    uint32_t* get_indices(uint32_t& indexCount);
 
     /// @brief get model root nodes
     /// @warning the returned pointer is transient
-    MeshNode** get_roots(int& rootCount);
+    MeshNode** get_roots(uint32_t& rootCount);
 
     /// @brief get model textures
     /// @warning the returned pointer is transient
-    Bitmap* get_textures(int& textureCount);
+    Bitmap* get_textures(uint32_t& textureCount);
 
     /// @brief get model materials
     /// @warning the returned pointer is transient
-    MeshMaterial* get_materials(int& materialCount);
+    MeshMaterial* get_materials(uint32_t& materialCount);
+
+    /// @brief get the total number of primitives across all nodes
+    void get_primitive_count(uint32_t& primitiveCount);
 
     /// @brief get model local space AABB
     void get_aabb(Vec3& minPos, Vec3& maxPos);

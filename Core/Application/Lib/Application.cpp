@@ -3,6 +3,7 @@
 #include <Ludens/Application/Application.h>
 #include <Ludens/Application/Input.h>
 #include <Ludens/Header/Assert.h>
+#include <Ludens/Profiler/Profiler.h>
 #include <Ludens/RenderBackend/RBackend.h>
 
 namespace LD {
@@ -52,6 +53,8 @@ void Window::mouse_button_callback(GLFWwindow* window, int button, int action, i
 
 Application::Application(const ApplicationInfo& appI)
 {
+    LD_PROFILE_SCOPE;
+
     int result = glfwInit();
     LD_ASSERT(result == GLFW_TRUE);
 
@@ -74,6 +77,8 @@ Application::Application(const ApplicationInfo& appI)
 
 Application::~Application()
 {
+    LD_PROFILE_SCOPE;
+
     RDevice::destroy(mWindow->rdevice);
 
     glfwDestroyWindow(mWindow->handle);
@@ -106,6 +111,8 @@ bool Application::is_window_open()
 
 void Application::poll_events()
 {
+    LD_PROFILE_SCOPE;
+
     Input::frame_boundary();
 
     double xpos, ypos;
@@ -136,6 +143,24 @@ RDevice Application::get_rdevice()
 double Application::get_time()
 {
     return glfwGetTime();
+}
+
+void Application::set_cursor_mode_normal()
+{
+    glfwSetInputMode(mWindow->handle, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+
+    double xpos, ypos;
+    glfwGetCursorPos(mWindow->handle, &xpos, &ypos);
+
+    Input::sMouseCursorDeltaX = 0.0f;
+    Input::sMouseCursorDeltaY = 0.0f;
+    Input::sMouseCursorX = (float)xpos;
+    Input::sMouseCursorY = (float)ypos;
+}
+
+void Application::set_cursor_mode_disabled()
+{
+    glfwSetInputMode(mWindow->handle, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 }
 
 } // namespace LD

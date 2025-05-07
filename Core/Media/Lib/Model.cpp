@@ -41,7 +41,7 @@ void Model::destroy(Model model)
     heap_delete(obj);
 }
 
-MeshVertex* Model::get_vertices(int& vertexCount)
+MeshVertex* Model::get_vertices(uint32_t& vertexCount)
 {
     if (mObj->vertices.empty())
     {
@@ -49,11 +49,11 @@ MeshVertex* Model::get_vertices(int& vertexCount)
         return nullptr;
     }
 
-    vertexCount = (int)mObj->vertices.size();
+    vertexCount = (uint32_t)mObj->vertices.size();
     return mObj->vertices.data();
 }
 
-uint32_t* Model::get_indices(int& indexCount)
+uint32_t* Model::get_indices(uint32_t& indexCount)
 {
     if (mObj->indices.empty())
     {
@@ -61,11 +61,11 @@ uint32_t* Model::get_indices(int& indexCount)
         return nullptr;
     }
 
-    indexCount = (int)mObj->indices.size();
+    indexCount = (uint32_t)mObj->indices.size();
     return mObj->indices.data();
 }
 
-MeshNode** Model::get_roots(int& rootCount)
+MeshNode** Model::get_roots(uint32_t& rootCount)
 {
     if (mObj->roots.empty())
     {
@@ -73,11 +73,11 @@ MeshNode** Model::get_roots(int& rootCount)
         return nullptr;
     }
 
-    rootCount = (int)mObj->roots.size();
+    rootCount = (uint32_t)mObj->roots.size();
     return mObj->roots.data();
 }
 
-Bitmap* Model::get_textures(int& textureCount)
+Bitmap* Model::get_textures(uint32_t& textureCount)
 {
     if (mObj->textures.empty())
     {
@@ -85,11 +85,11 @@ Bitmap* Model::get_textures(int& textureCount)
         return nullptr;
     }
 
-    textureCount = (int)mObj->textures.size();
+    textureCount = (uint32_t)mObj->textures.size();
     return mObj->textures.data();
 }
 
-MeshMaterial* Model::get_materials(int& materialCount)
+MeshMaterial* Model::get_materials(uint32_t& materialCount)
 {
     if (mObj->materials.empty())
     {
@@ -97,8 +97,28 @@ MeshMaterial* Model::get_materials(int& materialCount)
         return nullptr;
     }
 
-    materialCount = (int)mObj->materials.size();
+    materialCount = (uint32_t)mObj->materials.size();
     return mObj->materials.data();
+}
+
+static uint32_t get_primitive_count_recursive(MeshNode* root)
+{
+    if (!root)
+        return 0;
+
+    uint32_t count = (uint32_t)root->primitives.size();
+    for (MeshNode* child : root->children)
+        count += get_primitive_count_recursive(child);
+
+    return count;
+}
+
+void Model::get_primitive_count(uint32_t& primitiveCount)
+{
+    primitiveCount = 0;
+
+    for (MeshNode* root : mObj->roots)
+        primitiveCount += get_primitive_count_recursive(root);
 }
 
 void Model::get_aabb(Vec3& minPos, Vec3& maxPos)
