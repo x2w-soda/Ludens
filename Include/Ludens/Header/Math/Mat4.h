@@ -3,6 +3,7 @@
 #include <Ludens/Header/Math/Math.h>
 #include <Ludens/Header/Math/Vec3.h>
 #include <Ludens/Header/Math/Vec4.h>
+#include <Ludens/Header/Platform.h>
 
 // This controls whether the projection matrix should
 // perform a handedness flip. The projection matrices of
@@ -15,7 +16,7 @@ namespace LD {
 
 /// @brief 4x4 matrix, containing 4 column vectors
 template <typename T>
-struct TMat4
+struct alignas(TVEC4_ALIGNMENT) TMat4
 {
     using TVec = TVec4<T>;
 
