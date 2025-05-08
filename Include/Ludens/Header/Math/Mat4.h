@@ -116,6 +116,27 @@ struct alignas(TVEC4_ALIGNMENT) TMat4
 
         return proj;
     }
+
+    /// @brief create a orthographic projection matrix
+    static inline TMat4<T> orthographic(T left, T right, T bottom, T top, T clipNear, T clipFar)
+    {
+        if constexpr (LD_PROJECTION_FLIP_HANDEDNESS)
+        {
+            T tmp = top;
+            top = bottom;
+            bottom = tmp;
+        }
+
+        TMat4 proj((T)1);
+        proj[0].x = (T)2 / (right - left);
+        proj[1].y = (T)2 / (bottom - top);
+        proj[2].z = (T)-2 / (clipFar - clipNear);
+        proj[3].x = -(right + left) / (right - left);
+        proj[3].y = -(top + bottom) / (bottom - top);
+        proj[3].z = -(clipFar + clipNear) / (clipFar - clipNear);
+
+        return proj;
+    }
 };
 
 template <typename T>

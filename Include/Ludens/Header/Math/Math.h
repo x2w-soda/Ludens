@@ -10,6 +10,9 @@
 #define LD_EPSILON_F32 ((float)1e-6)
 #define LD_EPSILON_F64 (1e-12)
 
+#define LD_TO_RADIANS(DEG) (DEG * (LD_PI / 180))
+#define LD_TO_DEGREES(RAD) (RAD * (180 / LD_PI))
+
 #define LD_SIN(X) std::sin(X)
 #define LD_COS(X) std::cos(X)
 #define LD_TAN(X) std::tan(X)

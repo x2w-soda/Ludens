@@ -364,13 +364,6 @@ TEST_CASE("Quat method")
     CHECK(q.w == 4.0f);
 }
 
-static const IMat4 sMat4Pattern = {
-    {1, 2, 3, 4},
-    {0, 1, 2, 3},
-    {0, 0, 1, 2},
-    {0, 0, 0, 1},
-};
-
 TEST_CASE("Rect ctor")
 {
     IRect r;
