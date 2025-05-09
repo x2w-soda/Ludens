@@ -4,11 +4,13 @@ set(MODULE_TEST_NAME LDSystemTest)
 set(MODULE_INCLUDE
 	${LUDENS_INCLUDE_DIR}/Ludens/System/Memory.h
 	${LUDENS_INCLUDE_DIR}/Ludens/System/Allocator.h
+	${LUDENS_INCLUDE_DIR}/Ludens/System/Timer.h
 )
 
 set(MODULE_LIB
 	Lib/Memory.cpp
 	Lib/Allocator.cpp
+	Lib/Timer.cpp
 )
 
 set(MODULE_TEST
