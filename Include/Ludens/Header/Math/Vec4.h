@@ -2,7 +2,7 @@
 
 #include <Ludens/Header/Math/Math.h>
 #include <Ludens/Header/Math/Vec3.h>
-#include <Ludens/Header/Platform.h>
+#include <Ludens/Header/SIMD.h>
 #include <type_traits>
 
 #ifdef LD_SSE2
@@ -27,7 +27,7 @@ struct alignas(TVEC4_ALIGNMENT) TVec4
 	        union { T w; T a; };
         };
 #ifdef LD_SSE2
-        __m128 data;
+        std::conditional_t<std::is_same_v<T, double>, __m128d, __m128> data;
 #endif
     };
 
@@ -40,6 +40,7 @@ struct alignas(TVEC4_ALIGNMENT) TVec4
 	TVec4(T x, const TVec3<T>& v) : x(x), y(v.x), z(v.y), w(v.z) {}
 #ifdef LD_SSE2
     TVec4(__m128 data) : data(data) {}
+    TVec4(__m128d data) : data(data) {}
 #endif
     // clang-format on
 
@@ -95,22 +96,26 @@ inline bool operator==(const TVec4<T>& lhs, const TVec4<T>& rhs)
         return lhs.x == rhs.x && lhs.y == rhs.y && lhs.z == rhs.z && lhs.w == rhs.w;
 }
 
-#define LD_VEC4_SCALAR(OP, SSE2)                                     \
+#define LD_VEC4_SCALAR(OP, SSE2, DSSE2)                              \
     template <typename T>                                            \
     inline TVec4<T> operator OP(const TVec4<T>& v, T s)              \
     {                                                                \
         if constexpr (std::is_same_v<T, float> && LD_SSE2)           \
             return SSE2(v.data, _mm_set1_ps(s));                     \
+        else if constexpr (std::is_same_v<T, double> && LD_SSE2)     \
+            return DSSE2(v.data, _mm_set1_pd(s));                    \
         else                                                         \
             return TVec4<T>(v.x OP s, v.y OP s, v.z OP s, v.w OP s); \
     }
 
-#define LD_VEC4_ARITH(OP, OP_ASSIGN, SSE2)                                                   \
+#define LD_VEC4_ARITH(OP, OP_ASSIGN, SSE2, DSSE2)                                            \
     template <typename T>                                                                    \
     inline TVec4<T> operator OP(const TVec4<T>& lhs, const TVec4<T>& rhs)                    \
     {                                                                                        \
         if constexpr (std::is_same_v<T, float> && LD_SSE2)                                   \
             return SSE2(lhs.data, rhs.data);                                                 \
+        else if constexpr (std::is_same_v<T, double> && LD_SSE2)                             \
+            return DSSE2(lhs.data, rhs.data);                                                \
         else                                                                                 \
             return TVec4<T>(lhs.x OP rhs.x, lhs.y OP rhs.y, lhs.z OP rhs.z, lhs.w OP rhs.w); \
     }                                                                                        \
@@ -128,16 +133,16 @@ inline bool operator==(const TVec4<T>& lhs, const TVec4<T>& rhs)
         return TVec4<T>(OP v.x, OP v.y, OP v.z, OP v.w); \
     }
 
-LD_VEC4_SCALAR(+, _mm_add_ps);
-LD_VEC4_SCALAR(-, _mm_sub_ps);
-LD_VEC4_SCALAR(*, _mm_mul_ps);
-LD_VEC4_SCALAR(/, _mm_div_ps);
-LD_VEC4_ARITH(+, +=, _mm_add_ps);
-LD_VEC4_ARITH(-, -=, _mm_sub_ps);
-LD_VEC4_ARITH(*, *=, _mm_mul_ps);
-LD_VEC4_ARITH(/, /=, _mm_div_ps);
-LD_VEC4_UNARY(+);
-LD_VEC4_UNARY(-);
+LD_VEC4_SCALAR(+, _mm_add_ps, _mm_add_pd)
+LD_VEC4_SCALAR(-, _mm_sub_ps, _mm_sub_pd)
+LD_VEC4_SCALAR(*, _mm_mul_ps, _mm_mul_pd)
+LD_VEC4_SCALAR(/, _mm_div_ps, _mm_div_pd)
+LD_VEC4_ARITH(+, +=, _mm_add_ps, _mm_add_pd)
+LD_VEC4_ARITH(-, -=, _mm_sub_ps, _mm_sub_pd)
+LD_VEC4_ARITH(*, *=, _mm_mul_ps, _mm_mul_pd)
+LD_VEC4_ARITH(/, /=, _mm_div_ps, _mm_div_pd)
+LD_VEC4_UNARY(+)
+LD_VEC4_UNARY(-)
 
 #undef LD_VEC4_UNARY
 #undef LD_VEC4_ARITH

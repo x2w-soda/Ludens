@@ -107,5 +107,6 @@ LD_VEC2_UNARY(-);
 
 using Vec2 = TVec2<float>;
 using IVec2 = TVec2<int>;
+using DVec2 = TVec2<double>;
 
 } // namespace LD

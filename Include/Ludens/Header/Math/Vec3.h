@@ -120,5 +120,6 @@ LD_VEC3_UNARY(-);
 
 using Vec3 = TVec3<float>;
 using IVec3 = TVec3<int>;
+using DVec3 = TVec3<double>;
 
 } // namespace LD

@@ -9,6 +9,18 @@
 
 using namespace LD;
 
+static_assert(sizeof(Vec2) == 8);
+static_assert(sizeof(IVec2) == 8);
+static_assert(sizeof(DVec2) == 16);
+
+static_assert(sizeof(Vec3) == 12);
+static_assert(sizeof(IVec3) == 12);
+static_assert(sizeof(DVec3) == 24);
+
+static_assert(sizeof(Vec4) == 16);
+static_assert(sizeof(IVec4) == 16);
+static_assert(sizeof(DVec4) == 32);
+
 TEST_CASE("Vec2 ctor")
 {
     IVec2 v;

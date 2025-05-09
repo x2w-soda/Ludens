@@ -21,14 +21,4 @@
 # define LD_ARCH_X64
 #endif
 
-// detect instruction sets
-#if defined(LD_ARCH_X64)
-# define LD_SSE2 true
-#else
-# define LD_SSE2 false
-#endif
-#ifdef LD_SSE2 && defined(LD_COMPILER_MSVC)
-# include <xmmintrin.h>
-#endif
-
 // clang-format on
