@@ -154,5 +154,6 @@ inline TMat4<T> operator*(const TMat4<T>& lhs, const TMat4<T>& rhs)
 
 using Mat4 = TMat4<float>;
 using IMat4 = TMat4<int>;
+using DMat4 = TMat4<double>;
 
 } // namespace LD
