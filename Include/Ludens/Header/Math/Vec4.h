@@ -44,6 +44,9 @@ struct alignas(TVEC4_ALIGNMENT) TVec4
 #endif
     // clang-format on
 
+    /// @brief get a vec3 rvalue by dropping the w component
+    inline TVec3<T> as_vec3() const { return {x, y, z}; }
+
     inline T length_squared() const { return x * x + y * y + z * z + w * w; }
 
     /// @brief get the length of the vector

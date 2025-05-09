@@ -2,6 +2,17 @@
 
 #define _USE_MATH_DEFINES
 #include <cmath>
+#include <type_traits>
+
+#ifndef M_PI
+#define M_PI 3.14159265358979323846
+#endif
+#ifndef M_PI_2
+#define M_PI_2 1.57079632679489661923
+#endif
+#ifndef M_PI_4
+#define M_PI_4 0.785398163397448309616
+#endif
 
 #define LD_PI M_PI
 #define LD_PI_2 M_PI_2
@@ -19,3 +30,15 @@
 
 #define LD_ABS(X) std::abs(X)
 #define LD_SQRT(X) std::sqrt(X)
+
+/// @brief check if a value is zero with epsilon tolerance for floating points
+template <typename T>
+inline bool is_zero_epsilon(T value)
+{
+    if constexpr (std::is_same_v<T, float>)
+        return LD_ABS(value) < LD_EPSILON_F32;
+    else if constexpr (std::is_same_v<T, double>)
+        return LD_ABS(value) < LD_EPSILON_F64;
+    else
+        return value == (T)0;
+}

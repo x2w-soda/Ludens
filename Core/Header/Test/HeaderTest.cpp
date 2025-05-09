@@ -1,3 +1,4 @@
+#include <Ludens/Header/Math/Mat3.h>
 #include <Ludens/Header/Math/Mat4.h>
 #include <Ludens/Header/Math/Quat.h>
 #include <Ludens/Header/Math/Rect.h>
@@ -20,6 +21,23 @@ static_assert(sizeof(DVec3) == 24);
 static_assert(sizeof(Vec4) == 16);
 static_assert(sizeof(IVec4) == 16);
 static_assert(sizeof(DVec4) == 32);
+
+TEST_CASE("Math")
+{
+    CHECK(is_zero_epsilon<float>(LD_EPSILON_F32 / +2.0f));
+    CHECK(is_zero_epsilon<float>(LD_EPSILON_F32 / -2.0f));
+    CHECK(is_zero_epsilon<float>(LD_EPSILON_F64 / +2.0));
+    CHECK(is_zero_epsilon<float>(LD_EPSILON_F64 / -2.0));
+    CHECK(!is_zero_epsilon<double>(LD_EPSILON_F32 / +2.0f));
+    CHECK(!is_zero_epsilon<double>(LD_EPSILON_F32 / -2.0f));
+    CHECK(is_zero_epsilon<double>(LD_EPSILON_F64 / +2.0f));
+    CHECK(is_zero_epsilon<double>(LD_EPSILON_F64 / -2.0f));
+
+    CHECK(is_zero_epsilon<int>(0));
+    CHECK(!is_zero_epsilon<int>(1));
+    CHECK(!is_zero_epsilon<float>(0.0001f));
+    CHECK(!is_zero_epsilon<double>(0.0000001));
+}
 
 TEST_CASE("Vec2 ctor")
 {
@@ -323,6 +341,8 @@ TEST_CASE("Vec4 method")
     IVec4 v3(10, -4, 2, -1);
     Vec4 v4(9, 3, -3, 1);
 
+    CHECK(v3.as_vec3() == IVec3(10, -4, 2));
+
     CHECK(v1.length_squared() == 30);
     CHECK(v2.length_squared() == 54);
     CHECK(v3.length_squared() == 121);
@@ -404,6 +424,55 @@ TEST_CASE("Rect method")
     CHECK(!r.contains({4, 7}));
 }
 
+TEST_CASE("Mat3 ctor")
+{
+    IMat3 m;
+    CHECK(m[0] == IVec3(0));
+    CHECK(m[1] == IVec3(0));
+    CHECK(m[2] == IVec3(0));
+
+    m = IMat3(IVec3(1), IVec3(2), IVec3(3));
+    CHECK(m[0] == IVec3(1));
+    CHECK(m[1] == IVec3(2));
+    CHECK(m[2] == IVec3(3));
+
+    m = IMat3(4);
+    CHECK(m[0] == IVec3(4, 0, 0));
+    CHECK(m[1] == IVec3(0, 4, 0));
+    CHECK(m[2] == IVec3(0, 0, 4));
+}
+
+TEST_CASE("Mat3 operator")
+{
+    IVec3 v1(1, 2, 3);
+
+    IMat3 m = IMat3(2) * IMat3(4);
+    CHECK(m[0] == IVec3(8, 0, 0));
+    CHECK(m[1] == IVec3(0, 8, 0));
+    CHECK(m[2] == IVec3(0, 0, 8));
+
+    IVec3 v2 = m * v1;
+    CHECK(v2 == IVec3(8, 16, 24));
+}
+
+TEST_CASE("Mat3 method")
+{
+    Mat3 m({1, 0, 0}, {2, 1, 0}, {3, 2, 1});
+    Mat3 m2 = Mat3::transpose(m);
+    CHECK(m2[0] == Vec3(1, 2, 3));
+    CHECK(m2[1] == Vec3(0, 1, 2));
+    CHECK(m2[2] == Vec3(0, 0, 1));
+
+    Vec3 p1(2, -2, 3);
+
+    Mat3 mi = Mat3::inverse(m);
+    Vec3 p2 = mi * m * p1;
+    CHECK(p2 == p1);
+
+    p2 = m * mi * p1;
+    CHECK(p2 == p1);
+}
+
 TEST_CASE("Mat4 ctor")
 {
     IMat4 m;
@@ -442,6 +511,15 @@ TEST_CASE("Mat4 operator")
 TEST_CASE("Mat4 method")
 {
     Vec4 p1(3, 2, 4, 1);
+
+    Mat4 m(p1, p1 * 2.0f, p1 * 3.0f, p1 * 4.0f);
+    Mat3 m2 = m.as_mat3();
+    CHECK(m2[0] == Vec3(3, 2, 4));
+    CHECK(m2[1] == Vec3(6, 4, 8));
+    CHECK(m2[2] == Vec3(9, 6, 12));
+
+    Mat4 rot = Mat4::from_quat({});
+    CHECK(rot * p1 == p1);
 
     Vec4 p2 = Mat4::translate({2, -1, 3}) * p1;
     CHECK(p2 == Vec4(5, 1, 7, 1));
