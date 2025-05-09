@@ -1,6 +1,7 @@
 #include "TinygltfLoader.h"
 #include "ModelObj.h"
 #include <Ludens/Media/Model.h>
+#include <Ludens/Profiler/Profiler.h>
 #include <Ludens/System/Memory.h>
 #include <iostream>
 #include <string>
@@ -12,7 +13,12 @@ bool TinygltfLoader::load_from_file(ModelObj* obj, const char* path)
     mObj = obj;
 
     std::string err, warn;
-    bool result = mContext.LoadASCIIFromFile(&mTinyModel, &err, &warn, path);
+    bool result;
+    
+    {
+        LD_PROFILE_SCOPE_NAME("Tinygltf::LoadASCIIFromFile");
+        result = mContext.LoadASCIIFromFile(&mTinyModel, &err, &warn, path);
+    }
 
     if (!warn.empty())
         std::cout << "load_gltf_model:warn: " << warn << std::endl;
@@ -30,6 +36,8 @@ bool TinygltfLoader::load_from_file(ModelObj* obj, const char* path)
 
 bool TinygltfLoader::load_model()
 {
+    LD_PROFILE_SCOPE;
+
     if (!load_images())
         return false;
 
@@ -57,11 +65,15 @@ bool TinygltfLoader::load_model()
             return false;
     }
 
+    std::cout << "TinygltfLoader: " << mObj->nodes.size() << " nodes" << std::endl;
+
     return true;
 }
 
 bool TinygltfLoader::load_images()
 {
+    LD_PROFILE_SCOPE;
+
     mObj->textures.resize(mTinyModel.images.size());
 
     std::cout << "TinygltfLoader: " << mObj->textures.size() << " textures" << std::endl;
@@ -81,6 +93,8 @@ bool TinygltfLoader::load_images()
 
 bool TinygltfLoader::load_materials()
 {
+    LD_PROFILE_SCOPE;
+
     mObj->materials.resize(mTinyModel.materials.size());
 
     std::cout << "TinygltfLoader: " << mObj->materials.size() << " materials" << std::endl;
@@ -119,20 +133,37 @@ bool TinygltfLoader::load_node(tinygltf::Node& tinyNode, uint32_t nodeIndex, Mes
     MeshNode* node = heap_new<MeshNode>(MEMORY_USAGE_MEDIA); // TODO:
     node->name = tinyNode.name;
     node->parent = parent;
-    node->translation = {};
-    node->scale = {1.0f, 1.0f, 1.0f};
-    node->rotation = {};
+    Vec3 translation = {};
+    Vec3 scale = Vec3(1.0f);
+    Quat rotation = {};
 
     mObj->nodes.push_back(node);
 
     if (tinyNode.translation.size() == 3)
-        node->translation = Vec3::from_data(tinyNode.translation.data());
+        translation = Vec3::from_data(tinyNode.translation.data());
 
     if (tinyNode.scale.size() == 3)
-        node->scale = Vec3::from_data(tinyNode.scale.data());
+        scale = Vec3::from_data(tinyNode.scale.data());
 
     if (tinyNode.rotation.size() == 4)
-        node->rotation = Quat::from_data(tinyNode.rotation.data());
+        rotation = Quat::from_data(tinyNode.rotation.data());
+
+    if (tinyNode.matrix.size() == 16)
+    {
+        Mat4 transform;
+        transform[0] = Vec4::from_data(tinyNode.matrix.data());
+        transform[1] = Vec4::from_data(tinyNode.matrix.data() + 4);
+        transform[2] = Vec4::from_data(tinyNode.matrix.data() + 8);
+        transform[3] = Vec4::from_data(tinyNode.matrix.data() + 12);
+        node->localTransform = transform;
+    }
+    else
+    {
+        Mat4 T = Mat4::translate(translation);
+        Mat4 R = Mat4::from_quat(rotation);
+        Mat4 S = Mat4::scale(scale);
+        node->localTransform = T * R * S;
+    }
 
     for (size_t i = 0; i < tinyNode.children.size(); i++)
     {
@@ -248,6 +279,7 @@ bool TinygltfLoader::load_mesh(tinygltf::Mesh& tinyMesh, MeshNode* node)
 
         prim.indexStart = indexBase;
         prim.indexCount = indexCount;
+        prim.vertexStart = vertexBase;
         prim.vertexCount = vertexCount;
         prim.material = tinyPrim.material >= 0 ? (mObj->materials.data() + tinyPrim.material) : nullptr;
     }

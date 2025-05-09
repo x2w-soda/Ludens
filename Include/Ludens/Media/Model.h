@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Ludens/Header/Handle.h>
+#include <Ludens/Header/Math/Mat4.h>
 #include <Ludens/Header/Math/Quat.h>
 #include <Ludens/Header/Math/Vec2.h>
 #include <Ludens/Header/Math/Vec3.h>
@@ -31,6 +32,7 @@ struct MeshPrimitive
 {
     uint32_t indexStart;
     uint32_t indexCount;
+    uint32_t vertexStart;
     uint32_t vertexCount;
     MeshMaterial* material;
 };
@@ -39,9 +41,7 @@ struct MeshPrimitive
 struct MeshNode
 {
     MeshNode* parent;
-    Vec3 translation;
-    Vec3 scale;
-    Quat rotation;
+    Mat4 localTransform;
     std::string name;
     std::vector<MeshPrimitive> primitives;
     std::vector<MeshNode*> children;
@@ -77,6 +77,11 @@ struct Model : Handle<struct ModelObj>
 
     /// @brief get model local space AABB
     void get_aabb(Vec3& minPos, Vec3& maxPos);
+
+    /// @brief Traverse MeshNode tree and transform each vertex to world space,
+    ///        subsequent calls to get_vertices will return world space vertices.
+    ///        Each MeshNode transform matrix will be reset to identity matrix.
+    void apply_node_transform();
 };
 
 } // namespace LD

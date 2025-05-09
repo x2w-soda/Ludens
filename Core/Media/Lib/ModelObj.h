@@ -17,6 +17,7 @@ struct ModelObj
     std::vector<uint32_t> indices;
     Vec3 minPos;
     Vec3 maxPos;
+    bool hasAppliedNodeTransform;
     bool hasCalculatedAABB;
 };
 

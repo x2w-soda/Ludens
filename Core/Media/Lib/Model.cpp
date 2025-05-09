@@ -1,5 +1,6 @@
 #include "ModelObj.h"
 #include "TinygltfLoader.h"
+#include <Ludens/Header/Math/Mat3.h>
 #include <Ludens/Media/Model.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/System/Memory.h>
@@ -7,12 +8,41 @@
 
 namespace LD {
 
+static void apply_node_transform_recursive(MeshVertex* worldVertices, const MeshVertex* localVertices, MeshNode* root, const Mat4& parentWorldTransform)
+{
+    if (!root)
+        return;
+
+    Mat4 worldTransform = root->localTransform * parentWorldTransform;
+    root->localTransform = Mat4(1.0f);
+    Mat3 normalMat = Mat3::transpose(Mat3::inverse(worldTransform.as_mat3()));
+
+    for (const MeshPrimitive& prim : root->primitives)
+    {
+        const MeshVertex* lv = localVertices + prim.vertexStart;
+        MeshVertex* wv = worldVertices + prim.vertexStart;
+
+        for (uint32_t i = 0; i < prim.vertexCount; i++)
+        {
+            wv[i].uv = lv[i].uv;
+            wv[i].pos = (worldTransform * Vec4(lv[i].pos, 1.0f)).as_vec3();
+            wv[i].normal = Vec3::normalize(normalMat * lv[i].normal);
+        }
+    }
+
+    for (MeshNode* child : root->children)
+    {
+        apply_node_transform_recursive(worldVertices, localVertices, child, worldTransform);
+    }
+}
+
 Model Model::load_gltf_model(const char* path)
 {
     LD_PROFILE_SCOPE;
 
     ModelObj* obj = heap_new<ModelObj>(MEMORY_USAGE_MEDIA);
     obj->hasCalculatedAABB = false;
+    obj->hasAppliedNodeTransform = false;
 
     TinygltfLoader loader;
 
@@ -154,6 +184,28 @@ void Model::get_aabb(Vec3& minPos, Vec3& maxPos)
 
     mObj->minPos = minPos;
     mObj->maxPos = maxPos;
+}
+
+void Model::apply_node_transform()
+{
+    LD_PROFILE_SCOPE;
+
+    if (mObj->hasAppliedNodeTransform)
+        return;
+
+    mObj->hasAppliedNodeTransform = true;
+
+    // The vertex range of different mesh primitives may overlap, so we can't
+    // apply the transform in-place.
+    std::vector<MeshVertex> worldVertices = mObj->vertices;
+
+    for (MeshNode* root : mObj->roots)
+    {
+        apply_node_transform_recursive(worldVertices.data(), mObj->vertices.data(), root, Mat4(1.0f));
+    }
+
+    // safe to replace local space vertices with world space ones
+    mObj->vertices = std::move(worldVertices);
 }
 
 } // namespace LD
