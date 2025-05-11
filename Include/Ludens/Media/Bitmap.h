@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Ludens/Header/Handle.h>
+#include <Ludens/Serial/Serial.h>
 #include <cstdint>
 
 namespace LD {
@@ -37,14 +38,20 @@ struct Bitmap : Handle<struct BitmapObj>
     /// @brief destroy bitmap
     static void destroy(Bitmap bitmap);
 
+    /// @brief serialize a bitmap to binary data
+    static void serialize(Serializer& serializer, const Bitmap& bitmap);
+
+    /// @brief create bitmap from binary data
+    static void deserialize(Serializer& serializer, Bitmap& bitmap);
+
     BitmapView view() const;
 
     uint32_t width() const;
     uint32_t height() const;
     BitmapChannel channel() const;
 
-    char* data();
-    const char* data() const;
+    byte* data();
+    const byte* data() const;
 };
 
 bool save_bitmap_to_disk(const BitmapView& view, const char* path);

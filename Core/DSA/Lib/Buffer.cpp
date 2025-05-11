@@ -7,7 +7,7 @@ namespace LD {
 
 Buffer::Buffer() : mSize(0), mCap(128)
 {
-    mData = (char*)heap_malloc(mCap, MEMORY_USAGE_MISC);
+    mData = (byte*)heap_malloc(mCap, MEMORY_USAGE_MISC);
 }
 
 Buffer::Buffer(const Buffer& other)
@@ -15,7 +15,7 @@ Buffer::Buffer(const Buffer& other)
 {
     if (mSize > 0)
     {
-        mData = (char*)heap_malloc(mCap, MEMORY_USAGE_MISC);
+        mData = (byte*)heap_malloc(mCap, MEMORY_USAGE_MISC);
         memcpy(mData, other.mData, mSize);
     }
 }
@@ -26,15 +26,19 @@ Buffer::~Buffer()
         heap_free(mData);
 }
 
-void Buffer::write(char* bytes, size_t size)
+void Buffer::write(const byte* bytes, size_t size)
 {
+    size_t nextCap = mCap;
+    while (mSize + size > nextCap)
+        nextCap *= 2;
+
     if (mSize + size > mCap)
     {
-        mCap *= 2;
-        char* newData = (char*)heap_malloc(mCap, MEMORY_USAGE_MISC);
+        byte* newData = (byte*)heap_malloc(nextCap, MEMORY_USAGE_MISC);
         memcpy(newData, mData, mSize);
         heap_free(mData);
         mData = newData;
+        mCap = nextCap;
     }
 
     memcpy(mData + mSize, bytes, size);
@@ -53,7 +57,7 @@ Buffer& Buffer::operator=(const Buffer& other)
     if (mSize < other.mSize)
     {
         heap_free(mData);
-        mData = (char*)heap_malloc(other.mCap, MEMORY_USAGE_MISC);
+        mData = (byte*)heap_malloc(other.mCap, MEMORY_USAGE_MISC);
     }
 
     mCap = other.mCap;

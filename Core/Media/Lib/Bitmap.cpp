@@ -1,4 +1,5 @@
 #include <Ludens/Header/Bitwise.h>
+#include <Ludens/Header/Types.h>
 #include <Ludens/Media/Bitmap.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/System/Memory.h>
@@ -22,7 +23,7 @@ struct BitmapObj
     uint32_t width;
     uint32_t height;
     BitmapChannel channel;
-    char* data;
+    byte* data;
 };
 
 Bitmap Bitmap::create_from_data(uint32_t width, uint32_t height, BitmapChannel channel, const void* data)
@@ -36,7 +37,7 @@ Bitmap Bitmap::create_from_data(uint32_t width, uint32_t height, BitmapChannel c
     obj->width = width;
     obj->height = height;
     obj->channel = channel;
-    obj->data = (char*)(obj + 1);
+    obj->data = (byte*)(obj + 1);
 
     memcpy(obj->data, data, dataSize);
 
@@ -50,7 +51,7 @@ Bitmap Bitmap::create_from_path(const char* path)
     BitmapObj* obj = (BitmapObj*)heap_malloc(sizeof(BitmapObj), MEMORY_USAGE_MEDIA);
 
     int x, y, ch;
-    obj->data = (char*)stbi_load(path, &x, &y, &ch, STBI_rgb_alpha);
+    obj->data = (byte*)stbi_load(path, &x, &y, &ch, STBI_rgb_alpha);
 
     if (!obj->data)
         return {};
@@ -70,13 +71,13 @@ Bitmap Bitmap::create_cubemap_from_paths(const char** paths)
     BitmapObj* obj = (BitmapObj*)heap_malloc(sizeof(BitmapObj), MEMORY_USAGE_MEDIA);
     uint32_t size = 0;
     uint32_t layerSize = 0;
-    char* dst = nullptr;
-    char* tmp = nullptr;
+    byte* dst = nullptr;
+    byte* tmp = nullptr;
 
     for (int i = 0; i < 6; i++)
     {
         int x, y, ch;
-        tmp = (char*)stbi_load(paths[i], &x, &y, &ch, STBI_rgb_alpha);
+        tmp = (byte*)stbi_load(paths[i], &x, &y, &ch, STBI_rgb_alpha);
 
         if (!tmp)
         {
@@ -94,7 +95,7 @@ Bitmap Bitmap::create_cubemap_from_paths(const char** paths)
         {
             size = (uint32_t)x;
             layerSize = size * size * 4;
-            dst = obj->data = (char*)heap_malloc(6 * layerSize, MEMORY_USAGE_MEDIA);
+            dst = obj->data = (byte*)heap_malloc(6 * layerSize, MEMORY_USAGE_MEDIA);
         }
         else if (x != size || y != size)
         {
@@ -145,6 +146,36 @@ void Bitmap::destroy(Bitmap bitmap)
     heap_free(obj);
 }
 
+void Bitmap::serialize(Serializer& serializer, const Bitmap& bitmap)
+{
+    LD_PROFILE_SCOPE;
+
+    const BitmapObj* obj = bitmap;
+
+    serializer.write_u32(obj->width);
+    serializer.write_u32(obj->height);
+    serializer.write_u32((uint32_t)obj->channel);
+
+    size_t dataSize = obj->width * obj->height * obj->channel;
+    serializer.write(obj->data, dataSize);
+}
+
+void Bitmap::deserialize(Serializer& serializer, Bitmap& bitmap)
+{
+    LD_PROFILE_SCOPE;
+
+    uint32_t width, height;
+    BitmapChannel channel;
+    serializer.read_u32(width);
+    serializer.read_u32(height);
+    serializer.read_u32((uint32_t&)channel);
+
+    size_t dataSize = width * height * channel;
+    std::vector<byte> pixels(dataSize);
+    serializer.read(pixels.data(), dataSize);
+    bitmap = Bitmap::create_from_data(width, height, channel, pixels.data());
+}
+
 BitmapView Bitmap::view() const
 {
     return {
@@ -170,14 +201,14 @@ BitmapChannel Bitmap::channel() const
     return mObj->channel;
 }
 
-char* Bitmap::data()
+byte* Bitmap::data()
 {
     return mObj->data;
 }
 
-const char* Bitmap::data() const
+const byte* Bitmap::data() const
 {
-    return (const char*)mObj->data;
+    return (const byte*)mObj->data;
 }
 
 bool save_bitmap_to_disk(const BitmapView& view, const char* c_path)

@@ -281,7 +281,7 @@ bool TinygltfLoader::load_mesh(tinygltf::Mesh& tinyMesh, MeshNode* node)
         prim.indexCount = indexCount;
         prim.vertexStart = vertexBase;
         prim.vertexCount = vertexCount;
-        prim.material = tinyPrim.material >= 0 ? (mObj->materials.data() + tinyPrim.material) : nullptr;
+        prim.matIndex = (int32_t)tinyPrim.material;
     }
 
     return true;

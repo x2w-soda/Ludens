@@ -7,6 +7,7 @@
 #include <Ludens/Header/Math/Vec3.h>
 #include <Ludens/Header/Math/Vec4.h>
 #include <Ludens/Media/Bitmap.h>
+#include <Ludens/Serial/Serial.h>
 #include <string>
 #include <vector>
 
@@ -24,7 +25,7 @@ struct MeshVertex
 struct MeshMaterial
 {
     Vec4 baseColorFactor;
-    int baseColorTextureIndex;
+    int32_t baseColorTextureIndex;
 };
 
 /// @brief describes how a portion of MeshData is rendered with a MeshMaterial
@@ -34,7 +35,7 @@ struct MeshPrimitive
     uint32_t indexCount;
     uint32_t vertexStart;
     uint32_t vertexCount;
-    MeshMaterial* material;
+    int32_t matIndex;
 };
 
 /// @brief mesh heirachy
@@ -73,15 +74,42 @@ struct Model : Handle<struct ModelObj>
     MeshMaterial* get_materials(uint32_t& materialCount);
 
     /// @brief get the total number of primitives across all nodes
-    void get_primitive_count(uint32_t& primitiveCount);
-
-    /// @brief get model local space AABB
-    void get_aabb(Vec3& minPos, Vec3& maxPos);
+    /// @param primitiveCount output number of primitves across all nodes
+    /// @param primitives if not null, MeshPrimitives are copied over
+    void get_primitives(uint32_t& primitiveCount, MeshPrimitive* primitives);
 
     /// @brief Traverse MeshNode tree and transform each vertex to world space,
     ///        subsequent calls to get_vertices will return world space vertices.
     ///        Each MeshNode transform matrix will be reset to identity matrix.
     void apply_node_transform();
 };
+
+class ModelBinary
+{
+public:
+    std::vector<MeshPrimitive> prims;
+    std::vector<MeshMaterial> mats;
+    std::vector<Bitmap> textures;
+    std::vector<MeshVertex> vertices;
+    std::vector<uint32_t> indices;
+
+    ModelBinary() = default;
+    ModelBinary(const ModelBinary&) = delete;
+    ~ModelBinary();
+    ModelBinary& operator=(const ModelBinary&) = delete;
+
+    /// @brief create binary format of a rigid mesh, this format drops MeshNode
+    ///        hierachy information, flattens MeshPrimitives into an array,
+    ///        and stores MeshVertex in world space.
+    void from_rigid_mesh(Model& model);
+
+    static void serialize(Serializer& serializer, const ModelBinary& bin);
+    static void deserialize(Serializer& serializer, ModelBinary& bin);
+
+private:
+    bool mIsTextureOwner = false;
+};
+
+void get_mesh_vertex_aabb(const MeshVertex* vertices, uint32_t vertexCount, Vec3& min, Vec3& max);
 
 } // namespace LD

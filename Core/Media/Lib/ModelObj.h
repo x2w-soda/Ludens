@@ -15,10 +15,7 @@ struct ModelObj
     std::vector<MeshNode*> roots; /// the subset of nodes in this model that have no parents
     std::vector<MeshVertex> vertices;
     std::vector<uint32_t> indices;
-    Vec3 minPos;
-    Vec3 maxPos;
     bool hasAppliedNodeTransform;
-    bool hasCalculatedAABB;
 };
 
 } // namespace LD
