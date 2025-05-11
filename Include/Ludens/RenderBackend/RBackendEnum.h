@@ -152,6 +152,7 @@ enum RPrimitiveTopology
 {
     RPRIMITIVE_TOPOLOGY_TRIANGLE_LIST = 0,
     RPRIMITIVE_TOPOLOGY_POINT_LIST,
+    RPRIMITIVE_TOPOLOGY_LINE_LIST,
 };
 
 using RSampleCountFlags = uint32_t;
