@@ -25,7 +25,11 @@ struct MeshVertex
 struct MeshMaterial
 {
     Vec4 baseColorFactor;
+    float metallicFactor;
+    float roughnessFactor;
     int32_t baseColorTextureIndex;
+    int32_t normalTextureIndex;
+    int32_t metallicRoughnessTextureIndex;
 };
 
 /// @brief describes how a portion of MeshData is rendered with a MeshMaterial

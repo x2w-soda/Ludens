@@ -248,7 +248,11 @@ void ModelBinary::serialize(Serializer& serializer, const ModelBinary& bin)
     for (const MeshMaterial& mat : bin.mats)
     {
         serializer.write_vec4(mat.baseColorFactor);
+        serializer.write_f32(mat.metallicFactor);
+        serializer.write_f32(mat.roughnessFactor);
         serializer.write_i32(mat.baseColorTextureIndex);
+        serializer.write_i32(mat.normalTextureIndex);
+        serializer.write_i32(mat.metallicRoughnessTextureIndex);
     }
 
     for (const MeshPrimitive& prim : bin.prims)
@@ -301,7 +305,11 @@ void ModelBinary::deserialize(Serializer& serializer, ModelBinary& bin)
     {
         MeshMaterial& mat = bin.mats[i];
         serializer.read_vec4(mat.baseColorFactor);
+        serializer.read_f32(mat.metallicFactor);
+        serializer.read_f32(mat.roughnessFactor);
         serializer.read_i32(mat.baseColorTextureIndex);
+        serializer.read_i32(mat.normalTextureIndex);
+        serializer.read_i32(mat.metallicRoughnessTextureIndex);
     }
 
     bin.prims.resize(primCount);

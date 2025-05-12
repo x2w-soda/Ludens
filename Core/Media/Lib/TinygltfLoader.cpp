@@ -105,10 +105,20 @@ bool TinygltfLoader::load_materials()
         MeshMaterial& mat = mObj->materials[i];
 
         mat.baseColorFactor = {0.0f, 0.0f, 0.0f, 1.0f};
+        mat.metallicFactor = 1.0f;
+        mat.roughnessFactor = 1.0f;
         mat.baseColorTextureIndex = -1;
+        mat.normalTextureIndex = -1;
+        mat.metallicRoughnessTextureIndex = -1;
 
         if (tinyMat.values.contains("baseColorFactor"))
             mat.baseColorFactor = Vec4::from_data(tinyMat.values["baseColorFactor"].ColorFactor().data());
+
+        if (tinyMat.values.contains("metallicFactor"))
+            mat.metallicFactor = static_cast<float>(tinyMat.values["metallicFactor"].number_value);
+
+        if (tinyMat.values.contains("roughnessFactor"))
+            mat.roughnessFactor = static_cast<float>(tinyMat.values["roughnessFactor"].number_value);
 
         if (tinyMat.values.contains("baseColorTexture"))
         {
@@ -122,7 +132,29 @@ bool TinygltfLoader::load_materials()
             mat.baseColorTextureIndex = source;
         }
 
-        // TODO: normal mapping, PBR materials
+        if (tinyMat.additionalValues.contains("normalTexture"))
+        {
+            int source = mTinyModel.textures[tinyMat.additionalValues["normalTexture"].TextureIndex()].source;
+            int coordSet = tinyMat.additionalValues["normalTexture"].TextureTexCoord();
+            if (coordSet != 0)
+            {
+                std::cout << "load_materials: normal texture uses coord set " << coordSet << std::endl;
+                return false;
+            }
+            mat.normalTextureIndex = source;
+        }
+
+        if (tinyMat.values.contains("metallicRoughnessTexture"))
+        {
+            int source = mTinyModel.textures[tinyMat.values["metallicRoughnessTexture"].TextureIndex()].source;
+            int coordSet = tinyMat.values["metallicRoughnessTexture"].TextureTexCoord();
+            if (coordSet != 0)
+            {
+                std::cout << "load_materials: metallic roughness texture uses coord set " << coordSet << std::endl;
+                return false;
+            }
+            mat.metallicRoughnessTextureIndex = source;
+        }
     }
 
     return true;
