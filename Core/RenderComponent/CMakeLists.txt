@@ -1,0 +1,43 @@
+set(MODULE_NAME LDRenderComponent)
+
+set(MODULE_INCLUDE
+    "${LUDENS_INCLUDE_DIR}/Ludens/RenderComponent/ForwardRender.h"
+    "${LUDENS_INCLUDE_DIR}/Ludens/RenderComponent/ScreenRender.h"
+    "${LUDENS_INCLUDE_DIR}/Ludens/RenderComponent/Skybox.h"
+    "${LUDENS_INCLUDE_DIR}/Ludens/RenderComponent/DualKawase.h"
+    "${LUDENS_INCLUDE_DIR}/Ludens/RenderComponent/Layout/SetLayouts.h"
+    "${LUDENS_INCLUDE_DIR}/Ludens/RenderComponent/Layout/PipelineLayouts.h"
+    "${LUDENS_INCLUDE_DIR}/Ludens/RenderComponent/Layout/VertexLayouts.h"
+    "${LUDENS_INCLUDE_DIR}/Ludens/RenderComponent/Layout/RMaterial.h"
+    "${LUDENS_INCLUDE_DIR}/Ludens/RenderComponent/Layout/RMesh.h"
+    "${LUDENS_INCLUDE_DIR}/Ludens/RenderComponent/Pipeline/RMeshPipeline.h"
+    "${LUDENS_INCLUDE_DIR}/Ludens/RenderComponent/Pipeline/LinePipeline.h"
+)
+
+set(MODULE_LIB
+    "Lib/ForwardRender.cpp"
+    "Lib/Skybox.cpp"
+    "Lib/ScreenRender.cpp"
+    "Lib/DualKawase.cpp"
+    "Lib/Layout/SetLayouts.cpp"
+    "Lib/Layout/PipelineLayouts.cpp"
+    "Lib/Layout/RMesh.cpp"
+    "Lib/Pipeline/RMeshPipeline.cpp"
+    "Lib/Pipeline/LinePipeline.cpp"
+)
+
+add_library(${MODULE_NAME}
+    ${MODULE_INCLUDE}
+    ${MODULE_LIB}
+)
+
+target_link_libraries(${MODULE_NAME} PUBLIC
+    LDProfiler
+    LDSystem
+    LDRenderBackend
+    LDRenderGraph
+)
+
+target_include_directories(${MODULE_NAME} PRIVATE
+  ${LUDENS_INCLUDE_DIR}
+)
