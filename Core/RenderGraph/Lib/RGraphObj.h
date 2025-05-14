@@ -43,6 +43,7 @@ struct GraphImage
 {
     NodeType type; /// node type in entire render graph
     Name name;     /// declared name in component
+    std::string debugName;
     RImageUsageFlags usage;
     RSamplerInfo sampler;
     RFormat format;
@@ -72,6 +73,7 @@ struct RGraphicsPassDepthStencilAttachment
 struct RGraphicsPassObj
 {
     Name name;
+    std::string debugName;
     uint32_t width;
     uint32_t height;
     RComponent component; /// owning component
@@ -97,6 +99,7 @@ struct RGraphicsPassObj
 struct RComponentObj
 {
     Name name;
+    std::string debugName;
     std::vector<RGraphicsPass> graphicsPassOrder;
     std::unordered_map<Name, RGraphicsPass, NameHash> graphicsPasses; /// name graphics passes declared this frame
     std::unordered_map<Name, GraphImage, NameHash> images;            /// name to images declared in this frame

@@ -5,6 +5,10 @@
 #include <Ludens/RenderGraph/RGraph.h>
 #include <Ludens/System/Memory.h>
 #include <algorithm>
+#include <filesystem>
+#include <fstream>
+#include <iostream>
+#include <sstream>
 #include <stack>
 #include <utility>
 
@@ -32,6 +36,7 @@ struct RStorage
 static std::unordered_map<uint32_t, RStorage> sStorages;
 
 static std::stack<std::pair<void*, RGraph::OnReleaseCallback>> sReleaseCallbacks;
+static std::stack<std::pair<void*, RGraph::OnReleaseCallback>> sDestroyCallbacks;
 
 /// @brief returns true if srcUsage and dstUsage might cause pipeline hazards, and needs a happens-before access separation.
 static bool has_image_dependency(RGraphImageUsage srcUsage, RGraphImageUsage dstUsage)
@@ -247,6 +252,43 @@ static void topological_sort(const std::unordered_map<Name, RComponent, NameHash
     std::reverse(order.begin(), order.end());
 }
 
+static void save_graph_to_dot(RGraphObj* graphObj, const char* path)
+{
+    std::ostringstream os;
+    std::filesystem::path fsPath(path);
+    std::ofstream outFile(fsPath);
+
+    os << "digraph RenderGraph {\n";
+    os << "bgcolor = \"#181818\"\n";
+    os << "node [shape = plain, fontcolor = \"#e6e6e6\", color = \"#e6e6e6\"];\n";
+
+    for (const RGraphicsPassObj* passObj : graphObj->passOrder)
+    {
+        os << '"' << passObj->debugName << '"' << "[label = <<table><tr><td>" << passObj->debugName << "</td></tr></table>>]\n";
+    }
+
+    for (const RGraphicsPassObj* srcPassObj : graphObj->passOrder)
+    {
+        for (const RGraphicsPassObj* dstPassObj : srcPassObj->edges)
+        {
+            os << '"' << srcPassObj->debugName << '"' << " -> " << '"' << dstPassObj->debugName << '"' << "[color = \"#e6e6e6\"]" << '\n';
+        }
+    }
+
+    os << "}";
+
+    if (!outFile)
+    {
+        std::cerr << "save_graph_to_dot: failed to open file for writing: " << path << std::endl;
+        return;
+    }
+
+    outFile << os.str();
+    outFile.close();
+
+    std::cout << "save_graph_to_dot: written to " << path << std::endl;
+}
+
 Name RGraphicsPass::name() const
 {
     return mObj->name;
@@ -399,8 +441,10 @@ Name RComponent::name() const
     return mObj->name;
 }
 
-void RComponent::add_private_image(Name name, RFormat format, uint32_t width, uint32_t height, RSamplerInfo* sampler)
+void RComponent::add_private_image(const char* nameStr, RFormat format, uint32_t width, uint32_t height, RSamplerInfo* sampler)
 {
+    Name name(nameStr);
+
     if (mObj->images.contains(name))
     {
         printf("image already declared in component\n");
@@ -410,6 +454,7 @@ void RComponent::add_private_image(Name name, RFormat format, uint32_t width, ui
     mObj->images[name] = {
         .type = NODE_TYPE_PRIVATE,
         .name = name,
+        .debugName = nameStr,
         .format = format,
         .width = width,
         .height = height,
@@ -428,8 +473,10 @@ void RComponent::add_private_image(Name name, RFormat format, uint32_t width, ui
     }
 }
 
-void RComponent::add_output_image(Name name, RFormat format, uint32_t width, uint32_t height, RSamplerInfo* sampler)
+void RComponent::add_output_image(const char* nameStr, RFormat format, uint32_t width, uint32_t height, RSamplerInfo* sampler)
 {
+    Name name(nameStr);
+
     if (mObj->images.contains(name))
     {
         printf("image already declared in component\n");
@@ -439,6 +486,7 @@ void RComponent::add_output_image(Name name, RFormat format, uint32_t width, uin
     mObj->images[name] = {
         .type = NODE_TYPE_OUTPUT,
         .name = name,
+        .debugName = nameStr,
         .format = format,
         .width = width,
         .height = height,
@@ -457,8 +505,10 @@ void RComponent::add_output_image(Name name, RFormat format, uint32_t width, uin
     }
 }
 
-void RComponent::add_input_image(Name name, RFormat format, uint32_t width, uint32_t height)
+void RComponent::add_input_image(const char* nameStr, RFormat format, uint32_t width, uint32_t height)
 {
+    Name name(nameStr);
+
     if (mObj->images.contains(name))
     {
         printf("image already declared in component\n");
@@ -468,6 +518,7 @@ void RComponent::add_input_image(Name name, RFormat format, uint32_t width, uint
     mObj->images[name] = {
         .type = NODE_TYPE_INPUT,
         .name = name,
+        .debugName = nameStr,
         .sampler = {},
         .format = format,
         .width = width,
@@ -475,8 +526,10 @@ void RComponent::add_input_image(Name name, RFormat format, uint32_t width, uint
     };
 }
 
-void RComponent::add_io_image(Name name, RFormat format, uint32_t width, uint32_t height)
+void RComponent::add_io_image(const char* nameStr, RFormat format, uint32_t width, uint32_t height)
 {
+    Name name(nameStr);
+
     if (mObj->images.contains(name))
     {
         printf("image already declared in component\n");
@@ -486,6 +539,7 @@ void RComponent::add_io_image(Name name, RFormat format, uint32_t width, uint32_
     mObj->images[name] = {
         .type = NODE_TYPE_IO,
         .name = name,
+        .debugName = nameStr,
         .sampler = {},
         .format = format,
         .width = width,
@@ -499,7 +553,8 @@ RGraphicsPass RComponent::add_graphics_pass(const RGraphicsPassInfo& gpI, void* 
 
     // TODO: linear allocator and placement new?
     RGraphicsPassObj* obj = heap_new<RGraphicsPassObj>(MEMORY_USAGE_RENDER);
-    obj->name = gpI.name;
+    obj->name = Name(gpI.name);
+    obj->debugName = gpI.name;
     obj->width = gpI.width;
     obj->height = gpI.height;
     obj->userData = userData;
@@ -528,6 +583,15 @@ RGraph RGraph::create(const RGraphInfo& graphI)
 void RGraph::destroy(RGraph graph)
 {
     LD_PROFILE_SCOPE;
+
+    while (!sDestroyCallbacks.empty())
+    {
+        LD_PROFILE_SCOPE_NAME("destroy callbacks");
+
+        auto& pair = sDestroyCallbacks.top();
+        pair.second(pair.first);
+        sDestroyCallbacks.pop();
+    }
 
     RGraphObj* graphObj = (RGraphObj*)graph;
 
@@ -582,22 +646,28 @@ RImage RGraph::get_swapchain_image()
     return mObj->info.swapchainImage;
 }
 
-RComponent RGraph::add_component(Name name)
+RComponent RGraph::add_component(const char* nameStr)
 {
     LD_PROFILE_SCOPE;
 
     // TODO: linear allocator + placement new?
     RComponentObj* comp = heap_new<RComponentObj>(MEMORY_USAGE_RENDER);
-    comp->name = name;
+    comp->name = Name(nameStr);
+    comp->debugName = nameStr;
 
-    mObj->components[name] = {comp};
+    mObj->components[comp->name] = {comp};
 
     return {comp};
 }
 
-void RGraph::connect_image(Name srcComp, Name srcOutImage, Name dstComp, Name dstInImage)
+void RGraph::connect_image(const char* srcCompStr, const char* srcOutImageStr, const char* dstCompStr, const char* dstInImageStr)
 {
     LD_PROFILE_SCOPE;
+
+    Name srcComp(srcCompStr);
+    Name dstComp(dstCompStr);
+    Name srcOutImage(srcOutImageStr);
+    Name dstInImage(dstInImageStr);
 
     if (!mObj->components.contains(srcComp))
     {
@@ -652,8 +722,11 @@ void RGraph::connect_image(Name srcComp, Name srcOutImage, Name dstComp, Name ds
     dstGraphImageRef.srcOutputName = srcOutImage;
 }
 
-void RGraph::connect_swapchain_image(Name srcComp, Name srcOutImage)
+void RGraph::connect_swapchain_image(const char* srcCompStr, const char* srcOutImageStr)
 {
+    Name srcComp(srcCompStr);
+    Name srcOutImage(srcOutImageStr);
+
     RComponentObj* srcCompObj = mObj->components[srcComp];
 
     GraphImage& srcGraphImage = dereference_image(&srcCompObj, &srcOutImage);
@@ -663,13 +736,18 @@ void RGraph::connect_swapchain_image(Name srcComp, Name srcOutImage)
     mObj->blitOutputName = srcOutImage;
 }
 
-void RGraph::submit()
+void RGraph::submit(bool save)
 {
     LD_PROFILE_SCOPE;
 
     // building and validation
     // topological sort of all graphics passes, linearize passes
     topological_sort(mObj->components, mObj->passOrder);
+
+    if (save)
+    {
+        save_graph_to_dot(mObj, "saved.dot");
+    }
 
     // recording
     RCommandList list = mObj->info.list;
@@ -695,6 +773,8 @@ void RGraph::submit()
         // retrieve color attachment handles
         for (uint32_t colorIdx = 0; colorIdx < colorAttachmentCount; colorIdx++)
         {
+            LD_PROFILE_SCOPE_NAME("render pass color attachments");
+
             RGraphicsPassColorAttachment* attachment = passObj->colorAttachments.data() + colorIdx;
             RPassColorAttachment* attachmentInfo = passObj->colorAttachmentInfos.data() + colorIdx;
 
@@ -759,6 +839,8 @@ void RGraph::submit()
         // perform image layout transitions for sampled images, right before render pass
         for (Name imageName : passObj->sampledImages)
         {
+            LD_PROFILE_SCOPE_NAME("render pass sampled images");
+
             RGraphImageUsage passUsage = passObj->imageUsages[imageName];
             LD_ASSERT(passUsage == RGRAPH_IMAGE_USAGE_SAMPLED);
 
@@ -844,6 +926,11 @@ void RGraph::submit()
 void RGraph::add_release_callback(void* user, OnReleaseCallback onRelease)
 {
     sReleaseCallbacks.push({user, onRelease});
+}
+
+void RGraph::add_destroy_callback(void* user, OnDestroyCallback onDestroy)
+{
+    sDestroyCallbacks.push({user, onDestroy});
 }
 
 } // namespace LD
