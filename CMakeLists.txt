@@ -209,6 +209,7 @@ add_subdirectory(Core/Media)
 add_subdirectory(Core/Camera)
 add_subdirectory(Core/RenderBackend)
 add_subdirectory(Core/RenderGraph)
+add_subdirectory(Core/RenderComponent)
 add_subdirectory(Core/Application)
 
 add_library(LDCore INTERFACE)
@@ -218,6 +219,8 @@ target_link_directories(LDCore INTERFACE
   LDDSA
   LDMedia
   LDRenderBackend
+  LDRenderGraph
+  LDRenderComponent
   LDApplication
 )
 
