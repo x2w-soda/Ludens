@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Ludens/RenderBackend/RBackend.h>
+#include <type_traits>
 
 namespace LD {
 namespace RUtil {
@@ -51,13 +52,24 @@ inline RPipelineBlendState make_default_blend_state()
     };
 }
 
-inline RClearColorValue make_clear_color(float r, float g, float b, float a)
+template <typename T>
+inline RClearColorValue make_clear_color(T r, T g, T b, T a)
 {
     RClearColorValue value;
-    value.float32[0] = r;
-    value.float32[1] = g;
-    value.float32[2] = b;
-    value.float32[3] = a;
+    if constexpr (std::is_same_v<T, float>)
+    {
+        value.float32[0] = r;
+        value.float32[1] = g;
+        value.float32[2] = b;
+        value.float32[3] = a;
+    }
+    else if constexpr (std::is_same_v<T, uint32_t>)
+    {
+        value.uint32[0] = r;
+        value.uint32[1] = g;
+        value.uint32[2] = b;
+        value.uint32[3] = a;
+    }
     return value;
 }
 
