@@ -2,6 +2,7 @@
 #include "RShaderCompiler.h"
 #include "RUtilInternal.h"
 #include <Ludens/Header/Assert.h>
+#include <Ludens/Profiler/Profiler.h>
 #include <Ludens/RenderBackend/RBackend.h>
 #include <Ludens/System/Memory.h>
 #include <array>
@@ -1086,17 +1087,24 @@ static uint32_t vk_device_next_frame(RDeviceObj* self, RSemaphore& imageAcquired
     VkSemaphore imageAcquiredSemaphore = static_cast<RSemaphoreObj*>(frame->imageAcquired)->vk.handle;
     VkFence frameCompleteFence = static_cast<RFenceObj*>(frame->frameComplete)->vk.handle;
 
-    VK_CHECK(vkWaitForFences(self->vk.device, 1, &frameCompleteFence, VK_TRUE, UINT64_MAX));
+    {
+        LD_PROFILE_SCOPE_NAME("vkWaitForFences");
+        VK_CHECK(vkWaitForFences(self->vk.device, 1, &frameCompleteFence, VK_TRUE, UINT64_MAX));
+    }
 
-    VkResult result = vkAcquireNextImageKHR(
-        self->vk.device,
-        self->vk.swapchain.handle,
-        UINT64_MAX,
-        imageAcquiredSemaphore,
-        VK_NULL_HANDLE,
-        &self->vk.imageIdx);
+    {
+        LD_PROFILE_SCOPE_NAME("vkAcquireNextImageKHR");
 
-    VK_CHECK(result);
+        VkResult result = vkAcquireNextImageKHR(
+            self->vk.device,
+            self->vk.swapchain.handle,
+            UINT64_MAX,
+            imageAcquiredSemaphore,
+            VK_NULL_HANDLE,
+            &self->vk.imageIdx);
+
+        VK_CHECK(result);
+    }
 
     VK_CHECK(vkResetFences(self->vk.device, 1, &frameCompleteFence));
 
