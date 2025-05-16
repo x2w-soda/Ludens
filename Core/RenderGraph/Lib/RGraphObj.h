@@ -8,14 +8,6 @@
 
 namespace LD {
 
-struct RGraphicsPassHash
-{
-    std::size_t operator()(const RGraphicsPass& pass) const
-    {
-        return (std::size_t)pass.rid();
-    }
-};
-
 struct NameHash
 {
     std::size_t operator()(const Name& name) const
@@ -29,6 +21,7 @@ enum RGraphImageUsage
     RGRAPH_IMAGE_USAGE_COLOR_ATTACHMENT = 0,
     RGRAPH_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT,
     RGRAPH_IMAGE_USAGE_SAMPLED,
+    RGRAPH_IMAGE_USAGE_STORAGE_READ_ONLY,
 };
 
 enum NodeType
@@ -70,27 +63,41 @@ struct RGraphicsPassDepthStencilAttachment
     std::optional<RClearDepthStencilValue> clearValue;
 };
 
-struct RGraphicsPassObj
+struct RComponentPassObj
 {
     Name name;
     std::string debugName;
+    RComponent component;           /// owning component
+    RPipelineStageFlags stageFlags; /// compute pass stages
+    RAccessFlags accessFlags;       /// compute pass access
+    void* userData;
+    bool isCallbackScope;
+    bool isComputePass;
+    std::unordered_map<uint32_t, RGraphImageUsage> imageUsages;
+    std::unordered_set<RComponentPassObj*> edges; /// dependency passes
+};
+
+struct RGraphicsPassObj : RComponentPassObj
+{
     uint32_t width;
     uint32_t height;
-    RComponent component; /// owning component
     RPassDependency passDep;
     RGraphicsPassCallback callback;
-    std::unordered_map<uint32_t, RGraphImageUsage> imageUsages;
-    std::unordered_set<RGraphicsPass, RGraphicsPassHash> edges; /// dependency passes
     std::vector<RGraphicsPassColorAttachment> colorAttachments; /// graphics pass color attachment description
     std::vector<RPassColorAttachment> colorAttachmentInfos;     /// consumed by the render backend API
     std::unordered_set<Name, NameHash> sampledImages;           /// all images sampled in this pass
     RGraphicsPassDepthStencilAttachment depthStencilAttachment; /// graphics pass depth stencil attachment description
     RPassDepthStencilAttachment depthStencilAttachmentInfo;     /// consumed by the render backend API
-    RPipelineStageFlags stageFlags;                             /// render pass stages
-    RAccessFlags accessFlags;                                   /// render pass access
-    void* userData;
-    bool isCallbackScope;
     bool hasDepthStencil;
+
+    inline bool operator==(const RGraphicsPassObj& other) const { return name == other.name; }
+    inline bool operator!=(const RGraphicsPassObj& other) const { return !operator==(other); }
+};
+
+struct RComputePassObj : RComponentPassObj
+{
+    RComputePassCallback callback;                    /// user callback for compute operations
+    std::unordered_set<Name, NameHash> storageImages; /// all storage images in this pass
 
     inline bool operator==(const RGraphicsPassObj& other) const { return name == other.name; }
     inline bool operator!=(const RGraphicsPassObj& other) const { return !operator==(other); }
@@ -100,9 +107,9 @@ struct RComponentObj
 {
     Name name;
     std::string debugName;
-    std::vector<RGraphicsPass> graphicsPassOrder;
-    std::unordered_map<Name, RGraphicsPass, NameHash> graphicsPasses; /// name graphics passes declared this frame
-    std::unordered_map<Name, GraphImage, NameHash> images;            /// name to images declared in this frame
+    std::vector<RComponentPassObj*> passOrder;
+    std::unordered_map<Name, RComponentPassObj*, NameHash> passes; /// all passes declared this frame
+    std::unordered_map<Name, GraphImage, NameHash> images;         /// name to images declared in this frame
     std::unordered_map<Name, GraphImageRef, NameHash> imageRefs;
 
     inline bool operator==(const RComponentObj& other) const { return name == other.name; }
@@ -114,7 +121,7 @@ struct RGraphObj
     RGraphInfo info;
     RCommandList list;
     std::unordered_map<Name, RComponent, NameHash> components;
-    std::vector<RGraphicsPass> passOrder;
+    std::vector<RComponentPassObj*> passOrder;
     RComponentObj* blitCompObj;
     Name blitOutputName;
 };

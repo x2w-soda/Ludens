@@ -41,17 +41,16 @@ static std::stack<std::pair<void*, RGraph::OnReleaseCallback>> sDestroyCallbacks
 /// @brief returns true if srcUsage and dstUsage might cause pipeline hazards, and needs a happens-before access separation.
 static bool has_image_dependency(RGraphImageUsage srcUsage, RGraphImageUsage dstUsage)
 {
-    return (srcUsage == RGRAPH_IMAGE_USAGE_COLOR_ATTACHMENT && dstUsage == RGRAPH_IMAGE_USAGE_SAMPLED) ||        // RAW
-           (srcUsage == RGRAPH_IMAGE_USAGE_SAMPLED && dstUsage == RGRAPH_IMAGE_USAGE_COLOR_ATTACHMENT) ||        // WAR
-           (srcUsage == RGRAPH_IMAGE_USAGE_COLOR_ATTACHMENT && dstUsage == RGRAPH_IMAGE_USAGE_COLOR_ATTACHMENT); // WAW
+    return (srcUsage == RGRAPH_IMAGE_USAGE_COLOR_ATTACHMENT && dstUsage == RGRAPH_IMAGE_USAGE_SAMPLED) ||           // RAW
+           (srcUsage == RGRAPH_IMAGE_USAGE_COLOR_ATTACHMENT && dstUsage == RGRAPH_IMAGE_USAGE_STORAGE_READ_ONLY) || // RAW
+           (srcUsage == RGRAPH_IMAGE_USAGE_SAMPLED && dstUsage == RGRAPH_IMAGE_USAGE_COLOR_ATTACHMENT) ||           // WAR
+           (srcUsage == RGRAPH_IMAGE_USAGE_COLOR_ATTACHMENT && dstUsage == RGRAPH_IMAGE_USAGE_COLOR_ATTACHMENT);    // WAW
 }
 
-static bool has_pass_dependency(RGraphicsPass src, RGraphicsPass dst, RPassDependency& dep)
+static bool has_pass_dependency(RComponentPassObj* srcObj, RComponentPassObj* dstObj, RPassDependency& dep)
 {
     // TODO:
 
-    const RGraphicsPassObj* srcObj = src;
-    const RGraphicsPassObj* dstObj = dst;
     dep.srcAccessMask = srcObj->accessFlags;
     dep.dstAccessMask = dstObj->accessFlags;
     dep.srcStageMask = srcObj->stageFlags;
@@ -61,7 +60,7 @@ static bool has_pass_dependency(RGraphicsPass src, RGraphicsPass dst, RPassDepen
 }
 
 /// @brief returns false upon invalid input
-static inline bool check_graphics_pass_image(RGraphicsPassObj* passObj, Name name)
+static inline bool check_pass_image(RComponentPassObj* passObj, Name name)
 {
     RComponentObj* compObj = passObj->component;
 
@@ -73,7 +72,7 @@ static inline bool check_graphics_pass_image(RGraphicsPassObj* passObj, Name nam
 
     if (passObj->imageUsages.contains(name))
     {
-        printf("image already used in grahpics pass\n");
+        printf("image already used in pass\n");
         return false;
     }
 
@@ -128,6 +127,8 @@ static RImageUsageFlags get_native_image_usage(RGraphImageUsage renderGraphUsage
         return RIMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
     case RGRAPH_IMAGE_USAGE_SAMPLED:
         return RIMAGE_USAGE_SAMPLED_BIT;
+    case RGRAPH_IMAGE_USAGE_STORAGE_READ_ONLY:
+        return RIMAGE_USAGE_STORAGE_BIT;
     }
 
     LD_UNREACHABLE;
@@ -209,28 +210,26 @@ static bool is_physical_image(const GraphImage& image)
     return image.type == NODE_TYPE_OUTPUT;
 }
 
-static void topological_visit(std::unordered_set<uint32_t>& visited, std::vector<RGraphicsPass>& order, RGraphicsPass pass)
+static void topological_visit(std::unordered_set<uint32_t>& visited, std::vector<RComponentPassObj*>& order, RComponentPassObj* passObj)
 {
-    const RGraphicsPassObj* passObj = pass;
-
     if (visited.contains(passObj->name))
         return;
 
     visited.insert(passObj->name);
 
-    for (RGraphicsPass other : passObj->edges)
+    for (RComponentPassObj* other : passObj->edges)
     {
-        if (visited.contains(other.name()))
+        if (visited.contains(other->name))
             continue;
 
         topological_visit(visited, order, other);
     }
 
-    order.push_back(pass);
+    order.push_back(passObj);
 }
 
 /// @brief sort all graphics passes in dependency order
-static void topological_sort(const std::unordered_map<Name, RComponent, NameHash>& components, std::vector<RGraphicsPass>& order)
+static void topological_sort(const std::unordered_map<Name, RComponent, NameHash>& components, std::vector<RComponentPassObj*>& order)
 {
     LD_PROFILE_SCOPE;
 
@@ -240,7 +239,7 @@ static void topological_sort(const std::unordered_map<Name, RComponent, NameHash
     {
         const RComponentObj* comp = compIte.second;
 
-        for (auto& passIte : comp->graphicsPasses)
+        for (auto& passIte : comp->passes)
         {
             if (visited.contains(passIte.first))
                 continue;
@@ -262,14 +261,14 @@ static void save_graph_to_dot(RGraphObj* graphObj, const char* path)
     os << "bgcolor = \"#181818\"\n";
     os << "node [shape = plain, fontcolor = \"#e6e6e6\", color = \"#e6e6e6\"];\n";
 
-    for (const RGraphicsPassObj* passObj : graphObj->passOrder)
+    for (const RComponentPassObj* passObj : graphObj->passOrder)
     {
         os << '"' << passObj->debugName << '"' << "[label = <<table><tr><td>" << passObj->debugName << "</td></tr></table>>]\n";
     }
 
-    for (const RGraphicsPassObj* srcPassObj : graphObj->passOrder)
+    for (const RComponentPassObj* srcPassObj : graphObj->passOrder)
     {
-        for (const RGraphicsPassObj* dstPassObj : srcPassObj->edges)
+        for (const RComponentPassObj* dstPassObj : srcPassObj->edges)
         {
             os << '"' << srcPassObj->debugName << '"' << " -> " << '"' << dstPassObj->debugName << '"' << "[color = \"#e6e6e6\"]" << '\n';
         }
@@ -298,7 +297,7 @@ void RGraphicsPass::use_image_sampled(Name name)
 {
     LD_PROFILE_SCOPE;
 
-    if (!check_graphics_pass_image(mObj, name))
+    if (!check_pass_image(mObj, name))
         return;
 
     RComponentObj* compObj = mObj->component;
@@ -313,7 +312,7 @@ void RGraphicsPass::use_image_sampled(Name name)
     compObj->images[name].usage |= get_native_image_usage(RGRAPH_IMAGE_USAGE_SAMPLED);
 
     // if existing passes in the component also use this image, check for dependencies
-    for (RGraphicsPassObj* srcPassObj : compObj->graphicsPassOrder)
+    for (RComponentPassObj* srcPassObj : compObj->passOrder)
     {
         Name srcPassName = srcPassObj->name;
 
@@ -321,7 +320,7 @@ void RGraphicsPass::use_image_sampled(Name name)
             break;
 
         if (srcPassObj->imageUsages.contains(name) && has_image_dependency(srcPassObj->imageUsages[name], mObj->imageUsages[name]))
-            srcPassObj->edges.insert(RGraphicsPass{mObj});
+            srcPassObj->edges.insert((RComponentPassObj*)mObj);
     }
 }
 
@@ -329,7 +328,7 @@ void RGraphicsPass::use_color_attachment(Name name, RAttachmentLoadOp loadOp, co
 {
     LD_PROFILE_SCOPE;
 
-    if (!check_graphics_pass_image(mObj, name))
+    if (!check_pass_image(mObj, name))
         return;
 
     if (!check_loadop_clear_value(loadOp, clear))
@@ -364,7 +363,7 @@ void RGraphicsPass::use_color_attachment(Name name, RAttachmentLoadOp loadOp, co
     mObj->stageFlags |= RPIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 
     // if existing passes in the component also use this image, check for dependencies
-    for (RGraphicsPassObj* srcPassObj : compObj->graphicsPassOrder)
+    for (RComponentPassObj* srcPassObj : compObj->passOrder)
     {
         Name srcPassName = srcPassObj->name;
 
@@ -372,7 +371,7 @@ void RGraphicsPass::use_color_attachment(Name name, RAttachmentLoadOp loadOp, co
             break;
 
         if (srcPassObj->imageUsages.contains(name) && has_image_dependency(srcPassObj->imageUsages[name], mObj->imageUsages[name]))
-            srcPassObj->edges.insert(RGraphicsPass{mObj});
+            srcPassObj->edges.insert((RComponentPassObj*)mObj);
     }
 }
 
@@ -380,7 +379,7 @@ void RGraphicsPass::use_depth_stencil_attachment(Name name, RAttachmentLoadOp lo
 {
     LD_PROFILE_SCOPE;
 
-    if (!check_graphics_pass_image(mObj, name))
+    if (!check_pass_image(mObj, name))
         return;
 
     if (!check_loadop_clear_value(loadOp, clear))
@@ -420,6 +419,49 @@ void RGraphicsPass::use_depth_stencil_attachment(Name name, RAttachmentLoadOp lo
 }
 
 RImage RGraphicsPass::get_image(Name name)
+{
+    if (!mObj->isCallbackScope)
+    {
+        printf("get_image can only be called during callback");
+        return {};
+    }
+
+    RComponentObj* compObj = mObj->component;
+    dereference_image(&compObj, &name);
+    RStorage& storage = sStorages[compObj->name];
+
+    RImage imageHandle = storage.images[name].handle;
+    LD_ASSERT(imageHandle);
+    return imageHandle;
+}
+
+Name RComputePass::name() const
+{
+    return mObj->name;
+}
+
+void RComputePass::use_image_storage_read_only(Name name)
+{
+    LD_PROFILE_SCOPE;
+
+    if (!check_pass_image(mObj, name))
+        return;
+
+    RComponentObj* compObj = mObj->component;
+
+    mObj->storageImages.insert(name);
+
+    // how the pass uses the image
+    mObj->imageUsages[name] = RGRAPH_IMAGE_USAGE_STORAGE_READ_ONLY;
+
+    // how the component uses the image
+    compObj->images[name].usage |= RIMAGE_USAGE_STORAGE_BIT;
+
+    mObj->accessFlags |= RACCESS_SHADER_READ_BIT;
+    mObj->stageFlags |= RPIPELINE_STAGE_COMPUTE_SHADER_BIT;
+}
+
+RImage RComputePass::get_image(Name name)
 {
     if (!mObj->isCallbackScope)
     {
@@ -561,10 +603,34 @@ RGraphicsPass RComponent::add_graphics_pass(const RGraphicsPassInfo& gpI, void* 
     obj->callback = callback;
     obj->component = *this;
     obj->isCallbackScope = false;
+    obj->isComputePass = false;
     obj->hasDepthStencil = false;
+    obj->accessFlags = 0;
+    obj->stageFlags = 0;
 
-    mObj->graphicsPasses[gpI.name] = {obj};
-    mObj->graphicsPassOrder.push_back({obj});
+    mObj->passes[gpI.name] = {obj};
+    mObj->passOrder.push_back({obj});
+
+    return {obj};
+}
+
+RComputePass RComponent::add_compute_pass(const RComputePassInfo& cpI, void* userData, RComputePassCallback callback)
+{
+    LD_PROFILE_SCOPE;
+
+    RComputePassObj* obj = heap_new<RComputePassObj>(MEMORY_USAGE_RENDER);
+    obj->name = Name(cpI.name);
+    obj->debugName = cpI.name;
+    obj->userData = userData;
+    obj->callback = callback;
+    obj->component = *this;
+    obj->isCallbackScope = false;
+    obj->isComputePass = true;
+    obj->accessFlags = 0;
+    obj->stageFlags = 0;
+
+    mObj->passes[cpI.name] = {obj};
+    mObj->passOrder.push_back({obj});
 
     return {obj};
 }
@@ -602,11 +668,15 @@ void RGraph::destroy(RGraph graph)
     {
         LD_PROFILE_SCOPE_NAME("delete component");
         RComponentObj* compObj = compIte.second;
-        for (auto& passIte : compObj->graphicsPasses)
+        for (auto& passIte : compObj->passes)
         {
-            LD_PROFILE_SCOPE_NAME("delete grahics pass");
-            RGraphicsPassObj* passObj = passIte.second;
-            heap_delete(passObj);
+            LD_PROFILE_SCOPE_NAME("delete pass");
+            RComponentPassObj* passObj = passIte.second;
+
+            if (passObj->isComputePass)
+                heap_delete<RComputePassObj>((RComputePassObj*)passObj);
+            else
+                heap_delete<RGraphicsPassObj>((RGraphicsPassObj*)passObj);
         }
         heap_delete(compObj);
     }
@@ -688,16 +758,16 @@ void RGraph::connect_image(const char* srcCompStr, const char* srcOutImageStr, c
     RComponentObj* srcCompObj = mObj->components[srcComp];
     RComponentObj* dstCompObj = mObj->components[dstComp];
     RImageUsageFlags dstUsages = 0;
-    for (auto& srcPassIte : srcCompObj->graphicsPasses)
+    for (auto& srcPassIte : srcCompObj->passes)
     {
-        RGraphicsPassObj* srcPassObj = srcPassIte.second;
+        RComponentPassObj* srcPassObj = srcPassIte.second;
 
-        for (auto& dstPassIte : dstCompObj->graphicsPasses)
+        for (auto& dstPassIte : dstCompObj->passes)
         {
-            RGraphicsPassObj* dstPassObj = dstPassIte.second;
+            RComponentPassObj* dstPassObj = dstPassIte.second;
 
             if (has_image_dependency(srcPassObj->imageUsages[srcOutImage], dstPassObj->imageUsages[dstInImage]))
-                srcPassObj->edges.insert(RGraphicsPass{dstPassObj});
+                srcPassObj->edges.insert((RComponentPassObj*)dstPassObj);
 
             dstUsages |= get_native_image_usage(dstPassObj->imageUsages[dstInImage]);
         }
@@ -754,9 +824,40 @@ void RGraph::submit(bool save)
     list.begin();
     for (uint32_t passIdx = 0; passIdx < (uint32_t)mObj->passOrder.size(); passIdx++)
     {
-        LD_PROFILE_SCOPE_NAME("record render pass");
+        LD_PROFILE_SCOPE_NAME("record pass");
 
-        RGraphicsPassObj* passObj = mObj->passOrder[passIdx];
+        if (mObj->passOrder[passIdx]->isComputePass)
+        {
+            RComputePassObj* passObj = (RComputePassObj*)mObj->passOrder[passIdx];
+            RComponentObj* compObj = passObj->component;
+
+            // perform image layout transitions for storage images before dispatch,
+            // storage images need to be in RIMAGE_LAYOUT_GENERAL
+            for (Name imageName : passObj->storageImages)
+            {
+                LD_PROFILE_SCOPE_NAME("compute pass storage images");
+
+                RGraphImageUsage passUsage = passObj->imageUsages[imageName];
+                LD_ASSERT(passUsage == RGRAPH_IMAGE_USAGE_STORAGE_READ_ONLY);
+
+                RComponentObj* srcCompObj = nullptr;
+                dereference_image(&compObj, &imageName);
+                ImageState& state = sStorages[compObj->name].images[imageName];
+
+                RImage image = state.handle;
+                RImageMemoryBarrier barrier = RUtil::make_image_memory_barrier(image, state.lastLayout, RIMAGE_LAYOUT_GENERAL, 0, RACCESS_SHADER_READ_BIT);
+                list.cmd_image_memory_barrier(RPIPELINE_STAGE_TOP_OF_PIPE_BIT, RPIPELINE_STAGE_COMPUTE_SHADER_BIT, barrier);
+                state.lastLayout = RIMAGE_LAYOUT_GENERAL;
+            }
+
+            passObj->isCallbackScope = true;
+            passObj->callback({passObj}, list, passObj->userData);
+            passObj->isCallbackScope = false;
+
+            continue;
+        }
+
+        RGraphicsPassObj* passObj = (RGraphicsPassObj*)mObj->passOrder[passIdx];
         RComponentObj* compObj = passObj->component;
 
         uint32_t colorAttachmentCount = (uint32_t)passObj->colorAttachments.size();

@@ -38,6 +38,26 @@ struct RGraphicsPass : RHandle<struct RGraphicsPassObj>
 
 typedef void (*RGraphicsPassCallback)(RGraphicsPass pass, RCommandList list, void* userData);
 
+struct RComputePassInfo
+{
+    const char* name;
+};
+
+struct RComputePass : RHandle<struct RComputePassObj>
+{
+    /// @brief get declared compute pass name
+    Name name() const;
+
+    /// @brief declare to use a storage image as read only
+    /// @param name name of the image declared in component
+    void use_image_storage_read_only(Name name);
+
+    /// @brief get the actual image declared by use_image
+    RImage get_image(Name name);
+};
+
+typedef void (*RComputePassCallback)(RComputePass pass, RCommandList list, void* userData);
+
 /// @brief render component handle
 ///        input resources are output resources of another component
 struct RComponent : RHandle<struct RComponentObj>
@@ -60,6 +80,9 @@ struct RComponent : RHandle<struct RComponentObj>
 
     /// @brief declare a graphics pass in this component for this frame
     RGraphicsPass add_graphics_pass(const RGraphicsPassInfo& gpI, void* userData, RGraphicsPassCallback callback);
+
+    /// @brief declare a compute pass in this component for this frame
+    RComputePass add_compute_pass(const RComputePassInfo& cpI, void* userData, RComputePassCallback callback);
 };
 
 /// @brief render graph creation info
