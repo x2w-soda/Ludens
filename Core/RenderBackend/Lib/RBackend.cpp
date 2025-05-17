@@ -1,8 +1,8 @@
 #include "RBackendObj.h"
 #include "RUtilInternal.h"
-#include <Ludens/Profiler/Profiler.h>
 #include <Ludens/DSA/Hash.h>
 #include <Ludens/Header/Assert.h>
+#include <Ludens/Profiler/Profiler.h>
 #include <Ludens/RenderBackend/RBackend.h>
 #include <Ludens/System/Memory.h>
 #include <unordered_map>
@@ -223,7 +223,11 @@ void RDevice::destroy_set_pool(RSetPool pool)
 RPipeline RDevice::create_pipeline(const RPipelineInfo& pipelineI)
 {
     RPipelineObj* pipelineObj = heap_new<RPipelineObj>(MEMORY_USAGE_RENDER);
+    pipelineObj->init_vk_api();
     pipelineObj->rid = RObjectID::get();
+    pipelineObj->variant.passObj = nullptr;
+    pipelineObj->variant.depthTestEnabled = false;
+    pipelineObj->deviceObj = mObj;
     pipelineObj->layoutObj = mObj->get_or_create_pipeline_layout_obj(pipelineI.layout);
 
     // NOTE: the exact render pass is only known during command recording,
@@ -409,6 +413,20 @@ void RBuffer::unmap()
     mObj->hostMap = nullptr;
 }
 
+void RPipeline::set_color_write_mask(uint32_t index, RColorComponentFlags mask)
+{
+    RDeviceObj* deviceObj = mObj->deviceObj;
+
+    deviceObj->pipeline_variant_color_write_mask(deviceObj, mObj, index, mask);
+}
+
+void RPipeline::set_depth_test_enable(bool enable)
+{
+    RDeviceObj* deviceObj = mObj->deviceObj;
+
+    deviceObj->pipeline_variant_depth_test_enable(deviceObj, mObj, enable);
+}
+
 void RCommandList::begin()
 {
     mObj->begin(mObj, false);
@@ -439,8 +457,11 @@ void RCommandList::cmd_bind_graphics_pipeline(RPipeline pipeline)
     RPassInfo passI;
     RUtil::load_pass_info(mObj->currentPass, passI);
 
+    RPipelineObj* pipelineObj = pipeline;
+
     // get or create graphics pipeline variant
-    mObj->deviceObj->pipeline_variant_pass(mObj->deviceObj, (RPipelineObj*)pipeline, passI);
+    mObj->deviceObj->pipeline_variant_pass(mObj->deviceObj, pipelineObj, passI);
+    pipelineObj->create_variant(pipelineObj);
 
     mObj->cmd_bind_graphics_pipeline(mObj, pipeline);
 }
@@ -723,6 +744,7 @@ RPassObj* RDeviceObj::get_or_create_pass_obj(const RPassInfo& passI)
         passObj->hash = passHash;
         passObj->colorAttachmentCount = passI.colorAttachmentCount;
         passObj->hasDepthStencilAttachment = passI.depthStencilAttachment != nullptr;
+        passObj->samples = passI.samples;
         this->create_pass(this, passI, passObj);
         sPasses[passHash] = passObj;
     }

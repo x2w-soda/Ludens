@@ -108,6 +108,7 @@ struct RPassObj
     uint64_t rid;
     uint32_t hash;
     uint32_t colorAttachmentCount;
+    RSampleCountBit samples;
     bool hasDepthStencilAttachment;
 
     struct
@@ -272,7 +273,19 @@ struct RPipelineLayoutObj
 struct RPipelineObj
 {
     uint64_t rid;
+    RDeviceObj* deviceObj;
     RPipelineLayoutObj* layoutObj;
+
+    struct
+    {
+        bool depthTestEnabled;
+        RPassObj* passObj;
+        std::vector<RColorComponentFlags> colorWriteMasks;
+    } variant;
+
+    void (*create_variant)(RPipelineObj* self);
+
+    void init_vk_api();
 
     struct
     {
@@ -281,6 +294,7 @@ struct RPipelineObj
         std::vector<VkVertexInputBindingDescription> bindingD;
         std::vector<VkPipelineColorBlendAttachmentState> blendStates;
         std::unordered_map<uint32_t, VkPipeline> handles;
+        VkPipelineViewportStateCreateInfo viewportSCI;
         VkPipelineVertexInputStateCreateInfo vertexInputSCI;
         VkPipelineInputAssemblyStateCreateInfo inputAsmSCI;
         VkPipelineTessellationStateCreateInfo tessellationSCI;
@@ -368,6 +382,8 @@ struct RDeviceObj
     RPipeline (*create_compute_pipeline)(RDeviceObj* self, const RComputePipelineInfo& pipelineI, RPipelineObj* pipelineObj);
     void (*destroy_pipeline)(RDeviceObj* self, RPipeline pipeline);
     void (*pipeline_variant_pass)(RDeviceObj* self, RPipelineObj* pipelineObj, const RPassInfo& passI);
+    void (*pipeline_variant_color_write_mask)(RDeviceObj* self, RPipelineObj* pipelineObj, uint32_t index, RColorComponentFlags mask);
+    void (*pipeline_variant_depth_test_enable)(RDeviceObj* self, RPipelineObj* pipelineObj, bool enable);
 
     void (*update_set_images)(RDeviceObj* self, uint32_t updateCount, const RSetImageUpdateInfo* updates);
 

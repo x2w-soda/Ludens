@@ -536,6 +536,16 @@ void cast_sample_count_from_vk(const VkSampleCountFlagBits& inBit, RSampleCountB
     outBit = (RSampleCountBit)inBit;
 }
 
+static_assert(RCOLOR_COMPONENT_R_BIT == VK_COLOR_COMPONENT_R_BIT);
+static_assert(RCOLOR_COMPONENT_G_BIT == VK_COLOR_COMPONENT_G_BIT);
+static_assert(RCOLOR_COMPONENT_B_BIT == VK_COLOR_COMPONENT_B_BIT);
+static_assert(RCOLOR_COMPONENT_A_BIT == VK_COLOR_COMPONENT_A_BIT);
+
+void cast_color_components_vk(const RColorComponentFlags& inFlags, VkColorComponentFlags& outFlags)
+{
+    outFlags = (VkColorComponentFlags)inFlags;
+}
+
 // clang-format off
 struct
 {

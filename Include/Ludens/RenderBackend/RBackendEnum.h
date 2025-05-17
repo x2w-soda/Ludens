@@ -172,6 +172,15 @@ enum RSampleCountBit : RSampleCountFlags
     RSAMPLE_COUNT_64_BIT = LD_BIT(6),
 };
 
+using RColorComponentFlags = uint32_t;
+enum RColorComponentBit : RColorComponentFlags
+{
+    RCOLOR_COMPONENT_R_BIT = LD_BIT(0),
+    RCOLOR_COMPONENT_G_BIT = LD_BIT(1),
+    RCOLOR_COMPONENT_B_BIT = LD_BIT(2),
+    RCOLOR_COMPONENT_A_BIT = LD_BIT(3),
+};
+
 enum RPolygonMode
 {
     RPOLYGON_MODE_FILL = 0,

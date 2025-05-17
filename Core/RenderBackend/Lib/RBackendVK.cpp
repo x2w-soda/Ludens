@@ -1,6 +1,7 @@
 #include "RBackendObj.h"
 #include "RShaderCompiler.h"
 #include "RUtilInternal.h"
+#include <Ludens/DSA/Hash.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/RenderBackend/RBackend.h>
@@ -73,6 +74,8 @@ static RPipeline vk_device_create_pipeline(RDeviceObj* self, const RPipelineInfo
 static RPipeline vk_device_create_compute_pipeline(RDeviceObj* self, const RComputePipelineInfo& pipelineI, RPipelineObj* pipelineObj);
 static void vk_device_destroy_pipeline(RDeviceObj* self, RPipeline pipeline);
 static void vk_device_pipeline_variant_pass(RDeviceObj* self, RPipelineObj* pipelineObj, const RPassInfo& passI);
+static void vk_device_pipeline_variant_color_write_mask(RDeviceObj* self, RPipelineObj* pipelineObj, uint32_t index, RColorComponentFlags mask);
+static void vk_device_pipeline_variant_depth_test_enable(RDeviceObj* self, RPipelineObj* pipelineObj, bool enable);
 static void vk_device_update_set_images(RDeviceObj* self, uint32_t updateCount, const RSetImageUpdateInfo* updates);
 static void vk_device_update_set_buffers(RDeviceObj* self, uint32_t updateCount, const RSetBufferUpdateInfo* updates);
 static uint32_t vk_device_next_frame(RDeviceObj* self, RSemaphore& imageAcquired, RSemaphore& presentReady, RFence& frameComplete);
@@ -111,6 +114,8 @@ static void vk_command_list_cmd_copy_buffer(RCommandListObj* self, RBuffer srcBu
 static void vk_command_list_cmd_copy_buffer_to_image(RCommandListObj* self, RBuffer srcBuffer, RImage dstImage, RImageLayout dstImageLayout, uint32_t regionCount, const RBufferImageCopy* regions);
 static void vk_command_list_cmd_copy_image_to_buffer(RCommandListObj* self, RImage srcImage, RImageLayout srcImageLayout, RBuffer dstBuffer, uint32_t regionCount, const RBufferImageCopy* regions);
 static void vk_command_list_cmd_blit_image(RCommandListObj* self, RImage srcImage, RImageLayout srcImageLayout, RImage dstImage, RImageLayout dstImageLayout, uint32_t regionCount, const RImageBlit* regions, RFilter filter);
+
+static void vk_pipeline_create_variant(RPipelineObj* self);
 
 static RCommandList vk_command_pool_allocate(RCommandPoolObj* self, RCommandListObj* listObj);
 static void vk_command_pool_reset(RCommandPoolObj* self);
@@ -775,6 +780,19 @@ RPipeline vk_device_create_pipeline(RDeviceObj* self, const RPipelineInfo& pipel
     //       the actual graphics pipeline is created when variant properties
     //       such as the render pass is known at a later stage.
 
+    uint32_t swpWidth = self->vk.swapchain.width;
+    uint32_t swpHeight = self->vk.swapchain.height;
+    VkViewport viewport = RUtil::make_viewport(swpWidth, swpHeight);
+    VkRect2D scissor = RUtil::make_scissor(swpWidth, swpHeight);
+
+    pipelineObj->vk.viewportSCI = {
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
+        .viewportCount = 1,
+        .pViewports = &viewport,
+        .scissorCount = 1,
+        .pScissors = &scissor,
+    };
+
     pipelineObj->vk.shaderStageCI.resize(pipelineI.shaderCount);
 
     for (uint32_t i = 0; i < pipelineI.shaderCount; i++)
@@ -851,9 +869,11 @@ RPipeline vk_device_create_pipeline(RDeviceObj* self, const RPipelineInfo& pipel
         .minDepthBounds = 0.0f,
         .maxDepthBounds = 1.0f,
     };
+    pipelineObj->variant.depthTestEnabled = pipelineI.depthStencil.depthTestEnabled;
 
     uint32_t blendAttachmentCount = pipelineI.blend.colorAttachmentCount;
     const RPipelineBlendState* blendStates = pipelineI.blend.colorAttachments;
+    pipelineObj->variant.colorWriteMasks.resize(blendAttachmentCount);
     pipelineObj->vk.blendStates.resize(blendAttachmentCount);
     for (uint32_t i = 0; i < blendAttachmentCount; i++)
     {
@@ -861,6 +881,7 @@ RPipeline vk_device_create_pipeline(RDeviceObj* self, const RPipelineInfo& pipel
 
         vkBlendState.blendEnable = (VkBool32)blendStates[i].enabled;
         vkBlendState.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+        pipelineObj->variant.colorWriteMasks[i] = RCOLOR_COMPONENT_R_BIT | RCOLOR_COMPONENT_G_BIT | RCOLOR_COMPONENT_B_BIT | RCOLOR_COMPONENT_A_BIT;
 
         if (!vkBlendState.blendEnable)
             continue;
@@ -923,69 +944,23 @@ static void vk_device_destroy_pipeline(RDeviceObj* self, RPipeline pipeline)
 
 static void vk_device_pipeline_variant_pass(RDeviceObj* self, RPipelineObj* pipelineObj, const RPassInfo& passI)
 {
-    RPassObj* passObj = self->get_or_create_pass_obj(passI);
-    pipelineObj->vk.variantHash = passObj->hash;
+    pipelineObj->variant.passObj = self->get_or_create_pass_obj(passI);
+}
 
-    if (pipelineObj->vk.handles.contains(pipelineObj->vk.variantHash))
-        return;
+static void vk_device_pipeline_variant_color_write_mask(RDeviceObj* self, RPipelineObj* pipelineObj, uint32_t index, RColorComponentFlags mask)
+{
+    LD_ASSERT((size_t)index < pipelineObj->variant.colorWriteMasks.size());
 
-    uint32_t swpWidth = self->vk.swapchain.width;
-    uint32_t swpHeight = self->vk.swapchain.height;
-    VkViewport viewport = RUtil::make_viewport(swpWidth, swpHeight);
-    VkRect2D scissor = RUtil::make_scissor(swpWidth, swpHeight);
+    pipelineObj->variant.colorWriteMasks[index] = mask;
+}
 
-    VkPipelineViewportStateCreateInfo viewportSCI{
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_VIEWPORT_STATE_CREATE_INFO,
-        .viewportCount = 1,
-        .pViewports = &viewport,
-        .scissorCount = 1,
-        .pScissors = &scissor,
-    };
+void vk_device_pipeline_variant_depth_test_enable(RDeviceObj* self, RPipelineObj* pipelineObj, bool enable)
+{
+    // NOTE: the command list should call vkCmdSetDepthTestEnable when binding the graphics pipeline.
+    //       Vulkan considers the depthTestEnabled dynamic state to be part of the command buffer
+    //       instead of the graphics pipeline.
 
-    VkSampleCountFlagBits rasterizationSamples;
-    RUtil::cast_sample_count_vk(passI.samples, rasterizationSamples);
-    VkPipelineMultisampleStateCreateInfo multisampleSCI{
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
-        .rasterizationSamples = rasterizationSamples,
-        .sampleShadingEnable = VK_FALSE,
-        .pSampleMask = nullptr,
-        .alphaToCoverageEnable = VK_FALSE,
-        .alphaToOneEnable = VK_FALSE,
-    };
-
-    std::array<VkDynamicState, 2> dynamicStates = {
-        VK_DYNAMIC_STATE_VIEWPORT,
-        VK_DYNAMIC_STATE_SCISSOR,
-    };
-
-    VkPipelineDynamicStateCreateInfo dynamicSCI{
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
-        .dynamicStateCount = (uint32_t)dynamicStates.size(),
-        .pDynamicStates = dynamicStates.data(),
-    };
-
-    VkGraphicsPipelineCreateInfo pipelineCI{
-        .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
-        .stageCount = (uint32_t)pipelineObj->vk.shaderStageCI.size(),
-        .pStages = pipelineObj->vk.shaderStageCI.data(),
-        .pVertexInputState = &pipelineObj->vk.vertexInputSCI,
-        .pInputAssemblyState = &pipelineObj->vk.inputAsmSCI,
-        .pTessellationState = &pipelineObj->vk.tessellationSCI,
-        .pViewportState = &viewportSCI,
-        .pRasterizationState = &pipelineObj->vk.rasterizationSCI,
-        .pMultisampleState = &multisampleSCI,
-        .pDepthStencilState = &pipelineObj->vk.depthStencilSCI,
-        .pColorBlendState = &pipelineObj->vk.colorBlendSCI,
-        .pDynamicState = &dynamicSCI,
-        .layout = pipelineObj->layoutObj->vk.handle,
-        .renderPass = passObj->vk.handle,
-    };
-
-    VkPipeline vkHandle;
-
-    VK_CHECK(vkCreateGraphicsPipelines(self->vk.device, VK_NULL_HANDLE, 1, &pipelineCI, nullptr, &vkHandle));
-
-    pipelineObj->vk.handles[pipelineObj->vk.variantHash] = vkHandle;
+    pipelineObj->variant.depthTestEnabled = enable;
 }
 
 static void vk_device_update_set_images(RDeviceObj* self, uint32_t updateCount, const RSetImageUpdateInfo* updates)
@@ -1311,6 +1286,8 @@ static void vk_command_list_cmd_bind_graphics_pipeline(RCommandListObj* self, RP
     VkPipeline vkHandle = pipelineObj->vk.handles[pipelineObj->vk.variantHash];
 
     vkCmdBindPipeline(self->vk.handle, VK_PIPELINE_BIND_POINT_GRAPHICS, vkHandle);
+
+    vkCmdSetDepthTestEnable(self->vk.handle, (VkBool32)pipelineObj->variant.depthTestEnabled);
 }
 
 static void vk_command_list_cmd_bind_graphics_sets(RCommandListObj* self, RPipelineLayoutObj* layoutObj, uint32_t setStart, uint32_t setCount, RSet* sets)
@@ -1566,6 +1543,73 @@ static void vk_command_list_cmd_blit_image(RCommandListObj* self, RImage srcImag
     }
 
     vkCmdBlitImage(self->vk.handle, srcImageObj->vk.handle, srcLayout, dstImageObj->vk.handle, dstLayout, regionCount, blits.data(), vkFilter);
+}
+
+static void vk_pipeline_create_variant(RPipelineObj* self)
+{
+    // the same RPipeline handle can refer to Vulkan pipelines that vary in:
+    // - render passes
+    // - per-attachment color write masks
+    std::size_t variantHash = self->variant.passObj->hash;
+
+    for (RColorComponentFlags& writeMasks : self->variant.colorWriteMasks)
+        hash_combine(variantHash, (uint32_t)writeMasks);
+
+    self->vk.variantHash = (uint32_t)variantHash;
+
+    if (self->vk.handles.contains((uint32_t)variantHash))
+        return;
+
+    for (size_t i = 0; i < self->variant.colorWriteMasks.size(); i++)
+        RUtil::cast_color_components_vk(self->variant.colorWriteMasks[i], self->vk.blendStates[i].colorWriteMask);
+
+    VkSampleCountFlagBits rasterizationSamples;
+    RUtil::cast_sample_count_vk(self->variant.passObj->samples, rasterizationSamples);
+    VkPipelineMultisampleStateCreateInfo multisampleSCI{
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
+        .rasterizationSamples = rasterizationSamples,
+        .sampleShadingEnable = VK_FALSE,
+        .pSampleMask = nullptr,
+        .alphaToCoverageEnable = VK_FALSE,
+        .alphaToOneEnable = VK_FALSE,
+    };
+
+    std::array<VkDynamicState, 3> dynamicStates = {
+        VK_DYNAMIC_STATE_VIEWPORT,
+        VK_DYNAMIC_STATE_SCISSOR,
+        VK_DYNAMIC_STATE_DEPTH_TEST_ENABLE,
+    };
+
+    VkPipelineDynamicStateCreateInfo dynamicSCI{
+        .sType = VK_STRUCTURE_TYPE_PIPELINE_DYNAMIC_STATE_CREATE_INFO,
+        .dynamicStateCount = (uint32_t)dynamicStates.size(),
+        .pDynamicStates = dynamicStates.data(),
+    };
+
+    VkGraphicsPipelineCreateInfo pipelineCI{
+        .sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
+        .stageCount = (uint32_t)self->vk.shaderStageCI.size(),
+        .pStages = self->vk.shaderStageCI.data(),
+        .pVertexInputState = &self->vk.vertexInputSCI,
+        .pInputAssemblyState = &self->vk.inputAsmSCI,
+        .pTessellationState = &self->vk.tessellationSCI,
+        .pViewportState = &self->vk.viewportSCI,
+        .pRasterizationState = &self->vk.rasterizationSCI,
+        .pMultisampleState = &multisampleSCI,
+        .pDepthStencilState = &self->vk.depthStencilSCI,
+        .pColorBlendState = &self->vk.colorBlendSCI,
+        .pDynamicState = &dynamicSCI,
+        .layout = self->layoutObj->vk.handle,
+        .renderPass = self->variant.passObj->vk.handle,
+    };
+
+    VkPipeline vkHandle;
+    VkDevice vkDeviceHandle = self->deviceObj->vk.device;
+
+    VK_CHECK(vkCreateGraphicsPipelines(vkDeviceHandle, VK_NULL_HANDLE, 1, &pipelineCI, nullptr, &vkHandle));
+
+    self->vk.variantHash = variantHash;
+    self->vk.handles[variantHash] = vkHandle;
 }
 
 static RCommandList vk_command_pool_allocate(RCommandPoolObj* self, RCommandListObj* listObj)
@@ -1964,6 +2008,11 @@ void RSetPoolObj::init_vk_api()
     reset = &vk_set_pool_reset;
 }
 
+void RPipelineObj::init_vk_api()
+{
+    create_variant = vk_pipeline_create_variant;
+}
+
 void RQueueObj::init_vk_api()
 {
     wait_idle = &vk_queue_wait_idle;
@@ -1998,6 +2047,8 @@ void RDeviceObj::init_vk_api()
     create_compute_pipeline = &vk_device_create_compute_pipeline;
     destroy_pipeline = &vk_device_destroy_pipeline;
     pipeline_variant_pass = &vk_device_pipeline_variant_pass;
+    pipeline_variant_color_write_mask = &vk_device_pipeline_variant_color_write_mask;
+    pipeline_variant_depth_test_enable = &vk_device_pipeline_variant_depth_test_enable;
     update_set_images = &vk_device_update_set_images;
     update_set_buffers = &vk_device_update_set_buffers;
     next_frame = &vk_device_next_frame;

@@ -63,6 +63,7 @@ void cast_index_type_vk(const RIndexType& inType, VkIndexType& outType);
 void cast_primitive_topology_vk(const RPrimitiveTopology& inTopo, VkPrimitiveTopology& outTopo);
 void cast_sample_count_vk(const RSampleCountBit& inBit, VkSampleCountFlagBits& outBit);
 void cast_sample_count_from_vk(const VkSampleCountFlagBits& inBit, RSampleCountBit& outBit);
+void cast_color_components_vk(const RColorComponentFlags& inFlags, VkColorComponentFlags& outFlags);
 void cast_polygon_mode_vk(const RPolygonMode& inMode, VkPolygonMode& outMode);
 void cast_cull_mode_vk(const RCullMode& inMode, VkCullModeFlags& outMode);
 void cast_compare_op_vk(const RCompareOp& inOp, VkCompareOp& outOp);

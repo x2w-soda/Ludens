@@ -371,6 +371,13 @@ struct RComputePipelineInfo
 /// @brief graphics pipeline handle
 struct RPipeline : RHandle<struct RPipelineObj>
 {
+    /// @brief specify color write masks for a color attachment
+    /// @param index color attachment index
+    /// @param mask color channels that are allowed to write
+    void set_color_write_mask(uint32_t index, RColorComponentFlags mask);
+
+    /// @brief specify whether depth testing is enabled
+    void set_depth_test_enable(bool enable);
 };
 
 /// @brief vertex draw call information
