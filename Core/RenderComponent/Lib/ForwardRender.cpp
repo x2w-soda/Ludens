@@ -133,7 +133,7 @@ void ForwardRenderComponentObj::on_graphics_pass(RGraphicsPass pass, RCommandLis
     compObj->isDrawScope = false;
 }
 
-ForwardRenderComponent ForwardRenderComponent::add(RGraph graph, RFormat cFormat, RClearColorValue clearColor, RFormat dsFormat, RClearDepthStencilValue clearDS, uint32_t width, uint32_t height, RSet frameSet, RenderCallback callback, void* user)
+ForwardRenderComponent ForwardRenderComponent::add(RGraph graph, const ForwardRenderComponentInfo& componentI, RSet frameSet, RenderCallback callback, void* user)
 {
     LD_PROFILE_SCOPE;
 
@@ -148,21 +148,25 @@ ForwardRenderComponent ForwardRenderComponent::add(RGraph graph, RFormat cFormat
     compObj->meshPipeline = {};
     compObj->pointBatch.reset();
 
-    RSamplerInfo sampler = {RFILTER_LINEAR, RFILTER_LINEAR, RSAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE};
+    RSamplerInfo colorSampler = {RFILTER_LINEAR, RFILTER_LINEAR, RSAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE};
+    RSamplerInfo idSampler = {RFILTER_NEAREST, RFILTER_NEAREST, RSAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE};
 
     ForwardRenderComponent forwardComp(compObj);
     RComponent comp = graph.add_component(forwardComp.component_name());
-    comp.add_output_image(forwardComp.color_name(), cFormat, width, height, &sampler);
-    comp.add_output_image(forwardComp.depth_stencil_name(), dsFormat, width, height);
+    comp.add_output_image(forwardComp.color_name(), componentI.cFormat, componentI.width, componentI.height, &colorSampler);
+    comp.add_output_image(forwardComp.id_color_name(), RFORMAT_RGBA8U, componentI.width, componentI.height, &idSampler);
+    comp.add_output_image(forwardComp.depth_stencil_name(), componentI.dsFormat, componentI.width, componentI.height);
 
     RGraphicsPassInfo gpI{};
     gpI.name = forwardComp.component_name();
-    gpI.width = width;
-    gpI.height = height;
+    gpI.width = componentI.width;
+    gpI.height = componentI.height;
 
+    RClearColorValue idClearColor = RUtil::make_clear_color<uint32_t>(0, 0, 0, 0);
     RGraphicsPass pass = comp.add_graphics_pass(gpI, compObj, &ForwardRenderComponentObj::on_graphics_pass);
-    pass.use_color_attachment(forwardComp.color_name(), RATTACHMENT_LOAD_OP_CLEAR, &clearColor);
-    pass.use_depth_stencil_attachment(forwardComp.depth_stencil_name(), RATTACHMENT_LOAD_OP_CLEAR, &clearDS);
+    pass.use_color_attachment(forwardComp.color_name(), RATTACHMENT_LOAD_OP_CLEAR, &componentI.clearColor);
+    pass.use_color_attachment(forwardComp.id_color_name(), RATTACHMENT_LOAD_OP_CLEAR, &idClearColor);
+    pass.use_depth_stencil_attachment(forwardComp.depth_stencil_name(), RATTACHMENT_LOAD_OP_CLEAR, &componentI.clearDS);
 
     return forwardComp;
 }
@@ -174,7 +178,7 @@ void ForwardRenderComponent::set_mesh_pipeline(RPipeline meshPipeline)
     mObj->meshPipeline = meshPipeline;
 }
 
-void ForwardRenderComponent::draw_mesh(RMesh mesh, const Mat4& transform)
+void ForwardRenderComponent::draw_mesh(RMesh mesh, const Mat4& transform, uint16_t id, uint16_t flags)
 {
     LD_ASSERT(mObj->isDrawScope);
     LD_ASSERT(mObj->meshPipeline);
@@ -185,6 +189,11 @@ void ForwardRenderComponent::draw_mesh(RMesh mesh, const Mat4& transform)
     list.cmd_bind_index_buffer(mesh.ibo, RINDEX_TYPE_U32);
     list.cmd_bind_graphics_pipeline(mObj->meshPipeline);
     list.cmd_push_constant(sRMeshPipelineLayout, 0, sizeof(Mat4), &transform);
+
+    TVec2<uint32_t> idflags;
+    idflags.x = id;
+    idflags.y = flags;
+    list.cmd_push_constant(sRMeshPipelineLayout, sizeof(Mat4), sizeof(idflags), &idflags);
 
     int matIdx = -1;
 

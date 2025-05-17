@@ -4,6 +4,8 @@
 #include <Ludens/RenderComponent/Layout/VertexLayouts.h>
 #include <Ludens/RenderComponent/Pipeline/LinePipeline.h>
 #include <Ludens/System/Memory.h>
+#include <array>
+#include <vector>
 
 namespace LD {
 
@@ -26,6 +28,7 @@ void main()
 static const char sLineFS[] = R"(
 layout (location = 0) in flat uint vColor;
 layout (location = 0) out vec4 fColor;
+layout (location = 1) out uint fID;
 )"
 LD_GLSL_FRAME_SET
 R"(
@@ -61,7 +64,9 @@ LinePipeline LinePipeline::create(RDevice device)
     get_point_vertex_attributes(attrs);
 
     RShader shaders[2] = {obj->vertexShader, obj->fragmentShader};
-    RPipelineBlendState blendAttachment = RUtil::make_default_blend_state();
+    std::array<RPipelineBlendState, 2> blendAttachment;
+    blendAttachment[0] = RUtil::make_default_blend_state();
+    blendAttachment[1].enabled = false;
     RPipelineInfo pipelineI{
         .shaderCount = 2,
         .shaders = shaders,
@@ -82,8 +87,8 @@ LinePipeline LinePipeline::create(RDevice device)
             .depthCompareOp = RCOMPARE_OP_LESS,
         },
         .blend = {
-            .colorAttachmentCount = 1,
-            .colorAttachments = &blendAttachment,
+            .colorAttachmentCount = (uint32_t)blendAttachment.size(),
+            .colorAttachments = blendAttachment.data(),
         },
     };
     obj->handle = device.create_pipeline(pipelineI);

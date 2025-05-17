@@ -24,4 +24,11 @@ RSetLayoutInfo sMaterialSetLayout = {
     .bindings = sMaterialSetBindings,
 };
 
+static RSetBindingInfo sSingleSampleSetBinding{0, RBINDING_TYPE_COMBINED_IMAGE_SAMPLER, 1};
+
+RSetLayoutInfo sSingleSampleSetLayout = {
+    .bindingCount = 1,
+    .bindings = &sSingleSampleSetBinding,
+};
+
 } // namespace LD

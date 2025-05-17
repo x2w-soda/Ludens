@@ -24,6 +24,7 @@ R"(
 
 layout (push_constant) uniform PC {
     mat4 model;
+    uint id;
 } uPC;
 
 void main()
@@ -43,6 +44,7 @@ layout (location = 0) in vec3 vPos;
 layout (location = 1) in vec3 vNormal;
 layout (location = 2) in vec2 vUV;
 layout (location = 0) out vec4 fColor;
+layout (location = 1) out uvec4 fID;
 #define M_PI 3.1415926535
 )"
 LD_GLSL_FRAME_SET
@@ -50,6 +52,13 @@ LD_GLSL_MATERIAL_SET(1)
 LD_GLSL_ROTATE
 LD_GLSL_GET_NORMAL
 R"(
+
+layout (push_constant) uniform PC {
+    mat4 model;
+    uint id;    // only lower 16 bits are used
+    uint flags; // only lower 16 bits are used
+} uPC;
+
 void main()
 {
     vec3 lightDir = normalize(vec3(uFrame.dirLight));
@@ -84,6 +93,7 @@ void main()
     vec3 specular = color * 0.4 * pow(max(dot(H, N), 0.0), 5.0);
 
     fColor = vec4(ambient + diffuse + specular, 1.0);
+    fID = uvec4(uPC.id & 0xFF, (uPC.id >> 8) & 0xFF, uPC.flags & 0xFF, (uPC.flags >> 8) & 0xFF);
 }
 )";
 // clang-format on
@@ -109,7 +119,9 @@ RMeshBlinnPhongPipeline RMeshBlinnPhongPipeline::create(RDevice device)
     get_mesh_vertex_attributes(attrs);
 
     RShader shaders[2] = {obj->vertexShader, obj->fragmentShader};
-    RPipelineBlendState blendAttachment = RUtil::make_default_blend_state();
+    RPipelineBlendState blendAttachment[2];
+    blendAttachment[0] = RUtil::make_default_blend_state();
+    blendAttachment[1].enabled = false;
     RPipelineInfo pipelineI{
         .shaderCount = 2,
         .shaders = shaders,
@@ -128,8 +140,8 @@ RMeshBlinnPhongPipeline RMeshBlinnPhongPipeline::create(RDevice device)
             .depthCompareOp = RCOMPARE_OP_LESS,
         },
         .blend = {
-            .colorAttachmentCount = 1,
-            .colorAttachments = &blendAttachment,
+            .colorAttachmentCount = 2,
+            .colorAttachments = blendAttachment,
         },
     };
 

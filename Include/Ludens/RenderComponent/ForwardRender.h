@@ -7,6 +7,16 @@
 
 namespace LD {
 
+struct ForwardRenderComponentInfo
+{
+    RFormat cFormat;
+    RFormat dsFormat;
+    RClearColorValue clearColor;
+    RClearDepthStencilValue clearDS;
+    uint32_t width;
+    uint32_t height;
+};
+
 /// @brief Forward Rendering, this is one of the root render components
 ///        where no input is required.
 struct ForwardRenderComponent : Handle<struct ForwardRenderComponentObj>
@@ -14,15 +24,16 @@ struct ForwardRenderComponent : Handle<struct ForwardRenderComponentObj>
     typedef void (*RenderCallback)(ForwardRenderComponent renderer, void* user);
 
     /// @brief adds the component to render graph
-    static ForwardRenderComponent add(RGraph graph, RFormat cFormat, RClearColorValue clearColor,
-                                      RFormat dsFormat, RClearDepthStencilValue clearDS,
-                                      uint32_t width, uint32_t height, RSet frameSet, RenderCallback callback, void* user);
+    static ForwardRenderComponent add(RGraph graph, const ForwardRenderComponentInfo& componentI, RSet frameSet, RenderCallback callback, void* user);
 
     /// @brief get the name of this component
     inline const char* component_name() const { return "forward"; }
 
     /// @brief get the name of the output color attachment
     inline const char* color_name() const { return "output_color"; }
+
+    /// @brief get the name of the output ID color attachment, with RFORMAT_R32U
+    inline const char* id_color_name() const { return "output_id_color"; }
 
     /// @brief get the name of the output depth stencil attachment
     inline const char* depth_stencil_name() const { return "output_depth_stencil"; }
@@ -34,7 +45,9 @@ struct ForwardRenderComponent : Handle<struct ForwardRenderComponentObj>
     /// @brief draw a mesh with the most recently bound mesh pipeline
     /// @param mesh mesh handle
     /// @param transform model matrix that transforms mesh to world space
-    void draw_mesh(RMesh mesh, const Mat4& transform);
+    /// @param id 16 bit identifier written to the id color attachment
+    /// @param flags 16 bit flags written to the id color attachment
+    void draw_mesh(RMesh mesh, const Mat4& transform, uint16_t id, uint16_t flags);
 
     /// @brief draw a line from p0 to p1
     /// @param p0 starting world position
