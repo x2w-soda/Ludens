@@ -33,7 +33,7 @@ struct RGraphicsPass : RHandle<struct RGraphicsPassObj>
     void use_depth_stencil_attachment(Name name, RAttachmentLoadOp loadOp, const RClearDepthStencilValue* clear);
 
     /// @brief get the actual image declared by use_image
-    RImage get_image(Name name);
+    RImage get_image(Name name, RImageLayout* layout = nullptr);
 };
 
 typedef void (*RGraphicsPassCallback)(RGraphicsPass pass, RCommandList list, void* userData);

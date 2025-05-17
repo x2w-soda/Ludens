@@ -33,7 +33,7 @@ void heap_free(void* ptr);
 const MemoryProfile& get_memory_profile(MemoryUsage usage);
 
 template <typename T, typename... TArgs>
-T* heap_new(TArgs&&... args, MemoryUsage usage)
+T* heap_new(MemoryUsage usage, TArgs&&... args)
 {
     T* ptr = (T*)heap_malloc(sizeof(T), usage);
     new (ptr) T(std::forward<TArgs>(args)...);

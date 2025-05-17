@@ -418,7 +418,7 @@ void RGraphicsPass::use_depth_stencil_attachment(Name name, RAttachmentLoadOp lo
     mObj->stageFlags |= RPIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | RPIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
 }
 
-RImage RGraphicsPass::get_image(Name name)
+RImage RGraphicsPass::get_image(Name name, RImageLayout* layout)
 {
     if (!mObj->isCallbackScope)
     {
@@ -429,6 +429,9 @@ RImage RGraphicsPass::get_image(Name name)
     RComponentObj* compObj = mObj->component;
     dereference_image(&compObj, &name);
     RStorage& storage = sStorages[compObj->name];
+
+    if (layout)
+        *layout = storage.images[name].lastLayout;
 
     RImage imageHandle = storage.images[name].handle;
     LD_ASSERT(imageHandle);
