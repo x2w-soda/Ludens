@@ -3,6 +3,7 @@ set(MODULE_NAME LDRenderComponent)
 set(MODULE_INCLUDE
     "${LUDENS_INCLUDE_DIR}/Ludens/RenderComponent/ForwardRender.h"
     "${LUDENS_INCLUDE_DIR}/Ludens/RenderComponent/ScreenRender.h"
+    "${LUDENS_INCLUDE_DIR}/Ludens/RenderComponent/ScreenPick.h"
     "${LUDENS_INCLUDE_DIR}/Ludens/RenderComponent/Skybox.h"
     "${LUDENS_INCLUDE_DIR}/Ludens/RenderComponent/DualKawase.h"
     "${LUDENS_INCLUDE_DIR}/Ludens/RenderComponent/Layout/SetLayouts.h"
@@ -18,6 +19,7 @@ set(MODULE_LIB
     "Lib/ForwardRender.cpp"
     "Lib/Skybox.cpp"
     "Lib/ScreenRender.cpp"
+    "Lib/ScreenPick.cpp"
     "Lib/DualKawase.cpp"
     "Lib/Layout/SetLayouts.cpp"
     "Lib/Layout/PipelineLayouts.cpp"
