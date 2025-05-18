@@ -3,6 +3,7 @@
 #include <Ludens/Header/Math/Rect.h>
 #include <Ludens/Header/Math/Vec2.h>
 #include <Ludens/Serial/Serial.h>
+#include <limits>
 #include <string>
 
 using namespace LD;
@@ -47,7 +48,73 @@ struct Foo
     }
 };
 
-TEST_CASE("Serializer API")
+TEST_CASE("integer serialization")
+{
+    Serializer serial;
+    serial.write_i8(std::numeric_limits<int8_t>::min());
+    serial.write_i8(std::numeric_limits<int8_t>::max());
+    serial.write_i16(std::numeric_limits<int16_t>::min());
+    serial.write_i16(std::numeric_limits<int16_t>::max());
+    serial.write_i32(std::numeric_limits<int32_t>::min());
+    serial.write_i32(std::numeric_limits<int32_t>::max());
+    serial.write_i64(std::numeric_limits<int64_t>::min());
+    serial.write_i64(std::numeric_limits<int64_t>::max());
+    CHECK(serial.size() == 30);
+
+    serial.write_u8(std::numeric_limits<uint8_t>::min());
+    serial.write_u8(std::numeric_limits<uint8_t>::max());
+    serial.write_u16(std::numeric_limits<uint16_t>::min());
+    serial.write_u16(std::numeric_limits<uint16_t>::max());
+    serial.write_u32(std::numeric_limits<uint32_t>::min());
+    serial.write_u32(std::numeric_limits<uint32_t>::max());
+    serial.write_u64(std::numeric_limits<uint64_t>::min());
+    serial.write_u64(std::numeric_limits<uint64_t>::max());
+    CHECK(serial.size() == 60);
+
+    int8_t i8min, i8max;
+    int16_t i16min, i16max;
+    int32_t i32min, i32max;
+    int64_t i64min, i64max;
+    serial.read_i8(i8min);
+    serial.read_i8(i8max);
+    serial.read_i16(i16min);
+    serial.read_i16(i16max);
+    serial.read_i32(i32min);
+    serial.read_i32(i32max);
+    serial.read_i64(i64min);
+    serial.read_i64(i64max);
+    CHECK(i8min == std::numeric_limits<int8_t>::min());
+    CHECK(i8max == std::numeric_limits<int8_t>::max());
+    CHECK(i16min == std::numeric_limits<int16_t>::min());
+    CHECK(i16max == std::numeric_limits<int16_t>::max());
+    CHECK(i32min == std::numeric_limits<int32_t>::min());
+    CHECK(i32max == std::numeric_limits<int32_t>::max());
+    CHECK(i64min == std::numeric_limits<int64_t>::min());
+    CHECK(i64max == std::numeric_limits<int64_t>::max());
+
+    uint8_t u8min, u8max;
+    uint16_t u16min, u16max;
+    uint32_t u32min, u32max;
+    uint64_t u64min, u64max;
+    serial.read_u8(u8min);
+    serial.read_u8(u8max);
+    serial.read_u16(u16min);
+    serial.read_u16(u16max);
+    serial.read_u32(u32min);
+    serial.read_u32(u32max);
+    serial.read_u64(u64min);
+    serial.read_u64(u64max);
+    CHECK(u8min == std::numeric_limits<uint8_t>::min());
+    CHECK(u8max == std::numeric_limits<uint8_t>::max());
+    CHECK(u16min == std::numeric_limits<uint16_t>::min());
+    CHECK(u16max == std::numeric_limits<uint16_t>::max());
+    CHECK(u32min == std::numeric_limits<uint32_t>::min());
+    CHECK(u32max == std::numeric_limits<uint32_t>::max());
+    CHECK(u64min == std::numeric_limits<uint64_t>::min());
+    CHECK(u64max == std::numeric_limits<uint64_t>::max());
+}
+
+TEST_CASE("floating point serialization")
 {
     Vec2 v2(2.0f, 3.0f);
     Vec3 v3(v2, 4.0f);
@@ -55,17 +122,21 @@ TEST_CASE("Serializer API")
 
     Serializer serial;
     serial.write_f32(3.14f);
+    serial.write_f64(3.1415926535);
     serial.write_vec2(v2);
     serial.write_vec3(v3);
     serial.write_vec4(v4);
-    CHECK(serial.size() == sizeof(float) * 10);
+    CHECK(serial.size() == 48);
 
-    float f;
-    serial.read_f32(f);
+    float f32;
+    double f64;
+    serial.read_f32(f32);
+    serial.read_f64(f64);
     serial.read_vec2(v2);
     serial.read_vec3(v3);
     serial.read_vec4(v4);
-    CHECK(f == 3.14f);
+    CHECK(f32 == 3.14f);
+    CHECK(f64 == 3.1415926535);
     CHECK(v2 == Vec2(2.0f, 3.0f));
     CHECK(v3 == Vec3(2.0f, 3.0f, 4.0f));
     CHECK(v4 == Vec4(2.0f, 3.0f, 4.0f, 5.0f));

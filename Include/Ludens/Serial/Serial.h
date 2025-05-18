@@ -19,6 +19,11 @@ public:
         mBuffer.write(bytes, size);
     }
 
+    inline void write_u8(uint8_t u8)
+    {
+        mBuffer.write(&u8, 1);
+    }
+
     inline void write_u16(uint16_t u16)
     {
         byte bytes[2];
@@ -37,6 +42,33 @@ public:
         mBuffer.write(bytes, 4);
     }
 
+    inline void write_u64(uint64_t u64)
+    {
+        byte bytes[8];
+        bytes[0] = u64 & 0xFF;
+        bytes[1] = (u64 >> 8) & 0xFF;
+        bytes[2] = (u64 >> 16) & 0xFF;
+        bytes[3] = (u64 >> 24) & 0xFF;
+        bytes[4] = (u64 >> 32) & 0xFF;
+        bytes[5] = (u64 >> 40) & 0xFF;
+        bytes[6] = (u64 >> 48) & 0xFF;
+        bytes[7] = (u64 >> 56) & 0xFF;
+        mBuffer.write(bytes, 8);
+    }
+
+    inline void write_i8(int8_t i8)
+    {
+        mBuffer.write((byte*)&i8, 1);
+    }
+
+    inline void write_i16(int16_t i16)
+    {
+        byte bytes[2];
+        bytes[0] = i16 & 0xFF;
+        bytes[1] = (i16 >> 8) & 0xFF;
+        mBuffer.write(bytes, 2);
+    }
+
     inline void write_i32(int32_t i32)
     {
         byte bytes[4];
@@ -47,9 +79,28 @@ public:
         mBuffer.write(bytes, 4);
     }
 
+    inline void write_i64(int64_t i64)
+    {
+        byte bytes[8];
+        bytes[0] = i64 & 0xFF;
+        bytes[1] = (i64 >> 8) & 0xFF;
+        bytes[2] = (i64 >> 16) & 0xFF;
+        bytes[3] = (i64 >> 24) & 0xFF;
+        bytes[4] = (i64 >> 32) & 0xFF;
+        bytes[5] = (i64 >> 40) & 0xFF;
+        bytes[6] = (i64 >> 48) & 0xFF;
+        bytes[7] = (i64 >> 56) & 0xFF;
+        mBuffer.write(bytes, 8);
+    }
+
     inline void write_f32(float f)
     {
         mBuffer.write((byte*)&f, 4);
+    }
+
+    inline void write_f64(double d)
+    {
+        mBuffer.write((byte*)&d, 8);
     }
 
     inline void write_vec2(const Vec2& v)
@@ -80,6 +131,11 @@ public:
         mReadPos += size;
     }
 
+    inline void read_u8(uint8_t& u8)
+    {
+        u8 = *(uint8_t*)mBuffer.read(mReadPos++);
+    }
+
     inline void read_u16(uint16_t& u16)
     {
         byte* bytes = (byte*)mBuffer.read(mReadPos);
@@ -100,6 +156,35 @@ public:
         mReadPos += 4;
     }
 
+    inline void read_u64(uint64_t& u64)
+    {
+        byte* bytes = (byte*)mBuffer.read(mReadPos);
+        u64 = 0;
+        u64 |= (uint64_t)bytes[0];
+        u64 |= (uint64_t)bytes[1] << 8;
+        u64 |= (uint64_t)bytes[2] << 16;
+        u64 |= (uint64_t)bytes[3] << 24;
+        u64 |= (uint64_t)bytes[4] << 32;
+        u64 |= (uint64_t)bytes[5] << 40;
+        u64 |= (uint64_t)bytes[6] << 48;
+        u64 |= (uint64_t)bytes[7] << 56;
+        mReadPos += 8;
+    }
+
+    inline void read_i8(int8_t& i8)
+    {
+        i8 = *(int8_t*)mBuffer.read(mReadPos++);
+    }
+
+    inline void read_i16(int16_t& i16)
+    {
+        byte* bytes = (byte*)mBuffer.read(mReadPos);
+        i16 = 0;
+        i16 |= bytes[0];
+        i16 |= bytes[1] << 8;
+        mReadPos += 2;
+    }
+
     inline void read_i32(int32_t& i32)
     {
         byte* bytes = (byte*)mBuffer.read(mReadPos);
@@ -111,10 +196,31 @@ public:
         mReadPos += 4;
     }
 
+    inline void read_i64(int64_t& i64)
+    {
+        byte* bytes = (byte*)mBuffer.read(mReadPos);
+        i64 = 0;
+        i64 |= (uint64_t)bytes[0];
+        i64 |= (uint64_t)bytes[1] << 8;
+        i64 |= (uint64_t)bytes[2] << 16;
+        i64 |= (uint64_t)bytes[3] << 24;
+        i64 |= (uint64_t)bytes[4] << 32;
+        i64 |= (uint64_t)bytes[5] << 40;
+        i64 |= (uint64_t)bytes[6] << 48;
+        i64 |= (uint64_t)bytes[7] << 56;
+        mReadPos += 8;
+    }
+
     inline void read_f32(float& f)
     {
         f = *(float*)mBuffer.read(mReadPos);
         mReadPos += 4;
+    }
+
+    inline void read_f64(double& d)
+    {
+        d = *(double*)mBuffer.read(mReadPos);
+        mReadPos += 8;
     }
 
     inline void read_vec2(Vec2& v)
