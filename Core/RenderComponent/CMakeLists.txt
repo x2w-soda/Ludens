@@ -13,6 +13,7 @@ set(MODULE_INCLUDE
     "${LUDENS_INCLUDE_DIR}/Ludens/RenderComponent/Layout/RMesh.h"
     "${LUDENS_INCLUDE_DIR}/Ludens/RenderComponent/Pipeline/RMeshPipeline.h"
     "${LUDENS_INCLUDE_DIR}/Ludens/RenderComponent/Pipeline/LinePipeline.h"
+    "${LUDENS_INCLUDE_DIR}/Ludens/RenderComponent/Pipeline/OutlinePipeline.h"
 )
 
 set(MODULE_LIB
@@ -26,6 +27,7 @@ set(MODULE_LIB
     "Lib/Layout/RMesh.cpp"
     "Lib/Pipeline/RMeshPipeline.cpp"
     "Lib/Pipeline/LinePipeline.cpp"
+    "Lib/Pipeline/OutlinePipeline.cpp"
 )
 
 add_library(${MODULE_NAME}
