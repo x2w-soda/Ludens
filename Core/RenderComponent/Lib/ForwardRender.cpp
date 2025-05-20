@@ -38,6 +38,8 @@ struct ForwardRenderComponentObj
 
     void flush_lines();
 
+    void draw_mesh_ex(RCommandList list, RMesh mesh, const Mat4& transform);
+
     static void on_release(void* user);
     static void on_graphics_pass(RGraphicsPass pass, RCommandList list, void* userData);
 } sCompObj;
@@ -64,6 +66,34 @@ void ForwardRenderComponentObj::init(RDevice device)
     }
 
     RGraph::add_release_callback(this, &ForwardRenderComponentObj::on_release);
+}
+
+void ForwardRenderComponentObj::draw_mesh_ex(RCommandList list, RMesh mesh, const Mat4& transform)
+{
+    list.cmd_bind_vertex_buffers(0, 1, &mesh.vbo);
+    list.cmd_bind_index_buffer(mesh.ibo, RINDEX_TYPE_U32);
+    list.cmd_bind_graphics_pipeline(meshPipeline);
+
+    int matIdx = -1;
+
+    for (uint32_t i = 0; i < mesh.primCount; i++)
+    {
+        const RMeshPrimitive& prim = mesh.prims[i];
+        RMaterial* mat = mesh.mats + prim.matIndex;
+
+        if (matIdx != (int)prim.matIndex)
+        {
+            list.cmd_bind_graphics_sets(sRMeshPipelineLayout, 1, 1, &mat->set);
+            matIdx = (int)prim.matIndex;
+        }
+
+        RDrawIndexedInfo drawI{};
+        drawI.indexCount = prim.indexCount;
+        drawI.indexStart = prim.indexStart;
+        drawI.instanceCount = 1;
+        drawI.instanceStart = 0;
+        list.cmd_draw_indexed(drawI);
+    }
 }
 
 void ForwardRenderComponentObj::flush_lines()
@@ -178,43 +208,46 @@ void ForwardRenderComponent::set_mesh_pipeline(RPipeline meshPipeline)
     mObj->meshPipeline = meshPipeline;
 }
 
-void ForwardRenderComponent::draw_mesh(RMesh mesh, const Mat4& transform, uint16_t id, uint16_t flags)
+void ForwardRenderComponent::draw_mesh(RMesh mesh, const Mat4& transform, uint16_t id)
 {
     LD_ASSERT(mObj->isDrawScope);
     LD_ASSERT(mObj->meshPipeline);
 
     RCommandList list = mObj->list;
 
-    list.cmd_bind_vertex_buffers(0, 1, &mesh.vbo);
-    list.cmd_bind_index_buffer(mesh.ibo, RINDEX_TYPE_U32);
-    list.cmd_bind_graphics_pipeline(mObj->meshPipeline);
-    list.cmd_push_constant(sRMeshPipelineLayout, 0, sizeof(Mat4), &transform);
+    // render Color and 16-bit ID
+    mObj->meshPipeline.set_color_write_mask(0, RCOLOR_COMPONENT_R_BIT | RCOLOR_COMPONENT_G_BIT | RCOLOR_COMPONENT_B_BIT | RCOLOR_COMPONENT_A_BIT);
+    mObj->meshPipeline.set_color_write_mask(1, RCOLOR_COMPONENT_R_BIT | RCOLOR_COMPONENT_G_BIT);
+    mObj->meshPipeline.set_depth_test_enable(true);
 
     TVec2<uint32_t> idflags;
     idflags.x = id;
-    idflags.y = flags;
+    idflags.y = 0;
+    list.cmd_push_constant(sRMeshPipelineLayout, 0, sizeof(Mat4), &transform);
     list.cmd_push_constant(sRMeshPipelineLayout, sizeof(Mat4), sizeof(idflags), &idflags);
 
-    int matIdx = -1;
+    mObj->draw_mesh_ex(list, mesh, transform);
+}
 
-    for (uint32_t i = 0; i < mesh.primCount; i++)
-    {
-        const RMeshPrimitive& prim = mesh.prims[i];
-        RMaterial* mat = mesh.mats + prim.matIndex;
+void ForwardRenderComponent::draw_mesh_outline_flags(RMesh mesh, const Mat4& transform)
+{
+    LD_ASSERT(mObj->isDrawScope);
+    LD_ASSERT(mObj->meshPipeline);
 
-        if (matIdx != (int)prim.matIndex)
-        {
-            list.cmd_bind_graphics_sets(sRMeshPipelineLayout, 1, 1, &mat->set);
-            matIdx = (int)prim.matIndex;
-        }
+    RCommandList list = mObj->list;
 
-        RDrawIndexedInfo drawI{};
-        drawI.indexCount = prim.indexCount;
-        drawI.indexStart = prim.indexStart;
-        drawI.instanceCount = 1;
-        drawI.instanceStart = 0;
-        list.cmd_draw_indexed(drawI);
-    }
+    // render 16-bit flags
+    mObj->meshPipeline.set_color_write_mask(0, 0);
+    mObj->meshPipeline.set_color_write_mask(1, RCOLOR_COMPONENT_B_BIT | RCOLOR_COMPONENT_A_BIT);
+    mObj->meshPipeline.set_depth_test_enable(false);
+
+    TVec2<uint32_t> idflags;
+    idflags.x = 0;
+    idflags.y = 1; // currently any non-zero flag value indicates mesh that requires outlining
+    list.cmd_push_constant(sRMeshPipelineLayout, 0, sizeof(Mat4), &transform);
+    list.cmd_push_constant(sRMeshPipelineLayout, sizeof(Mat4), sizeof(idflags), &idflags);
+
+    mObj->draw_mesh_ex(list, mesh, transform);
 }
 
 void ForwardRenderComponent::draw_line(const Vec3& p0, const Vec3& p1, uint32_t color)

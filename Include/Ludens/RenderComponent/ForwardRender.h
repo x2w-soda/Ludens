@@ -46,8 +46,12 @@ struct ForwardRenderComponent : Handle<struct ForwardRenderComponentObj>
     /// @param mesh mesh handle
     /// @param transform model matrix that transforms mesh to world space
     /// @param id 16 bit identifier written to the id color attachment
-    /// @param flags 16 bit flags written to the id color attachment
-    void draw_mesh(RMesh mesh, const Mat4& transform, uint16_t id, uint16_t flags);
+    void draw_mesh(RMesh mesh, const Mat4& transform, uint16_t id);
+
+    /// @brief draw to the id color attachment
+    /// @param mesh mesh handle
+    /// @param transform model matrix that transforms mesh to world space
+    void draw_mesh_outline_flags(RMesh mesh, const Mat4& transform);
 
     /// @brief draw a line from p0 to p1
     /// @param p0 starting world position

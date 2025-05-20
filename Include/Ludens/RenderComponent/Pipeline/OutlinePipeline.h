@@ -10,6 +10,8 @@ struct OutlinePipeline : Handle<struct OutlinePipelineObj>
     static OutlinePipeline create(RDevice device);
     static void destroy(OutlinePipeline pipeline);
 
+    static RPipelineLayoutInfo get_layout();
+
     RPipeline handle();
 };
 

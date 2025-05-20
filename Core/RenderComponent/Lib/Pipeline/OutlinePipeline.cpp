@@ -144,6 +144,11 @@ void OutlinePipeline::destroy(OutlinePipeline pipeline)
     device = {};
 }
 
+RPipelineLayoutInfo OutlinePipeline::get_layout()
+{
+    return sOutlinePipelineLayout;
+}
+
 RPipeline OutlinePipeline::handle()
 {
     return mObj->handle;

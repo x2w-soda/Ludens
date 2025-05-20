@@ -5,6 +5,7 @@ set(MODULE_INCLUDE
     "${LUDENS_INCLUDE_DIR}/Ludens/RenderComponent/ScreenRender.h"
     "${LUDENS_INCLUDE_DIR}/Ludens/RenderComponent/ScreenPick.h"
     "${LUDENS_INCLUDE_DIR}/Ludens/RenderComponent/Skybox.h"
+    "${LUDENS_INCLUDE_DIR}/Ludens/RenderComponent/Outline.h"
     "${LUDENS_INCLUDE_DIR}/Ludens/RenderComponent/DualKawase.h"
     "${LUDENS_INCLUDE_DIR}/Ludens/RenderComponent/Layout/SetLayouts.h"
     "${LUDENS_INCLUDE_DIR}/Ludens/RenderComponent/Layout/PipelineLayouts.h"
@@ -19,6 +20,7 @@ set(MODULE_INCLUDE
 set(MODULE_LIB
     "Lib/ForwardRender.cpp"
     "Lib/Skybox.cpp"
+    "Lib/Outline.cpp"
     "Lib/ScreenRender.cpp"
     "Lib/ScreenPick.cpp"
     "Lib/DualKawase.cpp"
