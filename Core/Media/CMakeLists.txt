@@ -11,6 +11,8 @@ add_library(${MODULE_NAME}
     Lib/Model.cpp
     Lib/ModelObj.h
     Lib/Bitmap.cpp
+    Lib/GlyphTable.h
+    Lib/GlyphTable.cpp
     Lib/TinygltfLoader.h
     Lib/TinygltfLoader.cpp
 )
