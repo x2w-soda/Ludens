@@ -44,13 +44,25 @@ struct Bitmap : Handle<struct BitmapObj>
     /// @brief create bitmap from binary data
     static void deserialize(Serializer& serializer, Bitmap& bitmap);
 
+    /// @brief flip image vertically along the Y axis
+    void flipy();
+
+    /// @brief get a const view of bitmap
     BitmapView view() const;
 
+    /// @brief get bitmap width in pixels
     uint32_t width() const;
+
+    /// @brief get bitmap height in pixels
     uint32_t height() const;
+
+    /// @brief get bitmap channels
     BitmapChannel channel() const;
 
+    /// @brief view pf bitmap as byte stream
     byte* data();
+
+    /// @brief const view of bitmap as byte stream
     const byte* data() const;
 };
 

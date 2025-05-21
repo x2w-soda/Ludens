@@ -176,6 +176,36 @@ void Bitmap::deserialize(Serializer& serializer, Bitmap& bitmap)
     bitmap = Bitmap::create_from_data(width, height, channel, pixels.data());
 }
 
+void Bitmap::flipy()
+{
+    LD_PROFILE_SCOPE;
+
+    byte* data = mObj->data;
+    byte tmp[2048];
+    const uint32_t width = mObj->width;
+    const uint32_t height = mObj->height;
+    const uint32_t texelSize = mObj->channel; // currently only supports one byte per pixel channel
+    const uint32_t bytesPerRow = texelSize * width;
+
+    for (uint32_t row = 0; row < height / 2; row++)
+    {
+        uint8_t* row0 = data + row * bytesPerRow;
+        uint8_t* row1 = data + (height - row - 1) * bytesPerRow;
+        uint32_t bytesLeft = bytesPerRow;
+
+        while (bytesLeft)
+        {
+            size_t bytesCopied = (bytesLeft < sizeof(tmp)) ? bytesLeft : sizeof(tmp);
+            memcpy(tmp, row0, bytesCopied);
+            memcpy(row0, row1, bytesCopied);
+            memcpy(row1, tmp, bytesCopied);
+            row0 += bytesCopied;
+            row1 += bytesCopied;
+            bytesLeft -= bytesCopied;
+        }
+    }
+}
+
 BitmapView Bitmap::view() const
 {
     return {
