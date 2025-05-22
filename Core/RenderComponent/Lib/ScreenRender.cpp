@@ -9,8 +9,6 @@
 #include <array>
 #include <vector>
 
-#define IMAGE_IDX_SDF_BIT 16
-
 namespace LD {
 
 // clang-format off
@@ -18,11 +16,11 @@ static const char sRectVS[] = R"(
 layout (location = 0) in vec2 aPos;
 layout (location = 1) in vec2 aUV;
 layout (location = 2) in uint aColor;
-layout (location = 3) in uint aImageIdx;
+layout (location = 3) in uint aControl;
 
 layout (location = 0) out vec2 vUV;
 layout (location = 1) out flat uint vColor;
-layout (location = 2) out flat uint vImageIdx;
+layout (location = 2) out flat uint vControl;
 )"
 LD_GLSL_FRAME_SET
 R"(
@@ -34,14 +32,14 @@ void main()
     gl_Position = vec4(ndcx, ndcy, 0.0, 1.0);
     vUV = aUV;
     vColor = aColor;
-    vImageIdx = aImageIdx;
+    vControl = aControl;
 }
 )";
 
 static const char sRectFS[] = R"(
 layout (location = 0) in vec2 vUV;
 layout (location = 1) in flat uint vColor;
-layout (location = 2) in flat uint vImageIdx;
+layout (location = 2) in flat uint vControl;
 layout (location = 0) out vec4 fColor;
 
 layout (set = 1, binding = 0) uniform sampler2D uImages[8];
@@ -50,10 +48,10 @@ void main()
 {
     vec4 imageColor = vec4(1.0);
 
-    bool isSDF = (vImageIdx & 16) != 0;
-
-    // only lsb 4 bits
-    uint imageIdx = vImageIdx & 15;
+    uint imageIdx = vControl & 15;
+    uint imageHintBits = (vControl >> 4) & 15;
+    uint filterRatioBits = (vControl >> 8) & 255;
+    float filterRatio = float(filterRatioBits) / 8.0f;
 
     switch (imageIdx)
     {
@@ -74,13 +72,22 @@ void main()
     float a = float(vColor & 0xFF) / 255.0f;
     vec4 tint = vec4(r, g, b, a);
 
-    float ratio = 4.0;
-    float screenPxRange = 4.0 * ratio;
+    float screenPxRange = 2.0 * filterRatio;
     float sd = imageColor.r;
     float screenPxDistance = screenPxRange * (sd - 0.5);
     float opacity = clamp(screenPxDistance + 0.5, 0.0, 1.0);
 
-    vec4 color = isSDF ? mix(vec4(0.0), tint, opacity) : imageColor * tint;
+    vec4 color = imageColor * tint;
+
+    switch (imageHintBits)
+    {
+        case 1: // single channel font bitmap
+            color = tint * vec4(imageColor.r);
+            break;
+        case 2: // font SDF
+            color = mix(vec4(0.0), tint, opacity);
+            break;
+    }
 
     fColor = color;
 }
@@ -436,12 +443,14 @@ void ScreenRenderComponent::draw_image(const Rect& rect, RImage image)
     float y0 = rect.y;
     float y1 = rect.y + rect.h;
 
+    uint32_t control = get_rect_vertex_control_bits(imageIdx, RECT_VERTEX_IMAGE_HINT_NONE, 0);
     uint32_t white = 0xFFFFFFFF;
+
     RectVertex* v = mObj->rectBatch.write_rect();
-    v[0] = {x0, y0, 0.0f, 0.0f, white, (uint32_t)imageIdx}; // TL
-    v[1] = {x1, y0, 1.0f, 0.0f, white, (uint32_t)imageIdx}; // TR
-    v[2] = {x1, y1, 1.0f, 1.0f, white, (uint32_t)imageIdx}; // BR
-    v[3] = {x0, y1, 0.0f, 1.0f, white, (uint32_t)imageIdx}; // BL
+    v[0] = {x0, y0, 0.0f, 0.0f, white, control}; // TL
+    v[1] = {x1, y0, 1.0f, 0.0f, white, control}; // TR
+    v[2] = {x1, y1, 1.0f, 1.0f, white, control}; // BR
+    v[3] = {x0, y1, 0.0f, 1.0f, white, control}; // BL
 }
 
 void ScreenRenderComponent::draw_image_uv(const Rect& rect, RImage image, const Rect& uv, uint32_t color)
@@ -461,43 +470,85 @@ void ScreenRenderComponent::draw_image_uv(const Rect& rect, RImage image, const 
     float v0 = uv.y;
     float v1 = uv.y + uv.h;
 
+    uint32_t control = get_rect_vertex_control_bits(imageIdx, RECT_VERTEX_IMAGE_HINT_NONE, 0);
+
     RectVertex* v = mObj->rectBatch.write_rect();
-    v[0] = {x0, y0, u0, v0, color, (uint32_t)imageIdx}; // TL
-    v[1] = {x1, y0, u1, v0, color, (uint32_t)imageIdx}; // TR
-    v[2] = {x1, y1, u1, v1, color, (uint32_t)imageIdx}; // BR
-    v[3] = {x0, y1, u0, v1, color, (uint32_t)imageIdx}; // BL
+    v[0] = {x0, y0, u0, v0, color, control}; // TL
+    v[1] = {x1, y0, u1, v0, color, control}; // TR
+    v[2] = {x1, y1, u1, v1, color, control}; // BR
+    v[3] = {x0, y1, u0, v1, color, control}; // BL
 }
 
-void ScreenRenderComponent::draw_glyph(FontAtlas font, RImage atlas, const Vec2& pos, uint32_t code, uint32_t color)
+void ScreenRenderComponent::draw_glyph(FontAtlas atlas, RImage atlasImage, float fontSize, const Vec2& pos, uint32_t code, uint32_t color)
 {
     if (mObj->rectBatch.is_full())
         mObj->flush_rects();
 
-    int imageIdx = mObj->get_image_index(atlas);
+    int imageIdx = mObj->get_image_index(atlasImage);
     LD_ASSERT(imageIdx >= 0);
 
-    float ratio = 4;
-
-    float aw = (float)atlas.width();
-    float ah = (float)atlas.height();
-    int gx, gy, gw, gh;
-    font.get_glyph(code, gx, gy, gw, gh);
-    float u0 = gx / aw;
-    float u1 = (gx + gw) / aw;
-    float v0 = gy / ah;
-    float v1 = (gy + gh) / ah;
+    float filterRatio = atlas.get_filter_ratio(fontSize);
+    float aw = (float)atlasImage.width();
+    float ah = (float)atlasImage.height();
+    IRect glyphBB;
+    atlas.get_atlas_glyph(code, glyphBB);
+    float u0 = (glyphBB.x / aw);
+    float u1 = (glyphBB.x + glyphBB.w) / aw;
+    float v0 = (glyphBB.y / ah);
+    float v1 = (glyphBB.y + glyphBB.h) / ah;
     float x0 = pos.x;
     float y0 = pos.y;
-    float x1 = pos.x + gw * ratio;
-    float y1 = pos.y + gh * ratio;
+    float x1 = pos.x + glyphBB.w * filterRatio;
+    float y1 = pos.y + glyphBB.h * filterRatio;
 
-    imageIdx |= IMAGE_IDX_SDF_BIT;
+    RectVertexImageHint hint = RECT_VERTEX_IMAGE_HINT_NONE;
+
+    switch (atlas.type())
+    {
+    case FONT_ATLAS_BITMAP:
+        hint = RECT_VERTEX_IMAGE_HINT_FONT;
+        break;
+    case FONT_ATLAS_SDF:
+        hint = RECT_VERTEX_IMAGE_HINT_FONT_SDF;
+        break;
+    }
+
+    uint32_t control = get_rect_vertex_control_bits(imageIdx, hint, filterRatio);
 
     RectVertex* v = mObj->rectBatch.write_rect();
-    v[0] = {x0, y0, u0, v1, color, (uint32_t)imageIdx}; // TL
-    v[1] = {x1, y0, u1, v1, color, (uint32_t)imageIdx}; // TR
-    v[2] = {x1, y1, u1, v0, color, (uint32_t)imageIdx}; // BR
-    v[3] = {x0, y1, u0, v0, color, (uint32_t)imageIdx}; // BL
+    v[0] = {x0, y0, u0, v0, color, control}; // TL
+    v[1] = {x1, y0, u1, v0, color, control}; // TR
+    v[2] = {x1, y1, u1, v1, color, control}; // BR
+    v[3] = {x0, y1, u0, v1, color, control}; // BL
+}
+
+void ScreenRenderComponent::draw_text(FontAtlas atlas, RImage atlasImage, float fontSize, Vec2& baseline, const char* text, uint32_t color)
+{
+    Font f = atlas.get_font();
+    FontMetrics metrics;
+    f.get_metrics(metrics, fontSize);
+
+    float x = baseline.x;
+
+    size_t len = strlen(text);
+    for (size_t i = 0; i < len; i++)
+    {
+        uint32_t c = (uint32_t)text[i];
+
+        if (c == '\n')
+        {
+            baseline.y += metrics.lineHeight;
+            baseline.x = x;
+            continue;
+        }
+
+        float advanceX;
+        Rect rect;
+        atlas.get_baseline_glyph(c, fontSize, baseline, rect, advanceX);
+        draw_glyph(atlas, atlasImage, fontSize, rect.get_pos(), c, color);
+
+        baseline.x += advanceX;
+    }
 }
 
 } // namespace LD

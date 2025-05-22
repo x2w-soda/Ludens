@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Ludens/Media/Model.h>
+#include <algorithm>
 
 namespace LD {
 
@@ -19,7 +20,7 @@ struct RectVertex
     float x, y;
     float u, v;
     uint32_t color;
-    uint32_t imageIdx;
+    uint32_t control;
 };
 
 static inline void get_rect_vertex_attributes(std::vector<RVertexAttribute>& attr)
@@ -34,11 +35,36 @@ static inline void get_rect_vertex_attributes(std::vector<RVertexAttribute>& att
     attr[2].type = RGLSL_TYPE_UINT; // color
     attr[2].binding = 0;
     attr[2].offset = offsetof(RectVertex, color);
-    attr[3].type = RGLSL_TYPE_UINT; // image index
+    attr[3].type = RGLSL_TYPE_UINT; // control
     attr[3].binding = 0;
-    attr[3].offset = offsetof(RectVertex, imageIdx);
+    attr[3].offset = offsetof(RectVertex, control);
 
     static_assert(sizeof(RectVertex) == 24);
+}
+
+enum RectVertexImageHint
+{
+    RECT_VERTEX_IMAGE_HINT_NONE = 0,     /// regular bitmap image
+    RECT_VERTEX_IMAGE_HINT_FONT = 1,     /// single channel bitmap atlas
+    RECT_VERTEX_IMAGE_HINT_FONT_SDF = 2, /// single channel signed distanced field
+};
+
+/// @brief get rect vertex control bits. [0:3] imageIdx, [4:7] imageHint, [8:15] filter ratio
+/// @param imageIdx 4 bits to encode the image index in array
+/// @param imageHint 4 bits to hint how the image should be used
+/// @param filterRatio 8 bits to encode the filtering ratio used for SDF font rendering. A ratio from 0.0 to 32.0 can be represented at a step of 0.125
+/// @return control bits for a RectVertex
+static inline uint32_t get_rect_vertex_control_bits(int imageIdx, RectVertexImageHint imageHint, float filterRatio)
+{
+    uint32_t controlBits = 0;
+    uint32_t imageHintBits = static_cast<uint32_t>(imageHint) & 15;
+    uint32_t filterRatioBits = std::clamp<uint32_t>(static_cast<uint32_t>(filterRatio * 8.0f + 0.5f), 0, 255);
+
+    controlBits |= (imageIdx & 15);
+    controlBits |= (imageHintBits << 4);
+    controlBits |= (filterRatioBits << 8);
+
+    return controlBits;
 }
 
 /// @brief helper to accumulate RectVertex data on the CPU side
