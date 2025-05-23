@@ -4,6 +4,25 @@
 
 namespace LD {
 
+class Timer
+{
+public:
+    Timer() = default;
+    Timer(const Timer&) = delete;
+
+    Timer& operator=(const Timer&) = delete;
+
+    /// @brief start the timer
+    void start();
+
+    /// @brief stop the timer
+    /// @return output duration in micro seconds
+    size_t stop();
+
+private:
+    std::chrono::high_resolution_clock::time_point mBegin;
+};
+
 class ScopeTimer
 {
 public:
