@@ -522,13 +522,13 @@ void ScreenRenderComponent::draw_glyph(FontAtlas atlas, RImage atlasImage, float
     v[3] = {x0, y1, u0, v1, color, control}; // BL
 }
 
-void ScreenRenderComponent::draw_text(FontAtlas atlas, RImage atlasImage, float fontSize, Vec2& baseline, const char* text, uint32_t color)
+void ScreenRenderComponent::draw_text(FontAtlas atlas, RImage atlasImage, float fontSize, const Vec2& pos, const char* text, uint32_t color)
 {
     Font f = atlas.get_font();
     FontMetrics metrics;
     f.get_metrics(metrics, fontSize);
 
-    float x = baseline.x;
+    Vec2 baseline(pos.x, pos.y + metrics.ascent);
 
     size_t len = strlen(text);
     for (size_t i = 0; i < len; i++)
@@ -538,7 +538,7 @@ void ScreenRenderComponent::draw_text(FontAtlas atlas, RImage atlasImage, float 
         if (c == '\n')
         {
             baseline.y += metrics.lineHeight;
-            baseline.x = x;
+            baseline.x = pos.x;
             continue;
         }
 

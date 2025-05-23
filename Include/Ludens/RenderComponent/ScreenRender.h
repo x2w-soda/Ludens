@@ -50,7 +50,7 @@ struct ScreenRenderComponent : Handle<struct ScreenRenderComponentObj>
     void draw_glyph(FontAtlas atlas, RImage atlasImage, float fontSize, const Vec2& pos, uint32_t code, uint32_t color);
 
     /// @brief draw a string of text
-    void draw_text(FontAtlas atlas, RImage atlasImage, float fontSize, Vec2& baseline, const char* text, uint32_t color);
+    void draw_text(FontAtlas atlas, RImage atlasImage, float fontSize, const Vec2& pos, const char* text, uint32_t color);
 };
 
 } // namespace LD
