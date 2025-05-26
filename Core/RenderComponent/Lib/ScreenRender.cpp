@@ -138,7 +138,7 @@ struct ScreenRenderComponentObj
     static void on_release(void* user);
     static void on_graphics_pass(RGraphicsPass pass, RCommandList list, void* userData);
 
-} sCompObj; // TODO: non-singleton
+} sSRCompObj; // TODO: non-singleton
 
 void ScreenRenderComponentObj::init(RDevice device)
 {
@@ -374,13 +374,13 @@ ScreenRenderComponent ScreenRenderComponent::add(RGraph graph, RFormat format, u
 
     RDevice device = graph.get_device();
 
-    sCompObj.init(device);
-    sCompObj.frameIdx = device.get_frame_index();
-    sCompObj.user = user;
-    sCompObj.imageCounter = 0;
-    sCompObj.hasSampledImage = hasSampledImage;
+    sSRCompObj.init(device);
+    sSRCompObj.frameIdx = device.get_frame_index();
+    sSRCompObj.user = user;
+    sSRCompObj.imageCounter = 0;
+    sSRCompObj.hasSampledImage = hasSampledImage;
 
-    ScreenRenderComponent render2DComp(&sCompObj);
+    ScreenRenderComponent render2DComp(&sSRCompObj);
 
     RComponent comp = graph.add_component(render2DComp.component_name());
     comp.add_io_image(render2DComp.io_name(), format, width, height);
@@ -391,7 +391,7 @@ ScreenRenderComponent ScreenRenderComponent::add(RGraph graph, RFormat format, u
     gpI.height = height;
 
     // draw in screen space on top of previous content
-    RGraphicsPass pass = comp.add_graphics_pass(gpI, &sCompObj, &ScreenRenderComponentObj::on_graphics_pass);
+    RGraphicsPass pass = comp.add_graphics_pass(gpI, &sSRCompObj, &ScreenRenderComponentObj::on_graphics_pass);
     pass.use_color_attachment(render2DComp.io_name(), RATTACHMENT_LOAD_OP_LOAD, nullptr);
 
     // conditional input image with the same dimensions as color attachment
@@ -401,16 +401,16 @@ ScreenRenderComponent ScreenRenderComponent::add(RGraph graph, RFormat format, u
         pass.use_image_sampled(render2DComp.sampled_name());
     }
 
-    sCompObj.on_draw = onDraw;
+    sSRCompObj.on_draw = onDraw;
 
     return render2DComp;
 }
 
 RImage ScreenRenderComponent::get_sampled_image()
 {
-    LD_ASSERT(sCompObj.hasSampledImage && sCompObj.graphicsPass);
+    LD_ASSERT(sSRCompObj.hasSampledImage && sSRCompObj.graphicsPass);
 
-    return sCompObj.graphicsPass.get_image(ScreenRenderComponent(&sCompObj).sampled_name());
+    return sSRCompObj.graphicsPass.get_image(ScreenRenderComponent(&sSRCompObj).sampled_name());
 }
 
 void ScreenRenderComponent::draw_rect(const Rect& rect, uint32_t color)

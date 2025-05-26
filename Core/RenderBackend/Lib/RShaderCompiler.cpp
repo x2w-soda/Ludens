@@ -3,6 +3,7 @@
 #include <iostream>
 // hide from module user
 #include <glslang/Public/ResourceLimits.h>
+#include <glslang/Public/ShaderLang.h>
 #include <glslang/SPIRV/GlslangToSpv.h>
 #include <spirv_cross/spirv_cross.hpp>
 #include <spirv_cross/spirv_glsl.hpp>

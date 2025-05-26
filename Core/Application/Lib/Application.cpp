@@ -3,21 +3,41 @@
 #include <Ludens/Application/Application.h>
 #include <Ludens/Application/Input.h>
 #include <Ludens/Header/Assert.h>
+#include <Ludens/Log/Log.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/RenderBackend/RBackend.h>
+#include <Ludens/System/Memory.h>
+#include <Ludens/System/Timer.h>
 
 namespace LD {
+
+static Log sLog("Application");
 
 struct Window
 {
     GLFWwindow* handle;
     uint32_t width;
     uint32_t height;
-    RDevice rdevice;
 
     static void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
     static void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
 };
+
+struct ApplicationObj
+{
+    Window window;
+    RDevice rdevice;
+    bool isAlive;
+
+    ApplicationObj() = delete;
+    ApplicationObj(const ApplicationObj&) = delete;
+    ApplicationObj(const ApplicationInfo& appI);
+    ~ApplicationObj();
+
+    ApplicationObj& operator=(const ApplicationObj&) = delete;
+};
+
+static ApplicationObj* sAppInstance = nullptr;
 
 // Input.cpp
 namespace Input {
@@ -51,62 +71,47 @@ void Window::mouse_button_callback(GLFWwindow* window, int button, int action, i
         Input::sMouseState[button] = RELEASED_THIS_FRAME_BIT;
 }
 
-Application::Application(const ApplicationInfo& appI)
+Application::Application(ApplicationObj* obj)
+    : mObj(obj)
 {
-    LD_PROFILE_SCOPE;
-
-    int result = glfwInit();
-    LD_ASSERT(result == GLFW_TRUE);
-
-    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-    glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
-
-    mWindow = new Window();
-    mWindow->handle = glfwCreateWindow((int)appI.width, (int)appI.height, appI.name, nullptr, nullptr);
-    mWindow->width = appI.width;
-    mWindow->height = appI.height;
-    glfwSetKeyCallback(mWindow->handle, &Window::key_callback);
-    glfwSetMouseButtonCallback(mWindow->handle, &Window::mouse_button_callback);
-
-    RDeviceInfo rdeviceI{
-        .backend = RDEVICE_BACKEND_VULKAN,
-        .window = mWindow->handle,
-    };
-    mWindow->rdevice = RDevice::create(rdeviceI);
 }
 
-Application::~Application()
+Application Application::create(const ApplicationInfo& appI)
 {
     LD_PROFILE_SCOPE;
 
-    RDevice::destroy(mWindow->rdevice);
+    LD_ASSERT(sAppInstance == nullptr && "Application is a singleton");
+    sAppInstance = heap_new<ApplicationObj>(MEMORY_USAGE_MISC, appI);
 
-    glfwDestroyWindow(mWindow->handle);
+    return {sAppInstance};
+}
 
-    delete mWindow;
-    mWindow = nullptr;
+void Application::destroy()
+{
+    LD_PROFILE_SCOPE;
 
-    glfwTerminate();
+    heap_delete<ApplicationObj>(sAppInstance);
+    sAppInstance = nullptr;
 }
 
 uint32_t Application::width() const
 {
-    return mWindow ? mWindow->width : 0;
+    return mObj->window.width;
 }
 
 uint32_t Application::height() const
 {
-    return mWindow ? mWindow->height : 0;
+    return mObj->window.height;
 }
 
 float Application::aspect_ratio() const
 {
-    return mWindow ? (float)mWindow->width / (float)mWindow->height : 0.0f;
+    return (float)mObj->window.width / (float)mObj->window.height;
 }
 
 bool Application::is_window_open()
 {
-    return !glfwWindowShouldClose(mWindow->handle);
+    return mObj->isAlive && !glfwWindowShouldClose(mObj->window.handle);
 }
 
 void Application::poll_events()
@@ -116,7 +121,7 @@ void Application::poll_events()
     Input::frame_boundary();
 
     double xpos, ypos;
-    glfwGetCursorPos(mWindow->handle, &xpos, &ypos);
+    glfwGetCursorPos(mObj->window.handle, &xpos, &ypos);
 
     static bool sIsFirstFrame = true;
 
@@ -137,7 +142,12 @@ void Application::poll_events()
 
 RDevice Application::get_rdevice()
 {
-    return mWindow->rdevice;
+    return mObj->rdevice;
+}
+
+Application Application::get()
+{
+    return {sAppInstance};
 }
 
 double Application::get_time()
@@ -145,12 +155,19 @@ double Application::get_time()
     return glfwGetTime();
 }
 
+void Application::exit()
+{
+    mObj->isAlive = false;
+}
+
 void Application::set_cursor_mode_normal()
 {
-    glfwSetInputMode(mWindow->handle, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+    GLFWwindow* wh = mObj->window.handle;
+
+    glfwSetInputMode(wh, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 
     double xpos, ypos;
-    glfwGetCursorPos(mWindow->handle, &xpos, &ypos);
+    glfwGetCursorPos(wh, &xpos, &ypos);
 
     Input::sMouseCursorDeltaX = 0.0f;
     Input::sMouseCursorDeltaY = 0.0f;
@@ -160,7 +177,49 @@ void Application::set_cursor_mode_normal()
 
 void Application::set_cursor_mode_disabled()
 {
-    glfwSetInputMode(mWindow->handle, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+    GLFWwindow* wh = mObj->window.handle;
+
+    glfwSetInputMode(wh, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+}
+
+ApplicationObj::ApplicationObj(const ApplicationInfo& appI)
+    : isAlive(true)
+{
+    Timer timer;
+    timer.start();
+
+    int result = glfwInit();
+    LD_ASSERT(result == GLFW_TRUE);
+
+    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+    glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+
+    window.handle = glfwCreateWindow((int)appI.width, (int)appI.height, appI.name, nullptr, nullptr);
+    window.width = appI.width;
+    window.height = appI.height;
+    glfwSetKeyCallback(window.handle, &Window::key_callback);
+    glfwSetMouseButtonCallback(window.handle, &Window::mouse_button_callback);
+
+    RDeviceInfo rdeviceI{
+        .backend = RDEVICE_BACKEND_VULKAN,
+        .window = window.handle,
+    };
+    rdevice = RDevice::create(rdeviceI);
+
+    sLog.info("application ctor {:.3f}s", timer.stop() / 1000000.0f);
+}
+
+ApplicationObj::~ApplicationObj()
+{
+    Timer timer;
+    timer.start();
+
+    RDevice::destroy(rdevice);
+
+    glfwDestroyWindow(window.handle);
+    glfwTerminate();
+
+    sLog.info("application dtor {:.3f}s", timer.stop() / 1000000.0f);
 }
 
 } // namespace LD

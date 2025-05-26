@@ -4,6 +4,7 @@
 #include <format>
 #include <iostream>
 #include <unordered_map>
+#include <cstring>
 
 namespace LD {
 

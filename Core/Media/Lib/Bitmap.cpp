@@ -3,7 +3,9 @@
 #include <Ludens/Media/Bitmap.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/System/Memory.h>
+#include <Ludens/Header/Types.h>
 #include <cstring>
+#include <vector>
 #include <filesystem>
 #include <stb/stb_image.h>
 #include <stb/stb_image_write.h>

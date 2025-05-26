@@ -2,6 +2,7 @@
 
 #include <Ludens/Media/Model.h>
 #include <algorithm>
+#include <cstdint>
 
 namespace LD {
 
@@ -68,7 +69,7 @@ static inline uint32_t get_rect_vertex_control_bits(int imageIdx, RectVertexImag
 }
 
 /// @brief helper to accumulate RectVertex data on the CPU side
-template <typename uint32_t TMaxRectCount>
+template <uint32_t TMaxRectCount>
 class RectVertexBatch
 {
 public:
@@ -142,7 +143,7 @@ static inline void get_point_vertex_attributes(std::vector<RVertexAttribute>& at
 }
 
 /// @brief helper to accumulate PointVertex data on the CPU side
-template <typename uint32_t TMaxPointCount>
+template <uint32_t TMaxPointCount>
 class PointVertexBatch
 {
 public:

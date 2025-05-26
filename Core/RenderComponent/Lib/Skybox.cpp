@@ -110,7 +110,7 @@ struct SkyboxComponentObj
 
     static void on_release(void* user);
     static void on_graphics_pass(RGraphicsPass pass, RCommandList list, void* userData);
-} sCompObj;
+} sSBCompObj;
 
 void SkyboxComponentObj::init(RDevice device)
 {
@@ -187,7 +187,7 @@ SkyboxComponent SkyboxComponent::add(RGraph graph, RFormat cFormat, RFormat dsFo
 {
     LD_PROFILE_SCOPE;
 
-    SkyboxComponentObj* compObj = &sCompObj;
+    SkyboxComponentObj* compObj = &sSBCompObj;
     RDevice device = graph.get_device();
 
     compObj->init(device);

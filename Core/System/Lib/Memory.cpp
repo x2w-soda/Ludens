@@ -1,5 +1,6 @@
 #include <Ludens/Header/Assert.h>
 #include <Ludens/System/Memory.h>
+#include <algorithm>
 #include <new>
 
 namespace LD {

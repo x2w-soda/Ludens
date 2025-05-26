@@ -42,7 +42,7 @@ struct ForwardRenderComponentObj
 
     static void on_release(void* user);
     static void on_graphics_pass(RGraphicsPass pass, RCommandList list, void* userData);
-} sCompObj;
+} sFRCompObj;
 
 void ForwardRenderComponentObj::init(RDevice device)
 {
@@ -167,7 +167,7 @@ ForwardRenderComponent ForwardRenderComponent::add(RGraph graph, const ForwardRe
 {
     LD_PROFILE_SCOPE;
 
-    ForwardRenderComponentObj* compObj = &sCompObj;
+    ForwardRenderComponentObj* compObj = &sFRCompObj;
     RDevice device = graph.get_device();
     compObj->init(device);
     compObj->frameIdx = device.get_frame_index();

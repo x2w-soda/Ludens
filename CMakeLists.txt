@@ -44,8 +44,7 @@ FetchContent_Declare(
 set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
 set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
-FetchContent_Populate(glfw)
-add_subdirectory(${glfw_SOURCE_DIR} glfw_build)
+FetchContent_MakeAvailable(glfw)
 message(STATUS "LUDENS GLFW SOURCE DIR:     ${glfw_SOURCE_DIR}")
 
 ## Fetch ZLib
@@ -57,9 +56,8 @@ FetchContent_Declare(
 )
 set(ZLIB_BUILD_STATIC   ON)
 set(ZLIB_BUILD_SHARED   OFF)
-FetchContent_Populate(zlib)
+FetchContent_MakeAvailable(zlib)
 message(STATUS "LUDENS ZLIB SOURCE DIR:     ${zlib_SOURCE_DIR}")
-add_subdirectory(${zlib_SOURCE_DIR} zlib_build)
 
 set(ZLIB_LIBRARY       zlibstatic         CACHE INTERNAL "")
 set(ZLIB_INCLUDE_DIR   ${zlib_SOURCE_DIR} CACHE INTERNAL "")
@@ -76,9 +74,8 @@ FetchContent_Declare(
 set(PNG_STATIC   ON  CACHE BOOL "" FORCE)
 set(PNG_SHARED   OFF CACHE BOOL "" FORCE)
 set(PNG_TESTS    OFF CACHE BOOL "" FORCE)
-FetchContent_Populate(libpng)
+FetchContent_MakeAvailable(libpng)
 message(STATUS "LUDENS LIBPNG SOURCE DIR:   ${libpng_SOURCE_DIR}")
-add_subdirectory(${libpng_SOURCE_DIR} libpng_build)
 configure_file("${libpng_SOURCE_DIR}/scripts/pnglibconf.h.prebuilt" "${libpng_SOURCE_DIR}/pnglibconf.h" COPYONLY)
 
 set(PNG_LIBRARY png_static                   CACHE INTERNAL "")
@@ -97,9 +94,9 @@ set(FT_DISABLE_BZIP2      ON CACHE BOOL "" FORCE)
 set(FT_DISABLE_HARFBUZZ   ON CACHE BOOL "" FORCE)
 set(FT_DISABLE_BROTLI     ON CACHE BOOL "" FORCE)
 set(SKIP_INSTALL_ALL      ON CACHE BOOL "" FORCE)
-FetchContent_Populate(freetype)
+FetchContent_MakeAvailable(freetype)
 message(STATUS "LUDENS freetype SOURCE DIR: ${freetype_SOURCE_DIR}")
-add_subdirectory(${freetype_SOURCE_DIR} freetype_build)
+#add_subdirectory(${freetype_SOURCE_DIR} freetype_build)
 
 set(FREETYPE_LIBRARY freetype CACHE INTERNAL "")
 set(FREETYPE_INCLUDE_DIR_ft2build "${freetype_INCLUDE_DIR}/include" CACHE INTERNAL "")
@@ -126,10 +123,9 @@ set(MSDFGEN_USE_SKIA        OFF CACHE BOOL "" FORCE)
 set(MSDFGEN_DISABLE_PNG     ON  CACHE BOOL "" FORCE)
 set(MSDFGEN_DISABLE_SVG     ON  CACHE BOOL "" FORCE)
 set(MSDFGEN_DYNAMIC_RUNTIME ON  CACHE BOOL "" FORCE)
-FetchContent_Populate(msdfgen)
+FetchContent_MakeAvailable(msdfgen)
 message(STATUS "LUDENS msdfgen SOURCE DIR: ${msdfgen_SOURCE_DIR}")
-add_subdirectory(${msdfgen_SOURCE_DIR} msdfgen_build)
-
+#add_subdirectory(${msdfgen_SOURCE_DIR} msdfgen_build)
 
 ## Fetch msdf atlas gen
 
@@ -143,9 +139,9 @@ set(MSDF_ATLAS_USE_VCPKG          OFF CACHE BOOL "" FORCE)
 set(MSDF_ATLAS_MSDFGEN_EXTERNAL   ON  CACHE BOOL "" FORCE)
 set(MSDF_ATLAS_NO_ARTERY_FONT     ON  CACHE BOOL "" FORCE)
 set(MSDF_ATLAS_DYNAMIC_RUNTIME    ON  CACHE BOOL "" FORCE)
-FetchContent_Populate(msdfatlasgen)
+FetchContent_MakeAvailable(msdfatlasgen)
 message(STATUS "LUDENS msdf-atlas-gen SOURCE DIR: ${msdfgen_SOURCE_DIR}")
-add_subdirectory(${msdfatlasgen_SOURCE_DIR} msdfatlasgen_build)
+#add_subdirectory(${msdfatlasgen_SOURCE_DIR} msdfatlasgen_build)
 
 ## Fetch tinygltf
 
@@ -162,9 +158,9 @@ set(TINYGLTF_BUILD_BUILDER_EXAMPLE    OFF CACHE BOOL "" FORCE)
 set(TINYGLTF_HEADER_ONLY              OFF CACHE BOOL "" FORCE)
 set(TINYGLTF_INSTALL                  OFF CACHE BOOL "" FORCE)
 set(TINYGLTF_INSTALL_VENDOR           OFF CACHE BOOL "" FORCE)
-FetchContent_Populate(tinygltf)
+FetchContent_MakeAvailable(tinygltf)
 message(STATUS "LUDENS tinygltf SOURCE DIR: ${tinygltf_SOURCE_DIR}")
-add_subdirectory(${tinygltf_SOURCE_DIR} tinygltf_build)
+#add_subdirectory(${tinygltf_SOURCE_DIR} tinygltf_build)
 target_link_libraries(tinygltf PUBLIC stb)
 
 ## Fetch Tracy Profiler
@@ -173,11 +169,11 @@ FetchContent_Declare(
   GIT_REPOSITORY https://github.com/wolfpld/tracy.git
   GIT_TAG v0.11.1
 )
-FetchContent_Populate(tracy)
+FetchContent_MakeAvailable(tracy)
 message(STATUS "LUDENS tracy SOURCE DIR:    ${tracy_SOURCE_DIR}")
 if (LD_COMPILE_WITH_PROFILER)
   set(TRACY_ENABLE ON CACHE INTERNAL "")
-  add_subdirectory(${tracy_SOURCE_DIR} tracy_build)
+  #add_subdirectory(${tracy_SOURCE_DIR} tracy_build)
 else()
   set(TRACY_ENABLE OFF CACHE INTERNAL "")
 endif()

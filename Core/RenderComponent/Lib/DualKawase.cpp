@@ -114,7 +114,7 @@ struct DualKawaseComponentObj
     static void on_down_sample(RGraphicsPass pass, RCommandList list, void* user);
     static void on_up_sample(RGraphicsPass pass, RCommandList list, void* user);
 
-} sCompObj;
+} sDKCompObj;
 
 void DualKawaseComponentObj::init(RDevice device, RFormat format, uint32_t width, uint32_t height)
 {
@@ -280,11 +280,11 @@ DualKawaseComponent DualKawaseComponent::add(RGraph graph, RFormat format, uint3
 
     RDevice device = graph.get_device();
 
-    sCompObj.init(device, format, width, height);
-    sCompObj.mipLevel = 0;
-    sCompObj.frameIdx = device.get_frame_index();
+    sDKCompObj.init(device, format, width, height);
+    sDKCompObj.mipLevel = 0;
+    sDKCompObj.frameIdx = device.get_frame_index();
 
-    DualKawaseComponent kawaseComp(&sCompObj);
+    DualKawaseComponent kawaseComp(&sDKCompObj);
     RSamplerInfo sampler = {RFILTER_LINEAR, RFILTER_LINEAR, RSAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE};
 
     RComponent comp = graph.add_component(kawaseComp.component_name());
@@ -310,7 +310,7 @@ DualKawaseComponent DualKawaseComponent::add(RGraph graph, RFormat format, uint3
         gpI.width = mipWidth;
         gpI.height = mipHeight;
         gpI.name = passName.c_str();
-        RGraphicsPass downSamplePass = comp.add_graphics_pass(gpI, &sCompObj, &DualKawaseComponentObj::on_down_sample);
+        RGraphicsPass downSamplePass = comp.add_graphics_pass(gpI, &sDKCompObj, &DualKawaseComponentObj::on_down_sample);
 
         if (i == 0)
         {
@@ -339,7 +339,7 @@ DualKawaseComponent DualKawaseComponent::add(RGraph graph, RFormat format, uint3
         gpI.width = mipWidth;
         gpI.height = mipHeight;
         gpI.name = passName.c_str();
-        RGraphicsPass upSamplePass = comp.add_graphics_pass(gpI, &sCompObj, &DualKawaseComponentObj::on_up_sample);
+        RGraphicsPass upSamplePass = comp.add_graphics_pass(gpI, &sDKCompObj, &DualKawaseComponentObj::on_up_sample);
 
         if (i == 0)
         {

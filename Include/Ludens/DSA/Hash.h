@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <utility>
+#include <functional>
 
 namespace LD {
 

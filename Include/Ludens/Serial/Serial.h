@@ -5,6 +5,7 @@
 #include <Ludens/Header/Math/Vec4.h>
 #include <Ludens/System/Memory.h>
 #include <cstdint>
+#include <cstring>
 
 namespace LD {
 

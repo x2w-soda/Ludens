@@ -14,7 +14,7 @@
 # define LD_SSE4_1
 #endif
 
-#if defined(LD_SSE2) && defined(LD_COMPILER_MSVC)
+#if defined(LD_SSE2)
 # include <emmintrin.h>
 # include <xmmintrin.h>
 #endif

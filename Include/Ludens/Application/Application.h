@@ -1,7 +1,7 @@
 #pragma once
 
-#include <cstdint>
 #include <Ludens/RenderBackend/RBackend.h>
+#include <cstdint>
 
 namespace LD {
 
@@ -12,17 +12,22 @@ struct ApplicationInfo
     uint32_t height;
 };
 
-/// @brief A windowed application
+/// @brief handle of a windowed application
 class Application
 {
 public:
     Application() = delete;
-    Application(const ApplicationInfo& appI);
-    Application(const Application&) = delete;
 
-    Application& operator=(const Application&) = delete;
+    /// @brief create application singleton
+    /// @param appI application info
+    /// @return handle to the singleton application
+    static Application create(const ApplicationInfo& appI);
 
-    ~Application();
+    /// @brief destroy application singleton
+    static void destroy();
+
+    /// @brief get singleton handle
+    static Application get();
 
     /// @brief get window width
     uint32_t width() const;
@@ -33,18 +38,28 @@ public:
     /// @brief get window aspect ratio
     float aspect_ratio() const;
 
+    /// @brief chech whether the window is still active
     bool is_window_open();
+
+    /// @brief poll window events
     void poll_events();
+
+    /// @brief get render device
     RDevice get_rdevice();
 
     /// @brief get time in seconds since the Application is created
     double get_time();
 
+    /// @brief signal the last frame of the application, closes window after the current frame is completed
+    void exit();
+
     void set_cursor_mode_normal();
     void set_cursor_mode_disabled();
 
 private:
-    struct Window* mWindow;
+    Application(struct ApplicationObj* obj);
+
+    struct ApplicationObj* mObj;
 };
 
 } // namespace LD
