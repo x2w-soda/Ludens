@@ -285,7 +285,7 @@ void vk_create_device(RDeviceObj* self, const RDeviceInfo& deviceI)
     create_vma_allocator(self);
 
     // create swapchain
-    SwapchainInfo swapchainI;
+    SwapchainInfo swapchainI{.vsyncHint = deviceI.vsync};
     configure_swapchain(self, &swapchainI);
     create_swapchain(self, swapchainI);
 
@@ -1796,8 +1796,17 @@ static void configure_swapchain(RDeviceObj* obj, SwapchainInfo* swapchainI)
 
     for (VkPresentModeKHR& mode : pdevice.presentModes)
     {
-        if (mode == VK_PRESENT_MODE_MAILBOX_KHR) // vsynced
+        if (swapchainI->vsyncHint && mode == VK_PRESENT_MODE_MAILBOX_KHR) // preferred vsync mode
+        {
             swapchainI->presentMode = mode;
+            break;
+        }
+
+        if (!swapchainI->vsyncHint && mode == VK_PRESENT_MODE_IMMEDIATE_KHR) // preferred non-vsync mode
+        {
+            swapchainI->presentMode = mode;
+            break;
+        }
     }
 }
 

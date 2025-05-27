@@ -10,6 +10,7 @@ struct ApplicationInfo
     const char* name;
     uint32_t width;
     uint32_t height;
+    bool vsync;
 };
 
 /// @brief handle of a windowed application

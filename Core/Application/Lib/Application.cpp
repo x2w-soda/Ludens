@@ -203,6 +203,7 @@ ApplicationObj::ApplicationObj(const ApplicationInfo& appI)
     RDeviceInfo rdeviceI{
         .backend = RDEVICE_BACKEND_VULKAN,
         .window = window.handle,
+        .vsync = appI.vsync,
     };
     rdevice = RDevice::create(rdeviceI);
 

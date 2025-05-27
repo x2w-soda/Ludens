@@ -535,6 +535,7 @@ struct RDeviceInfo
 {
     RDeviceBackend backend;
     GLFWwindow* window;
+    bool vsync;
 };
 
 /// @brief render device handle

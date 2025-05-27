@@ -42,6 +42,7 @@ struct SwapchainInfo
     VkFormat imageFormat;
     VkPresentModeKHR presentMode;
     VkColorSpaceKHR imageColorSpace;
+    bool vsyncHint;
 };
 
 /// @brief Vulkan Swapchain
