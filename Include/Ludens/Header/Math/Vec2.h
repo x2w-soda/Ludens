@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Ludens/Header/Math/Math.h>
+#include <type_traits>
 
 namespace LD {
 
@@ -11,10 +12,9 @@ struct TVec2
 	union { T x; T r; };
 	union { T y; T g; };
 
-	TVec2() : x((T)0), y((T)0) {}
+	TVec2() = default;
 	TVec2(T v) : x((T)v), y((T)v) {}
 	TVec2(T x, T y) : x((T)x), y((T)y) {}
-	TVec2(const TVec2& other) : x(other.x), y(other.y) {}
     // clang-format on
 
     inline T length_squared() const { return x * x + y * y; }
@@ -108,5 +108,9 @@ LD_VEC2_UNARY(-);
 using Vec2 = TVec2<float>;
 using IVec2 = TVec2<int>;
 using DVec2 = TVec2<double>;
+
+static_assert(std::is_trivially_constructible<Vec2>::value);
+static_assert(std::is_trivially_destructible<Vec2>::value);
+static_assert(std::is_trivially_copyable<Vec2>::value);
 
 } // namespace LD

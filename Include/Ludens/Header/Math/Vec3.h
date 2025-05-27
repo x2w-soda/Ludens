@@ -13,12 +13,11 @@ struct TVec3
 	union { T y; T g; };
 	union { T z; T b; };
 
-	TVec3() : x((T)0), y((T)0), z((T)0) {}
+	TVec3() = default;
 	TVec3(T v) : x((T)v), y((T)v), z((T)v) {}
 	TVec3(T x, T y, T z) : x((T)x), y((T)y), z((T)z) {}
     TVec3(T x, const TVec2<T>& v) : x((T)x), y(v.x), z(v.y) {}
     TVec3(const TVec2<T>& v, T z) : x(v.x), y(v.y), z((T)z) {}
-	TVec3(const TVec3& other) : x(other.x), y(other.y), z(other.z) {}
     // clang-format on
 
     inline T length_squared() const { return x * x + y * y + z * z; }
@@ -121,5 +120,9 @@ LD_VEC3_UNARY(-);
 using Vec3 = TVec3<float>;
 using IVec3 = TVec3<int>;
 using DVec3 = TVec3<double>;
+
+static_assert(std::is_trivially_constructible<Vec3>::value);
+static_assert(std::is_trivially_destructible<Vec3>::value);
+static_assert(std::is_trivially_copyable<Vec3>::value);
 
 } // namespace LD
