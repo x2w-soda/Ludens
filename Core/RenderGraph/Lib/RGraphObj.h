@@ -1,20 +1,12 @@
 #pragma once
 
-#include <Ludens/Header/Name.h>
+#include <Ludens/DSA/Hash.h>
 #include <Ludens/RenderGraph/RGraph.h>
 #include <optional>
 #include <unordered_map>
 #include <unordered_set>
 
 namespace LD {
-
-struct NameHash
-{
-    std::size_t operator()(const Name& name) const
-    {
-        return (std::size_t)name;
-    }
-};
 
 enum RGraphImageUsage
 {
@@ -35,7 +27,7 @@ enum NodeType
 struct GraphImage
 {
     NodeType type; /// node type in entire render graph
-    Name name;     /// declared name in component
+    Hash32 name;   /// declared name in component
     std::string debugName;
     RImageUsageFlags usage;
     RSamplerInfo sampler;
@@ -48,24 +40,24 @@ struct GraphImageRef
 {
     NodeType type;
     RComponentObj* srcComponent;
-    Name srcOutputName;
+    Hash32 srcOutputName;
 };
 
 struct RGraphicsPassColorAttachment
 {
-    Name name;
+    Hash32 name;
     std::optional<RClearColorValue> clearValue;
 };
 
 struct RGraphicsPassDepthStencilAttachment
 {
-    Name name;
+    Hash32 name;
     std::optional<RClearDepthStencilValue> clearValue;
 };
 
 struct RComponentPassObj
 {
-    Name name;
+    Hash32 name;
     std::string debugName;
     RComponent component;           /// owning component
     RPipelineStageFlags stageFlags; /// compute pass stages
@@ -85,7 +77,7 @@ struct RGraphicsPassObj : RComponentPassObj
     RGraphicsPassCallback callback;
     std::vector<RGraphicsPassColorAttachment> colorAttachments; /// graphics pass color attachment description
     std::vector<RPassColorAttachment> colorAttachmentInfos;     /// consumed by the render backend API
-    std::unordered_set<Name, NameHash> sampledImages;           /// all images sampled in this pass
+    std::unordered_set<Hash32> sampledImages;                   /// all images sampled in this pass
     RGraphicsPassDepthStencilAttachment depthStencilAttachment; /// graphics pass depth stencil attachment description
     RPassDepthStencilAttachment depthStencilAttachmentInfo;     /// consumed by the render backend API
     bool hasDepthStencil;
@@ -96,8 +88,8 @@ struct RGraphicsPassObj : RComponentPassObj
 
 struct RComputePassObj : RComponentPassObj
 {
-    RComputePassCallback callback;                    /// user callback for compute operations
-    std::unordered_set<Name, NameHash> storageImages; /// all storage images in this pass
+    RComputePassCallback callback;            /// user callback for compute operations
+    std::unordered_set<Hash32> storageImages; /// all storage images in this pass
 
     inline bool operator==(const RGraphicsPassObj& other) const { return name == other.name; }
     inline bool operator!=(const RGraphicsPassObj& other) const { return !operator==(other); }
@@ -105,12 +97,12 @@ struct RComputePassObj : RComponentPassObj
 
 struct RComponentObj
 {
-    Name name;
+    Hash32 name;
     std::string debugName;
     std::vector<RComponentPassObj*> passOrder;
-    std::unordered_map<Name, RComponentPassObj*, NameHash> passes; /// all passes declared this frame
-    std::unordered_map<Name, GraphImage, NameHash> images;         /// name to images declared in this frame
-    std::unordered_map<Name, GraphImageRef, NameHash> imageRefs;
+    std::unordered_map<Hash32, RComponentPassObj*> passes; /// all passes declared this frame
+    std::unordered_map<Hash32, GraphImage> images;         /// name to images declared in this frame
+    std::unordered_map<Hash32, GraphImageRef> imageRefs;
 
     inline bool operator==(const RComponentObj& other) const { return name == other.name; }
     inline bool operator!=(const RComponentObj& other) const { return !operator==(other); }
@@ -120,10 +112,10 @@ struct RGraphObj
 {
     RGraphInfo info;
     RCommandList list;
-    std::unordered_map<Name, RComponent, NameHash> components;
+    std::unordered_map<Hash32, RComponent> components;
     std::vector<RComponentPassObj*> passOrder;
     RComponentObj* blitCompObj;
-    Name blitOutputName;
+    Hash32 blitOutputName;
 };
 
 } // namespace LD

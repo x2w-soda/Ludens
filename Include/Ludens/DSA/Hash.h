@@ -1,8 +1,9 @@
 #pragma once
 
 #include <cstdint>
-#include <utility>
 #include <functional>
+#include <string>
+#include <utility>
 
 namespace LD {
 
@@ -27,4 +28,46 @@ inline uint32_t hash32_FNV_1a(const char* bytes, int length)
     return hash;
 }
 
+/// @brief 32-bit hash value
+class Hash32
+{
+public:
+    Hash32() : mHash(0) {}
+
+    Hash32(const std::string& str)
+        : mHash(hash32_FNV_1a(str.data(), str.size()))
+    {
+    }
+
+    Hash32(std::string&& str)
+        : mHash(hash32_FNV_1a(str.data(), str.size()))
+    {
+    }
+
+    Hash32(const char* cstr)
+        : mHash(hash32_FNV_1a(cstr, strlen(cstr)))
+    {
+    }
+
+    inline operator uint32_t() const { return mHash; }
+    inline bool operator==(const Hash32& other) const { return mHash == other.mHash; }
+    inline bool operator!=(const Hash32& other) const { return mHash != other.mHash; }
+
+private:
+    uint32_t mHash;
+};
+
 } // namespace LD
+
+namespace std {
+
+template <>
+struct hash<LD::Hash32>
+{
+    size_t operator()(const LD::Hash32& s) const
+    {
+        return (size_t)s;
+    }
+};
+
+} // namespace std

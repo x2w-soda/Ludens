@@ -60,7 +60,7 @@ static bool has_pass_dependency(RComponentPassObj* srcObj, RComponentPassObj* ds
 }
 
 /// @brief returns false upon invalid input
-static inline bool check_pass_image(RComponentPassObj* passObj, Name name)
+static inline bool check_pass_image(RComponentPassObj* passObj, Hash32 name)
 {
     RComponentObj* compObj = passObj->component;
 
@@ -97,14 +97,14 @@ static inline bool check_loadop_clear_value(RAttachmentLoadOp loadOp, const void
     return true;
 }
 
-static GraphImage& dereference_image(RComponentObj** compObj, Name* name)
+static GraphImage& dereference_image(RComponentObj** compObj, Hash32* name)
 {
     LD_ASSERT(compObj && name);
 
     if ((*compObj)->imageRefs.contains(*name))
     {
         RComponentObj* srcCompObj = (*compObj)->imageRefs[*name].srcComponent;
-        Name srcOutName = (*compObj)->imageRefs[*name].srcOutputName;
+        Hash32 srcOutName = (*compObj)->imageRefs[*name].srcOutputName;
 
         *compObj = srcCompObj;
         *name = srcOutName;
@@ -135,7 +135,7 @@ static RImageUsageFlags get_native_image_usage(RGraphImageUsage renderGraphUsage
 }
 
 /// @brief hash of an image based on physical dimensions and declared name
-static uint32_t get_image_hash(RImageUsageFlags usage, RFormat format, Name name)
+static uint32_t get_image_hash(RImageUsageFlags usage, RFormat format, Hash32 name)
 {
     std::size_t hash = (std::size_t)usage;
 
@@ -146,7 +146,7 @@ static uint32_t get_image_hash(RImageUsageFlags usage, RFormat format, Name name
 }
 
 /// @brief associates user declared name with actual image resource
-static RImage get_or_create_image(RGraphObj* graphObj, RComponentObj* compObj, Name name)
+static RImage get_or_create_image(RGraphObj* graphObj, RComponentObj* compObj, Hash32 name)
 {
     LD_PROFILE_SCOPE;
 
@@ -229,7 +229,7 @@ static void topological_visit(std::unordered_set<uint32_t>& visited, std::vector
 }
 
 /// @brief sort all graphics passes in dependency order
-static void topological_sort(const std::unordered_map<Name, RComponent, NameHash>& components, std::vector<RComponentPassObj*>& order)
+static void topological_sort(const std::unordered_map<Hash32, RComponent>& components, std::vector<RComponentPassObj*>& order)
 {
     LD_PROFILE_SCOPE;
 
@@ -288,12 +288,12 @@ static void save_graph_to_dot(RGraphObj* graphObj, const char* path)
     std::cout << "save_graph_to_dot: written to " << path << std::endl;
 }
 
-Name RGraphicsPass::name() const
+Hash32 RGraphicsPass::name() const
 {
     return mObj->name;
 }
 
-void RGraphicsPass::use_image_sampled(Name name)
+void RGraphicsPass::use_image_sampled(Hash32 name)
 {
     LD_PROFILE_SCOPE;
 
@@ -314,7 +314,7 @@ void RGraphicsPass::use_image_sampled(Name name)
     // if existing passes in the component also use this image, check for dependencies
     for (RComponentPassObj* srcPassObj : compObj->passOrder)
     {
-        Name srcPassName = srcPassObj->name;
+        Hash32 srcPassName = srcPassObj->name;
 
         if (mObj->name == srcPassName)
             break;
@@ -324,7 +324,7 @@ void RGraphicsPass::use_image_sampled(Name name)
     }
 }
 
-void RGraphicsPass::use_color_attachment(Name name, RAttachmentLoadOp loadOp, const RClearColorValue* clear)
+void RGraphicsPass::use_color_attachment(Hash32 name, RAttachmentLoadOp loadOp, const RClearColorValue* clear)
 {
     LD_PROFILE_SCOPE;
 
@@ -365,7 +365,7 @@ void RGraphicsPass::use_color_attachment(Name name, RAttachmentLoadOp loadOp, co
     // if existing passes in the component also use this image, check for dependencies
     for (RComponentPassObj* srcPassObj : compObj->passOrder)
     {
-        Name srcPassName = srcPassObj->name;
+        Hash32 srcPassName = srcPassObj->name;
 
         if (mObj->name == srcPassName)
             break;
@@ -375,7 +375,7 @@ void RGraphicsPass::use_color_attachment(Name name, RAttachmentLoadOp loadOp, co
     }
 }
 
-void RGraphicsPass::use_depth_stencil_attachment(Name name, RAttachmentLoadOp loadOp, const RClearDepthStencilValue* clear)
+void RGraphicsPass::use_depth_stencil_attachment(Hash32 name, RAttachmentLoadOp loadOp, const RClearDepthStencilValue* clear)
 {
     LD_PROFILE_SCOPE;
 
@@ -418,7 +418,7 @@ void RGraphicsPass::use_depth_stencil_attachment(Name name, RAttachmentLoadOp lo
     mObj->stageFlags |= RPIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | RPIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
 }
 
-RImage RGraphicsPass::get_image(Name name, RImageLayout* layout)
+RImage RGraphicsPass::get_image(Hash32 name, RImageLayout* layout)
 {
     if (!mObj->isCallbackScope)
     {
@@ -438,12 +438,12 @@ RImage RGraphicsPass::get_image(Name name, RImageLayout* layout)
     return imageHandle;
 }
 
-Name RComputePass::name() const
+Hash32 RComputePass::name() const
 {
     return mObj->name;
 }
 
-void RComputePass::use_image_storage_read_only(Name name)
+void RComputePass::use_image_storage_read_only(Hash32 name)
 {
     LD_PROFILE_SCOPE;
 
@@ -464,7 +464,7 @@ void RComputePass::use_image_storage_read_only(Name name)
     mObj->stageFlags |= RPIPELINE_STAGE_COMPUTE_SHADER_BIT;
 }
 
-RImage RComputePass::get_image(Name name)
+RImage RComputePass::get_image(Hash32 name)
 {
     if (!mObj->isCallbackScope)
     {
@@ -481,14 +481,14 @@ RImage RComputePass::get_image(Name name)
     return imageHandle;
 }
 
-Name RComponent::name() const
+Hash32 RComponent::name() const
 {
     return mObj->name;
 }
 
 void RComponent::add_private_image(const char* nameStr, RFormat format, uint32_t width, uint32_t height, RSamplerInfo* sampler)
 {
-    Name name(nameStr);
+    Hash32 name(nameStr);
 
     if (mObj->images.contains(name))
     {
@@ -520,7 +520,7 @@ void RComponent::add_private_image(const char* nameStr, RFormat format, uint32_t
 
 void RComponent::add_output_image(const char* nameStr, RFormat format, uint32_t width, uint32_t height, RSamplerInfo* sampler)
 {
-    Name name(nameStr);
+    Hash32 name(nameStr);
 
     if (mObj->images.contains(name))
     {
@@ -552,7 +552,7 @@ void RComponent::add_output_image(const char* nameStr, RFormat format, uint32_t 
 
 void RComponent::add_input_image(const char* nameStr, RFormat format, uint32_t width, uint32_t height)
 {
-    Name name(nameStr);
+    Hash32 name(nameStr);
 
     if (mObj->images.contains(name))
     {
@@ -573,7 +573,7 @@ void RComponent::add_input_image(const char* nameStr, RFormat format, uint32_t w
 
 void RComponent::add_io_image(const char* nameStr, RFormat format, uint32_t width, uint32_t height)
 {
-    Name name(nameStr);
+    Hash32 name(nameStr);
 
     if (mObj->images.contains(name))
     {
@@ -598,7 +598,7 @@ RGraphicsPass RComponent::add_graphics_pass(const RGraphicsPassInfo& gpI, void* 
 
     // TODO: linear allocator and placement new?
     RGraphicsPassObj* obj = heap_new<RGraphicsPassObj>(MEMORY_USAGE_RENDER);
-    obj->name = Name(gpI.name);
+    obj->name = Hash32(gpI.name);
     obj->debugName = gpI.name;
     obj->width = gpI.width;
     obj->height = gpI.height;
@@ -622,7 +622,7 @@ RComputePass RComponent::add_compute_pass(const RComputePassInfo& cpI, void* use
     LD_PROFILE_SCOPE;
 
     RComputePassObj* obj = heap_new<RComputePassObj>(MEMORY_USAGE_RENDER);
-    obj->name = Name(cpI.name);
+    obj->name = Hash32(cpI.name);
     obj->debugName = cpI.name;
     obj->userData = userData;
     obj->callback = callback;
@@ -725,7 +725,7 @@ RComponent RGraph::add_component(const char* nameStr)
 
     // TODO: linear allocator + placement new?
     RComponentObj* comp = heap_new<RComponentObj>(MEMORY_USAGE_RENDER);
-    comp->name = Name(nameStr);
+    comp->name = Hash32(nameStr);
     comp->debugName = nameStr;
 
     mObj->components[comp->name] = {comp};
@@ -737,10 +737,10 @@ void RGraph::connect_image(const char* srcCompStr, const char* srcOutImageStr, c
 {
     LD_PROFILE_SCOPE;
 
-    Name srcComp(srcCompStr);
-    Name dstComp(dstCompStr);
-    Name srcOutImage(srcOutImageStr);
-    Name dstInImage(dstInImageStr);
+    Hash32 srcComp(srcCompStr);
+    Hash32 dstComp(dstCompStr);
+    Hash32 srcOutImage(srcOutImageStr);
+    Hash32 dstInImage(dstInImageStr);
 
     if (!mObj->components.contains(srcComp))
     {
@@ -797,8 +797,8 @@ void RGraph::connect_image(const char* srcCompStr, const char* srcOutImageStr, c
 
 void RGraph::connect_swapchain_image(const char* srcCompStr, const char* srcOutImageStr)
 {
-    Name srcComp(srcCompStr);
-    Name srcOutImage(srcOutImageStr);
+    Hash32 srcComp(srcCompStr);
+    Hash32 srcOutImage(srcOutImageStr);
 
     RComponentObj* srcCompObj = mObj->components[srcComp];
 
@@ -836,7 +836,7 @@ void RGraph::submit(bool save)
 
             // perform image layout transitions for storage images before dispatch,
             // storage images need to be in RIMAGE_LAYOUT_GENERAL
-            for (Name imageName : passObj->storageImages)
+            for (Hash32 imageName : passObj->storageImages)
             {
                 LD_PROFILE_SCOPE_NAME("compute pass storage images");
 
@@ -882,7 +882,7 @@ void RGraph::submit(bool save)
             RGraphicsPassColorAttachment* attachment = passObj->colorAttachments.data() + colorIdx;
             RPassColorAttachment* attachmentInfo = passObj->colorAttachmentInfos.data() + colorIdx;
 
-            Name srcOutputName = attachment->name;
+            Hash32 srcOutputName = attachment->name;
             RComponentObj* srcCompObj = compObj;
             dereference_image(&srcCompObj, &srcOutputName);
             RImage imageHandle = get_or_create_image(mObj, srcCompObj, srcOutputName);
@@ -910,7 +910,7 @@ void RGraph::submit(bool save)
         // retrieve depth stencil attachment handle
         if (passObj->hasDepthStencil)
         {
-            Name srcOutputName = passObj->depthStencilAttachment.name;
+            Hash32 srcOutputName = passObj->depthStencilAttachment.name;
             RComponentObj* srcCompObj = compObj;
             dereference_image(&srcCompObj, &srcOutputName);
             RImage imageHandle = get_or_create_image(mObj, srcCompObj, srcOutputName);
@@ -941,7 +941,7 @@ void RGraph::submit(bool save)
             passI.dependency = &passObj->passDep;
 
         // perform image layout transitions for sampled images, right before render pass
-        for (Name imageName : passObj->sampledImages)
+        for (Hash32 imageName : passObj->sampledImages)
         {
             LD_PROFILE_SCOPE_NAME("render pass sampled images");
 

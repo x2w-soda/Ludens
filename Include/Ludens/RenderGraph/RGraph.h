@@ -1,7 +1,7 @@
 #pragma once
 
-#include <Ludens/Header/Name.h>
 #include <Ludens/RenderBackend/RBackend.h>
+#include <Ludens/DSA/Hash.h>
 
 namespace LD {
 
@@ -15,25 +15,25 @@ struct RGraphicsPassInfo
 struct RGraphicsPass : RHandle<struct RGraphicsPassObj>
 {
     /// @brief get declared graphics pass name
-    Name name() const;
+    Hash32 name() const;
 
     /// @brief declare to use an image as sampled
-    void use_image_sampled(Name name);
+    void use_image_sampled(Hash32 name);
 
     /// @brief declare to use an image as color attachment
     /// @param name name of the color attachment declared in component
     /// @param loadOp what to do with the color attachment when the pass begins
     /// @param clear the clear value used if loadOp is RATTACHMENT_LOAD_OP_CLEAR
-    void use_color_attachment(Name name, RAttachmentLoadOp loadOp, const RClearColorValue* clear);
+    void use_color_attachment(Hash32 name, RAttachmentLoadOp loadOp, const RClearColorValue* clear);
 
     /// @brief declare to use an image as depth stencil attachment
     /// @param name name of the depth stencil attachment declared in component
     /// @param loadOp what to do with the depth stencil attachment when the pass begins
     /// @param clear the clear value used if loadOp is RATTACHMENT_LOAD_OP_CLEAR
-    void use_depth_stencil_attachment(Name name, RAttachmentLoadOp loadOp, const RClearDepthStencilValue* clear);
+    void use_depth_stencil_attachment(Hash32 name, RAttachmentLoadOp loadOp, const RClearDepthStencilValue* clear);
 
     /// @brief get the actual image declared by use_image
-    RImage get_image(Name name, RImageLayout* layout = nullptr);
+    RImage get_image(Hash32 name, RImageLayout* layout = nullptr);
 };
 
 typedef void (*RGraphicsPassCallback)(RGraphicsPass pass, RCommandList list, void* userData);
@@ -46,14 +46,14 @@ struct RComputePassInfo
 struct RComputePass : RHandle<struct RComputePassObj>
 {
     /// @brief get declared compute pass name
-    Name name() const;
+    Hash32 name() const;
 
     /// @brief declare to use a storage image as read only
     /// @param name name of the image declared in component
-    void use_image_storage_read_only(Name name);
+    void use_image_storage_read_only(Hash32 name);
 
     /// @brief get the actual image declared by use_image
-    RImage get_image(Name name);
+    RImage get_image(Hash32 name);
 };
 
 typedef void (*RComputePassCallback)(RComputePass pass, RCommandList list, void* userData);
@@ -63,7 +63,7 @@ typedef void (*RComputePassCallback)(RComputePass pass, RCommandList list, void*
 struct RComponent : RHandle<struct RComponentObj>
 {
     /// @brief get declared component name
-    Name name() const;
+    Hash32 name() const;
 
     /// @brief declare an image that can only be used within the component
     void add_private_image(const char* name, RFormat format, uint32_t width, uint32_t height, RSamplerInfo* sampler = nullptr);
