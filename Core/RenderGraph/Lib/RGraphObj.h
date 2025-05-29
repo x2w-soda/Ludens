@@ -1,6 +1,6 @@
 #pragma once
 
-#include <Ludens/DSA/Hash.h>
+#include <Ludens/Header/Hash.h>
 #include <Ludens/RenderGraph/RGraph.h>
 #include <optional>
 #include <unordered_map>

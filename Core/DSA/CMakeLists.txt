@@ -2,7 +2,6 @@ set(MODULE_NAME LDDSA)
 
 set(MODULE_INCLUDE
 	${LUDENS_INCLUDE_DIR}/Ludens/DSA/Buffer.h
-	${LUDENS_INCLUDE_DIR}/Ludens/DSA/Hash.h
 )
 
 set(MODULE_LIB

@@ -1,4 +1,4 @@
-#include <Ludens/DSA/Hash.h>
+#include <Ludens/Header/Hash.h>
 #include <Ludens/Log/Log.h>
 #include <Ludens/System/Memory.h>
 #include <format>

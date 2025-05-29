@@ -1,8 +1,8 @@
 #include "RBackendObj.h"
 #include "RShaderCompiler.h"
 #include "RUtilInternal.h"
-#include <Ludens/DSA/Hash.h>
 #include <Ludens/Header/Assert.h>
+#include <Ludens/Header/Hash.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/RenderBackend/RBackend.h>
 #include <Ludens/System/Memory.h>

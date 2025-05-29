@@ -1,7 +1,7 @@
 #pragma once
 
 #include <Ludens/RenderBackend/RBackend.h>
-#include <Ludens/DSA/Hash.h>
+#include <Ludens/Header/Hash.h>
 
 namespace LD {
 
