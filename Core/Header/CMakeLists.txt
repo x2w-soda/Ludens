@@ -21,6 +21,7 @@ set(MODULE_INCLUDE
 set(MODULE_TEST
     ${MODULE_INCLUDE}
     Test/HeaderTest.cpp
+    Test/TestHash.h
 )
 
 add_executable(${MODULE_TEST_NAME}

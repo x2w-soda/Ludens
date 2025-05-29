@@ -7,6 +7,7 @@
 #include <Ludens/Header/Math/Vec4.h>
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <Extra/doctest/doctest.h>
+#include "TestHash.h"
 
 using namespace LD;
 
@@ -41,7 +42,7 @@ TEST_CASE("Math")
 
 TEST_CASE("Vec2 ctor")
 {
-    IVec2 v;
+    IVec2 v{};
     CHECK(v.x == 0);
     CHECK(v.y == 0);
 
@@ -131,7 +132,7 @@ TEST_CASE("Vec2 operator")
 
 TEST_CASE("Vec3 ctor")
 {
-    IVec3 v;
+    IVec3 v{};
     CHECK(v.x == 0);
     CHECK(v.y == 0);
     CHECK(v.z == 0);
@@ -243,7 +244,7 @@ TEST_CASE("Vec3 method")
 
 TEST_CASE("Vec4 ctor")
 {
-    IVec4 v;
+    IVec4 v{};
     CHECK(v.x == 0);
     CHECK(v.y == 0);
     CHECK(v.z == 0);
