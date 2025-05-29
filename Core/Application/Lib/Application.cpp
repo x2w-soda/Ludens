@@ -114,6 +114,11 @@ bool Application::is_window_open()
     return mObj->isAlive && !glfwWindowShouldClose(mObj->window.handle);
 }
 
+void Application::set_window_title(const char* cstr)
+{
+    glfwSetWindowTitle(mObj->window.handle, cstr);
+}
+
 void Application::poll_events()
 {
     LD_PROFILE_SCOPE;

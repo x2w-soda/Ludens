@@ -41,6 +41,10 @@ public:
 
     /// @brief chech whether the window is still active
     bool is_window_open();
+    
+    /// @brief set window title name
+    /// @param cstr null terminated C string
+    void set_window_title(const char* cstr);
 
     /// @brief poll window events
     void poll_events();
