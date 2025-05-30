@@ -96,7 +96,6 @@ set(FT_DISABLE_BROTLI     ON CACHE BOOL "" FORCE)
 set(SKIP_INSTALL_ALL      ON CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(freetype)
 message(STATUS "LUDENS freetype SOURCE DIR: ${freetype_SOURCE_DIR}")
-#add_subdirectory(${freetype_SOURCE_DIR} freetype_build)
 
 set(FREETYPE_LIBRARY freetype CACHE INTERNAL "")
 set(FREETYPE_INCLUDE_DIR_ft2build "${freetype_INCLUDE_DIR}/include" CACHE INTERNAL "")
@@ -108,6 +107,17 @@ set_target_properties(Freetype::Freetype PROPERTIES
   INTERFACE_LINK_LIBRARIES freetype 
 )
 find_package(Freetype REQUIRED)
+
+## Fetch ZStandard
+
+FetchContent_Declare(
+  zstd
+  GIT_REPOSITORY https://github.com/facebook/zstd
+  GIT_TAG v1.5.7
+)
+FetchContent_MakeAvailable(zstd)
+message(STATUS "LUDENS zstd SOURCE DIR:     ${zstd_SOURCE_DIR}")
+add_subdirectory(${zstd_SOURCE_DIR}/build/cmake ${zstd_BINARY_DIR})
 
 ## Fetch msdfgen
 
@@ -125,7 +135,6 @@ set(MSDFGEN_DISABLE_SVG     ON  CACHE BOOL "" FORCE)
 set(MSDFGEN_DYNAMIC_RUNTIME ON  CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(msdfgen)
 message(STATUS "LUDENS msdfgen SOURCE DIR: ${msdfgen_SOURCE_DIR}")
-#add_subdirectory(${msdfgen_SOURCE_DIR} msdfgen_build)
 
 ## Fetch msdf atlas gen
 
@@ -141,7 +150,6 @@ set(MSDF_ATLAS_NO_ARTERY_FONT     ON  CACHE BOOL "" FORCE)
 set(MSDF_ATLAS_DYNAMIC_RUNTIME    ON  CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(msdfatlasgen)
 message(STATUS "LUDENS msdf-atlas-gen SOURCE DIR: ${msdfgen_SOURCE_DIR}")
-#add_subdirectory(${msdfatlasgen_SOURCE_DIR} msdfatlasgen_build)
 
 ## Fetch tinygltf
 
@@ -160,7 +168,6 @@ set(TINYGLTF_INSTALL                  OFF CACHE BOOL "" FORCE)
 set(TINYGLTF_INSTALL_VENDOR           OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(tinygltf)
 message(STATUS "LUDENS tinygltf SOURCE DIR: ${tinygltf_SOURCE_DIR}")
-#add_subdirectory(${tinygltf_SOURCE_DIR} tinygltf_build)
 target_link_libraries(tinygltf PUBLIC stb)
 
 ## Fetch Tracy Profiler
@@ -173,7 +180,6 @@ FetchContent_MakeAvailable(tracy)
 message(STATUS "LUDENS tracy SOURCE DIR:    ${tracy_SOURCE_DIR}")
 if (LD_COMPILE_WITH_PROFILER)
   set(TRACY_ENABLE ON CACHE INTERNAL "")
-  #add_subdirectory(${tracy_SOURCE_DIR} tracy_build)
 else()
   set(TRACY_ENABLE OFF CACHE INTERNAL "")
 endif()
