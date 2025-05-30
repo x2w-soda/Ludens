@@ -4,6 +4,7 @@ set(MODULE_TEST_NAME LDDSATest)
 set(MODULE_INCLUDE
 	${LUDENS_INCLUDE_DIR}/Ludens/DSA/Buffer.h
 	${LUDENS_INCLUDE_DIR}/Ludens/DSA/HeapStorage.h
+	${LUDENS_INCLUDE_DIR}/Ludens/DSA/Vector.h
 )
 
 set(MODULE_LIB
@@ -12,6 +13,7 @@ set(MODULE_LIB
 
 set(MODULE_TEST
 	Test/HeapStorageTest.h
+	Test/VectorTest.h
 	Test/DSATest.h
 	Test/DSATest.cpp
 )
