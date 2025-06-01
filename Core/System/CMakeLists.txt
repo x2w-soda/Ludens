@@ -5,12 +5,14 @@ set(MODULE_INCLUDE
 	${LUDENS_INCLUDE_DIR}/Ludens/System/Memory.h
 	${LUDENS_INCLUDE_DIR}/Ludens/System/Allocator.h
 	${LUDENS_INCLUDE_DIR}/Ludens/System/Timer.h
+	${LUDENS_INCLUDE_DIR}/Ludens/System/FileSystem.h
 )
 
 set(MODULE_LIB
 	Lib/Memory.cpp
 	Lib/Allocator.cpp
 	Lib/Timer.cpp
+	Lib/FileSystem.cpp
 )
 
 set(MODULE_TEST
