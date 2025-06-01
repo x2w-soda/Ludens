@@ -1,6 +1,7 @@
 #include <Ludens/Header/Assert.h>
 #include <Ludens/System/Memory.h>
 #include <algorithm>
+#include <mutex>
 #include <new>
 
 namespace LD {
@@ -12,6 +13,7 @@ struct MemoryHeader
 };
 
 static MemoryProfile sProfile[MEMORY_USAGE_ENUM_LAST];
+static std::mutex sProfileMutex[MEMORY_USAGE_ENUM_LAST];
 
 void* heap_malloc(std::size_t size, MemoryUsage usage)
 {
@@ -21,8 +23,12 @@ void* heap_malloc(std::size_t size, MemoryUsage usage)
     header->size = size;
     header->usage = usage;
 
-    sProfile[usage].current += size;
-    sProfile[usage].peak = std::max(sProfile[usage].peak, sProfile[usage].current);
+    {
+        std::unique_lock<std::mutex> lock(sProfileMutex[usage]);
+
+        sProfile[usage].current += size;
+        sProfile[usage].peak = std::max(sProfile[usage].peak, sProfile[usage].current);
+    }
 
     return (void*)(header + 1);
 }
@@ -31,7 +37,11 @@ void heap_free(void* ptr)
 {
     MemoryHeader* header = (MemoryHeader*)ptr - 1;
 
-    sProfile[header->usage].current -= header->size;
+    {
+        std::unique_lock<std::mutex> lock(sProfileMutex[header->usage]);
+
+        sProfile[header->usage].current -= header->size;
+    }
 
     std::free((void*)header);
 }
