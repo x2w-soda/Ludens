@@ -2,6 +2,7 @@
 #include <Ludens/RenderComponent/Layout/SetLayouts.h>
 #include <Ludens/RenderComponent/ScreenPick.h>
 #include <array>
+#include <cstring>
 #include <vector>
 
 #define MAX_QUERY_COUNT 8

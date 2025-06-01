@@ -23,6 +23,7 @@ target_link_libraries(${MODULE_NAME} PUBLIC
     msdfgen::msdfgen
     msdf-atlas-gen
     LDSystem
+    LDSerial
     LDProfiler
 )
 

@@ -12,7 +12,7 @@ namespace LD {
 class Serializer : public NonCopyable
 {
 public:
-    Serializer();
+    Serializer() = default;
     Serializer(size_t size, const byte* data);
 
     inline void write(const byte* bytes, size_t size)

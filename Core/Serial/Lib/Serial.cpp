@@ -2,8 +2,6 @@
 
 namespace LD {
 
-Serializer::Serializer() {}
-
 Serializer::Serializer(size_t size, const byte* data)
     : mReadPos(0)
 {
