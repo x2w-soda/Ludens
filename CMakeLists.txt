@@ -115,9 +115,23 @@ FetchContent_Declare(
   GIT_REPOSITORY https://github.com/facebook/zstd
   GIT_TAG v1.5.7
 )
+set(ZSTD_BUILD_SHARED  OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(zstd)
 message(STATUS "LUDENS zstd SOURCE DIR:     ${zstd_SOURCE_DIR}")
 add_subdirectory(${zstd_SOURCE_DIR}/build/cmake ${zstd_BINARY_DIR})
+
+## Fetch LZ4
+
+FetchContent_Declare(
+  lz4
+  GIT_REPOSITORY https://github.com/lz4/lz4
+  GIT_TAG v1.10.0
+)
+set(LZ4_BUILD_CLI         OFF CACHE BOOL "" FORCE)
+set(LZ4_BUILD_LEGACY_LZ4C OFF CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(lz4)
+message(STATUS "LUDENS lz4 SOURCE DIR:      ${lz4_SOURCE_DIR}")
+add_subdirectory(${lz4_SOURCE_DIR}/build/cmake ${lz4_BINARY_DIR})
 
 ## Fetch msdfgen
 
