@@ -1,14 +1,15 @@
+#include <Ludens/Header/Assert.h>
 #include <Ludens/Header/Bitwise.h>
 #include <Ludens/Header/Types.h>
 #include <Ludens/Media/Bitmap.h>
 #include <Ludens/Profiler/Profiler.h>
+#include <Ludens/Serial/Compress.h>
 #include <Ludens/System/Memory.h>
-#include <Ludens/Header/Types.h>
 #include <cstring>
-#include <vector>
 #include <filesystem>
 #include <stb/stb_image.h>
 #include <stb/stb_image_write.h>
+#include <vector>
 
 namespace LD {
 
@@ -159,7 +160,14 @@ void Bitmap::serialize(Serializer& serializer, const Bitmap& bitmap)
     serializer.write_u32((uint32_t)obj->channel);
 
     size_t dataSize = obj->width * obj->height * obj->channel;
-    serializer.write(obj->data, dataSize);
+    size_t sizeBound = lz4_compress_bound(dataSize);
+    std::vector<byte> compressed(sizeBound);
+    size_t us;
+    size_t cmpSize = lz4_compress(compressed.data(), compressed.size(), obj->data, dataSize);
+    compressed.resize(cmpSize);
+
+    serializer.write_u64((uint64_t)compressed.size());
+    serializer.write(compressed.data(), compressed.size());
 }
 
 void Bitmap::deserialize(Serializer& serializer, Bitmap& bitmap)
@@ -172,9 +180,16 @@ void Bitmap::deserialize(Serializer& serializer, Bitmap& bitmap)
     serializer.read_u32(height);
     serializer.read_u32((uint32_t&)channel);
 
+    uint64_t lz4BlockSize;
+    serializer.read_u64(lz4BlockSize);
+
+    const byte* lz4BlockData = serializer.view_now();
+    serializer.advance(lz4BlockSize);
+
     size_t dataSize = width * height * channel;
     std::vector<byte> pixels(dataSize);
-    serializer.read(pixels.data(), dataSize);
+    lz4_decompress(pixels.data(), pixels.size(), lz4BlockData, lz4BlockSize);
+
     bitmap = Bitmap::create_from_data(width, height, channel, pixels.data());
 }
 

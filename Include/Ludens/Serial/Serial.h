@@ -256,6 +256,18 @@ public:
         return mBuffer.data();
     }
 
+    inline const byte* view_now() const
+    {
+        return mBuffer.data() + mReadPos;
+    }
+
+    /// @brief advance the read pointer
+    /// @param dist number of bytes to advance
+    inline void advance(size_t dist)
+    {
+        mReadPos += dist;
+    }
+
 private:
     size_t mReadPos = 0;
     Buffer mBuffer;

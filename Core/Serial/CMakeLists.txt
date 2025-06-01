@@ -20,11 +20,13 @@ target_link_libraries(${MODULE_NAME} PUBLIC
 	LDDSA
 	LDProfiler
 	libzstd_static
+	lz4_static
 )
 
 target_include_directories(${MODULE_NAME} PRIVATE
 	${LUDENS_INCLUDE_DIR}
 	${zstd_SOURCE_DIR}/lib
+	${lz4_SOURCE_DIR}/lib
 )
 
 set(MODULE_TEST
