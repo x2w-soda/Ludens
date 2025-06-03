@@ -3,6 +3,7 @@
 #include "RUtilInternal.h"
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Header/Hash.h>
+#include <Ludens/Log/Log.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/RenderBackend/RBackend.h>
 #include <Ludens/System/Memory.h>
@@ -17,14 +18,14 @@
 #define VMA_IMPLEMENTATION
 #include <vk_mem_alloc.h> // hide from user
 
-#define VK_CHECK(CALL)                                             \
-    do                                                             \
-    {                                                              \
-        VkResult result_ = CALL;                                   \
-        if (result_ != VK_SUCCESS)                                 \
-        {                                                          \
-            printf("VK_CHECK failed with VkResult %d\n", result_); \
-        }                                                          \
+#define VK_CHECK(CALL)                                                    \
+    do                                                                    \
+    {                                                                     \
+        VkResult result_ = CALL;                                          \
+        if (result_ != VK_SUCCESS)                                        \
+        {                                                                 \
+            sLog.error("VK_CHECK failed with VkResult {}", (int)result_); \
+        }                                                                 \
     } while (0)
 
 // clang-format off
@@ -47,6 +48,8 @@ struct VulkanFrame
     RSemaphoreObj imageAcquiredObj;
     RSemaphoreObj presentReadyObj;
 } sVulkanFrames[FRAMES_IN_FLIGHT];
+
+static Log sLog("RBackendVK");
 
 static RSemaphore vk_device_create_semaphore(RDeviceObj* self, RSemaphoreObj* obj);
 static void vk_device_destroy_semaphore(RDeviceObj* self, RSemaphore semaphore);
@@ -238,13 +241,13 @@ void vk_create_device(RDeviceObj* self, const RDeviceInfo& deviceI)
 
     std::string queueFlags;
     RUtil::print_vk_queue_flags(pdevice.familyProps[familyIdxGraphics].queueFlags, queueFlags);
-    printf("Vulkan graphics queue family index %d: (%s)\n", familyIdxGraphics, queueFlags.c_str());
+    sLog.info("Vulkan graphics queue family index {}: ({})", familyIdxGraphics, queueFlags.c_str());
     RUtil::print_vk_queue_flags(pdevice.familyProps[familyIdxTransfer].queueFlags, queueFlags);
-    printf("Vulkan transfer queue family index %d: (%s)\n", familyIdxTransfer, queueFlags.c_str());
+    sLog.info("Vulkan transfer queue family index {}: ({})", familyIdxTransfer, queueFlags.c_str());
     RUtil::print_vk_queue_flags(pdevice.familyProps[familyIdxCompute].queueFlags, queueFlags);
-    printf("Vulkan compute queue family index %d:  (%s)\n", familyIdxCompute, queueFlags.c_str());
+    sLog.info("Vulkan compute queue family index {}:  ({})", familyIdxCompute, queueFlags.c_str());
     RUtil::print_vk_queue_flags(pdevice.familyProps[familyIdxPresent].queueFlags, queueFlags);
-    printf("Vulkan present queue family index %d:  (%s)\n", familyIdxPresent, queueFlags.c_str());
+    sLog.info("Vulkan present queue family index {}:  ({})", familyIdxPresent, queueFlags.c_str());
 
     // create a logical device and retrieve queue handles
     std::vector<const char*> desiredDeviceExts{
@@ -1713,7 +1716,7 @@ static void choose_physical_device(RDeviceObj* obj)
         obj->vk.pdevice.handle = handle;
 
         vkGetPhysicalDeviceProperties(pdevice.handle, &pdevice.deviceProps);
-        printf("VkPhysicalDevice: %s\n", pdevice.deviceProps.deviceName);
+        sLog.info("VkPhysicalDevice: {}", pdevice.deviceProps.deviceName);
 
         const VkPhysicalDeviceLimits& limits = pdevice.deviceProps.limits;
 
@@ -1872,12 +1875,12 @@ static void create_swapchain(RDeviceObj* obj, const SwapchainInfo& swapchainI)
     for (uint32_t i = 0; i < imageCount; i++)
         swp.colorAttachments[i] = create_swapchain_color_attachment(obj, swp.images[i], swp.info.imageFormat, swpExtent.width, swpExtent.height);
 
-    printf("Vulkan swapchain with %d images (hint %d, min %d, max %d)\n", (int)swp.images.size(),
-           (int)swapchainImageHint, (int)surfaceMinImageCount, (int)surfaceMaxImageCount);
+    sLog.info("Vulkan swapchain with {} images (hint {}, min {}, max {})", (int)swp.images.size(),
+              (int)swapchainImageHint, (int)surfaceMinImageCount, (int)surfaceMaxImageCount);
 
     std::string presentMode;
     RUtil::print_vk_present_mode(swp.info.presentMode, presentMode);
-    printf("Vulkan swapchain present mode  %s\n", presentMode.c_str());
+    sLog.info("Vulkan swapchain present mode  {}", presentMode);
 }
 
 static RImage create_swapchain_color_attachment(RDeviceObj* deviceObj, VkImage image, VkFormat colorFormat, uint32_t width, uint32_t height)

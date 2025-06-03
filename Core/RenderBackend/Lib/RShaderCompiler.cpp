@@ -1,5 +1,6 @@
 #include "RShaderCompiler.h"
 #include <Ludens/Header/Assert.h>
+#include <Ludens/Profiler/Profiler.h>
 #include <iostream>
 // hide from module user
 #include <glslang/Public/ResourceLimits.h>
@@ -19,6 +20,8 @@ static bool glslang_compile_glsl(glslang::EShClient client, glslang::EshTargetCl
 
     if (!hasInitialized)
     {
+        LD_PROFILE_SCOPE_NAME("glslang::InitializeProcess");
+
         glslang::InitializeProcess();
         hasInitialized = true;
     }
