@@ -21,6 +21,7 @@ struct ImageState
     RImage handle;
     uint32_t width;
     uint32_t height;
+    uint32_t depth;
     uint32_t hash;
 };
 
@@ -135,11 +136,14 @@ static RImageUsageFlags get_native_image_usage(RGraphImageUsage renderGraphUsage
 }
 
 /// @brief hash of an image based on physical dimensions and declared name
-static uint32_t get_image_hash(RImageUsageFlags usage, RFormat format, Hash32 name)
+static uint32_t get_image_hash(const RImageInfo& imageI, Hash32 name)
 {
-    std::size_t hash = (std::size_t)usage;
+    std::size_t hash = (std::size_t)imageI.usage;
 
-    hash_combine(hash, (uint32_t)format);
+    hash_combine(hash, (uint32_t)imageI.format);
+    hash_combine(hash, (uint32_t)imageI.width);
+    hash_combine(hash, (uint32_t)imageI.height);
+    hash_combine(hash, (uint32_t)imageI.depth);
     hash_combine(hash, (uint32_t)name);
 
     return (uint32_t)hash;
@@ -174,8 +178,9 @@ static RImage get_or_create_image(RGraphObj* graphObj, RComponentObj* compObj, H
     // size generalization: dont invalidate image when size shrinks
     imageI.width = std::max(state.width, imageI.width);
     imageI.height = std::max(state.height, imageI.height);
+    imageI.depth = std::max(state.depth, imageI.depth);
 
-    uint32_t imageHash = get_image_hash(imageI.usage, imageI.format, name);
+    uint32_t imageHash = get_image_hash(imageI, name);
 
     // create or invalidate image
     if (!storage.images[name].handle || storage.images[name].hash != imageHash)
@@ -515,6 +520,7 @@ void RComponent::add_private_image(const char* nameStr, RFormat format, uint32_t
         state.lastLayout = RIMAGE_LAYOUT_UNDEFINED;
         state.width = width;
         state.height = height;
+        state.depth = 1;
     }
 }
 
@@ -547,6 +553,7 @@ void RComponent::add_output_image(const char* nameStr, RFormat format, uint32_t 
         state.lastLayout = RIMAGE_LAYOUT_UNDEFINED;
         state.width = width;
         state.height = height;
+        state.depth = 1;
     }
 }
 
