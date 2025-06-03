@@ -29,7 +29,7 @@ struct Bitmap : Handle<struct BitmapObj>
     static Bitmap create_from_data(uint32_t width, uint32_t height, BitmapChannel channel, const void* data);
 
     /// @brief create bitmap from file on disk
-    static Bitmap create_from_path(const char* path);
+    static Bitmap create_from_path(const char* path, bool isF32 = false);
 
     /// @brief create 6 layered bitmap from 6 paths to each face
     /// @param paths an array of 6 paths
@@ -56,10 +56,13 @@ struct Bitmap : Handle<struct BitmapObj>
     /// @brief get bitmap height in pixels
     uint32_t height() const;
 
+    /// @brief get the byte size of one pixel
+    uint32_t pixel_size() const;
+
     /// @brief get bitmap channels
     BitmapChannel channel() const;
 
-    /// @brief view pf bitmap as byte stream
+    /// @brief view of bitmap as byte stream
     byte* data();
 
     /// @brief const view of bitmap as byte stream

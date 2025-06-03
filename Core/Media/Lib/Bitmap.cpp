@@ -27,6 +27,7 @@ struct BitmapObj
     uint32_t height;
     BitmapChannel channel;
     byte* data;
+    bool isF32;
 };
 
 Bitmap Bitmap::create_from_data(uint32_t width, uint32_t height, BitmapChannel channel, const void* data)
@@ -47,14 +48,19 @@ Bitmap Bitmap::create_from_data(uint32_t width, uint32_t height, BitmapChannel c
     return {obj};
 }
 
-Bitmap Bitmap::create_from_path(const char* path)
+Bitmap Bitmap::create_from_path(const char* path, bool isF32)
 {
     LD_PROFILE_SCOPE;
 
     BitmapObj* obj = (BitmapObj*)heap_malloc(sizeof(BitmapObj), MEMORY_USAGE_MEDIA);
+    obj->isF32 = isF32;
 
     int x, y, ch;
-    obj->data = (byte*)stbi_load(path, &x, &y, &ch, STBI_rgb_alpha);
+
+    if (isF32)
+        obj->data = (byte*)stbi_loadf(path, &x, &y, &ch, STBI_rgb_alpha);
+    else
+        obj->data = (byte*)stbi_load(path, &x, &y, &ch, STBI_rgb_alpha);
 
     if (!obj->data)
         return {};
@@ -241,6 +247,16 @@ uint32_t Bitmap::width() const
 uint32_t Bitmap::height() const
 {
     return mObj->height;
+}
+
+uint32_t Bitmap::pixel_size() const
+{
+    uint32_t pixelSize = mObj->channel;
+
+    if (mObj->isF32)
+        pixelSize *= 4; // 32-bit float per channel
+
+    return pixelSize;
 }
 
 BitmapChannel Bitmap::channel() const
