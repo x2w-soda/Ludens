@@ -49,7 +49,7 @@ struct VulkanFrame
     RSemaphoreObj presentReadyObj;
 } sVulkanFrames[FRAMES_IN_FLIGHT];
 
-static Log sLog("RBackendVK");
+static Log sLog("RBackend");
 
 static RSemaphore vk_device_create_semaphore(RDeviceObj* self, RSemaphoreObj* obj);
 static void vk_device_destroy_semaphore(RDeviceObj* self, RSemaphore semaphore);
@@ -145,22 +145,25 @@ static void destroy_queue(RQueue queue);
 void vk_create_device(RDeviceObj* self, const RDeviceInfo& deviceI)
 {
     self->backend = RDEVICE_BACKEND_VULKAN;
-
+    self->vk.surface = VK_NULL_HANDLE;
     self->init_vk_api();
 
     new (&self->vk.pdevice) PhysicalDevice();
     new (&self->vk.swapchain) Swapchain();
 
-    // NOTE: make sure glfwInit() is called before this
-    LD_ASSERT(glfwVulkanSupported() == GLFW_TRUE);
-
     std::set<std::string> desiredInstanceExtSet;
 
-    // already contains VK_KHR_surface
-    uint32_t glfwExtCount;
-    const char** glfwExts = glfwGetRequiredInstanceExtensions(&glfwExtCount);
-    for (uint32_t i = 0; i < glfwExtCount; i++)
-        desiredInstanceExtSet.insert(glfwExts[i]);
+    if (!self->isHeadless)
+    {
+        // NOTE: make sure glfwInit() is called before this
+        LD_ASSERT(glfwVulkanSupported() == GLFW_TRUE);
+
+        // already contains VK_KHR_surface
+        uint32_t glfwExtCount;
+        const char** glfwExts = glfwGetRequiredInstanceExtensions(&glfwExtCount);
+        for (uint32_t i = 0; i < glfwExtCount; i++)
+            desiredInstanceExtSet.insert(glfwExts[i]);
+    }
 
     // SPACE: insert any other user-requested extensions into set
 
@@ -195,8 +198,11 @@ void vk_create_device(RDeviceObj* self, const RDeviceInfo& deviceI)
 
     VK_CHECK(vkCreateInstance(&instanceCI, nullptr, &self->vk.instance));
 
-    // delegate surface creation to GLFW
-    VK_CHECK(glfwCreateWindowSurface(self->vk.instance, deviceI.window, nullptr, &self->vk.surface));
+    if (!self->isHeadless)
+    {
+        // delegate surface creation to GLFW
+        VK_CHECK(glfwCreateWindowSurface(self->vk.instance, deviceI.window, nullptr, &self->vk.surface));
+    }
 
     // choose a physical device, taking surface capabilities into account
     choose_physical_device(self);
@@ -229,16 +235,19 @@ void vk_create_device(RDeviceObj* self, const RDeviceInfo& deviceI)
         if (familyIdxCompute == familyCount && (pdevice.familyProps[idx].queueFlags | VK_QUEUE_COMPUTE_BIT))
             familyIdxCompute = idx;
 
-        VkBool32 supported;
-        vkGetPhysicalDeviceSurfaceSupportKHR(pdevice.handle, idx, self->vk.surface, &supported);
-        if (familyIdxPresent == familyCount && supported)
-            familyIdxPresent = idx;
+        if (self->vk.surface != VK_NULL_HANDLE)
+        {
+            VkBool32 supported;
+            vkGetPhysicalDeviceSurfaceSupportKHR(pdevice.handle, idx, self->vk.surface, &supported);
+            if (familyIdxPresent == familyCount && supported)
+                familyIdxPresent = idx;
+        }
     }
 
     LD_ASSERT(familyIdxGraphics != familyCount && "graphics queue family not found");
     LD_ASSERT(familyIdxTransfer != familyCount && "transfer queue family not found");
     LD_ASSERT(familyIdxCompute != familyCount && "compute queue family not found");
-    LD_ASSERT(familyIdxPresent != familyCount && "present queue family not found");
+    LD_ASSERT(!(self->vk.surface && familyIdxPresent == familyCount) && "present queue family not found");
 
     std::string queueFlags;
     RUtil::print_vk_queue_flags(pdevice.familyProps[familyIdxGraphics].queueFlags, queueFlags);
@@ -247,15 +256,21 @@ void vk_create_device(RDeviceObj* self, const RDeviceInfo& deviceI)
     sLog.info("Vulkan transfer queue family index {}: ({})", familyIdxTransfer, queueFlags.c_str());
     RUtil::print_vk_queue_flags(pdevice.familyProps[familyIdxCompute].queueFlags, queueFlags);
     sLog.info("Vulkan compute queue family index {}:  ({})", familyIdxCompute, queueFlags.c_str());
-    RUtil::print_vk_queue_flags(pdevice.familyProps[familyIdxPresent].queueFlags, queueFlags);
-    sLog.info("Vulkan present queue family index {}:  ({})", familyIdxPresent, queueFlags.c_str());
+
+    if (familyIdxPresent != familyCount)
+    {
+        RUtil::print_vk_queue_flags(pdevice.familyProps[familyIdxPresent].queueFlags, queueFlags);
+        sLog.info("Vulkan present queue family index {}:  ({})", familyIdxPresent, queueFlags.c_str());
+    }
 
     // create a logical device and retrieve queue handles
-    std::vector<const char*> desiredDeviceExts{
+    std::vector<const char*> desiredDeviceExts;
+
 #ifdef VK_KHR_swapchain
-        VK_KHR_SWAPCHAIN_EXTENSION_NAME,
-#endif
-    };
+    if (self->vk.surface)
+        desiredDeviceExts.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+#endif // VK_KHR_swapchain
+
     VkDeviceCreateInfo deviceCI{
         .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
         .queueCreateInfoCount = (uint32_t)queueCI.size(),
@@ -282,28 +297,39 @@ void vk_create_device(RDeviceObj* self, const RDeviceInfo& deviceI)
     vkGetDeviceQueue(self->vk.device, familyIdxCompute, 0, &queueHandle);
     self->vk.queueCompute = create_queue(familyIdxCompute, queueHandle);
 
-    vkGetDeviceQueue(self->vk.device, familyIdxPresent, 0, &queueHandle);
-    self->vk.queuePresent = create_queue(familyIdxPresent, queueHandle);
+    if (familyIdxPresent != familyCount)
+    {
+        vkGetDeviceQueue(self->vk.device, familyIdxPresent, 0, &queueHandle);
+        self->vk.queuePresent = create_queue(familyIdxPresent, queueHandle);
+    }
+    else
+    {
+        // headless rendering
+        self->vk.queuePresent = {};
+    }
 
     // delegate memory management to VMA
     create_vma_allocator(self);
 
-    // create swapchain
-    SwapchainInfo swapchainI{.vsyncHint = deviceI.vsync};
-    configure_swapchain(self, &swapchainI);
-    create_swapchain(self, swapchainI);
-
-    // frames in flight synchronization
-    for (uint32_t i = 0; i < FRAMES_IN_FLIGHT; i++)
+    if (self->vk.surface != VK_NULL_HANDLE)
     {
-        VulkanFrame* frame = sVulkanFrames + i;
+        // create swapchain
+        SwapchainInfo swapchainI{.vsyncHint = deviceI.vsync};
+        configure_swapchain(self, &swapchainI);
+        create_swapchain(self, swapchainI);
 
-        frame->presentReady = vk_device_create_semaphore(self, &frame->presentReadyObj);
-        frame->imageAcquired = vk_device_create_semaphore(self, &frame->imageAcquiredObj);
-        frame->frameComplete = vk_device_create_fence(self, true, &frame->frameCompleteObj);
-        frame->presentReadyObj.rid = RObjectID::get();
-        frame->imageAcquiredObj.rid = RObjectID::get();
-        frame->frameCompleteObj.rid = RObjectID::get();
+        // frames in flight synchronization
+        for (uint32_t i = 0; i < FRAMES_IN_FLIGHT; i++)
+        {
+            VulkanFrame* frame = sVulkanFrames + i;
+
+            frame->presentReady = vk_device_create_semaphore(self, &frame->presentReadyObj);
+            frame->imageAcquired = vk_device_create_semaphore(self, &frame->imageAcquiredObj);
+            frame->frameComplete = vk_device_create_fence(self, true, &frame->frameCompleteObj);
+            frame->presentReadyObj.rid = RObjectID::get();
+            frame->imageAcquiredObj.rid = RObjectID::get();
+            frame->frameCompleteObj.rid = RObjectID::get();
+        }
     }
 }
 
@@ -311,25 +337,31 @@ void vk_destroy_device(RDeviceObj* self)
 {
     vkDeviceWaitIdle(self->vk.device);
 
-    for (uint32_t i = 0; i < FRAMES_IN_FLIGHT; i++)
+    if (self->vk.surface != VK_NULL_HANDLE)
     {
-        vk_device_destroy_fence(self, sVulkanFrames[i].frameComplete);
-        vk_device_destroy_semaphore(self, sVulkanFrames[i].imageAcquired);
-        vk_device_destroy_semaphore(self, sVulkanFrames[i].presentReady);
-    }
+        for (uint32_t i = 0; i < FRAMES_IN_FLIGHT; i++)
+        {
+            vk_device_destroy_fence(self, sVulkanFrames[i].frameComplete);
+            vk_device_destroy_semaphore(self, sVulkanFrames[i].imageAcquired);
+            vk_device_destroy_semaphore(self, sVulkanFrames[i].presentReady);
+        }
 
-    destroy_swapchain(self);
+        destroy_swapchain(self);
+
+        vkDestroySurfaceKHR(self->vk.instance, self->vk.surface, nullptr);
+    }
 
     // all VMA allocations should be freed by now
     destroy_vma_allocator(self);
 
-    destroy_queue(self->vk.queuePresent);
+    if (self->vk.queuePresent)
+        destroy_queue(self->vk.queuePresent);
+
     destroy_queue(self->vk.queueCompute);
     destroy_queue(self->vk.queueTransfer);
     destroy_queue(self->vk.queueGraphics);
 
     vkDestroyDevice(self->vk.device, nullptr);
-    vkDestroySurfaceKHR(self->vk.instance, self->vk.surface, nullptr);
     vkDestroyInstance(self->vk.instance, nullptr);
 
     self->vk.swapchain.~Swapchain();
@@ -1773,13 +1805,16 @@ static void choose_physical_device(RDeviceObj* obj)
         pdevice.familyProps.resize(familyCount);
         vkGetPhysicalDeviceQueueFamilyProperties(handle, &familyCount, pdevice.familyProps.data());
 
-        VK_CHECK(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(handle, obj->vk.surface, &pdevice.surfaceCaps));
+        if (obj->vk.surface != VK_NULL_HANDLE)
+        {
+            VK_CHECK(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(handle, obj->vk.surface, &pdevice.surfaceCaps));
 
-        // available surface formats on this physical device
-        uint32_t formatCount;
-        VK_CHECK(vkGetPhysicalDeviceSurfaceFormatsKHR(handle, obj->vk.surface, &formatCount, nullptr));
-        pdevice.surfaceFormats.resize(formatCount);
-        VK_CHECK(vkGetPhysicalDeviceSurfaceFormatsKHR(handle, obj->vk.surface, &formatCount, pdevice.surfaceFormats.data()));
+            // available surface formats on this physical device
+            uint32_t formatCount;
+            VK_CHECK(vkGetPhysicalDeviceSurfaceFormatsKHR(handle, obj->vk.surface, &formatCount, nullptr));
+            pdevice.surfaceFormats.resize(formatCount);
+            VK_CHECK(vkGetPhysicalDeviceSurfaceFormatsKHR(handle, obj->vk.surface, &formatCount, pdevice.surfaceFormats.data()));
+        }
 
         // available depth stencil formats on this physical device
         VkFormatProperties formatProps;
@@ -1795,10 +1830,13 @@ static void choose_physical_device(RDeviceObj* obj)
         }
 
         // present modes on this physical device
-        uint32_t modeCount;
-        VK_CHECK(vkGetPhysicalDeviceSurfacePresentModesKHR(handle, obj->vk.surface, &modeCount, NULL));
-        pdevice.presentModes.resize(modeCount);
-        VK_CHECK(vkGetPhysicalDeviceSurfacePresentModesKHR(handle, obj->vk.surface, &modeCount, pdevice.presentModes.data()));
+        if (obj->vk.surface != VK_NULL_HANDLE)
+        {
+            uint32_t modeCount;
+            VK_CHECK(vkGetPhysicalDeviceSurfacePresentModesKHR(handle, obj->vk.surface, &modeCount, NULL));
+            pdevice.presentModes.resize(modeCount);
+            VK_CHECK(vkGetPhysicalDeviceSurfacePresentModesKHR(handle, obj->vk.surface, &modeCount, pdevice.presentModes.data()));
+        }
 
         if (chosen)
             break;

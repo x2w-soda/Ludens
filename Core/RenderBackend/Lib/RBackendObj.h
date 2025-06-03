@@ -345,6 +345,7 @@ struct RDeviceObj
     uint64_t rid;
     uint32_t frameIndex;
     RDeviceBackend backend;
+    bool isHeadless;
 
     RSemaphore (*create_semaphore)(RDeviceObj* self, RSemaphoreObj* semaphoreObj);
     void (*destroy_semaphore)(RDeviceObj* self, RSemaphore semaphore);

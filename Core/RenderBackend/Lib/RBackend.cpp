@@ -1,7 +1,8 @@
 #include "RBackendObj.h"
 #include "RUtilInternal.h"
-#include <Ludens/Header/Hash.h>
 #include <Ludens/Header/Assert.h>
+#include <Ludens/Header/Hash.h>
+#include <Ludens/Log/Log.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/RenderBackend/RBackend.h>
 #include <Ludens/System/Memory.h>
@@ -9,6 +10,7 @@
 
 namespace LD {
 
+static Log sLog("RBackend");
 std::unordered_map<uint32_t, RPassObj*> sPasses;
 std::unordered_map<uint32_t, RSetLayoutObj*> sSetLayouts;
 std::unordered_map<uint32_t, RPipelineLayoutObj*> sPipelineLayouts;
@@ -36,6 +38,7 @@ RDevice RDevice::create(const RDeviceInfo& info)
     RDeviceObj* obj = (RDeviceObj*)heap_malloc(sizeof(RDeviceObj), MEMORY_USAGE_RENDER);
     obj->rid = RObjectID::get();
     obj->frameIndex = 0;
+    obj->isHeadless = info.window == nullptr;
 
     if (info.backend == RDEVICE_BACKEND_VULKAN)
         vk_create_device(obj, info);
@@ -56,7 +59,7 @@ void RDevice::destroy(RDevice device)
         obj->destroy_pipeline_layout(obj, ite.second);
         heap_free(ite.second);
     }
-    printf("RDevice destroyed %d pipeline layouts\n", (int)sPipelineLayouts.size());
+    sLog.info("RDevice destroyed {} pipeline layouts", (int)sPipelineLayouts.size());
     sPipelineLayouts.clear();
 
     for (auto& ite : sSetLayouts)
@@ -64,7 +67,7 @@ void RDevice::destroy(RDevice device)
         obj->destroy_set_layout(obj, ite.second);
         heap_free(ite.second);
     }
-    printf("RDevice destroyed %d set layouts\n", (int)sSetLayouts.size());
+    sLog.info("RDevice destroyed {} set layouts", (int)sSetLayouts.size());
     sSetLayouts.clear();
 
     for (auto& ite : sPasses)
@@ -72,7 +75,7 @@ void RDevice::destroy(RDevice device)
         obj->destroy_pass(obj, ite.second);
         heap_free(ite.second);
     }
-    printf("RDevice destroyed %d passes\n", (int)sPasses.size());
+    sLog.info("RDevice destroyed {} passes", (int)sPasses.size());
     sPasses.clear();
 
     for (auto& ite : sFramebuffers)
@@ -80,7 +83,7 @@ void RDevice::destroy(RDevice device)
         obj->destroy_framebuffer(obj, ite.second);
         heap_free(ite.second);
     }
-    printf("RDevice destroyed %d framebuffers\n", (int)sFramebuffers.size());
+    sLog.info("RDevice destroyed {} framebuffers", (int)sFramebuffers.size());
     sFramebuffers.clear();
 
     if (obj->backend == RDEVICE_BACKEND_VULKAN)
