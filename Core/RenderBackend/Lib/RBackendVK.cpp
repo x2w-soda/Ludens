@@ -129,12 +129,14 @@ static void vk_set_pool_reset(RSetPoolObj* self);
 static void vk_queue_wait_idle(RQueueObj* self);
 static void vk_queue_submit(RQueueObj* self, const RSubmitInfo& submitI, RFence fence);
 
+static VkResult acquire_next_image(RDeviceObj* obj, VkSemaphore imageAcquiredSemaphore);
 static void choose_physical_device(RDeviceObj* obj);
 static void configure_swapchain(RDeviceObj* obj, SwapchainInfo* swapchainI);
 static void create_swapchain(RDeviceObj* obj, const SwapchainInfo& swapchainI);
 static RImage create_swapchain_color_attachment(RDeviceObj* deviceObj, VkImage image, VkFormat colorFormat, uint32_t width, uint32_t height);
 static void destroy_swapchain(RDeviceObj* obj);
 static void destroy_swapchain_color_attachment(RDeviceObj* deviceObj, RImage attachment);
+static void invalidate_swapchain(RDeviceObj* obj);
 static void create_vma_allocator(RDeviceObj* obj);
 static void destroy_vma_allocator(RDeviceObj* obj);
 static RQueue create_queue(uint32_t queueFamilyIdx, VkQueue handle);
@@ -143,7 +145,6 @@ static void destroy_queue(RQueue queue);
 void vk_create_device(RDeviceObj* self, const RDeviceInfo& deviceI)
 {
     self->backend = RDEVICE_BACKEND_VULKAN;
-    self->vk.frameIdx = 0;
 
     self->init_vk_api();
 
@@ -1060,8 +1061,7 @@ static void vk_device_update_set_buffers(RDeviceObj* self, uint32_t updateCount,
 
 static uint32_t vk_device_next_frame(RDeviceObj* self, RSemaphore& imageAcquired, RSemaphore& presentReady, RFence& frameComplete)
 {
-    self->vk.frameIdx = (self->vk.frameIdx + 1) % FRAMES_IN_FLIGHT;
-    VulkanFrame* frame = sVulkanFrames + self->vk.frameIdx;
+    VulkanFrame* frame = sVulkanFrames + self->frameIndex;
     VkSemaphore imageAcquiredSemaphore = static_cast<RSemaphoreObj*>(frame->imageAcquired)->vk.handle;
     VkFence frameCompleteFence = static_cast<RFenceObj*>(frame->frameComplete)->vk.handle;
 
@@ -1070,18 +1070,24 @@ static uint32_t vk_device_next_frame(RDeviceObj* self, RSemaphore& imageAcquired
         VK_CHECK(vkWaitForFences(self->vk.device, 1, &frameCompleteFence, VK_TRUE, UINT64_MAX));
     }
 
+    VkResult acquireResult = acquire_next_image(self, imageAcquiredSemaphore);
+
+    if (acquireResult == VK_ERROR_OUT_OF_DATE_KHR || acquireResult == VK_SUBOPTIMAL_KHR)
     {
-        LD_PROFILE_SCOPE_NAME("vkAcquireNextImageKHR");
+        invalidate_swapchain(self);
 
-        VkResult result = vkAcquireNextImageKHR(
-            self->vk.device,
-            self->vk.swapchain.handle,
-            UINT64_MAX,
-            imageAcquiredSemaphore,
-            VK_NULL_HANDLE,
-            &self->vk.imageIdx);
+        imageAcquiredSemaphore = static_cast<RSemaphoreObj*>(frame->imageAcquired)->vk.handle;
+        frameCompleteFence = static_cast<RFenceObj*>(frame->frameComplete)->vk.handle;
 
-        VK_CHECK(result);
+        // try again with the new swapchain and synchronization primitives
+        acquireResult = acquire_next_image(self, imageAcquiredSemaphore);
+    }
+
+    if (acquireResult != VK_SUCCESS)
+    {
+        sLog.error("vkAcquireNextImageKHR: unable to recover from VkResult {}", (int)acquireResult);
+        LD_UNREACHABLE;
+        return -1;
     }
 
     VK_CHECK(vkResetFences(self->vk.device, 1, &frameCompleteFence));
@@ -1095,7 +1101,7 @@ static uint32_t vk_device_next_frame(RDeviceObj* self, RSemaphore& imageAcquired
 
 static void vk_device_present_frame(RDeviceObj* self)
 {
-    VulkanFrame* frame = sVulkanFrames + self->vk.frameIdx;
+    VulkanFrame* frame = sVulkanFrames + self->frameIndex;
     VkSemaphore presentReadySemaphore = static_cast<RSemaphoreObj*>(frame->presentReady)->vk.handle;
 
     VkPresentInfoKHR presentI{
@@ -1111,7 +1117,18 @@ static void vk_device_present_frame(RDeviceObj* self)
 
     // NOTE: this may or may not block, depending on the implementation and
     //       the selected swapchain present mode.
-    VK_CHECK(vkQueuePresentKHR(queueHandle, &presentI));
+    VkResult presentResult = vkQueuePresentKHR(queueHandle, &presentI);
+
+    // for suboptimal and out-of-date errors, we will invalidate the swapchain
+    // in the following call to vk_device_next_frame().
+    if (presentResult == VK_SUBOPTIMAL_KHR || presentResult == VK_ERROR_OUT_OF_DATE_KHR)
+        return;
+
+    if (presentResult != VK_SUCCESS)
+    {
+        sLog.error("unable to recover from vkQueuePresentKHR error {}", (int)presentResult);
+        LD_UNREACHABLE;
+    }
 }
 
 static void vk_device_get_depth_stencil_formats(RDeviceObj* self, RFormat* formats, uint32_t& count)
@@ -1698,6 +1715,19 @@ static void vk_queue_submit(RQueueObj* self, const RSubmitInfo& submitI, RFence 
     VK_CHECK(vkQueueSubmit(self->vk.handle, 1, &submit, fenceHandle));
 }
 
+VkResult acquire_next_image(RDeviceObj* obj, VkSemaphore imageAcquiredSemaphore)
+{
+    LD_PROFILE_SCOPE_NAME("vkAcquireNextImageKHR");
+
+    return vkAcquireNextImageKHR(
+        obj->vk.device,
+        obj->vk.swapchain.handle,
+        UINT64_MAX,
+        imageAcquiredSemaphore,
+        VK_NULL_HANDLE,
+        &obj->vk.imageIdx);
+}
+
 static void choose_physical_device(RDeviceObj* obj)
 {
     std::vector<VkPhysicalDevice> handles;
@@ -1875,12 +1905,17 @@ static void create_swapchain(RDeviceObj* obj, const SwapchainInfo& swapchainI)
     for (uint32_t i = 0; i < imageCount; i++)
         swp.colorAttachments[i] = create_swapchain_color_attachment(obj, swp.images[i], swp.info.imageFormat, swpExtent.width, swpExtent.height);
 
-    sLog.info("Vulkan swapchain with {} images (hint {}, min {}, max {})", (int)swp.images.size(),
-              (int)swapchainImageHint, (int)surfaceMinImageCount, (int)surfaceMaxImageCount);
-
     std::string presentMode;
     RUtil::print_vk_present_mode(swp.info.presentMode, presentMode);
-    sLog.info("Vulkan swapchain present mode  {}", presentMode);
+
+    sLog.info("Vulkan swapchain {}x{} with {} images (hint {}, min {}, max {}) {}",
+              (int)swpExtent.width,
+              (int)swpExtent.height,
+              (int)swp.images.size(),
+              (int)swapchainImageHint,
+              (int)surfaceMinImageCount,
+              (int)surfaceMaxImageCount,
+              presentMode);
 }
 
 static RImage create_swapchain_color_attachment(RDeviceObj* deviceObj, VkImage image, VkFormat colorFormat, uint32_t width, uint32_t height)
@@ -1935,6 +1970,50 @@ static void destroy_swapchain_color_attachment(RDeviceObj* deviceObj, RImage att
     vkDestroyImageView(deviceObj->vk.device, obj->vk.viewHandle, nullptr);
 
     heap_free(obj);
+}
+
+static void invalidate_swapchain(RDeviceObj* obj)
+{
+    // wait until all frames in flight complete.
+    vkDeviceWaitIdle(obj->vk.device);
+
+    // invalidate swapchain
+    SwapchainInfo swapchainI = obj->vk.swapchain.info;
+    PhysicalDevice& pdevice = obj->vk.pdevice;
+    size_t oldImageCount = obj->vk.swapchain.colorAttachments.size();
+
+    destroy_swapchain(obj);
+
+    // update surface capabilities, we should create a new swapchain using the latest
+    // VkSurfaceCapabilitiesKHR::currentExtent as swapchain image extent
+    VK_CHECK(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(pdevice.handle, obj->vk.surface, &pdevice.surfaceCaps));
+
+    create_swapchain(obj, swapchainI);
+
+    size_t newImageCount = obj->vk.swapchain.colorAttachments.size();
+
+    if (newImageCount != oldImageCount)
+    {
+        sLog.warn("invalidated swapchain but image count changes from {} to {}", oldImageCount, newImageCount);
+        LD_UNREACHABLE;
+        return;
+    }
+
+    // invalidate frames in flight synchronization
+    for (uint32_t i = 0; i < FRAMES_IN_FLIGHT; i++)
+    {
+        VulkanFrame* frame = sVulkanFrames + i;
+
+        vk_device_destroy_semaphore(obj, frame->presentReady);
+        vk_device_destroy_semaphore(obj, frame->imageAcquired);
+        vk_device_destroy_fence(obj, frame->frameComplete);
+        frame->presentReady = vk_device_create_semaphore(obj, &frame->presentReadyObj);
+        frame->imageAcquired = vk_device_create_semaphore(obj, &frame->imageAcquiredObj);
+        frame->frameComplete = vk_device_create_fence(obj, true, &frame->frameCompleteObj);
+        frame->presentReadyObj.rid = RObjectID::get();
+        frame->imageAcquiredObj.rid = RObjectID::get();
+        frame->frameCompleteObj.rid = RObjectID::get();
+    }
 }
 
 static void create_vma_allocator(RDeviceObj* obj)

@@ -416,7 +416,6 @@ struct RDeviceObj
         PhysicalDevice pdevice;
         Swapchain swapchain;
         VkDevice device;
-        uint32_t frameIdx;
         uint32_t imageIdx;
         uint32_t familyIdxGraphics;
         uint32_t familyIdxTransfer;
