@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Ludens/Media/Model.h>
+#include <Ludens/RenderBackend/RBackend.h>
 #include <algorithm>
 #include <cstdint>
 
@@ -191,5 +192,9 @@ private:
     uint32_t mPointCount = 0;
     PointVertex mVertices[TMaxPointCount];
 };
+
+/// @brief get mesh vertex attributes for a unit cube.
+/// @param pos if not null, an array of 36 Vec3 that will be written to.
+void get_cube_mesh_vertex_attributes(Vec3* pos);
 
 } // namespace LD
