@@ -38,6 +38,8 @@
 
 namespace LD {
 
+static Log sLog("RBackend");
+
 // @brief Vulkan frame boundary
 struct VulkanFrame
 {
@@ -49,7 +51,78 @@ struct VulkanFrame
     RSemaphoreObj presentReadyObj;
 } sVulkanFrames[FRAMES_IN_FLIGHT];
 
-static Log sLog("RBackend");
+/// @brief Vulkan extension function pointers
+struct VulkanExtensions
+{
+    PFN_vkCreateDebugUtilsMessengerEXT vkCreateDebugUtilsMessengerEXT;
+    PFN_vkDestroyDebugUtilsMessengerEXT vkDestroyDebugUtilsMessengerEXT;
+} sExt;
+
+/// @brief if the instance extension VK_EXT_debug_utils is supported,
+///        attach our debug messenger callbacks during debug build.
+class VulkanDebugMessenger
+{
+public:
+    VulkanDebugMessenger() = delete;
+    VulkanDebugMessenger(VkInstance instance, VkResult* result);
+    ~VulkanDebugMessenger();
+
+private:
+    VkDebugUtilsMessengerEXT mHandle;
+    VkInstance mInstance;
+
+    static VKAPI_ATTR VkBool32 callback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageTypes,
+                                        const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData);
+};
+
+VulkanDebugMessenger::VulkanDebugMessenger(VkInstance instance, VkResult* result)
+    : mInstance(instance)
+{
+    VkDebugUtilsMessengerCreateInfoEXT messengerCI = {
+        .sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT,
+        .pNext = NULL,
+        .flags = 0,
+        .messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT |
+                           VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT,
+        .messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
+                       VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
+                       VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT,
+        .pfnUserCallback = &VulkanDebugMessenger::callback,
+        .pUserData = this,
+    };
+
+    *result = sExt.vkCreateDebugUtilsMessengerEXT(instance, &messengerCI, nullptr, &mHandle);
+
+    if (*result != VK_SUCCESS)
+    {
+        sLog.error("vkCreateDebugUtilsMessengerEXT failed: {}", (int)result);
+        return;
+    }
+}
+
+VulkanDebugMessenger ::~VulkanDebugMessenger()
+{
+    if (mInstance != VK_NULL_HANDLE && mHandle != VK_NULL_HANDLE)
+        sExt.vkDestroyDebugUtilsMessengerEXT(mInstance, mHandle, nullptr);
+}
+
+VKAPI_ATTR VkBool32 VulkanDebugMessenger::callback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageTypes,
+                                                   const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void* pUserData)
+{
+    if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
+    {
+        sLog.warn("vulkan validation layer:\n{}", pCallbackData->pMessage);
+    }
+    else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
+    {
+        sLog.error("vulkan validation layer:\n{}", pCallbackData->pMessage);
+        LD_DEBUG_BREAK;
+    }
+
+    return VK_FALSE;
+}
+
+VulkanDebugMessenger* sDebugMessenger = nullptr;
 
 static RSemaphore vk_device_create_semaphore(RDeviceObj* self, RSemaphoreObj* obj);
 static void vk_device_destroy_semaphore(RDeviceObj* self, RSemaphore semaphore);
@@ -152,7 +225,11 @@ void vk_create_device(RDeviceObj* self, const RDeviceInfo& deviceI)
     new (&self->vk.pdevice) PhysicalDevice();
     new (&self->vk.swapchain) Swapchain();
 
-    std::set<std::string> desiredInstanceExtSet;
+    std::set<std::string> desiredInstanceExtSet = {
+#if defined(VK_EXT_debug_utils) && !defined(NDEBUG)
+        VK_EXT_DEBUG_UTILS_EXTENSION_NAME,
+#endif
+    };
 
     if (!self->isHeadless)
     {
@@ -198,6 +275,15 @@ void vk_create_device(RDeviceObj* self, const RDeviceInfo& deviceI)
     };
 
     VK_CHECK(vkCreateInstance(&instanceCI, nullptr, &self->vk.instance));
+    sExt.vkCreateDebugUtilsMessengerEXT = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(self->vk.instance, "vkCreateDebugUtilsMessengerEXT");
+    sExt.vkDestroyDebugUtilsMessengerEXT = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(self->vk.instance, "vkDestroyDebugUtilsMessengerEXT");
+
+#ifndef NDEBUG
+    VkResult result;
+    sDebugMessenger = heap_new<VulkanDebugMessenger>(MEMORY_USAGE_RENDER, self->vk.instance, &result);
+    if (result != VK_SUCCESS)
+        heap_delete<VulkanDebugMessenger>(sDebugMessenger);
+#endif
 
     if (!self->isHeadless)
     {
@@ -363,6 +449,10 @@ void vk_destroy_device(RDeviceObj* self)
     destroy_queue(self->vk.queueGraphics);
 
     vkDestroyDevice(self->vk.device, nullptr);
+
+    if (sDebugMessenger)
+        heap_delete<VulkanDebugMessenger>(sDebugMessenger);
+
     vkDestroyInstance(self->vk.instance, nullptr);
 
     self->vk.swapchain.~Swapchain();

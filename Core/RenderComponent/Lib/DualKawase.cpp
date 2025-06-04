@@ -206,13 +206,14 @@ void DualKawaseComponentObj::invalidate_image(Frame& frame, uint32_t idx, RImage
 
     RImageLayout imageLayout = RIMAGE_LAYOUT_SHADER_READ_ONLY;
 
-    if (frame.blurImages[idx] != handle)
-    {
-        frame.blurImages[idx] = handle;
-        RSetImageUpdateInfo update = RUtil::make_single_set_image_update_info(
-            frame.blurSets[idx], 0, RBINDING_TYPE_COMBINED_IMAGE_SAMPLER, &imageLayout, frame.blurImages.data() + idx);
-        device.update_set_images(1, &update);
-    }
+    // TODO: checking with (frame.blurImages[idx] != handle) is broken?
+    //       is RGraphicsPass::get_image returning out-of-date handles?
+
+    frame.blurImages[idx] = handle;
+    RSetImageUpdateInfo update = RUtil::make_single_set_image_update_info(
+        frame.blurSets[idx], 0, RBINDING_TYPE_COMBINED_IMAGE_SAMPLER, &imageLayout, &handle);
+    
+    device.update_set_images(1, &update);
 }
 
 void DualKawaseComponentObj::on_down_sample(RGraphicsPass pass, RCommandList list, void* user)
