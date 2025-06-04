@@ -230,11 +230,14 @@ add_subdirectory(Core/RenderComponent)
 add_subdirectory(Core/Application)
 
 add_library(LDCore INTERFACE)
-target_link_directories(LDCore INTERFACE
+target_link_libraries(LDCore INTERFACE
+  LDProfiler
   LDSystem
   LDSerial
   LDDSA
+  LDLog
   LDMedia
+  LDCamera
   LDRenderBackend
   LDRenderGraph
   LDRenderComponent
