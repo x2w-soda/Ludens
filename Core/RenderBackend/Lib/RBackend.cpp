@@ -310,6 +310,11 @@ uint32_t RDevice::get_swapchain_image_count()
     return mObj->get_swapchain_image_count(mObj);
 }
 
+void RDevice::get_swapchain_extent(uint32_t* width, uint32_t* height)
+{
+    return mObj->get_swapchain_extent(mObj, width, height);
+}
+
 uint32_t RDevice::get_frames_in_flight_count()
 {
     return mObj->get_frames_in_flight_count(mObj);

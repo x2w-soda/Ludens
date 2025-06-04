@@ -398,6 +398,7 @@ struct RDeviceObj
     RFormat (*get_swapchain_color_format)(RDeviceObj* self);
     RImage (*get_swapchain_color_attachment)(RDeviceObj* self, uint32_t frameIdx);
     uint32_t (*get_swapchain_image_count)(RDeviceObj* self);
+    void (*get_swapchain_extent)(RDeviceObj* self, uint32_t* width, uint32_t* height);
     uint32_t (*get_frames_in_flight_count)(RDeviceObj* self);
     RQueue (*get_graphics_queue)(RDeviceObj* self);
     void (*wait_idle)(RDeviceObj* self);

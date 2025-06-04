@@ -88,6 +88,7 @@ static RSampleCountBit vk_device_get_max_sample_count(RDeviceObj* self);
 static RFormat vk_device_get_swapchain_color_format(RDeviceObj* self);
 static RImage vk_device_get_swapchain_color_attachment(RDeviceObj* self, uint32_t imageIdx);
 static uint32_t vk_device_get_swapchain_image_count(RDeviceObj* self);
+static void vk_device_get_swapchain_extent(RDeviceObj* self, uint32_t* width, uint32_t* height);
 static uint32_t vk_device_get_frames_in_flight_count(RDeviceObj* self);
 static RQueue vk_device_get_graphics_queue(RDeviceObj* self);
 static void vk_device_wait_idle(RDeviceObj* self);
@@ -1201,6 +1202,15 @@ static uint32_t vk_device_get_swapchain_image_count(RDeviceObj* self)
     return (uint32_t)self->vk.swapchain.images.size();
 }
 
+static void vk_device_get_swapchain_extent(RDeviceObj* self, uint32_t* width, uint32_t* height)
+{
+    if (width)
+        *width = self->vk.swapchain.width;
+
+    if (height)
+        *height = self->vk.swapchain.height;
+}
+
 static uint32_t vk_device_get_frames_in_flight_count(RDeviceObj* self)
 {
     return FRAMES_IN_FLIGHT;
@@ -1943,12 +1953,15 @@ static void create_swapchain(RDeviceObj* obj, const SwapchainInfo& swapchainI)
     for (uint32_t i = 0; i < imageCount; i++)
         swp.colorAttachments[i] = create_swapchain_color_attachment(obj, swp.images[i], swp.info.imageFormat, swpExtent.width, swpExtent.height);
 
+    swp.width = swpExtent.width;
+    swp.height = swpExtent.height;
+
     std::string presentMode;
     RUtil::print_vk_present_mode(swp.info.presentMode, presentMode);
 
     sLog.info("Vulkan swapchain {}x{} with {} images (hint {}, min {}, max {}) {}",
-              (int)swpExtent.width,
-              (int)swpExtent.height,
+              (int)swp.width,
+              (int)swp.height,
               (int)swp.images.size(),
               (int)swapchainImageHint,
               (int)surfaceMinImageCount,
@@ -2187,6 +2200,7 @@ void RDeviceObj::init_vk_api()
     get_swapchain_color_format = &vk_device_get_swapchain_color_format;
     get_swapchain_color_attachment = &vk_device_get_swapchain_color_attachment;
     get_swapchain_image_count = &vk_device_get_swapchain_image_count;
+    get_swapchain_extent = &vk_device_get_swapchain_extent;
     get_frames_in_flight_count = &vk_device_get_frames_in_flight_count;
     get_graphics_queue = &vk_device_get_graphics_queue;
     wait_idle = &vk_device_wait_idle;

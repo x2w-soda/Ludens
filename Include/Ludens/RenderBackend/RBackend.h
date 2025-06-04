@@ -598,6 +598,8 @@ struct RDevice : RHandle<struct RDeviceObj>
 
     uint32_t get_swapchain_image_count();
 
+    void get_swapchain_extent(uint32_t* width, uint32_t* height);
+
     uint32_t get_frames_in_flight_count();
 
     /// @brief get a frame index in the half open range [0, frames_in_flight_count)

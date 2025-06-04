@@ -991,6 +991,9 @@ void RGraph::submit(bool save)
         ImageState& srcBlitState = sStorages[mObj->blitCompObj->name].images[mObj->blitOutputName];
         RImage srcBlit = srcBlitState.handle;
         RImage dstBlit = mObj->info.swapchainImage;
+        RDevice device = mObj->info.device;
+        uint32_t swapchainWidth, swapchainHeight;
+        device.get_swapchain_extent(&swapchainWidth, &swapchainHeight);
 
         // transition src image from final layout to transfer src
         RImageMemoryBarrier barrier = RUtil::make_image_memory_barrier(srcBlit, srcBlitState.lastLayout, RIMAGE_LAYOUT_TRANSFER_SRC, RACCESS_COLOR_ATTACHMENT_WRITE_BIT, RACCESS_TRANSFER_READ_BIT);
@@ -1003,8 +1006,8 @@ void RGraph::submit(bool save)
 
         // insert blit command
         RImageBlit region{};
-        region.srcMaxOffset.x = srcBlit.width();
-        region.srcMaxOffset.y = srcBlit.height();
+        region.srcMaxOffset.x = std::min<uint32_t>(swapchainWidth, srcBlit.width());
+        region.srcMaxOffset.y = std::min<uint32_t>(swapchainHeight, srcBlit.height());
         region.srcMaxOffset.z = 1;
         region.dstMaxOffset.x = dstBlit.width();
         region.dstMaxOffset.y = dstBlit.height();

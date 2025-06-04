@@ -19,6 +19,7 @@ struct Window
     uint32_t width;
     uint32_t height;
 
+    static void size_callback(GLFWwindow* window, int width, int height);
     static void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
     static void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
 };
@@ -48,6 +49,14 @@ extern float sMouseCursorDeltaY;
 extern float sMouseCursorX;
 extern float sMouseCursorY;
 } // namespace Input
+
+void Window::size_callback(GLFWwindow* window, int width, int height)
+{
+    Window* w = (Window*)glfwGetWindowUserPointer(window);
+
+    w->width = width;
+    w->height = height;
+}
 
 void Window::key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
@@ -197,11 +206,13 @@ ApplicationObj::ApplicationObj(const ApplicationInfo& appI)
     LD_ASSERT(result == GLFW_TRUE);
 
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-    glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
+    glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
 
     window.handle = glfwCreateWindow((int)appI.width, (int)appI.height, appI.name, nullptr, nullptr);
     window.width = appI.width;
     window.height = appI.height;
+    glfwSetWindowUserPointer(window.handle, &window);
+    glfwSetWindowSizeCallback(window.handle, &Window::size_callback);
     glfwSetKeyCallback(window.handle, &Window::key_callback);
     glfwSetMouseButtonCallback(window.handle, &Window::mouse_button_callback);
 
