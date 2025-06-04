@@ -28,3 +28,8 @@ vec3 get_normal(vec3 worldP, vec3 worldN, vec2 uv, vec3 sampleN) {
 	float invmax = inversesqrt(max(dot(T,T), dot(B,B)));
 	return normalize(mat3(T * invmax, B * invmax, worldN) * tangentN);
 })"
+
+#define LD_GLSL_TONE_MAP R"(
+vec3 tone_map_reinhard(vec3 hdr) {
+	return hdr / (hdr + vec3(1.0));
+})"
