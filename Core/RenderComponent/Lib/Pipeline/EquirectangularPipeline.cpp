@@ -94,7 +94,7 @@ EquirectangularPipeline EquirectangularPipeline::create(RDevice device)
             .polygonMode = RPOLYGON_MODE_FILL,
             .cullMode = RCULL_MODE_NONE,
         },
-        .depthStencil = {.depthTestEnabled = true, .depthWriteEnabled = true, .depthCompareOp = RCOMPARE_OP_LESS},
+        .depthStencil = {.depthTestEnabled = false},
         .blend = {
             .colorAttachmentCount = 1,
             .colorAttachments = &blendAttachment,
