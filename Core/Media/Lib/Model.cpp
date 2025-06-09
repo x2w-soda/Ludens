@@ -1,5 +1,5 @@
 #include "ModelObj.h"
-#include "TinygltfLoader.h"
+#include "Parser/TinygltfLoader.h"
 #include <Ludens/Header/Math/Mat3.h>
 #include <Ludens/Media/Model.h>
 #include <Ludens/Profiler/Profiler.h>

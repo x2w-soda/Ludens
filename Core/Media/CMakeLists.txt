@@ -4,6 +4,7 @@ set(MODULE_INCLUDE
     "${LUDENS_INCLUDE_DIR}/Ludens/Media/Font.h"
     "${LUDENS_INCLUDE_DIR}/Ludens/Media/Model.h"
     "${LUDENS_INCLUDE_DIR}/Ludens/Media/Bitmap.h"
+    "${LUDENS_INCLUDE_DIR}/Ludens/Media/Parser/WAV.h"
 )
 
 add_library(${MODULE_NAME}
@@ -13,8 +14,9 @@ add_library(${MODULE_NAME}
     Lib/Bitmap.cpp
     Lib/GlyphTable.h
     Lib/GlyphTable.cpp
-    Lib/TinygltfLoader.h
-    Lib/TinygltfLoader.cpp
+    Lib/Parser/TinygltfLoader.h
+    Lib/Parser/TinygltfLoader.cpp
+    Lib/Parser/WAV.cpp
 )
 
 target_link_libraries(${MODULE_NAME} PUBLIC

@@ -1,2 +1,11 @@
 Build/**
 build/**
+*.o
+*.so
+*.obj
+*.exp
+*.dll
+*.exe
+*.manifest
+*.dmp
+*.swp

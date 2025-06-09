@@ -223,6 +223,7 @@ add_subdirectory(Core/Serial)
 add_subdirectory(Core/DSA)
 add_subdirectory(Core/Log)
 add_subdirectory(Core/JobSystem)
+add_subdirectory(Core/Lua)
 add_subdirectory(Core/Media)
 add_subdirectory(Core/Camera)
 add_subdirectory(Core/RenderBackend)
@@ -238,6 +239,7 @@ target_link_libraries(LDCore INTERFACE
   LDDSA
   LDLog
   LDJobSystem
+  LDLua
   LDMedia
   LDCamera
   LDRenderBackend

@@ -1,5 +1,5 @@
 #include "TinygltfLoader.h"
-#include "ModelObj.h"
+#include "../ModelObj.h"
 #include <Ludens/Media/Model.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/System/Memory.h>
