@@ -1,0 +1,22 @@
+README for LuaJIT 2.1
+---------------------
+
+LuaJIT is a Just-In-Time (JIT) compiler for the Lua programming language.
+
+Project Homepage: https://luajit.org/
+
+LuaJIT is Copyright (C) 2005-2025 Mike Pall.
+LuaJIT is free software, released under the MIT license.
+See full Copyright Notice in the COPYRIGHT file or in luajit.h.
+
+Documentation for LuaJIT is available in HTML format.
+Please point your favorite browser to:
+
+ doc/luajit.html
+
+Ludens Integration Notes
+------------------------
+LuaJIT has no CMake presets, we are using prebuilt libraies in prebuilt/ folder.
+Include directory is same as source directory, LuaJIT headers are in src/ folder.
+Make sure we are including src/lua.h instead of some other lua.h installed in system path.
+HEAD points to commit eec7a8016c3381b949b5d84583800d05897fa960
