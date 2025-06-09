@@ -5,13 +5,15 @@
 
 namespace LD {
 
-static_assert(sizeof(WAVHeader) == 44);
+static_assert(sizeof(WAVHeader) == 36);
 
 static Log sLog("MediaWAV");
 
 struct WAVDataObj
 {
     WAVHeader header;
+    uint64_t dataOffset; /// byte offset to sample data
+    uint64_t dataSize;   /// sample data size in bytes
 };
 
 WAVData WAVData::create(const void* data, size_t size)
@@ -28,15 +30,33 @@ WAVData WAVData::create(const void* data, size_t size)
     const WAVHeader& header = obj->header;
     if (strncmp((const char*)header.fileTypeBlocID, "RIFF", 4) || strncmp((const char*)header.fileFormatID, "WAVE", 4))
     {
-        sLog.info("invalid input data");
-        goto failure;
+        sLog.error("invalid input data");
+        heap_free(obj);
+        return {};
     }
 
-    return {obj};
+    const char* blockID = (const char*)(&header + 1);
+    uint32_t blockSize = *(uint32_t*)(blockID + 4);
+    uint32_t blockOffset = sizeof(WAVHeader);
 
-failure:
-    heap_free(obj);
-    return {};
+    while (blockOffset < size && strncmp(blockID, "data", 4))
+    {
+        blockOffset += blockSize + 8;
+        blockID = (const char*)&header + blockOffset;
+        blockSize = *(uint32_t*)(blockID + 4);
+    }
+
+    if (blockOffset >= size)
+    {
+        sLog.error("data chunk not found");
+        heap_free(obj);
+        return {};
+    }
+
+    obj->dataOffset = blockOffset + 8;
+    obj->dataSize = (uint64_t)blockSize;
+
+    return {obj};
 }
 
 void WAVData::destroy(WAVData data)
@@ -51,10 +71,25 @@ void WAVData::get_header(WAVHeader& header) const
     memcpy(&header, &mObj->header, sizeof(WAVHeader));
 }
 
-uint32_t WAVData::get_sample_rate() const
+const void* WAVData::get_data(uint64_t& byteSize) const
 {
-    return mObj->header.sampleRate;
+    byteSize = (uint64_t)mObj->dataSize;
+    return (const char*)mObj + mObj->dataOffset;
 }
 
+uint32_t WAVData::get_channels() const
+{
+    return (uint32_t)mObj->header.channelCount;
+}
+
+uint32_t WAVData::get_sample_rate() const
+{
+    return (uint32_t)mObj->header.sampleRate;
+}
+
+uint32_t WAVData::get_bits_per_sample() const
+{
+    return (uint32_t)mObj->header.bitsPerSample;
+}
 
 } // namespace LD

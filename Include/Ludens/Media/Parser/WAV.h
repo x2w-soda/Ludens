@@ -20,8 +20,6 @@ struct WAVHeader
     uint32_t byteRate;     /// bytes to read per second
     uint16_t blockAlign;
     uint16_t bitsPerSample; /// bit depth per sample
-    byte dataBlockID[4];    /// identifier "data"
-    uint32_t dataSize;      /// sample data size in bytes
 };
 
 struct WAVData : Handle<struct WAVDataObj>
@@ -39,8 +37,17 @@ struct WAVData : Handle<struct WAVDataObj>
     /// @param header output wav file header
     void get_header(WAVHeader& header) const;
 
+    /// @brief get samples
+    const void* get_data(uint64_t& byteSize) const;
+
+    /// @brief get channel count
+    uint32_t get_channels() const;
+
     /// @brief get sample rate hz
     uint32_t get_sample_rate() const;
+
+    /// @brief get bit depth per sample
+    uint32_t get_bits_per_sample() const;
 };
 
 } // namespace LD
