@@ -1,8 +1,10 @@
 #pragma once
 
+#include <Ludens/DSP/DSP.h>
 #include <Ludens/Header/Handle.h>
 #include <Ludens/Header/Types.h>
 #include <cstdint>
+#include <filesystem>
 
 namespace LD {
 
@@ -43,11 +45,19 @@ struct WAVData : Handle<struct WAVDataObj>
     /// @brief get channel count
     uint32_t get_channels() const;
 
+    /// @brief get sample format
+    SampleFormat get_sample_format() const;
+
+    /// @brief get number of samples
+    uint32_t get_sample_count() const;
+
     /// @brief get sample rate hz
     uint32_t get_sample_rate() const;
 
     /// @brief get bit depth per sample
     uint32_t get_bits_per_sample() const;
+
+    static bool save_to_disk(const std::filesystem::path& path, const WAVHeader& header, const void* data, uint64_t dataSize);
 };
 
 } // namespace LD

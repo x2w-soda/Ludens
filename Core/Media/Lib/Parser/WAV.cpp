@@ -1,7 +1,12 @@
+#include <Ludens/Header/Types.h>
 #include <Ludens/Log/Log.h>
 #include <Ludens/Media/Parser/WAV.h>
+#include <Ludens/System/FileSystem.h>
 #include <Ludens/System/Memory.h>
 #include <cstring>
+#include <vector>
+
+namespace fs = std::filesystem;
 
 namespace LD {
 
@@ -82,6 +87,44 @@ uint32_t WAVData::get_channels() const
     return (uint32_t)mObj->header.channelCount;
 }
 
+SampleFormat WAVData::get_sample_format() const
+{
+    if (mObj->header.audioFormat == 1) // PCM
+    {
+        switch (mObj->header.bitsPerSample)
+        {
+        case 8:
+            return SAMPLE_FORMAT_U8;
+        case 16:
+            return SAMPLE_FORMAT_S16;
+        case 24:
+            return SAMPLE_FORMAT_S24;
+        case 32:
+            return SAMPLE_FORMAT_S32;
+        default:
+            return SAMPLE_FORMAT_UNKNOWN;
+        }
+    }
+
+    if (mObj->header.audioFormat == 3) // IEEE-754
+    {
+        switch (mObj->header.bitsPerSample)
+        {
+        case 32:
+            return SAMPLE_FORMAT_F32;
+        default:
+            return SAMPLE_FORMAT_UNKNOWN;
+        }
+    }
+
+    return SAMPLE_FORMAT_UNKNOWN;
+}
+
+uint32_t WAVData::get_sample_count() const
+{
+    return mObj->dataSize / (mObj->header.bitsPerSample / 8);
+}
+
 uint32_t WAVData::get_sample_rate() const
 {
     return (uint32_t)mObj->header.sampleRate;
@@ -90,6 +133,23 @@ uint32_t WAVData::get_sample_rate() const
 uint32_t WAVData::get_bits_per_sample() const
 {
     return (uint32_t)mObj->header.bitsPerSample;
+}
+
+bool WAVData::save_to_disk(const fs::path& path, const WAVHeader& header, const void* data, uint64_t dataSize)
+{
+    size_t wavDataSize = sizeof(WAVHeader) + 8 + dataSize;
+    std::vector<byte> wavData(wavDataSize);
+
+    memcpy(wavData.data(), &header, sizeof(WAVHeader));
+    char* blockID = (char*)(wavData.data() + sizeof(WAVHeader));
+    uint32_t* blockSize = (uint32_t*)(blockID + 4);
+
+    // store samples at data chunk
+    strncpy(blockID, "data", 4);
+    *blockSize = dataSize;
+    memcpy(blockID + 8, data, dataSize);
+
+    return FS::write_file(path, wavData.size(), wavData.data());
 }
 
 } // namespace LD
