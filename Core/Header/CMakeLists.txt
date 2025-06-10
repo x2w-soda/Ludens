@@ -16,12 +16,14 @@ set(MODULE_INCLUDE
     ${LUDENS_INCLUDE_DIR}/Ludens/Header/Math/Mat3.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Header/Math/Mat4.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Header/Math/Rect.h
+    ${LUDENS_INCLUDE_DIR}/Ludens/Header/Math/Geometry.h
 )
 
 set(MODULE_TEST
     ${MODULE_INCLUDE}
     Test/HeaderTest.cpp
     Test/TestHash.h
+    Test/TestGeometry.h
 )
 
 add_executable(${MODULE_TEST_NAME}
