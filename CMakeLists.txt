@@ -108,6 +108,15 @@ set_target_properties(Freetype::Freetype PROPERTIES
 )
 find_package(Freetype REQUIRED)
 
+## Fetch libsamplerate
+
+FetchContent_Declare(
+  libsamplerate
+  GIT_REPOSITORY https://github.com/libsndfile/libsamplerate.git
+  GIT_TAG 0.2.2
+)
+FetchContent_MakeAvailable(libsamplerate)
+
 ## Fetch ZStandard
 
 FetchContent_Declare(
@@ -221,6 +230,7 @@ add_subdirectory(Core/Profiler)
 add_subdirectory(Core/System)
 add_subdirectory(Core/Serial)
 add_subdirectory(Core/DSA)
+add_subdirectory(Core/DSP)
 add_subdirectory(Core/Log)
 add_subdirectory(Core/JobSystem)
 add_subdirectory(Core/Lua)
@@ -237,6 +247,7 @@ target_link_libraries(LDCore INTERFACE
   LDSystem
   LDSerial
   LDDSA
+  LDDSP
   LDLog
   LDJobSystem
   LDLua
