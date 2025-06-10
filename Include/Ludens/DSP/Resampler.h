@@ -19,7 +19,7 @@ struct ResamplerProcessInfo
     const void* srcSamples;
     uint32_t srcFrameCount;
     SampleFormat dstFormat;
-    float* dstSamples;
+    void* dstSamples;
     uint32_t dstFrameCount;
 };
 

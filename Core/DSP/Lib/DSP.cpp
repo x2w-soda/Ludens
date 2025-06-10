@@ -4,6 +4,22 @@
 
 namespace LD {
 
+// clang-format off
+struct
+{
+    SampleFormat format;
+    size_t byteSize;
+    const char* cstr;
+} sFormatTable[] = {
+    {SAMPLE_FORMAT_UNKNOWN, 0, "SAMPLE_FORMAT_UNKNOWN"},
+    {SAMPLE_FORMAT_F32,     4, "SAMPLE_FORMAT_F32"},
+    {SAMPLE_FORMAT_S16,     2, "SAMPLE_FORMAT_S16"},
+    {SAMPLE_FORMAT_S24,     3, "SAMPLE_FORMAT_S24"},
+    {SAMPLE_FORMAT_S32,     4, "SAMPLE_FORMAT_S32"},
+    {SAMPLE_FORMAT_U8,      1, "SAMPLE_FORMAT_U8"},
+};
+// clang-format on
+
 bool sample_format_conversion(SampleFormat srcFormat, const void* srcSamples, SampleFormat dstFormat, void* dstSamples, size_t sampleCount)
 {
     // TODO: SIMD?
@@ -65,6 +81,16 @@ bool sample_format_conversion(SampleFormat srcFormat, const void* srcSamples, Sa
     }
 
     return true;
+}
+
+size_t sample_format_byte_size(SampleFormat format, size_t count)
+{
+    return sFormatTable[(int)format].byteSize * count;
+}
+
+const char* sample_format_cstr(SampleFormat format)
+{
+    return sFormatTable[(int)format].cstr;
 }
 
 } // namespace LD

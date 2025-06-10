@@ -24,4 +24,10 @@ enum SampleFormat
 /// @return true on success
 bool sample_format_conversion(SampleFormat srcFormat, const void* srcSamples, SampleFormat dstFormat, void* dstSamples, size_t sampleCount);
 
+/// @brief get byte size give sample count and sample format
+size_t sample_format_byte_size(SampleFormat format, size_t count);
+
+/// @brief get static and null-terminated string of format
+const char* sample_format_cstr(SampleFormat format);
+
 } // namespace LD
