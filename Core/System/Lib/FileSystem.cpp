@@ -33,6 +33,19 @@ bool read_file(const std::filesystem::path& path, uint64_t& size, byte* buf)
     return true;
 }
 
+bool write_file(const std::filesystem::path& path, uint64_t size, const byte* buf)
+{
+    std::ofstream file(path, std::ios::binary);
+
+    if (!file.is_open())
+        return false;
+
+    file.write((const char*)buf, size);
+    file.close();
+
+    return true;
+}
+
 bool exists(const std::filesystem::path& path)
 {
     return fs::exists(path);
