@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstddef>
+
 namespace LD {
 
 size_t zstd_compress_bound(size_t srcSize);

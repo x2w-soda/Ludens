@@ -519,13 +519,13 @@ void cast_primitive_topology_vk(const RPrimitiveTopology& inTopo, VkPrimitiveTop
     outTopo = primitiveTopologyTable[(int)inTopo].vkTopo;
 }
 
-static_assert(RSAMPLE_COUNT_1_BIT == VK_SAMPLE_COUNT_1_BIT);
-static_assert(RSAMPLE_COUNT_2_BIT == VK_SAMPLE_COUNT_2_BIT);
-static_assert(RSAMPLE_COUNT_4_BIT == VK_SAMPLE_COUNT_4_BIT);
-static_assert(RSAMPLE_COUNT_8_BIT == VK_SAMPLE_COUNT_8_BIT);
-static_assert(RSAMPLE_COUNT_16_BIT == VK_SAMPLE_COUNT_16_BIT);
-static_assert(RSAMPLE_COUNT_32_BIT == VK_SAMPLE_COUNT_32_BIT);
-static_assert(RSAMPLE_COUNT_64_BIT == VK_SAMPLE_COUNT_64_BIT);
+static_assert((int)RSAMPLE_COUNT_1_BIT == (int)VK_SAMPLE_COUNT_1_BIT);
+static_assert((int)RSAMPLE_COUNT_2_BIT == (int)VK_SAMPLE_COUNT_2_BIT);
+static_assert((int)RSAMPLE_COUNT_4_BIT == (int)VK_SAMPLE_COUNT_4_BIT);
+static_assert((int)RSAMPLE_COUNT_8_BIT == (int)VK_SAMPLE_COUNT_8_BIT);
+static_assert((int)RSAMPLE_COUNT_16_BIT == (int)VK_SAMPLE_COUNT_16_BIT);
+static_assert((int)RSAMPLE_COUNT_32_BIT == (int)VK_SAMPLE_COUNT_32_BIT);
+static_assert((int)RSAMPLE_COUNT_64_BIT == (int)VK_SAMPLE_COUNT_64_BIT);
 
 void cast_sample_count_vk(const RSampleCountBit& inBit, VkSampleCountFlagBits& outBit)
 {
@@ -537,10 +537,10 @@ void cast_sample_count_from_vk(const VkSampleCountFlagBits& inBit, RSampleCountB
     outBit = (RSampleCountBit)inBit;
 }
 
-static_assert(RCOLOR_COMPONENT_R_BIT == VK_COLOR_COMPONENT_R_BIT);
-static_assert(RCOLOR_COMPONENT_G_BIT == VK_COLOR_COMPONENT_G_BIT);
-static_assert(RCOLOR_COMPONENT_B_BIT == VK_COLOR_COMPONENT_B_BIT);
-static_assert(RCOLOR_COMPONENT_A_BIT == VK_COLOR_COMPONENT_A_BIT);
+static_assert((int)RCOLOR_COMPONENT_R_BIT == (int)VK_COLOR_COMPONENT_R_BIT);
+static_assert((int)RCOLOR_COMPONENT_G_BIT == (int)VK_COLOR_COMPONENT_G_BIT);
+static_assert((int)RCOLOR_COMPONENT_B_BIT == (int)VK_COLOR_COMPONENT_B_BIT);
+static_assert((int)RCOLOR_COMPONENT_A_BIT == (int)VK_COLOR_COMPONENT_A_BIT);
 
 void cast_color_components_vk(const RColorComponentFlags& inFlags, VkColorComponentFlags& outFlags)
 {
