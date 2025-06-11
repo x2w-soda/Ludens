@@ -1,5 +1,6 @@
 #include <Ludens/DSP/DSP.h>
 #include <cstdint>
+#include <cstring>
 #include <vector>
 
 namespace LD {

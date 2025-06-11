@@ -133,6 +133,7 @@ static RImageUsageFlags get_native_image_usage(RGraphImageUsage renderGraphUsage
     }
 
     LD_UNREACHABLE;
+    return (RImageUsageFlags)0;
 }
 
 /// @brief hash of an image based on physical dimensions and declared name

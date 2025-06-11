@@ -95,7 +95,7 @@ VulkanDebugMessenger::VulkanDebugMessenger(VkInstance instance, VkResult* result
 
     if (*result != VK_SUCCESS)
     {
-        sLog.error("vkCreateDebugUtilsMessengerEXT failed: {}", (int)result);
+        sLog.error("vkCreateDebugUtilsMessengerEXT failed: {}", (int)*result);
         return;
     }
 }
