@@ -207,7 +207,11 @@ RSetPool RDevice::create_set_pool(const RSetPoolInfo& poolI)
     poolObj->deviceObj = mObj;
     poolObj->layoutObj = mObj->get_or_create_set_layout_obj(poolI.layout);
     new (&poolObj->setLA) LinearAllocator();
-    poolObj->setLA.create(sizeof(RSetObj) * poolI.maxSets, MEMORY_USAGE_RENDER);
+
+    LinearAllocatorInfo laI{};
+    laI.usage = MEMORY_USAGE_RENDER;
+    laI.capacity = sizeof(RSetObj) * poolI.maxSets;
+    poolObj->setLA = LinearAllocator::create(laI);
 
     return mObj->create_set_pool(mObj, poolI, poolObj);
 }
@@ -218,7 +222,8 @@ void RDevice::destroy_set_pool(RSetPool pool)
 
     mObj->destroy_set_pool(mObj, pool);
 
-    poolObj->setLA.destroy();
+    LinearAllocator::destroy(poolObj->setLA);
+
     poolObj->setLA.~LinearAllocator();
     heap_free((RSetPoolObj*)pool);
 }

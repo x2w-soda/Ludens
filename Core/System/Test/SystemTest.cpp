@@ -1,13 +1,16 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "Extra/doctest/doctest.h"
 #include <Ludens/System/Allocator.h>
+#include <Ludens/System/Memory.h>
 
 using namespace LD;
 
-TEST_CASE("linear_allocator")
+TEST_CASE("LinearAllocator")
 {
-    LinearAllocator la;
-    la.create(1024, MEMORY_USAGE_MISC);
+    LinearAllocatorInfo laI{};
+    laI.usage = MEMORY_USAGE_MISC;
+    laI.capacity = 1024;
+    LinearAllocator la = LinearAllocator::create(laI);
 
     CHECK(la.capacity() == 1024);
     CHECK(la.size() == 0);
@@ -28,7 +31,8 @@ TEST_CASE("linear_allocator")
     CHECK(la.size() == 0);
     CHECK(la.remain() == 1024);
 
-    la.destroy();
+    LinearAllocator::destroy(la);
 
-    CHECK(la.capacity() == 0);
+    const MemoryProfile& profile = get_memory_profile(MEMORY_USAGE_MISC);
+    CHECK(profile.current == 0);
 }

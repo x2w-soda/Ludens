@@ -1,51 +1,70 @@
 #include <Ludens/Header/Assert.h>
+#include <Ludens/Header/Types.h>
 #include <Ludens/System/Allocator.h>
 
 namespace LD {
 
-LinearAllocator::LinearAllocator()
-    : mCapacity(0), mSize(0), mBase(nullptr)
+struct LinearAllocatorObj
 {
+    MemoryUsage usage;
+    size_t capacity;
+    size_t size;
+    byte* base;
+};
+
+LinearAllocator LinearAllocator::create(const LinearAllocatorInfo& info)
+{
+    LinearAllocatorObj* obj = (LinearAllocatorObj*)heap_malloc(sizeof(LinearAllocatorObj), info.usage);
+    obj->usage = info.usage;
+    obj->capacity = info.capacity;
+    obj->size = 0;
+    obj->base = nullptr;
+
+    return {obj};
 }
 
-LinearAllocator::~LinearAllocator()
+void LinearAllocator::destroy(LinearAllocator allocator)
 {
-    if (mBase)
-        destroy();
+    LinearAllocatorObj* obj = allocator;
+
+    if (obj->base)
+        heap_free(obj->base);
+
+    heap_free(obj);
 }
 
-void LinearAllocator::create(size_t capacity, MemoryUsage usage)
+size_t LinearAllocator::capacity() const
 {
-    LD_ASSERT(mBase == nullptr);
-
-    mCapacity = capacity;
-    mSize = 0;
-    mBase = (char*)heap_malloc(mCapacity, usage);
+    return mObj->capacity;
 }
 
-void LinearAllocator::destroy()
+size_t LinearAllocator::size() const
 {
-    LD_ASSERT(mBase != nullptr);
+    return mObj->size;
+}
 
-    heap_free(mBase);
-    mCapacity = 0;
-    mSize = 0;
-    mBase = nullptr;
+size_t LinearAllocator::remain() const
+{
+    return mObj->capacity - mObj->size;
 }
 
 void* LinearAllocator::allocate(size_t size)
 {
     LD_ASSERT(size <= remain());
 
-    void* base = mBase + mSize;
-    mSize += size;
+    // defer until first allocate() call
+    if (mObj->base == nullptr)
+        mObj->base = (byte*)heap_malloc(mObj->capacity, mObj->usage);
+
+    void* base = mObj->base + mObj->size;
+    mObj->size += size;
 
     return base;
 }
 
 void LinearAllocator::free()
 {
-    mSize = 0;
+    mObj->size = 0;
 }
 
 } // namespace LD
