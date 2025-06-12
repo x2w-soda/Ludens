@@ -165,6 +165,8 @@ void ScreenPickComponentObj::on_compute_pass(RComputePass pass, RCommandList lis
 ScreenPickComponent ScreenPickComponent::add(RGraph graph, const ScreenPickComponentInfo& componentI)
 {
     RDevice device = graph.get_device();
+    uint32_t screenWidth, screenHeight;
+    graph.get_screen_extent(screenWidth, screenHeight);
 
     sCompObj.init(device);
     sCompObj.frameIdx = device.get_frame_index();
@@ -196,7 +198,7 @@ ScreenPickComponent ScreenPickComponent::add(RGraph graph, const ScreenPickCompo
     ScreenPickComponent pickComp(&sCompObj);
 
     RComponent comp = graph.add_component(pickComp.component_name());
-    comp.add_input_image(pickComp.input_name(), RFORMAT_RGBA8U, componentI.width, componentI.height);
+    comp.add_input_image(pickComp.input_name(), RFORMAT_RGBA8U, screenWidth, screenHeight);
 
     RComputePassInfo cpI{};
     cpI.name = pickComp.component_name();

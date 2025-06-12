@@ -183,24 +183,26 @@ void SkyboxComponentObj::on_graphics_pass(RGraphicsPass pass, RCommandList list,
     list.cmd_draw(drawI);
 }
 
-SkyboxComponent SkyboxComponent::add(RGraph graph, RFormat cFormat, RFormat dsFormat, uint32_t width, uint32_t height)
+SkyboxComponent SkyboxComponent::add(RGraph graph, RFormat cFormat, RFormat dsFormat)
 {
     LD_PROFILE_SCOPE;
 
     SkyboxComponentObj* compObj = &sSBCompObj;
     RDevice device = graph.get_device();
+    uint32_t screenWidth, screenHeight;
+    graph.get_screen_extent(screenWidth, screenHeight);
 
     compObj->init(device);
 
     SkyboxComponent skyboxComp(compObj);
     RComponent comp = graph.add_component(skyboxComp.component_name());
-    comp.add_io_image(skyboxComp.io_color_name(), cFormat, width, height);
-    comp.add_io_image(skyboxComp.io_depth_stencil_name(), dsFormat, width, height);
+    comp.add_io_image(skyboxComp.io_color_name(), cFormat, screenWidth, screenHeight);
+    comp.add_io_image(skyboxComp.io_depth_stencil_name(), dsFormat, screenWidth, screenHeight);
 
     RGraphicsPassInfo gpI{};
     gpI.name = skyboxComp.component_name();
-    gpI.width = width;
-    gpI.height = height;
+    gpI.width = screenWidth;
+    gpI.height = screenHeight;
 
     // render skybox on top of previous content
     RGraphicsPass pass = comp.add_graphics_pass(gpI, compObj, &SkyboxComponentObj::on_graphics_pass);

@@ -116,6 +116,8 @@ struct RGraphObj
     std::vector<RComponentPassObj*> passOrder;
     RComponentObj* blitCompObj;
     Hash32 blitOutputName;
+    uint32_t screenWidth;
+    uint32_t screenHeight;
 };
 
 } // namespace LD

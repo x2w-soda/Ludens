@@ -10,7 +10,7 @@ namespace LD {
 struct SkyboxComponent : Handle<struct SkyboxComponentObj>
 {
     /// @brief adds the component to render graph
-    static SkyboxComponent add(RGraph graph, RFormat cFormat, RFormat dsFormat, uint32_t width, uint32_t height);
+    static SkyboxComponent add(RGraph graph, RFormat cFormat, RFormat dsFormat);
 
     /// @brief get the name of this component
     inline const char* component_name() const { return "skybox"; }

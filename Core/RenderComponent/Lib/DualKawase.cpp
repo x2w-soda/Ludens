@@ -275,13 +275,15 @@ void DualKawaseComponentObj::on_up_sample(RGraphicsPass pass, RCommandList list,
     list.cmd_draw({.vertexCount = 6, .vertexStart = 0, .instanceCount = 1, .instanceStart = 0});
 }
 
-DualKawaseComponent DualKawaseComponent::add(RGraph graph, RFormat format, uint32_t width, uint32_t height)
+DualKawaseComponent DualKawaseComponent::add(RGraph graph, RFormat format)
 {
     LD_PROFILE_SCOPE;
 
     RDevice device = graph.get_device();
+    uint32_t screenWidth, screenHeight;
+    graph.get_screen_extent(screenWidth, screenHeight);
 
-    sDKCompObj.init(device, format, width, height);
+    sDKCompObj.init(device, format, screenWidth, screenHeight);
     sDKCompObj.mipLevel = 0;
     sDKCompObj.frameIdx = device.get_frame_index();
 
@@ -289,11 +291,11 @@ DualKawaseComponent DualKawaseComponent::add(RGraph graph, RFormat format, uint3
     RSamplerInfo sampler = {RFILTER_LINEAR, RFILTER_LINEAR, RSAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE};
 
     RComponent comp = graph.add_component(kawaseComp.component_name());
-    comp.add_input_image(kawaseComp.input_name(), format, width, height);
-    comp.add_output_image(kawaseComp.output_name(), format, width, height, &sampler);
+    comp.add_input_image(kawaseComp.input_name(), format, screenWidth, screenHeight);
+    comp.add_output_image(kawaseComp.output_name(), format, screenWidth, screenHeight, &sampler);
 
-    uint32_t mipWidth = width;
-    uint32_t mipHeight = height;
+    uint32_t mipWidth = screenWidth;
+    uint32_t mipHeight = screenHeight;
 
     std::string passName = "down_sample_0";
     std::string mipName = "mip_0";

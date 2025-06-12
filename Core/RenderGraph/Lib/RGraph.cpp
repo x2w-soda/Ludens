@@ -176,11 +176,6 @@ static RImage get_or_create_image(RGraphObj* graphObj, RComponentObj* compObj, H
     // usage generalization: dont invalidate image when usage narrows
     imageI.usage |= state.usage;
 
-    // size generalization: dont invalidate image when size shrinks
-    imageI.width = std::max(state.width, imageI.width);
-    imageI.height = std::max(state.height, imageI.height);
-    imageI.depth = std::max(state.depth, imageI.depth);
-
     uint32_t imageHash = get_image_hash(imageI, name);
 
     // create or invalidate image
@@ -650,9 +645,13 @@ RGraph RGraph::create(const RGraphInfo& graphI)
 {
     LD_PROFILE_SCOPE;
 
+    LD_ASSERT(graphI.screenWidth > 0 && graphI.screenHeight > 0);
+
     RGraphObj* obj = heap_new<RGraphObj>(MEMORY_USAGE_RENDER);
     obj->info = graphI;
     obj->blitCompObj = nullptr;
+    obj->screenWidth = graphI.screenWidth;
+    obj->screenHeight = graphI.screenHeight;
 
     return {obj};
 }
@@ -720,6 +719,12 @@ void RGraph::release(RDevice device)
 RDevice RGraph::get_device()
 {
     return mObj->info.device;
+}
+
+void RGraph::get_screen_extent(uint32_t& width, uint32_t& height)
+{
+    width = mObj->screenWidth;
+    height = mObj->screenHeight;
 }
 
 RImage RGraph::get_swapchain_image()

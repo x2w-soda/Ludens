@@ -14,10 +14,8 @@ struct ScreenRenderComponent : Handle<struct ScreenRenderComponentObj>
     typedef void (*OnDrawCallback)(ScreenRenderComponent renderer, void* user);
 
     /// @brief adds the component to render graph
-    /// @width screen space render area width
-    /// @height screen space render area height
     /// @on_draw user callback to draw 2D primitives
-    static ScreenRenderComponent add(RGraph graph, RFormat format, uint32_t width, uint32_t height, OnDrawCallback on_draw, void* user, bool hasSampledImage = false);
+    static ScreenRenderComponent add(RGraph graph, RFormat format, OnDrawCallback on_draw, void* user, bool hasSampledImage = false);
 
     /// @brief get the name of this component
     inline const char* component_name() const { return "screen_render"; }

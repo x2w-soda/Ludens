@@ -94,6 +94,8 @@ struct RGraphInfo
     RFence frameComplete;
     RSemaphore imageAcquired;
     RSemaphore presentReady;
+    uint32_t screenWidth;
+    uint32_t screenHeight;
 };
 
 /// @brief render graph handle
@@ -116,6 +118,9 @@ struct RGraph : RHandle<struct RGraphObj>
 
     /// @brief get the render device this graph is created with
     RDevice get_device();
+
+    /// @brief get screen size extent
+    void get_screen_extent(uint32_t& width, uint32_t& height);
 
     /// @brief get the swapchain image handle for this frame
     RImage get_swapchain_image();

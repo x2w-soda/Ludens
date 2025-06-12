@@ -368,11 +368,13 @@ void ScreenRenderComponentObj::on_graphics_pass(RGraphicsPass pass, RCommandList
     obj->flush_rects();
 }
 
-ScreenRenderComponent ScreenRenderComponent::add(RGraph graph, RFormat format, uint32_t width, uint32_t height, OnDrawCallback onDraw, void* user, bool hasSampledImage)
+ScreenRenderComponent ScreenRenderComponent::add(RGraph graph, RFormat format, OnDrawCallback onDraw, void* user, bool hasSampledImage)
 {
     LD_PROFILE_SCOPE;
 
     RDevice device = graph.get_device();
+    uint32_t screenWidth, screenHeight;
+    graph.get_screen_extent(screenWidth, screenHeight);
 
     sSRCompObj.init(device);
     sSRCompObj.frameIdx = device.get_frame_index();
@@ -383,12 +385,12 @@ ScreenRenderComponent ScreenRenderComponent::add(RGraph graph, RFormat format, u
     ScreenRenderComponent render2DComp(&sSRCompObj);
 
     RComponent comp = graph.add_component(render2DComp.component_name());
-    comp.add_io_image(render2DComp.io_name(), format, width, height);
+    comp.add_io_image(render2DComp.io_name(), format, screenWidth, screenHeight);
 
     RGraphicsPassInfo gpI{};
     gpI.name = render2DComp.component_name();
-    gpI.width = width;
-    gpI.height = height;
+    gpI.width = screenWidth;
+    gpI.height = screenHeight;
 
     // draw in screen space on top of previous content
     RGraphicsPass pass = comp.add_graphics_pass(gpI, &sSRCompObj, &ScreenRenderComponentObj::on_graphics_pass);
@@ -397,7 +399,7 @@ ScreenRenderComponent ScreenRenderComponent::add(RGraph graph, RFormat format, u
     // conditional input image with the same dimensions as color attachment
     if (hasSampledImage)
     {
-        comp.add_input_image(render2DComp.sampled_name(), format, width, height);
+        comp.add_input_image(render2DComp.sampled_name(), format, screenWidth, screenHeight);
         pass.use_image_sampled(render2DComp.sampled_name());
     }
 
