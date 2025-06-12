@@ -38,4 +38,36 @@ struct LinearAllocator : Handle<struct LinearAllocatorObj>
     size_t remain() const;
 };
 
+struct PoolAllocatorInfo
+{
+    MemoryUsage usage; /// the usage space of all allocations made by the allocator
+    size_t blockSize;  /// the size of a block in bytes
+    size_t pageSize;   /// the number of blocks in a single page
+    bool isMultiPage;  /// if true, allocate() will create new pages as necessary, otherwise only a single page is allocated.
+};
+
+/// @brief Allocates a pool of fixed-sized blocks.
+///        Each page of memory has a fixed number of blocks.
+struct PoolAllocator : Handle<struct PoolAllocatorObj>
+{
+    /// @brief create a pool allocator
+    /// @param info pool allocator configuration info
+    /// @return allocator handle
+    static PoolAllocator create(const PoolAllocatorInfo& info);
+
+    /// @brief destroy the pool allocator, all block allocations by allocate() will be freed.
+    static void destroy(PoolAllocator allocator);
+
+    /// @brief allocate a block
+    /// @return a new block of memory
+    void* allocate();
+
+    /// @brief free a block
+    /// @param block a block returned from allocate()
+    void free(void* block);
+
+    /// @brief number of pages allocated
+    size_t page_count() const;
+};
+
 } // namespace LD
