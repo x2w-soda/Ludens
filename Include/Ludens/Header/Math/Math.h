@@ -42,3 +42,10 @@ inline bool is_zero_epsilon(T value)
     else
         return value == (T)0;
 }
+
+/// @brief chech if two values are equal with epsilon tolerance for floating points
+template <typename T>
+inline bool is_equal_epsilon(T lhs, T rhs)
+{
+    return is_zero_epsilon<T>(static_cast<T>(lhs - rhs));
+}

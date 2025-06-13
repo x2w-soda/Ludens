@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Ludens/Header/Math/Math.h>
 #include <Ludens/Header/Math/Vec2.h>
 
 namespace LD {
@@ -27,7 +28,15 @@ struct TRect
         h_ = h;
     }
 
+    /// @brief check whether the rect contains a point
+    /// @param pos a point position in 2D coordinates
     inline bool contains(const TVec2<T>& pos) const { return x <= pos.x && pos.x <= x + w && y <= pos.y && pos.y <= y + h; }
+
+    /// @brief two rects are equal if they have the same position and size. Epsilon tolerance is used for floating-point comparison.
+    bool operator==(const TRect& other) const
+    {
+        return is_equal_epsilon(x, other.x) && is_equal_epsilon(y, other.y) && is_equal_epsilon(w, other.w) && is_equal_epsilon(h, other.h);
+    }
 };
 
 using Rect = TRect<float>;
