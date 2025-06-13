@@ -21,19 +21,19 @@ public:
     Color(const Vec4& value)
         : mValue(0)
     {
-        mValue |= std::max<uint32_t>(uint32_t(value.r * 255.0f), 255) << 24;
-        mValue |= std::max<uint32_t>(uint32_t(value.g * 255.0f), 255) << 16;
-        mValue |= std::max<uint32_t>(uint32_t(value.b * 255.0f), 255) << 8;
-        mValue |= std::max<uint32_t>(uint32_t(value.a * 255.0f), 255);
+        mValue |= std::min<uint32_t>(uint32_t(value.r * 255.0f), 255) << 24;
+        mValue |= std::min<uint32_t>(uint32_t(value.g * 255.0f), 255) << 16;
+        mValue |= std::min<uint32_t>(uint32_t(value.b * 255.0f), 255) << 8;
+        mValue |= std::min<uint32_t>(uint32_t(value.a * 255.0f), 255);
     }
 
     /// @brief Construct from 3-component RGB vector. Alpha channel is initialized to 255 (opaque).
     /// @param value 3-channel RGB color value, each channel is assumed to be normalized.
     Color(const Vec3& value)
     {
-        mValue |= std::max<uint32_t>(uint32_t(value.r * 255.0f), 255) << 24;
-        mValue |= std::max<uint32_t>(uint32_t(value.g * 255.0f), 255) << 16;
-        mValue |= std::max<uint32_t>(uint32_t(value.b * 255.0f), 255) << 8;
+        mValue |= std::min<uint32_t>(uint32_t(value.r * 255.0f), 255) << 24;
+        mValue |= std::min<uint32_t>(uint32_t(value.g * 255.0f), 255) << 16;
+        mValue |= std::min<uint32_t>(uint32_t(value.b * 255.0f), 255) << 8;
         mValue |= 255;
     }
 

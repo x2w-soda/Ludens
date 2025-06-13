@@ -9,6 +9,7 @@
 #include <Extra/doctest/doctest.h>
 #include "TestHash.h"
 #include "TestGeometry.h"
+#include "TestColor.h"
 
 using namespace LD;
 

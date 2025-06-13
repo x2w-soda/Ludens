@@ -24,6 +24,7 @@ set(MODULE_TEST
     Test/HeaderTest.cpp
     Test/TestHash.h
     Test/TestGeometry.h
+    Test/TestColor.h
 )
 
 add_executable(${MODULE_TEST_NAME}
