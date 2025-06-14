@@ -53,8 +53,24 @@ struct ScreenRenderComponent : Handle<struct ScreenRenderComponentObj>
     /// @param color image tint color
     void draw_image_uv(const Rect& rect, RImage image, const Rect& uv, Color color);
 
-    /// @brief draw a single font glyph
+    /// @brief draw a single font glyph using top-left corner origin
+    /// @param atlas font atlas
+    /// @param atlasImage corresponding font atlas image
+    /// @param fontSize font render size
+    /// @param pos top left origin of the glyph to be rendered
+    /// @param code unicode codepoint
+    /// @param color glyph fill color
     void draw_glyph(FontAtlas atlas, RImage atlasImage, float fontSize, const Vec2& pos, uint32_t code, Color color);
+
+    /// @brief draw a single font glyph using position on baseline
+    /// @param atlas font atlas
+    /// @param atlasImage corresponding font atlas image
+    /// @param fontSize font render size
+    /// @param baseline cursor position on a horizontal baseline
+    /// @param code unicode codepoint
+    /// @param color glyph fill color
+    /// @return the advanceX offset that can be applied to baseline x position.
+    float draw_glyph_baseline(FontAtlas atlas, RImage atlasImage, float fontSize, const Vec2& baseline, uint32_t code, Color color);
 
     /// @brief draw a string of text
     void draw_text(FontAtlas atlas, RImage atlasImage, float fontSize, const Vec2& pos, const char* text, Color color, float wrapWidth = 0.0f);

@@ -60,6 +60,7 @@ struct FontAtlas : Handle<struct FontAtlasObj>
     /// @brief get glyph bounding box in atlas
     /// @param code unicode codepoint
     /// @param glyphBB glyph BB in atlas, pixel positions
+    /// @return whether the glyph is found in the atlas
     bool get_atlas_glyph(uint32_t code, IRect& glyphBB);
 
     /// @brief get glyph bounding box in screen space, relative to baseline position
@@ -68,6 +69,7 @@ struct FontAtlas : Handle<struct FontAtlasObj>
     /// @param baseline baseline cursor position in screen space
     /// @param glyphBB glyph BB in screen space
     /// @param advanceX baseline cursor horizontal offset in screen space
+    /// @return whether the glyph is found in the atlas
     bool get_baseline_glyph(uint32_t code, float fontSize, const Vec2& baseline, Rect& glyphBB, float& advanceX);
 };
 

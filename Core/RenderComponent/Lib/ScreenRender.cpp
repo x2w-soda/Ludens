@@ -559,6 +559,16 @@ void ScreenRenderComponent::draw_glyph(FontAtlas atlas, RImage atlasImage, float
     v[3] = {x0, y1, u0, v1, color, control}; // BL
 }
 
+float ScreenRenderComponent::draw_glyph_baseline(FontAtlas atlas, RImage atlasImage, float fontSize, const Vec2& baseline, uint32_t code, Color color)
+{
+    float advanceX;
+    Rect rect;
+    atlas.get_baseline_glyph(code, fontSize, baseline, rect, advanceX);
+    draw_glyph(atlas, atlasImage, fontSize, rect.get_pos(), code, color);
+
+    return advanceX;
+}
+
 void ScreenRenderComponent::draw_text(FontAtlas atlas, RImage atlasImage, float fontSize, const Vec2& pos, const char* text, Color color, float wrapWidth)
 {
     Font f = atlas.get_font();
