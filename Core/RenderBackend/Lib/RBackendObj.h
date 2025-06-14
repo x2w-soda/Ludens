@@ -5,9 +5,10 @@
 #include <cstdint>
 #include <optional>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
-#include <vk_mem_alloc.h>    // hide from user
-#include <vulkan/vulkan.hpp> // hide from user
+#include <vk_mem_alloc.h>    // hide
+#include <vulkan/vulkan.hpp> // hide
 
 #define PIPELINE_LAYOUT_MAX_RESOURCE_SETS 4
 
@@ -82,6 +83,7 @@ struct RImageObj
     uint64_t rid;
     RDevice device;
     RImageInfo info;
+    std::unordered_set<uint32_t> fboHashes;
 
     struct
     {

@@ -78,6 +78,8 @@ void RDevice::destroy(RDevice device)
     sLog.info("RDevice destroyed {} passes", (int)sPasses.size());
     sPasses.clear();
 
+    // NOTE: destroying images also destroys all framebuffers that
+    //       reference them, so we probably have zero framebuffers left already.
     for (auto& ite : sFramebuffers)
     {
         obj->destroy_framebuffer(obj, ite.second);
@@ -149,18 +151,39 @@ RImage RDevice::create_image(const RImageInfo& imageI)
     LD_ASSERT(!(imageI.type == RIMAGE_TYPE_CUBE && imageI.layers != 6));
 
     RImageObj* imageObj = (RImageObj*)heap_malloc(sizeof(RImageObj), MEMORY_USAGE_RENDER);
+    mObj->create_image(mObj, imageI, imageObj);
+
     imageObj->rid = RObjectID::get();
     imageObj->info = imageI;
     imageObj->device = *this;
 
-    return mObj->create_image(mObj, imageI, imageObj);
+    return {imageObj};
 }
 
 void RDevice::destroy_image(RImage image)
 {
-    mObj->destroy_image(mObj, image);
+    RImageObj* obj = image;
 
-    heap_free((RImageObj*)image);
+    if (obj->fboHashes.size() > 0)
+    {
+        // slow path, destroy all framebuffers using this image
+        wait_idle();
+
+        for (uint32_t fboHash : obj->fboHashes)
+        {
+            if (sFramebuffers.contains(fboHash))
+            {
+                mObj->destroy_framebuffer(mObj, sFramebuffers[fboHash]);
+                heap_free((RFramebufferObj*)sFramebuffers[fboHash]);
+                sFramebuffers.erase(fboHash);
+            }
+        }
+
+        obj->fboHashes.clear();
+    }
+
+    mObj->destroy_image(mObj, image);
+    heap_free(obj);
 }
 
 RCommandPool RDevice::create_command_pool(const RCommandPoolInfo& poolI)
@@ -817,6 +840,27 @@ RFramebufferObj* RDeviceObj::get_or_create_framebuffer_obj(const RFramebufferInf
         framebufferObj->passObj = get_or_create_pass_obj(framebufferI.pass);
         create_framebuffer(this, framebufferI, framebufferObj);
         sFramebuffers[framebufferHash] = framebufferObj;
+
+        for (uint32_t i = 0; i < framebufferI.colorAttachmentCount; i++)
+        {
+            RImageObj* imageObj = framebufferI.colorAttachments[i];
+            imageObj->fboHashes.insert(framebufferHash);
+        }
+
+        if (framebufferI.depthStencilAttachment)
+        {
+            RImageObj* imageObj = (RImageObj*)((RImage)framebufferI.depthStencilAttachment);
+            imageObj->fboHashes.insert(framebufferHash);
+        }
+
+        if (framebufferI.colorResolveAttachments)
+        {
+            for (uint32_t i = 0; i < framebufferI.colorAttachmentCount; i++)
+            {
+                RImageObj* imageObj = framebufferI.colorResolveAttachments[i];
+                imageObj->fboHashes.insert(framebufferHash);
+            }
+        }
     }
 
     return sFramebuffers[framebufferHash];

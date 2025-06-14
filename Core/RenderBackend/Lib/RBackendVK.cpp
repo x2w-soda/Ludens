@@ -537,6 +537,8 @@ static void vk_device_destroy_buffer(RDeviceObj* self, RBuffer buffer)
 
 static RImage vk_device_create_image(RDeviceObj* self, const RImageInfo& imageI, RImageObj* obj)
 {
+    new (obj) RImageObj();
+
     VkFormat vkFormat;
     VkImageType vkType;
     VkImageViewType vkViewType;
@@ -633,6 +635,8 @@ static void vk_device_destroy_image(RDeviceObj* self, RImage image)
 
     vkDestroyImageView(self->vk.device, obj->vk.viewHandle, nullptr);
     vmaDestroyImage(self->vk.vma, obj->vk.handle, obj->vk.vma);
+
+    obj->~RImageObj();
 }
 
 // NOTE: the RPass is simplified to contain only a single Vulkan subpass,
@@ -732,7 +736,8 @@ static void vk_device_create_framebuffer(RDeviceObj* self, const RFramebufferInf
 
     if (fbI.depthStencilAttachment)
     {
-        const RImageObj* imageObj = fbI.depthStencilAttachment;
+        RImage image = fbI.depthStencilAttachment;
+        RImageObj* imageObj = image;
         attachments.push_back(imageObj->vk.viewHandle);
     }
 
@@ -740,7 +745,7 @@ static void vk_device_create_framebuffer(RDeviceObj* self, const RFramebufferInf
     {
         for (uint32_t i = 0; i < fbI.colorAttachmentCount; i++)
         {
-            const RImageObj* imageObj = fbI.colorResolveAttachments[i];
+            RImageObj* imageObj = fbI.colorResolveAttachments[i];
             attachments.push_back(imageObj->vk.viewHandle);
         }
     }
