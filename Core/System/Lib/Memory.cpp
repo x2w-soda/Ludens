@@ -46,6 +46,16 @@ void heap_free(void* ptr)
     std::free((void*)header);
 }
 
+char* heap_strdup(const char* cstr, MemoryUsage usage)
+{
+    size_t len = strlen(cstr);
+    char* str = (char*)heap_malloc(len + 1, usage);
+    memcpy(str, cstr, len);
+    str[len] = '\0';
+
+    return str;
+}
+
 const MemoryProfile& get_memory_profile(MemoryUsage usage)
 {
     return sProfile[usage];
