@@ -415,7 +415,7 @@ RImage ScreenRenderComponent::get_sampled_image()
     return sSRCompObj.graphicsPass.get_image(ScreenRenderComponent(&sSRCompObj).sampled_name());
 }
 
-void ScreenRenderComponent::draw_rect(const Rect& rect, uint32_t color)
+void ScreenRenderComponent::draw_rect(const Rect& rect, Color color)
 {
     if (mObj->rectBatch.is_full())
         mObj->flush_rects();
@@ -430,6 +430,41 @@ void ScreenRenderComponent::draw_rect(const Rect& rect, uint32_t color)
     v[1] = {x1, y0, 0, 0, color, 0}; // TR
     v[2] = {x1, y1, 0, 0, color, 0}; // BR
     v[3] = {x0, y1, 0, 0, color, 0}; // BL
+}
+
+void ScreenRenderComponent::draw_rect_outline(const Rect& rect, float border, Color color)
+{
+    if (mObj->rectBatch.get_rect_count() + 4 > mObj->rectBatch.get_max_rect_count())
+        mObj->flush_rects();
+
+    float x0 = rect.x;
+    float x1 = rect.x + rect.w;
+    float y0 = rect.y;
+    float y1 = rect.y + rect.h;
+
+    RectVertex* barT = mObj->rectBatch.write_rect();
+    barT[0] = {x0, y0, 0, 0, color, 0};
+    barT[1] = {x1, y0, 0, 0, color, 0};
+    barT[2] = {x1, y0 + border, 0, 0, color, 0};
+    barT[3] = {x0, y0 + border, 0, 0, color, 0};
+
+    RectVertex* barB = mObj->rectBatch.write_rect();
+    barB[0] = {x0, y1 - border, 0, 0, color, 0};
+    barB[1] = {x1, y1 - border, 0, 0, color, 0};
+    barB[2] = {x1, y1, 0, 0, color, 0};
+    barB[3] = {x0, y1, 0, 0, color, 0};
+
+    RectVertex* barL = mObj->rectBatch.write_rect();
+    barL[0] = {x0, y0 + border, 0, 0, color, 0};
+    barL[1] = {x0 + border, y0 + border, 0, 0, color, 0};
+    barL[2] = {x0 + border, y1 - border, 0, 0, color, 0};
+    barL[3] = {x0, y1 - border, 0, 0, color, 0};
+
+    RectVertex* barR = mObj->rectBatch.write_rect();
+    barR[0] = {x1 - border, y0 + border, 0, 0, color, 0};
+    barR[1] = {x1, y0 + border, 0, 0, color, 0};
+    barR[2] = {x1, y1 - border, 0, 0, color, 0};
+    barR[3] = {x1 - border, y1 - border, 0, 0, color, 0};
 }
 
 void ScreenRenderComponent::draw_image(const Rect& rect, RImage image)
@@ -455,7 +490,7 @@ void ScreenRenderComponent::draw_image(const Rect& rect, RImage image)
     v[3] = {x0, y1, 0.0f, 1.0f, white, control}; // BL
 }
 
-void ScreenRenderComponent::draw_image_uv(const Rect& rect, RImage image, const Rect& uv, uint32_t color)
+void ScreenRenderComponent::draw_image_uv(const Rect& rect, RImage image, const Rect& uv, Color color)
 {
     if (mObj->rectBatch.is_full())
         mObj->flush_rects();
@@ -481,7 +516,7 @@ void ScreenRenderComponent::draw_image_uv(const Rect& rect, RImage image, const 
     v[3] = {x0, y1, u0, v1, color, control}; // BL
 }
 
-void ScreenRenderComponent::draw_glyph(FontAtlas atlas, RImage atlasImage, float fontSize, const Vec2& pos, uint32_t code, uint32_t color)
+void ScreenRenderComponent::draw_glyph(FontAtlas atlas, RImage atlasImage, float fontSize, const Vec2& pos, uint32_t code, Color color)
 {
     if (mObj->rectBatch.is_full())
         mObj->flush_rects();
@@ -524,7 +559,7 @@ void ScreenRenderComponent::draw_glyph(FontAtlas atlas, RImage atlasImage, float
     v[3] = {x0, y1, u0, v1, color, control}; // BL
 }
 
-void ScreenRenderComponent::draw_text(FontAtlas atlas, RImage atlasImage, float fontSize, const Vec2& pos, const char* text, uint32_t color)
+void ScreenRenderComponent::draw_text(FontAtlas atlas, RImage atlasImage, float fontSize, const Vec2& pos, const char* text, Color color, float wrapWidth)
 {
     Font f = atlas.get_font();
     FontMetrics metrics;
@@ -537,16 +572,20 @@ void ScreenRenderComponent::draw_text(FontAtlas atlas, RImage atlasImage, float 
     {
         uint32_t c = (uint32_t)text[i];
 
-        if (c == '\n')
-        {
-            baseline.y += metrics.lineHeight;
-            baseline.x = pos.x;
-            continue;
-        }
-
         float advanceX;
         Rect rect;
         atlas.get_baseline_glyph(c, fontSize, baseline, rect, advanceX);
+
+        bool shouldWrap = wrapWidth > 0.0f && (baseline.x + advanceX - pos.x) > wrapWidth;
+
+        if (c == '\n' || shouldWrap)
+        {
+            baseline.y += metrics.lineHeight;
+            baseline.x = pos.x;
+            atlas.get_baseline_glyph(c, fontSize, baseline, rect, advanceX);
+            continue;
+        }
+
         draw_glyph(atlas, atlasImage, fontSize, rect.get_pos(), c, color);
 
         baseline.x += advanceX;

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Ludens/Header/Color.h>
 #include <Ludens/Header/Handle.h>
 #include <Ludens/Header/Math/Rect.h>
 #include <Ludens/Media/Font.h>
@@ -30,7 +31,15 @@ struct ScreenRenderComponent : Handle<struct ScreenRenderComponentObj>
     RImage get_sampled_image();
 
     /// @brief draw a rect
-    void draw_rect(const Rect& rect, uint32_t color);
+    /// @param rect render area in screen space
+    /// @param color rect fill color
+    void draw_rect(const Rect& rect, Color color);
+
+    /// @brief draw a rect outline
+    /// @param rect render area in screen space
+    /// @param border outline thickness, grows inwards within render area
+    /// @param color rect outline color
+    void draw_rect_outline(const Rect& rect, float border, Color color);
 
     /// @brief draw a 2D image
     /// @param rect image position
@@ -42,13 +51,13 @@ struct ScreenRenderComponent : Handle<struct ScreenRenderComponentObj>
     /// @param image a 2D image to be drawn
     /// @param uv custom texture uv coordinates
     /// @param color image tint color
-    void draw_image_uv(const Rect& rect, RImage image, const Rect& uv, uint32_t color);
+    void draw_image_uv(const Rect& rect, RImage image, const Rect& uv, Color color);
 
     /// @brief draw a single font glyph
-    void draw_glyph(FontAtlas atlas, RImage atlasImage, float fontSize, const Vec2& pos, uint32_t code, uint32_t color);
+    void draw_glyph(FontAtlas atlas, RImage atlasImage, float fontSize, const Vec2& pos, uint32_t code, Color color);
 
     /// @brief draw a string of text
-    void draw_text(FontAtlas atlas, RImage atlasImage, float fontSize, const Vec2& pos, const char* text, uint32_t color);
+    void draw_text(FontAtlas atlas, RImage atlasImage, float fontSize, const Vec2& pos, const char* text, Color color, float wrapWidth = 0.0f);
 };
 
 } // namespace LD

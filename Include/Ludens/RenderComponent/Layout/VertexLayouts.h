@@ -88,6 +88,12 @@ public:
         return mRectCount;
     };
 
+    /// @brief get maximum number of rects in the batch
+    constexpr uint32_t get_max_rect_count() const
+    {
+        return TMaxRectCount;
+    }
+
     /// @brief get the rect vertices in the batch
     RectVertex* get_vertices(uint32_t& vertexCount)
     {
