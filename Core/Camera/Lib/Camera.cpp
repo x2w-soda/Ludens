@@ -84,11 +84,25 @@ void Camera::set_perspective(const CameraPerspectiveInfo& perspectiveInfo)
     mObj->isPerspective = true;
 }
 
+const CameraPerspectiveInfo& Camera::get_perspective() const
+{
+    LD_ASSERT(mObj->isPerspective);
+
+    return mObj->perspective;
+}
+
 void Camera::set_orthographic(const CameraOrthographicInfo& orthographicInfo)
 {
     mObj->ortho = orthographicInfo;
     mObj->proj = Mat4::orthographic(mObj->ortho.left, mObj->ortho.right, mObj->ortho.bottom, mObj->ortho.top, mObj->ortho.nearClip, mObj->ortho.farClip);
     mObj->isPerspective = false;
+}
+
+const CameraOrthographicInfo& Camera::get_orthographic() const
+{
+    LD_ASSERT(!mObj->isPerspective);
+
+    return mObj->ortho;
 }
 
 bool Camera::is_perspective() const

@@ -55,8 +55,14 @@ struct Camera : Handle<struct CameraObj>
     /// @brief configure camera to use perspective projection
     void set_perspective(const CameraPerspectiveInfo& perspectiveInfo);
 
+    /// @brief get the current perspective configuration
+    const CameraPerspectiveInfo& get_perspective() const;
+
     /// @brief configure camera to use orthographic projection
     void set_orthographic(const CameraOrthographicInfo& orthographicInfo);
+
+    /// @brief get the current orthographic configuration
+    const CameraOrthographicInfo& get_orthographic() const;
 
     /// @brief check if camera is using perspective or orthographic projection
     bool is_perspective() const;
