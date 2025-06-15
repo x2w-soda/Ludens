@@ -286,12 +286,18 @@ void RDevice::update_set_images(uint32_t updateCount, const RSetImageUpdateInfo*
 {
     LD_PROFILE_SCOPE;
 
+    if (updateCount == 0)
+        return;
+
     mObj->update_set_images(mObj, updateCount, updates);
 }
 
 void RDevice::update_set_buffers(uint32_t updateCount, const RSetBufferUpdateInfo* updates)
 {
     LD_PROFILE_SCOPE;
+
+    if (updateCount == 0)
+        return;
 
     mObj->update_set_buffers(mObj, updateCount, updates);
 }

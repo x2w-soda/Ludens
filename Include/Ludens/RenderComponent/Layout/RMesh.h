@@ -25,6 +25,7 @@ public:
     RBuffer vbo;
     RBuffer ibo;
     RImage* textures;
+    RImage dummyTexture;
     RMaterial* mats;
     RMeshPrimitive* prims;
     uint32_t vertexCount;

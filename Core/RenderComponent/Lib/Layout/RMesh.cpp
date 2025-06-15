@@ -98,6 +98,9 @@ void RMesh::destroy()
     for (int i = 0; i < textureCount; i++)
         device.destroy_image(textures[i]);
 
+    if (dummyTexture)
+        device.destroy_image(dummyTexture);
+
     heap_free(mats);
     heap_free(textures);
     heap_free(prims);
@@ -119,6 +122,26 @@ void RMesh::upload(RStager& stager, uint32_t textureCount, const Bitmap* texture
     std::vector<RSetBufferUpdateInfo> setBufferUpdates;
     std::vector<RSetImageUpdateInfo> setImageUpdates;
 
+    // all image bindings should be initialized,
+    // if material does not use textures, we still
+    // have to use a dummy texture.
+    bool useDummyTexture = textureCount == 0;
+    for (uint32_t i = 0; i < matCount && !useDummyTexture; i++)
+    {
+        const MeshMaterial& mat = matData[i];
+
+        if (mat.baseColorTextureIndex < 0 || mat.metallicRoughnessTextureIndex < 0 || mat.normalTextureIndex < 0)
+            useDummyTexture = true;
+    }
+
+    if (useDummyTexture)
+    {
+        RImageInfo imageI = RUtil::make_2d_image_info(RIMAGE_USAGE_SAMPLED_BIT | RIMAGE_USAGE_TRANSFER_DST_BIT, RFORMAT_RGBA8, 1, 1);
+        dummyTexture = device.create_image(imageI);
+        uint32_t whitePixel = 0xFFFFFFFF;
+        stager.add_image_data(dummyTexture, &whitePixel, RIMAGE_LAYOUT_SHADER_READ_ONLY);
+    }
+
     for (uint32_t i = 0; i < textureCount; i++)
     {
         Bitmap bitmap = textureData[i];
@@ -133,7 +156,6 @@ void RMesh::upload(RStager& stager, uint32_t textureCount, const Bitmap* texture
 
     for (uint32_t i = 0; i < matCount; i++)
     {
-
         const MeshMaterial& mat = matData[i];
         mats[i].set = setPool.allocate();
         mats[i].ubo = device.create_buffer({RBUFFER_USAGE_UNIFORM_BIT | RBUFFER_USAGE_TRANSFER_DST_BIT, sizeof(RMaterialUBO), false});
@@ -155,17 +177,32 @@ void RMesh::upload(RStager& stager, uint32_t textureCount, const Bitmap* texture
             RImage* colorTexture = textures + mat.baseColorTextureIndex;
             setImageUpdates.push_back(RUtil::make_single_set_image_update_info(mats[i].set, 1, RBINDING_TYPE_COMBINED_IMAGE_SAMPLER, &imageLayout, colorTexture));
         }
+        else
+        {
+            LD_ASSERT(dummyTexture);
+            setImageUpdates.push_back(RUtil::make_single_set_image_update_info(mats[i].set, 1, RBINDING_TYPE_COMBINED_IMAGE_SAMPLER, &imageLayout, &dummyTexture));
+        }
 
         if (ubo.hasNormalTexture)
         {
             RImage* normalTexture = textures + mat.normalTextureIndex;
             setImageUpdates.push_back(RUtil::make_single_set_image_update_info(mats[i].set, 2, RBINDING_TYPE_COMBINED_IMAGE_SAMPLER, &imageLayout, normalTexture));
         }
+        else
+        {
+            LD_ASSERT(dummyTexture);
+            setImageUpdates.push_back(RUtil::make_single_set_image_update_info(mats[i].set, 2, RBINDING_TYPE_COMBINED_IMAGE_SAMPLER, &imageLayout, &dummyTexture));
+        }
 
         if (ubo.hasMetallicRoughnessTexture)
         {
             RImage* metallicRoughnessTexture = textures + mat.metallicRoughnessTextureIndex;
             setImageUpdates.push_back(RUtil::make_single_set_image_update_info(mats[i].set, 3, RBINDING_TYPE_COMBINED_IMAGE_SAMPLER, &imageLayout, metallicRoughnessTexture));
+        }
+        else
+        {
+            LD_ASSERT(dummyTexture);
+            setImageUpdates.push_back(RUtil::make_single_set_image_update_info(mats[i].set, 3, RBINDING_TYPE_COMBINED_IMAGE_SAMPLER, &imageLayout, &dummyTexture));
         }
     }
 

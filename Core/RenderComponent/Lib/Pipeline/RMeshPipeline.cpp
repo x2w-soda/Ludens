@@ -68,8 +68,8 @@ void main()
     vec4 mrSample = texture(uMatMetallicRoughness, vUV);
     vec3 color = uMat.colorFactor.rgb;
 
-    float metallic = 0.0;
-    float roughness = 0.0;
+    float metallic = uMat.metallicFactor;
+    float roughness = uMat.roughnessFactor;
 
     if (uMat.hasColorTexture > 0)
         color = texture(uMatColor, vUV).rgb;
