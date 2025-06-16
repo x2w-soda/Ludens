@@ -21,6 +21,17 @@ struct TMat3
     inline TVec& operator[](int i) { return col[i]; }
     inline const TVec& operator[](int i) const { return col[i]; }
 
+    /// @brief evaluate the deterimant of the matrix
+    inline T det() const
+    {
+        T a00 = col[0].x, a01 = col[0].y, a02 = col[0].z;
+        T a10 = col[1].x, a11 = col[1].y, a12 = col[1].z;
+        T a20 = col[2].x, a21 = col[2].y, a22 = col[2].z;
+        T det = a00 * (a11 * a22 - a12 * a21) - a01 * (a10 * a22 - a12 * a20) + a02 * (a10 * a21 - a11 * a20);
+
+        return det;
+    }
+
     /// @brief create a transposed 3x3 matrix
     static inline TMat3 transpose(const TMat3& m)
     {
@@ -48,8 +59,7 @@ struct TMat3
         T a00 = m[0].x, a01 = m[0].y, a02 = m[0].z;
         T a10 = m[1].x, a11 = m[1].y, a12 = m[1].z;
         T a20 = m[2].x, a21 = m[2].y, a22 = m[2].z;
-
-        T det = a00 * (a11 * a22 - a12 * a21) - a01 * (a10 * a22 - a12 * a20) + a02 * (a10 * a21 - a11 * a20);
+        T det = m.det();
 
         if (is_zero_epsilon<T>(det))
         {

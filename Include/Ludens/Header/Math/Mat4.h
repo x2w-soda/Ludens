@@ -185,6 +185,50 @@ struct alignas(TVEC4_ALIGNMENT) TMat4
 
         return proj;
     }
+
+    /// @brief create an inverse matrix
+    /// @warning does not check if matrix is reversible, crashes upon zero determinant
+    static inline TMat4 inverse(const TMat4& m)
+    {
+        TMat4 inv;
+
+#define M(R, C) m[C].R
+        inv[0].x = +TMat3<T>(TVec3<T>(M(y, 1), M(z, 1), M(w, 1)), TVec3<T>(M(y, 2), M(z, 2), M(w, 2)), TVec3<T>(M(y, 3), M(z, 3), M(w, 3))).det();
+        inv[0].y = -TMat3<T>(TVec3<T>(M(y, 0), M(z, 0), M(w, 0)), TVec3<T>(M(y, 2), M(z, 2), M(w, 2)), TVec3<T>(M(y, 3), M(z, 3), M(w, 3))).det();
+        inv[0].z = +TMat3<T>(TVec3<T>(M(y, 0), M(z, 0), M(w, 0)), TVec3<T>(M(y, 1), M(z, 1), M(w, 1)), TVec3<T>(M(y, 3), M(z, 3), M(w, 3))).det();
+        inv[0].w = -TMat3<T>(TVec3<T>(M(y, 0), M(z, 0), M(w, 0)), TVec3<T>(M(y, 1), M(z, 1), M(w, 1)), TVec3<T>(M(y, 2), M(z, 2), M(w, 2))).det();
+
+        inv[1].x = -TMat3<T>(TVec3<T>(M(x, 1), M(z, 1), M(w, 1)), TVec3<T>(M(x, 2), M(z, 2), M(w, 2)), TVec3<T>(M(x, 3), M(z, 3), M(w, 3))).det();
+        inv[1].y = +TMat3<T>(TVec3<T>(M(x, 0), M(z, 0), M(w, 0)), TVec3<T>(M(x, 2), M(z, 2), M(w, 2)), TVec3<T>(M(x, 3), M(z, 3), M(w, 3))).det();
+        inv[1].z = -TMat3<T>(TVec3<T>(M(x, 0), M(z, 0), M(w, 0)), TVec3<T>(M(x, 1), M(z, 1), M(w, 1)), TVec3<T>(M(x, 3), M(z, 3), M(w, 3))).det();
+        inv[1].w = +TMat3<T>(TVec3<T>(M(x, 0), M(z, 0), M(w, 0)), TVec3<T>(M(x, 1), M(z, 1), M(w, 1)), TVec3<T>(M(x, 2), M(z, 2), M(w, 2))).det();
+
+        inv[2].x = +TMat3<T>(TVec3<T>(M(x, 1), M(y, 1), M(w, 1)), TVec3<T>(M(x, 2), M(y, 2), M(w, 2)), TVec3<T>(M(x, 3), M(y, 3), M(w, 3))).det();
+        inv[2].y = -TMat3<T>(TVec3<T>(M(x, 0), M(y, 0), M(w, 0)), TVec3<T>(M(x, 2), M(y, 2), M(w, 2)), TVec3<T>(M(x, 3), M(y, 3), M(w, 3))).det();
+        inv[2].z = +TMat3<T>(TVec3<T>(M(x, 0), M(y, 0), M(w, 0)), TVec3<T>(M(x, 1), M(y, 1), M(w, 1)), TVec3<T>(M(x, 3), M(y, 3), M(w, 3))).det();
+        inv[2].w = -TMat3<T>(TVec3<T>(M(x, 0), M(y, 0), M(w, 0)), TVec3<T>(M(x, 1), M(y, 1), M(w, 1)), TVec3<T>(M(x, 2), M(y, 2), M(w, 2))).det();
+
+        inv[3].x = -TMat3<T>(TVec3<T>(M(x, 1), M(y, 1), M(z, 1)), TVec3<T>(M(x, 2), M(y, 2), M(z, 2)), TVec3<T>(M(x, 3), M(y, 3), M(z, 3))).det();
+        inv[3].y = +TMat3<T>(TVec3<T>(M(x, 0), M(y, 0), M(z, 0)), TVec3<T>(M(x, 2), M(y, 2), M(z, 2)), TVec3<T>(M(x, 3), M(y, 3), M(z, 3))).det();
+        inv[3].z = -TMat3<T>(TVec3<T>(M(x, 0), M(y, 0), M(z, 0)), TVec3<T>(M(x, 1), M(y, 1), M(z, 1)), TVec3<T>(M(x, 3), M(y, 3), M(z, 3))).det();
+        inv[3].w = +TMat3<T>(TVec3<T>(M(x, 0), M(y, 0), M(z, 0)), TVec3<T>(M(x, 1), M(y, 1), M(z, 1)), TVec3<T>(M(x, 2), M(y, 2), M(z, 2))).det();
+#undef M
+
+        T det = m.col[0].x * inv.col[0].x + m.col[0].y * inv.col[1].x + m.col[0].z * inv.col[2].x + m.col[0].w * inv.col[3].x;
+
+        if (is_zero_epsilon<T>(det))
+        {
+            LD_UNREACHABLE; // crash in debug
+            return TMat4(1);
+        }
+
+        T invDet = static_cast<T>(1) / det;
+
+        for (int i = 0; i < 4; i++)
+            inv.col[i] = inv.col[i] * invDet;
+
+        return inv;
+    }
 };
 
 template <typename T>

@@ -6,10 +6,10 @@
 #include <Ludens/Header/Math/Vec3.h>
 #include <Ludens/Header/Math/Vec4.h>
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
-#include <Extra/doctest/doctest.h>
-#include "TestHash.h"
-#include "TestGeometry.h"
 #include "TestColor.h"
+#include "TestGeometry.h"
+#include "TestHash.h"
+#include <Extra/doctest/doctest.h>
 
 using namespace LD;
 
@@ -532,4 +532,21 @@ TEST_CASE("Mat4 method")
 
     Vec4 p3 = Mat4::rotate(LD_PI_2, Vec3(0, 0, 1)) * Vec4(2, 10, 7, 1);
     CHECK(p3 == Vec4(-10, 2, 7, 1));
+
+    Mat4 mi = Mat4::inverse(Mat4(1.0f));
+    CHECK(mi[0] == Vec4(1.0f, 0.0f, 0.0f, 0.0f));
+    CHECK(mi[1] == Vec4(0.0f, 1.0f, 0.0f, 0.0f));
+    CHECK(mi[2] == Vec4(0.0f, 0.0f, 1.0f, 0.0f));
+    CHECK(mi[3] == Vec4(0.0f, 0.0f, 0.0f, 1.0f));
+
+    m = Mat4({4, 7, 2, 0},
+             {3, 6, 1, 0},
+             {2, 5, 9, 0},
+             {1, 0, 0, 1});
+    Mat4 m3 = Mat4::inverse(m);
+    Mat4 m4 = m3 * m;
+    CHECK(m4[0] == Vec4(1.0f, 0.0f, 0.0f, 0.0f));
+    CHECK(m4[1] == Vec4(0.0f, 1.0f, 0.0f, 0.0f));
+    CHECK(m4[2] == Vec4(0.0f, 0.0f, 1.0f, 0.0f));
+    CHECK(m4[3] == Vec4(0.0f, 0.0f, 0.0f, 1.0f));
 }
