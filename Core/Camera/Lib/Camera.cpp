@@ -59,6 +59,49 @@ void Camera::destroy(Camera camera)
     heap_delete<CameraObj>(obj);
 }
 
+float Camera::screen_to_world_size(const Vec3& worldPos, float screenSizeY, float desiredScreenSizeY) const
+{
+    float worldSize = 0.0f;
+
+    if (mObj->isPerspective)
+    {
+        float fovRadians = mObj->perspective.fov;
+        Vec3 cameraPos = mObj->pos;
+        Vec3 forward = Vec3::normalize(mObj->target - cameraPos);
+        const float viewDepth = Vec3::dot(worldPos - cameraPos, forward); // TODO: handle negative
+        const float frustumHeight = 2.0f * viewDepth * LD_TAN(fovRadians * 0.5f);
+        const float worldSizePerPixel = frustumHeight / screenSizeY;
+        worldSize = desiredScreenSizeY * worldSizePerPixel;
+    }
+    else // orthographic
+    {
+        const float frustumHeight = std::abs(mObj->ortho.top - mObj->ortho.bottom);
+        const float worldSizePerPixel = frustumHeight / screenSizeY;
+        worldSize = desiredScreenSizeY * worldSizePerPixel;
+    }
+
+    return worldSize;
+}
+
+void Camera::unproject(const Vec2& screenPos, const Vec2& screenSize, Vec3& worldNear, Vec3& worldFar) const
+{
+    float ndcX = (screenPos.x / screenSize.x) * 2.0f - 1.0f;
+    float ndcY = (screenPos.y / screenSize.y) * 2.0f - 1.0f;
+
+    // near and far plane depends on Mat4.h implementation
+    Vec4 nearPos(ndcX, ndcY, -1.0f, 1.0f);
+    Vec4 farPos(ndcX, ndcY, +1.0f, 1.0f);
+
+    Mat4 viewProj = get_view_proj();
+    Mat4 invViewProj = Mat4::inverse(viewProj);
+
+    Vec4 worldPos = invViewProj * nearPos;
+    worldNear = Vec3(worldPos.x, worldPos.y, worldPos.z) / worldPos.w;
+
+    worldPos = invViewProj * farPos;
+    worldFar = Vec3(worldPos.x, worldPos.y, worldPos.z) / worldPos.w;
+}
+
 void Camera::set_pos(const Vec3& pos)
 {
     mObj->isViewDirty = true;

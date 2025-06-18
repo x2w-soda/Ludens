@@ -43,6 +43,20 @@ struct Camera : Handle<struct CameraObj>
     /// @brief destroy a camera
     static void destroy(Camera camera);
 
+    /// @brief get world size from desired screen size
+    /// @param worldPos query world position
+    /// @param screenSizeY viewport vertical height
+    /// @param desiredScreenSizeY screen size to derive world size
+    /// @return a world size that at worldPos appears to be desiredScreenSize.
+    float screen_to_world_size(const Vec3& worldPos, float screenSizeY, float desiredScreenSizeY) const;
+
+    /// @brief unprojects a position on screen into world space
+    /// @param screenPos a position on screen
+    /// @param screenSize the screen extent
+    /// @param worldNear the world position when unprojected on the near plane
+    /// @param worldFar the world position when unprojected on the far plane
+    void unproject(const Vec2& screenPos, const Vec2& screenSize, Vec3& worldNear, Vec3& worldFar) const;
+
     /// @brief set camera world position
     void set_pos(const Vec3& pos);
 
