@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Ludens/Header/Handle.h>
+#include <cstdint>
 #include <cstdlib>
 
 namespace LD {
@@ -15,6 +16,7 @@ typedef void (*JobFn)(void* user);
 
 struct JobHeader
 {
+    uint32_t type;
     JobFn fn;
     void* user;
 };
@@ -46,6 +48,11 @@ struct JobSystem : Handle<struct JobSystemObj>
     void wait_all();
 
     void submit(const JobHeader* job, JobDispatchType type);
+
+    /// @brief Move jobs of the specified type to the very front of each job queue.
+    ///        Note that the immediate queue still takes priority over other queues.
+    /// @param type the job type to prioritize
+    void prioritize(uint32_t type);
 };
 
 } // namespace LD

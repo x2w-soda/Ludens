@@ -74,6 +74,25 @@ public:
         return mSize == 0;
     }
 
+    void prioritize(uint32_t prioType)
+    {
+        std::unique_lock<std::mutex> lock(mMutex);
+
+        size_t front = mTail;
+
+        for (size_t now = mTail; now != mHead; now = (now + 1) % mCap)
+        {
+            if (mJobs[now].type == prioType)
+            {
+                JobHeader tmp = mJobs[front];
+                mJobs[front] = mJobs[now];
+                mJobs[now] = tmp;
+
+                front = (front + 1) % mCap;
+            }
+        }
+    }
+
 private:
     std::mutex mMutex;
     std::atomic<size_t> mSize;
@@ -240,6 +259,12 @@ void JobSystem::submit(const JobHeader* job, JobDispatchType type)
         //       starts executing a large job and freezes the app.
         execute_job(*job);
     }
+}
+
+void JobSystem::prioritize(uint32_t type)
+{
+    mObj->immQueue.prioritize(type);
+    mObj->stdQueue.prioritize(type);
 }
 
 } // namespace LD
