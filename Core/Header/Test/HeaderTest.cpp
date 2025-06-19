@@ -1,3 +1,4 @@
+#include <Ludens/Header/Bitwise.h>
 #include <Ludens/Header/Math/Mat3.h>
 #include <Ludens/Header/Math/Mat4.h>
 #include <Ludens/Header/Math/Quat.h>
@@ -24,6 +25,20 @@ static_assert(sizeof(DVec3) == 24);
 static_assert(sizeof(Vec4) == 16);
 static_assert(sizeof(IVec4) == 16);
 static_assert(sizeof(DVec4) == 32);
+
+TEST_CASE("Bitwise")
+{
+    CHECK(next_power_of_two(0) == 0);
+    CHECK(next_power_of_two(1) == 1);
+    CHECK(next_power_of_two(2) == 2);
+    CHECK(next_power_of_two(3) == 4);
+    CHECK(next_power_of_two(7) == 8);
+    CHECK(next_power_of_two(8) == 8);
+    CHECK(next_power_of_two(33) == 64);
+    CHECK(next_power_of_two(16384) == 16384);
+    CHECK(next_power_of_two(16385) == 32768);
+    CHECK(next_power_of_two(2147483648) == 2147483648);
+}
 
 TEST_CASE("Math")
 {
