@@ -6,9 +6,43 @@
 #include <Ludens/RenderComponent/Layout/VertexLayouts.h>
 #include <Ludens/RenderComponent/Pipeline/RMeshPipeline.h>
 #include <Ludens/System/Memory.h>
+#include <array>
 #include <vector>
 
 namespace LD {
+
+static RPipelineInfo make_rmesh_pipeline_info(std::vector<RVertexAttribute>& attrs, RVertexBinding& binding, std::array<RShader, 2>& shaders, std::array<RPipelineBlendState, 2>& blendAttachments)
+{
+    binding.inputRate = RBINDING_INPUT_RATE_VERTEX;
+    binding.stride = sizeof(MeshVertex);
+    get_mesh_vertex_attributes(attrs);
+
+    blendAttachments[0] = RUtil::make_default_blend_state();
+    blendAttachments[1].enabled = false;
+
+    return {
+        .shaderCount = (uint32_t)shaders.size(),
+        .shaders = shaders.data(),
+        .vertexAttributeCount = (uint32_t)attrs.size(),
+        .vertexAttributes = attrs.data(),
+        .vertexBindingCount = 1,
+        .vertexBindings = &binding,
+        .layout = sRMeshPipelineLayout,
+        .rasterization = {
+            .polygonMode = RPOLYGON_MODE_FILL,
+            .cullMode = RCULL_MODE_BACK,
+        },
+        .depthStencil = {
+            .depthTestEnabled = true,
+            .depthWriteEnabled = true,
+            .depthCompareOp = RCOMPARE_OP_LESS,
+        },
+        .blend = {
+            .colorAttachmentCount = (uint32_t)blendAttachments.size(),
+            .colorAttachments = blendAttachments.data(),
+        },
+    };
+}
 
 // clang-format off
 static const char sBlinnPhongVS[] = R"(
@@ -114,36 +148,11 @@ RMeshBlinnPhongPipeline RMeshBlinnPhongPipeline::create(RDevice device)
     obj->vertexShader = device.create_shader({RSHADER_TYPE_VERTEX, sBlinnPhongVS});
     obj->fragmentShader = device.create_shader({RSHADER_TYPE_FRAGMENT, sBlinnPhongFS});
 
+    std::array<RPipelineBlendState, 2> blendAttachments;
+    std::array<RShader, 2> shaders = {obj->vertexShader, obj->fragmentShader};
     std::vector<RVertexAttribute> attrs;
-    RVertexBinding binding{RBINDING_INPUT_RATE_VERTEX, sizeof(MeshVertex)};
-    get_mesh_vertex_attributes(attrs);
-
-    RShader shaders[2] = {obj->vertexShader, obj->fragmentShader};
-    RPipelineBlendState blendAttachment[2];
-    blendAttachment[0] = RUtil::make_default_blend_state();
-    blendAttachment[1].enabled = false;
-    RPipelineInfo pipelineI{
-        .shaderCount = 2,
-        .shaders = shaders,
-        .vertexAttributeCount = (uint32_t)attrs.size(),
-        .vertexAttributes = attrs.data(),
-        .vertexBindingCount = 1,
-        .vertexBindings = &binding,
-        .layout = sRMeshPipelineLayout,
-        .rasterization = {
-            .polygonMode = RPOLYGON_MODE_FILL,
-            .cullMode = RCULL_MODE_NONE,
-        },
-        .depthStencil = {
-            .depthTestEnabled = true,
-            .depthWriteEnabled = true,
-            .depthCompareOp = RCOMPARE_OP_LESS,
-        },
-        .blend = {
-            .colorAttachmentCount = 2,
-            .colorAttachments = blendAttachment,
-        },
-    };
+    RVertexBinding binding;
+    RPipelineInfo pipelineI = make_rmesh_pipeline_info(attrs, binding, shaders, blendAttachments);
 
     obj->handle = device.create_pipeline(pipelineI);
 
@@ -163,6 +172,103 @@ void RMeshBlinnPhongPipeline::destroy(RMeshBlinnPhongPipeline pipeline)
 }
 
 RPipeline RMeshBlinnPhongPipeline::handle()
+{
+    return mObj->handle;
+}
+
+// clang-format off
+static const char sAmbientVS[] = R"(
+layout (location = 0) in vec3 aPos;
+layout (location = 1) in vec3 aNormal;
+layout (location = 2) in vec2 aUV;
+layout (location = 0) out vec3 vPos;
+layout (location = 1) out vec3 vNormal;
+layout (location = 2) out vec2 vUV;
+
+)"
+LD_GLSL_FRAME_SET
+R"(
+
+layout (push_constant) uniform PC {
+    mat4 model;
+} uPC;
+
+void main()
+{
+    vec4 worldPos = uPC.model * vec4(aPos, 1.0);
+    gl_Position = uFrame.viewProjMat * worldPos;
+    mat3 normalMat = transpose(inverse(mat3(uPC.model)));
+
+    vPos = worldPos.xyz;
+    vNormal = normalize(normalMat * aNormal);
+    vUV = aUV;
+}
+)";
+
+static const char sAmbientFS[] = R"(
+layout (location = 0) in vec3 vPos;
+layout (location = 1) in vec3 vNormal;
+layout (location = 2) in vec2 vUV;
+layout (location = 0) out vec4 fColor;
+layout (location = 1) out uvec4 fID;
+
+layout (push_constant) uniform PC {
+    mat4 model;
+    uint id;      // only lower 16-bits are used
+    uint flags;   // only lower 16 bits are used
+    vec4 ambient; // flat ambient color
+} uPC;
+
+void main()
+{
+    // TODO: ambient pipeline currently does not output to color attachment 1.
+    //       implement later when necessary.
+
+    fColor = vec4(uPC.ambient);
+}
+)";
+// clang-format on
+
+struct RMeshAmbientPipelineObj
+{
+    RDevice device;         /// the device used to create this pipeline
+    RPipeline handle;       /// graphics pipeline handle
+    RShader vertexShader;   /// blinn phong vertex shadser
+    RShader fragmentShader; /// blinn phong fragment shader
+};
+
+RMeshAmbientPipeline RMeshAmbientPipeline::create(RDevice device)
+{
+    RMeshAmbientPipelineObj* obj = (RMeshAmbientPipelineObj*)heap_malloc(sizeof(RMeshAmbientPipelineObj), MEMORY_USAGE_RENDER);
+
+    obj->device = device;
+    obj->vertexShader = device.create_shader({RSHADER_TYPE_VERTEX, sAmbientVS});
+    obj->fragmentShader = device.create_shader({RSHADER_TYPE_FRAGMENT, sAmbientFS});
+
+    std::array<RPipelineBlendState, 2> blendAttachments;
+    std::array<RShader, 2> shaders = {obj->vertexShader, obj->fragmentShader};
+    std::vector<RVertexAttribute> attrs;
+    RVertexBinding binding;
+    RPipelineInfo pipelineI = make_rmesh_pipeline_info(attrs, binding, shaders, blendAttachments);
+
+    obj->handle = device.create_pipeline(pipelineI);
+
+    return {obj};
+}
+
+void RMeshAmbientPipeline::destroy(RMeshAmbientPipeline pipeline)
+{
+    RMeshAmbientPipelineObj* obj = pipeline;
+
+    RDevice device = obj->device;
+    device.destroy_pipeline(obj->handle);
+    device.destroy_shader(obj->fragmentShader);
+    device.destroy_shader(obj->vertexShader);
+
+    heap_free(obj);
+}
+
+RPipeline RMeshAmbientPipeline::handle()
 {
     return mObj->handle;
 }

@@ -38,7 +38,7 @@ struct ForwardRenderComponentObj
 
     void flush_lines();
 
-    void draw_mesh_ex(RCommandList list, RMesh mesh, const Mat4& transform);
+    void draw_mesh_ex(RCommandList list, RMesh mesh);
 
     static void on_release(void* user);
     static void on_graphics_pass(RGraphicsPass pass, RCommandList list, void* userData);
@@ -68,7 +68,7 @@ void ForwardRenderComponentObj::init(RDevice device)
     RGraph::add_release_callback(this, &ForwardRenderComponentObj::on_release);
 }
 
-void ForwardRenderComponentObj::draw_mesh_ex(RCommandList list, RMesh mesh, const Mat4& transform)
+void ForwardRenderComponentObj::draw_mesh_ex(RCommandList list, RMesh mesh)
 {
     list.cmd_bind_vertex_buffers(0, 1, &mesh.vbo);
     list.cmd_bind_index_buffer(mesh.ibo, RINDEX_TYPE_U32);
@@ -167,6 +167,9 @@ ForwardRenderComponent ForwardRenderComponent::add(RGraph graph, const ForwardRe
 {
     LD_PROFILE_SCOPE;
 
+    uint32_t screenWidth, screenHeight;
+    graph.get_screen_extent(screenWidth, screenHeight);
+
     ForwardRenderComponentObj* compObj = &sFRCompObj;
     RDevice device = graph.get_device();
     compObj->init(device);
@@ -183,14 +186,14 @@ ForwardRenderComponent ForwardRenderComponent::add(RGraph graph, const ForwardRe
 
     ForwardRenderComponent forwardComp(compObj);
     RComponent comp = graph.add_component(forwardComp.component_name());
-    comp.add_output_image(forwardComp.color_name(), componentI.cFormat, componentI.width, componentI.height, &colorSampler);
-    comp.add_output_image(forwardComp.id_color_name(), RFORMAT_RGBA8U, componentI.width, componentI.height, &idSampler);
-    comp.add_output_image(forwardComp.depth_stencil_name(), componentI.dsFormat, componentI.width, componentI.height);
+    comp.add_output_image(forwardComp.color_name(), componentI.cFormat, screenWidth, screenHeight, &colorSampler);
+    comp.add_output_image(forwardComp.id_color_name(), RFORMAT_RGBA8U, screenWidth, screenHeight, &idSampler);
+    comp.add_output_image(forwardComp.depth_stencil_name(), componentI.dsFormat, screenWidth, screenHeight);
 
     RGraphicsPassInfo gpI{};
     gpI.name = forwardComp.component_name();
-    gpI.width = componentI.width;
-    gpI.height = componentI.height;
+    gpI.width = screenWidth;
+    gpI.height = screenHeight;
 
     RClearColorValue idClearColor = RUtil::make_clear_color<uint32_t>(0, 0, 0, 0);
     RGraphicsPass pass = comp.add_graphics_pass(gpI, compObj, &ForwardRenderComponentObj::on_graphics_pass);
@@ -208,46 +211,20 @@ void ForwardRenderComponent::set_mesh_pipeline(RPipeline meshPipeline)
     mObj->meshPipeline = meshPipeline;
 }
 
-void ForwardRenderComponent::draw_mesh(RMesh mesh, const Mat4& transform, uint16_t id)
+void ForwardRenderComponent::set_push_constant(RPipelineLayoutInfo layout, uint32_t offset, uint32_t size, const void* pc)
 {
     LD_ASSERT(mObj->isDrawScope);
     LD_ASSERT(mObj->meshPipeline);
 
-    RCommandList list = mObj->list;
-
-    // render Color and 16-bit ID
-    mObj->meshPipeline.set_color_write_mask(0, RCOLOR_COMPONENT_R_BIT | RCOLOR_COMPONENT_G_BIT | RCOLOR_COMPONENT_B_BIT | RCOLOR_COMPONENT_A_BIT);
-    mObj->meshPipeline.set_color_write_mask(1, RCOLOR_COMPONENT_R_BIT | RCOLOR_COMPONENT_G_BIT);
-    mObj->meshPipeline.set_depth_test_enable(true);
-
-    TVec2<uint32_t> idflags;
-    idflags.x = id;
-    idflags.y = 0;
-    list.cmd_push_constant(sRMeshPipelineLayout, 0, sizeof(Mat4), &transform);
-    list.cmd_push_constant(sRMeshPipelineLayout, sizeof(Mat4), sizeof(idflags), &idflags);
-
-    mObj->draw_mesh_ex(list, mesh, transform);
+    mObj->list.cmd_push_constant(layout, offset, size, pc);
 }
 
-void ForwardRenderComponent::draw_mesh_outline_flags(RMesh mesh, const Mat4& transform)
+void ForwardRenderComponent::draw_mesh(RMesh mesh)
 {
     LD_ASSERT(mObj->isDrawScope);
     LD_ASSERT(mObj->meshPipeline);
 
-    RCommandList list = mObj->list;
-
-    // render 16-bit flags
-    mObj->meshPipeline.set_color_write_mask(0, 0);
-    mObj->meshPipeline.set_color_write_mask(1, RCOLOR_COMPONENT_B_BIT | RCOLOR_COMPONENT_A_BIT);
-    mObj->meshPipeline.set_depth_test_enable(false);
-
-    TVec2<uint32_t> idflags;
-    idflags.x = 0;
-    idflags.y = 1; // currently any non-zero flag value indicates mesh that requires outlining
-    list.cmd_push_constant(sRMeshPipelineLayout, 0, sizeof(Mat4), &transform);
-    list.cmd_push_constant(sRMeshPipelineLayout, sizeof(Mat4), sizeof(idflags), &idflags);
-
-    mObj->draw_mesh_ex(list, mesh, transform);
+    mObj->draw_mesh_ex(mObj->list, mesh);
 }
 
 void ForwardRenderComponent::draw_line(const Vec3& p0, const Vec3& p1, uint32_t color)

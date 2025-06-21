@@ -13,8 +13,6 @@ struct ForwardRenderComponentInfo
     RFormat dsFormat;
     RClearColorValue clearColor;
     RClearDepthStencilValue clearDS;
-    uint32_t width;
-    uint32_t height;
 };
 
 /// @brief Forward Rendering, this is one of the root render components
@@ -32,7 +30,7 @@ struct ForwardRenderComponent : Handle<struct ForwardRenderComponentObj>
     /// @brief get the name of the output color attachment
     inline const char* color_name() const { return "output_color"; }
 
-    /// @brief get the name of the output ID color attachment, with RFORMAT_R32U
+    /// @brief get the name of the output ID color attachment, with RFORMAT_RGBA8U
     inline const char* id_color_name() const { return "output_id_color"; }
 
     /// @brief get the name of the output depth stencil attachment
@@ -42,16 +40,16 @@ struct ForwardRenderComponent : Handle<struct ForwardRenderComponentObj>
     /// @param meshPipeline mesh pipeline handle, must adhere to mesh pipeline layout and mesh vertex layout
     void set_mesh_pipeline(RPipeline meshPipeline);
 
+    /// @brief dependency injection to configure the push constant for the current mesh pipeline
+    /// @param layout corresponding layout of the pipeline bound with set_mesh_pipeline
+    /// @param offset push constant offset
+    /// @param size push constant size in bytes
+    /// @param pc puch constant data
+    void set_push_constant(RPipelineLayoutInfo layout, uint32_t offset, uint32_t size, const void* pc);
+
     /// @brief draw a mesh with the most recently bound mesh pipeline
     /// @param mesh mesh handle
-    /// @param transform model matrix that transforms mesh to world space
-    /// @param id 16 bit identifier written to the id color attachment
-    void draw_mesh(RMesh mesh, const Mat4& transform, uint16_t id);
-
-    /// @brief draw to the id color attachment
-    /// @param mesh mesh handle
-    /// @param transform model matrix that transforms mesh to world space
-    void draw_mesh_outline_flags(RMesh mesh, const Mat4& transform);
+    void draw_mesh(RMesh mesh);
 
     /// @brief draw a line from p0 to p1
     /// @param p0 starting world position
