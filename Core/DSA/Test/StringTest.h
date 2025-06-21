@@ -203,12 +203,17 @@ TEST_CASE("String replace")
 
         // insert
         s = "abc";
-        s.replace(1, 0, "XYZ", 3); // "aXYZbc"
+        s.replace(1, 0, "XYZ", 3);
         CHECK(s == "aXYZbc");
+
+        // insert front
+        s = ", world";
+        s.replace(0, 0, "Hello", 5);
+        CHECK(s == "Hello, world");
 
         // full replace
         s = "abc";
-        s.replace(0, 3, "XYZ", 3); // "XYZ"
+        s.replace(0, 3, "XYZ", 3);
         CHECK(s == "XYZ");
 
         // nop

@@ -189,7 +189,7 @@ public:
             resize(mHeap.size + shift);
             size_t last = mHeap.size - 1;
 
-            for (size_t i = 0; i < rlen; i++)
+            for (size_t i = 0; (pos + rlen + i) < mHeap.size; i++)
                 mBase[last - i] = mBase[last - shift - i];
 
             for (size_t i = 0; i < rlen; i++)
@@ -200,7 +200,7 @@ public:
             size_t shift = len - rlen;
             size_t first = pos + rlen;
 
-            for (size_t i = 0; first + shift + i < mHeap.size; i++)
+            for (size_t i = 0; (first + shift + i) < mHeap.size; i++)
                 mBase[first + i] = mBase[first + shift + i];
 
             for (size_t i = 0; i < rlen; i++)
@@ -210,8 +210,40 @@ public:
         }
     }
 
+    /// @brief get a substring
+    /// @param pos starting position
+    /// @param len substring span
+    /// @return a new string from substring
+    TString substr(size_t pos, size_t len) const
+    {
+        return TString(mBase + pos, len);
+    }
+
+    /// @brief insert a string at position
+    /// @param pos position to insert string
+    /// @param str source string to insert
+    /// @param len length of source string
+    inline void insert(size_t pos, const T* str, size_t len)
+    {
+        replace(pos, 0, str, len);
+    }
+
+    /// @brief append a string at the back
+    /// @param str source string to append
+    /// @param len length of source string
+    inline void append(const T* str, size_t len)
+    {
+        replace(mHeap.size, 0, str, len);
+    }
+
     void operator=(const char* cstr)
     {
+        if (!cstr)
+        {
+            resize(0);
+            return;
+        }
+
         size_t len = strlen(cstr);
 
         resize(len);
