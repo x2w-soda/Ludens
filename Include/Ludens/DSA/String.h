@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Ludens/DSA/HeapStorage.h>
 #include <Ludens/System/Memory.h>
 #include <cstring>
 
@@ -37,6 +38,14 @@ public:
             for (size_t i = 0; i < len; i++)
                 mBase[i] = static_cast<T>(cstr[i]);
         }
+    }
+
+    TString(const T* str, size_t len)
+        : mBase(mLocal)
+    {
+        mHeap.cap = TLocalSize;
+        resize(len);
+        memcpy(mBase, str, len * sizeof(T));
     }
 
     TString(const TString& other)
@@ -165,6 +174,40 @@ public:
         }
 
         mBase = mHeap.data;
+    }
+
+    /// @brief replace a portion of string
+    /// @param pos the starting position of the replacement
+    /// @param len the length of the portion to be replaced
+    /// @param rep the new string value to replace with
+    /// @param rlen the length of the new replacement string
+    void replace(size_t pos, size_t len, const T* rep, size_t rlen)
+    {
+        if (rlen >= len)
+        {
+            size_t shift = rlen - len;
+            resize(mHeap.size + shift);
+            size_t last = mHeap.size - 1;
+
+            for (size_t i = 0; i < rlen; i++)
+                mBase[last - i] = mBase[last - shift - i];
+
+            for (size_t i = 0; i < rlen; i++)
+                mBase[pos + i] = rep[i];
+        }
+        else
+        {
+            size_t shift = len - rlen;
+            size_t first = pos + rlen;
+
+            for (size_t i = 0; first + shift + i < mHeap.size; i++)
+                mBase[first + i] = mBase[first + shift + i];
+
+            for (size_t i = 0; i < rlen; i++)
+                mBase[pos + i] = rep[i];
+
+            resize(mHeap.size - shift);
+        }
     }
 
     void operator=(const char* cstr)

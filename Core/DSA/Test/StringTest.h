@@ -142,3 +142,78 @@ TEST_CASE("String methods")
     const MemoryProfile& profile = get_memory_profile(MEMORY_USAGE_MISC);
     CHECK(profile.current == 0);
 }
+
+TEST_CASE("String replace")
+{
+    {
+        String s = "foo";
+
+        // nop
+        s.replace(0, 0, nullptr, 0);
+        CHECK(s == "foo");
+
+        // replacement retains same size
+        s.replace(1, 2, "ar", 2);
+        CHECK(s == "far");
+
+        // replacement grows string
+        s.replace(1, 2, "bar", 3);
+        CHECK(s == "fbar");
+
+        // replacement shrinks string
+        s.replace(1, 2, nullptr, 0);
+        CHECK(s == "fr");
+    }
+
+    {
+        // replace front
+        String s = "abcdef";
+        s.replace(0, 2, "XY", 2);
+        CHECK(s == "XYcdef");
+
+        // replace end
+        s = "abcdef";
+        s.replace(4, 2, "XY", 2);
+        CHECK(s == "abcdXY");
+
+        // replace middle
+        s = "abcdef";
+        s.replace(2, 2, "XY", 2);
+        CHECK(s == "abXYef");
+
+        // replace with longer string
+        s = "abc";
+        s.replace(1, 1, "XYZ", 3);
+        CHECK(s == "aXYZc");
+
+        // replace with shorter string
+        s = "abcdef";
+        s.replace(2, 3, "X", 1);
+        CHECK(s == "abXf");
+
+        // replace with nothing
+        s = "abcdef";
+        s.replace(2, 3, nullptr, 0);
+        CHECK(s == "abf");
+
+        // append
+        s = "abc";
+        s.replace(3, 0, "XYZ", 3);
+        CHECK(s == "abcXYZ");
+
+        // insert
+        s = "abc";
+        s.replace(1, 0, "XYZ", 3); // "aXYZbc"
+        CHECK(s == "aXYZbc");
+
+        // full replace
+        s = "abc";
+        s.replace(0, 3, "XYZ", 3); // "XYZ"
+        CHECK(s == "XYZ");
+
+        // nop
+        s = "";
+        s.replace(0, 0, nullptr, 0);
+        CHECK(s == "");
+    }
+}
