@@ -186,9 +186,9 @@ ForwardRenderComponent ForwardRenderComponent::add(RGraph graph, const ForwardRe
 
     ForwardRenderComponent forwardComp(compObj);
     RComponent comp = graph.add_component(forwardComp.component_name());
-    comp.add_output_image(forwardComp.color_name(), componentI.cFormat, screenWidth, screenHeight, &colorSampler);
-    comp.add_output_image(forwardComp.id_color_name(), RFORMAT_RGBA8U, screenWidth, screenHeight, &idSampler);
-    comp.add_output_image(forwardComp.depth_stencil_name(), componentI.dsFormat, screenWidth, screenHeight);
+    comp.add_output_image(forwardComp.out_color_name(), componentI.colorFormat, screenWidth, screenHeight, &colorSampler);
+    comp.add_output_image(forwardComp.out_idflags_name(), RFORMAT_RGBA8U, screenWidth, screenHeight, &idSampler);
+    comp.add_output_image(forwardComp.out_depth_stencil_name(), componentI.depthStencilFormat, screenWidth, screenHeight);
 
     RGraphicsPassInfo gpI{};
     gpI.name = forwardComp.component_name();
@@ -197,9 +197,9 @@ ForwardRenderComponent ForwardRenderComponent::add(RGraph graph, const ForwardRe
 
     RClearColorValue idClearColor = RUtil::make_clear_color<uint32_t>(0, 0, 0, 0);
     RGraphicsPass pass = comp.add_graphics_pass(gpI, compObj, &ForwardRenderComponentObj::on_graphics_pass);
-    pass.use_color_attachment(forwardComp.color_name(), RATTACHMENT_LOAD_OP_CLEAR, &componentI.clearColor);
-    pass.use_color_attachment(forwardComp.id_color_name(), RATTACHMENT_LOAD_OP_CLEAR, &idClearColor);
-    pass.use_depth_stencil_attachment(forwardComp.depth_stencil_name(), RATTACHMENT_LOAD_OP_CLEAR, &componentI.clearDS);
+    pass.use_color_attachment(forwardComp.out_color_name(), RATTACHMENT_LOAD_OP_CLEAR, &componentI.clearColor);
+    pass.use_color_attachment(forwardComp.out_idflags_name(), RATTACHMENT_LOAD_OP_CLEAR, &idClearColor);
+    pass.use_depth_stencil_attachment(forwardComp.out_depth_stencil_name(), RATTACHMENT_LOAD_OP_CLEAR, &componentI.clearDS);
 
     return forwardComp;
 }

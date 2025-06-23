@@ -9,8 +9,8 @@ namespace LD {
 
 struct ForwardRenderComponentInfo
 {
-    RFormat cFormat;
-    RFormat dsFormat;
+    RFormat colorFormat;
+    RFormat depthStencilFormat;
     RClearColorValue clearColor;
     RClearDepthStencilValue clearDS;
 };
@@ -28,13 +28,13 @@ struct ForwardRenderComponent : Handle<struct ForwardRenderComponentObj>
     inline const char* component_name() const { return "forward"; }
 
     /// @brief get the name of the output color attachment
-    inline const char* color_name() const { return "output_color"; }
+    inline const char* out_color_name() const { return "out_color"; }
 
-    /// @brief get the name of the output ID color attachment, with RFORMAT_RGBA8U
-    inline const char* id_color_name() const { return "output_id_color"; }
+    /// @brief get the name of the output ID-flags color attachment, with RFORMAT_RGBA8U
+    inline const char* out_idflags_name() const { return "out_idflags"; }
 
     /// @brief get the name of the output depth stencil attachment
-    inline const char* depth_stencil_name() const { return "output_depth_stencil"; }
+    inline const char* out_depth_stencil_name() const { return "out_depth_stencil"; }
 
     /// @brief set the pipeline used to draw RMesh
     /// @param meshPipeline mesh pipeline handle, must adhere to mesh pipeline layout and mesh vertex layout

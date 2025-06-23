@@ -221,10 +221,8 @@ layout (push_constant) uniform PC {
 
 void main()
 {
-    // TODO: ambient pipeline currently does not output to color attachment 1.
-    //       implement later when necessary.
-
     fColor = vec4(uPC.ambient);
+    fID = uvec4(uPC.id & 0xFF, (uPC.id >> 8) & 0xFF, uPC.flags & 0xFF, (uPC.flags >> 8) & 0xFF);
 }
 )";
 // clang-format on
