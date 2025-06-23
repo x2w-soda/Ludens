@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Ludens/Header/Math/Vec4.h>
+#include <algorithm>
 #include <cstdint>
 
 namespace LD {

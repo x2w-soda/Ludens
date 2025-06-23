@@ -7,8 +7,9 @@
 #ifndef LD_DEBUG_BREAK
 # ifdef LD_PLATFORM_WIN32
 #  define LD_DEBUG_BREAK __debugbreak()
-# else
-#  define LD_DEBUG_BREAK
+# elif defined(LD_PLATFORM_LINUX)
+#  include <csignal>
+#  define LD_DEBUG_BREAK raise(SIGTRAP)
 # endif
 #endif
 

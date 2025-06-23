@@ -25,6 +25,7 @@
         if (result_ != VK_SUCCESS)                                        \
         {                                                                 \
             sLog.error("VK_CHECK failed with VkResult {}", (int)result_); \
+            LD_DEBUG_BREAK;                                               \
         }                                                                 \
     } while (0)
 
