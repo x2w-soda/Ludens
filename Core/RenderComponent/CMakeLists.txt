@@ -16,6 +16,7 @@ set(MODULE_INCLUDE
     "${LUDENS_INCLUDE_DIR}/Ludens/RenderComponent/Pipeline/LinePipeline.h"
     "${LUDENS_INCLUDE_DIR}/Ludens/RenderComponent/Pipeline/OutlinePipeline.h"
     "${LUDENS_INCLUDE_DIR}/Ludens/RenderComponent/Pipeline/EquirectangularPipeline.h"
+    "${LUDENS_INCLUDE_DIR}/Ludens/RenderComponent/Embed/GizmoMesh.h"
 )
 
 set(MODULE_LIB
@@ -33,6 +34,7 @@ set(MODULE_LIB
     "Lib/Pipeline/LinePipeline.cpp"
     "Lib/Pipeline/OutlinePipeline.cpp"
     "Lib/Pipeline/EquirectangularPipeline.cpp"
+    "Lib/Embed/GizmoMesh.cpp"
 )
 
 add_library(${MODULE_NAME}
