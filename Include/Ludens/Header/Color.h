@@ -59,6 +59,16 @@ public:
         return mValue;
     }
 
+    operator Vec4() const
+    {
+        Vec4 v;
+        v.r = ((mValue >> 24) & 0xFF) / 255.0f;
+        v.g = ((mValue >> 16) & 0xFF) / 255.0f;
+        v.b = ((mValue >> 8) & 0xFF) / 255.0f;
+        v.a = (mValue & 0xFF) / 255.0f;
+        return v;
+    }
+
 private:
     uint32_t mValue = 0;
 };
