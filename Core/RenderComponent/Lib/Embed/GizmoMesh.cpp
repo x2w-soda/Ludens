@@ -3,7 +3,7 @@
 namespace LD {
 
 const size_t sTranslationGizmoVertexCount = 152;
-static MeshVertex sTranslationGizmoVertices[sTranslationGizmoVertexCount] = {
+static const MeshVertex sTranslationGizmoVertices[sTranslationGizmoVertexCount] = {
     {{0.024021, -0.024011, 0.024011}, {0, 0, 1}, {0.375, 1}},
     {{0.024021, -0.024011, 0.024011}, {0, -1, 0}, {0.125, 0.25}},
     {{0.024021, -0.024011, 0.024011}, {-1, 0, 0}, {0.375, 0}},
@@ -160,13 +160,13 @@ static MeshVertex sTranslationGizmoVertices[sTranslationGizmoVertexCount] = {
 
 // clang-format off
 const size_t sTranslationGizmoIndexCount = 222;
-static uint32_t sTranslationGizmoIndices[sTranslationGizmoIndexCount] = {
+static const uint32_t sTranslationGizmoIndices[sTranslationGizmoIndexCount] = {
     2, 7, 9, 2, 9, 4, 8, 20, 23, 8, 23, 10, 19, 14, 16, 19, 16, 21, 12, 1, 3, 12, 3, 15, 6, 0, 13, 6, 13, 18, 22, 17, 5, 22, 5, 11, 27, 132, 25, 30, 134, 28, 24, 130, 34, 33, 128, 37, 36, 126, 40, 39, 124, 43, 42, 122, 46, 45, 120, 48, 49, 121, 51, 52, 123, 54, 55, 125, 57, 58, 127, 60, 61, 129, 63, 64, 131, 66, 67, 133, 69, 70, 135, 72, 73, 137, 75, 76, 139, 78, 79, 141, 81, 82, 143, 84, 85, 145, 87, 88, 147, 90, 91, 149, 93, 94, 151, 97, 96, 150, 100, 99, 148, 103, 102, 146, 106, 105, 144, 109, 108, 142, 112, 111, 140, 115, 119, 32, 29, 29, 26, 35, 35, 38, 41, 41, 44, 47, 47, 50, 53, 53, 56, 59, 59, 62, 65, 65, 68, 71, 71, 74, 77, 77, 80, 83, 83, 86, 89, 89, 92, 95, 95, 98, 101, 101, 104, 107, 107, 110, 113, 113, 116, 119, 119, 29, 35, 35, 41, 47, 47, 53, 59, 59, 65, 71, 71, 77, 83, 83, 89, 95, 95, 101, 107, 107, 113, 119, 119, 35, 47, 47, 59, 71, 71, 83, 95, 95, 107, 119, 119, 47, 71, 71, 95, 119, 114, 138, 118, 117, 136, 31, 
 };
 // clang-format on
 
 const size_t sScaleGizmoVertexCount = 48;
-static MeshVertex sScaleGizmoVertices[sScaleGizmoVertexCount] = {
+static const MeshVertex sScaleGizmoVertices[sScaleGizmoVertexCount] = {
     {{0.024021, -0.024011, 0.024011}, {0, 0, 1}, {0.375, 1}},
     {{0.024021, -0.024011, 0.024011}, {0, -1, 0}, {0.125, 0.25}},
     {{0.024021, -0.024011, 0.024011}, {-1, 0, 0}, {0.375, 0}},
@@ -218,12 +218,12 @@ static MeshVertex sScaleGizmoVertices[sScaleGizmoVertexCount] = {
 };
 // clang-format off
 const size_t sScaleGizmoIndexCount = 72;
-static uint32_t sScaleGizmoIndices[sScaleGizmoIndexCount] = {
+static const uint32_t sScaleGizmoIndices[sScaleGizmoIndexCount] = {
     0, 6, 9, 0, 9, 3, 8, 20, 23, 8, 23, 11, 18, 12, 15, 18, 15, 21, 14, 2, 5, 14, 5, 17, 7, 1, 13, 7, 13, 19, 22, 16, 4, 22, 4, 10, 26, 29, 35, 26, 35, 32, 30, 33, 45, 30, 45, 42, 44, 47, 41, 44, 41, 38, 36, 39, 27, 36, 27, 24, 31, 43, 37, 31, 37, 25, 46, 34, 28, 46, 28, 40, 
 };
 // clang-format on
 
-void EmbeddedGizmoMesh::get_translation_gizmo_x(const MeshVertex** vertices, uint32_t& vertexCount, const uint32_t** indices, uint32_t& indexCount)
+void EmbeddedGizmoMesh::get_translation_gizmo_axis(const MeshVertex** vertices, uint32_t& vertexCount, const uint32_t** indices, uint32_t& indexCount)
 {
     *vertices = sTranslationGizmoVertices;
     vertexCount = sTranslationGizmoVertexCount;
@@ -231,7 +231,7 @@ void EmbeddedGizmoMesh::get_translation_gizmo_x(const MeshVertex** vertices, uin
     indexCount = sTranslationGizmoIndexCount;
 }
 
-void EmbeddedGizmoMesh::get_translation_gizmo_x_draw(RDrawIndexedInfo& drawInfo)
+void EmbeddedGizmoMesh::get_translation_gizmo_axis_draw_info(RDrawIndexedInfo& drawInfo)
 {
     drawInfo.indexCount = sTranslationGizmoIndexCount;
     drawInfo.indexStart = 0;
@@ -239,7 +239,7 @@ void EmbeddedGizmoMesh::get_translation_gizmo_x_draw(RDrawIndexedInfo& drawInfo)
     drawInfo.instanceStart = 0;
 }
 
-void EmbeddedGizmoMesh::get_scale_gizmo_x(const MeshVertex** vertices, uint32_t& vertexCount, const uint32_t** indices, uint32_t& indexCount)
+void EmbeddedGizmoMesh::get_scale_gizmo_axis(const MeshVertex** vertices, uint32_t& vertexCount, const uint32_t** indices, uint32_t& indexCount)
 {
     *vertices = sScaleGizmoVertices;
     vertexCount = sScaleGizmoVertexCount;
@@ -247,10 +247,63 @@ void EmbeddedGizmoMesh::get_scale_gizmo_x(const MeshVertex** vertices, uint32_t&
     indexCount = sScaleGizmoIndexCount;
 }
 
-void EmbeddedGizmoMesh::get_scale_gizmo_x_draw(RDrawIndexedInfo& drawInfo)
+void EmbeddedGizmoMesh::get_scale_gizmo_axis_draw_info(RDrawIndexedInfo& drawInfo)
 {
     drawInfo.indexCount = sScaleGizmoIndexCount;
     drawInfo.indexStart = 0;
+    drawInfo.instanceCount = 1;
+    drawInfo.instanceStart = 0;
+}
+
+void EmbeddedGizmoMesh::get_gizmo_plane_xy(const MeshVertex** vertices, uint32_t& vertexCount)
+{
+    static const MeshVertex sPlaneXYVertices[] = {
+        {{0.0f, 0.0f, 0.0f}, {}, {}},
+        {{1.0f, 0.0f, 0.0f}, {}, {}},
+        {{1.0f, 1.0f, 0.0f}, {}, {}},
+        {{1.0f, 1.0f, 0.0f}, {}, {}},
+        {{0.0f, 1.0f, 0.0f}, {}, {}},
+        {{0.0f, 0.0f, 0.0f}, {}, {}},
+    };
+
+    *vertices = sPlaneXYVertices;
+    vertexCount = 6;
+}
+
+void EmbeddedGizmoMesh::get_gizmo_plane_xz(const MeshVertex** vertices, uint32_t& vertexCount)
+{
+    static const MeshVertex sPlaneXZVertices[] = {
+        {{0.0f, 0.0f, 0.0f}, {}, {}},
+        {{1.0f, 0.0f, 0.0f}, {}, {}},
+        {{1.0f, 0.0f, 1.0f}, {}, {}},
+        {{1.0f, 0.0f, 1.0f}, {}, {}},
+        {{0.0f, 0.0f, 1.0f}, {}, {}},
+        {{0.0f, 0.0f, 0.0f}, {}, {}},
+    };
+
+    *vertices = sPlaneXZVertices;
+    vertexCount = 6;
+}
+
+void EmbeddedGizmoMesh::get_gizmo_plane_yz(const MeshVertex** vertices, uint32_t& vertexCount)
+{
+    static const MeshVertex sPlaneYZVertices[] = {
+        {{0.0f, 0.0f, 0.0f}, {}, {}},
+        {{0.0f, 1.0f, 0.0f}, {}, {}},
+        {{0.0f, 1.0f, 1.0f}, {}, {}},
+        {{0.0f, 1.0f, 1.0f}, {}, {}},
+        {{0.0f, 0.0f, 1.0f}, {}, {}},
+        {{0.0f, 0.0f, 0.0f}, {}, {}},
+    };
+
+    *vertices = sPlaneYZVertices;
+    vertexCount = 6;
+}
+
+void EmbeddedGizmoMesh::get_gizmo_plane_draw_info(RDrawInfo& drawInfo)
+{
+    drawInfo.vertexCount = 6;
+    drawInfo.vertexStart = 0;
     drawInfo.instanceCount = 1;
     drawInfo.instanceStart = 0;
 }
