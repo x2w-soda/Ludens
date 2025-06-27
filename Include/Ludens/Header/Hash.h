@@ -83,6 +83,11 @@ class Hash32
 public:
     Hash32() = default;
 
+    explicit Hash32(uint32_t hash)
+        : mHash(hash)
+    {
+    }
+
     Hash32(const std::string& str)
         : mHash(hash32_FNV_1a(str.data(), str.size()))
     {
@@ -103,6 +108,12 @@ public:
     {
     }
 
+    Hash32& operator=(uint32_t hash)
+    {
+        mHash = hash;
+        return *this;
+    }
+
     inline operator uint32_t() const { return mHash; }
     inline bool operator==(const Hash32& other) const { return mHash == other.mHash; }
     inline bool operator!=(const Hash32& other) const { return mHash != other.mHash; }
@@ -118,6 +129,11 @@ class Hash64
 {
 public:
     Hash64() = default;
+
+    explicit Hash64(uint64_t hash)
+        : mHash(hash)
+    {
+    }
 
     Hash64(const std::string& str)
         : mHash(hash64_FNV_1a(str.data(), str.size()))
@@ -137,6 +153,12 @@ public:
     constexpr Hash64(const char* cstr)
         : mHash(hash64_FNV_1a_const_cstr(cstr))
     {
+    }
+
+    Hash64& operator=(uint64_t hash)
+    {
+        mHash = hash;
+        return *this;
     }
 
     inline operator uint64_t() const { return mHash; }
