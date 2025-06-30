@@ -57,16 +57,16 @@ struct RGraphicsPassDepthStencilAttachment
 
 struct RComponentPassObj
 {
-    Hash32 name;
-    std::string debugName;
-    RComponent component;           /// owning component
-    RPipelineStageFlags stageFlags; /// compute pass stages
-    RAccessFlags accessFlags;       /// compute pass access
-    void* userData;
-    bool isCallbackScope;
-    bool isComputePass;
-    std::unordered_map<uint32_t, RGraphImageUsage> imageUsages;
-    std::unordered_set<RComponentPassObj*> edges; /// dependency passes
+    Hash32 name;                                              /// hash of user declared name
+    std::string debugName;                                    /// name for debugging
+    RComponent component;                                     /// owning component
+    RPipelineStageFlags stageFlags;                           /// compute pass stages
+    RAccessFlags accessFlags;                                 /// compute pass access
+    void* userData;                                           /// arbitrary user data
+    bool isCallbackScope;                                     /// whether the component is within the RCommandList recording scope
+    bool isComputePass;                                       /// distinguishes between a GraphicsPass and ComputePass
+    std::unordered_map<Hash32, RGraphImageUsage> imageUsages; /// track usages of images in this component
+    std::unordered_set<RComponentPassObj*> edges;             /// dependency passes
 };
 
 struct RGraphicsPassObj : RComponentPassObj
@@ -74,12 +74,14 @@ struct RGraphicsPassObj : RComponentPassObj
     uint32_t width;
     uint32_t height;
     RPassDependency passDep;
-    RGraphicsPassCallback callback;
+    RGraphicsPassCallback callback;                             /// command recording callback for the graphics pass
     std::vector<RGraphicsPassColorAttachment> colorAttachments; /// graphics pass color attachment description
     std::vector<RPassColorAttachment> colorAttachmentInfos;     /// consumed by the render backend API
+    std::vector<RPassResolveAttachment> resolveAttachmentInfos; /// consumed by the render backend API
     std::unordered_set<Hash32> sampledImages;                   /// all images sampled in this pass
     RGraphicsPassDepthStencilAttachment depthStencilAttachment; /// graphics pass depth stencil attachment description
     RPassDepthStencilAttachment depthStencilAttachmentInfo;     /// consumed by the render backend API
+    RSampleCountBit samples;                                    /// if multi-sampled, color attachments are resolved in this pass
     bool hasDepthStencil;
 
     inline bool operator==(const RGraphicsPassObj& other) const { return name == other.name; }
@@ -98,6 +100,7 @@ struct RComputePassObj : RComponentPassObj
 struct RComponentObj
 {
     Hash32 name;
+    RSampleCountBit samples;
     std::string debugName;
     std::vector<RComponentPassObj*> passOrder;
     std::unordered_map<Hash32, RComponentPassObj*> passes; /// all passes declared this frame
