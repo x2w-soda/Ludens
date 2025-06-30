@@ -4,7 +4,6 @@ set(MODULE_INCLUDE
     "${LUDENS_INCLUDE_DIR}/Ludens/RenderComponent/ForwardRender.h"
     "${LUDENS_INCLUDE_DIR}/Ludens/RenderComponent/ScreenRender.h"
     "${LUDENS_INCLUDE_DIR}/Ludens/RenderComponent/ScreenPick.h"
-    "${LUDENS_INCLUDE_DIR}/Ludens/RenderComponent/Skybox.h"
     "${LUDENS_INCLUDE_DIR}/Ludens/RenderComponent/Outline.h"
     "${LUDENS_INCLUDE_DIR}/Ludens/RenderComponent/DualKawase.h"
     "${LUDENS_INCLUDE_DIR}/Ludens/RenderComponent/Layout/SetLayouts.h"
@@ -14,6 +13,7 @@ set(MODULE_INCLUDE
     "${LUDENS_INCLUDE_DIR}/Ludens/RenderComponent/Layout/RMesh.h"
     "${LUDENS_INCLUDE_DIR}/Ludens/RenderComponent/Pipeline/RMeshPipeline.h"
     "${LUDENS_INCLUDE_DIR}/Ludens/RenderComponent/Pipeline/LinePipeline.h"
+    "${LUDENS_INCLUDE_DIR}/Ludens/RenderComponent/Pipeline/SkyboxPipeline.h"
     "${LUDENS_INCLUDE_DIR}/Ludens/RenderComponent/Pipeline/OutlinePipeline.h"
     "${LUDENS_INCLUDE_DIR}/Ludens/RenderComponent/Pipeline/EquirectangularPipeline.h"
     "${LUDENS_INCLUDE_DIR}/Ludens/RenderComponent/Embed/GizmoMesh.h"
@@ -21,7 +21,6 @@ set(MODULE_INCLUDE
 
 set(MODULE_LIB
     "Lib/ForwardRender.cpp"
-    "Lib/Skybox.cpp"
     "Lib/Outline.cpp"
     "Lib/ScreenRender.cpp"
     "Lib/ScreenPick.cpp"
@@ -32,6 +31,7 @@ set(MODULE_LIB
     "Lib/Layout/RMesh.cpp"
     "Lib/Pipeline/RMeshPipeline.cpp"
     "Lib/Pipeline/LinePipeline.cpp"
+    "Lib/Pipeline/SkyboxPipeline.cpp"
     "Lib/Pipeline/OutlinePipeline.cpp"
     "Lib/Pipeline/EquirectangularPipeline.cpp"
     "Lib/Embed/GizmoMesh.cpp"

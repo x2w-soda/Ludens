@@ -3,8 +3,9 @@
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/RenderBackend/RUtil.h>
 #include <Ludens/RenderComponent/Layout/SetLayouts.h>
-#include <Ludens/RenderComponent/Skybox.h>
-#include <array>
+#include <Ludens/RenderComponent/Pipeline/SkyboxPipeline.h>
+#include <Ludens/System/Memory.h>
+#include <vector>
 
 namespace LD {
 
@@ -97,37 +98,32 @@ void main()
 )";
 // clang-format on
 
-struct SkyboxComponentObj
+struct SkyboxPipelineObj
 {
-    RDevice device;
-    RPipeline skyboxPipeline;
-    RPipelineLayoutInfo pipelineLayoutI;
-    RShader skyboxVS;
-    RShader skyboxFS;
-    bool hasInit;
+    RDevice device;         /// the device used to create this pipeline
+    RPipeline handle;       /// graphics pipeline handle
+    RShader vertexShader;   /// blinn phong vertex shadser
+    RShader fragmentShader; /// blinn phong fragment shader
+};
 
-    void init(RDevice device);
-
-    static void on_release(void* user);
-    static void on_graphics_pass(RGraphicsPass pass, RCommandList list, void* userData);
-} sSBCompObj;
-
-void SkyboxComponentObj::init(RDevice device)
+SkyboxPipeline SkyboxPipeline::create(RDevice device)
 {
-    if (hasInit)
-        return;
+    SkyboxPipelineObj* obj = (SkyboxPipelineObj*)heap_malloc(sizeof(SkyboxPipelineObj), MEMORY_USAGE_RENDER);
 
-    hasInit = true;
-    this->device = device;
+    obj->device = device;
+    obj->vertexShader = device.create_shader({RSHADER_TYPE_VERTEX, sSkyboxVS});
+    obj->fragmentShader = device.create_shader({RSHADER_TYPE_FRAGMENT, sSkyboxFS});
 
-    skyboxVS = device.create_shader({RSHADER_TYPE_VERTEX, sSkyboxVS});
-    skyboxFS = device.create_shader({RSHADER_TYPE_FRAGMENT, sSkyboxFS});
-    std::array<RShader, 2> shaders{skyboxVS, skyboxFS};
+    std::array<RPipelineBlendState, 2> blendAttachments;
+    std::array<RShader, 2> shaders = {obj->vertexShader, obj->fragmentShader};
+    std::array < RPipelineBlendState, 2> blendStates;
+    blendStates[0] = RUtil::make_default_blend_state();
+    blendStates[1].enabled = false; // TODO: this is the ID-Flags color attachment, parameterize for removal?
 
+    RPipelineLayoutInfo pipelineLayoutI{};
     pipelineLayoutI.setLayoutCount = 1;
     pipelineLayoutI.setLayouts = &sFrameSetLayout;
 
-    RPipelineBlendState blendState = RUtil::make_default_blend_state();
     RPipelineInfo pipelineI = {
         .shaderCount = (uint32_t)shaders.size(),
         .shaders = shaders.data(),
@@ -143,73 +139,31 @@ void SkyboxComponentObj::init(RDevice device)
             .depthCompareOp = RCOMPARE_OP_LESS_OR_EQUAL, // we will be rendering skybox depth as 1.0, so equality matters
         },
         .blend = {
-            .colorAttachmentCount = 1,
-            .colorAttachments = &blendState,
+            .colorAttachmentCount = (uint32_t)blendStates.size(),
+            .colorAttachments = blendStates.data(),
         },
     };
 
-    skyboxPipeline = device.create_pipeline(pipelineI);
+    obj->handle = device.create_pipeline(pipelineI);
 
-    RGraph::add_release_callback(this, &SkyboxComponentObj::on_release);
+    return {obj};
 }
 
-void SkyboxComponentObj::on_release(void* user)
+void SkyboxPipeline::destroy(SkyboxPipeline pipeline)
 {
-    SkyboxComponentObj* obj = (SkyboxComponentObj*)user;
-
-    if (!obj->hasInit)
-        return;
-
-    obj->hasInit = false;
+    SkyboxPipelineObj* obj = pipeline;
     RDevice device = obj->device;
 
-    device.destroy_pipeline(obj->skyboxPipeline);
-    device.destroy_shader(obj->skyboxFS);
-    device.destroy_shader(obj->skyboxVS);
+    device.destroy_pipeline(obj->handle);
+    device.destroy_shader(obj->vertexShader);
+    device.destroy_shader(obj->fragmentShader);
+
+    heap_free(obj);
 }
 
-void SkyboxComponentObj::on_graphics_pass(RGraphicsPass pass, RCommandList list, void* userData)
+RPipeline SkyboxPipeline::handle()
 {
-    SkyboxComponentObj* obj = (SkyboxComponentObj*)userData;
-
-    list.cmd_bind_graphics_pipeline(obj->skyboxPipeline);
-
-    RDrawInfo drawI{
-        .vertexCount = 36,
-        .vertexStart = 0,
-        .instanceCount = 1,
-        .instanceStart = 0,
-    };
-    list.cmd_draw(drawI);
-}
-
-SkyboxComponent SkyboxComponent::add(RGraph graph, RFormat cFormat, RFormat dsFormat)
-{
-    LD_PROFILE_SCOPE;
-
-    SkyboxComponentObj* compObj = &sSBCompObj;
-    RDevice device = graph.get_device();
-    uint32_t screenWidth, screenHeight;
-    graph.get_screen_extent(screenWidth, screenHeight);
-
-    compObj->init(device);
-
-    SkyboxComponent skyboxComp(compObj);
-    RComponent comp = graph.add_component(skyboxComp.component_name());
-    comp.add_io_image(skyboxComp.io_color_name(), cFormat, screenWidth, screenHeight);
-    comp.add_io_image(skyboxComp.io_depth_stencil_name(), dsFormat, screenWidth, screenHeight);
-
-    RGraphicsPassInfo gpI{};
-    gpI.name = skyboxComp.component_name();
-    gpI.width = screenWidth;
-    gpI.height = screenHeight;
-
-    // render skybox on top of previous content
-    RGraphicsPass pass = comp.add_graphics_pass(gpI, compObj, &SkyboxComponentObj::on_graphics_pass);
-    pass.use_color_attachment(skyboxComp.io_color_name(), RATTACHMENT_LOAD_OP_LOAD, nullptr);
-    pass.use_depth_stencil_attachment(skyboxComp.io_depth_stencil_name(), RATTACHMENT_LOAD_OP_LOAD, nullptr);
-
-    return skyboxComp;
+    return mObj->handle;
 }
 
 } // namespace LD

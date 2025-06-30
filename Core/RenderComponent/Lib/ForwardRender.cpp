@@ -6,6 +6,7 @@
 #include <Ludens/RenderComponent/Layout/SetLayouts.h>
 #include <Ludens/RenderComponent/Layout/VertexLayouts.h>
 #include <Ludens/RenderComponent/Pipeline/LinePipeline.h>
+#include <Ludens/RenderComponent/Pipeline/SkyboxPipeline.h>
 #include <vector>
 
 namespace LD {
@@ -25,6 +26,7 @@ struct ForwardRenderComponentObj
     RSet frameSet;
     RPipeline meshPipeline;
     LinePipeline linePipeline;
+    SkyboxPipeline skyboxPipeline;
     PointVertexBatch<sMaxPointVertexCount> pointBatch;
     ForwardRenderComponent::RenderCallback callback;
     void* user;
@@ -52,6 +54,7 @@ void ForwardRenderComponentObj::init(RDevice device)
     this->device = device;
     hasInit = true;
     linePipeline = LinePipeline::create(device);
+    skyboxPipeline = SkyboxPipeline::create(device);
     frames.resize(device.get_frames_in_flight_count());
 
     for (Frame& frame : frames)
@@ -103,6 +106,10 @@ void ForwardRenderComponentObj::flush_lines()
     uint32_t pointCount = pointBatch.get_point_count();
     uint32_t vertexCount;
     PointVertex* vertices = pointBatch.get_vertices(vertexCount);
+
+    if (pointCount == 0)
+        return;
+
     frame.pointVBOs[batchIdx].map_write(0, sizeof(PointVertex) * vertexCount, vertices);
 
     pointBatch.reset();
@@ -147,6 +154,7 @@ void ForwardRenderComponentObj::on_release(void* user)
         frame.pointVBOs.clear();
     }
 
+    SkyboxPipeline::destroy(compObj->skyboxPipeline);
     LinePipeline::destroy(compObj->linePipeline);
 }
 
@@ -194,12 +202,13 @@ ForwardRenderComponent ForwardRenderComponent::add(RGraph graph, const ForwardRe
     gpI.name = forwardComp.component_name();
     gpI.width = screenWidth;
     gpI.height = screenHeight;
+    gpI.samples = componentI.samples;
 
     RClearColorValue idClearColor = RUtil::make_clear_color<uint32_t>(0, 0, 0, 0);
     RGraphicsPass pass = comp.add_graphics_pass(gpI, compObj, &ForwardRenderComponentObj::on_graphics_pass);
     pass.use_color_attachment(forwardComp.out_color_name(), RATTACHMENT_LOAD_OP_CLEAR, &componentI.clearColor);
     pass.use_color_attachment(forwardComp.out_idflags_name(), RATTACHMENT_LOAD_OP_CLEAR, &idClearColor);
-    pass.use_depth_stencil_attachment(forwardComp.out_depth_stencil_name(), RATTACHMENT_LOAD_OP_CLEAR, &componentI.clearDS);
+    pass.use_depth_stencil_attachment(forwardComp.out_depth_stencil_name(), RATTACHMENT_LOAD_OP_CLEAR, &componentI.clearDepthStencil);
 
     return forwardComp;
 }
@@ -268,6 +277,22 @@ void ForwardRenderComponent::draw_aabb_outline(const Vec3& min, const Vec3& max,
     draw_line(p1, p5, color);
     draw_line(p2, p6, color);
     draw_line(p3, p7, color);
+}
+
+void ForwardRenderComponent::draw_skybox()
+{
+    LD_ASSERT(mObj->isDrawScope);
+
+    mObj->flush_lines();
+    mObj->list.cmd_bind_graphics_pipeline(mObj->skyboxPipeline.handle());
+
+    RDrawInfo drawI{
+        .vertexCount = 36,
+        .vertexStart = 0,
+        .instanceCount = 1,
+        .instanceStart = 0,
+    };
+    mObj->list.cmd_draw(drawI);
 }
 
 } // namespace LD

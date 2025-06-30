@@ -11,8 +11,9 @@ struct ForwardRenderComponentInfo
 {
     RFormat colorFormat;
     RFormat depthStencilFormat;
-    RClearColorValue clearColor;
-    RClearDepthStencilValue clearDS;
+    RSampleCountBit samples;                   /// number of samples for MSAA
+    RClearColorValue clearColor;               /// color clear value
+    RClearDepthStencilValue clearDepthStencil; /// depth stencil clear value
 };
 
 /// @brief Forward Rendering, this is one of the root render components
@@ -62,6 +63,9 @@ struct ForwardRenderComponent : Handle<struct ForwardRenderComponentObj>
     /// @param max maximum position of box
     /// @param color outline color
     void draw_aabb_outline(const Vec3& min, const Vec3& max, uint32_t color);
+
+    /// @brief draw the skybox using the environment cubemap bound in the FrameSet
+    void draw_skybox();
 };
 
 } // namespace LD

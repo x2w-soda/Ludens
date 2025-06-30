@@ -1,15 +1,16 @@
 #pragma once
 
-#include <Ludens/RenderBackend/RBackend.h>
 #include <Ludens/Header/Hash.h>
+#include <Ludens/RenderBackend/RBackend.h>
 
 namespace LD {
 
 struct RGraphicsPassInfo
 {
-    const char* name;
-    uint32_t width;
-    uint32_t height;
+    const char* name;                              /// unique identifer within a component
+    uint32_t width;                                /// render area width
+    uint32_t height;                               /// render area height
+    RSampleCountBit samples = RSAMPLE_COUNT_1_BIT; /// number of samples for MSAA if not 1
 };
 
 struct RGraphicsPass : RHandle<struct RGraphicsPassObj>
