@@ -29,6 +29,9 @@ extern RSetLayoutInfo sMaterialSetLayout;
 /// @brief a common layout with a single sampled image at binding 0
 extern RSetLayoutInfo sSingleSampleSetLayout;
 
+/// @brief a common layout with two sampled images at binding 0 and 1
+extern RSetLayoutInfo sDoubleSampleSetLayout;
+
 struct FrameUBO
 {
     Mat4 viewMat;

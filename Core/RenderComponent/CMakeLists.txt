@@ -4,7 +4,7 @@ set(MODULE_INCLUDE
     "${LUDENS_INCLUDE_DIR}/Ludens/RenderComponent/ForwardRender.h"
     "${LUDENS_INCLUDE_DIR}/Ludens/RenderComponent/ScreenRender.h"
     "${LUDENS_INCLUDE_DIR}/Ludens/RenderComponent/ScreenPick.h"
-    "${LUDENS_INCLUDE_DIR}/Ludens/RenderComponent/Outline.h"
+    "${LUDENS_INCLUDE_DIR}/Ludens/RenderComponent/SceneOverlay.h"
     "${LUDENS_INCLUDE_DIR}/Ludens/RenderComponent/DualKawase.h"
     "${LUDENS_INCLUDE_DIR}/Ludens/RenderComponent/Layout/SetLayouts.h"
     "${LUDENS_INCLUDE_DIR}/Ludens/RenderComponent/Layout/VertexLayouts.h"
@@ -21,7 +21,7 @@ set(MODULE_INCLUDE
 
 set(MODULE_LIB
     "Lib/ForwardRender.cpp"
-    "Lib/Outline.cpp"
+    "Lib/SceneOverlay.cpp"
     "Lib/ScreenRender.cpp"
     "Lib/ScreenPick.cpp"
     "Lib/DualKawase.cpp"
