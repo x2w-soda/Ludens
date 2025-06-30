@@ -10,6 +10,9 @@ struct EmbeddedGizmoMesh
     static void get_translation_gizmo_axis(const MeshVertex** vertices, uint32_t& vertexCount, const uint32_t** indices, uint32_t& indexCount);
     static void get_translation_gizmo_axis_draw_info(RDrawIndexedInfo& drawInfo);
 
+    static void get_rotation_gizmo_plane(const MeshVertex** vertices, uint32_t& vertexCount, const uint32_t** indices, uint32_t& indexCount);
+    static void get_rotation_gizmo_plane_draw_info(RDrawIndexedInfo& drawInfo);
+
     static void get_scale_gizmo_axis(const MeshVertex** vertices, uint32_t& vertexCount, const uint32_t** indices, uint32_t& indexCount);
     static void get_scale_gizmo_axis_draw_info(RDrawIndexedInfo& drawInfo);
 

@@ -165,6 +165,35 @@ static const uint32_t sTranslationGizmoIndices[sTranslationGizmoIndexCount] = {
 };
 // clang-format on
 
+const size_t sRotationGizmoVertexCount = 18;
+static const MeshVertex sRotationGizmoVertices[sRotationGizmoVertexCount] = {
+    {{0.19509, 0, 0.98079}, {0, 1, 0}, {0, 1}},
+    {{0, 0, 1}, {0, 1, 0}, {0, 1}},
+    {{0.38268, 0, 0.92388}, {0, 1, 0}, {0, 1}},
+    {{0.55557, 0, 0.83147}, {0, 1, 0}, {0, 1}},
+    {{0.70711, 0, 0.70711}, {0, 1, 0}, {0, 1}},
+    {{0.83147, 0, 0.55557}, {0, 1, 0}, {0, 1}},
+    {{0.92388, 0, 0.38268}, {0, 1, 0}, {0, 1}},
+    {{0.98079, 0, 0.19509}, {0, 1, 0}, {0, 1}},
+    {{1, 0, 0}, {0, 1, 0}, {0, 1}},
+    {{0.849, 0, 0}, {0, 1, 0}, {0, 1}},
+    {{0.83269, 0, 0.16563}, {0, 1, 0}, {0, 1}},
+    {{0.78438, 0, 0.3249}, {0, 1, 0}, {0, 1}},
+    {{0.70592, 0, 0.47168}, {0, 1, 0}, {0, 1}},
+    {{0.60034, 0, 0.60034}, {0, 1, 0}, {0, 1}},
+    {{0.47168, 0, 0.70592}, {0, 1, 0}, {0, 1}},
+    {{0.3249, 0, 0.78438}, {0, 1, 0}, {0, 1}},
+    {{0.16563, 0, 0.83269}, {0, 1, 0}, {0, 1}},
+    {{0, 0, 0.849}, {0, 1, 0}, {0, 1}},
+};
+
+// clang-format off
+const size_t sRotationGizmoIndexCount = 48;
+static const uint32_t sRotationGizmoIndices[sRotationGizmoIndexCount] = {
+    9, 10, 7, 9, 7, 8, 10, 11, 6, 10, 6, 7, 11, 12, 5, 11, 5, 6, 12, 13, 4, 12, 4, 5, 13, 14, 3, 13, 3, 4, 14, 15, 2, 14, 2, 3, 15, 16, 0, 15, 0, 2, 16, 17, 1, 16, 1, 0, 
+};
+// clang-format on
+
 const size_t sScaleGizmoVertexCount = 48;
 static const MeshVertex sScaleGizmoVertices[sScaleGizmoVertexCount] = {
     {{0.024021, -0.024011, 0.024011}, {0, 0, 1}, {0.375, 1}},
@@ -234,6 +263,22 @@ void EmbeddedGizmoMesh::get_translation_gizmo_axis(const MeshVertex** vertices, 
 void EmbeddedGizmoMesh::get_translation_gizmo_axis_draw_info(RDrawIndexedInfo& drawInfo)
 {
     drawInfo.indexCount = sTranslationGizmoIndexCount;
+    drawInfo.indexStart = 0;
+    drawInfo.instanceCount = 1;
+    drawInfo.instanceStart = 0;
+}
+
+void EmbeddedGizmoMesh::get_rotation_gizmo_plane(const MeshVertex** vertices, uint32_t& vertexCount, const uint32_t** indices, uint32_t& indexCount)
+{
+    *vertices = sRotationGizmoVertices;
+    vertexCount = sRotationGizmoVertexCount;
+    *indices = sRotationGizmoIndices;
+    indexCount = sRotationGizmoIndexCount;
+}
+
+void EmbeddedGizmoMesh::get_rotation_gizmo_plane_draw_info(RDrawIndexedInfo& drawInfo)
+{
+    drawInfo.indexCount = sRotationGizmoIndexCount;
     drawInfo.indexStart = 0;
     drawInfo.instanceCount = 1;
     drawInfo.instanceStart = 0;
