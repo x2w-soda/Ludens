@@ -121,8 +121,6 @@ using Vec3 = TVec3<float>;
 using IVec3 = TVec3<int>;
 using DVec3 = TVec3<double>;
 
-static_assert(std::is_trivially_constructible<Vec3>::value);
-static_assert(std::is_trivially_destructible<Vec3>::value);
-static_assert(std::is_trivially_copyable<Vec3>::value);
+static_assert(LD::IsTrivial<Vec3>);
 
 } // namespace LD

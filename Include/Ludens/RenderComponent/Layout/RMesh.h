@@ -20,7 +20,7 @@ struct RMeshPrimitive
 class RMesh
 {
 public:
-    RDevice device{};
+    RDevice device;
     RSetPool setPool;
     RBuffer vbo;
     RBuffer ibo;

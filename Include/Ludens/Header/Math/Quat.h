@@ -1,5 +1,7 @@
 #pragma once
 
+#include <Ludens/Header/Types.h>
+
 namespace LD {
 
 // clang-format off
@@ -8,7 +10,7 @@ struct TQuat
 {
     T x, y, z, w;
     
-    TQuat() : x((T)0), y((T)0), z((T)0), w((T)1) {}
+    TQuat() = default;
     TQuat(T x, T y, T z, T w) : x(x), y(y), z(z), w(w) {}
 
     /// @brief create from array of 4 scalar elements, the last element being the real part
@@ -25,5 +27,7 @@ struct TQuat
 // clang-format on
 
 using Quat = TQuat<float>;
+
+static_assert(LD::IsTrivial<Quat>);
 
 } // namespace LD

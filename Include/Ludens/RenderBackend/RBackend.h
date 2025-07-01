@@ -11,7 +11,7 @@ template <typename TObject>
 class RHandle
 {
 public:
-    RHandle() : mObj(nullptr) {}
+    RHandle() = default;
     RHandle(TObject* obj) : mObj(obj) {}
 
     /// @brief get an id unique to each RHandle

@@ -83,7 +83,7 @@ class Hash32
 public:
     Hash32() = default;
 
-    explicit Hash32(uint32_t hash)
+    Hash32(uint32_t hash)
         : mHash(hash)
     {
     }
@@ -130,7 +130,7 @@ class Hash64
 public:
     Hash64() = default;
 
-    explicit Hash64(uint64_t hash)
+    Hash64(uint64_t hash)
         : mHash(hash)
     {
     }

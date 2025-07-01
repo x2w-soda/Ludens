@@ -3,7 +3,6 @@
 #include <Ludens/Header/Math/Math.h>
 #include <Ludens/Header/Math/Vec3.h>
 #include <Ludens/Header/SIMD.h>
-#include <type_traits>
 
 #ifdef LD_SSE2
 #define TVEC4_ALIGNMENT std::conditional_t<std::is_same_v<T, double>, std::integral_constant<size_t, 32>, std::conditional_t<std::is_same_v<T, float>, std::integral_constant<size_t, 16>, std::integral_constant<size_t, alignof(T)>>>::value
@@ -154,8 +153,6 @@ using Vec4 = TVec4<float>;
 using IVec4 = TVec4<int>;
 using DVec4 = TVec4<double>;
 
-static_assert(std::is_trivially_constructible<Vec4>::value);
-static_assert(std::is_trivially_destructible<Vec4>::value);
-static_assert(std::is_trivially_copyable<Vec4>::value);
+static_assert(LD::IsTrivial<Vec4>);
 
 } // namespace LD

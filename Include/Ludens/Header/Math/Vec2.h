@@ -1,7 +1,7 @@
 #pragma once
 
 #include <Ludens/Header/Math/Math.h>
-#include <type_traits>
+#include <Ludens/Header/Types.h>
 
 namespace LD {
 
@@ -109,8 +109,6 @@ using Vec2 = TVec2<float>;
 using IVec2 = TVec2<int>;
 using DVec2 = TVec2<double>;
 
-static_assert(std::is_trivially_constructible<Vec2>::value);
-static_assert(std::is_trivially_destructible<Vec2>::value);
-static_assert(std::is_trivially_copyable<Vec2>::value);
+static_assert(LD::IsTrivial<Vec2>);
 
 } // namespace LD
