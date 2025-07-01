@@ -138,6 +138,8 @@ static RDevice sDevice;
 static RBuffer sScreenVBO;
 static RBuffer sTranslationGizmoVBO;
 static RBuffer sTranslationGizmoIBO;
+static RBuffer sRotationGizmoVBO;
+static RBuffer sRotationGizmoIBO;
 static RBuffer sPlaneXY;
 static RBuffer sPlaneXZ;
 static RBuffer sPlaneYZ;
@@ -182,6 +184,7 @@ struct SceneOverlayComponentObj
     static void on_gizmo_graphics_pass(RGraphicsPass pass, RCommandList list, void* user);
 
     void draw_translation_gizmo(RGraphicsPass pass, RCommandList list);
+    void draw_rotation_gizmo(RGraphicsPass pass, RCommandList list);
     void draw_scale_gizmo(RGraphicsPass pass, RCommandList list);
 };
 
@@ -269,6 +272,12 @@ void SceneOverlayComponentObj::init(RDevice device)
     stager.add_buffer_data(sTranslationGizmoVBO, gizmoVertices);
     stager.add_buffer_data(sTranslationGizmoIBO, gizmoIndices);
 
+    EmbeddedGizmoMesh::get_rotation_gizmo_plane(&gizmoVertices, vertexCount, &gizmoIndices, indexCount);
+    sRotationGizmoVBO = device.create_buffer({RBUFFER_USAGE_VERTEX_BIT | RBUFFER_USAGE_TRANSFER_DST_BIT, sizeof(MeshVertex) * vertexCount, false});
+    sRotationGizmoIBO = device.create_buffer({RBUFFER_USAGE_INDEX_BIT | RBUFFER_USAGE_TRANSFER_DST_BIT, sizeof(uint32_t) * indexCount, false});
+    stager.add_buffer_data(sRotationGizmoVBO, gizmoVertices);
+    stager.add_buffer_data(sRotationGizmoIBO, gizmoIndices);
+
     EmbeddedGizmoMesh::get_scale_gizmo_axis(&gizmoVertices, vertexCount, &gizmoIndices, indexCount);
     sScaleGizmoVBO = device.create_buffer({RBUFFER_USAGE_VERTEX_BIT | RBUFFER_USAGE_TRANSFER_DST_BIT, sizeof(MeshVertex) * vertexCount, false});
     sScaleGizmoIBO = device.create_buffer({RBUFFER_USAGE_INDEX_BIT | RBUFFER_USAGE_TRANSFER_DST_BIT, sizeof(uint32_t) * indexCount, false});
@@ -298,6 +307,8 @@ void SceneOverlayComponentObj::on_release(void* user)
     sDevice.destroy_buffer(sPlaneXY);
     sDevice.destroy_buffer(sScaleGizmoVBO);
     sDevice.destroy_buffer(sScaleGizmoIBO);
+    sDevice.destroy_buffer(sRotationGizmoVBO);
+    sDevice.destroy_buffer(sRotationGizmoIBO);
     sDevice.destroy_buffer(sTranslationGizmoVBO);
     sDevice.destroy_buffer(sTranslationGizmoIBO);
     sDevice.destroy_buffer(sScreenVBO);
@@ -380,6 +391,9 @@ void SceneOverlayComponentObj::on_gizmo_graphics_pass(RGraphicsPass pass, RComma
     case SCENE_OVERLAY_GIZMO_TRANSLATION:
         obj->draw_translation_gizmo(pass, list);
         break;
+    case SCENE_OVERLAY_GIZMO_ROTATION:
+        obj->draw_rotation_gizmo(pass, list);
+        break;
     case SCENE_OVERLAY_GIZMO_SCALE:
         obj->draw_scale_gizmo(pass, list);
         break;
@@ -451,6 +465,38 @@ void SceneOverlayComponentObj::draw_translation_gizmo(RGraphicsPass pass, RComma
     list.cmd_push_constant(sRMeshPipelineLayout, 0, sizeof(pc), &pc);
     list.cmd_bind_vertex_buffers(0, 1, &sPlaneYZ);
     list.cmd_draw(planeDrawI);
+}
+
+void SceneOverlayComponentObj::draw_rotation_gizmo(RGraphicsPass pass, RCommandList list)
+{
+    list.cmd_bind_vertex_buffers(0, 1, &sRotationGizmoVBO);
+    list.cmd_bind_index_buffer(sRotationGizmoIBO, RINDEX_TYPE_U32);
+
+    RDrawIndexedInfo drawI;
+    EmbeddedGizmoMesh::get_rotation_gizmo_plane_draw_info(drawI);
+
+    Mat4 translation = Mat4::translate(gizmoCenter);
+    Mat4 scale = Mat4::scale(Vec3(gizmoScale));
+
+    RMeshAmbientPipeline::PushConstant pc;
+    pc.model = translation * scale;
+    pc.id = PLANE_XZ_ID;
+    pc.flags = 0;
+    pc.ambient = gizmoColorXZ;
+    list.cmd_push_constant(sRMeshPipelineLayout, 0, sizeof(pc), &pc);
+    list.cmd_draw_indexed(drawI);
+
+    pc.model = translation * Mat4::rotate(M_PI_2, Vec3(-1.0f, 0.0f, 0.0f)) * scale;
+    pc.id = PLANE_XY_ID;
+    pc.ambient = gizmoColorXY;
+    list.cmd_push_constant(sRMeshPipelineLayout, 0, sizeof(pc), &pc);
+    list.cmd_draw_indexed(drawI);
+
+    pc.model = translation * Mat4::rotate(M_PI_2, Vec3(0.0f, 0.0f, 1.0f)) * scale;
+    pc.id = PLANE_YZ_ID;
+    pc.ambient = gizmoColorYZ;
+    list.cmd_push_constant(sRMeshPipelineLayout, 0, sizeof(pc), &pc);
+    list.cmd_draw_indexed(drawI);
 }
 
 void SceneOverlayComponentObj::draw_scale_gizmo(RGraphicsPass pass, RCommandList list)
