@@ -28,6 +28,7 @@ void RMesh::create_from_media(RDevice device, RStager& stager, Model& model)
 {
     LD_PROFILE_SCOPE;
 
+    memset(this, 0, sizeof(RMesh));
     this->device = device;
 
     MeshVertex* vertexData = model.get_vertices(vertexCount);
@@ -40,6 +41,7 @@ void RMesh::create_from_media(RDevice device, RStager& stager, Model& model)
     textures = (RImage*)heap_malloc(sizeof(RImage) * textureCount, MEMORY_USAGE_RENDER);
     mats = (RMaterial*)heap_malloc(sizeof(RMaterial) * matCount, MEMORY_USAGE_RENDER);
     prims = (RMeshPrimitive*)heap_malloc(sizeof(RMeshPrimitive) * primCount, MEMORY_USAGE_RENDER);
+    dummyTexture = {};
 
     // flatten tree hierachy into an array
     std::vector<MeshPrimitive> primData(primCount);
@@ -61,6 +63,7 @@ void RMesh::create_from_binary(RDevice device, RStager& stager, ModelBinary& bin
 {
     LD_PROFILE_SCOPE;
 
+    memset(this, 0, sizeof(RMesh));
     this->device = device;
 
     vertexCount = (uint32_t)bin.vertices.size();
@@ -73,6 +76,7 @@ void RMesh::create_from_binary(RDevice device, RStager& stager, ModelBinary& bin
     textures = (RImage*)heap_malloc(sizeof(RImage) * textureCount, MEMORY_USAGE_RENDER);
     mats = (RMaterial*)heap_malloc(sizeof(RMaterial) * matCount, MEMORY_USAGE_RENDER);
     prims = (RMeshPrimitive*)heap_malloc(sizeof(RMeshPrimitive) * primCount, MEMORY_USAGE_RENDER);
+    dummyTexture = {};
 
     for (uint32_t i = 0; i < primCount; i++)
     {
