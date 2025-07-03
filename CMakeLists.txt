@@ -228,12 +228,12 @@ add_subdirectory(${LUDENS_EXTRA_DIR}/stb)
 add_subdirectory(Core/Header)
 add_subdirectory(Core/Profiler)
 add_subdirectory(Core/System)
-add_subdirectory(Core/Serial)
+add_subdirectory(Core/JobSystem)
 add_subdirectory(Core/CommandLine)
 add_subdirectory(Core/DSA)
 add_subdirectory(Core/DSP)
+add_subdirectory(Core/Serial)
 add_subdirectory(Core/Log)
-add_subdirectory(Core/JobSystem)
 add_subdirectory(Core/Lua)
 add_subdirectory(Core/Media)
 add_subdirectory(Core/Camera)
@@ -247,11 +247,12 @@ add_library(LDCore INTERFACE)
 target_link_libraries(LDCore INTERFACE
   LDProfiler
   LDSystem
-  LDSerial
+  LDJobSystem
+  LDCommandLine
   LDDSA
   LDDSP
+  LDSerial
   LDLog
-  LDJobSystem
   LDLua
   LDMedia
   LDCamera

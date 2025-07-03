@@ -5,6 +5,7 @@
 #include <Ludens/RenderComponent/Layout/SetLayouts.h>
 #include <Ludens/RenderComponent/Pipeline/SkyboxPipeline.h>
 #include <Ludens/System/Memory.h>
+#include <array>
 #include <vector>
 
 namespace LD {
@@ -116,7 +117,7 @@ SkyboxPipeline SkyboxPipeline::create(RDevice device)
 
     std::array<RPipelineBlendState, 2> blendAttachments;
     std::array<RShader, 2> shaders = {obj->vertexShader, obj->fragmentShader};
-    std::array < RPipelineBlendState, 2> blendStates;
+    std::array<RPipelineBlendState, 2> blendStates;
     blendStates[0] = RUtil::make_default_blend_state();
     blendStates[1].enabled = false; // TODO: this is the ID-Flags color attachment, parameterize for removal?
 

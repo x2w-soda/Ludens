@@ -41,6 +41,7 @@ add_executable(${MODULE_TEST_NAME}
 target_link_libraries(${MODULE_TEST_NAME} PRIVATE
 	${MODULE_NAME}
 	LDSystem
+	LDJobSystem
 	LDDSA
 )
 
