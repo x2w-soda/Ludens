@@ -237,6 +237,7 @@ add_subdirectory(Core/JobSystem)
 add_subdirectory(Core/Lua)
 add_subdirectory(Core/Media)
 add_subdirectory(Core/Camera)
+add_subdirectory(Core/Gizmo)
 add_subdirectory(Core/RenderBackend)
 add_subdirectory(Core/RenderGraph)
 add_subdirectory(Core/RenderComponent)
@@ -254,6 +255,7 @@ target_link_libraries(LDCore INTERFACE
   LDLua
   LDMedia
   LDCamera
+  LDGizmo
   LDRenderBackend
   LDRenderGraph
   LDRenderComponent
