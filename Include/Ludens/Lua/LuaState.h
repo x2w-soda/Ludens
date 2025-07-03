@@ -1,6 +1,9 @@
 #pragma once
 
 #include <Ludens/Header/Handle.h>
+#include <Ludens/Header/Math/Vec2.h>
+#include <Ludens/Header/Math/Vec3.h>
+#include <Ludens/Header/Math/Vec4.h>
 #include <cstdint>
 #include <cstdlib>
 
@@ -145,8 +148,22 @@ public:
     /// @brief pushes a new empty table onto the stack
     void push_table();
 
+    /// @brief pushes a user data
+    /// @param size byte size of ther user data
+    /// @return address of the user data allocated by Lua
+    void* push_userdata(size_t size);
+
     /// @brief pushes a nil value onto the stack
     void push_nil();
+
+    /// @brief pushes a Vec2 as a table with 'x', 'y' fields
+    void push_vec2(const Vec2& v);
+
+    /// @brief pushes a Vec3 as a table with 'x', 'y', 'z' fields
+    void push_vec3(const Vec3& v);
+
+    /// @brief pushes a Vec4 as a table with 'x', 'y', 'z', 'w' fields
+    void push_vec4(const Vec4& v);
 
     /// @brief call function
     /// @param nargs number of arguments
@@ -167,6 +184,19 @@ public:
     /// @return a transient null-terminated c string
     /// @warning Returned pointer is owned by lua VM, never cache it.
     const char* to_string(int index);
+
+    /// @brief get the user data at stack index
+    /// @return address of the user data
+    void* to_userdata(int index);
+
+    /// @brief get the Vec2 at stack index
+    Vec2 to_vec2(int index);
+
+    /// @brief get the Vec3 at stack index
+    Vec3 to_vec3(int index);
+
+    /// @brief get the Vec4 at stack index
+    Vec4 to_vec4(int index);
 
 private:
     LuaState(LuaStateObj* obj, lua_State* L);

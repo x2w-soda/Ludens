@@ -31,6 +31,12 @@ TEST_CASE("LuaState primitives")
     CHECK(L.to_integer(-4) == -12345);
     CHECK(L.size() == 4);
 
+    Vec4* v = (Vec4*)L.push_userdata(sizeof(Vec4));
+    *v = Vec4(3.0f);
+    v = (Vec4*)L.to_userdata(-1);
+    CHECK(*v == Vec4(3.0f));
+    CHECK(L.size() == 5);
+
     L.clear();
     CHECK(L.empty());
 
@@ -62,7 +68,38 @@ TEST_CASE("LuaState types")
     L.push_nil();
     CHECK(L.get_type(-1) == LUA_TYPE_NIL);
 
+    L.push_userdata(4);
+    CHECK(L.get_type(-1) == LUA_TYPE_USERDATA);
+
+    L.push_vec2(Vec2());
+    CHECK(L.get_type(-1) == LUA_TYPE_TABLE);
+
+    L.push_vec3(Vec3());
+    CHECK(L.get_type(-1) == LUA_TYPE_TABLE);
+
+    L.push_vec4(Vec4());
+    CHECK(L.get_type(-1) == LUA_TYPE_TABLE);
+
     L.clear();
+    LuaState::destroy(L);
+}
+
+TEST_CASE("LuaState math")
+{
+    // test LuaState support for Math objects
+    LuaState L = LuaState::create(sTestStateInfo);
+
+    L.push_vec2(Vec2(1.0f, 2.0f));
+    L.push_vec3(Vec3(3.0f, 4.0f, -5.0f));
+    L.push_vec4(Vec4(6.0f, -7.0f, 8.0f, 9.0f));
+
+    Vec2 v2 = L.to_vec2(1);
+    Vec3 v3 = L.to_vec3(2);
+    Vec4 v4 = L.to_vec4(-1);
+    CHECK(v2 == Vec2(1.0, 2.0f));
+    CHECK(v3 == Vec3(3.0f, 4.0f, -5.0f));
+    CHECK(v4 == Vec4(6.0f, -7.0f, 8.0f, 9.0f));
+
     LuaState::destroy(L);
 }
 

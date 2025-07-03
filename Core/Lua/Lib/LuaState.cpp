@@ -18,6 +18,12 @@ static Log sLog("lua");
 struct LuaStateObj
 {
     lua_State* L;
+
+    // get negative stack index
+    inline int negative_index(int index)
+    {
+        return index > 0 ? -(lua_gettop(L) - index + 1) : index;
+    }
 };
 
 static void* lua_alloc(void* ud, void* ptr, size_t osize, size_t nsize)
@@ -130,8 +136,7 @@ void LuaState::set_table(int tIndex)
 
 void LuaState::get_table_indices(int tIndex, int i1, int i2)
 {
-    if (tIndex > 0)
-        tIndex = -(size() - tIndex + 1);
+    tIndex = mObj->negative_index(tIndex);
 
     for (int i = i1; i <= i2; i++)
     {
@@ -229,9 +234,47 @@ void LuaState::push_table()
     lua_createtable(mL, 0, 0);
 }
 
+void* LuaState::push_userdata(size_t size)
+{
+    return lua_newuserdata(mL, size);
+}
+
 void LuaState::push_nil()
 {
     lua_pushnil(mL);
+}
+
+void LuaState::push_vec2(const Vec2& v)
+{
+    lua_createtable(mL, 0, 0);
+    lua_pushnumber(mL, (lua_Number)v.x);
+    lua_setfield(mL, -2, "x");
+    lua_pushnumber(mL, (lua_Number)v.y);
+    lua_setfield(mL, -2, "y");
+}
+
+void LuaState::push_vec3(const Vec3& v)
+{
+    lua_createtable(mL, 0, 0);
+    lua_pushnumber(mL, (lua_Number)v.x);
+    lua_setfield(mL, -2, "x");
+    lua_pushnumber(mL, (lua_Number)v.y);
+    lua_setfield(mL, -2, "y");
+    lua_pushnumber(mL, (lua_Number)v.z);
+    lua_setfield(mL, -2, "z");
+}
+
+void LuaState::push_vec4(const Vec4& v)
+{
+    lua_createtable(mL, 0, 0);
+    lua_pushnumber(mL, (lua_Number)v.x);
+    lua_setfield(mL, -2, "x");
+    lua_pushnumber(mL, (lua_Number)v.y);
+    lua_setfield(mL, -2, "y");
+    lua_pushnumber(mL, (lua_Number)v.z);
+    lua_setfield(mL, -2, "z");
+    lua_pushnumber(mL, (lua_Number)v.w);
+    lua_setfield(mL, -2, "w");
 }
 
 void LuaState::call(int nargs, int nresults)
@@ -257,6 +300,59 @@ bool LuaState::to_bool(int index)
 const char* LuaState::to_string(int index)
 {
     return lua_tostring(mL, index);
+}
+
+void* LuaState::to_userdata(int index)
+{
+    return lua_touserdata(mL, index);
+}
+
+Vec2 LuaState::to_vec2(int index)
+{
+    index = mObj->negative_index(index);
+
+    Vec2 v;
+    lua_getfield(mL, index - 0, "x");
+    lua_getfield(mL, index - 1, "y");
+    v.x = (float)lua_tonumber(mL, -2);
+    v.y = (float)lua_tonumber(mL, -1);
+    lua_pop(mL, 2);
+
+    return v;
+}
+
+Vec3 LuaState::to_vec3(int index)
+{
+    index = mObj->negative_index(index);
+
+    Vec3 v;
+    lua_getfield(mL, index - 0, "x");
+    lua_getfield(mL, index - 1, "y");
+    lua_getfield(mL, index - 2, "z");
+    v.x = (float)lua_tonumber(mL, -3);
+    v.y = (float)lua_tonumber(mL, -2);
+    v.z = (float)lua_tonumber(mL, -1);
+    lua_pop(mL, 3);
+
+    return v;
+}
+
+Vec4 LuaState::to_vec4(int index)
+{
+    index = mObj->negative_index(index);
+
+    Vec4 v;
+    lua_getfield(mL, index - 0, "x");
+    lua_getfield(mL, index - 1, "y");
+    lua_getfield(mL, index - 2, "z");
+    lua_getfield(mL, index - 3, "w");
+    v.x = (float)lua_tonumber(mL, -4);
+    v.y = (float)lua_tonumber(mL, -3);
+    v.z = (float)lua_tonumber(mL, -2);
+    v.w = (float)lua_tonumber(mL, -1);
+    lua_pop(mL, 4);
+
+    return v;
 }
 
 } // namespace LD
