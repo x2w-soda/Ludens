@@ -29,6 +29,7 @@ set(MODULE_INCLUDE
   "${LUDENS_INCLUDE_DIR}/Ludens/RenderBackend/RBackendEnum.h"
   "${LUDENS_INCLUDE_DIR}/Ludens/RenderBackend/RUtil.h"
   "${LUDENS_INCLUDE_DIR}/Ludens/RenderBackend/RStager.h"
+  "${LUDENS_INCLUDE_DIR}/Ludens/RenderBackend/LDShaderParser.h"
 )
 
 set(MODULE_LIB
@@ -40,6 +41,7 @@ set(MODULE_LIB
   Lib/RUtilInternal.h
   Lib/RUtil.cpp
   Lib/RStager.cpp
+  Lib/LDShaderParser.cpp
 )
 
 set(MODULE_TEST
