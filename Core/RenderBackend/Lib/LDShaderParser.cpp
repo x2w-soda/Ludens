@@ -16,6 +16,8 @@ enum LDShaderTokenFlag : uint32_t
     LDSTF_STORAGE_QUALIFIER_BIT = LD_BIT(0),
     LDSTF_TYPE_SPECIFIER_BIT = LD_BIT(1),
     LDSTF_ASSIGNMENT_BIT = LD_BIT(2),
+    LDSTF_POSTFIX_BIT = LD_BIT(3),
+    LDSTF_UNARY_BIT = LD_BIT(4),
 };
 
 // clang-format off
@@ -92,8 +94,8 @@ struct
     // punctuator entries
     { "<<",     2, LDS_TOK_LEFT_OP,       0 },
     { ">>",     2, LDS_TOK_RIGHT_OP,      0 },
-    { "++",     2, LDS_TOK_INC_OP,        0 },
-    { "--",     2, LDS_TOK_DEC_OP,        0 },
+    { "++",     2, LDS_TOK_INC_OP,        LDSTF_UNARY_BIT | LDSTF_POSTFIX_BIT },
+    { "--",     2, LDS_TOK_DEC_OP,        LDSTF_UNARY_BIT | LDSTF_POSTFIX_BIT },
     { "<=",     2, LDS_TOK_LE_OP,         0 },
     { ">=",     2, LDS_TOK_GE_OP,         0 },
     { "==",     2, LDS_TOK_EQ_OP,         0 },
@@ -113,19 +115,19 @@ struct
     { "|=",     2, LDS_TOK_OR_ASSIGN,     LDSTF_ASSIGNMENT_BIT },
     { "(",      1, LDS_TOK_LEFT_PAREN,    0 },
     { ")",      1, LDS_TOK_RIGHT_PAREN,   0 },
-    { "[",      1, LDS_TOK_LEFT_BRACKET,  0 },
+    { "[",      1, LDS_TOK_LEFT_BRACKET,  LDSTF_POSTFIX_BIT },
     { "]",      1, LDS_TOK_RIGHT_BRACKET, 0 },
     { "{",      1, LDS_TOK_LEFT_BRACE,    0 },
     { "}",      1, LDS_TOK_RIGHT_BRACE,   0 },
-    { ".",      1, LDS_TOK_DOT,           0 },
+    { ".",      1, LDS_TOK_DOT,           LDSTF_POSTFIX_BIT },
     { ",",      1, LDS_TOK_COMMA,         0 },
     { ":",      1, LDS_TOK_COLON,         0 },
     { "=",      1, LDS_TOK_EQUAL,         LDSTF_ASSIGNMENT_BIT },
     { ";",      1, LDS_TOK_SEMICOLON,     0 },
-    { "!",      1, LDS_TOK_BANG,          0 },
-    { "-",      1, LDS_TOK_DASH,          0 },
-    { "~",      1, LDS_TOK_TILDE,         0 },
-    { "+",      1, LDS_TOK_PLUS,          0 },
+    { "!",      1, LDS_TOK_BANG,          LDSTF_UNARY_BIT },
+    { "-",      1, LDS_TOK_DASH,          LDSTF_UNARY_BIT },
+    { "~",      1, LDS_TOK_TILDE,         LDSTF_UNARY_BIT },
+    { "+",      1, LDS_TOK_PLUS,          LDSTF_UNARY_BIT },
     { "*",      1, LDS_TOK_STAR,          0 },
     { "/",      1, LDS_TOK_SLASH,         0 },
     { "%",      1, LDS_TOK_PERCENT,       0 },
@@ -155,6 +157,9 @@ struct {
     { "conditional",         LDS_NODE_CONDITIONAL, },
     { "add",                 LDS_NODE_ADD, },
     { "mul",                 LDS_NODE_MUL, },
+    { "unary",               LDS_NODE_UNARY, },
+    { "index",               LDS_NODE_INDEX, },
+    { "postfix",             LDS_NODE_POSTFIX, },
     { "var",                 LDS_NODE_VAR, },
     { "constant",            LDS_NODE_CONSTANT, },
 };
@@ -291,6 +296,16 @@ static inline bool is_assignment_tok(const LDShaderToken* tok)
     return (sTokenTable[(int)tok->type].flags & LDSTF_ASSIGNMENT_BIT);
 }
 
+static inline bool is_postfix_tok(const LDShaderToken* tok)
+{
+    return (sTokenTable[(int)tok->type].flags & LDSTF_POSTFIX_BIT);
+}
+
+static inline bool is_unary_tok(const LDShaderToken* tok)
+{
+    return (sTokenTable[(int)tok->type].flags & LDSTF_UNARY_BIT);
+}
+
 static void recursive_traverse(LDShaderNode* root, LDShaderAST::TraverseFn onTraverse, int depth, void* user)
 {
     if (!root)
@@ -384,6 +399,9 @@ private:
     LDShaderNode* parse_conditional(LDShaderToken** stream, LDShaderToken* now);
     LDShaderNode* parse_add(LDShaderToken** stream, LDShaderToken* now);
     LDShaderNode* parse_mul(LDShaderToken** stream, LDShaderToken* now);
+    LDShaderNode* parse_unary(LDShaderToken** stream, LDShaderToken* now);
+    LDShaderNode* parse_postfix(LDShaderToken** stream, LDShaderToken* now);
+    LDShaderNode* parse_postfix_expr(LDShaderToken** stream, LDShaderToken* now);
     LDShaderNode* parse_primary(LDShaderToken** stream, LDShaderToken* now);
 
 private:
@@ -933,10 +951,10 @@ LDShaderNode* LDShaderParserObj::parse_add(LDShaderToken** stream, LDShaderToken
     return root;
 }
 
-/// mul = primary ((STAR | SLASH | PERCENT) primary)*
+/// mul = unary ((STAR | SLASH | PERCENT) unary)*
 LDShaderNode* LDShaderParserObj::parse_mul(LDShaderToken** stream, LDShaderToken* now)
 {
-    LDShaderNode* root = parse_primary(&now, now);
+    LDShaderNode* root = parse_unary(&now, now);
     LDShaderToken* opTok = now;
 
     while (opTok->type == LDS_TOK_STAR || opTok->type == LDS_TOK_SLASH || opTok->type == LDS_TOK_PERCENT)
@@ -944,12 +962,86 @@ LDShaderNode* LDShaderParserObj::parse_mul(LDShaderToken** stream, LDShaderToken
         LD_UNREACHABLE; // TODO:
         now = now->next;
         root = mAST->alloc_node_lch(LDS_NODE_MUL, root);
-        root->rch = parse_primary(&now, now);
+        root->rch = parse_unary(&now, now);
         root->tok = opTok;
     }
 
     *stream = now;
     return root;
+}
+
+/// unary = UNARY_TOK unary |
+///         postfix
+LDShaderNode* LDShaderParserObj::parse_unary(LDShaderToken** stream, LDShaderToken* now)
+{
+    LDShaderNode* root;
+
+    if (is_unary_tok(now))
+    {
+        LDShaderToken* unaryTok = now;
+        now = now->next;
+        root = mAST->alloc_node_lch(LDS_NODE_UNARY, parse_unary(&now, now));
+        root->tok = unaryTok;
+
+        *stream = now;
+        return root;
+    }
+
+    root = parse_postfix(&now, now);
+
+    *stream = now;
+    return root;
+}
+
+/// postfix = primary (postfix_expr)*
+LDShaderNode* LDShaderParserObj::parse_postfix(LDShaderToken** stream, LDShaderToken* now)
+{
+    LDShaderNode* root = parse_primary(&now, now);
+
+    while (is_postfix_tok(now))
+    {
+        LDShaderNode* postfix = parse_postfix_expr(&now, now);
+        LD_ASSERT(postfix);
+
+        postfix->lch = root;
+        root = postfix;
+    }
+
+    *stream = now;
+    return root;
+}
+
+/// postfix_expr = LEFT_BRACKET expr RIGHT_BRACKET |
+///                INC_OP |
+///                DEC_OP
+LDShaderNode* LDShaderParserObj::parse_postfix_expr(LDShaderToken** stream, LDShaderToken* now)
+{
+    LDShaderNode* root;
+    LDShaderToken* old = now;
+
+    // index postfix expression
+    if (consume(&now, LDS_TOK_LEFT_BRACKET))
+    {
+        root = mAST->alloc_node(LDS_NODE_INDEX);
+        root->rch = parse_expr(&now, now);
+
+        if (!consume(&now, LDS_TOK_RIGHT_BRACKET))
+            return nullptr; // TODO: error
+
+        *stream = now;
+        return root;
+    }
+
+    if ((now->type == LDS_TOK_INC_OP) || (now->type == LDS_TOK_DEC_OP))
+    {
+        root = mAST->alloc_node(LDS_NODE_POSTFIX);
+        root->tok = now;
+        *stream = now->next;
+        return root;
+    }
+
+    *stream = old;
+    return nullptr;
 }
 
 /// primary = ident |
