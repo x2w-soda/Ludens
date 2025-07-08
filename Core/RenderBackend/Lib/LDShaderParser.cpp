@@ -61,6 +61,7 @@ struct
     { "dmat2",         5,  LDS_TOK_DMAT2,         LDSTF_TYPE_SPECIFIER_BIT },
     { "dmat3",         5,  LDS_TOK_DMAT3,         LDSTF_TYPE_SPECIFIER_BIT },
     { "dmat4",         5,  LDS_TOK_DMAT4,         LDSTF_TYPE_SPECIFIER_BIT },
+    // sampler types
     { "sampler1D",              9,   LDS_TOK_SAMPLER1D,              LDSTF_TYPE_SPECIFIER_BIT },
     { "sampler1DArray",         14,  LDS_TOK_SAMPLER1DARRAY,         LDSTF_TYPE_SPECIFIER_BIT },
     { "sampler1DArrayShadow",   20,  LDS_TOK_SAMPLER1DARRAYSHADOW,   LDSTF_TYPE_SPECIFIER_BIT },
@@ -74,6 +75,7 @@ struct
     { "samplerCubeArray",       16,  LDS_TOK_SAMPLERCUBEARRAY,       LDSTF_TYPE_SPECIFIER_BIT },
     { "samplerCubeArrayShadow", 22,  LDS_TOK_SAMPLERCUBEARRAYSHADOW, LDSTF_TYPE_SPECIFIER_BIT },
     { "samplerCubeShadow",      17,  LDS_TOK_SAMPLERCUBESHADOW,      LDSTF_TYPE_SPECIFIER_BIT },
+    // image types
     { "image1D",                7,   LDS_TOK_IMAGE1D,                LDSTF_TYPE_SPECIFIER_BIT },
     { "image1DArray",           12,  LDS_TOK_IMAGE1DARRAY,           LDSTF_TYPE_SPECIFIER_BIT },
     { "image2D",                7,   LDS_TOK_IMAGE2D,                LDSTF_TYPE_SPECIFIER_BIT },
@@ -95,6 +97,7 @@ struct
     { "uimage3D",               8,   LDS_TOK_UIMAGE3D,               LDSTF_TYPE_SPECIFIER_BIT },
     { "uimageCube",             10,  LDS_TOK_UIMAGECUBE,             LDSTF_TYPE_SPECIFIER_BIT },
     { "uimageCubeArray",        15,  LDS_TOK_UIMAGECUBEARRAY,        LDSTF_TYPE_SPECIFIER_BIT },
+    // storage qualifiers
     { "in",            2,  LDS_TOK_IN,            LDSTF_STORAGE_QUALIFIER_BIT },
     { "out",           3,  LDS_TOK_OUT,           LDSTF_STORAGE_QUALIFIER_BIT },
     { "inout",         5,  LDS_TOK_INOUT,         LDSTF_STORAGE_QUALIFIER_BIT },
@@ -134,13 +137,13 @@ struct
     { "&=",     2, LDS_TOK_AND_ASSIGN,    LDSTF_ASSIGNMENT_BIT },
     { "^=",     2, LDS_TOK_XOR_ASSIGN,    LDSTF_ASSIGNMENT_BIT },
     { "|=",     2, LDS_TOK_OR_ASSIGN,     LDSTF_ASSIGNMENT_BIT },
-    { "(",      1, LDS_TOK_LEFT_PAREN,    0 },
+    { "(",      1, LDS_TOK_LEFT_PAREN,    LDSTF_POSTFIX_BIT /* call */ },
     { ")",      1, LDS_TOK_RIGHT_PAREN,   0 },
-    { "[",      1, LDS_TOK_LEFT_BRACKET,  LDSTF_POSTFIX_BIT },
+    { "[",      1, LDS_TOK_LEFT_BRACKET,  LDSTF_POSTFIX_BIT /* indexing */ },
     { "]",      1, LDS_TOK_RIGHT_BRACKET, 0 },
     { "{",      1, LDS_TOK_LEFT_BRACE,    0 },
     { "}",      1, LDS_TOK_RIGHT_BRACE,   0 },
-    { ".",      1, LDS_TOK_DOT,           LDSTF_POSTFIX_BIT },
+    { ".",      1, LDS_TOK_DOT,           LDSTF_POSTFIX_BIT /* struct member */ },
     { ",",      1, LDS_TOK_COMMA,         0 },
     { ":",      1, LDS_TOK_COLON,         0 },
     { "=",      1, LDS_TOK_EQUAL,         LDSTF_ASSIGNMENT_BIT },
@@ -181,6 +184,7 @@ struct {
     { "unary",               LDS_NODE_UNARY, },
     { "index",               LDS_NODE_INDEX, },
     { "postfix",             LDS_NODE_POSTFIX, },
+    { "call",                LDS_NODE_CALL, },
     { "var",                 LDS_NODE_VAR, },
     { "constant",            LDS_NODE_CONSTANT, },
 };
@@ -423,6 +427,7 @@ private:
     LDShaderNode* parse_unary(LDShaderToken** stream, LDShaderToken* now);
     LDShaderNode* parse_postfix(LDShaderToken** stream, LDShaderToken* now);
     LDShaderNode* parse_postfix_expr(LDShaderToken** stream, LDShaderToken* now);
+    LDShaderNode* parse_call(LDShaderToken** stream, LDShaderToken* now);
     LDShaderNode* parse_primary(LDShaderToken** stream, LDShaderToken* now);
 
 private:
@@ -1080,7 +1085,8 @@ LDShaderNode* LDShaderParserObj::parse_postfix(LDShaderToken** stream, LDShaderT
 
 /// postfix_expr = LEFT_BRACKET expr RIGHT_BRACKET |
 ///                INC_OP |
-///                DEC_OP
+///                DEC_OP |
+///                call
 LDShaderNode* LDShaderParserObj::parse_postfix_expr(LDShaderToken** stream, LDShaderToken* now)
 {
     LDShaderNode* root;
@@ -1107,12 +1113,52 @@ LDShaderNode* LDShaderParserObj::parse_postfix_expr(LDShaderToken** stream, LDSh
         return root;
     }
 
+    if (now->type == LDS_TOK_LEFT_PAREN)
+    {
+        root = parse_call(&now, now);
+        *stream = now;
+        return root;
+    }
+
     *stream = old;
     return nullptr;
 }
 
+/// call = LEFT_PAREN (assignment (COMMA assignment)*)? RIGHT_PAREN
+/// @note the GLSL constructor syntax allows type names to be called upon. vec4(), mat3(), etc. 
+LDShaderNode* LDShaderParserObj::parse_call(LDShaderToken** stream, LDShaderToken* now)
+{
+    if (!consume(&now, LDS_TOK_LEFT_PAREN))
+        return nullptr;
+
+    LDShaderNode* root = mAST->alloc_node(LDS_NODE_CALL);
+    LDShaderNode dummy = {.next = nullptr};
+    LDShaderNode* arg = &dummy;
+
+    int argc = 0;
+
+    while (!consume(&now, LDS_TOK_RIGHT_PAREN))
+    {
+        if (argc > 0 && !consume(&now, LDS_TOK_COMMA))
+        {
+            // TODO: error missing comma
+            return nullptr;
+        }
+        
+        arg = arg->next = parse_assignment(&now, now);
+        LD_ASSERT(arg);
+
+        argc++;
+    }
+
+    root->rch = dummy.next;
+    *stream = now;
+    return root;
+}
+
 /// primary = ident |
-///           INT_CONSTANT
+///           INT_CONSTANT |
+///           type_specifier
 LDShaderNode* LDShaderParserObj::parse_primary(LDShaderToken** stream, LDShaderToken* now)
 {
     LDShaderNode* root;
@@ -1130,6 +1176,12 @@ LDShaderNode* LDShaderParserObj::parse_primary(LDShaderToken** stream, LDShaderT
         root = mAST->alloc_node(LDS_NODE_CONSTANT);
         root->tok = now;
         *stream = now->next;
+        return root;
+    }
+
+    if ((root = parse_type_specifier(&now, now)))
+    {
+        *stream = now;
         return root;
     }
 
