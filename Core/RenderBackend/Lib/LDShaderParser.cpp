@@ -74,6 +74,27 @@ struct
     { "samplerCubeArray",       16,  LDS_TOK_SAMPLERCUBEARRAY,       LDSTF_TYPE_SPECIFIER_BIT },
     { "samplerCubeArrayShadow", 22,  LDS_TOK_SAMPLERCUBEARRAYSHADOW, LDSTF_TYPE_SPECIFIER_BIT },
     { "samplerCubeShadow",      17,  LDS_TOK_SAMPLERCUBESHADOW,      LDSTF_TYPE_SPECIFIER_BIT },
+    { "image1D",                7,   LDS_TOK_IMAGE1D,                LDSTF_TYPE_SPECIFIER_BIT },
+    { "image1DArray",           12,  LDS_TOK_IMAGE1DARRAY,           LDSTF_TYPE_SPECIFIER_BIT },
+    { "image2D",                7,   LDS_TOK_IMAGE2D,                LDSTF_TYPE_SPECIFIER_BIT },
+    { "image2DArray",           12,  LDS_TOK_IMAGE2DARRAY,           LDSTF_TYPE_SPECIFIER_BIT },
+    { "image3D",                7,   LDS_TOK_IMAGE3D,                LDSTF_TYPE_SPECIFIER_BIT },
+    { "imageCube",              9,   LDS_TOK_IMAGECUBE,              LDSTF_TYPE_SPECIFIER_BIT },
+    { "imageCubeArray",         14,  LDS_TOK_IMAGECUBEARRAY,         LDSTF_TYPE_SPECIFIER_BIT },
+    { "iimage1D",               8,   LDS_TOK_IIMAGE1D,               LDSTF_TYPE_SPECIFIER_BIT },
+    { "iimage1DArray",          13,  LDS_TOK_IIMAGE1DARRAY,          LDSTF_TYPE_SPECIFIER_BIT },
+    { "iimage2D",               8,   LDS_TOK_IIMAGE2D,               LDSTF_TYPE_SPECIFIER_BIT },
+    { "iimage2DArray",          13,  LDS_TOK_IIMAGE2DARRAY,          LDSTF_TYPE_SPECIFIER_BIT },
+    { "iimage3D",               8,   LDS_TOK_IIMAGE3D,               LDSTF_TYPE_SPECIFIER_BIT },
+    { "iimageCube",             10,  LDS_TOK_IIMAGECUBE,             LDSTF_TYPE_SPECIFIER_BIT },
+    { "iimageCubeArray",        15,  LDS_TOK_IIMAGECUBEARRAY,        LDSTF_TYPE_SPECIFIER_BIT },
+    { "uimage1D",               8,   LDS_TOK_UIMAGE1D,               LDSTF_TYPE_SPECIFIER_BIT },
+    { "uimage1DArray",          13,  LDS_TOK_UIMAGE1DARRAY,          LDSTF_TYPE_SPECIFIER_BIT },
+    { "uimage2D",               8,   LDS_TOK_UIMAGE2D,               LDSTF_TYPE_SPECIFIER_BIT },
+    { "uimage2DArray",          13,  LDS_TOK_UIMAGE2DARRAY,          LDSTF_TYPE_SPECIFIER_BIT },
+    { "uimage3D",               8,   LDS_TOK_UIMAGE3D,               LDSTF_TYPE_SPECIFIER_BIT },
+    { "uimageCube",             10,  LDS_TOK_UIMAGECUBE,             LDSTF_TYPE_SPECIFIER_BIT },
+    { "uimageCubeArray",        15,  LDS_TOK_UIMAGECUBEARRAY,        LDSTF_TYPE_SPECIFIER_BIT },
     { "in",            2,  LDS_TOK_IN,            LDSTF_STORAGE_QUALIFIER_BIT },
     { "out",           3,  LDS_TOK_OUT,           LDSTF_STORAGE_QUALIFIER_BIT },
     { "inout",         5,  LDS_TOK_INOUT,         LDSTF_STORAGE_QUALIFIER_BIT },
@@ -560,6 +581,7 @@ LDShaderNode* LDShaderParserObj::parse_translation_unit(LDShaderToken** stream, 
     while (now->type != LDS_TOK_EOF)
     {
         decl = decl->next = parse_decl(&now, now);
+        LD_ASSERT(decl);
     }
 
     root->lch = dummy.next;
@@ -573,7 +595,14 @@ LDShaderNode* LDShaderParserObj::parse_decl(LDShaderToken** stream, LDShaderToke
 {
     LDShaderNode* root;
     LDShaderToken* old = now;
+    
+    if ((root = parse_single_decl(&now, now)) && consume(&now, LDS_TOK_SEMICOLON))
+    {
+        *stream = now;
+        return root;
+    }
 
+    now = old;
     if ((root = parse_fn_prototype(&now, now)))
     {
         if (consume(&now, LDS_TOK_SEMICOLON))
@@ -599,10 +628,37 @@ LDShaderNode* LDShaderParserObj::parse_decl(LDShaderToken** stream, LDShaderToke
         return nullptr;
     }
 
-    if ((root = parse_single_decl(&now, now)))
+    *stream = old;
+    return nullptr;
+}
+
+/// single_decl = full_type (IDENT)? |
+///               type_qualifier
+LDShaderNode* LDShaderParserObj::parse_single_decl(LDShaderToken** stream, LDShaderToken* now)
+{
+    LDShaderToken* old = now;
+    LDShaderNode* root = parse_full_type(&now, now);
+
+    if (root)
     {
-        if (!consume(&now, LDS_TOK_SEMICOLON))
-            return nullptr; // TODO: error
+        root = mAST->alloc_node_lch(LDS_NODE_SINGLE_DECL, root);
+
+        if (now->type == LDS_TOK_IDENT)
+        {
+            root->tok = now; // single decl identifier
+            now = now->next;
+        }
+
+        *stream = now;
+        return root;
+    }
+
+    now = old;
+    root = parse_type_qualifier(&now, now);
+
+    if (root)
+    {
+        root = mAST->alloc_node_lch(LDS_NODE_SINGLE_DECL, root);
 
         *stream = now;
         return root;
@@ -612,28 +668,17 @@ LDShaderNode* LDShaderParserObj::parse_decl(LDShaderToken** stream, LDShaderToke
     return nullptr;
 }
 
-/// single_decl = full_type IDENT
-LDShaderNode* LDShaderParserObj::parse_single_decl(LDShaderToken** stream, LDShaderToken* now)
-{
-    LDShaderNode* root = parse_full_type(&now, now);
-
-    if (!root || now->type != LDS_TOK_IDENT)
-        return nullptr;
-
-    root = mAST->alloc_node_lch(LDS_NODE_SINGLE_DECL, root);
-    root->tok = now; // single decl identifier
-
-    *stream = now->next;
-    return root;
-}
-
 /// fn_prototype = full_type IDENT LEFT_PAREN (fn_param_decl)? RIGHT_PAREN
 LDShaderNode* LDShaderParserObj::parse_fn_prototype(LDShaderToken** stream, LDShaderToken* now)
 {
+    LDShaderToken* old = now;
     LDShaderNode* fullType = parse_full_type(&now, now);
 
     if (!fullType)
+    {
+        *stream = old;
         return nullptr;
+    }
 
     LD_ASSERT(now->type == LDS_TOK_IDENT);
     LDShaderNode* root = mAST->alloc_node_lch(LDS_NODE_FN_PROTOTYPE, fullType);
@@ -641,7 +686,10 @@ LDShaderNode* LDShaderParserObj::parse_fn_prototype(LDShaderToken** stream, LDSh
     now = now->next;
 
     if (!consume(&now, LDS_TOK_LEFT_PAREN))
+    {
+        *stream = old;
         return nullptr;
+    }
 
     if (now->type != LDS_TOK_RIGHT_PAREN)
     {
@@ -665,10 +713,11 @@ LDShaderNode* LDShaderParserObj::parse_fn_param_decl(LDShaderToken** stream, LDS
 }
 
 /// stmt = compound_stmt |
-///        expr_stmt |
-///        decl
+///        decl |
+///        expr_stmt
 LDShaderNode* LDShaderParserObj::parse_stmt(LDShaderToken** stream, LDShaderToken* now)
 {
+    LDShaderToken* old = now;
     LDShaderNode* root;
 
     if (now->type == LDS_TOK_LEFT_BRACE)
@@ -677,6 +726,14 @@ LDShaderNode* LDShaderParserObj::parse_stmt(LDShaderToken** stream, LDShaderToke
         *stream = now;
         return root;
     }
+
+    if ((root = parse_decl(&now, now)))
+    {
+        *stream = now;
+        return root;
+    }
+
+    now = old;
 
     // expr_stmt = expr SEMICOLON
     if ((root = parse_expr(&now, now)))
@@ -688,9 +745,7 @@ LDShaderNode* LDShaderParserObj::parse_stmt(LDShaderToken** stream, LDShaderToke
         return root;
     }
 
-    root = parse_decl(&now, now);
-    *stream = now;
-    return root;
+    return nullptr;
 }
 
 /// compound_stmt = LEFT_BRACE statement* RIGHT_BRACE
@@ -723,6 +778,7 @@ LDShaderNode* LDShaderParserObj::parse_compound_stmt(LDShaderToken** stream, LDS
 /// @note comparable to fully_specified_type in the spec
 LDShaderNode* LDShaderParserObj::parse_full_type(LDShaderToken** stream, LDShaderToken* now)
 {
+    LDShaderToken* old = now;
     LDShaderNode* root = parse_type_specifier(&now, now);
 
     if (root)
@@ -732,10 +788,21 @@ LDShaderNode* LDShaderParserObj::parse_full_type(LDShaderToken** stream, LDShade
     }
 
     LDShaderNode* qualifier = parse_type_qualifier(&now, now);
-    LD_ASSERT(qualifier);
+
+    if (!qualifier)
+    {
+        *stream = old;
+        return nullptr;
+    }
 
     root = parse_type_specifier(&now, now);
-    LD_ASSERT(root);
+
+    if (!root)
+    {
+        *stream = old;
+        return nullptr;
+    }
+
     root->lch = qualifier;
 
     *stream = now;
