@@ -17,6 +17,8 @@ enum LDShaderTokenType
     LDS_TOK_EOF = 0,
     LDS_TOK_IDENT,
     LDS_TOK_INT_CONSTANT,
+    LDS_TOK_UINT_CONSTANT,
+    LDS_TOK_BOOL_CONSTANT,
     LDS_TOK_CONST,
     LDS_TOK_STRUCT,
     LDS_TOK_VOID,
@@ -202,6 +204,9 @@ struct LDShaderAST : Handle<struct LDShaderASTObj>
 
     /// @brief debug print the AST
     std::string print();
+
+    /// @brief get a static c string for the node type
+    static const char* get_node_type_cstr(LDShaderNodeType type);
 };
 
 /// @brief The ldshader frontend parser. Frontend is responsible for preprocessing source code,

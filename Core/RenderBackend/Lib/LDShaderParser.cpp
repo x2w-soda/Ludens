@@ -28,9 +28,11 @@ struct
     LDShaderTokenType type;
     const uint32_t flags;
 } sTokenTable[] = {
-    { nullptr,  0, LDS_TOK_EOF,          0 },
-    { nullptr,  0, LDS_TOK_IDENT,        0 },
-    { nullptr,  0, LDS_TOK_INT_CONSTANT, 0 },
+    { nullptr,  0, LDS_TOK_EOF,            0 },
+    { nullptr,  0, LDS_TOK_IDENT,          0 },
+    { nullptr,  0, LDS_TOK_INT_CONSTANT,   0 },
+    { nullptr,  0, LDS_TOK_UINT_CONSTANT,  0 },
+    { nullptr,  0, LDS_TOK_BOOL_CONSTANT,  0 },
     // keyword entries
     { "const",         5,  LDS_TOK_CONST,         LDSTF_STORAGE_QUALIFIER_BIT },
     { "struct",        6,  LDS_TOK_STRUCT,        LDSTF_TYPE_SPECIFIER_BIT },
@@ -294,16 +296,42 @@ static bool is_constant_tok(const char* str, int strLen, int* tokLen, LDShaderTo
     *tokLen = 0;
     *tokType = LDS_TOK_EOF;
 
-    int i;
-    for (i = 0; i < strLen && isdigit(str[i]); i++)
-        ;
+    if (!strncmp(str, "true", 4))
+    {
+        *tokLen = 4;
+        *tokType = LDS_TOK_BOOL_CONSTANT;
+        return true;
+    }
 
-    if (i == 0)
-        return false;
+    if (!strncmp(str, "false", 5))
+    {
+        *tokLen = 5;
+        *tokType = LDS_TOK_BOOL_CONSTANT;
+        return true;
+    }
 
-    // TODO: LDS_TOK_UINT_CONSTANT, LDS_TOK_FLOAT_CONSTANT, LDS_TOK_BOOL_CONSTANT
-    *tokLen = i;
-    *tokType = LDS_TOK_INT_CONSTANT;
+    // TODO: support hex and octal prefix?
+    if (isdigit(*str))
+    {
+        int i;
+        for (i = 0; i < strLen && isdigit(str[i]); i++)
+            ;
+        LDShaderTokenType constantType = LDS_TOK_INT_CONSTANT;
+
+        if (i < strLen && (str[i] == 'u' || str[i] == 'U'))
+        {
+            i++;
+            constantType = LDS_TOK_UINT_CONSTANT;
+        }
+
+        *tokLen = i;
+        *tokType = constantType;
+        return true;
+
+        // TODO: LDS_TOK_FLOAT_CONSTANT,
+    }
+
+    return false;
 }
 
 static inline bool is_storage_qualifier_tok(const LDShaderToken* tok)
@@ -553,17 +581,17 @@ void LDShaderParserObj::tokenize(const char* str, size_t strLen)
             continue;
         }
 
-        if (is_ident_tok(str, strLen, &tokLen))
+        if (is_constant_tok(str, strLen, &tokLen, &tokType))
         {
-            tok = tok->next = alloc_token(LDS_TOK_IDENT, str, tokLen);
+            tok = tok->next = alloc_token(tokType, str, tokLen);
             str += tokLen;
             mCol += tokLen;
             continue;
         }
 
-        if (is_constant_tok(str, strLen, &tokLen, &tokType))
+        if (is_ident_tok(str, strLen, &tokLen))
         {
-            tok = tok->next = alloc_token(tokType, str, tokLen);
+            tok = tok->next = alloc_token(LDS_TOK_IDENT, str, tokLen);
             str += tokLen;
             mCol += tokLen;
             continue;
@@ -600,7 +628,7 @@ LDShaderNode* LDShaderParserObj::parse_decl(LDShaderToken** stream, LDShaderToke
 {
     LDShaderNode* root;
     LDShaderToken* old = now;
-    
+
     if ((root = parse_single_decl(&now, now)) && consume(&now, LDS_TOK_SEMICOLON))
     {
         *stream = now;
@@ -1125,7 +1153,7 @@ LDShaderNode* LDShaderParserObj::parse_postfix_expr(LDShaderToken** stream, LDSh
 }
 
 /// call = LEFT_PAREN (assignment (COMMA assignment)*)? RIGHT_PAREN
-/// @note the GLSL constructor syntax allows type names to be called upon. vec4(), mat3(), etc. 
+/// @note the GLSL constructor syntax allows type names to be called upon. vec4(), mat3(), etc.
 LDShaderNode* LDShaderParserObj::parse_call(LDShaderToken** stream, LDShaderToken* now)
 {
     if (!consume(&now, LDS_TOK_LEFT_PAREN))
@@ -1144,7 +1172,7 @@ LDShaderNode* LDShaderParserObj::parse_call(LDShaderToken** stream, LDShaderToke
             // TODO: error missing comma
             return nullptr;
         }
-        
+
         arg = arg->next = parse_assignment(&now, now);
         LD_ASSERT(arg);
 
@@ -1157,7 +1185,7 @@ LDShaderNode* LDShaderParserObj::parse_call(LDShaderToken** stream, LDShaderToke
 }
 
 /// primary = ident |
-///           INT_CONSTANT |
+///           CONSTANT |
 ///           type_specifier
 LDShaderNode* LDShaderParserObj::parse_primary(LDShaderToken** stream, LDShaderToken* now)
 {
@@ -1171,7 +1199,7 @@ LDShaderNode* LDShaderParserObj::parse_primary(LDShaderToken** stream, LDShaderT
         return root;
     }
 
-    if (now->type == LDS_TOK_INT_CONSTANT)
+    if (now->type == LDS_TOK_INT_CONSTANT || now->type == LDS_TOK_UINT_CONSTANT || now->type == LDS_TOK_BOOL_CONSTANT)
     {
         root = mAST->alloc_node(LDS_NODE_CONSTANT);
         root->tok = now;
@@ -1227,6 +1255,11 @@ std::string LDShaderAST::print()
     traverse(&print_node_fn, &str);
 
     return str;
+}
+
+const char* LDShaderAST::get_node_type_cstr(LDShaderNodeType type)
+{
+    return sNodeTable[(int)type].cstr;
 }
 
 LDShaderParser LDShaderParser::create()
