@@ -19,6 +19,19 @@ enum LDShaderTokenType
     LDS_TOK_INT_CONSTANT,
     LDS_TOK_UINT_CONSTANT,
     LDS_TOK_BOOL_CONSTANT,
+    LDS_TOK_WHILE,
+    LDS_TOK_BREAK,
+    LDS_TOK_CONTINUE,
+    LDS_TOK_DO,
+    LDS_TOK_ELSE,
+    LDS_TOK_FOR,
+    LDS_TOK_IF,
+    LDS_TOK_DISCARD,
+    LDS_TOK_RETURN,
+    LDS_TOK_SWITCH,
+    LDS_TOK_CASE,
+    LDS_TOK_DEFAULT,
+    LDS_TOK_SUBROUTINE,
     LDS_TOK_CONST,
     LDS_TOK_STRUCT,
     LDS_TOK_VOID,
@@ -164,6 +177,8 @@ enum LDShaderNodeType
     LDS_NODE_FN_PROTOTYPE,
     LDS_NODE_FN_DEFINITION,
     LDS_NODE_COMPOUND_STMT,
+    LDS_NODE_IF_STMT,
+    LDS_NODE_WHILE_STMT,
     LDS_NODE_TYPE_SPECIFIER,
     LDS_NODE_TYPE_QUALIFIER,
     LDS_NODE_LAYOUT_QUALIFIER,
@@ -194,6 +209,7 @@ enum LDShaderNodeType
 struct LDShaderNode
 {
     LDShaderNode* next;    /// sibling or linked list
+    LDShaderNode* cond;    /// child for conditional expression
     LDShaderNode* lch;     /// left child root
     LDShaderNode* rch;     /// right child root
     LDShaderToken* tok;    /// representative token of the node

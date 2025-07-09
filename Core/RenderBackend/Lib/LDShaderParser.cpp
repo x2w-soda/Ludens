@@ -34,6 +34,19 @@ struct
     { nullptr,  0, LDS_TOK_UINT_CONSTANT,  0 },
     { nullptr,  0, LDS_TOK_BOOL_CONSTANT,  0 },
     // keyword entries
+    { "while",         5,  LDS_TOK_WHILE,         0 },
+    { "break",         5,  LDS_TOK_BREAK,         0 },
+    { "continue",      8,  LDS_TOK_CONTINUE,      0 },
+    { "do",            2,  LDS_TOK_DO,            0 },
+    { "else",          4,  LDS_TOK_ELSE,          0 },
+    { "for",           3,  LDS_TOK_FOR,           0 },
+    { "if",            2,  LDS_TOK_IF,            0 },
+    { "discard",       7,  LDS_TOK_DISCARD,       0 },
+    { "return",        6,  LDS_TOK_RETURN,        0 },
+    { "switch",        6,  LDS_TOK_SWITCH,        0 },
+    { "case",          4,  LDS_TOK_CASE,          0 },
+    { "default",       7,  LDS_TOK_DEFAULT,       0 },
+    { "subroutine",    10, LDS_TOK_SUBROUTINE,    0 },
     { "const",         5,  LDS_TOK_CONST,         LDSTF_STORAGE_QUALIFIER_BIT },
     { "struct",        6,  LDS_TOK_STRUCT,        LDSTF_TYPE_SPECIFIER_BIT },
     { "void",          4,  LDS_TOK_VOID,          LDSTF_TYPE_SPECIFIER_BIT },
@@ -173,7 +186,9 @@ struct {
     { "single_decl",         LDS_NODE_SINGLE_DECL, },
     { "fn_prototype",        LDS_NODE_FN_PROTOTYPE, },
     { "fn_definition",       LDS_NODE_FN_DEFINITION, },
-    { "fn_compound_stmt",    LDS_NODE_COMPOUND_STMT, },
+    { "compound_stmt",       LDS_NODE_COMPOUND_STMT, },
+    { "if_stmt",             LDS_NODE_IF_STMT, },
+    { "while_stmt",          LDS_NODE_WHILE_STMT, },
     { "type_specifier",      LDS_NODE_TYPE_SPECIFIER, },
     { "type_qualifier",      LDS_NODE_TYPE_QUALIFIER, },
     { "layout_qualifier",    LDS_NODE_LAYOUT_QUALIFIER, },
@@ -201,7 +216,7 @@ struct {
 };
 // clang-format on
 
-static constexpr int sTokenTableKeywordBegin = (int)LDS_TOK_CONST;
+static constexpr int sTokenTableKeywordBegin = (int)LDS_TOK_WHILE;
 static constexpr int sTokenTableKeywordEnd = (int)LDS_TOK_LAYOUT;
 static constexpr int sTokenTablePunctBegin = (int)LDS_TOK_LEFT_OP;
 static constexpr int sTokenTablePunctEnd = (int)LDS_TOK_QUESTION;
@@ -376,6 +391,7 @@ static void recursive_traverse(LDShaderNode* root, LDShaderAST::TraverseFn onTra
     onTraverse(root, depth, user);
 
     ++depth;
+    recursive_traverse(root->cond, onTraverse, depth, user);
     recursive_traverse(root->lch, onTraverse, depth, user);
     recursive_traverse(root->rch, onTraverse, depth, user);
     --depth;
@@ -443,6 +459,8 @@ private:
 
     LDShaderNode* parse_stmt(LDShaderToken** stream, LDShaderToken* now);
     LDShaderNode* parse_compound_stmt(LDShaderToken** stream, LDShaderToken* now);
+    LDShaderNode* parse_if_stmt(LDShaderToken** stream, LDShaderToken* now);
+    LDShaderNode* parse_while_stmt(LDShaderToken** stream, LDShaderToken* now);
 
     // type parsing rules
 
@@ -507,6 +525,7 @@ LDShaderNode* LDShaderASTObj::alloc_node(LDShaderNodeType type)
     LDShaderNode* node = (LDShaderNode*)nodePA.allocate();
     node->lch = nullptr;
     node->rch = nullptr;
+    node->cond = nullptr;
     node->next = nullptr;
     node->tok = nullptr;
     node->type = type;
@@ -764,6 +783,8 @@ LDShaderNode* LDShaderParserObj::parse_fn_param_decl(LDShaderToken** stream, LDS
 }
 
 /// stmt = compound_stmt |
+///        if_stmt |
+///        while_stmt |
 ///        decl |
 ///        expr_stmt
 LDShaderNode* LDShaderParserObj::parse_stmt(LDShaderToken** stream, LDShaderToken* now)
@@ -774,6 +795,20 @@ LDShaderNode* LDShaderParserObj::parse_stmt(LDShaderToken** stream, LDShaderToke
     if (now->type == LDS_TOK_LEFT_BRACE)
     {
         root = parse_compound_stmt(&now, now);
+        *stream = now;
+        return root;
+    }
+
+    if (now->type == LDS_TOK_IF)
+    {
+        root = parse_if_stmt(&now, now);
+        *stream = now;
+        return root;
+    }
+
+    if (now->type == LDS_TOK_WHILE)
+    {
+        root = parse_while_stmt(&now, now);
         *stream = now;
         return root;
     }
@@ -825,8 +860,77 @@ LDShaderNode* LDShaderParserObj::parse_compound_stmt(LDShaderToken** stream, LDS
     return root;
 }
 
+/// if_stmt = IF LEFT_PAREN expr RIGHT_PAREN stmt (ELSE (stmt | if_stmt))?
+/// @note comparable to selection_statement in the GLSL spec
+LDShaderNode* LDShaderParserObj::parse_if_stmt(LDShaderToken** stream, LDShaderToken* now)
+{
+    if (!consume(&now, LDS_TOK_IF))
+        return nullptr;
+
+    if (!consume(&now, LDS_TOK_LEFT_PAREN))
+    {
+        // TODO: error
+        return nullptr;
+    }
+
+    LDShaderToken* old = now;
+    LDShaderNode* expr = parse_expr(&now, now);
+
+    if (!expr || !consume(&now, LDS_TOK_RIGHT_PAREN))
+    {
+        // TODO: error
+        *stream = old;
+        return nullptr;
+    }
+
+    LDShaderNode* root = mAST->alloc_node(LDS_NODE_IF_STMT);
+    root->cond = expr;
+    root->lch = parse_stmt(&now, now);
+
+    if (consume(&now, LDS_TOK_ELSE))
+    {
+        if (now->type == LDS_TOK_IF)
+            root->rch = parse_if_stmt(&now, now);
+        else
+            root->rch = parse_stmt(&now, now);
+    }
+
+    *stream = now;
+    return root;
+}
+
+/// while_stmt = WHILE LEFT_PAREN expr RIGHT_PAREN stmt
+LDShaderNode* LDShaderParserObj::parse_while_stmt(LDShaderToken** stream, LDShaderToken* now)
+{
+    if (!consume(&now, LDS_TOK_WHILE))
+        return nullptr;
+
+    if (!consume(&now, LDS_TOK_LEFT_PAREN))
+    {
+        // TODO: error
+        return nullptr;
+    }
+
+    LDShaderToken* old = now;
+    LDShaderNode* expr = parse_expr(&now, now);
+
+    if (!expr || !consume(&now, LDS_TOK_RIGHT_PAREN))
+    {
+        // TODO: error
+        *stream = old;
+        return nullptr;
+    }
+
+    LDShaderNode* root = mAST->alloc_node(LDS_NODE_WHILE_STMT);
+    root->cond = expr;
+    root->lch = parse_stmt(&now, now);
+
+    *stream = now;
+    return root;
+}
+
 /// full_type = (type_qualifier)? type_specifier
-/// @note comparable to fully_specified_type in the spec
+/// @note comparable to fully_specified_type in the GLSL spec
 LDShaderNode* LDShaderParserObj::parse_full_type(LDShaderToken** stream, LDShaderToken* now)
 {
     LDShaderToken* old = now;
