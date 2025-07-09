@@ -197,6 +197,7 @@ struct {
     { "layout_qualifier",    LDS_NODE_LAYOUT_QUALIFIER, },
     { "layout_qualifier_id", LDS_NODE_LAYOUT_QUALIFIER_ID, },
     { "storage_qualifier",   LDS_NODE_STORAGE_QUALIFIER, },
+    { "initializer",         LDS_NODE_INITIALIZER, },
     { "assignment",          LDS_NODE_ASSIGNMENT, },
     { "conditional",         LDS_NODE_CONDITIONAL, },
     { "logical_or",          LDS_NODE_LOGICAL_OR, },
@@ -480,6 +481,8 @@ private:
 
     // expression parsing rules
 
+    LDShaderNode* parse_initializer(LDShaderToken** stream, LDShaderToken* now);
+    LDShaderNode* parse_initializer_list(LDShaderToken** stream, LDShaderToken* now);
     LDShaderNode* parse_expr(LDShaderToken** stream, LDShaderToken* now);
     LDShaderNode* parse_assignment(LDShaderToken** stream, LDShaderToken* now);
     LDShaderNode* parse_conditional(LDShaderToken** stream, LDShaderToken* now);
@@ -665,7 +668,7 @@ LDShaderNode* LDShaderParserObj::parse_translation_unit(LDShaderToken** stream, 
     return root;
 }
 
-/// decl = single_decl SEMICOLON |
+/// decl = single_decl (EQUAL initializer) SEMICOLON |
 ///        fn_prototype SEMICOLON |
 ///        fn_prototype compound_stmt
 LDShaderNode* LDShaderParserObj::parse_decl(LDShaderToken** stream, LDShaderToken* now)
@@ -673,10 +676,16 @@ LDShaderNode* LDShaderParserObj::parse_decl(LDShaderToken** stream, LDShaderToke
     LDShaderNode* root;
     LDShaderToken* old = now;
 
-    if ((root = parse_single_decl(&now, now)) && consume(&now, LDS_TOK_SEMICOLON))
+    if ((root = parse_single_decl(&now, now)))
     {
-        *stream = now;
-        return root;
+        if (consume(&now, LDS_TOK_EQUAL))
+            root->rch = parse_initializer(&now, now);
+
+        if (consume(&now, LDS_TOK_SEMICOLON))
+        {
+            *stream = now;
+            return root;
+        }
     }
 
     now = old;
@@ -825,7 +834,7 @@ LDShaderNode* LDShaderParserObj::parse_stmt(LDShaderToken** stream, LDShaderToke
         *stream = now;
         return root;
     }
-    
+
     if (now->type == LDS_TOK_FOR)
     {
         root = parse_for_stmt(&now, now);
@@ -1195,6 +1204,59 @@ LDShaderNode* LDShaderParserObj::parse_layout_qualifier_id(LDShaderToken** strea
     if (consume(&now, LDS_TOK_EQUAL))
     {
         root->lch = parse_conditional(&now, now);
+    }
+
+    *stream = now;
+    return root;
+}
+
+/// initializer = LEFT_BRACE initializer_list COMMA? RIGHT_BRACE |
+///               assignment
+LDShaderNode* LDShaderParserObj::parse_initializer(LDShaderToken** stream, LDShaderToken* now)
+{
+    if (!consume(&now, LDS_TOK_LEFT_BRACE))
+        return parse_assignment(stream, now);
+
+    LDShaderToken* old = now;
+    LDShaderNode* root = mAST->alloc_node(LDS_NODE_INITIALIZER);
+    root->lch = parse_initializer_list(&now, now);
+
+    consume(&now, LDS_TOK_COMMA);
+
+    if (consume(&now, LDS_TOK_RIGHT_BRACE))
+    {
+        *stream = now;
+        return root;
+    }
+
+    // NOTE: by default GLSL does not allow null initializers,
+    //       see the discussion in GL_EXT_null_initializer,
+    //       we do not support the extension here either.
+    *stream = old;
+    return nullptr;
+}
+
+/// initializer_list = initializer (COMMA initializer)*
+LDShaderNode* LDShaderParserObj::parse_initializer_list(LDShaderToken** stream, LDShaderToken* now)
+{
+    LDShaderNode* root = parse_initializer(&now, now);
+    LDShaderNode* last = root;
+
+    if (!root)
+    {
+        // TODO: error null initializer
+        return nullptr;
+    }
+
+    while (now->type == LDS_TOK_COMMA)
+    {
+        LDShaderToken* next = now->next;
+
+        if (next->type == LDS_TOK_RIGHT_BRACE)
+            break;
+
+        now = next;
+        last = last->next = parse_initializer(&now, now);
     }
 
     *stream = now;
