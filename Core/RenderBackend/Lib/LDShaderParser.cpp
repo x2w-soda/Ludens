@@ -181,6 +181,15 @@ struct {
     { "storage_qualifier",   LDS_NODE_STORAGE_QUALIFIER, },
     { "assignment",          LDS_NODE_ASSIGNMENT, },
     { "conditional",         LDS_NODE_CONDITIONAL, },
+    { "logical_or",          LDS_NODE_LOGICAL_OR, },
+    { "logical_xor",         LDS_NODE_LOGICAL_XOR, },
+    { "logical_and",         LDS_NODE_LOGICAL_AND, },
+    { "bitwise_or",          LDS_NODE_BITWISE_OR, },
+    { "bitwise_xor",         LDS_NODE_BITWISE_XOR, },
+    { "bitwise_and",         LDS_NODE_BITWISE_AND, },
+    { "equal",               LDS_NODE_EQUAL, },
+    { "relational",          LDS_NODE_RELATIONAL, },
+    { "shift",               LDS_NODE_SHIFT, },
     { "add",                 LDS_NODE_ADD, },
     { "mul",                 LDS_NODE_MUL, },
     { "unary",               LDS_NODE_UNARY, },
@@ -450,6 +459,15 @@ private:
     LDShaderNode* parse_expr(LDShaderToken** stream, LDShaderToken* now);
     LDShaderNode* parse_assignment(LDShaderToken** stream, LDShaderToken* now);
     LDShaderNode* parse_conditional(LDShaderToken** stream, LDShaderToken* now);
+    LDShaderNode* parse_logical_or(LDShaderToken** stream, LDShaderToken* now);
+    LDShaderNode* parse_logical_xor(LDShaderToken** stream, LDShaderToken* now);
+    LDShaderNode* parse_logical_and(LDShaderToken** stream, LDShaderToken* now);
+    LDShaderNode* parse_bitwise_or(LDShaderToken** stream, LDShaderToken* now);
+    LDShaderNode* parse_bitwise_xor(LDShaderToken** stream, LDShaderToken* now);
+    LDShaderNode* parse_bitwise_and(LDShaderToken** stream, LDShaderToken* now);
+    LDShaderNode* parse_equal(LDShaderToken** stream, LDShaderToken* now);
+    LDShaderNode* parse_relational(LDShaderToken** stream, LDShaderToken* now);
+    LDShaderNode* parse_shift(LDShaderToken** stream, LDShaderToken* now);
     LDShaderNode* parse_add(LDShaderToken** stream, LDShaderToken* now);
     LDShaderNode* parse_mul(LDShaderToken** stream, LDShaderToken* now);
     LDShaderNode* parse_unary(LDShaderToken** stream, LDShaderToken* now);
@@ -1007,10 +1025,10 @@ LDShaderNode* LDShaderParserObj::parse_assignment(LDShaderToken** stream, LDShad
     return root;
 }
 
-/// conditional = add (QUESTION expr COLON assignment)?
+/// conditional = logical_or (QUESTION expr COLON assignment)?
 LDShaderNode* LDShaderParserObj::parse_conditional(LDShaderToken** stream, LDShaderToken* now)
 {
-    LDShaderNode* root = parse_add(&now, now);
+    LDShaderNode* root = parse_logical_or(&now, now);
 
     if (consume(&now, LDS_TOK_QUESTION))
     {
@@ -1026,6 +1044,147 @@ LDShaderNode* LDShaderParserObj::parse_conditional(LDShaderToken** stream, LDSha
         cond->lch = lch;
         cond->rch = rch;
         root = cond;
+    }
+
+    *stream = now;
+    return root;
+}
+
+/// logical_or = logical_xor (OR_OP logical_xor)*
+LDShaderNode* LDShaderParserObj::parse_logical_or(LDShaderToken** stream, LDShaderToken* now)
+{
+    LDShaderNode* root = parse_logical_xor(&now, now);
+
+    while (consume(&now, LDS_TOK_OR_OP))
+    {
+        root = mAST->alloc_node_lch(LDS_NODE_LOGICAL_OR, root);
+        root->rch = parse_logical_xor(&now, now);
+    }
+
+    *stream = now;
+    return root;
+}
+
+/// logical_xor = logical_and (XOR_OP logical_and)*
+LDShaderNode* LDShaderParserObj::parse_logical_xor(LDShaderToken** stream, LDShaderToken* now)
+{
+    LDShaderNode* root = parse_logical_and(&now, now);
+
+    while (consume(&now, LDS_TOK_XOR_OP))
+    {
+        root = mAST->alloc_node_lch(LDS_NODE_LOGICAL_XOR, root);
+        root->rch = parse_logical_and(&now, now);
+    }
+
+    *stream = now;
+    return root;
+}
+
+/// logical_and = bitwise_or (AND_OP bitwise_or)*
+LDShaderNode* LDShaderParserObj::parse_logical_and(LDShaderToken** stream, LDShaderToken* now)
+{
+    LDShaderNode* root = parse_bitwise_or(&now, now);
+
+    while (consume(&now, LDS_TOK_AND_OP))
+    {
+        root = mAST->alloc_node_lch(LDS_NODE_LOGICAL_AND, root);
+        root->rch = parse_bitwise_or(&now, now);
+    }
+
+    *stream = now;
+    return root;
+}
+
+/// bitwise_or = bitwise_xor (VERTICAL_BAR bitwise_xor)*
+LDShaderNode* LDShaderParserObj::parse_bitwise_or(LDShaderToken** stream, LDShaderToken* now)
+{
+    LDShaderNode* root = parse_bitwise_xor(&now, now);
+
+    while (consume(&now, LDS_TOK_VERTICAL_BAR))
+    {
+        root = mAST->alloc_node_lch(LDS_NODE_BITWISE_OR, root);
+        root->rch = parse_bitwise_xor(&now, now);
+    }
+
+    *stream = now;
+    return root;
+}
+
+/// bitwise_xor = bitwise_and (CARET bitwise_and)*
+LDShaderNode* LDShaderParserObj::parse_bitwise_xor(LDShaderToken** stream, LDShaderToken* now)
+{
+    LDShaderNode* root = parse_bitwise_and(&now, now);
+
+    while (consume(&now, LDS_TOK_CARET))
+    {
+        root = mAST->alloc_node_lch(LDS_NODE_BITWISE_XOR, root);
+        root->rch = parse_bitwise_and(&now, now);
+    }
+
+    *stream = now;
+    return root;
+}
+
+/// bitwise_and = equal (AMPERSAND equal)*
+LDShaderNode* LDShaderParserObj::parse_bitwise_and(LDShaderToken** stream, LDShaderToken* now)
+{
+    LDShaderNode* root = parse_equal(&now, now);
+
+    while (consume(&now, LDS_TOK_AMPERSAND))
+    {
+        root = mAST->alloc_node_lch(LDS_NODE_BITWISE_AND, root);
+        root->rch = parse_equal(&now, now);
+    }
+
+    *stream = now;
+    return root;
+}
+
+/// equal = relational ((EQ_OP | NE_OP) relational)*
+LDShaderNode* LDShaderParserObj::parse_equal(LDShaderToken** stream, LDShaderToken* now)
+{
+    LDShaderNode* root = parse_relational(&now, now);
+
+    while (now->type == LDS_TOK_EQ_OP || now->type == LDS_TOK_NE_OP)
+    {
+        root = mAST->alloc_node_lch(LDS_NODE_EQUAL, root);
+        root->tok = now;
+        now = now->next;
+        root->rch = parse_relational(&now, now);
+    }
+
+    *stream = now;
+    return root;
+}
+
+/// relational = shift ((LEFT_ANGLE | RIGHT_ANGLE | LE_OP | GE_OP) shift)*
+LDShaderNode* LDShaderParserObj::parse_relational(LDShaderToken** stream, LDShaderToken* now)
+{
+    LDShaderNode* root = parse_shift(&now, now);
+
+    while (now->type == LDS_TOK_LEFT_ANGLE || now->type == LDS_TOK_RIGHT_ANGLE || now->type == LDS_TOK_LE_OP || now->type == LDS_TOK_GE_OP)
+    {
+        root = mAST->alloc_node_lch(LDS_NODE_RELATIONAL, root);
+        root->tok = now;
+        now = now->next;
+        root->rch = parse_relational(&now, now);
+    }
+
+    *stream = now;
+    return root;
+}
+
+/// shift = add ((LEFT_OP | RIGHT_OP) add)*
+LDShaderNode* LDShaderParserObj::parse_shift(LDShaderToken** stream, LDShaderToken* now)
+{
+    LDShaderNode* root = parse_add(&now, now);
+
+    while (now->type == LDS_TOK_LEFT_OP || now->type == LDS_TOK_RIGHT_OP)
+    {
+        root = mAST->alloc_node_lch(LDS_NODE_SHIFT, root);
+        root->tok = now;
+        now = now->next;
+        root->rch = parse_add(&now, now);
     }
 
     *stream = now;
