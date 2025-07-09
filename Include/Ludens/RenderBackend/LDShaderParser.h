@@ -176,8 +176,10 @@ enum LDShaderNodeType
     LDS_NODE_SINGLE_DECL,
     LDS_NODE_FN_PROTOTYPE,
     LDS_NODE_FN_DEFINITION,
+    LDS_NODE_EMPTY_STMT,
     LDS_NODE_COMPOUND_STMT,
     LDS_NODE_IF_STMT,
+    LDS_NODE_FOR_STMT,
     LDS_NODE_WHILE_STMT,
     LDS_NODE_CONTROL_FLOW_STMT,
     LDS_NODE_TYPE_SPECIFIER,
@@ -210,6 +212,7 @@ enum LDShaderNodeType
 struct LDShaderNode
 {
     LDShaderNode* next;    /// sibling or linked list
+    LDShaderNode* init;    /// child for initialization expression
     LDShaderNode* cond;    /// child for conditional expression
     LDShaderNode* lch;     /// left child root
     LDShaderNode* rch;     /// right child root

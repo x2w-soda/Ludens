@@ -186,8 +186,10 @@ struct {
     { "single_decl",         LDS_NODE_SINGLE_DECL, },
     { "fn_prototype",        LDS_NODE_FN_PROTOTYPE, },
     { "fn_definition",       LDS_NODE_FN_DEFINITION, },
+    { "empty_stmt",          LDS_NODE_EMPTY_STMT, },
     { "compound_stmt",       LDS_NODE_COMPOUND_STMT, },
     { "if_stmt",             LDS_NODE_IF_STMT, },
+    { "for_stmt",            LDS_NODE_FOR_STMT, },
     { "while_stmt",          LDS_NODE_WHILE_STMT, },
     { "control_flow_stmt",   LDS_NODE_CONTROL_FLOW_STMT, },
     { "type_specifier",      LDS_NODE_TYPE_SPECIFIER, },
@@ -392,6 +394,7 @@ static void recursive_traverse(LDShaderNode* root, LDShaderAST::TraverseFn onTra
     onTraverse(root, depth, user);
 
     ++depth;
+    recursive_traverse(root->init, onTraverse, depth, user);
     recursive_traverse(root->cond, onTraverse, depth, user);
     recursive_traverse(root->lch, onTraverse, depth, user);
     recursive_traverse(root->rch, onTraverse, depth, user);
@@ -461,7 +464,9 @@ private:
     LDShaderNode* parse_stmt(LDShaderToken** stream, LDShaderToken* now);
     LDShaderNode* parse_compound_stmt(LDShaderToken** stream, LDShaderToken* now);
     LDShaderNode* parse_if_stmt(LDShaderToken** stream, LDShaderToken* now);
+    LDShaderNode* parse_for_stmt(LDShaderToken** stream, LDShaderToken* now);
     LDShaderNode* parse_while_stmt(LDShaderToken** stream, LDShaderToken* now);
+    LDShaderNode* parse_expr_stmt(LDShaderToken** stream, LDShaderToken* now);
 
     // type parsing rules
 
@@ -526,6 +531,7 @@ LDShaderNode* LDShaderASTObj::alloc_node(LDShaderNodeType type)
     LDShaderNode* node = (LDShaderNode*)nodePA.allocate();
     node->lch = nullptr;
     node->rch = nullptr;
+    node->init = nullptr;
     node->cond = nullptr;
     node->next = nullptr;
     node->tok = nullptr;
@@ -783,8 +789,10 @@ LDShaderNode* LDShaderParserObj::parse_fn_param_decl(LDShaderToken** stream, LDS
     return nullptr;
 }
 
-/// stmt = compound_stmt |
+/// stmt = SEMICOLON |
+///        compound_stmt |
 ///        if_stmt |
+///        for_stmt |
 ///        while_stmt |
 ///        CONTINUE SEMICOLON |
 ///        DISCARD SEMICOLON |
@@ -797,6 +805,13 @@ LDShaderNode* LDShaderParserObj::parse_stmt(LDShaderToken** stream, LDShaderToke
     LDShaderToken* old = now;
     LDShaderNode* root;
 
+    if (now->type == LDS_TOK_SEMICOLON)
+    {
+        root = mAST->alloc_node(LDS_NODE_EMPTY_STMT);
+        *stream = now->next;
+        return root;
+    }
+
     if (now->type == LDS_TOK_LEFT_BRACE)
     {
         root = parse_compound_stmt(&now, now);
@@ -807,6 +822,13 @@ LDShaderNode* LDShaderParserObj::parse_stmt(LDShaderToken** stream, LDShaderToke
     if (now->type == LDS_TOK_IF)
     {
         root = parse_if_stmt(&now, now);
+        *stream = now;
+        return root;
+    }
+    
+    if (now->type == LDS_TOK_FOR)
+    {
+        root = parse_for_stmt(&now, now);
         *stream = now;
         return root;
     }
@@ -842,18 +864,9 @@ LDShaderNode* LDShaderParserObj::parse_stmt(LDShaderToken** stream, LDShaderToke
     }
 
     now = old;
-
-    // expr_stmt = expr SEMICOLON
-    if ((root = parse_expr(&now, now)))
-    {
-        if (!consume(&now, LDS_TOK_SEMICOLON))
-            return nullptr; // TODO: error
-
-        *stream = now;
-        return root;
-    }
-
-    return nullptr;
+    root = parse_expr_stmt(&now, now);
+    *stream = now;
+    return root;
 }
 
 /// compound_stmt = LEFT_BRACE statement* RIGHT_BRACE
@@ -921,6 +934,64 @@ LDShaderNode* LDShaderParserObj::parse_if_stmt(LDShaderToken** stream, LDShaderT
     return root;
 }
 
+/// for_stmt = FOR LEFT_PAREN (decl | expr_stmt | SEMICOLON) expr? SEMICOLON expr? RIGHT_PAREN stmt
+LDShaderNode* LDShaderParserObj::parse_for_stmt(LDShaderToken** stream, LDShaderToken* now)
+{
+    if (!consume(&now, LDS_TOK_FOR))
+        return nullptr;
+
+    if (!consume(&now, LDS_TOK_LEFT_PAREN))
+    {
+        // TODO: error
+        return nullptr;
+    }
+
+    LDShaderToken* old = now;
+    LDShaderNode* init = nullptr;
+    LDShaderNode* cond = nullptr;
+    LDShaderNode* body = nullptr;
+    LDShaderNode* inc = nullptr;
+
+    // for loop init
+    if (consume(&now, LDS_TOK_SEMICOLON))
+        ;
+    else if ((init = parse_decl(&now, now)))
+        ;
+    else
+        init = parse_expr_stmt(&now, now);
+
+    // for loop condition
+    if (now->type != LDS_TOK_SEMICOLON)
+        cond = parse_expr(&now, now);
+
+    if (!consume(&now, LDS_TOK_SEMICOLON))
+    {
+        *stream = old; // TODO: error missing ; after condition
+        return nullptr;
+    }
+
+    // for loop increment
+    if (now->type != LDS_TOK_RIGHT_PAREN)
+        inc = parse_expr(&now, now);
+
+    if (!consume(&now, LDS_TOK_RIGHT_PAREN))
+    {
+        *stream = old; // TODO: error missing ) after increment
+        return nullptr;
+    }
+
+    body = parse_stmt(&now, now);
+
+    LDShaderNode* root = mAST->alloc_node(LDS_NODE_FOR_STMT);
+    root->init = init;
+    root->cond = cond;
+    root->lch = body;
+    root->rch = inc;
+
+    *stream = now;
+    return root;
+}
+
 /// while_stmt = WHILE LEFT_PAREN expr RIGHT_PAREN stmt
 LDShaderNode* LDShaderParserObj::parse_while_stmt(LDShaderToken** stream, LDShaderToken* now)
 {
@@ -946,6 +1017,22 @@ LDShaderNode* LDShaderParserObj::parse_while_stmt(LDShaderToken** stream, LDShad
     LDShaderNode* root = mAST->alloc_node(LDS_NODE_WHILE_STMT);
     root->cond = expr;
     root->lch = parse_stmt(&now, now);
+
+    *stream = now;
+    return root;
+}
+
+/// expr_stmt = expr SEMICOLON
+LDShaderNode* LDShaderParserObj::parse_expr_stmt(LDShaderToken** stream, LDShaderToken* now)
+{
+    LDShaderToken* old = now;
+    LDShaderNode* root = parse_expr(&now, now);
+
+    if (!root || !consume(&now, LDS_TOK_SEMICOLON))
+    {
+        *stream = old;
+        return nullptr;
+    }
 
     *stream = now;
     return root;
