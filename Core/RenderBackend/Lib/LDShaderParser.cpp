@@ -189,6 +189,7 @@ struct {
     { "compound_stmt",       LDS_NODE_COMPOUND_STMT, },
     { "if_stmt",             LDS_NODE_IF_STMT, },
     { "while_stmt",          LDS_NODE_WHILE_STMT, },
+    { "control_flow_stmt",   LDS_NODE_CONTROL_FLOW_STMT, },
     { "type_specifier",      LDS_NODE_TYPE_SPECIFIER, },
     { "type_qualifier",      LDS_NODE_TYPE_QUALIFIER, },
     { "layout_qualifier",    LDS_NODE_LAYOUT_QUALIFIER, },
@@ -785,6 +786,10 @@ LDShaderNode* LDShaderParserObj::parse_fn_param_decl(LDShaderToken** stream, LDS
 /// stmt = compound_stmt |
 ///        if_stmt |
 ///        while_stmt |
+///        CONTINUE SEMICOLON |
+///        DISCARD SEMICOLON |
+///        RETURN expr? SEMICOLON |
+///        BREAK SEMICOLON |
 ///        decl |
 ///        expr_stmt
 LDShaderNode* LDShaderParserObj::parse_stmt(LDShaderToken** stream, LDShaderToken* now)
@@ -809,6 +814,23 @@ LDShaderNode* LDShaderParserObj::parse_stmt(LDShaderToken** stream, LDShaderToke
     if (now->type == LDS_TOK_WHILE)
     {
         root = parse_while_stmt(&now, now);
+        *stream = now;
+        return root;
+    }
+
+    if (now->type == LDS_TOK_CONTINUE || now->type == LDS_TOK_DISCARD || now->type == LDS_TOK_RETURN || now->type == LDS_TOK_BREAK)
+    {
+        bool isReturn = now->type == LDS_TOK_RETURN;
+        root = mAST->alloc_node(LDS_NODE_CONTROL_FLOW_STMT);
+        root->tok = now;
+        now = now->next;
+
+        if (isReturn && now->type != LDS_TOK_SEMICOLON)
+            root->lch = parse_expr(&now, now); // return expression
+
+        if (!consume(&now, LDS_TOK_SEMICOLON))
+            return nullptr; // TODO: error
+
         *stream = now;
         return root;
     }
@@ -1299,15 +1321,13 @@ LDShaderNode* LDShaderParserObj::parse_shift(LDShaderToken** stream, LDShaderTok
 LDShaderNode* LDShaderParserObj::parse_add(LDShaderToken** stream, LDShaderToken* now)
 {
     LDShaderNode* root = parse_mul(&now, now);
-    LDShaderToken* opTok = now;
 
-    while (opTok->type == LDS_TOK_PLUS || opTok->type == LDS_TOK_DASH)
+    while (now->type == LDS_TOK_PLUS || now->type == LDS_TOK_DASH)
     {
-        LD_UNREACHABLE; // TODO:
-        now = now->next;
         root = mAST->alloc_node_lch(LDS_NODE_ADD, root);
+        root->tok = now;
+        now = now->next;
         root->rch = parse_mul(&now, now);
-        root->tok = opTok;
     }
 
     *stream = now;
@@ -1318,15 +1338,13 @@ LDShaderNode* LDShaderParserObj::parse_add(LDShaderToken** stream, LDShaderToken
 LDShaderNode* LDShaderParserObj::parse_mul(LDShaderToken** stream, LDShaderToken* now)
 {
     LDShaderNode* root = parse_unary(&now, now);
-    LDShaderToken* opTok = now;
 
-    while (opTok->type == LDS_TOK_STAR || opTok->type == LDS_TOK_SLASH || opTok->type == LDS_TOK_PERCENT)
+    while (now->type == LDS_TOK_STAR || now->type == LDS_TOK_SLASH || now->type == LDS_TOK_PERCENT)
     {
-        LD_UNREACHABLE; // TODO:
-        now = now->next;
         root = mAST->alloc_node_lch(LDS_NODE_MUL, root);
+        root->tok = now;
+        now = now->next;
         root->rch = parse_unary(&now, now);
-        root->tok = opTok;
     }
 
     *stream = now;
