@@ -113,9 +113,9 @@ struct
     { "uimageCube",             10,  LDS_TOK_UIMAGECUBE,             LDSTF_TYPE_SPECIFIER_BIT },
     { "uimageCubeArray",        15,  LDS_TOK_UIMAGECUBEARRAY,        LDSTF_TYPE_SPECIFIER_BIT },
     // storage qualifiers
+    { "inout",         5,  LDS_TOK_INOUT,         LDSTF_STORAGE_QUALIFIER_BIT },
     { "in",            2,  LDS_TOK_IN,            LDSTF_STORAGE_QUALIFIER_BIT },
     { "out",           3,  LDS_TOK_OUT,           LDSTF_STORAGE_QUALIFIER_BIT },
-    { "inout",         5,  LDS_TOK_INOUT,         LDSTF_STORAGE_QUALIFIER_BIT },
     { "uniform",       7,  LDS_TOK_UNIFORM,       LDSTF_STORAGE_QUALIFIER_BIT },
     { "patch",         5,  LDS_TOK_PATCH,         LDSTF_STORAGE_QUALIFIER_BIT },
     { "sample",        6,  LDS_TOK_SAMPLE,        LDSTF_STORAGE_QUALIFIER_BIT },
@@ -185,6 +185,7 @@ struct {
     { "translation_unit",    LDS_NODE_TRANSLATION_UNIT, },
     { "single_decl",         LDS_NODE_SINGLE_DECL, },
     { "fn_prototype",        LDS_NODE_FN_PROTOTYPE, },
+    { "fn_param_decl",       LDS_NODE_FN_PARAM_DECL, },
     { "fn_definition",       LDS_NODE_FN_DEFINITION, },
     { "empty_stmt",          LDS_NODE_EMPTY_STMT, },
     { "compound_stmt",       LDS_NODE_COMPOUND_STMT, },
@@ -196,6 +197,7 @@ struct {
     { "control_flow_stmt",   LDS_NODE_CONTROL_FLOW_STMT, },
     { "type_specifier",      LDS_NODE_TYPE_SPECIFIER, },
     { "type_qualifier",      LDS_NODE_TYPE_QUALIFIER, },
+    { "array_specifier",     LDS_NODE_ARRAY_SPECIFIER, },
     { "layout_qualifier",    LDS_NODE_LAYOUT_QUALIFIER, },
     { "layout_qualifier_id", LDS_NODE_LAYOUT_QUALIFIER_ID, },
     { "storage_qualifier",   LDS_NODE_STORAGE_QUALIFIER, },
@@ -478,6 +480,7 @@ private:
     LDShaderNode* parse_full_type(LDShaderToken** stream, LDShaderToken* now);
     LDShaderNode* parse_type_qualifier(LDShaderToken** stream, LDShaderToken* now);
     LDShaderNode* parse_type_specifier(LDShaderToken** stream, LDShaderToken* now);
+    LDShaderNode* parse_array_specifier(LDShaderToken** stream, LDShaderToken* now);
     LDShaderNode* parse_single_type_qualifier(LDShaderToken** stream, LDShaderToken* now);
     LDShaderNode* parse_storage_qualifer(LDShaderToken** stream, LDShaderToken* now);
     LDShaderNode* parse_layout_qualifier(LDShaderToken** stream, LDShaderToken* now);
@@ -683,7 +686,7 @@ LDShaderNode* LDShaderParserObj::parse_decl(LDShaderToken** stream, LDShaderToke
     if ((root = parse_single_decl(&now, now)))
     {
         if (consume(&now, LDS_TOK_EQUAL))
-            root->rch = parse_initializer(&now, now);
+            root->init = parse_initializer(&now, now);
 
         if (consume(&now, LDS_TOK_SEMICOLON))
         {
@@ -722,7 +725,7 @@ LDShaderNode* LDShaderParserObj::parse_decl(LDShaderToken** stream, LDShaderToke
     return nullptr;
 }
 
-/// single_decl = full_type (IDENT)? |
+/// single_decl = full_type (IDENT array_speicifer?)? |
 ///               type_qualifier
 LDShaderNode* LDShaderParserObj::parse_single_decl(LDShaderToken** stream, LDShaderToken* now)
 {
@@ -737,6 +740,11 @@ LDShaderNode* LDShaderParserObj::parse_single_decl(LDShaderToken** stream, LDSha
         {
             root->tok = now; // single decl identifier
             now = now->next;
+
+            if (now->type == LDS_TOK_LEFT_BRACKET)
+            {
+                root->rch = parse_array_specifier(&now, now);
+            }
         }
 
         *stream = now;
@@ -758,7 +766,7 @@ LDShaderNode* LDShaderParserObj::parse_single_decl(LDShaderToken** stream, LDSha
     return nullptr;
 }
 
-/// fn_prototype = full_type IDENT LEFT_PAREN (fn_param_decl)? RIGHT_PAREN
+/// fn_prototype = full_type IDENT LEFT_PAREN (fn_param_decl (COMMA fn_param_decl)*)? RIGHT_PAREN
 LDShaderNode* LDShaderParserObj::parse_fn_prototype(LDShaderToken** stream, LDShaderToken* now)
 {
     LDShaderToken* old = now;
@@ -781,10 +789,31 @@ LDShaderNode* LDShaderParserObj::parse_fn_prototype(LDShaderToken** stream, LDSh
         return nullptr;
     }
 
+
     if (now->type != LDS_TOK_RIGHT_PAREN)
     {
-        // parse function parameter declarations and store as right child
-        root->rch = parse_fn_param_decl(&now, now);
+        LDShaderNode* firstParam = parse_fn_param_decl(&now, now);
+        LDShaderNode* lastParam = firstParam;
+
+        if (!firstParam)
+        {
+            // TODO: error invalid param
+            return nullptr;
+        }
+
+        while (consume(&now, LDS_TOK_COMMA))
+        {
+            lastParam = lastParam->next = parse_fn_param_decl(&now, now);
+
+            if (!lastParam)
+            {
+                // TODO: error invalid param
+                return nullptr;
+            }
+        }
+
+        // function parameters linked list stored as right child
+        root->rch = firstParam;
     }
 
     if (!consume(&now, LDS_TOK_RIGHT_PAREN))
@@ -794,12 +823,33 @@ LDShaderNode* LDShaderParserObj::parse_fn_prototype(LDShaderToken** stream, LDSh
     return root;
 }
 
-/// fn_param_decl =
+/// fn_param_decl = full_type (IDENT array_specifier?)?
 /// @note this rule should cover parameter_declarator and parameter_declaration in the spec
 LDShaderNode* LDShaderParserObj::parse_fn_param_decl(LDShaderToken** stream, LDShaderToken* now)
 {
-    // TODO:
-    return nullptr;
+    LDShaderToken* old = now;
+    LDShaderNode* paramType = parse_full_type(&now, now);
+
+    if (!paramType)
+    {
+        *stream = old;
+        return nullptr;
+    }
+
+    LDShaderNode* root = mAST->alloc_node(LDS_NODE_FN_PARAM_DECL);
+    root->lch = paramType;
+
+    if (now->type == LDS_TOK_IDENT)
+    {
+        root->tok = now;
+        now = now->next;
+
+        if (now->type == LDS_TOK_LEFT_BRACKET)
+            root->rch = parse_array_specifier(&now, now);
+    }
+
+    *stream = now;
+    return root;
 }
 
 /// stmt = SEMICOLON |
@@ -1197,6 +1247,7 @@ LDShaderNode* LDShaderParserObj::parse_type_qualifier(LDShaderToken** stream, LD
     return root;
 }
 
+/// type_specifier = TYPE_SPECIFIER_TOK (array_specifier)?
 LDShaderNode* LDShaderParserObj::parse_type_specifier(LDShaderToken** stream, LDShaderToken* now)
 {
     // TODO: struct_specifier
@@ -1205,9 +1256,50 @@ LDShaderNode* LDShaderParserObj::parse_type_specifier(LDShaderToken** stream, LD
 
     LDShaderNode* root = mAST->alloc_node(LDS_NODE_TYPE_SPECIFIER);
     root->tok = now;
+    now = now->next;
 
-    *stream = now->next;
+    if (now->type == LDS_TOK_LEFT_BRACKET)
+        root->lch = parse_array_specifier(&now, now);
+
+    *stream = now;
     return root;
+}
+
+/// array_specifier = (LEFT_BRACKET (conditional)? RIGHT_BRACKET)*
+LDShaderNode* LDShaderParserObj::parse_array_specifier(LDShaderToken** stream, LDShaderToken* now)
+{
+    if (now->type != LDS_TOK_LEFT_BRACKET)
+        return nullptr;
+
+    LDShaderNode dummy = {.next = nullptr};
+    LDShaderNode* arr = &dummy;
+
+    while (consume(&now, LDS_TOK_LEFT_BRACKET))
+    {
+        arr = arr->next = mAST->alloc_node(LDS_NODE_ARRAY_SPECIFIER);
+
+        if (now->type != LDS_TOK_RIGHT_BRACKET)
+        {
+            LDShaderNode* arrSize = parse_conditional(&now, now);
+
+            if (!arrSize)
+            {
+                // TODO: error unrecognized array size
+                return nullptr;
+            }
+
+            arr->lch = arrSize;
+        }
+
+        if (!consume(&now, LDS_TOK_RIGHT_BRACKET))
+        {
+            // TODO: error expected right bracket
+            return nullptr;
+        }
+    }
+
+    *stream = now;
+    return dummy.next;
 }
 
 /// single_type_qualifier = layout_qualifier |
