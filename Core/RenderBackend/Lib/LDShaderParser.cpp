@@ -191,6 +191,8 @@ struct {
     { "if_stmt",             LDS_NODE_IF_STMT, },
     { "for_stmt",            LDS_NODE_FOR_STMT, },
     { "while_stmt",          LDS_NODE_WHILE_STMT, },
+    { "switch_stmt",         LDS_NODE_SWITCH_STMT, },
+    { "switch_case",         LDS_NODE_SWITCH_CASE, },
     { "control_flow_stmt",   LDS_NODE_CONTROL_FLOW_STMT, },
     { "type_specifier",      LDS_NODE_TYPE_SPECIFIER, },
     { "type_qualifier",      LDS_NODE_TYPE_QUALIFIER, },
@@ -467,6 +469,8 @@ private:
     LDShaderNode* parse_if_stmt(LDShaderToken** stream, LDShaderToken* now);
     LDShaderNode* parse_for_stmt(LDShaderToken** stream, LDShaderToken* now);
     LDShaderNode* parse_while_stmt(LDShaderToken** stream, LDShaderToken* now);
+    LDShaderNode* parse_switch_stmt(LDShaderToken** stream, LDShaderToken* now);
+    LDShaderNode* parse_switch_case(LDShaderToken** stream, LDShaderToken* now);
     LDShaderNode* parse_expr_stmt(LDShaderToken** stream, LDShaderToken* now);
 
     // type parsing rules
@@ -803,6 +807,7 @@ LDShaderNode* LDShaderParserObj::parse_fn_param_decl(LDShaderToken** stream, LDS
 ///        if_stmt |
 ///        for_stmt |
 ///        while_stmt |
+///        switch_stmt |
 ///        CONTINUE SEMICOLON |
 ///        DISCARD SEMICOLON |
 ///        RETURN expr? SEMICOLON |
@@ -845,6 +850,13 @@ LDShaderNode* LDShaderParserObj::parse_stmt(LDShaderToken** stream, LDShaderToke
     if (now->type == LDS_TOK_WHILE)
     {
         root = parse_while_stmt(&now, now);
+        *stream = now;
+        return root;
+    }
+
+    if (now->type == LDS_TOK_SWITCH)
+    {
+        root = parse_switch_stmt(&now, now);
         *stream = now;
         return root;
     }
@@ -1026,6 +1038,82 @@ LDShaderNode* LDShaderParserObj::parse_while_stmt(LDShaderToken** stream, LDShad
     LDShaderNode* root = mAST->alloc_node(LDS_NODE_WHILE_STMT);
     root->cond = expr;
     root->lch = parse_stmt(&now, now);
+
+    *stream = now;
+    return root;
+}
+
+/// switch_stmt = SWITCH LEFT_PAREN expr RIGHT_PAREN LEFT_BRACE switch_case* RIGHT_BRACE
+LDShaderNode* LDShaderParserObj::parse_switch_stmt(LDShaderToken** stream, LDShaderToken* now)
+{
+    if (!consume(&now, LDS_TOK_SWITCH))
+        return nullptr;
+
+    if (now->type != LDS_TOK_LEFT_PAREN)
+        return nullptr;
+
+    now = now->next;
+    LDShaderNode* expr = parse_expr(&now, now);
+
+    if (!consume(&now, LDS_TOK_RIGHT_PAREN) || !consume(&now, LDS_TOK_LEFT_BRACE))
+    {
+        // TODO: error
+        return nullptr;
+    }
+
+    LDShaderNode dummy = {.next = nullptr};
+    LDShaderNode* kase = &dummy;
+
+    while (!consume(&now, LDS_TOK_RIGHT_BRACE))
+    {
+        kase = kase->next = parse_switch_case(&now, now);
+
+        if (!kase)
+            return nullptr;
+    }
+
+    LDShaderNode* root = mAST->alloc_node(LDS_NODE_SWITCH_STMT);
+    root->lch = expr;
+    root->rch = dummy.next;
+
+    *stream = now;
+    return root;
+}
+
+/// switch_case = ((CASE expr COLON) | (DEFAULT COLON)) stmt*
+LDShaderNode* LDShaderParserObj::parse_switch_case(LDShaderToken** stream, LDShaderToken* now)
+{
+    if (now->type != LDS_TOK_CASE && now->type != LDS_TOK_DEFAULT)
+        return nullptr;
+
+    bool isCase = now->type == LDS_TOK_CASE;
+    LDShaderNode* root = mAST->alloc_node(LDS_NODE_SWITCH_CASE);
+    root->tok = now;
+    now = now->next;
+
+    // case expression is stored as right child
+    if (isCase)
+        root->rch = parse_expr(&now, now);
+
+    if (!consume(&now, LDS_TOK_COLON))
+    {
+        // TODO: error missing ':'
+        return nullptr;
+    }
+
+    LDShaderNode dummy = {.next = nullptr};
+    LDShaderNode* stmt = &dummy;
+
+    while (now->type != LDS_TOK_RIGHT_BRACE && now->type != LDS_TOK_CASE && now->type != LDS_TOK_DEFAULT)
+    {
+        stmt = stmt->next = parse_stmt(&now, now);
+
+        if (!stmt)
+            return nullptr;
+    }
+
+    // statement linked list stored as left child
+    root->lch = dummy.next;
 
     *stream = now;
     return root;
