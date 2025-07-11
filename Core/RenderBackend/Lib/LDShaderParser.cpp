@@ -194,6 +194,7 @@ struct {
     { "while_stmt",          LDS_NODE_WHILE_STMT, },
     { "switch_stmt",         LDS_NODE_SWITCH_STMT, },
     { "switch_case",         LDS_NODE_SWITCH_CASE, },
+    { "expr_stmt",           LDS_NODE_EXPR_STMT, },
     { "control_flow_stmt",   LDS_NODE_CONTROL_FLOW_STMT, },
     { "type_specifier",      LDS_NODE_TYPE_SPECIFIER, },
     { "type_qualifier",      LDS_NODE_TYPE_QUALIFIER, },
@@ -241,11 +242,6 @@ static inline bool consume(LDShaderToken** tok, LDShaderTokenType tokType)
 
     *tok = (*tok)->next;
     return true;
-}
-
-static inline bool is_keyword_tok_type(LDShaderTokenType tokType)
-{
-    return sTokenTableKeywordBegin <= (int)tokType && (int)tokType <= sTokenTableKeywordEnd;
 }
 
 static bool in_range(char c, const char* ranges)
@@ -620,8 +616,49 @@ void LDShaderParserObj::tokenize(const char* str, size_t strLen)
 
         if (str >= end)
             break;
-
         strLen = end - str;
+
+        // single line comment
+        if (strLen >= 2 && str[0] == '/' && str[1] == '/')
+        {
+            str += 2;
+
+            while (str < end && *str++ != '\n')
+                ;
+
+            mCol = 0;
+            mLine++;
+
+            if (str >= end)
+                break;
+
+            strLen = end - str;
+        }
+
+        // multi line comment
+        if (strLen >= 2 && str[0] == '/' && str[1] == '*')
+        {
+            str += 2;
+            mCol += 2;
+
+            while (str < end - 1 && !(str[0] == '*' && str[1] == '/'))
+            {
+                mCol++;
+
+                if (*str++ == '\n')
+                {
+                    mCol = 0;
+                    mLine++;
+                }
+            }
+
+            if (str >= end)
+                break;
+
+            str += 2;
+            mCol += 2;
+            strLen = end - str;
+        }
 
         if (is_keyword_tok(str, strLen, &tokLen, &tokType))
         {
@@ -1176,13 +1213,15 @@ LDShaderNode* LDShaderParserObj::parse_switch_case(LDShaderToken** stream, LDSha
 LDShaderNode* LDShaderParserObj::parse_expr_stmt(LDShaderToken** stream, LDShaderToken* now)
 {
     LDShaderToken* old = now;
-    LDShaderNode* root = parse_expr(&now, now);
+    LDShaderNode* expr = parse_expr(&now, now);
 
-    if (!root || !consume(&now, LDS_TOK_SEMICOLON))
+    if (!expr || !consume(&now, LDS_TOK_SEMICOLON))
     {
         *stream = old;
         return nullptr;
     }
+
+    LDShaderNode* root = mAST->alloc_node_lch(LDS_NODE_EXPR_STMT, expr);
 
     *stream = now;
     return root;
@@ -1308,7 +1347,7 @@ LDShaderNode* LDShaderParserObj::parse_struct_specifier(LDShaderToken** stream, 
 LDShaderNode* LDShaderParserObj::parse_struct_member(LDShaderToken** stream, LDShaderToken* now)
 {
     LDShaderNode* fullType = parse_full_type(&now, now);
-    
+
     if (now->type != LDS_TOK_IDENT)
     {
         // TODO: error missing member name
@@ -1583,9 +1622,11 @@ LDShaderNode* LDShaderParserObj::parse_logical_or(LDShaderToken** stream, LDShad
 {
     LDShaderNode* root = parse_logical_xor(&now, now);
 
-    while (consume(&now, LDS_TOK_OR_OP))
+    while (now->type == LDS_TOK_OR_OP)
     {
         root = mAST->alloc_node_lch(LDS_NODE_LOGICAL_OR, root);
+        root->tok = now;
+        now = now->next;
         root->rch = parse_logical_xor(&now, now);
     }
 
@@ -1598,9 +1639,11 @@ LDShaderNode* LDShaderParserObj::parse_logical_xor(LDShaderToken** stream, LDSha
 {
     LDShaderNode* root = parse_logical_and(&now, now);
 
-    while (consume(&now, LDS_TOK_XOR_OP))
+    while (now->type == LDS_TOK_XOR_OP)
     {
         root = mAST->alloc_node_lch(LDS_NODE_LOGICAL_XOR, root);
+        root->tok = now;
+        now = now->next;
         root->rch = parse_logical_and(&now, now);
     }
 
@@ -1613,9 +1656,11 @@ LDShaderNode* LDShaderParserObj::parse_logical_and(LDShaderToken** stream, LDSha
 {
     LDShaderNode* root = parse_bitwise_or(&now, now);
 
-    while (consume(&now, LDS_TOK_AND_OP))
+    while (now->type == LDS_TOK_AND_OP)
     {
         root = mAST->alloc_node_lch(LDS_NODE_LOGICAL_AND, root);
+        root->tok = now;
+        now = now->next;
         root->rch = parse_bitwise_or(&now, now);
     }
 
@@ -1628,9 +1673,11 @@ LDShaderNode* LDShaderParserObj::parse_bitwise_or(LDShaderToken** stream, LDShad
 {
     LDShaderNode* root = parse_bitwise_xor(&now, now);
 
-    while (consume(&now, LDS_TOK_VERTICAL_BAR))
+    while (now->type == LDS_TOK_VERTICAL_BAR)
     {
         root = mAST->alloc_node_lch(LDS_NODE_BITWISE_OR, root);
+        root->tok = now;
+        now = now->next;
         root->rch = parse_bitwise_xor(&now, now);
     }
 
@@ -1643,9 +1690,11 @@ LDShaderNode* LDShaderParserObj::parse_bitwise_xor(LDShaderToken** stream, LDSha
 {
     LDShaderNode* root = parse_bitwise_and(&now, now);
 
-    while (consume(&now, LDS_TOK_CARET))
+    while (now->type == LDS_TOK_CARET)
     {
         root = mAST->alloc_node_lch(LDS_NODE_BITWISE_XOR, root);
+        root->tok = now;
+        now = now->next;
         root->rch = parse_bitwise_and(&now, now);
     }
 
@@ -1658,9 +1707,11 @@ LDShaderNode* LDShaderParserObj::parse_bitwise_and(LDShaderToken** stream, LDSha
 {
     LDShaderNode* root = parse_equal(&now, now);
 
-    while (consume(&now, LDS_TOK_AMPERSAND))
+    while (now->type == LDS_TOK_AMPERSAND)
     {
         root = mAST->alloc_node_lch(LDS_NODE_BITWISE_AND, root);
+        root->tok = now;
+        now = now->next;
         root->rch = parse_equal(&now, now);
     }
 
