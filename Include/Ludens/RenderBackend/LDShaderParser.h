@@ -187,6 +187,8 @@ enum LDShaderNodeType
     LDS_NODE_CONTROL_FLOW_STMT,
     LDS_NODE_TYPE_SPECIFIER,
     LDS_NODE_TYPE_QUALIFIER,
+    LDS_NODE_STRUCT_SPECIFIER,
+    LDS_NODE_STRUCT_MEMBER,
     LDS_NODE_ARRAY_SPECIFIER,
     LDS_NODE_LAYOUT_QUALIFIER,
     LDS_NODE_LAYOUT_QUALIFIER_ID,
@@ -235,6 +237,9 @@ struct LDShaderAST : Handle<struct LDShaderASTObj>
     /// @brief pre-order tree traversal with user callback function
     /// @param fn user callback function to be called on each node
     void traverse(TraverseFn fn, void* user);
+
+    /// @brief get the root node of the AST
+    LDShaderNode* get_root();
 
     /// @brief debug print the AST
     std::string print();

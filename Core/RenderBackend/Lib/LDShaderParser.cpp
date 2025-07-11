@@ -197,6 +197,8 @@ struct {
     { "control_flow_stmt",   LDS_NODE_CONTROL_FLOW_STMT, },
     { "type_specifier",      LDS_NODE_TYPE_SPECIFIER, },
     { "type_qualifier",      LDS_NODE_TYPE_QUALIFIER, },
+    { "struct_specifier",    LDS_NODE_STRUCT_SPECIFIER, },
+    { "struct_member",       LDS_NODE_STRUCT_MEMBER, },
     { "array_specifier",     LDS_NODE_ARRAY_SPECIFIER, },
     { "layout_qualifier",    LDS_NODE_LAYOUT_QUALIFIER, },
     { "layout_qualifier_id", LDS_NODE_LAYOUT_QUALIFIER_ID, },
@@ -480,6 +482,8 @@ private:
     LDShaderNode* parse_full_type(LDShaderToken** stream, LDShaderToken* now);
     LDShaderNode* parse_type_qualifier(LDShaderToken** stream, LDShaderToken* now);
     LDShaderNode* parse_type_specifier(LDShaderToken** stream, LDShaderToken* now);
+    LDShaderNode* parse_struct_specifier(LDShaderToken** stream, LDShaderToken* now);
+    LDShaderNode* parse_struct_member(LDShaderToken** stream, LDShaderToken* now);
     LDShaderNode* parse_array_specifier(LDShaderToken** stream, LDShaderToken* now);
     LDShaderNode* parse_single_type_qualifier(LDShaderToken** stream, LDShaderToken* now);
     LDShaderNode* parse_storage_qualifer(LDShaderToken** stream, LDShaderToken* now);
@@ -788,7 +792,6 @@ LDShaderNode* LDShaderParserObj::parse_fn_prototype(LDShaderToken** stream, LDSh
         *stream = old;
         return nullptr;
     }
-
 
     if (now->type != LDS_TOK_RIGHT_PAREN)
     {
@@ -1247,10 +1250,13 @@ LDShaderNode* LDShaderParserObj::parse_type_qualifier(LDShaderToken** stream, LD
     return root;
 }
 
-/// type_specifier = TYPE_SPECIFIER_TOK (array_specifier)?
+/// type_specifier = TYPE_SPECIFIER_TOK (array_specifier)? |
+///                  struct_specifier
 LDShaderNode* LDShaderParserObj::parse_type_specifier(LDShaderToken** stream, LDShaderToken* now)
 {
-    // TODO: struct_specifier
+    if (now->type == LDS_TOK_STRUCT)
+        return parse_struct_specifier(stream, now);
+
     if (!is_type_specifier_tok(now))
         return nullptr;
 
@@ -1260,6 +1266,73 @@ LDShaderNode* LDShaderParserObj::parse_type_specifier(LDShaderToken** stream, LD
 
     if (now->type == LDS_TOK_LEFT_BRACKET)
         root->lch = parse_array_specifier(&now, now);
+
+    *stream = now;
+    return root;
+}
+
+/// struct_specifier = struct IDENT? LEFT_BRACE (struct_member)* RIGHT_BRACE
+LDShaderNode* LDShaderParserObj::parse_struct_specifier(LDShaderToken** stream, LDShaderToken* now)
+{
+    if (!consume(&now, LDS_TOK_STRUCT))
+        return nullptr;
+
+    LDShaderNode* root = mAST->alloc_node(LDS_NODE_STRUCT_SPECIFIER);
+
+    if (now->type == LDS_TOK_IDENT)
+    {
+        root->tok = now; // struct name
+        now = now->next;
+    }
+
+    if (!consume(&now, LDS_TOK_LEFT_BRACE))
+        return nullptr;
+
+    LDShaderNode dummy = {.next = nullptr};
+    LDShaderNode* member = &dummy;
+
+    while (!consume(&now, LDS_TOK_RIGHT_BRACE))
+    {
+        member = member->next = parse_struct_member(&now, now);
+    }
+
+    // store array member linked list as left child
+    root->lch = dummy.next;
+
+    *stream = now;
+    return root;
+}
+
+/// struct_member = full_type IDENT array_specifier? SEMICOLON
+/// @note we prohibit comma separated identifiers during a single member declaration
+LDShaderNode* LDShaderParserObj::parse_struct_member(LDShaderToken** stream, LDShaderToken* now)
+{
+    LDShaderNode* fullType = parse_full_type(&now, now);
+    
+    if (now->type != LDS_TOK_IDENT)
+    {
+        // TODO: error missing member name
+        return nullptr;
+    }
+
+    LDShaderNode* root = mAST->alloc_node_lch(LDS_NODE_STRUCT_MEMBER, fullType);
+    root->tok = now; // member name
+    now = now->next;
+
+    if (now->type == LDS_TOK_COMMA)
+    {
+        // TODO: error
+        return nullptr;
+    }
+
+    if (now->type == LDS_TOK_LEFT_BRACKET)
+        root->rch = parse_array_specifier(&now, now);
+
+    if (!consume(&now, LDS_TOK_SEMICOLON))
+    {
+        // TODO: error
+        return nullptr;
+    }
 
     *stream = now;
     return root;
@@ -1856,6 +1929,11 @@ void LDShaderAST::traverse(TraverseFn fn, void* user)
 
     int depth = 0;
     recursive_traverse(mObj->root, fn, depth, user);
+}
+
+LDShaderNode* LDShaderAST::get_root()
+{
+    return mObj->root;
 }
 
 std::string LDShaderAST::print()
