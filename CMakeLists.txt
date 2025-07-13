@@ -193,6 +193,17 @@ FetchContent_MakeAvailable(tinygltf)
 message(STATUS "LUDENS tinygltf SOURCE DIR: ${tinygltf_SOURCE_DIR}")
 target_link_libraries(tinygltf PUBLIC stb)
 
+## Fetch RapidJSON
+
+FetchContent_Declare(
+  rapidjson
+  GIT_REPOSITORY https://github.com/Tencent/rapidjson.git
+  GIT_TAG v1.1.0
+)
+
+FetchContent_MakeAvailable(rapidjson)
+message(STATUS "LUDENS rapidjson SOURCE DIR: ${rapidjson_SOURCE_DIR}")
+
 ## Fetch Tracy Profiler
 FetchContent_Declare(
   tracy
