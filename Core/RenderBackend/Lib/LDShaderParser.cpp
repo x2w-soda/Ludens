@@ -1,10 +1,12 @@
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Header/Bitwise.h>
+#include <Ludens/Header/Hash.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/RenderBackend/LDShaderParser.h>
 #include <Ludens/System/Allocator.h>
 #include <Ludens/System/Memory.h>
 #include <cctype>
+#include <unordered_set>
 
 #define TOKEN_PAGE_SIZE 512
 #define NODE_PAGE_SIZE 512
@@ -199,6 +201,7 @@ struct {
     { "type_specifier",      LDS_NODE_TYPE_SPECIFIER, },
     { "type_qualifier",      LDS_NODE_TYPE_QUALIFIER, },
     { "struct_specifier",    LDS_NODE_STRUCT_SPECIFIER, },
+    { "struct_decl",         LDS_NODE_STRUCT_DECL, },
     { "struct_member",       LDS_NODE_STRUCT_MEMBER, },
     { "array_specifier",     LDS_NODE_ARRAY_SPECIFIER, },
     { "layout_qualifier",    LDS_NODE_LAYOUT_QUALIFIER, },
@@ -454,6 +457,8 @@ private:
 
     void tokenize(const char* str, size_t strLen);
 
+    bool is_struct_ident(LDShaderToken* tok);
+
     // high level parsing rules
 
     LDShaderNode* parse_translation_unit(LDShaderToken** stream, LDShaderToken* now);
@@ -479,6 +484,7 @@ private:
     LDShaderNode* parse_type_qualifier(LDShaderToken** stream, LDShaderToken* now);
     LDShaderNode* parse_type_specifier(LDShaderToken** stream, LDShaderToken* now);
     LDShaderNode* parse_struct_specifier(LDShaderToken** stream, LDShaderToken* now);
+    LDShaderNode* parse_struct_decl(LDShaderToken** stream, LDShaderToken* now);
     LDShaderNode* parse_struct_member(LDShaderToken** stream, LDShaderToken* now);
     LDShaderNode* parse_array_specifier(LDShaderToken** stream, LDShaderToken* now);
     LDShaderNode* parse_single_type_qualifier(LDShaderToken** stream, LDShaderToken* now);
@@ -511,12 +517,13 @@ private:
     LDShaderNode* parse_primary(LDShaderToken** stream, LDShaderToken* now);
 
 private:
-    PoolAllocator mTokenPA; /// token pool allocator
-    LDShaderToken* mTokens; /// token linked list
-    LDShaderASTObj* mAST;   /// current AST being parsed
-    std::string mSource;    /// ldshader source copy
-    int mLine;              /// parser current line in source code
-    int mCol;               /// parser current column in source code
+    PoolAllocator mTokenPA;                  /// token pool allocator
+    LDShaderToken* mTokens;                  /// token linked list
+    LDShaderASTObj* mAST;                    /// current AST being parsed
+    std::string mSource;                     /// ldshader source copy
+    std::unordered_set<Hash32> mStructIdent; /// hashes of user-defined struct names
+    int mLine;                               /// parser current line in source code
+    int mCol;                                /// parser current column in source code
 };
 
 LDShaderASTObj::LDShaderASTObj()
@@ -699,6 +706,13 @@ void LDShaderParserObj::tokenize(const char* str, size_t strLen)
     mTokens = dummy.next;
 }
 
+bool LDShaderParserObj::is_struct_ident(LDShaderToken* tok)
+{
+    Hash32 hash = hash32_FNV_1a(tok->pos, tok->len);
+
+    return mStructIdent.contains(hash);
+}
+
 /// translation_unit = (decl)*
 LDShaderNode* LDShaderParserObj::parse_translation_unit(LDShaderToken** stream, LDShaderToken* now)
 {
@@ -767,7 +781,7 @@ LDShaderNode* LDShaderParserObj::parse_decl(LDShaderToken** stream, LDShaderToke
 }
 
 /// single_decl = full_type (IDENT array_speicifer?)? |
-///               type_qualifier
+///               type_qualifier (IDENT struct_decl)?
 LDShaderNode* LDShaderParserObj::parse_single_decl(LDShaderToken** stream, LDShaderToken* now)
 {
     LDShaderToken* old = now;
@@ -798,6 +812,14 @@ LDShaderNode* LDShaderParserObj::parse_single_decl(LDShaderToken** stream, LDSha
     if (root)
     {
         root = mAST->alloc_node_lch(LDS_NODE_SINGLE_DECL, root);
+
+        if (now->type == LDS_TOK_IDENT && now->next->type == LDS_TOK_LEFT_BRACE)
+        {
+            root->tok = now; // single decl identifier
+            now = now->next;
+
+            root->rch = parse_struct_decl(&now, now);
+        }
 
         *stream = now;
         return root;
@@ -1290,13 +1312,14 @@ LDShaderNode* LDShaderParserObj::parse_type_qualifier(LDShaderToken** stream, LD
 }
 
 /// type_specifier = TYPE_SPECIFIER_TOK (array_specifier)? |
-///                  struct_specifier
+///                  struct_specifier |
+///                  STRUCT_IDENT
 LDShaderNode* LDShaderParserObj::parse_type_specifier(LDShaderToken** stream, LDShaderToken* now)
 {
     if (now->type == LDS_TOK_STRUCT)
         return parse_struct_specifier(stream, now);
 
-    if (!is_type_specifier_tok(now))
+    if (!is_type_specifier_tok(now) && !is_struct_ident(now))
         return nullptr;
 
     LDShaderNode* root = mAST->alloc_node(LDS_NODE_TYPE_SPECIFIER);
@@ -1310,7 +1333,7 @@ LDShaderNode* LDShaderParserObj::parse_type_specifier(LDShaderToken** stream, LD
     return root;
 }
 
-/// struct_specifier = struct IDENT? LEFT_BRACE (struct_member)* RIGHT_BRACE
+/// struct_specifier = struct IDENT? struct_decl
 LDShaderNode* LDShaderParserObj::parse_struct_specifier(LDShaderToken** stream, LDShaderToken* now)
 {
     if (!consume(&now, LDS_TOK_STRUCT))
@@ -1321,12 +1344,30 @@ LDShaderNode* LDShaderParserObj::parse_struct_specifier(LDShaderToken** stream, 
     if (now->type == LDS_TOK_IDENT)
     {
         root->tok = now; // struct name
+
+        // register struct identifier
+        Hash32 hash = hash32_FNV_1a(now->pos, now->len);
+        mStructIdent.insert(hash);
+
         now = now->next;
     }
 
+    if (now->type != LDS_TOK_LEFT_BRACE)
+        return nullptr;
+
+    root->lch = parse_struct_decl(&now, now);
+
+    *stream = now;
+    return root;
+}
+
+/// struct_decl = LEFT_BRACE (struct_member)* RIGHT_BRACE (IDENT array_specifier?)?
+LDShaderNode* LDShaderParserObj::parse_struct_decl(LDShaderToken** stream, LDShaderToken* now)
+{
     if (!consume(&now, LDS_TOK_LEFT_BRACE))
         return nullptr;
 
+    LDShaderNode* root = mAST->alloc_node(LDS_NODE_STRUCT_DECL);
     LDShaderNode dummy = {.next = nullptr};
     LDShaderNode* member = &dummy;
 
@@ -1338,15 +1379,30 @@ LDShaderNode* LDShaderParserObj::parse_struct_specifier(LDShaderToken** stream, 
     // store array member linked list as left child
     root->lch = dummy.next;
 
+    if (now->type == LDS_TOK_IDENT)
+    {
+        root->tok = now;
+        now = now->next;
+
+        if (now->type == LDS_TOK_LEFT_BRACKET)
+            root->rch = parse_array_specifier(&now, now);
+    }
+
     *stream = now;
     return root;
 }
 
-/// struct_member = full_type IDENT array_specifier? SEMICOLON
+/// struct_member = (full_type | STRUCT_IDENT) IDENT array_specifier? SEMICOLON
 /// @note we prohibit comma separated identifiers during a single member declaration
 LDShaderNode* LDShaderParserObj::parse_struct_member(LDShaderToken** stream, LDShaderToken* now)
 {
     LDShaderNode* fullType = parse_full_type(&now, now);
+
+    if (!fullType)
+    {
+        // TODO: error unknown member type
+        return nullptr;
+    }
 
     if (now->type != LDS_TOK_IDENT)
     {
