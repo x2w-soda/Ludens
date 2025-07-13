@@ -1,0 +1,123 @@
+#include "AudioUtil.h"
+#include "MeshUtil.h"
+#include "RenderUtil.h"
+#include "RunTests.h"
+#include <Ludens/Header/Platform.h>
+#include <Ludens/JobSystem/JobSystem.h>
+#include <Ludens/Log/Log.h>
+#include <Ludens/System/FileSystem.h>
+#include <cstdlib>
+#include <filesystem>
+
+namespace LD {
+
+static Log sLog("LDBuilder");
+
+} // namespace LD
+
+using namespace LD;
+namespace fs = std::filesystem;
+
+int main(int argc, char** argv)
+{
+    sLog.info("PWD: {}", fs::current_path().string());
+
+    // TODO: use command line parser from LDCommandLine module
+    if (argc < 3)
+    {
+        sLog.info("usage: {} [options] [inputs]", argv[0]);
+        sLog.info("  options:");
+        sLog.info("    run_tests [path_to_directory]");
+        sLog.info("    env_to_faces [path_to_env_map]");
+        sLog.info("    resample [path_to_audio_file]");
+        sLog.info("    extract_mesh_vertex [path_to_3d_model]");
+        return EXIT_FAILURE;
+    }
+
+    std::string mode(argv[1]);
+
+    if (mode == "env_to_faces")
+    {
+        fs::path inputPath = fs::path(argv[2]);
+        if (!fs::exists(inputPath))
+        {
+            sLog.error("input path {} does not exist", inputPath.string());
+            return EXIT_FAILURE;
+        }
+
+        JobSystemInfo systemI{};
+        systemI.immediateQueueCapacity = 512;
+        systemI.standardQueueCapacity = 512;
+        JobSystem::init(systemI);
+
+        fs::path dirPath = fs::path(inputPath).remove_filename();
+        RenderUtil util = RenderUtil::create();
+        {
+            util.from_equirectangular_to_faces(inputPath, dirPath);
+        }
+        RenderUtil::destroy(util);
+
+        JobSystem::shutdown();
+    }
+    else if (mode == "run_tests")
+    {
+        fs::path dirPath = fs::path(argv[2]);
+        if (!fs::is_directory(dirPath))
+        {
+            sLog.error("directory {} does not exist", dirPath.string());
+            return EXIT_FAILURE;
+        }
+
+        const char* executableExt = nullptr;
+#ifdef LD_PLATFORM_WIN32
+        executableExt = ".exe";
+#endif
+
+        std::vector<std::string> testPaths;
+        find_test_executables(dirPath.string().c_str(), testPaths, executableExt);
+
+        sLog.info("found {} test executables:", (int)testPaths.size());
+        for (const std::string& testPath : testPaths)
+            sLog.info("  {}", testPath);
+
+        int testCount = testPaths.size();
+        if (testCount == 0)
+            return EXIT_SUCCESS;
+
+        int passCount = run_test_exectuables(testPaths);
+        sLog.info("{}/{} tests passed", passCount, testCount);
+    }
+    else if (mode == "resample")
+    {
+        AudioUtil util = AudioUtil::create();
+        const fs::path inputPath = fs::path(argv[2]);
+
+        const uint32_t dstSampleRate = 20000;
+
+        std::string fileExt = inputPath.extension().string();
+        std::string fileName = fs::path(inputPath).replace_extension("").string();
+        fileName += "_20000";
+        fileName += fileExt;
+        fs::path outputPath(fileName);
+        bool success = util.resample(inputPath, outputPath, dstSampleRate, SAMPLE_FORMAT_F32);
+
+        if (!success)
+            sLog.warn("resampling failed");
+
+        AudioUtil::destroy(util);
+    }
+    else if (mode == "extract_mesh_vertex")
+    {
+        MeshUtil util = MeshUtil::create();
+        const fs::path inputPath = fs::path(argv[2]);
+
+        bool success = util.extract_mesh_vertex(inputPath);
+
+        if (!success)
+            sLog.warn("extraction failed");
+
+        MeshUtil::destroy(util);
+    }
+
+    return EXIT_SUCCESS;
+}

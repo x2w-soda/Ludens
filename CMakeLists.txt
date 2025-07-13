@@ -5,7 +5,7 @@ project(Ludens LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-option(LD_COMPILE_WITH_PROFILER "compile with profiler" ON)
+option(LD_COMPILE_WITH_PROFILER "compile with profiler" OFF)
 message(STATUS "LD_COMPILE_WITH_PROFILER:  ${LD_COMPILE_WITH_PROFILER}")
 
 option(LD_BUILD_BENCHMARKS "build benchmarks" ON)
@@ -296,3 +296,8 @@ add_custom_target(ld_doxygen
   WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
   COMMENT "generating documentation with Doxygen"
 )
+
+# Ludens Builder
+# - standalone command line utility
+
+add_subdirectory(LDBuilder)
