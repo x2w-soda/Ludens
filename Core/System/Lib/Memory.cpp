@@ -1,6 +1,7 @@
 #include <Ludens/Header/Assert.h>
 #include <Ludens/System/Memory.h>
 #include <algorithm>
+#include <cstring>
 #include <mutex>
 #include <new>
 

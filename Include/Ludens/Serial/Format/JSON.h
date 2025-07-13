@@ -2,6 +2,7 @@
 
 #include <Ludens/Header/Handle.h>
 #include <string>
+#include <cstdint>
 
 namespace LD {
 

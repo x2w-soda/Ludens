@@ -6,6 +6,7 @@
 #include <Ludens/System/Allocator.h>
 #include <Ludens/System/Memory.h>
 #include <cctype>
+#include <cstring>
 #include <unordered_set>
 
 #define TOKEN_PAGE_SIZE 512

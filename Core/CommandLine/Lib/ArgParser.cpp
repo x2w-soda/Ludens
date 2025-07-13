@@ -3,6 +3,8 @@
 #include <Ludens/Header/Bitwise.h>
 #include <Ludens/System/Allocator.h>
 #include <Ludens/System/Memory.h>
+#include <algorithm>
+#include <cstring>
 #include <vector>
 
 namespace LD {
