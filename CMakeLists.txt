@@ -201,6 +201,9 @@ FetchContent_Declare(
   GIT_TAG v1.1.0
 )
 
+set(RAPIDJSON_BUILD_DOC      OFF CACHE BOOL "" FORCE)
+set(RAPIDJSON_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(RAPIDJSON_BUILD_TESTS    OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(rapidjson)
 message(STATUS "LUDENS rapidjson SOURCE DIR: ${rapidjson_SOURCE_DIR}")
 

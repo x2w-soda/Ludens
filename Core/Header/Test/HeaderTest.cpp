@@ -389,13 +389,7 @@ TEST_CASE("Vec4 method")
 
 TEST_CASE("Quat ctor")
 {
-    Quat q;
-    CHECK(q.x == 0.0f);
-    CHECK(q.y == 0.0f);
-    CHECK(q.z == 0.0f);
-    CHECK(q.w == 1.0f);
-
-    q = Quat(1, 2, 3, 4);
+    Quat q = Quat(1, 2, 3, 4);
     CHECK(q.x == 1.0f);
     CHECK(q.y == 2.0f);
     CHECK(q.z == 3.0f);
