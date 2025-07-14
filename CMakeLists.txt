@@ -248,6 +248,7 @@ add_subdirectory(Core/DSA)
 add_subdirectory(Core/DSP)
 add_subdirectory(Core/Serial)
 add_subdirectory(Core/Log)
+add_subdirectory(Core/UI)
 add_subdirectory(Core/Lua)
 add_subdirectory(Core/Media)
 add_subdirectory(Core/Camera)
@@ -267,6 +268,7 @@ target_link_libraries(LDCore INTERFACE
   LDDSP
   LDSerial
   LDLog
+  LDUI
   LDLua
   LDMedia
   LDCamera
