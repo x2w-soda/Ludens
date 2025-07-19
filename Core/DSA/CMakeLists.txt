@@ -6,6 +6,7 @@ set(MODULE_INCLUDE
 	${LUDENS_INCLUDE_DIR}/Ludens/DSA/HeapStorage.h
 	${LUDENS_INCLUDE_DIR}/Ludens/DSA/Vector.h
 	${LUDENS_INCLUDE_DIR}/Ludens/DSA/String.h
+	${LUDENS_INCLUDE_DIR}/Ludens/DSA/StringView.h
 )
 
 set(MODULE_LIB
