@@ -92,11 +92,11 @@ int main(int argc, char** argv)
         AudioUtil util = AudioUtil::create();
         const fs::path inputPath = fs::path(argv[2]);
 
-        const uint32_t dstSampleRate = 20000;
+        const uint32_t dstSampleRate = 44100;
 
         std::string fileExt = inputPath.extension().string();
         std::string fileName = fs::path(inputPath).replace_extension("").string();
-        fileName += "_20000";
+        fileName += "_44100";
         fileName += fileExt;
         fs::path outputPath(fileName);
         bool success = util.resample(inputPath, outputPath, dstSampleRate, SAMPLE_FORMAT_F32);

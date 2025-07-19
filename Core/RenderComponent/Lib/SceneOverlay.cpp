@@ -122,6 +122,8 @@ struct CopyPipeline : Handle<CopyPipelineObj>
         device.destroy_pipeline(obj->handle);
         device.destroy_shader(obj->vertexShader);
         device.destroy_shader(obj->fragmentShader);
+
+        heap_free(obj);
     }
 
     inline RPipeline handle()

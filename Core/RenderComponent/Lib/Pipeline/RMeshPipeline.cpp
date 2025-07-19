@@ -248,6 +248,7 @@ RMeshAmbientPipeline RMeshAmbientPipeline::create(RDevice device)
     std::vector<RVertexAttribute> attrs;
     RVertexBinding binding;
     RPipelineInfo pipelineI = make_rmesh_pipeline_info(attrs, binding, shaders, blendAttachments);
+    pipelineI.rasterization.cullMode = RCULL_MODE_NONE;
 
     obj->handle = device.create_pipeline(pipelineI);
 
