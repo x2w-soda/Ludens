@@ -1,6 +1,6 @@
 #include <Ludens/Header/Types.h>
 #include <Ludens/Log/Log.h>
-#include <Ludens/Media/Parser/WAV.h>
+#include <Ludens/Media/Format/WAV.h>
 #include <Ludens/System/FileSystem.h>
 #include <Ludens/System/Memory.h>
 #include <cstring>

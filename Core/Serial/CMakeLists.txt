@@ -4,13 +4,11 @@ set(MODULE_TEST_NAME LDSerialTest)
 set(MODULE_INCLUDE
 	${LUDENS_INCLUDE_DIR}/Ludens/Serial/Serial.h
 	${LUDENS_INCLUDE_DIR}/Ludens/Serial/Compress.h
-	${LUDENS_INCLUDE_DIR}/Ludens/Serial/Format/JSON.h
 )
 
 set(MODULE_LIB
 	Lib/Serial.cpp
 	Lib/Compress.cpp
-	Lib/Format/JSON.cpp
 )
 
 add_library(${MODULE_NAME}
@@ -29,12 +27,10 @@ target_include_directories(${MODULE_NAME} PRIVATE
 	${LUDENS_INCLUDE_DIR}
 	${zstd_SOURCE_DIR}/lib
 	${lz4_SOURCE_DIR}/lib
-	${rapidjson_SOURCE_DIR}/include
 )
 
 set(MODULE_TEST
 	Test/SerialTest.cpp
-	Test/SerialJSONTest.cpp
 	Test/TestCompression.h
 )
 

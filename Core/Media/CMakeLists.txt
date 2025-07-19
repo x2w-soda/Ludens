@@ -44,6 +44,7 @@ target_link_libraries(${MODULE_NAME} PUBLIC
 target_include_directories(${MODULE_NAME} PRIVATE
     ${msdfgen_SOURCE_DIR}
     ${tinygltf_SOURCE_DIR}
+    ${rapidjson_SOURCE_DIR}/include
     ${LUDENS_INCLUDE_DIR}
     ${LUDENS_EXTRA_DIR}
 )
@@ -55,4 +56,8 @@ add_executable(${MODULE_TEST_NAME}
 target_include_directories(${MODULE_TEST_NAME} PRIVATE
     ${LUDENS_INCLUDE_DIR}
     ${LUDENS_SOURCE_DIR}
+)
+
+target_link_libraries(${MODULE_TEST_NAME} PRIVATE
+    LDMedia
 )

@@ -1,4 +1,4 @@
-#include <Ludens/Serial/Format/JSON.h>
+#include <Ludens/Media/Format/JSON.h>
 #include <Ludens/System/Allocator.h>
 #include <Ludens/System/Memory.h>
 #include <format>
