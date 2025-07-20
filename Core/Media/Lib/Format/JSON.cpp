@@ -171,7 +171,7 @@ JSONNode JSONNode::get_index(int idx)
 
 JSONDocument JSONDocument::create()
 {
-    JSONDocumentObj* obj = heap_new<JSONDocumentObj>(MEMORY_USAGE_SERIAL);
+    JSONDocumentObj* obj = heap_new<JSONDocumentObj>(MEMORY_USAGE_MEDIA);
 
     return {obj};
 }
@@ -205,10 +205,10 @@ bool JSONDocument::parse(const char* json, std::string& error)
     }
 
     PoolAllocatorInfo paI{};
-    paI.usage = MEMORY_USAGE_SERIAL;
+    paI.usage = MEMORY_USAGE_MEDIA;
     paI.isMultiPage = true;
     paI.blockSize = sizeof(JSONNodeObj);
-    paI.pageSize = 64;
+    paI.pageSize = 64; // nodes per page
     mObj->nodePA = PoolAllocator::create(paI);
 
     JSONNodeObj* rootNode = mObj->alloc_node();

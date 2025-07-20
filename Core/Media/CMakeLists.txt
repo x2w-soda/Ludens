@@ -6,6 +6,7 @@ set(MODULE_INCLUDE
     ${LUDENS_INCLUDE_DIR}/Ludens/Media/Model.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Media/Bitmap.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Media/Format/WAV.h
+    ${LUDENS_INCLUDE_DIR}/Ludens/Media/Format/XML.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Media/Format/JSON.h
 )
 
@@ -19,11 +20,13 @@ set(MODULE_LIB
     Lib/Format/TinygltfLoader.h
     Lib/Format/TinygltfLoader.cpp
     Lib/Format/WAV.cpp
+    Lib/Format/XML.cpp
     Lib/Format/JSON.cpp
 )
 
 set(MODULE_TEST
     Test/MediaTest.cpp
+    Test/XMLTest.cpp
     Test/JSONTest.cpp
 )
 
@@ -37,6 +40,7 @@ target_link_libraries(${MODULE_NAME} PUBLIC
     msdfgen::msdfgen
     msdf-atlas-gen
     LDSystem
+    LDJobSystem
     LDSerial
     LDProfiler
 )
