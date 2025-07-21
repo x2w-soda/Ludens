@@ -27,8 +27,8 @@ R"(
 
 void main()
 {
-    float ndcx = (aPos.x / uFrame.width) * 2.0 - 1.0;
-    float ndcy = (aPos.y / uFrame.height) * 2.0 - 1.0;
+    float ndcx = (aPos.x / uFrame.screenExtent.x) * 2.0 - 1.0;
+    float ndcy = (aPos.y / uFrame.screenExtent.y) * 2.0 - 1.0;
     gl_Position = vec4(ndcx, ndcy, 0.0, 1.0);
     vUV = aUV;
     vColor = aColor;

@@ -1,7 +1,7 @@
 #pragma once
 
-#include <Ludens/RenderBackend/RBackend.h>
 #include <Ludens/Header/Math/Mat4.h>
+#include <Ludens/RenderBackend/RBackend.h>
 
 #define LD_GLSL_FRAME_SET R"(
 layout (set = 0, binding = 0) uniform frame {
@@ -10,8 +10,8 @@ layout (set = 0, binding = 0) uniform frame {
     mat4 viewProjMat;
     vec4 viewPos;
     vec4 dirLight;
-    float width;
-    float height;
+    vec2 screenExtent;
+    vec2 sceneExtent;
     float envPhase;
 } uFrame;
 layout (set = 0, binding = 1) uniform samplerCube uEnv;
@@ -34,14 +34,14 @@ extern RSetLayoutInfo sDoubleSampleSetLayout;
 
 struct FrameUBO
 {
-    Mat4 viewMat;
-    Mat4 projMat;
-    Mat4 viewProjMat;
-    Vec4 viewPos;
-    Vec4 dirLight;
-    float width;
-    float height;
-    float envPhase;
+    Mat4 viewMat;      /// main camera view matrix
+    Mat4 projMat;      /// main camera projection matrix
+    Mat4 viewProjMat;  /// main camera view-projection matrix product
+    Vec4 viewPos;      /// main camera view position
+    Vec4 dirLight;     /// directional light
+    Vec2 screenExtent; /// extent of the whole screen
+    Vec2 sceneExtent;  /// extent of the scene
+    float envPhase;    /// normalized environment map phase 0 to 1
 };
 
 } // namespace LD
