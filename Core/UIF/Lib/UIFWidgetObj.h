@@ -3,6 +3,7 @@
 #include <Ludens/Header/Math/Vec2.h>
 #include <Ludens/Media/Font.h>
 #include <Ludens/RenderBackend/RBackend.h>
+#include <Ludens/System/Allocator.h>
 #include <Ludens/UI/UI.h>
 #include <Ludens/UIF/UIFAnimation.h>
 #include <Ludens/UIF/UIFTheme.h>
@@ -32,8 +33,11 @@ struct ContextObj
     UIContext handle;
     FontAtlas fontAtlas;
     RImage fontAtlasImage;
+    PoolAllocator widgetPA;
     Theme theme;
     std::vector<WidgetObj*> windows;
+
+    WidgetObj* alloc_widget(WidgetType type, WindowObj* window, void* user);
 };
 
 struct WindowObj
@@ -123,6 +127,7 @@ struct WidgetObj
     WidgetNode node;
     WindowObj* window;
     void* user;
+    Widget::DrawFn drawFn;
     WidgetType type;
     union
     {

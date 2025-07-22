@@ -7,6 +7,11 @@
 namespace LD {
 namespace UIF {
 
+void Widget::set_on_draw(DrawFn drawFn)
+{
+    mObj->drawFn = drawFn;
+}
+
 bool Widget::is_hovered()
 {
     return mObj->handle.is_hovered();
@@ -19,6 +24,12 @@ bool Widget::is_pressed()
 
 void Widget::on_draw(ScreenRenderComponent renderer)
 {
+    if (mObj->drawFn)
+    {
+        mObj->drawFn({mObj}, renderer);
+        return;
+    }
+        
     switch (mObj->type)
     {
     case WIDGET_TYPE_PANEL:
@@ -66,49 +77,34 @@ void Widget::set_user(void* user)
 
 PanelWidget WidgetNode::add_panel(const UILayoutInfo& layoutI, const PanelWidgetInfo& widgetI, void* user)
 {
-    WidgetObj* obj = (WidgetObj*)heap_malloc(sizeof(WidgetObj), MEMORY_USAGE_UI);
-    obj->type = WIDGET_TYPE_PANEL;
-    obj->node = {obj};
-    obj->user = user;
-    obj->window = mObj->window;
+    WindowObj* window = mObj->window;
+    WidgetObj* obj = window->ctx->alloc_widget(WIDGET_TYPE_PANEL, window, user);
     obj->handle = mObj->handle.add_child(layoutI, obj);
     obj->as.panel.color = widgetI.color;
-
-    mObj->window->children.push_back({obj});
 
     return {obj};
 }
 
 ImageWidget WidgetNode::add_image(const UILayoutInfo& layoutI, const ImageWidgetInfo& widgetI, void* user)
 {
-    WidgetObj* obj = (WidgetObj*)heap_malloc(sizeof(WidgetObj), MEMORY_USAGE_UI);
-    obj->type = WIDGET_TYPE_IMAGE;
-    obj->node = {obj};
-    obj->user = user;
-    obj->window = mObj->window;
+    WindowObj* window = mObj->window;
+    WidgetObj* obj = window->ctx->alloc_widget(WIDGET_TYPE_IMAGE, window, user);
     obj->handle = mObj->handle.add_child(layoutI, obj);
     obj->as.image.base = obj;
     obj->as.image.imageHandle = widgetI.image;
-
-    mObj->window->children.push_back({obj});
 
     return {obj};
 }
 
 ButtonWidget WidgetNode::add_button(const UILayoutInfo& layout, const ButtonWidgetInfo& widgetI, void* user)
 {
-    WidgetObj* obj = (WidgetObj*)heap_malloc(sizeof(WidgetObj), MEMORY_USAGE_UI);
-    obj->type = WIDGET_TYPE_BUTTON;
-    obj->node = {obj};
-    obj->user = user;
-    obj->window = mObj->window;
+    WindowObj* window = mObj->window;
+    WidgetObj* obj = window->ctx->alloc_widget(WIDGET_TYPE_BUTTON, window, user);
     obj->handle = mObj->handle.add_child(layout, obj);
     obj->handle.set_on_press(&ButtonWidgetObj::on_press);
     obj->as.button.base = obj;
     obj->as.button.text = widgetI.text ? heap_strdup(widgetI.text, MEMORY_USAGE_UI) : nullptr;
     obj->as.button.user_on_press = widgetI.on_press;
-
-    mObj->window->children.push_back({obj});
 
     ButtonWidget handle{obj};
     return handle;
@@ -116,11 +112,8 @@ ButtonWidget WidgetNode::add_button(const UILayoutInfo& layout, const ButtonWidg
 
 SliderWidget WidgetNode::add_slider(const UILayoutInfo& layoutI, const SliderWidgetInfo& widgetI, void* user)
 {
-    WidgetObj* obj = (WidgetObj*)heap_malloc(sizeof(WidgetObj), MEMORY_USAGE_UI);
-    obj->type = WIDGET_TYPE_SLIDER;
-    obj->node = {obj};
-    obj->user = user;
-    obj->window = mObj->window;
+    WindowObj* window = mObj->window;
+    WidgetObj* obj = window->ctx->alloc_widget(WIDGET_TYPE_SLIDER, window, user);
     obj->handle = mObj->handle.add_child(layoutI, obj);
     obj->handle.set_on_drag(&SliderWidgetObj::on_drag);
     obj->as.slider.base = obj;
@@ -129,26 +122,19 @@ SliderWidget WidgetNode::add_slider(const UILayoutInfo& layoutI, const SliderWid
     obj->as.slider.value = widgetI.min;
     obj->as.slider.ratio = 0.0f;
 
-    mObj->window->children.push_back({obj});
-
     return {obj};
 }
 
 ToggleWidget WidgetNode::add_toggle(const UILayoutInfo& layoutI, const ToggleWidgetInfo& widgetI, void* user)
 {
-    WidgetObj* obj = (WidgetObj*)heap_malloc(sizeof(WidgetObj), MEMORY_USAGE_UI);
-    obj->type = WIDGET_TYPE_TOGGLE;
-    obj->node = {obj};
-    obj->user = user;
-    obj->window = mObj->window;
+    WindowObj* window = mObj->window;
+    WidgetObj* obj = window->ctx->alloc_widget(WIDGET_TYPE_TOGGLE, window, user);
     obj->handle = mObj->handle.add_child(layoutI, obj);
     obj->handle.set_on_press(&ToggleWidgetObj::on_press);
     obj->as.toggle.base = obj;
     obj->as.toggle.state = widgetI.state;
     obj->as.toggle.user_on_toggle = widgetI.on_toggle;
     obj->as.toggle.anim.reset(1.0f);
-
-    mObj->window->children.push_back({obj});
 
     return {obj};
 }
@@ -159,17 +145,12 @@ TextWidget WidgetNode::add_text(const UILayoutInfo& layoutI, const TextWidgetInf
     textLayoutI.sizeX = UISize::wrap_primary(&TextWidgetObj::wrap_size_fn, &TextWidgetObj::wrap_limit_fn);
     textLayoutI.sizeY = UISize::wrap_secondary();
 
-    WidgetObj* obj = (WidgetObj*)heap_malloc(sizeof(WidgetObj), MEMORY_USAGE_UI);
-    obj->type = WIDGET_TYPE_TEXT;
-    obj->node = {obj};
-    obj->user = user;
-    obj->window = mObj->window;
+    WindowObj* window = mObj->window;
+    WidgetObj* obj = window->ctx->alloc_widget(WIDGET_TYPE_TEXT, window, user);
     obj->handle = mObj->handle.add_child(textLayoutI, obj);
     obj->as.text.fontSize = widgetI.fontSize;
     obj->as.text.value = widgetI.cstr ? heap_strdup(widgetI.cstr, MEMORY_USAGE_UI) : nullptr;
     obj->as.text.fontAtlas = widgetI.fontAtlas;
-
-    mObj->window->children.push_back({obj});
 
     return {obj};
 }

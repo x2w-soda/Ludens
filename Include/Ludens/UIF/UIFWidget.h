@@ -14,6 +14,8 @@ struct WidgetObj;
 
 struct Widget : Handle<struct WidgetObj>
 {
+    typedef void (*DrawFn)(Widget widget, ScreenRenderComponent renderer);
+
     WidgetNode& node();
 
     Rect get_rect() const;
@@ -21,6 +23,9 @@ struct Widget : Handle<struct WidgetObj>
     void* get_user();
 
     void set_user(void* user);
+
+    /// @brief set custom draw function to be invoked
+    void set_on_draw(DrawFn drawFn);
 
     bool is_hovered();
 

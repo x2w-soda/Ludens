@@ -15,7 +15,7 @@ using WindowAreaID = uint32_t;
 
 struct WindowManagerInfo
 {
-    Rect rootArea;
+    Vec2 screenSize;
     FontAtlas fontAtlas;
     RImage fontAtlasImage;
 };
@@ -45,10 +45,6 @@ struct WindowManager : Handle<struct WindowManagerObj>
     /// @brief split an area to make room for right
     /// @return new area from right partition
     WindowAreaID split_right(WindowAreaID areaID, float ratio);
-
-    void set_area_size_callback(WindowAreaID areaID, SizeCallback callback);
-
-    void set_area_render_callback(WindowAreaID areaID, RenderCallback callback);
 };
 
 } // namespace UIF

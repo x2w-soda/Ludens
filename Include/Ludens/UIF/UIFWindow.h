@@ -1,8 +1,8 @@
 #pragma once
 
-#include <Ludens/UIF/UIFWidget.h>
 #include <Ludens/Header/Handle.h>
 #include <Ludens/UI/UI.h>
+#include <Ludens/UIF/UIFWidget.h>
 #include <vector>
 
 namespace LD {
@@ -19,7 +19,7 @@ struct Window : Widget
     /// @brief set window to fixed size
     void set_size(const Vec2& size);
 
-    /// @param children 
+    /// @param children
     void get_children(std::vector<Widget>& children);
 
     /// @brief get position and size in screen spcae
@@ -34,7 +34,8 @@ struct Window : Widget
 
 struct WindowInfo
 {
-    const char* name;
+    const char* name;          /// window identifier
+    bool defaultMouseControls; /// allow mouse drag to move and resize window
 };
 
 struct ContextInfo

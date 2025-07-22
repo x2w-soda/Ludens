@@ -5,6 +5,8 @@
 #include <Ludens/UIF/UIFWindowManager.h>
 
 #define INVALID_WINDOW_AREA 0
+#define WINDOW_AREA_MARGIN 6.0f
+#define TOP_BAR_HEIGHT 25.0f
 
 namespace LD {
 namespace UIF {
@@ -13,8 +15,6 @@ struct AreaNode
 {
     AreaNode* lch;                          /// left or top child area
     AreaNode* rch;                          /// right or bottom child area
-    WindowManager::RenderCallback onRender; /// callback to render Window in area
-    WindowManager::SizeCallback onSize;     /// callback to notify Window resize
     Window window;                          /// leaf nodes represent a window
     WindowAreaID areaID;
     Rect area;
@@ -23,12 +23,8 @@ struct AreaNode
     {
         LD_ASSERT(window && !lch && !rch); // only leaf nodes are windows
 
-        area = newArea;
         window.set_pos(area.get_pos());
         window.set_size(area.get_size());
-
-        if (onSize)
-            onSize(window);
     }
 };
 
@@ -78,10 +74,12 @@ WindowManagerObj::WindowManagerObj(const WindowManagerInfo& wmInfo)
     paI.isMultiPage = true;
     mNodePA = PoolAllocator::create(paI);
 
-    mRoot = alloc_node(wmInfo.rootArea);
+    Rect rootArea(0, TOP_BAR_HEIGHT, wmInfo.screenSize.x, wmInfo.screenSize.y - TOP_BAR_HEIGHT);
+
+    mRoot = alloc_node(rootArea);
     mRoot->areaID = mAreaIDCounter++;
-    mRoot->window = create_window(wmInfo.rootArea.get_size(), "window");
-    mRoot->window.set_pos(Vec2(wmInfo.rootArea.x, wmInfo.rootArea.y));
+    mRoot->window = create_window(rootArea.get_size(), "window");
+    mRoot->window.set_pos(rootArea.get_pos());
 }
 
 WindowManagerObj::~WindowManagerObj()
@@ -110,6 +108,7 @@ Window WindowManagerObj::create_window(const Vec2& extent, const char* name)
 
     WindowInfo windowI{};
     windowI.name = name;
+    windowI.defaultMouseControls = false;
 
     return mCtx.add_window(layoutI, windowI);
 }
@@ -118,8 +117,6 @@ AreaNode* WindowManagerObj::alloc_node(const Rect& area)
 {
     AreaNode* node = (AreaNode*)mNodePA.allocate();
     node->window = {};
-    node->onRender = nullptr;
-    node->onSize = nullptr;
     node->lch = nullptr;
     node->rch = nullptr;
     node->area = area;
@@ -162,16 +159,17 @@ WindowAreaID WindowManagerObj::split_right(WindowAreaID areaID, float ratio)
 
     Rect leftArea = node->area;
     leftArea.w = node->area.w * ratio;
+    leftArea.w -= WINDOW_AREA_MARGIN / 2.0f;
+
     node->lch = alloc_node(leftArea);
     node->lch->areaID = node->areaID;
     node->lch->window = node->window;
-    node->lch->onRender = node->onRender;
-    node->lch->onSize = node->onSize;
     node->lch->invalidate(leftArea);
 
     Rect rightArea = node->area;
-    rightArea.x += leftArea.w;
-    rightArea.w = node->area.w * (1.0f - ratio);
+    rightArea.x += leftArea.w + WINDOW_AREA_MARGIN;
+    rightArea.w = node->area.w * (1.0f - ratio) - WINDOW_AREA_MARGIN / 2.0f;
+
     node->rch = alloc_node(rightArea);
     node->rch->areaID = mAreaIDCounter++;
     node->rch->window = create_window(rightArea.get_size(), "window");
@@ -180,8 +178,6 @@ WindowAreaID WindowManagerObj::split_right(WindowAreaID areaID, float ratio)
     // becomes non-leaf node
     node->areaID = INVALID_WINDOW_AREA;
     node->window = {};
-    node->onRender = nullptr;
-    node->onSize = nullptr;
 
     return node->rch->areaID;
 }
@@ -198,8 +194,8 @@ void WindowManagerObj::render(ScreenRenderComponent renderer, AreaNode* node)
         render(renderer, node->rch);
 
     // render window area on leaf node
-    if (node->onRender && node->window)
-        node->onRender(node->window, renderer);
+    if (node->window)
+        node->window.on_draw(renderer);
 }
 
 void WindowManagerObj::get_workspace_windows_recursive(std::vector<Window>& windows, AreaNode* node)
@@ -267,14 +263,6 @@ void WindowManager::get_workspace_windows(std::vector<Window>& windows)
 WindowAreaID WindowManager::split_right(WindowAreaID areaID, float ratio)
 {
     return mObj->split_right(areaID, std::clamp(ratio, 0.05f, 0.95f));
-}
-
-void WindowManager::set_area_render_callback(WindowAreaID areaID, RenderCallback callback)
-{
-    AreaNode* root = mObj->get_root();
-    AreaNode* node = mObj->get_node(areaID, root);
-
-    node->onRender = callback;
 }
 
 } // namespace UIF

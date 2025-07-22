@@ -44,12 +44,33 @@ void WindowObj::on_drag(void* user, UIElement e, MouseButton btn, const Vec2& dr
         obj->handle.set_pos(dragPos - obj->dragOffset);
 }
 
+WidgetObj* ContextObj::alloc_widget(WidgetType type, WindowObj* window, void* user)
+{
+    WidgetObj* obj = (WidgetObj*)widgetPA.allocate();
+    memset(obj, 0, sizeof(WidgetObj));
+    obj->type = type;
+    obj->window = window;
+    obj->node = {obj};
+    obj->user = user;
+
+    window->children.push_back({obj});
+
+    return obj;
+}
+
 Context Context::create(const ContextInfo& info)
 {
     ContextObj* obj = heap_new<ContextObj>(MEMORY_USAGE_UI);
     obj->handle = UIContext::create();
     obj->fontAtlas = info.fontAtlas;
     obj->fontAtlasImage = info.fontAtlasImage;
+
+    PoolAllocatorInfo paI{};
+    paI.blockSize = sizeof(WidgetObj);
+    paI.isMultiPage = true;
+    paI.pageSize = 64; // widgets per memory page
+    paI.usage = MEMORY_USAGE_UI;
+    obj->widgetPA = PoolAllocator::create(paI);
 
     LD_ASSERT(obj->fontAtlas && obj->fontAtlasImage);
 
@@ -61,6 +82,7 @@ Context Context::create(const ContextInfo& info)
 void Context::destroy(Context ctx)
 {
     ContextObj* obj = ctx;
+    PoolAllocator::destroy(obj->widgetPA);
     UIContext::destroy(obj->handle);
 
     heap_delete<ContextObj>(obj);
@@ -71,6 +93,8 @@ void Context::update(float dt)
     float x, y;
     UIContext ctx = mObj->handle;
 
+    // TODO: migrate to event-based input handling,
+    //       polling input only makes sense when there is 1 context.
     if (Input::get_mouse_motion(x, y))
     {
         Input::get_mouse_position(x, y);
@@ -111,7 +135,9 @@ Window Context::add_window(const UILayoutInfo& layoutI, const WindowInfo& window
     obj->window = &obj->as.window;
     obj->handle = nativeHandle;
     obj->as.window.handle = nativeHandle;
-    obj->as.window.handle.set_on_drag(&WindowObj::on_drag);
+
+    if (windowI.defaultMouseControls)
+        obj->as.window.handle.set_on_drag(&WindowObj::on_drag);
 
     mObj->windows.push_back(obj);
 
