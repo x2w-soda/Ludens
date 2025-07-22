@@ -96,7 +96,7 @@ layout (push_constant) uniform PC {
 void main()
 {
     vec3 lightDir = normalize(vec3(uFrame.dirLight));
-    vec3 viewDir = normalize(uFrame.viewPos.xyz);
+    vec3 viewDir = normalize(uFrame.viewPos.xyz - vPos);
     vec3 H = normalize(lightDir + viewDir);
     vec3 N = vNormal;
     vec4 mrSample = texture(uMatMetallicRoughness, vUV);
@@ -117,8 +117,9 @@ void main()
     if (uMat.hasMetallicRoughnessTexture > 0)
         metallic = mrSample.b * uMat.metallicFactor;
 
-    vec3 envN = ld_rotate(uFrame.envPhase * 2.0 * M_PI, vec3(0.0, -1.0, 0.0)) * N;
-    vec3 env = texture(uEnv, envN).rgb;
+    vec3 reflectDir = reflect(-viewDir, N);
+    vec3 envSampleDir = ld_rotate(uFrame.envPhase * 2.0 * M_PI, vec3(0.0, -1.0, 0.0)) * reflectDir;
+    vec3 env = texture(uEnv, envSampleDir).rgb;
 
     color = mix(env, color, roughness);
 
