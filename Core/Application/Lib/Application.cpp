@@ -1,6 +1,7 @@
 #include "InputInternal.h"
 #include <GLFW/glfw3.h> // hide from user
 #include <Ludens/Application/Application.h>
+#include <Ludens/Application/Event.h>
 #include <Ludens/Application/Input.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Log/Log.h>
@@ -22,12 +23,15 @@ struct Window
     static void size_callback(GLFWwindow* window, int width, int height);
     static void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
     static void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
+    static void cursor_pos_callback(GLFWwindow* window, double xpos, double ypos);
 };
 
 struct ApplicationObj
 {
     Window window;
     RDevice rdevice;
+    void* user;
+    void (*onEvent)(const Event* event, void* user);
     bool isAlive;
 
     ApplicationObj() = delete;
@@ -64,9 +68,19 @@ void Window::key_callback(GLFWwindow* window, int key, int scancode, int action,
         return;
 
     if (action == GLFW_PRESS)
+    {
         Input::sKeyState[key] |= (PRESSED_BIT | PRESSED_THIS_FRAME_BIT);
+
+        KeyDownEvent event((KeyCode)key);
+        Application::on_event(&event);
+    }
     else if (action == GLFW_RELEASE)
+    {
         Input::sKeyState[key] = RELEASED_THIS_FRAME_BIT;
+
+        KeyUpEvent event((KeyCode)key);
+        Application::on_event(&event);
+    }
 }
 
 void Window::mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
@@ -75,9 +89,25 @@ void Window::mouse_button_callback(GLFWwindow* window, int button, int action, i
         return;
 
     if (action == GLFW_PRESS)
+    {
         Input::sMouseState[button] |= (PRESSED_BIT | PRESSED_THIS_FRAME_BIT);
+
+        MouseDownEvent event((MouseButton)button);
+        Application::on_event(&event);
+    }
     else if (action == GLFW_RELEASE)
+    {
         Input::sMouseState[button] = RELEASED_THIS_FRAME_BIT;
+
+        MouseUpEvent event((MouseButton)button);
+        Application::on_event(&event);
+    }
+}
+
+void Window::cursor_pos_callback(GLFWwindow* window, double xpos, double ypos)
+{
+    MouseMotionEvent event((float)xpos, (float)ypos);
+    Application::on_event(&event);
 }
 
 Application::Application(ApplicationObj* obj)
@@ -91,6 +121,8 @@ Application Application::create(const ApplicationInfo& appI)
 
     LD_ASSERT(sAppInstance == nullptr && "Application is a singleton");
     sAppInstance = heap_new<ApplicationObj>(MEMORY_USAGE_MISC, appI);
+    sAppInstance->onEvent = appI.onEvent;
+    sAppInstance->user = appI.user;
 
     return {sAppInstance};
 }
@@ -164,6 +196,14 @@ Application Application::get()
     return {sAppInstance};
 }
 
+void Application::on_event(const Event* event)
+{
+    if (!sAppInstance->onEvent)
+        return;
+
+    sAppInstance->onEvent(event, sAppInstance->user);
+}
+
 double Application::get_time()
 {
     return glfwGetTime();
@@ -215,6 +255,7 @@ ApplicationObj::ApplicationObj(const ApplicationInfo& appI)
     glfwSetWindowSizeCallback(window.handle, &Window::size_callback);
     glfwSetKeyCallback(window.handle, &Window::key_callback);
     glfwSetMouseButtonCallback(window.handle, &Window::mouse_button_callback);
+    glfwSetCursorPosCallback(window.handle, &Window::cursor_pos_callback);
 
     RDeviceInfo rdeviceI{
         .backend = RDEVICE_BACKEND_VULKAN,

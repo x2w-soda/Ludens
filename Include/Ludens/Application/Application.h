@@ -5,12 +5,16 @@
 
 namespace LD {
 
+struct Event;
+
 struct ApplicationInfo
 {
-    const char* name;
-    uint32_t width;
-    uint32_t height;
-    bool vsync;
+    const char* name;                                /// application window name
+    void* user;                                      /// arbitrary user data
+    void (*onEvent)(const Event* event, void* user); /// event callback
+    uint32_t width;                                  /// application window width
+    uint32_t height;                                 /// application window height
+    bool vsync;                                      /// whether vsync is enabled
 };
 
 /// @brief handle of a windowed application
@@ -30,6 +34,9 @@ public:
     /// @brief get singleton handle
     static Application get();
 
+    /// @brief pass an event to the application singleton
+    static void on_event(const Event* event);
+
     /// @brief get window width
     uint32_t width() const;
 
@@ -41,7 +48,7 @@ public:
 
     /// @brief chech whether the window is still active
     bool is_window_open();
-    
+
     /// @brief set window title name
     /// @param cstr null terminated C string
     void set_window_title(const char* cstr);

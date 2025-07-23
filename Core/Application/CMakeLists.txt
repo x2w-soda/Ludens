@@ -3,6 +3,7 @@ set(MODULE_NAME LDApplication)
 set(MODULE_INCLUDE
 	${LUDENS_INCLUDE_DIR}/Ludens/Application/Application.h
 	${LUDENS_INCLUDE_DIR}/Ludens/Application/Input.h
+	${LUDENS_INCLUDE_DIR}/Ludens/Application/Event.h
 )
 
 set(MODULE_LIB
