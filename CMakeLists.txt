@@ -9,7 +9,7 @@ option(LD_COMPILE_WITH_PROFILER "compile with profiler" OFF)
 message(STATUS "LD_COMPILE_WITH_PROFILER:  ${LD_COMPILE_WITH_PROFILER}")
 
 option(LD_BUILD_BENCHMARKS "build benchmarks" ON)
-message(STATUS "LD_BULID_BENCHMARKS:       ${LD_BUILD_BENCHMARKS}")
+message(STATUS "LD_BUILD_BENCHMARKS:       ${LD_BUILD_BENCHMARKS}")
 
 message(STATUS "CMAKE_CXX_COMPILER_ID:     ${CMAKE_CXX_COMPILER_ID}")
 message(STATUS "CMAKE_CXX_COMPILER:        ${CMAKE_CXX_COMPILER}")
@@ -248,7 +248,6 @@ add_subdirectory(Core/DSA)
 add_subdirectory(Core/DSP)
 add_subdirectory(Core/Serial)
 add_subdirectory(Core/Log)
-add_subdirectory(Core/UI)
 add_subdirectory(Core/Lua)
 add_subdirectory(Core/Media)
 add_subdirectory(Core/Camera)
@@ -256,7 +255,7 @@ add_subdirectory(Core/Gizmo)
 add_subdirectory(Core/RenderBackend)
 add_subdirectory(Core/RenderGraph)
 add_subdirectory(Core/RenderComponent)
-add_subdirectory(Core/UIF)
+add_subdirectory(Core/UI)
 add_subdirectory(Core/Application)
 
 add_library(LDCore INTERFACE)
@@ -269,7 +268,6 @@ target_link_libraries(LDCore INTERFACE
   LDDSP
   LDSerial
   LDLog
-  LDUI
   LDLua
   LDMedia
   LDCamera
@@ -277,7 +275,7 @@ target_link_libraries(LDCore INTERFACE
   LDRenderBackend
   LDRenderGraph
   LDRenderComponent
-  LDUIF
+  LDUI
   LDApplication
 )
 

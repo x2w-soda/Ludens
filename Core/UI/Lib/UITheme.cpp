@@ -1,9 +1,8 @@
-#include <Ludens/UIF/UIFTheme.h>
+#include <Ludens/UI/UITheme.h>
 
 namespace LD {
-namespace UIF {
 
-void get_default_theme(Theme& theme)
+void get_default_theme(UITheme& theme)
 {
     theme.surfaceColor = 0x0F1C1DFF;
     theme.onSurfaceColor = 0xDAE6E8FF;
@@ -15,5 +14,4 @@ void get_default_theme(Theme& theme)
     theme.onPrimaryContainerColor = 0xA6F5FFFF;
 }
 
-} // namespace UIF
 } // namespace LD

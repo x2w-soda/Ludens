@@ -1,6 +1,7 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <Extra/doctest/doctest.h>
-#include <Ludens/UI/UI.h>
+#include <Ludens/UI/UIContext.h>
+#include <Ludens/UI/UILayout.h>
 
 using namespace LD;
 
@@ -28,7 +29,10 @@ struct UITest
 {
     static UIContext create_test_context()
     {
-        return UIContext::create();
+        UIContextInfo ctxI;
+        ctxI.fontAtlas = {};
+        ctxI.fontAtlasImage = {};
+        return UIContext::create(ctxI);
     }
 };
 
@@ -38,9 +42,9 @@ struct Text
     const float glyphW = 10.0f;
     const float glyphH = 10.0f;
 
-    static void wrap_limit_fn(void* user, float& outMin, float& outMax)
+    static void wrap_limit_fn(UIWidgetObj* obj, float& outMin, float& outMax)
     {
-        Text& text = *(Text*)user;
+        Text& text = *(Text*)UIWidget(obj).get_user();
 
         size_t len = strlen(text.cstr);
 
@@ -49,9 +53,9 @@ struct Text
         outMax = len * text.glyphW;
     }
 
-    static float wrap_size_fn(void* user, float limitW)
+    static float wrap_size_fn(UIWidgetObj* obj, float limitW)
     {
-        Text& text = *(Text*)user;
+        Text& text = *(Text*)UIWidget(obj).get_user();
 
         // this is where we use font metrics
         // to layout text, for testing we assume monospace
@@ -91,7 +95,8 @@ TEST_CASE("UILayout window padding")
     UIWindow window = ctx.add_window(layoutI, windowI, nullptr);
 
     layoutI = make_fixed_size_layout(100, 100);
-    UIElement child = window.add_child(layoutI, nullptr);
+    UIPanelWidgetInfo panelI{};
+    UIPanelWidget child = window.node().add_panel(layoutI, panelI, nullptr);
 
     ctx.layout();
 
@@ -118,13 +123,14 @@ TEST_CASE("UILayout hbox child grows x")
     layoutI = make_fixed_size_layout(150, 150);
     layoutI.childAxis = UI_AXIS_X;
     layoutI.childPadding = {};
-    UIElement hbox = window.add_child(layoutI, nullptr);
+    UIPanelWidgetInfo panelI{};
+    UIPanelWidget hbox = window.node().add_panel(layoutI, panelI, nullptr);
 
     layoutI.sizeX = UISize::grow();
     layoutI.sizeY = UISize::fixed(20.0f);
-    UIElement c1 = hbox.add_child(layoutI, nullptr);
-    UIElement c2 = hbox.add_child(layoutI, nullptr);
-    UIElement c3 = hbox.add_child(layoutI, nullptr);
+    UIPanelWidget c1 = hbox.node().add_panel(layoutI, panelI, nullptr);
+    UIPanelWidget c2 = hbox.node().add_panel(layoutI, panelI, nullptr);
+    UIPanelWidget c3 = hbox.node().add_panel(layoutI, panelI, nullptr);
 
     ctx.layout();
 
@@ -156,13 +162,14 @@ TEST_CASE("UILayout hbox child grows y")
     layoutI = make_fixed_size_layout(150, 150);
     layoutI.childAxis = UI_AXIS_X;
     layoutI.childPadding = {};
-    UIElement hbox = window.add_child(layoutI, nullptr);
+    UIPanelWidgetInfo panelI{};
+    UIPanelWidget hbox = window.node().add_panel(layoutI, panelI, nullptr);
 
     layoutI.sizeX = UISize::fixed(20.0f);
     layoutI.sizeY = UISize::grow();
-    UIElement c1 = hbox.add_child(layoutI, nullptr);
-    UIElement c2 = hbox.add_child(layoutI, nullptr);
-    UIElement c3 = hbox.add_child(layoutI, nullptr);
+    UIPanelWidget c1 = hbox.node().add_panel(layoutI, panelI, nullptr);
+    UIPanelWidget c2 = hbox.node().add_panel(layoutI, panelI, nullptr);
+    UIPanelWidget c3 = hbox.node().add_panel(layoutI, panelI, nullptr);
 
     ctx.layout();
 
@@ -195,7 +202,8 @@ TEST_CASE("UILayout size wrapping")
     Text text{"some text"}; // 90x10
     layoutI.sizeX = UISize::wrap_primary(&Text::wrap_size_fn, &Text::wrap_limit_fn);
     layoutI.sizeY = UISize::wrap_secondary();
-    UIElement wrap = window.add_child(layoutI, &text);
+    UIPanelWidgetInfo panelI{};
+    UIPanelWidget wrap = window.node().add_panel(layoutI, panelI, &text);
 
     ctx.layout();
 

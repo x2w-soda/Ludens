@@ -1,22 +1,21 @@
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Header/Math/Rect.h>
 #include <Ludens/System/Allocator.h>
-#include <Ludens/UIF/UIFWindow.h>
-#include <Ludens/UIF/UIFWindowManager.h>
+#include <Ludens/UI/UIContext.h>
+#include <Ludens/UI/UIWindowManager.h>
 
 #define INVALID_WINDOW_AREA 0
 #define WINDOW_AREA_MARGIN 6.0f
 #define TOP_BAR_HEIGHT 25.0f
 
 namespace LD {
-namespace UIF {
 
 struct AreaNode
 {
-    AreaNode* lch;                          /// left or top child area
-    AreaNode* rch;                          /// right or bottom child area
-    Window window;                          /// leaf nodes represent a window
-    WindowAreaID areaID;
+    AreaNode* lch;   /// left or top child area
+    AreaNode* rch;   /// right or bottom child area
+    UIWindow window; /// leaf nodes represent a window
+    UIWindowAreaID areaID;
     Rect area;
 
     void invalidate(Rect newArea)
@@ -29,43 +28,48 @@ struct AreaNode
 };
 
 /// @brief Window Manager Implementation.
-class WindowManagerObj
+class UIWindowManagerObj
 {
 public:
-    WindowManagerObj(const WindowManagerInfo& wmInfo);
-    WindowManagerObj(const WindowManagerObj&) = delete;
-    ~WindowManagerObj();
+    UIWindowManagerObj(const UIWindowManagerInfo& wmInfo);
+    UIWindowManagerObj(const UIWindowManagerObj&) = delete;
+    ~UIWindowManagerObj();
 
-    WindowManagerObj& operator=(const WindowManagerObj&) = delete;
+    UIWindowManagerObj& operator=(const UIWindowManagerObj&) = delete;
 
     void update(float delta);
 
-    Window create_window(const Vec2& extent, const char* name);
+    UIWindow create_window(const Vec2& extent, const char* name);
+
+    UIContext get_context();
+
+    UIWindow get_topbar_window();
 
     AreaNode* alloc_node(const Rect& area);
     AreaNode* get_root();
-    AreaNode* get_node(WindowAreaID areaID, AreaNode* root);
+    AreaNode* get_node(UIWindowAreaID areaID, AreaNode* root);
 
-    WindowAreaID split_right(WindowAreaID areaID, float ratio);
+    UIWindowAreaID split_right(UIWindowAreaID areaID, float ratio);
 
     void render(ScreenRenderComponent renderer, AreaNode* node);
 
-    void get_workspace_windows_recursive(std::vector<Window>& windows, AreaNode* node);
+    void get_workspace_windows_recursive(std::vector<UIWindow>& windows, AreaNode* node);
 
 private:
-    Context mCtx;
+    UIContext mCtx;
     PoolAllocator mNodePA;
+    UIWindow mTopbar;
     AreaNode* mRoot;
-    WindowAreaID mAreaIDCounter;
+    UIWindowAreaID mAreaIDCounter;
 };
 
-WindowManagerObj::WindowManagerObj(const WindowManagerInfo& wmInfo)
+UIWindowManagerObj::UIWindowManagerObj(const UIWindowManagerInfo& wmInfo)
     : mAreaIDCounter(1), mRoot(nullptr)
 {
-    UIF::ContextInfo ctxI{};
+    UIContextInfo ctxI{};
     ctxI.fontAtlas = wmInfo.fontAtlas;
     ctxI.fontAtlasImage = wmInfo.fontAtlasImage;
-    mCtx = UIF::Context::create(ctxI);
+    mCtx = UIContext::create(ctxI);
 
     PoolAllocatorInfo paI{};
     paI.usage = MEMORY_USAGE_MISC;
@@ -73,6 +77,18 @@ WindowManagerObj::WindowManagerObj(const WindowManagerInfo& wmInfo)
     paI.pageSize = 16;
     paI.isMultiPage = true;
     mNodePA = PoolAllocator::create(paI);
+
+    UILayoutInfo layoutI{};
+    layoutI.childAxis = UIAxis::UI_AXIS_X;
+    layoutI.childGap = 0.0f;
+    layoutI.childPadding = {};
+    layoutI.sizeX = UISize::fixed(wmInfo.screenSize.x);
+    layoutI.sizeY = UISize::fixed(TOP_BAR_HEIGHT);
+    UIWindowInfo windowI{};
+    windowI.name = "topbar";
+    windowI.defaultMouseControls = false;
+    mTopbar = mCtx.add_window(layoutI, windowI, nullptr);
+    mTopbar.set_pos(Vec2(0.0f, 0.0f));
 
     Rect rootArea(0, TOP_BAR_HEIGHT, wmInfo.screenSize.x, wmInfo.screenSize.y - TOP_BAR_HEIGHT);
 
@@ -82,22 +98,22 @@ WindowManagerObj::WindowManagerObj(const WindowManagerInfo& wmInfo)
     mRoot->window.set_pos(rootArea.get_pos());
 }
 
-WindowManagerObj::~WindowManagerObj()
+UIWindowManagerObj::~UIWindowManagerObj()
 {
     // TODO: delete windows recusrively
 
     PoolAllocator::destroy(mNodePA);
 
-    UIF::Context::destroy(mCtx);
+    UIContext::destroy(mCtx);
 }
 
-void WindowManagerObj::update(float delta)
+void UIWindowManagerObj::update(float delta)
 {
     // updates the actual window layout
     mCtx.update(delta);
 }
 
-Window WindowManagerObj::create_window(const Vec2& extent, const char* name)
+UIWindow UIWindowManagerObj::create_window(const Vec2& extent, const char* name)
 {
     UILayoutInfo layoutI{};
     layoutI.childAxis = UIAxis::UI_AXIS_Y;
@@ -106,14 +122,24 @@ Window WindowManagerObj::create_window(const Vec2& extent, const char* name)
     layoutI.sizeX = UISize::fixed(extent.x);
     layoutI.sizeY = UISize::fixed(extent.y);
 
-    WindowInfo windowI{};
+    UIWindowInfo windowI{};
     windowI.name = name;
     windowI.defaultMouseControls = false;
 
-    return mCtx.add_window(layoutI, windowI);
+    return mCtx.add_window(layoutI, windowI, nullptr);
 }
 
-AreaNode* WindowManagerObj::alloc_node(const Rect& area)
+UIContext UIWindowManagerObj::get_context()
+{
+    return mCtx;
+}
+
+UIWindow UIWindowManagerObj::get_topbar_window()
+{
+    return mTopbar;
+}
+
+AreaNode* UIWindowManagerObj::alloc_node(const Rect& area)
 {
     AreaNode* node = (AreaNode*)mNodePA.allocate();
     node->window = {};
@@ -125,14 +151,14 @@ AreaNode* WindowManagerObj::alloc_node(const Rect& area)
     return node;
 }
 
-AreaNode* WindowManagerObj::get_root()
+AreaNode* UIWindowManagerObj::get_root()
 {
     return mRoot;
 }
 
 // NOTE: When creating and destroy areas, existing AreaNode* can get invalidated.
 //       This silly recursive search grabs the latest AreaNode* by ID matching.
-AreaNode* WindowManagerObj::get_node(WindowAreaID areaID, AreaNode* node)
+AreaNode* UIWindowManagerObj::get_node(UIWindowAreaID areaID, AreaNode* node)
 {
     if (!node)
         return nullptr;
@@ -151,7 +177,7 @@ AreaNode* WindowManagerObj::get_node(WindowAreaID areaID, AreaNode* node)
     return nullptr;
 }
 
-WindowAreaID WindowManagerObj::split_right(WindowAreaID areaID, float ratio)
+UIWindowAreaID UIWindowManagerObj::split_right(UIWindowAreaID areaID, float ratio)
 {
     AreaNode* node = get_node(areaID, mRoot);
     if (!node)
@@ -182,7 +208,7 @@ WindowAreaID WindowManagerObj::split_right(WindowAreaID areaID, float ratio)
     return node->rch->areaID;
 }
 
-void WindowManagerObj::render(ScreenRenderComponent renderer, AreaNode* node)
+void UIWindowManagerObj::render(ScreenRenderComponent renderer, AreaNode* node)
 {
     if (!node)
         return;
@@ -198,7 +224,7 @@ void WindowManagerObj::render(ScreenRenderComponent renderer, AreaNode* node)
         node->window.on_draw(renderer);
 }
 
-void WindowManagerObj::get_workspace_windows_recursive(std::vector<Window>& windows, AreaNode* node)
+void UIWindowManagerObj::get_workspace_windows_recursive(std::vector<UIWindow>& windows, AreaNode* node)
 {
     if (!node)
         return;
@@ -214,56 +240,67 @@ void WindowManagerObj::get_workspace_windows_recursive(std::vector<Window>& wind
         get_workspace_windows_recursive(windows, node->rch);
 }
 
-WindowManager WindowManager::create(const WindowManagerInfo& wmInfo)
+UIWindowManager UIWindowManager::create(const UIWindowManagerInfo& wmInfo)
 {
-    WindowManagerObj* obj = heap_new<WindowManagerObj>(MEMORY_USAGE_MISC, wmInfo);
+    UIWindowManagerObj* obj = heap_new<UIWindowManagerObj>(MEMORY_USAGE_MISC, wmInfo);
 
     return {obj};
 }
 
-void WindowManager::destroy(WindowManager wm)
+void UIWindowManager::destroy(UIWindowManager wm)
 {
-    WindowManagerObj* obj = wm;
+    UIWindowManagerObj* obj = wm;
 
-    heap_delete<WindowManagerObj>(obj);
+    heap_delete<UIWindowManagerObj>(obj);
 }
 
-void WindowManager::update(float delta)
+void UIWindowManager::update(float delta)
 {
     mObj->update(delta);
 }
 
-void WindowManager::render(ScreenRenderComponent renderer)
+void UIWindowManager::render(ScreenRenderComponent renderer)
 {
-    AreaNode* root = mObj->get_root();
+    UIWindow topbar = mObj->get_topbar_window();
+    topbar.on_draw(renderer);
 
+    AreaNode* root = mObj->get_root();
     mObj->render(renderer, root);
 }
 
-WindowAreaID WindowManager::get_root_area()
+UIContext UIWindowManager::get_context()
+{
+    return mObj->get_context();
+}
+
+UIWindowAreaID UIWindowManager::get_root_area()
 {
     return mObj->get_root()->areaID;
 }
 
-Window WindowManager::get_area_window(WindowAreaID areaID)
+UIWindow UIWindowManager::get_topbar_window()
+{
+    return mObj->get_topbar_window();
+}
+
+UIWindow UIWindowManager::get_area_window(UIWindowAreaID areaID)
 {
     AreaNode* root = mObj->get_root();
     AreaNode* node = mObj->get_node(areaID, root);
 
-    return node ? node->window : Window{};
+    return node ? node->window : UIWindow{};
 }
 
-void WindowManager::get_workspace_windows(std::vector<Window>& windows)
+void UIWindowManager::get_workspace_windows(std::vector<UIWindow>& windows)
 {
     windows.clear();
 
     mObj->get_workspace_windows_recursive(windows, mObj->get_root());
 }
 
-WindowAreaID WindowManager::split_right(WindowAreaID areaID, float ratio)
+UIWindowAreaID UIWindowManager::split_right(UIWindowAreaID areaID, float ratio)
 {
     return mObj->split_right(areaID, std::clamp(ratio, 0.05f, 0.95f));
 }
 
-} // namespace UIF
 } // namespace LD

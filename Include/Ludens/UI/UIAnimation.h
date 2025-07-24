@@ -3,10 +3,9 @@
 #include <algorithm>
 
 namespace LD {
-namespace UIF {
 
 template <typename TInterpolate>
-class Animation
+class UIAnimation
 {
 public:
     /// @brief explict reset that cancels current animation
@@ -79,5 +78,4 @@ struct QuadraticInterpolation
     }
 };
 
-} // namespace UIF
 } // namespace LD

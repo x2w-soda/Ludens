@@ -3,12 +3,11 @@
 #include <Ludens/Header/Color.h>
 
 namespace LD {
-namespace UIF {
 
 // TODO: This is super temporary stuff, haven't really decided
 //       on default UI styling just yet. Font size and padding
 //       could also be part of a Theme.
-struct Theme
+struct UITheme
 {
     Color surfaceColor;
     Color onSurfaceColor;
@@ -20,7 +19,6 @@ struct Theme
     Color onBackgroundColor;
 };
 
-void get_default_theme(Theme& theme);
+void get_default_theme(UITheme& theme);
 
-} // namespace UIF
 } // namespace LD
