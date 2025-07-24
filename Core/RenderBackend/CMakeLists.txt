@@ -30,11 +30,12 @@ set(MODULE_INCLUDE
   "${LUDENS_INCLUDE_DIR}/Ludens/RenderBackend/RUtil.h"
   "${LUDENS_INCLUDE_DIR}/Ludens/RenderBackend/RStager.h"
   "${LUDENS_INCLUDE_DIR}/Ludens/RenderBackend/LDShaderParser.h"
+  "${LUDENS_INCLUDE_DIR}/Ludens/RenderBackend/LDShaderCompiler.h"
 )
 
 set(MODULE_LIB
   Lib/RBackendObj.h
-	Lib/RBackendVK.cpp
+  Lib/RBackendVK.cpp
   Lib/RBackend.cpp
   Lib/RShaderCompiler.h
   Lib/RShaderCompiler.cpp
@@ -42,10 +43,12 @@ set(MODULE_LIB
   Lib/RUtil.cpp
   Lib/RStager.cpp
   Lib/LDShaderParser.cpp
+  Lib/LDShaderCompiler.cpp
 )
 
 set(MODULE_TEST
   Test/RenderBackendTest.cpp
+  Test/LDShaderParserTest.cpp
 )
 
 add_library(${MODULE_NAME} STATIC
