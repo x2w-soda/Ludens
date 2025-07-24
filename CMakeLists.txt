@@ -301,5 +301,14 @@ add_custom_target(ld_doxygen
 
 # Ludens Builder
 # - standalone command line utility
+# - headers in ${LUDENS_INCLUDE_DIR}/LudensBuilder
+
+add_subdirectory(LDBuilder/BDocumentCompiler)
+
+add_library(LDBuilderLibs INTERFACE)
+target_link_libraries(LDBuilderLibs INTERFACE
+  LDBDocumentCompiler
+)
 
 add_subdirectory(LDBuilder)
+

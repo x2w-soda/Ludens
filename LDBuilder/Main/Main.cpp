@@ -6,6 +6,7 @@
 #include <Ludens/JobSystem/JobSystem.h>
 #include <Ludens/Log/Log.h>
 #include <Ludens/System/FileSystem.h>
+#include <LudensBuilder/BDocumentCompiler/BDocumentCompiler.h>
 #include <cstdlib>
 #include <filesystem>
 
@@ -117,6 +118,13 @@ int main(int argc, char** argv)
             sLog.warn("extraction failed");
 
         MeshUtil::destroy(util);
+    }
+    else if (mode == "compile_documents")
+    {
+        DocumentCompilerInfo compilerI{};
+        compilerI.pathToDoxygenXML = fs::path(argv[2]);
+        DocumentCompiler compiler = DocumentCompiler::create(compilerI);
+        DocumentCompiler::destroy(compiler);
     }
 
     return EXIT_SUCCESS;
