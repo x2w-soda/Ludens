@@ -7,7 +7,7 @@
 
 namespace LD {
 
-static Ray get_camera_ray(const Camera& camera, const Vec2& screenPos, const Vec2& screenSize);
+static Ray get_camera_ray(Camera camera, const Vec2& screenPos, const Vec2& screenSize);
 static Ray get_axis_ray(Vec3 origin, GizmoAxis axis);
 static Vec3 get_axis_unit(GizmoAxis axis);
 static Plane get_plane(Vec3 point, GizmoPlane plane);
@@ -249,7 +249,7 @@ Vec3 Gizmo::get_axis_scale()
     return scale2;
 }
 
-static Ray get_camera_ray(const Camera& camera, const Vec2& screenPos, const Vec2& screenSize)
+static Ray get_camera_ray(Camera camera, const Vec2& screenPos, const Vec2& screenSize)
 {
     Vec3 worldNear, worldFar;
     camera.unproject(screenPos, screenSize, worldNear, worldFar);

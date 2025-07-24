@@ -60,6 +60,9 @@ void Window::size_callback(GLFWwindow* window, int width, int height)
 
     w->width = width;
     w->height = height;
+
+    ApplicationResizeEvent event(width, height);
+    Application::on_event(&event);
 }
 
 void Window::key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
@@ -148,6 +151,11 @@ uint32_t Application::height() const
 float Application::aspect_ratio() const
 {
     return (float)mObj->window.width / (float)mObj->window.height;
+}
+
+bool Application::is_window_minimized()
+{
+    return mObj->window.width == 0 || mObj->window.height == 0;
 }
 
 bool Application::is_window_open()

@@ -6,6 +6,7 @@ namespace LD {
 
 enum EventType
 {
+    EVENT_TYPE_APPLICAITON_RESIZE,
     EVENT_TYPE_KEY_DOWN,
     EVENT_TYPE_KEY_UP,
     EVENT_TYPE_MOUSE_MOTION,
@@ -18,6 +19,13 @@ struct Event
     EventType type;
 
     Event(EventType type) : type(type) {}
+};
+
+struct ApplicationResizeEvent : Event
+{
+    int width, height;
+
+    ApplicationResizeEvent(int width, int height) : Event(EVENT_TYPE_APPLICAITON_RESIZE), width(width), height(height) {}
 };
 
 struct KeyDownEvent : Event

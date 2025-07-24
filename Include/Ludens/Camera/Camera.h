@@ -69,6 +69,9 @@ struct Camera : Handle<struct CameraObj>
     /// @brief configure camera to use perspective projection
     void set_perspective(const CameraPerspectiveInfo& perspectiveInfo);
 
+    /// @brief configure the aspect ratio of perspective projection
+    void set_aspect_ratio(float ar);
+
     /// @brief get the current perspective configuration
     const CameraPerspectiveInfo& get_perspective() const;
 

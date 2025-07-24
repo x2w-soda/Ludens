@@ -127,6 +127,14 @@ void Camera::set_perspective(const CameraPerspectiveInfo& perspectiveInfo)
     mObj->isPerspective = true;
 }
 
+void Camera::set_aspect_ratio(float ar)
+{
+    LD_ASSERT(mObj->isPerspective);
+
+    mObj->perspective.aspectRatio = ar;
+    mObj->proj = Mat4::perspective(mObj->perspective.fov, mObj->perspective.aspectRatio, mObj->perspective.nearClip, mObj->perspective.farClip);
+}
+
 const CameraPerspectiveInfo& Camera::get_perspective() const
 {
     LD_ASSERT(mObj->isPerspective);

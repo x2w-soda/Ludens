@@ -46,6 +46,9 @@ public:
     /// @brief get window aspect ratio
     float aspect_ratio() const;
 
+    /// @brief check whether the window is currently minimized
+    bool is_window_minimized();
+
     /// @brief chech whether the window is still active
     bool is_window_open();
 

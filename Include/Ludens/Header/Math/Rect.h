@@ -22,10 +22,22 @@ struct TRect
         y_ = y;
     }
 
+    inline void set_pos(T x_, T y_)
+    {
+        x = x_;
+        y = y_;
+    }
+
     inline void get_size(T& w_, T& h_) const
     {
         w_ = w;
         h_ = h;
+    }
+
+    inline void set_size(T w_, T h_)
+    {
+        w = w_;
+        h = h_;
     }
 
     /// @brief check whether the rect contains a point
