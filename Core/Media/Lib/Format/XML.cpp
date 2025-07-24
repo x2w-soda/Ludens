@@ -352,7 +352,7 @@ XMLDocument XMLDocument::create_from_file(const std::filesystem::path& path)
     }
 
     doc.parse((const char*)obj->fileBuffer, fileSize);
-
+    
     return {obj};
 }
 
@@ -392,6 +392,34 @@ XMLAttribute XMLDocument::get_declaration()
 XMLElement XMLDocument::get_root()
 {
     return {mObj->root};
+}
+
+void XMLParseJob::submit(const std::vector<std::filesystem::path>& paths)
+{
+    mHeader.type = 0;
+    mHeader.user = this;
+    mHeader.fn = &XMLParseJob::execute;
+    mPaths = paths;
+
+    JobSystem js = JobSystem::get();
+    js.submit(&mHeader, JOB_DISPATCH_STANDARD);
+}
+
+void XMLParseJob::get_results(std::vector<XMLDocument>& docs)
+{
+    docs = mDocs;
+}
+
+void XMLParseJob::execute(void* user)
+{
+    XMLParseJob& self = *(XMLParseJob*)user;
+
+    self.mDocs.resize(self.mPaths.size());
+
+    for (size_t i = 0; i < self.mPaths.size(); i++)
+    {
+        self.mDocs[i] = XMLDocument::create_from_file(self.mPaths[i]);
+    }
 }
 
 #pragma endregion PublicAPI

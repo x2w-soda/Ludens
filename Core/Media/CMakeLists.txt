@@ -6,6 +6,7 @@ set(MODULE_INCLUDE
     ${LUDENS_INCLUDE_DIR}/Ludens/Media/Model.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Media/Bitmap.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Media/Format/WAV.h
+    ${LUDENS_INCLUDE_DIR}/Ludens/Media/Format/MD.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Media/Format/XML.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Media/Format/JSON.h
 )
@@ -20,12 +21,14 @@ set(MODULE_LIB
     Lib/Format/TinygltfLoader.h
     Lib/Format/TinygltfLoader.cpp
     Lib/Format/WAV.cpp
+    Lib/Format/MD.cpp
     Lib/Format/XML.cpp
     Lib/Format/JSON.cpp
 )
 
 set(MODULE_TEST
     Test/MediaTest.cpp
+    Test/MDTest.cpp
     Test/XMLTest.cpp
     Test/JSONTest.cpp
 )
@@ -36,6 +39,7 @@ add_library(${MODULE_NAME}
 
 target_link_libraries(${MODULE_NAME} PUBLIC
     stb
+    md4c
     tinygltf
     msdfgen::msdfgen
     msdf-atlas-gen
@@ -48,6 +52,7 @@ target_link_libraries(${MODULE_NAME} PUBLIC
 target_include_directories(${MODULE_NAME} PRIVATE
     ${msdfgen_SOURCE_DIR}
     ${tinygltf_SOURCE_DIR}
+    ${md4c_SOURCE_DIR}/src
     ${rapidjson_SOURCE_DIR}/include
     ${LUDENS_INCLUDE_DIR}
     ${LUDENS_EXTRA_DIR}

@@ -193,6 +193,18 @@ FetchContent_MakeAvailable(tinygltf)
 message(STATUS "LUDENS tinygltf SOURCE DIR: ${tinygltf_SOURCE_DIR}")
 target_link_libraries(tinygltf PUBLIC stb)
 
+## Fetch MD4C
+
+FetchContent_Declare(
+  md4c
+  GIT_REPOSITORY https://github.com/mity/md4c.git
+  GIT_TAG release-0.5.2
+)
+
+set(BUILD_MD2HTML_EXECUTABLE   OFF CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(md4c)
+message(STATUS "LUDENS md4c SOURCE DIR:     ${md4c_SOURCE_DIR}")
+
 ## Fetch RapidJSON
 
 FetchContent_Declare(

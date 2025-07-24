@@ -2,6 +2,7 @@
 
 #include <Ludens/DSA/StringView.h>
 #include <Ludens/Header/Handle.h>
+#include <Ludens/JobSystem/JobSystem.h>
 #include <filesystem>
 #include <vector>
 
@@ -52,6 +53,21 @@ struct XMLDocument : Handle<struct XMLDocumentObj>
 
     /// @brief get DOM root element
     XMLElement get_root();
+};
+
+class XMLParseJob
+{
+public:
+    void submit(const std::vector<std::filesystem::path>& paths);
+
+    void get_results(std::vector<XMLDocument>& docs);
+
+private:
+    static void execute(void* user);
+
+    JobHeader mHeader;
+    std::vector<std::filesystem::path> mPaths;
+    std::vector<XMLDocument> mDocs;
 };
 
 } // namespace LD
