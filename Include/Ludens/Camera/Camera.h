@@ -55,7 +55,7 @@ struct Camera : Handle<struct CameraObj>
     /// @param screenSize the screen extent
     /// @param worldNear the world position when unprojected on the near plane
     /// @param worldFar the world position when unprojected on the far plane
-    void unproject(const Vec2& screenPos, const Vec2& screenSize, Vec3& worldNear, Vec3& worldFar) const;
+    void unproject(const Vec2& screenPos, const Vec2& screenSize, Vec3& worldNear, Vec3& worldFar);
 
     /// @brief set camera world position
     void set_pos(const Vec3& pos);
@@ -91,10 +91,10 @@ struct Camera : Handle<struct CameraObj>
     const Mat4& get_proj() const;
 
     /// @brief get camera view matrix
-    const Mat4& get_view() const;
+    Mat4 get_view();
 
     /// @brief get product of camera view matrix and projection matrix
-    const Mat4& get_view_proj() const;
+    Mat4 get_view_proj();
 };
 
 } // namespace LD

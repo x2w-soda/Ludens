@@ -83,7 +83,7 @@ float Camera::screen_to_world_size(const Vec3& worldPos, float screenSizeY, floa
     return worldSize;
 }
 
-void Camera::unproject(const Vec2& screenPos, const Vec2& screenSize, Vec3& worldNear, Vec3& worldFar) const
+void Camera::unproject(const Vec2& screenPos, const Vec2& screenSize, Vec3& worldNear, Vec3& worldFar)
 {
     float ndcX = (screenPos.x / screenSize.x) * 2.0f - 1.0f;
     float ndcY = (screenPos.y / screenSize.y) * 2.0f - 1.0f;
@@ -168,7 +168,7 @@ const Mat4& Camera::get_proj() const
     return mObj->proj;
 }
 
-const Mat4& Camera::get_view() const
+Mat4 Camera::get_view()
 {
     if (mObj->isViewDirty)
     {
@@ -179,7 +179,7 @@ const Mat4& Camera::get_view() const
     return mObj->view;
 }
 
-const Mat4& Camera::get_view_proj() const
+Mat4 Camera::get_view_proj()
 {
     return mObj->proj * get_view();
 }
