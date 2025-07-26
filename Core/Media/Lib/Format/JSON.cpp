@@ -1,5 +1,6 @@
 #include <Ludens/Media/Format/JSON.h>
 #include <Ludens/System/Allocator.h>
+#include <Ludens/System/FileSystem.h>
 #include <Ludens/System/Memory.h>
 #include <format>
 #include <string>
@@ -32,6 +33,7 @@ struct JSONDocumentObj
     rapidjson::Document doc;
     PoolAllocator nodePA;
     JSONNode root;
+    byte* fileBuffer;
 
     inline rapidjson::MemoryPoolAllocator<>& allocator()
     {
@@ -130,6 +132,16 @@ bool JSONNode::is_u64(uint64_t* u64) const
     return match;
 }
 
+bool JSONNode::is_f32(float* f32) const
+{
+    bool match = mObj->value.IsFloat();
+
+    if (match && f32)
+        *f32 = mObj->value.GetFloat();
+
+    return match;
+}
+
 int JSONNode::get_size()
 {
     if (mObj->value.IsArray())
@@ -172,6 +184,37 @@ JSONNode JSONNode::get_index(int idx)
 JSONDocument JSONDocument::create()
 {
     JSONDocumentObj* obj = heap_new<JSONDocumentObj>(MEMORY_USAGE_MEDIA);
+    obj->fileBuffer = nullptr;
+
+    return {obj};
+}
+
+JSONDocument JSONDocument::create_from_file(const std::filesystem::path& path)
+{
+    if (!FS::exists(path))
+        return {};
+
+    JSONDocument doc = JSONDocument::create();
+    JSONDocumentObj* obj = doc;
+
+    uint64_t fileSize = FS::get_file_size(path);
+    obj->fileBuffer = (byte*)heap_malloc(fileSize, MEMORY_USAGE_MEDIA);
+    bool ok = FS::read_file(path, fileSize, obj->fileBuffer);
+
+    if (!ok)
+    {
+        JSONDocument::destroy(doc);
+        return {};
+    }
+
+    std::string error;
+    ok = doc.parse((const char*)obj->fileBuffer, fileSize, error);
+
+    if (!ok)
+    {
+        JSONDocument::destroy(doc);
+        return {};
+    }
 
     return {obj};
 }
@@ -183,10 +226,13 @@ void JSONDocument::destroy(JSONDocument doc)
     if (obj->nodePA)
         PoolAllocator::destroy(obj->nodePA);
 
+    if (obj->fileBuffer)
+        heap_free(obj->fileBuffer);
+
     heap_delete<JSONDocumentObj>(obj);
 }
 
-bool JSONDocument::parse(const char* json, std::string& error)
+bool JSONDocument::parse(const char* json, size_t size, std::string& error)
 {
     if (mObj->nodePA)
     {
@@ -195,7 +241,7 @@ bool JSONDocument::parse(const char* json, std::string& error)
     }
 
     error.clear();
-    rapidjson::ParseResult result = mObj->doc.Parse(json);
+    rapidjson::ParseResult result = mObj->doc.Parse(json, size);
 
     if (!result)
     {

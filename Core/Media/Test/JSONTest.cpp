@@ -8,10 +8,10 @@ using namespace LD;
 TEST_CASE("JSON object")
 {
     // from the rapidjson example
-    const char* json = R"({"project":"rapidjson","stars":10})";
+    const char json[] = R"({"project":"rapidjson","stars":10})";
     JSONDocument doc = JSONDocument::create();
     std::string error;
-    bool success = doc.parse(json, error);
+    bool success = doc.parse(json, sizeof(json) - 1, error);
     CHECK(success);
 
     JSONNode root = doc.get_root();
@@ -39,10 +39,10 @@ TEST_CASE("JSON object")
 
 TEST_CASE("JSON array")
 {
-    const char* json = R"([123, false, true, [ "string" ]])";
+    const char json[] = R"([123, false, true, [ "string" ]])";
     JSONDocument doc = JSONDocument::create();
     std::string error;
-    bool success = doc.parse(json, error);
+    bool success = doc.parse(json, sizeof(json) - 1, error);
     CHECK(success);
 
     JSONNode root = doc.get_root();

@@ -1,8 +1,9 @@
 #pragma once
 
 #include <Ludens/Header/Handle.h>
-#include <string>
 #include <cstdint>
+#include <filesystem>
+#include <string>
 
 namespace LD {
 
@@ -53,6 +54,9 @@ struct JSONNode : Handle<struct JSONNodeObj>
     /// @brief check if node is a JSON 64-bit unsigned integer
     bool is_u64(uint64_t* u64) const;
 
+    /// @brief check if node is a 32-bit floating point
+    bool is_f32(float* f32) const;
+
     /// @brief get number of elements in array or number of members in object
     /// @return the size of the array or object, or a negative value otherwise
     int get_size();
@@ -71,13 +75,14 @@ struct JSONNode : Handle<struct JSONNodeObj>
 struct JSONDocument : Handle<struct JSONDocumentObj>
 {
     static JSONDocument create();
+    static JSONDocument create_from_file(const std::filesystem::path& path);
     static void destroy(JSONDocument doc);
 
     /// @brief parse json string and construct document
     /// @param error output error on failure
     /// @return true on success
     /// @warning all nodes from previous document are invalidated
-    bool parse(const char* json, std::string& error);
+    bool parse(const char* json, size_t size, std::string& error);
 
     JSONNode get_root();
 };
