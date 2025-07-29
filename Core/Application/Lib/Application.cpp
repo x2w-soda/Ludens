@@ -33,6 +33,9 @@ struct ApplicationObj
     void* user;
     void (*onEvent)(const Event* event, void* user);
     bool isAlive;
+    double timeDelta;
+    double timePrevFrame;
+    double timeThisFrame;
 
     ApplicationObj() = delete;
     ApplicationObj(const ApplicationObj&) = delete;
@@ -40,6 +43,8 @@ struct ApplicationObj
     ~ApplicationObj();
 
     ApplicationObj& operator=(const ApplicationObj&) = delete;
+
+    void frame_boundary();
 };
 
 static ApplicationObj* sAppInstance = nullptr;
@@ -172,6 +177,10 @@ void Application::poll_events()
 {
     LD_PROFILE_SCOPE;
 
+    // updates application delta time
+    mObj->frame_boundary();
+
+    // updates input state for polling
     Input::frame_boundary();
 
     double xpos, ypos;
@@ -215,6 +224,11 @@ void Application::on_event(const Event* event)
 double Application::get_time()
 {
     return glfwGetTime();
+}
+
+double Application::get_delta_time()
+{
+    return mObj->timeDelta;
 }
 
 void Application::exit()
@@ -286,6 +300,21 @@ ApplicationObj::~ApplicationObj()
     glfwTerminate();
 
     sLog.info("application dtor {:.3f}s", timer.stop() / 1000000.0f);
+}
+
+void ApplicationObj::frame_boundary()
+{
+    static bool sIsFirstFrame = true;
+
+    if (sIsFirstFrame)
+    {
+        sIsFirstFrame = false;
+        timePrevFrame = glfwGetTime();
+    }
+
+    timeThisFrame = glfwGetTime();
+    timeDelta = timeThisFrame - timePrevFrame;
+    timePrevFrame = timeThisFrame;
 }
 
 } // namespace LD

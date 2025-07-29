@@ -65,6 +65,9 @@ public:
     /// @brief get time in seconds since the Application is created
     double get_time();
 
+    /// @brief get time in seconds between the current frame and previous frame
+    double get_delta_time();
+
     /// @brief signal the last frame of the application, closes window after the current frame is completed
     void exit();
 
