@@ -43,8 +43,8 @@ struct UICallback
     void (*onDraw)(UIWidget widget, ScreenRenderComponent renderer);
     void (*onKeyUp)(UIWidget widget, KeyCode key);
     void (*onKeyDown)(UIWidget widget, KeyCode key);
-    void (*onMouseUp)(UIWidget widget, MouseButton btn);
-    void (*onMouseDown)(UIWidget widget, MouseButton btn);
+    void (*onMouseUp)(UIWidget widget, const Vec2& pos, MouseButton btn);
+    void (*onMouseDown)(UIWidget widget, const Vec2& pos, MouseButton btn);
     void (*onDrag)(UIWidget widget, MouseButton btn, const Vec2& dragPos, bool begin);
     void (*onEnter)(UIWidget widget);
     void (*onLeave)(UIWidget widget);
@@ -73,7 +73,7 @@ struct UIButtonWidgetObj
     const char* text;
     void (*user_on_press)(UIButtonWidget w, MouseButton btn, void* user);
 
-    static void on_press(UIWidget widget, MouseButton btn);
+    static void on_press(UIWidget widget, const Vec2& pos, MouseButton btn);
     static void on_draw(UIWidget widget, ScreenRenderComponent renderer);
 };
 
@@ -97,7 +97,7 @@ struct UIToggleWidgetObj
     UIAnimation<QuadraticInterpolation> anim;
     bool state;
 
-    static void on_press(UIWidget widget, MouseButton btn);
+    static void on_press(UIWidget widget, const Vec2& pos, MouseButton btn);
     static void on_update(UIWidget widget, float delta);
     static void on_draw(UIWidget widget, ScreenRenderComponent renderer);
 };
@@ -108,6 +108,7 @@ struct UITextWidgetObj
     const char* value;
     FontAtlas fontAtlas;
     float fontSize;
+    bool hoverHL;
 
     static void wrap_limit_fn(UIWidgetObj* widget, float& outMinW, float& outMaxW);
     static float wrap_size_fn(UIWidgetObj* widget, float limitW);

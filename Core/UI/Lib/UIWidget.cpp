@@ -79,12 +79,12 @@ void UIWidget::set_on_key_down(void (*onKeyDown)(UIWidget widget, KeyCode key))
     mObj->cb.onKeyDown = onKeyDown;
 }
 
-void UIWidget::set_on_mouse_up(void (*onMouseUp)(UIWidget widget, MouseButton btn))
+void UIWidget::set_on_mouse_up(void (*onMouseUp)(UIWidget widget, const Vec2& pos, MouseButton btn))
 {
     mObj->cb.onMouseUp = onMouseUp;
 }
 
-void UIWidget::set_on_mouse_down(void (*onMouseDown)(UIWidget widget, MouseButton btn))
+void UIWidget::set_on_mouse_down(void (*onMouseDown)(UIWidget widget, const Vec2& pos, MouseButton btn))
 {
     mObj->cb.onMouseDown = onMouseDown;
 }
@@ -184,7 +184,8 @@ UITextWidget UINode::add_text(const UILayoutInfo& layoutI, const UITextWidgetInf
     UIWidgetObj* obj = window->ctx->alloc_widget(UI_WIDGET_TEXT, textLayoutI, mObj, user);
     obj->as.text.fontSize = widgetI.fontSize;
     obj->as.text.value = widgetI.cstr ? heap_strdup(widgetI.cstr, MEMORY_USAGE_UI) : nullptr;
-    obj->as.text.fontAtlas = widgetI.fontAtlas;
+    obj->as.text.fontAtlas = window->ctx->fontAtlas;
+    obj->as.text.hoverHL = widgetI.hoverHL;
 
     return {obj};
 }
@@ -269,7 +270,15 @@ void UITextWidgetObj::on_draw(UIWidget widget, ScreenRenderComponent renderer)
     Rect rect = widget.get_rect();
     float wrapWidth = rect.w;
 
-    renderer.draw_text(ctx.fontAtlas, ctx.fontAtlasImage, self.fontSize, rect.get_pos(), self.value, theme.onSurfaceColor, wrapWidth);
+    if (self.hoverHL && widget.is_hovered())
+    {
+        renderer.draw_rect(rect, theme.onSurfaceColor);
+        renderer.draw_text(ctx.fontAtlas, ctx.fontAtlasImage, self.fontSize, rect.get_pos(), self.value, theme.surfaceColor, wrapWidth);
+    }
+    else
+    {
+        renderer.draw_text(ctx.fontAtlas, ctx.fontAtlasImage, self.fontSize, rect.get_pos(), self.value, theme.onSurfaceColor, wrapWidth);
+    }
 }
 
 void UIPanelWidgetObj::on_draw(UIWidget widget, ScreenRenderComponent renderer)
@@ -281,7 +290,7 @@ void UIPanelWidgetObj::on_draw(UIWidget widget, ScreenRenderComponent renderer)
     renderer.draw_rect(rect, self.color);
 }
 
-void UIToggleWidgetObj::on_press(UIWidget widget, MouseButton btn)
+void UIToggleWidgetObj::on_press(UIWidget widget, const Vec2& pos, MouseButton btn)
 {
     UIWidgetObj* obj = (UIWidgetObj*)widget;
     UIToggleWidgetObj& self = obj->as.toggle;
@@ -334,7 +343,7 @@ void UIToggleWidgetObj::on_draw(UIWidget widget, ScreenRenderComponent renderer)
     renderer.draw_rect(rect, color);
 }
 
-void UIButtonWidgetObj::on_press(UIWidget widget, MouseButton btn)
+void UIButtonWidgetObj::on_press(UIWidget widget, const Vec2& pos, MouseButton btn)
 {
     UIWidgetObj* obj = widget;
     UIButtonWidgetObj& self = obj->as.button;

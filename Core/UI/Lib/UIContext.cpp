@@ -113,7 +113,8 @@ void UIContext::input_mouse_down(MouseButton btn)
 
     if (widget->cb.onMouseDown)
     {
-        widget->cb.onMouseDown({widget}, btn);
+        Vec2 localPos = mObj->cursorPos - widget->layout.rect.get_pos();
+        widget->cb.onMouseDown({widget}, localPos, btn);
         mObj->pressElement = widget;
     }
 }
@@ -128,7 +129,10 @@ void UIContext::input_mouse_up(MouseButton btn)
         return;
 
     if (widget->cb.onMouseUp)
-        widget->cb.onMouseUp({widget}, btn);
+    {
+        Vec2 localPos = mObj->cursorPos - widget->layout.rect.get_pos();
+        widget->cb.onMouseUp({widget}, localPos, btn);
+    }
 }
 
 void UIContext::input_key_down(KeyCode key)

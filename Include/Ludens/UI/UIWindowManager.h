@@ -22,17 +22,20 @@ struct UIWindowManagerInfo
 /// @brief A window manager to partition screen space into non-overlapping areas.
 struct UIWindowManager : Handle<struct UIWindowManagerObj>
 {
-    typedef void (*SizeCallback)(UIWindow window);
-    typedef void (*RenderCallback)(UIWindow window, ScreenRenderComponent renderer);
-
     static UIWindowManager create(const UIWindowManagerInfo& wmInfo);
     static void destroy(UIWindowManager wm);
 
     void update(float delta);
 
+    /// @brief update screen size, recalculates area and invokes window resize callback
+    void resize(const Vec2& screenSize);
+
     /// @brief invokes RenderCallback on visible areas
     /// @param renderer screen space renderer dependency
     void render(ScreenRenderComponent renderer);
+
+    /// @brief set callback to be invoked during UIWindowManager::resize
+    void set_on_window_resize(UIWindowAreaID areaID, void (*onWindowResize)(UIWindow window, const Vec2& size));
 
     /// @brief get the underlying UI context
     UIContext get_context();

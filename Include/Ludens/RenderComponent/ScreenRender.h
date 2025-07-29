@@ -16,7 +16,7 @@ struct ScreenRenderComponent : Handle<struct ScreenRenderComponentObj>
 
     /// @brief adds the component to render graph
     /// @on_draw user callback to draw 2D primitives
-    static ScreenRenderComponent add(RGraph graph, RFormat format, OnDrawCallback on_draw, void* user, bool hasSampledImage = false);
+    static ScreenRenderComponent add(RGraph graph, RFormat format, OnDrawCallback on_draw, void* user, bool hasSampledImage = false, bool isOutputImage = false);
 
     /// @brief get the name of this component
     inline const char* component_name() const { return "screen_render"; }

@@ -368,7 +368,7 @@ void ScreenRenderComponentObj::on_graphics_pass(RGraphicsPass pass, RCommandList
     obj->flush_rects();
 }
 
-ScreenRenderComponent ScreenRenderComponent::add(RGraph graph, RFormat format, OnDrawCallback onDraw, void* user, bool hasSampledImage)
+ScreenRenderComponent ScreenRenderComponent::add(RGraph graph, RFormat format, OnDrawCallback onDraw, void* user, bool hasSampledImage, bool isOutputImage)
 {
     LD_PROFILE_SCOPE;
 
@@ -385,7 +385,11 @@ ScreenRenderComponent ScreenRenderComponent::add(RGraph graph, RFormat format, O
     ScreenRenderComponent render2DComp(&sSRCompObj);
 
     RComponent comp = graph.add_component(render2DComp.component_name());
-    comp.add_io_image(render2DComp.io_name(), format, screenWidth, screenHeight);
+
+    if (isOutputImage)
+        comp.add_output_image(render2DComp.io_name(), format, screenWidth, screenHeight);
+    else
+        comp.add_io_image(render2DComp.io_name(), format, screenWidth, screenHeight);
 
     RGraphicsPassInfo gpI{};
     gpI.name = render2DComp.component_name();
@@ -394,7 +398,13 @@ ScreenRenderComponent ScreenRenderComponent::add(RGraph graph, RFormat format, O
 
     // draw in screen space on top of previous content
     RGraphicsPass pass = comp.add_graphics_pass(gpI, &sSRCompObj, &ScreenRenderComponentObj::on_graphics_pass);
-    pass.use_color_attachment(render2DComp.io_name(), RATTACHMENT_LOAD_OP_LOAD, nullptr);
+    if (isOutputImage)
+    {
+        RClearColorValue tmpClearColor = RUtil::make_clear_color(0.1f, 0.1f, 0.1f, 1.0f); // TODO:
+        pass.use_color_attachment(render2DComp.io_name(), RATTACHMENT_LOAD_OP_CLEAR, &tmpClearColor);
+    }
+    else
+        pass.use_color_attachment(render2DComp.io_name(), RATTACHMENT_LOAD_OP_LOAD, nullptr);
 
     // conditional input image with the same dimensions as color attachment
     if (hasSampledImage)

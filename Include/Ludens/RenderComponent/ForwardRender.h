@@ -9,6 +9,8 @@ namespace LD {
 
 struct ForwardRenderComponentInfo
 {
+    uint32_t width;
+    uint32_t height;
     RFormat colorFormat;
     RFormat depthStencilFormat;
     RSampleCountBit samples;                   /// number of samples for MSAA

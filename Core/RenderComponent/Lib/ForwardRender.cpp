@@ -175,9 +175,8 @@ ForwardRenderComponent ForwardRenderComponent::add(RGraph graph, const ForwardRe
 {
     LD_PROFILE_SCOPE;
 
-    uint32_t screenWidth, screenHeight;
-    graph.get_screen_extent(screenWidth, screenHeight);
-
+    uint32_t sceneWidth = componentI.width;
+    uint32_t sceneHeight = componentI.height;
     ForwardRenderComponentObj* compObj = &sFRCompObj;
     RDevice device = graph.get_device();
     compObj->init(device);
@@ -194,14 +193,14 @@ ForwardRenderComponent ForwardRenderComponent::add(RGraph graph, const ForwardRe
 
     ForwardRenderComponent forwardComp(compObj);
     RComponent comp = graph.add_component(forwardComp.component_name());
-    comp.add_output_image(forwardComp.out_color_name(), componentI.colorFormat, screenWidth, screenHeight, &colorSampler);
-    comp.add_output_image(forwardComp.out_idflags_name(), RFORMAT_RGBA8U, screenWidth, screenHeight, &idSampler);
-    comp.add_output_image(forwardComp.out_depth_stencil_name(), componentI.depthStencilFormat, screenWidth, screenHeight);
+    comp.add_output_image(forwardComp.out_color_name(), componentI.colorFormat, sceneWidth, sceneHeight, &colorSampler);
+    comp.add_output_image(forwardComp.out_idflags_name(), RFORMAT_RGBA8U, sceneWidth, sceneHeight, &idSampler);
+    comp.add_output_image(forwardComp.out_depth_stencil_name(), componentI.depthStencilFormat, sceneWidth, sceneHeight);
 
     RGraphicsPassInfo gpI{};
     gpI.name = forwardComp.component_name();
-    gpI.width = screenWidth;
-    gpI.height = screenHeight;
+    gpI.width = sceneWidth;
+    gpI.height = sceneHeight;
     gpI.samples = componentI.samples;
 
     RClearColorValue idClearColor = RUtil::make_clear_color<uint32_t>(0, 0, 0, 0);

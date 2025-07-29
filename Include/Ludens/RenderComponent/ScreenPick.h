@@ -10,7 +10,7 @@ namespace LD {
 struct ScreenPickComponentInfo
 {
     uint32_t pickQueryCount;
-    Vec2* pickPositions;
+    const Vec2* pickPositions;
 };
 
 struct ScreenPickResult

@@ -41,10 +41,10 @@ struct UIWidget : Handle<struct UIWidgetObj>
     void set_on_key_down(void (*onKeyDown)(UIWidget widget, KeyCode key));
 
     /// @brief override mouse up callback
-    void set_on_mouse_up(void (*onMouseUp)(UIWidget widget, MouseButton btn));
+    void set_on_mouse_up(void (*onMouseUp)(UIWidget widget, const Vec2& pos, MouseButton btn));
 
     /// @brief override mouse down callback
-    void set_on_mouse_down(void (*onMouseDown)(UIWidget widget, MouseButton btn));
+    void set_on_mouse_down(void (*onMouseDown)(UIWidget widget, const Vec2& pos, MouseButton btn));
 
     /// @brief override mouse enter callback
     void set_on_enter(void (*onEnter)(UIWidget widget));
@@ -130,9 +130,9 @@ struct UITextWidget : UIWidget
 
 struct UITextWidgetInfo
 {
-    float fontSize;      /// rendered size
-    const char* cstr;    /// a null terminated c string
-    FontAtlas fontAtlas; /// font atlas queried during text layout, the atlas should outlive the text widget.
+    float fontSize;   /// rendered size
+    const char* cstr; /// a null terminated c string
+    bool hoverHL;     /// whether to highlight the text when hovered
 };
 
 /// @brief interface to manipulate widget tree hierarchy
