@@ -1,5 +1,5 @@
 #include "InputInternal.h"
-#include <GLFW/glfw3.h> // hide from user
+#include "Window.h"
 #include <Ludens/Application/Application.h>
 #include <Ludens/Application/Event.h>
 #include <Ludens/Application/Input.h>
@@ -14,18 +14,7 @@ namespace LD {
 
 static Log sLog("Application");
 
-struct Window
-{
-    GLFWwindow* handle;
-    uint32_t width;
-    uint32_t height;
-
-    static void size_callback(GLFWwindow* window, int width, int height);
-    static void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
-    static void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
-    static void cursor_pos_callback(GLFWwindow* window, double xpos, double ypos);
-};
-
+/// @brief Application implementation.
 struct ApplicationObj
 {
     Window window;
@@ -48,75 +37,6 @@ struct ApplicationObj
 };
 
 static ApplicationObj* sAppInstance = nullptr;
-
-// Input.cpp
-namespace Input {
-extern uint8_t sKeyState[];
-extern uint8_t sMouseState[];
-extern float sMouseCursorDeltaX;
-extern float sMouseCursorDeltaY;
-extern float sMouseCursorX;
-extern float sMouseCursorY;
-} // namespace Input
-
-void Window::size_callback(GLFWwindow* window, int width, int height)
-{
-    Window* w = (Window*)glfwGetWindowUserPointer(window);
-
-    w->width = width;
-    w->height = height;
-
-    ApplicationResizeEvent event(width, height);
-    Application::on_event(&event);
-}
-
-void Window::key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
-{
-    if (action == GLFW_REPEAT)
-        return;
-
-    if (action == GLFW_PRESS)
-    {
-        Input::sKeyState[key] |= (PRESSED_BIT | PRESSED_THIS_FRAME_BIT);
-
-        KeyDownEvent event((KeyCode)key);
-        Application::on_event(&event);
-    }
-    else if (action == GLFW_RELEASE)
-    {
-        Input::sKeyState[key] = RELEASED_THIS_FRAME_BIT;
-
-        KeyUpEvent event((KeyCode)key);
-        Application::on_event(&event);
-    }
-}
-
-void Window::mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
-{
-    if (action == GLFW_REPEAT)
-        return;
-
-    if (action == GLFW_PRESS)
-    {
-        Input::sMouseState[button] |= (PRESSED_BIT | PRESSED_THIS_FRAME_BIT);
-
-        MouseDownEvent event((MouseButton)button);
-        Application::on_event(&event);
-    }
-    else if (action == GLFW_RELEASE)
-    {
-        Input::sMouseState[button] = RELEASED_THIS_FRAME_BIT;
-
-        MouseUpEvent event((MouseButton)button);
-        Application::on_event(&event);
-    }
-}
-
-void Window::cursor_pos_callback(GLFWwindow* window, double xpos, double ypos)
-{
-    MouseMotionEvent event((float)xpos, (float)ypos);
-    Application::on_event(&event);
-}
 
 Application::Application(ApplicationObj* obj)
     : mObj(obj)
@@ -145,32 +65,27 @@ void Application::destroy()
 
 uint32_t Application::width() const
 {
-    return mObj->window.width;
+    return mObj->window.width();
 }
 
 uint32_t Application::height() const
 {
-    return mObj->window.height;
+    return mObj->window.height();
 }
 
 float Application::aspect_ratio() const
 {
-    return (float)mObj->window.width / (float)mObj->window.height;
+    return mObj->window.aspect_ratio();
 }
 
 bool Application::is_window_minimized()
 {
-    return mObj->window.width == 0 || mObj->window.height == 0;
+    return mObj->window.width() == 0 || mObj->window.height() == 0;
 }
 
 bool Application::is_window_open()
 {
-    return mObj->isAlive && !glfwWindowShouldClose(mObj->window.handle);
-}
-
-void Application::set_window_title(const char* cstr)
-{
-    glfwSetWindowTitle(mObj->window.handle, cstr);
+    return mObj->isAlive && mObj->window.is_open();
 }
 
 void Application::poll_events()
@@ -184,7 +99,7 @@ void Application::poll_events()
     Input::frame_boundary();
 
     double xpos, ypos;
-    glfwGetCursorPos(mObj->window.handle, &xpos, &ypos);
+    mObj->window.get_cursor_pos(xpos, ypos);
 
     static bool sIsFirstFrame = true;
 
@@ -200,7 +115,7 @@ void Application::poll_events()
     Input::sMouseCursorX = (float)xpos;
     Input::sMouseCursorY = (float)ypos;
 
-    glfwPollEvents();
+    mObj->window.poll_events();
 }
 
 RDevice Application::get_rdevice()
@@ -223,7 +138,7 @@ void Application::on_event(const Event* event)
 
 double Application::get_time()
 {
-    return glfwGetTime();
+    return mObj->window.get_time();
 }
 
 double Application::get_delta_time()
@@ -238,12 +153,10 @@ void Application::exit()
 
 void Application::set_cursor_mode_normal()
 {
-    GLFWwindow* wh = mObj->window.handle;
-
-    glfwSetInputMode(wh, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+    mObj->window.set_cursor_mode_normal();
 
     double xpos, ypos;
-    glfwGetCursorPos(wh, &xpos, &ypos);
+    mObj->window.get_cursor_pos(xpos, ypos);
 
     Input::sMouseCursorDeltaX = 0.0f;
     Input::sMouseCursorDeltaY = 0.0f;
@@ -253,9 +166,35 @@ void Application::set_cursor_mode_normal()
 
 void Application::set_cursor_mode_disabled()
 {
-    GLFWwindow* wh = mObj->window.handle;
+    mObj->window.set_cursor_mode_disabled();
+}
 
-    glfwSetInputMode(wh, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+void Application::hint_border_color(Color color)
+{
+    mObj->window.hint_border_color(color);
+}
+
+void Application::hint_title_bar_color(Color color)
+{
+    mObj->window.hint_title_bar_color(color);
+}
+
+void Application::hint_title_bar_text_color(Color color)
+{
+    mObj->window.hint_title_bar_text_color(color);
+}
+
+void Application::hint_title_bar_text(const char* cstr)
+{
+    if (!cstr)
+        return;
+
+    mObj->window.hint_title_bar_text(cstr);
+}
+
+void Application::hint_cursor_shape(CursorType cursor)
+{
+    mObj->window.hint_cursor_shape(cursor);
 }
 
 ApplicationObj::ApplicationObj(const ApplicationInfo& appI)
@@ -264,24 +203,11 @@ ApplicationObj::ApplicationObj(const ApplicationInfo& appI)
     Timer timer;
     timer.start();
 
-    int result = glfwInit();
-    LD_ASSERT(result == GLFW_TRUE);
-
-    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-    glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
-
-    window.handle = glfwCreateWindow((int)appI.width, (int)appI.height, appI.name, nullptr, nullptr);
-    window.width = appI.width;
-    window.height = appI.height;
-    glfwSetWindowUserPointer(window.handle, &window);
-    glfwSetWindowSizeCallback(window.handle, &Window::size_callback);
-    glfwSetKeyCallback(window.handle, &Window::key_callback);
-    glfwSetMouseButtonCallback(window.handle, &Window::mouse_button_callback);
-    glfwSetCursorPosCallback(window.handle, &Window::cursor_pos_callback);
+    window.startup(appI);
 
     RDeviceInfo rdeviceI{
         .backend = RDEVICE_BACKEND_VULKAN,
-        .window = window.handle,
+        .window = window.get_glfw_handle(),
         .vsync = appI.vsync,
     };
     rdevice = RDevice::create(rdeviceI);
@@ -296,8 +222,7 @@ ApplicationObj::~ApplicationObj()
 
     RDevice::destroy(rdevice);
 
-    glfwDestroyWindow(window.handle);
-    glfwTerminate();
+    window.cleanup();
 
     sLog.info("application dtor {:.3f}s", timer.stop() / 1000000.0f);
 }
@@ -309,10 +234,10 @@ void ApplicationObj::frame_boundary()
     if (sIsFirstFrame)
     {
         sIsFirstFrame = false;
-        timePrevFrame = glfwGetTime();
+        timePrevFrame = window.get_time();
     }
 
-    timeThisFrame = glfwGetTime();
+    timeThisFrame = window.get_time();
     timeDelta = timeThisFrame - timePrevFrame;
     timePrevFrame = timeThisFrame;
 }

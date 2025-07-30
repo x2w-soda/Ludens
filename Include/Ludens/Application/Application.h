@@ -1,9 +1,21 @@
 #pragma once
 
+#include <Ludens/Header/Color.h>
 #include <Ludens/RenderBackend/RBackend.h>
 #include <cstdint>
 
 namespace LD {
+
+enum CursorType
+{
+    CURSOR_TYPE_DEFAULT = 0, /// Default system cursor state, usually arrow shape
+    CURSOR_TYPE_IBEAM,       /// I-Beam cursor shape, hints at text input
+    CURSOR_TYPE_CROSSHAIR,   /// Crosshair cursor shape
+    CURSOR_TYPE_HAND,        /// Hand cursor shape
+    CURSOR_TYPE_HRESIZE,     /// Horizontal resize cursor shape
+    CURSOR_TYPE_VRESIZE,     /// Vertical resize cursor shape
+    CURSOR_TYPE_ENUM_COUNT,
+};
 
 struct Event;
 
@@ -15,6 +27,9 @@ struct ApplicationInfo
     uint32_t width;                                  /// application window width
     uint32_t height;                                 /// application window height
     bool vsync;                                      /// whether vsync is enabled
+    Color hintBorderColor;                           /// If not zero, the desired window border color.
+    Color hintTitleBarColor;                         /// If not zero, the desired window title bar color.
+    Color hintTitleBarTextColor;                     /// If not zero, the desired window title bar text color.
 };
 
 /// @brief handle of a windowed application
@@ -52,10 +67,6 @@ public:
     /// @brief chech whether the window is still active
     bool is_window_open();
 
-    /// @brief set window title name
-    /// @param cstr null terminated C string
-    void set_window_title(const char* cstr);
-
     /// @brief poll window events
     void poll_events();
 
@@ -73,6 +84,22 @@ public:
 
     void set_cursor_mode_normal();
     void set_cursor_mode_disabled();
+
+    /// @brief Hint at the platform window manager to use border color
+    void hint_border_color(Color color);
+
+    /// @brief Hint at the platform window manager to use title bar color
+    void hint_title_bar_color(Color color);
+
+    /// @brief Hint at the platform window manager to use title bar text color
+    void hint_title_bar_text_color(Color color);
+
+    /// @brief Hint at the platform window manager to use title text
+    /// @param cstr null terminated C string
+    void hint_title_bar_text(const char* cstr);
+
+    /// @brief Hint at the platform window manager to use cursor shape
+    void hint_cursor_shape(CursorType cursor);
 
 private:
     Application(struct ApplicationObj* obj);

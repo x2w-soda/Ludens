@@ -10,6 +10,9 @@ set(MODULE_LIB
 	Lib/Application.cpp
 	Lib/Input.cpp
 	Lib/InputInternal.h
+	Lib/Window.h
+	Lib/Window.cpp
+	Lib/WindowWin32.cpp
 )
 
 add_library(${MODULE_NAME}
