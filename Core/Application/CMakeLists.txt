@@ -13,6 +13,7 @@ set(MODULE_LIB
 	Lib/Window.h
 	Lib/Window.cpp
 	Lib/WindowWin32.cpp
+    Lib/WindowLinux.cpp
 )
 
 add_library(${MODULE_NAME}
