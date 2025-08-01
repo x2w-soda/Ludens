@@ -13,7 +13,10 @@ class Serializer : public NonCopyable
 {
 public:
     Serializer() = default;
-    Serializer(size_t size, const byte* data);
+
+    /// @brief Create buffer with fixed size
+    /// @param size Initial buffer byte size
+    Serializer(size_t size);
 
     inline void write(const byte* bytes, size_t size)
     {
@@ -248,14 +251,20 @@ public:
         mReadPos += 16;
     }
 
+    /// @brief Get underlying buffer size in bytes.
     inline size_t size() const { return mBuffer.size(); }
 
+    /// @brief Get writable pointer of underlying buffer.
+    inline byte* data() { return mBuffer.data(); }
+
+    /// @brief Get read only view of the underlying buffer.
     inline const byte* view(size_t& size) const
     {
         size = mBuffer.size();
         return mBuffer.data();
     }
 
+    /// @brief Get the current buffer position for reading.
     inline const byte* view_now() const
     {
         return mBuffer.data() + mReadPos;

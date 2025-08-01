@@ -33,6 +33,7 @@ target_include_directories(${MODULE_NAME} PRIVATE
 )
 
 target_link_libraries(${MODULE_NAME} PRIVATE
+	LDProfiler
 	glfw
 )
 
@@ -42,6 +43,7 @@ add_executable(${MODULE_TEST_NAME}
 
 target_link_libraries(${MODULE_TEST_NAME} PRIVATE
 	${MODULE_NAME}
+	LDProfiler
 )
 
 target_include_directories(${MODULE_TEST_NAME} PRIVATE

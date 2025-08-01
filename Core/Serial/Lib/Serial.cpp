@@ -2,10 +2,10 @@
 
 namespace LD {
 
-Serializer::Serializer(size_t size, const byte* data)
+Serializer::Serializer(size_t size)
     : mReadPos(0)
 {
-    mBuffer.write(data, size);
+    mBuffer.resize(size);
 }
 
 } // namespace LD

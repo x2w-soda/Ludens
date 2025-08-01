@@ -1,13 +1,13 @@
-#include <Ludens/Header/Assert.h>
 #include <Ludens/DSA/Buffer.h>
+#include <Ludens/Header/Assert.h>
 #include <Ludens/System/Memory.h>
+#include <cstdio>
 #include <cstring>
 
 namespace LD {
 
-Buffer::Buffer() : mSize(0), mCap(128)
+Buffer::Buffer() : mSize(0), mCap(0), mData(nullptr)
 {
-    mData = (byte*)heap_malloc(mCap, MEMORY_USAGE_MISC);
 }
 
 Buffer::Buffer(const Buffer& other)
@@ -26,20 +26,40 @@ Buffer::~Buffer()
         heap_free(mData);
 }
 
-void Buffer::write(const byte* bytes, size_t size)
+void Buffer::reserve(size_t cap)
 {
-    size_t nextCap = mCap;
-    while (mSize + size > nextCap)
+    if (cap <= mCap)
+        return;
+
+    size_t nextCap = std::max<size_t>(mCap, BUFSIZ);
+
+    while (cap > nextCap)
         nextCap *= 2;
 
-    if (mSize + size > mCap)
+    if (nextCap > mCap)
     {
         byte* newData = (byte*)heap_malloc(nextCap, MEMORY_USAGE_MISC);
-        memcpy(newData, mData, mSize);
-        heap_free(mData);
+
+        if (mData)
+        {
+            memcpy(newData, mData, mSize);
+            heap_free(mData);
+        }
+
         mData = newData;
         mCap = nextCap;
     }
+}
+
+void Buffer::resize(size_t size)
+{
+    reserve(size);
+    mSize = size;
+}
+
+void Buffer::write(const byte* bytes, size_t size)
+{
+    reserve(mSize + size);
 
     memcpy(mData + mSize, bytes, size);
     mSize += size;

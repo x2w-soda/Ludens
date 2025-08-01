@@ -1,3 +1,4 @@
+#include <Ludens/Profiler/Profiler.h>
 #include <Ludens/System/FileSystem.h>
 #include <fstream>
 
@@ -13,6 +14,8 @@ uint64_t get_file_size(const fs::path& path)
 
 bool read_file(const std::filesystem::path& path, uint64_t& size, byte* buf)
 {
+    LD_PROFILE_SCOPE;
+
     std::ifstream file(path, std::ios::binary);
 
     if (!fs::exists(path) || !file.is_open())
@@ -35,6 +38,8 @@ bool read_file(const std::filesystem::path& path, uint64_t& size, byte* buf)
 
 bool write_file(const std::filesystem::path& path, uint64_t size, const byte* buf)
 {
+    LD_PROFILE_SCOPE;
+
     std::ofstream file(path, std::ios::binary);
 
     if (!file.is_open())
