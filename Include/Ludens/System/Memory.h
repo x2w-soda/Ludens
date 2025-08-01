@@ -25,6 +25,7 @@ enum MemoryUsage : uint32_t
 
 struct MemoryProfile
 {
+    MemoryUsage usage;
     std::size_t peak;
     std::size_t current;
 };
@@ -45,6 +46,14 @@ char* heap_strdup(const char* cstr, MemoryUsage usage);
 
 /// @brief examine memory profile for a given usage 
 const MemoryProfile& get_memory_profile(MemoryUsage usage);
+
+/// @brief Examine memory leaks for all usages
+/// @param leaks If not null, outputs all memory profiles with leaking memory.
+/// @return Number of memory profiles that still have allocations not freed.
+int get_memory_leaks(MemoryProfile* leaks);
+
+/// @brief get static C string for memory usage
+const char* get_memory_usage_cstr(MemoryUsage usage);
 
 template <typename T, typename... TArgs>
 T* heap_new(MemoryUsage usage, TArgs&&... args)

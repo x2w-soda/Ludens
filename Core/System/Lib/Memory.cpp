@@ -13,8 +13,29 @@ struct MemoryHeader
     MemoryUsage usage;
 };
 
-static MemoryProfile sProfile[MEMORY_USAGE_ENUM_LAST];
-static std::mutex sProfileMutex[MEMORY_USAGE_ENUM_LAST];
+// clang-format off
+struct
+{
+    MemoryProfile profile;
+    const char* cstr;
+    std::mutex mutex;
+} sTable[]{
+    { { MEMORY_USAGE_MISC,},       "MEMORY_USAGE_MISC", },
+    { { MEMORY_USAGE_MEDIA,},      "MEMORY_USAGE_MEDIA", },
+    { { MEMORY_USAGE_SERIAL,},     "MEMORY_USAGE_SERIAL", },
+    { { MEMORY_USAGE_RENDER,},     "MEMORY_USAGE_RENDER", },
+    { { MEMORY_USAGE_UI,},         "MEMORY_USAGE_UI", },
+    { { MEMORY_USAGE_LUA,},        "MEMORY_USAGE_LUA", },
+    { { MEMORY_USAGE_JOB_SYSTEM,}, "MEMORY_USAGE_JOB_SYSTEM", },
+    { { MEMORY_USAGE_TEXT_EDIT,},  "MEMORY_USAGE_TEXT_EDIT", },
+    { { MEMORY_USAGE_AUDIO,},      "MEMORY_USAGE_AUDIO", },
+    { { MEMORY_USAGE_PHYSICS,},    "MEMORY_USAGE_PHYSICS", },
+    { { MEMORY_USAGE_ASSET,},      "MEMORY_USAGE_ASSET", },
+    { { MEMORY_USAGE_SCENE,},      "MEMORY_USAGE_SCENE", },
+};
+// clang-format on
+
+static_assert(sizeof(sTable) / sizeof(*sTable) == MEMORY_USAGE_ENUM_LAST);
 
 void* heap_malloc(std::size_t size, MemoryUsage usage)
 {
@@ -25,10 +46,10 @@ void* heap_malloc(std::size_t size, MemoryUsage usage)
     header->usage = usage;
 
     {
-        std::unique_lock<std::mutex> lock(sProfileMutex[usage]);
+        std::unique_lock<std::mutex> lock(sTable[usage].mutex);
 
-        sProfile[usage].current += size;
-        sProfile[usage].peak = std::max(sProfile[usage].peak, sProfile[usage].current);
+        sTable[usage].profile.current += size;
+        sTable[usage].profile.peak = std::max(sTable[usage].profile.peak, sTable[usage].profile.current);
     }
 
     return (void*)(header + 1);
@@ -39,9 +60,9 @@ void heap_free(void* ptr)
     MemoryHeader* header = (MemoryHeader*)ptr - 1;
 
     {
-        std::unique_lock<std::mutex> lock(sProfileMutex[header->usage]);
+        std::unique_lock<std::mutex> lock(sTable[header->usage].mutex);
 
-        sProfile[header->usage].current -= header->size;
+        sTable[header->usage].profile.current -= header->size;
     }
 
     std::free((void*)header);
@@ -59,7 +80,30 @@ char* heap_strdup(const char* cstr, MemoryUsage usage)
 
 const MemoryProfile& get_memory_profile(MemoryUsage usage)
 {
-    return sProfile[usage];
+    return sTable[(int)usage].profile;
+}
+
+int get_memory_leaks(MemoryProfile* leaks)
+{
+    int count = 0;
+
+    for (int i = 0; i < MEMORY_USAGE_ENUM_LAST; i++)
+    {
+        if (sTable[i].profile.current == 0)
+            continue;
+
+        if (leaks)
+            leaks[count] = sTable[i].profile;
+
+        count++;
+    }
+
+    return count;
+}
+
+const char* get_memory_usage_cstr(MemoryUsage usage)
+{
+    return sTable[(int)usage].cstr;
 }
 
 } // namespace LD

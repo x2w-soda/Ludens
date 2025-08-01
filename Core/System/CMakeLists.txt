@@ -15,6 +15,7 @@ set(MODULE_LIB
 	Lib/Timer.cpp
 	Lib/FileSystem.cpp
 	Lib/FileWatcherWin32.cpp
+	Lib/FileWatcherLinux.cpp
 )
 
 set(MODULE_TEST
