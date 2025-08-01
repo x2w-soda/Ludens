@@ -26,6 +26,7 @@ struct BitmapObj
     uint32_t width;
     uint32_t height;
     BitmapChannel channel;
+    BitmapCompression compression;
     byte* data;
     bool isF32;
 };
@@ -41,6 +42,7 @@ Bitmap Bitmap::create_from_data(uint32_t width, uint32_t height, BitmapChannel c
     obj->width = width;
     obj->height = height;
     obj->channel = channel;
+    obj->compression = BITMAP_COMPRESSION_LZ4;
     obj->data = (byte*)(obj + 1);
 
     memcpy(obj->data, data, dataSize);
@@ -164,6 +166,9 @@ void Bitmap::serialize(Serializer& serializer, const Bitmap& bitmap)
     serializer.write_u32(obj->width);
     serializer.write_u32(obj->height);
     serializer.write_u32((uint32_t)obj->channel);
+    serializer.write_u32((uint32_t)obj->compression);
+
+    LD_ASSERT(obj->compression == BITMAP_COMPRESSION_LZ4);
 
     size_t dataSize = obj->width * obj->height * obj->channel;
     size_t sizeBound = lz4_compress_bound(dataSize);
@@ -182,9 +187,13 @@ void Bitmap::deserialize(Serializer& serializer, Bitmap& bitmap)
 
     uint32_t width, height;
     BitmapChannel channel;
+    BitmapCompression compression;
     serializer.read_u32(width);
     serializer.read_u32(height);
     serializer.read_u32((uint32_t&)channel);
+    serializer.read_u32((uint32_t&)compression);
+
+    LD_ASSERT(compression == BITMAP_COMPRESSION_LZ4);
 
     uint64_t lz4BlockSize;
     serializer.read_u64(lz4BlockSize);
@@ -272,6 +281,11 @@ byte* Bitmap::data()
 const byte* Bitmap::data() const
 {
     return (const byte*)mObj->data;
+}
+
+void Bitmap::set_compression(BitmapCompression compression)
+{
+    mObj->compression = compression;
 }
 
 bool save_bitmap_to_disk(const BitmapView& view, const char* c_path)

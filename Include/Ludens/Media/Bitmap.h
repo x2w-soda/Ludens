@@ -13,6 +13,12 @@ enum BitmapChannel
     BITMAP_CHANNEL_RGBA = 4,
 };
 
+enum BitmapCompression
+{
+    /// @brief Use LZ4 for serialization
+    BITMAP_COMPRESSION_LZ4 = 0,
+};
+
 /// read only view of bitmap data
 struct BitmapView
 {
@@ -67,6 +73,9 @@ struct Bitmap : Handle<struct BitmapObj>
 
     /// @brief const view of bitmap as byte stream
     const byte* data() const;
+
+    /// @brief Set bitmap compression method for serialize().
+    void set_compression(BitmapCompression compression);
 };
 
 bool save_bitmap_to_disk(const BitmapView& view, const char* path);
