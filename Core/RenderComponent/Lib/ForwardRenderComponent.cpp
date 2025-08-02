@@ -1,7 +1,7 @@
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/RenderBackend/RUtil.h>
-#include <Ludens/RenderComponent/ForwardRender.h>
+#include <Ludens/RenderComponent/ForwardRenderComponent.h>
 #include <Ludens/RenderComponent/Layout/PipelineLayouts.h>
 #include <Ludens/RenderComponent/Layout/SetLayouts.h>
 #include <Ludens/RenderComponent/Layout/VertexLayouts.h>

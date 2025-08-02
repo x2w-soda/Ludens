@@ -2,7 +2,7 @@
 #include <Ludens/Header/Math/Vec2.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/RenderBackend/RUtil.h>
-#include <Ludens/RenderComponent/DualKawase.h>
+#include <Ludens/RenderComponent/DualKawaseComponent.h>
 #include <Ludens/RenderComponent/Layout/SetLayouts.h>
 #include <array>
 #include <vector>

@@ -4,7 +4,7 @@
 #include <Ludens/RenderBackend/RUtil.h>
 #include <Ludens/RenderComponent/Layout/SetLayouts.h>
 #include <Ludens/RenderComponent/Layout/VertexLayouts.h>
-#include <Ludens/RenderComponent/ScreenRender.h>
+#include <Ludens/RenderComponent/ScreenRenderComponent.h>
 #include <Ludens/System/Memory.h>
 #include <array>
 #include <vector>

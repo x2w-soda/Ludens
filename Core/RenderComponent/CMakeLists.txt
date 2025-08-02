@@ -1,11 +1,11 @@
 set(MODULE_NAME LDRenderComponent)
 
 set(MODULE_INCLUDE
-    "${LUDENS_INCLUDE_DIR}/Ludens/RenderComponent/ForwardRender.h"
-    "${LUDENS_INCLUDE_DIR}/Ludens/RenderComponent/ScreenRender.h"
-    "${LUDENS_INCLUDE_DIR}/Ludens/RenderComponent/ScreenPick.h"
-    "${LUDENS_INCLUDE_DIR}/Ludens/RenderComponent/SceneOverlay.h"
-    "${LUDENS_INCLUDE_DIR}/Ludens/RenderComponent/DualKawase.h"
+    "${LUDENS_INCLUDE_DIR}/Ludens/RenderComponent/ForwardRenderComponent.h"
+    "${LUDENS_INCLUDE_DIR}/Ludens/RenderComponent/ScreenRenderComponent.h"
+    "${LUDENS_INCLUDE_DIR}/Ludens/RenderComponent/ScreenPickComponent.h"
+    "${LUDENS_INCLUDE_DIR}/Ludens/RenderComponent/SceneOverlayComponent.h"
+    "${LUDENS_INCLUDE_DIR}/Ludens/RenderComponent/DualKawaseComponent.h"
     "${LUDENS_INCLUDE_DIR}/Ludens/RenderComponent/Layout/SetLayouts.h"
     "${LUDENS_INCLUDE_DIR}/Ludens/RenderComponent/Layout/VertexLayouts.h"
     "${LUDENS_INCLUDE_DIR}/Ludens/RenderComponent/Layout/PipelineLayouts.h"
@@ -20,11 +20,11 @@ set(MODULE_INCLUDE
 )
 
 set(MODULE_LIB
-    "Lib/ForwardRender.cpp"
-    "Lib/SceneOverlay.cpp"
-    "Lib/ScreenRender.cpp"
-    "Lib/ScreenPick.cpp"
-    "Lib/DualKawase.cpp"
+    "Lib/ForwardRenderComponent.cpp"
+    "Lib/SceneOverlayComponent.cpp"
+    "Lib/ScreenRenderComponent.cpp"
+    "Lib/ScreenPickComponent.cpp"
+    "Lib/DualKawaseComponent.cpp"
     "Lib/Layout/SetLayouts.cpp"
     "Lib/Layout/VertexLayouts.cpp"
     "Lib/Layout/PipelineLayouts.cpp"

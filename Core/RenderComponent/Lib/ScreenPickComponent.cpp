@@ -1,6 +1,6 @@
 #include <Ludens/RenderBackend/RUtil.h>
 #include <Ludens/RenderComponent/Layout/SetLayouts.h>
-#include <Ludens/RenderComponent/ScreenPick.h>
+#include <Ludens/RenderComponent/ScreenPickComponent.h>
 #include <array>
 #include <cstring>
 #include <vector>

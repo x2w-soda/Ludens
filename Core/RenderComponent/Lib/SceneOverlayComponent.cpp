@@ -7,7 +7,7 @@
 #include <Ludens/RenderComponent/Layout/SetLayouts.h>
 #include <Ludens/RenderComponent/Pipeline/OutlinePipeline.h>
 #include <Ludens/RenderComponent/Pipeline/RMeshPipeline.h>
-#include <Ludens/RenderComponent/SceneOverlay.h>
+#include <Ludens/RenderComponent/SceneOverlayComponent.h>
 #include <Ludens/System/Memory.h>
 #include <string>
 #include <unordered_map>
