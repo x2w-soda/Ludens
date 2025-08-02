@@ -12,7 +12,7 @@
 namespace LD {
 
 // clang-format off
-static const char sRectVS[] = R"(
+static const char sRectVSSource[] = R"(
 layout (location = 0) in vec2 aPos;
 layout (location = 1) in vec2 aUV;
 layout (location = 2) in uint aColor;
@@ -36,7 +36,7 @@ void main()
 }
 )";
 
-static const char sRectFS[] = R"(
+static const char sRectFSSource[] = R"(
 layout (location = 0) in vec2 vUV;
 layout (location = 1) in flat uint vColor;
 layout (location = 2) in flat uint vControl;
@@ -98,9 +98,32 @@ constexpr uint32_t sMaxRectCount = 1024;
 constexpr uint32_t sMaxRectVertexCount = sMaxRectCount * 4;
 constexpr uint32_t sMaxRectIndexCount = sMaxRectCount * 6;
 
-struct ScreenRenderComponentObj
+static RSetBindingInfo sScreenSetBinding = {0, RBINDING_TYPE_COMBINED_IMAGE_SAMPLER, 8};
+static RSetLayoutInfo sScreenSetLayout = {.bindingCount = 1, .bindings = &sScreenSetBinding};
+static RDevice sDevice;
+static RShader sRectVS;
+static RShader sRectFS;
+static RPipeline sRectPipeline;
+static RImage sWhitePixel;
+static bool sHasStaticStartup;
+static std::unordered_map<Hash32, ScreenRenderComponentObj*> sInstances;
+static RPipelineLayoutInfo sScreenPipelineLayout;
+
+/// @brief Screen render component instance.
+class ScreenRenderComponentObj
 {
-    /// @brief for host mapped memory, we need duplicates per frame in flight
+    friend class ScreenRenderComponent;
+
+public:
+    ScreenRenderComponentObj(RDevice device, const char* name);
+    ~ScreenRenderComponentObj();
+
+    static void static_startup(RDevice device);
+    static void static_cleanup(void* user);
+    static void on_destroy(void* user);
+    static void on_graphics_pass(RGraphicsPass pass, RCommandList list, void* userData);
+
+private: // instance members
     struct Frame
     {
         std::vector<RBuffer> rectVBOs;
@@ -108,119 +131,65 @@ struct ScreenRenderComponentObj
         bool isScreenSetDirty;
     };
 
-    RDevice device;
-    RShader rectVS;
-    RShader rectFS;
-    RBuffer rectIBO;
-    RPipeline rectPipeline;
-    RPipelineLayoutInfo screenPipelineLayout;
-    RCommandList list;
-    RSetPool setPool;
-    RImage whitePixel;
-    RImage imageSlots[8];
-    RectVertexBatch<sMaxRectCount> rectBatch;
-    RGraphicsPass graphicsPass;
-    uint32_t imageCounter;
-    uint32_t batchIdx;
-    uint32_t frameIdx;
-    ScreenRenderComponent::OnDrawCallback on_draw;
-    std::vector<Frame> frames;
-    void* user;
-    bool hasInit;
-    bool hasSampledImage;
-
-    void init(RDevice device);
+    RBuffer mRectIBO;
+    RCommandList mList;
+    RSetPool mSetPool;
+    RImage mImageSlots[8];
+    RectVertexBatch<sMaxRectCount> mRectBatch;
+    RGraphicsPass mGraphicsPass;
+    uint32_t mImageCounter;
+    uint32_t mBatchIdx;
+    uint32_t mFrameIdx;
+    uint32_t mScreenWidth;
+    uint32_t mScreenHeight;
+    std::string mName;
+    std::vector<Frame> mFrames;
+    void (*mOnDraw)(ScreenRenderComponent renderer, void* user);
+    void* mUser;
+    bool mHasSampledImage;
+    bool mHasInputImage;
 
     void flush_rects();
 
     int get_image_index(RImage image);
+};
 
-    static void on_release(void* user);
-    static void on_graphics_pass(RGraphicsPass pass, RCommandList list, void* userData);
-
-} sSRCompObj; // TODO: non-singleton
-
-void ScreenRenderComponentObj::init(RDevice device)
+ScreenRenderComponentObj::ScreenRenderComponentObj(RDevice device, const char* name)
 {
-    if (hasInit)
-        return;
+    ScreenRenderComponentObj::static_startup(device);
 
-    hasInit = true;
-
-    this->device = device;
-    frames.resize(device.get_frames_in_flight_count());
     uint32_t* indices = (uint32_t*)heap_malloc(sizeof(uint32_t) * sMaxRectIndexCount, MEMORY_USAGE_RENDER);
-    rectBatch.write_indices(indices);
-    batchIdx = 0;
-    imageCounter = 0;
-    list = {};
+    mRectBatch.write_indices(indices);
+    mBatchIdx = 0;
+    mImageCounter = 0;
+    mList = {};
+    mName = "screen_render_";
+    mName += name;
 
     RBufferInfo bufferI = {
         .usage = RBUFFER_USAGE_INDEX_BIT | RBUFFER_USAGE_TRANSFER_DST_BIT,
         .size = sizeof(uint32_t) * sMaxRectIndexCount,
         .hostVisible = false,
     };
-    rectIBO = device.create_buffer(bufferI);
+    mRectIBO = device.create_buffer(bufferI);
 
     RStager stager(device, RQUEUE_TYPE_GRAPHICS);
-    stager.add_buffer_data(rectIBO, indices);
+    stager.add_buffer_data(mRectIBO, indices);
     heap_free(indices);
 
-    rectVS = device.create_shader({.type = RSHADER_TYPE_VERTEX, .glsl = sRectVS});
-    rectFS = device.create_shader({.type = RSHADER_TYPE_FRAGMENT, .glsl = sRectFS});
-
-    static RSetBindingInfo setBinding = {0, RBINDING_TYPE_COMBINED_IMAGE_SAMPLER, 8};
-    static RSetLayoutInfo screenSetLayout = {.bindingCount = 1, .bindings = &setBinding};
-    static RSetLayoutInfo setLayouts[2];
-    setLayouts[0] = sFrameSetLayout;
-    setLayouts[1] = screenSetLayout;
-
-    screenPipelineLayout.setLayoutCount = 2;
-    screenPipelineLayout.setLayouts = setLayouts;
-
-    RPipelineBlendState blendState = RUtil::make_default_blend_state();
-
-    std::array<RShader, 2> shaders{rectVS, rectFS};
-    std::vector<RVertexAttribute> attrs;
-    RVertexBinding binding = {.inputRate = RBINDING_INPUT_RATE_VERTEX, .stride = sizeof(RectVertex)};
-    get_rect_vertex_attributes(attrs);
-
-    RPipelineInfo pipelineI{
-        .shaderCount = (uint32_t)shaders.size(),
-        .shaders = shaders.data(),
-        .vertexAttributeCount = (uint32_t)attrs.size(),
-        .vertexAttributes = attrs.data(),
-        .vertexBindingCount = 1,
-        .vertexBindings = &binding,
-        .layout = screenPipelineLayout,
-        .depthStencil = {
-            .depthTestEnabled = false,
-        },
-        .blend = {
-            .colorAttachmentCount = 1,
-            .colorAttachments = &blendState,
-        },
-    };
-
-    rectPipeline = device.create_pipeline(pipelineI);
-
-    setPool = device.create_set_pool({
-        .layout = screenSetLayout,
+    mSetPool = device.create_set_pool({
+        .layout = sScreenSetLayout,
         .maxSets = device.get_frames_in_flight_count(),
     });
-
-    RImageInfo imageI = RUtil::make_2d_image_info(RIMAGE_USAGE_SAMPLED_BIT | RIMAGE_USAGE_TRANSFER_DST_BIT, RFORMAT_RGBA8, 1, 1, {});
-    whitePixel = device.create_image(imageI);
-    uint32_t pixel = 0xFFFFFFFF;
-    stager.add_image_data(whitePixel, &pixel, RIMAGE_LAYOUT_SHADER_READ_ONLY);
 
     stager.submit(device.get_graphics_queue());
 
     RImageLayout layouts[8];
     std::fill(layouts, layouts + 8, RIMAGE_LAYOUT_SHADER_READ_ONLY);
-    std::fill(imageSlots, imageSlots + 8, whitePixel);
+    std::fill(mImageSlots, mImageSlots + 8, sWhitePixel);
 
-    for (Frame& frame : frames)
+    mFrames.resize(device.get_frames_in_flight_count());
+    for (Frame& frame : mFrames)
     {
         bufferI = {
             .usage = RBUFFER_USAGE_VERTEX_BIT,
@@ -230,7 +199,7 @@ void ScreenRenderComponentObj::init(RDevice device)
         frame.rectVBOs = {device.create_buffer(bufferI)};
         frame.rectVBOs[0].map();
 
-        frame.screenSet = setPool.allocate();
+        frame.screenSet = mSetPool.allocate();
         frame.isScreenSetDirty = false;
 
         RSetImageUpdateInfo updateI;
@@ -240,25 +209,39 @@ void ScreenRenderComponentObj::init(RDevice device)
         updateI.imageCount = 8;
         updateI.imageLayouts = layouts;
         updateI.imageBindingType = RBINDING_TYPE_COMBINED_IMAGE_SAMPLER;
-        updateI.images = imageSlots;
+        updateI.images = mImageSlots;
         device.update_set_images(1, &updateI);
     }
+}
 
-    RGraph::add_release_callback(this, &ScreenRenderComponentObj::on_release);
+ScreenRenderComponentObj::~ScreenRenderComponentObj()
+{
+    sDevice.destroy_set_pool(mSetPool);
+    sDevice.destroy_buffer(mRectIBO);
+
+    for (Frame& frame : mFrames)
+    {
+        for (RBuffer vbo : frame.rectVBOs)
+        {
+            vbo.unmap();
+            sDevice.destroy_buffer(vbo);
+        }
+        frame.rectVBOs.clear();
+    }
 }
 
 void ScreenRenderComponentObj::flush_rects()
 {
     LD_PROFILE_SCOPE;
 
-    Frame& frame = frames[frameIdx];
+    Frame& frame = mFrames[mFrameIdx];
 
-    uint32_t rectCount = rectBatch.get_rect_count();
+    uint32_t rectCount = mRectBatch.get_rect_count();
     uint32_t vertexCount;
-    RectVertex* vertices = rectBatch.get_vertices(vertexCount);
-    frame.rectVBOs[batchIdx].map_write(0, sizeof(RectVertex) * vertexCount, vertices);
+    RectVertex* vertices = mRectBatch.get_vertices(vertexCount);
+    frame.rectVBOs[mBatchIdx].map_write(0, sizeof(RectVertex) * vertexCount, vertices);
 
-    rectBatch.reset();
+    mRectBatch.reset();
 
     RImageLayout layouts[8];
     std::fill(layouts, layouts + 8, RIMAGE_LAYOUT_SHADER_READ_ONLY);
@@ -273,15 +256,15 @@ void ScreenRenderComponentObj::flush_rects()
         updateI.set = frame.screenSet;
         updateI.dstBinding = 0;
         updateI.dstArrayIndex = 0;
-        updateI.imageCount = imageCounter;
+        updateI.imageCount = mImageCounter;
         updateI.imageLayouts = layouts;
         updateI.imageBindingType = RBINDING_TYPE_COMBINED_IMAGE_SAMPLER;
-        updateI.images = imageSlots;
-        device.update_set_images(1, &updateI);
+        updateI.images = mImageSlots;
+        sDevice.update_set_images(1, &updateI);
     }
 
-    list.cmd_bind_vertex_buffers(0, 1, frame.rectVBOs.data() + batchIdx);
-    list.cmd_bind_graphics_sets(screenPipelineLayout, 1, 1, &frame.screenSet);
+    mList.cmd_bind_vertex_buffers(0, 1, frame.rectVBOs.data() + mBatchIdx);
+    mList.cmd_bind_graphics_sets(sScreenPipelineLayout, 1, 1, &frame.screenSet);
 
     RDrawIndexedInfo drawI = {
         .indexCount = rectCount * 6,
@@ -289,9 +272,9 @@ void ScreenRenderComponentObj::flush_rects()
         .instanceCount = 1,
         .instanceStart = 0,
     };
-    list.cmd_draw_indexed(drawI);
+    mList.cmd_draw_indexed(drawI);
 
-    if (++batchIdx < frame.rectVBOs.size())
+    if (++mBatchIdx < frame.rectVBOs.size())
         return;
 
     RBufferInfo bufferI = {
@@ -300,134 +283,207 @@ void ScreenRenderComponentObj::flush_rects()
         .hostVisible = true, // persistent mapping
     };
 
-    frame.rectVBOs.push_back(device.create_buffer(bufferI));
+    frame.rectVBOs.push_back(sDevice.create_buffer(bufferI));
     frame.rectVBOs.back().map();
 }
 
 int ScreenRenderComponentObj::get_image_index(RImage image)
 {
-    for (int i = 0; i < imageCounter; i++)
+    for (int i = 0; i < mImageCounter; i++)
     {
-        if (imageSlots[i] == image)
+        if (mImageSlots[i] == image)
             return i + 1;
     }
 
-    if (imageCounter == 8)
+    if (mImageCounter == 8)
         return -1; // caller should flush
 
-    frames[frameIdx].isScreenSetDirty = true;
-    imageSlots[imageCounter++] = image;
+    mFrames[mFrameIdx].isScreenSetDirty = true;
+    mImageSlots[mImageCounter++] = image;
 
-    return imageCounter;
+    return mImageCounter;
 }
 
-void ScreenRenderComponentObj::on_release(void* user)
+void ScreenRenderComponentObj::static_startup(RDevice device)
 {
-    ScreenRenderComponentObj* obj = (ScreenRenderComponentObj*)user;
-
-    if (!obj->hasInit)
+    if (sHasStaticStartup)
         return;
 
-    obj->hasInit = false;
-    RDevice device = obj->device;
+    sHasStaticStartup = true;
+    sDevice = device;
 
-    for (Frame& frame : obj->frames)
-    {
-        for (RBuffer vbo : frame.rectVBOs)
-        {
-            vbo.unmap();
-            device.destroy_buffer(vbo);
-        }
-        frame.rectVBOs.clear();
-    }
+    RGraph::add_release_callback(nullptr, &ScreenRenderComponentObj::static_cleanup);
 
-    device.destroy_image(obj->whitePixel);
-    device.destroy_set_pool(obj->setPool);
-    device.destroy_pipeline(obj->rectPipeline);
-    device.destroy_shader(obj->rectVS);
-    device.destroy_shader(obj->rectFS);
+    sRectVS = device.create_shader({.type = RSHADER_TYPE_VERTEX, .glsl = sRectVSSource});
+    sRectFS = device.create_shader({.type = RSHADER_TYPE_FRAGMENT, .glsl = sRectFSSource});
 
-    device.destroy_buffer(obj->rectIBO);
+    std::array<RShader, 2> shaders{sRectVS, sRectFS};
+    std::vector<RVertexAttribute> attrs;
+    RVertexBinding binding = {.inputRate = RBINDING_INPUT_RATE_VERTEX, .stride = sizeof(RectVertex)};
+    get_rect_vertex_attributes(attrs);
+
+    static RSetLayoutInfo setLayouts[2];
+    setLayouts[0] = sFrameSetLayout;
+    setLayouts[1] = sScreenSetLayout;
+
+    sScreenPipelineLayout.setLayoutCount = 2;
+    sScreenPipelineLayout.setLayouts = setLayouts;
+
+    RPipelineBlendState blendState = RUtil::make_default_blend_state();
+
+    RPipelineInfo pipelineI{
+        .shaderCount = (uint32_t)shaders.size(),
+        .shaders = shaders.data(),
+        .vertexAttributeCount = (uint32_t)attrs.size(),
+        .vertexAttributes = attrs.data(),
+        .vertexBindingCount = 1,
+        .vertexBindings = &binding,
+        .layout = sScreenPipelineLayout,
+        .depthStencil = {
+            .depthTestEnabled = false,
+        },
+        .blend = {
+            .colorAttachmentCount = 1,
+            .colorAttachments = &blendState,
+        },
+    };
+
+    sRectPipeline = device.create_pipeline(pipelineI);
+
+    RStager stager(device, RQUEUE_TYPE_GRAPHICS);
+    RImageInfo imageI = RUtil::make_2d_image_info(RIMAGE_USAGE_SAMPLED_BIT | RIMAGE_USAGE_TRANSFER_DST_BIT, RFORMAT_RGBA8, 1, 1, {});
+    sWhitePixel = device.create_image(imageI);
+    uint32_t pixel = 0xFFFFFFFF;
+    stager.add_image_data(sWhitePixel, &pixel, RIMAGE_LAYOUT_SHADER_READ_ONLY);
+    stager.submit(device.get_graphics_queue());
 }
 
-void ScreenRenderComponentObj::on_graphics_pass(RGraphicsPass pass, RCommandList list, void* userData)
+void ScreenRenderComponentObj::static_cleanup(void* user)
 {
-    ScreenRenderComponentObj* obj = (ScreenRenderComponentObj*)userData;
-    Frame& frame = obj->frames[obj->frameIdx];
+    if (!sHasStaticStartup)
+        return;
 
-    list.cmd_bind_graphics_pipeline(obj->rectPipeline);
-    list.cmd_bind_index_buffer(obj->rectIBO, RINDEX_TYPE_U32);
+    sHasStaticStartup = false;
 
-    obj->rectBatch.reset();
-    obj->batchIdx = 0;
-    obj->imageCounter = 0;
-    obj->list = list;
-    obj->graphicsPass = pass;
-    obj->on_draw({obj}, obj->user);
-    obj->graphicsPass = {};
+    for (auto ite : sInstances)
+    {
+        ScreenRenderComponentObj* obj = ite.second;
+        heap_delete<ScreenRenderComponentObj>(obj);
+    }
+
+    sInstances.clear();
+
+    sDevice.destroy_image(sWhitePixel);
+    sDevice.destroy_pipeline(sRectPipeline);
+    sDevice.destroy_shader(sRectVS);
+    sDevice.destroy_shader(sRectFS);
+    sDevice = {};
+}
+
+void ScreenRenderComponentObj::on_graphics_pass(RGraphicsPass pass, RCommandList list, void* user)
+{
+    auto* obj = (ScreenRenderComponentObj*)user;
+    Frame& frame = obj->mFrames[obj->mFrameIdx];
+
+    list.cmd_bind_graphics_pipeline(sRectPipeline);
+    list.cmd_bind_index_buffer(obj->mRectIBO, RINDEX_TYPE_U32);
+
+    obj->mRectBatch.reset();
+    obj->mBatchIdx = 0;
+    obj->mImageCounter = 0;
+    obj->mList = list;
+    obj->mGraphicsPass = pass;
+    obj->mOnDraw({obj}, obj->mUser);
+    obj->mGraphicsPass = {};
     obj->flush_rects();
 }
 
-ScreenRenderComponent ScreenRenderComponent::add(RGraph graph, RFormat format, OnDrawCallback onDraw, void* user, bool hasSampledImage, bool isOutputImage)
+ScreenRenderComponent ScreenRenderComponent::add(RGraph graph, const ScreenRenderComponentInfo& info)
 {
     LD_PROFILE_SCOPE;
 
-    RDevice device = graph.get_device();
-    uint32_t screenWidth, screenHeight;
-    graph.get_screen_extent(screenWidth, screenHeight);
+    ScreenRenderComponentObj* obj = nullptr;
+    Hash32 nameHash(info.name);
 
-    sSRCompObj.init(device);
-    sSRCompObj.frameIdx = device.get_frame_index();
-    sSRCompObj.user = user;
-    sSRCompObj.imageCounter = 0;
-    sSRCompObj.hasSampledImage = hasSampledImage;
-
-    ScreenRenderComponent render2DComp(&sSRCompObj);
-
-    RComponent comp = graph.add_component(render2DComp.component_name());
-
-    if (isOutputImage)
-        comp.add_output_image(render2DComp.io_name(), format, screenWidth, screenHeight);
+    auto ite = sInstances.find(nameHash);
+    if (ite != sInstances.end())
+    {
+        obj = ite->second;
+    }
     else
-        comp.add_io_image(render2DComp.io_name(), format, screenWidth, screenHeight);
+    {
+        obj = heap_new<ScreenRenderComponentObj>(MEMORY_USAGE_RENDER, graph.get_device(), info.name);
+        sInstances[nameHash] = obj;
+    }
+
+    RDevice device = graph.get_device();
+    graph.get_screen_extent(obj->mScreenWidth, obj->mScreenHeight);
+
+    obj->mFrameIdx = device.get_frame_index();
+    obj->mUser = info.user;
+    obj->mOnDraw = info.onDrawCallback;
+    obj->mImageCounter = 0;
+    obj->mHasInputImage = info.hasInputImage;
+    obj->mHasSampledImage = info.hasSampledImage;
+
+    ScreenRenderComponent screenRC(obj);
+
+    RComponent comp = graph.add_component(screenRC.component_name());
+
+    if (obj->mHasInputImage)
+        comp.add_io_image(screenRC.io_name(), info.format, obj->mScreenWidth, obj->mScreenHeight);
+    else
+        comp.add_output_image(screenRC.io_name(), info.format, obj->mScreenWidth, obj->mScreenHeight);
 
     RGraphicsPassInfo gpI{};
-    gpI.name = render2DComp.component_name();
-    gpI.width = screenWidth;
-    gpI.height = screenHeight;
+    gpI.name = screenRC.component_name();
+    gpI.width = obj->mScreenWidth;
+    gpI.height = obj->mScreenHeight;
 
-    // draw in screen space on top of previous content
-    RGraphicsPass pass = comp.add_graphics_pass(gpI, &sSRCompObj, &ScreenRenderComponentObj::on_graphics_pass);
-    if (isOutputImage)
+    RGraphicsPass pass = comp.add_graphics_pass(gpI, obj, &ScreenRenderComponentObj::on_graphics_pass);
+    if (obj->mHasInputImage)
     {
-        RClearColorValue tmpClearColor = RUtil::make_clear_color(0.1f, 0.1f, 0.1f, 1.0f); // TODO:
-        pass.use_color_attachment(render2DComp.io_name(), RATTACHMENT_LOAD_OP_CLEAR, &tmpClearColor);
+        // draw in screen space on top of previous image content
+        pass.use_color_attachment(screenRC.io_name(), RATTACHMENT_LOAD_OP_LOAD, nullptr);
     }
     else
-        pass.use_color_attachment(render2DComp.io_name(), RATTACHMENT_LOAD_OP_LOAD, nullptr);
-
-    // conditional input image with the same dimensions as color attachment
-    if (hasSampledImage)
     {
-        comp.add_input_image(render2DComp.sampled_name(), format, screenWidth, screenHeight);
-        pass.use_image_sampled(render2DComp.sampled_name());
+        // use clear color to initialize new image content
+        RClearColorValue tmpClearColor = RUtil::make_clear_color(info.clearColor);
+        pass.use_color_attachment(screenRC.io_name(), RATTACHMENT_LOAD_OP_CLEAR, &tmpClearColor);
     }
 
-    sSRCompObj.on_draw = onDraw;
+    if (obj->mHasSampledImage)
+    {
+        // conditional input image with the same dimensions as color attachment
+        comp.add_input_image(screenRC.sampled_name(), info.format, obj->mScreenWidth, obj->mScreenHeight);
+        pass.use_image_sampled(screenRC.sampled_name());
+    }
 
-    return render2DComp;
+    return screenRC;
+}
+
+const char* ScreenRenderComponent::component_name() const
+{
+    return mObj->mName.c_str();
 }
 
 RImage ScreenRenderComponent::get_sampled_image()
 {
-    LD_ASSERT(sSRCompObj.hasSampledImage && sSRCompObj.graphicsPass);
+    LD_ASSERT(mObj->mHasSampledImage && mObj->mGraphicsPass);
 
-    return sSRCompObj.graphicsPass.get_image(ScreenRenderComponent(&sSRCompObj).sampled_name());
+    return mObj->mGraphicsPass.get_image(this->sampled_name());
+}
+
+void ScreenRenderComponent::get_screen_extent(uint32_t& screenWidth, uint32_t& screenHeight)
+{
+    screenWidth = mObj->mScreenWidth;
+    screenHeight = mObj->mScreenHeight;
 }
 
 void ScreenRenderComponent::draw_rect(const Rect& rect, Color color)
 {
-    if (mObj->rectBatch.is_full())
+    if (mObj->mRectBatch.is_full())
         mObj->flush_rects();
 
     float x0 = rect.x;
@@ -435,7 +491,7 @@ void ScreenRenderComponent::draw_rect(const Rect& rect, Color color)
     float y0 = rect.y;
     float y1 = rect.y + rect.h;
 
-    RectVertex* v = mObj->rectBatch.write_rect();
+    RectVertex* v = mObj->mRectBatch.write_rect();
     v[0] = {x0, y0, 0, 0, color, 0}; // TL
     v[1] = {x1, y0, 0, 0, color, 0}; // TR
     v[2] = {x1, y1, 0, 0, color, 0}; // BR
@@ -444,7 +500,7 @@ void ScreenRenderComponent::draw_rect(const Rect& rect, Color color)
 
 void ScreenRenderComponent::draw_rect_outline(const Rect& rect, float border, Color color)
 {
-    if (mObj->rectBatch.get_rect_count() + 4 > mObj->rectBatch.get_max_rect_count())
+    if (mObj->mRectBatch.get_rect_count() + 4 > mObj->mRectBatch.get_max_rect_count())
         mObj->flush_rects();
 
     float x0 = rect.x;
@@ -452,25 +508,25 @@ void ScreenRenderComponent::draw_rect_outline(const Rect& rect, float border, Co
     float y0 = rect.y;
     float y1 = rect.y + rect.h;
 
-    RectVertex* barT = mObj->rectBatch.write_rect();
+    RectVertex* barT = mObj->mRectBatch.write_rect();
     barT[0] = {x0, y0, 0, 0, color, 0};
     barT[1] = {x1, y0, 0, 0, color, 0};
     barT[2] = {x1, y0 + border, 0, 0, color, 0};
     barT[3] = {x0, y0 + border, 0, 0, color, 0};
 
-    RectVertex* barB = mObj->rectBatch.write_rect();
+    RectVertex* barB = mObj->mRectBatch.write_rect();
     barB[0] = {x0, y1 - border, 0, 0, color, 0};
     barB[1] = {x1, y1 - border, 0, 0, color, 0};
     barB[2] = {x1, y1, 0, 0, color, 0};
     barB[3] = {x0, y1, 0, 0, color, 0};
 
-    RectVertex* barL = mObj->rectBatch.write_rect();
+    RectVertex* barL = mObj->mRectBatch.write_rect();
     barL[0] = {x0, y0 + border, 0, 0, color, 0};
     barL[1] = {x0 + border, y0 + border, 0, 0, color, 0};
     barL[2] = {x0 + border, y1 - border, 0, 0, color, 0};
     barL[3] = {x0, y1 - border, 0, 0, color, 0};
 
-    RectVertex* barR = mObj->rectBatch.write_rect();
+    RectVertex* barR = mObj->mRectBatch.write_rect();
     barR[0] = {x1 - border, y0 + border, 0, 0, color, 0};
     barR[1] = {x1, y0 + border, 0, 0, color, 0};
     barR[2] = {x1, y1 - border, 0, 0, color, 0};
@@ -479,7 +535,7 @@ void ScreenRenderComponent::draw_rect_outline(const Rect& rect, float border, Co
 
 void ScreenRenderComponent::draw_image(const Rect& rect, RImage image)
 {
-    if (mObj->rectBatch.is_full())
+    if (mObj->mRectBatch.is_full())
         mObj->flush_rects();
 
     int imageIdx = mObj->get_image_index(image);
@@ -493,7 +549,7 @@ void ScreenRenderComponent::draw_image(const Rect& rect, RImage image)
     uint32_t control = get_rect_vertex_control_bits(imageIdx, RECT_VERTEX_IMAGE_HINT_NONE, 0);
     uint32_t white = 0xFFFFFFFF;
 
-    RectVertex* v = mObj->rectBatch.write_rect();
+    RectVertex* v = mObj->mRectBatch.write_rect();
     v[0] = {x0, y0, 0.0f, 0.0f, white, control}; // TL
     v[1] = {x1, y0, 1.0f, 0.0f, white, control}; // TR
     v[2] = {x1, y1, 1.0f, 1.0f, white, control}; // BR
@@ -502,7 +558,7 @@ void ScreenRenderComponent::draw_image(const Rect& rect, RImage image)
 
 void ScreenRenderComponent::draw_image_uv(const Rect& rect, RImage image, const Rect& uv, Color color)
 {
-    if (mObj->rectBatch.is_full())
+    if (mObj->mRectBatch.is_full())
         mObj->flush_rects();
 
     int imageIdx = mObj->get_image_index(image);
@@ -519,7 +575,7 @@ void ScreenRenderComponent::draw_image_uv(const Rect& rect, RImage image, const 
 
     uint32_t control = get_rect_vertex_control_bits(imageIdx, RECT_VERTEX_IMAGE_HINT_NONE, 0);
 
-    RectVertex* v = mObj->rectBatch.write_rect();
+    RectVertex* v = mObj->mRectBatch.write_rect();
     v[0] = {x0, y0, u0, v0, color, control}; // TL
     v[1] = {x1, y0, u1, v0, color, control}; // TR
     v[2] = {x1, y1, u1, v1, color, control}; // BR
@@ -528,7 +584,7 @@ void ScreenRenderComponent::draw_image_uv(const Rect& rect, RImage image, const 
 
 void ScreenRenderComponent::draw_glyph(FontAtlas atlas, RImage atlasImage, float fontSize, const Vec2& pos, uint32_t code, Color color)
 {
-    if (mObj->rectBatch.is_full())
+    if (mObj->mRectBatch.is_full())
         mObj->flush_rects();
 
     int imageIdx = mObj->get_image_index(atlasImage);
@@ -562,7 +618,7 @@ void ScreenRenderComponent::draw_glyph(FontAtlas atlas, RImage atlasImage, float
 
     uint32_t control = get_rect_vertex_control_bits(imageIdx, hint, filterRatio);
 
-    RectVertex* v = mObj->rectBatch.write_rect();
+    RectVertex* v = mObj->mRectBatch.write_rect();
     v[0] = {x0, y0, u0, v0, color, control}; // TL
     v[1] = {x1, y0, u1, v0, color, control}; // TR
     v[2] = {x1, y1, u1, v1, color, control}; // BR

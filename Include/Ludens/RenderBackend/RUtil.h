@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Ludens/Header/Color.h>
 #include <Ludens/RenderBackend/RBackend.h>
 #include <type_traits>
 
@@ -71,6 +72,12 @@ inline RClearColorValue make_clear_color(T r, T g, T b, T a)
         value.uint32[3] = a;
     }
     return value;
+}
+
+inline RClearColorValue make_clear_color(Color color)
+{
+    Vec4 v = color.operator TVec4<float>();
+    return make_clear_color<float>(v.r, v.g, v.b, v.a);
 }
 
 inline RSetBufferUpdateInfo make_single_set_buffer_udpate_info(RSet set, uint32_t dstBinding, RBindingType bindingType, RBuffer* buffer)

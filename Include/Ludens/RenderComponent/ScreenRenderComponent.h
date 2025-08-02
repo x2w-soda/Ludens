@@ -9,17 +9,16 @@
 
 namespace LD {
 
+struct ScreenRenderComponentInfo;
+
 /// @brief A component for batch rendering 2D primitives.
 struct ScreenRenderComponent : Handle<struct ScreenRenderComponentObj>
 {
-    typedef void (*OnDrawCallback)(ScreenRenderComponent renderer, void* user);
+    /// @brief Adds the component to render graph.
+    static ScreenRenderComponent add(RGraph graph, const ScreenRenderComponentInfo& info);
 
-    /// @brief adds the component to render graph
-    /// @on_draw user callback to draw 2D primitives
-    static ScreenRenderComponent add(RGraph graph, RFormat format, OnDrawCallback on_draw, void* user, bool hasSampledImage = false, bool isOutputImage = false);
-
-    /// @brief get the name of this component
-    inline const char* component_name() const { return "screen_render"; }
+    /// @brief get the name of this component instance
+    const char* component_name() const;
 
     /// @brief get the name of the single IO image
     inline const char* io_name() const { return "io"; }
@@ -29,6 +28,9 @@ struct ScreenRenderComponent : Handle<struct ScreenRenderComponentObj>
 
     /// @brief if a sampled image is supplied when adding the component, retrieve its image handle during on_draw callback
     RImage get_sampled_image();
+
+    /// @brief Get the screen extent of the component this frame
+    void get_screen_extent(uint32_t& screenWidth, uint32_t& screenHeight);
 
     /// @brief draw a rect
     /// @param rect render area in screen space
@@ -74,6 +76,17 @@ struct ScreenRenderComponent : Handle<struct ScreenRenderComponentObj>
 
     /// @brief draw a string of text
     void draw_text(FontAtlas atlas, RImage atlasImage, float fontSize, const Vec2& pos, const char* text, Color color, float wrapWidth = 0.0f);
+};
+
+struct ScreenRenderComponentInfo
+{
+    const char* name;                                                   /// component instance name, distinct among instances of this component type
+    RFormat format;                                                     /// color format
+    bool hasSampledImage;                                               /// whether to use the optional input sampled image
+    bool hasInputImage;                                                 /// whether to draw on top of existing image, or to generate a new one
+    Color clearColor;                                                   /// if hasInputImage is false, the clear color used to initialize the output
+    void (*onDrawCallback)(ScreenRenderComponent renderer, void* user); /// invoked at draw time
+    void* user;                                                         /// component instance user
 };
 
 } // namespace LD
