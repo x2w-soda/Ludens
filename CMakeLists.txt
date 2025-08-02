@@ -268,6 +268,7 @@ add_subdirectory(Core/RenderBackend)
 add_subdirectory(Core/RenderGraph)
 add_subdirectory(Core/RenderComponent)
 add_subdirectory(Core/UI)
+add_subdirectory(Core/Asset)
 add_subdirectory(Core/Application)
 
 add_library(LDCore INTERFACE)
@@ -288,6 +289,7 @@ target_link_libraries(LDCore INTERFACE
   LDRenderGraph
   LDRenderComponent
   LDUI
+  LDAsset
   LDApplication
 )
 
