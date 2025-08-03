@@ -468,8 +468,8 @@ static void record_graphics_pass(RGraphObj* graphObj, RGraphicsPassObj* passObj,
         ImageState* state = &storage.images[imageName];
 
         RImage image = state->handle;
-        RImageMemoryBarrier barrier = RUtil::make_image_memory_barrier(image, state->lastLayout, RIMAGE_LAYOUT_SHADER_READ_ONLY, RACCESS_COLOR_ATTACHMENT_WRITE_BIT, 0);
-        list.cmd_image_memory_barrier(RPIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, RPIPELINE_STAGE_TOP_OF_PIPE_BIT, barrier);
+        RImageMemoryBarrier barrier = RUtil::make_image_memory_barrier(image, state->lastLayout, RIMAGE_LAYOUT_SHADER_READ_ONLY, RACCESS_COLOR_ATTACHMENT_WRITE_BIT, RACCESS_SHADER_READ_BIT);
+        list.cmd_image_memory_barrier(RPIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, RPIPELINE_STAGE_FRAGMENT_SHADER_BIT, barrier);
         state->lastLayout = RIMAGE_LAYOUT_SHADER_READ_ONLY;
     }
 

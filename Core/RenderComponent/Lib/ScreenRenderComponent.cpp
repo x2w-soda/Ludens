@@ -9,6 +9,8 @@
 #include <array>
 #include <vector>
 
+#define IMAGE_SLOT_COUNT 8
+
 namespace LD {
 
 // clang-format off
@@ -98,7 +100,7 @@ constexpr uint32_t sMaxRectCount = 1024;
 constexpr uint32_t sMaxRectVertexCount = sMaxRectCount * 4;
 constexpr uint32_t sMaxRectIndexCount = sMaxRectCount * 6;
 
-static RSetBindingInfo sScreenSetBinding = {0, RBINDING_TYPE_COMBINED_IMAGE_SAMPLER, 8};
+static RSetBindingInfo sScreenSetBinding = {0, RBINDING_TYPE_COMBINED_IMAGE_SAMPLER, IMAGE_SLOT_COUNT};
 static RSetLayoutInfo sScreenSetLayout = {.bindingCount = 1, .bindings = &sScreenSetBinding};
 static RDevice sDevice;
 static RShader sRectVS;
@@ -128,13 +130,12 @@ private: // instance members
     {
         std::vector<RBuffer> rectVBOs;
         RSet screenSet;
-        bool isScreenSetDirty;
     };
 
     RBuffer mRectIBO;
     RCommandList mList;
     RSetPool mSetPool;
-    RImage mImageSlots[8];
+    RImage mImageSlots[IMAGE_SLOT_COUNT];
     RectVertexBatch<sMaxRectCount> mRectBatch;
     RGraphicsPass mGraphicsPass;
     uint32_t mImageCounter;
@@ -184,10 +185,6 @@ ScreenRenderComponentObj::ScreenRenderComponentObj(RDevice device, const char* n
 
     stager.submit(device.get_graphics_queue());
 
-    RImageLayout layouts[8];
-    std::fill(layouts, layouts + 8, RIMAGE_LAYOUT_SHADER_READ_ONLY);
-    std::fill(mImageSlots, mImageSlots + 8, sWhitePixel);
-
     mFrames.resize(device.get_frames_in_flight_count());
     for (Frame& frame : mFrames)
     {
@@ -198,19 +195,7 @@ ScreenRenderComponentObj::ScreenRenderComponentObj(RDevice device, const char* n
         };
         frame.rectVBOs = {device.create_buffer(bufferI)};
         frame.rectVBOs[0].map();
-
         frame.screenSet = mSetPool.allocate();
-        frame.isScreenSetDirty = false;
-
-        RSetImageUpdateInfo updateI;
-        updateI.set = frame.screenSet;
-        updateI.dstBinding = 0;
-        updateI.dstArrayIndex = 0;
-        updateI.imageCount = 8;
-        updateI.imageLayouts = layouts;
-        updateI.imageBindingType = RBINDING_TYPE_COMBINED_IMAGE_SAMPLER;
-        updateI.images = mImageSlots;
-        device.update_set_images(1, &updateI);
     }
 }
 
@@ -243,25 +228,18 @@ void ScreenRenderComponentObj::flush_rects()
 
     mRectBatch.reset();
 
-    RImageLayout layouts[8];
-    std::fill(layouts, layouts + 8, RIMAGE_LAYOUT_SHADER_READ_ONLY);
+    RImageLayout layouts[IMAGE_SLOT_COUNT];
+    std::fill(layouts, layouts + IMAGE_SLOT_COUNT, RIMAGE_LAYOUT_SHADER_READ_ONLY);
 
-    if (frame.isScreenSetDirty)
-    {
-        LD_PROFILE_SCOPE_NAME("update set images");
-
-        frame.isScreenSetDirty = false;
-
-        RSetImageUpdateInfo updateI;
-        updateI.set = frame.screenSet;
-        updateI.dstBinding = 0;
-        updateI.dstArrayIndex = 0;
-        updateI.imageCount = mImageCounter;
-        updateI.imageLayouts = layouts;
-        updateI.imageBindingType = RBINDING_TYPE_COMBINED_IMAGE_SAMPLER;
-        updateI.images = mImageSlots;
-        sDevice.update_set_images(1, &updateI);
-    }
+    RSetImageUpdateInfo updateI{};
+    updateI.set = frame.screenSet;
+    updateI.dstBinding = 0;
+    updateI.dstArrayIndex = 0;
+    updateI.imageCount = IMAGE_SLOT_COUNT;
+    updateI.imageLayouts = layouts;
+    updateI.imageBindingType = RBINDING_TYPE_COMBINED_IMAGE_SAMPLER;
+    updateI.images = mImageSlots;
+    sDevice.update_set_images(1, &updateI);
 
     mList.cmd_bind_vertex_buffers(0, 1, frame.rectVBOs.data() + mBatchIdx);
     mList.cmd_bind_graphics_sets(sScreenPipelineLayout, 1, 1, &frame.screenSet);
@@ -298,7 +276,6 @@ int ScreenRenderComponentObj::get_image_index(RImage image)
     if (mImageCounter == 8)
         return -1; // caller should flush
 
-    mFrames[mFrameIdx].isScreenSetDirty = true;
     mImageSlots[mImageCounter++] = image;
 
     return mImageCounter;
@@ -387,6 +364,8 @@ void ScreenRenderComponentObj::on_graphics_pass(RGraphicsPass pass, RCommandList
 
     list.cmd_bind_graphics_pipeline(sRectPipeline);
     list.cmd_bind_index_buffer(obj->mRectIBO, RINDEX_TYPE_U32);
+
+    std::fill(obj->mImageSlots, obj->mImageSlots + IMAGE_SLOT_COUNT, sWhitePixel);
 
     obj->mRectBatch.reset();
     obj->mBatchIdx = 0;

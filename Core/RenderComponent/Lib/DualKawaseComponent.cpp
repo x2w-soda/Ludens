@@ -7,7 +7,7 @@
 #include <array>
 #include <vector>
 
-#define MIP_COUNT 2
+#define MIP_COUNT 3
 
 namespace LD {
 
@@ -54,6 +54,7 @@ void main()
     color += texture(uImage, vUV + vec2(-halfPixelU, +halfPixelV) * kernelSize);
     color += texture(uImage, vUV + vec2(-halfPixelU, -halfPixelV) * kernelSize);
     fColor = color / 8.0;
+    fColor.a = 1.0;
 }
 )";
 
@@ -79,6 +80,7 @@ void main()
     color += texture(uImage, vUV + vec2(0.0, -halfPixelV * 2.0)     * kernelSize);
     color += texture(uImage, vUV + vec2(-halfPixelU, -halfPixelV)   * kernelSize) * 2.0;
     fColor = color / 12.0;
+    fColor.a = 1.0;
 }
 )";
 
@@ -138,7 +140,9 @@ void DualKawaseComponentObj::init(RDevice device, RFormat format, uint32_t width
     blurPipelineLayout.setLayouts = setLayouts;
 
     RShader shaders[2] = {screenVS, downSampleFS};
-    RPipelineBlendState blendState = RUtil::make_default_blend_state();
+    RPipelineBlendState blendState{};
+    blendState.enabled = false;
+
     RPipelineInfo pipelineI = {
         .shaderCount = 2,
         .shaders = shaders,
