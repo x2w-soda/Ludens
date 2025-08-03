@@ -70,6 +70,9 @@ struct JSONNode : Handle<struct JSONNodeObj>
     /// @param idx index into the array
     /// @return the element node, or null on error
     JSONNode get_index(int idx);
+
+    /// @brief Shorthand for get_index method.
+    inline JSONNode operator[](int idx) { return get_index(idx); }
 };
 
 struct JSONDocument : Handle<struct JSONDocumentObj>

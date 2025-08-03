@@ -12,13 +12,6 @@
 #include <string>
 #include <unordered_map>
 
-#define AXIS_X_ID 1
-#define AXIS_Y_ID 2
-#define AXIS_Z_ID 3
-#define PLANE_XY_ID 4
-#define PLANE_XZ_ID 5
-#define PLANE_YZ_ID 6
-
 namespace LD {
 
 struct CopyPipelineObj
@@ -419,19 +412,19 @@ void SceneOverlayComponentObj::draw_translation_gizmo(RGraphicsPass pass, RComma
     RMeshAmbientPipeline::PushConstant pc;
     pc.flags = 0;
     pc.model = translation * scale;
-    pc.id = AXIS_X_ID;
+    pc.id = SCENE_OVERLAY_GIZMO_ID_AXIS_X;
     pc.ambient = gizmoColorX;
     list.cmd_push_constant(sRMeshPipelineLayout, 0, sizeof(pc), &pc);
     list.cmd_draw_indexed(drawI);
 
     pc.model = translation * Mat4::rotate(M_PI_2, Vec3(0.0f, 0.0f, 1.0f)) * scale;
-    pc.id = AXIS_Y_ID;
+    pc.id = SCENE_OVERLAY_GIZMO_ID_AXIS_Y;
     pc.ambient = gizmoColorY;
     list.cmd_push_constant(sRMeshPipelineLayout, 0, sizeof(pc), &pc);
     list.cmd_draw_indexed(drawI);
 
     pc.model = translation * Mat4::rotate(M_PI_2, Vec3(0.0f, -1.0f, 0.0f)) * scale;
-    pc.id = AXIS_Z_ID;
+    pc.id = SCENE_OVERLAY_GIZMO_ID_AXIS_Z;
     pc.ambient = gizmoColorZ;
     list.cmd_push_constant(sRMeshPipelineLayout, 0, sizeof(pc), &pc);
     list.cmd_draw_indexed(drawI);
@@ -444,7 +437,7 @@ void SceneOverlayComponentObj::draw_translation_gizmo(RGraphicsPass pass, RComma
     Mat4 planeOffset = Mat4::translate(Vec3(offset, offset, 0.0f));
 
     pc.model = translation * planeOffset * planeScale;
-    pc.id = PLANE_XY_ID;
+    pc.id = SCENE_OVERLAY_GIZMO_ID_PLANE_XY;
     pc.ambient = gizmoColorXY;
     list.cmd_push_constant(sRMeshPipelineLayout, 0, sizeof(pc), &pc);
     list.cmd_bind_vertex_buffers(0, 1, &sPlaneXY);
@@ -453,7 +446,7 @@ void SceneOverlayComponentObj::draw_translation_gizmo(RGraphicsPass pass, RComma
     planeOffset = Mat4::translate(Vec3(offset, 0.0f, offset));
 
     pc.model = translation * planeOffset * planeScale;
-    pc.id = PLANE_XZ_ID;
+    pc.id = SCENE_OVERLAY_GIZMO_ID_PLANE_XZ;
     pc.ambient = gizmoColorXZ;
     list.cmd_push_constant(sRMeshPipelineLayout, 0, sizeof(pc), &pc);
     list.cmd_bind_vertex_buffers(0, 1, &sPlaneXZ);
@@ -462,7 +455,7 @@ void SceneOverlayComponentObj::draw_translation_gizmo(RGraphicsPass pass, RComma
     planeOffset = Mat4::translate(Vec3(0.0f, offset, offset));
 
     pc.model = translation * planeOffset * planeScale;
-    pc.id = PLANE_YZ_ID;
+    pc.id = SCENE_OVERLAY_GIZMO_ID_PLANE_YZ;
     pc.ambient = gizmoColorYZ;
     list.cmd_push_constant(sRMeshPipelineLayout, 0, sizeof(pc), &pc);
     list.cmd_bind_vertex_buffers(0, 1, &sPlaneYZ);
@@ -482,20 +475,20 @@ void SceneOverlayComponentObj::draw_rotation_gizmo(RGraphicsPass pass, RCommandL
 
     RMeshAmbientPipeline::PushConstant pc;
     pc.model = translation * scale;
-    pc.id = PLANE_XZ_ID;
+    pc.id = SCENE_OVERLAY_GIZMO_ID_PLANE_XZ;
     pc.flags = 0;
     pc.ambient = gizmoColorXZ;
     list.cmd_push_constant(sRMeshPipelineLayout, 0, sizeof(pc), &pc);
     list.cmd_draw_indexed(drawI);
 
     pc.model = translation * Mat4::rotate(M_PI_2, Vec3(-1.0f, 0.0f, 0.0f)) * scale;
-    pc.id = PLANE_XY_ID;
+    pc.id = SCENE_OVERLAY_GIZMO_ID_PLANE_XY;
     pc.ambient = gizmoColorXY;
     list.cmd_push_constant(sRMeshPipelineLayout, 0, sizeof(pc), &pc);
     list.cmd_draw_indexed(drawI);
 
     pc.model = translation * Mat4::rotate(M_PI_2, Vec3(0.0f, 0.0f, 1.0f)) * scale;
-    pc.id = PLANE_YZ_ID;
+    pc.id = SCENE_OVERLAY_GIZMO_ID_PLANE_YZ;
     pc.ambient = gizmoColorYZ;
     list.cmd_push_constant(sRMeshPipelineLayout, 0, sizeof(pc), &pc);
     list.cmd_draw_indexed(drawI);
@@ -514,20 +507,20 @@ void SceneOverlayComponentObj::draw_scale_gizmo(RGraphicsPass pass, RCommandList
 
     RMeshAmbientPipeline::PushConstant pc;
     pc.model = translation * scale;
-    pc.id = AXIS_X_ID;
+    pc.id = SCENE_OVERLAY_GIZMO_ID_AXIS_X;
     pc.flags = 0;
     pc.ambient = gizmoColorX;
     list.cmd_push_constant(sRMeshPipelineLayout, 0, sizeof(pc), &pc);
     list.cmd_draw_indexed(drawI);
 
     pc.model = translation * Mat4::rotate(M_PI_2, Vec3(0.0f, 0.0f, 1.0f)) * scale;
-    pc.id = AXIS_Y_ID;
+    pc.id = SCENE_OVERLAY_GIZMO_ID_AXIS_Y;
     pc.ambient = gizmoColorY;
     list.cmd_push_constant(sRMeshPipelineLayout, 0, sizeof(pc), &pc);
     list.cmd_draw_indexed(drawI);
 
     pc.model = translation * Mat4::rotate(M_PI_2, Vec3(0.0f, -1.0f, 0.0f)) * scale;
-    pc.id = AXIS_Z_ID;
+    pc.id = SCENE_OVERLAY_GIZMO_ID_AXIS_Z;
     pc.ambient = gizmoColorZ;
     list.cmd_push_constant(sRMeshPipelineLayout, 0, sizeof(pc), &pc);
     list.cmd_draw_indexed(drawI);

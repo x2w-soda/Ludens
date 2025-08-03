@@ -44,7 +44,7 @@ struct Gizmo : Handle<struct GizmoObj>
     /// @brief stop gizmo manipulation
     void end();
 
-    void update(const Camera& camera, const Vec2& screenPos, const Vec2& screenSize);
+    void update(Camera camera, const Vec2& screenPos, const Vec2& screenSize);
 
     void begin_axis_translate(GizmoAxis axis, const Vec3& targetPos);
     Vec3 get_axis_translate();

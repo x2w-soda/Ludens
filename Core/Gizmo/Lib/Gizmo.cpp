@@ -56,7 +56,7 @@ void Gizmo::end()
     mObj->activeControl = GIZMO_CONTROL_NONE;
 }
 
-void Gizmo::update(const Camera& camera, const Vec2& screenPos, const Vec2& screenSize)
+void Gizmo::update(Camera camera, const Vec2& screenPos, const Vec2& screenSize)
 {
     mObj->cameraRay = get_camera_ray(camera, screenPos, screenSize);
 }

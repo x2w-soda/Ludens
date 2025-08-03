@@ -15,6 +15,18 @@ enum SceneOverlayGizmo
     SCENE_OVERLAY_GIZMO_SCALE,
 };
 
+/// @brief Gizmo ID written to the IDFlags attachment on top of scene
+enum SceneOverlayGizmoID
+{
+    SCENE_OVERLAY_GIZMO_ID_AXIS_X = 1,
+    SCENE_OVERLAY_GIZMO_ID_AXIS_Y = 2,
+    SCENE_OVERLAY_GIZMO_ID_AXIS_Z = 3,
+    SCENE_OVERLAY_GIZMO_ID_PLANE_XY = 4,
+    SCENE_OVERLAY_GIZMO_ID_PLANE_XZ = 5,
+    SCENE_OVERLAY_GIZMO_ID_PLANE_YZ = 6,
+    SCENE_OVERLAY_GIZMO_ID_LAST = SCENE_OVERLAY_GIZMO_ID_PLANE_YZ
+};
+
 struct SceneOverlayComponentInfo
 {
     RSampleCountBit gizmoMSAA;   /// the MSAA state of gizmo rendering
