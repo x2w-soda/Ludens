@@ -1,3 +1,4 @@
+#include <Ludens/Application/Application.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Header/Math/Rect.h>
 #include <Ludens/System/Allocator.h>
@@ -10,31 +11,108 @@
 
 namespace LD {
 
+struct AreaNode;
+
 enum SplitAxis
 {
     SPLIT_AXIS_X,
     SPLIT_AXIS_Y,
 };
 
+static void split_area(SplitAxis axis, float ratio, const Rect& area, Rect& tl, Rect& br, Rect& split);
+static void invalidate(AreaNode* node);
+
 struct AreaNode
 {
-    AreaNode* lch;   /// left or top child area
-    AreaNode* rch;   /// right or bottom child area
-    UIWindow window; /// leaf nodes represent a window
+    AreaNode* lch;         /// left or top child area
+    AreaNode* rch;         /// right or bottom child area
+    UIWindow window;       /// leaf nodes represent a window
+    UIWindow splitControl; /// non-leaf nodes represent a split
     void (*onWindowResize)(UIWindow window, const Vec2& size);
     UIWindowAreaID areaID;
     Rect area;
     SplitAxis splitAxis;
     float splitRatio;
 
-    void invalidate(Rect newArea)
+    // non-recursive, triggers optional window resize callback for user
+    void invalidate_area(Rect newArea)
     {
         LD_ASSERT(window && !lch && !rch); // only leaf nodes are windows
 
-        window.set_pos(area.get_pos());
-        window.set_size(area.get_size());
+        area = newArea;
+        window.set_rect(area);
+
+        if (onWindowResize)
+            onWindowResize(window, area.get_size());
     }
+
+    // recursive, subtrees are invalidated
+    void invalidate_split_ratio(float newRatio)
+    {
+        LD_ASSERT(splitControl && lch && rch); // only non-leaf nodes are splits
+
+        newRatio = std::clamp<float>(newRatio, 0.05f, 0.95f);
+        splitRatio = newRatio;
+
+        Rect tl, br, splitArea;
+        split_area(splitAxis, splitRatio, area, tl, br, splitArea);
+        splitControl.set_rect(splitArea);
+
+        lch->area = tl;
+        invalidate(lch);
+
+        rch->area = br;
+        invalidate(rch);
+    }
+
+    static void split_control_on_draw(UIWidget widget, ScreenRenderComponent renderer);
+    static void split_control_on_drag(UIWidget widget, MouseButton btn, const Vec2& dragPos, bool begin);
+    static void split_control_on_enter(UIWidget widget);
+    static void split_control_on_leave(UIWidget widget);
 };
+
+void AreaNode::split_control_on_draw(UIWidget widget, ScreenRenderComponent renderer)
+{
+    Rect area = widget.get_rect();
+
+    Color color = 0x101010FF;
+    if (widget.is_hovered())
+        color = 0x404040FF;
+
+    renderer.draw_rect(area, color);
+}
+
+void AreaNode::split_control_on_drag(UIWidget widget, MouseButton btn, const Vec2& dragPos, bool begin)
+{
+    AreaNode* node = (AreaNode*)widget.get_user();
+
+    if (btn != MOUSE_BUTTON_LEFT)
+        return;
+
+    float ratio;
+
+    if (node->splitAxis == SPLIT_AXIS_X)
+        ratio = (dragPos.x - node->area.x) / node->area.w;
+    else
+        ratio = (dragPos.y - node->area.y) / node->area.h;
+
+    node->invalidate_split_ratio(ratio);
+}
+
+void AreaNode::split_control_on_enter(UIWidget widget)
+{
+    Application app = Application::get();
+    AreaNode* node = (AreaNode*)widget.get_user();
+
+    app.hint_cursor_shape(node->splitAxis == SPLIT_AXIS_X ? CURSOR_TYPE_HRESIZE : CURSOR_TYPE_VRESIZE);
+}
+
+void AreaNode::split_control_on_leave(UIWidget widget)
+{
+    Application app = Application::get();
+
+    app.hint_cursor_shape(CURSOR_TYPE_DEFAULT);
+}
 
 /// @brief Window Manager Implementation.
 class UIWindowManagerObj
@@ -48,8 +126,6 @@ public:
 
     void update(float delta);
 
-    void resize(AreaNode* node);
-
     UIWindow create_window(const Vec2& extent, const char* name);
 
     UIContext get_context();
@@ -61,17 +137,16 @@ public:
     AreaNode* get_node(UIWindowAreaID areaID, AreaNode* root);
 
     UIWindowAreaID split_right(UIWindowAreaID areaID, float ratio);
+    UIWindowAreaID split_bottom(UIWindowAreaID areaID, float ratio);
 
     void render(ScreenRenderComponent renderer, AreaNode* node);
 
     void get_workspace_windows_recursive(std::vector<UIWindow>& windows, AreaNode* node);
 
-    void split_area(SplitAxis axis, float ratio, const Rect& area, Rect& tl, Rect& br);
-
 private:
     UIContext mCtx;
     PoolAllocator mNodePA;
-    UIWindow mTopbar;
+    UIWindow mTopbarWindow;
     AreaNode* mRoot;
     UIWindowAreaID mAreaIDCounter;
 };
@@ -100,8 +175,8 @@ UIWindowManagerObj::UIWindowManagerObj(const UIWindowManagerInfo& wmInfo)
     UIWindowInfo windowI{};
     windowI.name = "topbar";
     windowI.defaultMouseControls = false;
-    mTopbar = mCtx.add_window(layoutI, windowI, nullptr);
-    mTopbar.set_pos(Vec2(0.0f, 0.0f));
+    mTopbarWindow = mCtx.add_window(layoutI, windowI, nullptr);
+    mTopbarWindow.set_pos(Vec2(0.0f, 0.0f));
 
     Rect rootArea(0, TOPBAR_HEIGHT, wmInfo.screenSize.x, wmInfo.screenSize.y - TOPBAR_HEIGHT);
 
@@ -126,44 +201,12 @@ void UIWindowManagerObj::update(float delta)
     mCtx.update(delta);
 }
 
-void UIWindowManagerObj::resize(AreaNode* node)
-{
-    if (!node)
-        return;
-
-    if (!node->lch && !node->rch)
-    {
-        node->window.set_pos(node->area.get_pos());
-        node->window.set_size(node->area.get_size());
-
-        if (node->onWindowResize)
-            node->onWindowResize(node->window, node->area.get_size());
-
-        return;
-    }
-
-    Rect tl, br;
-    split_area(node->splitAxis, node->splitRatio, node->area, tl, br);
-
-    if (node->lch)
-    {
-        node->lch->area = tl;
-        resize(node->lch);
-    }
-
-    if (node->rch)
-    {
-        node->rch->area = br;
-        resize(node->rch);
-    }
-}
-
 UIWindow UIWindowManagerObj::create_window(const Vec2& extent, const char* name)
 {
     UILayoutInfo layoutI{};
     layoutI.childAxis = UIAxis::UI_AXIS_Y;
     layoutI.childGap = 0.0f;
-    layoutI.childPadding = {16, 16, 16, 16};
+    layoutI.childPadding = {};
     layoutI.sizeX = UISize::fixed(extent.x);
     layoutI.sizeY = UISize::fixed(extent.y);
 
@@ -181,7 +224,7 @@ UIContext UIWindowManagerObj::get_context()
 
 UIWindow UIWindowManagerObj::get_topbar_window()
 {
-    return mTopbar;
+    return mTopbarWindow;
 }
 
 AreaNode* UIWindowManagerObj::alloc_node(const Rect& area)
@@ -229,23 +272,81 @@ UIWindowAreaID UIWindowManagerObj::split_right(UIWindowAreaID areaID, float rati
     if (!node)
         return INVALID_WINDOW_AREA;
 
-    Rect leftArea, rightArea;
-    split_area(SPLIT_AXIS_X, ratio, node->area, leftArea, rightArea);
+    ratio = std::clamp(ratio, 0.05f, 0.95f);
+
+    Rect leftArea, rightArea, splitArea;
+    split_area(SPLIT_AXIS_X, ratio, node->area, leftArea, rightArea, splitArea);
 
     node->lch = alloc_node(leftArea);
     node->lch->areaID = node->areaID;
     node->lch->window = node->window;
-    node->lch->invalidate(leftArea);
+    node->lch->invalidate_area(leftArea);
 
     node->rch = alloc_node(rightArea);
     node->rch->areaID = mAreaIDCounter++;
     node->rch->window = create_window(rightArea.get_size(), "window");
-    node->rch->invalidate(rightArea);
+    node->rch->invalidate_area(rightArea);
+
+    UILayoutInfo layoutI{};
+    layoutI.sizeX = UISize::fixed(WINDOW_AREA_MARGIN);
+    layoutI.sizeY = UISize::fixed(node->area.h);
+    UIWindowInfo windowI{};
+    windowI.name = "splitControl";
+    windowI.defaultMouseControls = false;
 
     // becomes non-leaf node
     node->areaID = INVALID_WINDOW_AREA;
     node->window = {};
+    node->splitControl = mCtx.add_window(layoutI, windowI, node);
+    node->splitControl.set_rect(splitArea);
+    node->splitControl.set_on_draw(&AreaNode::split_control_on_draw);
+    node->splitControl.set_on_drag(&AreaNode::split_control_on_drag);
+    node->splitControl.set_on_enter(&AreaNode::split_control_on_enter);
+    node->splitControl.set_on_leave(&AreaNode::split_control_on_leave);
     node->splitAxis = SPLIT_AXIS_X;
+    node->splitRatio = ratio;
+
+    return node->rch->areaID;
+}
+
+UIWindowAreaID UIWindowManagerObj::split_bottom(UIWindowAreaID areaID, float ratio)
+{
+    AreaNode* node = get_node(areaID, mRoot);
+    if (!node)
+        return INVALID_WINDOW_AREA;
+
+    ratio = std::clamp(ratio, 0.05f, 0.95f);
+
+    Rect topArea, bottomArea, splitArea;
+    split_area(SPLIT_AXIS_Y, ratio, node->area, topArea, bottomArea, splitArea);
+
+    node->lch = alloc_node(topArea);
+    node->lch->areaID = node->areaID;
+    node->lch->window = node->window;
+    node->lch->invalidate_area(topArea);
+
+    node->rch = alloc_node(bottomArea);
+    node->rch->areaID = mAreaIDCounter++;
+    node->rch->window = create_window(bottomArea.get_size(), "window");
+    node->rch->invalidate_area(bottomArea);
+
+    UILayoutInfo layoutI{};
+    layoutI.sizeX = UISize::fixed(node->area.w);
+    layoutI.sizeY = UISize::fixed(WINDOW_AREA_MARGIN);
+    UIWindowInfo windowI{};
+    windowI.name = "splitControl";
+    windowI.defaultMouseControls = false;
+
+    // becomes non-leaf node
+    node->areaID = INVALID_WINDOW_AREA;
+    node->window = {};
+    node->splitControl = mCtx.add_window(layoutI, windowI, node);
+    node->splitControl.set_rect(splitArea);
+    node->splitControl.set_on_draw(&AreaNode::split_control_on_draw);
+    node->splitControl.set_on_drag(&AreaNode::split_control_on_drag);
+    node->splitControl.set_on_enter(&AreaNode::split_control_on_enter);
+    node->splitControl.set_on_leave(&AreaNode::split_control_on_leave);
+    node->splitAxis = SPLIT_AXIS_Y;
     node->splitRatio = ratio;
 
     return node->rch->areaID;
@@ -261,6 +362,9 @@ void UIWindowManagerObj::render(ScreenRenderComponent renderer, AreaNode* node)
 
     if (node->rch)
         render(renderer, node->rch);
+
+    if (node->lch || node->rch)
+        node->splitControl.on_draw(renderer);
 
     // render window area on leaf node
     if (node->window)
@@ -283,13 +387,15 @@ void UIWindowManagerObj::get_workspace_windows_recursive(std::vector<UIWindow>& 
         get_workspace_windows_recursive(windows, node->rch);
 }
 
-void UIWindowManagerObj::split_area(SplitAxis axis, float ratio, const Rect& area, Rect& tl, Rect& br)
+static void split_area(SplitAxis axis, float ratio, const Rect& area, Rect& tl, Rect& br, Rect& split)
 {
     if (axis == SPLIT_AXIS_X)
     {
         tl = area;
         tl.w = area.w * ratio;
         tl.w -= WINDOW_AREA_MARGIN / 2.0f;
+
+        split = Rect(tl.x + tl.w, tl.y, WINDOW_AREA_MARGIN, tl.h);
 
         br = area;
         br.x += tl.w + WINDOW_AREA_MARGIN;
@@ -301,10 +407,28 @@ void UIWindowManagerObj::split_area(SplitAxis axis, float ratio, const Rect& are
         tl.h = area.h * ratio;
         tl.h -= WINDOW_AREA_MARGIN / 2.0f;
 
+        split = Rect(tl.x, tl.y + tl.h, tl.w, WINDOW_AREA_MARGIN);
+
         br = area;
         br.y += tl.h + WINDOW_AREA_MARGIN;
         br.h = area.h * (1.0f - ratio) - WINDOW_AREA_MARGIN / 2.0f;
     }
+}
+
+/// @brief recursive invalidation to notify new split ratio and window area
+static void invalidate(AreaNode* node)
+{
+    if (!node)
+        return;
+
+    if (!node->lch && !node->rch)
+    {
+        // invalidate leaf node window area
+        node->invalidate_area(node->area);
+        return;
+    }
+
+    node->invalidate_split_ratio(node->splitRatio);
 }
 
 UIWindowManager UIWindowManager::create(const UIWindowManagerInfo& wmInfo)
@@ -332,18 +456,17 @@ void UIWindowManager::resize(const Vec2& screenSize)
     topbar.set_size(Vec2(screenSize.x, TOPBAR_HEIGHT));
 
     AreaNode* root = mObj->get_root();
-    root->area.set_size(screenSize.x, screenSize.y - TOPBAR_HEIGHT);
-
-    mObj->resize(root);
+    root->area = Rect(0, TOPBAR_HEIGHT, screenSize.x, screenSize.y - TOPBAR_HEIGHT);
+    invalidate(root);
 }
 
 void UIWindowManager::render(ScreenRenderComponent renderer)
 {
-    UIWindow topbar = mObj->get_topbar_window();
-    topbar.on_draw(renderer);
-
     AreaNode* root = mObj->get_root();
     mObj->render(renderer, root);
+
+    UIWindow topbar = mObj->get_topbar_window();
+    topbar.on_draw(renderer);
 }
 
 void UIWindowManager::set_on_window_resize(UIWindowAreaID areaID, void (*onWindowResize)(UIWindow window, const Vec2& size))
@@ -388,7 +511,12 @@ void UIWindowManager::get_workspace_windows(std::vector<UIWindow>& windows)
 
 UIWindowAreaID UIWindowManager::split_right(UIWindowAreaID areaID, float ratio)
 {
-    return mObj->split_right(areaID, std::clamp(ratio, 0.05f, 0.95f));
+    return mObj->split_right(areaID, ratio);
+}
+
+UIWindowAreaID UIWindowManager::split_bottom(UIWindowAreaID areaID, float ratio)
+{
+    return mObj->split_bottom(areaID, ratio);
 }
 
 } // namespace LD

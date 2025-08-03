@@ -20,12 +20,14 @@ bool UIWidget::is_pressed()
 
 void UIWidget::on_draw(ScreenRenderComponent renderer)
 {
+    if (mObj->cb.onDraw)
+    {
+        mObj->cb.onDraw(*this, renderer);
+        return;
+    }
+
     switch (mObj->type)
     {
-    case UI_WIDGET_WINDOW:
-        if (mObj->cb.onDraw)
-            mObj->cb.onDraw(*this, renderer);
-        break;
     case UI_WIDGET_PANEL:
         UIPanelWidgetObj::on_draw(*this, renderer);
         break;
@@ -67,6 +69,11 @@ void* UIWidget::get_user()
 void UIWidget::set_user(void* user)
 {
     mObj->user = user;
+}
+
+void UIWidget::set_layout(const UILayoutInfo& layout)
+{
+    mObj->layout.info = layout;
 }
 
 void UIWidget::set_on_key_up(void (*onKeyUp)(UIWidget widget, KeyCode key))
@@ -112,6 +119,11 @@ void UIWidget::set_on_update(void (*onUpdate)(UIWidget widget, float delta))
 void UIWidget::set_on_draw(void (*onDraw)(UIWidget widget, ScreenRenderComponent renderer))
 {
     mObj->cb.onDraw = onDraw;
+}
+
+UIContextObj* UINode::get_context()
+{
+    return mObj->window->ctx;
 }
 
 UIPanelWidget UINode::add_panel(const UILayoutInfo& layoutI, const UIPanelWidgetInfo& widgetI, void* user)

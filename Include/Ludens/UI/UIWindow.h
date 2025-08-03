@@ -30,6 +30,9 @@ struct UIWindow : UIWidget
     /// @brief set window to fixed size
     void set_size(const Vec2& size);
 
+    /// @brief set window to position and fixed size
+    void set_rect(const Rect& rect);
+
     /// @brief get all child widgets in the window
     void get_widgets(std::vector<UIWidget>& widgets);
 

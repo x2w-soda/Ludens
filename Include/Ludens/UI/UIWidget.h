@@ -4,12 +4,13 @@
 #include <Ludens/Header/KeyCode.h>
 #include <Ludens/Media/Font.h>
 #include <Ludens/RenderBackend/RBackend.h>
-#include <Ludens/RenderComponent/ScreenRender.h>
+#include <Ludens/RenderComponent/ScreenRenderComponent.h>
 #include <Ludens/UI/UILayout.h>
 
 namespace LD {
 
 struct UINode;
+struct UIContextObj;
 
 struct UIWidget : Handle<struct UIWidgetObj>
 {
@@ -33,6 +34,9 @@ struct UIWidget : Handle<struct UIWidgetObj>
 
     /// @brief set user data pointer
     void set_user(void* user);
+
+    /// @brief update widget layout after creation
+    void set_layout(const UILayoutInfo& layout);
 
     /// @brief override key up callback
     void set_on_key_up(void (*onKeyUp)(UIWidget widget, KeyCode key));
@@ -138,6 +142,8 @@ struct UITextWidgetInfo
 /// @brief interface to manipulate widget tree hierarchy
 struct UINode : Handle<struct UIWidgetObj>
 {
+    UIContextObj* get_context();
+
     UIPanelWidget add_panel(const UILayoutInfo& layoutI, const UIPanelWidgetInfo& widgetI, void* user);
 
     UIImageWidget add_image(const UILayoutInfo& layoutI, const UIImageWidgetInfo& widgetI, void* user);

@@ -3,7 +3,7 @@
 #include <Ludens/Header/Handle.h>
 #include <Ludens/Media/Font.h>
 #include <Ludens/RenderBackend/RBackend.h>
-#include <Ludens/RenderComponent/ScreenRender.h>
+#include <Ludens/RenderComponent/ScreenRenderComponent.h>
 #include <Ludens/UI/UIContext.h>
 #include <cstdint>
 #include <vector>
@@ -52,6 +52,10 @@ struct UIWindowManager : Handle<struct UIWindowManagerObj>
     /// @brief split an area to make room for right
     /// @return new area from right partition
     UIWindowAreaID split_right(UIWindowAreaID areaID, float ratio);
+
+    /// @brief Split an area to make room for bottom.
+    /// @return New area from bottom partition.
+    UIWindowAreaID split_bottom(UIWindowAreaID areaID, float ratio);
 };
 
 } // namespace LD

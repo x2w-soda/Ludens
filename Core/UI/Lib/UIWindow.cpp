@@ -69,6 +69,15 @@ void UIWindow::set_size(const Vec2& size)
     mObj->layout.info.sizeY = UISize::fixed(size.y);
 }
 
+void UIWindow::set_rect(const Rect& rect)
+{
+    UIWindowObj* obj = (UIWindowObj*)mObj;
+    obj->layout.rect.x = rect.x;
+    obj->layout.rect.y = rect.y;
+    mObj->layout.info.sizeX = UISize::fixed(rect.w);
+    mObj->layout.info.sizeY = UISize::fixed(rect.h);
+}
+
 void UIWindow::get_widgets(std::vector<UIWidget>& widgets)
 {
     UIWindowObj* obj = (UIWindowObj*)mObj;
