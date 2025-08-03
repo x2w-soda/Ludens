@@ -64,6 +64,10 @@ layout (location = 0) out vec4 fColor;
 
 layout (set = 1, binding = 0) uniform sampler2D uImage;
 
+layout (push_constant, std430) uniform PC {
+    vec4 mixColor;
+} uPC;
+
 void main()
 {
     vec2 uvStep = vec2(1.0) / textureSize(uImage, 0);
@@ -80,6 +84,7 @@ void main()
     color += texture(uImage, vUV + vec2(0.0, -halfPixelV * 2.0)     * kernelSize);
     color += texture(uImage, vUV + vec2(-halfPixelU, -halfPixelV)   * kernelSize) * 2.0;
     fColor = color / 12.0;
+    fColor.rgb = mix(fColor.rgb, uPC.mixColor.rgb, uPC.mixColor.a);
     fColor.a = 1.0;
 }
 )";
@@ -102,6 +107,7 @@ struct DualKawaseComponentObj
     RPipeline downSamplePipeline;
     RPipeline upSamplePipeline;
     std::vector<Frame> frames;
+    Vec4 mixColorPC;
     uint32_t mipLevel;
     uint32_t frameIdx;
     uint32_t baseWidth;
@@ -216,7 +222,7 @@ void DualKawaseComponentObj::invalidate_image(Frame& frame, uint32_t idx, RImage
     frame.blurImages[idx] = handle;
     RSetImageUpdateInfo update = RUtil::make_single_set_image_update_info(
         frame.blurSets[idx], 0, RBINDING_TYPE_COMBINED_IMAGE_SAMPLER, &imageLayout, &handle);
-    
+
     device.update_set_images(1, &update);
 }
 
@@ -265,6 +271,7 @@ void DualKawaseComponentObj::on_up_sample(RGraphicsPass pass, RCommandList list,
 
     uint32_t mipLevel = --obj->mipLevel;
     RSet blurSet = frame.blurSets[mipLevel];
+    Vec4 mixColorPC(0.0f);
 
     if (mipLevel == MIP_COUNT - 1)
     {
@@ -273,13 +280,20 @@ void DualKawaseComponentObj::on_up_sample(RGraphicsPass pass, RCommandList list,
         RImage sampled = pass.get_image(mipName.c_str());
         obj->invalidate_image(frame, MIP_COUNT - 1, sampled);
     }
+    else if (mipLevel == 0)
+    {
+        // last upsample pass, apply user-defined color grading,
+        // alpha channel is mix factor, not alpha-blending.
+        mixColorPC = obj->mixColorPC;
+    }
 
+    list.cmd_push_constant(obj->blurPipelineLayout, 0, sizeof(mixColorPC), &mixColorPC);
     list.cmd_bind_graphics_pipeline(obj->upSamplePipeline);
     list.cmd_bind_graphics_sets(obj->blurPipelineLayout, 1, 1, &blurSet);
     list.cmd_draw({.vertexCount = 6, .vertexStart = 0, .instanceCount = 1, .instanceStart = 0});
 }
 
-DualKawaseComponent DualKawaseComponent::add(RGraph graph, RFormat format)
+DualKawaseComponent DualKawaseComponent::add(RGraph graph, const DualKawaseComponentInfo& info)
 {
     LD_PROFILE_SCOPE;
 
@@ -287,16 +301,18 @@ DualKawaseComponent DualKawaseComponent::add(RGraph graph, RFormat format)
     uint32_t screenWidth, screenHeight;
     graph.get_screen_extent(screenWidth, screenHeight);
 
-    sDKCompObj.init(device, format, screenWidth, screenHeight);
+    sDKCompObj.init(device, info.format, screenWidth, screenHeight);
     sDKCompObj.mipLevel = 0;
     sDKCompObj.frameIdx = device.get_frame_index();
+    sDKCompObj.mixColorPC = info.mixColor.operator Vec4();
+    sDKCompObj.mixColorPC.a = info.mixFactor;
 
     DualKawaseComponent kawaseComp(&sDKCompObj);
     RSamplerInfo sampler = {RFILTER_LINEAR, RFILTER_LINEAR, RSAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE};
 
     RComponent comp = graph.add_component(kawaseComp.component_name());
-    comp.add_input_image(kawaseComp.input_name(), format, screenWidth, screenHeight);
-    comp.add_output_image(kawaseComp.output_name(), format, screenWidth, screenHeight, &sampler);
+    comp.add_input_image(kawaseComp.input_name(), info.format, screenWidth, screenHeight);
+    comp.add_output_image(kawaseComp.output_name(), info.format, screenWidth, screenHeight, &sampler);
 
     uint32_t mipWidth = screenWidth;
     uint32_t mipHeight = screenHeight;
@@ -311,7 +327,7 @@ DualKawaseComponent DualKawaseComponent::add(RGraph graph, RFormat format)
 
         passName.back() = '0' + i;
         mipName.back() = '0' + i;
-        comp.add_private_image(mipName.c_str(), format, mipWidth, mipHeight, &sampler);
+        comp.add_private_image(mipName.c_str(), info.format, mipWidth, mipHeight, &sampler);
 
         RGraphicsPassInfo gpI;
         gpI.width = mipWidth;
