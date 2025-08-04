@@ -267,6 +267,7 @@ add_subdirectory(Core/Gizmo)
 add_subdirectory(Core/RenderBackend)
 add_subdirectory(Core/RenderGraph)
 add_subdirectory(Core/RenderComponent)
+add_subdirectory(Core/RenderServer)
 add_subdirectory(Core/UI)
 add_subdirectory(Core/Asset)
 add_subdirectory(Core/Application)
@@ -288,6 +289,7 @@ target_link_libraries(LDCore INTERFACE
   LDRenderBackend
   LDRenderGraph
   LDRenderComponent
+  LDRenderServer
   LDUI
   LDAsset
   LDApplication
