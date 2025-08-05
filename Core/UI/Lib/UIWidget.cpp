@@ -61,6 +61,21 @@ Rect UIWidget::get_rect()
     return mObj->layout.rect;
 }
 
+bool UIWidget::get_mouse_pos(Vec2& pos)
+{
+    UIContextObj* ctx = mObj->window->ctx;
+
+    const Rect& widgetRect = mObj->layout.rect;
+
+    if (widgetRect.contains(ctx->cursorPos))
+    {
+        pos = ctx->cursorPos - widgetRect.get_pos();
+        return true;
+    }
+
+    return false;
+}
+
 void* UIWidget::get_user()
 {
     return mObj->user;

@@ -60,8 +60,8 @@ struct UIContextObj
     UIWidgetObj* dragElement;    /// the widget begin dragged
     UIWidgetObj* pressElement;   /// the widget pressed and not yet released
     UIWidgetObj* cursorElement;  /// the widget under mouse cursor
-    Vec2 cursorPos;              /// mouse cursor position
-    Vec2 dragStartPos;           /// mouse cursor drag start position
+    Vec2 cursorPos;              /// mouse cursor global position
+    Vec2 dragStartPos;           /// mouse cursor drag start global position
     MouseButton dragMouseButton; /// mouse button used for dragging
 
     UIWidgetObj* alloc_widget(UIWidgetType type, const UILayoutInfo& layoutI, UIWidgetObj* parent, void* user);

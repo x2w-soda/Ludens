@@ -20,6 +20,11 @@ struct UIWidget : Handle<struct UIWidgetObj>
     /// @brief get widget rect in screen space
     Rect get_rect();
 
+    /// @brief get mouse position relative to widget origin
+    /// @param pos output mouse position if mouse is within widget
+    /// @return true if mouse is within widget rect
+    bool get_mouse_pos(Vec2& pos);
+
     /// @brief whether the widget is under the mouse cursor
     bool is_hovered();
 
