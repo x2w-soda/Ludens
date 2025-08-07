@@ -17,7 +17,7 @@ add_executable(${BUILDER_NAME}
 )
 
 target_link_libraries(${BUILDER_NAME} PRIVATE
-	LDCore
+	LDCoreLibs
 	LDBuilderLibs
 )
 

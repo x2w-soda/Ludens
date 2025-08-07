@@ -1,11 +1,11 @@
-set(MODULE_NAME LDBDocumentCompiler)
+set(MODULE_NAME LDBAssetUtil)
 
 set(MODULE_INCLUDE
-	${LUDENS_INCLUDE_DIR}/LudensBuilder/BDocumentCompiler/BDocumentCompiler.h
+	${LUDENS_INCLUDE_DIR}/LudensBuilder/BAssetUtil/BAssetUtil.h
 )
 
 set(MODULE_LIB
-	Lib/BDocumentCompiler.cpp
+	Lib/BAssetUtil.cpp
 )
 
 add_library(${MODULE_NAME}

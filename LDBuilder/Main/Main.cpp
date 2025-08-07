@@ -6,6 +6,7 @@
 #include <Ludens/JobSystem/JobSystem.h>
 #include <Ludens/Log/Log.h>
 #include <Ludens/System/FileSystem.h>
+#include <LudensBuilder/BAssetUtil/BAssetUtil.h>
 #include <LudensBuilder/BDocumentCompiler/BDocumentCompiler.h>
 #include <cstdlib>
 #include <filesystem>
@@ -35,6 +36,11 @@ int main(int argc, char** argv)
         return EXIT_FAILURE;
     }
 
+    JobSystemInfo systemI{};
+    systemI.immediateQueueCapacity = 512;
+    systemI.standardQueueCapacity = 512;
+    JobSystem::init(systemI);
+
     std::string mode(argv[1]);
 
     if (mode == "env_to_faces")
@@ -46,19 +52,12 @@ int main(int argc, char** argv)
             return EXIT_FAILURE;
         }
 
-        JobSystemInfo systemI{};
-        systemI.immediateQueueCapacity = 512;
-        systemI.standardQueueCapacity = 512;
-        JobSystem::init(systemI);
-
         fs::path dirPath = fs::path(inputPath).remove_filename();
         RenderUtil util = RenderUtil::create();
         {
             util.from_equirectangular_to_faces(inputPath, dirPath);
         }
         RenderUtil::destroy(util);
-
-        JobSystem::shutdown();
     }
     else if (mode == "run_tests")
     {
@@ -126,6 +125,27 @@ int main(int argc, char** argv)
         DocumentCompiler compiler = DocumentCompiler::create(compilerI);
         DocumentCompiler::destroy(compiler);
     }
+    else if (mode == "import")
+    {
+        AssetUtil util = AssetUtil::create();
+
+        bool success = false;
+
+        std::string type(argv[2]);
+        fs::path sourcePath(argv[3]);
+
+        if (type == "Texture2D")
+            success = util.import_texture_2d(sourcePath);
+        else if (type == "Mesh")
+            success = util.import_mesh(sourcePath);
+
+        if (!success)
+            sLog.warn("import failed");
+
+        AssetUtil::destroy(util);
+    }
+
+    JobSystem::shutdown();
 
     return EXIT_SUCCESS;
 }
