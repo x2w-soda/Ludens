@@ -482,6 +482,11 @@ bool UIToggleWidget::get_state()
     return mObj->as.toggle.state;
 }
 
+void UIPanelWidget::set_panel_color(Color color)
+{
+    mObj->as.panel.color = color;
+}
+
 void UIImageWidgetObj::on_draw(UIWidget widget, ScreenRenderComponent renderer)
 {
     UIImageWidgetObj& self = static_cast<UIWidgetObj*>(widget)->as.image;

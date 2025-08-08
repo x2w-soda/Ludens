@@ -73,11 +73,13 @@ struct UIWidget : Handle<struct UIWidgetObj>
 
 struct UIPanelWidget : UIWidget
 {
+    /// @brief Update panel color
+    void set_panel_color(Color color);
 };
 
 struct UIPanelWidgetInfo
 {
-    uint32_t color;
+    Color color;
 };
 
 /// @brief UI button widget.

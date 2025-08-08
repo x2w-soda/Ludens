@@ -118,7 +118,7 @@ struct UITextWidgetObj
 struct UIPanelWidgetObj
 {
     UIWidgetObj* base;
-    uint32_t color;
+    Color color;
 
     static void on_draw(UIWidget widget, ScreenRenderComponent renderer);
 };

@@ -71,10 +71,10 @@ TEST_CASE("XML mixed content")
     ok = doc.parse(xml2, sizeof(xml2));
     CHECK(ok);
 
-    XMLElement tag = doc.get_root();
-    CHECK(tag.get_name() == "p");
+    root = doc.get_root();
+    CHECK(root.get_name() == "p");
 
-    tag = root.get_child(mixed);
+    XMLElement tag = root.get_child(mixed);
     CHECK(mixed == " some");
     CHECK(tag.get_name() == "b");
     CHECK(!tag.get_child(mixed));

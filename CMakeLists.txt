@@ -270,6 +270,7 @@ add_subdirectory(LDCore/RenderComponent)
 add_subdirectory(LDCore/RenderServer)
 add_subdirectory(LDCore/UI)
 add_subdirectory(LDCore/Asset)
+add_subdirectory(LDCore/DataRegistry)
 add_subdirectory(LDCore/Application)
 
 add_library(LDCoreLibs INTERFACE)
@@ -292,6 +293,7 @@ target_link_libraries(LDCoreLibs INTERFACE
   LDRenderServer
   LDUI
   LDAsset
+  LDDataRegistry
   LDApplication
 )
 
@@ -320,9 +322,11 @@ add_custom_target(ld_doxygen
 # - headers in ${LUDENS_INCLUDE_DIR}/LudensBuilder
 
 add_subdirectory(LDBuilder/BDocumentCompiler)
+add_subdirectory(LDBuilder/BAssetUtil)
 
 add_library(LDBuilderLibs INTERFACE)
 target_link_libraries(LDBuilderLibs INTERFACE
+  LDBAssetUtil
   LDBDocumentCompiler
 )
 
