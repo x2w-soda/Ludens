@@ -1,5 +1,6 @@
 set(MODULE_NAME LDSystem)
 set(MODULE_TEST_NAME LDSystemTest)
+set(MODULE_BENCHMARK_NAME LDSystemBenchmark)
 
 set(MODULE_INCLUDE
 	${LUDENS_INCLUDE_DIR}/Ludens/System/Memory.h
@@ -50,3 +51,17 @@ target_include_directories(${MODULE_TEST_NAME} PRIVATE
 	${LUDENS_INCLUDE_DIR}
 	${LUDENS_SOURCE_DIR}
 )
+
+if (LD_BUILD_BENCHMARKS)
+    add_executable(${MODULE_BENCHMARK_NAME}
+        Benchmark/SystemBench.cpp
+    )
+    target_include_directories(${MODULE_BENCHMARK_NAME} PRIVATE
+        ${LUDENS_INCLUDE_DIR}
+        ${LUDENS_SOURCE_DIR}
+        ${entt_SOURCE_DIR}/src
+    )
+    target_link_libraries(${MODULE_BENCHMARK_NAME} PRIVATE
+        ${MODULE_NAME}
+    )
+endif()

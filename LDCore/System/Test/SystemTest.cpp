@@ -2,6 +2,7 @@
 #include "Extra/doctest/doctest.h"
 #include <Ludens/System/Allocator.h>
 #include <Ludens/System/Memory.h>
+#include <unordered_set>
 #include <vector>
 
 using namespace LD;
@@ -113,6 +114,50 @@ TEST_CASE("PoolAllocator multi page")
     CHECK(pa.page_count() == N);
 
     PoolAllocator::destroy(pa);
+
+    const MemoryProfile& profile = get_memory_profile(MEMORY_USAGE_MISC);
+    CHECK(profile.current == 0);
+}
+
+template <size_t N, size_t PageSize>
+void test_pool_allocator_iterator()
+{
+    PoolAllocatorInfo paI{};
+    paI.blockSize = sizeof(int);
+    paI.isMultiPage = true;
+    paI.pageSize = PageSize;
+    paI.usage = MEMORY_USAGE_MISC;
+    PoolAllocator pa = PoolAllocator::create(paI);
+
+    std::unordered_set<int> set;
+
+    for (int i = 0; i < N; i++)
+    {
+        int* p = (int*)pa.allocate();
+        *p = i;
+        set.insert(i);
+    }
+
+    int ctr = 0;
+    for (auto ite = pa.begin(); ite; ++ite)
+    {
+        set.erase(*(int*)ite.data());
+        ctr++;
+    }
+
+    CHECK(ctr == N);
+    CHECK(set.empty());
+
+    PoolAllocator::destroy(pa);
+}
+
+TEST_CASE("PoolAllocator iterator")
+{
+    test_pool_allocator_iterator<0, 1>();
+    test_pool_allocator_iterator<8, 1>();
+    test_pool_allocator_iterator<8, 127>();
+    test_pool_allocator_iterator<128, 128>();
+    test_pool_allocator_iterator<513, 128>();
 
     const MemoryProfile& profile = get_memory_profile(MEMORY_USAGE_MISC);
     CHECK(profile.current == 0);

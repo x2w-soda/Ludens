@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Ludens/Header/Handle.h>
+#include <Ludens/Header/Types.h>
 #include <Ludens/System/Memory.h>
 
 namespace LD {
@@ -68,6 +69,34 @@ struct PoolAllocator : Handle<struct PoolAllocatorObj>
 
     /// @brief number of pages allocated
     size_t page_count() const;
+
+    /// @brief Iterator to traverse all allocated blocks linearly.
+    /// @warning Do not allocate or free blocks when iterating through the pool.
+    class Iterator
+    {
+    public:
+        /// @brief prefix increment the iterator
+        Iterator& operator++();
+
+        inline bool operator==(const Iterator& other) { return mBlock == other.mBlock; }
+        inline bool operator!=(const Iterator& other) { return mBlock != other.mBlock; }
+
+        Iterator(byte* page, byte* block, size_t blocksLeft);
+
+        /// @brief Get the block data pointed by the iterator
+        inline void* data() { return mBlock + 16; };
+
+        /// @brief Check if iterator is valid
+        inline operator bool() const { return mPage != nullptr; }
+
+    private:
+        byte* mPage;
+        byte* mBlock;
+        size_t mBlocksLeft;
+    };
+
+    /// Get iterator to the first allocated block across all pages
+    Iterator begin();
 };
 
 } // namespace LD

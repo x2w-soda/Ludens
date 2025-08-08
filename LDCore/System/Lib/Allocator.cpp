@@ -73,14 +73,42 @@ struct PoolAllocatorObj
 
     struct Block
     {
-        Block* next;
-        Page* owner;
+        Block* next; /// next block free for allocation
+        Page* owner; /// null if the block is free, otherwise the memory page this block belongs to
+
+        inline bool is_allocated() const
+        {
+            return owner != nullptr;
+        }
     };
 
     struct Page
     {
-        Page* next;
-        Block* freeBlocks;
+        PoolAllocatorObj* obj; /// pool allocator object
+        Page* next;            /// linked list of memory pages
+        Block* freeBlocks;     /// linked list of blocks free for allocation
+        size_t freeBlockCount; /// length of freeBlocks linked list
+
+        Block* get_first_allocated_block()
+        {
+            if (freeBlockCount == obj->pageSize)
+                return nullptr;
+
+            Block* block = (Block*)(this + 1);
+
+            for (size_t i = 0; i < obj->pageSize; i++)
+            {
+                if (block->is_allocated())
+                    return block;
+
+                block = (PoolAllocatorObj::Block*)((byte*)block + obj->blockSize);
+            }
+        }
+
+        inline size_t allocated_block_count()
+        {
+            return obj->pageSize - freeBlockCount;
+        }
     };
 
     size_t blockSize;
@@ -92,22 +120,26 @@ struct PoolAllocatorObj
     void allocate_page()
     {
         Page* page = (Page*)heap_malloc(sizeof(Page) + blockSize * pageSize, usage);
+        page->obj = this;
         page->next = pageList;
         pageList = page;
         page->freeBlocks = (Block*)(page + 1);
+        page->freeBlockCount = pageSize;
         Block* block = page->freeBlocks;
 
         for (size_t i = 0; i < pageSize - 1; i++)
         {
             block->next = (Block*)((byte*)block + blockSize);
-            block->owner = page;
+            block->owner = nullptr;
             block = block->next;
         }
 
-        block->owner = page;
+        block->owner = nullptr;
         block->next = nullptr;
     }
 };
+
+static_assert(sizeof(PoolAllocatorObj::Block) == 16); // update Allocator.h
 
 PoolAllocator PoolAllocator::create(const PoolAllocatorInfo& info)
 {
@@ -146,8 +178,11 @@ void* PoolAllocator::allocate()
     {
         if (page->freeBlocks)
         {
+            LD_ASSERT(page->freeBlockCount > 0);
             PoolAllocatorObj::Block* blk = page->freeBlocks;
             page->freeBlocks = page->freeBlocks->next;
+            page->freeBlockCount--;
+            blk->owner = page;
             return blk + 1;
         }
     }
@@ -160,6 +195,8 @@ void* PoolAllocator::allocate()
 
         PoolAllocatorObj::Block* blk = page->freeBlocks;
         page->freeBlocks = page->freeBlocks->next;
+        page->freeBlockCount--;
+        blk->owner = page;
         return blk + 1;
     }
 
@@ -172,9 +209,12 @@ void PoolAllocator::free(void* block)
     PoolAllocatorObj::Block* blk = (PoolAllocatorObj::Block*)block - 1;
     PoolAllocatorObj::Page* page = blk->owner;
 
+    LD_ASSERT(page);
+
     // return block to owning page
     blk->next = page->freeBlocks;
     page->freeBlocks = blk;
+    page->freeBlockCount++;
 }
 
 size_t PoolAllocator::page_count() const
@@ -185,6 +225,64 @@ size_t PoolAllocator::page_count() const
         count++;
 
     return count;
+}
+
+PoolAllocator::Iterator& PoolAllocator::Iterator::operator++()
+{
+    // jump to next page or return end
+    if (mBlocksLeft == 0)
+    {
+        for (auto* page = ((PoolAllocatorObj::Page*)mPage)->next; page; page = page->next)
+        {
+            PoolAllocatorObj::Block* block = page->get_first_allocated_block();
+
+            if (block)
+            {
+                mPage = (byte*)page;
+                mBlock = (byte*)block;
+                mBlocksLeft = page->allocated_block_count() - 1;
+                return *this;
+            }
+        }
+
+        // complete iteration
+        mPage = nullptr;
+        mBlock = nullptr;
+        return *this;
+    }
+
+    auto* obj = (PoolAllocatorObj*)((PoolAllocatorObj::Page*)mPage)->obj;
+    auto* block = (PoolAllocatorObj::Block*)mBlock;
+
+    do
+    {
+        block = (PoolAllocatorObj::Block*)((byte*)block + obj->blockSize);
+    } while (!block->is_allocated());
+
+    mBlocksLeft--;
+    mBlock = (byte*)block;
+    return *this;
+}
+
+PoolAllocator::Iterator::Iterator(byte* page, byte* block, size_t blocksLeft)
+    : mPage(page), mBlock(block), mBlocksLeft(blocksLeft)
+{
+}
+
+PoolAllocator::Iterator PoolAllocator::begin()
+{
+    for (PoolAllocatorObj::Page* page = mObj->pageList; page; page = page->next)
+    {
+        PoolAllocatorObj::Block* block = page->get_first_allocated_block();
+
+        if (block)
+        {
+            LD_ASSERT(mObj->pageSize > page->freeBlockCount);
+            return Iterator((byte*)page, (byte*)block, page->allocated_block_count() - 1);
+        }
+    }
+
+    return Iterator(nullptr, nullptr, 0);
 }
 
 } // namespace LD
