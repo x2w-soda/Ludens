@@ -225,14 +225,14 @@ void UITextWidgetObj::wrap_limit_fn(UIWidgetObj* obj, float& outMinW, float& out
     FontMetrics metrics;
     font.get_metrics(metrics, self.fontSize);
 
-    size_t len = strlen(self.value);
-    float lineW = 0.0f;
-
     outMaxW = 0.0f;
     outMinW = 0.0f;
 
-    if (len == 0)
+    if (!self.value)
         return;
+
+    size_t len = strlen(self.value);
+    float lineW = 0.0f;
 
     for (size_t i = 0; i < len; i++)
     {
@@ -264,6 +264,10 @@ float UITextWidgetObj::wrap_size_fn(UIWidgetObj* obj, float limitW)
     font.get_metrics(metrics, self.fontSize);
 
     Vec2 baseline(0.0f, metrics.ascent);
+
+    if (!self.value)
+        return metrics.lineHeight;
+
     size_t len = strlen(self.value);
 
     for (size_t i = 0; i < len; i++)

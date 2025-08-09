@@ -3,6 +3,7 @@
 #include <Ludens/System/Memory.h>
 #include <cstdio>
 #include <cstring>
+#include <algorithm>
 
 namespace LD {
 

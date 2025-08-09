@@ -43,10 +43,11 @@ target_link_libraries(${MODULE_NAME} PUBLIC
     tinygltf
     msdfgen::msdfgen
     msdf-atlas-gen
+    LDProfiler
     LDSystem
     LDJobSystem
+    LDLog
     LDSerial
-    LDProfiler
 )
 
 target_include_directories(${MODULE_NAME} PRIVATE
