@@ -171,6 +171,7 @@ struct RCommandListObj
     void (*cmd_bind_vertex_buffers)(RCommandListObj* self, uint32_t firstBinding, uint32_t bindingCount, RBuffer* buffers);
     void (*cmd_bind_index_buffer)(RCommandListObj* self, RBuffer buffer, RIndexType indexType);
     void (*cmd_dispatch)(RCommandListObj* self, uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ);
+    void (*cmd_set_scissor)(RCommandListObj* self, const Rect& scissor);
     void (*cmd_draw)(RCommandListObj* self, const RDrawInfo& drawI);
     void (*cmd_draw_indexed)(RCommandListObj* self, const RDrawIndexedInfo& drawI);
     void (*cmd_end_pass)(RCommandListObj* self);

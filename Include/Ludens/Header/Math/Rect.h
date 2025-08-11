@@ -13,7 +13,18 @@ struct TRect
     TRect() : x(0), y(0), w(0), h(0) {}
     TRect(T x, T y, T w, T h) : x(x), y(y), w(w), h(h) {}
 
+    /// @brief Get top left corner position
     inline TVec2<T> get_pos() const { return {x, y}; }
+
+    /// @brief Get top right corner position
+    inline TVec2<T> get_pos_tr() const { return {x + w, y}; }
+
+    /// @brief Get bottom right corner position
+    inline TVec2<T> get_pos_br() const { return {x + w, y + h}; }
+
+    /// @brief Get bottom left corner position
+    inline TVec2<T> get_pos_bl() const { return {x, y + h}; }
+
     inline TVec2<T> get_size() const { return {w, h}; }
 
     inline void get_pos(T& x_, T& y_) const

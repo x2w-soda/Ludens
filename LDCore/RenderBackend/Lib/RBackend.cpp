@@ -547,6 +547,11 @@ void RCommandList::cmd_dispatch(uint32_t groupCountX, uint32_t groupCountY, uint
     mObj->cmd_dispatch(mObj, groupCountX, groupCountY, groupCountZ);
 }
 
+void RCommandList::cmd_set_scissor(const Rect& scissor)
+{
+    mObj->cmd_set_scissor(mObj, scissor);
+}
+
 void RCommandList::cmd_draw(const RDrawInfo& drawI)
 {
     mObj->cmd_draw(mObj, drawI);

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Ludens/Header/Math/Rect.h>
 #include <Ludens/RenderBackend/RBackend.h>
 #include <cstdint>
 #include <string>
@@ -25,6 +26,14 @@ inline VkRect2D make_scissor(uint32_t width, uint32_t height)
     return VkRect2D{
         .offset = {0, 0},
         .extent = {width, height},
+    };
+}
+
+inline VkRect2D make_scissor(const Rect& rect)
+{
+    return VkRect2D{
+        .offset = {(int32_t)rect.x, (int32_t)rect.y},
+        .extent = {(uint32_t)rect.w, (uint32_t)rect.h},
     };
 }
 

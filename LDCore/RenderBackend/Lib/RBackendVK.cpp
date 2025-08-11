@@ -183,6 +183,7 @@ static void vk_command_list_cmd_bind_compute_sets(RCommandListObj* self, RPipeli
 static void vk_command_list_cmd_bind_vertex_buffers(RCommandListObj* self, uint32_t firstBinding, uint32_t bindingCount, RBuffer* buffers);
 static void vk_command_list_cmd_bind_index_buffer(RCommandListObj* self, RBuffer buffer, RIndexType indexType);
 static void vk_command_list_cmd_dispatch(RCommandListObj* self, uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ);
+static void vk_command_list_cmd_set_scissor(RCommandListObj* self, const Rect& scissor);
 static void vk_command_list_cmd_draw(RCommandListObj* self, const RDrawInfo& drawI);
 static void vk_command_list_cmd_draw_indexed(RCommandListObj* self, const RDrawIndexedInfo& drawI);
 static void vk_command_list_cmd_end_pass(RCommandListObj* self);
@@ -219,6 +220,8 @@ static void destroy_queue(RQueue queue);
 
 void vk_create_device(RDeviceObj* self, const RDeviceInfo& deviceI)
 {
+    LD_PROFILE_SCOPE;
+
     self->backend = RDEVICE_BACKEND_VULKAN;
     self->vk.surface = VK_NULL_HANDLE;
     self->init_vk_api();
@@ -1505,6 +1508,12 @@ static void vk_command_list_cmd_dispatch(RCommandListObj* self, uint32_t groupCo
     vkCmdDispatch(self->vk.handle, groupCountX, groupCountY, groupCountZ);
 }
 
+static void vk_command_list_cmd_set_scissor(RCommandListObj* self, const Rect& scissor)
+{
+    VkRect2D vkScissor = RUtil::make_scissor(scissor);
+    vkCmdSetScissor(self->vk.handle, 0, 1, &vkScissor);
+}
+
 static void vk_command_list_cmd_draw(RCommandListObj* self, const RDrawInfo& drawI)
 {
     vkCmdDraw(self->vk.handle, drawI.vertexCount, drawI.instanceCount, drawI.vertexStart, drawI.instanceStart);
@@ -1989,6 +1998,8 @@ static void configure_swapchain(RDeviceObj* obj, SwapchainInfo* swapchainI)
 
 static void create_swapchain(RDeviceObj* obj, const SwapchainInfo& swapchainI)
 {
+    LD_PROFILE_SCOPE;
+
     PhysicalDevice& pdevice = obj->vk.pdevice;
     Swapchain& swp = obj->vk.swapchain;
 
@@ -2223,6 +2234,7 @@ void RCommandListObj::init_vk_api()
     cmd_bind_vertex_buffers = &vk_command_list_cmd_bind_vertex_buffers;
     cmd_bind_index_buffer = &vk_command_list_cmd_bind_index_buffer;
     cmd_dispatch = &vk_command_list_cmd_dispatch;
+    cmd_set_scissor = &vk_command_list_cmd_set_scissor;
     cmd_draw = &vk_command_list_cmd_draw;
     cmd_draw_indexed = &vk_command_list_cmd_draw_indexed;
     cmd_end_pass = &vk_command_list_cmd_end_pass;
