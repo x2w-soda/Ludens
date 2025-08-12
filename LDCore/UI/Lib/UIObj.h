@@ -72,6 +72,8 @@ struct UIButtonWidgetObj
     UIWidgetObj* base;
     const char* text;
     void (*user_on_press)(UIButtonWidget w, MouseButton btn, void* user);
+    Color textColor;
+    bool transparentBG;
 
     static void on_press(UIWidget widget, const Vec2& pos, MouseButton btn);
     static void on_draw(UIWidget widget, ScreenRenderComponent renderer);

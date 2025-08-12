@@ -4,9 +4,11 @@
 #include <Ludens/System/Allocator.h>
 #include <Ludens/UI/UIContext.h>
 #include <Ludens/UI/UIWindowManager.h>
+#include <cstring>
 
 #define INVALID_WINDOW_AREA 0
 #define WINDOW_AREA_MARGIN 6.0f
+#define WINDOW_TAB_HEIGHT 25.0f
 #define TOPBAR_HEIGHT 25.0f
 
 namespace LD {
@@ -22,10 +24,55 @@ enum SplitAxis
 static void split_area(SplitAxis axis, float ratio, const Rect& area, Rect& tl, Rect& br, Rect& split);
 static void invalidate(AreaNode* node);
 
+struct AreaTab
+{
+    UIWindow window;
+    UITextWidget titleText;
+
+    AreaTab(UIContext ctx, const Vec2& pos);
+
+    static void on_draw(UIWidget widget, ScreenRenderComponent renderer);
+};
+
+AreaTab::AreaTab(UIContext ctx, const Vec2& pos)
+{
+    UILayoutInfo layoutI{};
+    layoutI.childAxis = UIAxis::UI_AXIS_Y;
+    layoutI.childGap = 0.0f;
+    layoutI.childPadding = {.left = 10.0f, .right = 10.0f};
+    layoutI.sizeX = UISize::fit();
+    layoutI.sizeY = UISize::fixed(WINDOW_TAB_HEIGHT);
+
+    UIWindowInfo windowI{};
+    windowI.name = "windowTab";
+    windowI.defaultMouseControls = false;
+
+    window = ctx.add_window(layoutI, windowI, this);
+    window.set_pos(pos);
+    window.set_on_draw(AreaTab::on_draw);
+
+    UITextWidgetInfo textWI{};
+    textWI.cstr = nullptr;
+    textWI.fontSize = WINDOW_TAB_HEIGHT * 0.7f; // TODO:
+    textWI.hoverHL = false;
+    titleText = window.node().add_text({}, textWI, this);
+}
+
+void AreaTab::on_draw(UIWidget widget, ScreenRenderComponent renderer)
+{
+    AreaTab& self = *(AreaTab*)widget.get_user();
+
+    Rect rect = widget.get_rect();
+    renderer.draw_rect(rect, 0x303030FF);
+
+    self.titleText.on_draw(renderer);
+}
+
 struct AreaNode
 {
     AreaNode* lch;         /// left or top child area
     AreaNode* rch;         /// right or bottom child area
+    AreaTab* tab;          /// corresponding window tab
     UIWindow window;       /// leaf nodes represent a window
     UIWindow splitControl; /// non-leaf nodes represent a split
     void (*onWindowResize)(UIWindow window, const Vec2& size);
@@ -38,12 +85,18 @@ struct AreaNode
     void invalidate_area(Rect newArea)
     {
         LD_ASSERT(window && !lch && !rch); // only leaf nodes are windows
+        LD_ASSERT(tab && tab->window && tab->titleText);
 
         area = newArea;
-        window.set_rect(area);
+
+        Rect windowTabArea(area.x, area.y, area.w, WINDOW_TAB_HEIGHT);
+        tab->window.set_rect(windowTabArea);
+
+        Rect windowArea(area.x, area.y + WINDOW_TAB_HEIGHT, area.w, area.h - WINDOW_TAB_HEIGHT);
+        window.set_rect(windowArea);
 
         if (onWindowResize)
-            onWindowResize(window, area.get_size());
+            onWindowResize(window, windowArea.get_size());
     }
 
     // recursive, subtrees are invalidated
@@ -168,8 +221,8 @@ UIWindowManagerObj::UIWindowManagerObj(const UIWindowManagerInfo& wmInfo)
 
     UILayoutInfo layoutI{};
     layoutI.childAxis = UIAxis::UI_AXIS_X;
-    layoutI.childGap = 0.0f;
-    layoutI.childPadding = {};
+    layoutI.childGap = 6.0f;
+    layoutI.childPadding = { .left = 6.0f};
     layoutI.sizeX = UISize::fixed(wmInfo.screenSize.x);
     layoutI.sizeY = UISize::fixed(TOPBAR_HEIGHT);
     UIWindowInfo windowI{};
@@ -183,7 +236,8 @@ UIWindowManagerObj::UIWindowManagerObj(const UIWindowManagerInfo& wmInfo)
     mRoot = alloc_node(rootArea);
     mRoot->areaID = mAreaIDCounter++;
     mRoot->window = create_window(rootArea.get_size(), "window");
-    mRoot->window.set_pos(rootArea.get_pos());
+    mRoot->window.set_pos(rootArea.get_pos() + Vec2(0.0f, WINDOW_TAB_HEIGHT));
+    mRoot->tab = heap_new<AreaTab>(MEMORY_USAGE_UI, mCtx, rootArea.get_pos());
 }
 
 UIWindowManagerObj::~UIWindowManagerObj()
@@ -230,10 +284,7 @@ UIWindow UIWindowManagerObj::get_topbar_window()
 AreaNode* UIWindowManagerObj::alloc_node(const Rect& area)
 {
     AreaNode* node = (AreaNode*)mNodePA.allocate();
-    node->window = {};
-    node->lch = nullptr;
-    node->rch = nullptr;
-    node->onWindowResize = nullptr;
+    memset(node, 0, sizeof(AreaNode));
     node->area = area;
     node->areaID = INVALID_WINDOW_AREA;
 
@@ -280,11 +331,13 @@ UIWindowAreaID UIWindowManagerObj::split_right(UIWindowAreaID areaID, float rati
     node->lch = alloc_node(leftArea);
     node->lch->areaID = node->areaID;
     node->lch->window = node->window;
+    node->lch->tab = node->tab;
     node->lch->invalidate_area(leftArea);
 
     node->rch = alloc_node(rightArea);
     node->rch->areaID = mAreaIDCounter++;
     node->rch->window = create_window(rightArea.get_size(), "window");
+    node->rch->tab = heap_new<AreaTab>(MEMORY_USAGE_UI, mCtx, rightArea.get_pos());
     node->rch->invalidate_area(rightArea);
 
     UILayoutInfo layoutI{};
@@ -297,6 +350,7 @@ UIWindowAreaID UIWindowManagerObj::split_right(UIWindowAreaID areaID, float rati
     // becomes non-leaf node
     node->areaID = INVALID_WINDOW_AREA;
     node->window = {};
+    node->tab = {};
     node->splitControl = mCtx.add_window(layoutI, windowI, node);
     node->splitControl.set_rect(splitArea);
     node->splitControl.set_on_draw(&AreaNode::split_control_on_draw);
@@ -323,11 +377,13 @@ UIWindowAreaID UIWindowManagerObj::split_bottom(UIWindowAreaID areaID, float rat
     node->lch = alloc_node(topArea);
     node->lch->areaID = node->areaID;
     node->lch->window = node->window;
+    node->lch->tab = node->tab;
     node->lch->invalidate_area(topArea);
 
     node->rch = alloc_node(bottomArea);
     node->rch->areaID = mAreaIDCounter++;
     node->rch->window = create_window(bottomArea.get_size(), "window");
+    node->rch->tab = heap_new<AreaTab>(MEMORY_USAGE_UI, mCtx, bottomArea.get_pos());
     node->rch->invalidate_area(bottomArea);
 
     UILayoutInfo layoutI{};
@@ -367,8 +423,11 @@ void UIWindowManagerObj::render(ScreenRenderComponent renderer, AreaNode* node)
         node->splitControl.on_draw(renderer);
 
     // render window area on leaf node
-    if (node->window)
+    if (node->window && node->tab)
+    {
         node->window.on_draw(renderer);
+        node->tab->window.on_draw(renderer);
+    }
 }
 
 void UIWindowManagerObj::get_workspace_windows_recursive(std::vector<UIWindow>& windows, AreaNode* node)
@@ -467,6 +526,16 @@ void UIWindowManager::render(ScreenRenderComponent renderer)
 
     UIWindow topbar = mObj->get_topbar_window();
     topbar.on_draw(renderer);
+}
+
+void UIWindowManager::set_window_title(UIWindowAreaID areaID, const char* title)
+{
+    AreaNode* node = mObj->get_node(areaID, mObj->get_root());
+
+    if (!node || !node->tab)
+        return;
+
+    node->tab->titleText.set_text(title);
 }
 
 void UIWindowManager::set_on_window_resize(UIWindowAreaID areaID, void (*onWindowResize)(UIWindow window, const Vec2& size))

@@ -34,6 +34,9 @@ struct UIWindowManager : Handle<struct UIWindowManagerObj>
     /// @param renderer screen space renderer dependency
     void render(ScreenRenderComponent renderer);
 
+    /// @brief set window title to be displayed in tab
+    void set_window_title(UIWindowAreaID areaID, const char* title);
+
     /// @brief set callback to be invoked during UIWindowManager::resize
     void set_on_window_resize(UIWindowAreaID areaID, void (*onWindowResize)(UIWindow window, const Vec2& size));
 

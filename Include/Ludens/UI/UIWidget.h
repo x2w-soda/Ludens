@@ -90,7 +90,9 @@ struct UIButtonWidget : UIWidget
 struct UIButtonWidgetInfo
 {
     const char* text;
+    Color textColor;
     void (*on_press)(UIButtonWidget w, MouseButton btn, void* user);
+    bool transparentBG;
 };
 
 /// @brief UI slider widget

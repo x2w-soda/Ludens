@@ -168,6 +168,8 @@ UIButtonWidget UINode::add_button(const UILayoutInfo& layoutI, const UIButtonWid
     obj->as.button.base = obj;
     obj->as.button.text = widgetI.text ? heap_strdup(widgetI.text, MEMORY_USAGE_UI) : nullptr;
     obj->as.button.user_on_press = widgetI.on_press;
+    obj->as.button.textColor = widgetI.textColor;
+    obj->as.button.transparentBG = widgetI.transparentBG;
 
     UIButtonWidget handle{obj};
     return handle;
@@ -204,8 +206,11 @@ UIToggleWidget UINode::add_toggle(const UILayoutInfo& layoutI, const UIToggleWid
 UITextWidget UINode::add_text(const UILayoutInfo& layoutI, const UITextWidgetInfo& widgetI, void* user)
 {
     UILayoutInfo textLayoutI = layoutI;
-    textLayoutI.sizeX = UISize::wrap_primary(&UITextWidgetObj::wrap_size_fn, &UITextWidgetObj::wrap_limit_fn);
-    textLayoutI.sizeY = UISize::wrap_secondary();
+    if (layoutI.sizeX.type != UI_SIZE_FIXED)
+    {
+        textLayoutI.sizeX = UISize::wrap_primary(&UITextWidgetObj::wrap_size_fn, &UITextWidgetObj::wrap_limit_fn);
+        textLayoutI.sizeY = UISize::wrap_secondary();
+    }
 
     UIWindowObj* window = mObj->window;
     UIWidgetObj* obj = window->ctx->alloc_widget(UI_WIDGET_TEXT, textLayoutI, mObj, user);
@@ -403,7 +408,8 @@ void UIButtonWidgetObj::on_draw(UIWidget widget, ScreenRenderComponent renderer)
         color |= 234;
     }
 
-    renderer.draw_rect(rect, color);
+    if (!self.transparentBG)
+        renderer.draw_rect(rect, color);
 
     if (self.text)
     {
@@ -434,7 +440,9 @@ void UIButtonWidgetObj::on_draw(UIWidget widget, ScreenRenderComponent renderer)
         {
             uint32_t code = (uint32_t)self.text[i];
             atlas.get_baseline_glyph(code, fontSize, baseline, glyphBB, advanceX);
-            renderer.draw_glyph_baseline(atlas, atlasImage, fontSize, baseline, code, theme.onPrimaryColor);
+
+            Color textColor = self.textColor ? self.textColor : theme.onPrimaryColor;
+            renderer.draw_glyph_baseline(atlas, atlasImage, fontSize, baseline, code, textColor);
 
             baseline.x += advanceX;
         }
