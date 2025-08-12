@@ -76,6 +76,8 @@ struct RServerEditorPass
 struct RServerEditorOverlayPass
 {
     RServerEditorRenderCallback renderCallback; /// for the Editor to render additional overlays after the base pass
+    Color blurMixColor;                         /// mix color RGB for the blurred editor background, keep alpha channel at 0xFF
+    float blurMixFactor;                        /// lerp factor between blur color and mix color, 0 performs no blur
     void* user;                                 /// user of the editor overlay render pass
 };
 

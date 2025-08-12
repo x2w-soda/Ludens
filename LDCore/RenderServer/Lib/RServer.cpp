@@ -351,8 +351,8 @@ void RServerObj::editor_overlay_pass(const RServerEditorOverlayPass& editorOP)
 {
     DualKawaseComponentInfo blurCI{};
     blurCI.format = mColorFormat;
-    blurCI.mixColor = 0x101010FF;
-    blurCI.mixFactor = 0.6f;
+    blurCI.mixColor = editorOP.blurMixColor;
+    blurCI.mixFactor = editorOP.blurMixFactor;
     DualKawaseComponent blurC = DualKawaseComponent::add(mGraph, blurCI);
     mGraph.connect_image(mLastComponent, mLastColorAttachment, blurC.component_name(), blurC.input_name());
 

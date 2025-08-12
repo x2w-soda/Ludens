@@ -32,6 +32,14 @@ struct ScreenRenderComponent : Handle<struct ScreenRenderComponentObj>
     /// @brief Get the screen extent of the component this frame
     void get_screen_extent(uint32_t& screenWidth, uint32_t& screenHeight);
 
+    /// @brief Push a scissor rect onto stack, only the top scissor takes effect.
+    /// @note This forces a flush of the current batch since the scissor state changes.
+    void push_scissor(const Rect& scissor);
+
+    /// @brief Pop a scissor rect off the stack, the remaining top scissor takes effect.
+    /// @note This forces a flush of the current batch since the scissor state changes.
+    void pop_scissor();
+
     /// @brief draw a rect
     /// @param rect render area in screen space
     /// @param color rect fill color

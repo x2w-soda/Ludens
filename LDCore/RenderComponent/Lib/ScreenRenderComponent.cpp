@@ -8,6 +8,7 @@
 #include <Ludens/System/Memory.h>
 #include <array>
 #include <vector>
+#include <stack>
 
 #define IMAGE_SLOT_COUNT 8
 
@@ -126,15 +127,21 @@ public:
     static void on_graphics_pass(RGraphicsPass pass, RCommandList list, void* userData);
 
 private: // instance members
+
+    struct Batch
+    {
+        RBuffer rectVBO;
+        RSet screenSet;
+        RSetPool screenSetPool;
+    };
+
     struct Frame
     {
-        std::vector<RBuffer> rectVBOs;
-        RSet screenSet;
+        std::vector<Batch> batches;
     };
 
     RBuffer mRectIBO;
     RCommandList mList;
-    RSetPool mSetPool;
     RImage mImageSlots[IMAGE_SLOT_COUNT];
     RectVertexBatch<sMaxRectCount> mRectBatch;
     RGraphicsPass mGraphicsPass;
@@ -145,6 +152,7 @@ private: // instance members
     uint32_t mScreenHeight;
     std::string mName;
     std::vector<Frame> mFrames;
+    std::stack<Rect> mScissors;
     void (*mOnDraw)(ScreenRenderComponent renderer, void* user);
     void* mUser;
     bool mHasSampledImage;
@@ -178,11 +186,6 @@ ScreenRenderComponentObj::ScreenRenderComponentObj(RDevice device, const char* n
     stager.add_buffer_data(mRectIBO, indices);
     heap_free(indices);
 
-    mSetPool = device.create_set_pool({
-        .layout = sScreenSetLayout,
-        .maxSets = device.get_frames_in_flight_count(),
-    });
-
     stager.submit(device.get_graphics_queue());
 
     mFrames.resize(device.get_frames_in_flight_count());
@@ -193,25 +196,31 @@ ScreenRenderComponentObj::ScreenRenderComponentObj(RDevice device, const char* n
             .size = sizeof(RectVertex) * sMaxRectVertexCount,
             .hostVisible = true, // persistent mapping
         };
-        frame.rectVBOs = {device.create_buffer(bufferI)};
-        frame.rectVBOs[0].map();
-        frame.screenSet = mSetPool.allocate();
+        frame.batches.resize(1);
+        Batch& firstBatch = frame.batches.front();
+        firstBatch.rectVBO = device.create_buffer(bufferI);
+        firstBatch.rectVBO.map();
+        firstBatch.screenSetPool = device.create_set_pool({
+            .layout = sScreenSetLayout,
+            .maxSets = 1,
+        });
+        firstBatch.screenSet = firstBatch.screenSetPool.allocate();
     }
 }
 
 ScreenRenderComponentObj::~ScreenRenderComponentObj()
 {
-    sDevice.destroy_set_pool(mSetPool);
     sDevice.destroy_buffer(mRectIBO);
 
     for (Frame& frame : mFrames)
     {
-        for (RBuffer vbo : frame.rectVBOs)
+        for (Batch batch : frame.batches)
         {
-            vbo.unmap();
-            sDevice.destroy_buffer(vbo);
+            batch.rectVBO.unmap();
+            sDevice.destroy_buffer(batch.rectVBO);
+            sDevice.destroy_set_pool(batch.screenSetPool);
         }
-        frame.rectVBOs.clear();
+        frame.batches.clear();
     }
 }
 
@@ -220,11 +229,16 @@ void ScreenRenderComponentObj::flush_rects()
     LD_PROFILE_SCOPE;
 
     Frame& frame = mFrames[mFrameIdx];
+    Batch& batch = frame.batches[mBatchIdx];
 
     uint32_t rectCount = mRectBatch.get_rect_count();
     uint32_t vertexCount;
     RectVertex* vertices = mRectBatch.get_vertices(vertexCount);
-    frame.rectVBOs[mBatchIdx].map_write(0, sizeof(RectVertex) * vertexCount, vertices);
+
+    if (vertexCount == 0)
+        return;
+
+    batch.rectVBO.map_write(0, sizeof(RectVertex) * vertexCount, vertices);
 
     mRectBatch.reset();
 
@@ -232,7 +246,7 @@ void ScreenRenderComponentObj::flush_rects()
     std::fill(layouts, layouts + IMAGE_SLOT_COUNT, RIMAGE_LAYOUT_SHADER_READ_ONLY);
 
     RSetImageUpdateInfo updateI{};
-    updateI.set = frame.screenSet;
+    updateI.set = batch.screenSet;
     updateI.dstBinding = 0;
     updateI.dstArrayIndex = 0;
     updateI.imageCount = IMAGE_SLOT_COUNT;
@@ -241,8 +255,8 @@ void ScreenRenderComponentObj::flush_rects()
     updateI.images = mImageSlots;
     sDevice.update_set_images(1, &updateI);
 
-    mList.cmd_bind_vertex_buffers(0, 1, frame.rectVBOs.data() + mBatchIdx);
-    mList.cmd_bind_graphics_sets(sScreenPipelineLayout, 1, 1, &frame.screenSet);
+    mList.cmd_bind_vertex_buffers(0, 1, &batch.rectVBO);
+    mList.cmd_bind_graphics_sets(sScreenPipelineLayout, 1, 1, &batch.screenSet);
 
     RDrawIndexedInfo drawI = {
         .indexCount = rectCount * 6,
@@ -252,8 +266,11 @@ void ScreenRenderComponentObj::flush_rects()
     };
     mList.cmd_draw_indexed(drawI);
 
-    if (++mBatchIdx < frame.rectVBOs.size())
+    if (++mBatchIdx < frame.batches.size())
         return;
+
+    frame.batches.push_back({});
+    Batch& newBatch = frame.batches.back();
 
     RBufferInfo bufferI = {
         .usage = RBUFFER_USAGE_VERTEX_BIT,
@@ -261,8 +278,13 @@ void ScreenRenderComponentObj::flush_rects()
         .hostVisible = true, // persistent mapping
     };
 
-    frame.rectVBOs.push_back(sDevice.create_buffer(bufferI));
-    frame.rectVBOs.back().map();
+    newBatch.rectVBO = sDevice.create_buffer(bufferI);
+    newBatch.rectVBO.map();
+    newBatch.screenSetPool = sDevice.create_set_pool({
+        .layout = sScreenSetLayout,
+        .maxSets = 1,
+    });
+    newBatch.screenSet = newBatch.screenSetPool.allocate();
 }
 
 int ScreenRenderComponentObj::get_image_index(RImage image)
@@ -458,6 +480,41 @@ void ScreenRenderComponent::get_screen_extent(uint32_t& screenWidth, uint32_t& s
 {
     screenWidth = mObj->mScreenWidth;
     screenHeight = mObj->mScreenHeight;
+}
+
+void ScreenRenderComponent::push_scissor(const Rect& scissor)
+{
+    LD_ASSERT(mObj->mList);
+
+    // flush current batch before changing scissor state
+    mObj->flush_rects();
+
+    mObj->mScissors.push(scissor);
+    mObj->mList.cmd_set_scissor(scissor);
+}
+
+void ScreenRenderComponent::pop_scissor()
+{
+    LD_ASSERT(mObj->mList);
+
+    if (mObj->mScissors.empty())
+        return;
+
+    // flush current batch before changing scissor state
+    mObj->flush_rects();
+
+    mObj->mScissors.pop();
+
+    if (mObj->mScissors.empty())
+    {
+        Rect scissor(0.0f, 0.0f, (float)mObj->mScreenWidth, (float)mObj->mScreenHeight);
+        mObj->mList.cmd_set_scissor(scissor);
+    }
+    else
+    {
+        Rect topScissor = mObj->mScissors.top();
+        mObj->mList.cmd_set_scissor(topScissor);
+    }
 }
 
 void ScreenRenderComponent::draw_rect(const Rect& rect, Color color)
