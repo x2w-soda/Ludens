@@ -334,3 +334,21 @@ target_link_libraries(LDBuilderLibs INTERFACE
 
 add_subdirectory(LDBuilder)
 
+# Ludens Editor
+# - graphical user interface for editing scenes
+# - headers in ${LUDENS_INCLUDE_DIR}/LudensEditor
+
+add_subdirectory(LDEditor/EditorContext)
+add_subdirectory(LDEditor/EViewportWindow)
+add_subdirectory(LDEditor/EOutlinerWindow)
+add_subdirectory(LDEditor/EInspectorWindow)
+
+add_library(LDEditorLibs INTERFACE)
+target_link_libraries(LDEditorLibs INTERFACE
+  LDEditorContext
+  LDEViewportWindow
+  LDEOutlinerWindow
+  LDEInspectorWindow
+)
+
+add_subdirectory(LDEditor/EditorMain)
