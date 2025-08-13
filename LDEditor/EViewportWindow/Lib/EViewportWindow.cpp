@@ -1,0 +1,488 @@
+#include <Ludens/Application/Input.h>
+#include <Ludens/Camera/CameraController.h>
+#include <Ludens/Gizmo/Gizmo.h>
+#include <Ludens/System/Memory.h>
+#include <LudensEditor/EViewportWindow/EViewportWindow.h>
+#include <LudensEditor/EditorContext/EditorWindowObj.h>
+#include "ViewportToolbar.h"
+
+#define GIZMO_SCREEN_SIZE_Y 150.0f
+
+namespace LD {
+
+/// @brief Editor viewport window implementation.
+///        This window is a view into the Scene being edited.
+///        Uses the Gizmo module to edit the object transforms.
+struct EViewportWindowObj : EditorWindowObj
+{
+    virtual ~EViewportWindowObj() = default;
+
+    ViewportToolbar toolbar;
+    Transform* subjectTransform;
+    Camera editorCamera;
+    CameraController editorCameraController;
+    CameraPerspectiveInfo editorCameraPerspective;
+    Gizmo gizmo;
+    float gizmoScale;
+    Vec3 gizmoCenter;
+    SceneOverlayGizmo gizmoType;      /// current gizmo control mode
+    SceneOverlayGizmoID hoverGizmoID; /// the gizmo mesh under mouse cursor
+    RUID hoverRUID;                   /// the mesh under mouse cursor
+    Vec2 sceneExtent;                 /// width and height of the scene viewport
+    Vec2 sceneMousePos;               /// mouse position in sceneExtent
+    bool isGizmoVisible;              /// whether gizmo meshes should be visible
+    bool enableCameraControls;
+
+    /// @brief Begin gizmo controls in the viewport
+    void pick_gizmo(SceneOverlayGizmoID id);
+
+    /// @brief Pick an object in the viewport
+    void pick_ruid(RUID id);
+
+    /// @brief Viewport overlay includes the transform toolbar
+    virtual void on_draw_overlay(ScreenRenderComponent renderer) override;
+
+    static void on_draw(UIWidget widget, ScreenRenderComponent renderer);
+    static void on_key_down(UIWidget widget, KeyCode key);
+    static void on_mouse_down(UIWidget widget, const Vec2& pos, MouseButton btn);
+    static void on_mouse_up(UIWidget widget, const Vec2& pos, MouseButton btn);
+    static void on_drag(UIWidget widget, MouseButton btn, const Vec2& dragPos, bool begin);
+    static void on_update(UIWidget widget, float delta);
+    static void on_window_resize(UIWindow window, const Vec2& size);
+    static void on_editor_context_event(const EditorContextEvent* event, void* user);
+};
+
+static inline bool get_gizmo_axis(SceneOverlayGizmoID id, GizmoAxis& axis)
+{
+    switch (id)
+    {
+    case SCENE_OVERLAY_GIZMO_ID_AXIS_X:
+        axis = GIZMO_AXIS_X;
+        return true;
+    case SCENE_OVERLAY_GIZMO_ID_AXIS_Y:
+        axis = GIZMO_AXIS_Y;
+        return true;
+    case SCENE_OVERLAY_GIZMO_ID_AXIS_Z:
+        axis = GIZMO_AXIS_Z;
+        return true;
+    }
+
+    return false;
+}
+
+static inline bool get_gizmo_plane(SceneOverlayGizmoID id, GizmoPlane& plane)
+{
+    switch (id)
+    {
+    case SCENE_OVERLAY_GIZMO_ID_PLANE_XY:
+        plane = GIZMO_PLANE_XY;
+        return true;
+    case SCENE_OVERLAY_GIZMO_ID_PLANE_XZ:
+        plane = GIZMO_PLANE_XZ;
+        return true;
+    case SCENE_OVERLAY_GIZMO_ID_PLANE_YZ:
+        plane = GIZMO_PLANE_YZ;
+        return true;
+    }
+
+    return false;
+}
+
+static inline float get_plane_rotation(GizmoPlane plane, const Vec3& axisRotations)
+{
+    switch (plane)
+    {
+    case GIZMO_PLANE_XY:
+        return LD_TO_RADIANS(axisRotations.z);
+    case GIZMO_PLANE_XZ:
+        return LD_TO_RADIANS(axisRotations.y);
+    case GIZMO_PLANE_YZ:
+        return LD_TO_RADIANS(axisRotations.x);
+    }
+
+    LD_UNREACHABLE;
+    return 0.0f;
+}
+
+void EViewportWindowObj::pick_gizmo(SceneOverlayGizmoID id)
+{
+    GizmoPlane plane;
+    GizmoAxis axis;
+
+    // writes back to subject transform during mouse drag window events
+    Transform* transform = subjectTransform;
+    LD_ASSERT(transform); // an object should be selected before gizmo mesh can even be selected
+
+    gizmoCenter = transform->position;
+
+    switch (gizmoType)
+    {
+    case SCENE_OVERLAY_GIZMO_TRANSLATION:
+        if (get_gizmo_axis(id, axis))
+            gizmo.begin_axis_translate(axis, transform->position);
+        else if (get_gizmo_plane(id, plane))
+            gizmo.begin_plane_translate(plane, transform->position);
+        break;
+    case SCENE_OVERLAY_GIZMO_ROTATION:
+        if (get_gizmo_plane(id, plane))
+            gizmo.begin_plane_rotate(plane, transform->position, get_plane_rotation(plane, transform->rotation));
+        break;
+    case SCENE_OVERLAY_GIZMO_SCALE:
+        if (get_gizmo_axis(id, axis))
+            gizmo.begin_axis_scale(axis, transform->position, transform->scale);
+        break;
+    }
+}
+
+void EViewportWindowObj::pick_ruid(RUID id)
+{
+    DUID compID = editorCtx.get_ruid_component(id);
+
+    editorCtx.set_selected_component(compID);
+}
+
+void EViewportWindowObj::on_draw_overlay(ScreenRenderComponent renderer)
+{
+    Vec2 pos = root.get_rect().get_pos();
+    toolbar.window.set_pos(pos + Vec2(8, 8));
+    toolbar.on_draw_overlay(renderer);
+}
+
+void EViewportWindowObj::on_draw(UIWidget widget, ScreenRenderComponent renderer)
+{
+    UIWindow window = (UIWindow)widget;
+    EViewportWindowObj& self = *(EViewportWindowObj*)window.get_user();
+    Rect windowRect = window.get_rect();
+    RImage sceneImage = renderer.get_sampled_image();
+
+    renderer.draw_image(windowRect, sceneImage);
+}
+
+void EViewportWindowObj::on_key_down(UIWidget widget, KeyCode key)
+{
+    EViewportWindowObj& self = *(EViewportWindowObj*)widget.get_user();
+
+    switch (key)
+    {
+    case KEY_CODE_1:
+        self.gizmoType = SCENE_OVERLAY_GIZMO_TRANSLATION;
+        break;
+    case KEY_CODE_2:
+        self.gizmoType = SCENE_OVERLAY_GIZMO_ROTATION;
+        break;
+    case KEY_CODE_3:
+        self.gizmoType = SCENE_OVERLAY_GIZMO_SCALE;
+        break;
+    }
+}
+
+void EViewportWindowObj::on_mouse_down(UIWidget widget, const Vec2& pos, MouseButton btn)
+{
+    EViewportWindowObj& self = *(EViewportWindowObj*)widget.get_user();
+
+    if (btn == MOUSE_BUTTON_RIGHT)
+    {
+        self.enableCameraControls = true;
+    }
+
+    if (btn == MOUSE_BUTTON_LEFT)
+    {
+        // update camera ray required for gizmo controls
+        self.gizmo.update(self.editorCamera, pos, self.sceneExtent);
+
+        if (self.hoverGizmoID != 0)
+            self.pick_gizmo(self.hoverGizmoID);
+        else if (self.hoverRUID != 0)
+            self.pick_ruid(self.hoverRUID);
+        else
+            self.pick_ruid((RUID)0); // clear selection
+    }
+}
+
+void EViewportWindowObj::on_mouse_up(UIWidget widget, const Vec2& pos, MouseButton btn)
+{
+    EViewportWindowObj& self = *(EViewportWindowObj*)widget.get_user();
+
+    if (btn == MOUSE_BUTTON_LEFT)
+        self.gizmo.end();
+
+    if (btn == MOUSE_BUTTON_RIGHT)
+        self.enableCameraControls = false;
+}
+
+void EViewportWindowObj::on_drag(UIWidget widget, MouseButton btn, const Vec2& dragPos, bool begin)
+{
+    EViewportWindowObj& self = *(EViewportWindowObj*)widget.get_user();
+
+    if (btn != MOUSE_BUTTON_LEFT)
+        return;
+
+    // update gizmo controls
+    GizmoAxis axis;
+    GizmoPlane plane;
+    GizmoControl control = self.gizmo.is_active(axis, plane);
+    if (control == GIZMO_CONTROL_NONE)
+        return;
+
+    Transform* T = self.subjectTransform;
+    LD_ASSERT(T);
+
+    // drag position is relative to window origin, i.e. already within sceneExtent range
+    self.gizmo.update(self.editorCamera, dragPos, self.sceneExtent);
+
+    switch (control)
+    {
+    case GIZMO_CONTROL_AXIS_TRANSLATION:
+        T->position = self.gizmo.get_axis_translate();
+        break;
+    case GIZMO_CONTROL_PLANE_TRANSLATION:
+        T->position = self.gizmo.get_plane_translate();
+        break;
+    case GIZMO_CONTROL_PLANE_ROTATION:
+        switch (plane)
+        {
+        case GIZMO_PLANE_XY:
+            T->rotation.z = LD_TO_DEGREES(self.gizmo.get_plane_rotate());
+            break;
+        case GIZMO_PLANE_XZ:
+            T->rotation.y = LD_TO_DEGREES(self.gizmo.get_plane_rotate());
+            break;
+        case GIZMO_PLANE_YZ:
+            T->rotation.x = LD_TO_DEGREES(self.gizmo.get_plane_rotate());
+            break;
+        }
+        break;
+    case GIZMO_CONTROL_AXIS_SCALE:
+        T->scale = self.gizmo.get_axis_scale();
+        break;
+    }
+
+    self.gizmoCenter = T->position;
+}
+
+void EViewportWindowObj::on_update(UIWidget widget, float delta)
+{
+    auto& self = *(EViewportWindowObj*)widget.get_user();
+
+    // active mouse picking if cursor is within viewport window
+    self.sceneMousePos = Vec2(-1.0f);
+    widget.get_mouse_pos(self.sceneMousePos);
+
+    // update gizmo scale from camera
+    if (self.isGizmoVisible)
+        self.gizmoScale = self.editorCamera.screen_to_world_size(self.gizmoCenter, self.sceneExtent.y, GIZMO_SCREEN_SIZE_Y);
+
+    // update camera controls
+    if (!self.enableCameraControls)
+        return;
+
+    CameraController cc = self.editorCameraController;
+
+    if (Input::get_key(KEY_CODE_W))
+        cc.move_forward();
+    if (Input::get_key(KEY_CODE_S))
+        cc.move_backward();
+
+    if (Input::get_key(KEY_CODE_A))
+        cc.move_left();
+    if (Input::get_key(KEY_CODE_D))
+        cc.move_right();
+
+    if (Input::get_key(KEY_CODE_E))
+        cc.move_world_up();
+    if (Input::get_key(KEY_CODE_Q))
+        cc.move_world_down();
+
+    float dx, dy;
+    if (Input::get_mouse_motion(dx, dy))
+    {
+        cc.view_pitch(-dy);
+        cc.view_yaw(dx);
+    }
+
+    cc.update(delta);
+}
+
+void EViewportWindowObj::on_window_resize(UIWindow window, const Vec2& size)
+{
+    auto& self = *(EViewportWindowObj*)window.get_user();
+
+    self.sceneExtent = size;
+    self.editorCamera.set_aspect_ratio(size.x / size.y);
+}
+
+void EViewportWindowObj::on_editor_context_event(const EditorContextEvent* event, void* user)
+{
+    auto& self = *(EViewportWindowObj*)user;
+
+    if (event->type != EDITOR_CONTEXT_EVENT_COMPONENT_SELECTION)
+        return;
+
+    const auto* selectionEvent = static_cast<const EditorContextComponentSelectionEvent*>(event);
+    Transform* subjectTransform;
+    EditorContext ctx = self.editorCtx;
+
+    if (!selectionEvent->component || !(subjectTransform = ctx.get_selected_component_transform()))
+    {
+        self.isGizmoVisible = false;
+        return;
+    }
+
+    self.subjectTransform = subjectTransform;
+    self.isGizmoVisible = true;
+    self.gizmoCenter = subjectTransform->position;
+}
+
+EViewportWindow EViewportWindow::create(const EViewportWindowInfo& windowI)
+{
+    UIWindowManager wm = windowI.wm;
+
+    wm.set_window_title(windowI.areaID, "Viewport");
+    wm.set_on_window_resize(windowI.areaID, &EViewportWindowObj::on_window_resize);
+
+    EViewportWindowObj* obj = heap_new<EViewportWindowObj>(MEMORY_USAGE_UI);
+    obj->gizmo = Gizmo::create();
+    obj->root = wm.get_area_window(windowI.areaID);
+    obj->root.set_user(obj);
+    obj->root.set_on_draw(&EViewportWindowObj::on_draw);
+    obj->root.set_on_key_down(&EViewportWindowObj::on_key_down);
+    obj->root.set_on_mouse_down(&EViewportWindowObj::on_mouse_down);
+    obj->root.set_on_mouse_up(&EViewportWindowObj::on_mouse_up);
+    obj->root.set_on_drag(&EViewportWindowObj::on_drag);
+    obj->root.set_on_update(&EViewportWindowObj::on_update);
+    obj->sceneExtent = obj->root.get_rect().get_size();
+    float aspectRatio = obj->sceneExtent.x / obj->sceneExtent.y;
+
+    obj->toolbar.startup(wm.get_context(), &obj->gizmoType);
+
+    // TODO: parameterize camera && controller settings
+    CameraPerspectiveInfo cameraPI{};
+    cameraPI.aspectRatio = aspectRatio;
+    cameraPI.fov = 45.0f * LD_PI / 180.0f;
+    cameraPI.nearClip = 0.1f;
+    cameraPI.farClip = 100.0f;
+    obj->editorCamera = Camera::create(cameraPI, {0.0f, 0.0f, 0.0f});
+    obj->editorCamera.set_pos(Vec3(-2.10f, 0.05f, 11.64f));
+    obj->editorCameraController = CameraController::create(obj->editorCamera, 3.0f, 0.22f);
+
+    obj->gizmoType = SCENE_OVERLAY_GIZMO_TRANSLATION;
+    obj->isGizmoVisible = false;
+
+    obj->editorCtx = windowI.ctx;
+    obj->editorCtx.add_observer(&EViewportWindowObj::on_editor_context_event, obj);
+
+    return {obj};
+}
+
+void EViewportWindow::destroy(EViewportWindow viewport)
+{
+    EViewportWindowObj* obj = viewport;
+
+    CameraController::destroy(obj->editorCameraController);
+    Camera::destroy(obj->editorCamera);
+    Gizmo::destroy(obj->gizmo);
+
+    heap_delete<EViewportWindowObj>(obj);
+}
+
+Camera EViewportWindow::get_editor_camera()
+{
+    return mObj->editorCamera;
+}
+
+Vec2 EViewportWindow::get_size()
+{
+    return mObj->sceneExtent;
+}
+
+bool EViewportWindow::get_mouse_pos(Vec2& mousePos)
+{
+    if (mObj->sceneMousePos.x < 0.0f && mObj->sceneMousePos.y < 0.0f)
+        return false;
+
+    mousePos = mObj->sceneMousePos;
+    return true;
+}
+
+void EViewportWindow::get_gizmo_state(SceneOverlayGizmo& gizmoType, Vec3& gizmoCenter, float& gizmoScale, RServerSceneGizmoColor& gizmoColor)
+{
+    if (!mObj->isGizmoVisible)
+    {
+        gizmoType = SCENE_OVERLAY_GIZMO_NONE;
+        return;
+    }
+
+    gizmoType = mObj->gizmoType;
+    gizmoCenter = mObj->gizmoCenter;
+    gizmoScale = mObj->gizmoScale;
+
+    EditorTheme theme = mObj->editorCtx.get_settings().get_theme();
+    Color gizmoAxisColors[3];
+    theme.get_gizmo_colors(gizmoAxisColors[0], gizmoAxisColors[1], gizmoAxisColors[2]);
+
+    Color gizmoPlaneColors[3] = {
+        gizmoAxisColors[0],
+        gizmoAxisColors[1],
+        gizmoAxisColors[2],
+    };
+
+    Color highlightColor;
+    theme.get_gizmo_highlight_color(highlightColor);
+
+    GizmoAxis axis;
+    GizmoPlane plane;
+    GizmoControl control = mObj->gizmo.is_active(axis, plane);
+
+    // highlight active gizmo
+    switch (control)
+    {
+    case GIZMO_CONTROL_PLANE_ROTATION:
+    case GIZMO_CONTROL_PLANE_TRANSLATION:
+        gizmoPlaneColors[(int)plane - GIZMO_PLANE_XY] = highlightColor;
+        break;
+    case GIZMO_CONTROL_AXIS_SCALE:
+    case GIZMO_CONTROL_AXIS_TRANSLATION:
+        gizmoAxisColors[(int)axis - GIZMO_AXIS_X] = highlightColor;
+        break;
+    case GIZMO_CONTROL_NONE: // gizmo not active, highlight hovered gizmo
+        switch (mObj->hoverGizmoID)
+        {
+        case SCENE_OVERLAY_GIZMO_ID_AXIS_X:
+        case SCENE_OVERLAY_GIZMO_ID_AXIS_Y:
+        case SCENE_OVERLAY_GIZMO_ID_AXIS_Z:
+            gizmoAxisColors[(int)mObj->hoverGizmoID - SCENE_OVERLAY_GIZMO_ID_AXIS_X] = highlightColor;
+            break;
+        case SCENE_OVERLAY_GIZMO_ID_PLANE_XY:
+        case SCENE_OVERLAY_GIZMO_ID_PLANE_XZ:
+        case SCENE_OVERLAY_GIZMO_ID_PLANE_YZ:
+            gizmoPlaneColors[(int)mObj->hoverGizmoID - SCENE_OVERLAY_GIZMO_ID_PLANE_XY] = highlightColor;
+            break;
+        }
+    }
+
+    gizmoColor.axisX = gizmoAxisColors[0];
+    gizmoColor.axisY = gizmoAxisColors[1];
+    gizmoColor.axisZ = gizmoAxisColors[2];
+    gizmoColor.planeXY = gizmoPlaneColors[0];
+    gizmoColor.planeXZ = gizmoPlaneColors[1];
+    gizmoColor.planeYZ = gizmoPlaneColors[2];
+}
+
+void EViewportWindow::hover_id(SceneOverlayGizmoID gizmoID, RUID ruid)
+{
+    mObj->hoverGizmoID = (SceneOverlayGizmoID)0;
+    mObj->hoverRUID = (RUID)0;
+
+    if ((int)gizmoID != 0)
+    {
+        mObj->hoverGizmoID = gizmoID;
+        mObj->hoverRUID = (RUID)0;
+    }
+    else if ((int)ruid != 0)
+    {
+        mObj->hoverGizmoID = (SceneOverlayGizmoID)0;
+        mObj->hoverRUID = ruid;
+    }
+}
+
+} // namespace LD
