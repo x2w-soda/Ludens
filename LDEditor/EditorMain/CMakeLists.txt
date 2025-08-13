@@ -1,0 +1,24 @@
+set(MODULE_NAME LDEditor)
+
+set(MODULE_LIB
+	Lib/Main.cpp
+	Lib/EditorUI.h
+	Lib/EditorUI.cpp
+	Lib/EditorTopBar.h
+	Lib/EditorTopBar.cpp
+)
+
+add_executable(${MODULE_NAME}
+	${MODULE_LIB}
+)
+
+target_link_libraries(${MODULE_NAME} PRIVATE
+	LDCoreLibs
+	LDBuilderLibs
+	LDEditorLibs
+)
+
+target_include_directories(${MODULE_NAME} PRIVATE
+    ${LUDENS_SOURCE_DIR}
+    ${LUDENS_INCLUDE_DIR}
+)
