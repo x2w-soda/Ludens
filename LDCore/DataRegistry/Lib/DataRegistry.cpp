@@ -68,8 +68,9 @@ struct DataComponentEntry
 
 struct DataRegistryObj
 {
-    std::unordered_map<ComponentType, PoolAllocator> allocators;
+    std::unordered_map<ComponentType, PoolAllocator> componentPAs;
     std::unordered_map<DUID, DataComponentEntry> components;
+    PoolAllocator scriptPA;
     uint32_t idCounter = 0;
 
     DUID get_id()
@@ -95,7 +96,13 @@ DataRegistry DataRegistry::create()
     paI.pageSize = 1024;
     paI.isMultiPage = true;
     paI.usage = MEMORY_USAGE_MISC;
-    obj->allocators[COMPONENT_TYPE_DATA] = PoolAllocator::create(paI);
+    obj->componentPAs[COMPONENT_TYPE_DATA] = PoolAllocator::create(paI);
+
+    paI.blockSize = sizeof(DataComponentScript);
+    paI.pageSize = 128;
+    paI.isMultiPage = true;
+    paI.usage = MEMORY_USAGE_MISC;
+    obj->scriptPA = PoolAllocator::create(paI);
 
     return {obj};
 }
@@ -104,7 +111,9 @@ void DataRegistry::destroy(DataRegistry registry)
 {
     DataRegistryObj* obj = registry;
 
-    for (auto ite : obj->allocators)
+    PoolAllocator::destroy(obj->scriptPA);
+
+    for (auto ite : obj->componentPAs)
     {
         PoolAllocator::destroy(ite.second);
     }
@@ -114,18 +123,18 @@ void DataRegistry::destroy(DataRegistry registry)
 
 DUID DataRegistry::create_component(ComponentType type, const char* name)
 {
-    if (!mObj->allocators.contains(type))
+    if (!mObj->componentPAs.contains(type))
     {
         PoolAllocatorInfo paI{};
         paI.blockSize = get_component_byte_size(type);
         paI.pageSize = 1024;
         paI.isMultiPage = true;
         paI.usage = MEMORY_USAGE_MISC;
-        mObj->allocators[type] = PoolAllocator::create(paI);
+        mObj->componentPAs[type] = PoolAllocator::create(paI);
     }
 
     // allocate base members
-    DataComponent* base = (DataComponent*)mObj->allocators[COMPONENT_TYPE_DATA].allocate();
+    DataComponent* base = (DataComponent*)mObj->componentPAs[COMPONENT_TYPE_DATA].allocate();
     base->name = heap_strdup(name, MEMORY_USAGE_MISC);
     base->next = nullptr;
     base->child = nullptr;
@@ -134,7 +143,7 @@ DUID DataRegistry::create_component(ComponentType type, const char* name)
 
     // allocate component type
     mObj->components[base->id].base = base;
-    mObj->components[base->id].comp = mObj->allocators[type].allocate();
+    mObj->components[base->id].comp = mObj->componentPAs[type].allocate();
     mObj->components[base->id].script = nullptr;
 
     return base->id;
@@ -149,12 +158,44 @@ void DataRegistry::destroy_component(DUID comp)
 
     DataComponentEntry& entry = ite->second;
     LD_ASSERT(entry.base);
-    LD_ASSERT(mObj->allocators.contains(entry.base->type));
+    LD_ASSERT(mObj->componentPAs.contains(entry.base->type));
     LD_ASSERT(!entry.script);
 
-    mObj->allocators[entry.base->type].free(entry.comp);
-    mObj->allocators[COMPONENT_TYPE_DATA].free(entry.base);
+    mObj->componentPAs[entry.base->type].free(entry.comp);
+    mObj->componentPAs[COMPONENT_TYPE_DATA].free(entry.base);
     mObj->components.erase(ite);
+}
+
+DataComponentScript* DataRegistry::create_component_script(DUID compID, AUID assetID)
+{
+    auto ite = mObj->components.find(compID);
+    if (ite == mObj->components.end())
+        return nullptr;
+
+    LD_ASSERT(!ite->second.script); // script slot already exists
+
+    auto* script = (DataComponentScript*)mObj->scriptPA.allocate();
+    script->assetID = assetID;
+    script->instanceID = compID;
+    script->isEnabled = true;
+
+    ite->second.script = script;
+
+    return script;
+}
+
+void DataRegistry::destroy_component_script(DUID compID)
+{
+    auto ite = mObj->components.find(compID);
+    if (ite == mObj->components.end())
+        return;
+
+    DataComponentScript* script = ite->second.script;
+    LD_ASSERT(script); // script slot does not exist
+
+    mObj->scriptPA.free(script);
+
+    ite->second.script = nullptr;
 }
 
 const DataComponent* DataRegistry::get_component_base(DUID id)
@@ -178,9 +219,24 @@ void* DataRegistry::get_component(DUID id, ComponentType& type)
 
 PoolAllocator::Iterator DataRegistry::get_components(ComponentType type)
 {
-    LD_ASSERT(mObj->allocators.contains(type));
+    LD_ASSERT(mObj->componentPAs.contains(type));
 
-    return mObj->allocators[type].begin();
+    return mObj->componentPAs[type].begin();
+}
+
+DataComponentScript* DataRegistry::get_component_script(DUID comp)
+{
+    auto ite = mObj->components.find(comp);
+
+    if (ite == mObj->components.end())
+        return nullptr;
+
+    return ite->second.script; // nullable
+}
+
+PoolAllocator::Iterator DataRegistry::get_component_scripts()
+{
+    return mObj->scriptPA.begin();
 }
 
 Transform* DataRegistry::get_component_transform(DUID comp)

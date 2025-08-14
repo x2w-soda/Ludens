@@ -50,6 +50,7 @@ struct DataComponent
     DUID id;               /// data component ID
 };
 
+/// @brief Script attached to data component.
 struct DataComponentScript
 {
     AUID assetID;    /// the script asset to instantiate from

@@ -27,8 +27,14 @@ struct DataRegistry : Handle<struct DataRegistryObj>
     /// @param id Data component ID
     void destroy_component(DUID id);
 
+    /// @brief Create data component script slot.
+    DataComponentScript* create_component_script(DUID compID, AUID assetID);
+
+    /// @brief Destroy data component script slot.
+    void destroy_component_script(DUID compID);
+
     /// @brief Get data component base members, applicable to all types of components.
-    const DataComponent* get_component_base(DUID id);
+    const DataComponent* get_component_base(DUID compID);
 
     /// @brief Get data component struct, or null on failure
     /// @param id Data component ID
@@ -39,16 +45,22 @@ struct DataRegistry : Handle<struct DataRegistryObj>
     /// @brief Get an iterator to traverse all components of a specific type.
     PoolAllocator::Iterator get_components(ComponentType type);
 
+    /// @brief Get script associated with a data component
+    DataComponentScript* get_component_script(DUID compID);
+
+    /// @brief Get an iterator to traverse all scripts.
+    PoolAllocator::Iterator get_component_scripts();
+
     /// @brief Get the Transform of a data component, or null if not applicable
     /// @return The address of the transform of a data component, or null
     /// @note Due to pointer stability of data components,
     ///       the returned address is also stable until the
     ///       destruction of the component.
-    Transform* get_component_transform(DUID comp);
+    Transform* get_component_transform(DUID compID);
 
     /// @brief Get the render server ID of a data component, or null if not applicable
     /// @return The RUID associated with a data component, or null
-    RUID get_component_ruid(DUID comp);
+    RUID get_component_ruid(DUID compID);
 };
 
 } // namespace LD
