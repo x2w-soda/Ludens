@@ -1,8 +1,11 @@
 #pragma once
 
+#include "LuaTest.h"
 #include <Extra/doctest/doctest.h>
 #include <Ludens/Lua/LuaState.h>
 #include <limits>
+
+using namespace LD;
 
 TEST_CASE("LuaState primitives")
 {
@@ -36,6 +39,13 @@ TEST_CASE("LuaState primitives")
     v = (Vec4*)L.to_userdata(-1);
     CHECK(*v == Vec4(3.0f));
     CHECK(L.size() == 5);
+
+    int foo = 345;
+    L.push_light_userdata(&foo);
+    CHECK(L.size() == 6);
+    int* ptr = (int*)L.to_userdata(-1);
+    CHECK(ptr);
+    CHECK(*ptr == 345);
 
     L.clear();
     CHECK(L.empty());

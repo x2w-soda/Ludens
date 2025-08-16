@@ -1,8 +1,10 @@
 #pragma once
 
 #include "LuaTest.h"
-#include <Ludens/Lua/LuaModule.h>
 #include <Extra/doctest/doctest.h>
+#include <Ludens/Lua/LuaModule.h>
+
+using namespace LD;
 
 struct TestLuaModule
 {

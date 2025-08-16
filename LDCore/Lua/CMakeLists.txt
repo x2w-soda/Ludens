@@ -40,9 +40,10 @@ target_link_libraries(${MODULE_NAME} PUBLIC
 set(MODULE_TEST
     Test/LuaTest.cpp
     Test/LuaTest.h
-    Test/TestLuaState.h
-    Test/TestLuaModule.h
-    Test/TestLuaConfig.h
+    Test/LuaStateTest.cpp
+    Test/LuaErrorTest.cpp
+    Test/LuaModuleTest.cpp
+    Test/LuaConfigTest.cpp
 )
 
 add_executable(${MODULE_TEST_NAME}

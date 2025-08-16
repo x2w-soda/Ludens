@@ -5,6 +5,8 @@
 #include <Ludens/Header/Math/Vec3.h>
 #include <Ludens/Lua/LuaConfig.h>
 
+using namespace LD;
+
 #define TEST_LUA_CONFIG_NAME "test_config"
 
 TEST_CASE("LuaConfig primitives")

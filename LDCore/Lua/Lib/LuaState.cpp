@@ -13,6 +13,11 @@ extern "C" {
 
 namespace LD {
 
+// static paranoia
+static_assert(LD::LUA_ERR_RUNTIME == LUA_ERRRUN);
+static_assert(LD::LUA_ERR_MEMORY == LUA_ERRMEM);
+static_assert(LD::LUA_ERR_ERROR == LUA_ERRERR);
+
 static Log sLog("lua");
 
 struct LuaStateObj
@@ -145,6 +150,11 @@ void LuaState::get_table_indices(int tIndex, int i1, int i2)
     }
 }
 
+void LuaState::set_meta_table(int tIndex)
+{
+    lua_setmetatable(mL, tIndex);
+}
+
 void LuaState::get_field(int tIndex, const char* k)
 {
     lua_getfield(mL, tIndex, k);
@@ -239,6 +249,11 @@ void* LuaState::push_userdata(size_t size)
     return lua_newuserdata(mL, size);
 }
 
+void LuaState::push_light_userdata(void* data)
+{
+    lua_pushlightuserdata(mL, data);
+}
+
 void LuaState::push_nil()
 {
     lua_pushnil(mL);
@@ -280,6 +295,16 @@ void LuaState::push_vec4(const Vec4& v)
 void LuaState::call(int nargs, int nresults)
 {
     lua_call(mL, nargs, nresults);
+}
+
+LuaError LuaState::pcall(int nargs, int nresults, int handlerIndex)
+{
+    return (LuaError)lua_pcall(mL, nargs, nresults, handlerIndex);
+}
+
+void LuaState::error()
+{
+    lua_error(mL);
 }
 
 int32_t LuaState::to_integer(int index)

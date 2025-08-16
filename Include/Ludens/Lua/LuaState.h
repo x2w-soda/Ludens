@@ -28,6 +28,18 @@ enum LuaType
     LUA_TYPE_THREAD,
 };
 
+enum LuaError
+{
+    /// Runtime errors.
+    LUA_ERR_RUNTIME = 2,
+
+    /// Memory allocation error. For such errors, Lua does not call the error handler function.
+    LUA_ERR_MEMORY = 4,
+
+    /// Error while running the error handler function.
+    LUA_ERR_ERROR = 5,
+};
+
 struct LuaStateInfo
 {
     bool openLibs;
@@ -95,6 +107,10 @@ public:
     /// @param i2 table index end, inclusive
     void get_table_indices(int tIndex, int i1, int i2);
 
+    /// @brief pops a table from the stack and sets it as the new metatable for the value at the given acceptable index.
+    /// @param tIndex the stack index of the table or user data
+    void set_meta_table(int tIndex);
+
     /// @brief pushes onto the stack the value of t[k], where t is the table at tIndex.
     /// @param tIndex the stack index of the table
     /// @param k the key value
@@ -153,6 +169,10 @@ public:
     /// @return address of the user data allocated by Lua
     void* push_userdata(size_t size);
 
+    /// @brief pushes a light user data
+    /// @param data light user data such as a pointer
+    void push_light_userdata(void* data);
+
     /// @brief pushes a nil value onto the stack
     void push_nil();
 
@@ -171,6 +191,18 @@ public:
     /// @info https://www.lua.org/manual/5.1/manual.html#lua_call
     void call(int nargs, int nresults);
 
+    /// @brief Protected call function
+    /// @param nargs Number of arguments
+    /// @param nresults Number of results
+    /// @param handlerIndex If not zero, the stack index of the error handler function.
+    /// @return zero on success, or one of LUA_ERR_RUNTIME, LUA_ERR_MEMORY, LUA_ERR_ERROR.
+    /// @info https://www.lua.org/manual/5.1/manual.html#lua_pcall
+    LuaError pcall(int nargs, int nresults, int handlerIndex);
+
+    /// @brief Generates a Lua error. The error message must be on stack top.
+    /// @warning This function does a long jump, and therefore never returns.
+    void error();
+
     /// @brief get the integer at stack index
     int32_t to_integer(int index);
 
@@ -185,7 +217,7 @@ public:
     /// @warning Returned pointer is owned by lua VM, never cache it.
     const char* to_string(int index);
 
-    /// @brief get the user data at stack index
+    /// @brief get the user data at stack index. If the value is a light user data, returns its pointer.
     /// @return address of the user data
     void* to_userdata(int index);
 
