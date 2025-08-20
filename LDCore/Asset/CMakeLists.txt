@@ -5,6 +5,7 @@ set(MODULE_INCLUDE
 	${LUDENS_INCLUDE_DIR}/Ludens/Asset/AssetManager.h
 	${LUDENS_INCLUDE_DIR}/Ludens/Asset/MeshAsset.h
 	${LUDENS_INCLUDE_DIR}/Ludens/Asset/TextureAsset.h
+	${LUDENS_INCLUDE_DIR}/Ludens/Asset/LuaScriptAsset.h
 )
 
 set(MODULE_LIB
@@ -12,6 +13,7 @@ set(MODULE_LIB
 	Lib/AssetManager.cpp
 	Lib/MeshAsset.cpp
 	Lib/TextureAsset.cpp
+	Lib/LuaScriptAsset.cpp
 )
 
 add_library(${MODULE_NAME}

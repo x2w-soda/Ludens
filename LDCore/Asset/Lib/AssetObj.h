@@ -2,8 +2,9 @@
 
 #include <Ludens/Asset/Asset.h>
 #include <Ludens/Asset/TextureAsset.h>
-#include <Ludens/Media/Model.h>
+#include <Ludens/DataRegistry/DataComponent.h>
 #include <Ludens/Media/Bitmap.h>
+#include <Ludens/Media/Model.h>
 
 namespace LD {
 
@@ -22,6 +23,15 @@ struct Texture2DAssetObj
     RSamplerInfo samplerHint;
     TextureCompression compression;
     Bitmap bitmap;
+};
+
+/// @brief Lua script asset implementation. Should contain enough information
+///        to instantiate lua script instances.
+struct LuaScriptAssetObj
+{
+    AUID auid;    /// asset ID identifies script template
+    DUID duid;    /// data component ID identifies script instance
+    char* source; /// lua source code string
 };
 
 } // namespace LD

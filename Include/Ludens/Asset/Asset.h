@@ -9,6 +9,7 @@ enum AssetType
 {
     ASSET_TYPE_MESH,
     ASSET_TYPE_TEXTURE_2D,
+    ASSET_TYPE_LUA_SCRIPT,
     ASSET_TYPE_ENUM_COUNT,
 };
 

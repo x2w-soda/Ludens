@@ -3,6 +3,7 @@
 #include <Ludens/Asset/MeshAsset.h>
 #include <Ludens/Asset/TextureAsset.h>
 #include <Ludens/Log/Log.h>
+#include <Ludens/Profiler/Profiler.h>
 #include <Ludens/RenderBackend/RBackend.h>
 #include <Ludens/RenderBackend/RUtil.h>
 #include <Ludens/RenderComponent/Layout/RMaterial.h>
@@ -26,6 +27,7 @@ struct
 } sAssetTypeTable[] = {
     {ASSET_TYPE_MESH,       sizeof(MeshAssetObj)},
     {ASSET_TYPE_TEXTURE_2D, sizeof(Texture2DAssetObj)},
+    {ASSET_TYPE_LUA_SCRIPT, sizeof(LuaScriptAssetObj)},
 };
 // clang-format on
 
@@ -54,16 +56,20 @@ public:
 
     void load_mesh_asset(JSONNode node);
     void load_texture_2d_asset(JSONNode node);
+    void load_lua_script_asset(JSONNode node);
 
     Texture2DAsset get_texture_2d_asset(AUID auid);
     MeshAsset get_mesh_asset(AUID auid);
+    LuaScriptAsset get_lua_script_asset(AUID auid);
 
 private:
     std::unordered_map<AssetType, PoolAllocator> mAllocators;
     std::unordered_map<AUID, MeshAsset> mMeshAssets;
     std::unordered_map<AUID, Texture2DAsset> mTexture2DAssets;
+    std::unordered_map<AUID, LuaScriptAsset> mLuaScriptAssets;
     std::vector<MeshAssetLoadJob*> mMeshLoadJobs;
     std::vector<Texture2DAssetLoadJob*> mTexture2DLoadJobs;
+    std::vector<LuaScriptAssetLoadJob*> mLuaScriptLoadJobs;
     const fs::path mRootPath;  /// asset URIs are relative paths to root path
     bool mInLoadBatch = false; /// is within load batch scope
 };
@@ -79,6 +85,9 @@ AssetManagerObj::~AssetManagerObj()
         ite.second.unload();
 
     for (auto ite : mTexture2DAssets)
+        ite.second.unload();
+
+    for (auto ite : mLuaScriptAssets)
         ite.second.unload();
 
     for (auto ite : mAllocators)
@@ -105,6 +114,10 @@ void AssetManagerObj::begin_load_batch()
     LD_ASSERT(!mInLoadBatch);
 
     mInLoadBatch = true;
+
+    mMeshLoadJobs.clear();
+    mTexture2DLoadJobs.clear();
+    mLuaScriptLoadJobs.clear();
 }
 
 void AssetManagerObj::end_load_batch()
@@ -118,16 +131,23 @@ void AssetManagerObj::end_load_batch()
 
     for (MeshAssetLoadJob* job : mMeshLoadJobs)
     {
-        MeshAssetObj* meshAssetObj = job->asset;
+        MeshAssetObj* meshAssetObj = job->asset.unwrap();
         mMeshAssets[meshAssetObj->auid] = job->asset;
         heap_delete<MeshAssetLoadJob>(job);
     }
 
     for (Texture2DAssetLoadJob* job : mTexture2DLoadJobs)
     {
-        Texture2DAssetObj* textureAssetObj = job->asset;
+        Texture2DAssetObj* textureAssetObj = job->asset.unwrap();
         mTexture2DAssets[textureAssetObj->auid] = job->asset;
         heap_delete<Texture2DAssetLoadJob>(job);
+    }
+
+    for (LuaScriptAssetLoadJob* job : mLuaScriptLoadJobs)
+    {
+        LuaScriptAssetObj* scriptAssetObj = job->asset.unwrap();
+        mLuaScriptAssets[scriptAssetObj->auid] = job->asset;
+        heap_delete<LuaScriptAssetLoadJob>(job);
     }
 }
 
@@ -177,6 +197,29 @@ void AssetManagerObj::load_texture_2d_asset(JSONNode node)
     mTexture2DLoadJobs.push_back(textureLoadJob);
 }
 
+void AssetManagerObj::load_lua_script_asset(JSONNode node)
+{
+    LD_ASSERT(mInLoadBatch);
+
+    auto obj = (LuaScriptAssetObj*)allocate_asset(ASSET_TYPE_LUA_SCRIPT);
+
+    JSONNode member = node.get_member("auid");
+    member.is_u32(&obj->auid);
+
+    std::string uri;
+    member = node.get_member("uri");
+    member.is_string(&uri);
+
+    fs::path loadPath = mRootPath / fs::path(uri);
+    sLog.info("load_lua_script_asset {} AUID {}", loadPath.string(), obj->auid);
+
+    auto scriptLoadJob = heap_new<LuaScriptAssetLoadJob>(MEMORY_USAGE_ASSET);
+    scriptLoadJob->asset = LuaScriptAsset(obj);
+    scriptLoadJob->loadPath = loadPath;
+    scriptLoadJob->submit();
+    mLuaScriptLoadJobs.push_back(scriptLoadJob);
+}
+
 Texture2DAsset AssetManagerObj::get_texture_2d_asset(AUID auid)
 {
     auto ite = mTexture2DAssets.find(auid);
@@ -192,6 +235,16 @@ MeshAsset AssetManagerObj::get_mesh_asset(AUID auid)
     auto ite = mMeshAssets.find(auid);
 
     if (ite == mMeshAssets.end())
+        return {};
+
+    return ite->second;
+}
+
+LuaScriptAsset AssetManagerObj::get_lua_script_asset(AUID auid)
+{
+    auto ite = mLuaScriptAssets.find(auid);
+
+    if (ite == mLuaScriptAssets.end())
         return {};
 
     return ite->second;
@@ -213,6 +266,8 @@ void AssetManager::destroy(AssetManager manager)
 
 void AssetManager::load_assets(JSONDocument assetDoc)
 {
+    LD_PROFILE_SCOPE;
+
     JSONNode rootNode = assetDoc.get_root();
 
     uint32_t version;
@@ -237,6 +292,14 @@ void AssetManager::load_assets(JSONDocument assetDoc)
         count = textures.get_size();
         for (int i = 0; i < count; i++)
             mObj->load_texture_2d_asset(textures[i]);
+
+        JSONNode luaScripts = rootNode.get_member("LuaScript");
+        if (!luaScripts || !luaScripts.is_array())
+            return;
+
+        count = luaScripts.get_size();
+        for (int i = 0; i < count; i++)
+            mObj->load_lua_script_asset(luaScripts[i]);
     }
     mObj->end_load_batch();
 }
@@ -249,6 +312,11 @@ MeshAsset AssetManager::get_mesh_asset(AUID auid)
 Texture2DAsset AssetManager::get_texture_2d_asset(AUID auid)
 {
     return mObj->get_texture_2d_asset(auid);
+}
+
+LuaScriptAsset AssetManager::get_lua_script_asset(AUID auid)
+{
+    return mObj->get_lua_script_asset(auid);
 }
 
 } // namespace LD
