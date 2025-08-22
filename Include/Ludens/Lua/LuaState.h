@@ -140,6 +140,10 @@ public:
     /// @param n number of values to pop
     void pop(int n);
 
+    /// @brief Resize the stack.
+    /// @param n The new size of the stack, padding with nil values.
+    void resize(int n);
+
     /// @brief pushes an integer onto the stack
     void push_integer(int32_t i);
 

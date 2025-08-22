@@ -209,6 +209,13 @@ void LuaState::pop(int n)
     lua_pop(mL, n);
 }
 
+void LuaState::resize(int n)
+{
+    LD_ASSERT(n >= 0);
+
+    lua_settop(mL, n);
+}
+
 void LuaState::push_integer(int32_t i)
 {
     lua_pushinteger(mL, (lua_Integer)i);

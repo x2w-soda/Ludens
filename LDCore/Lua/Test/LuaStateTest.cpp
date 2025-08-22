@@ -94,6 +94,30 @@ TEST_CASE("LuaState types")
     LuaState::destroy(L);
 }
 
+TEST_CASE("LuaState size")
+{
+    LuaState L = LuaState::create(sTestStateInfo);
+
+    CHECK(L.empty());
+    CHECK(L.size() == 0);
+
+    L.push_integer(9);
+    CHECK(!L.empty());
+    CHECK(L.size() == 1);
+
+    L.resize(3);
+    CHECK(L.size() == 3);
+    CHECK(L.get_type(-1) == LUA_TYPE_NIL);
+    CHECK(L.get_type(-2) == LUA_TYPE_NIL);
+    CHECK(L.get_type(-3) == LUA_TYPE_NUMBER);
+
+    // clear the stack
+    L.resize(0);
+    CHECK(L.empty());
+
+    LuaState::destroy(L);
+}
+
 TEST_CASE("LuaState math")
 {
     // test LuaState support for Math objects
