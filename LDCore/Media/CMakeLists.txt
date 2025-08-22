@@ -51,12 +51,16 @@ target_link_libraries(${MODULE_NAME} PUBLIC
 )
 
 target_include_directories(${MODULE_NAME} PRIVATE
+    ${LUDENS_EXTRA_DIR}/rapidjson/include
     ${msdfgen_SOURCE_DIR}
     ${tinygltf_SOURCE_DIR}
     ${md4c_SOURCE_DIR}/src
-    ${rapidjson_SOURCE_DIR}/include
     ${LUDENS_INCLUDE_DIR}
     ${LUDENS_EXTRA_DIR}
+)
+
+target_compile_definitions(${MODULE_NAME} PRIVATE
+    RAPIDJSON_NOMEMBERITERATORCLASS
 )
 
 add_executable(${MODULE_TEST_NAME}

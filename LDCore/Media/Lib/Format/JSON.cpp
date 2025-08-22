@@ -1,4 +1,5 @@
 #include <Ludens/Media/Format/JSON.h>
+#include <Ludens/Profiler/Profiler.h>
 #include <Ludens/System/Allocator.h>
 #include <Ludens/System/FileSystem.h>
 #include <Ludens/System/Memory.h>
@@ -234,6 +235,8 @@ void JSONDocument::destroy(JSONDocument doc)
 
 bool JSONDocument::parse(const char* json, size_t size, std::string& error)
 {
+    LD_PROFILE_SCOPE;
+
     if (mObj->nodePA)
     {
         PoolAllocator::destroy(mObj->nodePA);
