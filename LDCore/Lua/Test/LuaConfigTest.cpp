@@ -1,9 +1,8 @@
-#pragma once
-
 #include "LuaTest.h"
 #include <Extra/doctest/doctest.h>
 #include <Ludens/Header/Math/Vec3.h>
 #include <Ludens/Lua/LuaConfig.h>
+#include <cstring>
 
 using namespace LD;
 
