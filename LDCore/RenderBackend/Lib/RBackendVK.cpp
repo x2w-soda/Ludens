@@ -833,10 +833,12 @@ static RSetPool vk_device_create_set_pool(RDeviceObj* self, const RSetPoolInfo& 
 
     for (uint32_t i = 0; i < poolI.layout.bindingCount; i++)
     {
+        uint32_t arrayCount = std::max<uint32_t>(1, poolI.layout.bindings[i].arrayCount);
+
         VkDescriptorType vkType;
         RUtil::cast_binding_type_vk(poolI.layout.bindings[i].type, vkType);
         poolSizes[i].type = vkType;
-        poolSizes[i].descriptorCount = poolI.maxSets;
+        poolSizes[i].descriptorCount = arrayCount * poolI.maxSets;
     }
 
     VkDescriptorPoolCreateInfo poolCI{
