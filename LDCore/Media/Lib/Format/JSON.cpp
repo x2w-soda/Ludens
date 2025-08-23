@@ -41,10 +41,26 @@ struct JSONDocumentObj
         return doc.GetAllocator();
     }
 
+    void free_nodes()
+    {
+        if (!nodePA)
+            return;
+
+        for (auto ite = nodePA.begin(); ite; ++ite)
+        {
+            auto* node = static_cast<JSONNodeObj*>(ite.data());
+            (&node->value)->~GenericValue();
+        }
+
+        PoolAllocator::destroy(nodePA);
+        nodePA = {};
+    }
+
     JSONNodeObj* alloc_node()
     {
         JSONNodeObj* node = (JSONNodeObj*)nodePA.allocate();
         node->doc = this;
+        new (&node->value) rapidjson::Value();
         return node;
     }
 };
@@ -224,8 +240,7 @@ void JSONDocument::destroy(JSONDocument doc)
 {
     JSONDocumentObj* obj = doc;
 
-    if (obj->nodePA)
-        PoolAllocator::destroy(obj->nodePA);
+    obj->free_nodes();
 
     if (obj->fileBuffer)
         heap_free(obj->fileBuffer);
@@ -237,11 +252,7 @@ bool JSONDocument::parse(const char* json, size_t size, std::string& error)
 {
     LD_PROFILE_SCOPE;
 
-    if (mObj->nodePA)
-    {
-        PoolAllocator::destroy(mObj->nodePA);
-        mObj->nodePA = {};
-    }
+    mObj->free_nodes();
 
     error.clear();
     rapidjson::ParseResult result = mObj->doc.Parse(json, size);
