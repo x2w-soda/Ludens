@@ -9,6 +9,7 @@ set(MODULE_INCLUDE
     ${LUDENS_INCLUDE_DIR}/Ludens/Media/Format/MD.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Media/Format/XML.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Media/Format/JSON.h
+    ${LUDENS_INCLUDE_DIR}/Ludens/Media/Format/TOML.h
 )
 
 set(MODULE_LIB
@@ -24,6 +25,7 @@ set(MODULE_LIB
     Lib/Format/MD.cpp
     Lib/Format/XML.cpp
     Lib/Format/JSON.cpp
+    Lib/Format/TOML.cpp
 )
 
 set(MODULE_TEST
@@ -31,6 +33,7 @@ set(MODULE_TEST
     Test/MDTest.cpp
     Test/XMLTest.cpp
     Test/JSONTest.cpp
+    Test/TOMLTest.cpp
 )
 
 add_library(${MODULE_NAME}
@@ -55,6 +58,7 @@ target_include_directories(${MODULE_NAME} PRIVATE
     ${msdfgen_SOURCE_DIR}
     ${tinygltf_SOURCE_DIR}
     ${md4c_SOURCE_DIR}/src
+    ${toml11_SOURCE_DIR}/include
     ${LUDENS_INCLUDE_DIR}
     ${LUDENS_EXTRA_DIR}
 )

@@ -205,21 +205,18 @@ set(BUILD_MD2HTML_EXECUTABLE   OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(md4c)
 message(STATUS "LUDENS md4c SOURCE DIR:     ${md4c_SOURCE_DIR}")
 
-## Fetch RapidJSON
+## Fetch Toml11
 
 FetchContent_Declare(
-  rapidjson
-  GIT_REPOSITORY https://github.com/Tencent/rapidjson.git
-  GIT_TAG v1.1.0
+  toml11
+  GIT_REPOSITORY https://github.com/ToruNiina/toml11.git
+  GIT_TAG        v4.4.0
 )
-
-set(RAPIDJSON_BUILD_DOC      OFF CACHE BOOL "" FORCE)
-set(RAPIDJSON_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
-set(RAPIDJSON_BUILD_TESTS    OFF CACHE BOOL "" FORCE)
-FetchContent_MakeAvailable(rapidjson)
-message(STATUS "LUDENS rapidjson SOURCE DIR: ${rapidjson_SOURCE_DIR}")
+FetchContent_MakeAvailable(toml11)
+message(STATUS "LUDENS Toml11 SOURCE DIR:    ${toml11_SOURCE_DIR}")
 
 ## Fetch Tracy Profiler
+
 FetchContent_Declare(
   tracy
   GIT_REPOSITORY https://github.com/wolfpld/tracy.git
