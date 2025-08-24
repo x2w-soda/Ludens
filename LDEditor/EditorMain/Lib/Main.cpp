@@ -3,6 +3,7 @@
 #include <Ludens/Application/Event.h>
 #include <Ludens/JobSystem/JobSystem.h>
 #include <Ludens/Log/Log.h>
+#include <Ludens/Profiler/Profiler.h>
 #include <Ludens/RenderComponent/ScreenRenderComponent.h>
 #include <Ludens/RenderServer/RServer.h>
 #include <Ludens/Scene/Scene.h>
@@ -43,9 +44,11 @@ public:
         appI.hintTitleBarTextColor = 0xFFFFFFFF;
         Application app = Application::create(appI);
 
+        // TODO: embed font
         mFont = Font::create_from_path("../../../../Assets/ttf/Inter_24pt-Regular.ttf");
         mFontAtlas = FontAtlas::create_sdf(mFont, 24.0f);
 
+        // TODO: remove hardcoded skybox
         fs::path dirPath = "../../../../Assets/skybox/opengl";
         std::array<std::string, 6> facePaths;
         facePaths[0] = fs::path(dirPath).append("px.png").string();
@@ -151,6 +154,8 @@ public:
             mRServer.editor_overlay_pass(editorOP);
 
             mRServer.submit_frame();
+
+            LD_PROFILE_FRAME_MARK;
         }
     }
 

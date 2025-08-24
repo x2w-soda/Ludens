@@ -5,3 +5,4 @@
 
 #define LD_PROFILE_SCOPE ZoneScoped
 #define LD_PROFILE_SCOPE_NAME ZoneScopedN
+#define LD_PROFILE_FRAME_MARK FrameMark
