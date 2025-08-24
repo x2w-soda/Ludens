@@ -113,6 +113,9 @@ public:
             float delta = (float)app.get_delta_time();
             mEditorUI.update(delta);
 
+            // If the Scene is playing in editor, this drives the scene update as well
+            mEditorCtx.update(delta);
+
             // begin rendering a frame
             RServerFrameInfo frameI{};
             frameI.directionalLight = Vec3(0.0f, 1.0f, 0.0f);
@@ -125,7 +128,7 @@ public:
             RServerScenePass sceneP{};
             sceneP.transformCallback = &EditorContext::render_server_transform_callback;
             sceneP.user = mEditorCtx.unwrap();
-            sceneP.overlay.enabled = true;
+            sceneP.overlay.enabled = !mEditorCtx.is_playing();
             sceneP.overlay.outlineRUID = mEditorUI.get_viewport_outline_ruid();
             mEditorUI.get_viewport_gizmo_state(
                 sceneP.overlay.gizmoType,

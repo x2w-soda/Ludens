@@ -35,6 +35,10 @@ struct EditorContext : Handle<struct EditorContextObj>
     /// @brief Add an observer of the editor context
     void add_observer(EditorContextEventFn fn, void* user);
 
+    /// @brief Editor context frame update, if the scene is playing, this calls the scene update.
+    /// @param delta Delta time in seconds.
+    void update(float delta);
+
     ///@brief Load a Project to edit
     ///@warning Experimental
     ///@note Triggers EDITOR_CONTEXT_EVENT_PROJECT_LOAD for observers
@@ -44,6 +48,15 @@ struct EditorContext : Handle<struct EditorContextObj>
     /// @warning Experimental
     /// @note Triggers EDITOR_CONTEXT_EVENT_SCENE_LOAD for observers.
     void load_project_scene(const std::filesystem::path& json);
+
+    /// @brief Begin playing scene in the editor.
+    void play_scene();
+
+    /// @brief Stop playing scene in the editor.
+    void stop_scene();
+
+    /// @brief Whether or not the scene simulation is playing in editor.
+    bool is_playing();
 
     /// @brief Get root data components in scene
     void get_scene_roots(std::vector<DUID>& roots);

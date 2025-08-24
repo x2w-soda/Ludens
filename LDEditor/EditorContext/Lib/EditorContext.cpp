@@ -35,6 +35,7 @@ struct EditorContextObj
     RUID selectedComponentRUID;
     JSONDocument projectDoc;
     JSONDocument assetDoc;
+    bool isPlaying;
 
     void notify_observers(const EditorContextEvent* event);
 };
@@ -52,6 +53,7 @@ EditorContext EditorContext::create(const EditorContextInfo& info)
     EditorContextObj* obj = heap_new<EditorContextObj>(MEMORY_USAGE_MISC);
     obj->renderServer = info.renderServer;
     obj->settings = EditorSettings::create_default();
+    obj->isPlaying = false;
 
     return {obj};
 }
@@ -99,6 +101,14 @@ EditorSettings EditorContext::get_settings()
 void EditorContext::add_observer(EditorContextEventFn fn, void* user)
 {
     mObj->observers.push_back(std::make_pair(fn, user));
+}
+
+void EditorContext::update(float delta)
+{
+    if (mObj->isPlaying)
+    {
+        mObj->scene.update(delta);
+    }
 }
 
 void EditorContext::load_project(const std::filesystem::path& filePath)
@@ -198,6 +208,37 @@ void EditorContext::load_project_scene(const std::filesystem::path& jsonPath)
 
     EditorContextSceneLoadEvent event{};
     mObj->notify_observers(&event);
+}
+
+void EditorContext::play_scene()
+{
+    LD_PROFILE_SCOPE;
+
+    if (mObj->isPlaying)
+        return;
+
+    mObj->isPlaying = true;
+
+    // TODO:
+    mObj->scene.startup();
+}
+
+void EditorContext::stop_scene()
+{
+    LD_PROFILE_SCOPE;
+
+    if (!mObj->isPlaying)
+        return;
+
+    mObj->isPlaying = false;
+
+    // TODO:
+    mObj->scene.cleanup();
+}
+
+bool EditorContext::is_playing()
+{
+    return mObj->isPlaying;
 }
 
 void EditorContext::get_scene_roots(std::vector<DUID>& roots)
