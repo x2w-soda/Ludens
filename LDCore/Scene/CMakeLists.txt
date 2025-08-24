@@ -6,6 +6,8 @@ set(MODULE_INCLUDE
 
 set(MODULE_LIB
     Lib/Scene.cpp
+    Lib/LuaScript.h
+    Lib/LuaScript.cpp
 )
 
 add_library(${MODULE_NAME}
@@ -21,5 +23,6 @@ target_include_directories(${MODULE_NAME} PRIVATE
 target_link_libraries(${MODULE_NAME} PUBLIC
     LDProfiler
     LDSystem
+    LDLua
     LDDataRegistry
 )

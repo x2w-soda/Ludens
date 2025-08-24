@@ -28,6 +28,16 @@ public:
     /// @brief Destroy a Scene
     static void destroy(Scene);
 
+    /// @brief Startup the scene for simulation. This attaches scripts to their components.
+    void startup();
+
+    /// @brief Cleanup the scene simulation. This detaches scripts from their components.
+    void cleanup();
+
+    /// @brief Update the scene with delta time.
+    /// @param delta Delta time in seconds.
+    void update(float delta);
+
     /// @brief Get root components in Scene
     void get_root_components(std::vector<DUID>& roots);
 
