@@ -54,9 +54,9 @@ public:
     void begin_load_batch();
     void end_load_batch();
 
-    void load_mesh_asset(JSONNode node);
-    void load_texture_2d_asset(JSONNode node);
-    void load_lua_script_asset(JSONNode node);
+    void load_mesh_asset(const fs::path& path, AUID auid);
+    void load_texture_2d_asset(const fs::path& path, AUID auid);
+    void load_lua_script_asset(const fs::path& path, AUID auid);
 
     Texture2DAsset get_texture_2d_asset(AUID auid);
     MeshAsset get_mesh_asset(AUID auid);
@@ -151,21 +151,14 @@ void AssetManagerObj::end_load_batch()
     }
 }
 
-void AssetManagerObj::load_mesh_asset(JSONNode node)
+void AssetManagerObj::load_mesh_asset(const fs::path& path, AUID auid)
 {
     LD_ASSERT(mInLoadBatch);
 
     auto obj = (MeshAssetObj*)allocate_asset(ASSET_TYPE_MESH);
+    obj->auid = auid;
 
-    JSONNode member = node.get_member("auid");
-    member.is_u32(&obj->auid);
-
-    std::string uri;
-    member = node.get_member("uri");
-    member.is_string(&uri);
-
-    fs::path loadPath = mRootPath / fs::path(uri);
-    sLog.info("load_mesh_asset {} AUID {}", loadPath.string(), obj->auid);
+    fs::path loadPath = mRootPath / path;
 
     auto meshLoadJob = heap_new<MeshAssetLoadJob>(MEMORY_USAGE_ASSET);
     meshLoadJob->asset = MeshAsset(obj);
@@ -174,21 +167,14 @@ void AssetManagerObj::load_mesh_asset(JSONNode node)
     mMeshLoadJobs.push_back(meshLoadJob);
 }
 
-void AssetManagerObj::load_texture_2d_asset(JSONNode node)
+void AssetManagerObj::load_texture_2d_asset(const fs::path& path, AUID auid)
 {
     LD_ASSERT(mInLoadBatch);
 
     auto obj = (Texture2DAssetObj*)allocate_asset(ASSET_TYPE_TEXTURE_2D);
+    obj->auid = auid;
 
-    JSONNode member = node.get_member("auid");
-    member.is_u32(&obj->auid);
-
-    std::string uri;
-    member = node.get_member("uri");
-    member.is_string(&uri);
-
-    fs::path loadPath = mRootPath / fs::path(uri);
-    sLog.info("load_texture_2d_asset {} AUID {}", loadPath.string(), obj->auid);
+    fs::path loadPath = mRootPath / path;
 
     auto textureLoadJob = heap_new<Texture2DAssetLoadJob>(MEMORY_USAGE_ASSET);
     textureLoadJob->asset = Texture2DAsset(obj);
@@ -197,21 +183,14 @@ void AssetManagerObj::load_texture_2d_asset(JSONNode node)
     mTexture2DLoadJobs.push_back(textureLoadJob);
 }
 
-void AssetManagerObj::load_lua_script_asset(JSONNode node)
+void AssetManagerObj::load_lua_script_asset(const fs::path& path, AUID auid)
 {
     LD_ASSERT(mInLoadBatch);
 
     auto obj = (LuaScriptAssetObj*)allocate_asset(ASSET_TYPE_LUA_SCRIPT);
+    obj->auid = auid;
 
-    JSONNode member = node.get_member("auid");
-    member.is_u32(&obj->auid);
-
-    std::string uri;
-    member = node.get_member("uri");
-    member.is_string(&uri);
-
-    fs::path loadPath = mRootPath / fs::path(uri);
-    sLog.info("load_lua_script_asset {} AUID {}", loadPath.string(), obj->auid);
+    fs::path loadPath = mRootPath / path;
 
     auto scriptLoadJob = heap_new<LuaScriptAssetLoadJob>(MEMORY_USAGE_ASSET);
     scriptLoadJob->asset = LuaScriptAsset(obj);
@@ -264,44 +243,35 @@ void AssetManager::destroy(AssetManager manager)
     heap_delete<AssetManagerObj>(obj);
 }
 
-void AssetManager::load_assets(JSONDocument assetDoc)
+void AssetManager::begin_load_batch()
 {
-    LD_PROFILE_SCOPE;
-
-    JSONNode rootNode = assetDoc.get_root();
-
-    uint32_t version;
-    JSONNode versionNode = rootNode.get_member("version");
-    if (!versionNode || !versionNode.is_u32(&version))
-        return;
-
     mObj->begin_load_batch();
-    {
-        JSONNode meshes = rootNode.get_member("Mesh");
-        if (!meshes || !meshes.is_array())
-            return;
+}
 
-        int count = meshes.get_size();
-        for (int i = 0; i < count; i++)
-            mObj->load_mesh_asset(meshes[i]);
-
-        JSONNode textures = rootNode.get_member("Texture2D");
-        if (!textures || !textures.is_array())
-            return;
-
-        count = textures.get_size();
-        for (int i = 0; i < count; i++)
-            mObj->load_texture_2d_asset(textures[i]);
-
-        JSONNode luaScripts = rootNode.get_member("LuaScript");
-        if (!luaScripts || !luaScripts.is_array())
-            return;
-
-        count = luaScripts.get_size();
-        for (int i = 0; i < count; i++)
-            mObj->load_lua_script_asset(luaScripts[i]);
-    }
+void AssetManager::end_load_batch()
+{
     mObj->end_load_batch();
+}
+
+void AssetManager::load_mesh_asset(const fs::path& path, AUID auid)
+{
+    sLog.info("load_mesh_asset {}", path.string());
+
+    mObj->load_mesh_asset(path, auid);
+}
+
+void AssetManager::load_texture_2d_asset(const fs::path& path, AUID auid)
+{
+    sLog.info("load_texture_2d_asset {}", path.string());
+
+    mObj->load_texture_2d_asset(path, auid);
+}
+
+void AssetManager::load_lua_script_asset(const fs::path& path, AUID auid)
+{
+    sLog.info("load_lua_script_asset {}", path.string());
+
+    mObj->load_lua_script_asset(path, auid);
 }
 
 MeshAsset AssetManager::get_mesh_asset(AUID auid)

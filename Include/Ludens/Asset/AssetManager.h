@@ -5,7 +5,6 @@
 #include <Ludens/Asset/MeshAsset.h>
 #include <Ludens/Asset/TextureAsset.h>
 #include <Ludens/Header/Handle.h>
-#include <Ludens/Media/Format/JSON.h>
 #include <Ludens/RenderServer/RServer.h>
 #include <filesystem>
 
@@ -16,8 +15,20 @@ struct AssetManager : Handle<struct AssetManagerObj>
     static AssetManager create(const std::filesystem::path& rootPath);
     static void destroy(AssetManager manager);
 
-    // NOTE: experimental
-    void load_assets(JSONDocument assets);
+    /// @brief Begin asset load batch.
+    void begin_load_batch();
+
+    /// @brief End asset load batch.
+    void end_load_batch();
+
+    /// @brief Append mesh asset load job to current batch.
+    void load_mesh_asset(const std::filesystem::path& path, AUID auid);
+
+    /// @brief Append texture 2D asset load job to current batch.
+    void load_texture_2d_asset(const std::filesystem::path& path, AUID auid);
+
+    /// @brief Append lua script asset load job to current batch.
+    void load_lua_script_asset(const std::filesystem::path& path, AUID auid);
 
     /// @brief Get mesh asset from ID.
     MeshAsset get_mesh_asset(AUID auid);
