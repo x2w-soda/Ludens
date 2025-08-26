@@ -20,7 +20,9 @@ struct SceneObj
     LuaState lua;
     std::unordered_map<RUID, Transform*> ruidTransforms; /// map RUID to its corresponding transform
     std::unordered_map<RUID, DUID> ruidToComponent;      /// map RUID to its corresponding component in the data registry
-    std::vector<DUID> roots;                             /// scene root components
+
+    /// @brief Prepare components recursively, loading scripts and assets.
+    void prepare(ComponentBase* comp);
 
     /// @brief Startup a component subtree recursively, attaching scripts to components
     void startup_root(DUID compID);
@@ -28,8 +30,8 @@ struct SceneObj
     /// @brief Cleanup a component subtree recursively, detaching scripts from components
     void cleanup_root(DUID compID);
 
-    /// @brief Create lua script associated with a component. Component ID also serves as script instance ID.
-    void create_lua_script(DUID compID, AUID assetID);
+    /// @brief Create lua script associated with a component.
+    void create_lua_script(ComponentScriptSlot* scriptSlot);
 
     /// @brief Destroy lua script associated with a component
     void destroy_lua_script(DUID compID);
@@ -42,21 +44,69 @@ struct SceneObj
 
     /// @brief Initialize a lua state for scripting
     void initialize_lua_state(LuaState L);
-
-    /// @brief Load components into data registry from JSON document.
-    void load_registry_from_json(JSONDocument jsonDoc);
-
-    DUID load_mesh_component(JSONNode comp, const std::string& name);
 };
+
+static void prepare_mesh_component(SceneObj* scene, DUID compID)
+{
+    ComponentType componentType;
+    MeshComponent* meshC = (MeshComponent*)scene->registry.get_component(compID, componentType);
+    LD_ASSERT(meshC && componentType == COMPONENT_TYPE_MESH);
+
+    if (meshC->auid)
+    {
+        MeshAsset meshA = scene->assetManager.get_mesh_asset(meshC->auid);
+        meshC->ruid = scene->renderServer.create_mesh(*meshA.data());
+        scene->ruidTransforms[meshC->ruid] = scene->registry.get_component_transform(compID);
+        scene->ruidToComponent[meshC->ruid] = compID;
+    }
+}
+
+/// @brief Component behavior and operations within a Scene.
+struct SceneComponent
+{
+    ComponentType type;
+    void (*prepare)(SceneObj* scene, DUID compID);
+};
+
+// clang-format off
+static SceneComponent sSceneComponents[] = {
+    {COMPONENT_TYPE_DATA,       nullptr},
+    {COMPONENT_TYPE_TRANSFORM,  nullptr},
+    {COMPONENT_TYPE_MESH,       prepare_mesh_component},
+    {COMPONENT_TYPE_TEXTURE_2D, nullptr},
+};
+// clang-format on
+
+static_assert(sizeof(sSceneComponents) / sizeof(*sSceneComponents) == COMPONENT_TYPE_ENUM_COUNT);
+
+void SceneObj::prepare(ComponentBase* comp)
+{
+    ComponentScriptSlot* scriptSlot = registry.get_component_script(comp->id);
+
+    // instantiate script
+    if (scriptSlot)
+    {
+        create_lua_script(scriptSlot);
+    }
+
+    // type-specific preparations
+    if (sSceneComponents[comp->type].prepare)
+        sSceneComponents[comp->type].prepare(this, comp->id);
+
+    for (ComponentBase* child = comp->child; child; child = child->next)
+    {
+        prepare(child);
+    }
+}
 
 void SceneObj::startup_root(DUID root)
 {
-    const DataComponent* rootC = registry.get_component_base(root);
+    const ComponentBase* rootC = registry.get_component_base(root);
 
     if (!rootC)
         return;
 
-    for (DataComponent* childC = rootC->child; childC; childC = childC->next)
+    for (ComponentBase* childC = rootC->child; childC; childC = childC->next)
     {
         startup_root(childC->id);
     }
@@ -67,12 +117,12 @@ void SceneObj::startup_root(DUID root)
 
 void SceneObj::cleanup_root(DUID root)
 {
-    const DataComponent* rootC = registry.get_component_base(root);
+    const ComponentBase* rootC = registry.get_component_base(root);
 
     if (!rootC)
         return;
 
-    for (DataComponent* childC = rootC->child; childC; childC = childC->next)
+    for (ComponentBase* childC = rootC->child; childC; childC = childC->next)
     {
         cleanup_root(childC->id);
     }
@@ -81,11 +131,13 @@ void SceneObj::cleanup_root(DUID root)
     detach_lua_script(rootC->id);
 }
 
-void SceneObj::create_lua_script(DUID compID, AUID assetID)
+void SceneObj::create_lua_script(ComponentScriptSlot* scriptSlot)
 {
-    DataComponentScript* script = registry.create_component_script(compID, assetID);
-    LD_ASSERT(script);
+    LD_ASSERT(scriptSlot);
     LD_ASSERT(lua.empty());
+
+    DUID compID = scriptSlot->componentID;
+    AUID assetID = scriptSlot->assetID;
 
     lua.get_global("ludens");
     lua.get_field(-1, "scripts");
@@ -131,14 +183,14 @@ void SceneObj::attach_lua_script(DUID rootID)
 {
     LD_ASSERT(lua.get_type(-1) == LUA_TYPE_TABLE);
 
-    DataComponentScript* script = registry.get_component_script(rootID);
+    ComponentScriptSlot* script = registry.get_component_script(rootID);
     if (!script)
         return;
 
     int oldSize = lua.size();
 
     // call 'attach' lua method on script
-    lua.push_number((double)script->instanceID);
+    lua.push_number((double)script->componentID);
     lua.get_table(-2);
     LD_ASSERT(lua.get_type(-1) == LUA_TYPE_TABLE); // script instance
 
@@ -146,7 +198,7 @@ void SceneObj::attach_lua_script(DUID rootID)
     LD_ASSERT(lua.get_type(-1) == LUA_TYPE_FN); // script attach method
 
     // arg1 is script instance
-    lua.push_number((double)script->instanceID);
+    lua.push_number((double)script->componentID);
     lua.get_table(-4);
 
     // arg2 is the component
@@ -163,17 +215,17 @@ void SceneObj::detach_lua_script(DUID rootID)
 {
     LD_ASSERT(lua.get_type(-1) == LUA_TYPE_TABLE);
 
-    DataComponentScript* script = registry.get_component_script(rootID);
+    ComponentScriptSlot* script = registry.get_component_script(rootID);
     if (!script)
         return;
 
     // call 'detach' lua method on script
-    lua.push_number((double)script->instanceID);
+    lua.push_number((double)script->componentID);
     lua.get_table(-2);
     lua.get_field(-1, "detach");
 
     // arg1 is script instance
-    lua.push_number((double)script->instanceID);
+    lua.push_number((double)script->componentID);
     lua.get_table(-3);
 
     lua.call(1, 0);
@@ -195,115 +247,18 @@ void SceneObj::initialize_lua_state(LuaState L)
     L.clear();
 }
 
-void SceneObj::load_registry_from_json(JSONDocument jsonDoc)
+Scene Scene::create()
 {
-    roots.clear();
-
-    JSONNode root = jsonDoc.get_root();
-
-    JSONNode objects = root.get_member("objects");
-    LD_ASSERT(objects.is_array());
-    int objectCount = objects.get_size();
-
-    for (int i = 0; i < objectCount; i++)
-    {
-        JSONNode object = objects.get_index(i);
-        LD_ASSERT(object.is_object());
-
-        JSONNode name = object.get_member("name");
-        std::string nameStr;
-        if (name && name.is_string(&nameStr))
-            std::cout << "loading object: " << nameStr << std::endl;
-
-        JSONNode comp = object.get_member("MeshComponent");
-        if (!comp || !comp.is_object())
-            continue;
-
-        DUID meshCID = load_mesh_component(comp, nameStr);
-
-        JSONNode script = object.get_member("script");
-        AUID scriptAUID;
-        if (script && script.is_u32(&scriptAUID))
-        {
-            LuaScriptAsset scriptAsset = assetManager.get_lua_script_asset(scriptAUID);
-            LD_ASSERT(scriptAsset);
-
-            create_lua_script(meshCID, scriptAUID);
-        }
-    }
-}
-
-DUID SceneObj::load_mesh_component(JSONNode comp, const std::string& name)
-{
-    ComponentType componentType;
-    DUID meshCID = registry.create_component(COMPONENT_TYPE_MESH, name.c_str());
-    MeshComponent* meshC = (MeshComponent*)registry.get_component(meshCID, componentType);
-    roots.push_back(meshCID);
-
-    JSONNode member = comp.get_member("auid");
-    uint32_t auid;
-    if (member && member.is_u32(&auid))
-    {
-        MeshAsset meshA = assetManager.get_mesh_asset(auid);
-        meshC->ruid = renderServer.create_mesh(*meshA.data());
-        ruidTransforms[meshC->ruid] = registry.get_component_transform(meshCID);
-        ruidToComponent[meshC->ruid] = meshCID;
-    }
-
-    member = comp.get_member("transform");
-    if (member && member.is_object())
-    {
-        Transform& transform = meshC->transform;
-        transform.position = Vec3(0.0f);
-        transform.rotation = Vec3(0.0f);
-        transform.scale = Vec3(1.0f);
-
-        JSONNode prop = member.get_member("position");
-        if (prop && prop.is_array() && prop.get_size() == 3)
-        {
-            prop.get_index(0).is_f32(&transform.position.x);
-            prop.get_index(1).is_f32(&transform.position.y);
-            prop.get_index(2).is_f32(&transform.position.z);
-        }
-
-        prop = member.get_member("rotation");
-        if (prop && prop.is_array() && prop.get_size() == 3)
-        {
-            prop.get_index(0).is_f32(&transform.rotation.x);
-            prop.get_index(1).is_f32(&transform.rotation.y);
-            prop.get_index(2).is_f32(&transform.rotation.z);
-        }
-
-        prop = member.get_member("scale");
-        if (prop && prop.is_array() && prop.get_size() == 3)
-        {
-            prop.get_index(0).is_f32(&transform.scale.x);
-            prop.get_index(1).is_f32(&transform.scale.y);
-            prop.get_index(2).is_f32(&transform.scale.z);
-        }
-    }
-
-    return meshCID;
-}
-
-// NOTE: Experimental, this is mostly for the Editor to load the scene.
-//       Runtime scene loading will probably use a different path.
-Scene Scene::create(const SceneInfo& info)
-{
-    LD_PROFILE_SCOPE;
     SceneObj* obj = heap_new<SceneObj>(MEMORY_USAGE_SCENE);
     obj->registry = DataRegistry::create();
-    obj->assetManager = info.assetManager;
-    obj->renderServer = info.renderServer;
+    obj->assetManager = {};
+    obj->renderServer = {};
 
     // lua scripting context
     LuaStateInfo stateI{};
     stateI.openLibs = true;
     obj->lua = LuaState::create(stateI);
     obj->initialize_lua_state(obj->lua);
-
-    DataRegistry registry = obj->registry;
-    obj->load_registry_from_json(info.jsonDoc);
 
     return Scene(obj);
 }
@@ -318,6 +273,24 @@ void Scene::destroy(Scene scene)
     heap_delete<SceneObj>(obj);
 }
 
+void Scene::prepare(const ScenePrepareInfo& info)
+{
+    LD_PROFILE_SCOPE;
+    LD_ASSERT(info.assetManager && info.renderServer);
+
+    mObj->assetManager = info.assetManager;
+    mObj->renderServer = info.renderServer;
+
+    std::vector<DUID> roots;
+    mObj->registry.get_root_components(roots);
+
+    for (DUID rootID : roots)
+    {
+        ComponentBase* base = mObj->registry.get_component_base(rootID);
+        mObj->prepare(base);
+    }
+}
+
 void Scene::startup()
 {
     LD_PROFILE_SCOPE;
@@ -326,7 +299,10 @@ void Scene::startup()
     mObj->lua.get_global("ludens");
     mObj->lua.get_field(-1, "scripts");
 
-    for (DUID root : mObj->roots)
+    std::vector<DUID> roots;
+    mObj->registry.get_root_components(roots);
+
+    for (DUID root : roots)
     {
         mObj->startup_root(root);
     }
@@ -341,7 +317,10 @@ void Scene::cleanup()
     mObj->lua.get_global("ludens");
     mObj->lua.get_field(-1, "scripts");
 
-    for (DUID root : mObj->roots)
+    std::vector<DUID> roots;
+    mObj->registry.get_root_components(roots);
+
+    for (DUID root : roots)
     {
         mObj->cleanup_root(root);
     }
@@ -359,18 +338,18 @@ void Scene::update(float delta)
 
     for (auto ite = mObj->registry.get_component_scripts(); ite; ++ite)
     {
-        auto* script = (DataComponentScript*)ite.data();
+        auto* script = (ComponentScriptSlot*)ite.data();
         if (!script->isEnabled)
             continue;
 
-        L.push_number((double)script->instanceID);
+        L.push_number((double)script->componentID);
         L.get_table(-2);
 
         L.get_field(-1, "update");
         LD_ASSERT(L.get_type(-1) == LUA_TYPE_FN);
 
         // arg1 is the script instance (lua table)
-        L.push_number((double)script->instanceID);
+        L.push_number((double)script->componentID);
         L.get_table(-4);
 
         // arg2 is the component (lua table) the script is attached to
@@ -389,12 +368,27 @@ void Scene::update(float delta)
     L.pop(2);
 }
 
-void Scene::get_root_components(std::vector<DUID>& roots)
+DUID Scene::create_component(ComponentType type, const char* name, DUID parent)
 {
-    roots = mObj->roots;
+    return mObj->registry.create_component(type, name, parent);
 }
 
-const DataComponent* Scene::get_component_base(DUID compID)
+ComponentScriptSlot* Scene::create_component_script_slot(DUID compID, AUID assetID)
+{
+    return mObj->registry.create_component_script_slot(compID, assetID);
+}
+
+void Scene::destroy_component(DUID compID)
+{
+    mObj->registry.destroy_component(compID);
+}
+
+void Scene::get_root_components(std::vector<DUID>& roots)
+{
+    mObj->registry.get_root_components(roots);
+}
+
+ComponentBase* Scene::get_component_base(DUID compID)
 {
     return mObj->registry.get_component_base(compID);
 }
@@ -433,5 +427,6 @@ Mat4 Scene::get_ruid_transform(RUID ruid)
     Mat4 R = Mat4::rotate(LD_TO_RADIANS(axisR.x), Vec3(1.0f, 0.0f, 0.0f)) * Mat4::rotate(LD_TO_RADIANS(axisR.y), Vec3(0.0f, 1.0f, 0.0f)) * Mat4::rotate(LD_TO_RADIANS(axisR.z), Vec3(0.0f, 0.0f, 1.0f));
     return Mat4::translate(transform->position) * R * Mat4::scale(transform->scale);
 }
+
 
 } // namespace LD
