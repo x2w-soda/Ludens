@@ -269,6 +269,7 @@ add_subdirectory(LDCore/UI)
 add_subdirectory(LDCore/Asset)
 add_subdirectory(LDCore/DataRegistry)
 add_subdirectory(LDCore/Scene)
+add_subdirectory(LDCore/Project)
 add_subdirectory(LDCore/Application)
 
 add_library(LDCoreLibs INTERFACE)
@@ -293,6 +294,7 @@ target_link_libraries(LDCoreLibs INTERFACE
   LDAsset
   LDDataRegistry
   LDScene
+  LDProject
   LDApplication
 )
 

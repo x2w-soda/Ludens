@@ -88,6 +88,18 @@ User interface solution. This is a retained-mode GUI library used for both the e
 
 Defines the format of a game asset, as well as how assets are loaded, unloaded, and imported. The Asset module is the primary user of the Media module.
 
+- DataRegistry
+
+A registry that maintains a hierarchy of components. We would mostly be traversing arrays of components for better cache locality, only tasks such as transform invalidation will use tree traversal. Note that this is the first "high level module" that needs to include a lot of subsystems since it defines all types of components. This module could be considered as the data model of a scene.
+
+- Scene
+
+The basic unit of game simulation, uses the DataRegistry and AssetManager to simulate a game scene. 
+
+- Project
+
+Defines a Ludens project. This should fully specify the assets, scenes, and any other meta data in a game project.
+
 - Application
 
 The backbone of a windowed application. Handles user input and window events in an event-polling fasion.
