@@ -40,22 +40,22 @@ size_t get_component_byte_size(ComponentType type);
 const char* get_component_type_name(ComponentType type);
 
 /// @brief Data component base members, hierarchy representation.
-struct DataComponent
+struct ComponentBase
 {
-    const char* name;      /// user defined name
-    DataComponent* next;   /// next sibling component
-    DataComponent* child;  /// first child component
-    DataComponent* parent; /// parent component
+    char* name;            /// user defined name
+    ComponentBase* next;   /// next sibling component
+    ComponentBase* child;  /// first child component
+    ComponentBase* parent; /// parent component
     ComponentType type;    /// data component type
     DUID id;               /// data component ID
 };
 
 /// @brief Script attached to data component.
-struct DataComponentScript
+struct ComponentScriptSlot
 {
-    AUID assetID;    /// the script asset to instantiate from
-    DUID instanceID; /// the script instance ID, same as its component ID
-    bool isEnabled;  /// whether the script should be updated
+    AUID assetID;     /// the script asset to instantiate from
+    DUID componentID; /// the component this script slot belongs to
+    bool isEnabled;   /// whether the script should be updated
 };
 
 /// @brief A component with only transform data.

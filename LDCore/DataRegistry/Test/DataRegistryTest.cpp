@@ -10,7 +10,7 @@ TEST_CASE("DataRegistry")
 {
     DataRegistry reg = DataRegistry::create();
 
-    DUID t1 = reg.create_component(COMPONENT_TYPE_TRANSFORM, "t1");
+    DUID t1 = reg.create_component(COMPONENT_TYPE_TRANSFORM, "t1", (DUID)0);
 
     ComponentType type;
     auto* comp = (TransformComponent*)reg.get_component(t1, type);

@@ -5,6 +5,7 @@
 #include <Ludens/Header/Hash.h>
 #include <Ludens/System/Allocator.h>
 #include <cstdint>
+#include <vector>
 
 namespace LD {
 
@@ -20,21 +21,22 @@ struct DataRegistry : Handle<struct DataRegistryObj>
     /// @brief Creates a data component
     /// @param type Root component type
     /// @param name User defined name.
+    /// @param parent Parent component, or 0 if creating a root component
     /// @return Data component ID
-    DUID create_component(ComponentType type, const char* name);
+    DUID create_component(ComponentType type, const char* name, DUID parent);
 
     /// @brief Destroy a data component subtree
     /// @param id Data component ID
     void destroy_component(DUID id);
 
     /// @brief Create data component script slot.
-    DataComponentScript* create_component_script(DUID compID, AUID assetID);
+    ComponentScriptSlot* create_component_script_slot(DUID compID, AUID assetID);
 
     /// @brief Destroy data component script slot.
-    void destroy_component_script(DUID compID);
+    void destroy_component_script_slot(DUID compID);
 
     /// @brief Get data component base members, applicable to all types of components.
-    const DataComponent* get_component_base(DUID compID);
+    ComponentBase* get_component_base(DUID compID);
 
     /// @brief Get data component struct, or null on failure
     /// @param id Data component ID
@@ -42,11 +44,14 @@ struct DataRegistry : Handle<struct DataRegistryObj>
     /// @return Address of some data component
     void* get_component(DUID id, ComponentType& type);
 
+    /// @brief Get all data components with no parents.
+    void get_root_components(std::vector<DUID>& roots);
+
     /// @brief Get an iterator to traverse all components of a specific type.
     PoolAllocator::Iterator get_components(ComponentType type);
 
     /// @brief Get script associated with a data component
-    DataComponentScript* get_component_script(DUID compID);
+    ComponentScriptSlot* get_component_script(DUID compID);
 
     /// @brief Get an iterator to traverse all scripts.
     PoolAllocator::Iterator get_component_scripts();
