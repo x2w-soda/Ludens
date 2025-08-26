@@ -1,8 +1,10 @@
 #include <Ludens/Asset/AssetManager.h>
+#include <Ludens/Asset/AssetSchema.h>
 #include <Ludens/DataRegistry/DataComponent.h>
 #include <Ludens/Log/Log.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/Scene/Scene.h>
+#include <Ludens/Scene/SceneSchema.h>
 #include <Ludens/System/FileSystem.h>
 #include <Ludens/System/Memory.h>
 #include <LudensEditor/EditorContext/EditorContext.h>
@@ -25,16 +27,16 @@ struct EditorContextObj
     Scene scene;                      /// subject scene under edit.
     AssetManager assetManager;        /// loads assets for the scene
     EditorSettings settings;          /// editor global settings
-    fs::path sceneJSONPath;           /// path to current scene file
-    fs::path assetJSONPath;           /// path to project asset file
+    fs::path sceneTOMLPath;           /// path to current scene file
+    fs::path assetTOMLPath;           /// path to project asset file
     fs::path projectDirPath;          /// path to project root directory
     std::string projectName;          /// project identifier
     std::vector<fs::path> scenePaths; /// path to scene files in project
     std::vector<EditorContextObserver> observers;
     DUID selectedComponent;
     RUID selectedComponentRUID;
-    JSONDocument projectDoc;
-    JSONDocument assetDoc;
+    JSONDocument projectDoc; // TODO: Project module, use toml schema
+    TOMLDocument assetDoc;
     bool isPlaying;
 
     void notify_observers(const EditorContextEvent* event);
@@ -64,7 +66,7 @@ void EditorContext::destroy(EditorContext ctx)
 
     if (obj->assetDoc)
     {
-        JSONDocument::destroy(obj->assetDoc);
+        TOMLDocument::destroy(obj->assetDoc);
         obj->assetDoc = {};
     }
 
@@ -142,11 +144,11 @@ void EditorContext::load_project(const std::filesystem::path& filePath)
 
     sLog.info("loading project [{}], root directory {}", mObj->projectName, mObj->projectDirPath.string());
 
-    mObj->assetJSONPath = mObj->projectDirPath / fs::path(assetFile);
+    mObj->assetTOMLPath = mObj->projectDirPath / fs::path(assetFile);
 
-    if (!FS::exists(mObj->assetJSONPath))
+    if (!FS::exists(mObj->assetTOMLPath))
     {
-        sLog.warn("failed to find project assets {}", mObj->assetJSONPath.string());
+        sLog.warn("failed to find project assets {}", mObj->assetTOMLPath.string());
         return;
     }
 
@@ -158,9 +160,9 @@ void EditorContext::load_project(const std::filesystem::path& filePath)
     // Load all project assets at once using job system.
     // Once we have asynchronous-load-jobs maybe we can load assets
     // used by the loaded scene first?
-    mObj->assetDoc = JSONDocument::create_from_file(mObj->assetJSONPath);
+    mObj->assetDoc = TOMLDocument::create_from_file(mObj->assetTOMLPath);
     mObj->assetManager = AssetManager::create(mObj->projectDirPath);
-    mObj->assetManager.load_assets(mObj->assetDoc);
+    AssetSchema::load_assets(mObj->assetManager, mObj->assetDoc);
 
     JSONNode scenesNode = root.get_member("scenes");
     if (!scenesNode || !scenesNode.is_array())
@@ -191,20 +193,25 @@ void EditorContext::load_project(const std::filesystem::path& filePath)
     mObj->notify_observers(&event);
 }
 
-void EditorContext::load_project_scene(const std::filesystem::path& jsonPath)
+void EditorContext::load_project_scene(const std::filesystem::path& tomlPath)
 {
     LD_PROFILE_SCOPE;
 
-    mObj->sceneJSONPath = jsonPath;
+    mObj->sceneTOMLPath = tomlPath;
     mObj->selectedComponent = 0;
     mObj->selectedComponentRUID = 0;
 
-    SceneInfo sceneI;
-    sceneI.jsonDoc = JSONDocument::create_from_file(mObj->sceneJSONPath);
-    sceneI.assetManager = mObj->assetManager;
-    sceneI.renderServer = mObj->renderServer;
-    mObj->scene = Scene::create(sceneI);
-    JSONDocument::destroy(sceneI.jsonDoc);
+    // create the scene
+    TOMLDocument tomlDoc = TOMLDocument::create_from_file(mObj->sceneTOMLPath);
+    mObj->scene = Scene::create();
+    SceneSchema::load_scene(mObj->scene, tomlDoc);
+    TOMLDocument::destroy(tomlDoc);
+
+    // prepare the scene
+    ScenePrepareInfo prepareInfo{};
+    prepareInfo.assetManager = mObj->assetManager;
+    prepareInfo.renderServer = mObj->renderServer;
+    mObj->scene.prepare(prepareInfo);
 
     EditorContextSceneLoadEvent event{};
     mObj->notify_observers(&event);
@@ -248,7 +255,7 @@ void EditorContext::get_scene_roots(std::vector<DUID>& roots)
 
 const char* EditorContext::get_component_name(DUID comp)
 {
-    const DataComponent* base = mObj->scene.get_component_base(comp);
+    const ComponentBase* base = mObj->scene.get_component_base(comp);
     if (!base)
         return nullptr;
 

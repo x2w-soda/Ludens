@@ -7,7 +7,7 @@
 
 namespace LD {
 
-struct DataComponent;
+struct ComponentBase;
 struct Transform;
 
 struct EditorContextInfo
@@ -47,7 +47,7 @@ struct EditorContext : Handle<struct EditorContextObj>
     /// @brief Load a Scene from the current Project
     /// @warning Experimental
     /// @note Triggers EDITOR_CONTEXT_EVENT_SCENE_LOAD for observers.
-    void load_project_scene(const std::filesystem::path& json);
+    void load_project_scene(const std::filesystem::path& toml);
 
     /// @brief Begin playing scene in the editor.
     void play_scene();

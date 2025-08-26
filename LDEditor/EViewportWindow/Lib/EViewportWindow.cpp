@@ -1,10 +1,10 @@
+#include "ViewportToolbar.h"
 #include <Ludens/Application/Input.h>
 #include <Ludens/Camera/CameraController.h>
 #include <Ludens/Gizmo/Gizmo.h>
 #include <Ludens/System/Memory.h>
 #include <LudensEditor/EViewportWindow/EViewportWindow.h>
 #include <LudensEditor/EditorContext/EditorWindowObj.h>
-#include "ViewportToolbar.h"
 
 #define GIZMO_SCREEN_SIZE_Y 150.0f
 
@@ -144,8 +144,12 @@ void EViewportWindowObj::pick_ruid(RUID id)
 void EViewportWindowObj::on_draw_overlay(ScreenRenderComponent renderer)
 {
     Vec2 pos = root.get_rect().get_pos();
-    toolbar.window.set_pos(pos + Vec2(8, 8));
-    toolbar.on_draw_overlay(renderer);
+
+    if (!editorCtx.is_playing()) // TODO: use UI show/hide instead
+    {
+        toolbar.window.set_pos(pos + Vec2(8, 8));
+        toolbar.on_draw_overlay(renderer);
+    }
 }
 
 void EViewportWindowObj::on_draw(UIWidget widget, ScreenRenderComponent renderer)
@@ -267,6 +271,12 @@ void EViewportWindowObj::on_update(UIWidget widget, float delta)
     // active mouse picking if cursor is within viewport window
     self.sceneMousePos = Vec2(-1.0f);
     widget.get_mouse_pos(self.sceneMousePos);
+
+    // TODO: move this to a play button?
+    if (Input::get_key_down(KEY_CODE_SPACE))
+        self.editorCtx.play_scene();
+    if (Input::get_key_down(KEY_CODE_ESCAPE))
+        self.editorCtx.stop_scene();
 
     // update gizmo scale from camera
     if (self.isGizmoVisible)
