@@ -30,6 +30,7 @@ struct TOMLValue : Handle<struct TOMLValueObj>
     inline bool is_bool_type() const { return get_type() == TOML_TYPE_BOOL; }
     inline bool is_int_type() const { return get_type() == TOML_TYPE_INT; }
     inline bool is_float_type() const { return get_type() == TOML_TYPE_FLOAT; }
+    inline bool is_string_type() const { return get_type() == TOML_TYPE_STRING; }
     inline bool is_table_type() const { return get_type() == TOML_TYPE_TABLE; }
     inline bool is_array_type() const { return get_type() == TOML_TYPE_ARRAY; }
 
@@ -75,6 +76,12 @@ struct TOMLValue : Handle<struct TOMLValueObj>
 
     /// @brief Lookup key in TOML table.
     TOMLValue get_key(const char* key);
+
+    /// @brief Shorthand for table get_key.
+    inline TOMLValue operator[](const char* key)
+    {
+        return get_key(key);
+    }
 };
 
 /// @brief Toml document handle
