@@ -42,7 +42,7 @@ struct EditorContext : Handle<struct EditorContextObj>
     ///@brief Load a Project to edit
     ///@warning Experimental
     ///@note Triggers EDITOR_CONTEXT_EVENT_PROJECT_LOAD for observers
-    void load_project(const std::filesystem::path& json);
+    void load_project(const std::filesystem::path& toml);
 
     /// @brief Load a Scene from the current Project
     /// @warning Experimental

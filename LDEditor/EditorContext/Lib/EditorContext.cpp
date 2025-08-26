@@ -3,6 +3,8 @@
 #include <Ludens/DataRegistry/DataComponent.h>
 #include <Ludens/Log/Log.h>
 #include <Ludens/Profiler/Profiler.h>
+#include <Ludens/Project/Project.h>
+#include <Ludens/Project/ProjectSchema.h>
 #include <Ludens/Scene/Scene.h>
 #include <Ludens/Scene/SceneSchema.h>
 #include <Ludens/System/FileSystem.h>
@@ -24,7 +26,8 @@ using EditorContextObserver = std::pair<EditorContextEventFn, void*>;
 struct EditorContextObj
 {
     RServer renderServer;             /// render server handle
-    Scene scene;                      /// subject scene under edit.
+    Project project;                  /// current project under edit
+    Scene scene;                      /// current scene under edit
     AssetManager assetManager;        /// loads assets for the scene
     EditorSettings settings;          /// editor global settings
     fs::path sceneTOMLPath;           /// path to current scene file
@@ -35,8 +38,6 @@ struct EditorContextObj
     std::vector<EditorContextObserver> observers;
     DUID selectedComponent;
     RUID selectedComponentRUID;
-    JSONDocument projectDoc; // TODO: Project module, use toml schema
-    TOMLDocument assetDoc;
     bool isPlaying;
 
     void notify_observers(const EditorContextEvent* event);
@@ -64,24 +65,13 @@ void EditorContext::destroy(EditorContext ctx)
 {
     EditorContextObj* obj = ctx;
 
-    if (obj->assetDoc)
-    {
-        TOMLDocument::destroy(obj->assetDoc);
-        obj->assetDoc = {};
-    }
-
-    if (obj->projectDoc)
-    {
-        JSONDocument::destroy(obj->projectDoc);
-        obj->projectDoc = {};
-    }
-
     if (obj->assetManager)
     {
         AssetManager::destroy(obj->assetManager);
         obj->assetManager = {};
     }
 
+    Project::destroy(obj->project);
     Scene::destroy(obj->scene);
     EditorSettings::destroy(obj->settings);
 
@@ -117,34 +107,20 @@ void EditorContext::load_project(const std::filesystem::path& filePath)
 {
     LD_PROFILE_SCOPE;
 
-    mObj->projectDoc = JSONDocument::create_from_file(filePath);
-    JSONNode root;
+    fs::path projectDirPath = filePath.parent_path();
 
-    if (!mObj->projectDoc || !(root = mObj->projectDoc.get_root()))
-    {
-        sLog.warn("failed to load project {}", filePath.string());
-        return;
-    }
+    TOMLDocument projectDoc = TOMLDocument::create_from_file(filePath);
+    mObj->project = Project::create(projectDirPath);
+    ProjectSchema::load_project(mObj->project, projectDoc);
+    TOMLDocument::destroy(projectDoc);
 
-    mObj->projectDirPath = filePath.parent_path();
+    mObj->projectDirPath = projectDirPath;
+    mObj->projectName = mObj->project.get_name();
 
-    JSONNode versionNode = root.get_member("version");
-    uint32_t version;
-    if (!versionNode || !versionNode.is_u32(&version))
-        return;
-
-    JSONNode nameNode = root.get_member("name");
-    if (!nameNode || !nameNode.is_string(&mObj->projectName))
-        return;
-
-    JSONNode assetFileNode = root.get_member("assets");
-    std::string assetFile;
-    if (!assetFileNode || !assetFileNode.is_string(&assetFile))
-        return;
-
+    fs::path assetsPath = mObj->project.get_assets_path();
     sLog.info("loading project [{}], root directory {}", mObj->projectName, mObj->projectDirPath.string());
 
-    mObj->assetTOMLPath = mObj->projectDirPath / fs::path(assetFile);
+    mObj->assetTOMLPath = assetsPath;
 
     if (!FS::exists(mObj->assetTOMLPath))
     {
@@ -160,30 +136,22 @@ void EditorContext::load_project(const std::filesystem::path& filePath)
     // Load all project assets at once using job system.
     // Once we have asynchronous-load-jobs maybe we can load assets
     // used by the loaded scene first?
-    mObj->assetDoc = TOMLDocument::create_from_file(mObj->assetTOMLPath);
+    TOMLDocument assetDoc = TOMLDocument::create_from_file(mObj->assetTOMLPath);
     mObj->assetManager = AssetManager::create(mObj->projectDirPath);
-    AssetSchema::load_assets(mObj->assetManager, mObj->assetDoc);
+    AssetSchema::load_assets(mObj->assetManager, assetDoc);
+    TOMLDocument::destroy(assetDoc);
 
-    JSONNode scenesNode = root.get_member("scenes");
-    if (!scenesNode || !scenesNode.is_array())
-        return;
+    mObj->project.get_scene_paths(mObj->scenePaths);
 
-    mObj->scenePaths.clear();
-    int sceneCount = scenesNode.get_size();
-
-    for (int i = 0; i < sceneCount; i++)
+    for (const fs::path& scenePath : mObj->scenePaths)
     {
-        JSONNode sceneFileNode = scenesNode[i];
-        std::string sceneFileString;
-        if (!sceneFileNode || !sceneFileNode.is_string(&sceneFileString))
+        if (!FS::exists(scenePath))
+        {
+            sLog.error("- missing scene {}", scenePath.string());
             continue;
+        }
 
-        fs::path sceneFilePath = mObj->projectDirPath / fs::path(sceneFileString);
-        if (!FS::exists(sceneFilePath))
-            continue;
-
-        mObj->scenePaths.push_back(sceneFilePath);
-        sLog.info("- found scene {}", sceneFilePath.string());
+        sLog.info("- found scene {}", scenePath.string());
     }
 
     if (!mObj->scenePaths.empty())

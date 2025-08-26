@@ -250,7 +250,7 @@ bool TOMLDocument::parse(const char* toml, size_t len, std::string& error)
 
 TOMLValue TOMLDocument::get(const char* name)
 {
-    if (!mObj->root.contains(name))
+    if (!mObj->root.is_table() || !mObj->root.contains(name))
         return {};
 
     TOMLValueObj* value = mObj->alloc_value();

@@ -75,7 +75,7 @@ public:
         EditorContextInfo contextI{};
         contextI.renderServer = mRServer;
         mEditorCtx = EditorContext::create(contextI);
-        mEditorCtx.load_project("../../../../Project/project.json");
+        mEditorCtx.load_project("../../../../Project/project.toml");
 
         // initalize editor UI
         EditorUIInfo uiI{};
