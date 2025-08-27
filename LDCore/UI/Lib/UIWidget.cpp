@@ -61,6 +61,11 @@ Rect UIWidget::get_rect()
     return mObj->layout.rect;
 }
 
+UITheme UIWidget::get_theme()
+{
+    return mObj->theme;
+}
+
 bool UIWidget::get_mouse_pos(Vec2& pos)
 {
     UIContextObj* ctx = mObj->window->ctx;
@@ -263,6 +268,7 @@ void UITextWidgetObj::wrap_limit_fn(UIWidgetObj* obj, float& outMinW, float& out
 float UITextWidgetObj::wrap_size_fn(UIWidgetObj* obj, float limitW)
 {
     UITextWidgetObj& self = obj->as.text;
+    LD_ASSERT(self.fontAtlas);
 
     Font font = self.fontAtlas.get_font();
     FontMetrics metrics;
@@ -308,12 +314,12 @@ void UITextWidgetObj::on_draw(UIWidget widget, ScreenRenderComponent renderer)
 
     if (self.hoverHL && widget.is_hovered())
     {
-        renderer.draw_rect(rect, theme.onSurfaceColor);
-        renderer.draw_text(ctx.fontAtlas, ctx.fontAtlasImage, self.fontSize, rect.get_pos(), self.value, theme.surfaceColor, wrapWidth);
+        renderer.draw_rect(rect, theme.get_on_surface_color());
+        renderer.draw_text(ctx.fontAtlas, ctx.fontAtlasImage, self.fontSize, rect.get_pos(), self.value, theme.get_surface_color(), wrapWidth);
     }
     else
     {
-        renderer.draw_text(ctx.fontAtlas, ctx.fontAtlasImage, self.fontSize, rect.get_pos(), self.value, theme.onSurfaceColor, wrapWidth);
+        renderer.draw_text(ctx.fontAtlas, ctx.fontAtlasImage, self.fontSize, rect.get_pos(), self.value, theme.get_on_surface_color(), wrapWidth);
     }
 }
 
@@ -350,11 +356,11 @@ void UIToggleWidgetObj::on_update(UIWidget widget, float delta)
 void UIToggleWidgetObj::on_draw(UIWidget widget, ScreenRenderComponent renderer)
 {
     UIWidgetObj* obj = (UIWidgetObj*)widget;
-    const UITheme& theme = obj->window->ctx->theme;
+    UITheme theme = widget.get_theme();
     UIToggleWidgetObj& self = obj->as.toggle;
     Rect rect = widget.get_rect();
 
-    renderer.draw_rect(rect, theme.backgroundColor);
+    renderer.draw_rect(rect, theme.get_background_color());
 
     rect.w /= 2.0f;
 
@@ -365,7 +371,7 @@ void UIToggleWidgetObj::on_draw(UIWidget widget, ScreenRenderComponent renderer)
 
     rect.x += rect.w * ratio;
 
-    uint32_t color = theme.primaryColor;
+    uint32_t color = theme.get_on_surface_color();
     if (widget.is_pressed())
     {
         color &= ~0xFF;
@@ -393,9 +399,9 @@ void UIButtonWidgetObj::on_draw(UIWidget widget, ScreenRenderComponent renderer)
     UIWidgetObj* obj = widget;
     UIContextObj* ctx = obj->window->ctx;
     UIButtonWidgetObj& self = obj->as.button;
-    const UITheme& theme = ctx->theme;
+    UITheme theme = widget.get_theme();
     Rect rect = widget.get_rect();
-    uint32_t color = theme.primaryColor;
+    uint32_t color = theme.get_primary_color();
 
     if (widget.is_pressed())
     {
@@ -441,7 +447,7 @@ void UIButtonWidgetObj::on_draw(UIWidget widget, ScreenRenderComponent renderer)
             uint32_t code = (uint32_t)self.text[i];
             atlas.get_baseline_glyph(code, fontSize, baseline, glyphBB, advanceX);
 
-            Color textColor = self.textColor ? self.textColor : theme.onPrimaryColor;
+            Color textColor = self.textColor ? self.textColor : theme.get_on_surface_color();
             renderer.draw_glyph_baseline(atlas, atlasImage, fontSize, baseline, code, textColor);
 
             baseline.x += advanceX;
@@ -465,9 +471,9 @@ void UISliderWidgetObj::on_draw(UIWidget widget, ScreenRenderComponent renderer)
     Rect rect = widget.get_rect();
 
     float sliderw = rect.w * 0.1f;
-    renderer.draw_rect(rect, theme.backgroundColor);
+    renderer.draw_rect(rect, theme.get_background_color());
 
-    uint32_t color = theme.primaryColor;
+    uint32_t color = theme.get_primary_color();
     if (widget.is_hovered())
     {
         color &= ~0xFF;

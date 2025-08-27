@@ -6,6 +6,7 @@
 #include <Ludens/RenderBackend/RBackend.h>
 #include <Ludens/RenderComponent/ScreenRenderComponent.h>
 #include <Ludens/UI/UILayout.h>
+#include <Ludens/UI/UITheme.h>
 
 namespace LD {
 
@@ -19,6 +20,9 @@ struct UIWidget : Handle<struct UIWidgetObj>
 
     /// @brief get widget rect in screen space
     Rect get_rect();
+
+    /// @brief Get UI theme handle.
+    UITheme get_theme();
 
     /// @brief get mouse position relative to widget origin
     /// @param pos output mouse position if mouse is within widget

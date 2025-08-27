@@ -303,7 +303,7 @@ void RServerObj::editor_pass(const RServerEditorPass& editorP)
     screenRCI.user = editorP.user;
     screenRCI.hasInputImage = false;
     screenRCI.hasSampledImage = true;
-    screenRCI.clearColor = 0x101010FF;
+    screenRCI.clearColor = 0x000000FF;
     screenRCI.name = "editor";
     ScreenRenderComponent editorSRC = ScreenRenderComponent::add(mGraph, screenRCI);
     mGraph.connect_image(mLastComponent, mLastColorAttachment, editorSRC.component_name(), editorSRC.sampled_name());

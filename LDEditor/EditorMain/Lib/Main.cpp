@@ -40,8 +40,8 @@ public:
         appI.onEvent = &EditorUI::on_event;
         appI.user = &mEditorUI;
         appI.hintBorderColor = 0;
-        appI.hintTitleBarColor = 0x101010FF;
-        appI.hintTitleBarTextColor = 0xFFFFFFFF;
+        appI.hintTitleBarColor = 0x000000FF;
+        appI.hintTitleBarTextColor = 0xDFDFDFFF;
         Application app = Application::create(appI);
 
         // TODO: embed font

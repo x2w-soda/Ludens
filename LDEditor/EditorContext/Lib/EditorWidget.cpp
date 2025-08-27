@@ -83,11 +83,12 @@ void UITransformEditWidgetObj::on_draw(UIWidget widget, ScreenRenderComponent re
 
 UITransformEditWidget UITransformEditWidget::create(const UITransformEditWidgetInfo& info)
 {
-    EditorTheme theme = info.theme;
+    EditorTheme editorTheme = info.theme;
     UIWidget parent = info.parent;
+    UITheme theme = parent.get_theme();
 
     auto* obj = heap_new<UITransformEditWidgetObj>(MEMORY_USAGE_UI);
-    obj->theme = theme;
+    obj->theme = editorTheme;
     obj->subject = nullptr;
     const float panelChildGap = 6.0f;
     obj->panelChildGap = panelChildGap;
@@ -97,7 +98,7 @@ UITransformEditWidget UITransformEditWidget::create(const UITransformEditWidgetI
     layoutI.sizeX = UISize::grow();
     layoutI.sizeY = UISize::fit();
     UIPanelWidgetInfo panelWI{};
-    theme.get_background_color(panelWI.color);
+    panelWI.color = theme.get_background_color();
     obj->root = parent.node().add_panel(layoutI, panelWI, obj);
     UINode rootN = obj->root.node();
 
@@ -113,7 +114,7 @@ UITransformEditWidget UITransformEditWidget::create(const UITransformEditWidgetI
     UITextWidgetInfo textWI{};
     textWI.cstr = nullptr;
     textWI.hoverHL = false;
-    theme.get_font_size(textWI.fontSize);
+    editorTheme.get_font_size(textWI.fontSize);
 
     // TODO: UITextEditWidget, currently we are only displaying transform values
     UINode panelN = obj->position.panel.node();

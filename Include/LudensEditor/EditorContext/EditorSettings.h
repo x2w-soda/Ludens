@@ -11,7 +11,6 @@ namespace LD {
 struct EditorTheme : Handle<struct EditorThemeObj>
 {
     void get_font_size(float& fontSize);
-    void get_background_color(Color& bg);
     void get_gizmo_colors(Color& axisX, Color& axisY, Color& axisZ);
     void get_gizmo_highlight_color(Color& hl);
 };

@@ -142,6 +142,7 @@ struct UIWidgetObj
     UIWidgetObj* parent; /// parent widget
     UIWidgetObj* child;  /// first child widget
     UIWidgetObj* next;   /// sibling widget
+    UITheme theme;       /// theme handle
     UINode node;         /// node in tree hierachy
     void* user;          /// arbitrary user data
     UIWidgetType type;   /// type enum

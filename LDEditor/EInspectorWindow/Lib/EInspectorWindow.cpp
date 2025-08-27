@@ -45,12 +45,12 @@ void EInspectorWindowObj::inspect_component(DUID compID)
 void EInspectorWindowObj::on_draw(UIWidget widget, ScreenRenderComponent renderer)
 {
     UIWindow window = (UIWindow)widget;
+    UITheme theme = window.get_theme();
     EInspectorWindowObj& self = *(EInspectorWindowObj*)window.get_user();
-    EditorTheme theme = self.editorCtx.get_settings().get_theme();
+    EditorTheme editorTheme = self.editorCtx.get_settings().get_theme();
     Rect windowRect = window.get_rect();
 
-    Color bgColor;
-    theme.get_background_color(bgColor);
+    Color bgColor = theme.get_background_color();
 
     renderer.push_scissor(windowRect);
     renderer.draw_rect(windowRect, bgColor);

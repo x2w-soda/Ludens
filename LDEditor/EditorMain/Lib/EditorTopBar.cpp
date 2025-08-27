@@ -22,7 +22,7 @@ public:
 
         UITextWidgetInfo textWI{};
         textWI.cstr = cstr;
-        textWI.fontSize = 18; // TODO:
+        textWI.fontSize = 16; // TODO:
         textWI.hoverHL = true;
         opt->mText = opt->mPanel.node().add_text({}, textWI, opt);
         opt->mText.set_on_mouse_down(&TopBarOption::on_mouse_down);

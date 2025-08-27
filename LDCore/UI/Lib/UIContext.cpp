@@ -45,6 +45,7 @@ UIWidgetObj* UIContextObj::alloc_widget(UIWidgetType type, const UILayoutInfo& l
     obj->window = window;
     obj->user = user;
     obj->node = {obj};
+    obj->theme = window->ctx->theme;
 
     window->widgets.push_back(obj);
     parent->append_child(obj);
@@ -176,6 +177,7 @@ UIWindow UIContext::add_window(const UILayoutInfo& layoutI, const UIWindowInfo& 
     windowObj->window = windowObj;
     windowObj->node = {windowObj};
     windowObj->isHidden = false;
+    windowObj->theme = mObj->theme;
 
     if (windowI.defaultMouseControls)
         windowObj->cb.onDrag = UIWindowObj::on_drag;
@@ -193,6 +195,11 @@ void UIContext::get_windows(std::vector<UIWindow>& windows)
         windows[i] = {mObj->windows[i]};
 }
 
+UITheme UIContext::get_theme()
+{
+    return mObj->theme;
+}
+
 UIContext UIContext::create(const UIContextInfo& info)
 {
     UIContextObj* obj = heap_new<UIContextObj>(MEMORY_USAGE_UI);
@@ -205,10 +212,7 @@ UIContext UIContext::create(const UIContextInfo& info)
     paI.pageSize = 64; // widgets per memory page
     paI.usage = MEMORY_USAGE_UI;
     obj->widgetPA = PoolAllocator::create(paI);
-
-    //LD_ASSERT(obj->fontAtlas && obj->fontAtlasImage);
-
-    get_default_theme(obj->theme);
+    obj->theme = get_default_theme();
 
     return {obj};
 }

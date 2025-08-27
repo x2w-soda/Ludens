@@ -2,16 +2,16 @@
 
 namespace LD {
 
-void get_default_theme(UITheme& theme)
+static UIThemeInfo sDefaultTheme = {
+    .surfaceColor = 0x2B2C2FFF,
+    .onSurfaceColor = 0xDFDFDFFF,
+    .primaryColor = 0x4DD8E6FF,
+    .backgroundColor = 0x000000FF,
+};
+
+UITheme get_default_theme()
 {
-    theme.surfaceColor = 0x0F1C1DFF;
-    theme.onSurfaceColor = 0xDAE6E8FF;
-    theme.primaryColor = 0x4DD8E6FF;
-    theme.onPrimaryColor = 0x00363AFF;
-    theme.backgroundColor = 0x0F1C1DFF;
-    theme.onBackgroundColor = 0xDAE6E8FF;
-    theme.primaryContainerColor = 0x004F56FF;
-    theme.onPrimaryContainerColor = 0xA6F5FFFF;
+    return UITheme(&sDefaultTheme);
 }
 
 } // namespace LD

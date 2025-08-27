@@ -3,13 +3,14 @@
 #include <Ludens/Header/Math/Rect.h>
 #include <Ludens/System/Allocator.h>
 #include <Ludens/UI/UIContext.h>
+#include <Ludens/UI/UITheme.h>
 #include <Ludens/UI/UIWindowManager.h>
 #include <cstring>
 
 #define INVALID_WINDOW_AREA 0
 #define WINDOW_AREA_MARGIN 6.0f
-#define WINDOW_TAB_HEIGHT 25.0f
-#define TOPBAR_HEIGHT 25.0f
+#define WINDOW_TAB_HEIGHT 22.0f
+#define TOPBAR_HEIGHT 22.0f
 
 namespace LD {
 
@@ -61,9 +62,10 @@ AreaTab::AreaTab(UIContext ctx, const Vec2& pos)
 void AreaTab::on_draw(UIWidget widget, ScreenRenderComponent renderer)
 {
     AreaTab& self = *(AreaTab*)widget.get_user();
+    UITheme theme = self.window.get_theme();
 
     Rect rect = widget.get_rect();
-    renderer.draw_rect(rect, 0x303030FF);
+    renderer.draw_rect(rect, theme.get_surface_color());
 
     self.titleText.on_draw(renderer);
 }
@@ -89,8 +91,7 @@ struct AreaNode
 
         area = newArea;
 
-        Rect windowTabArea(area.x, area.y, area.w, WINDOW_TAB_HEIGHT);
-        tab->window.set_rect(windowTabArea);
+        tab->window.set_pos(area.get_pos());
 
         Rect windowArea(area.x, area.y + WINDOW_TAB_HEIGHT, area.w, area.h - WINDOW_TAB_HEIGHT);
         window.set_rect(windowArea);
@@ -126,11 +127,24 @@ struct AreaNode
 
 void AreaNode::split_control_on_draw(UIWidget widget, ScreenRenderComponent renderer)
 {
+    AreaNode& self = *(AreaNode*)widget.get_user();
     Rect area = widget.get_rect();
+    UITheme theme = widget.get_theme();
 
-    Color color = 0x101010FF;
+    Color color = theme.get_background_color();
     if (widget.is_hovered())
-        color = 0x404040FF;
+        color = theme.get_surface_color();
+
+    if (self.splitAxis == SPLIT_AXIS_X)
+    {
+        area.x += 1.0f;
+        area.w -= 2.0f;
+    }
+    else
+    {
+        area.y += 1.0f;
+        area.h -= 2.0f;
+    }
 
     renderer.draw_rect(area, color);
 }
@@ -222,7 +236,7 @@ UIWindowManagerObj::UIWindowManagerObj(const UIWindowManagerInfo& wmInfo)
     UILayoutInfo layoutI{};
     layoutI.childAxis = UIAxis::UI_AXIS_X;
     layoutI.childGap = 6.0f;
-    layoutI.childPadding = { .left = 6.0f};
+    layoutI.childPadding = {.left = 6.0f};
     layoutI.sizeX = UISize::fixed(wmInfo.screenSize.x);
     layoutI.sizeY = UISize::fixed(TOPBAR_HEIGHT);
     UIWindowInfo windowI{};

@@ -7,7 +7,6 @@ namespace LD {
 struct EditorThemeObj
 {
     float fontSize;
-    Color backgroundColor;
     Color gizmoColorAxisX;
     Color gizmoColorAxisY;
     Color gizmoColorAxisZ;
@@ -19,7 +18,6 @@ struct EditorThemeObj
 void EditorThemeObj::initialize_default()
 {
     fontSize = 16.0f;
-    backgroundColor = 0x101010FF;
     gizmoColorAxisX = Vec4(0.9f, 0.1f, 0.1f, 0.8f);
     gizmoColorAxisY = Vec4(0.1f, 0.9f, 0.1f, 0.8f);
     gizmoColorAxisZ = Vec4(0.1f, 0.1f, 0.9f, 0.8f);
@@ -29,11 +27,6 @@ void EditorThemeObj::initialize_default()
 void EditorTheme::get_font_size(float& fontSize)
 {
     fontSize = mObj->fontSize;
-}
-
-void EditorTheme::get_background_color(Color& bg)
-{
-    bg = mObj->backgroundColor;
 }
 
 void EditorTheme::get_gizmo_colors(Color& axisX, Color& axisY, Color& axisZ)

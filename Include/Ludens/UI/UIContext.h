@@ -4,6 +4,7 @@
 #include <Ludens/Header/KeyCode.h>
 #include <Ludens/Header/Math/Rect.h>
 #include <Ludens/Header/Math/Vec2.h>
+#include <Ludens/UI/UITheme.h>
 #include <Ludens/UI/UIWindow.h>
 #include <cstdint>
 #include <vector>
@@ -53,6 +54,9 @@ struct UIContext : Handle<struct UIContextObj>
     /// @brief get window handles
     /// @param windows outputs windows inside the context
     void get_windows(std::vector<UIWindow>& windows);
+
+    /// @brief Get current UI theme, shared by all widgets in this context.
+    UITheme get_theme();
 };
 
 } // namespace LD
