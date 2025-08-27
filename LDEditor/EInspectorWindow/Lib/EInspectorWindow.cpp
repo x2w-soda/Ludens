@@ -50,10 +50,10 @@ void EInspectorWindowObj::on_draw(UIWidget widget, ScreenRenderComponent rendere
     EditorTheme editorTheme = self.editorCtx.get_settings().get_theme();
     Rect windowRect = window.get_rect();
 
-    Color bgColor = theme.get_background_color();
+    Color color = theme.get_surface_color();
 
     renderer.push_scissor(windowRect);
-    renderer.draw_rect(windowRect, bgColor);
+    renderer.draw_rect(windowRect, color);
 
     self.transformEdit.on_draw(renderer);
 

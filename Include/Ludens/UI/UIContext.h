@@ -15,6 +15,7 @@ struct UIContextInfo
 {
     FontAtlas fontAtlas;   /// default font atlas used to render text
     RImage fontAtlasImage; /// font atlas image handle
+    UITheme theme;         /// the UI theme to use for widgets in this context
 };
 
 /// @brief A UI context is a host for UI elements to be placed on an imaginary 2D grid.

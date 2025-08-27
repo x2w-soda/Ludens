@@ -17,6 +17,7 @@ struct UIWindowManagerInfo
     Vec2 screenSize;
     FontAtlas fontAtlas;
     RImage fontAtlasImage;
+    UITheme theme;
 };
 
 /// @brief A window manager to partition screen space into non-overlapping areas.

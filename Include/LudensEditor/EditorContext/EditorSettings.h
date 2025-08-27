@@ -4,12 +4,14 @@
 #include <Ludens/Header/Color.h>
 #include <Ludens/Header/Handle.h>
 #include <Ludens/Media/Format/JSON.h>
+#include <Ludens/UI/UITheme.h>
 
 namespace LD {
 
 /// @brief Editor theme determines the color scheme, typography, UI layouts.
 struct EditorTheme : Handle<struct EditorThemeObj>
 {
+    UITheme get_ui_theme();
     void get_font_size(float& fontSize);
     void get_gizmo_colors(Color& axisX, Color& axisY, Color& axisZ);
     void get_gizmo_highlight_color(Color& hl);

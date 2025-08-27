@@ -4,8 +4,8 @@
 #include <iostream>
 
 #define OUTLINER_ROW_SIZE 20.0f
-#define OUTLINER_ROW_ODD_COLOR 0x1B1B1BFF
-#define OUTLINER_ROW_EVEN_COLOR 0x181818FF
+#define OUTLINER_ROW_ODD_COLOR 0x272727FF
+#define OUTLINER_ROW_EVEN_COLOR 0x2B2C2FFF
 
 namespace LD {
 
@@ -72,9 +72,10 @@ struct OutlinerRow
         self.editorCtx.set_selected_component(self.component);
     }
 
-    void draw(ScreenRenderComponent renderer)
+    void draw(EditorTheme editorTheme, ScreenRenderComponent renderer)
     {
         Color panelColor = parityColor;
+        UITheme theme = editorTheme.get_ui_theme();
 
         if (component && component == editorCtx.get_selected_component())
             panelColor = 0x4D6490FF;
@@ -93,12 +94,13 @@ void EOutlinerWindowObj::on_draw(UIWidget widget, ScreenRenderComponent renderer
 {
     auto& self = *(EOutlinerWindowObj*)widget.get_user();
     Rect windowRect = widget.get_rect();
+    EditorTheme editorTheme = self.editorCtx.get_settings().get_theme();
 
     renderer.push_scissor(windowRect);
 
     for (OutlinerRow* row : self.rows)
     {
-        row->draw(renderer);
+        row->draw(editorTheme, renderer);
     }
 
     renderer.pop_scissor();

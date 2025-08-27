@@ -16,6 +16,7 @@ void EditorUI::startup(const EditorUIInfo& info)
     wmI.fontAtlas = info.fontAtlas;
     wmI.fontAtlasImage = info.fontAtlasImage;
     wmI.screenSize = Vec2((float)info.screenWidth, (float)info.screenHeight);
+    wmI.theme = mCtx.get_settings().get_theme().get_ui_theme();
     mWM = UIWindowManager::create(wmI);
 
     UIWindowAreaID viewportArea = mWM.get_root_area();

@@ -1,11 +1,13 @@
 #include <Ludens/System/Memory.h>
+#include <Ludens/UI/UITheme.h>
 #include <LudensEditor/EditorContext/EditorSettings.h>
 
 namespace LD {
 
-/// @brief Editor theme data
+/// @brief Editor theme data, embeds an UI theme
 struct EditorThemeObj
 {
+    UIThemeInfo uiTheme;
     float fontSize;
     Color gizmoColorAxisX;
     Color gizmoColorAxisY;
@@ -17,11 +19,17 @@ struct EditorThemeObj
 
 void EditorThemeObj::initialize_default()
 {
+    uiTheme = UITheme::get_default_info();
     fontSize = 16.0f;
     gizmoColorAxisX = Vec4(0.9f, 0.1f, 0.1f, 0.8f);
     gizmoColorAxisY = Vec4(0.1f, 0.9f, 0.1f, 0.8f);
     gizmoColorAxisZ = Vec4(0.1f, 0.1f, 0.9f, 0.8f);
     gizmoHighlightColor = 0xFFA000E0;
+}
+
+UITheme EditorTheme::get_ui_theme()
+{
+    return UITheme(&mObj->uiTheme);
 }
 
 void EditorTheme::get_font_size(float& fontSize)

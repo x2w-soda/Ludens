@@ -19,12 +19,13 @@ struct UIThemeInfo
 /// @brief Handle to a UI theme.
 struct UITheme : Handle<UIThemeInfo>
 {
+    /// @brief Get default UI theme values.
+    static UIThemeInfo get_default_info();
+
     inline Color get_surface_color() const { return mObj->surfaceColor; };
     inline Color get_on_surface_color() const { return mObj->onSurfaceColor; };
     inline Color get_primary_color() const { return mObj->primaryColor; };
     inline Color get_background_color() const { return mObj->backgroundColor; };
 };
-
-UITheme get_default_theme();
 
 } // namespace LD

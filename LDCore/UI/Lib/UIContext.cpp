@@ -202,6 +202,8 @@ UITheme UIContext::get_theme()
 
 UIContext UIContext::create(const UIContextInfo& info)
 {
+    LD_ASSERT(info.theme);
+
     UIContextObj* obj = heap_new<UIContextObj>(MEMORY_USAGE_UI);
     obj->fontAtlas = info.fontAtlas;
     obj->fontAtlasImage = info.fontAtlasImage;
@@ -212,7 +214,7 @@ UIContext UIContext::create(const UIContextInfo& info)
     paI.pageSize = 64; // widgets per memory page
     paI.usage = MEMORY_USAGE_UI;
     obj->widgetPA = PoolAllocator::create(paI);
-    obj->theme = get_default_theme();
+    obj->theme = info.theme;
 
     return {obj};
 }

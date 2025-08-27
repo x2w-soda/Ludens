@@ -38,7 +38,7 @@ struct AreaTab
 AreaTab::AreaTab(UIContext ctx, const Vec2& pos)
 {
     UILayoutInfo layoutI{};
-    layoutI.childAxis = UIAxis::UI_AXIS_Y;
+    layoutI.childAxis = UIAxis::UI_AXIS_X;
     layoutI.childGap = 0.0f;
     layoutI.childPadding = {.left = 10.0f, .right = 10.0f};
     layoutI.sizeX = UISize::fit();
@@ -224,6 +224,7 @@ UIWindowManagerObj::UIWindowManagerObj(const UIWindowManagerInfo& wmInfo)
     UIContextInfo ctxI{};
     ctxI.fontAtlas = wmInfo.fontAtlas;
     ctxI.fontAtlasImage = wmInfo.fontAtlasImage;
+    ctxI.theme = wmInfo.theme;
     mCtx = UIContext::create(ctxI);
 
     PoolAllocatorInfo paI{};
