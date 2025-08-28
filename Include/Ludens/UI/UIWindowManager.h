@@ -10,6 +10,7 @@
 
 namespace LD {
 
+/// @brief Window area identifier distributed by the window manager, zero is invalid ID.
 using UIWindowAreaID = uint32_t;
 
 struct UIWindowManagerInfo

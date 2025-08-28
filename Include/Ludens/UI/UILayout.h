@@ -1,13 +1,15 @@
 #pragma once
 
+#include <Ludens/Header/Directional.h>
+
 namespace LD {
 
 struct UIWidgetObj;
 
 enum UIAxis
 {
-    UI_AXIS_X = 0,
-    UI_AXIS_Y,
+    UI_AXIS_X = AXIS_X,
+    UI_AXIS_Y = AXIS_Y,
 };
 
 enum UISizeType

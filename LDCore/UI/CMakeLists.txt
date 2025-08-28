@@ -19,6 +19,11 @@ set(MODULE_LIB
     Lib/UIWidget.cpp
     Lib/UITheme.cpp
     Lib/UIWindowManager.cpp
+    Lib/WindowManager/AreaNode.h
+    Lib/WindowManager/AreaNode.cpp
+    Lib/WindowManager/AreaTab.h
+    Lib/WindowManager/AreaTab.cpp
+    Lib/WindowManager/UIWindowManagerObj.h
 )
 
 set(MODULE_TEST

@@ -1,5 +1,6 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <Extra/doctest/doctest.h>
+#include <Ludens/System/Memory.h>
 #include <Ludens/UI/UIContext.h>
 #include <Ludens/UI/UILayout.h>
 
@@ -29,9 +30,12 @@ struct UITest
 {
     static UIContext create_test_context()
     {
+        static UIThemeInfo sTheme = UITheme::get_default_info();
+
         UIContextInfo ctxI;
         ctxI.fontAtlas = {};
         ctxI.fontAtlasImage = {};
+        ctxI.theme = UITheme(&sTheme);
         return UIContext::create(ctxI);
     }
 };
@@ -107,6 +111,8 @@ TEST_CASE("UILayout window padding")
     CHECK(rect == Rect(32, 32, 100, 100));
 
     UIContext::destroy(ctx);
+    int leaks = get_memory_leaks(nullptr);
+    CHECK(leaks == 0);
 }
 
 TEST_CASE("UILayout hbox child grows x")
@@ -146,6 +152,8 @@ TEST_CASE("UILayout hbox child grows x")
     CHECK(rect == Rect(110, 10, 50, 20));
 
     UIContext::destroy(ctx);
+    int leaks = get_memory_leaks(nullptr);
+    CHECK(leaks == 0);
 }
 
 TEST_CASE("UILayout hbox child grows y")
@@ -185,6 +193,8 @@ TEST_CASE("UILayout hbox child grows y")
     CHECK(rect == Rect(50, 10, 20, 150));
 
     UIContext::destroy(ctx);
+    int leaks = get_memory_leaks(nullptr);
+    CHECK(leaks == 0);
 }
 
 TEST_CASE("UILayout size wrapping")
@@ -222,4 +232,6 @@ TEST_CASE("UILayout size wrapping")
     CHECK(rect == Rect(20, 20, 60, 30));
 
     UIContext::destroy(ctx);
+    int leaks = get_memory_leaks(nullptr);
+    CHECK(leaks == 0);
 }
