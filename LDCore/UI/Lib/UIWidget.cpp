@@ -213,7 +213,7 @@ UITextWidget UINode::add_text(const UILayoutInfo& layoutI, const UITextWidgetInf
     UILayoutInfo textLayoutI = layoutI;
     if (layoutI.sizeX.type != UI_SIZE_FIXED)
     {
-        textLayoutI.sizeX = UISize::wrap_primary(&UITextWidgetObj::wrap_size_fn, &UITextWidgetObj::wrap_limit_fn);
+        textLayoutI.sizeX = UISize::wrap_primary();
         textLayoutI.sizeY = UISize::wrap_secondary();
     }
 
@@ -225,82 +225,6 @@ UITextWidget UINode::add_text(const UILayoutInfo& layoutI, const UITextWidgetInf
     obj->as.text.hoverHL = widgetI.hoverHL;
 
     return {obj};
-}
-
-void UITextWidgetObj::wrap_limit_fn(UIWidgetObj* obj, float& outMinW, float& outMaxW)
-{
-    UITextWidgetObj& self = obj->as.text;
-
-    Font font = self.fontAtlas.get_font();
-    FontMetrics metrics;
-    font.get_metrics(metrics, self.fontSize);
-
-    outMaxW = 0.0f;
-    outMinW = 0.0f;
-
-    if (!self.value)
-        return;
-
-    size_t len = strlen(self.value);
-    float lineW = 0.0f;
-
-    for (size_t i = 0; i < len; i++)
-    {
-        uint32_t c = (uint32_t)self.value[i];
-
-        if (c == '\n')
-        {
-            lineW = 0.0f;
-            continue;
-        }
-
-        float advanceX;
-        Rect rect;
-        Vec2 baseline(lineW, (float)metrics.ascent);
-        self.fontAtlas.get_baseline_glyph(c, self.fontSize, baseline, rect, advanceX);
-
-        lineW += advanceX;
-        outMaxW = std::max<float>(outMaxW, lineW);
-        outMinW = std::max<float>(outMinW, rect.w);
-    }
-}
-
-float UITextWidgetObj::wrap_size_fn(UIWidgetObj* obj, float limitW)
-{
-    UITextWidgetObj& self = obj->as.text;
-    LD_ASSERT(self.fontAtlas);
-
-    Font font = self.fontAtlas.get_font();
-    FontMetrics metrics;
-    font.get_metrics(metrics, self.fontSize);
-
-    Vec2 baseline(0.0f, metrics.ascent);
-
-    if (!self.value)
-        return metrics.lineHeight;
-
-    size_t len = strlen(self.value);
-
-    for (size_t i = 0; i < len; i++)
-    {
-        uint32_t c = (uint32_t)self.value[i];
-
-        // TODO: text wrapping using whitespace as boundary
-        if (c == '\n' || baseline.x >= limitW)
-        {
-            baseline.y += metrics.lineHeight;
-            baseline.x = 0.0f;
-            continue;
-        }
-
-        float advanceX;
-        Rect rect;
-        self.fontAtlas.get_baseline_glyph(c, self.fontSize, baseline, rect, advanceX);
-
-        baseline.x += advanceX;
-    }
-
-    return baseline.y - metrics.descent;
 }
 
 void UITextWidgetObj::on_draw(UIWidget widget, ScreenRenderComponent renderer)

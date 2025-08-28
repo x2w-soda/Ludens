@@ -112,8 +112,6 @@ struct UITextWidgetObj
     float fontSize;
     bool hoverHL;
 
-    static void wrap_limit_fn(UIWidgetObj* widget, float& outMinW, float& outMaxW);
-    static float wrap_size_fn(UIWidgetObj* widget, float limitW);
     static void on_draw(UIWidget widget, ScreenRenderComponent renderer);
 };
 
@@ -137,7 +135,7 @@ struct UIImageWidgetObj
 struct UIWidgetObj
 {
     UILayout layout;     /// must be first field for layout semantics
-    UICallback cb;       /// callback function pointer table
+    UICallback cb;       /// callback function pointer table; TODO: single table for each type, not each instance
     UIWindowObj* window; /// owning window
     UIWidgetObj* parent; /// parent widget
     UIWidgetObj* child;  /// first child widget

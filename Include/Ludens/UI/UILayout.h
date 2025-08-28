@@ -29,20 +29,10 @@ struct UIPadding
     float bottom;
 };
 
-/// @brief wrap sizing callback, given length limit in main axis,
-///        user returns the result size on the secondary axis after wrapping.
-typedef float (*UIWrapSizeFn)(UIWidgetObj* widget, float inLimit);
-
-/// @brief wrap limit callback, user outputs minimum extent of the wrappable
-///        and the maximum extent if unwrapped.
-typedef void (*UIWrapLimitFn)(UIWidgetObj* widget, float& outMin, float& outMax);
-
 struct UISize
 {
-    UIWrapSizeFn wrapSizeFn;
-    UIWrapLimitFn wrapLimitFn;
-    UISizeType type;
     float extent;
+    UISizeType type;
 
     /// @brief determine size to fit children tightly
     static inline UISize fit()
@@ -57,9 +47,9 @@ struct UISize
     }
 
     /// @brief if text does not fit into main axis, wrap around and grow along the secondary axis
-    static inline UISize wrap_primary(UIWrapSizeFn sizeFn, UIWrapLimitFn limitFn)
+    static inline UISize wrap_primary()
     {
-        return {.wrapSizeFn = sizeFn, .wrapLimitFn = limitFn, .type = UI_SIZE_WRAP_PRIMARY, .extent = 0.0f};
+        return {.type = UI_SIZE_WRAP_PRIMARY};
     }
 
     static inline UISize wrap_secondary()
@@ -70,7 +60,7 @@ struct UISize
     /// @brief declare fixed size for this UI node
     static inline UISize fixed(float extent)
     {
-        return {.type = UI_SIZE_FIXED, .extent = extent};
+        return {.extent = extent, .type = UI_SIZE_FIXED};
     }
 };
 

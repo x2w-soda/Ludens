@@ -7,6 +7,14 @@
 
 namespace LD {
 
+/// @brief wrap sizing callback, given length limit in main axis,
+///        user returns the result size on the secondary axis after wrapping.
+static void ui_layout_wrap_limit(UIWidgetObj* obj, float& outMinW, float& outMaxW);
+
+/// @brief wrap limit callback, user outputs minimum extent of the wrappable
+///        and the maximum extent if unwrapped.
+static float ui_layout_wrap_size(UIWidgetObj* obj, float limitW);
+
 static void ui_layout_pass_fit_x(UIWidgetObj* root);
 static void ui_layout_pass_fit_y(UIWidgetObj* root);
 static void ui_layout_pass_grow_shrink_x(UIWidgetObj* root);
@@ -15,6 +23,82 @@ static void ui_layout_pass_wrap_x(UIWidgetObj* root);
 static void ui_layout_grow_x(const std::vector<UIWidgetObj*>& growableX, float remainW);
 static void ui_layout_grow_y(const std::vector<UIWidgetObj*>& growableY, float remainH);
 static void ui_layout_shrink_x(std::vector<UIWidgetObj*>& shrinkableX, float remainW);
+
+void ui_layout_wrap_limit(UIWidgetObj* obj, float& outMinW, float& outMaxW)
+{
+    UITextWidgetObj& self = obj->as.text;
+
+    Font font = self.fontAtlas.get_font();
+    FontMetrics metrics;
+    font.get_metrics(metrics, self.fontSize);
+
+    outMaxW = 0.0f;
+    outMinW = 0.0f;
+
+    if (!self.value)
+        return;
+
+    size_t len = strlen(self.value);
+    float lineW = 0.0f;
+
+    for (size_t i = 0; i < len; i++)
+    {
+        uint32_t c = (uint32_t)self.value[i];
+
+        if (c == '\n')
+        {
+            lineW = 0.0f;
+            continue;
+        }
+
+        float advanceX;
+        Rect rect;
+        Vec2 baseline(lineW, (float)metrics.ascent);
+        self.fontAtlas.get_baseline_glyph(c, self.fontSize, baseline, rect, advanceX);
+
+        lineW += advanceX;
+        outMaxW = std::max<float>(outMaxW, lineW);
+        outMinW = std::max<float>(outMinW, rect.w);
+    }
+}
+
+static float ui_layout_wrap_size(UIWidgetObj* obj, float limitW)
+{
+    UITextWidgetObj& self = obj->as.text;
+    LD_ASSERT(self.fontAtlas);
+
+    Font font = self.fontAtlas.get_font();
+    FontMetrics metrics;
+    font.get_metrics(metrics, self.fontSize);
+
+    Vec2 baseline(0.0f, metrics.ascent);
+
+    if (!self.value)
+        return metrics.lineHeight;
+
+    size_t len = strlen(self.value);
+
+    for (size_t i = 0; i < len; i++)
+    {
+        uint32_t c = (uint32_t)self.value[i];
+
+        // TODO: text wrapping using whitespace as boundary
+        if (c == '\n' || baseline.x >= limitW)
+        {
+            baseline.y += metrics.lineHeight;
+            baseline.x = 0.0f;
+            continue;
+        }
+
+        float advanceX;
+        Rect rect;
+        self.fontAtlas.get_baseline_glyph(c, self.fontSize, baseline, rect, advanceX);
+
+        baseline.x += advanceX;
+    }
+
+    return baseline.y - metrics.descent;
+}
 
 static void ui_layout_pass_fit_x(UIWidgetObj* root)
 {
@@ -35,8 +119,10 @@ static void ui_layout_pass_fit_x(UIWidgetObj* root)
         }
         else if (childLayout.sizeX.type == UI_SIZE_WRAP_PRIMARY)
         {
+            LD_ASSERT(child->type == UI_WIDGET_TEXT);
+
             float minw, maxw;
-            childLayout.sizeX.wrapLimitFn(child, minw, maxw);
+            ui_layout_wrap_limit(child, minw, maxw);
             child->layout.rect.w = maxw;
             child->layout.minw = minw;
         }
@@ -86,8 +172,11 @@ void ui_layout_pass_fit_y(UIWidgetObj* root)
         }
         else if (childLayout.sizeY.type == UI_SIZE_WRAP_PRIMARY)
         {
+            LD_ASSERT(child->type == UI_WIDGET_TEXT);
+            LD_UNREACHABLE; // TODO:
+
             float minh, maxh;
-            childLayout.sizeY.wrapLimitFn(child, minh, maxh);
+            ui_layout_wrap_limit(child, minh, maxh);
             child->layout.rect.h = maxh;
             child->layout.minh = minh;
         }
@@ -221,8 +310,10 @@ static void ui_layout_pass_wrap_x(UIWidgetObj* root)
 
         if (childLayout.sizeX.type == UI_SIZE_WRAP_PRIMARY)
         {
+            LD_ASSERT(child->type == UI_WIDGET_TEXT);
+
             // ui_layout_pass_grow_shrink_x should have determined width along primary axis
-            float wrappedH = childLayout.sizeX.wrapSizeFn(child, child->layout.rect.w);
+            float wrappedH = ui_layout_wrap_size(child, child->layout.rect.w);
 
             LD_ASSERT(childLayout.sizeY.type == UI_SIZE_WRAP_SECONDARY);
             child->layout.rect.h = wrappedH;
