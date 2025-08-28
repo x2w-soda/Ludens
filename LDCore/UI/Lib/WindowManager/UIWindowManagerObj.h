@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Ludens/UI/UIWindowManager.h>
+#include <vector>
 
 #define WINDOW_AREA_MARGIN 6.0f
 #define INVALID_WINDOW_AREA 0
@@ -29,13 +30,21 @@ public:
 
     UIWindow get_topbar_window();
 
+    UIWindowAreaID create_float(const Rect& rect);
+
     UIWindowAreaID get_area_id();
 
     AreaNode* set_root(AreaNode* root);
     AreaNode* get_root();
-    AreaNode* get_node(UIWindowAreaID areaID, AreaNode* root);
+    AreaNode* get_node(UIWindowAreaID areaID);
+    AreaNode* get_ground_node(UIWindowAreaID areaID, AreaNode* root);
+    AreaNode* get_float_node(UIWindowAreaID areaID);
 
-    void render(ScreenRenderComponent renderer, AreaNode* node);
+    /// @brief Render non-floating areas.
+    void render_ground(ScreenRenderComponent renderer, AreaNode* node);
+
+    /// @brief Render floating areas.
+    void render_float(ScreenRenderComponent renderer);
 
     void get_workspace_windows_recursive(std::vector<UIWindow>& windows, AreaNode* node);
 
@@ -43,6 +52,7 @@ private:
     UIContext mCtx;
     UIWindow mTopbarWindow;
     AreaNode* mRoot;
+    std::vector<AreaNode*> mFloats;
     UIWindowAreaID mAreaIDCounter;
 };
 

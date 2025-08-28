@@ -5,7 +5,7 @@
 
 namespace LD {
 
-void AreaTabControl::startup(UIContext ctx)
+void AreaTabControl::startup(UIContext ctx, const Rect& area)
 {
     mActiveTab = nullptr;
 
@@ -20,6 +20,7 @@ void AreaTabControl::startup(UIContext ctx)
     windowI.name = "windowTab";
     windowI.defaultMouseControls = false;
     mWindow = ctx.add_window(layoutI, windowI, this);
+    mWindow.set_pos(area.get_pos());
 }
 
 void AreaTabControl::cleanup()

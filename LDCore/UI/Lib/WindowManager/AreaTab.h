@@ -19,7 +19,7 @@ struct AreaTab
 class AreaTabControl
 {
 public:
-    void startup(UIContext ctx);
+    void startup(UIContext ctx, const Rect& area);
     void cleanup();
 
     void add_tab(UIWindow client);

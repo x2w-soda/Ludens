@@ -50,6 +50,9 @@ UIWindowAreaID AreaNode::split_right(UIWindowManagerObj* wm, float ratio)
     UIContext ctx = wm->get_context();
     Rect leftArea, rightArea, splitArea;
     split_area(AXIS_X, ratio, mArea, leftArea, rightArea, splitArea);
+    Rect clientArea = rightArea;
+    clientArea.y += WINDOW_TAB_HEIGHT;
+    clientArea.h -= WINDOW_TAB_HEIGHT;
 
     // new subtree relationship
     AreaNode* parent = mParent;
@@ -57,7 +60,7 @@ UIWindowAreaID AreaNode::split_right(UIWindowManagerObj* wm, float ratio)
     AreaNode* lch = this;
     AreaNode* rch = heap_new<AreaNode>(MEMORY_USAGE_UI);
     split->startup_as_split(ctx, wm->get_area_id(), mArea, AXIS_X, ratio, splitArea);
-    rch->startup_as_leaf(ctx, wm->get_area_id(), rightArea, wm->create_window(rightArea.get_size(), "window"));
+    rch->startup_as_leaf(ctx, wm->get_area_id(), rightArea, wm->create_window(clientArea.get_size(), "window"));
 
     split->mParent = parent;
     if (parent)
@@ -171,7 +174,28 @@ void AreaNode::startup_as_leaf(UIContext ctx, UIWindowAreaID areaID, const Rect&
     mLch = nullptr;
     mRch = nullptr;
 
-    mTabControl.startup(ctx);
+    Vec2 clientPos = area.get_pos();
+    clientPos.y += WINDOW_TAB_HEIGHT;
+    client.set_pos(clientPos);
+
+    mTabControl.startup(ctx, area);
+    mTabControl.add_tab(client);
+}
+
+void AreaNode::startup_as_float(UIContext ctx, UIWindowAreaID areaID, const Rect& area, UIWindow client)
+{
+    mType = AREA_NODE_TYPE_FLOAT;
+    mAreaID = areaID;
+    mArea = area;
+    mParent = nullptr;
+    mLch = nullptr;
+    mRch = nullptr;
+
+    Vec2 clientPos = area.get_pos();
+    clientPos.y += WINDOW_TAB_HEIGHT;
+    client.set_pos(clientPos);
+
+    mTabControl.startup(ctx, area);
     mTabControl.add_tab(client);
 }
 
@@ -224,6 +248,7 @@ void AreaNode::draw(ScreenRenderComponent renderer)
     switch (mType)
     {
     case AREA_NODE_TYPE_LEAF:
+    case AREA_NODE_TYPE_FLOAT:
         mTabControl.draw(renderer);
         break;
     case AREA_NODE_TYPE_SPLIT:

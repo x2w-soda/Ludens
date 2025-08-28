@@ -64,6 +64,9 @@ UIWindowManagerObj::UIWindowManagerObj(const UIWindowManagerInfo& wmInfo)
 
 UIWindowManagerObj::~UIWindowManagerObj()
 {
+    for (AreaNode* node : mFloats)
+        delete_node(node);
+
     delete_node(mRoot);
 
     UIContext::destroy(mCtx);
@@ -101,6 +104,17 @@ UIWindow UIWindowManagerObj::get_topbar_window()
     return mTopbarWindow;
 }
 
+UIWindowAreaID UIWindowManagerObj::create_float(const Rect& rect)
+{
+    AreaNode* node = heap_new<AreaNode>(MEMORY_USAGE_UI);
+    UIWindow client = create_window(rect.get_size(), "window");
+    node->startup_as_float(mCtx, get_area_id(), rect, client);
+
+    mFloats.push_back(node);
+    
+    return node->get_area_id();
+}
+
 UIWindowAreaID UIWindowManagerObj::get_area_id()
 {
     return mAreaIDCounter++;
@@ -116,9 +130,17 @@ AreaNode* UIWindowManagerObj::get_root()
     return mRoot;
 }
 
-// NOTE: When creating and destroy areas, existing AreaNode* can get invalidated.
-//       This silly recursive search grabs the latest AreaNode* by ID matching.
-AreaNode* UIWindowManagerObj::get_node(UIWindowAreaID areaID, AreaNode* node)
+AreaNode* UIWindowManagerObj::get_node(UIWindowAreaID areaID)
+{
+    AreaNode* node;
+
+    if ((node = get_ground_node(areaID, mRoot)))
+        return node;
+        
+    return get_float_node(areaID);
+}
+
+AreaNode* UIWindowManagerObj::get_ground_node(UIWindowAreaID areaID, AreaNode* node)
 {
     if (!node)
         return nullptr;
@@ -130,16 +152,27 @@ AreaNode* UIWindowManagerObj::get_node(UIWindowAreaID areaID, AreaNode* node)
     AreaNode* lch = node->get_lch();
     AreaNode* rch = node->get_rch();
 
-    if (lch && (match = get_node(areaID, lch)))
+    if (lch && (match = get_ground_node(areaID, lch)))
         return match;
 
-    if (rch && (match = get_node(areaID, rch)))
+    if (rch && (match = get_ground_node(areaID, rch)))
         return match;
 
     return nullptr;
 }
 
-void UIWindowManagerObj::render(ScreenRenderComponent renderer, AreaNode* node)
+AreaNode* UIWindowManagerObj::get_float_node(UIWindowAreaID areaID)
+{
+    for (AreaNode* node : mFloats)
+    {
+        if (node->get_area_id() == areaID)
+            return node;
+    }
+
+    return nullptr;
+}
+
+void UIWindowManagerObj::render_ground(ScreenRenderComponent renderer, AreaNode* node)
 {
     if (!node)
         return;
@@ -148,12 +181,18 @@ void UIWindowManagerObj::render(ScreenRenderComponent renderer, AreaNode* node)
     AreaNode* rch = node->get_rch();
 
     if (lch)
-        render(renderer, lch);
+        render_ground(renderer, lch);
 
     if (rch)
-        render(renderer, rch);
+        render_ground(renderer, rch);
 
     node->draw(renderer);
+}
+
+void UIWindowManagerObj::render_float(ScreenRenderComponent renderer)
+{
+    for (AreaNode* node : mFloats)
+        node->draw(renderer);
 }
 
 void UIWindowManagerObj::get_workspace_windows_recursive(std::vector<UIWindow>& windows, AreaNode* node)
@@ -206,18 +245,20 @@ void UIWindowManager::resize(const Vec2& screenSize)
 
 void UIWindowManager::render(ScreenRenderComponent renderer)
 {
-    AreaNode* root = mObj->get_root();
-    mObj->render(renderer, root);
-
     UIWindow topbar = mObj->get_topbar_window();
     topbar.on_draw(renderer);
+
+    AreaNode* root = mObj->get_root();
+    mObj->render_ground(renderer, root);
+
+    mObj->render_float(renderer);
 }
 
 void UIWindowManager::set_window_title(UIWindowAreaID areaID, const char* title)
 {
-    AreaNode* node = mObj->get_node(areaID, mObj->get_root());
+    AreaNode* node = mObj->get_node(areaID);
 
-    if (!node || node->get_type() != AREA_NODE_TYPE_LEAF)
+    if (!node || node->get_type() == AREA_NODE_TYPE_SPLIT)
         return;
 
     AreaTab* tab = node->get_active_tab();
@@ -226,9 +267,9 @@ void UIWindowManager::set_window_title(UIWindowAreaID areaID, const char* title)
 
 void UIWindowManager::set_on_window_resize(UIWindowAreaID areaID, void (*onWindowResize)(UIWindow window, const Vec2& size))
 {
-    AreaNode* node = mObj->get_node(areaID, mObj->get_root());
+    AreaNode* node = mObj->get_node(areaID);
 
-    if (!node || node->get_type() != AREA_NODE_TYPE_LEAF)
+    if (!node || node->get_type() == AREA_NODE_TYPE_SPLIT)
         return;
 
     AreaTab* tab = node->get_active_tab();
@@ -252,9 +293,9 @@ UIWindow UIWindowManager::get_topbar_window()
 
 UIWindow UIWindowManager::get_area_window(UIWindowAreaID areaID)
 {
-    AreaNode* node = mObj->get_node(areaID, mObj->get_root());
+    AreaNode* node = mObj->get_node(areaID);
 
-    if (!node || node->get_type() != AREA_NODE_TYPE_LEAF)
+    if (!node || node->get_type() == AREA_NODE_TYPE_SPLIT)
         return {};
 
     AreaTab* tab = node->get_active_tab();
@@ -270,7 +311,7 @@ void UIWindowManager::get_workspace_windows(std::vector<UIWindow>& windows)
 
 UIWindowAreaID UIWindowManager::split_right(UIWindowAreaID areaID, float ratio)
 {
-    AreaNode* node = mObj->get_node(areaID, mObj->get_root());
+    AreaNode* node = mObj->get_ground_node(areaID, mObj->get_root());
 
     if (node && node->get_type() == AREA_NODE_TYPE_LEAF)
     {
@@ -282,7 +323,7 @@ UIWindowAreaID UIWindowManager::split_right(UIWindowAreaID areaID, float ratio)
 
 UIWindowAreaID UIWindowManager::split_bottom(UIWindowAreaID areaID, float ratio)
 {
-    AreaNode* node = mObj->get_node(areaID, mObj->get_root());
+    AreaNode* node = mObj->get_ground_node(areaID, mObj->get_root());
 
     if (node && node->get_type() == AREA_NODE_TYPE_LEAF)
     {
@@ -290,6 +331,11 @@ UIWindowAreaID UIWindowManager::split_bottom(UIWindowAreaID areaID, float ratio)
     }
 
     return INVALID_WINDOW_AREA;
+}
+
+UIWindowAreaID UIWindowManager::create_float(const Rect& rect)
+{
+    return mObj->create_float(rect);
 }
 
 } // namespace LD

@@ -22,33 +22,41 @@ struct UIWindowManagerInfo
 };
 
 /// @brief A window manager to partition screen space into non-overlapping areas.
+///        Contains its own UIContext and manages windows and widgets.
 struct UIWindowManager : Handle<struct UIWindowManagerObj>
 {
+    /// @brief Create window manager, which will also create a UI context.
     static UIWindowManager create(const UIWindowManagerInfo& wmInfo);
+
+    /// @brief Destroy window manager and its UI context.
     static void destroy(UIWindowManager wm);
 
+    /// @brief Drive the internal UI context with delta time.
     void update(float delta);
 
-    /// @brief update screen size, recalculates area and invokes window resize callback
+    /// @brief Update screen size, recalculates area and invokes window resize callback.
     void resize(const Vec2& screenSize);
 
-    /// @brief invokes RenderCallback on visible areas
-    /// @param renderer screen space renderer dependency
+    /// @brief Invokes RenderCallback on visible areas.
+    /// @param renderer Screen space renderer dependency.
     void render(ScreenRenderComponent renderer);
 
-    /// @brief set window title to be displayed in tab
+    /// @brief Set window title to be displayed in tab.
     void set_window_title(UIWindowAreaID areaID, const char* title);
 
-    /// @brief set callback to be invoked during UIWindowManager::resize
+    /// @brief Set callback to be invoked during UIWindowManager::resize.
     void set_on_window_resize(UIWindowAreaID areaID, void (*onWindowResize)(UIWindow window, const Vec2& size));
 
-    /// @brief get the underlying UI context
+    /// @brief Get the underlying UI context
     UIContext get_context();
 
+    /// @brief Get root area ID.
     UIWindowAreaID get_root_area();
 
+    /// @brief Get the top bar window handle.
     UIWindow get_topbar_window();
 
+    /// @brief Get the active tab window in an area. 
     UIWindow get_area_window(UIWindowAreaID areaID);
 
     /// @brief get visible windows in the workspace
@@ -61,6 +69,11 @@ struct UIWindowManager : Handle<struct UIWindowManagerObj>
     /// @brief Split an area to make room for bottom.
     /// @return New area from bottom partition.
     UIWindowAreaID split_bottom(UIWindowAreaID areaID, float ratio);
+
+    /// @brief Create floating window area.
+    /// @param rect Floating window area rect.
+    /// @return New area for floating window.
+    UIWindowAreaID create_float(const Rect& rect);
 };
 
 } // namespace LD

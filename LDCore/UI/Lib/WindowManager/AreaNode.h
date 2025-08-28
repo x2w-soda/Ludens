@@ -22,6 +22,9 @@ enum AreaNodeType
 
     // represents a split partition, has two children nodes
     AREA_NODE_TYPE_SPLIT,
+
+    // represents a floating window area
+    AREA_NODE_TYPE_FLOAT,
 };
 
 class AreaNode
@@ -34,7 +37,8 @@ public:
     AreaNode& operator=(const AreaNode&) = delete;
 
     void startup_as_split(UIContext ctx, UIWindowAreaID areaID, const Rect& area, Axis axis, float ratio, const Rect& splitArea);
-    void startup_as_leaf(UIContext ctx, UIWindowAreaID areaID, const Rect& area, UIWindow window);
+    void startup_as_leaf(UIContext ctx, UIWindowAreaID areaID, const Rect& area, UIWindow client);
+    void startup_as_float(UIContext ctx, UIWindowAreaID areaID, const Rect& area, UIWindow client);
     void cleanup();
 
     /// @brief Recusrive invalidation based on current area rect.
@@ -55,7 +59,7 @@ public:
 
     inline AreaTab* get_active_tab()
     {
-        LD_ASSERT(mType == AREA_NODE_TYPE_LEAF);
+        LD_ASSERT(mType != AREA_NODE_TYPE_SPLIT);
         return mTabControl.get_active_tab();
     }
 
