@@ -2,6 +2,7 @@
 
 #include <Ludens/Header/Handle.h>
 #include <Ludens/Header/KeyCode.h>
+#include <Ludens/RenderComponent/ScreenRenderComponent.h>
 #include <Ludens/UI/UIWidget.h>
 #include <vector>
 
@@ -11,6 +12,7 @@ struct UIWindowInfo
 {
     const char* name;          /// window identifier
     bool defaultMouseControls; /// allow mouse drag to move and resize window
+    bool drawWithScissor;      /// draw child widgets with scissor
 };
 
 struct UIWindow : UIWidget
@@ -20,6 +22,10 @@ struct UIWindow : UIWidget
 
     /// @brief show the window
     void show();
+
+    /// @brief If window is visible, draw all widgets within.
+    /// @param renderer Screen space renderer
+    void draw(ScreenRenderComponent renderer);
 
     /// @brief check whether the window responds to user input and should be drawn
     bool is_hidden();

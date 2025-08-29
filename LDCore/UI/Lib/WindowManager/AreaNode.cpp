@@ -252,7 +252,7 @@ void AreaNode::draw(ScreenRenderComponent renderer)
         mTabControl.draw(renderer);
         break;
     case AREA_NODE_TYPE_SPLIT:
-        mSplitControl.on_draw(renderer);
+        mSplitControl.draw(renderer);
         break;
     }
 }

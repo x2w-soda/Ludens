@@ -6,6 +6,41 @@
 
 namespace LD {
 
+void UIWidgetObj::draw(ScreenRenderComponent renderer)
+{
+    if (cb.onDraw)
+    {
+        cb.onDraw(UIWidget(this), renderer);
+        return;
+    }
+
+    switch (type)
+    {
+    case UI_WIDGET_WINDOW:
+        break;
+    case UI_WIDGET_PANEL:
+        UIPanelWidgetObj::on_draw(UIWidget(this), renderer);
+        break;
+    case UI_WIDGET_BUTTON:
+        UIButtonWidgetObj::on_draw(UIWidget(this), renderer);
+        break;
+    case UI_WIDGET_SLIDER:
+        UISliderWidgetObj::on_draw(UIWidget(this), renderer);
+        break;
+    case UI_WIDGET_TOGGLE:
+        UIToggleWidgetObj::on_draw(UIWidget(this), renderer);
+        break;
+    case UI_WIDGET_IMAGE:
+        UIImageWidgetObj::on_draw(UIWidget(this), renderer);
+        break;
+    case UI_WIDGET_TEXT:
+        UITextWidgetObj::on_draw(UIWidget(this), renderer);
+        break;
+    default:
+        LD_UNREACHABLE;
+    }
+}
+
 bool UIWidget::is_hovered()
 {
     UIContextObj* ctx = mObj->window->ctx;
@@ -16,39 +51,6 @@ bool UIWidget::is_pressed()
 {
     UIContextObj* ctx = mObj->window->ctx;
     return ctx->pressElement == mObj;
-}
-
-void UIWidget::on_draw(ScreenRenderComponent renderer)
-{
-    if (mObj->cb.onDraw)
-    {
-        mObj->cb.onDraw(*this, renderer);
-        return;
-    }
-
-    switch (mObj->type)
-    {
-    case UI_WIDGET_PANEL:
-        UIPanelWidgetObj::on_draw(*this, renderer);
-        break;
-    case UI_WIDGET_BUTTON:
-        UIButtonWidgetObj::on_draw(*this, renderer);
-        break;
-    case UI_WIDGET_SLIDER:
-        UISliderWidgetObj::on_draw(*this, renderer);
-        break;
-    case UI_WIDGET_TOGGLE:
-        UIToggleWidgetObj::on_draw(*this, renderer);
-        break;
-    case UI_WIDGET_IMAGE:
-        UIImageWidgetObj::on_draw(*this, renderer);
-        break;
-    case UI_WIDGET_TEXT:
-        UITextWidgetObj::on_draw(*this, renderer);
-        break;
-    default:
-        LD_UNREACHABLE;
-    }
 }
 
 UINode& UIWidget::node()

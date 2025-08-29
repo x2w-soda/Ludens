@@ -7,12 +7,12 @@
 
 namespace LD {
 
-/// @brief wrap sizing callback, given length limit in main axis,
-///        user returns the result size on the secondary axis after wrapping.
-static void ui_layout_wrap_limit(UIWidgetObj* obj, float& outMinW, float& outMaxW);
-
 /// @brief wrap limit callback, user outputs minimum extent of the wrappable
 ///        and the maximum extent if unwrapped.
+static void ui_layout_wrap_limit(UIWidgetObj* obj, float& outMinW, float& outMaxW);
+
+/// @brief wrap sizing callback, given length limit in main axis,
+///        user returns the result size on the secondary axis after wrapping.
 static float ui_layout_wrap_size(UIWidgetObj* obj, float limitW);
 
 static void ui_layout_pass_fit_x(UIWidgetObj* root);

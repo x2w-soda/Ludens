@@ -177,6 +177,9 @@ struct UIWidgetObj
             count++;
         return count;
     }
+
+    /// @brief Draw the widget with default or custom render callback.
+    void draw(ScreenRenderComponent renderer);
 };
 
 /// @brief UI Window implementation. A window is a specialized widget that
@@ -193,8 +196,11 @@ struct UIWindowObj : UIWidgetObj
     Vec2 dragBeginSize;
     bool dragResize; // resize or reposition
     bool isHidden;
+    bool drawWithScissor;
 
     void update(float delta);
+    
+    void draw_widget_subtree(UIWidgetObj* widget, ScreenRenderComponent renderer);
 
     static void on_drag(UIWidget widget, MouseButton btn, const Vec2& dragPos, bool begin);
 };

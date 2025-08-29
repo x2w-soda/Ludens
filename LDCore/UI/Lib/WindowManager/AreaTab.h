@@ -11,8 +11,6 @@ struct AreaTab
     void (*onWindowResize)(UIWindow window, const Vec2& size);
 
     AreaTab(UIWindow client, UIWindow tabControl);
-
-    void draw(ScreenRenderComponent renderer);
 };
 
 /// @brief class for the window manager to control tabs in an area

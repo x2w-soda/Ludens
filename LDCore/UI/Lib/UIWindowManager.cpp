@@ -90,6 +90,7 @@ UIWindow UIWindowManagerObj::create_window(const Vec2& extent, const char* name)
     UIWindowInfo windowI{};
     windowI.name = name;
     windowI.defaultMouseControls = false;
+    windowI.drawWithScissor = true; // TODO: parameterize, not every window needs scissor crop
 
     return mCtx.add_window(layoutI, windowI, nullptr);
 }
@@ -246,7 +247,7 @@ void UIWindowManager::resize(const Vec2& screenSize)
 void UIWindowManager::render(ScreenRenderComponent renderer)
 {
     UIWindow topbar = mObj->get_topbar_window();
-    topbar.on_draw(renderer);
+    topbar.draw(renderer);
 
     AreaNode* root = mObj->get_root();
     mObj->render_ground(renderer, root);

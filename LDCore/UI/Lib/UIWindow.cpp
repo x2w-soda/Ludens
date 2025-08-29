@@ -14,6 +14,16 @@ void UIWindowObj::update(float delta)
     }
 }
 
+void UIWindowObj::draw_widget_subtree(UIWidgetObj* widget, ScreenRenderComponent renderer)
+{
+    widget->draw(renderer);
+
+    for (UIWidgetObj* w = widget->child; w; w = w->next)
+    {
+        draw_widget_subtree(w, renderer);
+    }
+}
+
 void UIWindowObj::on_drag(UIWidget widget, MouseButton btn, const Vec2& dragPos, bool begin)
 {
     UIWindow window = (UIWindow)widget;
@@ -47,6 +57,28 @@ void UIWindow::show()
 {
     UIWindowObj* obj = (UIWindowObj*)mObj;
     obj->isHidden = false;
+}
+
+void UIWindow::draw(ScreenRenderComponent renderer)
+{
+    UIWindowObj* obj = (UIWindowObj*)mObj;
+
+    if (obj->isHidden)
+        return;
+
+    bool useScissor = obj->drawWithScissor;
+    if (useScissor)
+        renderer.push_scissor(obj->layout.rect);
+
+    obj->draw(renderer);
+
+    for (UIWidgetObj* w = obj->child; w; w = w->next)
+    {
+        obj->draw_widget_subtree(w, renderer);
+    }
+
+    if (useScissor)
+        renderer.pop_scissor();
 }
 
 bool UIWindow::is_hidden()

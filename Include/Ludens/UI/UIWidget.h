@@ -35,9 +35,6 @@ struct UIWidget : Handle<struct UIWidgetObj>
     /// @brief whether the widget is being pressed and not yet released
     bool is_pressed();
 
-    /// @brief draw the widget
-    void on_draw(ScreenRenderComponent renderer);
-
     /// @brief get user data pointer
     void* get_user();
 

@@ -178,6 +178,7 @@ UIWindow UIContext::add_window(const UILayoutInfo& layoutI, const UIWindowInfo& 
     windowObj->node = {windowObj};
     windowObj->isHidden = false;
     windowObj->theme = mObj->theme;
+    windowObj->drawWithScissor = windowI.drawWithScissor;
 
     if (windowI.defaultMouseControls)
         windowObj->cb.onDrag = UIWindowObj::on_drag;

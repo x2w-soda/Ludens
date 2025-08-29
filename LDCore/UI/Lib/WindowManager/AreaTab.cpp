@@ -51,13 +51,13 @@ void AreaTabControl::draw(ScreenRenderComponent renderer)
     Rect windowRect = mWindow.get_rect();
     renderer.draw_rect(windowRect, theme.get_surface_color());
 
-    for (AreaTab* tab : mTabs)
-        tab->draw(renderer);
+    // draws all tabs
+    mWindow.draw(renderer);
 
     if (mActiveTab)
     {
         UIWindow client = mActiveTab->client;
-        client.on_draw(renderer);
+        client.draw(renderer);
     }
 }
 
@@ -84,11 +84,6 @@ AreaTab::AreaTab(UIWindow client, UIWindow tabControl)
     textWI.fontSize = WINDOW_TAB_HEIGHT * 0.7f; // TODO:
     textWI.hoverHL = false;
     titleText = tabControl.node().add_text({}, textWI, this);
-}
-
-void AreaTab::draw(ScreenRenderComponent renderer)
-{
-    titleText.on_draw(renderer);
 }
 
 } // namespace LD
