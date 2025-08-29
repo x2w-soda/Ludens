@@ -18,7 +18,12 @@ struct EInspectorWindowInfo
 ///        Displays the properties of the selected object.
 struct EInspectorWindow : Handle<struct EInspectorWindowObj>
 {
+    /// @brief Create editor inspector window.
+    /// @param windowInfo Inspector window creation window.
+    /// @return Editor inspector window handle.
     static EInspectorWindow create(const EInspectorWindowInfo& windowInfo);
+
+    /// @brief Destroy editor inspector window.
     static void destroy(EInspectorWindow window);
 };
 

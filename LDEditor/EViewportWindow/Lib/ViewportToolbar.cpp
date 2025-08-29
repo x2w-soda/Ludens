@@ -2,20 +2,21 @@
 
 namespace LD {
 
-void ViewportToolbar::startup(UIContext ctx, SceneOverlayGizmo* gizmoType)
+void ViewportToolbar::startup(UIContext ctx, float width, SceneOverlayGizmo* gizmoType)
 {
     this->gizmoType = gizmoType;
 
-    const float buttonSize = 30;
+    const float buttonSize = 26;
 
     UILayoutInfo layoutI{};
-    layoutI.sizeX = UISize::fit();
+    layoutI.sizeX = UISize::fixed(width);
     layoutI.sizeY = UISize::fixed(buttonSize);
     layoutI.childAxis = UI_AXIS_X;
     UIWindowInfo windowI{};
     windowI.defaultMouseControls = false;
     windowI.name = "ViewportToolbar";
     window = ctx.add_window(layoutI, windowI, this);
+    window.set_on_draw(&ViewportToolbar::on_draw);
 
     layoutI.sizeX = UISize::fixed(buttonSize);
     layoutI.sizeY = UISize::fixed(buttonSize);
@@ -35,34 +36,23 @@ void ViewportToolbar::startup(UIContext ctx, SceneOverlayGizmo* gizmoType)
     scaleBtn = window.node().add_button(layoutI, buttonWI, this);
 }
 
-void ViewportToolbar::on_draw_overlay(ScreenRenderComponent renderer)
+void ViewportToolbar::on_draw(UIWidget widget, ScreenRenderComponent renderer)
 {
-    Rect rect = window.get_rect();
+    ViewportToolbar& self = *(ViewportToolbar*)widget.get_user();
+    Rect rect = widget.get_rect();
+    UITheme theme = widget.get_theme();
 
-    uint32_t sw, sh;
-    renderer.get_screen_extent(sw, sh);
+    renderer.draw_rect(rect, theme.get_surface_color());
 
-    RImage blurBG = renderer.get_sampled_image();
-    Rect uv;
-    uv.x = rect.x / sw;
-    uv.y = rect.y / sh;
-    uv.w = rect.w / sw;
-    uv.h = rect.h / sh;
-    renderer.draw_image_uv(rect, blurBG, uv, 0xFFFFFFFF);
+    Color activeBG = 0x4D6490FF;
+    if (*self.gizmoType == SCENE_OVERLAY_GIZMO_TRANSLATION)
+        renderer.draw_rect(self.transformBtn.get_rect(), activeBG);
 
-    Color activeBG = 0xFFA500A0;
+    if (*self.gizmoType == SCENE_OVERLAY_GIZMO_ROTATION)
+        renderer.draw_rect(self.rotateBtn.get_rect(), activeBG);
 
-    if (*gizmoType == SCENE_OVERLAY_GIZMO_TRANSLATION)
-        renderer.draw_rect(transformBtn.get_rect(), activeBG);
-    transformBtn.on_draw(renderer);
-
-    if (*gizmoType == SCENE_OVERLAY_GIZMO_ROTATION)
-        renderer.draw_rect(rotateBtn.get_rect(), activeBG);
-    rotateBtn.on_draw(renderer);
-
-    if (*gizmoType == SCENE_OVERLAY_GIZMO_SCALE)
-        renderer.draw_rect(scaleBtn.get_rect(), activeBG);
-    scaleBtn.on_draw(renderer);
+    if (*self.gizmoType == SCENE_OVERLAY_GIZMO_SCALE)
+        renderer.draw_rect(self.scaleBtn.get_rect(), activeBG);
 }
 
 void ViewportToolbar::on_press_transform_btn(UIButtonWidget w, MouseButton btn, void* user)

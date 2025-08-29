@@ -16,9 +16,6 @@ public:
     void draw_overlay(ScreenRenderComponent renderer);
 
 private:
-    static void on_draw(UIWidget widget, ScreenRenderComponent renderer);
-
-private:
     UIWindow mRoot;
     TopBarOption* mFileOption;
     TopBarOption* mHelpOption;

@@ -11,42 +11,74 @@ struct UITransformEditWidgetObj
     EditorTheme theme;
     Transform* subject;
     float panelChildGap;
-    
+
     struct Row
     {
+        UITransformEditWidgetObj* transformEdit = nullptr;
         UIPanelWidget panel;
         UITextWidget label;
         UITextWidget x;
         UITextWidget y;
         UITextWidget z;
 
-        void on_draw(EditorTheme theme, float panelChildGap, ScreenRenderComponent renderer)
+        void startup(UITransformEditWidgetObj* obj, UINode parentNode, float panelChildGap, float fontSize, const char* rowLabel)
         {
+            transformEdit = obj;
+
+            UILayoutInfo layoutI{};
+            layoutI.childAxis = UI_AXIS_X;
+            layoutI.childPadding = {2.0f, 2.0f, 2.0f, 2.0f};
+            layoutI.childGap = panelChildGap;
+            layoutI.sizeX = UISize::grow();
+            layoutI.sizeY = UISize::fit();
+            UIPanelWidgetInfo panelWI{};
+            panel = parentNode.add_panel(layoutI, panelWI, this);
+            panel.set_on_draw(&Row::on_draw);
+
+            UITextWidgetInfo textWI{};
+            textWI.cstr = nullptr;
+            textWI.hoverHL = false;
+            textWI.fontSize = fontSize;
+
+            // TODO: UITextEditWidget, currently we are only displaying transform values
+            UINode panelN = panel.node();
+            layoutI.sizeX = UISize::fixed(100);
+            layoutI.sizeY = UISize::fixed(textWI.fontSize);
+            label = panelN.add_text(layoutI, textWI, nullptr);
+            label.set_text(rowLabel);
+            x = panelN.add_text(layoutI, textWI, nullptr);
+            y = panelN.add_text(layoutI, textWI, nullptr);
+            z = panelN.add_text(layoutI, textWI, nullptr);
+        }
+
+        static void on_draw(UIWidget widget, ScreenRenderComponent renderer)
+        {
+            Row& self = *(Row*)widget.get_user();
+            if (!self.transformEdit->subject)
+                return;
+
+            float panelChildGap = self.transformEdit->panelChildGap;
+
             Color colorX, colorY, colorZ;
-            theme.get_gizmo_colors(colorX, colorY, colorZ);
+            self.transformEdit->theme.get_gizmo_colors(colorX, colorY, colorZ);
 
-            label.on_draw(renderer);
-
-            Rect rect = label.get_rect();
+            Rect rect = self.label.get_rect();
             Vec2 pos = rect.get_pos_tr();
 
             renderer.draw_rect(Rect(pos.x, pos.y, panelChildGap, rect.h), colorX);
-            x.on_draw(renderer);
-            pos.x += x.get_rect().w + panelChildGap;
+            pos.x += self.x.get_rect().w + panelChildGap;
 
             renderer.draw_rect(Rect(pos.x, pos.y, panelChildGap, rect.h), colorY);
-            y.on_draw(renderer);
-            pos.x += y.get_rect().w + panelChildGap;
+            pos.x += self.y.get_rect().w + panelChildGap;
 
             renderer.draw_rect(Rect(pos.x, pos.y, panelChildGap, rect.h), colorZ);
-            z.on_draw(renderer);
         }
     } position, rotation, scale;
 
-    static void on_draw(UIWidget widget, ScreenRenderComponent renderer);
+    static void on_update(UIWidget widget, float delta);
 };
 
-void UITransformEditWidgetObj::on_draw(UIWidget widget, ScreenRenderComponent renderer)
+void UITransformEditWidgetObj::on_update(UIWidget widget, float delta)
 {
     auto& self = *(UITransformEditWidgetObj*)widget.get_user();
 
@@ -62,7 +94,6 @@ void UITransformEditWidgetObj::on_draw(UIWidget widget, ScreenRenderComponent re
     self.position.y.set_text(str.c_str());
     str = std::format("{:8.3f}", T.position.z);
     self.position.z.set_text(str.c_str());
-    self.position.on_draw(self.theme, self.panelChildGap, renderer);
 
     str = std::format("{:8.3f}", T.rotation.x);
     self.rotation.x.set_text(str.c_str());
@@ -70,7 +101,6 @@ void UITransformEditWidgetObj::on_draw(UIWidget widget, ScreenRenderComponent re
     self.rotation.y.set_text(str.c_str());
     str = std::format("{:8.3f}", T.rotation.z);
     self.rotation.z.set_text(str.c_str());
-    self.rotation.on_draw(self.theme, self.panelChildGap, renderer);
 
     str = std::format("{:8.3f}", T.scale.x);
     self.scale.x.set_text(str.c_str());
@@ -78,7 +108,6 @@ void UITransformEditWidgetObj::on_draw(UIWidget widget, ScreenRenderComponent re
     self.scale.y.set_text(str.c_str());
     str = std::format("{:8.3f}", T.scale.z);
     self.scale.z.set_text(str.c_str());
-    self.scale.on_draw(self.theme, self.panelChildGap, renderer);
 }
 
 UITransformEditWidget UITransformEditWidget::create(const UITransformEditWidgetInfo& info)
@@ -98,49 +127,17 @@ UITransformEditWidget UITransformEditWidget::create(const UITransformEditWidgetI
     layoutI.sizeX = UISize::grow();
     layoutI.sizeY = UISize::fit();
     UIPanelWidgetInfo panelWI{};
-    panelWI.color = theme.get_background_color();
     obj->root = parent.node().add_panel(layoutI, panelWI, obj);
+    obj->root.set_on_draw([](UIWidget, ScreenRenderComponent) {}); // dont draw panel
     UINode rootN = obj->root.node();
 
-    layoutI.childAxis = UI_AXIS_X;
-    layoutI.childPadding = {2.0f, 2.0f, 2.0f, 2.0f};
-    layoutI.childGap = panelChildGap;
-    layoutI.sizeX = UISize::grow();
-    layoutI.sizeY = UISize::fit();
-    obj->position.panel = rootN.add_panel(layoutI, panelWI, nullptr);
-    obj->rotation.panel = rootN.add_panel(layoutI, panelWI, nullptr);
-    obj->scale.panel = rootN.add_panel(layoutI, panelWI, nullptr);
+    float fontSize;
+    editorTheme.get_font_size(fontSize);
 
-    UITextWidgetInfo textWI{};
-    textWI.cstr = nullptr;
-    textWI.hoverHL = false;
-    editorTheme.get_font_size(textWI.fontSize);
-
-    // TODO: UITextEditWidget, currently we are only displaying transform values
-    UINode panelN = obj->position.panel.node();
-    layoutI.sizeX = UISize::fixed(100);
-    layoutI.sizeY = UISize::fixed(textWI.fontSize);
-    obj->position.label = panelN.add_text(layoutI, textWI, nullptr);
-    obj->position.label.set_text("Position");
-    obj->position.x = panelN.add_text(layoutI, textWI, nullptr);
-    obj->position.y = panelN.add_text(layoutI, textWI, nullptr);
-    obj->position.z = panelN.add_text(layoutI, textWI, nullptr);
-
-    panelN = obj->rotation.panel.node();
-    obj->rotation.label = panelN.add_text(layoutI, textWI, nullptr);
-    obj->rotation.label.set_text("Rotation");
-    obj->rotation.x = panelN.add_text(layoutI, textWI, nullptr);
-    obj->rotation.y = panelN.add_text(layoutI, textWI, nullptr);
-    obj->rotation.z = panelN.add_text(layoutI, textWI, nullptr);
-
-    panelN = obj->scale.panel.node();
-    obj->scale.label = panelN.add_text(layoutI, textWI, nullptr);
-    obj->scale.label.set_text("Scale");
-    obj->scale.x = panelN.add_text(layoutI, textWI, nullptr);
-    obj->scale.y = panelN.add_text(layoutI, textWI, nullptr);
-    obj->scale.z = panelN.add_text(layoutI, textWI, nullptr);
-
-    obj->root.set_on_draw(&UITransformEditWidgetObj::on_draw);
+    obj->position.startup(obj, rootN, panelChildGap, fontSize, "Position");
+    obj->rotation.startup(obj, rootN, panelChildGap, fontSize, "Rotation");
+    obj->scale.startup(obj, rootN, panelChildGap, fontSize, "Scale");
+    obj->root.set_on_update(&UITransformEditWidgetObj::on_update);
 
     return {obj};
 }
@@ -148,11 +145,6 @@ UITransformEditWidget UITransformEditWidget::create(const UITransformEditWidgetI
 void UITransformEditWidget::set(Transform* transform)
 {
     mObj->subject = transform;
-}
-
-void UITransformEditWidget::on_draw(ScreenRenderComponent renderer)
-{
-    mObj->root.on_draw(renderer);
 }
 
 } // namespace LD

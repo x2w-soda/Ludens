@@ -63,6 +63,16 @@ Rect UIWidget::get_rect()
     return mObj->layout.rect;
 }
 
+Vec2 UIWidget::get_pos()
+{
+    return mObj->layout.rect.get_pos();
+}
+
+Vec2 UIWidget::get_size()
+{
+    return mObj->layout.rect.get_size();
+}
+
 UITheme UIWidget::get_theme()
 {
     return mObj->theme;

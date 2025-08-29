@@ -50,6 +50,11 @@ public:
         return mViewportWindow.get_size();
     }
 
+    Vec2 get_viewport_scene_size()
+    {
+        return mViewportWindow.get_scene_size();
+    }
+
     bool get_viewport_mouse_pos(Vec2& pickPos)
     {
         return mViewportWindow.get_mouse_pos(pickPos);

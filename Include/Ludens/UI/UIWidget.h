@@ -18,8 +18,14 @@ struct UIWidget : Handle<struct UIWidgetObj>
     // get node in widget hierarchy
     UINode& node();
 
-    /// @brief get widget rect in screen space
+    /// @brief Get widget rect in screen space.
     Rect get_rect();
+
+    /// @brief Get widget position in screen space.
+    Vec2 get_pos();
+
+    /// @brief Get widget extent in screen space.
+    Vec2 get_size();
 
     /// @brief Get UI theme handle.
     UITheme get_theme();

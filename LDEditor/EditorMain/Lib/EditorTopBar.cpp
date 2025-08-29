@@ -116,7 +116,6 @@ private:
 void EditorTopBar::startup(UIWindow root)
 {
     mRoot = root;
-    mRoot.set_on_draw(&EditorTopBar::on_draw);
     mFileOption = TopBarOption::create(mRoot.node(), "file");
     mHelpOption = TopBarOption::create(mRoot.node(), "help");
 }
@@ -131,19 +130,6 @@ void EditorTopBar::draw_overlay(ScreenRenderComponent renderer)
 {
     mFileOption->draw_overlay(renderer);
     mHelpOption->draw_overlay(renderer);
-}
-
-void EditorTopBar::on_draw(UIWidget widget, ScreenRenderComponent renderer)
-{
-    UIWindow window = (UIWindow)widget;
-
-    std::vector<UIWidget> widgets;
-    window.get_widgets(widgets);
-
-    for (UIWidget widget : widgets)
-    {
-        widget.on_draw(renderer);
-    }
 }
 
 } // namespace LD

@@ -18,7 +18,6 @@ struct EOutlinerWindowObj : EditorWindowObj
 
     std::vector<OutlinerRow*> rows;
 
-    static void on_draw(UIWidget widget, ScreenRenderComponent renderer);
     static void on_window_resize(UIWindow window, const Vec2& size);
 };
 
@@ -32,7 +31,7 @@ struct OutlinerRow
     Color parityColor;
     int rowIndex;
 
-    static OutlinerRow* create(EditorContext ctx, UINode parent, DUID component, int rowIndex)
+    static OutlinerRow* create(EditorContext ctx, UINode parentNode, DUID component, int rowIndex)
     {
         EditorTheme theme = ctx.get_settings().get_theme();
 
@@ -49,17 +48,30 @@ struct OutlinerRow
 
         UIPanelWidgetInfo panelI{};
         panelI.color = row->parityColor;
-        row->panelWidget = parent.add_panel(layoutI, panelI, row);
+        row->panelWidget = parentNode.add_panel(layoutI, panelI, row);
         row->panelWidget.set_on_mouse_down(&OutlinerRow::on_mouse_down);
+        row->panelWidget.set_on_draw(&OutlinerRow::on_draw);
 
         UITextWidgetInfo textI{};
         textI.hoverHL = true;
-        textI.cstr = component ? row->editorCtx.get_component_name(component) : "DataComponent";
+        textI.cstr = component ? row->editorCtx.get_component_name(component) : nullptr;
         theme.get_font_size(textI.fontSize);
         row->textWidget = row->panelWidget.node().add_text(layoutI, textI, row);
         row->textWidget.set_on_mouse_down(&OutlinerRow::on_mouse_down);
 
         return row;
+    }
+
+    static void on_draw(UIWidget widget, ScreenRenderComponent renderer)
+    {
+        OutlinerRow& self = *(OutlinerRow*)widget.get_user();
+        Color color = self.parityColor;
+        Rect rect = self.panelWidget.get_rect();
+
+        if (self.component && self.component == self.editorCtx.get_selected_component())
+            color = 0x4D6490FF;
+
+        renderer.draw_rect(rect, color);
     }
 
     static void on_mouse_down(UIWidget widget, const Vec2& pos, MouseButton btn)
@@ -71,40 +83,7 @@ struct OutlinerRow
 
         self.editorCtx.set_selected_component(self.component);
     }
-
-    void draw(EditorTheme editorTheme, ScreenRenderComponent renderer)
-    {
-        Color panelColor = parityColor;
-        UITheme theme = editorTheme.get_ui_theme();
-
-        if (component && component == editorCtx.get_selected_component())
-            panelColor = 0x4D6490FF;
-
-        panelWidget.set_panel_color(panelColor);
-        panelWidget.on_draw(renderer);
-
-        if (!component)
-            return;
-
-        textWidget.on_draw(renderer);
-    }
 };
-
-void EOutlinerWindowObj::on_draw(UIWidget widget, ScreenRenderComponent renderer)
-{
-    auto& self = *(EOutlinerWindowObj*)widget.get_user();
-    Rect windowRect = widget.get_rect();
-    EditorTheme editorTheme = self.editorCtx.get_settings().get_theme();
-
-    renderer.push_scissor(windowRect);
-
-    for (OutlinerRow* row : self.rows)
-    {
-        row->draw(editorTheme, renderer);
-    }
-
-    renderer.pop_scissor();
-}
 
 void EOutlinerWindowObj::on_window_resize(UIWindow window, const Vec2& size)
 {
@@ -126,7 +105,6 @@ EOutlinerWindow EOutlinerWindow::create(const EOutlinerWindowInfo& windowI)
 
     obj->root = wm.get_area_window(windowI.areaID);
     obj->root.set_user(obj);
-    obj->root.set_on_draw(&EOutlinerWindowObj::on_draw);
     obj->editorCtx = windowI.ctx;
 
     wm.set_window_title(windowI.areaID, "Outliner");

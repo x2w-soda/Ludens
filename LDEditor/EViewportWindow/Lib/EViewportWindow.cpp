@@ -28,7 +28,8 @@ struct EViewportWindowObj : EditorWindowObj
     SceneOverlayGizmo gizmoType;      /// current gizmo control mode
     SceneOverlayGizmoID hoverGizmoID; /// the gizmo mesh under mouse cursor
     RUID hoverRUID;                   /// the mesh under mouse cursor
-    Vec2 sceneExtent;                 /// width and height of the scene viewport
+    Vec2 viewportExtent;              /// width and height of the entire viewport window
+    Vec2 sceneExtent;                 /// width and height of the scene inside the viewport
     Vec2 sceneMousePos;               /// mouse position in sceneExtent
     bool isGizmoVisible;              /// whether gizmo meshes should be visible
     bool enableCameraControls;
@@ -38,9 +39,6 @@ struct EViewportWindowObj : EditorWindowObj
 
     /// @brief Pick an object in the viewport
     void pick_ruid(RUID id);
-
-    /// @brief Viewport overlay includes the transform toolbar
-    virtual void on_draw_overlay(ScreenRenderComponent renderer) override;
 
     static void on_draw(UIWidget widget, ScreenRenderComponent renderer);
     static void on_key_down(UIWidget widget, KeyCode key);
@@ -141,25 +139,20 @@ void EViewportWindowObj::pick_ruid(RUID id)
     editorCtx.set_selected_component(compID);
 }
 
-void EViewportWindowObj::on_draw_overlay(ScreenRenderComponent renderer)
-{
-    Vec2 pos = root.get_rect().get_pos();
-
-    if (!editorCtx.is_playing()) // TODO: use UI show/hide instead
-    {
-        toolbar.window.set_pos(pos + Vec2(8, 8));
-        toolbar.on_draw_overlay(renderer);
-    }
-}
-
 void EViewportWindowObj::on_draw(UIWidget widget, ScreenRenderComponent renderer)
 {
-    UIWindow window = (UIWindow)widget;
-    EViewportWindowObj& self = *(EViewportWindowObj*)window.get_user();
-    Rect windowRect = window.get_rect();
-    RImage sceneImage = renderer.get_sampled_image();
+    EViewportWindowObj& self = *(EViewportWindowObj*)widget.get_user();
 
-    renderer.draw_image(windowRect, sceneImage);
+    // draw toolbar window, window manager won't draw it for us.
+    self.toolbar.window.draw(renderer);
+
+    // draw scene image
+    float toolbarHeight = self.toolbar.window.get_size().y;
+    Rect sceneRect = widget.get_rect();
+    sceneRect.y += toolbarHeight;
+    sceneRect.h -= toolbarHeight;
+    RImage sceneImage = renderer.get_sampled_image();
+    renderer.draw_image(sceneRect, sceneImage);
 }
 
 void EViewportWindowObj::on_key_down(UIWidget widget, KeyCode key)
@@ -268,9 +261,15 @@ void EViewportWindowObj::on_update(UIWidget widget, float delta)
 {
     auto& self = *(EViewportWindowObj*)widget.get_user();
 
+    self.toolbar.window.set_pos(widget.get_pos());
+
     // active mouse picking if cursor is within viewport window
     self.sceneMousePos = Vec2(-1.0f);
-    widget.get_mouse_pos(self.sceneMousePos);
+    if (widget.get_mouse_pos(self.sceneMousePos))
+    {
+        // adjust for toolbar height
+        self.sceneMousePos.y -= self.toolbar.window.get_size().y;
+    }
 
     // TODO: move this to a play button?
     if (Input::get_key_down(KEY_CODE_SPACE))
@@ -317,7 +316,11 @@ void EViewportWindowObj::on_window_resize(UIWindow window, const Vec2& size)
 {
     auto& self = *(EViewportWindowObj*)window.get_user();
 
-    self.sceneExtent = size;
+    Rect toolbarRect = self.toolbar.window.get_rect();
+    self.toolbar.window.set_size(Vec2(size.x, toolbarRect.h));
+
+    self.viewportExtent = size;
+    self.sceneExtent = Vec2(size.x, size.y - toolbarRect.h);
     self.editorCamera.set_aspect_ratio(size.x / size.y);
 }
 
@@ -360,10 +363,16 @@ EViewportWindow EViewportWindow::create(const EViewportWindowInfo& windowI)
     obj->root.set_on_mouse_up(&EViewportWindowObj::on_mouse_up);
     obj->root.set_on_drag(&EViewportWindowObj::on_drag);
     obj->root.set_on_update(&EViewportWindowObj::on_update);
-    obj->sceneExtent = obj->root.get_rect().get_size();
-    float aspectRatio = obj->sceneExtent.x / obj->sceneExtent.y;
+    obj->viewportExtent = obj->root.get_size();
 
-    obj->toolbar.startup(wm.get_context(), &obj->gizmoType);
+    UIContext uiCtx = wm.get_context();
+    float width = obj->viewportExtent.x;
+    obj->toolbar.startup(uiCtx, width, &obj->gizmoType);
+    uiCtx.layout();
+
+    Rect toolbarRect = obj->toolbar.window.get_rect();
+    obj->sceneExtent = Vec2(obj->viewportExtent.x, obj->viewportExtent.y - toolbarRect.h);
+    float aspectRatio = obj->sceneExtent.x / obj->sceneExtent.y;
 
     // TODO: parameterize camera && controller settings
     CameraPerspectiveInfo cameraPI{};
@@ -402,12 +411,17 @@ Camera EViewportWindow::get_editor_camera()
 
 Vec2 EViewportWindow::get_size()
 {
+    return mObj->viewportExtent;
+}
+
+Vec2 EViewportWindow::get_scene_size()
+{
     return mObj->sceneExtent;
 }
 
 bool EViewportWindow::get_mouse_pos(Vec2& mousePos)
 {
-    if (mObj->sceneMousePos.x < 0.0f && mObj->sceneMousePos.y < 0.0f)
+    if (mObj->sceneMousePos.x < 0.0f || mObj->sceneMousePos.y < 0.0f)
         return false;
 
     mousePos = mObj->sceneMousePos;

@@ -44,20 +44,10 @@ void EInspectorWindowObj::inspect_component(DUID compID)
 
 void EInspectorWindowObj::on_draw(UIWidget widget, ScreenRenderComponent renderer)
 {
-    UIWindow window = (UIWindow)widget;
-    UITheme theme = window.get_theme();
-    EInspectorWindowObj& self = *(EInspectorWindowObj*)window.get_user();
-    EditorTheme editorTheme = self.editorCtx.get_settings().get_theme();
-    Rect windowRect = window.get_rect();
-
+    UITheme theme = widget.get_theme();
+    Rect windowRect = widget.get_rect();
     Color color = theme.get_surface_color();
-
-    renderer.push_scissor(windowRect);
     renderer.draw_rect(windowRect, color);
-
-    self.transformEdit.on_draw(renderer);
-
-    renderer.pop_scissor();
 }
 
 void EInspectorWindowObj::on_editor_context_event(const EditorContextEvent* event, void* user)
@@ -81,7 +71,7 @@ EInspectorWindow EInspectorWindow::create(const EInspectorWindowInfo& windowI)
     obj->editorCtx = windowI.ctx;
     obj->root = wm.get_area_window(windowI.areaID);
     obj->root.set_user(obj);
-    obj->root.set_on_draw(&EInspectorWindowObj::on_draw);
+    obj->root.set_on_draw(EInspectorWindowObj::on_draw);
 
     EditorTheme theme = obj->editorCtx.get_settings().get_theme();
     UITransformEditWidgetInfo transformEditWI{};

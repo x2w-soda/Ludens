@@ -20,8 +20,6 @@ struct UITransformEditWidget : Handle<struct UITransformEditWidgetObj>
     static UITransformEditWidget create(const UITransformEditWidgetInfo& info);
 
     void set(Transform* transform);
-
-    void on_draw(ScreenRenderComponent renderer);
 };
 
 } // namespace LD

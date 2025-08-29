@@ -673,6 +673,9 @@ float ScreenRenderComponent::draw_glyph_baseline(FontAtlas atlas, RImage atlasIm
 
 void ScreenRenderComponent::draw_text(FontAtlas atlas, RImage atlasImage, float fontSize, const Vec2& pos, const char* text, Color color, float wrapWidth)
 {
+    if (!text)
+        return;
+
     Font f = atlas.get_font();
     FontMetrics metrics;
     f.get_metrics(metrics, fontSize);

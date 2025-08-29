@@ -21,14 +21,23 @@ struct EViewportWindowInfo
 ///        Displays the game scene.
 struct EViewportWindow : Handle<struct EViewportWindowObj>
 {
+    /// @brief Create a viewport window
+    /// @param windowInfo Viewport window creation info
+    /// @return Editor viewport window handle
     static EViewportWindow create(const EViewportWindowInfo& windowInfo);
+
+    /// @brief Destroy viewport window.
     static void destroy(EViewportWindow viewport);
 
-    /// @brief get the camera for rendering the scene in the viewport window
+    /// @brief Get the camera for rendering the scene in the viewport window.
     Camera get_editor_camera();
 
-    /// @brief get viewport window size, this should also be the scene render extent
+    /// @brief Get viewport window size. This includes toolbar space and
+    ///        the scene itself.
     Vec2 get_size();
+
+    /// @brief Get scene extent inside the viewport window.
+    Vec2 get_scene_size();
 
     /// @brief Check for mouse position in the scene viewport
     /// @param pos Mouse position within the viewport window
