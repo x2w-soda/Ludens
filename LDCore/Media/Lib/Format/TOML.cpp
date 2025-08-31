@@ -99,6 +99,16 @@ bool TOMLValue::is_i32(int32_t& i32) const
     return true;
 }
 
+bool TOMLValue::is_u32(uint32_t& u32) const
+{
+    if (get_type() != TOML_TYPE_INT)
+        return false;
+
+    // safe downcast to 32-bit unsigned.
+    u32 = (uint32_t)mObj->val.as_integer();
+    return true;
+}
+
 bool TOMLValue::is_f64(double& f64) const
 {
     TOMLType type = get_type();
@@ -146,7 +156,7 @@ int TOMLValue::get_size()
 {
     TOMLType type = get_type();
 
-    if (type != TOML_TYPE_ARRAY)
+    if (type != TOML_TYPE_ARRAY && type != TOML_TYPE_TABLE)
         return -1;
 
     return (int)mObj->val.size();
@@ -172,6 +182,20 @@ TOMLValue TOMLValue::get_key(const char* key)
     value->val = mObj->val.at(key);
 
     return TOMLValue(value);
+}
+
+int TOMLValue::get_keys(std::vector<std::string>& keys)
+{
+    if (!is_table_type())
+        return 0;
+
+    keys.resize(get_size());
+    int i = 0;
+
+    for (const auto& ite : mObj->val.as_table())
+    {
+        keys[i++] = ite.first;
+    }
 }
 
 TOMLDocument TOMLDocument::create()

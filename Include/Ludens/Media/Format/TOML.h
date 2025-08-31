@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <string>
+#include <vector>
 
 namespace LD {
 
@@ -46,6 +47,10 @@ struct TOMLValue : Handle<struct TOMLValueObj>
     /// @param i32 Output 32-bit signed integer upon success.
     bool is_i32(int32_t& i32) const;
 
+    /// @brief Check if value is a TOML int that is castable to u32.
+    /// @param u32 Output 32-bit unsigned integer upon success.
+    bool is_u32(uint32_t& u32) const;
+
     /// @brief Check if value is a TOML floating point.
     /// @param f64 Output 64-bit floating point number on success.
     /// @note TOML integers will be implicitly casted to float.
@@ -60,8 +65,8 @@ struct TOMLValue : Handle<struct TOMLValueObj>
     /// @param string Output string upon success.
     bool is_string(std::string& string) const;
 
-    /// @brief Get array size.
-    /// @return Non-negative array size, or negative value on failure.
+    /// @brief Get array size or table size.
+    /// @return Non-negative size, or negative value on failure.
     int get_size();
 
     /// @brief Index into a TOML array.
@@ -82,6 +87,9 @@ struct TOMLValue : Handle<struct TOMLValueObj>
     {
         return get_key(key);
     }
+
+    /// @brief Get all keys in a table.
+    int get_keys(std::vector<std::string>& keys);
 };
 
 /// @brief Toml document handle
