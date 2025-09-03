@@ -19,15 +19,19 @@ struct DataRegistry : Handle<struct DataRegistryObj>
     static void destroy(DataRegistry registry);
 
     /// @brief Creates a data component
-    /// @param type Root component type
+    /// @param type Component type
     /// @param name User defined name.
     /// @param parent Parent component, or 0 if creating a root component
+    /// @param hint If not zero, create with this hint ID. Will fail if the ID is alraedy used.
     /// @return Data component ID
-    DUID create_component(ComponentType type, const char* name, DUID parent);
+    DUID create_component(ComponentType type, const char* name, DUID parent, DUID hint);
 
     /// @brief Destroy a data component subtree
     /// @param id Data component ID
     void destroy_component(DUID id);
+
+    /// @brief Reparent a data component
+    void reparent(DUID compID, DUID parentID);
 
     /// @brief Create data component script slot.
     ComponentScriptSlot* create_component_script_slot(DUID compID, AUID assetID);
@@ -39,10 +43,10 @@ struct DataRegistry : Handle<struct DataRegistryObj>
     ComponentBase* get_component_base(DUID compID);
 
     /// @brief Get data component struct, or null on failure
-    /// @param id Data component ID
+    /// @param compID Data component ID
     /// @param type Outputs data component type on success
     /// @return Address of some data component
-    void* get_component(DUID id, ComponentType& type);
+    void* get_component(DUID compID, ComponentType& type);
 
     /// @brief Get all data components with no parents.
     void get_root_components(std::vector<DUID>& roots);

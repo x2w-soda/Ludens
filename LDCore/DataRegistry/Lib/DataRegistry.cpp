@@ -1,6 +1,7 @@
 #include <Ludens/DataRegistry/DataComponent.h>
 #include <Ludens/DataRegistry/DataRegistry.h>
 #include <Ludens/Header/Types.h>
+#include <Ludens/Log/Log.h>
 #include <Ludens/System/Memory.h>
 #include <unordered_map>
 #include <unordered_set>
@@ -8,6 +9,7 @@
 
 namespace LD {
 
+static Log sLog("DataRegistry");
 static Transform* get_transform(void* comp);
 static Transform* get_mesh_transform(void* comp);
 static RUID get_mesh_ruid(void* comp);
@@ -80,20 +82,45 @@ struct DataRegistryObj
     {
         do
         {
-            // linear probing for next valid DUID,
-            // will only run into collisions after
-            // the unsigned integer counter wraps.
-            idCounter++;
+            idCounter++; // linear probing for next valid DUID
         } while (idCounter == 0 || components.contains(idCounter));
 
         return idCounter;
     }
 
+    inline bool is_id_used(DUID id)
+    {
+        return components.contains(id);
+    }
+
+    /// @brief Detach a component from its parent.
+    void detach(ComponentBase* base);
+
+    /// @brief Establish a parent-child relationship between components
     void add_child(ComponentBase* parent, ComponentBase* child);
 };
 
+void DataRegistryObj::detach(ComponentBase* base)
+{
+    if (!base || !base->parent)
+        return;
+
+    ComponentBase* parent = base->parent;
+    ComponentBase** pnext = &(parent->child);
+    while (*pnext && *pnext != base)
+        pnext = &(*pnext)->next;
+
+    LD_ASSERT(*pnext == base);
+    *pnext = base->next;
+    base->parent = nullptr;
+    roots.insert(base->id);
+}
+
 void DataRegistryObj::add_child(ComponentBase* parent, ComponentBase* child)
 {
+    if (!child->parent && parent)
+        roots.erase(child->id);
+
     child->parent = parent;
 
     if (parent)
@@ -146,8 +173,14 @@ void DataRegistry::destroy(DataRegistry registry)
     heap_delete<DataRegistryObj>(obj);
 }
 
-DUID DataRegistry::create_component(ComponentType type, const char* name, DUID parentID)
+DUID DataRegistry::create_component(ComponentType type, const char* name, DUID parentID, DUID hintID)
 {
+    if (hintID && mObj->is_id_used(hintID))
+    {
+        sLog.warn("create_component hint ID {} is in use, failed to create component", hintID);
+        return 0;
+    }
+
     if (!mObj->componentPAs.contains(type))
     {
         PoolAllocatorInfo paI{};
@@ -165,7 +198,7 @@ DUID DataRegistry::create_component(ComponentType type, const char* name, DUID p
     base->child = nullptr;
     base->parent = nullptr;
     base->type = type;
-    base->id = mObj->get_id();
+    base->id = hintID ? hintID : mObj->get_id();
 
     if (parentID)
     {
@@ -200,6 +233,21 @@ void DataRegistry::destroy_component(DUID comp)
     mObj->componentPAs[entry.base->type].free(entry.comp);
     mObj->componentBasePA.free(entry.base);
     mObj->components.erase(ite);
+}
+
+void DataRegistry::reparent(DUID compID, DUID parentID)
+{
+    auto ite = mObj->components.find(compID);
+    if (ite == mObj->components.end())
+        return;
+
+    ComponentBase* child = ite->second.base;
+
+    ite = mObj->components.find(parentID);
+    ComponentBase* parent = ite == mObj->components.end() ? nullptr : ite->second.base;
+
+    mObj->detach(child);
+    mObj->add_child(parent, child);
 }
 
 ComponentScriptSlot* DataRegistry::create_component_script_slot(DUID compID, AUID assetID)

@@ -44,7 +44,8 @@ public:
     /// @param type Component type.
     /// @param name Component identifier.
     /// @param parent Parent component, or zero if creating a root component.
-    DUID create_component(ComponentType type, const char* name, DUID parent);
+    /// @param hint If not zero, hint ID to create component with. 
+    DUID create_component(ComponentType type, const char* name, DUID parent, DUID hint);
 
     /// @brief Create data component script slot.
     /// @param compID Component ID.
@@ -54,6 +55,9 @@ public:
 
     /// @brief Destroy a component.
     void destroy_component(DUID compID);
+
+    /// @brief Reparent a component
+    void reparent(DUID compID, DUID parentID);
 
     /// @brief Get root components in Scene
     void get_root_components(std::vector<DUID>& roots);

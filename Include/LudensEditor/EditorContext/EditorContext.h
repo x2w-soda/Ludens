@@ -61,6 +61,9 @@ struct EditorContext : Handle<struct EditorContextObj>
     /// @brief Get root data components in scene
     void get_scene_roots(std::vector<DUID>& roots);
 
+    /// @brief Get component base members.
+    const ComponentBase* get_component_base(DUID comp);
+
     /// @brief Get the C string name of a component
     const char* get_component_name(DUID comp);
 

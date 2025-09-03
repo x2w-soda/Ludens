@@ -221,6 +221,11 @@ void EditorContext::get_scene_roots(std::vector<DUID>& roots)
     mObj->scene.get_root_components(roots);
 }
 
+const ComponentBase* EditorContext::get_component_base(DUID comp)
+{
+    return mObj->scene.get_component_base(comp);
+}
+
 const char* EditorContext::get_component_name(DUID comp)
 {
     const ComponentBase* base = mObj->scene.get_component_base(comp);

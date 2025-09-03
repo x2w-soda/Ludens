@@ -108,6 +108,11 @@ void UIWidget::set_layout(const UILayoutInfo& layout)
     mObj->layout.info = layout;
 }
 
+void UIWidget::set_layout_child_padding(const UIPadding& padding)
+{
+    mObj->layout.info.childPadding = padding;
+}
+
 void UIWidget::set_on_key_up(void (*onKeyUp)(UIWidget widget, KeyCode key))
 {
     mObj->cb.onKeyUp = onKeyUp;
@@ -460,7 +465,7 @@ void UITextWidget::set_text(const char* cstr)
         heap_free((void*)mObj->as.text.value);
 
     // TODO: fix memory leak, last strdup is never freed
-    mObj->as.text.value = heap_strdup(cstr, MEMORY_USAGE_UI);
+    mObj->as.text.value = cstr ? heap_strdup(cstr, MEMORY_USAGE_UI) : nullptr;
 }
 
 } // namespace LD

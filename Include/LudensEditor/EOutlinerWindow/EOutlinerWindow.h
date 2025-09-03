@@ -19,7 +19,12 @@ struct EOutlinerWindowInfo
 /// @brief Editor outliner window. Displays the scene hierarchy.
 struct EOutlinerWindow : Handle<struct EOutlinerWindowObj>
 {
+    /// @brief Create editor outliner window.
+    /// @param windowInfo Outliner window creation info.
+    /// @return Editor outliner handle.
     static EOutlinerWindow create(const EOutlinerWindowInfo& windowInfo);
+
+    /// @brief Destroy editor outliner window
     static void destroy(EOutlinerWindow window);
 };
 

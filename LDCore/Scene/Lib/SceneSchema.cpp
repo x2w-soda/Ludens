@@ -6,7 +6,7 @@
 namespace LD {
 
 static DUID load_component(TOMLValue compTOML, Scene scene);
-static DUID load_mesh_component(TOMLValue compTOML, Scene scene, const char* compName);
+static bool load_mesh_component(TOMLValue compTOML, Scene scene, DUID compID, const char* compName);
 static void load_transform(TOMLValue transformTOML, Transform& transform);
 
 static DUID load_component(TOMLValue compTOML, Scene scene)
@@ -24,12 +24,16 @@ static DUID load_component(TOMLValue compTOML, Scene scene)
     if (!nameTOML || !nameTOML.is_string(name))
         return 0;
 
-    DUID compID = 0;
+    DUID compID;
+    TOMLValue compIDTOML = compTOML["duid"];
+    if (!compIDTOML || !compIDTOML.is_u32(compID))
+        return 0;
 
     // TODO: table of function pointers
     if (type == "Mesh")
     {
-        compID = load_mesh_component(compTOML, scene, name.c_str());
+        bool ok = load_mesh_component(compTOML, scene, compID, name.c_str());
+        LD_ASSERT(ok); // TODO: deserialization error handling.
     }
 
     int64_t scriptID;
@@ -43,10 +47,14 @@ static DUID load_component(TOMLValue compTOML, Scene scene)
     return compID;
 }
 
-static DUID load_mesh_component(TOMLValue compTOML, Scene scene, const char* compName)
+static bool load_mesh_component(TOMLValue compTOML, Scene scene, DUID compID, const char* compName)
 {
     ComponentType type;
-    DUID compID = scene.create_component(COMPONENT_TYPE_MESH, compName, (DUID)0);
+
+    compID = scene.create_component(COMPONENT_TYPE_MESH, compName, (DUID)0, compID);
+    if (!compID)
+        return false;
+
     MeshComponent* meshC = (MeshComponent*)scene.get_component(compID, type);
 
     TOMLValue transformTOML = compTOML["transform"];
@@ -58,7 +66,7 @@ static DUID load_mesh_component(TOMLValue compTOML, Scene scene, const char* com
     meshC->auid = (AUID)auid;
     meshC->ruid = 0; // deferred until Scene preparation phase
 
-    return compID;
+    return true;
 }
 
 static void load_transform(TOMLValue transformTOML, Transform& transform)
@@ -96,23 +104,47 @@ void SceneSchema::load_scene(Scene scene, TOMLDocument doc)
 
     // TODO: Scene::reset or something similar
 
-    TOMLValue tomlScene = doc.get("ludens_scene");
-    if (!tomlScene || tomlScene.get_type() != TOML_TYPE_TABLE)
+    TOMLValue sceneTOML = doc.get("ludens_scene");
+    if (!sceneTOML || sceneTOML.get_type() != TOML_TYPE_TABLE)
         return;
 
     int32_t version;
-    TOMLValue tomlVal = tomlScene.get_key("version");
-    if (!tomlVal || !tomlVal.is_i32(version) || version != 0)
+    TOMLValue versionTOML = sceneTOML["version"];
+    if (!versionTOML || !versionTOML.is_i32(version) || version != 0)
         return;
 
-    TOMLValue tomlComponents = doc.get("component");
-    if (!tomlComponents || !tomlComponents.is_array_type())
+    TOMLValue componentsTOML = doc.get("component");
+    if (!componentsTOML || !componentsTOML.is_array_type())
         return;
 
-    int32_t componentCount = tomlComponents.get_size();
-    for (int i = 0; i < componentCount; i++)
+    int32_t count = componentsTOML.get_size();
+    for (int i = 0; i < count; i++)
     {
-        DUID compID = load_component(tomlComponents.get_index(i), scene);
+        DUID compID = load_component(componentsTOML[i], scene);
+    }
+
+    TOMLValue hierarchyTOML = doc.get("hierarchy");
+    if (!hierarchyTOML || !hierarchyTOML.is_table_type())
+        return;
+
+    std::vector<std::string> keys;
+    hierarchyTOML.get_keys(keys);
+    for (const std::string& key : keys)
+    {
+        DUID parent = static_cast<DUID>(std::stoul(key));
+        TOMLValue childrenTOML = hierarchyTOML[key.c_str()];
+        if (!childrenTOML || !childrenTOML.is_array_type())
+            continue;
+
+        count = childrenTOML.get_size();
+        for (int i = 0; i < count; i++)
+        {
+            DUID child;
+            if (!childrenTOML[i].is_u32(child))
+                continue;
+
+            scene.reparent(child, parent);
+        }
     }
 }
 

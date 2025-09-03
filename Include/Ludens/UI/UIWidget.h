@@ -47,8 +47,11 @@ struct UIWidget : Handle<struct UIWidgetObj>
     /// @brief set user data pointer
     void set_user(void* user);
 
-    /// @brief update widget layout after creation
+    /// @brief Update widget layout after creation.
     void set_layout(const UILayoutInfo& layout);
+
+    /// @brief Update widget child padding after creation.
+    void set_layout_child_padding(const UIPadding& padding);
 
     /// @brief override key up callback
     void set_on_key_up(void (*onKeyUp)(UIWidget widget, KeyCode key));

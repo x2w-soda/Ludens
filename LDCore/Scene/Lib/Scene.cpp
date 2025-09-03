@@ -368,9 +368,9 @@ void Scene::update(float delta)
     L.pop(2);
 }
 
-DUID Scene::create_component(ComponentType type, const char* name, DUID parent)
+DUID Scene::create_component(ComponentType type, const char* name, DUID parent, DUID hint)
 {
-    return mObj->registry.create_component(type, name, parent);
+    return mObj->registry.create_component(type, name, parent, hint);
 }
 
 ComponentScriptSlot* Scene::create_component_script_slot(DUID compID, AUID assetID)
@@ -381,6 +381,11 @@ ComponentScriptSlot* Scene::create_component_script_slot(DUID compID, AUID asset
 void Scene::destroy_component(DUID compID)
 {
     mObj->registry.destroy_component(compID);
+}
+
+void Scene::reparent(DUID compID, DUID parentID)
+{
+    mObj->registry.reparent(compID, parentID);
 }
 
 void Scene::get_root_components(std::vector<DUID>& roots)
