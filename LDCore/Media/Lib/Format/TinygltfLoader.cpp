@@ -192,7 +192,7 @@ bool TinygltfLoader::load_node(tinygltf::Node& tinyNode, uint32_t nodeIndex, Mes
     else
     {
         Mat4 T = Mat4::translate(translation);
-        Mat4 R = Mat4::from_quat(rotation);
+        Mat4 R = rotation.as_mat4();
         Mat4 S = Mat4::scale(scale);
         node->localTransform = T * R * S;
     }

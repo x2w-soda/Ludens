@@ -30,7 +30,7 @@ struct Texture2DAssetObj
 struct LuaScriptAssetObj
 {
     AUID auid;    /// asset ID identifies script template
-    DUID duid;    /// data component ID identifies script instance
+    CUID duid;    /// data component ID identifies script instance
     char* source; /// lua source code string
 };
 

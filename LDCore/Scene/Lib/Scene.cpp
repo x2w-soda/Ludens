@@ -18,35 +18,34 @@ struct SceneObj
     AssetManager assetManager;
     RServer renderServer;
     LuaState lua;
-    std::unordered_map<RUID, Transform*> ruidTransforms; /// map RUID to its corresponding transform
-    std::unordered_map<RUID, DUID> ruidToComponent;      /// map RUID to its corresponding component in the data registry
+    std::unordered_map<RUID, CUID> ruidToComponent; /// map RUID to its corresponding component in the data registry
 
     /// @brief Prepare components recursively, loading scripts and assets.
     void prepare(ComponentBase* comp);
 
     /// @brief Startup a component subtree recursively, attaching scripts to components
-    void startup_root(DUID compID);
+    void startup_root(CUID compID);
 
     /// @brief Cleanup a component subtree recursively, detaching scripts from components
-    void cleanup_root(DUID compID);
+    void cleanup_root(CUID compID);
 
     /// @brief Create lua script associated with a component.
     void create_lua_script(ComponentScriptSlot* scriptSlot);
 
     /// @brief Destroy lua script associated with a component
-    void destroy_lua_script(DUID compID);
+    void destroy_lua_script(CUID compID);
 
     /// @brief Attach lua script to a data component.
-    void attach_lua_script(DUID compID);
+    void attach_lua_script(CUID compID);
 
     /// @brief Detach lua script from a data component.
-    void detach_lua_script(DUID compID);
+    void detach_lua_script(CUID compID);
 
     /// @brief Initialize a lua state for scripting
     void initialize_lua_state(LuaState L);
 };
 
-static void prepare_mesh_component(SceneObj* scene, DUID compID)
+static void prepare_mesh_component(SceneObj* scene, CUID compID)
 {
     ComponentType componentType;
     MeshComponent* meshC = (MeshComponent*)scene->registry.get_component(compID, componentType);
@@ -56,7 +55,6 @@ static void prepare_mesh_component(SceneObj* scene, DUID compID)
     {
         MeshAsset meshA = scene->assetManager.get_mesh_asset(meshC->auid);
         meshC->ruid = scene->renderServer.create_mesh(*meshA.data());
-        scene->ruidTransforms[meshC->ruid] = scene->registry.get_component_transform(compID);
         scene->ruidToComponent[meshC->ruid] = compID;
     }
 }
@@ -65,7 +63,7 @@ static void prepare_mesh_component(SceneObj* scene, DUID compID)
 struct SceneComponent
 {
     ComponentType type;
-    void (*prepare)(SceneObj* scene, DUID compID);
+    void (*prepare)(SceneObj* scene, CUID compID);
 };
 
 // clang-format off
@@ -99,7 +97,7 @@ void SceneObj::prepare(ComponentBase* comp)
     }
 }
 
-void SceneObj::startup_root(DUID root)
+void SceneObj::startup_root(CUID root)
 {
     const ComponentBase* rootC = registry.get_component_base(root);
 
@@ -115,7 +113,7 @@ void SceneObj::startup_root(DUID root)
     attach_lua_script(rootC->id);
 }
 
-void SceneObj::cleanup_root(DUID root)
+void SceneObj::cleanup_root(CUID root)
 {
     const ComponentBase* rootC = registry.get_component_base(root);
 
@@ -136,7 +134,7 @@ void SceneObj::create_lua_script(ComponentScriptSlot* scriptSlot)
     LD_ASSERT(scriptSlot);
     LD_ASSERT(lua.empty());
 
-    DUID compID = scriptSlot->componentID;
+    CUID compID = scriptSlot->componentID;
     AUID assetID = scriptSlot->assetID;
 
     lua.get_global("ludens");
@@ -162,7 +160,7 @@ void SceneObj::create_lua_script(ComponentScriptSlot* scriptSlot)
     lua.resize(0);
 }
 
-void SceneObj::destroy_lua_script(DUID compID)
+void SceneObj::destroy_lua_script(CUID compID)
 {
     int oldSize = lua.size();
     lua.get_global("ludens");
@@ -179,7 +177,7 @@ void SceneObj::destroy_lua_script(DUID compID)
 }
 
 // Caller should prepare ludens.scripts table on top of stack
-void SceneObj::attach_lua_script(DUID rootID)
+void SceneObj::attach_lua_script(CUID rootID)
 {
     LD_ASSERT(lua.get_type(-1) == LUA_TYPE_TABLE);
 
@@ -211,7 +209,7 @@ void SceneObj::attach_lua_script(DUID rootID)
 }
 
 // Caller should prepare ludens.scripts table on top of stack
-void SceneObj::detach_lua_script(DUID rootID)
+void SceneObj::detach_lua_script(CUID rootID)
 {
     LD_ASSERT(lua.get_type(-1) == LUA_TYPE_TABLE);
 
@@ -281,10 +279,10 @@ void Scene::prepare(const ScenePrepareInfo& info)
     mObj->assetManager = info.assetManager;
     mObj->renderServer = info.renderServer;
 
-    std::vector<DUID> roots;
+    std::vector<CUID> roots;
     mObj->registry.get_root_components(roots);
 
-    for (DUID rootID : roots)
+    for (CUID rootID : roots)
     {
         ComponentBase* base = mObj->registry.get_component_base(rootID);
         mObj->prepare(base);
@@ -299,10 +297,10 @@ void Scene::startup()
     mObj->lua.get_global("ludens");
     mObj->lua.get_field(-1, "scripts");
 
-    std::vector<DUID> roots;
+    std::vector<CUID> roots;
     mObj->registry.get_root_components(roots);
 
-    for (DUID root : roots)
+    for (CUID root : roots)
     {
         mObj->startup_root(root);
     }
@@ -317,10 +315,10 @@ void Scene::cleanup()
     mObj->lua.get_global("ludens");
     mObj->lua.get_field(-1, "scripts");
 
-    std::vector<DUID> roots;
+    std::vector<CUID> roots;
     mObj->registry.get_root_components(roots);
 
-    for (DUID root : roots)
+    for (CUID root : roots)
     {
         mObj->cleanup_root(root);
     }
@@ -368,53 +366,67 @@ void Scene::update(float delta)
     L.pop(2);
 }
 
-DUID Scene::create_component(ComponentType type, const char* name, DUID parent, DUID hint)
+CUID Scene::create_component(ComponentType type, const char* name, CUID parent, CUID hint)
 {
     return mObj->registry.create_component(type, name, parent, hint);
 }
 
-ComponentScriptSlot* Scene::create_component_script_slot(DUID compID, AUID assetID)
+ComponentScriptSlot* Scene::create_component_script_slot(CUID compID, AUID assetID)
 {
     return mObj->registry.create_component_script_slot(compID, assetID);
 }
 
-void Scene::destroy_component(DUID compID)
+void Scene::destroy_component(CUID compID)
 {
     mObj->registry.destroy_component(compID);
 }
 
-void Scene::reparent(DUID compID, DUID parentID)
+void Scene::reparent(CUID compID, CUID parentID)
 {
     mObj->registry.reparent(compID, parentID);
 }
 
-void Scene::get_root_components(std::vector<DUID>& roots)
+void Scene::get_root_components(std::vector<CUID>& roots)
 {
     mObj->registry.get_root_components(roots);
 }
 
-ComponentBase* Scene::get_component_base(DUID compID)
+ComponentBase* Scene::get_component_base(CUID compID)
 {
     return mObj->registry.get_component_base(compID);
 }
 
-void* Scene::get_component(DUID compID, ComponentType& type)
+void* Scene::get_component(CUID compID, ComponentType& type)
 {
     return mObj->registry.get_component(compID, type);
 }
 
-RUID Scene::get_component_ruid(DUID compID)
+RUID Scene::get_component_ruid(CUID compID)
 {
     return mObj->registry.get_component_ruid(compID);
 }
 
-Transform* Scene::get_component_transform(DUID compID)
+bool Scene::get_component_transform(CUID compID, Transform& transform)
 {
-    // pointer stability: valid until component is destroyed
-    return mObj->registry.get_component_transform(compID);
+    return mObj->registry.get_component_transform(compID, transform);
 }
 
-DUID Scene::get_ruid_component(RUID ruid)
+bool Scene::set_component_transform(CUID compID, const Transform& transform)
+{
+    return mObj->registry.set_component_transform(compID, transform);
+}
+
+bool Scene::get_component_transform_mat4(CUID compID, Mat4& worldMat4)
+{
+    return mObj->registry.get_component_transform_mat4(compID, worldMat4);
+}
+
+void Scene::mark_component_transform_dirty(CUID compID)
+{
+    mObj->registry.mark_component_transform_dirty(compID);
+}
+
+CUID Scene::get_ruid_component(RUID ruid)
 {
     auto ite = mObj->ruidToComponent.find(ruid);
 
@@ -424,14 +436,14 @@ DUID Scene::get_ruid_component(RUID ruid)
     return ite->second;
 }
 
-Mat4 Scene::get_ruid_transform(RUID ruid)
+Mat4 Scene::get_ruid_transform_mat4(RUID ruid)
 {
-    // TODO: optimize, this is terrible and lazy
-    Transform* transform = mObj->ruidTransforms[ruid];
-    const Vec3& axisR = transform->rotation;
-    Mat4 R = Mat4::rotate(LD_TO_RADIANS(axisR.x), Vec3(1.0f, 0.0f, 0.0f)) * Mat4::rotate(LD_TO_RADIANS(axisR.y), Vec3(0.0f, 1.0f, 0.0f)) * Mat4::rotate(LD_TO_RADIANS(axisR.z), Vec3(0.0f, 0.0f, 1.0f));
-    return Mat4::translate(transform->position) * R * Mat4::scale(transform->scale);
-}
+    CUID compID = get_ruid_component(ruid);
 
+    Mat4 worldMat4;
+    mObj->registry.get_component_transform_mat4(compID, worldMat4);
+
+    return worldMat4;
+}
 
 } // namespace LD

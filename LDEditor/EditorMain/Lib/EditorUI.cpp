@@ -11,7 +11,7 @@ void EditorUI::startup(const EditorUIInfo& info)
 
     mCtx = info.ctx;
 
-    // the WindowManager drives an internal UIF Context and organizes windows
+    // the WindowManager drives an internal UI Context and organizes windows
     UIWindowManagerInfo wmI{};
     wmI.fontAtlas = info.fontAtlas;
     wmI.fontAtlasImage = info.fontAtlasImage;

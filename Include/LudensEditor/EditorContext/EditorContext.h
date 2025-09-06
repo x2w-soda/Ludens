@@ -2,8 +2,8 @@
 
 #include <Ludens/RenderServer/RServer.h>
 #include <Ludens/Scene/Scene.h>
-#include <LudensEditor/EditorContext/EditorSettings.h>
 #include <LudensEditor/EditorContext/EditorContextEvent.h>
+#include <LudensEditor/EditorContext/EditorSettings.h>
 
 namespace LD {
 
@@ -59,34 +59,38 @@ struct EditorContext : Handle<struct EditorContextObj>
     bool is_playing();
 
     /// @brief Get root data components in scene
-    void get_scene_roots(std::vector<DUID>& roots);
+    void get_scene_roots(std::vector<CUID>& roots);
 
     /// @brief Get component base members.
-    const ComponentBase* get_component_base(DUID comp);
+    const ComponentBase* get_component_base(CUID comp);
 
     /// @brief Get the C string name of a component
-    const char* get_component_name(DUID comp);
+    const char* get_component_name(CUID comp);
 
     /// @brief Assign a component in scene to be selected.
     /// @note Triggers EDITOR_CONTEXT_EVENT_COMPONENT_SELECTION for observers.
-    void set_selected_component(DUID comp);
+    void set_selected_component(CUID comp);
 
     /// @brief Get the currently selected component in scene
-    DUID get_selected_component();
+    CUID get_selected_component();
 
     /// @brief Get component in current Scene
-    void* get_component(DUID compID, ComponentType& type);
+    void* get_component(CUID compID, ComponentType& type);
 
     /// @brief Get the data component associated with some RUID in scene
-    DUID get_ruid_component(RUID ruid);
+    CUID get_ruid_component(RUID ruid);
 
     /// @brief get the RUID associated with the selected object in scene
     RUID get_selected_component_ruid();
 
-    /// @brief get the Transform associated with the selected object in scene
-    /// @return address of object transform, or nullptr
-    /// @warning pointer is invalidated when the component is destroyed.
-    Transform* get_selected_component_transform();
+    /// @brief Get the local transform associated with the selected object in scene.
+    bool get_selected_component_transform(Transform& transform);
+
+    /// @brief Set local transform of a component.
+    bool set_component_transform(CUID compID, const Transform& transform);
+
+    /// @brief Get component world matrix.
+    bool get_component_transform_mat4(CUID compID, Mat4& worldMat4);
 };
 
 } // namespace LD

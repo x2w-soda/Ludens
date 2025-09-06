@@ -11,10 +11,10 @@ namespace LuaScript {
 LuaModule create_ludens_module();
 
 /// @brief Create lua table for data component
-void create_component_table(LuaState L, DUID compID, ComponentType type, void* comp);
+void create_component_table(LuaState L, CUID compID, ComponentType type, void* comp);
 
 /// @brief Destroy lua table associated with component
-void destroy_component_table(LuaState L, DUID compID);
+void destroy_component_table(LuaState L, CUID compID);
 
 } // namespace LuaScript
 } // namespace LD

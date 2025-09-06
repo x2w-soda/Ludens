@@ -5,11 +5,11 @@
 
 namespace LD {
 
-static DUID load_component(TOMLValue compTOML, Scene scene);
-static bool load_mesh_component(TOMLValue compTOML, Scene scene, DUID compID, const char* compName);
+static CUID load_component(TOMLValue compTOML, Scene scene);
+static bool load_mesh_component(TOMLValue compTOML, Scene scene, CUID compID, const char* compName);
 static void load_transform(TOMLValue transformTOML, Transform& transform);
 
-static DUID load_component(TOMLValue compTOML, Scene scene)
+static CUID load_component(TOMLValue compTOML, Scene scene)
 {
     if (!compTOML || !scene || !compTOML.is_table_type())
         return 0;
@@ -24,7 +24,7 @@ static DUID load_component(TOMLValue compTOML, Scene scene)
     if (!nameTOML || !nameTOML.is_string(name))
         return 0;
 
-    DUID compID;
+    CUID compID;
     TOMLValue compIDTOML = compTOML["duid"];
     if (!compIDTOML || !compIDTOML.is_u32(compID))
         return 0;
@@ -47,11 +47,11 @@ static DUID load_component(TOMLValue compTOML, Scene scene)
     return compID;
 }
 
-static bool load_mesh_component(TOMLValue compTOML, Scene scene, DUID compID, const char* compName)
+static bool load_mesh_component(TOMLValue compTOML, Scene scene, CUID compID, const char* compName)
 {
     ComponentType type;
 
-    compID = scene.create_component(COMPONENT_TYPE_MESH, compName, (DUID)0, compID);
+    compID = scene.create_component(COMPONENT_TYPE_MESH, compName, (CUID)0, compID);
     if (!compID)
         return false;
 
@@ -59,6 +59,7 @@ static bool load_mesh_component(TOMLValue compTOML, Scene scene, DUID compID, co
 
     TOMLValue transformTOML = compTOML["transform"];
     load_transform(transformTOML, meshC->transform);
+    scene.mark_component_transform_dirty(compID);
 
     int64_t auid;
     TOMLValue auidTOML = compTOML["auid"];
@@ -86,6 +87,7 @@ static void load_transform(TOMLValue transformTOML, Transform& transform)
     rotationTOML[0].is_f32(transform.rotation.x);
     rotationTOML[1].is_f32(transform.rotation.y);
     rotationTOML[2].is_f32(transform.rotation.z);
+    transform.quat = Quat::from_euler(transform.rotation);
 
     TOMLValue scaleTOML = transformTOML["scale"];
     LD_ASSERT(scaleTOML && scaleTOML.is_array_type() && scaleTOML.get_size() == 3);
@@ -120,7 +122,7 @@ void SceneSchema::load_scene(Scene scene, TOMLDocument doc)
     int32_t count = componentsTOML.get_size();
     for (int i = 0; i < count; i++)
     {
-        DUID compID = load_component(componentsTOML[i], scene);
+        CUID compID = load_component(componentsTOML[i], scene);
     }
 
     TOMLValue hierarchyTOML = doc.get("hierarchy");
@@ -131,7 +133,7 @@ void SceneSchema::load_scene(Scene scene, TOMLDocument doc)
     hierarchyTOML.get_keys(keys);
     for (const std::string& key : keys)
     {
-        DUID parent = static_cast<DUID>(std::stoul(key));
+        CUID parent = static_cast<CUID>(std::stoul(key));
         TOMLValue childrenTOML = hierarchyTOML[key.c_str()];
         if (!childrenTOML || !childrenTOML.is_array_type())
             continue;
@@ -139,7 +141,7 @@ void SceneSchema::load_scene(Scene scene, TOMLDocument doc)
         count = childrenTOML.get_size();
         for (int i = 0; i < count; i++)
         {
-            DUID child;
+            CUID child;
             if (!childrenTOML[i].is_u32(child))
                 continue;
 

@@ -177,7 +177,7 @@ LuaModule create_ludens_module()
 }
 
 // stack top should be ludens.scripts
-void create_component_table(LuaState L, DUID compID, ComponentType type, void* comp)
+void create_component_table(LuaState L, CUID compID, ComponentType type, void* comp)
 {
     L.push_number((double)compID);
     L.get_table(-2);                             // ludens.scripts[compID]
@@ -189,7 +189,7 @@ void create_component_table(LuaState L, DUID compID, ComponentType type, void* c
 }
 
 // stack top should be ludens.scripts
-void destroy_component_table(LuaState L, DUID compID)
+void destroy_component_table(LuaState L, CUID compID)
 {
     L.push_number((double)compID);
     L.get_table(-2);                             // ludens.scripts[compID]

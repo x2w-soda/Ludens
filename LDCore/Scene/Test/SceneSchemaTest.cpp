@@ -27,16 +27,17 @@ auid = 1
     SceneSchema::load_scene(scene, doc);
     CHECK(scene);
 
-    std::vector<DUID> roots;
+    std::vector<CUID> roots;
     scene.get_root_components(roots);
     CHECK(roots.size() == 1);
 
     {
-        Transform* transform = scene.get_component_transform(roots[0]);
-        CHECK(transform);
-        CHECK(transform->position == Vec3(0.0f, 0.0f, 0.0f));
-        CHECK(transform->rotation == Vec3(0.0f, 0.0f, 0.0f));
-        CHECK(transform->scale == Vec3(0.01f, 0.01f, 0.01f));
+        Transform transform;
+        ok = scene.get_component_transform(roots[0], transform);
+        CHECK(ok);
+        CHECK(transform.position == Vec3(0.0f, 0.0f, 0.0f));
+        CHECK(transform.rotation == Vec3(0.0f, 0.0f, 0.0f));
+        CHECK(transform.scale == Vec3(0.01f, 0.01f, 0.01f));
 
         ComponentBase* base = scene.get_component_base(roots[0]);
         std::string name(base->name);

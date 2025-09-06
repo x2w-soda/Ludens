@@ -29,7 +29,7 @@ static RUID get_mesh_ruid(void* comp)
     return ((MeshComponent*)comp)->ruid;
 }
 
-struct ComponentEntry
+struct ComponentMeta
 {
     ComponentType type;
     size_t byteSize;
@@ -39,7 +39,7 @@ struct ComponentEntry
 };
 
 // clang-format off
-static ComponentEntry sComponentTable[] = {
+static ComponentMeta sComponentTable[] = {
     { COMPONENT_TYPE_DATA,       sizeof(ComponentBase),      "DataComponent",      nullptr,            nullptr },
     { COMPONENT_TYPE_TRANSFORM,  sizeof(TransformComponent), "TransformComponent", get_transform,      nullptr },
     { COMPONENT_TYPE_MESH,       sizeof(MeshComponent),      "MeshComponent",      get_mesh_transform, get_mesh_ruid },
@@ -62,33 +62,35 @@ const char* get_component_type_name(ComponentType type)
     return sComponentTable[(int)type].typeName;
 }
 
-struct DataComponentEntry
+struct ComponentEntry
 {
     ComponentBase* base;
     ComponentScriptSlot* script;
     void* comp;
 };
 
+static_assert(LD::IsTrivial<ComponentEntry>);
+
 struct DataRegistryObj
 {
     std::unordered_map<ComponentType, PoolAllocator> componentPAs;
-    std::unordered_map<DUID, DataComponentEntry> components;
-    std::unordered_set<DUID> roots;
+    std::unordered_map<CUID, ComponentEntry> components;
+    std::unordered_set<CUID> roots;
     PoolAllocator componentBasePA;
     PoolAllocator scriptPA;
     uint32_t idCounter = 0;
 
-    DUID get_id()
+    CUID get_id()
     {
         do
         {
-            idCounter++; // linear probing for next valid DUID
+            idCounter++; // linear probing for next valid component ID
         } while (idCounter == 0 || components.contains(idCounter));
 
         return idCounter;
     }
 
-    inline bool is_id_used(DUID id)
+    inline bool is_id_used(CUID id)
     {
         return components.contains(id);
     }
@@ -98,6 +100,15 @@ struct DataRegistryObj
 
     /// @brief Establish a parent-child relationship between components
     void add_child(ComponentBase* parent, ComponentBase* child);
+
+    /// @brief Get component local transform
+    Transform* get_component_transform(ComponentBase* base, void* comp);
+
+    /// @brief Mark the local transform of a component subtree as dirty.
+    void mark_component_transform_dirty(ComponentBase* base);
+
+    /// @brief Get component world transform matrix
+    bool get_component_transform_mat4(ComponentBase* base, Mat4& mat4);
 };
 
 void DataRegistryObj::detach(ComponentBase* base)
@@ -128,6 +139,51 @@ void DataRegistryObj::add_child(ComponentBase* parent, ComponentBase* child)
         child->next = parent->child;
         parent->child = child;
     }
+}
+
+Transform* DataRegistryObj::get_component_transform(ComponentBase* base, void* comp)
+{
+    if (!base || !sComponentTable[base->type].get_transform)
+        return nullptr;
+
+    return sComponentTable[base->type].get_transform(comp);
+}
+
+void DataRegistryObj::mark_component_transform_dirty(ComponentBase* base)
+{
+    if (!base || (base->flags & COMPONENT_FLAG_TRANSFORM_DIRTY_BIT))
+        return;
+
+    base->flags |= COMPONENT_FLAG_TRANSFORM_DIRTY_BIT;
+
+    for (ComponentBase* child = base->child; child; child = child->next)
+    {
+        mark_component_transform_dirty(child);
+    }
+}
+
+bool DataRegistryObj::get_component_transform_mat4(ComponentBase* base, Mat4& mat4)
+{
+    if (!base)
+        return false;
+
+    if (base->flags & COMPONENT_FLAG_TRANSFORM_DIRTY_BIT)
+    {
+        Mat4 parentWorldMat4(1.0f);
+        if (base->parent && !get_component_transform_mat4(base->parent, parentWorldMat4))
+            return false;
+
+        Transform transform;
+        if (!DataRegistry(this).get_component_transform(base->id, transform))
+            return false;
+
+        base->localMat4 = transform.as_mat4();
+        base->worldMat4 = parentWorldMat4 * base->localMat4;
+        base->flags &= ~COMPONENT_FLAG_TRANSFORM_DIRTY_BIT;
+    }
+
+    mat4 = base->worldMat4;
+    return true;
 }
 
 DataRegistry DataRegistry::create()
@@ -173,7 +229,7 @@ void DataRegistry::destroy(DataRegistry registry)
     heap_delete<DataRegistryObj>(obj);
 }
 
-DUID DataRegistry::create_component(ComponentType type, const char* name, DUID parentID, DUID hintID)
+CUID DataRegistry::create_component(ComponentType type, const char* name, CUID parentID, CUID hintID)
 {
     if (hintID && mObj->is_id_used(hintID))
     {
@@ -197,6 +253,7 @@ DUID DataRegistry::create_component(ComponentType type, const char* name, DUID p
     base->next = nullptr;
     base->child = nullptr;
     base->parent = nullptr;
+    base->flags = 0;
     base->type = type;
     base->id = hintID ? hintID : mObj->get_id();
 
@@ -218,14 +275,14 @@ DUID DataRegistry::create_component(ComponentType type, const char* name, DUID p
     return base->id;
 }
 
-void DataRegistry::destroy_component(DUID comp)
+void DataRegistry::destroy_component(CUID comp)
 {
     auto ite = mObj->components.find(comp);
 
     if (ite == mObj->components.end())
         return;
 
-    DataComponentEntry& entry = ite->second;
+    ComponentEntry& entry = ite->second;
     LD_ASSERT(entry.base);
     LD_ASSERT(mObj->componentPAs.contains(entry.base->type));
     LD_ASSERT(!entry.script);
@@ -235,7 +292,7 @@ void DataRegistry::destroy_component(DUID comp)
     mObj->components.erase(ite);
 }
 
-void DataRegistry::reparent(DUID compID, DUID parentID)
+void DataRegistry::reparent(CUID compID, CUID parentID)
 {
     auto ite = mObj->components.find(compID);
     if (ite == mObj->components.end())
@@ -248,9 +305,10 @@ void DataRegistry::reparent(DUID compID, DUID parentID)
 
     mObj->detach(child);
     mObj->add_child(parent, child);
+    mObj->mark_component_transform_dirty(child);
 }
 
-ComponentScriptSlot* DataRegistry::create_component_script_slot(DUID compID, AUID assetID)
+ComponentScriptSlot* DataRegistry::create_component_script_slot(CUID compID, AUID assetID)
 {
     auto ite = mObj->components.find(compID);
     if (ite == mObj->components.end())
@@ -268,7 +326,7 @@ ComponentScriptSlot* DataRegistry::create_component_script_slot(DUID compID, AUI
     return script;
 }
 
-void DataRegistry::destroy_component_script_slot(DUID compID)
+void DataRegistry::destroy_component_script_slot(CUID compID)
 {
     auto ite = mObj->components.find(compID);
     if (ite == mObj->components.end())
@@ -282,7 +340,7 @@ void DataRegistry::destroy_component_script_slot(DUID compID)
     ite->second.script = nullptr;
 }
 
-ComponentBase* DataRegistry::get_component_base(DUID id)
+ComponentBase* DataRegistry::get_component_base(CUID id)
 {
     auto ite = mObj->components.find(id);
     if (ite == mObj->components.end())
@@ -291,7 +349,7 @@ ComponentBase* DataRegistry::get_component_base(DUID id)
     return ite->second.base;
 }
 
-void* DataRegistry::get_component(DUID id, ComponentType& type)
+void* DataRegistry::get_component(CUID id, ComponentType& type)
 {
     auto ite = mObj->components.find(id);
     if (ite == mObj->components.end())
@@ -301,13 +359,13 @@ void* DataRegistry::get_component(DUID id, ComponentType& type)
     return ite->second.comp;
 }
 
-void DataRegistry::get_root_components(std::vector<DUID>& roots)
+void DataRegistry::get_root_components(std::vector<CUID>& roots)
 {
     roots.resize(mObj->roots.size());
 
     int i = 0;
 
-    for (DUID compID : mObj->roots)
+    for (CUID compID : mObj->roots)
         roots[i++] = compID;
 }
 
@@ -318,7 +376,7 @@ PoolAllocator::Iterator DataRegistry::get_components(ComponentType type)
     return mObj->componentPAs[type].begin();
 }
 
-ComponentScriptSlot* DataRegistry::get_component_script(DUID comp)
+ComponentScriptSlot* DataRegistry::get_component_script(CUID comp)
 {
     auto ite = mObj->components.find(comp);
 
@@ -333,21 +391,57 @@ PoolAllocator::Iterator DataRegistry::get_component_scripts()
     return mObj->scriptPA.begin();
 }
 
-Transform* DataRegistry::get_component_transform(DUID comp)
+bool DataRegistry::get_component_transform(CUID compID, Transform& transform)
 {
-    auto ite = mObj->components.find(comp);
+    auto ite = mObj->components.find(compID);
     if (ite == mObj->components.end())
-        return nullptr;
+        return false;
 
-    ComponentType type = ite->second.base->type;
+    Transform* ptr = mObj->get_component_transform(ite->second.base, ite->second.comp);
+    if (!ptr)
+        return false;
 
-    if (!sComponentTable[type].get_transform)
-        return nullptr;
-
-    return sComponentTable[type].get_transform(ite->second.comp);
+    transform = *ptr;
+    return true;
 }
 
-RUID DataRegistry::get_component_ruid(DUID comp)
+bool DataRegistry::set_component_transform(CUID compID, const Transform& transform)
+{
+    auto ite = mObj->components.find(compID);
+    if (ite == mObj->components.end())
+        return false;
+
+    Transform* ptr = mObj->get_component_transform(ite->second.base, ite->second.comp);
+    if (!ptr)
+        return false;
+
+    *ptr = transform;
+    ComponentBase* base = ite->second.base;
+    mObj->mark_component_transform_dirty(base);
+
+    return true;
+}
+
+bool DataRegistry::mark_component_transform_dirty(CUID compID)
+{
+    auto ite = mObj->components.find(compID);
+    if (ite == mObj->components.end())
+        return false;
+
+    ComponentBase* base = ite->second.base;
+    mObj->mark_component_transform_dirty(base);
+
+    return true;
+}
+
+bool DataRegistry::get_component_transform_mat4(CUID compID, Mat4& mat4)
+{
+    ComponentBase* base = get_component_base(compID);
+
+    return mObj->get_component_transform_mat4(base, mat4);
+}
+
+RUID DataRegistry::get_component_ruid(CUID comp)
 {
     auto ite = mObj->components.find(comp);
     if (ite == mObj->components.end())

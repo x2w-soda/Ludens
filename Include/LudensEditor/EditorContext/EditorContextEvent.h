@@ -44,7 +44,7 @@ struct EditorContextSceneLoadEvent : EditorContextEvent
 /// @brief Event signaling that the current selected component has changed.
 struct EditorContextComponentSelectionEvent : EditorContextEvent
 {
-    EditorContextComponentSelectionEvent(DUID component)
+    EditorContextComponentSelectionEvent(CUID component)
         : EditorContextEvent(EDITOR_CONTEXT_EVENT_COMPONENT_SELECTION), component(component)
     {
     }
@@ -52,7 +52,7 @@ struct EditorContextComponentSelectionEvent : EditorContextEvent
     /// @brief The new component being selected, note that an ID of zero indicates
     ///        that the selection is cleared and no component is being selected in
     ///        the editor.
-    DUID component;
+    CUID component;
 };
 
 } // namespace LD

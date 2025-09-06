@@ -18,13 +18,14 @@ struct EViewportWindowObj : EditorWindowObj
     virtual ~EViewportWindowObj() = default;
 
     ViewportToolbar toolbar;
-    Transform* subjectTransform;
+    Transform subjectWorldTransform;
+    CUID subjectComp;
     Camera editorCamera;
     CameraController editorCameraController;
     CameraPerspectiveInfo editorCameraPerspective;
     Gizmo gizmo;
     float gizmoScale;
-    Vec3 gizmoCenter;
+    Vec3 gizmoCenter;                 /// gizmo center position in world space
     SceneOverlayGizmo gizmoType;      /// current gizmo control mode
     SceneOverlayGizmoID hoverGizmoID; /// the gizmo mesh under mouse cursor
     RUID hoverRUID;                   /// the mesh under mouse cursor
@@ -39,6 +40,8 @@ struct EViewportWindowObj : EditorWindowObj
 
     /// @brief Pick an object in the viewport
     void pick_ruid(RUID id);
+
+    bool get_component_world_pos(CUID compID, Vec3& worldPos, Mat4& worldMat4);
 
     static void on_draw(UIWidget widget, ScreenRenderComponent renderer);
     static void on_key_down(UIWidget widget, KeyCode key);
@@ -108,35 +111,53 @@ void EViewportWindowObj::pick_gizmo(SceneOverlayGizmoID id)
     GizmoAxis axis;
 
     // writes back to subject transform during mouse drag window events
-    Transform* transform = subjectTransform;
-    LD_ASSERT(transform); // an object should be selected before gizmo mesh can even be selected
+    // an object should be selected before gizmo mesh can even be selected
+    LD_ASSERT(subjectComp);
 
-    gizmoCenter = transform->position;
+    // initialize subject world transform
+    Mat4 worldMat4;
+    get_component_world_pos(subjectComp, gizmoCenter, worldMat4);
+    bool ok = decompose_mat4_to_transform(worldMat4, subjectWorldTransform);
+    LD_ASSERT(ok);
 
     switch (gizmoType)
     {
     case SCENE_OVERLAY_GIZMO_TRANSLATION:
         if (get_gizmo_axis(id, axis))
-            gizmo.begin_axis_translate(axis, transform->position);
+            gizmo.begin_axis_translate(axis, gizmoCenter);
         else if (get_gizmo_plane(id, plane))
-            gizmo.begin_plane_translate(plane, transform->position);
+            gizmo.begin_plane_translate(plane, gizmoCenter);
         break;
     case SCENE_OVERLAY_GIZMO_ROTATION:
         if (get_gizmo_plane(id, plane))
-            gizmo.begin_plane_rotate(plane, transform->position, get_plane_rotation(plane, transform->rotation));
+            gizmo.begin_plane_rotate(plane, gizmoCenter, get_plane_rotation(plane, subjectWorldTransform.rotation));
         break;
     case SCENE_OVERLAY_GIZMO_SCALE:
         if (get_gizmo_axis(id, axis))
-            gizmo.begin_axis_scale(axis, transform->position, transform->scale);
+            gizmo.begin_axis_scale(axis, gizmoCenter, subjectWorldTransform.scale);
         break;
     }
 }
 
 void EViewportWindowObj::pick_ruid(RUID id)
 {
-    DUID compID = editorCtx.get_ruid_component(id);
+    subjectComp = editorCtx.get_ruid_component(id);
+    editorCtx.set_selected_component(subjectComp);
+}
 
-    editorCtx.set_selected_component(compID);
+bool EViewportWindowObj::get_component_world_pos(CUID compID, Vec3& worldPos, Mat4& worldMat4)
+{
+    if (!compID)
+        return false;
+
+    if (!editorCtx.get_component_transform_mat4(compID, worldMat4))
+        return false;
+
+    Vec3 localPos(0.0f);
+    Vec4 worldPosW = worldMat4 * Vec4(localPos, 1.0f);
+    worldPos = worldPosW.as_vec3() / worldPosW.w;
+
+    return true;
 }
 
 void EViewportWindowObj::on_draw(UIWidget widget, ScreenRenderComponent renderer)
@@ -221,8 +242,8 @@ void EViewportWindowObj::on_drag(UIWidget widget, MouseButton btn, const Vec2& d
     if (control == GIZMO_CONTROL_NONE)
         return;
 
-    Transform* T = self.subjectTransform;
-    LD_ASSERT(T);
+    LD_ASSERT(self.subjectComp);
+    Transform& worldT = self.subjectWorldTransform;
 
     // drag position is relative to window origin, i.e. already within sceneExtent range
     self.gizmo.update(self.editorCamera, dragPos, self.sceneExtent);
@@ -230,31 +251,54 @@ void EViewportWindowObj::on_drag(UIWidget widget, MouseButton btn, const Vec2& d
     switch (control)
     {
     case GIZMO_CONTROL_AXIS_TRANSLATION:
-        T->position = self.gizmo.get_axis_translate();
+        worldT.position = self.gizmo.get_axis_translate();
         break;
     case GIZMO_CONTROL_PLANE_TRANSLATION:
-        T->position = self.gizmo.get_plane_translate();
+        worldT.position = self.gizmo.get_plane_translate();
         break;
     case GIZMO_CONTROL_PLANE_ROTATION:
         switch (plane)
         {
         case GIZMO_PLANE_XY:
-            T->rotation.z = LD_TO_DEGREES(self.gizmo.get_plane_rotate());
+            worldT.rotation.z = LD_TO_DEGREES(self.gizmo.get_plane_rotate());
             break;
         case GIZMO_PLANE_XZ:
-            T->rotation.y = LD_TO_DEGREES(self.gizmo.get_plane_rotate());
+            worldT.rotation.y = LD_TO_DEGREES(self.gizmo.get_plane_rotate());
             break;
         case GIZMO_PLANE_YZ:
-            T->rotation.x = LD_TO_DEGREES(self.gizmo.get_plane_rotate());
+            worldT.rotation.x = LD_TO_DEGREES(self.gizmo.get_plane_rotate());
             break;
         }
+        worldT.quat = Quat::from_euler(worldT.rotation);
         break;
     case GIZMO_CONTROL_AXIS_SCALE:
-        T->scale = self.gizmo.get_axis_scale();
+        worldT.scale = self.gizmo.get_axis_scale();
         break;
     }
 
-    self.gizmoCenter = T->position;
+    // get inverse parent world matrix
+    Mat4 parentInv(1.0f);
+    const ComponentBase* base = self.editorCtx.get_component_base(self.subjectComp);
+    if (base && base->parent)
+    {
+        Vec3 parentWorldPos;
+        Mat4 parentWorldMat4(1.0f);
+        self.get_component_world_pos(base->parent->id, parentWorldPos, parentWorldMat4);
+        parentInv = Mat4::inverse(parentWorldMat4);
+    }
+
+    // get new local matrix from new world matrix and inverse parent world matrix
+    Mat4 worldMat4 = worldT.as_mat4();
+    Mat4 localMat4 = parentInv * worldMat4;
+
+    // decompose local matrix to local transform
+    Transform localTransform;
+    bool ok = decompose_mat4_to_transform(localMat4, localTransform);
+    LD_ASSERT(ok);
+    self.editorCtx.set_component_transform(self.subjectComp, localTransform);
+
+    // update gizmo center to new world space position
+    self.get_component_world_pos(self.subjectComp, self.gizmoCenter, worldMat4);
 }
 
 void EViewportWindowObj::on_update(UIWidget widget, float delta)
@@ -332,18 +376,20 @@ void EViewportWindowObj::on_editor_context_event(const EditorContextEvent* event
         return;
 
     const auto* selectionEvent = static_cast<const EditorContextComponentSelectionEvent*>(event);
-    Transform* subjectTransform;
     EditorContext ctx = self.editorCtx;
 
-    if (!selectionEvent->component || !(subjectTransform = ctx.get_selected_component_transform()))
+    Transform localTransform;
+    if (!selectionEvent->component || !ctx.get_selected_component_transform(localTransform))
     {
         self.isGizmoVisible = false;
+        self.subjectComp = 0;
         return;
     }
 
-    self.subjectTransform = subjectTransform;
+    Mat4 worldMat4;
+    self.subjectComp = selectionEvent->component;
     self.isGizmoVisible = true;
-    self.gizmoCenter = subjectTransform->position;
+    self.get_component_world_pos(self.subjectComp, self.gizmoCenter, worldMat4);
 }
 
 EViewportWindow EViewportWindow::create(const EViewportWindowInfo& windowI)

@@ -15,13 +15,13 @@ struct EInspectorWindowObj : EditorWindowObj
 
     UITransformEditWidget transformEdit;
 
-    void inspect_component(DUID compID);
+    void inspect_component(CUID compID);
 
     static void on_draw(UIWidget widget, ScreenRenderComponent renderer);
     static void on_editor_context_event(const EditorContextEvent* event, void* user);
 };
 
-void EInspectorWindowObj::inspect_component(DUID compID)
+void EInspectorWindowObj::inspect_component(CUID compID)
 {
     LD_PROFILE_SCOPE;
 

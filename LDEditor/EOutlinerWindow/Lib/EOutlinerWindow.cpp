@@ -20,7 +20,7 @@ struct EOutlinerWindowObj : EditorWindowObj
 
     std::vector<OutlinerRow*> rowOrder; /// rows ordered top to bottom
 
-    OutlinerRow* get_or_create_row(int rowIdx, int depth, DUID compID);
+    OutlinerRow* get_or_create_row(int rowIdx, int depth, CUID compID);
     void invalidate();
     void invalidate_component(const ComponentBase* base, int& rowIdx, int depth);
 
@@ -33,11 +33,11 @@ struct OutlinerRow
     EditorContext editorCtx;
     UIPanelWidget panelWidget; /// row panel
     UITextWidget textWidget;   /// data object name label
-    DUID component;            /// the data component this row represents
+    CUID component;            /// the data component this row represents
     Color parityColor;
     int rowIndex;
 
-    void display(DUID compID, int depth)
+    void display(CUID compID, int depth)
     {
         component = compID;
         const ComponentBase* base = editorCtx.get_component_base(compID);
@@ -49,7 +49,7 @@ struct OutlinerRow
         panelWidget.set_layout_child_padding(padding);
     }
 
-    static OutlinerRow* create(EditorContext ctx, UINode parentNode, DUID component, int rowIndex)
+    static OutlinerRow* create(EditorContext ctx, UINode parentNode, CUID component, int rowIndex)
     {
         EditorTheme theme = ctx.get_settings().get_theme();
 
@@ -105,7 +105,7 @@ struct OutlinerRow
     }
 };
 
-OutlinerRow* EOutlinerWindowObj::get_or_create_row(int rowIdx, int depth, DUID compID)
+OutlinerRow* EOutlinerWindowObj::get_or_create_row(int rowIdx, int depth, CUID compID)
 {
     if (0 <= rowIdx && rowIdx < (int)rowOrder.size())
     {
@@ -123,7 +123,7 @@ OutlinerRow* EOutlinerWindowObj::get_or_create_row(int rowIdx, int depth, DUID c
 
 void EOutlinerWindowObj::invalidate()
 {
-    std::vector<DUID> sceneRoots;
+    std::vector<CUID> sceneRoots;
     editorCtx.get_scene_roots(sceneRoots);
 
     Rect rect = root.get_rect();
@@ -131,7 +131,7 @@ void EOutlinerWindowObj::invalidate()
     int depth = 0;
     int rowIdx = 0;
 
-    for (DUID sceneRoot : sceneRoots)
+    for (CUID sceneRoot : sceneRoots)
     {
         const ComponentBase* base = editorCtx.get_component_base(sceneRoot);
         invalidate_component(base, rowIdx, depth);
@@ -140,7 +140,7 @@ void EOutlinerWindowObj::invalidate()
     int rowCount = rect.h / OUTLINER_ROW_SIZE + 1;
     for (; rowIdx < rowCount; rowIdx++)
     {
-        get_or_create_row(rowIdx, 0, (DUID)0);
+        get_or_create_row(rowIdx, 0, (CUID)0);
     }
 }
 
@@ -166,7 +166,7 @@ void EOutlinerWindowObj::on_window_resize(UIWindow window, const Vec2& size)
 
     for (int i = (int)self.rowOrder.size(); i < rowCount; i++)
     {
-        self.get_or_create_row(i, 0, (DUID)0);
+        self.get_or_create_row(i, 0, (CUID)0);
     }
 }
 

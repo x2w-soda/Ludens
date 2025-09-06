@@ -36,7 +36,7 @@ struct EditorContextObj
     std::string projectName;          /// project identifier
     std::vector<fs::path> scenePaths; /// path to scene files in project
     std::vector<EditorContextObserver> observers;
-    DUID selectedComponent;
+    CUID selectedComponent;
     RUID selectedComponentRUID;
     bool isPlaying;
 
@@ -82,7 +82,7 @@ Mat4 EditorContext::render_server_transform_callback(RUID ruid, void* user)
 {
     EditorContextObj& self = *(EditorContextObj*)user;
 
-    return self.scene.get_ruid_transform(ruid);
+    return self.scene.get_ruid_transform_mat4(ruid);
 }
 
 EditorSettings EditorContext::get_settings()
@@ -216,17 +216,17 @@ bool EditorContext::is_playing()
     return mObj->isPlaying;
 }
 
-void EditorContext::get_scene_roots(std::vector<DUID>& roots)
+void EditorContext::get_scene_roots(std::vector<CUID>& roots)
 {
     mObj->scene.get_root_components(roots);
 }
 
-const ComponentBase* EditorContext::get_component_base(DUID comp)
+const ComponentBase* EditorContext::get_component_base(CUID comp)
 {
     return mObj->scene.get_component_base(comp);
 }
 
-const char* EditorContext::get_component_name(DUID comp)
+const char* EditorContext::get_component_name(CUID comp)
 {
     const ComponentBase* base = mObj->scene.get_component_base(comp);
     if (!base)
@@ -235,7 +235,7 @@ const char* EditorContext::get_component_name(DUID comp)
     return base->name;
 }
 
-void EditorContext::set_selected_component(DUID comp)
+void EditorContext::set_selected_component(CUID comp)
 {
     if (mObj->selectedComponent == comp)
         return;
@@ -247,17 +247,17 @@ void EditorContext::set_selected_component(DUID comp)
     mObj->notify_observers(&event);
 }
 
-DUID EditorContext::get_selected_component()
+CUID EditorContext::get_selected_component()
 {
     return mObj->selectedComponent;
 }
 
-void* EditorContext::get_component(DUID compID, ComponentType& type)
+void* EditorContext::get_component(CUID compID, ComponentType& type)
 {
     return mObj->scene.get_component(compID, type);
 }
 
-DUID EditorContext::get_ruid_component(RUID ruid)
+CUID EditorContext::get_ruid_component(RUID ruid)
 {
     return mObj->scene.get_ruid_component(ruid);
 }
@@ -267,9 +267,19 @@ RUID EditorContext::get_selected_component_ruid()
     return mObj->selectedComponentRUID;
 }
 
-Transform* EditorContext::get_selected_component_transform()
+bool EditorContext::get_selected_component_transform(Transform& transform)
 {
-    return mObj->scene.get_component_transform(mObj->selectedComponent);
+    return mObj->scene.get_component_transform(mObj->selectedComponent, transform);
+}
+
+bool EditorContext::set_component_transform(CUID compID, const Transform& transform)
+{
+    return mObj->scene.set_component_transform(compID, transform);
+}
+
+bool EditorContext::get_component_transform_mat4(CUID compID, Mat4& worldMat4)
+{
+    return mObj->scene.get_component_transform_mat4(compID, worldMat4);
 }
 
 } // namespace LD

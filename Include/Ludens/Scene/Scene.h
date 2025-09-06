@@ -45,41 +45,50 @@ public:
     /// @param name Component identifier.
     /// @param parent Parent component, or zero if creating a root component.
     /// @param hint If not zero, hint ID to create component with. 
-    DUID create_component(ComponentType type, const char* name, DUID parent, DUID hint);
+    CUID create_component(ComponentType type, const char* name, CUID parent, CUID hint);
 
     /// @brief Create data component script slot.
     /// @param compID Component ID.
     /// @param assetID ScriptAsset ID.
     /// @return Script slot for the component.
-    ComponentScriptSlot* create_component_script_slot(DUID compID, AUID assetID);
+    ComponentScriptSlot* create_component_script_slot(CUID compID, AUID assetID);
 
     /// @brief Destroy a component.
-    void destroy_component(DUID compID);
+    void destroy_component(CUID compID);
 
     /// @brief Reparent a component
-    void reparent(DUID compID, DUID parentID);
+    void reparent(CUID compID, CUID parentID);
 
     /// @brief Get root components in Scene
-    void get_root_components(std::vector<DUID>& roots);
+    void get_root_components(std::vector<CUID>& roots);
 
     /// @brief Get data component base members
-    ComponentBase* get_component_base(DUID compID);
+    ComponentBase* get_component_base(CUID compID);
 
     /// @brief Get data component
-    void* get_component(DUID compID, ComponentType& type);
+    void* get_component(CUID compID, ComponentType& type);
 
     /// @brief Lookup some render server ID for data component.
     ///        Only graphical components such as Meshes are applicable.
-    RUID get_component_ruid(DUID compID);
+    RUID get_component_ruid(CUID compID);
 
-    /// @brief Get address of component transform or nullptr
-    Transform* get_component_transform(DUID compID);
+    /// @brief Get local transform of a data component.
+    bool get_component_transform(CUID compID, Transform& transform);
+
+    /// @brief Get local transform of a data component.
+    bool set_component_transform(CUID compID, const Transform& transform);
+
+    /// @brief Get component world matrix.
+    bool get_component_transform_mat4(CUID compID, Mat4& worldMat4);
+
+    /// @brief Mark the transforms of a component subtree as dirty.
+    void mark_component_transform_dirty(CUID compID);
 
     /// @brief Lookup the data component from some render server ID
-    DUID get_ruid_component(RUID ruid);
+    CUID get_ruid_component(RUID ruid);
 
     /// @brief Supplies the transform for the render server
-    Mat4 get_ruid_transform(RUID ruid);
+    Mat4 get_ruid_transform_mat4(RUID ruid);
 };
 
 } // namespace LD

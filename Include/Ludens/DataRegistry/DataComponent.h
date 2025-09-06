@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Ludens/Header/Bitwise.h>
 #include <Ludens/Header/Handle.h>
 #include <Ludens/Header/Hash.h>
 #include <Ludens/Header/Math/Quat.h>
@@ -17,8 +18,8 @@
 
 namespace LD {
 
-/// @brief Unique identifier distributed by the DataRegistry. Zero is invalid ID.
-using DUID = uint32_t;
+/// @brief Component unique identifier distributed by the DataRegistry. Zero is invalid ID.
+using CUID = uint32_t;
 
 /// @brief Use this concept to check if a type qualifies as a data component.
 template <typename T>
@@ -31,6 +32,13 @@ enum ComponentType
     COMPONENT_TYPE_MESH,
     COMPONENT_TYPE_TEXTURE_2D,
     COMPONENT_TYPE_ENUM_COUNT,
+};
+
+using ComponentFlag = uint32_t;
+
+enum ComponentFlagBit : uint32_t
+{
+    COMPONENT_FLAG_TRANSFORM_DIRTY_BIT = LD_BIT(2),
 };
 
 /// @brief Get the byte size of a data component.
@@ -47,14 +55,17 @@ struct ComponentBase
     ComponentBase* child;  /// first child component
     ComponentBase* parent; /// parent component
     ComponentType type;    /// data component type
-    DUID id;               /// data component ID
+    CUID id;               /// data component ID
+    ComponentFlag flags;   /// data component flags
+    Mat4 localMat4;        /// transform matrix relative to parent
+    Mat4 worldMat4;        /// world space model matrix
 };
 
 /// @brief Script attached to data component.
 struct ComponentScriptSlot
 {
     AUID assetID;     /// the script asset to instantiate from
-    DUID componentID; /// the component this script slot belongs to
+    CUID componentID; /// the component this script slot belongs to
     bool isEnabled;   /// whether the script should be updated
 };
 
