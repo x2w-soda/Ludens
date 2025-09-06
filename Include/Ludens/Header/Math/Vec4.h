@@ -5,7 +5,7 @@
 #include <Ludens/Header/SIMD.h>
 
 #ifdef LD_SSE2
-#define TVEC4_ALIGNMENT std::conditional_t<std::is_same_v<T, double>, std::integral_constant<size_t, 32>, std::conditional_t<std::is_same_v<T, float>, std::integral_constant<size_t, 16>, std::integral_constant<size_t, alignof(T)>>>::value
+#define TVEC4_ALIGNMENT std::conditional_t<std::is_same_v<T, double>, std::integral_constant<size_t, 32>, std::integral_constant<size_t, 16>>::value
 #else
 #define TVEC4_ALIGNMENT std::integral_constant<size_t, alignof(T)>::value
 #endif

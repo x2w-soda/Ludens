@@ -1,7 +1,7 @@
 #pragma once
 
 #include <Ludens/Header/Assert.h>
-#include <Ludens/Header/Math/Quat.h>
+#include <Ludens/Header/Math/Math.h>
 #include <Ludens/Header/Math/Vec3.h>
 
 namespace LD {
@@ -85,6 +85,30 @@ struct TMat3
 
         return inv;
     }
+
+    static inline TMat3 rotate_x(T degreesX)
+    {
+        T radX = LD_TO_RADIANS(degreesX);
+        T c = LD_COS(radX);
+        T s = LD_SIN(radX);
+        return TMat3<T>(TVec(1, 0, 0), TVec(0, c, s), TVec(0, -s, c));
+    }
+
+    static inline TMat3 rotate_y(T degreesX)
+    {
+        T radX = LD_TO_RADIANS(degreesX);
+        T c = LD_COS(radX);
+        T s = LD_SIN(radX);
+        return TMat3<T>(TVec(c, 0, -s), TVec(0, 1, 0), TVec(s, 0, c));
+    }
+
+    static inline TMat3 rotate_z(T degreesX)
+    {
+        T radX = LD_TO_RADIANS(degreesX);
+        T c = LD_COS(radX);
+        T s = LD_SIN(radX);
+        return TMat3<T>(TVec(c, s, 0), TVec(-s, c, 0), TVec(0, 0, 1));
+    }
 };
 
 template <typename T>
@@ -103,5 +127,39 @@ inline TMat3<T> operator*(const TMat3<T>& lhs, const TMat3<T>& rhs)
 using Mat3 = TMat3<float>;
 using IMat3 = TMat3<int>;
 using DMat3 = TMat3<double>;
+
+template <typename T>
+inline bool decompose_mat3_rot(const TMat3<T>& m, TVec3<T>& rotation)
+{
+    T sy = -m[2].x;
+    
+    if (sy * sy > (T)1)
+        return false;
+
+    T cy = LD_SQRT((T)1 - sy * sy);
+    T x, y, z;
+
+    if (is_zero_epsilon<T>(cy)) // gimbal lock
+    {
+        x = LD_ATAN2(-m[1].z, m[1].y);
+        y = LD_ASIN(sy);
+        z = (T)0;
+    }
+    else
+    {
+        x = LD_ATAN2(m[2].y, m[2].z);
+        y = LD_ASIN(sy);
+        z = LD_ATAN2(m[1].x, m[0].x);
+    }
+
+
+    x = -LD_TO_DEGREES(x);
+    y = -LD_TO_DEGREES(y);
+    z = -LD_TO_DEGREES(z);
+    rotation.x = x < 0 ? x + (T)360 : x;
+    rotation.y = y < 0 ? y + (T)360 : y;
+    rotation.z = z < 0 ? z + (T)360 : z;
+    return true;
+}
 
 } // namespace LD

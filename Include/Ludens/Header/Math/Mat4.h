@@ -2,7 +2,6 @@
 
 #include <Ludens/Header/Math/Mat3.h>
 #include <Ludens/Header/Math/Math.h>
-#include <Ludens/Header/Math/Quat.h>
 #include <Ludens/Header/Math/Vec3.h>
 #include <Ludens/Header/Math/Vec4.h>
 #include <Ludens/Header/Platform.h>
@@ -27,6 +26,7 @@ struct alignas(TVEC4_ALIGNMENT) TMat4
     TMat4() : col{} {}
     TMat4(const TVec& c0, const TVec& c1, const TVec& c2, const TVec& c3) : col{c0, c1, c2, c3} {}
     TMat4(T x) : col{TVec(x, 0, 0, 0), TVec(0, x, 0, 0), TVec(0, 0, x, 0), TVec(0, 0, 0, x)} {}
+    TMat4(const TMat3<T>& m, T v) : col{TVec(m[0], 0), TVec(m[1], 0), TVec(m[2], 0), TVec(0, 0, 0, v)} {}
 
     inline TVec& operator[](int i) { return col[i]; }
     inline const TVec& operator[](int i) const { return col[i]; }
@@ -81,46 +81,6 @@ struct alignas(TVEC4_ALIGNMENT) TMat4
         scale[2].z = axis.z;
 
         return scale;
-    }
-
-    /// @brief create 4x4 rotation matrix from a quaternion
-    /// @param q unit quaternion representing a rotation in 3d space
-    /// @return a 4x4 rotation matrix
-    static inline TMat4 from_quat(const TQuat<T>& q)
-    {
-        T xx = q.x * q.x;
-        T yy = q.y * q.y;
-        T zz = q.z * q.z;
-        T xy = q.x * q.y;
-        T xz = q.x * q.z;
-        T yz = q.y * q.z;
-        T wx = q.w * q.x;
-        T wy = q.w * q.y;
-        T wz = q.w * q.z;
-
-        TMat4 m;
-
-        m[0].x = (T)1 - (T)2 * (yy + zz);
-        m[0].y = (T)2 * (xy + wz);
-        m[0].z = (T)2 * (xz - wy);
-        m[0].w = (T)0;
-
-        m[1].x = (T)2 * (xy - wz);
-        m[1].y = (T)1 - (T)2 * (xx + zz);
-        m[1].z = (T)2 * (yz + wx);
-        m[1].w = (T)0;
-
-        m[2].x = (T)2 * (xz + wy);
-        m[2].y = (T)2 * (yz - wx);
-        m[2].z = (T)1 - (T)2 * (xx + yy);
-        m[2].w = (T)0;
-
-        m[3].x = (T)0;
-        m[3].y = (T)0;
-        m[3].z = (T)0;
-        m[3].w = (T)1;
-
-        return m;
     }
 
     /// @brief create a view matrix

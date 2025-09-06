@@ -28,6 +28,11 @@
 #define LD_COS(X) std::cos(X)
 #define LD_TAN(X) std::tan(X)
 
+#define LD_ASIN(X) std::asin(X)
+#define LD_ACOS(X) std::acos(X)
+#define LD_ATAN(X) std::atan(X)
+#define LD_ATAN2(X, Y) std::atan2(X, Y)
+
 #define LD_ABS(X) std::abs(X)
 #define LD_SQRT(X) std::sqrt(X)
 
