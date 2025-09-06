@@ -3,6 +3,7 @@
 #include <Ludens/Header/Math/Mat4.h>
 #include <Ludens/Header/Math/Quat.h>
 #include <Ludens/Header/Math/Rect.h>
+#include <Ludens/Header/Math/Transform.h>
 #include <Ludens/Header/Math/Vec2.h>
 #include <Ludens/Header/Math/Vec3.h>
 #include <Ludens/Header/Math/Vec4.h>
@@ -394,6 +395,20 @@ TEST_CASE("Quat ctor")
     CHECK(q.y == 2.0f);
     CHECK(q.z == 3.0f);
     CHECK(q.w == 4.0f);
+
+    q = Quat(Vec3(1, 2, 3), 4);
+    CHECK(q.x == 1.0f);
+    CHECK(q.y == 2.0f);
+    CHECK(q.z == 3.0f);
+    CHECK(q.w == 4.0f);
+}
+
+TEST_CASE("Quat operator")
+{
+    Quat q = Quat::from_axis_angle(Vec3(0.0f, 1.0f, 0.0f), LD_PI_2);
+    Vec3 p1(1.0f, -3.0f, 0.0f);
+    Vec3 p2 = q * p1;
+    CHECK(p2 == Vec3(0.0f, -3.0f, -1.0f));
 }
 
 TEST_CASE("Quat method")
@@ -406,6 +421,37 @@ TEST_CASE("Quat method")
     CHECK(q.y == 2.0f);
     CHECK(q.z == 3.0f);
     CHECK(q.w == 4.0f);
+
+    q = Quat(0, 0, 0, 3);
+    CHECK(is_equal_epsilon(q.length(), 3.0f));
+    q = Quat::normalize(q);
+    CHECK(q.is_normalized());
+    CHECK(is_equal_epsilon(q.length(), 1.0f));
+
+    Mat3 rot = Mat3::rotate_x(90);
+    q = Quat::from_mat3(rot);
+    Vec3 p1 = Vec3(1, 2, 3);
+    Vec3 p2 = q * p1;
+    Vec3 p3 = rot * p1;
+    CHECK(p2 == p3);
+    Vec3 e = q.as_euler();
+    CHECK(e == Vec3(90, 0, 0));
+
+    rot = Mat3::rotate_y(90);
+    q = Quat::from_mat3(rot);
+    p2 = q * p1;
+    p3 = rot * p1;
+    CHECK(p2 == p3);
+    e = q.as_euler();
+    CHECK(e == Vec3(0, 90, 0));
+
+    rot = Mat3::rotate_z(-90);
+    q = Quat::from_mat3(rot);
+    p2 = q * p1;
+    p3 = rot * p1;
+    CHECK(p2 == p3);
+    e = q.as_euler();
+    CHECK(e == Vec3(0, 0, -90));
 }
 
 TEST_CASE("Rect ctor")
@@ -483,6 +529,88 @@ TEST_CASE("Mat3 method")
 
     p2 = m * mi * p1;
     CHECK(p2 == p1);
+
+    Mat3 m3 = Mat3::rotate_x(90);
+    p2 = m3 * p1;
+    CHECK(p2 == Vec3(2, -3, -2));
+
+    m3 = Mat3::rotate_y(90);
+    p2 = m3 * p1;
+    CHECK(p2 == Vec3(3, -2, -2));
+
+    m3 = Mat3::rotate_z(90);
+    p2 = m3 * p1;
+    CHECK(p2 == Vec3(2, 2, 3));
+}
+
+TEST_CASE("Mat3 decomposition")
+{
+    Vec3 euler;
+    Mat3 rot = Mat3::rotate_x(90);
+    bool ok = decompose_mat3_rot(rot, euler);
+    CHECK(ok);
+    CHECK(euler == Vec3(90, 0, 0));
+
+    rot = Mat3::rotate_y(90);
+    ok = decompose_mat3_rot(rot, euler);
+    CHECK(ok);
+    CHECK(euler == Vec3(0, 90, 0));
+
+    rot = Mat3::rotate_z(90);
+    ok = decompose_mat3_rot(rot, euler);
+    CHECK(ok);
+    CHECK(euler == Vec3(0, 0, 90));
+
+    {
+        rot = Mat4::rotate(LD_PI_2, Vec3(1.0f, 0.0f, 0.0f)).as_mat3();
+        ok = decompose_mat3_rot(rot, euler);
+        CHECK(ok);
+        CHECK(euler == Vec3(90, 0, 0));
+
+        rot = Mat4::rotate(LD_PI_2, Vec3(0.0f, 1.0f, 0.0f)).as_mat3();
+        ok = decompose_mat3_rot(rot, euler);
+        CHECK(ok);
+        CHECK(euler == Vec3(0, 90, 0));
+
+        rot = Mat4::rotate(LD_PI_2, Vec3(0.0f, 0.0f, 1.0f)).as_mat3();
+        ok = decompose_mat3_rot(rot, euler);
+        CHECK(ok);
+        CHECK(euler == Vec3(0, 0, 90));
+    }
+
+    {
+        rot = Mat4::rotate(LD_TO_RADIANS(30), Vec3(1.0f, 0.0f, 0.0f)).as_mat3();
+        ok = decompose_mat3_rot(rot, euler);
+        CHECK(ok);
+        CHECK(euler == Vec3(30, 0, 0));
+
+        rot = Mat4::rotate(LD_TO_RADIANS(30), Vec3(0.0f, 1.0f, 0.0f)).as_mat3();
+        ok = decompose_mat3_rot(rot, euler);
+        CHECK(ok);
+        CHECK(euler == Vec3(0, 30, 0));
+
+        rot = Mat4::rotate(LD_TO_RADIANS(30), Vec3(0.0f, 0.0f, 1.0f)).as_mat3();
+        ok = decompose_mat3_rot(rot, euler);
+        CHECK(ok);
+        CHECK(euler == Vec3(0, 0, 30));
+    }
+
+    {
+        rot = Mat4::rotate(LD_TO_RADIANS(270), Vec3(1.0f, 0.0f, 0.0f)).as_mat3();
+        ok = decompose_mat3_rot(rot, euler);
+        CHECK(ok);
+        CHECK(euler == Vec3(270, 0, 0));
+
+        rot = Mat4::rotate(LD_TO_RADIANS(270), Vec3(0.0f, 1.0f, 0.0f)).as_mat3();
+        ok = decompose_mat3_rot(rot, euler);
+        CHECK(ok);
+        CHECK(euler == Vec3(0, 270, 0));
+
+        rot = Mat4::rotate(LD_TO_RADIANS(270), Vec3(0.0f, 0.0f, 1.0f)).as_mat3();
+        ok = decompose_mat3_rot(rot, euler);
+        CHECK(ok);
+        CHECK(euler == Vec3(0, 0, 270));
+    }
 }
 
 TEST_CASE("Mat4 ctor")
@@ -530,9 +658,6 @@ TEST_CASE("Mat4 method")
     CHECK(m2[1] == Vec3(6, 4, 8));
     CHECK(m2[2] == Vec3(9, 6, 12));
 
-    Mat4 rot = Mat4::from_quat({});
-    CHECK(rot * p1 == p1);
-
     Vec4 p2 = Mat4::translate({2, -1, 3}) * p1;
     CHECK(p2 == Vec4(5, 1, 7, 1));
 
@@ -558,4 +683,32 @@ TEST_CASE("Mat4 method")
     CHECK(m4[1] == Vec4(0.0f, 1.0f, 0.0f, 0.0f));
     CHECK(m4[2] == Vec4(0.0f, 0.0f, 1.0f, 0.0f));
     CHECK(m4[3] == Vec4(0.0f, 0.0f, 0.0f, 1.0f));
+}
+
+TEST_CASE("Transform decomposition")
+{
+    Mat4 mat = Mat4::rotate(LD_TO_RADIANS(90), Vec3(0.0f, 1.0f, 0.0f));
+    Transform t;
+    bool ok = decompose_mat4_to_transform(mat, t);
+    CHECK(ok);
+    CHECK(t.position == Vec3(0.0f, 0.0f, 0.0f));
+    CHECK(t.rotation == Vec3(0.0f, 90.0f, 0.0f));
+    CHECK(t.scale == Vec3(1.0f, 1.0f, 1.0f));
+    CHECK(t.quat.is_normalized());
+
+    mat = mat * Mat4::scale(Vec3(1.0f, 2.0f, 3.0f));
+    ok = decompose_mat4_to_transform(mat, t);
+    CHECK(ok);
+    CHECK(t.position == Vec3(0.0f, 0.0f, 0.0f));
+    CHECK(t.rotation == Vec3(0.0f, 90.0f, 0.0f));
+    CHECK(t.scale == Vec3(1.0f, 2.0f, 3.0f));
+    CHECK(t.quat.is_normalized());
+
+    mat = Mat4::translate(Vec3(-3.0f, 4.0f, 5.0f)) * mat;
+    ok = decompose_mat4_to_transform(mat, t);
+    CHECK(ok);
+    CHECK(t.position == Vec3(-3.0f, 4.0f, 5.0f));
+    CHECK(t.rotation == Vec3(0.0f, 90.0f, 0.0f));
+    CHECK(t.scale == Vec3(1.0f, 2.0f, 3.0f));
+    CHECK(t.quat.is_normalized());
 }

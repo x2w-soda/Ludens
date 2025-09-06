@@ -119,7 +119,7 @@ struct TQuat
         q.y = cy * sp * cr + sy * cp * sr;
         q.z = sy * cp * cr - cy * sp * sr;
         q.w = cy * cp * cr + sy * sp * sr;
-        return q;
+        return TQuat::normalize(q);
     }
 
     static TQuat from_axis_angle(const TVec3<T>& axis, T angleRad)
