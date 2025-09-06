@@ -25,7 +25,7 @@ static CUID load_component(TOMLValue compTOML, Scene scene)
         return 0;
 
     CUID compID;
-    TOMLValue compIDTOML = compTOML["duid"];
+    TOMLValue compIDTOML = compTOML["cuid"];
     if (!compIDTOML || !compIDTOML.is_u32(compID))
         return 0;
 

@@ -17,6 +17,7 @@ name = "model"
 type = "Mesh"
 transform = { position = [0.0, 0.0, 0.0], rotation = [0.0, 0.0, 0.0], scale = [0.01, 0.01, 0.01] }
 auid = 1
+cuid = 345
 )";
     std::string error;
     TOMLDocument doc = TOMLDocument::create();
@@ -43,6 +44,7 @@ auid = 1
         std::string name(base->name);
         CHECK(name == "model");
         CHECK(base->type == COMPONENT_TYPE_MESH);
+        CHECK(base->id == 345);
     }
 
     Scene::destroy(scene);
