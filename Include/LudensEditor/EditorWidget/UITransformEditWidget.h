@@ -14,7 +14,7 @@ struct UITransformEditWidgetInfo
     UIWidget parent;
 };
 
-/// @brief Edit and inspect a Transform
+/// @brief Widget for inspecting and editing a Transform
 struct UITransformEditWidget : Handle<struct UITransformEditWidgetObj>
 {
     static UITransformEditWidget create(const UITransformEditWidgetInfo& info);

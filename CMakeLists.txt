@@ -338,6 +338,7 @@ add_subdirectory(LDBuilder)
 # - headers in ${LUDENS_INCLUDE_DIR}/LudensEditor
 
 add_subdirectory(LDEditor/EditorContext)
+add_subdirectory(LDEditor/EditorWidget)
 add_subdirectory(LDEditor/EViewportWindow)
 add_subdirectory(LDEditor/EOutlinerWindow)
 add_subdirectory(LDEditor/EInspectorWindow)
@@ -345,6 +346,7 @@ add_subdirectory(LDEditor/EInspectorWindow)
 add_library(LDEditorLibs INTERFACE)
 target_link_libraries(LDEditorLibs INTERFACE
   LDEditorContext
+  LDEditorWidget
   LDEViewportWindow
   LDEOutlinerWindow
   LDEInspectorWindow

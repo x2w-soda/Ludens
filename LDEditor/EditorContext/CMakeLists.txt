@@ -3,14 +3,12 @@ set(MODULE_NAME LDEditorContext)
 set(MODULE_LIB
 	Lib/EditorContext.cpp
 	Lib/EditorSettings.cpp
-	Lib/EditorWidget.cpp
 )
 
 set(MODULE_INCLUDE
 	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorContext/EditorContextEvent.h
 	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorContext/EditorContext.h
 	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorContext/EditorSettings.h
-	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorContext/EditorWidget.h
 	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorContext/EditorWindowObj.h
 )
 

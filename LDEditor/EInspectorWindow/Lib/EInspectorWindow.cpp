@@ -3,8 +3,8 @@
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/System/Memory.h>
 #include <LudensEditor/EInspectorWindow/EInspectorWindow.h>
-#include <LudensEditor/EditorContext/EditorWidget.h>
 #include <LudensEditor/EditorContext/EditorWindowObj.h>
+#include <LudensEditor/EditorWidget/UITransformEditWidget.h>
 
 namespace LD {
 

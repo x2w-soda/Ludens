@@ -23,7 +23,7 @@ void EditorUI::startup(const EditorUIInfo& info)
     UIWindowAreaID outlinerArea = mWM.split_right(viewportArea, 0.7f);
     UIWindowAreaID inspectorArea = mWM.split_bottom(outlinerArea, 0.5f);
 
-    mTopBar.startup(mWM.get_topbar_window());
+    mTopBar.startup(mWM.get_topbar_window(), mCtx.get_theme());
 
     // force window layout
     mWM.update(0.0f);
@@ -79,8 +79,6 @@ void EditorUI::on_render(ScreenRenderComponent renderer, void* user)
 void EditorUI::on_overlay_render(ScreenRenderComponent renderer, void* user)
 {
     EditorUI& self = *(EditorUI*)user;
-
-    self.mTopBar.draw_overlay(renderer);
 
     // NOTE: The UIWindowManager is not aware of the overlay render pass.
     //       Here we explicitly call draw-overlay functions on windows

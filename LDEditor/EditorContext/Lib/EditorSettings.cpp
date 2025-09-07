@@ -32,19 +32,19 @@ UITheme EditorTheme::get_ui_theme()
     return UITheme(&mObj->uiTheme);
 }
 
-void EditorTheme::get_font_size(float& fontSize)
+void EditorTheme::get_font_size(float& fontSize) const
 {
     fontSize = mObj->fontSize;
 }
 
-void EditorTheme::get_gizmo_colors(Color& axisX, Color& axisY, Color& axisZ)
+void EditorTheme::get_gizmo_colors(Color& axisX, Color& axisY, Color& axisZ) const
 {
     axisX = mObj->gizmoColorAxisX;
     axisY = mObj->gizmoColorAxisY;
     axisZ = mObj->gizmoColorAxisZ;
 }
 
-void EditorTheme::get_gizmo_highlight_color(Color& hl)
+void EditorTheme::get_gizmo_highlight_color(Color& hl) const
 {
     hl = mObj->gizmoHighlightColor;
 }

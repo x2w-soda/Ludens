@@ -1,135 +1,137 @@
 #include "EditorTopBar.h"
+#include <Ludens/Header/Assert.h>
 #include <Ludens/UI/UIContext.h>
+#include <LudensEditor/EditorWidget/UIDropdownWindow.h>
+#include <array>
+#include <cstddef>
+#include <cstdio>
 
 namespace LD {
 
-class TopBarOption
+/// @brief A menu in the editor topbar.
+class TopBarMenu
 {
 public:
-    static TopBarOption* create(UINode node, const char* cstr)
+    /// @brief Create top bar menu.
+    static TopBarMenu* create(EditorTopBar* bar, UINode node, EditorTheme theme, const char* cstr);
+
+    /// @brief Destroy top bar menu.
+    static void destroy(TopBarMenu* opt);
+
+    /// @brief Call this once to initialize menu content.
+    void set_content(size_t optionCount, const char** options, UIDropdownWindowCallback callback)
     {
-        auto opt = heap_new<TopBarOption>(MEMORY_USAGE_UI);
+        mDropdown.set_callback(callback);
 
-        UILayoutInfo layoutI{};
-        layoutI.sizeX = UISize::fit();
-        layoutI.sizeY = UISize::grow();
-
-        UIPanelWidgetInfo panelWI{};
-        opt->mPanel = node.add_panel(layoutI, panelWI, opt);
-        opt->mPanel.set_on_draw(&TopBarOption::on_draw);
-        opt->mPanel.set_on_enter(&TopBarOption::on_enter);
-        opt->mPanel.set_on_mouse_down(&TopBarOption::on_mouse_down);
-
-        UITextWidgetInfo textWI{};
-        textWI.cstr = cstr;
-        textWI.fontSize = 16; // TODO:
-        textWI.hoverHL = true;
-        opt->mText = opt->mPanel.node().add_text({}, textWI, opt);
-        opt->mText.set_on_mouse_down(&TopBarOption::on_mouse_down);
-        opt->mText.set_on_enter(&TopBarOption::on_enter);
-
-        UIContext ctx(node.get_context());
-
-        UIWindowInfo windowI{};
-        windowI.name = cstr;
-        windowI.defaultMouseControls = false;
-
-        layoutI.childGap = 4;
-        layoutI.sizeX = UISize::fixed(512);
-        layoutI.sizeY = UISize::fixed(512);
-        opt->mWindow = ctx.add_window(layoutI, windowI, opt);
-        opt->mWindow.set_on_draw(&TopBarOption::on_window_draw);
-        opt->mWindow.set_on_leave(&TopBarOption::on_window_leave);
-        opt->mWindow.hide();
-
-        return opt;
-    }
-
-    static void destroy(TopBarOption* opt)
-    {
-        heap_delete<TopBarOption>(opt);
-    }
-
-    static void on_enter(UIWidget widget)
-    {
-        auto& self = *(TopBarOption*)widget.get_user();
-
-        Rect rect = widget.get_rect();
-        Vec2 pos(rect.x, rect.y + rect.h);
-        self.mWindow.set_pos(pos);
+        for (size_t i = 0; i < optionCount; i++)
+            mDropdown.add_option(options[i]);
     }
 
     static void on_mouse_down(UIWidget widget, const Vec2& pos, MouseButton btn)
     {
-        auto& self = *(TopBarOption*)widget.get_user();
+        auto& self = *(TopBarMenu*)widget.get_user();
 
-        self.mWindow.show();
+        float x = widget.get_pos().x;
+        float y = self.mBar->get_height();
+
+        Vec2 windowPos(x, y);
+        UIWindow dropdown = self.mDropdown.get_native();
+        dropdown.set_pos(windowPos);
+        dropdown.raise();
+        dropdown.show();
     }
 
     static void on_draw(UIWidget widget, ScreenRenderComponent renderer)
     {
-        auto& self = *(TopBarOption*)widget.get_user();
+        TopBarMenu& self = *(TopBarMenu*)widget.get_user();
 
-        Rect rect = widget.get_rect();
-        //renderer.draw_rect_outline(rect, 2.0f, 0x22FF11FF);
-    }
-
-    static void on_window_draw(UIWidget widget, ScreenRenderComponent renderer)
-    {
-        auto& self = *(TopBarOption*)widget.get_user();
-
-        renderer.draw_rect(widget.get_rect(), 0x22FFFFFF);
-    }
-
-    static void on_window_leave(UIWidget widget)
-    {
-        auto& self = *(TopBarOption*)widget.get_user();
-
-        UIWindow window = (UIWindow)widget;
-        window.hide();
-    }
-
-    void draw_overlay(ScreenRenderComponent renderer)
-    {
-        if (mWindow.is_hidden())
-            return;
-
-        uint32_t sw, sh;
-        renderer.get_screen_extent(sw, sh);
-
-        Rect rect = mWindow.get_rect();
-        RImage blurBG = renderer.get_sampled_image();
-        Rect uv;
-        uv.x = rect.x / sw;
-        uv.y = rect.y / sh;
-        uv.w = rect.w / sw;
-        uv.h = rect.h / sh;
-        renderer.draw_image_uv(rect, blurBG, uv, 0xFFFFFFFF);
+        self.mDropdown.get_native().draw(renderer);
     }
 
 private:
-    UIPanelWidget mPanel; /// option panel
-    UITextWidget mText;   /// option text on top of panel
-    UIWindow mWindow;     /// option window
+    EditorTopBar* mBar;         /// editor top bar
+    UIPanelWidget mPanel;       /// menu panel
+    UITextWidget mText;         /// menu text on top of panel
+    UIDropdownWindow mDropdown; /// menu dropdown window
 };
 
-void EditorTopBar::startup(UIWindow root)
+TopBarMenu* TopBarMenu::create(EditorTopBar* bar, UINode node, EditorTheme theme, const char* cstr)
+{
+    auto menu = heap_new<TopBarMenu>(MEMORY_USAGE_UI);
+    menu->mBar = bar;
+
+    float fontSize;
+    theme.get_font_size(fontSize);
+
+    UILayoutInfo layoutI{};
+    layoutI.sizeX = UISize::fit();
+    layoutI.sizeY = UISize::grow();
+
+    UIPanelWidgetInfo panelWI{};
+    menu->mPanel = node.add_panel(layoutI, panelWI, menu);
+    menu->mPanel.set_on_mouse_down(&TopBarMenu::on_mouse_down);
+    menu->mPanel.set_on_draw(&TopBarMenu::on_draw);
+
+    UITextWidgetInfo textWI{};
+    textWI.cstr = cstr;
+    textWI.fontSize = fontSize;
+    textWI.hoverHL = true;
+    menu->mText = menu->mPanel.node().add_text({}, textWI, menu);
+    menu->mText.set_on_mouse_down(&TopBarMenu::on_mouse_down);
+
+    UIContext ctx(node.get_context());
+
+    UIDropdownWindowInfo dropdownWI{};
+    dropdownWI.callback = nullptr;
+    dropdownWI.context = ctx;
+    dropdownWI.theme = theme;
+    dropdownWI.user = menu;
+    menu->mDropdown = UIDropdownWindow::create(dropdownWI);
+    menu->mDropdown.get_native().hide();
+
+    return menu;
+}
+
+void TopBarMenu::destroy(TopBarMenu* opt)
+{
+    heap_delete<TopBarMenu>(opt);
+}
+
+void EditorTopBar::startup(UIWindow root, EditorTheme theme)
 {
     mRoot = root;
-    mFileOption = TopBarOption::create(mRoot.node(), "file");
-    mHelpOption = TopBarOption::create(mRoot.node(), "help");
+    mRoot.set_user(this);
+
+    std::array<const char*, 3> fileMenuOptions = {
+        "New Scene",
+        "Foo",
+        "Bar",
+    };
+    mFileMenu = TopBarMenu::create(this, mRoot.node(), theme, "File");
+    mFileMenu->set_content(fileMenuOptions.size(), fileMenuOptions.data(), &EditorTopBar::on_file_menu_option);
+
+    mAboutMenu = TopBarMenu::create(this, mRoot.node(), theme, "About");
 }
 
 void EditorTopBar::cleanup()
 {
-    TopBarOption::destroy(mHelpOption);
-    TopBarOption::destroy(mFileOption);
+    TopBarMenu::destroy(mAboutMenu);
+    TopBarMenu::destroy(mFileMenu);
 }
 
-void EditorTopBar::draw_overlay(ScreenRenderComponent renderer)
+float EditorTopBar::get_height()
 {
-    mFileOption->draw_overlay(renderer);
-    mHelpOption->draw_overlay(renderer);
+    return mRoot.get_size().y;
+}
+
+void EditorTopBar::on_file_menu_option(int opt, const Rect& rect, void* user)
+{
+    printf("on_file_menu_option: %d\n", opt);
+}
+
+void EditorTopBar::on_about_menu_option(int opt, const Rect& rect, void* user)
+{
+    // TODO:
 }
 
 } // namespace LD

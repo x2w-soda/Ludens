@@ -32,6 +32,9 @@ struct EditorContext : Handle<struct EditorContextObj>
     /// @brief Get editor global settings
     EditorSettings get_settings();
 
+    /// @brief Get editor theme.
+    inline EditorTheme get_theme() { return get_settings().get_theme(); }
+
     /// @brief Add an observer of the editor context
     void add_observer(EditorContextEventFn fn, void* user);
 

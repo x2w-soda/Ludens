@@ -24,10 +24,11 @@ struct
 {
     AssetType type;
     size_t size;
+    const char* name;
 } sAssetTypeTable[] = {
-    {ASSET_TYPE_MESH,       sizeof(MeshAssetObj)},
-    {ASSET_TYPE_TEXTURE_2D, sizeof(Texture2DAssetObj)},
-    {ASSET_TYPE_LUA_SCRIPT, sizeof(LuaScriptAssetObj)},
+    {ASSET_TYPE_MESH,       sizeof(MeshAssetObj),      "Mesh"},
+    {ASSET_TYPE_TEXTURE_2D, sizeof(Texture2DAssetObj), "Texture2D" },
+    {ASSET_TYPE_LUA_SCRIPT, sizeof(LuaScriptAssetObj), "LuaScript" },
 };
 // clang-format on
 
@@ -36,6 +37,11 @@ static_assert(sizeof(sAssetTypeTable) / sizeof(*sAssetTypeTable) == ASSET_TYPE_E
 size_t get_asset_byte_size(AssetType type)
 {
     return sAssetTypeTable[(int)type].size;
+}
+
+const char* get_asset_type_cstr(AssetType type)
+{
+    return sAssetTypeTable[(int)type].name;
 }
 
 /// @brief Asset manager implementation.

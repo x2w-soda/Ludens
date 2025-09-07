@@ -12,9 +12,9 @@ namespace LD {
 struct EditorTheme : Handle<struct EditorThemeObj>
 {
     UITheme get_ui_theme();
-    void get_font_size(float& fontSize);
-    void get_gizmo_colors(Color& axisX, Color& axisY, Color& axisZ);
-    void get_gizmo_highlight_color(Color& hl);
+    void get_font_size(float& fontSize) const;
+    void get_gizmo_colors(Color& axisX, Color& axisY, Color& axisZ) const;
+    void get_gizmo_highlight_color(Color& hl) const;
 };
 
 /// @brief Global editor settings that apply to all projects
