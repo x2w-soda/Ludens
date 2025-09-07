@@ -6,11 +6,17 @@ namespace LD {
 /// @brief Dropdown window implementation.
 struct UIDropdownWindowObj
 {
+    struct Option
+    {
+        UITextWidget textW;
+        int index;
+    };
+
     UIWindow window;
     EditorTheme theme;
     UIDropdownWindowCallback callback;
     void* user;
-    std::vector<UITextWidget> options;
+    std::vector<Option> options;
 
     static void on_draw(UIWidget widget, ScreenRenderComponent renderer);
     static void on_option_mouse_down(UIWidget widget, const Vec2& pos, MouseButton btn);
@@ -33,11 +39,15 @@ void UIDropdownWindowObj::on_option_mouse_down(UIWidget widget, const Vec2& pos,
     if (!self.callback)
         return;
 
-    for (int idx = 0; idx < (int)self.options.size(); idx++)
+    for (Option& opt : self.options)
     {
-        if (self.options[idx].unwrap() == widget.unwrap())
+        if (opt.textW.unwrap() == widget.unwrap())
         {
-            self.callback(idx, widget.get_rect(), self.user);
+            bool shouldHide = self.callback(opt.index, widget.get_rect(), self.user);
+
+            if (shouldHide)
+                self.window.hide();
+
             return;
         }
     }
@@ -74,7 +84,7 @@ void UIDropdownWindow::destroy(UIDropdownWindow dropdown)
     heap_delete<UIDropdownWindowObj>(obj);
 }
 
-void UIDropdownWindow::add_option(const char* text)
+void UIDropdownWindow::add_option(const char* text, int optionIndex)
 {
     UINode node = mObj->window.node();
 
@@ -88,7 +98,7 @@ void UIDropdownWindow::add_option(const char* text)
     UITextWidget textW = node.add_text({}, textWI, mObj);
     textW.set_on_mouse_down(&UIDropdownWindowObj::on_option_mouse_down);
 
-    mObj->options.push_back(textW);
+    mObj->options.push_back({textW, optionIndex});
 }
 
 UIWindow UIDropdownWindow::get_native()

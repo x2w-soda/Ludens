@@ -20,9 +20,12 @@ public:
     /// @brief Get bar height.
     float get_height();
 
+    /// @brief Only one menu window can be active in the top bar.
+    void set_active_menu(TopBarMenu* menu);
+
 private:
-    static void on_file_menu_option(int opt, const Rect& rect, void* user);
-    static void on_about_menu_option(int opt, const Rect& rect, void* user);
+    static bool on_file_menu_option(int opt, const Rect& rect, void* user);
+    static bool on_about_menu_option(int opt, const Rect& rect, void* user);
 
 private:
     UIWindow mRoot;

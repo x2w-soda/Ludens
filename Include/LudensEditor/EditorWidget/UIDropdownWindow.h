@@ -8,7 +8,8 @@
 
 namespace LD {
 
-typedef void (*UIDropdownWindowCallback)(int option, const Rect& optionRect, void* user);
+/// @brief Callback when an option in the dropdown menu is selected.
+typedef bool (*UIDropdownWindowCallback)(int option, const Rect& optionRect, void* user);
 
 struct UIDropdownWindowInfo
 {
@@ -24,7 +25,7 @@ struct UIDropdownWindow : Handle<struct UIDropdownWindowObj>
     static void destroy(UIDropdownWindow dropdown);
 
     /// @brief Add an option to the dropdown window.
-    void add_option(const char* text);
+    void add_option(const char* text, int optionIndex);
 
     /// @brief Get window handle.
     UIWindow get_native();
