@@ -246,13 +246,13 @@ void UIWindowManager::resize(const Vec2& screenSize)
 
 void UIWindowManager::render(ScreenRenderComponent renderer)
 {
-    UIWindow topbar = mObj->get_topbar_window();
-    topbar.draw(renderer);
-
     AreaNode* root = mObj->get_root();
     mObj->render_ground(renderer, root);
 
     mObj->render_float(renderer);
+
+    UIWindow topbar = mObj->get_topbar_window();
+    topbar.draw(renderer);
 }
 
 void UIWindowManager::set_window_title(UIWindowAreaID areaID, const char* title)

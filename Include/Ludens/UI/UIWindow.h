@@ -17,11 +17,14 @@ struct UIWindowInfo
 
 struct UIWindow : UIWidget
 {
-    /// @brief hide the window
+    /// @brief Hide the window.
     void hide();
 
-    /// @brief show the window
+    /// @brief Show the window.
     void show();
+
+    /// @brief Raise the window to top.
+    void raise();
 
     /// @brief If window is visible, draw all widgets within.
     /// @param renderer Screen space renderer

@@ -53,6 +53,9 @@ struct UIWidget : Handle<struct UIWidgetObj>
     /// @brief Update widget child padding after creation.
     void set_layout_child_padding(const UIPadding& padding);
 
+    /// @brief Update widget child axis after creation.
+    void set_layout_child_axis(UIAxis axis);
+
     /// @brief override key up callback
     void set_on_key_up(void (*onKeyUp)(UIWidget widget, KeyCode key));
 

@@ -59,6 +59,13 @@ void UIWindow::show()
     obj->isHidden = false;
 }
 
+void UIWindow::raise()
+{
+    UIWindowObj* obj = (UIWindowObj*)mObj;
+
+    obj->ctx->raise_window(obj);
+}
+
 void UIWindow::draw(ScreenRenderComponent renderer)
 {
     UIWindowObj* obj = (UIWindowObj*)mObj;

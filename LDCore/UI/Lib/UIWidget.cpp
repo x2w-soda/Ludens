@@ -113,6 +113,11 @@ void UIWidget::set_layout_child_padding(const UIPadding& padding)
     mObj->layout.info.childPadding = padding;
 }
 
+void UIWidget::set_layout_child_axis(UIAxis axis)
+{
+    mObj->layout.info.childAxis = axis;
+}
+
 void UIWidget::set_on_key_up(void (*onKeyUp)(UIWidget widget, KeyCode key))
 {
     mObj->cb.onKeyUp = onKeyUp;

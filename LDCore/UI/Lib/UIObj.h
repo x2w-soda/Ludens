@@ -65,6 +65,10 @@ struct UIContextObj
     MouseButton dragMouseButton; /// mouse button used for dragging
 
     UIWidgetObj* alloc_widget(UIWidgetType type, const UILayoutInfo& layoutI, UIWidgetObj* parent, void* user);
+
+    /// @brief Raise a window to top.
+    /// @param window Target window.
+    void raise_window(UIWindowObj* window);
 };
 
 struct UIButtonWidgetObj

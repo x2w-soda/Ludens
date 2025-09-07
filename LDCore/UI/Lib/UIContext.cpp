@@ -5,6 +5,7 @@
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/System/Memory.h>
 #include <Ludens/UI/UIContext.h>
+#include <algorithm>
 #include <cstdint>
 #include <vector>
 
@@ -51,6 +52,17 @@ UIWidgetObj* UIContextObj::alloc_widget(UIWidgetType type, const UILayoutInfo& l
     parent->append_child(obj);
 
     return obj;
+}
+
+void UIContextObj::raise_window(UIWindowObj* window)
+{
+    auto ite = std::find(windows.begin(), windows.end(), window);
+
+    if (ite == windows.end())
+        return;
+
+    windows.erase(ite);
+    windows.push_back(window);
 }
 
 void UIContext::input_mouse_position(const Vec2& pos)

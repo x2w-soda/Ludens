@@ -138,7 +138,7 @@ static void ui_layout_pass_fit_x(UIWidgetObj* root)
         }
         else
         {
-            width = std::max(width, childLayout.sizeX.extent + rootLayout.childPadding.right);
+            width = std::max(width, child->layout.rect.w + rootLayout.childPadding.right);
             root->layout.minw = std::max(root->layout.minw, child->layout.minw);
         }
     }
@@ -183,7 +183,7 @@ void ui_layout_pass_fit_y(UIWidgetObj* root)
 
         if (rootLayout.childAxis == UI_AXIS_X)
         {
-            height = std::max(height, childLayout.sizeY.extent + rootLayout.childPadding.bottom);
+            height = std::max(height, child->layout.rect.h + rootLayout.childPadding.bottom);
             root->layout.minh = std::max(root->layout.minh, child->layout.minh);
         }
         else
