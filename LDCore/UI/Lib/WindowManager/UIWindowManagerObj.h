@@ -6,7 +6,6 @@
 #define WINDOW_AREA_MARGIN 6.0f
 #define INVALID_WINDOW_AREA 0
 #define WINDOW_TAB_HEIGHT 22.0f
-#define TOPBAR_HEIGHT 22.0f
 
 namespace LD {
 
@@ -28,8 +27,6 @@ public:
 
     UIContext get_context();
 
-    UIWindow get_topbar_window();
-
     UIWindowAreaID create_float(const Rect& rect);
 
     UIWindowAreaID get_area_id();
@@ -48,12 +45,16 @@ public:
 
     void get_workspace_windows_recursive(std::vector<UIWindow>& windows, AreaNode* node);
 
+    inline float get_top_bar_height() const { return mTopBarHeight; }
+    inline float get_bottom_bar_height() const { return mBottomBarHeight; }
+
 private:
     UIContext mCtx;
-    UIWindow mTopbarWindow;
     AreaNode* mRoot;
     std::vector<AreaNode*> mFloats;
     UIWindowAreaID mAreaIDCounter;
+    float mTopBarHeight;
+    float mBottomBarHeight;
 };
 
 } // namespace LD

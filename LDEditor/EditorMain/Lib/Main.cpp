@@ -84,6 +84,7 @@ public:
         uiI.fontAtlasImage = mRServer.get_font_atlas_image();
         uiI.screenWidth = appI.width;
         uiI.screenHeight = appI.height;
+        uiI.barHeight = 22;
         mEditorUI.startup(uiI);
     }
 

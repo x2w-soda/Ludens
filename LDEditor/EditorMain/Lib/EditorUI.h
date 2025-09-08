@@ -1,5 +1,6 @@
 #pragma once
 
+#include "EditorBottomBar.h"
 #include "EditorTopBar.h"
 #include <Ludens/Media/Font.h>
 #include <Ludens/RenderComponent/SceneOverlayComponent.h>
@@ -21,6 +22,7 @@ struct EditorUIInfo
     EditorContext ctx;
     uint32_t screenWidth;
     uint32_t screenHeight;
+    uint32_t barHeight;
     FontAtlas fontAtlas;
     RImage fontAtlasImage;
 };
@@ -30,10 +32,17 @@ struct EditorUIInfo
 class EditorUI
 {
 public:
+    /// @brief In-place startup of the editor UI
     void startup(const EditorUIInfo& info);
+
+    /// @brief In-place cleanup of the editor UI
     void cleanup();
 
+    /// @brief Updates the editor UI with timestep.
     void update(float delta);
+
+    /// @brief Resize the editor UI to new screen size.
+    void resize(const Vec2& screenSize);
 
     void viewport_hover_id(SceneOverlayGizmoID gizmoID, RUID ruid)
     {
@@ -78,6 +87,7 @@ public:
 private:
     EditorContext mCtx;
     EditorTopBar mTopBar;
+    EditorBottomBar mBottomBar;
     UIWindowManager mWM;
     EViewportWindow mViewportWindow;
     EOutlinerWindow mOutlinerWindow;

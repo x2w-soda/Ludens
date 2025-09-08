@@ -16,6 +16,8 @@ using UIWindowAreaID = uint32_t;
 struct UIWindowManagerInfo
 {
     Vec2 screenSize;
+    float topBarHeight;
+    float bottomBarHeight;
     FontAtlas fontAtlas;
     RImage fontAtlasImage;
     UITheme theme;
@@ -52,9 +54,6 @@ struct UIWindowManager : Handle<struct UIWindowManagerObj>
 
     /// @brief Get root area ID.
     UIWindowAreaID get_root_area();
-
-    /// @brief Get the top bar window handle.
-    UIWindow get_topbar_window();
 
     /// @brief Get the active tab window in an area. 
     UIWindow get_area_window(UIWindowAreaID areaID);

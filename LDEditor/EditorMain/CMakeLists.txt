@@ -6,6 +6,8 @@ set(MODULE_LIB
 	Lib/EditorUI.cpp
 	Lib/EditorTopBar.h
 	Lib/EditorTopBar.cpp
+	Lib/EditorBottomBar.h
+	Lib/EditorBottomBar.cpp
 )
 
 add_executable(${MODULE_NAME}

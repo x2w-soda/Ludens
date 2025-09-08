@@ -51,8 +51,9 @@ public:
 
         if (dropdown.is_hidden())
         {
+            UIWindow topbar = self.mBar->get_handle();
             float x = widget.get_pos().x;
-            float y = self.mBar->get_height();
+            float y = topbar.get_size().y;
             self.mBar->set_active_menu(&self);
 
             Vec2 windowPos(x, y);
@@ -127,9 +128,23 @@ void TopBarMenu::hide_dropdown()
     mDropdown.get_native().hide();
 }
 
-void EditorTopBar::startup(UIWindow root, EditorTheme theme)
+void EditorTopBar::startup(const EditorTopBarInfo& info)
 {
-    mRoot = root;
+    UIContext ctx = info.context;
+    mTopBarHeight = info.barHeight;
+
+    UILayoutInfo layoutI{};
+    layoutI.childAxis = UIAxis::UI_AXIS_X;
+    layoutI.childGap = 6.0f;
+    layoutI.childPadding = {.left = 6.0f};
+    layoutI.sizeX = UISize::fixed(info.screenSize.x);
+    layoutI.sizeY = UISize::fixed(mTopBarHeight);
+    UIWindowInfo windowI{};
+    windowI.name = "EditorTopBar";
+    windowI.defaultMouseControls = false;
+
+    mRoot = ctx.add_window(layoutI, windowI, nullptr);
+    mRoot.set_pos(Vec2(0.0f, 0.0f));
     mRoot.set_user(this);
 
     std::array<MenuOption, 5> fileMenuOptions = {
@@ -139,13 +154,13 @@ void EditorTopBar::startup(UIWindow root, EditorTheme theme)
         MenuOption(FILE_OPTION_NEW_PROJECT, "New Project"),
         MenuOption(FILE_OPTION_OPEN_PROJECT, "Open Project"),
     };
-    mFileMenu = TopBarMenu::create(this, mRoot.node(), theme, "File");
+    mFileMenu = TopBarMenu::create(this, mRoot.node(), info.theme, "File");
     mFileMenu->set_content(fileMenuOptions.size(), fileMenuOptions.data(), &EditorTopBar::on_file_menu_option);
 
     std::array<MenuOption, 1> aboutMenuOptions = {
         MenuOption(FILE_OPTION_NEW_SCENE, "Version"),
     };
-    mAboutMenu = TopBarMenu::create(this, mRoot.node(), theme, "About");
+    mAboutMenu = TopBarMenu::create(this, mRoot.node(), info.theme, "About");
     mAboutMenu->set_content(aboutMenuOptions.size(), aboutMenuOptions.data(), &EditorTopBar::on_about_menu_option);
 }
 
@@ -155,17 +170,17 @@ void EditorTopBar::cleanup()
     TopBarMenu::destroy(mFileMenu);
 }
 
-float EditorTopBar::get_height()
-{
-    return mRoot.get_size().y;
-}
-
 void EditorTopBar::set_active_menu(TopBarMenu* menu)
 {
     if (menu != mFileMenu)
         mFileMenu->hide_dropdown();
     if (menu != mAboutMenu)
         mAboutMenu->hide_dropdown();
+}
+
+UIWindow EditorTopBar::get_handle()
+{
+    return mRoot;
 }
 
 bool EditorTopBar::on_file_menu_option(int opt, const Rect& rect, void* user)

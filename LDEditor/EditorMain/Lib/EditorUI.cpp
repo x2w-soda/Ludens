@@ -17,13 +17,28 @@ void EditorUI::startup(const EditorUIInfo& info)
     wmI.fontAtlasImage = info.fontAtlasImage;
     wmI.screenSize = Vec2((float)info.screenWidth, (float)info.screenHeight);
     wmI.theme = mCtx.get_settings().get_theme().get_ui_theme();
+    wmI.topBarHeight = info.barHeight;
+    wmI.bottomBarHeight = info.barHeight;
     mWM = UIWindowManager::create(wmI);
 
     UIWindowAreaID viewportArea = mWM.get_root_area();
     UIWindowAreaID outlinerArea = mWM.split_right(viewportArea, 0.7f);
     UIWindowAreaID inspectorArea = mWM.split_bottom(outlinerArea, 0.5f);
 
-    mTopBar.startup(mWM.get_topbar_window(), mCtx.get_theme());
+    // the EditorUI class has an additional Top Bar and Bottom Bar
+    EditorTopBarInfo topBarI{};
+    topBarI.barHeight = (float)info.barHeight;
+    topBarI.context = mWM.get_context();
+    topBarI.theme = mCtx.get_theme();
+    topBarI.screenSize = wmI.screenSize;
+    mTopBar.startup(topBarI);
+
+    EditorBottomBarInfo bottomBarI{};
+    bottomBarI.barHeight = (float)info.barHeight;
+    bottomBarI.context = mWM.get_context();
+    bottomBarI.theme = mCtx.get_theme();
+    bottomBarI.screenSize = wmI.screenSize;
+    mBottomBar.startup(bottomBarI);
 
     // force window layout
     mWM.update(0.0f);
@@ -55,6 +70,7 @@ void EditorUI::startup(const EditorUIInfo& info)
 
 void EditorUI::cleanup()
 {
+    mBottomBar.cleanup();
     mTopBar.cleanup();
 
     EInspectorWindow::destroy(mInspectorWindow);
@@ -68,12 +84,36 @@ void EditorUI::update(float delta)
     mWM.update(delta);
 }
 
+void EditorUI::resize(const Vec2& screenSize)
+{
+    // resize top bar
+    UIWindow topbar = mTopBar.get_handle();
+    float barHeight = topbar.get_size().y;
+    topbar.set_size(Vec2(screenSize.x, barHeight));
+
+    // resize bottom bar
+    UIWindow bottomBar = mBottomBar.get_handle();
+    barHeight = bottomBar.get_size().y;
+    bottomBar.set_size(Vec2(screenSize.x, barHeight));
+    bottomBar.set_pos(Vec2(0.0f, screenSize.y - barHeight));
+
+    // recalculate workspace window areas
+    mWM.resize(screenSize);
+}
+
 void EditorUI::on_render(ScreenRenderComponent renderer, void* user)
 {
     EditorUI& self = *(EditorUI*)user;
 
-    // draws the top bar and area windows
+    // draw workspace windows
     self.mWM.render(renderer);
+
+    // draw top bar and bottom bar
+    UIWindow topbar = self.mTopBar.get_handle();
+    topbar.draw(renderer);
+
+    UIWindow bottomBar = self.mBottomBar.get_handle();
+    bottomBar.draw(renderer);
 }
 
 void EditorUI::on_overlay_render(ScreenRenderComponent renderer, void* user)
@@ -109,8 +149,8 @@ void EditorUI::on_event(const Event* event, void* user)
     switch (event->type)
     {
     case EVENT_TYPE_APPLICAITON_RESIZE:
-        self.mWM.resize(Vec2(static_cast<const ApplicationResizeEvent*>(event)->width,
-                             static_cast<const ApplicationResizeEvent*>(event)->height));
+        self.resize(Vec2(static_cast<const ApplicationResizeEvent*>(event)->width,
+                         static_cast<const ApplicationResizeEvent*>(event)->height));
         break;
     case EVENT_TYPE_KEY_DOWN:
         ctx.input_key_down(static_cast<const KeyDownEvent*>(event)->key);

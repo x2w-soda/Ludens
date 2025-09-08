@@ -28,28 +28,16 @@ static void delete_node(AreaNode* node)
     heap_delete<AreaNode>(node);
 }
 
-UIWindowManagerObj::UIWindowManagerObj(const UIWindowManagerInfo& wmInfo)
-    : mAreaIDCounter(1), mRoot(nullptr)
+UIWindowManagerObj::UIWindowManagerObj(const UIWindowManagerInfo& wmI)
+    : mAreaIDCounter(1), mRoot(nullptr), mTopBarHeight(wmI.topBarHeight), mBottomBarHeight(wmI.bottomBarHeight)
 {
     UIContextInfo ctxI{};
-    ctxI.fontAtlas = wmInfo.fontAtlas;
-    ctxI.fontAtlasImage = wmInfo.fontAtlasImage;
-    ctxI.theme = wmInfo.theme;
+    ctxI.fontAtlas = wmI.fontAtlas;
+    ctxI.fontAtlasImage = wmI.fontAtlasImage;
+    ctxI.theme = wmI.theme;
     mCtx = UIContext::create(ctxI);
 
-    UILayoutInfo layoutI{};
-    layoutI.childAxis = UIAxis::UI_AXIS_X;
-    layoutI.childGap = 6.0f;
-    layoutI.childPadding = {.left = 6.0f};
-    layoutI.sizeX = UISize::fixed(wmInfo.screenSize.x);
-    layoutI.sizeY = UISize::fixed(TOPBAR_HEIGHT);
-    UIWindowInfo windowI{};
-    windowI.name = "topbar";
-    windowI.defaultMouseControls = false;
-    mTopbarWindow = mCtx.add_window(layoutI, windowI, nullptr);
-    mTopbarWindow.set_pos(Vec2(0.0f, 0.0f));
-
-    Rect rootArea(0, TOPBAR_HEIGHT, wmInfo.screenSize.x, wmInfo.screenSize.y - TOPBAR_HEIGHT);
+    Rect rootArea(0, mTopBarHeight, wmI.screenSize.x, wmI.screenSize.y - mTopBarHeight - mBottomBarHeight);
 
     UIWindowAreaID areaID = mAreaIDCounter++;
     UIWindow rootWindow = create_window(rootArea.get_size(), "window");
@@ -100,11 +88,6 @@ UIContext UIWindowManagerObj::get_context()
     return mCtx;
 }
 
-UIWindow UIWindowManagerObj::get_topbar_window()
-{
-    return mTopbarWindow;
-}
-
 UIWindowAreaID UIWindowManagerObj::create_float(const Rect& rect)
 {
     AreaNode* node = heap_new<AreaNode>(MEMORY_USAGE_UI);
@@ -112,7 +95,7 @@ UIWindowAreaID UIWindowManagerObj::create_float(const Rect& rect)
     node->startup_as_float(mCtx, get_area_id(), rect, client);
 
     mFloats.push_back(node);
-    
+
     return node->get_area_id();
 }
 
@@ -137,7 +120,7 @@ AreaNode* UIWindowManagerObj::get_node(UIWindowAreaID areaID)
 
     if ((node = get_ground_node(areaID, mRoot)))
         return node;
-        
+
     return get_float_node(areaID);
 }
 
@@ -236,11 +219,11 @@ void UIWindowManager::update(float delta)
 
 void UIWindowManager::resize(const Vec2& screenSize)
 {
-    UIWindow topbar = mObj->get_topbar_window();
-    topbar.set_size(Vec2(screenSize.x, TOPBAR_HEIGHT));
+    float topBarHeight = mObj->get_top_bar_height();
+    float bottomBarHeight = mObj->get_bottom_bar_height();
 
     AreaNode* root = mObj->get_root();
-    root->set_area(Rect(0, TOPBAR_HEIGHT, screenSize.x, screenSize.y - TOPBAR_HEIGHT));
+    root->set_area(Rect(0, topBarHeight, screenSize.x, screenSize.y - topBarHeight - bottomBarHeight));
     root->invalidate();
 }
 
@@ -248,11 +231,7 @@ void UIWindowManager::render(ScreenRenderComponent renderer)
 {
     AreaNode* root = mObj->get_root();
     mObj->render_ground(renderer, root);
-
     mObj->render_float(renderer);
-
-    UIWindow topbar = mObj->get_topbar_window();
-    topbar.draw(renderer);
 }
 
 void UIWindowManager::set_window_title(UIWindowAreaID areaID, const char* title)
@@ -285,11 +264,6 @@ UIContext UIWindowManager::get_context()
 UIWindowAreaID UIWindowManager::get_root_area()
 {
     return mObj->get_root()->get_area_id();
-}
-
-UIWindow UIWindowManager::get_topbar_window()
-{
-    return mObj->get_topbar_window();
 }
 
 UIWindow UIWindowManager::get_area_window(UIWindowAreaID areaID)
