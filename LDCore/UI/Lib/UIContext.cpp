@@ -185,6 +185,7 @@ UIWindow UIContext::add_window(const UILayoutInfo& layoutI, const UIWindowInfo& 
     windowObj->layout.info = layoutI;
     windowObj->user = user;
     windowObj->ctx = mObj;
+    windowObj->name = std::string(windowI.name);
     windowObj->type = UI_WIDGET_WINDOW;
     windowObj->window = windowObj;
     windowObj->node = {windowObj};

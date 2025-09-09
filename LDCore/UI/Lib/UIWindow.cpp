@@ -88,6 +88,11 @@ void UIWindow::draw(ScreenRenderComponent renderer)
         renderer.pop_scissor();
 }
 
+void UIWindow::layout()
+{
+    ui_layout(mObj);
+}
+
 bool UIWindow::is_hidden()
 {
     UIWindowObj* obj = (UIWindowObj*)mObj;

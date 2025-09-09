@@ -30,6 +30,9 @@ struct UIWindow : UIWidget
     /// @param renderer Screen space renderer
     void draw(ScreenRenderComponent renderer);
 
+    /// @brief Force a layout invalidation.
+    void layout();
+
     /// @brief check whether the window responds to user input and should be drawn
     bool is_hidden();
 
