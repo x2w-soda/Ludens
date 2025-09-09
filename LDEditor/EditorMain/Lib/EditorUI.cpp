@@ -21,15 +21,16 @@ void EditorUI::startup(const EditorUIInfo& info)
     wmI.bottomBarHeight = info.barHeight;
     mWM = UIWindowManager::create(wmI);
 
-    UIWindowAreaID viewportArea = mWM.get_root_area();
-    UIWindowAreaID outlinerArea = mWM.split_right(viewportArea, 0.7f);
-    UIWindowAreaID inspectorArea = mWM.split_bottom(outlinerArea, 0.5f);
+    UIWMAreaID viewportArea = mWM.get_root_area();
+    UIWMAreaID outlinerArea = mWM.split_right(viewportArea, 0.7f);
+    UIWMAreaID inspectorArea = mWM.split_bottom(outlinerArea, 0.5f);
 
     // the EditorUI class has an additional Top Bar and Bottom Bar
     EditorTopBarInfo topBarI{};
     topBarI.barHeight = (float)info.barHeight;
     topBarI.context = mWM.get_context();
-    topBarI.theme = mCtx.get_theme();
+    topBarI.editorUI = this;
+    topBarI.editorTheme = mCtx.get_theme();
     topBarI.screenSize = wmI.screenSize;
     mTopBar.startup(topBarI);
 

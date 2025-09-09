@@ -11,7 +11,7 @@ struct EInspectorWindowInfo
 {
     EditorContext ctx;     /// editor context handle
     UIWindowManager wm;    /// window manager handle
-    UIWindowAreaID areaID; /// designated window area
+    UIWMAreaID areaID; /// designated window area
 };
 
 /// @brief Editor inspector window.

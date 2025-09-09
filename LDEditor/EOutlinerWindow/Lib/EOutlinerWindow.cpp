@@ -24,7 +24,7 @@ struct EOutlinerWindowObj : EditorWindowObj
     void invalidate();
     void invalidate_component(const ComponentBase* base, int& rowIdx, int depth);
 
-    static void on_window_resize(UIWindow window, const Vec2& size);
+    static void on_client_resize(UIWindow client, const Vec2& size);
 };
 
 /// @brief A single row in the outliner window
@@ -158,9 +158,9 @@ void EOutlinerWindowObj::invalidate_component(const ComponentBase* base, int& ro
     depth--;
 }
 
-void EOutlinerWindowObj::on_window_resize(UIWindow window, const Vec2& size)
+void EOutlinerWindowObj::on_client_resize(UIWindow client, const Vec2& size)
 {
-    auto& self = *(EOutlinerWindowObj*)window.get_user();
+    auto& self = *(EOutlinerWindowObj*)client.get_user();
 
     int rowCount = size.y / OUTLINER_ROW_SIZE + 1;
 
@@ -180,7 +180,7 @@ EOutlinerWindow EOutlinerWindow::create(const EOutlinerWindowInfo& windowI)
     obj->editorCtx = windowI.ctx;
 
     wm.set_window_title(windowI.areaID, "Outliner");
-    wm.set_on_window_resize(windowI.areaID, &EOutlinerWindowObj::on_window_resize);
+    wm.set_resize_callback(windowI.areaID, &EOutlinerWindowObj::on_client_resize);
 
     // create one OutlinerRow for each object in scene
     obj->invalidate();

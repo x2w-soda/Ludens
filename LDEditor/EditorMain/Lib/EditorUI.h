@@ -11,6 +11,7 @@
 #include <LudensEditor/EOutlinerWindow/EOutlinerWindow.h>
 #include <LudensEditor/EViewportWindow/EViewportWindow.h>
 #include <LudensEditor/EditorContext/EditorContext.h>
+#include <LudensEditor/EditorWidget/UIVersionWindow.h>
 #include <cstdint>
 
 namespace LD {

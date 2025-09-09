@@ -49,7 +49,7 @@ struct EViewportWindowObj : EditorWindowObj
     static void on_mouse_up(UIWidget widget, const Vec2& pos, MouseButton btn);
     static void on_drag(UIWidget widget, MouseButton btn, const Vec2& dragPos, bool begin);
     static void on_update(UIWidget widget, float delta);
-    static void on_window_resize(UIWindow window, const Vec2& size);
+    static void on_client_resize(UIWindow client, const Vec2& size);
     static void on_editor_context_event(const EditorContextEvent* event, void* user);
 };
 
@@ -356,9 +356,9 @@ void EViewportWindowObj::on_update(UIWidget widget, float delta)
     cc.update(delta);
 }
 
-void EViewportWindowObj::on_window_resize(UIWindow window, const Vec2& size)
+void EViewportWindowObj::on_client_resize(UIWindow client, const Vec2& size)
 {
-    auto& self = *(EViewportWindowObj*)window.get_user();
+    auto& self = *(EViewportWindowObj*)client.get_user();
 
     Rect toolbarRect = self.toolbar.window.get_rect();
     self.toolbar.window.set_size(Vec2(size.x, toolbarRect.h));
@@ -397,7 +397,7 @@ EViewportWindow EViewportWindow::create(const EViewportWindowInfo& windowI)
     UIWindowManager wm = windowI.wm;
 
     wm.set_window_title(windowI.areaID, "Viewport");
-    wm.set_on_window_resize(windowI.areaID, &EViewportWindowObj::on_window_resize);
+    wm.set_resize_callback(windowI.areaID, &EViewportWindowObj::on_client_resize);
 
     EViewportWindowObj* obj = heap_new<EViewportWindowObj>(MEMORY_USAGE_UI);
     obj->gizmo = Gizmo::create();

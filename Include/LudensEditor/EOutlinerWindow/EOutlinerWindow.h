@@ -13,7 +13,7 @@ struct EOutlinerWindowInfo
 {
     EditorContext ctx;
     UIWindowManager wm;    /// window manager handle
-    UIWindowAreaID areaID; /// designated window area
+    UIWMAreaID areaID; /// designated window area
 };
 
 /// @brief Editor outliner window. Displays the scene hierarchy.

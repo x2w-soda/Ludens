@@ -7,11 +7,13 @@
 namespace LD {
 
 struct TopBarMenu;
+struct EditorUI;
 
 struct EditorTopBarInfo
 {
     UIContext context;
-    EditorTheme theme;
+    EditorUI* editorUI;
+    EditorTheme editorTheme;
     Vec2 screenSize;
     float barHeight;
 };

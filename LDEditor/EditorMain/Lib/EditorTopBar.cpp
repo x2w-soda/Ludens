@@ -1,4 +1,5 @@
 #include "EditorTopBar.h"
+#include "EditorUI.h"
 #include <Ludens/Header/Assert.h>
 #include <Ludens/UI/UIContext.h>
 #include <LudensEditor/EditorWidget/UIDropdownWindow.h>
@@ -27,7 +28,7 @@ class TopBarMenu
 {
 public:
     /// @brief Create top bar menu.
-    static TopBarMenu* create(EditorTopBar* bar, UINode node, EditorTheme theme, const char* cstr);
+    static TopBarMenu* create(EditorTopBar* bar, UINode node, EditorUI* editorUI, EditorTheme editorTheme, const char* cstr);
 
     /// @brief Destroy top bar menu.
     static void destroy(TopBarMenu* opt);
@@ -42,6 +43,11 @@ public:
 
         for (size_t i = 0; i < optionCount; i++)
             mDropdown.add_option(options[i].name, options[i].index);
+    }
+
+    EditorUI* get_editor_ui()
+    {
+        return mEditorUI;
     }
 
     static void on_mouse_down(UIWidget widget, const Vec2& pos, MouseButton btn)
@@ -75,19 +81,21 @@ public:
     }
 
 private:
+    EditorUI* mEditorUI;        /// editor UI instance
     EditorTopBar* mBar;         /// editor top bar
     UIPanelWidget mPanel;       /// menu panel
     UITextWidget mText;         /// menu text on top of panel
     UIDropdownWindow mDropdown; /// menu dropdown window
 };
 
-TopBarMenu* TopBarMenu::create(EditorTopBar* bar, UINode node, EditorTheme theme, const char* cstr)
+TopBarMenu* TopBarMenu::create(EditorTopBar* bar, UINode node, EditorUI* editorUI, EditorTheme editorTheme, const char* cstr)
 {
     auto menu = heap_new<TopBarMenu>(MEMORY_USAGE_UI);
     menu->mBar = bar;
+    menu->mEditorUI = editorUI;
 
     float fontSize;
-    theme.get_font_size(fontSize);
+    editorTheme.get_font_size(fontSize);
 
     UILayoutInfo layoutI{};
     layoutI.sizeX = UISize::fit();
@@ -110,7 +118,7 @@ TopBarMenu* TopBarMenu::create(EditorTopBar* bar, UINode node, EditorTheme theme
     UIDropdownWindowInfo dropdownWI{};
     dropdownWI.callback = nullptr;
     dropdownWI.context = ctx;
-    dropdownWI.theme = theme;
+    dropdownWI.theme = editorTheme;
     dropdownWI.user = menu;
     menu->mDropdown = UIDropdownWindow::create(dropdownWI);
     menu->mDropdown.get_native().hide();
@@ -154,13 +162,13 @@ void EditorTopBar::startup(const EditorTopBarInfo& info)
         MenuOption(FILE_OPTION_NEW_PROJECT, "New Project"),
         MenuOption(FILE_OPTION_OPEN_PROJECT, "Open Project"),
     };
-    mFileMenu = TopBarMenu::create(this, mRoot.node(), info.theme, "File");
+    mFileMenu = TopBarMenu::create(this, mRoot.node(), info.editorUI, info.editorTheme, "File");
     mFileMenu->set_content(fileMenuOptions.size(), fileMenuOptions.data(), &EditorTopBar::on_file_menu_option);
 
     std::array<MenuOption, 1> aboutMenuOptions = {
         MenuOption(FILE_OPTION_NEW_SCENE, "Version"),
     };
-    mAboutMenu = TopBarMenu::create(this, mRoot.node(), info.theme, "About");
+    mAboutMenu = TopBarMenu::create(this, mRoot.node(), info.editorUI, info.editorTheme, "About");
     mAboutMenu->set_content(aboutMenuOptions.size(), aboutMenuOptions.data(), &EditorTopBar::on_about_menu_option);
 }
 
@@ -204,6 +212,9 @@ bool EditorTopBar::on_file_menu_option(int opt, const Rect& rect, void* user)
 
 bool EditorTopBar::on_about_menu_option(int opt, const Rect& rect, void* user)
 {
+    TopBarMenu& aboutMenu = *(TopBarMenu*)user;
+    EditorUI* editorUI = aboutMenu.get_editor_ui();
+
     switch (opt)
     {
     case ABOUT_OPTION_VERSION:
