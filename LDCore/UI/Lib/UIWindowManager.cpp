@@ -39,7 +39,7 @@ UIWindowManagerObj::UIWindowManagerObj(const UIWindowManagerInfo& wmI)
 
     Rect rootArea(0, mTopBarHeight, wmI.screenSize.x, wmI.screenSize.y - mTopBarHeight - mBottomBarHeight);
 
-    UIWindowAreaID areaID = mAreaIDCounter++;
+    UIWMAreaID areaID = mAreaIDCounter++;
     UIWindow rootWindow = create_window(rootArea.get_size(), "window");
     rootWindow.set_pos(rootArea.get_pos());
     mCtx.layout(); // force root window size
@@ -88,18 +88,26 @@ UIContext UIWindowManagerObj::get_context()
     return mCtx;
 }
 
-UIWindowAreaID UIWindowManagerObj::create_float(const Rect& rect)
+UIWMAreaID UIWindowManagerObj::create_float(const UIWMClientInfo& clientI)
 {
+    float border = WINDOW_AREA_MARGIN;
+
     AreaNode* node = heap_new<AreaNode>(MEMORY_USAGE_UI);
-    UIWindow client = create_window(rect.get_size(), "window");
-    node->startup_as_float(mCtx, get_area_id(), rect, client);
+    UIWindow client = clientI.client;
+    Rect nodeArea = client.get_rect();
+    LD_ASSERT(nodeArea.w > 0.0f && nodeArea.h > 0.0f);
+
+    nodeArea.h += WINDOW_TAB_HEIGHT + border;
+    nodeArea.x -= border;
+    nodeArea.w += 2 * border;
+    node->startup_as_float(mCtx, get_area_id(), nodeArea, client, border);
 
     mFloats.push_back(node);
 
     return node->get_area_id();
 }
 
-UIWindowAreaID UIWindowManagerObj::get_area_id()
+UIWMAreaID UIWindowManagerObj::get_area_id()
 {
     return mAreaIDCounter++;
 }
@@ -114,7 +122,7 @@ AreaNode* UIWindowManagerObj::get_root()
     return mRoot;
 }
 
-AreaNode* UIWindowManagerObj::get_node(UIWindowAreaID areaID)
+AreaNode* UIWindowManagerObj::get_node(UIWMAreaID areaID)
 {
     AreaNode* node;
 
@@ -124,7 +132,7 @@ AreaNode* UIWindowManagerObj::get_node(UIWindowAreaID areaID)
     return get_float_node(areaID);
 }
 
-AreaNode* UIWindowManagerObj::get_ground_node(UIWindowAreaID areaID, AreaNode* node)
+AreaNode* UIWindowManagerObj::get_ground_node(UIWMAreaID areaID, AreaNode* node)
 {
     if (!node)
         return nullptr;
@@ -145,7 +153,7 @@ AreaNode* UIWindowManagerObj::get_ground_node(UIWindowAreaID areaID, AreaNode* n
     return nullptr;
 }
 
-AreaNode* UIWindowManagerObj::get_float_node(UIWindowAreaID areaID)
+AreaNode* UIWindowManagerObj::get_float_node(UIWMAreaID areaID)
 {
     for (AreaNode* node : mFloats)
     {
@@ -234,7 +242,7 @@ void UIWindowManager::render(ScreenRenderComponent renderer)
     mObj->render_float(renderer);
 }
 
-void UIWindowManager::set_window_title(UIWindowAreaID areaID, const char* title)
+void UIWindowManager::set_window_title(UIWMAreaID areaID, const char* title)
 {
     AreaNode* node = mObj->get_node(areaID);
 
@@ -242,10 +250,10 @@ void UIWindowManager::set_window_title(UIWindowAreaID areaID, const char* title)
         return;
 
     AreaTab* tab = node->get_active_tab();
-    tab->titleText.set_text(title);
+    tab->titleTextW.set_text(title);
 }
 
-void UIWindowManager::set_on_window_resize(UIWindowAreaID areaID, void (*onWindowResize)(UIWindow window, const Vec2& size))
+void UIWindowManager::set_resize_callback(UIWMAreaID areaID, UIWMClientResizeCallback callback)
 {
     AreaNode* node = mObj->get_node(areaID);
 
@@ -253,7 +261,7 @@ void UIWindowManager::set_on_window_resize(UIWindowAreaID areaID, void (*onWindo
         return;
 
     AreaTab* tab = node->get_active_tab();
-    tab->onWindowResize = onWindowResize;
+    tab->onClientResize = callback;
 }
 
 UIContext UIWindowManager::get_context()
@@ -261,12 +269,12 @@ UIContext UIWindowManager::get_context()
     return mObj->get_context();
 }
 
-UIWindowAreaID UIWindowManager::get_root_area()
+UIWMAreaID UIWindowManager::get_root_area()
 {
     return mObj->get_root()->get_area_id();
 }
 
-UIWindow UIWindowManager::get_area_window(UIWindowAreaID areaID)
+UIWindow UIWindowManager::get_area_window(UIWMAreaID areaID)
 {
     AreaNode* node = mObj->get_node(areaID);
 
@@ -284,7 +292,7 @@ void UIWindowManager::get_workspace_windows(std::vector<UIWindow>& windows)
     mObj->get_workspace_windows_recursive(windows, mObj->get_root());
 }
 
-UIWindowAreaID UIWindowManager::split_right(UIWindowAreaID areaID, float ratio)
+UIWMAreaID UIWindowManager::split_right(UIWMAreaID areaID, float ratio)
 {
     AreaNode* node = mObj->get_ground_node(areaID, mObj->get_root());
 
@@ -296,7 +304,7 @@ UIWindowAreaID UIWindowManager::split_right(UIWindowAreaID areaID, float ratio)
     return INVALID_WINDOW_AREA;
 }
 
-UIWindowAreaID UIWindowManager::split_bottom(UIWindowAreaID areaID, float ratio)
+UIWMAreaID UIWindowManager::split_bottom(UIWMAreaID areaID, float ratio)
 {
     AreaNode* node = mObj->get_ground_node(areaID, mObj->get_root());
 
@@ -308,9 +316,32 @@ UIWindowAreaID UIWindowManager::split_bottom(UIWindowAreaID areaID, float ratio)
     return INVALID_WINDOW_AREA;
 }
 
-UIWindowAreaID UIWindowManager::create_float(const Rect& rect)
+UIWMAreaID UIWindowManager::create_float(const UIWMClientInfo& clientI)
 {
-    return mObj->create_float(rect);
+    return mObj->create_float(clientI);
+}
+
+void UIWindowManager::set_float_pos_centered(UIWMAreaID areaID)
+{
+    AreaNode* rootNode = mObj->get_root();
+    AreaNode* floatNode = mObj->get_float_node(areaID);
+    if (!rootNode || !floatNode)
+        return;
+
+    Rect rootArea = rootNode->get_area();
+    Rect floatArea = floatNode->get_area();
+    set_float_pos(areaID, Vec2((rootArea.w - floatArea.w) / 2.0f, (rootArea.h - floatArea.h) / 2.0f));
+}
+
+void UIWindowManager::set_float_pos(UIWMAreaID areaID, const Vec2& pos)
+{
+    AreaNode* floatNode = mObj->get_float_node(areaID);
+    if (!floatNode)
+        return;
+
+    Rect nodeArea = floatNode->get_area();
+    nodeArea.set_pos(pos.x, pos.y);
+    floatNode->invalidate_area(nodeArea);
 }
 
 } // namespace LD

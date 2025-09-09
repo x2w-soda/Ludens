@@ -11,7 +11,15 @@
 namespace LD {
 
 /// @brief Window area identifier distributed by the window manager, zero is invalid ID.
-using UIWindowAreaID = uint32_t;
+using UIWMAreaID = uint32_t;
+
+typedef void (*UIWMClientResizeCallback)(UIWindow window, const Vec2& size);
+
+struct UIWMClientInfo
+{
+    UIWindow client;                         /// user provides UI window as client
+    UIWMClientResizeCallback resizeCallback; /// invoked when WM resizes the client
+};
 
 struct UIWindowManagerInfo
 {
@@ -44,35 +52,40 @@ struct UIWindowManager : Handle<struct UIWindowManagerObj>
     void render(ScreenRenderComponent renderer);
 
     /// @brief Set window title to be displayed in tab.
-    void set_window_title(UIWindowAreaID areaID, const char* title);
+    void set_window_title(UIWMAreaID areaID, const char* title);
 
     /// @brief Set callback to be invoked during UIWindowManager::resize.
-    void set_on_window_resize(UIWindowAreaID areaID, void (*onWindowResize)(UIWindow window, const Vec2& size));
+    void set_resize_callback(UIWMAreaID areaID, UIWMClientResizeCallback callback);
 
     /// @brief Get the underlying UI context
     UIContext get_context();
 
     /// @brief Get root area ID.
-    UIWindowAreaID get_root_area();
+    UIWMAreaID get_root_area();
 
-    /// @brief Get the active tab window in an area. 
-    UIWindow get_area_window(UIWindowAreaID areaID);
+    /// @brief Get the active tab window in an area.
+    UIWindow get_area_window(UIWMAreaID areaID);
 
     /// @brief get visible windows in the workspace
     void get_workspace_windows(std::vector<UIWindow>& windows);
 
     /// @brief split an area to make room for right
     /// @return new area from right partition
-    UIWindowAreaID split_right(UIWindowAreaID areaID, float ratio);
+    UIWMAreaID split_right(UIWMAreaID areaID, float ratio);
 
     /// @brief Split an area to make room for bottom.
     /// @return New area from bottom partition.
-    UIWindowAreaID split_bottom(UIWindowAreaID areaID, float ratio);
+    UIWMAreaID split_bottom(UIWMAreaID areaID, float ratio);
 
     /// @brief Create floating window area.
-    /// @param rect Floating window area rect.
     /// @return New area for floating window.
-    UIWindowAreaID create_float(const Rect& rect);
+    UIWMAreaID create_float(const UIWMClientInfo& clientI);
+
+    /// @brief Set the position of a floating area such that it is centered in screen.
+    void set_float_pos_centered(UIWMAreaID areaID);
+
+    /// @brief Set the position of a floating area.
+    void set_float_pos(UIWMAreaID areaID, const Vec2& pos);
 };
 
 } // namespace LD

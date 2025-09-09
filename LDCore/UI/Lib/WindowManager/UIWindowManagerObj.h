@@ -27,15 +27,15 @@ public:
 
     UIContext get_context();
 
-    UIWindowAreaID create_float(const Rect& rect);
+    UIWMAreaID create_float(const UIWMClientInfo& clientI);
 
-    UIWindowAreaID get_area_id();
+    UIWMAreaID get_area_id();
 
     AreaNode* set_root(AreaNode* root);
     AreaNode* get_root();
-    AreaNode* get_node(UIWindowAreaID areaID);
-    AreaNode* get_ground_node(UIWindowAreaID areaID, AreaNode* root);
-    AreaNode* get_float_node(UIWindowAreaID areaID);
+    AreaNode* get_node(UIWMAreaID areaID);
+    AreaNode* get_ground_node(UIWMAreaID areaID, AreaNode* root);
+    AreaNode* get_float_node(UIWMAreaID areaID);
 
     /// @brief Render non-floating areas.
     void render_ground(ScreenRenderComponent renderer, AreaNode* node);
@@ -52,7 +52,7 @@ private:
     UIContext mCtx;
     AreaNode* mRoot;
     std::vector<AreaNode*> mFloats;
-    UIWindowAreaID mAreaIDCounter;
+    UIWMAreaID mAreaIDCounter;
     float mTopBarHeight;
     float mBottomBarHeight;
 };

@@ -36,16 +36,16 @@ public:
 
     AreaNode& operator=(const AreaNode&) = delete;
 
-    void startup_as_split(UIContext ctx, UIWindowAreaID areaID, const Rect& area, Axis axis, float ratio, const Rect& splitArea);
-    void startup_as_leaf(UIContext ctx, UIWindowAreaID areaID, const Rect& area, UIWindow client);
-    void startup_as_float(UIContext ctx, UIWindowAreaID areaID, const Rect& area, UIWindow client);
+    void startup_as_split(UIContext ctx, UIWMAreaID areaID, const Rect& area, Axis axis, float ratio, const Rect& splitArea);
+    void startup_as_leaf(UIContext ctx, UIWMAreaID areaID, const Rect& area, UIWindow client);
+    void startup_as_float(UIContext ctx, UIWMAreaID areaID, const Rect& area, UIWindow client, float border);
     void cleanup();
 
     /// @brief Recusrive invalidation based on current area rect.
     void invalidate();
 
     inline AreaNodeType get_type() const { return mType; }
-    inline UIWindowAreaID get_area_id() const { return mAreaID; }
+    inline UIWMAreaID get_area_id() const { return mAreaID; }
     inline AreaNode* get_lch() { return mLch; }
     inline AreaNode* get_rch() { return mRch; }
     inline Rect get_area() const { return mArea; }
@@ -63,8 +63,8 @@ public:
         return mTabControl.get_active_tab();
     }
 
-    UIWindowAreaID split_right(UIWindowManagerObj* wm, float ratio);
-    UIWindowAreaID split_bottom(UIWindowManagerObj* wm, float ratio);
+    UIWMAreaID split_right(UIWindowManagerObj* wm, float ratio);
+    UIWMAreaID split_bottom(UIWindowManagerObj* wm, float ratio);
 
     // non-recursive, triggers optional window resize callback for user
     void invalidate_area(const Rect& newArea);
@@ -85,7 +85,7 @@ private:
     AreaNode* mRch;              /// right or bottom child area
     AreaTabControl mTabControl;  /// tab control window, leaf nodes only
     UIWindow mSplitControl;      /// split control window, non-leaf nodes only
-    UIWindowAreaID mAreaID;      /// unique ID per node
+    UIWMAreaID mAreaID;      /// unique ID per node
     AreaNodeType mType;
     Rect mArea;
     Axis mSplitAxis;

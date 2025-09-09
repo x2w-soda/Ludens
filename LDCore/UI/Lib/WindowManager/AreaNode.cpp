@@ -41,7 +41,7 @@ AreaNode::~AreaNode()
 {
 }
 
-UIWindowAreaID AreaNode::split_right(UIWindowManagerObj* wm, float ratio)
+UIWMAreaID AreaNode::split_right(UIWindowManagerObj* wm, float ratio)
 {
     LD_ASSERT(mType == AREA_NODE_TYPE_LEAF); // only leaf nodes are splittable
 
@@ -85,7 +85,7 @@ UIWindowAreaID AreaNode::split_right(UIWindowManagerObj* wm, float ratio)
     return split->mRch->get_area_id();
 }
 
-UIWindowAreaID AreaNode::split_bottom(UIWindowManagerObj* wm, float ratio)
+UIWMAreaID AreaNode::split_bottom(UIWindowManagerObj* wm, float ratio)
 {
     LD_ASSERT(mType == AREA_NODE_TYPE_LEAF); // only leaf nodes are splittable
 
@@ -128,13 +128,14 @@ UIWindowAreaID AreaNode::split_bottom(UIWindowManagerObj* wm, float ratio)
 
 void AreaNode::invalidate_area(const Rect& rect)
 {
-    LD_ASSERT(mType == AREA_NODE_TYPE_LEAF);
+    LD_ASSERT(mType != AREA_NODE_TYPE_SPLIT);
+    LD_ASSERT(rect.w > 0 && rect.h > 0);
 
     mArea = rect;
     mTabControl.invalidate_area(mArea);
 }
 
-void AreaNode::startup_as_split(UIContext ctx, UIWindowAreaID areaID, const Rect& area, Axis axis, float ratio, const Rect& splitArea)
+void AreaNode::startup_as_split(UIContext ctx, UIWMAreaID areaID, const Rect& area, Axis axis, float ratio, const Rect& splitArea)
 {
     mType = AREA_NODE_TYPE_SPLIT;
     mAreaID = areaID;
@@ -165,7 +166,7 @@ void AreaNode::startup_as_split(UIContext ctx, UIWindowAreaID areaID, const Rect
     mSplitRatio = ratio;
 }
 
-void AreaNode::startup_as_leaf(UIContext ctx, UIWindowAreaID areaID, const Rect& area, UIWindow client)
+void AreaNode::startup_as_leaf(UIContext ctx, UIWMAreaID areaID, const Rect& area, UIWindow client)
 {
     mType = AREA_NODE_TYPE_LEAF;
     mAreaID = areaID;
@@ -178,11 +179,11 @@ void AreaNode::startup_as_leaf(UIContext ctx, UIWindowAreaID areaID, const Rect&
     clientPos.y += WINDOW_TAB_HEIGHT;
     client.set_pos(clientPos);
 
-    mTabControl.startup(ctx, area);
+    mTabControl.startup_as_leaf(ctx, area);
     mTabControl.add_tab(client);
 }
 
-void AreaNode::startup_as_float(UIContext ctx, UIWindowAreaID areaID, const Rect& area, UIWindow client)
+void AreaNode::startup_as_float(UIContext ctx, UIWMAreaID areaID, const Rect& area, UIWindow client, float border)
 {
     mType = AREA_NODE_TYPE_FLOAT;
     mAreaID = areaID;
@@ -195,7 +196,7 @@ void AreaNode::startup_as_float(UIContext ctx, UIWindowAreaID areaID, const Rect
     clientPos.y += WINDOW_TAB_HEIGHT;
     client.set_pos(clientPos);
 
-    mTabControl.startup(ctx, area);
+    mTabControl.startup_as_float(ctx, area, border);
     mTabControl.add_tab(client);
 }
 
@@ -205,6 +206,7 @@ void AreaNode::cleanup()
     {
     case AREA_NODE_TYPE_UNKNOWN:
         return;
+    case AREA_NODE_TYPE_FLOAT:
     case AREA_NODE_TYPE_LEAF:
         mTabControl.cleanup();
         break;
@@ -215,14 +217,16 @@ void AreaNode::cleanup()
 
 void AreaNode::invalidate()
 {
-    if (mType == AREA_NODE_TYPE_LEAF)
+    switch (mType)
     {
-        // invalidate leaf node window area
+    case AREA_NODE_TYPE_FLOAT:
+    case AREA_NODE_TYPE_LEAF:
         invalidate_area(mArea);
-        return;
-    }
-    else if (mType == AREA_NODE_TYPE_SPLIT)
+        break;
+    case AREA_NODE_TYPE_SPLIT:
         invalidate_split_ratio(mSplitRatio);
+        break;
+    }
 }
 
 void AreaNode::invalidate_split_ratio(float newRatio)
