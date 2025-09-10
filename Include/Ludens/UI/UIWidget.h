@@ -13,6 +13,16 @@ namespace LD {
 struct UINode;
 struct UIContextObj;
 
+enum UIEvent
+{
+    UI_MOUSE_ENTER,
+    UI_MOUSE_LEAVE,
+    UI_MOUSE_DOWN,
+    UI_MOUSE_UP,
+    UI_KEY_DOWN,
+    UI_KEY_UP,
+};
+
 struct UIWidget : Handle<struct UIWidgetObj>
 {
     // get node in widget hierarchy
@@ -56,23 +66,14 @@ struct UIWidget : Handle<struct UIWidgetObj>
     /// @brief Update widget child axis after creation.
     void set_layout_child_axis(UIAxis axis);
 
-    /// @brief override key up callback
-    void set_on_key_up(void (*onKeyUp)(UIWidget widget, KeyCode key));
+    /// @brief override key callback
+    void set_on_key(void (*onKey)(UIWidget widget, KeyCode key, UIEvent event));
 
-    /// @brief override key down callback
-    void set_on_key_down(void (*onKeyDown)(UIWidget widget, KeyCode key));
+    /// @brief override mouse callback
+    void set_on_mouse(void (*onMouseUp)(UIWidget widget, const Vec2& pos, MouseButton btn, UIEvent event));
 
-    /// @brief override mouse up callback
-    void set_on_mouse_up(void (*onMouseUp)(UIWidget widget, const Vec2& pos, MouseButton btn));
-
-    /// @brief override mouse down callback
-    void set_on_mouse_down(void (*onMouseDown)(UIWidget widget, const Vec2& pos, MouseButton btn));
-
-    /// @brief override mouse enter callback
-    void set_on_enter(void (*onEnter)(UIWidget widget));
-
-    /// @brief override mouse leave callback
-    void set_on_leave(void (*onLeave)(UIWidget widget));
+    /// @brief override mouse hover callback
+    void set_on_hover(void (*onEnter)(UIWidget widget, UIEvent event));
 
     /// @brief override mouse drag callback
     void set_on_drag(void (*onDrag)(UIWidget widget, MouseButton btn, const Vec2& dragPos, bool begin));

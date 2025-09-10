@@ -50,10 +50,13 @@ public:
         return mEditorUI;
     }
 
-    static void on_mouse_down(UIWidget widget, const Vec2& pos, MouseButton btn)
+    static void on_mouse(UIWidget widget, const Vec2& pos, MouseButton btn, UIEvent event)
     {
         auto& self = *(TopBarMenu*)widget.get_user();
         UIWindow dropdown = self.mDropdown.get_native();
+
+        if (event != UI_MOUSE_DOWN)
+            return;
 
         if (dropdown.is_hidden())
         {
@@ -103,7 +106,7 @@ TopBarMenu* TopBarMenu::create(EditorTopBar* bar, UINode node, EditorUI* editorU
 
     UIPanelWidgetInfo panelWI{};
     menu->mPanel = node.add_panel(layoutI, panelWI, menu);
-    menu->mPanel.set_on_mouse_down(&TopBarMenu::on_mouse_down);
+    menu->mPanel.set_on_mouse(&TopBarMenu::on_mouse);
     menu->mPanel.set_on_draw(&TopBarMenu::on_draw);
 
     UITextWidgetInfo textWI{};
@@ -111,7 +114,7 @@ TopBarMenu* TopBarMenu::create(EditorTopBar* bar, UINode node, EditorUI* editorU
     textWI.fontSize = fontSize;
     textWI.hoverHL = true;
     menu->mText = menu->mPanel.node().add_text({}, textWI, menu);
-    menu->mText.set_on_mouse_down(&TopBarMenu::on_mouse_down);
+    menu->mText.set_on_mouse(&TopBarMenu::on_mouse);
 
     UIContext ctx(node.get_context());
 
@@ -218,6 +221,7 @@ bool EditorTopBar::on_about_menu_option(int opt, const Rect& rect, void* user)
     switch (opt)
     {
     case ABOUT_OPTION_VERSION:
+        editorUI->show_version_window();
         break;
     }
 

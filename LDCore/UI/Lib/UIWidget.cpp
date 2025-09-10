@@ -118,34 +118,19 @@ void UIWidget::set_layout_child_axis(UIAxis axis)
     mObj->layout.info.childAxis = axis;
 }
 
-void UIWidget::set_on_key_up(void (*onKeyUp)(UIWidget widget, KeyCode key))
+void UIWidget::set_on_key(void (*onKey)(UIWidget widget, KeyCode key, UIEvent event))
 {
-    mObj->cb.onKeyUp = onKeyUp;
+    mObj->cb.onKey = onKey;
 }
 
-void UIWidget::set_on_key_down(void (*onKeyDown)(UIWidget widget, KeyCode key))
+void UIWidget::set_on_mouse(void (*onMouse)(UIWidget widget, const Vec2& pos, MouseButton btn, UIEvent event))
 {
-    mObj->cb.onKeyDown = onKeyDown;
+    mObj->cb.onMouse = onMouse;
 }
 
-void UIWidget::set_on_mouse_up(void (*onMouseUp)(UIWidget widget, const Vec2& pos, MouseButton btn))
+void UIWidget::set_on_hover(void (*onHover)(UIWidget widget, UIEvent event))
 {
-    mObj->cb.onMouseUp = onMouseUp;
-}
-
-void UIWidget::set_on_mouse_down(void (*onMouseDown)(UIWidget widget, const Vec2& pos, MouseButton btn))
-{
-    mObj->cb.onMouseDown = onMouseDown;
-}
-
-void UIWidget::set_on_enter(void (*onEnter)(UIWidget widget))
-{
-    mObj->cb.onEnter = onEnter;
-}
-
-void UIWidget::set_on_leave(void (*onLeave)(UIWidget widget))
-{
-    mObj->cb.onLeave = onLeave;
+    mObj->cb.onHover = onHover;
 }
 
 void UIWidget::set_on_drag(void (*onDrag)(UIWidget widget, MouseButton btn, const Vec2& dragPos, bool begin))
@@ -191,7 +176,7 @@ UIButtonWidget UINode::add_button(const UILayoutInfo& layoutI, const UIButtonWid
 {
     UIWindowObj* window = mObj->window;
     UIWidgetObj* obj = window->ctx->alloc_widget(UI_WIDGET_BUTTON, layoutI, mObj, user);
-    obj->cb.onMouseDown = UIButtonWidgetObj::on_press;
+    obj->cb.onMouse = UIButtonWidgetObj::on_mouse;
     obj->as.button.base = obj;
     obj->as.button.text = widgetI.text ? heap_strdup(widgetI.text, MEMORY_USAGE_UI) : nullptr;
     obj->as.button.user_on_press = widgetI.on_press;
@@ -220,7 +205,7 @@ UIToggleWidget UINode::add_toggle(const UILayoutInfo& layoutI, const UIToggleWid
 {
     UIWindowObj* window = mObj->window;
     UIWidgetObj* obj = window->ctx->alloc_widget(UI_WIDGET_TOGGLE, layoutI, mObj, user);
-    obj->cb.onMouseDown = &UIToggleWidgetObj::on_press;
+    obj->cb.onMouse = &UIToggleWidgetObj::on_mouse;
     obj->cb.onUpdate = &UIToggleWidgetObj::on_update;
     obj->as.toggle.base = obj;
     obj->as.toggle.state = widgetI.state;
@@ -278,16 +263,19 @@ void UIPanelWidgetObj::on_draw(UIWidget widget, ScreenRenderComponent renderer)
     renderer.draw_rect(rect, self.color);
 }
 
-void UIToggleWidgetObj::on_press(UIWidget widget, const Vec2& pos, MouseButton btn)
+void UIToggleWidgetObj::on_mouse(UIWidget widget, const Vec2& pos, MouseButton btn, UIEvent event)
 {
     UIWidgetObj* obj = (UIWidgetObj*)widget;
     UIToggleWidgetObj& self = obj->as.toggle;
 
-    self.state = !self.state;
-    self.anim.set(0.32f);
+    if (event == UI_MOUSE_DOWN)
+    {
+        self.state = !self.state;
+        self.anim.set(0.32f);
 
-    if (self.user_on_toggle)
-        self.user_on_toggle({obj}, self.state, obj->user);
+        if (self.user_on_toggle)
+            self.user_on_toggle({obj}, self.state, obj->user);
+    }
 }
 
 void UIToggleWidgetObj::on_update(UIWidget widget, float delta)
@@ -331,12 +319,12 @@ void UIToggleWidgetObj::on_draw(UIWidget widget, ScreenRenderComponent renderer)
     renderer.draw_rect(rect, color);
 }
 
-void UIButtonWidgetObj::on_press(UIWidget widget, const Vec2& pos, MouseButton btn)
+void UIButtonWidgetObj::on_mouse(UIWidget widget, const Vec2& pos, MouseButton btn, UIEvent event)
 {
     UIWidgetObj* obj = widget;
     UIButtonWidgetObj& self = obj->as.button;
 
-    if (self.user_on_press)
+    if (event == UI_MOUSE_DOWN && self.user_on_press)
         self.user_on_press((UIButtonWidget)widget, btn, obj->user);
 }
 

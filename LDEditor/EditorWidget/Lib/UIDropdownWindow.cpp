@@ -19,7 +19,7 @@ struct UIDropdownWindowObj
     std::vector<Option> options;
 
     static void on_draw(UIWidget widget, ScreenRenderComponent renderer);
-    static void on_option_mouse_down(UIWidget widget, const Vec2& pos, MouseButton btn);
+    static void on_option_mouse(UIWidget widget, const Vec2& pos, MouseButton btn, UIEvent event);
 };
 
 void UIDropdownWindowObj::on_draw(UIWidget widget, ScreenRenderComponent renderer)
@@ -32,11 +32,11 @@ void UIDropdownWindowObj::on_draw(UIWidget widget, ScreenRenderComponent rendere
     renderer.draw_rect(rect, color);
 }
 
-void UIDropdownWindowObj::on_option_mouse_down(UIWidget widget, const Vec2& pos, MouseButton btn)
+void UIDropdownWindowObj::on_option_mouse(UIWidget widget, const Vec2& pos, MouseButton btn, UIEvent event)
 {
     UIDropdownWindowObj& self = *(UIDropdownWindowObj*)widget.get_user();
 
-    if (!self.callback)
+    if (!self.callback || event != UI_MOUSE_DOWN)
         return;
 
     for (Option& opt : self.options)
@@ -96,7 +96,7 @@ void UIDropdownWindow::add_option(const char* text, int optionIndex)
     textWI.fontSize = fontSize;
     textWI.hoverHL = true;
     UITextWidget textW = node.add_text({}, textWI, mObj);
-    textW.set_on_mouse_down(&UIDropdownWindowObj::on_option_mouse_down);
+    textW.set_on_mouse(&UIDropdownWindowObj::on_option_mouse);
 
     mObj->options.push_back({textW, optionIndex});
 }

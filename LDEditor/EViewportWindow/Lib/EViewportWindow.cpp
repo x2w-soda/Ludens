@@ -44,9 +44,8 @@ struct EViewportWindowObj : EditorWindowObj
     bool get_component_world_pos(CUID compID, Vec3& worldPos, Mat4& worldMat4);
 
     static void on_draw(UIWidget widget, ScreenRenderComponent renderer);
-    static void on_key_down(UIWidget widget, KeyCode key);
-    static void on_mouse_down(UIWidget widget, const Vec2& pos, MouseButton btn);
-    static void on_mouse_up(UIWidget widget, const Vec2& pos, MouseButton btn);
+    static void on_key(UIWidget widget, KeyCode key, UIEvent event);
+    static void on_mouse(UIWidget widget, const Vec2& pos, MouseButton btn, UIEvent event);
     static void on_drag(UIWidget widget, MouseButton btn, const Vec2& dragPos, bool begin);
     static void on_update(UIWidget widget, float delta);
     static void on_client_resize(UIWindow client, const Vec2& size);
@@ -176,9 +175,12 @@ void EViewportWindowObj::on_draw(UIWidget widget, ScreenRenderComponent renderer
     renderer.draw_image(sceneRect, sceneImage);
 }
 
-void EViewportWindowObj::on_key_down(UIWidget widget, KeyCode key)
+void EViewportWindowObj::on_key(UIWidget widget, KeyCode key, UIEvent event)
 {
     EViewportWindowObj& self = *(EViewportWindowObj*)widget.get_user();
+
+    if (event != UI_KEY_DOWN)
+        return;
 
     switch (key)
     {
@@ -194,38 +196,40 @@ void EViewportWindowObj::on_key_down(UIWidget widget, KeyCode key)
     }
 }
 
-void EViewportWindowObj::on_mouse_down(UIWidget widget, const Vec2& pos, MouseButton btn)
+void EViewportWindowObj::on_mouse(UIWidget widget, const Vec2& pos, MouseButton btn, UIEvent event)
 {
     EViewportWindowObj& self = *(EViewportWindowObj*)widget.get_user();
 
-    if (btn == MOUSE_BUTTON_RIGHT)
+    switch (event)
     {
-        self.enableCameraControls = true;
+    case UI_MOUSE_DOWN:
+        if (btn == MOUSE_BUTTON_RIGHT)
+        {
+            self.enableCameraControls = true;
+        }
+
+        if (btn == MOUSE_BUTTON_LEFT)
+        {
+            // update camera ray required for gizmo controls
+            self.gizmo.update(self.editorCamera, pos, self.sceneExtent);
+
+            if (self.hoverGizmoID != 0)
+                self.pick_gizmo(self.hoverGizmoID);
+            else if (self.hoverRUID != 0)
+                self.pick_ruid(self.hoverRUID);
+            else
+                self.pick_ruid((RUID)0); // clear selection
+        }
+        break;
+    case UI_MOUSE_UP:
+        if (btn == MOUSE_BUTTON_LEFT)
+            self.gizmo.end();
+
+        if (btn == MOUSE_BUTTON_RIGHT)
+            self.enableCameraControls = false;
+        break;
     }
 
-    if (btn == MOUSE_BUTTON_LEFT)
-    {
-        // update camera ray required for gizmo controls
-        self.gizmo.update(self.editorCamera, pos, self.sceneExtent);
-
-        if (self.hoverGizmoID != 0)
-            self.pick_gizmo(self.hoverGizmoID);
-        else if (self.hoverRUID != 0)
-            self.pick_ruid(self.hoverRUID);
-        else
-            self.pick_ruid((RUID)0); // clear selection
-    }
-}
-
-void EViewportWindowObj::on_mouse_up(UIWidget widget, const Vec2& pos, MouseButton btn)
-{
-    EViewportWindowObj& self = *(EViewportWindowObj*)widget.get_user();
-
-    if (btn == MOUSE_BUTTON_LEFT)
-        self.gizmo.end();
-
-    if (btn == MOUSE_BUTTON_RIGHT)
-        self.enableCameraControls = false;
 }
 
 void EViewportWindowObj::on_drag(UIWidget widget, MouseButton btn, const Vec2& dragPos, bool begin)
@@ -404,9 +408,8 @@ EViewportWindow EViewportWindow::create(const EViewportWindowInfo& windowI)
     obj->root = wm.get_area_window(windowI.areaID);
     obj->root.set_user(obj);
     obj->root.set_on_draw(&EViewportWindowObj::on_draw);
-    obj->root.set_on_key_down(&EViewportWindowObj::on_key_down);
-    obj->root.set_on_mouse_down(&EViewportWindowObj::on_mouse_down);
-    obj->root.set_on_mouse_up(&EViewportWindowObj::on_mouse_up);
+    obj->root.set_on_key(&EViewportWindowObj::on_key);
+    obj->root.set_on_mouse(&EViewportWindowObj::on_mouse);
     obj->root.set_on_drag(&EViewportWindowObj::on_drag);
     obj->root.set_on_update(&EViewportWindowObj::on_update);
     obj->viewportExtent = obj->root.get_size();

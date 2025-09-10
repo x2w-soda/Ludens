@@ -92,19 +92,19 @@ void UIContext::input_mouse_position(const Vec2& pos)
 
         if (next)
         {
-            if (next != prev && prev && prev->cb.onLeave)
-                prev->cb.onLeave({prev});
+            if (next != prev && prev && prev->cb.onHover)
+                prev->cb.onHover({prev}, UI_MOUSE_LEAVE);
 
-            if (next != prev && next->cb.onEnter)
-                next->cb.onEnter({next});
+            if (next != prev && next->cb.onHover)
+                next->cb.onHover({next}, UI_MOUSE_ENTER);
 
             mObj->cursorElement = next;
             return;
         }
     }
 
-    if (prev && prev->cb.onLeave)
-        prev->cb.onLeave({prev});
+    if (prev && prev->cb.onHover)
+        prev->cb.onHover({prev}, UI_MOUSE_LEAVE);
 
     mObj->cursorElement = nullptr;
 }
@@ -124,10 +124,10 @@ void UIContext::input_mouse_down(MouseButton btn)
         widget->cb.onDrag({widget}, btn, mObj->cursorPos, true);
     }
 
-    if (widget->cb.onMouseDown)
+    if (widget->cb.onMouse)
     {
         Vec2 localPos = mObj->cursorPos - widget->layout.rect.get_pos();
-        widget->cb.onMouseDown({widget}, localPos, btn);
+        widget->cb.onMouse({widget}, localPos, btn, UI_MOUSE_DOWN);
         mObj->pressElement = widget;
     }
 }
@@ -141,10 +141,10 @@ void UIContext::input_mouse_up(MouseButton btn)
     if (!widget)
         return;
 
-    if (widget->cb.onMouseUp)
+    if (widget->cb.onMouse)
     {
         Vec2 localPos = mObj->cursorPos - widget->layout.rect.get_pos();
-        widget->cb.onMouseUp({widget}, localPos, btn);
+        widget->cb.onMouse({widget}, localPos, btn, UI_MOUSE_UP);
     }
 }
 
@@ -154,8 +154,8 @@ void UIContext::input_key_down(KeyCode key)
     if (!widget)
         return;
 
-    if (widget->cb.onKeyDown)
-        widget->cb.onKeyDown({widget}, key);
+    if (widget->cb.onKey)
+        widget->cb.onKey({widget}, key, UI_KEY_DOWN);
 }
 
 void UIContext::input_key_up(KeyCode key)
@@ -164,8 +164,8 @@ void UIContext::input_key_up(KeyCode key)
     if (!widget)
         return;
 
-    if (widget->cb.onKeyUp)
-        widget->cb.onKeyUp({widget}, key);
+    if (widget->cb.onKey)
+        widget->cb.onKey({widget}, key, UI_KEY_UP);
 }
 
 void UIContext::layout()

@@ -68,7 +68,7 @@ struct OutlinerRow
         UIPanelWidgetInfo panelI{};
         panelI.color = row->parityColor;
         row->panelWidget = parentNode.add_panel(layoutI, panelI, row);
-        row->panelWidget.set_on_mouse_down(&OutlinerRow::on_mouse_down);
+        row->panelWidget.set_on_mouse(&OutlinerRow::on_mouse);
         row->panelWidget.set_on_draw(&OutlinerRow::on_draw);
 
         layoutI.childPadding = {};
@@ -77,7 +77,7 @@ struct OutlinerRow
         textI.cstr = component ? row->editorCtx.get_component_name(component) : nullptr;
         theme.get_font_size(textI.fontSize);
         row->textWidget = row->panelWidget.node().add_text(layoutI, textI, row);
-        row->textWidget.set_on_mouse_down(&OutlinerRow::on_mouse_down);
+        row->textWidget.set_on_mouse(&OutlinerRow::on_mouse);
 
         return row;
     }
@@ -94,14 +94,15 @@ struct OutlinerRow
         renderer.draw_rect(rect, color);
     }
 
-    static void on_mouse_down(UIWidget widget, const Vec2& pos, MouseButton btn)
+    static void on_mouse(UIWidget widget, const Vec2& pos, MouseButton btn, UIEvent event)
     {
         OutlinerRow& self = *(OutlinerRow*)widget.get_user();
 
         if (!self.component)
             return;
 
-        self.editorCtx.set_selected_component(self.component);
+        if (event == UI_MOUSE_DOWN)
+            self.editorCtx.set_selected_component(self.component);
     }
 };
 

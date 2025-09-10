@@ -41,13 +41,10 @@ struct UICallback
 {
     void (*onUpdate)(UIWidget widget, float delta);
     void (*onDraw)(UIWidget widget, ScreenRenderComponent renderer);
-    void (*onKeyUp)(UIWidget widget, KeyCode key);
-    void (*onKeyDown)(UIWidget widget, KeyCode key);
-    void (*onMouseUp)(UIWidget widget, const Vec2& pos, MouseButton btn);
-    void (*onMouseDown)(UIWidget widget, const Vec2& pos, MouseButton btn);
+    void (*onKey)(UIWidget widget, KeyCode key, UIEvent event);
+    void (*onMouse)(UIWidget widget, const Vec2& pos, MouseButton btn, UIEvent event);
     void (*onDrag)(UIWidget widget, MouseButton btn, const Vec2& dragPos, bool begin);
-    void (*onEnter)(UIWidget widget);
-    void (*onLeave)(UIWidget widget);
+    void (*onHover)(UIWidget widget, UIEvent event);
 };
 
 struct UIContextObj
@@ -79,7 +76,7 @@ struct UIButtonWidgetObj
     Color textColor;
     bool transparentBG;
 
-    static void on_press(UIWidget widget, const Vec2& pos, MouseButton btn);
+    static void on_mouse(UIWidget widget, const Vec2& pos, MouseButton btn, UIEvent event);
     static void on_draw(UIWidget widget, ScreenRenderComponent renderer);
 };
 
@@ -103,7 +100,7 @@ struct UIToggleWidgetObj
     UIAnimation<QuadraticInterpolation> anim;
     bool state;
 
-    static void on_press(UIWidget widget, const Vec2& pos, MouseButton btn);
+    static void on_mouse(UIWidget widget, const Vec2& pos, MouseButton btn, UIEvent event);
     static void on_update(UIWidget widget, float delta);
     static void on_draw(UIWidget widget, ScreenRenderComponent renderer);
 };
