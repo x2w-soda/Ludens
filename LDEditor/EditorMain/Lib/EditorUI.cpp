@@ -2,6 +2,7 @@
 #include <Ludens/Application/Event.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <LudensEditor/EditorContext/EditorWindowObj.h>
+#include <LudensEditor/EditorWidget/UIVersionWindow.h>
 
 namespace LD {
 
@@ -67,12 +68,21 @@ void EditorUI::startup(const EditorUIInfo& info)
         windowI.wm = mWM;
         mOutlinerWindow = EOutlinerWindow::create(windowI);
     }
+
+    mVersionWindowID = 0;
 }
 
 void EditorUI::cleanup()
 {
     mBottomBar.cleanup();
     mTopBar.cleanup();
+
+    if (mVersionWindow)
+    {
+        UIVersionWindow::destroy(mVersionWindow);
+        mVersionWindow = {};
+        mVersionWindowID = 0;
+    }
 
     EInspectorWindow::destroy(mInspectorWindow);
     EOutlinerWindow::destroy(mOutlinerWindow);
@@ -140,6 +150,33 @@ void EditorUI::on_scene_pick(SceneOverlayGizmoID gizmoID, RUID ruid, void* user)
     EditorUI& self = *(EditorUI*)user;
 
     self.mViewportWindow.hover_id(gizmoID, ruid);
+}
+
+void EditorUI::show_version_window()
+{
+    if (mVersionWindowID == 0)
+    {
+        UIVersionWindowInfo windowI{};
+        windowI.context = mWM.get_context();
+        windowI.theme = mCtx.get_theme();
+        mVersionWindow = UIVersionWindow::create(windowI);
+
+        UIWMClientInfo clientI{};
+        clientI.client = mVersionWindow.get_handle();
+        clientI.resizeCallback = nullptr;
+        clientI.user = this;
+        mVersionWindowID = mWM.create_float(clientI);
+        mWM.set_close_callback(mVersionWindowID, [](UIWindow client, void* user) {
+            EditorUI& self = *(EditorUI*)user;
+            self.mVersionWindowID = 0;
+
+            UIVersionWindow::destroy(self.mVersionWindow);
+            self.mVersionWindow = {};
+        });
+    }
+
+    mWM.set_float_pos_centered(mVersionWindowID);
+    mWM.show_float(mVersionWindowID);
 }
 
 void EditorUI::on_event(const Event* event, void* user)

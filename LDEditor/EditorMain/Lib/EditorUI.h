@@ -80,6 +80,8 @@ public:
         mViewportWindow.get_gizmo_state(gizmoType, gizmoCenter, gizmoScale, gizmoColor);
     }
 
+    void show_version_window();
+
     static void on_event(const Event* event, void* user);
     static void on_render(ScreenRenderComponent renderer, void* user);
     static void on_overlay_render(ScreenRenderComponent renderer, void* user);
@@ -90,9 +92,11 @@ private:
     EditorTopBar mTopBar;
     EditorBottomBar mBottomBar;
     UIWindowManager mWM;
+    UIVersionWindow mVersionWindow;
     EViewportWindow mViewportWindow;
     EOutlinerWindow mOutlinerWindow;
     EInspectorWindow mInspectorWindow;
+    UIWMAreaID mVersionWindowID;
 };
 
 } // namespace LD
