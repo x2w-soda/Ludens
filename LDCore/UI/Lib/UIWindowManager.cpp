@@ -9,6 +9,7 @@
 #include <Ludens/UI/UITheme.h>
 #include <Ludens/UI/UIWindowManager.h>
 #include <cstring>
+#include <unordered_set>
 #include <vector>
 
 namespace LD {
@@ -64,6 +65,19 @@ void UIWindowManagerObj::update(float delta)
 {
     // updates the actual window layout
     mCtx.update(delta);
+
+    std::unordered_set<AreaNode*> toErase;
+
+    for (AreaNode* node : mFloats)
+    {
+        if (node->get_tab_count() == 0)
+        {
+            toErase.insert(node);
+            delete_node(node);
+        }
+    }
+
+    std::erase_if(mFloats, [&](AreaNode* node) { return toErase.contains(node); });
 }
 
 UIWindow UIWindowManagerObj::create_window(const Vec2& extent, const char* name)
@@ -100,7 +114,7 @@ UIWMAreaID UIWindowManagerObj::create_float(const UIWMClientInfo& clientI)
     nodeArea.h += WINDOW_TAB_HEIGHT + border;
     nodeArea.x -= border;
     nodeArea.w += 2 * border;
-    node->startup_as_float(mCtx, get_area_id(), nodeArea, client, border);
+    node->startup_as_float(mCtx, get_area_id(), nodeArea, client, border, clientI.user);
 
     mFloats.push_back(node);
 
@@ -184,7 +198,9 @@ void UIWindowManagerObj::render_ground(ScreenRenderComponent renderer, AreaNode*
 void UIWindowManagerObj::render_float(ScreenRenderComponent renderer)
 {
     for (AreaNode* node : mFloats)
+    {
         node->draw(renderer);
+    }
 }
 
 void UIWindowManagerObj::get_workspace_windows_recursive(std::vector<UIWindow>& windows, AreaNode* node)
@@ -264,6 +280,17 @@ void UIWindowManager::set_resize_callback(UIWMAreaID areaID, UIWMClientResizeCal
     tab->onClientResize = callback;
 }
 
+void UIWindowManager::set_close_callback(UIWMAreaID areaID, UIWMClientCloseCallback callback)
+{
+    AreaNode* node = mObj->get_node(areaID);
+
+    if (!node || node->get_type() == AREA_NODE_TYPE_SPLIT)
+        return;
+
+    AreaTab* tab = node->get_active_tab();
+    tab->onClientClose = callback;
+}
+
 UIContext UIWindowManager::get_context()
 {
     return mObj->get_context();
@@ -341,7 +368,27 @@ void UIWindowManager::set_float_pos(UIWMAreaID areaID, const Vec2& pos)
 
     Rect nodeArea = floatNode->get_area();
     nodeArea.set_pos(pos.x, pos.y);
+
+    // TODO: update client positions without triggering resize callbacks?
     floatNode->invalidate_area(nodeArea);
+}
+
+void UIWindowManager::show_float(UIWMAreaID areaID)
+{
+    AreaNode* floatNode = mObj->get_float_node(areaID);
+    if (!floatNode)
+        return;
+
+    floatNode->show();
+}
+
+void UIWindowManager::hide_float(UIWMAreaID areaID)
+{
+    AreaNode* floatNode = mObj->get_float_node(areaID);
+    if (!floatNode)
+        return;
+
+    floatNode->hide();
 }
 
 } // namespace LD

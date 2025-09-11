@@ -48,7 +48,7 @@ struct EViewportWindowObj : EditorWindowObj
     static void on_mouse(UIWidget widget, const Vec2& pos, MouseButton btn, UIEvent event);
     static void on_drag(UIWidget widget, MouseButton btn, const Vec2& dragPos, bool begin);
     static void on_update(UIWidget widget, float delta);
-    static void on_client_resize(UIWindow client, const Vec2& size);
+    static void on_client_resize(UIWindow client, const Vec2& size, void* user);
     static void on_editor_context_event(const EditorContextEvent* event, void* user);
 };
 
@@ -360,7 +360,7 @@ void EViewportWindowObj::on_update(UIWidget widget, float delta)
     cc.update(delta);
 }
 
-void EViewportWindowObj::on_client_resize(UIWindow client, const Vec2& size)
+void EViewportWindowObj::on_client_resize(UIWindow client, const Vec2& size, void* user)
 {
     auto& self = *(EViewportWindowObj*)client.get_user();
 

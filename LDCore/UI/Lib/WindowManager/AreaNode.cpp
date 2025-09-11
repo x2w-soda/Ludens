@@ -160,8 +160,7 @@ void AreaNode::startup_as_split(UIContext ctx, UIWMAreaID areaID, const Rect& ar
     mSplitControl.set_rect(splitArea);
     mSplitControl.set_on_draw(&AreaNode::split_control_on_draw);
     mSplitControl.set_on_drag(&AreaNode::split_control_on_drag);
-    mSplitControl.set_on_enter(&AreaNode::split_control_on_enter);
-    mSplitControl.set_on_leave(&AreaNode::split_control_on_leave);
+    mSplitControl.set_on_hover(&AreaNode::split_control_on_hover);
     mSplitAxis = axis;
     mSplitRatio = ratio;
 }
@@ -180,10 +179,10 @@ void AreaNode::startup_as_leaf(UIContext ctx, UIWMAreaID areaID, const Rect& are
     client.set_pos(clientPos);
 
     mTabControl.startup_as_leaf(ctx, area);
-    mTabControl.add_tab(client);
+    mTabControl.add_tab(client, nullptr);
 }
 
-void AreaNode::startup_as_float(UIContext ctx, UIWMAreaID areaID, const Rect& area, UIWindow client, float border)
+void AreaNode::startup_as_float(UIContext ctx, UIWMAreaID areaID, const Rect& area, UIWindow client, float border, void* user)
 {
     mType = AREA_NODE_TYPE_FLOAT;
     mAreaID = areaID;
@@ -197,7 +196,8 @@ void AreaNode::startup_as_float(UIContext ctx, UIWMAreaID areaID, const Rect& ar
     client.set_pos(clientPos);
 
     mTabControl.startup_as_float(ctx, area, border);
-    mTabControl.add_tab(client);
+    mTabControl.add_tab(client, user);
+    mTabControl.hide();
 }
 
 void AreaNode::cleanup()
@@ -245,6 +245,20 @@ void AreaNode::invalidate_split_ratio(float newRatio)
 
     mRch->mArea = br;
     mRch->invalidate();
+}
+
+void AreaNode::show()
+{
+    LD_ASSERT(mType == AREA_NODE_TYPE_FLOAT);
+
+    mTabControl.show();
+}
+
+void AreaNode::hide()
+{
+    LD_ASSERT(mType == AREA_NODE_TYPE_FLOAT);
+
+    mTabControl.hide();
 }
 
 void AreaNode::draw(ScreenRenderComponent renderer)
@@ -305,19 +319,20 @@ void AreaNode::split_control_on_drag(UIWidget widget, MouseButton btn, const Vec
     node->invalidate_split_ratio(ratio);
 }
 
-void AreaNode::split_control_on_enter(UIWidget widget)
+void AreaNode::split_control_on_hover(UIWidget widget, UIEvent event)
 {
     Application app = Application::get();
     AreaNode* node = (AreaNode*)widget.get_user();
 
-    app.hint_cursor_shape(node->mSplitAxis == AXIS_X ? CURSOR_TYPE_HRESIZE : CURSOR_TYPE_VRESIZE);
-}
-
-void AreaNode::split_control_on_leave(UIWidget widget)
-{
-    Application app = Application::get();
-
-    app.hint_cursor_shape(CURSOR_TYPE_DEFAULT);
+    switch (event)
+    {
+    case UI_MOUSE_ENTER:
+        app.hint_cursor_shape(node->mSplitAxis == AXIS_X ? CURSOR_TYPE_HRESIZE : CURSOR_TYPE_VRESIZE);
+        break;
+    case UI_MOUSE_LEAVE:
+        app.hint_cursor_shape(CURSOR_TYPE_DEFAULT);
+        break;
+    }
 }
 
 } // namespace LD

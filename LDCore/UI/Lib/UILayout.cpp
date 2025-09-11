@@ -429,8 +429,10 @@ static void ui_layout_shrink_x(std::vector<UIWidgetObj*>& shrinkableX, float rem
         float secondLargestW = largestW;
         float shrinkW = remainW;
 
-        for (UIWidgetObj* child : shrinkableX)
+        for (size_t i = 1; i < shrinkableX.size(); i++)
         {
+            UIWidgetObj* child = shrinkableX[i];
+
             if (child->layout.rect.w > largestW)
             {
                 secondLargestW = largestW;
@@ -444,6 +446,8 @@ static void ui_layout_shrink_x(std::vector<UIWidgetObj*>& shrinkableX, float rem
         }
 
         shrinkW = std::max(shrinkW, remainW / (float)shrinkableX.size());
+        if (is_zero_epsilon(shrinkW))
+            break;
 
         std::vector<size_t> toErase;
 

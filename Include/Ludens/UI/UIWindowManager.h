@@ -13,12 +13,14 @@ namespace LD {
 /// @brief Window area identifier distributed by the window manager, zero is invalid ID.
 using UIWMAreaID = uint32_t;
 
-typedef void (*UIWMClientResizeCallback)(UIWindow window, const Vec2& size);
+typedef void (*UIWMClientResizeCallback)(UIWindow client, const Vec2& size, void* user);
+typedef void (*UIWMClientCloseCallback)(UIWindow client, void* user);
 
 struct UIWMClientInfo
 {
     UIWindow client;                         /// user provides UI window as client
     UIWMClientResizeCallback resizeCallback; /// invoked when WM resizes the client
+    void* user;                              /// dependency injection during client callbacks
 };
 
 struct UIWindowManagerInfo
@@ -57,6 +59,9 @@ struct UIWindowManager : Handle<struct UIWindowManagerObj>
     /// @brief Set callback to be invoked during UIWindowManager::resize.
     void set_resize_callback(UIWMAreaID areaID, UIWMClientResizeCallback callback);
 
+    /// @brief Set callback to be invoked when a Client area is closed.
+    void set_close_callback(UIWMAreaID areaID, UIWMClientCloseCallback callback);
+
     /// @brief Get the underlying UI context
     UIContext get_context();
 
@@ -86,6 +91,12 @@ struct UIWindowManager : Handle<struct UIWindowManagerObj>
 
     /// @brief Set the position of a floating area.
     void set_float_pos(UIWMAreaID areaID, const Vec2& pos);
+
+    /// @brief Make a floating area visible.
+    void show_float(UIWMAreaID areaID);
+
+    /// @brief Make a floating area invisible.
+    void hide_float(UIWMAreaID areaID);
 };
 
 } // namespace LD

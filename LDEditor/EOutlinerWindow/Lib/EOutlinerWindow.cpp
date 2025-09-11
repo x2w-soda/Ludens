@@ -24,7 +24,7 @@ struct EOutlinerWindowObj : EditorWindowObj
     void invalidate();
     void invalidate_component(const ComponentBase* base, int& rowIdx, int depth);
 
-    static void on_client_resize(UIWindow client, const Vec2& size);
+    static void on_client_resize(UIWindow client, const Vec2& size, void* user);
 };
 
 /// @brief A single row in the outliner window
@@ -159,7 +159,7 @@ void EOutlinerWindowObj::invalidate_component(const ComponentBase* base, int& ro
     depth--;
 }
 
-void EOutlinerWindowObj::on_client_resize(UIWindow client, const Vec2& size)
+void EOutlinerWindowObj::on_client_resize(UIWindow client, const Vec2& size, void* user)
 {
     auto& self = *(EOutlinerWindowObj*)client.get_user();
 

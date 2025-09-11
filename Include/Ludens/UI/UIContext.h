@@ -52,6 +52,9 @@ struct UIContext : Handle<struct UIContextObj>
     /// @brief add a window to the context
     UIWindow add_window(const UILayoutInfo& layoutI, const UIWindowInfo& windowI, void* user);
 
+    /// @brief Remove a window from the context.
+    void remove_window(UIWindow window);
+
     /// @brief get window handles
     /// @param windows outputs windows inside the context
     void get_windows(std::vector<UIWindow>& windows);

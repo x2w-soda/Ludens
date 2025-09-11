@@ -54,6 +54,19 @@ UIWidgetObj* UIContextObj::alloc_widget(UIWidgetType type, const UILayoutInfo& l
     return obj;
 }
 
+void UIContextObj::free_widget(UIWidgetObj* widget)
+{
+    UIWidgetObj* parent = widget->parent;
+    if (parent)
+        parent->remove_child(widget);
+
+    UIWindowObj* window = widget->window;
+    size_t count = std::erase(window->widgets, widget);
+    LD_ASSERT(count == 1);
+
+    widgetPA.free(widget);
+}
+
 void UIContextObj::raise_window(UIWindowObj* window)
 {
     auto ite = std::find(windows.begin(), windows.end(), window);
@@ -201,6 +214,16 @@ UIWindow UIContext::add_window(const UILayoutInfo& layoutI, const UIWindowInfo& 
     return {(UIWidgetObj*)windowObj};
 }
 
+void UIContext::remove_window(UIWindow window)
+{
+    UIWindowObj* obj = (UIWindowObj*)window.unwrap();
+
+    heap_delete<UIWindowObj>(obj);
+
+    size_t count = std::erase(mObj->windows, obj);
+    LD_ASSERT(count == 1);
+}
+
 void UIContext::get_windows(std::vector<UIWindow>& windows)
 {
     windows.resize(mObj->windows.size());
@@ -235,13 +258,13 @@ UIContext UIContext::create(const UIContextInfo& info)
 
 void UIContext::destroy(UIContext ctx)
 {
-    UIContextObj* obj = ctx;
-    PoolAllocator::destroy(obj->widgetPA);
+    UIContextObj* obj = ctx.unwrap();
 
     for (UIWindowObj* window : obj->windows)
         heap_delete<UIWindowObj>(window);
     obj->windows.clear();
 
+    PoolAllocator::destroy(obj->widgetPA);
     heap_delete<UIContextObj>(obj);
 }
 

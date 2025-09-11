@@ -62,6 +62,7 @@ struct UIContextObj
     MouseButton dragMouseButton; /// mouse button used for dragging
 
     UIWidgetObj* alloc_widget(UIWidgetType type, const UILayoutInfo& layoutI, UIWidgetObj* parent, void* user);
+    void free_widget(UIWidgetObj* widget);
 
     /// @brief Raise a window to top.
     /// @param window Target window.
@@ -170,6 +171,16 @@ struct UIWidgetObj
         last->next = newChild;
     }
 
+    inline void remove_child(UIWidgetObj* c)
+    {
+        UIWidgetObj** pnext = &child;
+        while (*pnext && *pnext != c)
+            pnext = &(*pnext)->next;
+
+        if (*pnext)
+            *pnext = (*pnext)->next;
+    }
+
     /// @brief get children count in linear time
     inline int get_children_count()
     {
@@ -188,6 +199,10 @@ struct UIWidgetObj
 struct UIWindowObj : UIWidgetObj
 {
     UIWindowObj() : UIWidgetObj{} {}
+    UIWindowObj(const UIWindowObj&) = delete;
+    ~UIWindowObj();
+
+    UIWindowObj& operator=(const UIWindowObj&) = delete;
 
     UIContextObj* ctx;                 /// owning context
     std::string name;                  /// window identifier
@@ -200,7 +215,7 @@ struct UIWindowObj : UIWidgetObj
     bool drawWithScissor;
 
     void update(float delta);
-    
+
     void draw_widget_subtree(UIWidgetObj* widget, ScreenRenderComponent renderer);
 
     static void on_drag(UIWidget widget, MouseButton btn, const Vec2& dragPos, bool begin);

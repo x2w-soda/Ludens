@@ -5,6 +5,12 @@
 
 namespace LD {
 
+UIWindowObj::~UIWindowObj()
+{
+    while (!widgets.empty())
+        ctx->free_widget(widgets.front());
+}
+
 void UIWindowObj::update(float delta)
 {
     for (UIWidgetObj* widget : widgets)
