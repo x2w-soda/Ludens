@@ -17,11 +17,6 @@ void Texture2DAsset::unload()
     }
 }
 
-AUID Texture2DAsset::auid() const
-{
-    return mObj->auid;
-}
-
 RSamplerInfo Texture2DAsset::get_sampler_hint() const
 {
     return mObj->samplerHint;

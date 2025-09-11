@@ -15,11 +15,6 @@ void MeshAsset::unload()
     }
 }
 
-AUID MeshAsset::auid() const
-{
-    return mObj->auid;
-}
-
 ModelBinary* MeshAsset::data()
 {
     return mObj->modelBinary;

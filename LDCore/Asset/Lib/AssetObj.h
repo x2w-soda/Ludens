@@ -10,16 +10,14 @@ namespace LD {
 
 // NOTE: Placeholder Mesh asset implementation.
 //       Need to figure out texture and material assets first.
-struct MeshAssetObj
+struct MeshAssetObj : AssetObj
 {
-    AUID auid;
     ModelBinary* modelBinary;
 };
 
 /// @brief Texture2D asset implementation.
-struct Texture2DAssetObj
+struct Texture2DAssetObj : AssetObj
 {
-    AUID auid;
     RSamplerInfo samplerHint;
     TextureCompression compression;
     Bitmap bitmap;
@@ -27,10 +25,9 @@ struct Texture2DAssetObj
 
 /// @brief Lua script asset implementation. Should contain enough information
 ///        to instantiate lua script instances.
-struct LuaScriptAssetObj
+struct LuaScriptAssetObj : AssetObj
 {
-    AUID auid;    /// asset ID identifies script template
-    CUID duid;    /// data component ID identifies script instance
+    CUID duid;    /// component ID identifies script instance
     char* source; /// lua source code string
 };
 

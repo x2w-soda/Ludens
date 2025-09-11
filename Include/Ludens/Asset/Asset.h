@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Ludens/Header/Handle.h>
 #include <cstddef>
 #include <cstdint>
 
@@ -13,12 +14,35 @@ enum AssetType
     ASSET_TYPE_ENUM_COUNT,
 };
 
-/// @brief asset unique identifier
+/// @brief Asset unique identifier.
 typedef uint32_t AUID;
 
+/// @brief Get byte size of an asset type.
 size_t get_asset_byte_size(AssetType type);
 
-/// @brief Get static C string for asset type
+/// @brief Get static C string for asset type.
 const char* get_asset_type_cstr(AssetType type);
+
+struct AssetObj
+{
+    const char* name;
+    AUID auid;
+};
+
+/// @brief Asset handle, no reference counting.
+/// @tparam TAssetObj Derived class of AssetObj
+template <typename TAssetObj>
+struct AssetHandle : public Handle<TAssetObj>
+{
+    AssetHandle() = default;
+    AssetHandle(TAssetObj* obj)
+        : Handle<TAssetObj>(obj) {}
+
+    /// @brief Get asset name.
+    const char* get_name() { return ((AssetObj*)(this->mObj))->name; }
+
+    /// @brief Get asset identifier.
+    AUID get_auid() const { return ((AssetObj*)(this->mObj))->auid; }
+};
 
 } // namespace LD

@@ -1,7 +1,6 @@
 #pragma once
 
 #include <Ludens/Asset/Asset.h>
-#include <Ludens/Header/Handle.h>
 #include <Ludens/JobSystem/JobSystem.h>
 #include <Ludens/Media/Model.h>
 #include <filesystem>
@@ -9,16 +8,13 @@
 namespace LD {
 
 /// @brief Mesh asset handle.
-struct MeshAsset : Handle<struct MeshAssetObj>
+struct MeshAsset : AssetHandle<struct MeshAssetObj>
 {
-    /// @brief Unload asset from RAM.
-    void unload();
-
-    /// @brief get asset id
-    AUID auid() const;
-
     /// @brief get mesh binary data
     struct ModelBinary* data();
+
+    /// @brief Unload asset from RAM. The handle becomes null afterwards.
+    void unload();
 };
 
 struct MeshAssetImportInfo

@@ -15,13 +15,10 @@ enum TextureCompression
 };
 
 /// @brief Texture2D asset handle.
-struct Texture2DAsset : Handle<struct Texture2DAssetObj>
+struct Texture2DAsset : AssetHandle<struct Texture2DAssetObj>
 {
     /// @brief Unload asset from RAM.
     void unload();
-
-    /// @brief Get asset id.
-    AUID auid() const;
 
     /// @brief Get desired texture sampling mode.
     RSamplerInfo get_sampler_hint() const;

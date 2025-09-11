@@ -55,7 +55,7 @@ public:
 
     AssetManagerObj& operator=(const AssetManagerObj&) = delete;
 
-    void* allocate_asset(AssetType type);
+    void* allocate_asset(AssetType type, AUID auid, const std::string& name);
 
     void begin_load_batch();
     void end_load_batch();
@@ -100,7 +100,7 @@ AssetManagerObj::~AssetManagerObj()
         PoolAllocator::destroy(ite.second);
 }
 
-void* AssetManagerObj::allocate_asset(AssetType type)
+void* AssetManagerObj::allocate_asset(AssetType type, AUID auid, const std::string& name)
 {
     if (!mAllocators.contains(type))
     {
@@ -112,7 +112,10 @@ void* AssetManagerObj::allocate_asset(AssetType type)
         mAllocators[type] = PoolAllocator::create(paI);
     }
 
-    return mAllocators[type].allocate();
+    AssetObj* obj = (AssetObj*)mAllocators[type].allocate();
+    obj->auid = auid;
+    obj->name = heap_strdup(name.c_str(), MEMORY_USAGE_ASSET);
+    return obj;
 }
 
 void AssetManagerObj::begin_load_batch()
@@ -161,8 +164,7 @@ void AssetManagerObj::load_mesh_asset(const fs::path& path, AUID auid)
 {
     LD_ASSERT(mInLoadBatch);
 
-    auto obj = (MeshAssetObj*)allocate_asset(ASSET_TYPE_MESH);
-    obj->auid = auid;
+    auto obj = (MeshAssetObj*)allocate_asset(ASSET_TYPE_MESH, auid, path.stem().string());
 
     fs::path loadPath = mRootPath / path;
 
@@ -177,8 +179,7 @@ void AssetManagerObj::load_texture_2d_asset(const fs::path& path, AUID auid)
 {
     LD_ASSERT(mInLoadBatch);
 
-    auto obj = (Texture2DAssetObj*)allocate_asset(ASSET_TYPE_TEXTURE_2D);
-    obj->auid = auid;
+    auto obj = (Texture2DAssetObj*)allocate_asset(ASSET_TYPE_TEXTURE_2D, auid, path.stem().string());
 
     fs::path loadPath = mRootPath / path;
 
@@ -193,8 +194,7 @@ void AssetManagerObj::load_lua_script_asset(const fs::path& path, AUID auid)
 {
     LD_ASSERT(mInLoadBatch);
 
-    auto obj = (LuaScriptAssetObj*)allocate_asset(ASSET_TYPE_LUA_SCRIPT);
-    obj->auid = auid;
+    auto obj = (LuaScriptAssetObj*)allocate_asset(ASSET_TYPE_LUA_SCRIPT, auid, path.stem().string());
 
     fs::path loadPath = mRootPath / path;
 

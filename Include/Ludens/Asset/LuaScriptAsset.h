@@ -1,18 +1,14 @@
 #pragma once
 
 #include <Ludens/Asset/Asset.h>
-#include <Ludens/Header/Handle.h>
 #include <Ludens/JobSystem/JobSystem.h>
 #include <filesystem>
 
 namespace LD {
 
 /// @brief Lua script asset handle.
-struct LuaScriptAsset : Handle<struct LuaScriptAssetObj>
+struct LuaScriptAsset : AssetHandle<struct LuaScriptAssetObj>
 {
-    /// @brief Get asset ID.
-    AUID auid() const;
-
     /// @brief Unload asset from RAM.
     void unload();
 

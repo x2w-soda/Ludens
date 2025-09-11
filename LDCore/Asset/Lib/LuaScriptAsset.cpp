@@ -8,12 +8,6 @@ namespace fs = std::filesystem;
 
 namespace LD {
 
-/// @brief Get asset ID.
-AUID LuaScriptAsset::auid() const
-{
-    return mObj->auid;
-}
-
 /// @brief Unload asset from RAM.
 void LuaScriptAsset::unload()
 {
