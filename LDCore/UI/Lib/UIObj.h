@@ -155,6 +155,7 @@ struct UIWidgetObj
         UISliderWidgetObj slider;
         UIToggleWidgetObj toggle;
     } as;
+    bool isHidden;
 
     /// @brief appends new child at the end of link list
     inline void append_child(UIWidgetObj* newChild)
@@ -211,7 +212,6 @@ struct UIWindowObj : UIWidgetObj
     Vec2 dragBeginPos;
     Vec2 dragBeginSize;
     bool dragResize; // resize or reposition
-    bool isHidden;
     bool drawWithScissor;
 
     void update(float delta);

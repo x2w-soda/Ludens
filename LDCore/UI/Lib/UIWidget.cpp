@@ -58,6 +58,16 @@ UINode& UIWidget::node()
     return mObj->node;
 }
 
+void UIWidget::hide()
+{
+    mObj->isHidden = true;
+}
+
+void UIWidget::show()
+{
+    mObj->isHidden = false;
+}
+
 Rect UIWidget::get_rect()
 {
     return mObj->layout.rect;

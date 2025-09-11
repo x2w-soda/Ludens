@@ -17,12 +17,6 @@ struct UIWindowInfo
 
 struct UIWindow : UIWidget
 {
-    /// @brief Hide the window.
-    void hide();
-
-    /// @brief Show the window.
-    void show();
-
     /// @brief Raise the window to top.
     void raise();
 

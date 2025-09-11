@@ -22,6 +22,9 @@ void UIWindowObj::update(float delta)
 
 void UIWindowObj::draw_widget_subtree(UIWidgetObj* widget, ScreenRenderComponent renderer)
 {
+    if (!widget || widget->isHidden)
+        return;
+
     widget->draw(renderer);
 
     for (UIWidgetObj* w = widget->child; w; w = w->next)
@@ -51,18 +54,6 @@ void UIWindowObj::on_drag(UIWidget widget, MouseButton btn, const Vec2& dragPos,
     }
     else
         window.set_pos(dragPos - obj->dragOffset);
-}
-
-void UIWindow::hide()
-{
-    UIWindowObj* obj = (UIWindowObj*)mObj;
-    obj->isHidden = true;
-}
-
-void UIWindow::show()
-{
-    UIWindowObj* obj = (UIWindowObj*)mObj;
-    obj->isHidden = false;
 }
 
 void UIWindow::raise()

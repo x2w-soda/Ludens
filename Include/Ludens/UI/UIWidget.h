@@ -28,6 +28,12 @@ struct UIWidget : Handle<struct UIWidgetObj>
     // get node in widget hierarchy
     UINode& node();
 
+    /// @brief Hide the widget and its widget subtree.
+    void hide();
+
+    /// @brief Show the widget.
+    void show();
+
     /// @brief Get widget rect in screen space.
     Rect get_rect();
 
