@@ -6,10 +6,38 @@ namespace LD {
 
 struct LinearAllocatorObj
 {
-    size_t capacity;
-    size_t size;
-    MemoryUsage usage;
-    byte* base;
+    struct Page
+    {
+        Page* next;
+        size_t used;
+    };
+
+    size_t capacity;   /// byte capacity per page
+    Page* pageList;    /// memory pages
+    MemoryUsage usage; /// usage domain
+    bool isMultiPage;  /// whether allocator paginates
+
+    void allocate_page()
+    {
+        Page* page = (Page*)heap_malloc(sizeof(Page) + capacity, usage);
+        page->next = pageList;
+        page->used = 0;
+        pageList = page;
+    }
+
+    void free()
+    {
+        Page* page = pageList;
+
+        while (page)
+        {
+            Page* nextPage = page->next;
+            heap_free(page);
+            page = nextPage;
+        }
+
+        pageList = nullptr;
+    }
 };
 
 LinearAllocator LinearAllocator::create(const LinearAllocatorInfo& info)
@@ -17,8 +45,8 @@ LinearAllocator LinearAllocator::create(const LinearAllocatorInfo& info)
     LinearAllocatorObj* obj = (LinearAllocatorObj*)heap_malloc(sizeof(LinearAllocatorObj), info.usage);
     obj->usage = info.usage;
     obj->capacity = info.capacity;
-    obj->size = 0;
-    obj->base = nullptr; // defer until first allocation
+    obj->pageList = nullptr; // defer until first allocation
+    obj->isMultiPage = info.isMultiPage;
 
     return {obj};
 }
@@ -27,10 +55,19 @@ void LinearAllocator::destroy(LinearAllocator allocator)
 {
     LinearAllocatorObj* obj = allocator;
 
-    if (obj->base)
-        heap_free(obj->base);
+    obj->free();
 
     heap_free(obj);
+}
+
+size_t LinearAllocator::page_count() const
+{
+    size_t count = 0;
+
+    for (LinearAllocatorObj::Page* page = mObj->pageList; page; page = page->next)
+        count++;
+
+    return count;
 }
 
 size_t LinearAllocator::capacity() const
@@ -40,30 +77,50 @@ size_t LinearAllocator::capacity() const
 
 size_t LinearAllocator::size() const
 {
-    return mObj->size;
+    size_t size = 0;
+
+    for (LinearAllocatorObj::Page* page = mObj->pageList; page; page = page->next)
+    {
+        size += page->used;
+    }
+
+    return size;
 }
 
 size_t LinearAllocator::remain() const
 {
-    return mObj->capacity - mObj->size;
+    LinearAllocatorObj::Page* currentPage = mObj->pageList;
+
+    if (!currentPage || (mObj->isMultiPage && mObj->capacity == currentPage->used))
+        return mObj->capacity; // next page is available at max capacity
+
+    return mObj->capacity - currentPage->used;
 }
 
 void* LinearAllocator::allocate(size_t size)
 {
-    LD_ASSERT(size <= remain());
+    if (size > mObj->capacity)
+        return nullptr; // can't satisfy request even in multi-page mode
 
-    if (mObj->base == nullptr)
-        mObj->base = (byte*)heap_malloc(mObj->capacity, mObj->usage);
+    if (!mObj->pageList || (mObj->isMultiPage && remain() < size))
+        mObj->allocate_page();
 
-    void* base = mObj->base + mObj->size;
-    mObj->size += size;
+    LinearAllocatorObj::Page* currentPage = mObj->pageList;
+    LD_ASSERT(currentPage);
 
-    return base;
+    if (currentPage->used + size <= mObj->capacity)
+    {
+        byte* base = (byte*)currentPage + sizeof(LinearAllocatorObj::Page) + currentPage->used;
+        currentPage->used += size;
+        return base;
+    }
+
+    return nullptr;
 }
 
 void LinearAllocator::free()
 {
-    mObj->size = 0;
+    mObj->free();
 }
 
 struct PoolAllocatorObj

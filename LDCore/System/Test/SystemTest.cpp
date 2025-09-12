@@ -7,15 +7,19 @@
 
 using namespace LD;
 
-TEST_CASE("LinearAllocator")
+TEST_CASE("LinearAllocator single page")
 {
     LinearAllocatorInfo laI{};
     laI.usage = MEMORY_USAGE_MISC;
     laI.capacity = 1024;
+    laI.isMultiPage = false;
     LinearAllocator la = LinearAllocator::create(laI);
 
     CHECK(la.capacity() == 1024);
+    CHECK(la.remain() == 1024);
     CHECK(la.size() == 0);
+    CHECK(la.page_count() == 0);
+    CHECK(la.allocate(1025) == nullptr);
 
     void* p1 = la.allocate(128);
 
@@ -32,6 +36,37 @@ TEST_CASE("LinearAllocator")
 
     CHECK(la.size() == 0);
     CHECK(la.remain() == 1024);
+
+    LinearAllocator::destroy(la);
+
+    const MemoryProfile& profile = get_memory_profile(MEMORY_USAGE_MISC);
+    CHECK(profile.current == 0);
+}
+
+TEST_CASE("LinearAllocator multi page")
+{
+    LinearAllocatorInfo laI{};
+    laI.usage = MEMORY_USAGE_MISC;
+    laI.capacity = 1024;
+    laI.isMultiPage = true;
+    LinearAllocator la = LinearAllocator::create(laI);
+
+    CHECK(la.capacity() == 1024);
+    CHECK(la.remain() == 1024);
+    CHECK(la.size() == 0);
+    CHECK(la.page_count() == 0);
+    CHECK(la.allocate(1025) == nullptr);
+
+    void* p = la.allocate(128);
+    CHECK(p);
+    CHECK(la.size() == 128);
+    CHECK(la.remain() == 896);
+
+    p = la.allocate(1024);
+    CHECK(p); // should succeed as another page is allocated
+    CHECK(la.size() == 1152);
+    CHECK(la.remain() == 1024);
+    CHECK(la.page_count() == 2);
 
     LinearAllocator::destroy(la);
 

@@ -9,7 +9,8 @@ namespace LD {
 struct LinearAllocatorInfo
 {
     MemoryUsage usage; /// the usage space of all allocations made by the allocator
-    size_t capacity;   /// capacity in bytes
+    size_t capacity;   /// page capacity in bytes
+    bool isMultiPage;  /// if true, allocate() will create new pages as necessary, otherwise only a single page is allocated.
 };
 
 struct LinearAllocator : Handle<struct LinearAllocatorObj>
@@ -29,13 +30,16 @@ struct LinearAllocator : Handle<struct LinearAllocatorObj>
     /// @brief frees all previous allocate() calls in one go.
     void free();
 
+    /// @brief number of pages allocated
+    size_t page_count() const;
+
     /// @brief maximum capacity in bytes
     size_t capacity() const;
 
     /// @brief currently allocated byte size
     size_t size() const;
 
-    /// @brief available bytes for allocate()
+    /// @brief available bytes for allocate() in the current page
     size_t remain() const;
 };
 
