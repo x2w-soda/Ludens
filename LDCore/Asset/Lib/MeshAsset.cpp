@@ -6,13 +6,23 @@
 
 namespace LD {
 
+void MeshAssetObj::unload(AssetObj* base)
+{
+    MeshAssetObj& self = *(MeshAssetObj*)base;
+
+    if (self.modelBinary)
+    {
+        heap_delete<ModelBinary>(self.modelBinary);
+        self.modelBinary = nullptr;
+    }
+}
+
 void MeshAsset::unload()
 {
-    if (mObj->modelBinary)
-    {
-        heap_delete<ModelBinary>(mObj->modelBinary);
-        mObj->modelBinary = nullptr;
-    }
+    MeshAssetObj::unload(mObj);
+
+    mObj->manager->free_asset(mObj);
+    mObj = nullptr;
 }
 
 ModelBinary* MeshAsset::data()

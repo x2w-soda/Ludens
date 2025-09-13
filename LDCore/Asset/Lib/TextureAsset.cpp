@@ -8,13 +8,23 @@
 
 namespace LD {
 
+void Texture2DAssetObj::unload(AssetObj* base)
+{
+    Texture2DAssetObj& self = *(Texture2DAssetObj*)base;
+
+    if (self.bitmap)
+    {
+        Bitmap::destroy(self.bitmap);
+        self.bitmap = {};
+    }
+}
+
 void Texture2DAsset::unload()
 {
-    if (mObj->bitmap)
-    {
-        Bitmap::destroy(mObj->bitmap);
-        mObj->bitmap = {};
-    }
+    Texture2DAssetObj::unload(mObj);
+
+    mObj->manager->free_asset(mObj);
+    mObj = nullptr;
 }
 
 RSamplerInfo Texture2DAsset::get_sampler_hint() const
@@ -91,7 +101,9 @@ void Texture2DAssetLoadJob::execute(void* user)
     Serializer serializer(binarySize);
     FS::read_file(self.loadPath, binarySize, serializer.data());
 
-    serializer.read_u32(obj->auid);
+    uint32_t unused;
+    serializer.read_u32(unused); // TODO: AUID is already known by now
+
     serializer.read_i32((int32_t&)obj->compression);
     serializer.read_i32((int32_t&)obj->samplerHint.filter);
     serializer.read_i32((int32_t&)obj->samplerHint.mipmapFilter);

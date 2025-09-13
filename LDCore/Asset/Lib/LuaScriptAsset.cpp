@@ -1,4 +1,5 @@
 #include "AssetObj.h"
+#include <Ludens/Asset/AssetManager.h>
 #include <Ludens/Asset/LuaScriptAsset.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Profiler/Profiler.h>
@@ -8,11 +9,20 @@ namespace fs = std::filesystem;
 
 namespace LD {
 
-/// @brief Unload asset from RAM.
+void LuaScriptAssetObj::unload(AssetObj* base)
+{
+    LuaScriptAssetObj& self = *(LuaScriptAssetObj*)base;
+
+    if (self.source)
+        heap_free((void*)self.source);
+}
+
 void LuaScriptAsset::unload()
 {
-    if (mObj->source)
-        heap_free(mObj->source);
+    LuaScriptAssetObj::unload(mObj);
+
+    mObj->manager->free_asset(mObj);
+    mObj = nullptr;
 }
 
 /// @brief Get Lua script source string.
