@@ -32,6 +32,9 @@ struct EditorContext : Handle<struct EditorContextObj>
     /// @brief Get editor global settings
     EditorSettings get_settings();
 
+    /// @brief Get asset manager handle.
+    AssetManager get_asset_manager();
+
     /// @brief Get editor theme.
     inline EditorTheme get_theme() { return get_settings().get_theme(); }
 

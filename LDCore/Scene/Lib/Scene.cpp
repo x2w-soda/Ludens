@@ -15,12 +15,14 @@ namespace LD {
 struct SceneObj
 {
     DataRegistry registry;
+    DataRegistry registryBack;
     AssetManager assetManager;
     RServer renderServer;
     LuaState lua;
     std::unordered_map<RUID, CUID> ruidToComponent; /// map RUID to its corresponding component in the data registry
+    bool hasStartup = false;
 
-    /// @brief Prepare components recursively, loading scripts and assets.
+    /// @brief Prepare components recursively, creating resources from systems/servers.
     void prepare(ComponentBase* comp);
 
     /// @brief Startup a component subtree recursively, attaching scripts to components
@@ -33,13 +35,13 @@ struct SceneObj
     void create_lua_script(ComponentScriptSlot* scriptSlot);
 
     /// @brief Destroy lua script associated with a component
-    void destroy_lua_script(CUID compID);
+    void destroy_lua_script(ComponentScriptSlot* scriptSlot);
 
     /// @brief Attach lua script to a data component.
-    void attach_lua_script(CUID compID);
+    void attach_lua_script(ComponentScriptSlot* scriptSlot);
 
     /// @brief Detach lua script from a data component.
-    void detach_lua_script(CUID compID);
+    void detach_lua_script(ComponentScriptSlot* scriptSlot);
 
     /// @brief Initialize a lua state for scripting
     void initialize_lua_state(LuaState L);
@@ -79,14 +81,6 @@ static_assert(sizeof(sSceneComponents) / sizeof(*sSceneComponents) == COMPONENT_
 
 void SceneObj::prepare(ComponentBase* comp)
 {
-    ComponentScriptSlot* scriptSlot = registry.get_component_script(comp->id);
-
-    // instantiate script
-    if (scriptSlot)
-    {
-        create_lua_script(scriptSlot);
-    }
-
     // type-specific preparations
     if (sSceneComponents[comp->type].prepare)
         sSceneComponents[comp->type].prepare(this, comp->id);
@@ -110,7 +104,9 @@ void SceneObj::startup_root(CUID root)
     }
 
     // post-order traversal, all child components of root already have their scripts attached
-    attach_lua_script(rootC->id);
+    ComponentScriptSlot* script = registry.get_component_script(rootC->id);
+    create_lua_script(script);
+    attach_lua_script(script);
 }
 
 void SceneObj::cleanup_root(CUID root)
@@ -126,13 +122,17 @@ void SceneObj::cleanup_root(CUID root)
     }
 
     // post-order traversal, all child components of root already have their scripts detached
-    detach_lua_script(rootC->id);
+    ComponentScriptSlot* script = registry.get_component_script(rootC->id);
+    detach_lua_script(script);
+    destroy_lua_script(script);
 }
 
 void SceneObj::create_lua_script(ComponentScriptSlot* scriptSlot)
 {
-    LD_ASSERT(scriptSlot);
-    LD_ASSERT(lua.empty());
+    if (!scriptSlot)
+        return;
+
+    int oldSize = lua.size();
 
     CUID compID = scriptSlot->componentID;
     AUID assetID = scriptSlot->assetID;
@@ -148,26 +148,29 @@ void SceneObj::create_lua_script(ComponentScriptSlot* scriptSlot)
     // this should push the script instance table onto stack
     bool isScriptValid = lua.do_string(luaSource);
     LD_ASSERT(isScriptValid); // TODO: error control flow
-    LD_ASSERT(lua.size() == 4);
-    lua.set_table(-3); // store script instance as ludens.scripts[compID]
+    lua.set_table(-3);        // store script instance as ludens.scripts[compID]
 
     ComponentType type;
     void* comp = registry.get_component(compID, type);
 
     // create and store table for component type
-    LuaScript::create_component_table(lua, compID, type, comp);
+    LuaScript::create_component_table(registry, lua, compID, type, comp);
 
-    lua.resize(0);
+    lua.resize(oldSize);
 }
 
-void SceneObj::destroy_lua_script(CUID compID)
+void SceneObj::destroy_lua_script(ComponentScriptSlot* scriptSlot)
 {
+    if (!scriptSlot)
+        return;
+
+    CUID compID = scriptSlot->componentID;
     int oldSize = lua.size();
     lua.get_global("ludens");
     lua.get_field(-1, "scripts");
 
     // destroy component lua table representation
-    LuaScript::destroy_component_table(lua, compID);
+    LuaScript::destroy_component_table(registry, lua, compID);
 
     lua.push_number((double)compID);
     lua.push_nil();
@@ -177,18 +180,18 @@ void SceneObj::destroy_lua_script(CUID compID)
 }
 
 // Caller should prepare ludens.scripts table on top of stack
-void SceneObj::attach_lua_script(CUID rootID)
+void SceneObj::attach_lua_script(ComponentScriptSlot* scriptSlot)
 {
-    LD_ASSERT(lua.get_type(-1) == LUA_TYPE_TABLE);
-
-    ComponentScriptSlot* script = registry.get_component_script(rootID);
-    if (!script)
+    if (!scriptSlot)
         return;
 
+    LD_ASSERT(lua.get_type(-1) == LUA_TYPE_TABLE);
+
     int oldSize = lua.size();
+    CUID compID = scriptSlot->componentID;
 
     // call 'attach' lua method on script
-    lua.push_number((double)script->componentID);
+    lua.push_number((double)compID);
     lua.get_table(-2);
     LD_ASSERT(lua.get_type(-1) == LUA_TYPE_TABLE); // script instance
 
@@ -196,7 +199,7 @@ void SceneObj::attach_lua_script(CUID rootID)
     LD_ASSERT(lua.get_type(-1) == LUA_TYPE_FN); // script attach method
 
     // arg1 is script instance
-    lua.push_number((double)script->componentID);
+    lua.push_number((double)compID);
     lua.get_table(-4);
 
     // arg2 is the component
@@ -209,21 +212,22 @@ void SceneObj::attach_lua_script(CUID rootID)
 }
 
 // Caller should prepare ludens.scripts table on top of stack
-void SceneObj::detach_lua_script(CUID rootID)
+void SceneObj::detach_lua_script(ComponentScriptSlot* scriptSlot)
 {
-    LD_ASSERT(lua.get_type(-1) == LUA_TYPE_TABLE);
-
-    ComponentScriptSlot* script = registry.get_component_script(rootID);
-    if (!script)
+    if (!scriptSlot)
         return;
 
+    LD_ASSERT(lua.get_type(-1) == LUA_TYPE_TABLE);
+
+    CUID compID = scriptSlot->componentID;
+
     // call 'detach' lua method on script
-    lua.push_number((double)script->componentID);
+    lua.push_number((double)compID);
     lua.get_table(-2);
     lua.get_field(-1, "detach");
 
     // arg1 is script instance
-    lua.push_number((double)script->componentID);
+    lua.push_number((double)compID);
     lua.get_table(-3);
 
     lua.call(1, 0);
@@ -265,6 +269,9 @@ void Scene::destroy(Scene scene)
 {
     SceneObj* obj = scene.unwrap();
 
+    if (obj->registryBack)
+        DataRegistry::destroy(obj->registryBack);
+
     DataRegistry::destroy(obj->registry);
     LuaState::destroy(obj->lua);
 
@@ -293,6 +300,10 @@ void Scene::startup()
 {
     LD_PROFILE_SCOPE;
 
+    if (mObj->hasStartup)
+        return;
+
+    mObj->hasStartup = true;
     mObj->lua.clear();
     mObj->lua.get_global("ludens");
     mObj->lua.get_field(-1, "scripts");
@@ -305,13 +316,17 @@ void Scene::startup()
         mObj->startup_root(root);
     }
 
-    mObj->lua.pop(2);
+    mObj->lua.clear();
 }
 
 void Scene::cleanup()
 {
     LD_PROFILE_SCOPE;
 
+    if (!mObj->hasStartup)
+        return;
+
+    mObj->hasStartup = false;
     mObj->lua.get_global("ludens");
     mObj->lua.get_field(-1, "scripts");
 
@@ -324,6 +339,29 @@ void Scene::cleanup()
     }
 
     mObj->lua.pop(2);
+}
+
+void Scene::backup()
+{
+    LD_PROFILE_SCOPE;
+
+    if (mObj->hasStartup)
+        return;
+
+    if (mObj->registryBack)
+        DataRegistry::destroy(mObj->registryBack);
+
+    mObj->registryBack = mObj->registry.duplicate();
+}
+
+void Scene::swap()
+{
+    if (mObj->hasStartup)
+        return;
+
+    DataRegistry tmp = mObj->registry;
+    mObj->registry = mObj->registryBack;
+    mObj->registryBack = tmp;
 }
 
 void Scene::update(float delta)

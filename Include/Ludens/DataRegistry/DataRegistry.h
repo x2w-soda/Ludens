@@ -18,6 +18,10 @@ struct DataRegistry : Handle<struct DataRegistryObj>
     /// @brief Destroy registry and all components within
     static void destroy(DataRegistry registry);
 
+    /// @brief Make a deep copy of the registry. This duplicates the entire component hierarchy
+    ///        using new allocators separate from the original. The copy must be destroyed later.
+    DataRegistry duplicate() const;
+
     /// @brief Creates a data component
     /// @param type Component type
     /// @param name User defined name.

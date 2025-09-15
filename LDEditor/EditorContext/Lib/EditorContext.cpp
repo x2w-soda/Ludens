@@ -90,6 +90,11 @@ EditorSettings EditorContext::get_settings()
     return mObj->settings;
 }
 
+AssetManager EditorContext::get_asset_manager()
+{
+    return mObj->assetManager;
+}
+
 void EditorContext::add_observer(EditorContextEventFn fn, void* user)
 {
     mObj->observers.push_back(std::make_pair(fn, user));
@@ -194,7 +199,9 @@ void EditorContext::play_scene()
 
     mObj->isPlaying = true;
 
-    // TODO:
+    // play a duplicated scene
+    mObj->scene.backup();
+    mObj->scene.swap();
     mObj->scene.startup();
 }
 
@@ -207,8 +214,9 @@ void EditorContext::stop_scene()
 
     mObj->isPlaying = false;
 
-    // TODO:
+    // restore original scene
     mObj->scene.cleanup();
+    mObj->scene.swap();
 }
 
 bool EditorContext::is_playing()

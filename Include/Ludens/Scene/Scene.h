@@ -36,6 +36,12 @@ public:
     /// @brief Cleanup the scene simulation. This detaches scripts from their components.
     void cleanup();
 
+    /// @brief Duplicate the current scene into the backup scene.
+    void backup();
+
+    /// @brief Swap current scene and backup scene.
+    void swap();
+
     /// @brief Update the scene with delta time.
     /// @param delta Delta time in seconds.
     void update(float delta);

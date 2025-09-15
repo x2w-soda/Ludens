@@ -2,6 +2,7 @@
 #include <Ludens/DataRegistry/DataRegistry.h>
 #include <Ludens/Header/Types.h>
 #include <Ludens/Log/Log.h>
+#include <Ludens/Profiler/Profiler.h>
 #include <Ludens/System/Memory.h>
 #include <unordered_map>
 #include <unordered_set>
@@ -10,24 +11,10 @@
 namespace LD {
 
 static Log sLog("DataRegistry");
+static bool duplicate_subtree(DataRegistry dup, DataRegistry orig, CUID origRoot);
 static Transform* get_transform(void* comp);
 static Transform* get_mesh_transform(void* comp);
 static RUID get_mesh_ruid(void* comp);
-
-Transform* get_transform(void* comp)
-{
-    return &((TransformComponent*)comp)->transform;
-}
-
-static Transform* get_mesh_transform(void* comp)
-{
-    return &((MeshComponent*)comp)->transform;
-}
-
-static RUID get_mesh_ruid(void* comp)
-{
-    return ((MeshComponent*)comp)->ruid;
-}
 
 struct ComponentMeta
 {
@@ -46,6 +33,65 @@ static ComponentMeta sComponentTable[] = {
     { COMPONENT_TYPE_TEXTURE_2D, sizeof(Texture2DComponent), "Texture2DComponent", nullptr,            nullptr },
 };
 // clang-format on
+
+static bool duplicate_subtree(DataRegistry dup, DataRegistry orig, CUID origRoot)
+{
+    const ComponentBase* origBase = orig.get_component_base(origRoot);
+    const ComponentBase* origParentBase = origBase->parent;
+    CUID parentID = origParentBase ? origParentBase->id : 0;
+    CUID dupID = dup.create_component(origBase->type, origBase->name, parentID, origBase->id);
+
+    if (dupID != origBase->id)
+    {
+        sLog.error("failed to duplicate {}", origBase->name);
+        return false;
+    }
+
+    // duplicate fields
+    ComponentBase* dupBase = dup.get_component_base(dupID);
+    dupBase->flags = origBase->flags;
+    dupBase->localMat4 = origBase->localMat4;
+    dupBase->worldMat4 = origBase->worldMat4;
+
+    // duplicate type-sepcific fields
+    ComponentType type;
+    void* dupComp = dup.get_component(dupID, type);
+    void* origComp = orig.get_component(dupID, type);
+    memcpy(dupComp, origComp, sComponentTable[(int)type].byteSize);
+
+    // duplicate script
+    const ComponentScriptSlot* origScriptSlot = orig.get_component_script(origRoot);
+    if (origScriptSlot)
+    {
+        ComponentScriptSlot* dupScriptSlot = dup.create_component_script_slot(dupID, origScriptSlot->assetID);
+        dupScriptSlot->isEnabled = origScriptSlot->isEnabled;
+    }
+
+    bool success = true;
+
+    for (const ComponentBase* child = origBase->child; child; child = child->next)
+    {
+        // TODO: this traversal reverses sibling order?
+        success = success && duplicate_subtree(dup, orig, child->id);
+    }
+
+    return success;
+}
+
+static Transform* get_transform(void* comp)
+{
+    return &((TransformComponent*)comp)->transform;
+}
+
+static Transform* get_mesh_transform(void* comp)
+{
+    return &((MeshComponent*)comp)->transform;
+}
+
+static RUID get_mesh_ruid(void* comp)
+{
+    return ((MeshComponent*)comp)->ruid;
+}
 
 static_assert(sizeof(sComponentTable) / sizeof(*sComponentTable) == COMPONENT_TYPE_ENUM_COUNT);
 static_assert(LD::IsDataComponent<TransformComponent>);
@@ -227,6 +273,24 @@ void DataRegistry::destroy(DataRegistry registry)
     }
 
     heap_delete<DataRegistryObj>(obj);
+}
+
+DataRegistry DataRegistry::duplicate() const
+{
+    LD_PROFILE_SCOPE;
+
+    DataRegistry dup = DataRegistry::create();
+    DataRegistry orig(mObj);
+
+    std::vector<CUID> roots;
+    orig.get_root_components(roots);
+
+    for (CUID origRoot : roots)
+    {
+        duplicate_subtree(dup, orig, origRoot);
+    }
+
+    return dup;
 }
 
 CUID DataRegistry::create_component(ComponentType type, const char* name, CUID parentID, CUID hintID)
