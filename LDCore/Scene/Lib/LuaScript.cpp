@@ -13,8 +13,20 @@ static int transform_get_rotation(lua_State* l);
 static int transform_set_rotation(lua_State* l);
 static int transform_get_scale(lua_State* l);
 static int transform_set_scale(lua_State* l);
-static void push_transform_table(LuaState L, Transform* transform);
-static void push_mesh_component_table(LuaState L, void* comp);
+static void push_transform_table(DataRegistry reg, LuaState L, CUID compID, Transform* transform);
+static void push_mesh_component_table(DataRegistry reg, LuaState L, CUID compID, void* comp);
+
+static inline void get_transform_cuid(LuaState L, int tIndex, CUID& compID, DataRegistry& reg)
+{
+    L.get_field(tIndex, "_cuid");
+    LD_ASSERT(L.get_type(-1) == LUA_TYPE_NUMBER);
+    compID = (CUID)L.to_number(-1);
+    L.pop(1);
+
+    L.get_field(tIndex, "_reg");
+    LD_ASSERT(L.get_type(-1) == LUA_TYPE_LIGHTUSERDATA);
+    reg = DataRegistry((DataRegistryObj*)L.to_userdata(-1));
+}
 
 /// @brief Transform:get_position()
 static int transform_get_position(lua_State* l)
@@ -40,6 +52,12 @@ static int transform_set_position(lua_State* l)
 
     Transform* transform = (Transform*)L.to_userdata(-1);
     transform->position = L.to_vec3(-2);
+    L.pop(1);
+
+    DataRegistry reg;
+    CUID compID;
+    get_transform_cuid(L, -2, compID, reg);
+    reg.mark_component_transform_dirty(compID);
 
     return 0;
 }
@@ -68,6 +86,13 @@ static int transform_set_rotation(lua_State* l)
 
     Transform* transform = (Transform*)L.to_userdata(-1);
     transform->rotation = L.to_vec3(-2);
+    transform->quat = Quat::from_euler(transform->rotation);
+    L.pop(1);
+
+    DataRegistry reg;
+    CUID compID;
+    get_transform_cuid(L, -2, compID, reg);
+    reg.mark_component_transform_dirty(compID);
 
     return 0;
 }
@@ -96,17 +121,29 @@ static int transform_set_scale(lua_State* l)
 
     Transform* transform = (Transform*)L.to_userdata(-1);
     transform->scale = L.to_vec3(-2);
+    L.pop(1);
+
+    DataRegistry reg;
+    CUID compID;
+    get_transform_cuid(L, -2, compID, reg);
+    reg.mark_component_transform_dirty(compID);
 
     return 0;
 }
 
 /// @brief Pushes a lua table representing a Transform.
-static void push_transform_table(LuaState L, Transform* transform)
+static void push_transform_table(DataRegistry reg, LuaState L, CUID compID, Transform* transform)
 {
     L.push_table(); // transform
 
     L.push_light_userdata(transform);
     L.set_field(-2, "_ud");
+
+    L.push_light_userdata(reg.unwrap());
+    L.set_field(-2, "_reg");
+
+    L.push_number((double)compID);
+    L.set_field(-2, "_cuid");
 
     L.push_fn(&transform_get_position);
     L.set_field(-2, "get_position");
@@ -127,12 +164,12 @@ static void push_transform_table(LuaState L, Transform* transform)
     L.set_field(-2, "set_scale");
 }
 
-static void push_mesh_component_table(LuaState L, void* comp)
+static void push_mesh_component_table(DataRegistry reg, LuaState L, CUID compID, void* comp)
 {
     MeshComponent* meshC = (MeshComponent*)comp;
 
     L.push_table(); // mesh component
-    push_transform_table(L, &meshC->transform);
+    push_transform_table(reg, L, compID, &meshC->transform);
     L.set_field(-2, "transform");
 }
 
@@ -140,7 +177,7 @@ static void push_mesh_component_table(LuaState L, void* comp)
 struct
 {
     ComponentType type;
-    void (*push_table)(LuaState L, void* comp);
+    void (*push_table)(DataRegistry reg, LuaState L, CUID compID, void* comp);
 } sComponents[] = {
     {COMPONENT_TYPE_DATA,       nullptr},
     {COMPONENT_TYPE_TRANSFORM,  nullptr},
@@ -177,19 +214,19 @@ LuaModule create_ludens_module()
 }
 
 // stack top should be ludens.scripts
-void create_component_table(LuaState L, CUID compID, ComponentType type, void* comp)
+void create_component_table(DataRegistry reg, LuaState L, CUID compID, ComponentType type, void* comp)
 {
     L.push_number((double)compID);
     L.get_table(-2);                             // ludens.scripts[compID]
     LD_ASSERT(L.get_type(-1) == LUA_TYPE_TABLE); // script instance table missing
 
-    sComponents[(int)type].push_table(L, comp);
+    sComponents[(int)type].push_table(reg, L, compID, comp);
     L.set_field(-2, "_comp");
     L.pop(1);
 }
 
 // stack top should be ludens.scripts
-void destroy_component_table(LuaState L, CUID compID)
+void destroy_component_table(DataRegistry reg, LuaState L, CUID compID)
 {
     L.push_number((double)compID);
     L.get_table(-2);                             // ludens.scripts[compID]
