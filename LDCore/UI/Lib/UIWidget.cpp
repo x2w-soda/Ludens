@@ -1,10 +1,40 @@
 #include "UIObj.h"
 #include <Ludens/Header/Assert.h>
+#include <Ludens/Header/Types.h>
 #include <Ludens/UI/UIWidget.h>
 #include <Ludens/UI/UIWindow.h>
 #include <algorithm>
 
 namespace LD {
+
+// clang-format off
+struct
+{
+    UIWidgetType type;
+    const char* typeName;
+    size_t objSize;
+    void (*cleanup)(UIWidgetObj* obj);
+} sWidgetTable[] = {
+    { UI_WIDGET_WINDOW,    "UIWindow",   sizeof(UIWindowObj),         nullptr },
+    { UI_WIDGET_BUTTON,    "UIButton",   sizeof(UIButtonWidgetObj),   &UIButtonWidgetObj::cleanup  },
+    { UI_WIDGET_SLIDER,    "UISlider",   sizeof(UISliderWidgetObj),   nullptr },
+    { UI_WIDGET_TOGGLE,    "UIToggle",   sizeof(UIToggleWidgetObj),   nullptr },
+    { UI_WIDGET_PANEL,     "UIPanel",    sizeof(UIPanelWidgetObj),    nullptr },
+    { UI_WIDGET_IMAGE,     "UIImage",    sizeof(UIImageWidgetObj),    nullptr },
+    { UI_WIDGET_TEXT,      "UIText",     sizeof(UITextWidgetObj),     &UITextWidgetObj::cleanup },
+    { UI_WIDGET_TEXT_EDIT, "UITextEdit", sizeof(UITextEditWidgetObj), &UITextEditWidgetObj::cleanup },
+};
+// clang-format on
+
+static_assert(sizeof(sWidgetTable) / sizeof(*sWidgetTable) == UI_WIDGET_TYPE_COUNT);
+static_assert(IsTrivial<UIWidgetObj>);
+static_assert(IsTrivial<UITextWidgetObj>);
+static_assert(IsTrivial<UITextEditWidgetObj>);
+static_assert(IsTrivial<UIPanelWidgetObj>);
+static_assert(IsTrivial<UIImageWidgetObj>);
+static_assert(IsTrivial<UIToggleWidgetObj>);
+static_assert(IsTrivial<UISliderWidgetObj>);
+static_assert(IsTrivial<UIButtonWidgetObj>);
 
 void UIWidgetObj::draw(ScreenRenderComponent renderer)
 {
@@ -225,6 +255,10 @@ UIToggleWidget UINode::add_toggle(const UILayoutInfo& layoutI, const UIToggleWid
     return {obj};
 }
 
+//
+// UITextWidget
+//
+
 UITextWidget UINode::add_text(const UILayoutInfo& layoutI, const UITextWidgetInfo& widgetI, void* user)
 {
     UILayoutInfo textLayoutI = layoutI;
@@ -242,6 +276,19 @@ UITextWidget UINode::add_text(const UILayoutInfo& layoutI, const UITextWidgetInf
     obj->as.text.hoverHL = widgetI.hoverHL;
 
     return {obj};
+}
+
+void UITextWidgetObj::cleanup(UIWidgetObj* base)
+{
+    UITextWidgetObj& self = base->as.text;
+
+    if (self.value)
+    {
+        heap_free((void*)self.value);
+        self.value = nullptr;
+    }
+
+    self.~UITextWidgetObj();
 }
 
 void UITextWidgetObj::on_draw(UIWidget widget, ScreenRenderComponent renderer)
@@ -264,6 +311,78 @@ void UITextWidgetObj::on_draw(UIWidget widget, ScreenRenderComponent renderer)
     }
 }
 
+//
+// UITextEditWidget
+//
+
+UITextEditWidget UINode::add_text_edit(const UILayoutInfo& layoutI, const UITextEditWidgetInfo& widgetI, void* user)
+{
+    UIWindowObj* window = mObj->window;
+    UIWidgetObj* obj = window->ctx->alloc_widget(UI_WIDGET_TEXT_EDIT, layoutI, mObj, user);
+    obj->as.textEdit.fontSize = widgetI.fontSize;
+    obj->as.textEdit.value = heap_new<std::string>(MEMORY_USAGE_UI);
+    obj->cb.onKey = &UITextEditWidgetObj::on_key;
+    obj->cb.onDraw = &UITextEditWidgetObj::on_draw;
+
+    return {obj};
+}
+
+void UITextEditWidgetObj::cleanup(UIWidgetObj* base)
+{
+    UITextEditWidgetObj& self = base->as.textEdit;
+
+    heap_delete<std::string>(self.value);
+
+    if (self.placeHolder)
+    {
+        heap_free((void*)self.placeHolder);
+        self.placeHolder = nullptr;
+    }
+}
+
+void UITextEditWidgetObj::on_key(UIWidget widget, KeyCode key, UIEvent event)
+{
+    UIWidgetObj* obj = widget.unwrap();
+    auto& self = obj->as.textEdit;
+
+    if (event != UI_KEY_DOWN)
+        return;
+
+    if (KEY_CODE_A <= key && key <= KEY_CODE_Z)
+    {
+        self.value->push_back((char)key);
+    }
+    else if (key == KEY_CODE_BACKSPACE && !self.value->empty())
+    {
+        self.value->pop_back();
+    }
+}
+
+void UITextEditWidgetObj::on_draw(UIWidget widget, ScreenRenderComponent renderer)
+{
+    UIWidgetObj* obj = widget.unwrap();
+    auto& self = obj->as.textEdit;
+    UIContextObj& ctx = *obj->window->ctx;
+    const UITheme& theme = ctx.theme;
+
+    Rect rect = widget.get_rect();
+    renderer.draw_rect(rect, theme.get_field_color());
+
+    if (!self.value->empty())
+    {
+        float wrapWidth = rect.w;
+        renderer.draw_text(ctx.fontAtlas, ctx.fontAtlasImage, self.fontSize, rect.get_pos(), self.value->c_str(), theme.get_on_surface_color(), wrapWidth);
+    }
+    else if (self.placeHolder)
+    {
+        // TODO: place holder text
+    }
+}
+
+//
+// UIPanelWidget
+//
+
 void UIPanelWidgetObj::on_draw(UIWidget widget, ScreenRenderComponent renderer)
 {
     UIWidgetObj* obj = widget;
@@ -272,6 +391,10 @@ void UIPanelWidgetObj::on_draw(UIWidget widget, ScreenRenderComponent renderer)
 
     renderer.draw_rect(rect, self.color);
 }
+
+//
+// UIToggleWidget
+//
 
 void UIToggleWidgetObj::on_mouse(UIWidget widget, const Vec2& pos, MouseButton btn, UIEvent event)
 {
@@ -327,6 +450,21 @@ void UIToggleWidgetObj::on_draw(UIWidget widget, ScreenRenderComponent renderer)
         color |= 234;
     }
     renderer.draw_rect(rect, color);
+}
+
+//
+// UIButtonWidget
+//
+
+void UIButtonWidgetObj::cleanup(UIWidgetObj* base)
+{
+    UIButtonWidgetObj& self = base->as.button;
+
+    if (self.text)
+    {
+        heap_free((void*)self.text);
+        self.text = nullptr;
+    }
 }
 
 void UIButtonWidgetObj::on_mouse(UIWidget widget, const Vec2& pos, MouseButton btn, UIEvent event)
@@ -469,6 +607,16 @@ void UITextWidget::set_text(const char* cstr)
 
     // TODO: fix memory leak, last strdup is never freed
     mObj->as.text.value = cstr ? heap_strdup(cstr, MEMORY_USAGE_UI) : nullptr;
+}
+
+void ui_obj_cleanup(UIWidgetObj* widget)
+{
+    LD_ASSERT(widget);
+
+    if (!sWidgetTable[widget->type].cleanup)
+        return;
+
+    sWidgetTable[widget->type].cleanup(widget);
 }
 
 } // namespace LD

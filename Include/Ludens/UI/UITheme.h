@@ -14,6 +14,7 @@ struct UIThemeInfo
     Color onSurfaceColor;
     Color primaryColor;
     Color backgroundColor;
+    Color fieldColor;
 };
 
 /// @brief Handle to a UI theme.
@@ -26,6 +27,7 @@ struct UITheme : Handle<UIThemeInfo>
     inline Color get_on_surface_color() const { return mObj->onSurfaceColor; };
     inline Color get_primary_color() const { return mObj->primaryColor; };
     inline Color get_background_color() const { return mObj->backgroundColor; };
+    inline Color get_field_color() const { return mObj->fieldColor; }
 };
 
 } // namespace LD

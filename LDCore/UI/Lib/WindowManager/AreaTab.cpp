@@ -76,10 +76,14 @@ AreaTab* AreaTabControl::get_active_tab()
 
 void AreaTabControl::show()
 {
+    mWindow.raise();
     mWindow.show();
 
     if (mActiveTab && mActiveTab->client)
+    {
+        mActiveTab->client.raise();
         mActiveTab->client.show();
+    }
 }
 
 void AreaTabControl::hide()

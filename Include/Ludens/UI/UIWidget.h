@@ -168,6 +168,16 @@ struct UITextWidgetInfo
     bool hoverHL;     /// whether to highlight the text when hovered
 };
 
+struct UITextEditWidget : UIWidget
+{
+};
+
+struct UITextEditWidgetInfo
+{
+    float fontSize;          /// rendered size
+    const char* placeHolder; /// default gray text to display when empty
+};
+
 /// @brief interface to manipulate widget tree hierarchy
 struct UINode : Handle<struct UIWidgetObj>
 {
@@ -184,6 +194,8 @@ struct UINode : Handle<struct UIWidgetObj>
     UIToggleWidget add_toggle(const UILayoutInfo& layoutI, const UIToggleWidgetInfo& widgetI, void* user);
 
     UITextWidget add_text(const UILayoutInfo& layoutI, const UITextWidgetInfo& widgetI, void* user);
+
+    UITextEditWidget add_text_edit(const UILayoutInfo& layoutI, const UITextEditWidgetInfo& widgetI, void* user);
 };
 
 } // namespace LD

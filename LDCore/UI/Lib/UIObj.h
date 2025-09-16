@@ -24,6 +24,8 @@ enum UIWidgetType
     UI_WIDGET_PANEL,
     UI_WIDGET_IMAGE,
     UI_WIDGET_TEXT,
+    UI_WIDGET_TEXT_EDIT,
+    UI_WIDGET_TYPE_COUNT,
 };
 
 struct UIWidgetObj;
@@ -77,6 +79,7 @@ struct UIButtonWidgetObj
     Color textColor;
     bool transparentBG;
 
+    static void cleanup(UIWidgetObj* base);
     static void on_mouse(UIWidget widget, const Vec2& pos, MouseButton btn, UIEvent event);
     static void on_draw(UIWidget widget, ScreenRenderComponent renderer);
 };
@@ -114,6 +117,19 @@ struct UITextWidgetObj
     float fontSize;
     bool hoverHL;
 
+    static void cleanup(UIWidgetObj* base);
+    static void on_draw(UIWidget widget, ScreenRenderComponent renderer);
+};
+
+struct UITextEditWidgetObj
+{
+    UIWidgetObj* base;
+    std::string* value;
+    const char* placeHolder;
+    float fontSize;
+
+    static void cleanup(UIWidgetObj* base);
+    static void on_key(UIWidget widget, KeyCode key, UIEvent event);
     static void on_draw(UIWidget widget, ScreenRenderComponent renderer);
 };
 
@@ -149,6 +165,7 @@ struct UIWidgetObj
     union
     {
         UITextWidgetObj text;
+        UITextEditWidgetObj textEdit;
         UIPanelWidgetObj panel;
         UIImageWidgetObj image;
         UIButtonWidgetObj button;
@@ -199,7 +216,7 @@ struct UIWidgetObj
 ///        is directly managed by the UIContext.
 struct UIWindowObj : UIWidgetObj
 {
-    UIWindowObj() : UIWidgetObj{} {}
+    UIWindowObj();
     UIWindowObj(const UIWindowObj&) = delete;
     ~UIWindowObj();
 
@@ -221,6 +238,10 @@ struct UIWindowObj : UIWidgetObj
     static void on_drag(UIWidget widget, MouseButton btn, const Vec2& dragPos, bool begin);
 };
 
+/// @brief Perform UI layout on a widget subtree.
 extern void ui_layout(UIWidgetObj* root);
+
+/// @brief Perform any type specific cleanup or deallocations.
+extern void ui_obj_cleanup(UIWidgetObj*);
 
 } // namespace LD

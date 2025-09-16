@@ -64,6 +64,7 @@ void UIContextObj::free_widget(UIWidgetObj* widget)
     size_t count = std::erase(window->widgets, widget);
     LD_ASSERT(count == 1);
 
+    ui_obj_cleanup(widget);
     widgetPA.free(widget);
 }
 
