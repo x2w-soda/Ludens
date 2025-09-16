@@ -116,14 +116,14 @@ void Window::size_callback(GLFWwindow* window, int width, int height)
 
 void Window::key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
-    if (action == GLFW_REPEAT)
-        return;
-
-    if (action == GLFW_PRESS)
+    if (action == GLFW_PRESS || action == GLFW_REPEAT)
     {
-        Input::sKeyState[key] |= (PRESSED_BIT | PRESSED_THIS_FRAME_BIT);
+        bool firstPress = action == GLFW_PRESS;
 
-        KeyDownEvent event((KeyCode)key);
+        if (firstPress)
+            Input::sKeyState[key] |= (PRESSED_BIT | PRESSED_THIS_FRAME_BIT);
+
+        KeyDownEvent event((KeyCode)key, !firstPress);
         Application::on_event(&event);
     }
     else if (action == GLFW_RELEASE)

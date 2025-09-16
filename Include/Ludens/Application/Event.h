@@ -31,8 +31,9 @@ struct ApplicationResizeEvent : Event
 struct KeyDownEvent : Event
 {
     const KeyCode key;
+    bool repeat;
 
-    KeyDownEvent(KeyCode key) : Event(EVENT_TYPE_KEY_DOWN), key(key) {}
+    KeyDownEvent(KeyCode key, bool repeat) : Event(EVENT_TYPE_KEY_DOWN), key(key), repeat(repeat) {}
 };
 
 struct KeyUpEvent : Event
