@@ -63,7 +63,7 @@ static Bitmap generate_bitmap_atlas(FontObj* obj, std::vector<msdf_atlas::GlyphG
     packer.getDimensions(atlasWidth, atlasHeight);
     msdf_atlas::ImmediateAtlasGenerator<
         float, 1,
-        msdf_atlas::scanlineGenerator,
+        msdf_atlas::sdfGenerator, // msdf_atlas::scanlineGenerator does not perform AA
         msdf_atlas::BitmapAtlasStorage<msdfgen::byte, 1>>
         generator(atlasWidth, atlasHeight);
 

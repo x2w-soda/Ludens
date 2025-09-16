@@ -36,7 +36,7 @@ public:
         appI.width = 1600;
         appI.height = 900;
         appI.vsync = true;
-        appI.name = "LDEditor";
+        appI.name = "Ludens";
         appI.onEvent = &EditorUI::on_event;
         appI.user = &mEditorUI;
         appI.hintBorderColor = 0;
@@ -46,7 +46,7 @@ public:
 
         // TODO: embed font
         mFont = Font::create_from_path("../../../../Assets/ttf/Inter_24pt-Regular.ttf");
-        mFontAtlas = FontAtlas::create_sdf(mFont, 24.0f);
+        mFontAtlas = FontAtlas::create_bitmap(mFont, 32.0f);
 
         // TODO: remove hardcoded skybox
         fs::path dirPath = "../../../../Assets/skybox/opengl";
