@@ -9,7 +9,7 @@ class UIAnimation
 {
 public:
     /// @brief explict reset that cancels current animation
-    inline void reset(float value)
+    inline void reset(float value = 0.0f)
     {
         mValue = value;
         mTime = -1.0f;
@@ -56,8 +56,8 @@ public:
     }
 
 private:
-    float mValue = 0.0f;
-    float mTime = -1.0f;
+    float mValue;
+    float mTime;
     float mDuration;
 };
 

@@ -70,7 +70,7 @@ public:
     }
 
 private:
-    uint32_t mValue = 0;
+    uint32_t mValue;
 };
 
 } // namespace LD

@@ -10,7 +10,7 @@ struct TRect
 {
     T x, y, w, h;
 
-    TRect() : x(0), y(0), w(0), h(0) {}
+    TRect() = default;
     TRect(T x, T y, T w, T h) : x(x), y(y), w(w), h(h) {}
 
     /// @brief Get top left corner position

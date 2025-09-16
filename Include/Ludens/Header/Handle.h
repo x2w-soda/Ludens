@@ -6,7 +6,7 @@ template <typename TObject>
 class Handle
 {
 public:
-    Handle() : mObj(nullptr) {}
+    Handle() = default;
     Handle(TObject* obj) : mObj(obj) {}
 
     operator bool() const { return mObj != nullptr; }

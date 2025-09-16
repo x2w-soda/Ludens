@@ -5,6 +5,11 @@
 
 namespace LD {
 
+UIWindowObj::UIWindowObj()
+    : UIWidgetObj{}
+{
+}
+
 UIWindowObj::~UIWindowObj()
 {
     while (!widgets.empty())
