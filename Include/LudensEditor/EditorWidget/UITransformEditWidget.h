@@ -17,9 +17,20 @@ struct UITransformEditWidgetInfo
 /// @brief Widget for inspecting and editing a Transform
 struct UITransformEditWidget : Handle<struct UITransformEditWidgetObj>
 {
+    /// @brief Create widget.
     static UITransformEditWidget create(const UITransformEditWidgetInfo& info);
 
+    /// @brief Destroy widget.
+    static void destroy(UITransformEditWidget widget);
+
+    /// @brief Set the transform address to edit.
     void set(Transform* transform);
+
+    /// @brief Show widget subtree.
+    void show();
+    
+    /// @brief Hide widget subtree.
+    void hide();
 };
 
 } // namespace LD

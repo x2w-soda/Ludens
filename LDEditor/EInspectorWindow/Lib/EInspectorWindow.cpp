@@ -1,9 +1,11 @@
+#include <Ludens/Asset/MeshAsset.h>
 #include <Ludens/DataRegistry/DataComponent.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/System/Memory.h>
 #include <LudensEditor/EInspectorWindow/EInspectorWindow.h>
 #include <LudensEditor/EditorContext/EditorWindowObj.h>
+#include <LudensEditor/EditorWidget/UIAssetSlotWidget.h>
 #include <LudensEditor/EditorWidget/UITransformEditWidget.h>
 
 namespace LD {
@@ -13,7 +15,8 @@ struct EInspectorWindowObj : EditorWindowObj
 {
     virtual ~EInspectorWindowObj() = default;
 
-    UITransformEditWidget transformEdit;
+    UITransformEditWidget transformEditW;
+    UIAssetSlotWidget slotW;
 
     void inspect_component(CUID compID);
 
@@ -25,11 +28,18 @@ void EInspectorWindowObj::inspect_component(CUID compID)
 {
     LD_PROFILE_SCOPE;
 
+    AssetManager AM = editorCtx.get_asset_manager();
+
     if (compID == 0)
     {
-        transformEdit.set(nullptr);
+        transformEditW.set(nullptr);
+        transformEditW.hide();
+        slotW.hide();
         return;
     }
+
+    transformEditW.show();
+    slotW.show();
 
     ComponentType compType;
     void* comp = editorCtx.get_component(compID, compType);
@@ -37,8 +47,19 @@ void EInspectorWindowObj::inspect_component(CUID compID)
     // TODO: map component type to its required widgets for inspection.
     switch (compType)
     {
-    case COMPONENT_TYPE_MESH:
-        transformEdit.set(&((MeshComponent*)comp)->transform);
+    case COMPONENT_TYPE_MESH: {
+        MeshComponent* meshC = (MeshComponent*)comp;
+        transformEditW.set(&meshC->transform);
+        slotW.set(&meshC->auid);
+        const char* assetName = nullptr;
+        MeshAsset asset = AM.get_mesh_asset(meshC->auid);
+        if (asset)
+            assetName = asset.get_name();
+        slotW.set_asset_name(assetName);
+        break;
+    }
+    default:
+        break;
     }
 }
 
@@ -77,7 +98,17 @@ EInspectorWindow EInspectorWindow::create(const EInspectorWindowInfo& windowI)
     UITransformEditWidgetInfo transformEditWI{};
     transformEditWI.parent = obj->root;
     transformEditWI.theme = theme;
-    obj->transformEdit = UITransformEditWidget::create(transformEditWI);
+    obj->transformEditW = UITransformEditWidget::create(transformEditWI);
+    obj->transformEditW.hide();
+
+    // TODO:
+    UIAssetSlotWidgetInfo slotWI{};
+    slotWI.parent = obj->root;
+    slotWI.theme = theme;
+    slotWI.asset = nullptr;
+    slotWI.type = ASSET_TYPE_MESH;
+    obj->slotW = UIAssetSlotWidget::create(slotWI);
+    obj->slotW.hide();
 
     obj->editorCtx.add_observer(&EInspectorWindowObj::on_editor_context_event, obj);
 

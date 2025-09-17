@@ -368,6 +368,9 @@ void UITextEditWidgetObj::on_draw(UIWidget widget, ScreenRenderComponent rendere
     Rect rect = widget.get_rect();
     renderer.draw_rect(rect, theme.get_field_color());
 
+    if (widget.is_hovered())
+        renderer.draw_rect_outline(rect, 1, theme.get_primary_color());
+
     if (!self.value->empty())
     {
         float wrapWidth = rect.w;

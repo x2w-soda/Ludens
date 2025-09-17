@@ -43,7 +43,7 @@ struct UITransformEditWidgetObj
             // TODO: UITextEditWidget, currently we are only displaying transform values
             UINode panelN = panel.node();
             layoutI.sizeX = UISize::fixed(100);
-            layoutI.sizeY = UISize::fixed(textWI.fontSize);
+            layoutI.sizeY = UISize::fixed(textWI.fontSize * 1.2f);
             label = panelN.add_text(layoutI, textWI, nullptr);
             label.set_text(rowLabel);
             x = panelN.add_text(layoutI, textWI, nullptr);
@@ -61,6 +61,7 @@ struct UITransformEditWidgetObj
 
             Color colorX, colorY, colorZ;
             self.transformEdit->theme.get_gizmo_colors(colorX, colorY, colorZ);
+            UITheme theme = self.transformEdit->theme.get_ui_theme();
 
             Rect rect = self.label.get_rect();
             Vec2 pos = rect.get_pos_tr();
@@ -72,6 +73,10 @@ struct UITransformEditWidgetObj
             pos.x += self.y.get_rect().w + panelChildGap;
 
             renderer.draw_rect(Rect(pos.x, pos.y, panelChildGap, rect.h), colorZ);
+
+            renderer.draw_rect(self.x.get_rect(), theme.get_field_color());
+            renderer.draw_rect(self.y.get_rect(), theme.get_field_color());
+            renderer.draw_rect(self.z.get_rect(), theme.get_field_color());
         }
     } position, rotation, scale;
 
@@ -142,9 +147,26 @@ UITransformEditWidget UITransformEditWidget::create(const UITransformEditWidgetI
     return {obj};
 }
 
+void UITransformEditWidget::destroy(UITransformEditWidget widget)
+{
+    UITransformEditWidgetObj* obj = widget.unwrap();
+
+    heap_delete<UITransformEditWidgetObj>(obj);
+}
+
 void UITransformEditWidget::set(Transform* transform)
 {
     mObj->subject = transform;
+}
+
+void UITransformEditWidget::show()
+{
+    mObj->root.show();
+}
+
+void UITransformEditWidget::hide()
+{
+    mObj->root.hide();
 }
 
 } // namespace LD
