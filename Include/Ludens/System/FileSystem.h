@@ -7,13 +7,15 @@
 namespace LD {
 namespace FS {
 
-uint64_t get_file_size(const std::filesystem::path& path);
+using Path = std::filesystem::path;
 
-bool read_file(const std::filesystem::path& path, uint64_t& size, byte* buf);
+uint64_t get_file_size(const Path& path);
 
-bool write_file(const std::filesystem::path& path, uint64_t size, const byte* buf);
+bool read_file(const Path& path, uint64_t& size, byte* buf);
 
-bool exists(const std::filesystem::path& path);
+bool write_file(const Path& path, uint64_t size, const byte* buf);
+
+bool exists(const Path& path);
 
 } // namespace FS
 } // namespace LD

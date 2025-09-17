@@ -7,12 +7,12 @@ namespace FS {
 
 namespace fs = std::filesystem;
 
-uint64_t get_file_size(const fs::path& path)
+uint64_t get_file_size(const Path& path)
 {
     return (uint64_t)fs::file_size(path);
 }
 
-bool read_file(const std::filesystem::path& path, uint64_t& size, byte* buf)
+bool read_file(const Path& path, uint64_t& size, byte* buf)
 {
     LD_PROFILE_SCOPE;
 
@@ -36,7 +36,7 @@ bool read_file(const std::filesystem::path& path, uint64_t& size, byte* buf)
     return true;
 }
 
-bool write_file(const std::filesystem::path& path, uint64_t size, const byte* buf)
+bool write_file(const Path& path, uint64_t size, const byte* buf)
 {
     LD_PROFILE_SCOPE;
 
@@ -51,7 +51,7 @@ bool write_file(const std::filesystem::path& path, uint64_t size, const byte* bu
     return true;
 }
 
-bool exists(const std::filesystem::path& path)
+bool exists(const Path& path)
 {
     return fs::exists(path);
 }
