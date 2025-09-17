@@ -7,6 +7,41 @@ namespace FS {
 
 namespace fs = std::filesystem;
 
+bool get_directory_content(const Path& directory, std::vector<Path>& contents, std::string& err)
+{
+    if (!fs::exists(directory))
+    {
+        err = directory.string();
+        err += "does not exist.";
+        return false;
+    }
+
+    if (!fs::is_directory(directory))
+    {
+        err = directory.string();
+        err += " is not a directory.";
+        return false;
+    }
+
+    try
+    {
+        contents.clear();
+
+        for (const fs::directory_entry& entry : fs::directory_iterator(directory))
+        {
+            contents.push_back(entry.path());
+        }
+    }
+    catch (const fs::filesystem_error& e)
+    {
+        err = "fs::filesystem_error: ";
+        err += e.what();
+        return false;
+    }
+
+    return true;
+}
+
 uint64_t get_file_size(const Path& path)
 {
     return (uint64_t)fs::file_size(path);
