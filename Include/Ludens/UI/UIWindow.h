@@ -13,6 +13,7 @@ struct UIWindowInfo
     const char* name;          /// window identifier
     bool defaultMouseControls; /// allow mouse drag to move and resize window
     bool drawWithScissor;      /// draw child widgets with scissor
+    bool hidden;               /// whether the window is created hidden
 };
 
 struct UIWindow : UIWidget

@@ -8,57 +8,62 @@ template <typename TInterpolate>
 class UIAnimation
 {
 public:
-    /// @brief explict reset that cancels current animation
+    /// @brief Explict reset that cancels current animation.
     inline void reset(float value = 0.0f)
     {
         mValue = value;
         mTime = -1.0f;
+        mIsAnimated = false;
     }
 
-    /// @brief begin animation
-    /// @param duration animation duration in seconds
-    /// @param keepValue if true, retain current animated value instead of resetting.
+    /// @brief Begin animation.
+    /// @param duration Animation duration in seconds.
     inline void set(float duration)
     {
         mValue = TInterpolate::eval(0.0f);
         mTime = 0.0f;
         mDuration = duration;
+        mIsAnimated = true;
     }
 
-    /// @brief get animation value
-    /// @return normalized animation value between [0.0f, 1.0f]
+    /// @brief Get animation value.
     inline float get() const
     {
         return mValue;
     }
 
-    /// @brief drive the animation with delta time
-    /// @param delta delta time in seconds
+    /// @brief Drive the animation with delta time.
+    /// @param delta Delta time in seconds.
     inline void update(float delta)
     {
-        if (mTime < 0.0f)
+        if (!mIsAnimated)
             return;
 
         mTime += delta;
 
-        bool isComplete = false;
-
         if (mTime > mDuration)
         {
             mTime = mDuration;
-            isComplete = true;
+            mIsAnimated = false;
         }
 
         mValue = TInterpolate::eval(mTime / mDuration);
 
-        if (isComplete)
+        if (!mIsAnimated)
             mTime = -1.0f;
+    }
+
+    /// @brief Check if animation is still in progress.
+    inline bool is_animated() const
+    {
+        return mIsAnimated;
     }
 
 private:
     float mValue;
     float mTime;
     float mDuration;
+    bool mIsAnimated;
 };
 
 struct LinearInterpolation

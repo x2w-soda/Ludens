@@ -31,6 +31,7 @@ public:
     /// @brief Construct from 3-component RGB vector. Alpha channel is initialized to 255 (opaque).
     /// @param value 3-channel RGB color value, each channel is assumed to be normalized.
     Color(const Vec3& value)
+        : mValue(0)
     {
         mValue |= std::min<uint32_t>(uint32_t(value.r * 255.0f), 255) << 24;
         mValue |= std::min<uint32_t>(uint32_t(value.g * 255.0f), 255) << 16;
@@ -67,6 +68,14 @@ public:
         v.b = ((mValue >> 8) & 0xFF) / 255.0f;
         v.a = (mValue & 0xFF) / 255.0f;
         return v;
+    }
+
+    /// @brief Set alpha value.
+    /// @param alpha Normalized alpha value.
+    void set_alpha(float alpha)
+    {
+        mValue &= ~0xFF;
+        mValue |= std::clamp<uint32_t>(static_cast<uint32_t>(alpha * 255.0f), 0, 255);
     }
 
 private:

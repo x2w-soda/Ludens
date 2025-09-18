@@ -203,7 +203,7 @@ UIWindow UIContext::add_window(const UILayoutInfo& layoutI, const UIWindowInfo& 
     windowObj->type = UI_WIDGET_WINDOW;
     windowObj->window = windowObj;
     windowObj->node = {windowObj};
-    windowObj->isHidden = false;
+    windowObj->isHidden = windowI.hidden;
     windowObj->theme = mObj->theme;
     windowObj->drawWithScissor = windowI.drawWithScissor;
 

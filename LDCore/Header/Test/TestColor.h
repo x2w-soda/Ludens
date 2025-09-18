@@ -39,4 +39,7 @@ TEST_CASE("Color")
 
     c1 = 0xCAFEBABE;
     CHECK((uint32_t)c1 == 0xCAFEBABE);
+
+    c1.set_alpha(0.2f);
+    CHECK((uint32_t)c1 == 0xCAFEBA33);
 }
