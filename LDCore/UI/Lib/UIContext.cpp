@@ -238,6 +238,11 @@ UITheme UIContext::get_theme()
     return mObj->theme;
 }
 
+Vec2 UIContext::get_mouse_pos()
+{
+    return mObj->cursorPos;
+}
+
 UIContext UIContext::create(const UIContextInfo& info)
 {
     LD_ASSERT(info.theme);

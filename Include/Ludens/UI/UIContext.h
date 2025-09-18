@@ -42,8 +42,10 @@ struct UIContext : Handle<struct UIContextObj>
     /// @brief notify that a mouse button has been released
     void input_mouse_up(MouseButton btn);
 
+    /// @brief Notify that a key has been pressed.
     void input_key_down(KeyCode key);
 
+    /// @brief Notify that a key has been released.
     void input_key_up(KeyCode key);
 
     /// @brief perform layout on all widgets across all windows
@@ -61,6 +63,9 @@ struct UIContext : Handle<struct UIContextObj>
 
     /// @brief Get current UI theme, shared by all widgets in this context.
     UITheme get_theme();
+
+    /// @brief Get mouse cursor position.
+    Vec2 get_mouse_pos();
 };
 
 } // namespace LD

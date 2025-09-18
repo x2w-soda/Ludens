@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Ludens/Header/Math/Vec2.h>
 #include <Ludens/UI/UIWindowManager.h>
 
 namespace LD {
@@ -47,12 +48,17 @@ public:
 private:
     void invalidate_float_area(const Rect& area);
     void invalidate_leaf_area(const Rect& area);
+    void invalidate_client_pos(const Vec2& pos);
+    void invalidate_client_size(const Vec2& size);
+    void invalidate_client_area(const Rect& area);
 
+    Rect get_leaf_client_area(const Rect& nodeArea);
     Rect get_float_client_area(const Rect& nodeArea);
 
     static void on_update(UIWidget widget, float delta);
     static void on_float_drag(UIWidget widget, MouseButton btn, const Vec2& dragPos, bool begin);
     static void on_float_draw(UIWidget widget, ScreenRenderComponent renderer);
+    static void on_float_hover(UIWidget widget, UIEvent event);
 
 private:
     bool mIsFloat;               /// whether the tab control is for a floating client
@@ -61,6 +67,11 @@ private:
     UIWindow mWindow;            /// tab control window
     UIContext mCtx;              /// UI context handle
     std::vector<AreaTab*> mTabs; /// ordered tabs
+    Vec2 mDragOffset;
+    Vec2 mDragBeginPos;
+    Vec2 mDragBeginSize;
+    bool mDragMove;
+    bool mDragResize;
 };
 
 } // namespace LD
