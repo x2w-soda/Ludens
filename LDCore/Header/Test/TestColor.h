@@ -7,7 +7,7 @@ using namespace LD;
 
 TEST_CASE("Color")
 {
-    Color c1;
+    Color c1{};
     CHECK((uint32_t)c1 == 0);
 
     c1 = Vec4(1.0f, 0.0, 0.0f, 0.0f);

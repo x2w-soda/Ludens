@@ -456,7 +456,7 @@ TEST_CASE("Quat method")
 
 TEST_CASE("Rect ctor")
 {
-    IRect r;
+    IRect r{};
     CHECK(r.x == 0);
     CHECK(r.y == 0);
     CHECK(r.w == 0);
@@ -480,11 +480,25 @@ TEST_CASE("Rect method")
     CHECK(r.contains({2, 4}));
     CHECK(r.contains({4, 6}));
     CHECK(!r.contains({4, 7}));
+
+    Rect r2(10, 20, 40, 60);
+    Vec2 center = r2.get_center();
+    CHECK(center == Vec2(30.0f, 50.0f));
+
+    Vec2 p(0.0f, 10.0f);
+    CHECK(is_equal_epsilon(r2.get_center_distance(p), 50.0f));
+
+    float left, right, top, bot;
+    r2.get_edge_distances(p, &left, &top, &right, &bot);
+    CHECK(is_equal_epsilon(left, 10.0f));
+    CHECK(is_equal_epsilon(top, 10.0f));
+    CHECK(is_equal_epsilon(right, 50.0f));
+    CHECK(is_equal_epsilon(bot, 70.0f));
 }
 
 TEST_CASE("Mat3 ctor")
 {
-    IMat3 m;
+    IMat3 m{};
     CHECK(m[0] == IVec3(0));
     CHECK(m[1] == IVec3(0));
     CHECK(m[2] == IVec3(0));
