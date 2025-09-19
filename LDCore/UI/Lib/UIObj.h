@@ -12,6 +12,7 @@
 #include <Ludens/UI/UIWindow.h>
 #include <optional>
 #include <string>
+#include <unordered_set>
 #include <vector>
 
 namespace LD {
@@ -57,6 +58,7 @@ struct UIContextObj
     PoolAllocator widgetPA;
     UITheme theme;
     std::vector<UIWindowObj*> windows;
+    std::unordered_set<UIWindowObj*> deferredWindowDestruction;
     UIWidgetObj* dragElement;    /// the widget begin dragged
     UIWidgetObj* pressElement;   /// the widget pressed and not yet released
     UIWidgetObj* cursorElement;  /// the widget under mouse cursor
@@ -66,6 +68,8 @@ struct UIContextObj
 
     UIWidgetObj* alloc_widget(UIWidgetType type, const UILayoutInfo& layoutI, UIWidgetObj* parent, void* user);
     void free_widget(UIWidgetObj* widget);
+
+    void pre_update(float delta);
 
     /// @brief Raise a window to top.
     /// @param window Target window.

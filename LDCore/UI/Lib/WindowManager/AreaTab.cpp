@@ -5,6 +5,8 @@
 #include <Ludens/System/Memory.h>
 #include <unordered_set>
 
+#define OPACITY_ANIM_DURATION 0.1f
+
 namespace LD {
 
 void AreaTabControl::startup_as_leaf(UIContext ctx, const Rect& area)
@@ -45,6 +47,7 @@ void AreaTabControl::startup_as_float(UIContext ctx, const Rect& area, float bor
     UIWindowInfo windowI{};
     windowI.name = "AreaTabControl";
     windowI.defaultMouseControls = false;
+    windowI.hidden = true;
     mWindow = ctx.add_window(layoutI, windowI, this);
     mWindow.set_pos(area.get_pos());
     mWindow.set_on_drag(&AreaTabControl::on_float_drag);
@@ -81,6 +84,8 @@ void AreaTabControl::show()
     mWindow.raise();
     mWindow.show();
 
+    mOpacityA.showing(OPACITY_ANIM_DURATION);
+
     if (mActiveTab && mActiveTab->client)
     {
         mActiveTab->client.raise();
@@ -90,13 +95,7 @@ void AreaTabControl::show()
 
 void AreaTabControl::hide()
 {
-    mWindow.hide();
-
-    for (AreaTab* tab : mTabs)
-    {
-        if (tab->client)
-            tab->client.hide();
-    }
+    mOpacityA.hiding(OPACITY_ANIM_DURATION);
 }
 
 void AreaTabControl::draw(ScreenRenderComponent renderer)
@@ -188,29 +187,70 @@ Rect AreaTabControl::get_float_client_area(const Rect& nodeArea)
                 nodeArea.h - WINDOW_TAB_HEIGHT - mFloatBorder);
 }
 
+void AreaTabControl::delete_tabs()
+{
+    if (mOpacityA.is_hiding())
+        return;
+
+    std::unordered_set<AreaTab*> toErase;
+
+    for (AreaTab* tab : mTabs)
+    {
+        if (tab && tab->shouldClose)
+        {
+            if (tab == mActiveTab)
+                mActiveTab = nullptr;
+
+            if (tab->onClientClose)
+                tab->onClientClose(tab->client, tab->user);
+
+            toErase.insert(tab);
+            heap_delete<AreaTab>(tab);
+            continue;
+        }
+    }
+
+    std::erase_if(mTabs, [&](AreaTab* tab) { return toErase.contains(tab); });
+
+    if (!mTabs.empty() && mActiveTab == nullptr)
+        mActiveTab = mTabs.front();
+}
+
 void AreaTabControl::on_update(UIWidget widget, float delta)
 {
     AreaTabControl& self = *(AreaTabControl*)widget.get_user();
 
-    std::unordered_set<AreaTab*> toErase;
-
-    for (AreaTab* tab : self.mTabs)
+    // some animations for floating clients
+    if (self.mIsFloat)
     {
-        if (tab->shouldClose)
-        {
-            if (tab == self.mActiveTab)
-                self.mActiveTab = nullptr;
+        // closing last tab of a floating area should trigger the hide animation
+        bool lastTabClosing = self.get_tab_count() == 1 && self.get_active_tab()->shouldClose;
+        if (lastTabClosing && !self.mOpacityA.is_hiding())
+            self.hide();
 
-            toErase.insert(tab);
-            heap_delete<AreaTab>(tab);
-            break;
+        bool isHiding = self.mOpacityA.is_hiding();
+        bool animEnded = self.mOpacityA.update(delta);
+
+        Color mask = self.mOpacityA.get_color_mask();
+        self.mWindow.set_color_mask(mask);
+
+        if (self.mActiveTab && self.mActiveTab->client)
+            self.mActiveTab->client.set_color_mask(mask);
+
+        // hide floating area after fade out animation
+        if (isHiding && animEnded)
+        {
+            self.mWindow.hide();
+
+            for (AreaTab* tab : self.mTabs)
+            {
+                if (tab->client)
+                    tab->client.hide();
+            }
         }
     }
 
-    std::erase_if(self.mTabs, [&](AreaTab* tab) { return toErase.contains(tab); });
-
-    if (!self.mTabs.empty() && self.mActiveTab == nullptr)
-        self.mActiveTab = self.mTabs.front();
+    self.delete_tabs();
 }
 
 void AreaTabControl::on_float_drag(UIWidget widget, MouseButton btn, const Vec2& dragPos, bool begin)
@@ -327,11 +367,8 @@ void AreaTab::on_close(UIWidget widget, const Vec2& pos, MouseButton btn, UIEven
 
     AreaTab& self = *(AreaTab*)widget.get_user();
 
-    // the window manager will no longer be interacting with client window
-    if (self.onClientClose)
-        self.onClientClose(self.client, self.user);
-
-    // see AreaTabControl::on_update
+    // see AreaTabControl::on_update, tab may not be closed immediately
+    // if there are animations.
     self.shouldClose = true;
 }
 

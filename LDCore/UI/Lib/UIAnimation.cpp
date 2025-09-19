@@ -56,7 +56,8 @@ uint32_t UIOpacityAnimation::get_color_mask()
 {
     Color mask(0xFFFFFFFF);
 
-    mask.set_alpha(get_opacity());
+    if (mState != ANIM_NONE)
+        mask.set_alpha(get_opacity());
 
     return mask;
 }

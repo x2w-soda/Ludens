@@ -197,7 +197,6 @@ void AreaNode::startup_as_float(UIContext ctx, UIWMAreaID areaID, const Rect& ar
 
     mTabControl.startup_as_float(ctx, area, border);
     mTabControl.add_tab(client, user);
-    mTabControl.hide();
 }
 
 void AreaNode::cleanup()

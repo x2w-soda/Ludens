@@ -68,6 +68,19 @@ void UIContextObj::free_widget(UIWidgetObj* widget)
     widgetPA.free(widget);
 }
 
+void UIContextObj::pre_update(float delta)
+{
+    for (UIWindowObj* window : deferredWindowDestruction)
+    {
+        heap_delete<UIWindowObj>(window);
+
+        size_t count = std::erase(windows, window);
+        LD_ASSERT(count == 1);
+    }
+
+    deferredWindowDestruction.clear();
+}
+
 void UIContextObj::raise_window(UIWindowObj* window)
 {
     auto ite = std::find(windows.begin(), windows.end(), window);
@@ -219,10 +232,9 @@ void UIContext::remove_window(UIWindow window)
 {
     UIWindowObj* obj = (UIWindowObj*)window.unwrap();
 
-    heap_delete<UIWindowObj>(obj);
-
-    size_t count = std::erase(mObj->windows, obj);
-    LD_ASSERT(count == 1);
+    // window destruction is deferred so we don't modify
+    // window hierarchy while iterating it.
+    mObj->deferredWindowDestruction.insert(obj);
 }
 
 void UIContext::get_windows(std::vector<UIWindow>& windows)
@@ -276,6 +288,8 @@ void UIContext::destroy(UIContext ctx)
 
 void UIContext::update(float delta)
 {
+    mObj->pre_update(delta);
+
     layout();
 
     for (UIWindowObj* window : mObj->windows)
