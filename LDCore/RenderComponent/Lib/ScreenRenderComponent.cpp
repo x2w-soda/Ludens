@@ -7,8 +7,8 @@
 #include <Ludens/RenderComponent/ScreenRenderComponent.h>
 #include <Ludens/System/Memory.h>
 #include <array>
-#include <vector>
 #include <stack>
+#include <vector>
 
 #define IMAGE_SLOT_COUNT 8
 
@@ -127,7 +127,6 @@ public:
     static void on_graphics_pass(RGraphicsPass pass, RCommandList list, void* userData);
 
 private: // instance members
-
     struct Batch
     {
         RBuffer rectVBO;
@@ -150,9 +149,11 @@ private: // instance members
     uint32_t mFrameIdx;
     uint32_t mScreenWidth;
     uint32_t mScreenHeight;
+    Color mColorMask = 0xFFFFFFFF;
     std::string mName;
     std::vector<Frame> mFrames;
     std::stack<Rect> mScissors;
+    std::stack<Color> mColorMasks;
     void (*mOnDraw)(ScreenRenderComponent renderer, void* user);
     void* mUser;
     bool mHasSampledImage;
@@ -517,10 +518,35 @@ void ScreenRenderComponent::pop_scissor()
     }
 }
 
+void ScreenRenderComponent::push_color_mask(Color mask)
+{
+    LD_ASSERT(mObj->mList);
+
+    mObj->mColorMasks.push(mask);
+    mObj->mColorMask = mask;
+}
+
+void ScreenRenderComponent::pop_color_mask()
+{
+    LD_ASSERT(mObj->mList);
+
+    if (mObj->mColorMasks.empty())
+        return;
+
+    mObj->mColorMasks.pop();
+
+    if (mObj->mColorMasks.empty())
+        mObj->mColorMask = 0xFFFFFFFF;
+    else
+        mObj->mColorMask = mObj->mColorMasks.top();
+}
+
 void ScreenRenderComponent::draw_rect(const Rect& rect, Color color)
 {
     if (mObj->mRectBatch.is_full())
         mObj->flush_rects();
+
+    color = color * mObj->mColorMask;
 
     float x0 = rect.x;
     float x1 = rect.x + rect.w;
@@ -538,6 +564,8 @@ void ScreenRenderComponent::draw_rect_outline(const Rect& rect, float border, Co
 {
     if (mObj->mRectBatch.get_rect_count() + 4 > mObj->mRectBatch.get_max_rect_count())
         mObj->flush_rects();
+
+    color = color * mObj->mColorMask;
 
     float x0 = rect.x;
     float x1 = rect.x + rect.w;
@@ -583,7 +611,7 @@ void ScreenRenderComponent::draw_image(const Rect& rect, RImage image)
     float y1 = rect.y + rect.h;
 
     uint32_t control = get_rect_vertex_control_bits(imageIdx, RECT_VERTEX_IMAGE_HINT_NONE, 0);
-    uint32_t white = 0xFFFFFFFF;
+    uint32_t white = mObj->mColorMask;
 
     RectVertex* v = mObj->mRectBatch.write_rect();
     v[0] = {x0, y0, 0.0f, 0.0f, white, control}; // TL
@@ -599,6 +627,8 @@ void ScreenRenderComponent::draw_image_uv(const Rect& rect, RImage image, const 
 
     int imageIdx = mObj->get_image_index(image);
     LD_ASSERT(imageIdx >= 0);
+
+    color = color * mObj->mColorMask;
 
     float x0 = rect.x;
     float x1 = rect.x + rect.w;
@@ -618,6 +648,9 @@ void ScreenRenderComponent::draw_image_uv(const Rect& rect, RImage image, const 
     v[3] = {x0, y1, u0, v1, color, control}; // BL
 }
 
+// NOTE: this function applies the color mask,
+//       if caller also applies the color mask
+//       we will have the mask incorrectly applied twice.
 void ScreenRenderComponent::draw_glyph(FontAtlas atlas, RImage atlasImage, float fontSize, const Vec2& pos, uint32_t code, Color color)
 {
     if (mObj->mRectBatch.is_full())
@@ -651,6 +684,8 @@ void ScreenRenderComponent::draw_glyph(FontAtlas atlas, RImage atlasImage, float
         hint = RECT_VERTEX_IMAGE_HINT_FONT_SDF;
         break;
     }
+
+    color = color * mObj->mColorMask;
 
     uint32_t control = get_rect_vertex_control_bits(imageIdx, hint, filterRatio);
 

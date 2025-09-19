@@ -10,6 +10,7 @@
 #include <Ludens/UI/UITheme.h>
 #include <Ludens/UI/UIWidget.h>
 #include <Ludens/UI/UIWindow.h>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -225,6 +226,7 @@ struct UIWindowObj : UIWidgetObj
     UIContextObj* ctx;                 /// owning context
     std::string name;                  /// window identifier
     std::vector<UIWidgetObj*> widgets; /// all widgets within the window
+    std::optional<Color> colorMask;    /// optional mask to modify widget colors in window
     Vec2 dragOffset;
     Vec2 dragBeginPos;
     Vec2 dragBeginSize;
@@ -233,7 +235,7 @@ struct UIWindowObj : UIWidgetObj
 
     void update(float delta);
 
-    void draw_widget_subtree(UIWidgetObj* widget, ScreenRenderComponent renderer);
+    static void draw_widget_subtree(UIWidgetObj* widget, ScreenRenderComponent renderer);
 
     static void on_drag(UIWidget widget, MouseButton btn, const Vec2& dragPos, bool begin);
 };

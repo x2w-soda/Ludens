@@ -40,6 +40,9 @@ struct UIWindow : UIWidget
     /// @brief set window to position and fixed size
     void set_rect(const Rect& rect);
 
+    /// @brief Set color mask for widgets in this window.
+    void set_color_mask(Color mask);
+
     /// @brief get all child widgets in the window
     void get_widgets(std::vector<UIWidget>& widgets);
 

@@ -60,7 +60,7 @@ public:
         return mValue;
     }
 
-    operator Vec4() const
+    Vec4 as_vec4() const
     {
         Vec4 v;
         v.r = ((mValue >> 24) & 0xFF) / 255.0f;
@@ -81,5 +81,10 @@ public:
 private:
     uint32_t mValue;
 };
+
+inline Color operator*(const Color& lhs, const Color& rhs)
+{
+    return Color(lhs.as_vec4() * rhs.as_vec4());
+}
 
 } // namespace LD

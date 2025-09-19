@@ -40,6 +40,13 @@ struct ScreenRenderComponent : Handle<struct ScreenRenderComponentObj>
     /// @note This forces a flush of the current batch since the scissor state changes.
     void pop_scissor();
 
+    /// @brief Push a color mask onto stack, only the top color mask takes effect.
+    ///        Subsequent draw calls will have their colors multiplied with the mask.
+    void push_color_mask(Color mask);
+
+    /// @brief Pop a color mask off the stack, the remaining top color mask takes effect.
+    void pop_color_mask();
+
     /// @brief draw a rect
     /// @param rect render area in screen space
     /// @param color rect fill color

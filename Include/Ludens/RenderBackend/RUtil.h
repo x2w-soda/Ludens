@@ -76,7 +76,7 @@ inline RClearColorValue make_clear_color(T r, T g, T b, T a)
 
 inline RClearColorValue make_clear_color(Color color)
 {
-    Vec4 v = color.operator TVec4<float>();
+    Vec4 v = color.as_vec4();
     return make_clear_color<float>(v.r, v.g, v.b, v.a);
 }
 

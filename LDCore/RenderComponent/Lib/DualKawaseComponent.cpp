@@ -304,7 +304,7 @@ DualKawaseComponent DualKawaseComponent::add(RGraph graph, const DualKawaseCompo
     sDKCompObj.init(device, info.format, screenWidth, screenHeight);
     sDKCompObj.mipLevel = 0;
     sDKCompObj.frameIdx = device.get_frame_index();
-    sDKCompObj.mixColorPC = info.mixColor.operator Vec4();
+    sDKCompObj.mixColorPC = info.mixColor.as_vec4();
     sDKCompObj.mixColorPC.a = info.mixFactor;
 
     DualKawaseComponent kawaseComp(&sDKCompObj);

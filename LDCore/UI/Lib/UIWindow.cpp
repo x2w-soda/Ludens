@@ -79,12 +79,14 @@ void UIWindow::draw(ScreenRenderComponent renderer)
     if (useScissor)
         renderer.push_scissor(obj->layout.rect);
 
-    obj->draw(renderer);
+    bool useColorMask = obj->colorMask.has_value();
+    if (useColorMask)
+        renderer.push_color_mask(obj->colorMask.value());
 
-    for (UIWidgetObj* w = obj->child; w; w = w->next)
-    {
-        obj->draw_widget_subtree(w, renderer);
-    }
+    UIWindowObj::draw_widget_subtree(obj, renderer);
+
+    if (useColorMask)
+        renderer.pop_color_mask();
 
     if (useScissor)
         renderer.pop_scissor();
@@ -122,6 +124,13 @@ void UIWindow::set_rect(const Rect& rect)
     obj->layout.rect.y = rect.y;
     mObj->layout.info.sizeX = UISize::fixed(rect.w);
     mObj->layout.info.sizeY = UISize::fixed(rect.h);
+}
+
+void UIWindow::set_color_mask(Color mask)
+{
+    UIWindowObj* obj = (UIWindowObj*)mObj;
+
+    obj->colorMask = mask;
 }
 
 void UIWindow::get_widgets(std::vector<UIWidget>& widgets)
