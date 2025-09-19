@@ -68,11 +68,11 @@ public:
             Vec2 windowPos(x, y);
             dropdown.set_pos(windowPos);
             dropdown.raise();
-            dropdown.show();
+            self.mDropdown.show();
         }
         else
         {
-            dropdown.hide();
+            self.mDropdown.hide();
         }
     }
 
@@ -124,7 +124,7 @@ TopBarMenu* TopBarMenu::create(EditorTopBar* bar, UINode node, EditorUI* editorU
     dropdownWI.theme = editorTheme;
     dropdownWI.user = menu;
     menu->mDropdown = UIDropdownWindow::create(dropdownWI);
-    menu->mDropdown.get_native().hide();
+    menu->mDropdown.hide();
 
     return menu;
 }
@@ -136,7 +136,7 @@ void TopBarMenu::destroy(TopBarMenu* opt)
 
 void TopBarMenu::hide_dropdown()
 {
-    mDropdown.get_native().hide();
+    mDropdown.hide();
 }
 
 void EditorTopBar::startup(const EditorTopBarInfo& info)

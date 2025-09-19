@@ -1,3 +1,4 @@
+#include <Ludens/UI/UIAnimation.h>
 #include <LudensEditor/EditorWidget/UIDropdownWindow.h>
 #include <vector>
 
@@ -17,10 +18,47 @@ struct UIDropdownWindowObj
     UIDropdownWindowCallback callback;
     void* user;
     std::vector<Option> options;
+    UIOpacityAnimation opacityA;
+
+    void show();
+    void hide();
 
     static void on_draw(UIWidget widget, ScreenRenderComponent renderer);
+    static void on_update(UIWidget widget, float delta);
     static void on_option_mouse(UIWidget widget, const Vec2& pos, MouseButton btn, UIEvent event);
 };
+
+void UIDropdownWindowObj::show()
+{
+    opacityA.showing(0.16f);
+
+    // TODO: freeze input throughout animation
+    window.show();
+}
+
+void UIDropdownWindowObj::hide()
+{
+    opacityA.hiding(0.16f);
+
+    // TODO: freeze input throughout animation
+}
+
+void UIDropdownWindowObj::on_update(UIWidget widget, float delta)
+{
+    UIDropdownWindowObj& self = *(UIDropdownWindowObj*)widget.get_user();
+
+    bool isHiding = self.opacityA.is_hiding();
+    bool animEnded = self.opacityA.update(delta);
+    Color mask = self.opacityA.get_color_mask();
+
+    if (isHiding && animEnded)
+    {
+        self.window.hide();
+    }
+
+    // dropdown window will be rendered with animated opacity.
+    self.window.set_color_mask(mask);
+}
 
 void UIDropdownWindowObj::on_draw(UIWidget widget, ScreenRenderComponent renderer)
 {
@@ -29,6 +67,7 @@ void UIDropdownWindowObj::on_draw(UIWidget widget, ScreenRenderComponent rendere
 
     Rect rect = widget.get_rect();
     Color color = uiTheme.get_background_color();
+
     renderer.draw_rect(rect, color);
 }
 
@@ -66,13 +105,15 @@ UIDropdownWindow UIDropdownWindow::create(const UIDropdownWindowInfo& info)
     layoutI.childAxis = UI_AXIS_Y;
     layoutI.sizeX = UISize::fit();
     layoutI.sizeY = UISize::fit();
-    layoutI.childPadding = { 5, 5, 5, 5 };
+    layoutI.childPadding = {5, 5, 5, 5};
     UIWindowInfo windowI{};
     windowI.defaultMouseControls = false;
     windowI.drawWithScissor = false;
     windowI.name = "dropdown";
+    windowI.hidden = true;
     obj->window = ctx.add_window(layoutI, windowI, obj);
     obj->window.set_on_draw(&UIDropdownWindowObj::on_draw);
+    obj->window.set_on_update(&UIDropdownWindowObj::on_update);
 
     return UIDropdownWindow(obj);
 }
@@ -109,6 +150,16 @@ UIWindow UIDropdownWindow::get_native()
 void UIDropdownWindow::set_callback(UIDropdownWindowCallback cb)
 {
     mObj->callback = cb;
+}
+
+void UIDropdownWindow::show()
+{
+    mObj->show();
+}
+
+void UIDropdownWindow::hide()
+{
+    mObj->hide();
 }
 
 } // namespace LD

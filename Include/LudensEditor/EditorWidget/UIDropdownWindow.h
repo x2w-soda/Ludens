@@ -19,9 +19,13 @@ struct UIDropdownWindowInfo
     void* user;
 };
 
+/// @brief A dropdown window holding options.
 struct UIDropdownWindow : Handle<struct UIDropdownWindowObj>
 {
+    /// @brief Create dropdown window widget.
     static UIDropdownWindow create(const UIDropdownWindowInfo& info);
+
+    /// @brief Destroy dropdown window widget.
     static void destroy(UIDropdownWindow dropdown);
 
     /// @brief Add an option to the dropdown window.
@@ -32,6 +36,12 @@ struct UIDropdownWindow : Handle<struct UIDropdownWindowObj>
 
     /// @brief Set option callback after creation.
     void set_callback(UIDropdownWindowCallback cb);
+
+    /// @brief Show the dropdown window.
+    void show();
+
+    /// @brief Hide the dropdown window.
+    void hide();
 };
 
 } // namespace LD
