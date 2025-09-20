@@ -12,11 +12,12 @@ enum EventType
     EVENT_TYPE_MOUSE_MOTION,
     EVENT_TYPE_MOUSE_DOWN,
     EVENT_TYPE_MOUSE_UP,
+    EVENT_TYPE_SCROLL,
 };
 
 struct Event
 {
-    EventType type;
+    const EventType type;
 
     Event(EventType type) : type(type) {}
 };
@@ -62,6 +63,13 @@ struct MouseUpEvent : Event
     const MouseButton button;
 
     MouseUpEvent(MouseButton btn) : Event(EVENT_TYPE_MOUSE_UP), button(btn) {}
+};
+
+struct ScrollEvent : Event
+{
+    float xoffset, yoffset;
+
+    ScrollEvent(float xoffset, float yoffset) : Event(EVENT_TYPE_SCROLL), xoffset(xoffset), yoffset(yoffset) {}
 };
 
 } // namespace LD

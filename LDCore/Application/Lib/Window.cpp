@@ -4,8 +4,8 @@
 #include <Ludens/Application/Application.h>
 #include <Ludens/Application/Event.h>
 #include <Ludens/Header/Assert.h>
-#include <Ludens/Profiler/Profiler.h>
 #include <Ludens/Log/Log.h>
+#include <Ludens/Profiler/Profiler.h>
 
 namespace LD {
 
@@ -44,6 +44,7 @@ void Window::startup(const ApplicationInfo& appI)
     glfwSetKeyCallback(mHandle, &Window::key_callback);
     glfwSetMouseButtonCallback(mHandle, &Window::mouse_button_callback);
     glfwSetCursorPosCallback(mHandle, &Window::cursor_pos_callback);
+    glfwSetScrollCallback(mHandle, &Window::scroll_callback);
 
     if (appI.hintBorderColor != 0)
         hint_border_color(appI.hintBorderColor);
@@ -159,6 +160,12 @@ void Window::mouse_button_callback(GLFWwindow* window, int button, int action, i
 void Window::cursor_pos_callback(GLFWwindow* window, double xpos, double ypos)
 {
     MouseMotionEvent event((float)xpos, (float)ypos);
+    Application::on_event(&event);
+}
+
+void Window::scroll_callback(GLFWwindow* handle, double xoffset, double yoffset)
+{
+    ScrollEvent event((float)xoffset, (float)yoffset);
     Application::on_event(&event);
 }
 
