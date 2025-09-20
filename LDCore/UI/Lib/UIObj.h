@@ -41,6 +41,9 @@ enum UIWidgetFlagBit
     ///        consuming the input event without propagating.
     ///        This is usually set during short animations.
     UI_WIDGET_FLAG_BLOCK_INPUT_BIT = LD_BIT(1),
+
+    /// @brief Widget subtree will be drawn with scissor.
+    UI_WIDGET_FLAG_DRAW_WITH_SCISSOR_BIT = LD_BIT(2),
 };
 
 struct UIWidgetObj;
@@ -264,7 +267,6 @@ struct UIWindowObj : UIWidgetObj
     Vec2 dragBeginPos;
     Vec2 dragBeginSize;
     bool dragResize; // resize or reposition
-    bool drawWithScissor;
 
     void update(float delta);
 

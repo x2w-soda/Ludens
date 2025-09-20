@@ -72,6 +72,7 @@ UIWidgetObj* UIContextObj::alloc_widget(UIWidgetType type, const UILayoutInfo& l
     obj->node = {obj};
     obj->theme = window->ctx->theme;
     obj->scrollOffset = Vec2(0.0f);
+    obj->flags = 0;
 
     window->widgets.push_back(obj);
     parent->append_child(obj);
@@ -270,13 +271,15 @@ UIWindow UIContext::add_window(const UILayoutInfo& layoutI, const UIWindowInfo& 
     windowObj->node = {windowObj};
     windowObj->flags = 0;
     windowObj->theme = mObj->theme;
-    windowObj->drawWithScissor = windowI.drawWithScissor;
 
     if (windowI.name)
         windowObj->name = std::string(windowI.name);
 
     if (windowI.hidden)
         windowObj->flags |= UI_WIDGET_FLAG_HIDDEN_BIT;
+
+    if (windowI.drawWithScissor)
+        windowObj->flags |= UI_WIDGET_FLAG_DRAW_WITH_SCISSOR_BIT;
 
     if (windowI.defaultMouseControls)
         windowObj->cb.onDrag = UIWindowObj::on_drag;

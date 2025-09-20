@@ -15,6 +15,7 @@ static void ui_layout_wrap_limit(UIWidgetObj* obj, float& outMinW, float& outMax
 ///        user returns the result size on the secondary axis after wrapping.
 static float ui_layout_wrap_size(UIWidgetObj* obj, float limitW);
 
+static void ui_layout_pass_clear(UIWidgetObj* root);
 static void ui_layout_pass_fit_x(UIWidgetObj* root);
 static void ui_layout_pass_fit_y(UIWidgetObj* root);
 static void ui_layout_pass_grow_shrink_x(UIWidgetObj* root);
@@ -101,6 +102,15 @@ static float ui_layout_wrap_size(UIWidgetObj* obj, float limitW)
     }
 
     return baseline.y - metrics.descent;
+}
+
+static void ui_layout_pass_clear(UIWidgetObj* root)
+{
+    root->layout.rect.w = 0;
+    root->layout.rect.h = 0;
+
+    for (UIWidgetObj* child = root->child; child; child = child->next)
+        ui_layout_pass_clear(child);
 }
 
 static void ui_layout_pass_fit_x(UIWidgetObj* root)
@@ -222,8 +232,6 @@ static void ui_layout_pass_grow_shrink_x(UIWidgetObj* root)
     std::vector<UIWidgetObj*> shrinkableX;
     for (UIWidgetObj* child = root->child; child; child = child->next)
     {
-        ui_layout_pass_grow_shrink_x(child);
-
         const UISize& sizeX = child->layout.info.sizeX;
 
         if (sizeX.type == UI_SIZE_GROW)
@@ -259,6 +267,9 @@ static void ui_layout_pass_grow_shrink_x(UIWidgetObj* root)
             }
         }
     }
+
+    for (UIWidgetObj* child = root->child; child; child = child->next)
+        ui_layout_pass_grow_shrink_x(child);
 }
 
 void ui_layout_pass_grow_shrink_y(UIWidgetObj* root)
@@ -270,8 +281,6 @@ void ui_layout_pass_grow_shrink_y(UIWidgetObj* root)
     for (UIWidgetObj* child = root->child; child; child = child->next)
     {
         const UILayoutInfo& childLayout = child->layout.info;
-
-        ui_layout_pass_grow_shrink_y(child);
 
         if (childLayout.sizeY.type == UI_SIZE_GROW)
             growableY.push_back(child);
@@ -299,6 +308,9 @@ void ui_layout_pass_grow_shrink_y(UIWidgetObj* root)
             }
         }
     }
+
+    for (UIWidgetObj* child = root->child; child; child = child->next)
+        ui_layout_pass_grow_shrink_y(child);
 }
 
 /// @brief perform wrapping with horizontal axis as the wrap primary axis
@@ -495,11 +507,7 @@ void ui_layout(UIWidgetObj* root)
 {
     LD_PROFILE_SCOPE;
 
-    root->layout.rect.w = 0;
-    root->layout.rect.h = 0;
-    root->layout.minw = 0;
-    root->layout.minh = 0;
-
+    ui_layout_pass_clear(root);
     ui_layout_pass_fit_x(root);
     ui_layout_pass_grow_shrink_x(root);
     ui_layout_pass_wrap_x(root);

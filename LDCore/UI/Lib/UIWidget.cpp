@@ -228,6 +228,7 @@ UIScrollWidget UINode::add_scroll(const UILayoutInfo& layoutI, const UIScrollWid
     obj->as.scroll.offset = Vec2(0.0f);
     obj->cb.onDraw = &UIScrollWidgetObj::on_draw;
     obj->cb.onMouse = &UIScrollWidgetObj::on_mouse;
+    obj->flags |= UI_WIDGET_FLAG_DRAW_WITH_SCISSOR_BIT;
 
     return {obj};
 }

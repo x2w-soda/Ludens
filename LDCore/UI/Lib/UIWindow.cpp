@@ -30,12 +30,19 @@ void UIWindowObj::draw_widget_subtree(UIWidgetObj* widget, ScreenRenderComponent
     if (!widget || (widget->flags & UI_WIDGET_FLAG_HIDDEN_BIT))
         return;
 
+    bool useScissor = (widget->flags & UI_WIDGET_FLAG_DRAW_WITH_SCISSOR_BIT);
+    if (useScissor)
+        renderer.push_scissor(widget->layout.rect);
+
     widget->draw(renderer);
 
     for (UIWidgetObj* w = widget->child; w; w = w->next)
     {
         draw_widget_subtree(w, renderer);
     }
+
+    if (useScissor)
+        renderer.pop_scissor();
 }
 
 void UIWindowObj::on_drag(UIWidget widget, MouseButton btn, const Vec2& dragPos, bool begin)
@@ -75,10 +82,6 @@ void UIWindow::draw(ScreenRenderComponent renderer)
     if (obj->flags & UI_WIDGET_FLAG_HIDDEN_BIT)
         return;
 
-    bool useScissor = obj->drawWithScissor;
-    if (useScissor)
-        renderer.push_scissor(obj->layout.rect);
-
     bool useColorMask = obj->colorMask.has_value();
     if (useColorMask)
         renderer.push_color_mask(obj->colorMask.value());
@@ -87,9 +90,6 @@ void UIWindow::draw(ScreenRenderComponent renderer)
 
     if (useColorMask)
         renderer.pop_color_mask();
-
-    if (useScissor)
-        renderer.pop_scissor();
 }
 
 void UIWindow::layout()
