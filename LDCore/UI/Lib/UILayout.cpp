@@ -20,6 +20,9 @@ static void ui_layout_pass_fit_y(UIWidgetObj* root);
 static void ui_layout_pass_grow_shrink_x(UIWidgetObj* root);
 static void ui_layout_pass_grow_shrink_y(UIWidgetObj* root);
 static void ui_layout_pass_wrap_x(UIWidgetObj* root);
+static void ui_layout_pass_pos(UIWidgetObj* root);
+static void ui_layout_pass_scroll_offset(UIWidgetObj* root, Vec2 offset);
+
 static void ui_layout_grow_x(const std::vector<UIWidgetObj*>& growableX, float remainW);
 static void ui_layout_grow_y(const std::vector<UIWidgetObj*>& growableY, float remainH);
 static void ui_layout_shrink_x(std::vector<UIWidgetObj*>& shrinkableX, float remainW);
@@ -345,6 +348,21 @@ static void ui_layout_pass_pos(UIWidgetObj* root)
     }
 }
 
+static void ui_layout_pass_scroll_offset(UIWidgetObj* root, Vec2 offset)
+{
+    const UILayoutInfo& rootLayout = root->layout.info;
+
+    offset += root->scrollOffset;
+
+    for (UIWidgetObj* child = root->child; child; child = child->next)
+    {
+        child->layout.rect.x += offset.x;
+        child->layout.rect.y += offset.y;
+
+        ui_layout_pass_scroll_offset(child, offset);
+    }
+}
+
 static void ui_layout_grow_x(const std::vector<UIWidgetObj*>& growableX, float remainW)
 {
     if (growableX.empty() || remainW <= 0.0f)
@@ -488,6 +506,7 @@ void ui_layout(UIWidgetObj* root)
     ui_layout_pass_fit_y(root);
     ui_layout_pass_grow_shrink_y(root);
     ui_layout_pass_pos(root);
+    ui_layout_pass_scroll_offset(root, Vec2(0.0f));
 }
 
 } // namespace LD

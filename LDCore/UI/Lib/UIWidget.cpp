@@ -16,6 +16,7 @@ struct
     void (*cleanup)(UIWidgetObj* obj);
 } sWidgetTable[] = {
     { UI_WIDGET_WINDOW,    "UIWindow",   sizeof(UIWindowObj),         nullptr },
+    { UI_WIDGET_SCROLL,    "UIScroll",   sizeof(UIScrollWidgetObj),   nullptr },
     { UI_WIDGET_BUTTON,    "UIButton",   sizeof(UIButtonWidgetObj),   &UIButtonWidgetObj::cleanup  },
     { UI_WIDGET_SLIDER,    "UISlider",   sizeof(UISliderWidgetObj),   nullptr },
     { UI_WIDGET_TOGGLE,    "UIToggle",   sizeof(UIToggleWidgetObj),   nullptr },
@@ -28,6 +29,7 @@ struct
 
 static_assert(sizeof(sWidgetTable) / sizeof(*sWidgetTable) == UI_WIDGET_TYPE_COUNT);
 static_assert(IsTrivial<UIWidgetObj>);
+static_assert(IsTrivial<UIScrollWidgetObj>);
 static_assert(IsTrivial<UITextWidgetObj>);
 static_assert(IsTrivial<UITextEditWidgetObj>);
 static_assert(IsTrivial<UIPanelWidgetObj>);
@@ -74,13 +76,13 @@ void UIWidgetObj::draw(ScreenRenderComponent renderer)
 bool UIWidget::is_hovered()
 {
     UIContextObj* ctx = mObj->window->ctx;
-    return ctx->cursorElement == mObj;
+    return ctx->cursorWidget == mObj;
 }
 
 bool UIWidget::is_pressed()
 {
     UIContextObj* ctx = mObj->window->ctx;
-    return ctx->pressElement == mObj;
+    return ctx->pressWidget == mObj;
 }
 
 UINode& UIWidget::node()
@@ -214,14 +216,53 @@ UIContextObj* UINode::get_context()
     return mObj->window->ctx;
 }
 
-UIPanelWidget UINode::add_panel(const UILayoutInfo& layoutI, const UIPanelWidgetInfo& widgetI, void* user)
+//
+// UIScrollWidget
+//
+
+UIScrollWidget UINode::add_scroll(const UILayoutInfo& layoutI, const UIScrollWidgetInfo& widgetI, void* user)
 {
     UIWindowObj* window = mObj->window;
-    UIWidgetObj* obj = window->ctx->alloc_widget(UI_WIDGET_PANEL, layoutI, mObj, user);
-    obj->as.panel.color = widgetI.color;
+    UIWidgetObj* obj = window->ctx->alloc_widget(UI_WIDGET_SCROLL, layoutI, mObj, user);
+    obj->as.scroll.hasScrollBar = widgetI.hasScrollBar;
+    obj->as.scroll.offset = Vec2(0.0f);
+    obj->cb.onDraw = &UIScrollWidgetObj::on_draw;
+    obj->cb.onMouse = &UIScrollWidgetObj::on_mouse;
 
     return {obj};
 }
+
+void UIScrollWidgetObj::cleanup(UIWidgetObj* base)
+{
+    // TODO:
+}
+
+void UIScrollWidgetObj::on_mouse(UIWidget widget, const Vec2& pos, MouseButton btn, UIEvent event)
+{
+    UIWidgetObj* obj = (UIWidgetObj*)widget;
+    UIScrollWidgetObj& self = obj->as.scroll;
+
+    if (event == UI_MOUSE_DOWN)
+    {
+        if (btn == MOUSE_BUTTON_LEFT)
+            obj->scrollOffset.y += 10.0f;
+        else if (btn == MOUSE_BUTTON_RIGHT)
+            obj->scrollOffset.y -= 10.0f;
+    }
+}
+
+void UIScrollWidgetObj::on_draw(UIWidget widget, ScreenRenderComponent renderer)
+{
+    UIWidgetObj* obj = (UIWidgetObj*)widget;
+    UIContextObj& ctx = *obj->window->ctx;
+    const UITheme& theme = ctx.theme;
+
+    renderer.draw_rect_outline(widget.get_rect(), 1.0f, 0x00FF00FF);
+}
+
+//
+// UIImageWidget
+//
 
 UIImageWidget UINode::add_image(const UILayoutInfo& layoutI, const UIImageWidgetInfo& widgetI, void* user)
 {
@@ -232,6 +273,10 @@ UIImageWidget UINode::add_image(const UILayoutInfo& layoutI, const UIImageWidget
 
     return {obj};
 }
+
+//
+// UIButtonWidget
+//
 
 UIButtonWidget UINode::add_button(const UILayoutInfo& layoutI, const UIButtonWidgetInfo& widgetI, void* user)
 {
@@ -248,6 +293,10 @@ UIButtonWidget UINode::add_button(const UILayoutInfo& layoutI, const UIButtonWid
     return handle;
 };
 
+//
+// UISliderWidget
+//
+
 UISliderWidget UINode::add_slider(const UILayoutInfo& layoutI, const UISliderWidgetInfo& widgetI, void* user)
 {
     UIWindowObj* window = mObj->window;
@@ -261,6 +310,10 @@ UISliderWidget UINode::add_slider(const UILayoutInfo& layoutI, const UISliderWid
 
     return {obj};
 }
+
+//
+// UIToggleWidget
+//
 
 UIToggleWidget UINode::add_toggle(const UILayoutInfo& layoutI, const UIToggleWidgetInfo& widgetI, void* user)
 {
@@ -295,6 +348,9 @@ UITextWidget UINode::add_text(const UILayoutInfo& layoutI, const UITextWidgetInf
     obj->as.text.value = widgetI.cstr ? heap_strdup(widgetI.cstr, MEMORY_USAGE_UI) : nullptr;
     obj->as.text.fontAtlas = window->ctx->fontAtlas;
     obj->as.text.hoverHL = widgetI.hoverHL;
+
+    if (widgetI.hoverHL)
+        obj->cb.onHover = [](UIWidget, UIEvent) {}; // widget is hoverable
 
     return {obj};
 }
@@ -406,6 +462,15 @@ void UITextEditWidgetObj::on_draw(UIWidget widget, ScreenRenderComponent rendere
 //
 // UIPanelWidget
 //
+
+UIPanelWidget UINode::add_panel(const UILayoutInfo& layoutI, const UIPanelWidgetInfo& widgetI, void* user)
+{
+    UIWindowObj* window = mObj->window;
+    UIWidgetObj* obj = window->ctx->alloc_widget(UI_WIDGET_PANEL, layoutI, mObj, user);
+    obj->as.panel.color = widgetI.color;
+
+    return {obj};
+}
 
 void UIPanelWidgetObj::on_draw(UIWidget widget, ScreenRenderComponent renderer)
 {

@@ -25,7 +25,7 @@ enum UIEvent
 
 struct UIWidget : Handle<struct UIWidgetObj>
 {
-    // get node in widget hierarchy
+    /// @brief Get node in widget hierarchy.
     UINode& node();
 
     /// @brief Hide the widget and its widget subtree.
@@ -99,6 +99,15 @@ struct UIWidget : Handle<struct UIWidgetObj>
 
     /// @brief override widget draw callback
     void set_on_draw(void (*onDraw)(UIWidget widget, ScreenRenderComponent renderer));
+};
+
+struct UIScrollWidget : UIWidget
+{
+};
+
+struct UIScrollWidgetInfo
+{
+    bool hasScrollBar;
 };
 
 struct UIPanelWidget : UIWidget
@@ -192,6 +201,8 @@ struct UITextEditWidgetInfo
 struct UINode : Handle<struct UIWidgetObj>
 {
     UIContextObj* get_context();
+
+    UIScrollWidget add_scroll(const UILayoutInfo& layoutI, const UIScrollWidgetInfo& widgetI, void* user);
 
     UIPanelWidget add_panel(const UILayoutInfo& layoutI, const UIPanelWidgetInfo& widgetI, void* user);
 

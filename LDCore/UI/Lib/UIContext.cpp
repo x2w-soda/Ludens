@@ -11,30 +11,51 @@
 
 namespace LD {
 
-/// @brief get the element at position
-/// @param root the root element to search recursively
-/// @param pos global position
-/// @return the element at position, or null if position is out of bounds
-static UIWidgetObj* get_widget_at_pos(UIWidgetObj* root, const Vec2& pos)
+enum UIWidgetFilterBit
+{
+    WIDGET_FILTER_KEY_BIT = LD_BIT(0),
+    WIDGET_FILTER_MOUSE_BIT = LD_BIT(1),
+    WIDGET_FILTER_HOVER_BIT = LD_BIT(2),
+    WIDGET_FILTER_DRAG_BIT = LD_BIT(3),
+};
+
+/// @brief Get the widget at given position in a subtree.
+/// @param root The root widget to search recursively.
+/// @param pos Screen position to query.
+/// @param filter Filter widgets with certain callbacks.
+/// @return The widget at position, or null if position is out of bounds.
+static UIWidgetObj* get_widget_at_pos(UIWidgetObj* root, const Vec2& pos, int filter)
 {
     if (!root->layout.rect.contains(pos))
         return nullptr;
 
     if (root->flags & UI_WIDGET_FLAG_BLOCK_INPUT_BIT)
-        return root; // prevent subtree from being scanned
+        return nullptr; // prevent subtree from being scanned
+
+    bool isQualified = filter == 0;
+
+    if (filter & WIDGET_FILTER_KEY_BIT)
+        isQualified = isQualified || root->cb.onKey;
+    if (filter & WIDGET_FILTER_MOUSE_BIT)
+        isQualified = isQualified || root->cb.onMouse;
+    if (filter & WIDGET_FILTER_HOVER_BIT)
+        isQualified = isQualified || root->cb.onHover;
+    if (filter & WIDGET_FILTER_DRAG_BIT)
+        isQualified = isQualified || root->cb.onDrag;
 
     for (UIWidgetObj* child = root->child; child; child = child->next)
     {
         if (!child->layout.rect.contains(pos))
             continue;
 
-        UIWidgetObj* result = get_widget_at_pos(child, pos);
+        // return deepest widget in hierarhcy that qualifies
+        UIWidgetObj* result = get_widget_at_pos(child, pos, filter);
 
         if (result)
             return result;
     }
 
-    return root;
+    return isQualified ? root : nullptr;
 }
 
 UIWidgetObj* UIContextObj::alloc_widget(UIWidgetType type, const UILayoutInfo& layoutI, UIWidgetObj* parent, void* user)
@@ -50,6 +71,7 @@ UIWidgetObj* UIContextObj::alloc_widget(UIWidgetType type, const UILayoutInfo& l
     obj->user = user;
     obj->node = {obj};
     obj->theme = window->ctx->theme;
+    obj->scrollOffset = Vec2(0.0f);
 
     window->widgets.push_back(obj);
     parent->append_child(obj);
@@ -67,8 +89,35 @@ void UIContextObj::free_widget(UIWidgetObj* widget)
     size_t count = std::erase(window->widgets, widget);
     LD_ASSERT(count == 1);
 
+    if (widget == dragWidget)
+        dragWidget = nullptr;
+
+    if (widget == pressWidget)
+        pressWidget = nullptr;
+
+    if (widget == cursorWidget)
+        cursorWidget = nullptr;
+
     ui_obj_cleanup(widget);
     widgetPA.free(widget);
+}
+
+UIWidgetObj* UIContextObj::get_widget(const Vec2& pos, int filter)
+{
+    for (auto ite = windows.rbegin(); ite != windows.rend(); ite++)
+    {
+        UIWindowObj* window = *ite;
+
+        if (!window->layout.rect.contains(pos) || (window->flags & UI_WIDGET_FLAG_HIDDEN_BIT))
+            continue;
+
+        if (window->flags & UI_WIDGET_FLAG_BLOCK_INPUT_BIT)
+            return nullptr;
+
+        return get_widget_at_pos((UIWidgetObj*)window, pos, filter);
+    }
+
+    return nullptr;
 }
 
 void UIContextObj::pre_update(float delta)
@@ -101,47 +150,37 @@ void UIContext::input_mouse_position(const Vec2& pos)
 
     mObj->cursorPos = pos;
 
-    if (mObj->dragElement)
+    if (mObj->dragWidget)
     {
-        UIWidgetObj* de = mObj->dragElement;
+        UIWidgetObj* de = mObj->dragWidget;
         de->cb.onDrag({de}, mObj->dragMouseButton, mObj->cursorPos, false);
     }
 
-    UIWidgetObj* prev = mObj->cursorElement;
-    UIWidgetObj* next = nullptr;
+    UIWidgetObj* prev = mObj->cursorWidget;
+    UIWidgetObj* next = mObj->get_widget(pos, WIDGET_FILTER_HOVER_BIT);
 
-    // last drawn window takes input first
-    for (auto ite = mObj->windows.rbegin(); ite != mObj->windows.rend(); ite++)
+    if (next)
     {
-        UIWindowObj* window = *ite;
+        if (next != prev && prev && prev->cb.onHover)
+            prev->cb.onHover({prev}, UI_MOUSE_LEAVE);
 
-        if ((window->flags & UI_WIDGET_FLAG_HIDDEN_BIT) || !window->layout.rect.contains(pos))
-            continue;
+        if (next != prev && next->cb.onHover)
+            next->cb.onHover({next}, UI_MOUSE_ENTER);
 
-        next = get_widget_at_pos((UIWidgetObj*)window, pos);
-
-        if (next)
-        {
-            if (next != prev && prev && prev->cb.onHover)
-                prev->cb.onHover({prev}, UI_MOUSE_LEAVE);
-
-            if (next != prev && next->cb.onHover)
-                next->cb.onHover({next}, UI_MOUSE_ENTER);
-
-            mObj->cursorElement = next;
-            return;
-        }
+        mObj->cursorWidget = next;
+        return;
     }
 
     if (prev && prev->cb.onHover)
         prev->cb.onHover({prev}, UI_MOUSE_LEAVE);
 
-    mObj->cursorElement = nullptr;
+    mObj->cursorWidget = nullptr;
 }
 
 void UIContext::input_mouse_down(MouseButton btn)
 {
-    UIWidgetObj* widget = mObj->cursorElement;
+    UIWidgetObj* widget = mObj->get_widget(mObj->cursorPos, WIDGET_FILTER_MOUSE_BIT | WIDGET_FILTER_DRAG_BIT);
+
     if (!widget)
         return;
 
@@ -150,7 +189,7 @@ void UIContext::input_mouse_down(MouseButton btn)
     if (!blockInput && widget->cb.onDrag)
     {
         mObj->dragStartPos = mObj->cursorPos;
-        mObj->dragElement = widget;
+        mObj->dragWidget = widget;
         mObj->dragMouseButton = btn;
 
         widget->cb.onDrag({widget}, btn, mObj->cursorPos, true);
@@ -160,16 +199,17 @@ void UIContext::input_mouse_down(MouseButton btn)
     {
         Vec2 localPos = mObj->cursorPos - widget->layout.rect.get_pos();
         widget->cb.onMouse({widget}, localPos, btn, UI_MOUSE_DOWN);
-        mObj->pressElement = widget;
+        mObj->pressWidget = widget;
     }
 }
 
 void UIContext::input_mouse_up(MouseButton btn)
 {
-    mObj->dragElement = nullptr;
-    mObj->pressElement = nullptr;
+    mObj->dragWidget = nullptr;
+    mObj->pressWidget = nullptr;
 
-    UIWidgetObj* widget = mObj->cursorElement;
+    UIWidgetObj* widget = mObj->get_widget(mObj->cursorPos, WIDGET_FILTER_MOUSE_BIT);
+
     if (!widget)
         return;
 
@@ -184,7 +224,8 @@ void UIContext::input_mouse_up(MouseButton btn)
 
 void UIContext::input_key_down(KeyCode key)
 {
-    UIWidgetObj* widget = mObj->cursorElement;
+    UIWidgetObj* widget = mObj->get_widget(mObj->cursorPos, WIDGET_FILTER_KEY_BIT);
+
     if (!widget)
         return;
 
@@ -196,7 +237,8 @@ void UIContext::input_key_down(KeyCode key)
 
 void UIContext::input_key_up(KeyCode key)
 {
-    UIWidgetObj* widget = mObj->cursorElement;
+    UIWidgetObj* widget = mObj->get_widget(mObj->cursorPos, WIDGET_FILTER_KEY_BIT);
+
     if (!widget)
         return;
 

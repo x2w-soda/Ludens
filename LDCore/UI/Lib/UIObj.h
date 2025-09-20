@@ -21,6 +21,7 @@ namespace LD {
 enum UIWidgetType
 {
     UI_WIDGET_WINDOW = 0,
+    UI_WIDGET_SCROLL,
     UI_WIDGET_BUTTON,
     UI_WIDGET_SLIDER,
     UI_WIDGET_TOGGLE,
@@ -71,9 +72,9 @@ struct UIContextObj
     UITheme theme;
     std::vector<UIWindowObj*> windows;
     std::unordered_set<UIWindowObj*> deferredWindowDestruction;
-    UIWidgetObj* dragElement;    /// the widget begin dragged
-    UIWidgetObj* pressElement;   /// the widget pressed and not yet released
-    UIWidgetObj* cursorElement;  /// the widget under mouse cursor
+    UIWidgetObj* dragWidget;     /// the widget begin dragged
+    UIWidgetObj* pressWidget;    /// the widget pressed and not yet released
+    UIWidgetObj* cursorWidget;   /// the widget under mouse cursor
     Vec2 cursorPos;              /// mouse cursor global position
     Vec2 dragStartPos;           /// mouse cursor drag start global position
     MouseButton dragMouseButton; /// mouse button used for dragging
@@ -81,11 +82,25 @@ struct UIContextObj
     UIWidgetObj* alloc_widget(UIWidgetType type, const UILayoutInfo& layoutI, UIWidgetObj* parent, void* user);
     void free_widget(UIWidgetObj* widget);
 
+    inline UIWidgetObj* get_widget(const Vec2& pos, int filter);
+
     void pre_update(float delta);
 
     /// @brief Raise a window to top.
     /// @param window Target window.
     void raise_window(UIWindowObj* window);
+};
+
+/// @brief Scroll widget implementation.
+struct UIScrollWidgetObj
+{
+    UIWidgetObj* base;
+    Vec2 offset;
+    bool hasScrollBar;
+
+    static void cleanup(UIWidgetObj* base);
+    static void on_mouse(UIWidget widget, const Vec2& pos, MouseButton btn, UIEvent event);
+    static void on_draw(UIWidget widget, ScreenRenderComponent renderer);
 };
 
 struct UIButtonWidgetObj
@@ -177,11 +192,13 @@ struct UIWidgetObj
     UIWidgetObj* next;   /// sibling widget
     UITheme theme;       /// theme handle
     UINode node;         /// node in tree hierachy
+    Vec2 scrollOffset;   /// offset applied to children after layout
     void* user;          /// arbitrary user data
     UIWidgetType type;   /// type enum
     uint32_t flags;      /// widget bit flags
     union
     {
+        UIScrollWidgetObj scroll;
         UITextWidgetObj text;
         UITextEditWidgetObj textEdit;
         UIPanelWidgetObj panel;
