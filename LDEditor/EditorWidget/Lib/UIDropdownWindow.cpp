@@ -152,6 +152,11 @@ void UIDropdownWindow::set_callback(UIDropdownWindowCallback cb)
     mObj->callback = cb;
 }
 
+void UIDropdownWindow::set_pos(const Vec2& pos)
+{
+    mObj->window.set_pos(pos);
+}
+
 void UIDropdownWindow::show()
 {
     mObj->show();
@@ -160,6 +165,11 @@ void UIDropdownWindow::show()
 void UIDropdownWindow::hide()
 {
     mObj->hide();
+}
+
+void UIDropdownWindow::draw(ScreenRenderComponent renderer)
+{
+    mObj->window.draw(renderer);
 }
 
 } // namespace LD

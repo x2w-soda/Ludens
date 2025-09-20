@@ -1,3 +1,4 @@
+#include "ComponentMenu.h"
 #include <Ludens/System/Memory.h>
 #include <LudensEditor/EOutlinerWindow/EOutlinerWindow.h>
 #include <LudensEditor/EditorContext/EditorWindowObj.h>
@@ -19,10 +20,13 @@ struct EOutlinerWindowObj : EditorWindowObj
     virtual ~EOutlinerWindowObj() = default;
 
     std::vector<OutlinerRow*> rowOrder; /// rows ordered top to bottom
+    ComponentMenu menu;
 
     OutlinerRow* get_or_create_row(int rowIdx, int depth, CUID compID);
     void invalidate();
     void invalidate_component(const ComponentBase* base, int& rowIdx, int depth);
+
+    virtual void on_draw_overlay(ScreenRenderComponent renderer) override;
 
     static void on_client_resize(UIWindow client, const Vec2& size, void* user);
 };
@@ -30,6 +34,7 @@ struct EOutlinerWindowObj : EditorWindowObj
 /// @brief A single row in the outliner window
 struct OutlinerRow
 {
+    EOutlinerWindowObj* outlinerWindow;
     EditorContext editorCtx;
     UIPanelWidget panelWidget; /// row panel
     UITextWidget textWidget;   /// data object name label
@@ -49,11 +54,12 @@ struct OutlinerRow
         panelWidget.set_layout_child_padding(padding);
     }
 
-    static OutlinerRow* create(EditorContext ctx, UINode parentNode, CUID component, int rowIndex)
+    static OutlinerRow* create(EOutlinerWindowObj* obj, EditorContext ctx, UINode parentNode, CUID component, int rowIndex)
     {
         EditorTheme theme = ctx.get_settings().get_theme();
 
         OutlinerRow* row = heap_new<OutlinerRow>(MEMORY_USAGE_UI);
+        row->outlinerWindow = obj;
         row->component = component;
         row->editorCtx = ctx;
         row->rowIndex = rowIndex;
@@ -89,7 +95,7 @@ struct OutlinerRow
         Rect rect = self.panelWidget.get_rect();
 
         if (self.component && self.component == self.editorCtx.get_selected_component())
-            color = 0x4D6490FF;
+            color = 0x4D6490FF; // TODO:
 
         renderer.draw_rect(rect, color);
     }
@@ -102,7 +108,15 @@ struct OutlinerRow
             return;
 
         if (event == UI_MOUSE_DOWN)
-            self.editorCtx.set_selected_component(self.component);
+        {
+            if (btn == MOUSE_BUTTON_LEFT)
+                self.editorCtx.set_selected_component(self.component);
+            else if (btn == MOUSE_BUTTON_RIGHT)
+            {
+                Vec2 screenPos = widget.get_pos() + pos;
+                self.outlinerWindow->menu.show(screenPos);
+            }
+        }
     }
 };
 
@@ -116,7 +130,7 @@ OutlinerRow* EOutlinerWindowObj::get_or_create_row(int rowIdx, int depth, CUID c
     }
 
     rowOrder.resize(rowIdx + 1); // TODO: this may leave unitialized gaps?
-    OutlinerRow* row = OutlinerRow::create(editorCtx, root.node(), compID, rowIdx);
+    OutlinerRow* row = OutlinerRow::create(this, editorCtx, root.node(), compID, rowIdx);
     row->display(compID, depth);
 
     return rowOrder[rowIdx] = row;
@@ -159,6 +173,11 @@ void EOutlinerWindowObj::invalidate_component(const ComponentBase* base, int& ro
     depth--;
 }
 
+void EOutlinerWindowObj::on_draw_overlay(ScreenRenderComponent renderer)
+{
+    menu.draw(renderer);
+}
+
 void EOutlinerWindowObj::on_client_resize(UIWindow client, const Vec2& size, void* user)
 {
     auto& self = *(EOutlinerWindowObj*)client.get_user();
@@ -183,6 +202,8 @@ EOutlinerWindow EOutlinerWindow::create(const EOutlinerWindowInfo& windowI)
     wm.set_window_title(windowI.areaID, "Outliner");
     wm.set_resize_callback(windowI.areaID, &EOutlinerWindowObj::on_client_resize);
 
+    obj->menu.startup(wm.get_context(), obj->editorCtx.get_theme());
+
     // create one OutlinerRow for each object in scene
     obj->invalidate();
 
@@ -192,6 +213,8 @@ EOutlinerWindow EOutlinerWindow::create(const EOutlinerWindowInfo& windowI)
 void EOutlinerWindow::destroy(EOutlinerWindow window)
 {
     EOutlinerWindowObj* obj = window;
+
+    obj->menu.cleanup();
 
     heap_delete<EOutlinerWindowObj>(obj);
 }

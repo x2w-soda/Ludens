@@ -6,6 +6,8 @@ set(MODULE_INCLUDE
 
 set(MODULE_LIB
 	Lib/EOutlinerWindow.cpp
+	Lib/ComponentMenu.h
+	Lib/ComponentMenu.cpp
 )
 
 add_library(${MODULE_NAME}

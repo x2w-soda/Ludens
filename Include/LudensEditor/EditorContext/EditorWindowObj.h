@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Ludens/UI/UIWindow.h>
 #include <LudensEditor/EditorContext/EditorContext.h>
 
 namespace LD {

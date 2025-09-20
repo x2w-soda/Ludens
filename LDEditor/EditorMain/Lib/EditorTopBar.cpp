@@ -80,7 +80,7 @@ public:
     {
         TopBarMenu& self = *(TopBarMenu*)widget.get_user();
 
-        self.mDropdown.get_native().draw(renderer);
+        self.mDropdown.draw(renderer);
     }
 
 private:

@@ -37,11 +37,17 @@ struct UIDropdownWindow : Handle<struct UIDropdownWindowObj>
     /// @brief Set option callback after creation.
     void set_callback(UIDropdownWindowCallback cb);
 
+    /// @brief Set top left position in UI screen space.
+    void set_pos(const Vec2& pos);
+
     /// @brief Show the dropdown window.
     void show();
 
     /// @brief Hide the dropdown window.
     void hide();
+
+    /// @brief Draw dropdown window.
+    void draw(ScreenRenderComponent renderer);
 };
 
 } // namespace LD
