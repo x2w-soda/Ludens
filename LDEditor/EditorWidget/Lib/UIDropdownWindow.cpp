@@ -2,6 +2,8 @@
 #include <LudensEditor/EditorWidget/UIDropdownWindow.h>
 #include <vector>
 
+#define ANIM_DURATION 0.14f
+
 namespace LD {
 
 /// @brief Dropdown window implementation.
@@ -30,17 +32,17 @@ struct UIDropdownWindowObj
 
 void UIDropdownWindowObj::show()
 {
-    opacityA.showing(0.16f);
+    opacityA.showing(ANIM_DURATION);
 
-    // TODO: freeze input throughout animation
     window.show();
+    window.block_input();
 }
 
 void UIDropdownWindowObj::hide()
 {
-    opacityA.hiding(0.16f);
+    opacityA.hiding(ANIM_DURATION);
 
-    // TODO: freeze input throughout animation
+    window.block_input();
 }
 
 void UIDropdownWindowObj::on_update(UIWidget widget, float delta)
@@ -51,9 +53,12 @@ void UIDropdownWindowObj::on_update(UIWidget widget, float delta)
     bool animEnded = self.opacityA.update(delta);
     Color mask = self.opacityA.get_color_mask();
 
-    if (isHiding && animEnded)
+    if (animEnded)
     {
-        self.window.hide();
+        self.window.unblock_input();
+
+        if (isHiding)
+            self.window.hide();
     }
 
     // dropdown window will be rendered with animated opacity.

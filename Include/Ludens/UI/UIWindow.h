@@ -28,9 +28,6 @@ struct UIWindow : UIWidget
     /// @brief Force a layout invalidation.
     void layout();
 
-    /// @brief check whether the window responds to user input and should be drawn
-    bool is_hidden();
-
     /// @brief set window to position
     void set_pos(const Vec2& pos);
 

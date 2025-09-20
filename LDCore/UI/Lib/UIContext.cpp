@@ -20,6 +20,9 @@ static UIWidgetObj* get_widget_at_pos(UIWidgetObj* root, const Vec2& pos)
     if (!root->layout.rect.contains(pos))
         return nullptr;
 
+    if (root->flags & UI_WIDGET_FLAG_BLOCK_INPUT_BIT)
+        return root; // prevent subtree from being scanned
+
     for (UIWidgetObj* child = root->child; child; child = child->next)
     {
         if (!child->layout.rect.contains(pos))
@@ -112,7 +115,7 @@ void UIContext::input_mouse_position(const Vec2& pos)
     {
         UIWindowObj* window = *ite;
 
-        if (window->isHidden || !window->layout.rect.contains(pos))
+        if ((window->flags & UI_WIDGET_FLAG_HIDDEN_BIT) || !window->layout.rect.contains(pos))
             continue;
 
         next = get_widget_at_pos((UIWidgetObj*)window, pos);
@@ -142,7 +145,9 @@ void UIContext::input_mouse_down(MouseButton btn)
     if (!widget)
         return;
 
-    if (widget->cb.onDrag)
+    bool blockInput = (widget->flags & UI_WIDGET_FLAG_BLOCK_INPUT_BIT);
+
+    if (!blockInput && widget->cb.onDrag)
     {
         mObj->dragStartPos = mObj->cursorPos;
         mObj->dragElement = widget;
@@ -151,7 +156,7 @@ void UIContext::input_mouse_down(MouseButton btn)
         widget->cb.onDrag({widget}, btn, mObj->cursorPos, true);
     }
 
-    if (widget->cb.onMouse)
+    if (!blockInput && widget->cb.onMouse)
     {
         Vec2 localPos = mObj->cursorPos - widget->layout.rect.get_pos();
         widget->cb.onMouse({widget}, localPos, btn, UI_MOUSE_DOWN);
@@ -168,7 +173,9 @@ void UIContext::input_mouse_up(MouseButton btn)
     if (!widget)
         return;
 
-    if (widget->cb.onMouse)
+    bool blockInput = (widget->flags & UI_WIDGET_FLAG_BLOCK_INPUT_BIT);
+
+    if (!blockInput && widget->cb.onMouse)
     {
         Vec2 localPos = mObj->cursorPos - widget->layout.rect.get_pos();
         widget->cb.onMouse({widget}, localPos, btn, UI_MOUSE_UP);
@@ -181,7 +188,9 @@ void UIContext::input_key_down(KeyCode key)
     if (!widget)
         return;
 
-    if (widget->cb.onKey)
+    bool blockInput = (widget->flags & UI_WIDGET_FLAG_BLOCK_INPUT_BIT);
+
+    if (!blockInput && widget->cb.onKey)
         widget->cb.onKey({widget}, key, UI_KEY_DOWN);
 }
 
@@ -191,7 +200,9 @@ void UIContext::input_key_up(KeyCode key)
     if (!widget)
         return;
 
-    if (widget->cb.onKey)
+    bool blockInput = (widget->flags & UI_WIDGET_FLAG_BLOCK_INPUT_BIT);
+
+    if (!blockInput && widget->cb.onKey)
         widget->cb.onKey({widget}, key, UI_KEY_UP);
 }
 
@@ -212,13 +223,18 @@ UIWindow UIContext::add_window(const UILayoutInfo& layoutI, const UIWindowInfo& 
     windowObj->layout.info = layoutI;
     windowObj->user = user;
     windowObj->ctx = mObj;
-    windowObj->name = std::string(windowI.name);
     windowObj->type = UI_WIDGET_WINDOW;
     windowObj->window = windowObj;
     windowObj->node = {windowObj};
-    windowObj->isHidden = windowI.hidden;
+    windowObj->flags = 0;
     windowObj->theme = mObj->theme;
     windowObj->drawWithScissor = windowI.drawWithScissor;
+
+    if (windowI.name)
+        windowObj->name = std::string(windowI.name);
+
+    if (windowI.hidden)
+        windowObj->flags |= UI_WIDGET_FLAG_HIDDEN_BIT;
 
     if (windowI.defaultMouseControls)
         windowObj->cb.onDrag = UIWindowObj::on_drag;

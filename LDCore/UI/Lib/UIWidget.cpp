@@ -90,12 +90,33 @@ UINode& UIWidget::node()
 
 void UIWidget::hide()
 {
-    mObj->isHidden = true;
+    mObj->flags |= UI_WIDGET_FLAG_HIDDEN_BIT;
 }
 
 void UIWidget::show()
 {
-    mObj->isHidden = false;
+    mObj->flags &= ~UI_WIDGET_FLAG_HIDDEN_BIT;
+}
+
+bool UIWidget::is_hidden()
+{
+    return static_cast<bool>(mObj->flags & UI_WIDGET_FLAG_HIDDEN_BIT);
+}
+
+void UIWidget::block_input()
+{
+    mObj->flags |= UI_WIDGET_FLAG_BLOCK_INPUT_BIT;
+
+    UIContextObj* ctx = mObj->window->ctx;
+    UIContext(ctx).input_mouse_position(ctx->cursorPos);
+}
+
+void UIWidget::unblock_input()
+{
+    mObj->flags &= ~UI_WIDGET_FLAG_BLOCK_INPUT_BIT;
+
+    UIContextObj* ctx = mObj->window->ctx;
+    UIContext(ctx).input_mouse_position(ctx->cursorPos);
 }
 
 Rect UIWidget::get_rect()

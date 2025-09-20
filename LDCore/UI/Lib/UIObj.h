@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Ludens/Header/Assert.h>
+#include <Ludens/Header/Bitwise.h>
 #include <Ludens/Header/Math/Vec2.h>
 #include <Ludens/Media/Font.h>
 #include <Ludens/RenderBackend/RBackend.h>
@@ -28,6 +29,17 @@ enum UIWidgetType
     UI_WIDGET_TEXT,
     UI_WIDGET_TEXT_EDIT,
     UI_WIDGET_TYPE_COUNT,
+};
+
+enum UIWidgetFlagBit
+{
+    /// @brief Widget subtree will not be drawn.
+    UI_WIDGET_FLAG_HIDDEN_BIT = LD_BIT(0),
+
+    /// @brief Widget will not respond to mouse and key input,
+    ///        consuming the input event without propagating.
+    ///        This is usually set during short animations.
+    UI_WIDGET_FLAG_BLOCK_INPUT_BIT = LD_BIT(1),
 };
 
 struct UIWidgetObj;
@@ -167,6 +179,7 @@ struct UIWidgetObj
     UINode node;         /// node in tree hierachy
     void* user;          /// arbitrary user data
     UIWidgetType type;   /// type enum
+    uint32_t flags;      /// widget bit flags
     union
     {
         UITextWidgetObj text;
@@ -177,7 +190,6 @@ struct UIWidgetObj
         UISliderWidgetObj slider;
         UIToggleWidgetObj toggle;
     } as;
-    bool isHidden;
 
     /// @brief appends new child at the end of link list
     inline void append_child(UIWidgetObj* newChild)

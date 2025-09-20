@@ -27,7 +27,7 @@ void UIWindowObj::update(float delta)
 
 void UIWindowObj::draw_widget_subtree(UIWidgetObj* widget, ScreenRenderComponent renderer)
 {
-    if (!widget || widget->isHidden)
+    if (!widget || (widget->flags & UI_WIDGET_FLAG_HIDDEN_BIT))
         return;
 
     widget->draw(renderer);
@@ -72,7 +72,7 @@ void UIWindow::draw(ScreenRenderComponent renderer)
 {
     UIWindowObj* obj = (UIWindowObj*)mObj;
 
-    if (obj->isHidden)
+    if (obj->flags & UI_WIDGET_FLAG_HIDDEN_BIT)
         return;
 
     bool useScissor = obj->drawWithScissor;
@@ -95,12 +95,6 @@ void UIWindow::draw(ScreenRenderComponent renderer)
 void UIWindow::layout()
 {
     ui_layout(mObj);
-}
-
-bool UIWindow::is_hidden()
-{
-    UIWindowObj* obj = (UIWindowObj*)mObj;
-    return obj->isHidden;
 }
 
 void UIWindow::set_pos(const Vec2& pos)
