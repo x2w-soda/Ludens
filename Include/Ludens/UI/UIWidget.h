@@ -94,6 +94,9 @@ struct UIWidget : Handle<struct UIWidgetObj>
     /// @brief override mouse drag callback
     void set_on_drag(void (*onDrag)(UIWidget widget, MouseButton btn, const Vec2& dragPos, bool begin));
 
+    /// @brief Override scroll callback.
+    void set_on_scroll(void (*onScroll)(UIWidget widget, const Vec2& offset));
+
     /// @brief override widget update callback
     void set_on_update(void (*onUpdate)(UIWidget widget, float delta));
 

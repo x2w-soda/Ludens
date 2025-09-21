@@ -48,6 +48,10 @@ struct UIContext : Handle<struct UIContextObj>
     /// @brief Notify that a key has been released.
     void input_key_up(KeyCode key);
 
+    /// @brief Notify that the mouse wheel or touchpad has been scrolled.
+    /// @param offset A standard mouse wheel scroll provides offset along Y axis.
+    void input_scroll(const Vec2& offset);
+
     /// @brief perform layout on all widgets across all windows
     void layout();
 

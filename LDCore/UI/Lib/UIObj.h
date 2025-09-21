@@ -65,6 +65,7 @@ struct UICallback
     void (*onMouse)(UIWidget widget, const Vec2& pos, MouseButton btn, UIEvent event);
     void (*onDrag)(UIWidget widget, MouseButton btn, const Vec2& dragPos, bool begin);
     void (*onHover)(UIWidget widget, UIEvent event);
+    void (*onScroll)(UIWidget widget, const Vec2& offset);
 };
 
 struct UIContextObj
@@ -103,6 +104,7 @@ struct UIScrollWidgetObj
 
     static void cleanup(UIWidgetObj* base);
     static void on_mouse(UIWidget widget, const Vec2& pos, MouseButton btn, UIEvent event);
+    static void on_scroll(UIWidget widget, const Vec2& offset);
     static void on_draw(UIWidget widget, ScreenRenderComponent renderer);
 };
 

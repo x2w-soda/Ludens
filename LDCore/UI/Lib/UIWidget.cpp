@@ -201,6 +201,11 @@ void UIWidget::set_on_drag(void (*onDrag)(UIWidget widget, MouseButton btn, cons
     mObj->cb.onDrag = onDrag;
 }
 
+void UIWidget::set_on_scroll(void (*onScroll)(UIWidget widget, const Vec2& offset))
+{
+    mObj->cb.onScroll = onScroll;
+}
+
 void UIWidget::set_on_update(void (*onUpdate)(UIWidget widget, float delta))
 {
     mObj->cb.onUpdate = onUpdate;
@@ -228,6 +233,7 @@ UIScrollWidget UINode::add_scroll(const UILayoutInfo& layoutI, const UIScrollWid
     obj->as.scroll.offset = Vec2(0.0f);
     obj->cb.onDraw = &UIScrollWidgetObj::on_draw;
     obj->cb.onMouse = &UIScrollWidgetObj::on_mouse;
+    obj->cb.onScroll = &UIScrollWidgetObj::on_scroll;
     obj->flags |= UI_WIDGET_FLAG_DRAW_WITH_SCISSOR_BIT;
 
     return {obj};
@@ -238,18 +244,17 @@ void UIScrollWidgetObj::cleanup(UIWidgetObj* base)
     // TODO:
 }
 
-void UIScrollWidgetObj::on_mouse(UIWidget widget, const Vec2& pos, MouseButton btn, UIEvent event)
+void UIScrollWidgetObj::on_scroll(UIWidget widget, const Vec2& offset)
 {
     UIWidgetObj* obj = (UIWidgetObj*)widget;
-    UIScrollWidgetObj& self = obj->as.scroll;
+    float sensitivity = 10.0f;
+    
+    obj->scrollOffset = obj->scrollOffset + offset * sensitivity;
+}
 
-    if (event == UI_MOUSE_DOWN)
-    {
-        if (btn == MOUSE_BUTTON_LEFT)
-            obj->scrollOffset.y += 10.0f;
-        else if (btn == MOUSE_BUTTON_RIGHT)
-            obj->scrollOffset.y -= 10.0f;
-    }
+void UIScrollWidgetObj::on_mouse(UIWidget widget, const Vec2& pos, MouseButton btn, UIEvent event)
+{
+    // TODO:
 }
 
 void UIScrollWidgetObj::on_draw(UIWidget widget, ScreenRenderComponent renderer)

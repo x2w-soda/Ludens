@@ -11,12 +11,13 @@
 
 namespace LD {
 
-enum UIWidgetFilterBit
+enum UIWidgetFilterBit : int
 {
     WIDGET_FILTER_KEY_BIT = LD_BIT(0),
     WIDGET_FILTER_MOUSE_BIT = LD_BIT(1),
     WIDGET_FILTER_HOVER_BIT = LD_BIT(2),
     WIDGET_FILTER_DRAG_BIT = LD_BIT(3),
+    WIDGET_FILTER_SCROLL_BIT = LD_BIT(4),
 };
 
 /// @brief Get the widget at given position in a subtree.
@@ -42,6 +43,8 @@ static UIWidgetObj* get_widget_at_pos(UIWidgetObj* root, const Vec2& pos, int fi
         isQualified = isQualified || root->cb.onHover;
     if (filter & WIDGET_FILTER_DRAG_BIT)
         isQualified = isQualified || root->cb.onDrag;
+    if (filter & WIDGET_FILTER_SCROLL_BIT)
+        isQualified = isQualified || root->cb.onScroll;
 
     for (UIWidgetObj* child = root->child; child; child = child->next)
     {
@@ -247,6 +250,19 @@ void UIContext::input_key_up(KeyCode key)
 
     if (!blockInput && widget->cb.onKey)
         widget->cb.onKey({widget}, key, UI_KEY_UP);
+}
+
+void UIContext::input_scroll(const Vec2& offset)
+{
+    UIWidgetObj* widget = mObj->get_widget(mObj->cursorPos, WIDGET_FILTER_SCROLL_BIT);
+
+    if (!widget)
+        return;
+
+    bool blockInput = (widget->flags & UI_WIDGET_FLAG_BLOCK_INPUT_BIT);
+
+    if (!blockInput && widget->cb.onScroll)
+        widget->cb.onScroll({widget}, offset);
 }
 
 void UIContext::layout()
