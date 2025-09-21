@@ -2,12 +2,14 @@ set(MODULE_NAME LDEditorWidget)
 
 set(MODULE_LIB
 	Lib/UITransformEditWidget.cpp
+	Lib/UIAssetSlotWidget.cpp
 	Lib/UIDropdownWindow.cpp
 	Lib/UIVersionWindow.cpp
 )
 
 set(MODULE_INCLUDE
 	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorWidget/UITransformEditWidget.h
+	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorWidget/UIAssetSlotWidget.h
 	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorWidget/UIDropdownWindow.h
 	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorWidget/UIVersionWindow.h
 )
