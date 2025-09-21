@@ -2,6 +2,7 @@
 #include <Ludens/Asset/AssetManager.h>
 #include <Ludens/Asset/MeshAsset.h>
 #include <Ludens/Asset/TextureAsset.h>
+#include <Ludens/Header/Types.h>
 #include <Ludens/Log/Log.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/RenderBackend/RBackend.h>
@@ -9,11 +10,8 @@
 #include <Ludens/RenderComponent/Layout/RMaterial.h>
 #include <Ludens/RenderComponent/Layout/RMesh.h>
 #include <Ludens/System/Allocator.h>
-#include <filesystem>
 #include <string>
 #include <unordered_map>
-
-namespace fs = std::filesystem;
 
 namespace LD {
 
@@ -34,6 +32,7 @@ struct
 // clang-format on
 
 static_assert(sizeof(sAssetTypeTable) / sizeof(*sAssetTypeTable) == ASSET_TYPE_ENUM_COUNT);
+static_assert(LD::IsTrivial<AssetObj>);
 
 size_t get_asset_byte_size(AssetType type)
 {
@@ -45,7 +44,7 @@ const char* get_asset_type_cstr(AssetType type)
     return sAssetTypeTable[(int)type].typeName;
 }
 
-AssetManagerObj::AssetManagerObj(const fs::path& rootPath)
+AssetManagerObj::AssetManagerObj(const FS::Path& rootPath)
     : mRootPath(rootPath)
 {
 }
@@ -93,6 +92,10 @@ AssetObj* AssetManagerObj::allocate_asset(AssetType type, AUID auid, const std::
     LD_ASSERT(auid && !mAssets.contains(obj->auid));
     mAssets[obj->auid] = obj;
 
+    Hash32 nameHash(name.c_str());
+    LD_ASSERT(!mNameToAsset.contains(nameHash));
+    mNameToAsset[nameHash] = obj->auid;
+
     return obj;
 }
 
@@ -100,6 +103,7 @@ void AssetManagerObj::free_asset(AssetObj* obj)
 {
     LD_ASSERT(obj && mAllocators.contains(obj->type));
 
+    mNameToAsset.erase(Hash32(obj->name));
     mAssets.erase(obj->auid);
 
     if (obj->name)
@@ -139,13 +143,13 @@ void AssetManagerObj::end_load_batch()
         heap_delete<LuaScriptAssetLoadJob>(job);
 }
 
-void AssetManagerObj::load_mesh_asset(const fs::path& path, AUID auid)
+void AssetManagerObj::load_mesh_asset(const FS::Path& path, AUID auid)
 {
     LD_ASSERT(mInLoadBatch);
 
     auto obj = (MeshAssetObj*)allocate_asset(ASSET_TYPE_MESH, auid, path.stem().string());
 
-    fs::path loadPath = mRootPath / path;
+    FS::Path loadPath = mRootPath / path;
 
     auto meshLoadJob = heap_new<MeshAssetLoadJob>(MEMORY_USAGE_ASSET);
     meshLoadJob->asset = MeshAsset(obj);
@@ -154,13 +158,13 @@ void AssetManagerObj::load_mesh_asset(const fs::path& path, AUID auid)
     mMeshLoadJobs.push_back(meshLoadJob);
 }
 
-void AssetManagerObj::load_texture_2d_asset(const fs::path& path, AUID auid)
+void AssetManagerObj::load_texture_2d_asset(const FS::Path& path, AUID auid)
 {
     LD_ASSERT(mInLoadBatch);
 
     auto obj = (Texture2DAssetObj*)allocate_asset(ASSET_TYPE_TEXTURE_2D, auid, path.stem().string());
 
-    fs::path loadPath = mRootPath / path;
+    FS::Path loadPath = mRootPath / path;
 
     auto textureLoadJob = heap_new<Texture2DAssetLoadJob>(MEMORY_USAGE_ASSET);
     textureLoadJob->asset = Texture2DAsset(obj);
@@ -169,19 +173,39 @@ void AssetManagerObj::load_texture_2d_asset(const fs::path& path, AUID auid)
     mTexture2DLoadJobs.push_back(textureLoadJob);
 }
 
-void AssetManagerObj::load_lua_script_asset(const fs::path& path, AUID auid)
+void AssetManagerObj::load_lua_script_asset(const FS::Path& path, AUID auid)
 {
     LD_ASSERT(mInLoadBatch);
 
     auto obj = (LuaScriptAssetObj*)allocate_asset(ASSET_TYPE_LUA_SCRIPT, auid, path.stem().string());
 
-    fs::path loadPath = mRootPath / path;
+    FS::Path loadPath = mRootPath / path;
 
     auto scriptLoadJob = heap_new<LuaScriptAssetLoadJob>(MEMORY_USAGE_ASSET);
     scriptLoadJob->asset = LuaScriptAsset(obj);
     scriptLoadJob->loadPath = loadPath;
     scriptLoadJob->submit();
     mLuaScriptLoadJobs.push_back(scriptLoadJob);
+}
+
+AUID AssetManagerObj::get_id_from_name(const char* name, AssetType* outType)
+{
+    if (!name)
+        return 0;
+
+    Hash32 nameHash(name);
+    auto ite = mNameToAsset.find(nameHash);
+
+    if (ite == mNameToAsset.end())
+        return 0;
+
+    AUID assetID = ite->second;
+    LD_ASSERT(mAssets.contains(assetID));
+
+    if (outType)
+        *outType = mAssets[assetID]->type;
+
+    return ite->second;
 }
 
 Texture2DAsset AssetManagerObj::get_texture_2d_asset(AUID auid)
@@ -217,7 +241,7 @@ LuaScriptAsset AssetManagerObj::get_lua_script_asset(AUID auid)
     return LuaScriptAsset(ite->second);
 }
 
-AssetManager AssetManager::create(const std::filesystem::path& rootPath)
+AssetManager AssetManager::create(const FS::Path& rootPath)
 {
     AssetManagerObj* obj = heap_new<AssetManagerObj>(MEMORY_USAGE_ASSET, rootPath);
 
@@ -241,25 +265,30 @@ void AssetManager::end_load_batch()
     mObj->end_load_batch();
 }
 
-void AssetManager::load_mesh_asset(const fs::path& path, AUID auid)
+void AssetManager::load_mesh_asset(const FS::Path& path, AUID auid)
 {
     sLog.info("load_mesh_asset {}", path.string());
 
     mObj->load_mesh_asset(path, auid);
 }
 
-void AssetManager::load_texture_2d_asset(const fs::path& path, AUID auid)
+void AssetManager::load_texture_2d_asset(const FS::Path& path, AUID auid)
 {
     sLog.info("load_texture_2d_asset {}", path.string());
 
     mObj->load_texture_2d_asset(path, auid);
 }
 
-void AssetManager::load_lua_script_asset(const fs::path& path, AUID auid)
+void AssetManager::load_lua_script_asset(const FS::Path& path, AUID auid)
 {
     sLog.info("load_lua_script_asset {}", path.string());
 
     mObj->load_lua_script_asset(path, auid);
+}
+
+AUID AssetManager::get_id_from_name(const char* name, AssetType* outType)
+{
+    return mObj->get_id_from_name(name, outType);
 }
 
 MeshAsset AssetManager::get_mesh_asset(AUID auid)

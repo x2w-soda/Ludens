@@ -5,16 +5,14 @@
 #include <Ludens/Asset/MeshAsset.h>
 #include <Ludens/Asset/TextureAsset.h>
 #include <Ludens/DataRegistry/DataComponent.h>
+#include <Ludens/Header/Hash.h>
 #include <Ludens/Media/Bitmap.h>
 #include <Ludens/Media/Model.h>
 #include <Ludens/System/Allocator.h>
+#include <Ludens/System/FileSystem.h>
 #include <filesystem>
 #include <unordered_map>
 #include <vector>
-
-// note that this is an internal header,
-// module public API should not do this.
-namespace fs = std::filesystem;
 
 namespace LD {
 
@@ -23,7 +21,7 @@ class AssetManagerObj
 {
 public:
     AssetManagerObj() = delete;
-    AssetManagerObj(const fs::path& rootPath);
+    AssetManagerObj(const FS::Path& rootPath);
     AssetManagerObj(const AssetManagerObj&) = delete;
     ~AssetManagerObj();
 
@@ -35,10 +33,11 @@ public:
     void begin_load_batch();
     void end_load_batch();
 
-    void load_mesh_asset(const fs::path& path, AUID auid);
-    void load_texture_2d_asset(const fs::path& path, AUID auid);
-    void load_lua_script_asset(const fs::path& path, AUID auid);
+    void load_mesh_asset(const FS::Path& path, AUID auid);
+    void load_texture_2d_asset(const FS::Path& path, AUID auid);
+    void load_lua_script_asset(const FS::Path& path, AUID auid);
 
+    AUID get_id_from_name(const char* name, AssetType* outType);
     Texture2DAsset get_texture_2d_asset(AUID auid);
     MeshAsset get_mesh_asset(AUID auid);
     LuaScriptAsset get_lua_script_asset(AUID auid);
@@ -46,10 +45,11 @@ public:
 private:
     std::unordered_map<AssetType, PoolAllocator> mAllocators;
     std::unordered_map<AUID, AssetObj*> mAssets;
+    std::unordered_map<Hash32, AUID> mNameToAsset;
     std::vector<struct MeshAssetLoadJob*> mMeshLoadJobs;
     std::vector<struct Texture2DAssetLoadJob*> mTexture2DLoadJobs;
     std::vector<struct LuaScriptAssetLoadJob*> mLuaScriptLoadJobs;
-    const fs::path mRootPath;  /// asset URIs are relative paths to root path
+    const FS::Path mRootPath;  /// asset URIs are relative paths to root path
     bool mInLoadBatch = false; /// is within load batch scope
 };
 

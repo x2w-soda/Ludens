@@ -6,13 +6,16 @@
 #include <Ludens/Asset/TextureAsset.h>
 #include <Ludens/Header/Handle.h>
 #include <Ludens/RenderServer/RServer.h>
-#include <filesystem>
+#include <Ludens/System/FileSystem.h>
 
 namespace LD {
 
 struct AssetManager : Handle<struct AssetManagerObj>
 {
-    static AssetManager create(const std::filesystem::path& rootPath);
+    /// @brief Create asset manager.
+    static AssetManager create(const FS::Path& rootPath);
+
+    /// @brief Destroy asset manager.
     static void destroy(AssetManager manager);
 
     /// @brief Begin asset load batch.
@@ -22,13 +25,16 @@ struct AssetManager : Handle<struct AssetManagerObj>
     void end_load_batch();
 
     /// @brief Append mesh asset load job to current batch.
-    void load_mesh_asset(const std::filesystem::path& path, AUID auid);
+    void load_mesh_asset(const FS::Path& path, AUID auid);
 
     /// @brief Append texture 2D asset load job to current batch.
-    void load_texture_2d_asset(const std::filesystem::path& path, AUID auid);
+    void load_texture_2d_asset(const FS::Path& path, AUID auid);
 
     /// @brief Append lua script asset load job to current batch.
-    void load_lua_script_asset(const std::filesystem::path& path, AUID auid);
+    void load_lua_script_asset(const FS::Path& path, AUID auid);
+
+    /// @brief Get asset ID from name
+    AUID get_id_from_name(const char* name, AssetType* outType);
 
     /// @brief Get mesh asset from ID.
     MeshAsset get_mesh_asset(AUID auid);

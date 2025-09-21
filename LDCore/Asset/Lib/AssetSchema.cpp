@@ -32,7 +32,7 @@ void AssetSchema::load_assets(AssetManager manager, TOMLDocument doc)
             std::string uri;
             if (auidTOML && auidTOML.is_i64(auid) && uriTOML && uriTOML.is_string(uri))
             {
-                manager.load_mesh_asset(std::filesystem::path(uri), (AUID)auid);
+                manager.load_mesh_asset(FS::Path(uri), (AUID)auid);
             }
         }
 
@@ -50,7 +50,7 @@ void AssetSchema::load_assets(AssetManager manager, TOMLDocument doc)
             std::string uri;
             if (auidTOML && auidTOML.is_i64(auid) && uriTOML && uriTOML.is_string(uri))
             {
-                manager.load_texture_2d_asset(std::filesystem::path(uri), (AUID)auid);
+                manager.load_texture_2d_asset(FS::Path(uri), (AUID)auid);
             }
         }
 
@@ -68,7 +68,7 @@ void AssetSchema::load_assets(AssetManager manager, TOMLDocument doc)
             std::string uri;
             if (auidTOML && auidTOML.is_i64(auid) && uriTOML && uriTOML.is_string(uri))
             {
-                manager.load_lua_script_asset(std::filesystem::path(uri), (AUID)auid);
+                manager.load_lua_script_asset(FS::Path(uri), (AUID)auid);
             }
         }
     }
