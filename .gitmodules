@@ -1,0 +1,3 @@
+[submodule "Extra/LudensLFS"]
+	path = Extra/LudensLFS
+	url = https://github.com/x2w-soda/LudensLFS
