@@ -29,6 +29,9 @@ set(MODULE_LIB
 
 set(MODULE_TEST
     Test/UITest.cpp
+    Test/UITest.h
+    Test/UIInputTest.cpp
+    Test/UITextWidgetTest.cpp
 )
 
 add_library(${MODULE_NAME}
