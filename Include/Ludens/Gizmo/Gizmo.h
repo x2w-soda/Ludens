@@ -30,20 +30,29 @@ enum GizmoPlane
     GIZMO_PLANE_YZ,
 };
 
+/// @brief 3D Gizmo controller to edit the Translation, Rotation, and Scale
+///        properties of an object in world space.
 struct Gizmo : Handle<struct GizmoObj>
 {
+    /// @brief Create gizmo controller.
     static Gizmo create();
+
+    /// @brief Destroy gizmo controller.
     static void destroy(Gizmo gizmo);
 
-    /// @brief check if the gizmo is currently active
-    /// @param axis if gizmo control uses an axis, return the active axis
-    /// @param plane if gizmo control uses a plane, return the active plane
-    /// @return the current control or GIZMO_CONTROL_NONE
+    /// @brief Check if the gizmo is currently active.
+    /// @param axis If gizmo control uses an axis, return the active axis.
+    /// @param plane If gizmo control uses a plane, return the active plane.
+    /// @return The current control or GIZMO_CONTROL_NONE.
     GizmoControl is_active(GizmoAxis& axis, GizmoPlane& plane) const;
 
-    /// @brief stop gizmo manipulation
+    /// @brief Stop gizmo manipulation.
     void end();
 
+    /// @brief Update camera ray into screen.
+    /// @param camera Camera handle.
+    /// @param screenPos Screen space position to cast ray from, usually the mouse cursor position.
+    /// @param screenSize Screen extent.
     void update(Camera camera, const Vec2& screenPos, const Vec2& screenSize);
 
     void begin_axis_translate(GizmoAxis axis, const Vec3& targetPos);

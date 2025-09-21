@@ -10,7 +10,7 @@ using namespace LD;
 
 TEST_CASE("LuaConfig primitives")
 {
-    LuaConfig cfg;
+    LuaConfig cfg{};
     CHECK((bool)cfg == false);
     {
         LuaConfigValue values[] = {
@@ -92,7 +92,7 @@ TEST_CASE("LuaConfig primitives")
 
 TEST_CASE("LuaConfig array")
 {
-    LuaConfig cfg;
+    LuaConfig cfg{};
     CHECK((bool)cfg == false);
     {
         LuaConfigValue values[] = {
@@ -144,7 +144,7 @@ TEST_CASE("LuaConfig array")
 
 TEST_CASE("LuaConfig reload")
 {
-    LuaConfig cfg;
+    LuaConfig cfg{};
     CHECK((bool)cfg == false);
     {
         LuaConfigValue values[] = {
