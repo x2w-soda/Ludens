@@ -354,9 +354,13 @@ UITextWidget UINode::add_text(const UILayoutInfo& layoutI, const UITextWidgetInf
     obj->as.text.value = widgetI.cstr ? heap_strdup(widgetI.cstr, MEMORY_USAGE_UI) : nullptr;
     obj->as.text.fontAtlas = window->ctx->fontAtlas;
     obj->as.text.hoverHL = widgetI.hoverHL;
+    obj->as.text.bgColor = 0;
 
     if (widgetI.hoverHL)
         obj->cb.onHover = [](UIWidget, UIEvent) {}; // widget is hoverable
+
+    if (widgetI.bgColor)
+        obj->as.text.bgColor = *widgetI.bgColor;
 
     return {obj};
 }
@@ -383,6 +387,9 @@ void UITextWidgetObj::on_draw(UIWidget widget, ScreenRenderComponent renderer)
     Rect rect = widget.get_rect();
     float wrapWidth = rect.w;
 
+    if (self.bgColor.get_alpha() > 0.0f)
+        renderer.draw_rect(rect, self.bgColor);
+
     if (self.hoverHL && widget.is_hovered())
     {
         renderer.draw_rect(rect, theme.get_on_surface_color());
@@ -392,6 +399,14 @@ void UITextWidgetObj::on_draw(UIWidget widget, ScreenRenderComponent renderer)
     {
         renderer.draw_text(ctx.fontAtlas, ctx.fontAtlasImage, self.fontSize, rect.get_pos(), self.value, theme.get_on_surface_color(), wrapWidth);
     }
+}
+
+void UITextWidget::set_text(const char* cstr)
+{
+    if (mObj->as.text.value)
+        heap_free((void*)mObj->as.text.value);
+
+    mObj->as.text.value = cstr ? heap_strdup(cstr, MEMORY_USAGE_UI) : nullptr;
 }
 
 //
@@ -693,15 +708,6 @@ void UIImageWidgetObj::on_draw(UIWidget widget, ScreenRenderComponent renderer)
 RImage UIImageWidget::get_image()
 {
     return mObj->as.image.imageHandle;
-}
-
-void UITextWidget::set_text(const char* cstr)
-{
-    if (mObj->as.text.value)
-        heap_free((void*)mObj->as.text.value);
-
-    // TODO: fix memory leak, last strdup is never freed
-    mObj->as.text.value = cstr ? heap_strdup(cstr, MEMORY_USAGE_UI) : nullptr;
 }
 
 void ui_obj_cleanup(UIWidgetObj* widget)

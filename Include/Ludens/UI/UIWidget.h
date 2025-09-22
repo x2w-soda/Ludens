@@ -34,14 +34,14 @@ struct UIWidget : Handle<struct UIWidgetObj>
     /// @brief Show the widget.
     void show();
 
-    /// @brief Check if widget subtree is hidden. 
+    /// @brief Check if widget subtree is hidden.
     bool is_hidden();
 
     /// @brief This widget will silently block input events
     ///        without propagating to subtree.
     void block_input();
 
-    /// @brief This widget subtree will receive input events normally. 
+    /// @brief This widget subtree will receive input events normally.
     void unblock_input();
 
     /// @brief Get widget rect in screen space.
@@ -188,6 +188,7 @@ struct UITextWidgetInfo
     float fontSize;   /// rendered size
     const char* cstr; /// a null terminated c string
     bool hoverHL;     /// whether to highlight the text when hovered
+    Color* bgColor;   /// if not null, the background color under text
 };
 
 struct UITextEditWidget : UIWidget

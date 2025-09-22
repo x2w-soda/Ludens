@@ -151,6 +151,7 @@ struct UITextWidgetObj
     UIWidgetObj* base;
     const char* value;
     FontAtlas fontAtlas;
+    Color bgColor;
     float fontSize;
     bool hoverHL;
 

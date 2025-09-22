@@ -8,6 +8,7 @@ struct UIAssetSlotWidgetObj
 {
     AssetType type;
     AUID* asset;
+    EditorTheme theme;
     UIPanelWidget rootW;
     UITextWidget textW;
     UITextWidget assetTextW;
@@ -24,6 +25,7 @@ void UIAssetSlotWidgetObj::on_draw(UIWidget widget, ScreenRenderComponent render
 UIAssetSlotWidget UIAssetSlotWidget::create(const UIAssetSlotWidgetInfo& info)
 {
     auto* obj = heap_new<UIAssetSlotWidgetObj>(MEMORY_USAGE_UI);
+    obj->theme = info.theme;
     obj->type = info.type;
     obj->asset = info.asset;
 
@@ -45,7 +47,9 @@ UIAssetSlotWidget UIAssetSlotWidget::create(const UIAssetSlotWidgetInfo& info)
     textWI.cstr = get_asset_type_cstr(obj->type);
     obj->textW = rootNode.add_text({}, textWI, obj);
 
+    Color color = obj->theme.get_ui_theme().get_field_color();
     textWI.cstr = nullptr;
+    textWI.bgColor = &color;
     obj->assetTextW = rootNode.add_text({}, textWI, obj);
 
     return UIAssetSlotWidget(obj);

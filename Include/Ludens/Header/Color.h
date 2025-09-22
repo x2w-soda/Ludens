@@ -78,6 +78,12 @@ public:
         mValue |= std::clamp<uint32_t>(static_cast<uint32_t>(alpha * 255.0f), 0, 255);
     }
 
+    /// @brief Get normalized alpha value.
+    float get_alpha() const
+    {
+        return (mValue & 0xFF) / 255.0f;
+    }
+
 private:
     uint32_t mValue;
 };
