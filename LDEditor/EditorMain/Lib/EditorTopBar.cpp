@@ -97,8 +97,7 @@ TopBarMenu* TopBarMenu::create(EditorTopBar* bar, UINode node, EditorUI* editorU
     menu->mBar = bar;
     menu->mEditorUI = editorUI;
 
-    float fontSize;
-    editorTheme.get_font_size(fontSize);
+    float fontSize = editorTheme.get_font_size();
 
     UILayoutInfo layoutI{};
     layoutI.sizeX = UISize::fit();

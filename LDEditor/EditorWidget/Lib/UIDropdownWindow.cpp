@@ -105,12 +105,13 @@ UIDropdownWindow UIDropdownWindow::create(const UIDropdownWindowInfo& info)
     obj->callback = info.callback;
 
     UIContext ctx = info.context;
+    float pad = obj->theme.get_padding();
 
     UILayoutInfo layoutI{};
     layoutI.childAxis = UI_AXIS_Y;
     layoutI.sizeX = UISize::fit();
     layoutI.sizeY = UISize::fit();
-    layoutI.childPadding = {5, 5, 5, 5};
+    layoutI.childPadding = {pad, pad, pad, pad};
     UIWindowInfo windowI{};
     windowI.defaultMouseControls = false;
     windowI.drawWithScissor = false;
@@ -133,9 +134,7 @@ void UIDropdownWindow::destroy(UIDropdownWindow dropdown)
 void UIDropdownWindow::add_option(const char* text, int optionIndex)
 {
     UINode node = mObj->window.node();
-
-    float fontSize;
-    mObj->theme.get_font_size(fontSize);
+    float fontSize = mObj->theme.get_font_size();
 
     UITextWidgetInfo textWI{};
     textWI.cstr = text;

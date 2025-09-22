@@ -28,8 +28,7 @@ UIVersionWindow UIVersionWindow::create(const UIVersionWindowInfo& info)
     windowI.name = "Version";
     obj->root = ctx.add_window(layoutI, windowI, obj);
 
-    float fontSize;
-    obj->theme.get_font_size(fontSize);
+    float fontSize = obj->theme.get_font_size();
     std::string version = std::format("Version {}.{}.{}", LD_VERSION_MAJOR, LD_VERSION_MINOR, LD_VERSION_PATCH);
 
 #ifdef NDEBUG

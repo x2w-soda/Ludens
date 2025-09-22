@@ -136,8 +136,7 @@ UITransformEditWidget UITransformEditWidget::create(const UITransformEditWidgetI
     obj->root.set_on_draw([](UIWidget, ScreenRenderComponent) {}); // dont draw panel
     UINode rootN = obj->root.node();
 
-    float fontSize;
-    editorTheme.get_font_size(fontSize);
+    float fontSize = editorTheme.get_font_size();
 
     obj->position.startup(obj, rootN, panelChildGap, fontSize, "Position");
     obj->rotation.startup(obj, rootN, panelChildGap, fontSize, "Rotation");

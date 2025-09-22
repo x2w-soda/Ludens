@@ -30,5 +30,8 @@ bool write_file(const Path& path, uint64_t size, const byte* buf);
 /// @brief Check if path exists in filesystem.
 bool exists(const Path& path);
 
+/// @brief Check if path exists and is a directory.
+bool is_directory(const Path& path);
+
 } // namespace FS
 } // namespace LD

@@ -9,6 +9,7 @@ struct EditorThemeObj
 {
     UIThemeInfo uiTheme;
     float fontSize;
+    float padding;
     Color gizmoColorAxisX;
     Color gizmoColorAxisY;
     Color gizmoColorAxisZ;
@@ -21,6 +22,7 @@ void EditorThemeObj::initialize_default()
 {
     uiTheme = UITheme::get_default_info();
     fontSize = 16.0f;
+    padding = 5.0f;
     gizmoColorAxisX = Vec4(0.9f, 0.1f, 0.1f, 0.8f);
     gizmoColorAxisY = Vec4(0.1f, 0.9f, 0.1f, 0.8f);
     gizmoColorAxisZ = Vec4(0.1f, 0.1f, 0.9f, 0.8f);
@@ -32,9 +34,14 @@ UITheme EditorTheme::get_ui_theme()
     return UITheme(&mObj->uiTheme);
 }
 
-void EditorTheme::get_font_size(float& fontSize) const
+float EditorTheme::get_font_size() const
 {
-    fontSize = mObj->fontSize;
+    return mObj->fontSize;
+}
+
+float EditorTheme::get_padding() const
+{
+    return mObj->padding;
 }
 
 void EditorTheme::get_gizmo_colors(Color& axisX, Color& axisY, Color& axisZ) const

@@ -91,5 +91,10 @@ bool exists(const Path& path)
     return fs::exists(path);
 }
 
+bool is_directory(const Path& path)
+{
+    return fs::exists(path) && fs::is_directory(path);
+}
+
 } // namespace FS
 } // namespace LD

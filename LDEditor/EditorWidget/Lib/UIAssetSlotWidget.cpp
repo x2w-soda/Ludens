@@ -29,8 +29,7 @@ UIAssetSlotWidget UIAssetSlotWidget::create(const UIAssetSlotWidgetInfo& info)
 
     UIWidget parent = info.parent;
     UINode parentNode = parent.node();
-    float fontSize;
-    info.theme.get_font_size(fontSize);
+    float fontSize = info.theme.get_font_size();
 
     UILayoutInfo layoutI{};
     layoutI.childAxis = UI_AXIS_X;
