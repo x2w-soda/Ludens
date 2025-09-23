@@ -14,11 +14,19 @@
 #include <Ludens/RenderGraph/RGraph.h>
 #include <Ludens/RenderServer/RServer.h>
 #include <Ludens/System/Memory.h>
+#include <unordered_set>
 #include <vector>
 
 namespace LD {
 
 static Log sLog("RServer");
+
+struct RMeshEntry
+{
+    RMesh mesh;                         /// mesh resources
+    RUID meshID;                        /// mesh identifier
+    std::unordered_set<RUID> drawCalls; /// draw calls using this mesh
+};
 
 /// @brief Render server implementation.
 class RServerObj
@@ -64,17 +72,18 @@ private:
     std::vector<Frame> mFrames;
     std::vector<RCommandPool> mCmdPools;
     std::vector<RCommandList> mCmdLists;
-    std::unordered_map<RUID, RMesh*> mMeshes; // TODO: this is terrible for cache locality
-    RFormat mDepthStencilFormat;              /// default depth stencil format
-    RFormat mColorFormat;                     /// default color format
-    RSampleCountBit mMSAA;                    /// number of samples during MSAA, if enabled
-    RUID mSceneOutlineSubject;                /// subject to be outlined in scene render pass
-    uint32_t mFramesInFlight;                 /// number of frames in flight
-    uint32_t mFrameIndex;                     /// [0, mFramesInFlight)
-    FontAtlas mFontAtlas;                     /// default font atlas for text rendering
-    const char* mLastComponent;               /// last render component
-    const char* mLastColorAttachment;         /// last scene color attachment output
-    const char* mLastIDFlagsAttachment;       /// last scene ID flags attachment output
+    std::unordered_map<RUID, RMeshEntry*> mMeshes;  // TODO: optimize later
+    std::unordered_map<RUID, RUID> mDrawCallToMesh; /// map draw call to mesh ID
+    RFormat mDepthStencilFormat;                    /// default depth stencil format
+    RFormat mColorFormat;                           /// default color format
+    RSampleCountBit mMSAA;                          /// number of samples during MSAA, if enabled
+    RUID mSceneOutlineSubject;                      /// subject to be outlined in scene render pass
+    uint32_t mFramesInFlight;                       /// number of frames in flight
+    uint32_t mFrameIndex;                           /// [0, mFramesInFlight)
+    FontAtlas mFontAtlas;                           /// default font atlas for text rendering
+    const char* mLastComponent;                     /// last render component
+    const char* mLastColorAttachment;               /// last scene color attachment output
+    const char* mLastIDFlagsAttachment;             /// last scene ID flags attachment output
     void* mTransformCallbackUser;
     bool mHasRenderedScene;
 };
@@ -159,9 +168,9 @@ RServerObj::~RServerObj()
 
     for (auto ite : mMeshes)
     {
-        RMesh* mesh = ite.second;
-        mesh->destroy();
-        heap_delete<RMesh>(mesh);
+        RMeshEntry* entry = ite.second;
+        entry->mesh.destroy();
+        heap_delete<RMeshEntry>(entry);
     }
     mMeshes.clear();
 
@@ -393,29 +402,38 @@ void RServerObj::forward_rendering(ForwardRenderComponent renderer, void* user)
     // render static mesh
     for (auto ite : self.mMeshes)
     {
-        pc.model = self.mTransformCallback(ite.first, self.mTransformCallbackUser);
-        pc.id = self.ruid_to_pickid(ite.first);
-        pc.flags = 0;
+        RMeshEntry* entry = ite.second;
 
-        renderer.set_push_constant(sRMeshPipelineLayout, 0, sizeof(pc), &pc);
-        renderer.draw_mesh(*ite.second);
+        for (RUID drawCall : entry->drawCalls)
+        {
+            pc.model = self.mTransformCallback(drawCall, self.mTransformCallbackUser);
+            pc.id = self.ruid_to_pickid(drawCall);
+            pc.flags = 0;
+
+            renderer.set_push_constant(sRMeshPipelineLayout, 0, sizeof(pc), &pc);
+            renderer.draw_mesh(entry->mesh);
+        }
     }
 
     // render flag hints for object outlining
-    RUID outlineSubject = self.mSceneOutlineSubject;
-    if (outlineSubject != 0 && self.mMeshes.contains(outlineSubject))
+    RUID outlineDrawCall = self.mSceneOutlineSubject;
+    if (outlineDrawCall != 0 && self.mDrawCallToMesh.contains(outlineDrawCall))
     {
+        RUID meshID = self.mDrawCallToMesh[outlineDrawCall];
+        LD_ASSERT(self.mMeshes.contains(meshID));
+        RMeshEntry* entry = self.mMeshes[meshID];
+
         // render to 16-bit flags only
         meshPipeline.set_color_write_mask(0, 0);
         meshPipeline.set_color_write_mask(1, RCOLOR_COMPONENT_B_BIT | RCOLOR_COMPONENT_A_BIT);
         meshPipeline.set_depth_test_enable(false);
 
-        pc.model = self.mTransformCallback(outlineSubject, self.mTransformCallbackUser);
+        pc.model = self.mTransformCallback(outlineDrawCall, self.mTransformCallbackUser);
         pc.id = 0;    // not written to color attachment due to write masks
         pc.flags = 1; // currently any non-zero flag value indicates mesh that requires outlining
 
         renderer.set_push_constant(sRMeshPipelineLayout, 0, sizeof(pc), &pc);
-        renderer.draw_mesh(*self.mMeshes[outlineSubject]);
+        renderer.draw_mesh(entry->mesh);
     }
 
     renderer.draw_skybox();
@@ -496,18 +514,52 @@ RImage RServer::get_font_atlas_image()
     return mObj->mFontAtlasImage;
 }
 
+bool RServer::mesh_exists(RUID mesh)
+{
+    return mObj->mMeshes.contains(mesh);
+}
+
 RUID RServer::create_mesh(ModelBinary& modelBinary)
 {
     RStager stager(mObj->mDevice, RQUEUE_TYPE_GRAPHICS);
 
-    RUID ruid = mObj->mRUIDCtr++;
-    RMesh* rmesh = heap_new<RMesh>(MEMORY_USAGE_RENDER);
-    rmesh->create_from_binary(mObj->mDevice, stager, modelBinary);
-    mObj->mMeshes[ruid] = rmesh;
+    RUID meshID = mObj->mRUIDCtr++;
+    RMeshEntry* entry = heap_new<RMeshEntry>(MEMORY_USAGE_RENDER);
+    mObj->mMeshes[meshID] = entry;
 
+    entry->mesh.create_from_binary(mObj->mDevice, stager, modelBinary);
+    entry->meshID = meshID;
     stager.submit(mObj->mDevice.get_graphics_queue());
 
-    return ruid;
+    return meshID;
+}
+
+RUID RServer::create_mesh_draw_call(RUID meshID)
+{
+    auto ite = mObj->mMeshes.find(meshID);
+
+    if (ite == mObj->mMeshes.end())
+        return 0;
+
+    RMeshEntry* entry = mObj->mMeshes[meshID];
+    RUID drawCall = mObj->mRUIDCtr++;
+    entry->drawCalls.insert(drawCall);
+    mObj->mDrawCallToMesh[drawCall] = meshID;
+
+    return drawCall;
+}
+
+void RServer::destroy_mesh_draw_call(RUID drawCall)
+{
+    auto ite = mObj->mDrawCallToMesh.find(drawCall);
+
+    if (ite == mObj->mDrawCallToMesh.end())
+        return;
+
+    RUID meshID = mObj->mDrawCallToMesh[drawCall];
+    RMeshEntry* entry = mObj->mMeshes[meshID];
+
+    entry->drawCalls.erase(drawCall);
 }
 
 } // namespace LD

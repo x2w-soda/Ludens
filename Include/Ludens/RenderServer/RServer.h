@@ -117,8 +117,17 @@ struct RServer : Handle<struct RServerObj>
     /// @brief Get the image handle of the font atlas image (RIMAGE_LAYOUT_SHADER_READ_ONLY).
     RImage get_font_atlas_image();
 
+    /// @brief Check if mesh handle is valid.
+    bool mesh_exists(RUID mesh);
+
     /// @brief Create a non-deforming mesh
     RUID create_mesh(ModelBinary& modelBinary);
+
+    /// @brief Create a draw call of a mesh.
+    RUID create_mesh_draw_call(RUID mesh);
+
+    /// @brief Destroy a draw call.
+    void destroy_mesh_draw_call(RUID drawCall);
 };
 
 } // namespace LD

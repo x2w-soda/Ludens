@@ -40,7 +40,7 @@ struct ForwardRenderComponentObj
 
     void flush_lines();
 
-    void draw_mesh_ex(RCommandList list, RMesh mesh);
+    void draw_mesh_ex(RCommandList list, RMesh& mesh);
 
     static void on_release(void* user);
     static void on_graphics_pass(RGraphicsPass pass, RCommandList list, void* userData);
@@ -71,7 +71,7 @@ void ForwardRenderComponentObj::init(RDevice device)
     RGraph::add_release_callback(this, &ForwardRenderComponentObj::on_release);
 }
 
-void ForwardRenderComponentObj::draw_mesh_ex(RCommandList list, RMesh mesh)
+void ForwardRenderComponentObj::draw_mesh_ex(RCommandList list, RMesh& mesh)
 {
     list.cmd_bind_vertex_buffers(0, 1, &mesh.vbo);
     list.cmd_bind_index_buffer(mesh.ibo, RINDEX_TYPE_U32);
@@ -227,7 +227,7 @@ void ForwardRenderComponent::set_push_constant(RPipelineLayoutInfo layout, uint3
     mObj->list.cmd_push_constant(layout, offset, size, pc);
 }
 
-void ForwardRenderComponent::draw_mesh(RMesh mesh)
+void ForwardRenderComponent::draw_mesh(RMesh& mesh)
 {
     LD_ASSERT(mObj->isDrawScope);
     LD_ASSERT(mObj->meshPipeline);

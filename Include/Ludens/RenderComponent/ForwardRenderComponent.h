@@ -52,7 +52,7 @@ struct ForwardRenderComponent : Handle<struct ForwardRenderComponentObj>
 
     /// @brief draw a mesh with the most recently bound mesh pipeline
     /// @param mesh mesh handle
-    void draw_mesh(RMesh mesh);
+    void draw_mesh(RMesh& mesh);
 
     /// @brief draw a line from p0 to p1
     /// @param p0 starting world position
