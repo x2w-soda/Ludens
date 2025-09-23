@@ -65,7 +65,6 @@ static bool load_mesh_component(TOMLValue compTOML, Scene scene, CUID compID, co
     TOMLValue auidTOML = compTOML["auid"];
     auidTOML.is_i64(auid);
     meshC->auid = (AUID)auid;
-    meshC->ruid = 0; // deferred until Scene preparation phase
 
     return true;
 }

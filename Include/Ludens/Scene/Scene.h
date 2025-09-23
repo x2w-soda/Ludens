@@ -90,11 +90,13 @@ public:
     /// @brief Mark the transforms of a component subtree as dirty.
     void mark_component_transform_dirty(CUID compID);
 
-    /// @brief Lookup the data component from some render server ID
+    /// @brief Lookup the data component from draw call ID
     CUID get_ruid_component(RUID ruid);
 
-    /// @brief Supplies the transform for the render server
+    /// @brief Supplies the transform for a draw call
     Mat4 get_ruid_transform_mat4(RUID ruid);
+
+    void set_mesh_component_asset(CUID meshC, AUID meshAssetID);
 };
 
 } // namespace LD

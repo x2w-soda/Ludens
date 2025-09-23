@@ -19,7 +19,9 @@ struct SceneObj
     AssetManager assetManager;
     RServer renderServer;
     LuaState lua;
-    std::unordered_map<RUID, CUID> ruidToComponent; /// map RUID to its corresponding component in the data registry
+    std::unordered_map<RUID, CUID> ruidToCuid; /// map draw call to corresponding component
+    std::unordered_map<CUID, RUID> cuidToRuid; /// map component to corresponding draw call
+    std::unordered_map<AUID, RUID> auidToRuid; /// map asset to GPU resource
     bool hasStartup = false;
 
     /// @brief Prepare components recursively, creating resources from systems/servers.
@@ -56,8 +58,14 @@ static void prepare_mesh_component(SceneObj* scene, CUID compID)
     if (meshC->auid)
     {
         MeshAsset meshA = scene->assetManager.get_mesh_asset(meshC->auid);
-        meshC->ruid = scene->renderServer.create_mesh(*meshA.data());
-        scene->ruidToComponent[meshC->ruid] = compID;
+
+        if (!scene->auidToRuid.contains(meshA.get_auid()))
+            scene->auidToRuid[meshC->auid] = scene->renderServer.create_mesh(*meshA.data());
+
+        RUID mesh = scene->auidToRuid[meshC->auid];
+        RUID drawCall = scene->renderServer.create_mesh_draw_call(mesh);
+        scene->ruidToCuid[drawCall] = compID;
+        scene->cuidToRuid[compID] = drawCall;
     }
 }
 
@@ -441,7 +449,12 @@ void* Scene::get_component(CUID compID, ComponentType& type)
 
 RUID Scene::get_component_ruid(CUID compID)
 {
-    return mObj->registry.get_component_ruid(compID);
+    auto ite = mObj->cuidToRuid.find(compID);
+
+    if (ite == mObj->cuidToRuid.end())
+        return 0;
+
+    return ite->second;
 }
 
 bool Scene::get_component_transform(CUID compID, Transform& transform)
@@ -466,9 +479,9 @@ void Scene::mark_component_transform_dirty(CUID compID)
 
 CUID Scene::get_ruid_component(RUID ruid)
 {
-    auto ite = mObj->ruidToComponent.find(ruid);
+    auto ite = mObj->ruidToCuid.find(ruid);
 
-    if (ite == mObj->ruidToComponent.end())
+    if (ite == mObj->ruidToCuid.end())
         return 0;
 
     return ite->second;
@@ -482,6 +495,36 @@ Mat4 Scene::get_ruid_transform_mat4(RUID ruid)
     mObj->registry.get_component_transform_mat4(compID, worldMat4);
 
     return worldMat4;
+}
+
+void Scene::set_mesh_component_asset(CUID meshCompID, AUID meshAssetID)
+{
+    if (!mObj->auidToRuid.contains(meshAssetID))
+        return;
+
+    RUID mesh = mObj->auidToRuid[meshAssetID];
+    if (!mObj->renderServer.mesh_exists(mesh))
+        return;
+
+    ComponentType type;
+    MeshComponent* meshC = (MeshComponent*)mObj->registry.get_component(meshCompID, type);
+    if (!meshC || type != COMPONENT_TYPE_MESH)
+        return;
+
+    meshC->auid = meshAssetID;
+
+    auto ite = mObj->cuidToRuid.find(meshCompID);
+    if (ite != mObj->cuidToRuid.end())
+    {
+        RUID oldDrawCall = ite->second;
+        mObj->renderServer.destroy_mesh_draw_call(oldDrawCall);
+        mObj->ruidToCuid.erase(oldDrawCall);
+        mObj->cuidToRuid.erase(meshCompID);
+    }
+
+    RUID drawCall = mObj->renderServer.create_mesh_draw_call(mesh);
+    mObj->cuidToRuid[meshCompID] = drawCall;
+    mObj->ruidToCuid[drawCall] = meshCompID;
 }
 
 } // namespace LD

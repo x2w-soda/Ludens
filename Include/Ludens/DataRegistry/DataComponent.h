@@ -80,7 +80,6 @@ struct TransformComponent
 struct MeshComponent
 {
     Transform transform; /// mesh transform
-    RUID ruid;           /// mesh render server handle
     AUID auid;           /// mesh asset handle
 };
 

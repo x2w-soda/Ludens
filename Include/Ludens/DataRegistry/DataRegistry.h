@@ -46,6 +46,9 @@ struct DataRegistry : Handle<struct DataRegistryObj>
     /// @brief Get data component base members, applicable to all types of components.
     ComponentBase* get_component_base(CUID compID);
 
+    /// @brief Get a representative asset of a component.
+    AUID get_component_auid(CUID compID);
+
     /// @brief Get data component struct, or null on failure
     /// @param compID Data component ID
     /// @param type Outputs data component type on success
@@ -81,10 +84,6 @@ struct DataRegistry : Handle<struct DataRegistryObj>
     /// @param mat4 Output world space model matrix.
     /// @return True on success.
     bool get_component_transform_mat4(CUID compID, Mat4& mat4);
-
-    /// @brief Get the render server ID of a data component, or null if not applicable
-    /// @return The RUID associated with a data component, or null
-    RUID get_component_ruid(CUID compID);
 };
 
 } // namespace LD

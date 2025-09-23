@@ -14,7 +14,7 @@ static Log sLog("DataRegistry");
 static bool duplicate_subtree(DataRegistry dup, DataRegistry orig, CUID origRoot);
 static Transform* get_transform(void* comp);
 static Transform* get_mesh_transform(void* comp);
-static RUID get_mesh_ruid(void* comp);
+static AUID get_mesh_auid(void* comp);
 
 struct ComponentMeta
 {
@@ -22,15 +22,15 @@ struct ComponentMeta
     size_t byteSize;
     const char* typeName;
     Transform* (*get_transform)(void* comp);
-    RUID (*get_ruid)(void* comp);
+    AUID (*get_auid)(void* comp);
 };
 
 // clang-format off
 static ComponentMeta sComponentTable[] = {
-    { COMPONENT_TYPE_DATA,       sizeof(ComponentBase),      "DataComponent",      nullptr,            nullptr },
-    { COMPONENT_TYPE_TRANSFORM,  sizeof(TransformComponent), "TransformComponent", get_transform,      nullptr },
-    { COMPONENT_TYPE_MESH,       sizeof(MeshComponent),      "MeshComponent",      get_mesh_transform, get_mesh_ruid },
-    { COMPONENT_TYPE_TEXTURE_2D, sizeof(Texture2DComponent), "Texture2DComponent", nullptr,            nullptr },
+    { COMPONENT_TYPE_DATA,       sizeof(ComponentBase),      "DataComponent",      nullptr,             nullptr },
+    { COMPONENT_TYPE_TRANSFORM,  sizeof(TransformComponent), "TransformComponent", &get_transform,      nullptr },
+    { COMPONENT_TYPE_MESH,       sizeof(MeshComponent),      "MeshComponent",      &get_mesh_transform, &get_mesh_auid },
+    { COMPONENT_TYPE_TEXTURE_2D, sizeof(Texture2DComponent), "Texture2DComponent", nullptr,             nullptr },
 };
 // clang-format on
 
@@ -88,9 +88,9 @@ static Transform* get_mesh_transform(void* comp)
     return &((MeshComponent*)comp)->transform;
 }
 
-static RUID get_mesh_ruid(void* comp)
+static AUID get_mesh_auid(void* comp)
 {
-    return ((MeshComponent*)comp)->ruid;
+    return ((MeshComponent*)comp)->auid;
 }
 
 static_assert(sizeof(sComponentTable) / sizeof(*sComponentTable) == COMPONENT_TYPE_ENUM_COUNT);
@@ -413,6 +413,20 @@ ComponentBase* DataRegistry::get_component_base(CUID id)
     return ite->second.base;
 }
 
+AUID DataRegistry::get_component_auid(CUID compID)
+{
+    auto ite = mObj->components.find(compID);
+    if (ite == mObj->components.end())
+        return (RUID)0;
+
+    ComponentType type = ite->second.base->type;
+
+    if (!sComponentTable[type].get_auid)
+        return (RUID)0;
+
+    return sComponentTable[type].get_auid(ite->second.comp);
+}
+
 void* DataRegistry::get_component(CUID id, ComponentType& type)
 {
     auto ite = mObj->components.find(id);
@@ -503,20 +517,6 @@ bool DataRegistry::get_component_transform_mat4(CUID compID, Mat4& mat4)
     ComponentBase* base = get_component_base(compID);
 
     return mObj->get_component_transform_mat4(base, mat4);
-}
-
-RUID DataRegistry::get_component_ruid(CUID comp)
-{
-    auto ite = mObj->components.find(comp);
-    if (ite == mObj->components.end())
-        return (RUID)0;
-
-    ComponentType type = ite->second.base->type;
-
-    if (!sComponentTable[type].get_ruid)
-        return (RUID)0;
-
-    return sComponentTable[type].get_ruid(ite->second.comp);
 }
 
 } // namespace LD
