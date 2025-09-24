@@ -3,6 +3,7 @@ set(MODULE_NAME LDEditorContext)
 set(MODULE_LIB
 	Lib/EditorContext.cpp
 	Lib/EditorSettings.cpp
+	Lib/EditorIconAtlas.cpp
 )
 
 set(MODULE_INCLUDE
@@ -10,6 +11,7 @@ set(MODULE_INCLUDE
 	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorContext/EditorContext.h
 	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorContext/EditorSettings.h
 	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorContext/EditorWindowObj.h
+	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorContext/EditorIconAtlas.h
 )
 
 add_library(${MODULE_NAME}
