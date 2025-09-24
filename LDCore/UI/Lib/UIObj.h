@@ -93,6 +93,9 @@ struct UIContextObj
     /// @brief Raise a window to top.
     /// @param window Target window.
     void raise_window(UIWindowObj* window);
+
+    /// @brief When a widget is removed, reset all references to it.
+    void invalidate_refs(UIWidgetObj* removed);
 };
 
 /// @brief Scroll widget implementation.

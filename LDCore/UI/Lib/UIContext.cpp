@@ -93,14 +93,7 @@ void UIContextObj::free_widget(UIWidgetObj* widget)
     size_t count = std::erase(window->widgets, widget);
     LD_ASSERT(count == 1);
 
-    if (widget == dragWidget)
-        dragWidget = nullptr;
-
-    if (widget == pressWidget)
-        pressWidget = nullptr;
-
-    if (widget == cursorWidget)
-        cursorWidget = nullptr;
+    invalidate_refs(widget);
 
     ui_obj_cleanup(widget);
     widgetPA.free(widget);
@@ -146,6 +139,18 @@ void UIContextObj::raise_window(UIWindowObj* window)
 
     windows.erase(ite);
     windows.push_back(window);
+}
+
+void UIContextObj::invalidate_refs(UIWidgetObj* removed)
+{
+    if (removed == dragWidget)
+        dragWidget = nullptr;
+
+    if (removed == pressWidget)
+        pressWidget = nullptr;
+
+    if (removed == cursorWidget)
+        cursorWidget = nullptr;
 }
 
 void UIContext::input_mouse_position(const Vec2& pos)
@@ -308,6 +313,8 @@ UIWindow UIContext::add_window(const UILayoutInfo& layoutI, const UIWindowInfo& 
 void UIContext::remove_window(UIWindow window)
 {
     UIWindowObj* obj = (UIWindowObj*)window.unwrap();
+
+    mObj->invalidate_refs((UIWidgetObj*)window.unwrap());
 
     // window destruction is deferred so we don't modify
     // window hierarchy while iterating it.
