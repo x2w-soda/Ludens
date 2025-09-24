@@ -8,6 +8,7 @@ static const UIThemeInfo sDefaultThemeInfo = {
     .primaryColor = 0x4DD8E6FF,
     .backgroundColor = 0x000000FF,
     .fieldColor = 0x1B1B1BFF,
+    .selectionColor = 0x4D6490FF,
 };
 
 UIThemeInfo UITheme::get_default_info()

@@ -15,6 +15,7 @@ struct UIThemeInfo
     Color primaryColor;
     Color backgroundColor;
     Color fieldColor;
+    Color selectionColor;
 };
 
 /// @brief Handle to a UI theme.
@@ -28,6 +29,7 @@ struct UITheme : Handle<UIThemeInfo>
     inline Color get_primary_color() const { return mObj->primaryColor; };
     inline Color get_background_color() const { return mObj->backgroundColor; };
     inline Color get_field_color() const { return mObj->fieldColor; }
+    inline Color get_selection_color() const { return mObj->selectionColor; }
 };
 
 } // namespace LD
