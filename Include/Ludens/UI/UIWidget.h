@@ -175,7 +175,8 @@ struct UIImageWidget : UIWidget
 
 struct UIImageWidgetInfo
 {
-    RImage image;
+    RImage image; /// image to be renderered
+    Rect* rect;   /// if not null, the part of image to be rendered
 };
 
 struct UITextWidget : UIWidget

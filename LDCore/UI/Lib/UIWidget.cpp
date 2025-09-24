@@ -276,8 +276,37 @@ UIImageWidget UINode::add_image(const UILayoutInfo& layoutI, const UIImageWidget
     UIWidgetObj* obj = window->ctx->alloc_widget(UI_WIDGET_IMAGE, layoutI, mObj, user);
     obj->as.image.base = obj;
     obj->as.image.imageHandle = widgetI.image;
+    obj->as.image.imageRect.w = 0;
+
+    if (widgetI.rect)
+        obj->as.image.imageRect = *widgetI.rect;
 
     return {obj};
+}
+
+void UIImageWidgetObj::on_draw(UIWidget widget, ScreenRenderComponent renderer)
+{
+    UIImageWidgetObj& self = static_cast<UIWidgetObj*>(widget)->as.image;
+    Rect rect = widget.get_rect();
+    float imageW = (float)self.imageHandle.width();
+    float imageH = (float)self.imageHandle.height();
+
+    if (self.imageRect.w <= 0.0f)
+        renderer.draw_image(rect, self.imageHandle);
+    else
+    {
+        Rect uv = self.imageRect;
+        uv.x /= imageW;
+        uv.y /= imageH;
+        uv.w /= imageW;
+        uv.h /= imageH;
+        renderer.draw_image_uv(rect, self.imageHandle, uv, 0xFFFFFFFF);
+    }
+}
+
+RImage UIImageWidget::get_image()
+{
+    return mObj->as.image.imageHandle;
 }
 
 //
@@ -695,19 +724,6 @@ bool UIToggleWidget::get_state()
 void UIPanelWidget::set_panel_color(Color color)
 {
     mObj->as.panel.color = color;
-}
-
-void UIImageWidgetObj::on_draw(UIWidget widget, ScreenRenderComponent renderer)
-{
-    UIImageWidgetObj& self = static_cast<UIWidgetObj*>(widget)->as.image;
-    Rect rect = widget.get_rect();
-
-    renderer.draw_image(rect, self.imageHandle);
-}
-
-RImage UIImageWidget::get_image()
-{
-    return mObj->as.image.imageHandle;
 }
 
 void ui_obj_cleanup(UIWidgetObj* widget)

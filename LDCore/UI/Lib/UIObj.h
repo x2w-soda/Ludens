@@ -183,6 +183,7 @@ struct UIImageWidgetObj
 {
     UIWidgetObj* base;
     RImage imageHandle;
+    Rect imageRect;
 
     static void on_draw(UIWidget widget, ScreenRenderComponent renderer);
 };
