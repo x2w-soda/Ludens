@@ -1,4 +1,5 @@
 #include <Ludens/Header/Bitwise.h>
+#include <Ludens/Header/Impulse.h>
 #include <Ludens/Header/Math/Mat3.h>
 #include <Ludens/Header/Math/Mat4.h>
 #include <Ludens/Header/Math/Quat.h>
@@ -39,6 +40,27 @@ TEST_CASE("Bitwise")
     CHECK(next_power_of_two(16384) == 16384);
     CHECK(next_power_of_two(16385) == 32768);
     CHECK(next_power_of_two(2147483648) == 2147483648);
+}
+
+TEST_CASE("Impulse")
+{
+    Impulse flag;
+
+    flag.set(false);
+    CHECK(!flag.read());
+
+    flag.set(true);
+    CHECK(flag.read());
+    CHECK(!flag.read()); // reset after a successful read
+
+    TImpulse<int> iflag;
+
+    iflag.set(0);
+    CHECK(!iflag.read());
+
+    iflag.set(30);
+    CHECK(iflag.read() == 30);
+    CHECK(iflag.read() == 0); // reset after a successful read
 }
 
 TEST_CASE("Math")
