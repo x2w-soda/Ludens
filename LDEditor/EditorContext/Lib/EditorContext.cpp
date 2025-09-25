@@ -5,15 +5,14 @@
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/Project/Project.h>
 #include <Ludens/Project/ProjectSchema.h>
+#include <Ludens/RenderBackend/RStager.h>
+#include <Ludens/RenderBackend/RUtil.h>
 #include <Ludens/Scene/Scene.h>
 #include <Ludens/Scene/SceneSchema.h>
 #include <Ludens/System/FileSystem.h>
 #include <Ludens/System/Memory.h>
 #include <LudensEditor/EditorContext/EditorContext.h>
-#include <filesystem>
 #include <utility>
-
-namespace fs = std::filesystem;
 
 namespace LD {
 
@@ -26,15 +25,17 @@ using EditorContextObserver = std::pair<EditorContextEventFn, void*>;
 struct EditorContextObj
 {
     RServer renderServer;             /// render server handle
+    RImage iconAtlas;                 /// editor icon atlas handle
     Project project;                  /// current project under edit
     Scene scene;                      /// current scene under edit
     AssetManager assetManager;        /// loads assets for the scene
     EditorSettings settings;          /// editor global settings
-    fs::path sceneTOMLPath;           /// path to current scene file
-    fs::path assetTOMLPath;           /// path to project asset file
-    fs::path projectDirPath;          /// path to project root directory
+    FS::Path iconAtlasPath;           /// path to editor icon atlas source file
+    FS::Path sceneTOMLPath;           /// path to current scene file
+    FS::Path assetTOMLPath;           /// path to project asset file
+    FS::Path projectDirPath;          /// path to project root directory
     std::string projectName;          /// project identifier
-    std::vector<fs::path> scenePaths; /// path to scene files in project
+    std::vector<FS::Path> scenePaths; /// path to scene files in project
     std::vector<EditorContextObserver> observers;
     CUID selectedComponent;
     RUID selectedComponentRUID;
@@ -55,6 +56,7 @@ EditorContext EditorContext::create(const EditorContextInfo& info)
 {
     EditorContextObj* obj = heap_new<EditorContextObj>(MEMORY_USAGE_MISC);
     obj->renderServer = info.renderServer;
+    obj->iconAtlasPath = info.iconAtlasPath;
     obj->settings = EditorSettings::create_default();
     obj->isPlaying = false;
 
@@ -64,6 +66,13 @@ EditorContext EditorContext::create(const EditorContextInfo& info)
 void EditorContext::destroy(EditorContext ctx)
 {
     EditorContextObj* obj = ctx;
+
+    if (obj->iconAtlas)
+    {
+        RDevice device = obj->renderServer.get_device();
+        device.wait_idle();
+        device.destroy_image(obj->iconAtlas);
+    }
 
     if (obj->assetManager)
     {
@@ -95,6 +104,29 @@ AssetManager EditorContext::get_asset_manager()
     return mObj->assetManager;
 }
 
+RImage EditorContext::get_editor_icon_atlas()
+{
+    RDevice device = mObj->renderServer.get_device();
+
+    if (!mObj->iconAtlas)
+    {
+        std::string iconAtlasPath = mObj->iconAtlasPath.string();
+        Bitmap tmpBitmap = Bitmap::create_from_path(iconAtlasPath.c_str(), false);
+        RImageInfo imageI = RUtil::make_2d_image_info(RIMAGE_USAGE_SAMPLED_BIT | RIMAGE_USAGE_TRANSFER_DST_BIT,
+                                                      RFORMAT_RGBA8, tmpBitmap.width(), tmpBitmap.height(),
+                                                      {.filter = RFILTER_LINEAR, .mipmapFilter = RFILTER_LINEAR, .addressMode = RSAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE});
+
+        mObj->iconAtlas = device.create_image(imageI);
+
+        RStager stager(device, RQUEUE_TYPE_GRAPHICS);
+        stager.add_image_data(mObj->iconAtlas, tmpBitmap.data(), RIMAGE_LAYOUT_SHADER_READ_ONLY);
+        stager.submit(device.get_graphics_queue());
+        Bitmap::destroy(tmpBitmap);
+    }
+
+    return mObj->iconAtlas;
+}
+
 void EditorContext::add_observer(EditorContextEventFn fn, void* user)
 {
     mObj->observers.push_back(std::make_pair(fn, user));
@@ -112,7 +144,7 @@ void EditorContext::load_project(const std::filesystem::path& filePath)
 {
     LD_PROFILE_SCOPE;
 
-    fs::path projectDirPath = filePath.parent_path();
+    FS::Path projectDirPath = filePath.parent_path();
 
     TOMLDocument projectDoc = TOMLDocument::create_from_file(filePath);
     mObj->project = Project::create(projectDirPath);
@@ -122,7 +154,7 @@ void EditorContext::load_project(const std::filesystem::path& filePath)
     mObj->projectDirPath = projectDirPath;
     mObj->projectName = mObj->project.get_name();
 
-    fs::path assetsPath = mObj->project.get_assets_path();
+    FS::Path assetsPath = mObj->project.get_assets_path();
     sLog.info("loading project [{}], root directory {}", mObj->projectName, mObj->projectDirPath.string());
 
     mObj->assetTOMLPath = assetsPath;
@@ -148,7 +180,7 @@ void EditorContext::load_project(const std::filesystem::path& filePath)
 
     mObj->project.get_scene_paths(mObj->scenePaths);
 
-    for (const fs::path& scenePath : mObj->scenePaths)
+    for (const FS::Path& scenePath : mObj->scenePaths)
     {
         if (!FS::exists(scenePath))
         {
@@ -243,6 +275,11 @@ const char* EditorContext::get_component_name(CUID comp)
     return base->name;
 }
 
+void EditorContext::create_component_script_slot(CUID compID, AUID assetID)
+{
+    mObj->scene.create_component_script_slot(compID, assetID);
+}
+
 void EditorContext::set_selected_component(CUID comp)
 {
     if (mObj->selectedComponent == comp)
@@ -268,6 +305,11 @@ void* EditorContext::get_component(CUID compID, ComponentType& type)
 CUID EditorContext::get_ruid_component(RUID ruid)
 {
     return mObj->scene.get_ruid_component(ruid);
+}
+
+void EditorContext::set_mesh_component_asset(CUID meshC, AUID meshAssetID)
+{
+    return mObj->scene.set_mesh_component_asset(meshC, meshAssetID);
 }
 
 RUID EditorContext::get_selected_component_ruid()

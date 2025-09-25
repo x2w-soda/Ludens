@@ -2,6 +2,8 @@
 
 #include <Ludens/RenderServer/RServer.h>
 #include <Ludens/Scene/Scene.h>
+#include <Ludens/System/FileSystem.h>
+#include <LudensEditor/EditorContext/EditorCallback.h>
 #include <LudensEditor/EditorContext/EditorContextEvent.h>
 #include <LudensEditor/EditorContext/EditorSettings.h>
 
@@ -12,7 +14,8 @@ struct Transform;
 
 struct EditorContextInfo
 {
-    RServer renderServer; /// render server handle
+    RServer renderServer;   /// render server handle
+    FS::Path iconAtlasPath; /// path to icon atlas
 };
 
 /// @brief Shared context among editor windows. Keeps track of
@@ -34,6 +37,9 @@ struct EditorContext : Handle<struct EditorContextObj>
 
     /// @brief Get asset manager handle.
     AssetManager get_asset_manager();
+
+    /// @brief Get icon atlas for editor.
+    RImage get_editor_icon_atlas();
 
     /// @brief Get editor theme.
     inline EditorTheme get_theme() { return get_settings().get_theme(); }
@@ -73,6 +79,9 @@ struct EditorContext : Handle<struct EditorContextObj>
     /// @brief Get the C string name of a component
     const char* get_component_name(CUID comp);
 
+    /// @brief Create script slot for component.
+    void create_component_script_slot(CUID compID, AUID assetID);
+
     /// @brief Assign a component in scene to be selected.
     /// @note Triggers EDITOR_CONTEXT_EVENT_COMPONENT_SELECTION for observers.
     void set_selected_component(CUID comp);
@@ -85,6 +94,9 @@ struct EditorContext : Handle<struct EditorContextObj>
 
     /// @brief Get the data component associated with some RUID in scene
     CUID get_ruid_component(RUID ruid);
+
+    /// @brief Set mesh component to use mesh asset.
+    void set_mesh_component_asset(CUID meshC, AUID meshAssetID);
 
     /// @brief get the RUID associated with the selected object in scene
     RUID get_selected_component_ruid();
