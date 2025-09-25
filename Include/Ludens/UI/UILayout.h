@@ -6,10 +6,17 @@ namespace LD {
 
 struct UIWidgetObj;
 
-enum UIAxis
+enum UIAxis : char
 {
     UI_AXIS_X = AXIS_X,
     UI_AXIS_Y = AXIS_Y,
+};
+
+enum UIAlign : char
+{
+    UI_ALIGN_BEGIN,
+    UI_ALIGN_CENTER,
+    UI_ALIGN_END,
 };
 
 enum UISizeType
@@ -83,6 +90,12 @@ struct UILayoutInfo
 
     /// @brief which direction to align children
     UIAxis childAxis;
+
+    /// @brief Alignment of children along X axis.
+    UIAlign childAlignX;
+
+    /// @brief Alignment of children along Y axis.
+    UIAlign childAlignY;
 };
 
 } // namespace LD

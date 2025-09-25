@@ -30,6 +30,7 @@ set(MODULE_LIB
 set(MODULE_TEST
     Test/UITest.cpp
     Test/UITest.h
+    Test/UILayoutTest.cpp
     Test/UIInputTest.cpp
     Test/UITextWidgetTest.cpp
 )

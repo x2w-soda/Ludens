@@ -181,6 +181,16 @@ void UIWidget::set_layout_child_axis(UIAxis axis)
     mObj->layout.info.childAxis = axis;
 }
 
+void UIWidget::set_layout_child_align_x(UIAlign childAlignX)
+{
+    mObj->layout.info.childAlignX = childAlignX;
+}
+
+void UIWidget::set_layout_child_align_y(UIAlign childAlignY)
+{
+    mObj->layout.info.childAlignY = childAlignY;
+}
+
 void UIWidget::set_on_key(void (*onKey)(UIWidget widget, KeyCode key, UIEvent event))
 {
     mObj->cb.onKey = onKey;

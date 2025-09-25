@@ -21,7 +21,7 @@ static void ui_layout_pass_fit_y(UIWidgetObj* root);
 static void ui_layout_pass_grow_shrink_x(UIWidgetObj* root);
 static void ui_layout_pass_grow_shrink_y(UIWidgetObj* root);
 static void ui_layout_pass_wrap_x(UIWidgetObj* root);
-static void ui_layout_pass_pos(UIWidgetObj* root);
+static void ui_layout_pass_pos_align(UIWidgetObj* root);
 static void ui_layout_pass_scroll_offset(UIWidgetObj* root, Vec2 offset);
 
 static void ui_layout_grow_x(const std::vector<UIWidgetObj*>& growableX, float remainW);
@@ -336,27 +336,98 @@ static void ui_layout_pass_wrap_x(UIWidgetObj* root)
     }
 }
 
-static void ui_layout_pass_pos(UIWidgetObj* root)
+static void ui_layout_pass_pos_align(UIWidgetObj* root)
 {
     const UILayoutInfo& rootLayout = root->layout.info;
     float posx = root->layout.rect.x + rootLayout.childPadding.left;
     float posy = root->layout.rect.y + rootLayout.childPadding.top;
+    float childAccW = 0.0f;
+    float childAccH = 0.0f;
+    int childCount = 0;
+
+    for (UIWidgetObj* child = root->child; child; child = child->next)
+    {
+        childAccW += child->layout.rect.w;
+        childAccH += child->layout.rect.h;
+        childCount++;
+    }
+
+    if (childCount == 0)
+        return;
+
+    float remainW = 0.0f;
+    float remainH = 0.0f;
+
+    // handle alignment along main axis
+    if (rootLayout.childAxis == UI_AXIS_X)
+    {
+        remainW = root->layout.rect.w - rootLayout.childPadding.left - rootLayout.childPadding.right - childAccW;
+        remainW -= rootLayout.childGap * (childCount - 1);
+
+        switch (rootLayout.childAlignX)
+        {
+        case UI_ALIGN_CENTER:
+            posx += remainW / 2.0f;
+            break;
+        case UI_ALIGN_END:
+            posx += remainW;
+            break;
+        }
+    }
+    else
+    {
+        remainH = root->layout.rect.h - rootLayout.childPadding.top - rootLayout.childPadding.bottom - childAccH;
+        remainH -= rootLayout.childGap * (childCount - 1);
+
+        switch (rootLayout.childAlignY)
+        {
+        case UI_ALIGN_CENTER:
+            posy += remainH / 2.0f;
+            break;
+        case UI_ALIGN_END:
+            posy += remainH;
+            break;
+        }
+    }
 
     for (UIWidgetObj* child = root->child; child; child = child->next)
     {
         child->layout.rect.x = posx;
         child->layout.rect.y = posy;
 
-        ui_layout_pass_pos(child);
-
+        // handle alignment across main axis for each child.
         if (rootLayout.childAxis == UI_AXIS_X)
         {
             posx += child->layout.rect.w + rootLayout.childGap;
+            remainH = root->layout.rect.h - child->layout.rect.h;
+
+            switch (rootLayout.childAlignY)
+            {
+            case UI_ALIGN_CENTER:
+                child->layout.rect.y += remainH / 2.0f;
+                break;
+            case UI_ALIGN_END:
+                child->layout.rect.y += remainH;
+                break;
+            }
         }
-        else
+        else // main axis Y
         {
             posy += child->layout.rect.h + rootLayout.childGap;
+            remainW = root->layout.rect.w - child->layout.rect.w;
+
+            switch (rootLayout.childAlignX)
+            {
+            case UI_ALIGN_CENTER:
+                child->layout.rect.x += remainW / 2.0f;
+                break;
+            case UI_ALIGN_END:
+                child->layout.rect.x += remainW;
+                break;
+            }
         }
+
+        ui_layout_pass_pos_align(child);
     }
 }
 
@@ -513,7 +584,7 @@ void ui_layout(UIWidgetObj* root)
     ui_layout_pass_wrap_x(root);
     ui_layout_pass_fit_y(root);
     ui_layout_pass_grow_shrink_y(root);
-    ui_layout_pass_pos(root);
+    ui_layout_pass_pos_align(root);
     ui_layout_pass_scroll_offset(root, Vec2(0.0f));
 }
 

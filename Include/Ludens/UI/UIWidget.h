@@ -82,6 +82,12 @@ struct UIWidget : Handle<struct UIWidgetObj>
     /// @brief Update widget child axis after creation.
     void set_layout_child_axis(UIAxis axis);
 
+    /// @brief Update widget child alignment along X axis.
+    void set_layout_child_align_x(UIAlign childAlignX);
+
+    /// @brief Update widget child alignment along Y axis.
+    void set_layout_child_align_y(UIAlign childAlignY);
+
     /// @brief override key callback
     void set_on_key(void (*onKey)(UIWidget widget, KeyCode key, UIEvent event));
 
