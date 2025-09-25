@@ -71,6 +71,9 @@ public:
     /// @brief Get data component base members
     ComponentBase* get_component_base(CUID compID);
 
+    /// @brief Get data component script slot, or null if not found.
+    ComponentScriptSlot* get_component_script_slot(CUID compID);
+
     /// @brief Get data component
     void* get_component(CUID compID, ComponentType& type);
 

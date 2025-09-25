@@ -14,6 +14,8 @@ struct EditorThemeObj
     Color gizmoColorAxisY;
     Color gizmoColorAxisZ;
     Color gizmoHighlightColor;
+    Color playButtonColor;
+    Color stopButtonColor;
 
     void initialize_default();
 };
@@ -27,11 +29,23 @@ void EditorThemeObj::initialize_default()
     gizmoColorAxisY = Vec4(0.1f, 0.9f, 0.1f, 0.8f);
     gizmoColorAxisZ = Vec4(0.1f, 0.1f, 0.9f, 0.8f);
     gizmoHighlightColor = 0xFFA000E0;
+    playButtonColor = 0x89F336FF;
+    stopButtonColor = 0xFF6347FF;
 }
 
 UITheme EditorTheme::get_ui_theme()
 {
     return UITheme(&mObj->uiTheme);
+}
+
+Color EditorTheme::get_play_button_color() const
+{
+    return mObj->playButtonColor;
+}
+
+Color EditorTheme::get_stop_button_color() const
+{
+    return mObj->stopButtonColor;
 }
 
 float EditorTheme::get_font_size() const

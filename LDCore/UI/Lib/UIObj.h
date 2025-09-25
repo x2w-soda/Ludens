@@ -187,6 +187,7 @@ struct UIImageWidgetObj
     UIWidgetObj* base;
     RImage imageHandle;
     Rect imageRect;
+    Color tint;
 
     static void on_draw(UIWidget widget, ScreenRenderComponent renderer);
 };

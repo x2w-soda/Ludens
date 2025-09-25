@@ -61,7 +61,8 @@ struct ScreenRenderComponent : Handle<struct ScreenRenderComponentObj>
     /// @brief draw a 2D image
     /// @param rect image position
     /// @param image a 2D image to be drawn
-    void draw_image(const Rect& rect, RImage image);
+    /// @param color Tint color.
+    void draw_image(const Rect& rect, RImage image, Color color);
 
     /// @brief draw a 2D image with custom uv range
     /// @param rect image position

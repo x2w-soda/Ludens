@@ -171,6 +171,12 @@ struct UIImageWidget : UIWidget
 {
     /// @brief get target image handle
     RImage get_image();
+
+    /// @brief Set rect in image to display.
+    void set_image_rect(const Rect& rect);
+
+    /// @brief Set image tint color.
+    void set_image_tint(Color color);
 };
 
 struct UIImageWidgetInfo

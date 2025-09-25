@@ -277,6 +277,7 @@ UIImageWidget UINode::add_image(const UILayoutInfo& layoutI, const UIImageWidget
     obj->as.image.base = obj;
     obj->as.image.imageHandle = widgetI.image;
     obj->as.image.imageRect.w = 0;
+    obj->as.image.tint = 0xFFFFFFFF;
 
     if (widgetI.rect)
         obj->as.image.imageRect = *widgetI.rect;
@@ -292,7 +293,7 @@ void UIImageWidgetObj::on_draw(UIWidget widget, ScreenRenderComponent renderer)
     float imageH = (float)self.imageHandle.height();
 
     if (self.imageRect.w <= 0.0f)
-        renderer.draw_image(rect, self.imageHandle);
+        renderer.draw_image(rect, self.imageHandle, self.tint);
     else
     {
         Rect uv = self.imageRect;
@@ -300,13 +301,23 @@ void UIImageWidgetObj::on_draw(UIWidget widget, ScreenRenderComponent renderer)
         uv.y /= imageH;
         uv.w /= imageW;
         uv.h /= imageH;
-        renderer.draw_image_uv(rect, self.imageHandle, uv, 0xFFFFFFFF);
+        renderer.draw_image_uv(rect, self.imageHandle, uv, self.tint);
     }
 }
 
 RImage UIImageWidget::get_image()
 {
     return mObj->as.image.imageHandle;
+}
+
+void UIImageWidget::set_image_rect(const Rect& rect)
+{
+    mObj->as.image.imageRect = rect;
+}
+
+void UIImageWidget::set_image_tint(Color color)
+{
+    mObj->as.image.tint = color;
 }
 
 //

@@ -82,6 +82,9 @@ struct EditorContext : Handle<struct EditorContextObj>
     /// @brief Create script slot for component.
     void create_component_script_slot(CUID compID, AUID assetID);
 
+    /// @brief Get component script slot.
+    const ComponentScriptSlot* get_component_script_slot(CUID compID);
+
     /// @brief Assign a component in scene to be selected.
     /// @note Triggers EDITOR_CONTEXT_EVENT_COMPONENT_SELECTION for observers.
     void set_selected_component(CUID comp);

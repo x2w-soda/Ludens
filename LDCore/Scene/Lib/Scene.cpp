@@ -442,6 +442,11 @@ ComponentBase* Scene::get_component_base(CUID compID)
     return mObj->registry.get_component_base(compID);
 }
 
+ComponentScriptSlot* Scene::get_component_script_slot(CUID compID)
+{
+    return mObj->registry.get_component_script(compID);
+}
+
 void* Scene::get_component(CUID compID, ComponentType& type)
 {
     return mObj->registry.get_component(compID, type);

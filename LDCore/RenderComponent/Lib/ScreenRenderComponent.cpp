@@ -597,7 +597,7 @@ void ScreenRenderComponent::draw_rect_outline(const Rect& rect, float border, Co
     barR[3] = {x1 - border, y1 - border, 0, 0, color, 0};
 }
 
-void ScreenRenderComponent::draw_image(const Rect& rect, RImage image)
+void ScreenRenderComponent::draw_image(const Rect& rect, RImage image, Color color)
 {
     if (mObj->mRectBatch.is_full())
         mObj->flush_rects();
@@ -611,13 +611,13 @@ void ScreenRenderComponent::draw_image(const Rect& rect, RImage image)
     float y1 = rect.y + rect.h;
 
     uint32_t control = get_rect_vertex_control_bits(imageIdx, RECT_VERTEX_IMAGE_HINT_NONE, 0);
-    uint32_t white = mObj->mColorMask;
+    uint32_t tint = color * mObj->mColorMask;
 
     RectVertex* v = mObj->mRectBatch.write_rect();
-    v[0] = {x0, y0, 0.0f, 0.0f, white, control}; // TL
-    v[1] = {x1, y0, 1.0f, 0.0f, white, control}; // TR
-    v[2] = {x1, y1, 1.0f, 1.0f, white, control}; // BR
-    v[3] = {x0, y1, 0.0f, 1.0f, white, control}; // BL
+    v[0] = {x0, y0, 0.0f, 0.0f, tint, control};  // TL
+    v[1] = {x1, y0, 1.0f, 0.0f, tint, control};  // TR
+    v[2] = {x1, y1, 1.0f, 1.0f, tint, control};  // BR
+    v[3] = {x0, y1, 0.0f, 1.0f, tint, control};  // BL
 }
 
 void ScreenRenderComponent::draw_image_uv(const Rect& rect, RImage image, const Rect& uv, Color color)

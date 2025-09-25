@@ -280,6 +280,11 @@ void EditorContext::create_component_script_slot(CUID compID, AUID assetID)
     mObj->scene.create_component_script_slot(compID, assetID);
 }
 
+const ComponentScriptSlot* EditorContext::get_component_script_slot(CUID compID)
+{
+    return mObj->scene.get_component_script_slot(compID);
+}
+
 void EditorContext::set_selected_component(CUID comp)
 {
     if (mObj->selectedComponent == comp)
