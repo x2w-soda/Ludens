@@ -6,20 +6,23 @@
 
 namespace LD {
 
+struct UIWindowManagerObj;
+
 /// @brief Tabs allow multiple clients to occupy the same area.
 ///        Only a single tab is active in an area at a time.
 struct AreaTab
 {
+    UIWindowManagerObj* wm;                  /// window manager
     UIPanelWidget rootW;                     /// tab panel widget
     UITextWidget titleTextW;                 /// tab title text widget
-    UITextWidget closeW;                     /// close button widget
+    UIImageWidget closeW;                    /// close button widget
     UIWindow client;                         /// client window of this tab
     UIWMClientResizeCallback onClientResize; /// client window resize callback
     UIWMClientCloseCallback onClientClose;   /// client window close callback
     void* user;                              /// client window user
     bool shouldClose;                        /// hint for the AreaTabConrol to close the tab
 
-    AreaTab(UIWindow client, UIWindow tabControl, void* user);
+    AreaTab(UIWindowManagerObj* wm, UIWindow client, UIWindow tabControl, void* user);
 
     static void on_close(UIWidget widget, const Vec2& pos, MouseButton btn, UIEvent event);
 };
@@ -28,8 +31,8 @@ struct AreaTab
 class AreaTabControl
 {
 public:
-    void startup_as_leaf(UIContext ctx, const Rect& area);
-    void startup_as_float(UIContext ctx, const Rect& area, float border);
+    void startup_as_leaf(UIWindowManagerObj* wm, const Rect& area);
+    void startup_as_float(UIWindowManagerObj* wm, const Rect& area, float border);
     void cleanup();
 
     void add_tab(UIWindow client, void* user);
@@ -67,6 +70,7 @@ private:
     bool mIsFloat;               /// whether the tab control is for a floating client
     float mFloatBorder;          /// border size for floating clients
     AreaTab* mActiveTab;         /// focused tab
+    UIWindowManagerObj* mWM;     /// window manager
     UIWindow mWindow;            /// tab control window
     UIContext mCtx;              /// UI context handle
     std::vector<AreaTab*> mTabs; /// ordered tabs

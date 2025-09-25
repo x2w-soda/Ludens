@@ -9,9 +9,10 @@
 
 namespace LD {
 
-void AreaTabControl::startup_as_leaf(UIContext ctx, const Rect& area)
+void AreaTabControl::startup_as_leaf(UIWindowManagerObj* wm, const Rect& area)
 {
-    mCtx = ctx;
+    mWM = wm;
+    mCtx = wm->get_context();
     mActiveTab = nullptr;
     mIsFloat = false;
     mFloatBorder = 0.0f;
@@ -24,16 +25,17 @@ void AreaTabControl::startup_as_leaf(UIContext ctx, const Rect& area)
     UIWindowInfo windowI{};
     windowI.name = "AreaTabControl";
     windowI.defaultMouseControls = false;
-    mWindow = ctx.add_window(layoutI, windowI, this);
+    mWindow = mCtx.add_window(layoutI, windowI, this);
     mWindow.set_pos(area.get_pos());
     mWindow.set_on_update(&AreaTabControl::on_update);
 }
 
-void AreaTabControl::startup_as_float(UIContext ctx, const Rect& area, float border)
+void AreaTabControl::startup_as_float(UIWindowManagerObj* wm, const Rect& area, float border)
 {
     LD_ASSERT(area.w > 0.0f && area.h > 0.0f);
 
-    mCtx = ctx;
+    mWM = wm;
+    mCtx = wm->get_context();
     mActiveTab = nullptr;
     mIsFloat = true;
     mFloatBorder = border;
@@ -48,7 +50,7 @@ void AreaTabControl::startup_as_float(UIContext ctx, const Rect& area, float bor
     windowI.name = "AreaTabControl";
     windowI.defaultMouseControls = false;
     windowI.hidden = true;
-    mWindow = ctx.add_window(layoutI, windowI, this);
+    mWindow = mCtx.add_window(layoutI, windowI, this);
     mWindow.set_pos(area.get_pos());
     mWindow.set_on_drag(&AreaTabControl::on_float_drag);
     mWindow.set_on_draw(&AreaTabControl::on_float_draw);
@@ -67,7 +69,7 @@ void AreaTabControl::cleanup()
 
 void AreaTabControl::add_tab(UIWindow client, void* user)
 {
-    AreaTab* tab = heap_new<AreaTab>(MEMORY_USAGE_UI, client, mWindow, user);
+    AreaTab* tab = heap_new<AreaTab>(MEMORY_USAGE_UI, mWM, client, mWindow, user);
     mTabs.push_back(tab);
     mActiveTab = tab;
 }
@@ -194,6 +196,8 @@ void AreaTabControl::delete_tabs()
 
     std::unordered_set<AreaTab*> toErase;
 
+    size_t eraseCount = 0;
+
     for (AreaTab* tab : mTabs)
     {
         if (tab && tab->shouldClose)
@@ -204,13 +208,16 @@ void AreaTabControl::delete_tabs()
             if (tab->onClientClose)
                 tab->onClientClose(tab->client, tab->user);
 
+            eraseCount++;
+
             toErase.insert(tab);
             heap_delete<AreaTab>(tab);
             continue;
         }
     }
 
-    std::erase_if(mTabs, [&](AreaTab* tab) { return toErase.contains(tab); });
+    size_t count = std::erase_if(mTabs, [&](AreaTab* tab) { return toErase.contains(tab); });
+    LD_ASSERT(eraseCount == count);
 
     if (!mTabs.empty() && mActiveTab == nullptr)
         mActiveTab = mTabs.front();
@@ -330,8 +337,8 @@ void AreaTabControl::on_float_hover(UIWidget widget, UIEvent event)
     }
 }
 
-AreaTab::AreaTab(UIWindow client, UIWindow tabControl, void* user)
-    : client(client), onClientResize(nullptr), onClientClose(nullptr), shouldClose(false), user(user)
+AreaTab::AreaTab(UIWindowManagerObj* wm, UIWindow client, UIWindow tabControl, void* user)
+    : wm(wm), client(client), onClientResize(nullptr), onClientClose(nullptr), shouldClose(false), user(user)
 {
     UINode tabControlNode = tabControl.node();
     UITheme theme = tabControl.get_theme();
@@ -353,10 +360,12 @@ AreaTab::AreaTab(UIWindow client, UIWindow tabControl, void* user)
     textWI.hoverHL = false;
     titleTextW = rootW.node().add_text({}, textWI, this);
 
-    // TODO: Editor Icons
-    textWI.cstr = "X";
-    textWI.hoverHL = true;
-    closeW = rootW.node().add_text({}, textWI, this);
+    layoutI.sizeX = UISize::fixed(WINDOW_TAB_HEIGHT);
+    layoutI.sizeY = UISize::fixed(WINDOW_TAB_HEIGHT);
+    UIImageWidgetInfo imageWI{};
+    imageWI.image = wm->get_icon_atlas();
+    imageWI.rect = &wm->icons.close;
+    closeW = rootW.node().add_image(layoutI, imageWI, this);
     closeW.set_on_mouse(&AreaTab::on_close);
 }
 

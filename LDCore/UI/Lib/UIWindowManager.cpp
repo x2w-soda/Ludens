@@ -30,8 +30,10 @@ static void delete_node(AreaNode* node)
 }
 
 UIWindowManagerObj::UIWindowManagerObj(const UIWindowManagerInfo& wmI)
-    : mAreaIDCounter(1), mRoot(nullptr), mTopBarHeight(wmI.topBarHeight), mBottomBarHeight(wmI.bottomBarHeight)
+    : icons(wmI.icons), mAreaIDCounter(1), mRoot(nullptr), mTopBarHeight(wmI.topBarHeight), mBottomBarHeight(wmI.bottomBarHeight)
 {
+    mIconAtlasImage = wmI.iconAtlasImage;
+
     UIContextInfo ctxI{};
     ctxI.fontAtlas = wmI.fontAtlas;
     ctxI.fontAtlasImage = wmI.fontAtlasImage;
@@ -46,7 +48,7 @@ UIWindowManagerObj::UIWindowManagerObj(const UIWindowManagerInfo& wmI)
     mCtx.layout(); // force root window size
 
     mRoot = heap_new<AreaNode>(MEMORY_USAGE_UI);
-    mRoot->startup_as_leaf(mCtx, areaID, rootArea, rootWindow);
+    mRoot->startup_as_leaf(this, areaID, rootArea, rootWindow);
     mRoot->set_area(rootArea);
     mRoot->invalidate();
 }
@@ -114,7 +116,7 @@ UIWMAreaID UIWindowManagerObj::create_float(const UIWMClientInfo& clientI)
     nodeArea.h += WINDOW_TAB_HEIGHT + border;
     nodeArea.x -= border;
     nodeArea.w += 2 * border;
-    node->startup_as_float(mCtx, get_area_id(), nodeArea, client, border, clientI.user);
+    node->startup_as_float(this, get_area_id(), nodeArea, client, border, clientI.user);
 
     mFloats.push_back(node);
 

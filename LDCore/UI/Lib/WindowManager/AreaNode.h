@@ -36,9 +36,9 @@ public:
 
     AreaNode& operator=(const AreaNode&) = delete;
 
-    void startup_as_split(UIContext ctx, UIWMAreaID areaID, const Rect& area, Axis axis, float ratio, const Rect& splitArea);
-    void startup_as_leaf(UIContext ctx, UIWMAreaID areaID, const Rect& area, UIWindow client);
-    void startup_as_float(UIContext ctx, UIWMAreaID areaID, const Rect& area, UIWindow client, float border, void* user);
+    void startup_as_split(UIWindowManagerObj* wm, UIWMAreaID areaID, const Rect& area, Axis axis, float ratio, const Rect& splitArea);
+    void startup_as_leaf(UIWindowManagerObj* wm, UIWMAreaID areaID, const Rect& area, UIWindow client);
+    void startup_as_float(UIWindowManagerObj* wm, UIWMAreaID areaID, const Rect& area, UIWindow client, float border, void* user);
     void cleanup();
 
     /// @brief Recusrive invalidation based on current area rect.

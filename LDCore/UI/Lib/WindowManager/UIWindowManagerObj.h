@@ -47,12 +47,17 @@ public:
 
     inline float get_top_bar_height() const { return mTopBarHeight; }
     inline float get_bottom_bar_height() const { return mBottomBarHeight; }
+    inline RImage get_icon_atlas() const { return mIconAtlasImage; };
+
+public:
+    const UIWindowManagerInfo::Icon icons;
 
 private:
     UIContext mCtx;
     AreaNode* mRoot;
     std::vector<AreaNode*> mFloats;
     UIWMAreaID mAreaIDCounter;
+    RImage mIconAtlasImage;
     float mTopBarHeight;
     float mBottomBarHeight;
 };

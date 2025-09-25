@@ -30,7 +30,13 @@ struct UIWindowManagerInfo
     float bottomBarHeight;
     FontAtlas fontAtlas;
     RImage fontAtlasImage;
+    RImage iconAtlasImage;
     UITheme theme;
+
+    struct Icon
+    {
+        Rect close;
+    } icons;
 };
 
 /// @brief A window manager to partition screen space into non-overlapping areas.
