@@ -1,6 +1,7 @@
 #include "EditorUI.h"
 #include <Ludens/Application/Application.h>
 #include <Ludens/Application/Event.h>
+#include <Ludens/Header/Assert.h>
 #include <Ludens/JobSystem/JobSystem.h>
 #include <Ludens/Log/Log.h>
 #include <Ludens/Profiler/Profiler.h>
@@ -15,6 +16,49 @@
 #include <vector>
 
 namespace fs = std::filesystem;
+
+// NOTE: THIS IS TEMPORARY. We are experimenting with editor icons, fonts, and other files.
+//       Eventually such files will be embedded in the editor, currently we are fetching
+//       from the LFS submodule at: https://github.com/x2w-soda/LudensLFS.
+//       Run `git submodule init && git submodule update` from the root folder to
+//       fetch the experimental media files in the submodule.
+struct LudensLFS
+{
+    LudensLFS()
+    {
+        const char* candidates[] = {
+            "../../../Extra/LudensLFS/README.md",
+            "../../../../Ludens/Extra/LudensLFS/README.md",
+            "../../../../../Ludens/Extra/LudensLFS/README.md",
+        };
+
+        for (const char* candidate : candidates)
+        {
+            if (fs::exists(candidate))
+            {
+                fs::path lfsDirectory(candidate);
+                lfsPath = lfsDirectory.parent_path();
+                break;
+            }
+        }
+
+        if (lfsPath.empty())
+        {
+            std::cout << "Failed to locate LudensLFS submodule" << std::endl;
+            exit(EXIT_FAILURE);
+        }
+
+        materialIconsPath = lfsPath / fs::path("Tmp/google/material_icons.png");
+        if (!fs::exists(materialIconsPath))
+            exit(EXIT_FAILURE);
+
+        std::cout << "LudensLFS submodule located at: " << lfsPath << std::endl;
+    }
+
+    fs::path lfsPath;
+    fs::path materialIconsPath;
+
+} sLudensLFS;
 
 namespace LD {
 
@@ -74,6 +118,7 @@ public:
         // load scene into editor context
         EditorContextInfo contextI{};
         contextI.renderServer = mRServer;
+        contextI.iconAtlasPath = sLudensLFS.materialIconsPath;
         mEditorCtx = EditorContext::create(contextI);
         mEditorCtx.load_project("../../../../Project/project.toml");
 

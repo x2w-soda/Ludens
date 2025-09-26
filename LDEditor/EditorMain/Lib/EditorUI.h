@@ -11,6 +11,7 @@
 #include <LudensEditor/EOutlinerWindow/EOutlinerWindow.h>
 #include <LudensEditor/EViewportWindow/EViewportWindow.h>
 #include <LudensEditor/EditorContext/EditorContext.h>
+#include <LudensEditor/EditorWidget/UISelectWindow.h>
 #include <LudensEditor/EditorWidget/UIVersionWindow.h>
 #include <cstdint>
 
@@ -82,21 +83,46 @@ public:
 
     void show_version_window();
 
+    struct SelectWindowUsage
+    {
+        void (*onSelect)(const FS::Path& path, void* user);
+        void (*onCancel)(void* user);
+        void* user;
+    };
+
+    void show_select_window(const SelectWindowUsage& usage);
+
     static void on_event(const Event* event, void* user);
     static void on_render(ScreenRenderComponent renderer, void* user);
     static void on_overlay_render(ScreenRenderComponent renderer, void* user);
     static void on_scene_pick(SceneOverlayGizmoID gizmoID, RUID ruid, void* user);
+
+    /// @brief Editor callback implementations.
+    struct ECB
+    {
+        static void select_asset(AssetType type, AUID currentID, void* user);
+
+        /// @brief Open dialog to add script to component.
+        static void add_script_to_component(CUID compID, void* user);
+    };
 
 private:
     EditorContext mCtx;
     EditorTopBar mTopBar;
     EditorBottomBar mBottomBar;
     UIWindowManager mWM;
+    UISelectWindow mSelectWindow;
     UIVersionWindow mVersionWindow;
     EViewportWindow mViewportWindow;
     EOutlinerWindow mOutlinerWindow;
     EInspectorWindow mInspectorWindow;
     UIWMAreaID mVersionWindowID;
+    UIWMAreaID mSelectWindowID;
+
+    struct CallbackState
+    {
+        CUID compID;
+    } mState;
 };
 
 } // namespace LD

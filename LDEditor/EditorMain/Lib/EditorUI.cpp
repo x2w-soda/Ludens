@@ -1,6 +1,7 @@
 #include "EditorUI.h"
 #include <Ludens/Application/Event.h>
 #include <Ludens/Profiler/Profiler.h>
+#include <LudensEditor/EditorContext/EditorIconAtlas.h>
 #include <LudensEditor/EditorContext/EditorWindowObj.h>
 #include <LudensEditor/EditorWidget/UIVersionWindow.h>
 
@@ -20,6 +21,8 @@ void EditorUI::startup(const EditorUIInfo& info)
     wmI.theme = mCtx.get_settings().get_theme().get_ui_theme();
     wmI.topBarHeight = info.barHeight;
     wmI.bottomBarHeight = info.barHeight;
+    wmI.iconAtlasImage = mCtx.get_editor_icon_atlas();
+    wmI.icons.close = EditorIconAtlas::get_icon_rect(EditorIcon::Close);
     mWM = UIWindowManager::create(wmI);
 
     UIWMAreaID viewportArea = mWM.get_root_area();
@@ -58,6 +61,8 @@ void EditorUI::startup(const EditorUIInfo& info)
         windowI.ctx = mCtx;
         windowI.areaID = inspectorArea;
         windowI.wm = mWM;
+        windowI.selectAssetFn = &EditorUI::ECB::select_asset;
+        windowI.user = this;
         mInspectorWindow = EInspectorWindow::create(windowI);
     }
 
@@ -66,10 +71,13 @@ void EditorUI::startup(const EditorUIInfo& info)
         windowI.ctx = mCtx;
         windowI.areaID = outlinerArea;
         windowI.wm = mWM;
+        windowI.addScriptToComponent = &EditorUI::ECB::add_script_to_component;
+        windowI.user = this;
         mOutlinerWindow = EOutlinerWindow::create(windowI);
     }
 
     mVersionWindowID = 0;
+    mSelectWindowID = 0;
 }
 
 void EditorUI::cleanup()
@@ -77,7 +85,7 @@ void EditorUI::cleanup()
     mBottomBar.cleanup();
     mTopBar.cleanup();
 
-    if (mVersionWindow)
+    if (mVersionWindowID && mVersionWindow)
     {
         UIVersionWindow::destroy(mVersionWindow);
         mVersionWindow = {};
@@ -152,6 +160,67 @@ void EditorUI::on_scene_pick(SceneOverlayGizmoID gizmoID, RUID ruid, void* user)
     self.mViewportWindow.hover_id(gizmoID, ruid);
 }
 
+void EditorUI::ECB::select_asset(AssetType type, AUID currentID, void* user)
+{
+    EditorUI& self = *(EditorUI*)user;
+
+    SelectWindowUsage usage{.user = user};
+    usage.onSelect = [](const FS::Path& path, void* user) {
+        EditorUI& self = *(EditorUI*)user;
+        EditorContext ctx = self.mCtx;
+
+        self.mWM.hide_float(self.mSelectWindowID);
+
+        std::string stem = path.stem().string();
+        const char* assetName = stem.c_str();
+        AssetManager AM = ctx.get_asset_manager();
+        AUID assetID = AM.get_id_from_name(assetName, nullptr);
+
+        if (assetID != 0) // TODO:
+            self.mInspectorWindow.select_asset(assetID, assetName);
+    };
+    usage.onCancel = [](void* user) {
+        EditorUI& self = *(EditorUI*)user;
+        self.mWM.hide_float(self.mSelectWindowID);
+    };
+
+    self.show_select_window(usage);
+}
+
+void EditorUI::ECB::add_script_to_component(CUID compID, void* user)
+{
+    EditorUI& self = *(EditorUI*)user;
+    self.mState.compID = compID;
+
+    SelectWindowUsage usage{.user = user};
+    usage.onSelect = [](const FS::Path& path, void* user) {
+        EditorUI& self = *(EditorUI*)user;
+        EditorContext ctx = self.mCtx;
+        CUID compID = self.mState.compID;
+        self.mState.compID = 0;
+
+        self.mWM.hide_float(self.mSelectWindowID);
+
+        if (!ctx.get_component_base(compID))
+            return; // component out of date
+
+        AssetType type;
+        AssetManager AM = ctx.get_asset_manager();
+        std::string stem = path.stem().string();
+        AUID scriptAssetID = AM.get_id_from_name(stem.c_str(), &type);
+        if (scriptAssetID == 0 || type != ASSET_TYPE_LUA_SCRIPT)
+            return; // script asset out of date
+
+        ctx.create_component_script_slot(compID, scriptAssetID);
+    };
+    usage.onCancel = [](void* user) {
+        EditorUI& self = *(EditorUI*)user;
+        self.mWM.hide_float(self.mSelectWindowID);
+    };
+
+    self.show_select_window(usage);
+}
+
 void EditorUI::show_version_window()
 {
     if (mVersionWindowID == 0)
@@ -177,6 +246,37 @@ void EditorUI::show_version_window()
 
     mWM.set_float_pos_centered(mVersionWindowID);
     mWM.show_float(mVersionWindowID);
+}
+
+void EditorUI::show_select_window(const SelectWindowUsage& usage)
+{
+    if (mSelectWindowID == 0)
+    {
+        UISelectWindowInfo windowI{};
+        windowI.context = mWM.get_context();
+        windowI.editorCtx = mCtx;
+        windowI.directory = std::filesystem::current_path();
+        mSelectWindow = UISelectWindow::create(windowI);
+
+        UIWMClientInfo clientI{};
+        clientI.client = mSelectWindow.get_handle();
+        clientI.resizeCallback = nullptr;
+        clientI.user = this;
+        mSelectWindowID = mWM.create_float(clientI);
+        mWM.set_close_callback(mSelectWindowID, [](UIWindow client, void* user) {
+            EditorUI& self = *(EditorUI*)user;
+            self.mSelectWindowID = 0;
+
+            UISelectWindow::destroy(self.mSelectWindow);
+            self.mSelectWindow = {};
+        });
+    }
+
+    mSelectWindow.set_on_select(usage.onSelect, usage.user);
+    mSelectWindow.set_on_cancel(usage.onCancel);
+
+    mWM.set_float_pos_centered(mSelectWindowID);
+    mWM.show_float(mSelectWindowID);
 }
 
 void EditorUI::on_event(const Event* event, void* user)
@@ -205,6 +305,10 @@ void EditorUI::on_event(const Event* event, void* user)
         break;
     case EVENT_TYPE_MOUSE_UP:
         ctx.input_mouse_up(static_cast<const MouseUpEvent*>(event)->button);
+        break;
+    case EVENT_TYPE_SCROLL:
+        ctx.input_scroll(Vec2(static_cast<const ScrollEvent*>(event)->xoffset,
+                              static_cast<const ScrollEvent*>(event)->yoffset));
         break;
     default:
         break;
