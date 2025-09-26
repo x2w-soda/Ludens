@@ -52,11 +52,23 @@ struct LudensLFS
         if (!fs::exists(materialIconsPath))
             exit(EXIT_FAILURE);
 
+        fontPath = lfsPath / fs::path("Fonts/Inter_24pt-Regular.ttf");
+        LD_ASSERT(fs::exists(fontPath));
+
+        skyboxFolderPath = lfsPath / fs::path("Tmp/skybox/learnopengl");
+        LD_ASSERT(fs::exists(skyboxFolderPath));
+
+        projectPath = lfsPath / fs::path("Tmp/projects/project1/project.toml");
+        LD_ASSERT(fs::exists(projectPath));
+
         std::cout << "LudensLFS submodule located at: " << lfsPath << std::endl;
     }
 
     fs::path lfsPath;
     fs::path materialIconsPath;
+    fs::path fontPath;
+    fs::path skyboxFolderPath;
+    fs::path projectPath;
 
 } sLudensLFS;
 
@@ -88,12 +100,11 @@ public:
         appI.hintTitleBarTextColor = 0xDFDFDFFF;
         Application app = Application::create(appI);
 
-        // TODO: embed font
-        mFont = Font::create_from_path("../../../../Assets/ttf/Inter_24pt-Regular.ttf");
+        std::string fontPathString = sLudensLFS.fontPath.string();
+        mFont = Font::create_from_path(fontPathString.c_str());
         mFontAtlas = FontAtlas::create_bitmap(mFont, 32.0f);
 
-        // TODO: remove hardcoded skybox
-        fs::path dirPath = "../../../../Assets/skybox/opengl";
+        fs::path dirPath = sLudensLFS.skyboxFolderPath;
         std::array<std::string, 6> facePaths;
         facePaths[0] = fs::path(dirPath).append("px.png").string();
         facePaths[1] = fs::path(dirPath).append("nx.png").string();
@@ -120,7 +131,7 @@ public:
         contextI.renderServer = mRServer;
         contextI.iconAtlasPath = sLudensLFS.materialIconsPath;
         mEditorCtx = EditorContext::create(contextI);
-        mEditorCtx.load_project("../../../../Project/project.toml");
+        mEditorCtx.load_project(sLudensLFS.projectPath);
 
         // initalize editor UI
         EditorUIInfo uiI{};

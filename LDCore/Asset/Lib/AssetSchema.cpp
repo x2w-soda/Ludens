@@ -19,56 +19,56 @@ void AssetSchema::load_assets(AssetManager manager, TOMLDocument doc)
     manager.begin_load_batch();
     {
         TOMLValue meshesTOML = doc.get("Mesh");
-        if (!meshesTOML || !meshesTOML.is_array_type())
-            return;
-
-        int count = meshesTOML.get_size();
-        for (int i = 0; i < count; i++)
+        if (meshesTOML && meshesTOML.is_array_type())
         {
-            TOMLValue meshTOML = meshesTOML[i];
-            TOMLValue auidTOML = meshTOML["auid"];
-            TOMLValue uriTOML = meshTOML["uri"];
-            int64_t auid;
-            std::string uri;
-            if (auidTOML && auidTOML.is_i64(auid) && uriTOML && uriTOML.is_string(uri))
+            int count = meshesTOML.get_size();
+            for (int i = 0; i < count; i++)
             {
-                manager.load_mesh_asset(FS::Path(uri), (AUID)auid);
+                TOMLValue meshTOML = meshesTOML[i];
+                TOMLValue auidTOML = meshTOML["auid"];
+                TOMLValue uriTOML = meshTOML["uri"];
+                int64_t auid;
+                std::string uri;
+                if (auidTOML && auidTOML.is_i64(auid) && uriTOML && uriTOML.is_string(uri))
+                {
+                    manager.load_mesh_asset(FS::Path(uri), (AUID)auid);
+                }
             }
         }
 
         TOMLValue texture2DsTOML = doc.get("Texture2D");
-        if (!texture2DsTOML || !texture2DsTOML.is_array_type())
-            return;
-
-        count = texture2DsTOML.get_size();
-        for (int i = 0; i < count; i++)
+        if (texture2DsTOML && texture2DsTOML.is_array_type())
         {
-            TOMLValue texture2DTOML = texture2DsTOML[i];
-            TOMLValue auidTOML = texture2DTOML["auid"];
-            TOMLValue uriTOML = texture2DTOML["uri"];
-            int64_t auid;
-            std::string uri;
-            if (auidTOML && auidTOML.is_i64(auid) && uriTOML && uriTOML.is_string(uri))
+            int count = texture2DsTOML.get_size();
+            for (int i = 0; i < count; i++)
             {
-                manager.load_texture_2d_asset(FS::Path(uri), (AUID)auid);
+                TOMLValue texture2DTOML = texture2DsTOML[i];
+                TOMLValue auidTOML = texture2DTOML["auid"];
+                TOMLValue uriTOML = texture2DTOML["uri"];
+                int64_t auid;
+                std::string uri;
+                if (auidTOML && auidTOML.is_i64(auid) && uriTOML && uriTOML.is_string(uri))
+                {
+                    manager.load_texture_2d_asset(FS::Path(uri), (AUID)auid);
+                }
             }
         }
 
         TOMLValue luaScriptsTOML = doc.get("LuaScript");
-        if (!luaScriptsTOML || !luaScriptsTOML.is_array_type())
-            return;
-
-        count = luaScriptsTOML.get_size();
-        for (int i = 0; i < count; i++)
+        if (luaScriptsTOML && luaScriptsTOML.is_array_type())
         {
-            TOMLValue luaScriptTOML = luaScriptsTOML[i];
-            TOMLValue auidTOML = luaScriptTOML["auid"];
-            TOMLValue uriTOML = luaScriptTOML["uri"];
-            int64_t auid;
-            std::string uri;
-            if (auidTOML && auidTOML.is_i64(auid) && uriTOML && uriTOML.is_string(uri))
+            int count = luaScriptsTOML.get_size();
+            for (int i = 0; i < count; i++)
             {
-                manager.load_lua_script_asset(FS::Path(uri), (AUID)auid);
+                TOMLValue luaScriptTOML = luaScriptsTOML[i];
+                TOMLValue auidTOML = luaScriptTOML["auid"];
+                TOMLValue uriTOML = luaScriptTOML["uri"];
+                int64_t auid;
+                std::string uri;
+                if (auidTOML && auidTOML.is_i64(auid) && uriTOML && uriTOML.is_string(uri))
+                {
+                    manager.load_lua_script_asset(FS::Path(uri), (AUID)auid);
+                }
             }
         }
     }
