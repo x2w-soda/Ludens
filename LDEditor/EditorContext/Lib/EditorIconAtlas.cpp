@@ -15,8 +15,12 @@ struct
     { EditorIcon::Folder,      Vec2(288, 96) },
     { EditorIcon::Description, Vec2(240, 96) },
     { EditorIcon::Close,       Vec2(240, 144) },
-    { EditorIcon::Refresh,     Vec2(384, 144) },
     { EditorIcon::Remove,      Vec2(288, 0) },
+    { EditorIcon::Transform,   Vec2(192, 192) },
+    { EditorIcon::Refresh,     Vec2(384, 144) },
+    { EditorIcon::LinearScale, Vec2(0, 240) },
+    { EditorIcon::PlayArrow,   Vec2(48, 0) },
+    { EditorIcon::Code,        Vec2(48, 48) },
 };
 // clang-format on
 

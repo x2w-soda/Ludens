@@ -5,6 +5,7 @@ set(MODULE_LIB
 	Lib/UIAssetSlotWidget.cpp
 	Lib/UIDropdownWindow.cpp
 	Lib/UIVersionWindow.cpp
+	Lib/UISelectWindow.cpp
 )
 
 set(MODULE_INCLUDE
@@ -12,6 +13,7 @@ set(MODULE_INCLUDE
 	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorWidget/UIAssetSlotWidget.h
 	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorWidget/UIDropdownWindow.h
 	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorWidget/UIVersionWindow.h
+	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorWidget/UISelectWindow.h
 )
 
 add_library(${MODULE_NAME}

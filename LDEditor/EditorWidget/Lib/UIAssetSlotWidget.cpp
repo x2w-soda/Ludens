@@ -7,11 +7,13 @@ namespace LD {
 struct UIAssetSlotWidgetObj
 {
     AssetType type;
-    AUID* asset;
+    AUID assetID;
     EditorTheme theme;
     UIPanelWidget rootW;
     UITextWidget textW;
     UITextWidget assetTextW;
+    void (*requestAssetFn)(AssetType type, AUID currentID, void* user);
+    void* user;
 
     static void on_draw(UIWidget widget, ScreenRenderComponent renderer);
 };
@@ -27,7 +29,9 @@ UIAssetSlotWidget UIAssetSlotWidget::create(const UIAssetSlotWidgetInfo& info)
     auto* obj = heap_new<UIAssetSlotWidgetObj>(MEMORY_USAGE_UI);
     obj->theme = info.theme;
     obj->type = info.type;
-    obj->asset = info.asset;
+    obj->assetID = info.assetID;
+    obj->requestAssetFn = info.requestAssetFn;
+    obj->user = info.user;
 
     UIWidget parent = info.parent;
     UINode parentNode = parent.node();
@@ -48,9 +52,18 @@ UIAssetSlotWidget UIAssetSlotWidget::create(const UIAssetSlotWidgetInfo& info)
     obj->textW = rootNode.add_text({}, textWI, obj);
 
     Color color = obj->theme.get_ui_theme().get_field_color();
-    textWI.cstr = nullptr;
+    textWI.cstr = info.assetName;
     textWI.bgColor = &color;
     obj->assetTextW = rootNode.add_text({}, textWI, obj);
+    obj->assetTextW.set_on_mouse([](UIWidget widget, const Vec2& pos, MouseButton btn, UIEvent event) {
+        UIAssetSlotWidgetObj& self = *(UIAssetSlotWidgetObj*)widget.get_user();
+
+        if (btn != MOUSE_BUTTON_LEFT || event != UI_MOUSE_DOWN)
+            return;
+
+        if (self.requestAssetFn && self.assetID)
+            self.requestAssetFn(self.type, self.assetID, self.user);
+    });
 
     return UIAssetSlotWidget(obj);
 }
@@ -62,14 +75,20 @@ void UIAssetSlotWidget::destroy(UIAssetSlotWidget widget)
     heap_delete<UIAssetSlotWidgetObj>(obj);
 }
 
-void UIAssetSlotWidget::set(AUID* asset)
+void UIAssetSlotWidget::set_asset(AUID assetID, const char* assetName)
 {
-    mObj->asset = asset;
+    mObj->assetID = assetID;
+    mObj->assetTextW.set_text(assetName);
 }
 
-void UIAssetSlotWidget::set_asset_name(const char* assetName)
+AssetType UIAssetSlotWidget::get_type()
 {
-    mObj->assetTextW.set_text(assetName);
+    return mObj->type;
+}
+
+AUID UIAssetSlotWidget::get_id()
+{
+    return mObj->assetID;
 }
 
 void UIAssetSlotWidget::show()
@@ -80,11 +99,6 @@ void UIAssetSlotWidget::show()
 void UIAssetSlotWidget::hide()
 {
     mObj->rootW.hide();
-}
-
-void UIAssetSlotWidget::select()
-{
-    // TODO:
 }
 
 } // namespace LD

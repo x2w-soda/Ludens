@@ -6,6 +6,7 @@ namespace LD {
 
 struct UIVersionWindowObj
 {
+    UIContext uiCtx;
     EditorTheme theme;
     UIWindow root;
     UITextWidget versionTextW;
@@ -14,8 +15,8 @@ struct UIVersionWindowObj
 
 UIVersionWindow UIVersionWindow::create(const UIVersionWindowInfo& info)
 {
-    UIContext ctx = info.context;
     UIVersionWindowObj* obj = heap_new<UIVersionWindowObj>(MEMORY_USAGE_UI);
+    obj->uiCtx = info.context;
     obj->theme = info.theme;
 
     UILayoutInfo layoutI{};
@@ -26,7 +27,7 @@ UIVersionWindow UIVersionWindow::create(const UIVersionWindowInfo& info)
     windowI.defaultMouseControls = false;
     windowI.drawWithScissor = false;
     windowI.name = "Version";
-    obj->root = ctx.add_window(layoutI, windowI, obj);
+    obj->root = obj->uiCtx.add_window(layoutI, windowI, obj);
 
     float fontSize = obj->theme.get_font_size();
     std::string version = std::format("Version {}.{}.{}", LD_VERSION_MAJOR, LD_VERSION_MINOR, LD_VERSION_PATCH);
@@ -54,6 +55,8 @@ UIVersionWindow UIVersionWindow::create(const UIVersionWindowInfo& info)
 void UIVersionWindow::destroy(UIVersionWindow window)
 {
     UIVersionWindowObj* obj = window.unwrap();
+
+    obj->uiCtx.remove_window(obj->root);
 
     heap_delete<UIVersionWindowObj>(obj);
 }

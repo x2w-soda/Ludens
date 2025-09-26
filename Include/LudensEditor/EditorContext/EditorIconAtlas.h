@@ -11,8 +11,12 @@ enum class EditorIcon
     Folder,
     Description,
     Close,
-    Refresh,
     Remove,
+    Transform,
+    Refresh,
+    LinearScale,
+    PlayArrow,
+    Code,
     ENUM_COUNT,
 };
 
