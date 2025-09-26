@@ -5,12 +5,14 @@
 
 namespace LD {
 
-void ComponentMenu::startup(UIContext ctx, EditorTheme theme)
+void ComponentMenu::startup(const ComponentMenuInfo& info)
 {
+    mInfo = info;
+
     UIDropdownWindowInfo dropdownWI{};
     dropdownWI.callback = &ComponentMenu::on_option;
-    dropdownWI.context = ctx;
-    dropdownWI.theme = theme;
+    dropdownWI.context = mInfo.ctx;
+    dropdownWI.theme = mInfo.theme;
     dropdownWI.user = this;
     mDropdown = UIDropdownWindow::create(dropdownWI);
 
@@ -23,8 +25,9 @@ void ComponentMenu::cleanup()
     UIDropdownWindow::destroy(mDropdown);
 }
 
-void ComponentMenu::show(const Vec2& pos)
+void ComponentMenu::show(const Vec2& pos, CUID cuid)
 {
+    mCUID = cuid;
     mDropdown.set_pos(pos);
     mDropdown.show();
 }
@@ -41,9 +44,13 @@ void ComponentMenu::draw(ScreenRenderComponent renderer)
 
 bool ComponentMenu::on_option(int option, const Rect& optionRect, void* user)
 {
+    ComponentMenu& self = *(ComponentMenu*)user;
+
     switch (option)
     {
     case OPT_ADD_SCRIPT:
+        if (self.mInfo.onOptionAddScript)
+            self.mInfo.onOptionAddScript(self.mCUID, self.mInfo.user);
         break;
     case OPT_ADD_CHILD:
         break;

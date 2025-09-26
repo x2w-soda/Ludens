@@ -1,6 +1,7 @@
 #pragma once
 #pragma once
 
+#include <Ludens/DataRegistry/DataComponent.h>
 #include <Ludens/Header/Handle.h>
 #include <Ludens/Scene/Scene.h>
 #include <Ludens/UI/UIWindow.h>
@@ -12,8 +13,10 @@ namespace LD {
 struct EOutlinerWindowInfo
 {
     EditorContext ctx;
-    UIWindowManager wm;    /// window manager handle
-    UIWMAreaID areaID; /// designated window area
+    UIWindowManager wm; /// window manager handle
+    UIWMAreaID areaID;  /// designated window area
+    void (*addScriptToComponent)(CUID compID, void* user);
+    void* user;
 };
 
 /// @brief Editor outliner window. Displays the scene hierarchy.

@@ -1,6 +1,7 @@
 #include "ComponentMenu.h"
 #include <Ludens/System/Memory.h>
 #include <LudensEditor/EOutlinerWindow/EOutlinerWindow.h>
+#include <LudensEditor/EditorContext/EditorIconAtlas.h>
 #include <LudensEditor/EditorContext/EditorWindowObj.h>
 #include <iostream>
 
@@ -38,6 +39,7 @@ struct OutlinerRow
     EditorContext editorCtx;
     UIPanelWidget panelWidget; /// row panel
     UITextWidget textWidget;   /// data object name label
+    UIImageWidget scriptIcon;  /// icon for component script
     CUID component;            /// the data component this row represents
     Color parityColor;
     int rowIndex;
@@ -47,6 +49,12 @@ struct OutlinerRow
         component = compID;
         const ComponentBase* base = editorCtx.get_component_base(compID);
         textWidget.set_text(base ? base->name : nullptr);
+
+        const ComponentScriptSlot* script = editorCtx.get_component_script_slot(compID);
+        if (script)
+            scriptIcon.show();
+        else
+            scriptIcon.hide();
 
         UIPadding padding{};
         padding.left = OUTLINER_ROW_LEFT_PADDING;
@@ -67,6 +75,7 @@ struct OutlinerRow
 
         UILayoutInfo layoutI{};
         layoutI.childAxis = UI_AXIS_X;
+        layoutI.childGap = theme.get_padding();
         layoutI.childPadding.left = OUTLINER_ROW_LEFT_PADDING;
         layoutI.sizeX = UISize::grow();
         layoutI.sizeY = UISize::fixed(OUTLINER_ROW_SIZE);
@@ -81,9 +90,19 @@ struct OutlinerRow
         UITextWidgetInfo textI{};
         textI.hoverHL = true;
         textI.cstr = component ? row->editorCtx.get_component_name(component) : nullptr;
-        theme.get_font_size(textI.fontSize);
+        textI.fontSize = theme.get_font_size();
         row->textWidget = row->panelWidget.node().add_text(layoutI, textI, row);
         row->textWidget.set_on_mouse(&OutlinerRow::on_mouse);
+
+        layoutI.sizeX = UISize::fixed(OUTLINER_ROW_SIZE);
+        layoutI.sizeY = UISize::fixed(OUTLINER_ROW_SIZE);
+        Rect iconRect = EditorIconAtlas::get_icon_rect(EditorIcon::Code);
+        UIImageWidgetInfo imageWI{};
+        imageWI.image = row->editorCtx.get_editor_icon_atlas();
+        imageWI.rect = &iconRect;
+        row->scriptIcon = row->panelWidget.node().add_image(layoutI, imageWI, row);
+        row->scriptIcon.hide();
+        // TODO:
 
         return row;
     }
@@ -93,9 +112,11 @@ struct OutlinerRow
         OutlinerRow& self = *(OutlinerRow*)widget.get_user();
         Color color = self.parityColor;
         Rect rect = self.panelWidget.get_rect();
+        EditorContext eCtx = self.outlinerWindow->editorCtx;
+        UITheme theme = eCtx.get_theme().get_ui_theme();
 
-        if (self.component && self.component == self.editorCtx.get_selected_component())
-            color = 0x4D6490FF; // TODO:
+        if (self.component && self.component == eCtx.get_selected_component())
+            color = theme.get_selection_color();
 
         renderer.draw_rect(rect, color);
     }
@@ -114,7 +135,7 @@ struct OutlinerRow
             else if (btn == MOUSE_BUTTON_RIGHT)
             {
                 Vec2 screenPos = widget.get_pos() + pos;
-                self.outlinerWindow->menu.show(screenPos);
+                self.outlinerWindow->menu.show(screenPos, self.component);
             }
         }
     }
@@ -202,7 +223,12 @@ EOutlinerWindow EOutlinerWindow::create(const EOutlinerWindowInfo& windowI)
     wm.set_window_title(windowI.areaID, "Outliner");
     wm.set_resize_callback(windowI.areaID, &EOutlinerWindowObj::on_client_resize);
 
-    obj->menu.startup(wm.get_context(), obj->editorCtx.get_theme());
+    ComponentMenuInfo menuI{};
+    menuI.ctx = wm.get_context();
+    menuI.theme = obj->editorCtx.get_theme();
+    menuI.onOptionAddScript = windowI.addScriptToComponent;
+    menuI.user = windowI.user;
+    obj->menu.startup(menuI);
 
     // create one OutlinerRow for each object in scene
     obj->invalidate();

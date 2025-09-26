@@ -172,7 +172,7 @@ void EViewportWindowObj::on_draw(UIWidget widget, ScreenRenderComponent renderer
     sceneRect.y += toolbarHeight;
     sceneRect.h -= toolbarHeight;
     RImage sceneImage = renderer.get_sampled_image();
-    renderer.draw_image(sceneRect, sceneImage);
+    renderer.draw_image(sceneRect, sceneImage, 0xFFFFFFFF);
 }
 
 void EViewportWindowObj::on_key(UIWidget widget, KeyCode key, UIEvent event)
@@ -319,11 +319,16 @@ void EViewportWindowObj::on_update(UIWidget widget, float delta)
         self.sceneMousePos.y -= self.toolbar.window.get_size().y;
     }
 
-    // TODO: move this to a play button?
-    if (Input::get_key_down(KEY_CODE_SPACE))
+    if (self.toolbar.isRequestingPlay.read())
+    {
+        self.toolbar.display(false);
         self.editorCtx.play_scene();
-    if (Input::get_key_down(KEY_CODE_ESCAPE))
+    }
+    else if (self.toolbar.isRequestingStop.read())
+    {
+        self.toolbar.display(true);
         self.editorCtx.stop_scene();
+    }
 
     // update gizmo scale from camera
     if (self.isGizmoVisible)
@@ -404,6 +409,7 @@ EViewportWindow EViewportWindow::create(const EViewportWindowInfo& windowI)
     wm.set_resize_callback(windowI.areaID, &EViewportWindowObj::on_client_resize);
 
     EViewportWindowObj* obj = heap_new<EViewportWindowObj>(MEMORY_USAGE_UI);
+    obj->editorCtx = windowI.ctx;
     obj->gizmo = Gizmo::create();
     obj->root = wm.get_area_window(windowI.areaID);
     obj->root.set_user(obj);
@@ -416,7 +422,7 @@ EViewportWindow EViewportWindow::create(const EViewportWindowInfo& windowI)
 
     UIContext uiCtx = wm.get_context();
     float width = obj->viewportExtent.x;
-    obj->toolbar.startup(uiCtx, width, &obj->gizmoType);
+    obj->toolbar.startup(obj->editorCtx, uiCtx, width, &obj->gizmoType);
     uiCtx.layout();
 
     Rect toolbarRect = obj->toolbar.window.get_rect();
