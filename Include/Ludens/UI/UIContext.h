@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Ludens/Application/Event.h>
 #include <Ludens/Header/Handle.h>
 #include <Ludens/Header/KeyCode.h>
 #include <Ludens/Header/Math/Rect.h>
@@ -32,6 +33,9 @@ struct UIContext : Handle<struct UIContextObj>
     /// @brief update UI context
     /// @param delta delta time in seconds
     void update(float delta);
+
+    /// @brief Pass an application event to the UI context.
+    bool forward_event(const Event* event);
 
     /// @brief update mouse cursor position in context
     void input_mouse_position(const Vec2& pos);

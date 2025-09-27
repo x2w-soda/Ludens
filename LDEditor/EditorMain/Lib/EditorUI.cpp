@@ -290,27 +290,8 @@ void EditorUI::on_event(const Event* event, void* user)
         self.resize(Vec2(static_cast<const ApplicationResizeEvent*>(event)->width,
                          static_cast<const ApplicationResizeEvent*>(event)->height));
         break;
-    case EVENT_TYPE_KEY_DOWN:
-        ctx.input_key_down(static_cast<const KeyDownEvent*>(event)->key);
-        break;
-    case EVENT_TYPE_KEY_UP:
-        ctx.input_key_up(static_cast<const KeyUpEvent*>(event)->key);
-        break;
-    case EVENT_TYPE_MOUSE_MOTION:
-        ctx.input_mouse_position(Vec2(static_cast<const MouseMotionEvent*>(event)->xpos,
-                                      static_cast<const MouseMotionEvent*>(event)->ypos));
-        break;
-    case EVENT_TYPE_MOUSE_DOWN:
-        ctx.input_mouse_down(static_cast<const MouseDownEvent*>(event)->button);
-        break;
-    case EVENT_TYPE_MOUSE_UP:
-        ctx.input_mouse_up(static_cast<const MouseUpEvent*>(event)->button);
-        break;
-    case EVENT_TYPE_SCROLL:
-        ctx.input_scroll(Vec2(static_cast<const ScrollEvent*>(event)->xoffset,
-                              static_cast<const ScrollEvent*>(event)->yoffset));
-        break;
     default:
+        ctx.forward_event(event);
         break;
     }
 }

@@ -386,4 +386,35 @@ void UIContext::update(float delta)
     }
 }
 
+bool UIContext::forward_event(const Event* event)
+{
+    switch (event->type)
+    {
+    case EVENT_TYPE_KEY_DOWN:
+        input_key_down(static_cast<const KeyDownEvent*>(event)->key);
+        break;
+    case EVENT_TYPE_KEY_UP:
+        input_key_up(static_cast<const KeyUpEvent*>(event)->key);
+        break;
+    case EVENT_TYPE_MOUSE_MOTION:
+        input_mouse_position(Vec2(static_cast<const MouseMotionEvent*>(event)->xpos,
+                                  static_cast<const MouseMotionEvent*>(event)->ypos));
+        break;
+    case EVENT_TYPE_MOUSE_DOWN:
+        input_mouse_down(static_cast<const MouseDownEvent*>(event)->button);
+        break;
+    case EVENT_TYPE_MOUSE_UP:
+        input_mouse_up(static_cast<const MouseUpEvent*>(event)->button);
+        break;
+    case EVENT_TYPE_SCROLL:
+        input_scroll(Vec2(static_cast<const ScrollEvent*>(event)->xoffset,
+                          static_cast<const ScrollEvent*>(event)->yoffset));
+        break;
+    default: // does not trigger any input
+        return false;
+    }
+
+    return true;
+}
+
 } // namespace LD
