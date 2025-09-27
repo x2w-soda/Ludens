@@ -81,6 +81,8 @@ class EditorApplication
 public:
     EditorApplication()
     {
+        LD_PROFILE_SCOPE;
+
         sLog.info("pwd: {}", fs::current_path().string());
 
         JobSystemInfo jsI{};
@@ -91,7 +93,6 @@ public:
         ApplicationInfo appI{};
         appI.width = 1600;
         appI.height = 900;
-        appI.vsync = true;
         appI.name = "Ludens";
         appI.onEvent = &EditorUI::on_event;
         appI.user = &mEditorUI;
@@ -118,8 +119,14 @@ public:
 
         Bitmap tmpCubemapFaces = Bitmap::create_cubemap_from_paths(facePathsCstr.data());
 
+        RDeviceInfo deviceI{};
+        deviceI.backend = RDEVICE_BACKEND_VULKAN;
+        deviceI.window = app.get_glfw_window();
+        deviceI.vsync = true; // TODO: config
+        mRDevice = RDevice::create(deviceI);
+
         RServerInfo serverI{};
-        serverI.device = app.get_rdevice();
+        serverI.device = mRDevice;
         serverI.fontAtlas = mFontAtlas;
         serverI.cubemapFaces = tmpCubemapFaces;
         mRServer = RServer::create(serverI);
@@ -146,10 +153,13 @@ public:
 
     ~EditorApplication()
     {
+        LD_PROFILE_SCOPE;
+
         mEditorUI.cleanup();
 
         EditorContext::destroy(mEditorCtx);
         RServer::destroy(mRServer);
+        RDevice::destroy(mRDevice);
         FontAtlas::destroy(mFontAtlas);
         Font::destroy(mFont);
         Application::destroy();
@@ -220,6 +230,7 @@ public:
     }
 
 private:
+    RDevice mRDevice;
     RServer mRServer;
     EditorContext mEditorCtx;
     EditorUI mEditorUI;

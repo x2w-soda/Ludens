@@ -1,8 +1,9 @@
 #pragma once
 
 #include <Ludens/Header/Color.h>
-#include <Ludens/RenderBackend/RBackend.h>
 #include <cstdint>
+
+struct GLFWwindow;
 
 namespace LD {
 
@@ -26,7 +27,6 @@ struct ApplicationInfo
     void (*onEvent)(const Event* event, void* user); /// event callback
     uint32_t width;                                  /// application window width
     uint32_t height;                                 /// application window height
-    bool vsync;                                      /// whether vsync is enabled
     Color hintBorderColor;                           /// If not zero, the desired window border color.
     Color hintTitleBarColor;                         /// If not zero, the desired window title bar color.
     Color hintTitleBarTextColor;                     /// If not zero, the desired window title bar text color.
@@ -70,8 +70,8 @@ public:
     /// @brief poll window events
     void poll_events();
 
-    /// @brief get render device
-    RDevice get_rdevice();
+    /// @brief Get native GLFWwindow* handle
+    GLFWwindow* get_glfw_window();
 
     /// @brief get time in seconds since the Application is created
     double get_time();

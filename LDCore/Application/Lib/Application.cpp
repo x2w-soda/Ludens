@@ -6,7 +6,6 @@
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Log/Log.h>
 #include <Ludens/Profiler/Profiler.h>
-#include <Ludens/RenderBackend/RBackend.h>
 #include <Ludens/System/Memory.h>
 #include <Ludens/System/Timer.h>
 
@@ -18,7 +17,6 @@ static Log sLog("Application");
 struct ApplicationObj
 {
     Window window;
-    RDevice rdevice;
     void* user;
     void (*onEvent)(const Event* event, void* user);
     bool isAlive;
@@ -118,9 +116,9 @@ void Application::poll_events()
     mObj->window.poll_events();
 }
 
-RDevice Application::get_rdevice()
+GLFWwindow* Application::get_glfw_window()
 {
-    return mObj->rdevice;
+    return mObj->window.get_glfw_handle();
 }
 
 Application Application::get()
@@ -205,13 +203,6 @@ ApplicationObj::ApplicationObj(const ApplicationInfo& appI)
 
     window.startup(appI);
 
-    RDeviceInfo rdeviceI{
-        .backend = RDEVICE_BACKEND_VULKAN,
-        .window = window.get_glfw_handle(),
-        .vsync = appI.vsync,
-    };
-    rdevice = RDevice::create(rdeviceI);
-
     sLog.info("application ctor {:.3f}s", timer.stop() / 1000000.0f);
 }
 
@@ -219,8 +210,6 @@ ApplicationObj::~ApplicationObj()
 {
     Timer timer;
     timer.start();
-
-    RDevice::destroy(rdevice);
 
     window.cleanup();
 
