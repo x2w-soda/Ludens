@@ -216,6 +216,16 @@ void LuaState::resize(int n)
     lua_settop(mL, n);
 }
 
+void LuaState::remove(int idx)
+{
+    lua_remove(mL, idx);
+}
+
+void LuaState::insert(int idx)
+{
+    lua_insert(mL, idx);
+}
+
 void LuaState::push_integer(int32_t i)
 {
     lua_pushinteger(mL, (lua_Integer)i);

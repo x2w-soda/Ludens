@@ -115,6 +115,42 @@ TEST_CASE("LuaState size")
     L.resize(0);
     CHECK(L.empty());
 
+    for (int32_t i = 1; i <= 4; i++)
+        L.push_integer(i);
+
+    L.insert(2); // move stack top to index 2
+    CHECK(L.to_integer(1) == 1);
+    CHECK(L.to_integer(2) == 4);
+    CHECK(L.to_integer(3) == 2);
+    CHECK(L.to_integer(4) == 3);
+
+    L.insert(3); // move stack top to index 3
+    CHECK(L.to_integer(1) == 1);
+    CHECK(L.to_integer(2) == 4);
+    CHECK(L.to_integer(3) == 3);
+    CHECK(L.to_integer(4) == 2);
+
+    L.insert(4); // move stack top to index 4
+    CHECK(L.to_integer(1) == 1);
+    CHECK(L.to_integer(2) == 4);
+    CHECK(L.to_integer(3) == 3);
+    CHECK(L.to_integer(4) == 2);
+
+    L.remove(2);
+    CHECK(L.size() == 3);
+    CHECK(L.to_integer(1) == 1);
+    CHECK(L.to_integer(2) == 3);
+    CHECK(L.to_integer(3) == 2);
+
+    L.remove(3);
+    CHECK(L.size() == 2);
+    CHECK(L.to_integer(1) == 1);
+    CHECK(L.to_integer(2) == 3);
+
+    L.remove(1);
+    CHECK(L.size() == 1);
+    CHECK(L.to_integer(1) == 3);
+
     LuaState::destroy(L);
 }
 

@@ -144,6 +144,16 @@ public:
     /// @param n The new size of the stack, padding with nil values.
     void resize(int n);
 
+    /// @brief Removes the element at the given valid index,
+    ///        shifting down the elements above this index
+    /// @param idx A valid index, non-pseudo. 
+    void remove(int idx);
+
+    /// @brief Moves the top element into the given valid index,
+    ///        shifting up the elements above this index.
+    /// @param idx A valid index, non-pseudo.
+    void insert(int idx);
+
     /// @brief pushes an integer onto the stack
     void push_integer(int32_t i);
 
