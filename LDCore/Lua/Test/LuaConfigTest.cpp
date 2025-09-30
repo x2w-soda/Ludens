@@ -2,6 +2,7 @@
 #include <Extra/doctest/doctest.h>
 #include <Ludens/Header/Math/Vec3.h>
 #include <Ludens/Lua/LuaConfig.h>
+#include <Ludens/System/Memory.h>
 #include <cstring>
 
 using namespace LD;
@@ -88,6 +89,9 @@ TEST_CASE("LuaConfig primitives")
     CHECK(v4 == Vec4(0.1f, 0.2f, 0.3f, 1.0f));
 
     LuaConfig::destroy(cfg);
+
+    int leaks = get_memory_leaks(nullptr);
+    CHECK(leaks == 0);
 }
 
 TEST_CASE("LuaConfig array")
@@ -140,6 +144,11 @@ TEST_CASE("LuaConfig array")
     CHECK(nar[0] == true);
     CHECK(nar[1] == false);
     CHECK(nar[2] == false);
+
+    LuaConfig::destroy(cfg);
+
+    int leaks = get_memory_leaks(nullptr);
+    CHECK(leaks == 0);
 }
 
 TEST_CASE("LuaConfig reload")
@@ -205,6 +214,9 @@ TEST_CASE("LuaConfig reload")
     CHECK(strncmp(str, "name2", 5) == 0);
 
     LuaConfig::destroy(cfg);
+
+    int leaks = get_memory_leaks(nullptr);
+    CHECK(leaks == 0);
 }
 
 TEST_CASE("LuaConfig runtime array length")
@@ -242,4 +254,7 @@ TEST_CASE("LuaConfig errors")
     CHECK(ret == (int)LUA_CONFIG_ERROR_NOT_REGISTERED);
 
     LuaConfig::destroy(cfg);
+
+    int leaks = get_memory_leaks(nullptr);
+    CHECK(leaks == 0);
 }

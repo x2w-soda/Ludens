@@ -3,6 +3,7 @@
 #include "LuaTest.h"
 #include <Extra/doctest/doctest.h>
 #include <Ludens/Lua/LuaState.h>
+#include <Ludens/System/Memory.h>
 #include <limits>
 
 using namespace LD;
@@ -51,6 +52,9 @@ TEST_CASE("LuaState primitives")
     CHECK(L.empty());
 
     LuaState::destroy(L);
+
+    int leaks = get_memory_leaks(nullptr);
+    CHECK(leaks == 0);
 }
 
 TEST_CASE("LuaState types")
@@ -92,6 +96,9 @@ TEST_CASE("LuaState types")
 
     L.clear();
     LuaState::destroy(L);
+
+    int leaks = get_memory_leaks(nullptr);
+    CHECK(leaks == 0);
 }
 
 TEST_CASE("LuaState size")
@@ -152,6 +159,9 @@ TEST_CASE("LuaState size")
     CHECK(L.to_integer(1) == 3);
 
     LuaState::destroy(L);
+
+    int leaks = get_memory_leaks(nullptr);
+    CHECK(leaks == 0);
 }
 
 TEST_CASE("LuaState math")
@@ -171,6 +181,9 @@ TEST_CASE("LuaState math")
     CHECK(v4 == Vec4(6.0f, -7.0f, 8.0f, 9.0f));
 
     LuaState::destroy(L);
+
+    int leaks = get_memory_leaks(nullptr);
+    CHECK(leaks == 0);
 }
 
 TEST_CASE("LuaState functions")
@@ -213,6 +226,9 @@ TEST_CASE("LuaState functions")
     CHECK(L.to_integer(-1) == -12);
 
     LuaState::destroy(L);
+
+    int leaks = get_memory_leaks(nullptr);
+    CHECK(leaks == 0);
 }
 
 TEST_CASE("LuaState tables")
@@ -270,6 +286,9 @@ TEST_CASE("LuaState tables")
     CHECK(L.to_bool(-1) == true);
 
     LuaState::destroy(L);
+
+    int leaks = get_memory_leaks(nullptr);
+    CHECK(leaks == 0);
 }
 
 TEST_CASE("LuaState do_string")
@@ -285,4 +304,7 @@ TEST_CASE("LuaState do_string")
     L.pop(2);
 
     LuaState::destroy(L);
+
+    int leaks = get_memory_leaks(nullptr);
+    CHECK(leaks == 0);
 }

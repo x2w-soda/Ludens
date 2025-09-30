@@ -11,6 +11,7 @@ struct LuaNamespaceObj
 {
     // TODO: do not cache pointer types
     std::vector<LuaModuleValue> values;
+    std::string name;
 };
 
 struct LuaModuleObj
@@ -18,6 +19,26 @@ struct LuaModuleObj
     std::string name;
     std::vector<LuaNamespaceObj*> spaces;
 };
+
+/// @brief Push namespace table onto stack. Assumes stack top is the module table.
+static void get_or_create_namespace(LuaState& L, const std::string& name)
+{
+    // TODO: nested namespace containing "."
+    LD_ASSERT(name.find('.') == std::string::npos);
+
+    if (name.empty())
+        return; // module table serves as global namespace
+
+    L.get_field(-1, name.c_str());
+
+    if (L.get_type(-1) == LUA_TYPE_NIL)
+    {
+        L.pop(1);
+        L.push_table();
+        L.set_field(-2, name.c_str());
+        L.get_field(-1, name.c_str());
+    }
+}
 
 LuaModule LuaModule::create(const LuaModuleInfo& moduleI)
 {
@@ -32,6 +53,9 @@ LuaModule LuaModule::create(const LuaModuleInfo& moduleI)
 
         spaceObj->values.resize(space->valueCount);
         std::copy(space->values, space->values + space->valueCount, spaceObj->values.data());
+
+        if (space->name)
+            spaceObj->name = std::string(space->name);
     }
 
     return {obj};
@@ -51,7 +75,7 @@ void LuaModule::load(LuaState& L)
 {
     LD_PROFILE_SCOPE;
 
-    int s = L.size();
+    int oldSize = L.size();
 
     L.get_global("package");
     L.get_field(-1, "loaded");
@@ -59,6 +83,11 @@ void LuaModule::load(LuaState& L)
 
     for (const LuaNamespaceObj* spaceObj : mObj->spaces)
     {
+        // TODO: nested namespace containing "."
+        int size = L.size();
+
+        get_or_create_namespace(L, spaceObj->name);
+
         for (const LuaModuleValue& value : spaceObj->values)
         {
             switch (value.type)
@@ -76,13 +105,14 @@ void LuaModule::load(LuaState& L)
 
             L.set_field(-2, value.name);
         }
+
+        L.resize(size);
     }
 
     // package.loaded[modname] = module
     const char* modname = mObj->name.c_str();
     L.set_field(-2, modname);
-    L.pop(2);
-    LD_ASSERT(s == L.size());
+    L.resize(oldSize);
 }
 
 } // namespace LD

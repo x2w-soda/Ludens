@@ -3,6 +3,7 @@
 #include "LuaTest.h"
 #include <Extra/doctest/doctest.h>
 #include <Ludens/Lua/LuaModule.h>
+#include <Ludens/System/Memory.h>
 
 using namespace LD;
 
@@ -53,4 +54,43 @@ TEST_CASE("LuaModule")
 
     LuaModule::destroy(mod);
     LuaState::destroy(L);
+
+    int leaks = get_memory_leaks(nullptr);
+    CHECK(leaks == 0);
+}
+
+TEST_CASE("LuaModule namespace")
+{
+    LuaState L = LuaState::create(sTestStateInfo);
+
+    LuaModuleValue values[] = {
+        {.type = LUA_TYPE_FN, .name = "sum", .fn = &TestLuaModule::sum},
+        {.type = LUA_TYPE_NUMBER, .name = "pi", .number = 3.14},
+    };
+
+    LuaModuleNamespace modNS;
+    modNS.name = "math";
+    modNS.valueCount = sizeof(values) / sizeof(*values);
+    modNS.values = values;
+
+    LuaModuleInfo modI;
+    modI.name = "test";
+    modI.spaceCount = 1;
+    modI.spaces = &modNS;
+
+    LuaModule mod = LuaModule::create(modI);
+    mod.load(L);
+
+    const char* src = R"(
+    local test = require 'test'
+    return test.math.sum(4, 9)
+)";
+    bool success = L.do_string(src);
+    CHECK(success);
+
+    LuaModule::destroy(mod);
+    LuaState::destroy(L);
+
+    int leaks = get_memory_leaks(nullptr);
+    CHECK(leaks == 0);
 }
