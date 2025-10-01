@@ -154,6 +154,10 @@ public:
     /// @param idx A valid index, non-pseudo.
     void insert(int idx);
 
+    /// @brief Pushes a copy of the element at the given valid index onto the stack.
+    /// @param idx Index of the value to copy.
+    void push_value(int idx);
+
     /// @brief pushes an integer onto the stack
     void push_integer(int32_t i);
 

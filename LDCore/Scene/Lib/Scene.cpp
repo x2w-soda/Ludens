@@ -197,6 +197,7 @@ void SceneObj::attach_lua_script(ComponentScriptSlot* scriptSlot)
 
     int oldSize = lua.size();
     CUID compID = scriptSlot->componentID;
+    LuaType type;
 
     // call 'attach' lua method on script
     lua.push_number((double)compID);
@@ -207,8 +208,8 @@ void SceneObj::attach_lua_script(ComponentScriptSlot* scriptSlot)
     LD_ASSERT(lua.get_type(-1) == LUA_TYPE_FN); // script attach method
 
     // arg1 is script instance
-    lua.push_number((double)compID);
-    lua.get_table(-4);
+    lua.push_value(-2);
+    LD_ASSERT((type = lua.get_type(-1)) == LUA_TYPE_TABLE);
 
     // arg2 is the component
     lua.get_field(-3, "_comp");
@@ -227,19 +228,23 @@ void SceneObj::detach_lua_script(ComponentScriptSlot* scriptSlot)
 
     LD_ASSERT(lua.get_type(-1) == LUA_TYPE_TABLE);
 
+    int oldSize = lua.size();
     CUID compID = scriptSlot->componentID;
+    LuaType type;
 
     // call 'detach' lua method on script
     lua.push_number((double)compID);
     lua.get_table(-2);
     lua.get_field(-1, "detach");
+    LD_ASSERT((type = lua.get_type(-1)) == LUA_TYPE_FN); // script detach method
 
     // arg1 is script instance
-    lua.push_number((double)compID);
-    lua.get_table(-3);
+    lua.push_value(-2);
+    LD_ASSERT((type = lua.get_type(-1)) == LUA_TYPE_TABLE);
 
     lua.call(1, 0);
-    lua.pop(1);
+
+    lua.resize(oldSize);
 }
 
 void SceneObj::initialize_lua_state(LuaState L)

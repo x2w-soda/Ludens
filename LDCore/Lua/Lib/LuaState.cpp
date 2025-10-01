@@ -226,6 +226,11 @@ void LuaState::insert(int idx)
     lua_insert(mL, idx);
 }
 
+void LuaState::push_value(int idx)
+{
+    lua_pushvalue(mL, idx);
+}
+
 void LuaState::push_integer(int32_t i)
 {
     lua_pushinteger(mL, (lua_Integer)i);
