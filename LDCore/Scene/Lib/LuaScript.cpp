@@ -1,20 +1,130 @@
 #include "LuaScript.h"
-#include <Ludens/Application/Application.h> // TODO: move application module forward in CMake dependency
+#include <Ludens/Application/Application.h>
+#include <Ludens/Application/Input.h>
 #include <Ludens/DataRegistry/DataComponent.h>
+#include <Ludens/Log/Log.h>
+#include <array>
+#include <cstring>
+#include <string>
 
 #define LUDENS_LUA_MODULE_NAME "ludens"
 
 namespace LD {
+
+static Log sLog("LuaScript");
+
 namespace LuaScript {
 
+static KeyCode string_to_keycode(const char* str);
+static MouseButton string_to_mouse_button(const char* cstr);
+static inline ComponentBase* get_component_base(LuaState& L, DataRegistry* outReg);
+static inline bool push_script_table(LuaState& L, CUID compID);
 static int transform_get_position(lua_State* l);
 static int transform_set_position(lua_State* l);
 static int transform_get_rotation(lua_State* l);
 static int transform_set_rotation(lua_State* l);
 static int transform_get_scale(lua_State* l);
 static int transform_set_scale(lua_State* l);
+static int component_get_name(lua_State* l);
 static void push_transform_table(DataRegistry reg, LuaState L, CUID compID, Transform* transform);
 static void push_mesh_component_table(DataRegistry reg, LuaState L, CUID compID, void* comp);
+static void install_component_base(DataRegistry reg, LuaState& L, CUID compID);
+static int application_exit(lua_State* l);
+static int debug_log(lua_State* l);
+static int input_get_key_down(lua_State* l);
+static int input_get_key_up(lua_State* l);
+static int input_get_key(lua_State* l);
+static int input_get_mouse_down(lua_State* l);
+static int input_get_mouse_up(lua_State* l);
+static int input_get_mouse(lua_State* l);
+
+static KeyCode string_to_keycode(const char* cstr)
+{
+    size_t len = strlen(cstr);
+
+    if (len == 1)
+    {
+        char c = *cstr;
+
+        if ('a' <= c && c <= 'z')
+            return static_cast<KeyCode>(c - 'a' + KEY_CODE_A);
+
+        return KEY_CODE_ENUM_LAST; // failed to resolve
+    }
+
+    std::string str(cstr);
+    if (str == "space")
+    {
+        return KEY_CODE_SPACE;
+    }
+
+    return KEY_CODE_ENUM_LAST; // failed to resolve
+}
+
+static MouseButton string_to_mouse_button(const char* cstr)
+{
+    std::string str(cstr);
+
+    if (str == "lmb")
+        return MOUSE_BUTTON_LEFT;
+
+    if (str == "rmb")
+        return MOUSE_BUTTON_RIGHT;
+
+    return MOUSE_BUTTON_ENUM_LAST; // failed to resolve
+}
+
+static inline ComponentBase* get_component_base(LuaState& L, DataRegistry* outReg)
+{
+    LD_ASSERT(L.get_type(-1) == LUA_TYPE_TABLE); // stack top should be component table
+
+    int oldSize = L.size();
+
+    L.get_field(-1, "_cuid");
+    LD_ASSERT(L.get_type(-1) == LUA_TYPE_NUMBER);
+    CUID compID = (CUID)L.to_number(-1);
+    L.pop(1);
+
+    L.get_field(-1, "_reg");
+    LD_ASSERT(L.get_type(-1) == LUA_TYPE_LIGHTUSERDATA);
+    DataRegistry reg((DataRegistryObj*)L.to_userdata(-1));
+
+    if (outReg)
+        *outReg = reg;
+
+    ComponentBase* base = reg.get_component_base(compID);
+    LD_ASSERT(base);
+
+    L.resize(oldSize);
+
+    return base;
+}
+
+/// @brief try and push ludens.scripts[compID], or nil on failure
+static inline bool push_script_table(LuaState& L, CUID compID)
+{
+    int oldSize = L.size();
+
+    L.get_global("ludens");
+    L.get_field(-1, "scripts");
+    L.push_number((double)compID);
+    L.get_table(-2);
+
+    LuaType type = L.get_type(-1);
+
+    if (L.get_type(-1) == LUA_TYPE_TABLE) // script table
+    {
+        L.remove(-2);
+        L.remove(-2);
+        LD_ASSERT(L.size() == oldSize + 1);
+
+        return true;
+    }
+
+    L.resize(oldSize);
+    L.push_nil();
+    return false;
+}
 
 static inline void get_transform_cuid(LuaState L, int tIndex, CUID& compID, DataRegistry& reg)
 {
@@ -131,6 +241,17 @@ static int transform_set_scale(lua_State* l)
     return 0;
 }
 
+/// @brief Component:get_name()
+static int component_get_name(lua_State* l)
+{
+    LuaState L(l);
+
+    ComponentBase* base = get_component_base(L, nullptr);
+    L.push_string(base->name);
+
+    return 1;
+}
+
 /// @brief Pushes a lua table representing a Transform.
 static void push_transform_table(DataRegistry reg, LuaState L, CUID compID, Transform* transform)
 {
@@ -169,8 +290,29 @@ static void push_mesh_component_table(DataRegistry reg, LuaState L, CUID compID,
     MeshComponent* meshC = (MeshComponent*)comp;
 
     L.push_table(); // mesh component
+    install_component_base(reg, L, compID);
+
     push_transform_table(reg, L, compID, &meshC->transform);
     L.set_field(-2, "transform");
+}
+
+static void install_component_base(DataRegistry reg, LuaState& L, CUID compID)
+{
+    int oldSize = L.size();
+
+    // TODO: use metatable instead
+    LD_ASSERT(L.get_type(-1) == LUA_TYPE_TABLE);
+
+    L.push_light_userdata(reg.unwrap());
+    L.set_field(-2, "_reg");
+
+    L.push_number((double)compID);
+    L.set_field(-2, "_cuid");
+
+    L.push_fn(&component_get_name);
+    L.set_field(-2, "get_name");
+
+    LD_ASSERT(L.size() == oldSize);
 }
 
 // clang-format off
@@ -186,7 +328,8 @@ struct
 };
 // clang-format on
 
-static int exit_application(lua_State* l)
+/// @brief ludens.application.exit
+static int application_exit(lua_State* l)
 {
     Application app = Application::get();
 
@@ -194,21 +337,166 @@ static int exit_application(lua_State* l)
     return 0;
 }
 
+/// @brief ludens.debug.log
+static int debug_log(lua_State* l)
+{
+    LuaState L(l);
+
+    int nargs = L.size();
+
+    // call string.format
+    L.get_global("string");
+    L.get_field(-1, "format");
+    L.remove(-2);
+    L.insert(1);
+
+    L.pcall(nargs, 1, 0);
+    sLog.debug("{}", L.to_string(-1));
+
+    return 0;
+}
+
+/// @brief ludens.input.get_key_down
+static int input_get_key_down(lua_State* l)
+{
+    LuaState L(l);
+
+    if (L.get_type(-1) != LUA_TYPE_STRING)
+    {
+        L.push_bool(false);
+        return 1;
+    }
+
+    KeyCode key = string_to_keycode(L.to_string(-1));
+    L.push_bool(Input::get_key_down(key));
+
+    return 1;
+}
+
+/// @brief ludens.input.get_key_up
+static int input_get_key_up(lua_State* l)
+{
+    LuaState L(l);
+
+    if (L.get_type(-1) != LUA_TYPE_STRING)
+    {
+        L.push_bool(false);
+        return 1;
+    }
+
+    KeyCode key = string_to_keycode(L.to_string(-1));
+    L.push_bool(Input::get_key_up(key));
+
+    return 1;
+}
+
+/// @brief ludens.input.get_key
+static int input_get_key(lua_State* l)
+{
+    LuaState L(l);
+
+    if (L.get_type(-1) != LUA_TYPE_STRING)
+    {
+        L.push_bool(false);
+        return 1;
+    }
+
+    KeyCode key = string_to_keycode(L.to_string(-1));
+    L.push_bool(Input::get_key(key));
+
+    return 1;
+}
+
+/// @brief ludens.input.get_mouse_down
+static int input_get_mouse_down(lua_State* l)
+{
+    LuaState L(l);
+
+    if (L.get_type(-1) != LUA_TYPE_STRING)
+    {
+        L.push_bool(false);
+        return 1;
+    }
+
+    MouseButton btn = string_to_mouse_button(L.to_string(-1));
+    L.push_bool(Input::get_mouse_down(btn));
+
+    return 1;
+}
+
+/// @brief ludens.input.get_mouse_up
+static int input_get_mouse_up(lua_State* l)
+{
+    LuaState L(l);
+
+    if (L.get_type(-1) != LUA_TYPE_STRING)
+    {
+        L.push_bool(false);
+        return 1;
+    }
+
+    MouseButton btn = string_to_mouse_button(L.to_string(-1));
+    L.push_bool(Input::get_mouse_up(btn));
+
+    return 1;
+}
+
+/// @brief ludens.input.get_mouse
+static int input_get_mouse(lua_State* l)
+{
+    LuaState L(l);
+
+    if (L.get_type(-1) != LUA_TYPE_STRING)
+    {
+        L.push_bool(false);
+        return 1;
+    }
+
+    MouseButton btn = string_to_mouse_button(L.to_string(-1));
+    L.push_bool(Input::get_mouse(btn));
+
+    return 1;
+}
+
 LuaModule create_ludens_module()
 {
-    LuaModuleValue values[] = {
-        {.type = LUA_TYPE_FN, .name = "exit_application", .fn = &LuaScript::exit_application},
+
+    // clang-format off
+    const LuaModuleValue applicationVals[] = {
+        {.type = LUA_TYPE_FN, .name = "exit", .fn = &LuaScript::application_exit},
     };
 
-    LuaModuleNamespace space;
-    space.name = nullptr;
-    space.valueCount = sizeof(values) / sizeof(*values);
-    space.values = values;
+    const LuaModuleValue debugVals[] = {
+        {.type = LUA_TYPE_FN, .name = "log", .fn = &LuaScript::debug_log},
+    };
+
+    const LuaModuleValue inputVals[] = {
+        {.type = LUA_TYPE_FN, .name = "get_key_down",   .fn = &LuaScript::input_get_key_down},
+        {.type = LUA_TYPE_FN, .name = "get_key_up",     .fn = &LuaScript::input_get_key_up},
+        {.type = LUA_TYPE_FN, .name = "get_key",        .fn = &LuaScript::input_get_key},
+        {.type = LUA_TYPE_FN, .name = "get_mouse_down", .fn = &LuaScript::input_get_mouse_down},
+        {.type = LUA_TYPE_FN, .name = "get_mouse_up",   .fn = &LuaScript::input_get_mouse_up},
+        {.type = LUA_TYPE_FN, .name = "get_mouse",      .fn = &LuaScript::input_get_mouse},
+    };
+    // clang-format on
+
+    std::array<LuaModuleNamespace, 3> spaces;
+    spaces[0].name = "application";
+    spaces[0].valueCount = sizeof(applicationVals) / sizeof(*applicationVals);
+    spaces[0].values = applicationVals;
+
+    spaces[1].name = "debug";
+    spaces[1].valueCount = sizeof(debugVals) / sizeof(*debugVals);
+    spaces[1].values = debugVals;
+
+    spaces[2].name = "input";
+    spaces[2].valueCount = sizeof(inputVals) / sizeof(*inputVals);
+    spaces[2].values = inputVals;
 
     LuaModuleInfo modI;
     modI.name = LUDENS_LUA_MODULE_NAME;
-    modI.spaceCount = 1;
-    modI.spaces = &space;
+    modI.spaceCount = (uint32_t)spaces.size();
+    modI.spaces = spaces.data();
 
     return LuaModule::create(modI); // caller destroys
 }
