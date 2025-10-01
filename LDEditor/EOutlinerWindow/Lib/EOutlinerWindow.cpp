@@ -1,4 +1,5 @@
 #include "ComponentMenu.h"
+#include <Ludens/Profiler/Profiler.h>
 #include <Ludens/System/Memory.h>
 #include <LudensEditor/EOutlinerWindow/EOutlinerWindow.h>
 #include <LudensEditor/EditorContext/EditorIconAtlas.h>
@@ -159,6 +160,8 @@ OutlinerRow* EOutlinerWindowObj::get_or_create_row(int rowIdx, int depth, CUID c
 
 void EOutlinerWindowObj::invalidate()
 {
+    LD_PROFILE_SCOPE;
+
     std::vector<CUID> sceneRoots;
     editorCtx.get_scene_roots(sceneRoots);
 
@@ -222,6 +225,12 @@ EOutlinerWindow EOutlinerWindow::create(const EOutlinerWindowInfo& windowI)
 
     wm.set_window_title(windowI.areaID, "Outliner");
     wm.set_resize_callback(windowI.areaID, &EOutlinerWindowObj::on_client_resize);
+    UIWindow outlinerWindow = wm.get_area_window(windowI.areaID);
+    outlinerWindow.set_user(obj);
+    outlinerWindow.set_on_update([](UIWidget widget, float delta) {
+        auto* obj = (EOutlinerWindowObj*)widget.get_user();
+        obj->invalidate();
+    });
 
     ComponentMenuInfo menuI{};
     menuI.ctx = wm.get_context();
