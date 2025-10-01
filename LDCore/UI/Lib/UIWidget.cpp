@@ -51,22 +51,22 @@ void UIWidgetObj::draw(ScreenRenderComponent renderer)
     case UI_WIDGET_WINDOW:
         break;
     case UI_WIDGET_PANEL:
-        UIPanelWidgetObj::on_draw(UIWidget(this), renderer);
+        UIPanelWidget::on_draw(UIWidget(this), renderer);
         break;
     case UI_WIDGET_BUTTON:
-        UIButtonWidgetObj::on_draw(UIWidget(this), renderer);
+        UIButtonWidget::on_draw(UIWidget(this), renderer);
         break;
     case UI_WIDGET_SLIDER:
-        UISliderWidgetObj::on_draw(UIWidget(this), renderer);
+        UISliderWidget::on_draw(UIWidget(this), renderer);
         break;
     case UI_WIDGET_TOGGLE:
-        UIToggleWidgetObj::on_draw(UIWidget(this), renderer);
+        UIToggleWidget::on_draw(UIWidget(this), renderer);
         break;
     case UI_WIDGET_IMAGE:
-        UIImageWidgetObj::on_draw(UIWidget(this), renderer);
+        UIImageWidget::on_draw(UIWidget(this), renderer);
         break;
     case UI_WIDGET_TEXT:
-        UITextWidgetObj::on_draw(UIWidget(this), renderer);
+        UITextWidget::on_draw(UIWidget(this), renderer);
         break;
     default:
         LD_UNREACHABLE;
@@ -241,7 +241,7 @@ UIScrollWidget UINode::add_scroll(const UILayoutInfo& layoutI, const UIScrollWid
     UIWidgetObj* obj = window->ctx->alloc_widget(UI_WIDGET_SCROLL, layoutI, mObj, user);
     obj->as.scroll.hasScrollBar = widgetI.hasScrollBar;
     obj->as.scroll.offset = Vec2(0.0f);
-    obj->cb.onDraw = &UIScrollWidgetObj::on_draw;
+    obj->cb.onDraw = &UIScrollWidget::on_draw;
     obj->cb.onMouse = &UIScrollWidgetObj::on_mouse;
     obj->cb.onScroll = &UIScrollWidgetObj::on_scroll;
     obj->flags |= UI_WIDGET_FLAG_DRAW_WITH_SCISSOR_BIT;
@@ -267,7 +267,7 @@ void UIScrollWidgetObj::on_mouse(UIWidget widget, const Vec2& pos, MouseButton b
     // TODO:
 }
 
-void UIScrollWidgetObj::on_draw(UIWidget widget, ScreenRenderComponent renderer)
+void UIScrollWidget::on_draw(UIWidget widget, ScreenRenderComponent renderer)
 {
     UIWidgetObj* obj = (UIWidgetObj*)widget;
     UIContextObj& ctx = *obj->window->ctx;
@@ -295,7 +295,7 @@ UIImageWidget UINode::add_image(const UILayoutInfo& layoutI, const UIImageWidget
     return {obj};
 }
 
-void UIImageWidgetObj::on_draw(UIWidget widget, ScreenRenderComponent renderer)
+void UIImageWidget::on_draw(UIWidget widget, ScreenRenderComponent renderer)
 {
     UIImageWidgetObj& self = static_cast<UIWidgetObj*>(widget)->as.image;
     Rect rect = widget.get_rect();
@@ -367,6 +367,46 @@ UISliderWidget UINode::add_slider(const UILayoutInfo& layoutI, const UISliderWid
     return {obj};
 }
 
+void UISliderWidgetObj::on_drag(UIWidget widget, MouseButton btn, const Vec2& dragPos, bool begin)
+{
+    UISliderWidgetObj& self = static_cast<UIWidgetObj*>(widget)->as.slider;
+
+    Rect rect = widget.get_rect();
+    self.ratio = std::clamp(((float)dragPos.x - rect.x) / rect.w, 0.0f, 1.0f);
+}
+
+void UISliderWidget::on_draw(UIWidget widget, ScreenRenderComponent renderer)
+{
+    UIWidgetObj* obj = widget;
+    const UITheme& theme = obj->window->ctx->theme;
+    UISliderWidgetObj& self = obj->as.slider;
+    Rect rect = widget.get_rect();
+
+    float sliderw = rect.w * 0.1f;
+    renderer.draw_rect(rect, theme.get_background_color());
+
+    uint32_t color = theme.get_primary_color();
+    if (widget.is_hovered())
+    {
+        color &= ~0xFF;
+        color |= 234;
+    }
+
+    rect.w = sliderw;
+    rect.x += self.ratio * sliderw * 9.0f;
+    renderer.draw_rect(rect, color);
+}
+
+float UISliderWidget::get_value()
+{
+    return mObj->as.slider.value;
+}
+
+float UISliderWidget::get_ratio()
+{
+    return mObj->as.slider.ratio;
+}
+
 //
 // UIToggleWidget
 //
@@ -428,7 +468,7 @@ void UITextWidgetObj::cleanup(UIWidgetObj* base)
     self.~UITextWidgetObj();
 }
 
-void UITextWidgetObj::on_draw(UIWidget widget, ScreenRenderComponent renderer)
+void UITextWidget::on_draw(UIWidget widget, ScreenRenderComponent renderer)
 {
     UIWidgetObj* obj = (UIWidgetObj*)widget;
     UIContextObj& ctx = *obj->window->ctx;
@@ -470,7 +510,7 @@ UITextEditWidget UINode::add_text_edit(const UILayoutInfo& layoutI, const UIText
     obj->as.textEdit.fontSize = widgetI.fontSize;
     obj->as.textEdit.value = heap_new<std::string>(MEMORY_USAGE_UI);
     obj->cb.onKey = &UITextEditWidgetObj::on_key;
-    obj->cb.onDraw = &UITextEditWidgetObj::on_draw;
+    obj->cb.onDraw = &UITextEditWidget::on_draw;
 
     return {obj};
 }
@@ -506,7 +546,7 @@ void UITextEditWidgetObj::on_key(UIWidget widget, KeyCode key, UIEvent event)
     }
 }
 
-void UITextEditWidgetObj::on_draw(UIWidget widget, ScreenRenderComponent renderer)
+void UITextEditWidget::on_draw(UIWidget widget, ScreenRenderComponent renderer)
 {
     UIWidgetObj* obj = widget.unwrap();
     auto& self = obj->as.textEdit;
@@ -543,7 +583,7 @@ UIPanelWidget UINode::add_panel(const UILayoutInfo& layoutI, const UIPanelWidget
     return {obj};
 }
 
-void UIPanelWidgetObj::on_draw(UIWidget widget, ScreenRenderComponent renderer)
+void UIPanelWidget::on_draw(UIWidget widget, ScreenRenderComponent renderer)
 {
     UIWidgetObj* obj = widget;
     UIPanelWidgetObj& self = obj->as.panel;
@@ -580,7 +620,7 @@ void UIToggleWidgetObj::on_update(UIWidget widget, float delta)
     self.anim.update(delta);
 }
 
-void UIToggleWidgetObj::on_draw(UIWidget widget, ScreenRenderComponent renderer)
+void UIToggleWidget::on_draw(UIWidget widget, ScreenRenderComponent renderer)
 {
     UIWidgetObj* obj = (UIWidgetObj*)widget;
     UITheme theme = widget.get_theme();
@@ -636,7 +676,7 @@ void UIButtonWidgetObj::on_mouse(UIWidget widget, const Vec2& pos, MouseButton b
         self.user_on_press((UIButtonWidget)widget, btn, obj->user);
 }
 
-void UIButtonWidgetObj::on_draw(UIWidget widget, ScreenRenderComponent renderer)
+void UIButtonWidget::on_draw(UIWidget widget, ScreenRenderComponent renderer)
 {
     UIWidgetObj* obj = widget;
     UIContextObj* ctx = obj->window->ctx;
@@ -695,46 +735,6 @@ void UIButtonWidgetObj::on_draw(UIWidget widget, ScreenRenderComponent renderer)
             baseline.x += advanceX;
         }
     }
-}
-
-void UISliderWidgetObj::on_drag(UIWidget widget, MouseButton btn, const Vec2& dragPos, bool begin)
-{
-    UISliderWidgetObj& self = static_cast<UIWidgetObj*>(widget)->as.slider;
-
-    Rect rect = widget.get_rect();
-    self.ratio = std::clamp(((float)dragPos.x - rect.x) / rect.w, 0.0f, 1.0f);
-}
-
-void UISliderWidgetObj::on_draw(UIWidget widget, ScreenRenderComponent renderer)
-{
-    UIWidgetObj* obj = widget;
-    const UITheme& theme = obj->window->ctx->theme;
-    UISliderWidgetObj& self = obj->as.slider;
-    Rect rect = widget.get_rect();
-
-    float sliderw = rect.w * 0.1f;
-    renderer.draw_rect(rect, theme.get_background_color());
-
-    uint32_t color = theme.get_primary_color();
-    if (widget.is_hovered())
-    {
-        color &= ~0xFF;
-        color |= 234;
-    }
-
-    rect.w = sliderw;
-    rect.x += self.ratio * sliderw * 9.0f;
-    renderer.draw_rect(rect, color);
-}
-
-float UISliderWidget::get_value()
-{
-    return mObj->as.slider.value;
-}
-
-float UISliderWidget::get_ratio()
-{
-    return mObj->as.slider.ratio;
 }
 
 bool UIToggleWidget::get_state()

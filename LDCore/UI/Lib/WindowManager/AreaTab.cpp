@@ -367,6 +367,13 @@ AreaTab::AreaTab(UIWindowManagerObj* wm, UIWindow client, UIWindow tabControl, v
     imageWI.rect = &wm->icons.close;
     closeW = rootW.node().add_image(layoutI, imageWI, this);
     closeW.set_on_mouse(&AreaTab::on_close);
+    closeW.set_on_hover([](UIWidget widget, UIEvent event){});
+    closeW.set_on_draw([](UIWidget widget, ScreenRenderComponent renderer) {
+        UITheme theme = widget.get_theme();
+        if (widget.is_hovered())
+            renderer.draw_rect(widget.get_rect(), theme.get_field_color());
+        UIImageWidget::on_draw(widget, renderer);
+    });
 }
 
 void AreaTab::on_close(UIWidget widget, const Vec2& pos, MouseButton btn, UIEvent event)

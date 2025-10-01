@@ -108,7 +108,6 @@ struct UIScrollWidgetObj
     static void cleanup(UIWidgetObj* base);
     static void on_mouse(UIWidget widget, const Vec2& pos, MouseButton btn, UIEvent event);
     static void on_scroll(UIWidget widget, const Vec2& offset);
-    static void on_draw(UIWidget widget, ScreenRenderComponent renderer);
 };
 
 struct UIButtonWidgetObj
@@ -121,7 +120,6 @@ struct UIButtonWidgetObj
 
     static void cleanup(UIWidgetObj* base);
     static void on_mouse(UIWidget widget, const Vec2& pos, MouseButton btn, UIEvent event);
-    static void on_draw(UIWidget widget, ScreenRenderComponent renderer);
 };
 
 struct UISliderWidgetObj
@@ -134,7 +132,6 @@ struct UISliderWidgetObj
     float ratio;
 
     static void on_drag(UIWidget widget, MouseButton btn, const Vec2& dragPos, bool begin);
-    static void on_draw(UIWidget widget, ScreenRenderComponent renderer);
 };
 
 struct UIToggleWidgetObj
@@ -146,7 +143,6 @@ struct UIToggleWidgetObj
 
     static void on_mouse(UIWidget widget, const Vec2& pos, MouseButton btn, UIEvent event);
     static void on_update(UIWidget widget, float delta);
-    static void on_draw(UIWidget widget, ScreenRenderComponent renderer);
 };
 
 struct UITextWidgetObj
@@ -159,7 +155,6 @@ struct UITextWidgetObj
     bool hoverHL;
 
     static void cleanup(UIWidgetObj* base);
-    static void on_draw(UIWidget widget, ScreenRenderComponent renderer);
 };
 
 struct UITextEditWidgetObj
@@ -171,15 +166,12 @@ struct UITextEditWidgetObj
 
     static void cleanup(UIWidgetObj* base);
     static void on_key(UIWidget widget, KeyCode key, UIEvent event);
-    static void on_draw(UIWidget widget, ScreenRenderComponent renderer);
 };
 
 struct UIPanelWidgetObj
 {
     UIWidgetObj* base;
     Color color;
-
-    static void on_draw(UIWidget widget, ScreenRenderComponent renderer);
 };
 
 struct UIImageWidgetObj
@@ -188,8 +180,6 @@ struct UIImageWidgetObj
     RImage imageHandle;
     Rect imageRect;
     Color tint;
-
-    static void on_draw(UIWidget widget, ScreenRenderComponent renderer);
 };
 
 /// @brief UI Widget implementation

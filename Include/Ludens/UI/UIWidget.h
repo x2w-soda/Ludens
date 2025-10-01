@@ -112,6 +112,8 @@ struct UIWidget : Handle<struct UIWidgetObj>
 
 struct UIScrollWidget : UIWidget
 {
+    /// @brief Default scroll widget rendering.
+    static void on_draw(UIWidget widget, ScreenRenderComponent renderer);
 };
 
 struct UIScrollWidgetInfo
@@ -123,6 +125,9 @@ struct UIPanelWidget : UIWidget
 {
     /// @brief Update panel color
     void set_panel_color(Color color);
+
+    /// @brief Default panel widget rendering.
+    static void on_draw(UIWidget widget, ScreenRenderComponent renderer);
 };
 
 struct UIPanelWidgetInfo
@@ -133,6 +138,8 @@ struct UIPanelWidgetInfo
 /// @brief UI button widget.
 struct UIButtonWidget : UIWidget
 {
+    /// @brief Default button widget rendering.
+    static void on_draw(UIWidget widget, ScreenRenderComponent renderer);
 };
 
 struct UIButtonWidgetInfo
@@ -151,6 +158,9 @@ struct UISliderWidget : UIWidget
 
     /// @brief get normalized slider ratio between 0 and 1
     float get_ratio();
+
+    /// @brief Default slider widget rendering.
+    static void on_draw(UIWidget widget, ScreenRenderComponent renderer);
 };
 
 struct UISliderWidgetInfo
@@ -164,6 +174,9 @@ struct UIToggleWidget : UIWidget
 {
     /// @brief return the toggle state.
     bool get_state();
+
+    /// @brief Default image widget rendering.
+    static void on_draw(UIWidget widget, ScreenRenderComponent renderer);
 };
 
 struct UIToggleWidgetInfo
@@ -183,6 +196,9 @@ struct UIImageWidget : UIWidget
 
     /// @brief Set image tint color.
     void set_image_tint(Color color);
+
+    /// @brief Default image widget rendering.
+    static void on_draw(UIWidget widget, ScreenRenderComponent renderer);
 };
 
 struct UIImageWidgetInfo
@@ -194,6 +210,9 @@ struct UIImageWidgetInfo
 struct UITextWidget : UIWidget
 {
     void set_text(const char* cstr);
+
+    /// @brief Default text widget rendering.
+    static void on_draw(UIWidget widget, ScreenRenderComponent renderer);
 };
 
 struct UITextWidgetInfo
@@ -206,6 +225,8 @@ struct UITextWidgetInfo
 
 struct UITextEditWidget : UIWidget
 {
+    /// @brief Default text edit widget rendering.
+    static void on_draw(UIWidget widget, ScreenRenderComponent renderer);
 };
 
 struct UITextEditWidgetInfo
