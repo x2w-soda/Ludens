@@ -253,10 +253,14 @@ void UIWindowManager::resize(const Vec2& screenSize)
     root->invalidate();
 }
 
-void UIWindowManager::render(ScreenRenderComponent renderer)
+void UIWindowManager::render_workspace(ScreenRenderComponent renderer)
 {
     AreaNode* root = mObj->get_root();
     mObj->render_ground(renderer, root);
+}
+
+void UIWindowManager::render_float(ScreenRenderComponent renderer)
+{
     mObj->render_float(renderer);
 }
 

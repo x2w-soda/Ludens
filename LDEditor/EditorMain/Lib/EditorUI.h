@@ -81,6 +81,8 @@ public:
         mViewportWindow.get_gizmo_state(gizmoType, gizmoCenter, gizmoScale, gizmoColor);
     }
 
+    void show_backdrop_window();
+    void hide_backdrop_window();
     void show_version_window();
 
     struct SelectWindowUsage
@@ -111,6 +113,7 @@ private:
     EditorTopBar mTopBar;
     EditorBottomBar mBottomBar;
     UIWindowManager mWM;
+    UIWindow mBackdropWindow;
     UISelectWindow mSelectWindow;
     UIVersionWindow mVersionWindow;
     EViewportWindow mViewportWindow;

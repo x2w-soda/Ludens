@@ -55,9 +55,13 @@ struct UIWindowManager : Handle<struct UIWindowManagerObj>
     /// @brief Update screen size, recalculates area and invokes window resize callback.
     void resize(const Vec2& screenSize);
 
-    /// @brief Invokes RenderCallback on visible areas.
+    /// @brief Render non-floating window areas in the workspace.
     /// @param renderer Screen space renderer dependency.
-    void render(ScreenRenderComponent renderer);
+    void render_workspace(ScreenRenderComponent renderer);
+
+    /// @brief Render floating window areas.
+    /// @param renderer Screen space renderer dependency.
+    void render_float(ScreenRenderComponent renderer);
 
     /// @brief Set window title to be displayed in tab.
     void set_window_title(UIWMAreaID areaID, const char* title);

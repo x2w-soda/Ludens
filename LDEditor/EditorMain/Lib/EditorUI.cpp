@@ -1,4 +1,5 @@
 #include "EditorUI.h"
+#include <Ludens/Application/Application.h>
 #include <Ludens/Application/Event.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <LudensEditor/EditorContext/EditorIconAtlas.h>
@@ -28,11 +29,24 @@ void EditorUI::startup(const EditorUIInfo& info)
     UIWMAreaID viewportArea = mWM.get_root_area();
     UIWMAreaID outlinerArea = mWM.split_right(viewportArea, 0.7f);
     UIWMAreaID inspectorArea = mWM.split_bottom(outlinerArea, 0.5f);
+    UIContext uiCtx = mWM.get_context();
+
+    UILayoutInfo layoutI{};
+    layoutI.sizeX = UISize::fixed(info.screenWidth);
+    layoutI.sizeY = UISize::fixed(info.screenHeight);
+    UIWindowInfo windowI{};
+    windowI.name = "backdrop";
+    windowI.hidden = true;
+    mBackdropWindow = uiCtx.add_window(layoutI, windowI, this);
+    mBackdropWindow.set_pos(Vec2(0.0f, 0.0f));
+    mBackdropWindow.set_on_draw([](UIWidget widget, ScreenRenderComponent renderer) {
+        renderer.draw_rect(widget.get_rect(), 0x101010C0);
+    });
 
     // the EditorUI class has an additional Top Bar and Bottom Bar
     EditorTopBarInfo topBarI{};
     topBarI.barHeight = (float)info.barHeight;
-    topBarI.context = mWM.get_context();
+    topBarI.context = uiCtx;
     topBarI.editorUI = this;
     topBarI.editorTheme = mCtx.get_theme();
     topBarI.screenSize = wmI.screenSize;
@@ -125,7 +139,7 @@ void EditorUI::on_render(ScreenRenderComponent renderer, void* user)
     EditorUI& self = *(EditorUI*)user;
 
     // draw workspace windows
-    self.mWM.render(renderer);
+    self.mWM.render_workspace(renderer);
 
     // draw top bar and bottom bar
     UIWindow topbar = self.mTopBar.get_handle();
@@ -133,6 +147,12 @@ void EditorUI::on_render(ScreenRenderComponent renderer, void* user)
 
     UIWindow bottomBar = self.mBottomBar.get_handle();
     bottomBar.draw(renderer);
+
+    // draw backdrop window
+    self.mBackdropWindow.draw(renderer);
+
+    // draw floating windows
+    self.mWM.render_float(renderer);
 }
 
 void EditorUI::on_overlay_render(ScreenRenderComponent renderer, void* user)
@@ -170,6 +190,7 @@ void EditorUI::ECB::select_asset(AssetType type, AUID currentID, void* user)
         EditorContext ctx = self.mCtx;
 
         self.mWM.hide_float(self.mSelectWindowID);
+        self.hide_backdrop_window();
 
         std::string stem = path.stem().string();
         const char* assetName = stem.c_str();
@@ -182,8 +203,10 @@ void EditorUI::ECB::select_asset(AssetType type, AUID currentID, void* user)
     usage.onCancel = [](void* user) {
         EditorUI& self = *(EditorUI*)user;
         self.mWM.hide_float(self.mSelectWindowID);
+        self.hide_backdrop_window();
     };
 
+    self.show_backdrop_window();
     self.show_select_window(usage);
 }
 
@@ -200,6 +223,7 @@ void EditorUI::ECB::add_script_to_component(CUID compID, void* user)
         self.mState.compID = 0;
 
         self.mWM.hide_float(self.mSelectWindowID);
+        self.hide_backdrop_window();
 
         if (!ctx.get_component_base(compID))
             return; // component out of date
@@ -216,9 +240,23 @@ void EditorUI::ECB::add_script_to_component(CUID compID, void* user)
     usage.onCancel = [](void* user) {
         EditorUI& self = *(EditorUI*)user;
         self.mWM.hide_float(self.mSelectWindowID);
+        self.hide_backdrop_window();
     };
 
     self.show_select_window(usage);
+}
+
+void EditorUI::show_backdrop_window()
+{
+    Application app = Application::get();
+    mBackdropWindow.set_size(Vec2(app.width(), app.height()));
+    mBackdropWindow.raise();
+    mBackdropWindow.show();
+}
+
+void EditorUI::hide_backdrop_window()
+{
+    mBackdropWindow.hide();
 }
 
 void EditorUI::show_version_window()
@@ -269,8 +307,12 @@ void EditorUI::show_select_window(const SelectWindowUsage& usage)
 
             UISelectWindow::destroy(self.mSelectWindow);
             self.mSelectWindow = {};
+
+            self.hide_backdrop_window();
         });
     }
+
+    show_backdrop_window();
 
     mSelectWindow.set_on_select(usage.onSelect, usage.user);
     mSelectWindow.set_on_cancel(usage.onCancel);
