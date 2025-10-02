@@ -39,6 +39,7 @@ UIAssetSlotWidget UIAssetSlotWidget::create(const UIAssetSlotWidgetInfo& info)
 
     UILayoutInfo layoutI{};
     layoutI.childAxis = UI_AXIS_X;
+    layoutI.childGap = 10.0f;
     layoutI.sizeX = UISize::grow();
     layoutI.sizeY = UISize::fit();
     UIPanelWidgetInfo panelWI{};

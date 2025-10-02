@@ -21,6 +21,10 @@ struct
     { EditorIcon::LinearScale, Vec2(0, 240) },
     { EditorIcon::PlayArrow,   Vec2(48, 0) },
     { EditorIcon::Code,        Vec2(48, 48) },
+    { EditorIcon::ArrowBack,     Vec2(0, 144) },
+    { EditorIcon::ArrowDownward, Vec2(48, 144) },
+    { EditorIcon::ArrowForward,  Vec2(96, 144) },
+    { EditorIcon::ArrowUpward,   Vec2(144, 144) },
 };
 // clang-format on
 

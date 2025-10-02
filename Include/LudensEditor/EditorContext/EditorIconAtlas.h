@@ -17,6 +17,10 @@ enum class EditorIcon
     LinearScale,
     PlayArrow,
     Code,
+    ArrowBack,
+    ArrowDownward,
+    ArrowForward,
+    ArrowUpward,
     ENUM_COUNT,
 };
 

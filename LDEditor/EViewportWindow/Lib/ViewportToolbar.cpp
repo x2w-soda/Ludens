@@ -42,6 +42,13 @@ void ViewportToolbar::startup(EditorContext eCtx, UIContext uiCtx, float width, 
     iconRect = EditorIconAtlas::get_icon_rect(EditorIcon::PlayArrow);
     playIcon = window.node().add_image(layoutI, imageWI, this);
     playIcon.set_on_mouse(&ViewportToolbar::on_press_play_stop_icon);
+    playIcon.set_on_hover([](UIWidget, UIEvent) {});
+    playIcon.set_on_draw([](UIWidget widget, ScreenRenderComponent renderer) {
+        UITheme theme = widget.get_theme();
+        if (widget.is_hovered())
+            renderer.draw_rect(widget.get_rect(), theme.get_field_color());
+        UIImageWidget::on_draw(widget, renderer);
+    });
 
     display(true);
 }

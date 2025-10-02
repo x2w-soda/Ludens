@@ -20,7 +20,7 @@ struct TopBar
 
     UISelectWindowObj* windowObj;
     UIPanelWidget rootW;
-    UIButtonWidget upwardsW; // TODO: icon
+    UIImageWidget upwardsW;
     UITextWidget pathTextW;
 };
 
@@ -93,17 +93,25 @@ void TopBar::startup(UISelectWindowObj* obj, UINode parent)
     panelWI.color = {};
     rootW = parent.add_panel(layoutI, panelWI, nullptr);
 
-    layoutI.sizeX = UISize::fixed(30);
-    layoutI.sizeY = UISize::grow();
-    UIButtonWidgetInfo buttonWI{};
-    buttonWI.text = "P";
-    buttonWI.textColor = 0xFFFFFFFF;
-    buttonWI.transparentBG = false;
-    buttonWI.on_press = [](UIButtonWidget w, MouseButton btn, void* user) {
-        TopBar& self = *(TopBar*)user;
-        self.windowObj->display_parent();
-    };
-    upwardsW = rootW.node().add_button(layoutI, buttonWI, this);
+    layoutI.sizeX = UISize::fixed(fontSize * 1.2f);
+    layoutI.sizeY = UISize::fixed(fontSize * 1.2f);
+    Rect iconRect = EditorIconAtlas::get_icon_rect(EditorIcon::ArrowUpward);
+    UIImageWidgetInfo imageWI{};
+    imageWI.image = windowObj->editorCtx.get_editor_icon_atlas();
+    imageWI.rect = &iconRect;
+    upwardsW = rootW.node().add_image(layoutI, imageWI, this);
+    upwardsW.set_on_hover([](UIWidget, UIEvent) {});
+    upwardsW.set_on_mouse([](UIWidget widget, const Vec2& pos, MouseButton btn, UIEvent event) {
+        TopBar& self = *(TopBar*)widget.get_user();
+        if (btn == MOUSE_BUTTON_LEFT && event == UI_MOUSE_DOWN)
+            self.windowObj->display_parent();
+    });
+    upwardsW.set_on_draw([](UIWidget widget, ScreenRenderComponent renderer) {
+        UITheme theme = widget.get_theme();
+        if (widget.is_hovered())
+            renderer.draw_rect(widget.get_rect(), theme.get_field_color());
+        UIImageWidget::on_draw(widget, renderer);
+    });
 
     UITextWidgetInfo textWI{};
     textWI.fontSize = fontSize;
@@ -185,6 +193,7 @@ void UISelectWindowObj::display(const FS::Path& directory)
 
     FS::filter_files_by_extension(contents, extFilter.c_str());
 
+    containerW.set_scroll_offset_y(0.0f);
     currentDir = directory;
     topBar.display(currentDir);
 

@@ -130,6 +130,13 @@ EInspectorWindow EInspectorWindow::create(const EInspectorWindowInfo& windowI)
     obj->slotW = UIAssetSlotWidget::create(slotWI);
     obj->slotW.hide();
 
+    float pad = theme.get_padding();
+    UIWindow inspectorWindow = wm.get_area_window(windowI.areaID);
+    UIPadding padding{};
+    padding.left = pad;
+    padding.right = pad;
+    inspectorWindow.set_layout_child_padding(padding);
+
     obj->editorCtx.add_observer(&EInspectorWindowObj::on_editor_context_event, obj);
 
     return {obj};
