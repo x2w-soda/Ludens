@@ -27,6 +27,13 @@ struct UISelectWindow : Handle<struct UISelectWindowObj>
     /// @brief Get UI framework window handle.
     UIWindow get_handle();
 
+    /// @brief Set directory to display.
+    void set_directory(const FS::Path& directory);
+
+    /// @brief Filter files by extension.
+    /// @param extension File extension not including '.', or nullptr to disable filter.
+    void set_extension_filter(const char* extension);
+
     /// @brief Set callback when item is selected.
     void set_on_select(void (*onSelect)(const FS::Path& path, void* user), void* user);
 

@@ -205,6 +205,8 @@ void EditorUI::ECB::select_asset(AssetType type, AUID currentID, void* user)
         self.mWM.hide_float(self.mSelectWindowID);
         self.hide_backdrop_window();
     };
+    usage.extensionFilter = "ldb";
+    usage.directoryPath = self.mCtx.get_project_directory();
 
     self.show_backdrop_window();
     self.show_select_window(usage);
@@ -242,6 +244,8 @@ void EditorUI::ECB::add_script_to_component(CUID compID, void* user)
         self.mWM.hide_float(self.mSelectWindowID);
         self.hide_backdrop_window();
     };
+    usage.extensionFilter = "lua";
+    usage.directoryPath = self.mCtx.get_project_directory();
 
     self.show_select_window(usage);
 }
@@ -314,6 +318,8 @@ void EditorUI::show_select_window(const SelectWindowUsage& usage)
 
     show_backdrop_window();
 
+    mSelectWindow.set_directory(usage.directoryPath);
+    mSelectWindow.set_extension_filter(usage.extensionFilter);
     mSelectWindow.set_on_select(usage.onSelect, usage.user);
     mSelectWindow.set_on_cancel(usage.onCancel);
 

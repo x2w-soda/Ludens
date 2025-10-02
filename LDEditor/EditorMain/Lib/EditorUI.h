@@ -4,6 +4,7 @@
 #include "EditorTopBar.h"
 #include <Ludens/Media/Font.h>
 #include <Ludens/RenderComponent/SceneOverlayComponent.h>
+#include <Ludens/System/FileSystem.h>
 #include <Ludens/UI/UIContext.h>
 #include <Ludens/UI/UIWindow.h>
 #include <Ludens/UI/UIWindowManager.h>
@@ -89,6 +90,8 @@ public:
     {
         void (*onSelect)(const FS::Path& path, void* user);
         void (*onCancel)(void* user);
+        const char* extensionFilter;
+        FS::Path directoryPath;
         void* user;
     };
 

@@ -65,6 +65,7 @@ struct UISelectWindowObj
     UITextWidget contentTextW;
     UIScrollWidget containerW;
     std::vector<Item*> items;
+    std::string extFilter;
     void (*onSelect)(const FS::Path& path, void* user) = nullptr;
     void (*onCancel)(void* user) = nullptr;
     void* user = nullptr;
@@ -177,13 +178,12 @@ void UISelectWindowObj::Item::display(const FS::Path& itemPath)
 
 void UISelectWindowObj::display(const FS::Path& directory)
 {
-    if (currentDir == directory)
-        return;
-
     std::vector<FS::Path> contents;
     std::string err;
     if (!FS::get_directory_content(directory, contents, err))
         return;
+
+    FS::filter_files_by_extension(contents, extFilter.c_str());
 
     currentDir = directory;
     topBar.display(currentDir);
@@ -404,6 +404,27 @@ void UISelectWindow::destroy(UISelectWindow window)
 UIWindow UISelectWindow::get_handle()
 {
     return mObj->root;
+}
+
+void UISelectWindow::set_directory(const FS::Path& directory)
+{
+    mObj->currentDir = directory;
+    mObj->display(mObj->currentDir);
+}
+
+void UISelectWindow::set_extension_filter(const char* ext)
+{
+    if (!ext)
+    {
+        mObj->extFilter.clear();
+        return;
+    }
+
+    while (ext[0] == '.')
+        ext++;
+
+    mObj->extFilter = std::string(ext);
+    mObj->display(mObj->currentDir);
 }
 
 void UISelectWindow::set_on_select(void (*onSelect)(const FS::Path& path, void* user), void* user)
