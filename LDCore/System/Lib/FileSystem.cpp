@@ -1,5 +1,6 @@
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/System/FileSystem.h>
+#include <cstring>
 #include <fstream>
 
 namespace LD {
@@ -94,6 +95,34 @@ bool exists(const Path& path)
 bool is_directory(const Path& path)
 {
     return fs::exists(path) && fs::is_directory(path);
+}
+
+void filter_files_by_extension(std::vector<FS::Path>& paths, const char* extension)
+{
+    if (!extension || strlen(extension) == 0)
+        return;
+
+    while (extension[0] == '.')
+        extension++;
+
+    std::string filterExt(extension);
+
+    paths.erase(std::remove_if(
+                    paths.begin(), paths.end(),
+                    [&](const FS::Path& path) {
+                        if (!fs::is_regular_file(path))
+                            return false;
+
+                        std::string pathExt = path.extension().string();
+                        if (pathExt.empty())
+                            return true;
+
+                        if (pathExt.starts_with("."))
+                            pathExt = pathExt.substr(1);
+
+                        return pathExt != filterExt;
+                    }),
+                paths.end());
 }
 
 } // namespace FS

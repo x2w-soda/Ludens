@@ -33,5 +33,10 @@ bool exists(const Path& path);
 /// @brief Check if path exists and is a directory.
 bool is_directory(const Path& path);
 
+/// @brief Filter files using extensions.
+/// @param paths Vector of paths, directories are not disturbed.
+/// @param extension File extension to filter files.
+void filter_files_by_extension(std::vector<FS::Path>& paths, const char* extension);
+
 } // namespace FS
 } // namespace LD
