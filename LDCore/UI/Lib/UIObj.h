@@ -102,8 +102,13 @@ struct UIContextObj
 struct UIScrollWidgetObj
 {
     UIWidgetObj* base;
-    Vec2 offset;
+    float offsetXDst;   // destination value for scrollOffset x
+    float offsetYDst;   // destination value for scrollOffset y
+    float offsetXSpeed; // animation speed for scrollOffset x
+    float offsetYSpeed; // animation speed for scrollOffset y
     bool hasScrollBar;
+
+    void clamp_dst_offset();
 
     static void cleanup(UIWidgetObj* base);
     static void on_mouse(UIWidget widget, const Vec2& pos, MouseButton btn, UIEvent event);

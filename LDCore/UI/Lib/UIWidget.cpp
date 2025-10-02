@@ -239,9 +239,14 @@ UIScrollWidget UINode::add_scroll(const UILayoutInfo& layoutI, const UIScrollWid
 {
     UIWindowObj* window = mObj->window;
     UIWidgetObj* obj = window->ctx->alloc_widget(UI_WIDGET_SCROLL, layoutI, mObj, user);
+    obj->as.scroll.base = obj;
     obj->as.scroll.hasScrollBar = widgetI.hasScrollBar;
-    obj->as.scroll.offset = Vec2(0.0f);
+    obj->as.scroll.offsetXDst = 0.0f;
+    obj->as.scroll.offsetXSpeed = 0.0f;
+    obj->as.scroll.offsetYDst = 0.0f;
+    obj->as.scroll.offsetYSpeed = 0.0f;
     obj->cb.onDraw = &UIScrollWidget::on_draw;
+    obj->cb.onUpdate = &UIScrollWidget::on_update;
     obj->cb.onMouse = &UIScrollWidgetObj::on_mouse;
     obj->cb.onScroll = &UIScrollWidgetObj::on_scroll;
     obj->flags |= UI_WIDGET_FLAG_DRAW_WITH_SCISSOR_BIT;
@@ -256,15 +261,78 @@ void UIScrollWidgetObj::cleanup(UIWidgetObj* base)
 
 void UIScrollWidgetObj::on_scroll(UIWidget widget, const Vec2& offset)
 {
-    UIWidgetObj* obj = (UIWidgetObj*)widget;
-    float sensitivity = 10.0f;
-    
-    obj->scrollOffset = obj->scrollOffset + offset * sensitivity;
+    UIWidgetObj* base = (UIWidgetObj*)widget;
+    UIScrollWidgetObj& self = base->as.scroll;
+
+    const float sensitivity = 20.0f;
+    const float animDuration = 0.8f;
+
+    if (offset.x != 0.0f)
+    {
+        self.offsetXDst += offset.x * sensitivity;
+        if (self.offsetXDst > 0.0f)
+            self.offsetXDst = 0.0f;
+
+        self.offsetXSpeed = (self.offsetXDst - base->scrollOffset.x) / animDuration;
+    }
+
+    if (offset.y != 0.0f)
+    {
+        self.offsetYDst += offset.y * sensitivity;
+        if (self.offsetYDst > 0.0f)
+            self.offsetYDst = 0.0f;
+
+        self.offsetYSpeed = (self.offsetYDst - base->scrollOffset.y) / animDuration;
+    }
 }
 
 void UIScrollWidgetObj::on_mouse(UIWidget widget, const Vec2& pos, MouseButton btn, UIEvent event)
 {
     // TODO:
+}
+
+void UIScrollWidget::set_scroll_offset_x(float offset)
+{
+    mObj->scrollOffset.x = offset;
+    mObj->as.scroll.offsetXDst = offset;
+    mObj->as.scroll.offsetXSpeed = 0.0f;
+}
+
+void UIScrollWidget::set_scroll_offset_y(float offset)
+{
+    mObj->scrollOffset.y = offset;
+    mObj->as.scroll.offsetYDst = offset;
+    mObj->as.scroll.offsetYSpeed = 0.0f;
+}
+
+void UIScrollWidget::on_update(UIWidget widget, float delta)
+{
+    UIWidgetObj* base = widget.unwrap();
+    UIScrollWidgetObj& self = base->as.scroll;
+
+    if (self.offsetXSpeed != 0.0f)
+    {
+        base->scrollOffset.x += self.offsetXSpeed * delta;
+
+        if ((self.offsetXSpeed > 0.0f && base->scrollOffset.x > self.offsetXDst) ||
+            (self.offsetXSpeed < 0.0f && base->scrollOffset.x < self.offsetXDst))
+        {
+            base->scrollOffset.x = self.offsetXDst;
+            self.offsetXSpeed = 0.0f;
+        }
+    }
+
+    if (self.offsetYSpeed != 0.0f)
+    {
+        base->scrollOffset.y += self.offsetYSpeed * delta;
+
+        if ((self.offsetYSpeed > 0.0f && base->scrollOffset.y > self.offsetYDst) ||
+            (self.offsetYSpeed < 0.0f && base->scrollOffset.y < self.offsetYDst))
+        {
+            base->scrollOffset.y = self.offsetYDst;
+            self.offsetYSpeed = 0.0f;
+        }
+    }
 }
 
 void UIScrollWidget::on_draw(UIWidget widget, ScreenRenderComponent renderer)
@@ -273,7 +341,7 @@ void UIScrollWidget::on_draw(UIWidget widget, ScreenRenderComponent renderer)
     UIContextObj& ctx = *obj->window->ctx;
     const UITheme& theme = ctx.theme;
 
-    renderer.draw_rect_outline(widget.get_rect(), 1.0f, 0x00FF00FF);
+    // renderer.draw_rect_outline(widget.get_rect(), 1.0f, 0x00FF00FF);
 }
 
 //
