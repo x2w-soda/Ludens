@@ -94,6 +94,11 @@ Mat4 EditorContext::render_server_transform_callback(RUID ruid, void* user)
     return self.scene.get_ruid_transform_mat4(ruid);
 }
 
+FS::Path EditorContext::get_project_directory()
+{
+    return mObj->projectDirPath;
+}
+
 EditorSettings EditorContext::get_settings()
 {
     return mObj->settings;
