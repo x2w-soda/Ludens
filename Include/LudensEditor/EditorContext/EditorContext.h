@@ -32,6 +32,9 @@ struct EditorContext : Handle<struct EditorContextObj>
     /// @brief Callback to inform the render server the transforms of RUIDs
     static Mat4 render_server_transform_callback(RUID ruid, void* user);
 
+    /// @brief Get directory of current project.
+    FS::Path get_project_directory();
+
     /// @brief Get editor global settings
     EditorSettings get_settings();
 

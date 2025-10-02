@@ -4,6 +4,7 @@ set(MODULE_LIB
 	Lib/EditorContext.cpp
 	Lib/EditorSettings.cpp
 	Lib/EditorIconAtlas.cpp
+	Lib/EditStack.cpp
 )
 
 set(MODULE_INCLUDE
@@ -13,6 +14,7 @@ set(MODULE_INCLUDE
 	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorContext/EditorWindowObj.h
 	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorContext/EditorCallback.h
 	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorContext/EditorIconAtlas.h
+	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorContext/EditStack.h
 )
 
 add_library(${MODULE_NAME}
