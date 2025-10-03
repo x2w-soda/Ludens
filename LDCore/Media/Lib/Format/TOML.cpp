@@ -1,6 +1,6 @@
 #include <Ludens/Media/Format/TOML.h>
+#include <Ludens/Profiler/Profiler.h>
 #include <Ludens/System/Allocator.h>
-#include <Ludens/System/FileSystem.h>
 #include <Ludens/System/Memory.h>
 #include <cstdint>
 #include <iostream>
@@ -29,6 +29,9 @@ static_assert(std::is_same_v<toml::value::config_type::integer_type, std::int64_
 // default to using 64-bit IEEE 754 for TOML floats
 static_assert(std::is_same_v<toml::value::config_type::floating_type, double>);
 
+// default to using C++ STL basic_string
+static_assert(std::is_same_v<toml::value::config_type::string_type, std::string>);
+
 struct TOMLValueObj
 {
     toml::value val;
@@ -39,7 +42,7 @@ struct TOMLValueObj
 struct TOMLDocumentObj
 {
     PoolAllocator valuePA;
-    byte* fileBuffer;
+    byte* fileBuffer = nullptr;
     toml::value root;
 
     void free_values()
@@ -80,12 +83,30 @@ bool TOMLValue::is_bool(bool& boolean) const
     return true;
 }
 
+bool TOMLValue::set_bool(bool boolean)
+{
+    if (get_type() != TOML_TYPE_BOOL)
+        return false;
+
+    mObj->val.as_boolean() = boolean;
+    return true;
+}
+
 bool TOMLValue::is_i64(int64_t& i64) const
 {
     if (get_type() != TOML_TYPE_INT)
         return false;
 
     i64 = (int64_t)mObj->val.as_integer();
+    return true;
+}
+
+bool TOMLValue::set_i64(int64_t i64)
+{
+    if (get_type() != TOML_TYPE_INT)
+        return false;
+
+    mObj->val.as_integer() = i64;
     return true;
 }
 
@@ -99,6 +120,16 @@ bool TOMLValue::is_i32(int32_t& i32) const
     return true;
 }
 
+bool TOMLValue::set_i32(int32_t i32)
+{
+    if (get_type() != TOML_TYPE_INT)
+        return false;
+
+    // safe upcast to 64-bit signed.
+    mObj->val.as_integer() = (int64_t)i32;
+    return true;
+}
+
 bool TOMLValue::is_u32(uint32_t& u32) const
 {
     if (get_type() != TOML_TYPE_INT)
@@ -109,38 +140,50 @@ bool TOMLValue::is_u32(uint32_t& u32) const
     return true;
 }
 
+bool TOMLValue::set_u32(uint32_t u32)
+{
+    if (get_type() != TOML_TYPE_INT)
+        return false;
+
+    // safe upcast to 64-bit signed.
+    mObj->val.as_integer() = (int64_t)u32;
+    return true;
+}
+
 bool TOMLValue::is_f64(double& f64) const
 {
-    TOMLType type = get_type();
+    if (get_type() != TOML_TYPE_FLOAT)
+        return false;
 
-    switch (type)
-    {
-    case TOML_TYPE_FLOAT:
-        f64 = (double)mObj->val.as_floating();
-        return true;
-    case TOML_TYPE_INT:
-        f64 = (double)mObj->val.as_integer();
-        return true;
-    }
+    f64 = (double)mObj->val.as_floating();
+    return true;
+}
 
-    return false;
+bool TOMLValue::set_f64(double f64)
+{
+    if (get_type() != TOML_TYPE_FLOAT)
+        return false;
+
+    mObj->val.as_floating() = f64;
+    return true;
 }
 
 bool TOMLValue::is_f32(float& f32) const
 {
-    TOMLType type = get_type();
+    if (get_type() != TOML_TYPE_FLOAT)
+        return false;
 
-    switch (type)
-    {
-    case TOML_TYPE_FLOAT:
-        f32 = (float)mObj->val.as_floating();
-        return true;
-    case TOML_TYPE_INT:
-        f32 = (float)mObj->val.as_integer();
-        return true;
-    }
+    f32 = (float)mObj->val.as_floating();
+    return true;
+}
 
-    return false;
+bool TOMLValue::set_f32(float f32)
+{
+    if (get_type() != TOML_TYPE_FLOAT)
+        return false;
+
+    mObj->val.as_floating() = (double)f32;
+    return true;
 }
 
 bool TOMLValue::is_string(std::string& string) const
@@ -149,6 +192,15 @@ bool TOMLValue::is_string(std::string& string) const
         return false;
 
     string = mObj->val.as_string();
+    return true;
+}
+
+bool TOMLValue::set_string(const std::string& string)
+{
+    if (get_type() != TOML_TYPE_STRING)
+        return false;
+
+    mObj->val.as_string() = string;
     return true;
 }
 
@@ -281,6 +333,17 @@ TOMLValue TOMLDocument::get(const char* name)
     value->val = toml::find(mObj->root, name);
 
     return TOMLValue(value);
+}
+
+bool TOMLDocument::save_to_disk(const FS::Path& path)
+{
+    LD_PROFILE_SCOPE;
+
+    if (!mObj->root.is_table())
+        return false;
+
+    std::string str = toml::format(mObj->root);
+    return FS::write_file(path, str.size(), (byte*)str.data());
 }
 
 } // namespace LD
