@@ -25,9 +25,19 @@ static int transform_get_rotation(lua_State* l);
 static int transform_set_rotation(lua_State* l);
 static int transform_get_scale(lua_State* l);
 static int transform_set_scale(lua_State* l);
+static int transform2d_get_position(lua_State* l);
+static int transform2d_set_position(lua_State* l);
+static int transform2d_get_rotation(lua_State* l);
+static int transform2d_set_rotation(lua_State* l);
+static int transform2d_get_scale(lua_State* l);
+static int transform2d_set_scale(lua_State* l);
+static int component_get_id(lua_State* l);
 static int component_get_name(lua_State* l);
+static int component_set_name(lua_State* l);
 static void push_transform_table(DataRegistry reg, LuaState L, CUID compID, Transform* transform);
+static void push_transform2d_table(DataRegistry reg, LuaState L, CUID compID, Transform2D* transform);
 static void push_mesh_component_table(DataRegistry reg, LuaState L, CUID compID, void* comp);
+static void push_sprite2d_component_table(DataRegistry reg, LuaState L, CUID compID, void* comp);
 static void install_component_base(DataRegistry reg, LuaState& L, CUID compID);
 static int application_exit(lua_State* l);
 static int debug_log(lua_State* l);
@@ -241,6 +251,119 @@ static int transform_set_scale(lua_State* l)
     return 0;
 }
 
+/// @brief Transform2D:get_position()
+static int transform2d_get_position(lua_State* l)
+{
+    LuaState L(l);
+
+    L.get_field(-1, "_ud");
+    LD_ASSERT(L.get_type(-1) == LUA_TYPE_LIGHTUSERDATA);
+
+    Transform2D* transform = (Transform2D*)L.to_userdata(-1);
+    L.push_vec2(transform->position);
+
+    return 1;
+}
+
+/// @brief Transform2D:set_position(Vec2)
+static int transform2d_set_position(lua_State* l)
+{
+    LuaState L(l);
+
+    L.get_field(-2, "_ud");
+    LD_ASSERT(L.get_type(-1) == LUA_TYPE_LIGHTUSERDATA);
+
+    Transform2D* transform = (Transform2D*)L.to_userdata(-1);
+    transform->scale = L.to_vec2(-2);
+    L.pop(1);
+
+    DataRegistry reg;
+    CUID compID;
+    get_transform_cuid(L, -2, compID, reg);
+    reg.mark_component_transform_dirty(compID);
+
+    return 0;
+}
+
+/// @brief Transform2D:get_rotation()
+static int transform2d_get_rotation(lua_State* l)
+{
+    LuaState L(l);
+
+    L.get_field(-1, "_ud");
+    LD_ASSERT(L.get_type(-1) == LUA_TYPE_LIGHTUSERDATA);
+
+    Transform2D* transform = (Transform2D*)L.to_userdata(-1);
+    L.push_number((double)transform->rotation);
+
+    return 1;
+}
+
+/// @brief Transform2D:set_rotation(number)
+static int transform2d_set_rotation(lua_State* l)
+{
+    LuaState L(l);
+
+    L.get_field(-2, "_ud");
+    LD_ASSERT(L.get_type(-1) == LUA_TYPE_LIGHTUSERDATA);
+
+    Transform2D* transform = (Transform2D*)L.to_userdata(-1);
+    transform->scale = (float)L.to_number(-2);
+    L.pop(1);
+
+    DataRegistry reg;
+    CUID compID;
+    get_transform_cuid(L, -2, compID, reg);
+    reg.mark_component_transform_dirty(compID);
+
+    return 0;
+}
+
+/// @brief Transform2D:get_scale()
+static int transform2d_get_scale(lua_State* l)
+{
+    LuaState L(l);
+
+    L.get_field(-1, "_ud");
+    LD_ASSERT(L.get_type(-1) == LUA_TYPE_LIGHTUSERDATA);
+
+    Transform2D* transform = (Transform2D*)L.to_userdata(-1);
+    L.push_vec2(transform->scale);
+
+    return 1;
+}
+
+/// @brief Transform2D:set_scale(Vec2)
+static int transform2d_set_scale(lua_State* l)
+{
+    LuaState L(l);
+
+    L.get_field(-2, "_ud");
+    LD_ASSERT(L.get_type(-1) == LUA_TYPE_LIGHTUSERDATA);
+
+    Transform2D* transform = (Transform2D*)L.to_userdata(-1);
+    transform->scale = L.to_vec2(-2);
+    L.pop(1);
+
+    DataRegistry reg;
+    CUID compID;
+    get_transform_cuid(L, -2, compID, reg);
+    reg.mark_component_transform_dirty(compID);
+
+    return 0;
+}
+
+/// @brief Component:get_id()
+int component_get_id(lua_State* l)
+{
+    LuaState L(l);
+
+    ComponentBase* base = get_component_base(L, nullptr);
+    L.push_number((double)base->id);
+
+    return 1;
+}
+
 /// @brief Component:get_name()
 static int component_get_name(lua_State* l)
 {
@@ -250,6 +373,25 @@ static int component_get_name(lua_State* l)
     L.push_string(base->name);
 
     return 1;
+}
+
+/// @brief Component:set_name(string)
+static int component_set_name(lua_State* l)
+{
+    LuaState L(l);
+
+    if (L.get_type(-1) != LUA_TYPE_STRING)
+        return 0;
+
+    L.push_value(-2);
+    ComponentBase* base = get_component_base(L, nullptr);
+    LD_ASSERT(base && base->name);
+    L.pop(1);
+
+    heap_free(base->name);
+    base->name = heap_strdup(L.to_string(-1), MEMORY_USAGE_MISC);
+
+    return 0;
 }
 
 /// @brief Pushes a lua table representing a Transform.
@@ -285,6 +427,39 @@ static void push_transform_table(DataRegistry reg, LuaState L, CUID compID, Tran
     L.set_field(-2, "set_scale");
 }
 
+/// @brief Pushes a lua table representing a Transform2D.
+void push_transform2d_table(DataRegistry reg, LuaState L, CUID compID, Transform2D* transform)
+{
+    L.push_table(); // Transform2D
+
+    L.push_light_userdata(transform);
+    L.set_field(-2, "_ud");
+
+    L.push_light_userdata(reg.unwrap());
+    L.set_field(-2, "_reg");
+
+    L.push_number((double)compID);
+    L.set_field(-2, "_cuid");
+
+    L.push_fn(&transform2d_get_position);
+    L.set_field(-2, "get_position");
+
+    L.push_fn(&transform2d_set_position);
+    L.set_field(-2, "set_position");
+
+    L.push_fn(&transform2d_get_rotation);
+    L.set_field(-2, "get_rotation");
+
+    L.push_fn(&transform2d_set_rotation);
+    L.set_field(-2, "set_rotation");
+
+    L.push_fn(&transform2d_get_scale);
+    L.set_field(-2, "get_scale");
+
+    L.push_fn(&transform2d_set_scale);
+    L.set_field(-2, "set_scale");
+}
+
 static void push_mesh_component_table(DataRegistry reg, LuaState L, CUID compID, void* comp)
 {
     MeshComponent* meshC = (MeshComponent*)comp;
@@ -293,6 +468,17 @@ static void push_mesh_component_table(DataRegistry reg, LuaState L, CUID compID,
     install_component_base(reg, L, compID);
 
     push_transform_table(reg, L, compID, &meshC->transform);
+    L.set_field(-2, "transform");
+}
+
+void push_sprite2d_component_table(DataRegistry reg, LuaState L, CUID compID, void* comp)
+{
+    Sprite2DComponent* spriteC = (Sprite2DComponent*)comp;
+
+    L.push_table(); // Sprite2D component
+    install_component_base(reg, L, compID);
+
+    push_transform2d_table(reg, L, compID, &spriteC->transform);
     L.set_field(-2, "transform");
 }
 
@@ -309,8 +495,14 @@ static void install_component_base(DataRegistry reg, LuaState& L, CUID compID)
     L.push_number((double)compID);
     L.set_field(-2, "_cuid");
 
+    L.push_fn(&component_get_id);
+    L.set_field(-2, "get_id");
+
     L.push_fn(&component_get_name);
     L.set_field(-2, "get_name");
+
+    L.push_fn(&component_set_name);
+    L.set_field(-2, "set_name");
 
     LD_ASSERT(L.size() == oldSize);
 }
@@ -324,7 +516,7 @@ struct
     {COMPONENT_TYPE_DATA,       nullptr},
     {COMPONENT_TYPE_TRANSFORM,  nullptr},
     {COMPONENT_TYPE_MESH,       &push_mesh_component_table},
-    {COMPONENT_TYPE_TEXTURE_2D, nullptr},
+    {COMPONENT_TYPE_SPRITE_2D,  &push_sprite2d_component_table},
 };
 // clang-format on
 

@@ -30,7 +30,7 @@ enum ComponentType
     COMPONENT_TYPE_DATA = 0,
     COMPONENT_TYPE_TRANSFORM,
     COMPONENT_TYPE_MESH,
-    COMPONENT_TYPE_TEXTURE_2D,
+    COMPONENT_TYPE_SPRITE_2D,
     COMPONENT_TYPE_ENUM_COUNT,
 };
 
@@ -85,11 +85,11 @@ struct MeshComponent
 
 /// @brief Render data to draw a texture in 2D space
 /// @warning Placeholder implementation, this is very immature
-struct Texture2DComponent
+struct Sprite2DComponent
 {
+    Transform2D transform; /// sprite 2D transform
     RImage image;          /// image handle
-    Transform2D transform; /// texture 2D transform
-    float zDepth;          /// texture z depth
+    int32_t zDepth;        /// sprite z depth
     AUID auid;             /// texture asset handle
 };
 

@@ -81,7 +81,7 @@ static SceneComponent sSceneComponents[] = {
     {COMPONENT_TYPE_DATA,       nullptr},
     {COMPONENT_TYPE_TRANSFORM,  nullptr},
     {COMPONENT_TYPE_MESH,       prepare_mesh_component},
-    {COMPONENT_TYPE_TEXTURE_2D, nullptr},
+    {COMPONENT_TYPE_SPRITE_2D,  nullptr},
 };
 // clang-format on
 
@@ -475,6 +475,11 @@ bool Scene::get_component_transform(CUID compID, Transform& transform)
 bool Scene::set_component_transform(CUID compID, const Transform& transform)
 {
     return mObj->registry.set_component_transform(compID, transform);
+}
+
+bool Scene::get_component_transform2d(CUID compID, Transform2D& transform)
+{
+    return mObj->registry.get_component_transform2d(compID, transform);
 }
 
 bool Scene::get_component_transform_mat4(CUID compID, Mat4& worldMat4)

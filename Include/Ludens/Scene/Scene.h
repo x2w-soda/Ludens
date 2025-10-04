@@ -20,7 +20,6 @@ struct ScenePrepareInfo
 struct Scene : Handle<struct SceneObj>
 {
 public:
-
     /// @brief Create empty scene with no components.
     static Scene create();
 
@@ -50,7 +49,7 @@ public:
     /// @param type Component type.
     /// @param name Component identifier.
     /// @param parent Parent component, or zero if creating a root component.
-    /// @param hint If not zero, hint ID to create component with. 
+    /// @param hint If not zero, hint ID to create component with.
     CUID create_component(ComponentType type, const char* name, CUID parent, CUID hint);
 
     /// @brief Create data component script slot.
@@ -86,6 +85,9 @@ public:
 
     /// @brief Get local transform of a data component.
     bool set_component_transform(CUID compID, const Transform& transform);
+
+    /// @brief Get local 2D transform of a data component.
+    bool get_component_transform2d(CUID compID, Transform2D& transform);
 
     /// @brief Get component world matrix.
     bool get_component_transform_mat4(CUID compID, Mat4& worldMat4);

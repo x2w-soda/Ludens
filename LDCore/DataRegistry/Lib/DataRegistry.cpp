@@ -14,6 +14,7 @@ static Log sLog("DataRegistry");
 static bool duplicate_subtree(DataRegistry dup, DataRegistry orig, CUID origRoot);
 static Transform* get_transform(void* comp);
 static Transform* get_mesh_transform(void* comp);
+static Transform2D* get_transform2d(void* comp);
 static AUID get_mesh_auid(void* comp);
 
 struct ComponentMeta
@@ -21,16 +22,17 @@ struct ComponentMeta
     ComponentType type;
     size_t byteSize;
     const char* typeName;
-    Transform* (*get_transform)(void* comp);
+    Transform* (*get_transform)(void* comp);     // TODO: redundant
+    Transform2D* (*get_transform2d)(void* comp); // TODO: redundant
     AUID (*get_auid)(void* comp);
 };
 
 // clang-format off
 static ComponentMeta sComponentTable[] = {
-    { COMPONENT_TYPE_DATA,       sizeof(ComponentBase),      "DataComponent",      nullptr,             nullptr },
-    { COMPONENT_TYPE_TRANSFORM,  sizeof(TransformComponent), "TransformComponent", &get_transform,      nullptr },
-    { COMPONENT_TYPE_MESH,       sizeof(MeshComponent),      "MeshComponent",      &get_mesh_transform, &get_mesh_auid },
-    { COMPONENT_TYPE_TEXTURE_2D, sizeof(Texture2DComponent), "Texture2DComponent", nullptr,             nullptr },
+    { COMPONENT_TYPE_DATA,       sizeof(ComponentBase),      "DataComponent",      nullptr,             nullptr,          nullptr },
+    { COMPONENT_TYPE_TRANSFORM,  sizeof(TransformComponent), "TransformComponent", &get_transform,      nullptr,          nullptr },
+    { COMPONENT_TYPE_MESH,       sizeof(MeshComponent),      "MeshComponent",      &get_mesh_transform, nullptr,          &get_mesh_auid },
+    { COMPONENT_TYPE_SPRITE_2D,  sizeof(Sprite2DComponent),  "Sprite2DComponent",  nullptr,             &get_transform2d, nullptr },
 };
 // clang-format on
 
@@ -88,6 +90,11 @@ static Transform* get_mesh_transform(void* comp)
     return &((MeshComponent*)comp)->transform;
 }
 
+Transform2D* get_transform2d(void* comp)
+{
+    return (Transform2D*)comp;
+}
+
 static AUID get_mesh_auid(void* comp)
 {
     return ((MeshComponent*)comp)->auid;
@@ -96,7 +103,7 @@ static AUID get_mesh_auid(void* comp)
 static_assert(sizeof(sComponentTable) / sizeof(*sComponentTable) == COMPONENT_TYPE_ENUM_COUNT);
 static_assert(LD::IsDataComponent<TransformComponent>);
 static_assert(LD::IsDataComponent<MeshComponent>);
-static_assert(LD::IsDataComponent<Texture2DComponent>);
+static_assert(LD::IsDataComponent<Sprite2DComponent>);
 
 size_t get_component_byte_size(ComponentType type)
 {
@@ -150,6 +157,9 @@ struct DataRegistryObj
     /// @brief Get component local transform
     Transform* get_component_transform(ComponentBase* base, void* comp);
 
+    /// @brief Get component local 2D transform
+    Transform2D* get_component_transform2d(ComponentBase* base, void* comp);
+
     /// @brief Mark the local transform of a component subtree as dirty.
     void mark_component_transform_dirty(ComponentBase* base);
 
@@ -193,6 +203,14 @@ Transform* DataRegistryObj::get_component_transform(ComponentBase* base, void* c
         return nullptr;
 
     return sComponentTable[base->type].get_transform(comp);
+}
+
+Transform2D* DataRegistryObj::get_component_transform2d(ComponentBase* base, void* comp)
+{
+    if (!base || !sComponentTable[base->type].get_transform2d)
+        return nullptr;
+
+    return sComponentTable[base->type].get_transform2d(comp);
 }
 
 void DataRegistryObj::mark_component_transform_dirty(ComponentBase* base)
@@ -497,6 +515,20 @@ bool DataRegistry::set_component_transform(CUID compID, const Transform& transfo
     ComponentBase* base = ite->second.base;
     mObj->mark_component_transform_dirty(base);
 
+    return true;
+}
+
+bool DataRegistry::get_component_transform2d(CUID compID, Transform2D& transform)
+{
+    auto ite = mObj->components.find(compID);
+    if (ite == mObj->components.end())
+        return false;
+
+    Transform2D* ptr = mObj->get_component_transform2d(ite->second.base, ite->second.comp);
+    if (!ptr)
+        return false;
+
+    transform = *ptr;
     return true;
 }
 
