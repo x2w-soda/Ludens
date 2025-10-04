@@ -25,12 +25,23 @@ void LuaScriptAsset::unload()
     mObj = nullptr;
 }
 
-/// @brief Get Lua script source string.
 const char* LuaScriptAsset::get_source()
 {
     LD_ASSERT(mObj->source);
 
     return mObj->source;
+}
+
+void LuaScriptAsset::set_source(const char* src, size_t len)
+{
+    LD_ASSERT(mObj->source);
+
+    if (mObj->source)
+        heap_free(mObj->source);
+
+    mObj->source = (char*)heap_malloc(len + 1, MEMORY_USAGE_ASSET);
+    memcpy(mObj->source, src, len);
+    mObj->source[len] = '\0';
 }
 
 void LuaScriptAssetLoadJob::submit()

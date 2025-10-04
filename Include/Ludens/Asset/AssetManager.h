@@ -10,13 +10,22 @@
 
 namespace LD {
 
+struct AssetManagerInfo
+{
+    FS::Path rootPath; // project root directory path
+    bool watchAssets;  // whether to watch asset files in project
+};
+
 struct AssetManager : Handle<struct AssetManagerObj>
 {
     /// @brief Create asset manager.
-    static AssetManager create(const FS::Path& rootPath);
+    static AssetManager create(const AssetManagerInfo& info);
 
     /// @brief Destroy asset manager.
     static void destroy(AssetManager manager);
+
+    /// @brief If file watching is enabled, this polls for any changes.
+    void update();
 
     /// @brief Begin asset load batch.
     void begin_load_batch();

@@ -14,6 +14,10 @@ struct LuaScriptAsset : AssetHandle<struct LuaScriptAssetObj>
 
     /// @brief Get Lua script source string.
     const char* get_source();
+
+    /// @brief Set Lua script source string.
+    /// @note This only modifies the asset in RAM.
+    void set_source(const char* src, size_t len);
 };
 
 /// @brief Loads LuaScriptAsset from disk

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "AssetWatcher.h"
 #include <Ludens/Asset/Asset.h>
 #include <Ludens/Asset/LuaScriptAsset.h>
 #include <Ludens/Asset/MeshAsset.h>
@@ -10,18 +11,21 @@
 #include <Ludens/Media/Model.h>
 #include <Ludens/System/Allocator.h>
 #include <Ludens/System/FileSystem.h>
+#include <Ludens/System/FileWatcher.h>
 #include <filesystem>
 #include <unordered_map>
 #include <vector>
 
 namespace LD {
 
+struct AssetManagerInfo;
+
 /// @brief Asset manager implementation.
 class AssetManagerObj
 {
 public:
     AssetManagerObj() = delete;
-    AssetManagerObj(const FS::Path& rootPath);
+    AssetManagerObj(const AssetManagerInfo& info);
     AssetManagerObj(const AssetManagerObj&) = delete;
     ~AssetManagerObj();
 
@@ -29,6 +33,8 @@ public:
 
     AssetObj* allocate_asset(AssetType type, AUID auid, const std::string& name);
     void free_asset(AssetObj* obj);
+
+    void poll();
 
     void begin_load_batch();
     void end_load_batch();
@@ -42,6 +48,8 @@ public:
     MeshAsset get_mesh_asset(AUID auid);
     LuaScriptAsset get_lua_script_asset(AUID auid);
 
+    static void on_asset_modified(const FS::Path& path, AUID id, void* user);
+
 private:
     std::unordered_map<AssetType, PoolAllocator> mAllocators;
     std::unordered_map<AUID, AssetObj*> mAssets;
@@ -49,6 +57,7 @@ private:
     std::vector<struct MeshAssetLoadJob*> mMeshLoadJobs;
     std::vector<struct Texture2DAssetLoadJob*> mTexture2DLoadJobs;
     std::vector<struct LuaScriptAssetLoadJob*> mLuaScriptLoadJobs;
+    AssetWatcher mWatcher;     /// optional asset file watcher
     const FS::Path mRootPath;  /// asset URIs are relative paths to root path
     bool mInLoadBatch = false; /// is within load batch scope
 };

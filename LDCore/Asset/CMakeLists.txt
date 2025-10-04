@@ -12,6 +12,8 @@ set(MODULE_INCLUDE
 set(MODULE_LIB
 	Lib/AssetObj.h
 	Lib/AssetManager.cpp
+	Lib/AssetWatcher.h
+	Lib/AssetWatcher.cpp
 	Lib/AssetSchema.cpp
 	Lib/MeshAsset.cpp
 	Lib/TextureAsset.cpp

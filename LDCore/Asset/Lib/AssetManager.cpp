@@ -44,9 +44,16 @@ const char* get_asset_type_cstr(AssetType type)
     return sAssetTypeTable[(int)type].typeName;
 }
 
-AssetManagerObj::AssetManagerObj(const FS::Path& rootPath)
-    : mRootPath(rootPath)
+AssetManagerObj::AssetManagerObj(const AssetManagerInfo& info)
+    : mRootPath(info.rootPath)
 {
+    if (info.watchAssets)
+    {
+        AssetWatcherInfo watcherI{};
+        watcherI.onAssetModified = &AssetManagerObj::on_asset_modified;
+        watcherI.user = this;
+        mWatcher.startup(watcherI);
+    }
 }
 
 AssetManagerObj::~AssetManagerObj()
@@ -69,6 +76,9 @@ AssetManagerObj::~AssetManagerObj()
 
     for (auto ite : mAllocators)
         PoolAllocator::destroy(ite.second);
+
+    if (mWatcher)
+        mWatcher.cleanup();
 }
 
 AssetObj* AssetManagerObj::allocate_asset(AssetType type, AUID auid, const std::string& name)
@@ -111,6 +121,12 @@ void AssetManagerObj::free_asset(AssetObj* obj)
 
     PoolAllocator pa = mAllocators[obj->type];
     pa.free(obj);
+}
+
+void AssetManagerObj::poll()
+{
+    if (mWatcher)
+        mWatcher.poll();
 }
 
 void AssetManagerObj::begin_load_batch()
@@ -181,6 +197,11 @@ void AssetManagerObj::load_lua_script_asset(const FS::Path& path, AUID auid)
 
     FS::Path loadPath = mRootPath / path;
 
+    if (mWatcher)
+    {
+        mWatcher.add_watch(loadPath, auid);
+    }
+
     auto scriptLoadJob = heap_new<LuaScriptAssetLoadJob>(MEMORY_USAGE_ASSET);
     scriptLoadJob->asset = LuaScriptAsset(obj);
     scriptLoadJob->loadPath = loadPath;
@@ -241,9 +262,34 @@ LuaScriptAsset AssetManagerObj::get_lua_script_asset(AUID auid)
     return LuaScriptAsset(ite->second);
 }
 
-AssetManager AssetManager::create(const FS::Path& rootPath)
+void AssetManagerObj::on_asset_modified(const FS::Path& path, AUID id, void* user)
 {
-    AssetManagerObj* obj = heap_new<AssetManagerObj>(MEMORY_USAGE_ASSET, rootPath);
+    AssetManagerObj& self = *(AssetManagerObj*)user;
+
+    auto ite = self.mAssets.find(id);
+    if (ite == self.mAssets.end())
+        return;
+
+    // Experimental script reload. This only takes effect during the next Scene startup.
+
+    AssetObj* assetObj = ite->second;
+    if (assetObj && assetObj->type == ASSET_TYPE_LUA_SCRIPT)
+    {
+        LuaScriptAsset scriptA(assetObj);
+
+        uint64_t fileSize = FS::get_file_size(path);
+        Buffer buf;
+        buf.resize(fileSize);
+        if (fileSize > 0 && FS::read_file(path, fileSize, buf.data()))
+        {
+            scriptA.set_source((const char*)buf.data(), (size_t)buf.size());
+        }
+    }
+}
+
+AssetManager AssetManager::create(const AssetManagerInfo& info)
+{
+    AssetManagerObj* obj = heap_new<AssetManagerObj>(MEMORY_USAGE_ASSET, info);
 
     return {obj};
 }
@@ -253,6 +299,11 @@ void AssetManager::destroy(AssetManager manager)
     AssetManagerObj* obj = manager.unwrap();
 
     heap_delete<AssetManagerObj>(obj);
+}
+
+void AssetManager::update()
+{
+    mObj->poll();
 }
 
 void AssetManager::begin_load_batch()
