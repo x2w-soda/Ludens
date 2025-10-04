@@ -1,6 +1,8 @@
+#include "EditorContextCommand.h"
 #include <Ludens/Asset/AssetManager.h>
 #include <Ludens/Asset/AssetSchema.h>
 #include <Ludens/DataRegistry/DataComponent.h>
+#include <Ludens/Header/Assert.h>
 #include <Ludens/Log/Log.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/Project/Project.h>
@@ -11,6 +13,8 @@
 #include <Ludens/Scene/SceneSchema.h>
 #include <Ludens/System/FileSystem.h>
 #include <Ludens/System/Memory.h>
+#include <Ludens/System/Timer.h>
+#include <LudensEditor/EditorContext/EditorAction.h>
 #include <LudensEditor/EditorContext/EditorContext.h>
 #include <utility>
 
@@ -27,22 +31,98 @@ struct EditorContextObj
     RServer renderServer;             /// render server handle
     RImage iconAtlas;                 /// editor icon atlas handle
     Project project;                  /// current project under edit
+    SceneSchema sceneSchema;          /// schema of the scene under edit
     Scene scene;                      /// current scene under edit
     AssetManager assetManager;        /// loads assets for the scene
     EditorSettings settings;          /// editor global settings
+    EditorActionQueue actionQueue;    /// each action maps to one or more EditCommands.
+    EditStack editStack;              /// undo/redo stack of EditCommands
     FS::Path iconAtlasPath;           /// path to editor icon atlas source file
     FS::Path sceneTOMLPath;           /// path to current scene file
     FS::Path assetTOMLPath;           /// path to project asset file
     FS::Path projectDirPath;          /// path to project root directory
     std::string projectName;          /// project identifier
-    std::vector<FS::Path> scenePaths; /// path to scene files in project
+    std::vector<FS::Path> scenePaths; /// path to scene schema files in project
     std::vector<EditorContextObserver> observers;
     CUID selectedComponent;
     RUID selectedComponentRUID;
     bool isPlaying;
 
+    // TODO: union of all params? or can we accumulate params for multiple actions simultaneously?
+    struct EditorActionOpenSceneParams
+    {
+        FS::Path schemaPath; // path to scene schema
+    } openSceneParams;
+
+    struct EditorActionAddComponentScriptParams
+    {
+        CUID compID;        // component ID in current scene
+        AUID scriptAssetID; // script asset ID in project
+    } addComponentScriptParams;
+
     void notify_observers(const EditorContextEvent* event);
 };
+
+static void editor_action_undo(EditStack stack, void* user);
+static void editor_action_redo(EditStack stack, void* user);
+static void editor_action_new_scene(EditStack stack, void* user);
+static void editor_action_open_scene(EditStack stack, void* user);
+static void editor_action_save_scene(EditStack stack, void* user);
+static void editor_action_add_component_script(EditStack stack, void* user);
+
+static void editor_action_undo(EditStack stack, void* user)
+{
+    stack.undo();
+}
+
+static void editor_action_redo(EditStack stack, void* user)
+{
+    stack.redo();
+}
+
+static void editor_action_new_scene(EditStack stack, void* user)
+{
+    EditorContextObj* obj = (EditorContextObj*)user;
+    EditorContext ctx(obj);
+
+    // Creating new Scene would clear the EditStack
+    stack.clear();
+    LD_UNREACHABLE; // TODO: new scene
+}
+
+static void editor_action_open_scene(EditStack stack, void* user)
+{
+    EditorContextObj* obj = (EditorContextObj*)user;
+    EditorContext ctx(obj);
+
+    // Opening Scene would clear the EditStack
+    stack.clear();
+    ctx.load_project_scene(obj->openSceneParams.schemaPath);
+}
+
+static void editor_action_save_scene(EditStack stack, void* user)
+{
+    EditorContextObj* obj = (EditorContextObj*)user;
+    EditorContext ctx(obj);
+
+    // Saving Scene writes the current schema to disk and
+    // should not effect the EditStack.
+    ctx.save_project_scene();
+}
+
+static void editor_action_add_component_script(EditStack stack, void* user)
+{
+    EditorContextObj* obj = (EditorContextObj*)user;
+    EditorContext ctx(obj);
+
+    const auto& params = obj->addComponentScriptParams;
+
+    stack.execute(EditStack::new_command<AddComponentScriptCommand>(
+        obj->sceneSchema,
+        obj->scene,
+        params.compID,
+        params.scriptAssetID));
+}
 
 void EditorContextObj::notify_observers(const EditorContextEvent* event)
 {
@@ -59,6 +139,23 @@ EditorContext EditorContext::create(const EditorContextInfo& info)
     obj->iconAtlasPath = info.iconAtlasPath;
     obj->settings = EditorSettings::create_default();
     obj->isPlaying = false;
+    obj->editStack = EditStack::create();
+    obj->actionQueue = EditorActionQueue::create(obj->editStack, obj);
+
+    // register possible editor actions
+    // clang-format off
+    const EditorActionInfo editorActions[] = {
+        {EDITOR_ACTION_UNDO,                 &editor_action_undo,                 "Undo"},
+        {EDITOR_ACTION_REDO,                 &editor_action_redo,                 "Redo"},
+        {EDITOR_ACTION_NEW_SCENE,            &editor_action_new_scene,            "NewScene"}, 
+        {EDITOR_ACTION_OPEN_SCENE,           &editor_action_open_scene,           "OpenScene"}, 
+        {EDITOR_ACTION_SAVE_SCENE,           &editor_action_save_scene,           "SaveScene"},
+        {EDITOR_ACTION_ADD_COMPONENT_SCRIPT, &editor_action_add_component_script, "AddComponentScript"},
+    };
+    // clang-format on
+
+    for (size_t i = 0; i < sizeof(editorActions) / sizeof(*editorActions); i++)
+        EditorAction::register_action(editorActions[i]);
 
     return {obj};
 }
@@ -82,6 +179,9 @@ void EditorContext::destroy(EditorContext ctx)
 
     Project::destroy(obj->project);
     Scene::destroy(obj->scene);
+    SceneSchema::destroy(obj->sceneSchema);
+    EditorActionQueue::destroy(obj->actionQueue);
+    EditStack::destroy(obj->editStack);
     EditorSettings::destroy(obj->settings);
 
     heap_delete<EditorContextObj>(obj);
@@ -92,6 +192,23 @@ Mat4 EditorContext::render_server_transform_callback(RUID ruid, void* user)
     EditorContextObj& self = *(EditorContextObj*)user;
 
     return self.scene.get_ruid_transform_mat4(ruid);
+}
+
+void EditorContext::action_save_scene()
+{
+    mObj->actionQueue.enqueue(EDITOR_ACTION_SAVE_SCENE);
+}
+
+void EditorContext::action_add_component_script(CUID compID, AUID scriptAssetID)
+{
+    mObj->actionQueue.enqueue(EDITOR_ACTION_ADD_COMPONENT_SCRIPT);
+    mObj->addComponentScriptParams.compID = compID;
+    mObj->addComponentScriptParams.scriptAssetID = scriptAssetID;
+}
+
+void EditorContext::poll_actions()
+{
+    mObj->actionQueue.poll_actions();
 }
 
 FS::Path EditorContext::get_project_directory()
@@ -143,6 +260,9 @@ void EditorContext::update(float delta)
     {
         mObj->scene.update(delta);
     }
+
+    // NOTE: this polls for any asset file changes.
+    mObj->assetManager.update();
 }
 
 void EditorContext::load_project(const std::filesystem::path& filePath)
@@ -179,7 +299,11 @@ void EditorContext::load_project(const std::filesystem::path& filePath)
     // Once we have asynchronous-load-jobs maybe we can load assets
     // used by the loaded scene first?
     TOMLDocument assetDoc = TOMLDocument::create_from_file(mObj->assetTOMLPath);
-    mObj->assetManager = AssetManager::create(mObj->projectDirPath);
+
+    AssetManagerInfo amI{};
+    amI.rootPath = mObj->projectDirPath;
+    amI.watchAssets = true;
+    mObj->assetManager = AssetManager::create(amI);
     AssetSchema::load_assets(mObj->assetManager, assetDoc);
     TOMLDocument::destroy(assetDoc);
 
@@ -211,11 +335,15 @@ void EditorContext::load_project_scene(const std::filesystem::path& tomlPath)
     mObj->selectedComponent = 0;
     mObj->selectedComponentRUID = 0;
 
+    if (mObj->sceneSchema)
+        SceneSchema::destroy(mObj->sceneSchema);
+
+    if (!mObj->scene)
+        mObj->scene = Scene::create();
+
     // create the scene
-    TOMLDocument tomlDoc = TOMLDocument::create_from_file(mObj->sceneTOMLPath);
-    mObj->scene = Scene::create();
-    SceneSchema::load_scene(mObj->scene, tomlDoc);
-    TOMLDocument::destroy(tomlDoc);
+    mObj->sceneSchema = SceneSchema::create_from_file(mObj->sceneTOMLPath);
+    mObj->sceneSchema.load_scene(mObj->scene);
 
     // prepare the scene
     ScenePrepareInfo prepareInfo{};
@@ -225,6 +353,25 @@ void EditorContext::load_project_scene(const std::filesystem::path& tomlPath)
 
     EditorContextSceneLoadEvent event{};
     mObj->notify_observers(&event);
+}
+
+void EditorContext::save_project_scene()
+{
+    if (!mObj->sceneSchema || mObj->sceneTOMLPath.empty())
+        return;
+
+    Timer timer;
+    timer.start();
+
+    // TODO: overwrite actual schema after this is stable
+    FS::Path dst = mObj->sceneTOMLPath;
+    std::string stem = dst.stem().string();
+    stem += ".bak.toml";
+    dst.replace_filename(stem);
+    mObj->sceneSchema.save_to_disk(dst);
+
+    size_t us = timer.stop();
+    sLog.info("saved scene to {} ({} ms)", dst.string(), us / 1000.0f);
 }
 
 void EditorContext::play_scene()
@@ -278,11 +425,6 @@ const char* EditorContext::get_component_name(CUID comp)
         return nullptr;
 
     return base->name;
-}
-
-void EditorContext::create_component_script_slot(CUID compID, AUID assetID)
-{
-    mObj->scene.create_component_script_slot(compID, assetID);
 }
 
 const ComponentScriptSlot* EditorContext::get_component_script_slot(CUID compID)

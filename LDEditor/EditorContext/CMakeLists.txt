@@ -4,6 +4,8 @@ set(MODULE_TEST_NAME LDEditorContextTest)
 set(MODULE_LIB
 	Lib/EditorAction.cpp
 	Lib/EditorContext.cpp
+	Lib/EditorContextCommand.h
+	Lib/EditorContextCommand.cpp
 	Lib/EditorSettings.cpp
 	Lib/EditorIconAtlas.cpp
 	Lib/EditStack.cpp
