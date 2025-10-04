@@ -11,6 +11,7 @@ struct lua_State;
 
 namespace LD {
 
+class Buffer;
 struct LuaState;
 struct LuaStateObj;
 typedef int (*LuaFn)(lua_State*);
@@ -71,6 +72,19 @@ public:
     LuaState(const LuaState& other);
 
     LuaState& operator=(const LuaState& other);
+
+    /// @brief Dump lua source code to bytecode. Does not modify stack.
+    /// @param str Null-terminated Lua 5.1 source code.
+    /// @param buffer Output lua chunk bytecode.
+    /// @return True on success.
+    bool dump(const char* str, Buffer& buffer);
+
+    /// @brief Load chunk from buffer.
+    /// @param buf Buffer to read bytes from.
+    /// @param len Byte length of buffer.
+    /// @param name Name of chunk.
+    /// @return True on success.
+    bool load_buffer(const char* buf, size_t len, const char* name);
 
     /// @brief loads and runs the given string
     /// @param str null-terminated Lua 5.1 source code
@@ -146,7 +160,7 @@ public:
 
     /// @brief Removes the element at the given valid index,
     ///        shifting down the elements above this index
-    /// @param idx A valid index, non-pseudo. 
+    /// @param idx A valid index, non-pseudo.
     void remove(int idx);
 
     /// @brief Moves the top element into the given valid index,

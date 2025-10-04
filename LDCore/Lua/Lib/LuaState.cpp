@@ -1,3 +1,4 @@
+#include <Ludens/DSA/Buffer.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Log/Log.h>
 #include <Ludens/Lua/LuaState.h>
@@ -30,6 +31,15 @@ struct LuaStateObj
         return index > 0 ? -(lua_gettop(L) - index + 1) : index;
     }
 };
+
+static int lua_buffer_writer(lua_State* L, const void* p, size_t sz, void* data)
+{
+    Buffer* buf = (Buffer*)data;
+
+    buf->write((const byte*)p, sz);
+
+    return 0;
+}
 
 static void* lua_alloc(void* ud, void* ptr, size_t osize, size_t nsize)
 {
@@ -103,6 +113,32 @@ LuaState& LuaState::operator=(const LuaState& other)
     mL = other.mL;
 
     return *this;
+}
+
+bool LuaState::dump(const char* str, Buffer& buffer)
+{
+    buffer.resize(0);
+
+    int oldSize = lua_gettop(mL);
+
+    int err = luaL_loadstring(mL, str);
+    if (err != 0)
+    {
+        lua_settop(mL, oldSize);
+        return false;
+    }
+
+    err = lua_dump(mL, &lua_buffer_writer, &buffer);
+
+    lua_settop(mL, oldSize);
+    return err == 0;
+}
+
+bool LuaState::load_buffer(const char* buf, size_t len, const char* name)
+{
+    int err = luaL_loadbuffer(mL, buf, len, name);
+
+    return err == 0;
 }
 
 bool LuaState::do_string(const char* str)

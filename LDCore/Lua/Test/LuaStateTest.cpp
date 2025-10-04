@@ -2,6 +2,7 @@
 
 #include "LuaTest.h"
 #include <Extra/doctest/doctest.h>
+#include <Ludens/DSA/Buffer.h>
 #include <Ludens/Lua/LuaState.h>
 #include <Ludens/System/Memory.h>
 #include <limits>
@@ -305,6 +306,41 @@ TEST_CASE("LuaState do_string")
 
     LuaState::destroy(L);
 
+    int leaks = get_memory_leaks(nullptr);
+    CHECK(leaks == 0);
+}
+
+TEST_CASE("LuaState dump")
+{
+    LuaState L = LuaState::create(sTestStateInfo);
+
+    Buffer* buf = new Buffer();
+    bool ok = L.dump("function foo()", *buf);
+    CHECK_FALSE(ok);
+    CHECK(buf->size() == 0);
+    CHECK(L.empty());
+
+    ok = L.dump("function add(lhs, rhs) return lhs + rhs end function sub(lhs, rhs) return lhs - rhs end", *buf);
+    CHECK(ok);
+    CHECK(L.empty());
+
+    ok = L.load_buffer((const char*)buf->data(), buf->size(), "bc");
+    CHECK(ok);
+    CHECK(L.size() == 1);
+    CHECK(L.get_type(-1) == LUA_TYPE_FN); // single chunk loaded as function
+
+    LuaError err = L.pcall(0, 0, 0);
+    CHECK(err == 0);
+
+    ok = L.do_string("return add(sub(4, 2), 1)");
+    CHECK(ok);
+    CHECK(L.size() == 1);
+    CHECK(L.get_type(-1) == LUA_TYPE_NUMBER);
+    CHECK(L.to_integer(-1) == 3);
+
+    delete buf;
+
+    LuaState::destroy(L);
     int leaks = get_memory_leaks(nullptr);
     CHECK(leaks == 0);
 }
