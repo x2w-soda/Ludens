@@ -76,7 +76,7 @@ void FileWatcher::destroy(FileWatcher watcher)
     heap_delete<FileWatcherObj>(obj);
 }
 
-void FileWatcher::add_file(const char* path, on_modify_callback callback, void* user)
+void FileWatcher::add_file(const FS::Path& path, on_modify_callback callback, void* user)
 {
     std::string canon = fs::canonical(path).string();
     Hash64 canonHash(canon.c_str());
@@ -95,7 +95,7 @@ void FileWatcher::add_file(const char* path, on_modify_callback callback, void* 
     {
         InotifyWatcher watcher;
         watcher.handle = inotify_add_watch(mObj->handle, canon.c_str(), IN_CLOSE_WRITE);
-        watcher.filePath = canon;
+        watcher.filePath = canon.string();
         watcher.hash = canonHash;
 
         if (watcher.handle < 0)
@@ -109,20 +109,20 @@ void FileWatcher::add_file(const char* path, on_modify_callback callback, void* 
 
     FileWatcherEntry entry{
         .hash = canonHash,
-        .filePath = path,
+        .filePath = path.string(),
         .callback = callback,
         .user = user,
     };
     mObj->entries.push_back(entry);
-    sLog.info("add_file    {}", path);
+    sLog.info("add_file    {}", path.string());
 }
 
-void FileWatcher::remove_file(const char* path)
+void FileWatcher::remove_file(const FS::Path& path)
 {
     // TODO:
 }
 
-int FileWatcher::has_file(const char* path)
+int FileWatcher::has_file(const FS::Path& path)
 {
     std::string canon = fs::canonical(path).string();
     Hash64 canonHash(canon.c_str());

@@ -159,7 +159,7 @@ void FileWatcher::destroy(FileWatcher watcher)
     heap_delete<FileWatcherObj>(obj);
 }
 
-void FileWatcher::add_file(const char* path, on_modify_callback callback, void* user)
+void FileWatcher::add_file(const FS::Path& path, on_modify_callback callback, void* user)
 {
     fs::path canon = fs::canonical(path);
     std::string canonFile = canon.filename().string();
@@ -182,16 +182,16 @@ void FileWatcher::add_file(const char* path, on_modify_callback callback, void* 
     FileWatcherEntry entry{
         .dirHash = canonDirHash,
         .fileHash = canonFileHash,
-        .filePath = path,
+        .filePath = path.string(),
         .callback = callback,
         .user = user,
     };
     mObj->entries.push_back(entry);
 
-    sLog.info("add_file {}", path);
+    sLog.info("add_file {}", path.string());
 }
 
-void FileWatcher::remove_file(const char* path)
+void FileWatcher::remove_file(const FS::Path& path)
 {
     fs::path canon = fs::canonical(path);
     std::string canonFile = canon.filename().string();
@@ -204,7 +204,7 @@ void FileWatcher::remove_file(const char* path)
     });
 
     if (count > 0)
-        sLog.info("remove_file {}", path);
+        sLog.info("remove_file {}", path.string());
 
     // directories to keep
     std::unordered_set<Hash64> dirHashes;
@@ -225,7 +225,7 @@ void FileWatcher::remove_file(const char* path)
     mObj->watchedDirs.erase(unwatched, mObj->watchedDirs.end());
 }
 
-int FileWatcher::has_file(const char* path)
+int FileWatcher::has_file(const FS::Path& path)
 {
     fs::path canon = fs::canonical(path);
     std::string canonFile = canon.filename().string();
