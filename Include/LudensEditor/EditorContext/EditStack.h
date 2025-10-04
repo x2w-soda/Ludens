@@ -39,6 +39,9 @@ struct EditStack : Handle<struct EditStackObj>
     /// @brief Destroy the edit command stack.
     static void destroy(EditStack stack);
 
+    /// @brief Clear and free all commands.
+    void clear();
+
     /// @brief Execute command and push it onto stack.
     /// @return Whether command is successfully executed, rejection could happen
     ///         if the command wasn't allocated via EditStack::new_command.

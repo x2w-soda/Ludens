@@ -23,13 +23,20 @@ void EditStack::destroy(EditStack stack)
 {
     auto* obj = (EditStackObj*)stack.unwrap();
 
-    for (EditCommand* cmd : obj->commands)
+    stack.clear();
+
+    heap_delete<EditStackObj>(obj);
+}
+
+void EditStack::clear()
+{
+    for (EditCommand* cmd : mObj->commands)
     {
         // this depends on how EditStack::new_command allocates
         heap_delete<EditCommand>(cmd);
     }
 
-    heap_delete<EditStackObj>(obj);
+    mObj->commands.clear();
 }
 
 bool EditStack::execute(EditCommand* cmd)

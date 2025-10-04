@@ -3,6 +3,7 @@
 #include <Ludens/RenderServer/RServer.h>
 #include <Ludens/Scene/Scene.h>
 #include <Ludens/System/FileSystem.h>
+#include <LudensEditor/EditorContext/EditorAction.h>
 #include <LudensEditor/EditorContext/EditorCallback.h>
 #include <LudensEditor/EditorContext/EditorContextEvent.h>
 #include <LudensEditor/EditorContext/EditorSettings.h>
@@ -31,6 +32,15 @@ struct EditorContext : Handle<struct EditorContextObj>
 
     /// @brief Callback to inform the render server the transforms of RUIDs
     static Mat4 render_server_transform_callback(RUID ruid, void* user);
+
+    /// @brief Save the current scene schema to disk.
+    void action_save_scene();
+
+    /// @brief Add script to component.
+    void action_add_component_script(CUID compID, AUID scriptAssetID);
+
+    /// @brief Complete all editor actions in queue.
+    void poll_actions();
 
     /// @brief Get directory of current project.
     FS::Path get_project_directory();
@@ -64,6 +74,9 @@ struct EditorContext : Handle<struct EditorContextObj>
     /// @note Triggers EDITOR_CONTEXT_EVENT_SCENE_LOAD for observers.
     void load_project_scene(const std::filesystem::path& toml);
 
+    /// @brief Save the current Scene schema to disk.
+    void save_project_scene();
+
     /// @brief Begin playing scene in the editor.
     void play_scene();
 
@@ -81,9 +94,6 @@ struct EditorContext : Handle<struct EditorContextObj>
 
     /// @brief Get the C string name of a component
     const char* get_component_name(CUID comp);
-
-    /// @brief Create script slot for component.
-    void create_component_script_slot(CUID compID, AUID assetID);
 
     /// @brief Get component script slot.
     const ComponentScriptSlot* get_component_script_slot(CUID compID);
