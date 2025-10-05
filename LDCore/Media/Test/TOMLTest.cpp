@@ -126,3 +126,59 @@ a2 = []
     int leaks = get_memory_leaks(nullptr);
     CHECK(leaks == 0);
 }
+
+TEST_CASE("TOML table set_key")
+{
+    TOMLDocument doc = TOMLDocument::create();
+
+    const char toml[] = R"(
+[table]
+)";
+    std::string error;
+    bool ok = doc.parse(toml, strlen(toml), error);
+    CHECK(ok);
+
+    TOMLValue t = doc.get("table");
+    CHECK(t);
+    CHECK(t.get_type() == TOML_TYPE_TABLE);
+    CHECK(t.get_size() == 0);
+
+    // set new key
+    TOMLValue v = t.set_key("foo", TOML_TYPE_INT);
+    CHECK(v);
+    CHECK(v.get_type() == TOML_TYPE_INT);
+    v.set_i32(30);
+    TOMLType typeMatch = TOML_TYPE_INT;
+    CHECK(t.has_key("foo", &typeMatch));
+
+    // validate changes
+    doc.consolidate();
+    CHECK(t.get_type() == TOML_TYPE_TABLE);
+    CHECK(t.get_size() == 1);
+    v = t["foo"];
+    int32_t i32;
+    CHECK(v);
+    CHECK(v.is_i32(i32));
+    CHECK(i32 == 30);
+
+    // override existing key
+    v = t.set_key("foo", TOML_TYPE_BOOL);
+    CHECK(v);
+    CHECK(v.get_type() == TOML_TYPE_BOOL);
+    CHECK(v.set_bool(true));
+
+    // validate changes
+    doc.consolidate();
+    CHECK(t.get_size() == 1);
+    v = t["foo"];
+    bool b;
+    CHECK(v);
+    CHECK(v.is_bool(b));
+    CHECK(b == true);
+    typeMatch = TOML_TYPE_BOOL;
+    CHECK(t.has_key("foo", &typeMatch));
+
+    TOMLDocument::destroy(doc);
+    int leaks = get_memory_leaks(nullptr);
+    CHECK(leaks == 0);
+}

@@ -107,6 +107,15 @@ struct TOMLValue : Handle<struct TOMLValueObj>
         return get_index(idx);
     }
 
+    /// @brief Check if table contains a key.
+    /// @param typeMatch If not null, checks if the value matches the type.
+    /// @return True if value is table type, contains the key, and satisfies optional type matching.
+    bool has_key(const char* key, const TOMLType* typeMatch);
+
+    /// @brief Set key of TOML table. May override existing key.
+    /// @return The value associated with key on success.
+    TOMLValue set_key(const char* key, TOMLType type);
+    
     /// @brief Lookup key in TOML table.
     TOMLValue get_key(const char* key);
 
@@ -135,10 +144,13 @@ struct TOMLDocument : Handle<struct TOMLDocumentObj>
     /// @brief Load TOML document from string.
     bool parse(const char* toml, size_t len, std::string& error);
 
+    /// @brief Consolidate all value modifications to TOML DOM.
+    void consolidate();
+
     /// @brief Get value by name.
     TOMLValue get(const char* name);
 
-    /// @brief Save TOML document to disk.
+    /// @brief Save TOML document to disk after consolidation.
     bool save_to_disk(const FS::Path& path);
 };
 

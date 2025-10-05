@@ -1,3 +1,4 @@
+#include <Ludens/Header/Assert.h>
 #include <Ludens/Media/Format/TOML.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/System/Allocator.h>
@@ -32,18 +33,68 @@ static_assert(std::is_same_v<toml::value::config_type::floating_type, double>);
 // default to using C++ STL basic_string
 static_assert(std::is_same_v<toml::value::config_type::string_type, std::string>);
 
+static toml::value get_toml_value(TOMLType type)
+{
+    switch (type)
+    {
+    case TOML_TYPE_BOOL:
+        return toml::value(toml::type_config::boolean_type{});
+    case TOML_TYPE_INT:
+        return toml::value(toml::type_config::integer_type{});
+    case TOML_TYPE_FLOAT:
+        return toml::value(toml::type_config::floating_type{});
+    case TOML_TYPE_STRING:
+        return toml::value(toml::type_config::string_type{});
+    case TOML_TYPE_OFFSET_DATETIME:
+        return toml::value(toml::offset_datetime{});
+    case TOML_TYPE_LOCAL_DATETIME:
+        return toml::value(toml::local_datetime{});
+    case TOML_TYPE_LOCAL_DATE:
+        return toml::value(toml::local_date{});
+    case TOML_TYPE_LOCAL_TIME:
+        return toml::value(toml::local_time{});
+    case TOML_TYPE_ARRAY: // TODO: this is templated
+    case TOML_TYPE_TABLE: // TODO: this is templated
+    default:
+        LD_UNREACHABLE;
+    }
+
+    return toml::value();
+}
+
 struct TOMLValueObj
 {
+    TOMLValueObj* child;
+    TOMLValueObj* next;
     toml::value val;
     TOMLDocumentObj* doc;
+    const char* selfKey;
+    int selfIndex;
+
+    /// @brief Check for child with key.
+    TOMLValueObj* table_get_child(const std::string& key);
 };
+
+TOMLValueObj* TOMLValueObj::table_get_child(const std::string& key)
+{
+    LD_ASSERT(val.type() == toml::value_t::table);
+
+    for (TOMLValueObj* c = child; c; c = c->next)
+    {
+        LD_ASSERT(c->selfKey);
+        if (std::string(c->selfKey) == key)
+            return c;
+    }
+
+    return nullptr;
+}
 
 /// @brief Toml document implementation.
 struct TOMLDocumentObj
 {
     PoolAllocator valuePA;
     byte* fileBuffer = nullptr;
-    toml::value root;
+    TOMLValueObj root;
 
     void free_values()
     {
@@ -54,6 +105,9 @@ struct TOMLDocumentObj
         {
             auto* node = static_cast<TOMLValueObj*>(ite.data());
             (&node->val)->~basic_value();
+
+            if (node->selfKey)
+                heap_free((void*)node->selfKey);
         }
 
         PoolAllocator::destroy(valuePA);
@@ -64,8 +118,39 @@ struct TOMLDocumentObj
     {
         TOMLValueObj* obj = (TOMLValueObj*)valuePA.allocate();
         obj->doc = this;
+        obj->selfKey = nullptr;
+        obj->selfIndex = -1;
+        obj->child = nullptr;
+        obj->next = nullptr;
         new (&obj->val) toml::value();
         return obj;
+    }
+
+    void consolidate(TOMLValueObj* root)
+    {
+        if (!root)
+            return;
+
+        if (root->val.is_table())
+        {
+            for (TOMLValueObj* child = root->child; child; child = child->next)
+            {
+                consolidate(child);
+                LD_ASSERT(child->selfKey);
+                root->val.as_table()[child->selfKey] = child->val;
+            }
+        }
+        else if (root->val.is_array())
+        {
+            int size = root->val.size();
+
+            for (TOMLValueObj* child = root->child; child; child = child->next)
+            {
+                consolidate(child);
+                LD_ASSERT(0 <= child->selfIndex && child->selfIndex < size);
+                root->val.as_array()[child->selfIndex] = child->val;
+            }
+        }
     }
 };
 
@@ -220,9 +305,55 @@ TOMLValue TOMLValue::get_index(int idx)
         return {};
 
     TOMLValueObj* value = mObj->doc->alloc_value();
+    value->selfIndex = idx;
     value->val = mObj->val.at((size_t)idx);
+    value->next = mObj->child;
+    mObj->child = value;
 
     return TOMLValue(value);
+}
+
+bool TOMLValue::has_key(const char* key, const TOMLType* typeMatch)
+{
+    if (!is_table_type())
+        return false;
+
+    auto& table = mObj->val.as_table();
+    if (!table.contains(key))
+        return false;
+
+    if (typeMatch)
+        return (TOMLType)table[key].type() == *typeMatch;
+
+    return true;
+}
+
+TOMLValue TOMLValue::set_key(const char* key, TOMLType type)
+{
+    if (!is_table_type())
+        return {};
+
+    auto& table = mObj->val.as_table();
+
+    TOMLValueObj* obj = mObj->table_get_child(key);
+    if (obj)
+    {
+        obj->val = get_toml_value(type);
+    }
+    else
+    {
+        obj = mObj->doc->alloc_value();
+        obj->val = get_toml_value(type);
+        obj->selfKey = heap_strdup(key, MEMORY_USAGE_MEDIA);
+        obj->next = mObj->child;
+        mObj->child = obj;
+    }
+
+    // this will eventually be done during consolidate(),
+    // but we try to keep the DOM as syncrhonized as we can.
+    table[key] = obj->val;
+
+    return TOMLValue(obj);
 }
 
 TOMLValue TOMLValue::get_key(const char* key)
@@ -230,10 +361,18 @@ TOMLValue TOMLValue::get_key(const char* key)
     if (!is_table_type() || !mObj->val.contains(key))
         return {};
 
-    TOMLValueObj* value = mObj->doc->alloc_value();
-    value->val = mObj->val.at(key);
+    TOMLValueObj* obj = mObj->table_get_child(key);
 
-    return TOMLValue(value);
+    if (!obj)
+    {
+        obj = mObj->doc->alloc_value();
+        obj->selfKey = heap_strdup(key, MEMORY_USAGE_MEDIA);
+        obj->val = mObj->val.at(key);
+        obj->next = mObj->child;
+        mObj->child = obj;
+    }
+
+    return TOMLValue(obj);
 }
 
 int TOMLValue::get_keys(std::vector<std::string>& keys)
@@ -253,6 +392,7 @@ int TOMLValue::get_keys(std::vector<std::string>& keys)
 TOMLDocument TOMLDocument::create()
 {
     auto* obj = heap_new<TOMLDocumentObj>(MEMORY_USAGE_MEDIA);
+    obj->root.val = toml::value();
 
     return TOMLDocument(obj);
 }
@@ -304,6 +444,11 @@ bool TOMLDocument::parse(const char* toml, size_t len, std::string& error)
     paI.pageSize = 64; // TOML values per page
     paI.isMultiPage = true;
     mObj->valuePA = PoolAllocator::create(paI);
+    mObj->root.child = nullptr;
+    mObj->root.next = nullptr;
+    mObj->root.doc = nullptr;
+    mObj->root.selfIndex = -1;
+    mObj->root.selfKey = nullptr;
 
     std::string source(toml, len);
     const auto& result = toml::try_parse_str(source, toml::spec::default_version());
@@ -312,7 +457,7 @@ bool TOMLDocument::parse(const char* toml, size_t len, std::string& error)
 
     if (result.is_ok())
     {
-        mObj->root = result.unwrap();
+        mObj->root.val = result.unwrap();
     }
     else
     {
@@ -324,25 +469,43 @@ bool TOMLDocument::parse(const char* toml, size_t len, std::string& error)
     return result.is_ok();
 }
 
+void TOMLDocument::consolidate()
+{
+    if (!mObj->root.val.is_table())
+        return;
+
+    mObj->consolidate(&mObj->root);
+}
+
 TOMLValue TOMLDocument::get(const char* name)
 {
-    if (!mObj->root.is_table() || !mObj->root.contains(name))
+    if (!mObj->root.val.is_table() || !mObj->root.val.contains(name))
         return {};
 
-    TOMLValueObj* value = mObj->alloc_value();
-    value->val = toml::find(mObj->root, name);
+    TOMLValueObj* obj = mObj->root.table_get_child(name);
 
-    return TOMLValue(value);
+    if (!obj)
+    {
+        obj = mObj->alloc_value();
+        obj->val = toml::find(mObj->root.val, name);
+        obj->selfKey = heap_strdup(name, MEMORY_USAGE_MEDIA);
+        obj->next = mObj->root.child;
+        mObj->root.child = obj;
+    }
+
+    return TOMLValue(obj);
 }
 
 bool TOMLDocument::save_to_disk(const FS::Path& path)
 {
     LD_PROFILE_SCOPE;
 
-    if (!mObj->root.is_table())
+    if (!mObj->root.val.is_table())
         return false;
 
-    std::string str = toml::format(mObj->root);
+    mObj->consolidate(&mObj->root);
+
+    std::string str = toml::format(mObj->root.val);
     return FS::write_file(path, str.size(), (byte*)str.data());
 }
 
