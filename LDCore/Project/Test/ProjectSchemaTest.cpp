@@ -4,7 +4,6 @@
 #include <Ludens/System/Memory.h>
 #include <cstring>
 
-namespace fs = std::filesystem;
 using namespace LD;
 
 TEST_CASE("ProjectSchema")
@@ -22,27 +21,25 @@ scenes = [
     "./scenes/scene3.toml",
 ]
 )";
-    std::string err;
-    TOMLDocument doc = TOMLDocument::create();
-    bool ok = doc.parse(schemaTOML, strlen(schemaTOML), err);
-    CHECK(ok);
+    Project proj = Project::create(FS::Path("./directory"));
+    ProjectSchema schema = ProjectSchema::create_from_source(schemaTOML, strlen(schemaTOML));
+    CHECK(schema);
 
-    Project proj = Project::create(fs::path("./directory"));
-    ProjectSchema::load_project(proj, doc);
-    TOMLDocument::destroy(doc);
+    schema.load_project(proj);
 
     CHECK(proj.get_name() == "hello world");
 
-    fs::path assetsPath = proj.get_assets_path();
-    CHECK(assetsPath == fs::path("directory/assets.toml"));
+    FS::Path assetsPath = proj.get_assets_path();
+    CHECK(assetsPath == FS::Path("directory/assets.toml"));
 
-    std::vector<fs::path> scenePaths;
+    std::vector<FS::Path> scenePaths;
     proj.get_scene_paths(scenePaths);
     CHECK(scenePaths.size() == 3);
-    CHECK(scenePaths[0] == fs::path("directory/scenes/scene1.toml"));
-    CHECK(scenePaths[1] == fs::path("directory/scenes/scene2.toml"));
-    CHECK(scenePaths[2] == fs::path("directory/scenes/scene3.toml"));
+    CHECK(scenePaths[0] == FS::Path("directory/scenes/scene1.toml"));
+    CHECK(scenePaths[1] == FS::Path("directory/scenes/scene2.toml"));
+    CHECK(scenePaths[2] == FS::Path("directory/scenes/scene3.toml"));
 
+    ProjectSchema::destroy(schema);
     Project::destroy(proj);
 
     int leaks = get_memory_leaks(nullptr);

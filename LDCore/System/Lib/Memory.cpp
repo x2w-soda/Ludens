@@ -32,6 +32,7 @@ struct
     { { MEMORY_USAGE_PHYSICS,},    "MEMORY_USAGE_PHYSICS", },
     { { MEMORY_USAGE_ASSET,},      "MEMORY_USAGE_ASSET", },
     { { MEMORY_USAGE_SCENE,},      "MEMORY_USAGE_SCENE", },
+    { { MEMORY_USAGE_SCHEMA,},     "MEMORY_USAGE_SCHEMA", },
 };
 // clang-format on
 

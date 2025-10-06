@@ -21,6 +21,9 @@ struct SceneSchema : Handle<struct SceneSchemaObj>
     /// @brief Destroy the scene schema.
     static void destroy(SceneSchema schema);
 
+    /// @brief Get default schema TOML text.
+    static std::string get_default_text();
+
     /// @brief Populate a scene from schema. Assets are not loaded yet but
     ///        the component hierarchy and asset IDs should be in place.
     void load_scene(Scene scene);

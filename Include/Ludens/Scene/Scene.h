@@ -26,6 +26,10 @@ public:
     /// @brief Destroy a Scene.
     static void destroy(Scene);
 
+    /// @brief Reset scene to initial state, destroying all components.
+    ///        User will have to call prepare() again.
+    void reset();
+
     /// @brief Prepare the scene. The AssetManager loads all assets used by the scene.
     void prepare(const ScenePrepareInfo& info);
 
@@ -52,14 +56,17 @@ public:
     /// @param hint If not zero, hint ID to create component with.
     CUID create_component(ComponentType type, const char* name, CUID parent, CUID hint);
 
+    /// @brief Destroy a component.
+    void destroy_component(CUID compID);
+
     /// @brief Create data component script slot.
     /// @param compID Component ID.
     /// @param assetID ScriptAsset ID.
     /// @return Script slot for the component.
     ComponentScriptSlot* create_component_script_slot(CUID compID, AUID assetID);
 
-    /// @brief Destroy a component.
-    void destroy_component(CUID compID);
+    /// @brief Destroy data component script slot if it exists.
+    void destroy_component_script_slot(CUID compID);
 
     /// @brief Reparent a component
     void reparent(CUID compID, CUID parentID);

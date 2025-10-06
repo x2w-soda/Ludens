@@ -1,4 +1,5 @@
 #include <Ludens/Header/Assert.h>
+#include <Ludens/Header/Version.h>>
 #include <Ludens/Media/Format/TOML.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/Scene/SceneSchema.h>
@@ -203,15 +204,21 @@ void SceneSchema::load_scene(Scene scene)
     if (!scene || !doc)
         return;
 
-    // TODO: Scene::reset or something similar
-
     TOMLValue sceneTOML = doc.get("ludens_scene");
     if (!sceneTOML || sceneTOML.get_type() != TOML_TYPE_TABLE)
         return;
 
     int32_t version;
-    TOMLValue versionTOML = sceneTOML["version"];
-    if (!versionTOML || !versionTOML.is_i32(version) || version != 0)
+    TOMLValue versionTOML = sceneTOML["version_major"];
+    if (!versionTOML || !versionTOML.is_i32(version) || version != LD_VERSION_MAJOR)
+        return;
+
+    versionTOML = sceneTOML["version_minor"];
+    if (!versionTOML || !versionTOML.is_i32(version) || version != LD_VERSION_MINOR)
+        return;
+
+    versionTOML = sceneTOML["version_patch"];
+    if (!versionTOML || !versionTOML.is_i32(version) || version != LD_VERSION_PATCH)
         return;
 
     for (auto ite : mObj->compValues)
@@ -276,12 +283,21 @@ void SceneSchema::set_component_script(CUID compID, AUID scriptAssetID)
         return;
 
     TOMLValue compTOML = ite->second;
-    compTOML.set_key("script", (int64_t)scriptAssetID);
+    TOMLValue scriptTOML;
+    TOMLType valueType = TOML_TYPE_INT;
+
+    if (!compTOML.has_key("script", &valueType))
+        scriptTOML = compTOML.set_key("script", valueType);
+    else
+        scriptTOML = compTOML.get_key("script");
+
+    LD_ASSERT(scriptTOML);
+    scriptTOML.set_i64((int64_t)scriptAssetID);
 }
 
 SceneSchema SceneSchema::create_from_source(const char* source, size_t len)
 {
-    SceneSchemaObj* obj = heap_new<SceneSchemaObj>(MEMORY_USAGE_SCENE);
+    SceneSchemaObj* obj = heap_new<SceneSchemaObj>(MEMORY_USAGE_SCHEMA);
 
     std::string err;
     obj->doc = TOMLDocument::create();
@@ -298,7 +314,7 @@ SceneSchema SceneSchema::create_from_source(const char* source, size_t len)
 
 SceneSchema SceneSchema::create_from_file(const FS::Path& tomlPath)
 {
-    SceneSchemaObj* obj = heap_new<SceneSchemaObj>(MEMORY_USAGE_SCENE);
+    SceneSchemaObj* obj = heap_new<SceneSchemaObj>(MEMORY_USAGE_SCHEMA);
 
     obj->doc = TOMLDocument::create_from_file(tomlPath);
     if (!obj->doc)
@@ -319,6 +335,19 @@ void SceneSchema::destroy(SceneSchema schema)
     TOMLDocument::destroy(obj->doc);
 
     heap_delete<SceneSchemaObj>(obj);
+}
+
+std::string SceneSchema::get_default_text()
+{
+    return std::format(R"(
+[ludens_scene]
+version_major = {}
+version_minor = {}
+version_patch = {}
+)",
+                       LD_VERSION_MAJOR,
+                       LD_VERSION_MINOR,
+                       LD_VERSION_PATCH);
 }
 
 } // namespace LD

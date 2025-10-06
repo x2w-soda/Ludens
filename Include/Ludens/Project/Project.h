@@ -1,8 +1,9 @@
 #pragma once
 
 #include <Ludens/Header/Handle.h>
-#include <string>
+#include <Ludens/System/FileSystem.h>
 #include <filesystem>
+#include <string>
 
 namespace LD {
 
@@ -10,7 +11,7 @@ namespace LD {
 struct Project : Handle<struct ProjectObj>
 {
     /// @brief Create empty project.
-    static Project create(const std::filesystem::path& rootPath);
+    static Project create(const FS::Path& rootPath);
 
     /// @brief Destroy project.
     static void destroy(Project project);
@@ -29,19 +30,19 @@ struct Project : Handle<struct ProjectObj>
 
     /// @brief Set relative path to project Assets schema.
     /// @param assetsPath Relative path to project root.
-    void set_assets_path(const std::filesystem::path& assetsPath);
+    void set_assets_path(const FS::Path& assetsPath);
 
     /// @brief Get path to Assets schema.
     /// @return Path to Assets schema after concatenating project root path.
-    std::filesystem::path get_assets_path() const;
+    FS::Path get_assets_path() const;
 
     /// @brief Add relative path to a Scene schema.
     /// @param scenePath Relative path to project root.
-    void add_scene_path(const std::filesystem::path& scenePath);
+    void add_scene_path(const FS::Path& scenePath);
 
     /// @brief Get paths to scene schemas.
     /// @param scenePaths Outputs paths to scene schemas after concatenating project root path.
-    void get_scene_paths(std::vector<std::filesystem::path>& scenePaths) const;
+    void get_scene_paths(std::vector<FS::Path>& scenePaths) const;
 };
 
 } // namespace LD

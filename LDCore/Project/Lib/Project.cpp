@@ -4,19 +4,17 @@
 #include <filesystem>
 #include <vector>
 
-namespace fs = std::filesystem;
-
 namespace LD {
 
 struct ProjectObj
 {
     std::string name;                 /// project name, user defined
-    std::vector<fs::path> scenePaths; /// relative paths to project schemas
-    fs::path assetsPath;              /// relative path to project assets schema
-    fs::path rootPath;                /// project root path
+    std::vector<FS::Path> scenePaths; /// relative paths to project schemas
+    FS::Path assetsPath;              /// relative path to project assets schema
+    FS::Path rootPath;                /// project root path
 };
 
-Project Project::create(const fs::path& rootPath)
+Project Project::create(const FS::Path& rootPath)
 {
     ProjectObj* obj = heap_new<ProjectObj>(MEMORY_USAGE_MISC);
     obj->rootPath = rootPath;

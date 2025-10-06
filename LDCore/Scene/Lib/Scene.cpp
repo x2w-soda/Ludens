@@ -291,6 +291,32 @@ void Scene::destroy(Scene scene)
     heap_delete<SceneObj>(obj);
 }
 
+void Scene::reset()
+{
+    LD_PROFILE_SCOPE;
+
+    // TODO: this is duplicated from Scene::create, Scene::destroy
+
+    if (mObj->registryBack)
+        DataRegistry::destroy(mObj->registryBack);
+
+    DataRegistry::destroy(mObj->registry);
+    LuaState::destroy(mObj->lua);
+
+    LuaStateInfo stateI{};
+    stateI.openLibs = true;
+    mObj->lua = LuaState::create(stateI);
+    mObj->initialize_lua_state(mObj->lua);
+
+    mObj->registry = DataRegistry::create();
+    mObj->ruidToCuid.clear();
+    mObj->auidToRuid.clear();
+    mObj->cuidToRuid.clear();
+    mObj->hasStartup = false;
+    mObj->assetManager = {};
+    mObj->renderServer = {};
+}
+
 void Scene::prepare(const ScenePrepareInfo& info)
 {
     LD_PROFILE_SCOPE;
@@ -425,6 +451,11 @@ CUID Scene::create_component(ComponentType type, const char* name, CUID parent, 
 ComponentScriptSlot* Scene::create_component_script_slot(CUID compID, AUID assetID)
 {
     return mObj->registry.create_component_script_slot(compID, assetID);
+}
+
+void Scene::destroy_component_script_slot(CUID compID)
+{
+    mObj->registry.destroy_component_script_slot(compID);
 }
 
 void Scene::destroy_component(CUID compID)
