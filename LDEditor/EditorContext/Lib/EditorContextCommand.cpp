@@ -26,10 +26,16 @@ void AddComponentScriptCommand::undo()
     mSchema.set_component_script(mCompID, mPrevScriptAssetID);
 
     // update Scene
-    ComponentScriptSlot* slot = mScene.get_component_script_slot(mCompID);
-    LD_ASSERT(slot);
-
-    slot->assetID = mPrevScriptAssetID;
+    if (mPrevScriptAssetID != 0)
+    {
+        ComponentScriptSlot* slot = mScene.get_component_script_slot(mCompID);
+        LD_ASSERT(slot);
+        slot->assetID = mPrevScriptAssetID;
+    }
+    else
+    {
+        mScene.destroy_component_script_slot(mCompID);
+    }
 }
 
 } // namespace LD

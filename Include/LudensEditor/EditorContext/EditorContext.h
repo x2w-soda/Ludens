@@ -33,6 +33,18 @@ struct EditorContext : Handle<struct EditorContextObj>
     /// @brief Callback to inform the render server the transforms of RUIDs
     static Mat4 render_server_transform_callback(RUID ruid, void* user);
 
+    /// @brief Redo most recent undo.
+    void action_redo();
+
+    /// @brief Undo previous edit.
+    void action_undo();
+
+    /// @brief Create new empty scene.
+    void action_new_scene(const FS::Path& sceneSchemaPath);
+
+    /// @brief Open existing scene.
+    void action_open_scene(const FS::Path& sceneSchemaPath);
+
     /// @brief Save the current scene schema to disk.
     void action_save_scene();
 
@@ -44,6 +56,9 @@ struct EditorContext : Handle<struct EditorContextObj>
 
     /// @brief Get directory of current project.
     FS::Path get_project_directory();
+
+    /// @brief Get path to current scene schema.
+    FS::Path get_scene_schema_path();
 
     /// @brief Get editor global settings
     EditorSettings get_settings();
@@ -67,15 +82,12 @@ struct EditorContext : Handle<struct EditorContextObj>
     ///@brief Load a Project to edit
     ///@warning Experimental
     ///@note Triggers EDITOR_CONTEXT_EVENT_PROJECT_LOAD for observers
-    void load_project(const std::filesystem::path& toml);
+    void load_project(const FS::Path& projectSchemaPath);
 
     /// @brief Load a Scene from the current Project
     /// @warning Experimental
     /// @note Triggers EDITOR_CONTEXT_EVENT_SCENE_LOAD for observers.
-    void load_project_scene(const std::filesystem::path& toml);
-
-    /// @brief Save the current Scene schema to disk.
-    void save_project_scene();
+    void load_project_scene(const FS::Path& sceneSchemaPath);
 
     /// @brief Begin playing scene in the editor.
     void play_scene();

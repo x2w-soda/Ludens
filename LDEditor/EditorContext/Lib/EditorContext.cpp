@@ -30,6 +30,7 @@ struct EditorContextObj
 {
     RServer renderServer;             /// render server handle
     RImage iconAtlas;                 /// editor icon atlas handle
+    ProjectSchema projectSchema;      /// schema of the project under edit
     Project project;                  /// current project under edit
     SceneSchema sceneSchema;          /// schema of the scene under edit
     Scene scene;                      /// current scene under edit
@@ -38,8 +39,8 @@ struct EditorContextObj
     EditorActionQueue actionQueue;    /// each action maps to one or more EditCommands.
     EditStack editStack;              /// undo/redo stack of EditCommands
     FS::Path iconAtlasPath;           /// path to editor icon atlas source file
-    FS::Path sceneTOMLPath;           /// path to current scene file
-    FS::Path assetTOMLPath;           /// path to project asset file
+    FS::Path sceneSchemaPath;         /// path to current scene file
+    FS::Path assetSchemaPath;         /// path to project asset file
     FS::Path projectDirPath;          /// path to project root directory
     std::string projectName;          /// project identifier
     std::vector<FS::Path> scenePaths; /// path to scene schema files in project
@@ -49,6 +50,11 @@ struct EditorContextObj
     bool isPlaying;
 
     // TODO: union of all params? or can we accumulate params for multiple actions simultaneously?
+    struct EditorActionNewSceneParams
+    {
+        FS::Path schemaPath; // path to save schema for new scene
+    } newSceneParams;
+
     struct EditorActionOpenSceneParams
     {
         FS::Path schemaPath; // path to scene schema
@@ -61,6 +67,11 @@ struct EditorContextObj
     } addComponentScriptParams;
 
     void notify_observers(const EditorContextEvent* event);
+
+    void load_project(const FS::Path& projectSchemaPath);
+    void load_project_scene(const FS::Path& sceneSchemaPath);
+    void new_project_scene(const FS::Path& sceneSchemaPath);
+    void save_project_scene();
 };
 
 static void editor_action_undo(EditStack stack, void* user);
@@ -72,46 +83,57 @@ static void editor_action_add_component_script(EditStack stack, void* user);
 
 static void editor_action_undo(EditStack stack, void* user)
 {
+    LD_PROFILE_SCOPE;
+
     stack.undo();
 }
 
 static void editor_action_redo(EditStack stack, void* user)
 {
+    LD_PROFILE_SCOPE;
+
     stack.redo();
 }
 
 static void editor_action_new_scene(EditStack stack, void* user)
 {
+    LD_PROFILE_SCOPE;
+
     EditorContextObj* obj = (EditorContextObj*)user;
-    EditorContext ctx(obj);
 
     // Creating new Scene would clear the EditStack
     stack.clear();
-    LD_UNREACHABLE; // TODO: new scene
+
+    obj->new_project_scene(obj->newSceneParams.schemaPath);
 }
 
 static void editor_action_open_scene(EditStack stack, void* user)
 {
+    LD_PROFILE_SCOPE;
+
     EditorContextObj* obj = (EditorContextObj*)user;
-    EditorContext ctx(obj);
 
     // Opening Scene would clear the EditStack
     stack.clear();
-    ctx.load_project_scene(obj->openSceneParams.schemaPath);
+
+    obj->load_project_scene(obj->openSceneParams.schemaPath);
 }
 
 static void editor_action_save_scene(EditStack stack, void* user)
 {
+    LD_PROFILE_SCOPE;
+
     EditorContextObj* obj = (EditorContextObj*)user;
-    EditorContext ctx(obj);
 
     // Saving Scene writes the current schema to disk and
     // should not effect the EditStack.
-    ctx.save_project_scene();
+    obj->save_project_scene();
 }
 
 static void editor_action_add_component_script(EditStack stack, void* user)
 {
+    LD_PROFILE_SCOPE;
+
     EditorContextObj* obj = (EditorContextObj*)user;
     EditorContext ctx(obj);
 
@@ -130,6 +152,146 @@ void EditorContextObj::notify_observers(const EditorContextEvent* event)
     {
         observer.first(event, observer.second);
     }
+}
+
+void EditorContextObj::load_project(const FS::Path& projectSchemaPath)
+{
+    LD_PROFILE_SCOPE;
+
+    projectDirPath = projectSchemaPath.parent_path();
+
+    projectSchema = ProjectSchema::create_from_file(projectSchemaPath);
+    project = Project::create(projectDirPath);
+    projectSchema.load_project(project);
+
+    projectName = project.get_name();
+
+    FS::Path assetsPath = project.get_assets_path();
+    sLog.info("loading project [{}], root directory {}", projectName, projectDirPath.string());
+
+    assetSchemaPath = assetsPath;
+
+    if (!FS::exists(assetSchemaPath))
+    {
+        sLog.warn("failed to find project assets {}", assetSchemaPath.string());
+        return;
+    }
+
+    if (assetManager)
+    {
+        AssetManager::destroy(assetManager);
+    }
+
+    // Load all project assets at once using job system.
+    // Once we have asynchronous-load-jobs maybe we can load assets
+    // used by the loaded scene first?
+    TOMLDocument assetDoc = TOMLDocument::create_from_file(assetSchemaPath);
+
+    AssetManagerInfo amI{};
+    amI.rootPath = projectDirPath;
+    amI.watchAssets = true;
+    assetManager = AssetManager::create(amI);
+    AssetSchema::load_assets(assetManager, assetDoc);
+    TOMLDocument::destroy(assetDoc);
+
+    project.get_scene_paths(scenePaths);
+
+    for (const FS::Path& scenePath : scenePaths)
+    {
+        if (!FS::exists(scenePath))
+        {
+            sLog.error("- missing scene {}", scenePath.string());
+            continue;
+        }
+
+        sLog.info("- found scene {}", scenePath.string());
+    }
+
+    if (!scenePaths.empty())
+        load_project_scene(scenePaths.front());
+
+    EditorContextProjectLoadEvent event{};
+    notify_observers(&event);
+}
+
+void EditorContextObj::load_project_scene(const FS::Path& sceneSchemaPath)
+{
+    LD_PROFILE_SCOPE;
+
+    if (!FS::exists(sceneSchemaPath))
+        return;
+
+    this->sceneSchemaPath = sceneSchemaPath;
+    selectedComponent = 0;
+    selectedComponentRUID = 0;
+
+    if (sceneSchema)
+        SceneSchema::destroy(sceneSchema);
+
+    if (!scene)
+        scene = Scene::create();
+    else
+        scene.reset();
+
+    // create the scene
+    sceneSchema = SceneSchema::create_from_file(sceneSchemaPath);
+    sceneSchema.load_scene(scene);
+
+    // prepare the scene
+    ScenePrepareInfo prepareInfo{};
+    prepareInfo.assetManager = assetManager;
+    prepareInfo.renderServer = renderServer;
+    scene.prepare(prepareInfo);
+
+    EditorContextSceneLoadEvent event{};
+    notify_observers(&event);
+}
+
+void EditorContextObj::new_project_scene(const FS::Path& newSchemaPath)
+{
+    EditorContext ctx(this);
+
+    if (newSchemaPath.empty())
+        return;
+
+    if (FS::exists(newSchemaPath))
+    {
+        sLog.warn("new_project_scene failure: scene already exists {}", newSchemaPath.string());
+        return;
+    }
+
+    std::string newSchemaText = SceneSchema::get_default_text();
+
+    if (!FS::write_file(newSchemaPath, (uint64_t)newSchemaText.size(), (const byte*)newSchemaText.data()))
+    {
+        sLog.warn("new_project_scene failure: failed to write to {}", newSchemaPath.string());
+        return;
+    }
+
+    sLog.info("created new scene {}", newSchemaPath.string());
+
+    load_project_scene(newSchemaPath);
+
+    // TODO: maybe notify observers?
+}
+
+void EditorContextObj::save_project_scene()
+{
+    if (!sceneSchema || sceneSchemaPath.empty())
+        return;
+
+    Timer timer;
+    timer.start();
+
+    // TODO: overwrite actual schema after this is stable
+    FS::Path dst = sceneSchemaPath;
+    std::string stem = dst.stem().string();
+    stem += ".bak.toml";
+    dst.replace_filename(stem);
+    sceneSchema.save_to_disk(dst);
+
+    size_t us = timer.stop();
+    sLog.info("saved scene to {} ({} ms)", dst.string(), us / 1000.0f);
 }
 
 EditorContext EditorContext::create(const EditorContextInfo& info)
@@ -178,6 +340,7 @@ void EditorContext::destroy(EditorContext ctx)
     }
 
     Project::destroy(obj->project);
+    ProjectSchema::destroy(obj->projectSchema);
     Scene::destroy(obj->scene);
     SceneSchema::destroy(obj->sceneSchema);
     EditorActionQueue::destroy(obj->actionQueue);
@@ -192,6 +355,28 @@ Mat4 EditorContext::render_server_transform_callback(RUID ruid, void* user)
     EditorContextObj& self = *(EditorContextObj*)user;
 
     return self.scene.get_ruid_transform_mat4(ruid);
+}
+
+void EditorContext::action_redo()
+{
+    mObj->actionQueue.enqueue(EDITOR_ACTION_REDO);
+}
+
+void EditorContext::action_undo()
+{
+    mObj->actionQueue.enqueue(EDITOR_ACTION_UNDO);
+}
+
+void EditorContext::action_new_scene(const FS::Path& sceneSchemaPath)
+{
+    mObj->actionQueue.enqueue(EDITOR_ACTION_NEW_SCENE);
+    mObj->newSceneParams.schemaPath = sceneSchemaPath;
+}
+
+void EditorContext::action_open_scene(const FS::Path& sceneSchemaPath)
+{
+    mObj->actionQueue.enqueue(EDITOR_ACTION_OPEN_SCENE);
+    mObj->openSceneParams.schemaPath = sceneSchemaPath;
 }
 
 void EditorContext::action_save_scene()
@@ -214,6 +399,11 @@ void EditorContext::poll_actions()
 FS::Path EditorContext::get_project_directory()
 {
     return mObj->projectDirPath;
+}
+
+FS::Path EditorContext::get_scene_schema_path()
+{
+    return mObj->sceneSchemaPath;
 }
 
 EditorSettings EditorContext::get_settings()
@@ -265,113 +455,14 @@ void EditorContext::update(float delta)
     mObj->assetManager.update();
 }
 
-void EditorContext::load_project(const std::filesystem::path& filePath)
+void EditorContext::load_project(const FS::Path& projectSchemaPath)
 {
-    LD_PROFILE_SCOPE;
-
-    FS::Path projectDirPath = filePath.parent_path();
-
-    TOMLDocument projectDoc = TOMLDocument::create_from_file(filePath);
-    mObj->project = Project::create(projectDirPath);
-    ProjectSchema::load_project(mObj->project, projectDoc);
-    TOMLDocument::destroy(projectDoc);
-
-    mObj->projectDirPath = projectDirPath;
-    mObj->projectName = mObj->project.get_name();
-
-    FS::Path assetsPath = mObj->project.get_assets_path();
-    sLog.info("loading project [{}], root directory {}", mObj->projectName, mObj->projectDirPath.string());
-
-    mObj->assetTOMLPath = assetsPath;
-
-    if (!FS::exists(mObj->assetTOMLPath))
-    {
-        sLog.warn("failed to find project assets {}", mObj->assetTOMLPath.string());
-        return;
-    }
-
-    if (mObj->assetManager)
-    {
-        AssetManager::destroy(mObj->assetManager);
-    }
-
-    // Load all project assets at once using job system.
-    // Once we have asynchronous-load-jobs maybe we can load assets
-    // used by the loaded scene first?
-    TOMLDocument assetDoc = TOMLDocument::create_from_file(mObj->assetTOMLPath);
-
-    AssetManagerInfo amI{};
-    amI.rootPath = mObj->projectDirPath;
-    amI.watchAssets = true;
-    mObj->assetManager = AssetManager::create(amI);
-    AssetSchema::load_assets(mObj->assetManager, assetDoc);
-    TOMLDocument::destroy(assetDoc);
-
-    mObj->project.get_scene_paths(mObj->scenePaths);
-
-    for (const FS::Path& scenePath : mObj->scenePaths)
-    {
-        if (!FS::exists(scenePath))
-        {
-            sLog.error("- missing scene {}", scenePath.string());
-            continue;
-        }
-
-        sLog.info("- found scene {}", scenePath.string());
-    }
-
-    if (!mObj->scenePaths.empty())
-        load_project_scene(mObj->scenePaths.front());
-
-    EditorContextProjectLoadEvent event{};
-    mObj->notify_observers(&event);
+    mObj->load_project(projectSchemaPath);
 }
 
-void EditorContext::load_project_scene(const std::filesystem::path& tomlPath)
+void EditorContext::load_project_scene(const FS::Path& sceneSchemaPath)
 {
-    LD_PROFILE_SCOPE;
-
-    mObj->sceneTOMLPath = tomlPath;
-    mObj->selectedComponent = 0;
-    mObj->selectedComponentRUID = 0;
-
-    if (mObj->sceneSchema)
-        SceneSchema::destroy(mObj->sceneSchema);
-
-    if (!mObj->scene)
-        mObj->scene = Scene::create();
-
-    // create the scene
-    mObj->sceneSchema = SceneSchema::create_from_file(mObj->sceneTOMLPath);
-    mObj->sceneSchema.load_scene(mObj->scene);
-
-    // prepare the scene
-    ScenePrepareInfo prepareInfo{};
-    prepareInfo.assetManager = mObj->assetManager;
-    prepareInfo.renderServer = mObj->renderServer;
-    mObj->scene.prepare(prepareInfo);
-
-    EditorContextSceneLoadEvent event{};
-    mObj->notify_observers(&event);
-}
-
-void EditorContext::save_project_scene()
-{
-    if (!mObj->sceneSchema || mObj->sceneTOMLPath.empty())
-        return;
-
-    Timer timer;
-    timer.start();
-
-    // TODO: overwrite actual schema after this is stable
-    FS::Path dst = mObj->sceneTOMLPath;
-    std::string stem = dst.stem().string();
-    stem += ".bak.toml";
-    dst.replace_filename(stem);
-    mObj->sceneSchema.save_to_disk(dst);
-
-    size_t us = timer.stop();
-    sLog.info("saved scene to {} ({} ms)", dst.string(), us / 1000.0f);
+    mObj->load_project_scene(sceneSchemaPath);
 }
 
 void EditorContext::play_scene()
