@@ -36,11 +36,13 @@ public:
 
 private:
     static bool on_file_menu_option(int opt, const Rect& rect, void* user);
+    static bool on_edit_menu_option(int opt, const Rect& rect, void* user);
     static bool on_about_menu_option(int opt, const Rect& rect, void* user);
 
 private:
     UIWindow mRoot;
     TopBarMenu* mFileMenu;
+    TopBarMenu* mEditMenu;
     TopBarMenu* mAboutMenu;
     float mTopBarHeight;
 };

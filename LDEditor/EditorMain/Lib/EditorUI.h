@@ -52,6 +52,11 @@ public:
         mViewportWindow.hover_id(gizmoID, ruid);
     }
 
+    EditorContext get_editor_context()
+    {
+        return mCtx;
+    }
+
     Camera get_viewport_camera()
     {
         return mViewportWindow.get_editor_camera();

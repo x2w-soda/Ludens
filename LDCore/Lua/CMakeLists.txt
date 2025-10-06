@@ -58,5 +58,6 @@ target_include_directories(${MODULE_TEST_NAME} PRIVATE
 target_link_libraries(${MODULE_TEST_NAME} PUBLIC
     LDLua
     LDLog
+    LDDSA
     ${LUAJIT_LIBS}
 )

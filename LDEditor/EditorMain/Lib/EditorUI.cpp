@@ -237,7 +237,7 @@ void EditorUI::ECB::add_script_to_component(CUID compID, void* user)
         if (scriptAssetID == 0 || type != ASSET_TYPE_LUA_SCRIPT)
             return; // script asset out of date
 
-        ctx.create_component_script_slot(compID, scriptAssetID);
+        ctx.action_add_component_script(compID, scriptAssetID);
     };
     usage.onCancel = [](void* user) {
         EditorUI& self = *(EditorUI*)user;

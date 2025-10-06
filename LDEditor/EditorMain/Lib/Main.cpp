@@ -178,6 +178,10 @@ public:
                 continue;
 
             float delta = (float)app.get_delta_time();
+
+            // The current project or scene could change after this.
+            mEditorCtx.poll_actions();
+
             mEditorUI.update(delta);
 
             // If the Scene is playing in editor, this drives the scene update as well

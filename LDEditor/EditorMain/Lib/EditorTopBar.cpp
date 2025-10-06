@@ -13,6 +13,9 @@
 #define FILE_OPTION_NEW_PROJECT 3
 #define FILE_OPTION_OPEN_PROJECT 4
 
+#define EDIT_OPTION_UNDO 0
+#define EDIT_OPTION_REDO 1
+
 #define ABOUT_OPTION_VERSION 0
 
 namespace LD {
@@ -167,6 +170,13 @@ void EditorTopBar::startup(const EditorTopBarInfo& info)
     mFileMenu = TopBarMenu::create(this, mRoot.node(), info.editorUI, info.editorTheme, "File");
     mFileMenu->set_content(fileMenuOptions.size(), fileMenuOptions.data(), &EditorTopBar::on_file_menu_option);
 
+    std::array<MenuOption, 2> editMenuOptions = {
+        MenuOption(EDIT_OPTION_UNDO, "Undo"),
+        MenuOption(EDIT_OPTION_REDO, "Redo"),
+    };
+    mEditMenu = TopBarMenu::create(this, mRoot.node(), info.editorUI, info.editorTheme, "Edit");
+    mEditMenu->set_content(editMenuOptions.size(), editMenuOptions.data(), &EditorTopBar::on_edit_menu_option);
+
     std::array<MenuOption, 1> aboutMenuOptions = {
         MenuOption(FILE_OPTION_NEW_SCENE, "Version"),
     };
@@ -184,6 +194,8 @@ void EditorTopBar::set_active_menu(TopBarMenu* menu)
 {
     if (menu != mFileMenu)
         mFileMenu->hide_dropdown();
+    if (menu != mEditMenu)
+        mEditMenu->hide_dropdown();
     if (menu != mAboutMenu)
         mAboutMenu->hide_dropdown();
 }
@@ -195,17 +207,42 @@ UIWindow EditorTopBar::get_handle()
 
 bool EditorTopBar::on_file_menu_option(int opt, const Rect& rect, void* user)
 {
+    TopBarMenu& fileMenu = *(TopBarMenu*)user;
+    EditorUI* editorUI = fileMenu.get_editor_ui();
+    EditorContext editorCtx = editorUI->get_editor_context();
+
     switch (opt)
     {
     case FILE_OPTION_NEW_SCENE:
+        editorCtx.action_new_scene("./testScene.toml"); // TODO:
         break;
     case FILE_OPTION_OPEN_SCENE:
         break;
     case FILE_OPTION_SAVE_SCENE:
+        editorCtx.action_save_scene();
         break;
     case FILE_OPTION_NEW_PROJECT:
         break;
     case FILE_OPTION_OPEN_PROJECT:
+        break;
+    }
+
+    return true;
+}
+
+bool EditorTopBar::on_edit_menu_option(int opt, const Rect& rect, void* user)
+{
+    TopBarMenu& editMenu = *(TopBarMenu*)user;
+    EditorUI* editorUI = editMenu.get_editor_ui();
+    EditorContext editorCtx = editorUI->get_editor_context();
+
+    switch (opt)
+    {
+    case EDIT_OPTION_REDO:
+        editorCtx.action_redo();
+        break;
+    case EDIT_OPTION_UNDO:
+        editorCtx.action_undo();
         break;
     }
 

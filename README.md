@@ -48,6 +48,10 @@ Binary serializtaion and compression schemes.
 
 Console Logger.
 
+- Application
+
+The backbone of a windowed application. Handles user input and window events in an event-polling fasion.
+
 - Lua
 
 Lua state using LuaJIT. Note that this is a low-level module not concerned with scripting. This module mainly wraps the Lua state for a object-oriented API.
@@ -99,10 +103,6 @@ The basic unit of game simulation, uses the DataRegistry and AssetManager to sim
 - Project
 
 Defines a Ludens project. This should fully specify the assets, scenes, and any other meta data in a game project.
-
-- Application
-
-The backbone of a windowed application. Handles user input and window events in an event-polling fasion.
 
 ### Ludens Builder
 
