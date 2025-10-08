@@ -15,62 +15,14 @@
 #include <string>
 #include <vector>
 
-namespace fs = std::filesystem;
-
 // NOTE: THIS IS TEMPORARY. We are experimenting with editor icons, fonts, and other files.
 //       Eventually such files will be embedded in the editor, currently we are fetching
 //       from the LFS submodule at: https://github.com/x2w-soda/LudensLFS.
 //       Run `git submodule init && git submodule update` from the root folder to
 //       fetch the experimental media files in the submodule.
-struct LudensLFS
-{
-    LudensLFS()
-    {
-        const char* candidates[] = {
-            "../../../Extra/LudensLFS/README.md",
-            "../../../../Ludens/Extra/LudensLFS/README.md",
-            "../../../../../Ludens/Extra/LudensLFS/README.md",
-        };
+#include <LDUtil/LudensLFS/Include/LudensLFS.h>
 
-        for (const char* candidate : candidates)
-        {
-            if (fs::exists(candidate))
-            {
-                fs::path lfsDirectory(candidate);
-                lfsPath = lfsDirectory.parent_path();
-                break;
-            }
-        }
-
-        if (lfsPath.empty())
-        {
-            std::cout << "Failed to locate LudensLFS submodule" << std::endl;
-            exit(EXIT_FAILURE);
-        }
-
-        materialIconsPath = lfsPath / fs::path("Tmp/google/material_icons.png");
-        if (!fs::exists(materialIconsPath))
-            exit(EXIT_FAILURE);
-
-        fontPath = lfsPath / fs::path("Fonts/Inter_24pt-Regular.ttf");
-        LD_ASSERT(fs::exists(fontPath));
-
-        skyboxFolderPath = lfsPath / fs::path("Tmp/skybox/learnopengl");
-        LD_ASSERT(fs::exists(skyboxFolderPath));
-
-        projectPath = lfsPath / fs::path("Tmp/projects/project1/project.toml");
-        LD_ASSERT(fs::exists(projectPath));
-
-        std::cout << "LudensLFS submodule located at: " << lfsPath << std::endl;
-    }
-
-    fs::path lfsPath;
-    fs::path materialIconsPath;
-    fs::path fontPath;
-    fs::path skyboxFolderPath;
-    fs::path projectPath;
-
-} sLudensLFS;
+namespace fs = std::filesystem;
 
 namespace LD {
 
