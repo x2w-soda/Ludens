@@ -1,6 +1,5 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "Extra/doctest/doctest.h"
-#include "TestCompression.h"
 #include <Ludens/Header/Math/Rect.h>
 #include <Ludens/Header/Math/Vec2.h>
 #include <Ludens/Serial/Serial.h>
