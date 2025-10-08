@@ -34,6 +34,7 @@ struct ForwardRenderComponentObj
     uint32_t frameIdx;
     uint32_t batchIdx;
     bool hasInit;
+    bool hasSkybox;
     bool isDrawScope;
 
     void init(RDevice device);
@@ -187,6 +188,7 @@ ForwardRenderComponent ForwardRenderComponent::add(RGraph graph, const ForwardRe
     compObj->frameSet = frameSet;
     compObj->meshPipeline = {};
     compObj->pointBatch.reset();
+    compObj->hasSkybox = componentI.hasSkybox;
 
     RSamplerInfo colorSampler = {RFILTER_LINEAR, RFILTER_LINEAR, RSAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE};
     RSamplerInfo idSampler = {RFILTER_NEAREST, RFILTER_NEAREST, RSAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE};
@@ -281,6 +283,9 @@ void ForwardRenderComponent::draw_aabb_outline(const Vec3& min, const Vec3& max,
 void ForwardRenderComponent::draw_skybox()
 {
     LD_ASSERT(mObj->isDrawScope);
+
+    if (!mObj->hasSkybox)
+        return;
 
     mObj->flush_lines();
     mObj->list.cmd_bind_graphics_pipeline(mObj->skyboxPipeline.handle());

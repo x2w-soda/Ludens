@@ -16,6 +16,7 @@ struct ForwardRenderComponentInfo
     RSampleCountBit samples;                   /// number of samples for MSAA
     RClearColorValue clearColor;               /// color clear value
     RClearDepthStencilValue clearDepthStencil; /// depth stencil clear value
+    bool hasSkybox;                            /// whether or not to draw the skybox with environment cubemap
 };
 
 /// @brief Forward Rendering, this is one of the root render components

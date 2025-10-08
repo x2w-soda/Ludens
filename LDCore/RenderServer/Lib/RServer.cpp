@@ -44,6 +44,8 @@ public:
     void editor_pass(const RServerEditorPass& editorP);
     void editor_overlay_pass(const RServerEditorOverlayPass& editorOP);
 
+    RUID get_ruid();
+
 private:
     struct Frame
     {
@@ -62,7 +64,7 @@ private:
     RGraph mGraph;
     RSetPool mFrameSetPool;
     RImage mFontAtlasImage;
-    RImage mCubemapImage;
+    RImage mWhiteCubemap;
     Camera mMainCamera;
     RMeshBlinnPhongPipeline mMeshPipeline;
     RUID mRUIDCtr;
@@ -72,6 +74,7 @@ private:
     std::vector<Frame> mFrames;
     std::vector<RCommandPool> mCmdPools;
     std::vector<RCommandList> mCmdLists;
+    std::unordered_map<RUID, RImage> mCubemaps;
     std::unordered_map<RUID, RMeshEntry*> mMeshes;  // TODO: optimize later
     std::unordered_map<RUID, RUID> mDrawCallToMesh; /// map draw call to mesh ID
     RFormat mDepthStencilFormat;                    /// default depth stencil format
@@ -110,18 +113,19 @@ RServerObj::RServerObj(const RServerInfo& serverI)
     RImageInfo imageI = RUtil::make_2d_image_info(RIMAGE_USAGE_SAMPLED_BIT | RIMAGE_USAGE_TRANSFER_DST_BIT, RFORMAT_R8, atlasBitmap.width(), atlasBitmap.height());
     imageI.sampler = {RFILTER_LINEAR, RFILTER_LINEAR, RSAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE};
     mFontAtlasImage = mDevice.create_image(imageI);
+
+    imageI.sampler = {RFILTER_LINEAR, RFILTER_LINEAR, RSAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE};
+    imageI = RUtil::make_cube_image_info(RIMAGE_USAGE_SAMPLED_BIT | RIMAGE_USAGE_TRANSFER_DST_BIT, RFORMAT_RGBA8, 1, imageI.sampler);
+    mWhiteCubemap = mDevice.create_image(imageI);
+
     RStager stager(mDevice, RQUEUE_TYPE_GRAPHICS);
     stager.add_image_data(mFontAtlasImage, atlasBitmap.data(), RIMAGE_LAYOUT_SHADER_READ_ONLY);
 
-    RSamplerInfo cubemapSamplerI;
-    cubemapSamplerI.filter = RFILTER_LINEAR;
-    cubemapSamplerI.mipmapFilter = RFILTER_LINEAR;
-    cubemapSamplerI.addressMode = RSAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-
-    Bitmap cubemapFaces = serverI.cubemapFaces;
-    imageI = RUtil::make_cube_image_info(RIMAGE_USAGE_SAMPLED_BIT | RIMAGE_USAGE_TRANSFER_DST_BIT, RFORMAT_RGBA8, cubemapFaces.width(), cubemapSamplerI);
-    mCubemapImage = mDevice.create_image(imageI);
-    stager.add_image_data(mCubemapImage, cubemapFaces.data(), RIMAGE_LAYOUT_SHADER_READ_ONLY);
+    const uint32_t whitePixel = 0xFFFFFFFF;
+    const uint32_t* whiteFaces[6] = {&whitePixel, &whitePixel, &whitePixel, &whitePixel, &whitePixel, &whitePixel};
+    constexpr uint32_t faceSize = 1;
+    Bitmap whiteCubemapBitmap = Bitmap::create_cubemap_from_data(faceSize, (const void**)whiteFaces);
+    stager.add_image_data(mWhiteCubemap, whiteCubemapBitmap.data(), RIMAGE_LAYOUT_SHADER_READ_ONLY);
 
     stager.submit(mDevice.get_graphics_queue());
 
@@ -155,7 +159,7 @@ RServerObj::RServerObj(const RServerInfo& serverI)
         mDevice.update_set_buffers(1, &bufferUpdateI);
 
         RImageLayout layout = RIMAGE_LAYOUT_SHADER_READ_ONLY;
-        RSetImageUpdateInfo imageUpdateI = RUtil::make_single_set_image_update_info(frame.frameSet, 1, RBINDING_TYPE_COMBINED_IMAGE_SAMPLER, &layout, &mCubemapImage);
+        RSetImageUpdateInfo imageUpdateI = RUtil::make_single_set_image_update_info(frame.frameSet, 1, RBINDING_TYPE_COMBINED_IMAGE_SAMPLER, &layout, &mWhiteCubemap);
         mDevice.update_set_images(1, &imageUpdateI);
     }
 }
@@ -174,6 +178,13 @@ RServerObj::~RServerObj()
     }
     mMeshes.clear();
 
+    for (auto ite : mCubemaps)
+    {
+        RImage cubemap = ite.second;
+        mDevice.destroy_image(cubemap);
+    }
+    mCubemaps.clear();
+
     for (uint32_t i = 0; i < mFramesInFlight; i++)
     {
         Frame& frame = mFrames[i];
@@ -186,8 +197,8 @@ RServerObj::~RServerObj()
 
     RMeshBlinnPhongPipeline::destroy(mMeshPipeline);
 
+    mDevice.destroy_image(mWhiteCubemap);
     mDevice.destroy_image(mFontAtlasImage);
-    mDevice.destroy_image(mCubemapImage);
 }
 
 void RServerObj::next_frame(const RServerFrameInfo& frameI)
@@ -232,6 +243,18 @@ void RServerObj::next_frame(const RServerFrameInfo& frameI)
     uboData.envPhase = 0; // TODO: expose
     frame.ubo.map_write(0, sizeof(uboData), &uboData);
 
+    if (mCubemaps.contains(frameI.envCubemap))
+    {
+        RImage envCubemap = mCubemaps[frameI.envCubemap];
+        RImageLayout layout = RIMAGE_LAYOUT_SHADER_READ_ONLY;
+        RSetImageUpdateInfo imageUpdateI = RUtil::make_single_set_image_update_info(frame.frameSet, 1, RBINDING_TYPE_COMBINED_IMAGE_SAMPLER, &layout, &envCubemap);
+        mDevice.update_set_images(1, &imageUpdateI);
+    }
+
+    //
+    // initialization
+    //
+
     mLastComponent = nullptr;
     mLastColorAttachment = nullptr;
     mLastIDFlagsAttachment = nullptr;
@@ -266,6 +289,7 @@ void RServerObj::scene_pass(const RServerScenePass& sceneP)
     forwardI.depthStencilFormat = mDepthStencilFormat;
     forwardI.clearDepthStencil = clearDS;
     forwardI.samples = mMSAA;
+    forwardI.hasSkybox = sceneP.hasSkybox;
     ForwardRenderComponent sceneFR = ForwardRenderComponent::add(mGraph, forwardI, frame.frameSet, &RServerObj::forward_rendering, this);
 
     if (sceneP.overlay.enabled) // mesh outlining and gizmo rendering is provided by the SceneOverlayComponent
@@ -358,26 +382,33 @@ void RServerObj::editor_pass(const RServerEditorPass& editorP)
 
 void RServerObj::editor_overlay_pass(const RServerEditorOverlayPass& editorOP)
 {
+    /*
     DualKawaseComponentInfo blurCI{};
     blurCI.format = mColorFormat;
     blurCI.mixColor = editorOP.blurMixColor;
     blurCI.mixFactor = editorOP.blurMixFactor;
     DualKawaseComponent blurC = DualKawaseComponent::add(mGraph, blurCI);
     mGraph.connect_image(mLastComponent, mLastColorAttachment, blurC.component_name(), blurC.input_name());
+    */
 
     ScreenRenderComponentInfo screenRCI{};
     screenRCI.format = mColorFormat;
     screenRCI.onDrawCallback = editorOP.renderCallback;
     screenRCI.user = editorOP.user;
     screenRCI.hasInputImage = true;
-    screenRCI.hasSampledImage = true;
+    screenRCI.hasSampledImage = false;
     screenRCI.name = "editor_overlay";
     ScreenRenderComponent editorSRC = ScreenRenderComponent::add(mGraph, screenRCI);
     mGraph.connect_image(mLastComponent, mLastColorAttachment, editorSRC.component_name(), editorSRC.io_name());
-    mGraph.connect_image(blurC.component_name(), blurC.output_name(), editorSRC.component_name(), editorSRC.sampled_name());
+    // mGraph.connect_image(blurC.component_name(), blurC.output_name(), editorSRC.component_name(), editorSRC.sampled_name());
 
     mLastComponent = editorSRC.component_name();
     mLastColorAttachment = editorSRC.io_name();
+}
+
+RUID RServerObj::get_ruid()
+{
+    return mRUIDCtr++;
 }
 
 // NOTE: This is super early placeholder scene renderer implementation.
@@ -462,8 +493,6 @@ uint32_t RServerObj::ruid_to_pickid(RUID ruid)
 
 RServer RServer::create(const RServerInfo& serverI)
 {
-    LD_ASSERT(serverI.cubemapFaces);
-
     RServerObj* obj = heap_new<RServerObj>(MEMORY_USAGE_RENDER, serverI);
 
     return {obj};
@@ -523,7 +552,7 @@ RUID RServer::create_mesh(ModelBinary& modelBinary)
 {
     RStager stager(mObj->mDevice, RQUEUE_TYPE_GRAPHICS);
 
-    RUID meshID = mObj->mRUIDCtr++;
+    RUID meshID = mObj->get_ruid();
     RMeshEntry* entry = heap_new<RMeshEntry>(MEMORY_USAGE_RENDER);
     mObj->mMeshes[meshID] = entry;
 
@@ -542,7 +571,7 @@ RUID RServer::create_mesh_draw_call(RUID meshID)
         return 0;
 
     RMeshEntry* entry = mObj->mMeshes[meshID];
-    RUID drawCall = mObj->mRUIDCtr++;
+    RUID drawCall = mObj->get_ruid();
     entry->drawCalls.insert(drawCall);
     mObj->mDrawCallToMesh[drawCall] = meshID;
 
@@ -560,6 +589,40 @@ void RServer::destroy_mesh_draw_call(RUID drawCall)
     RMeshEntry* entry = mObj->mMeshes[meshID];
 
     entry->drawCalls.erase(drawCall);
+}
+
+RUID RServer::create_cubemap(Bitmap cubemapFaces)
+{
+    RSamplerInfo cubemapSamplerI{};
+    cubemapSamplerI.filter = RFILTER_LINEAR;
+    cubemapSamplerI.mipmapFilter = RFILTER_LINEAR;
+    cubemapSamplerI.addressMode = RSAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+
+    RDevice device = mObj->mDevice;
+    RImageInfo imageI = RUtil::make_cube_image_info(RIMAGE_USAGE_SAMPLED_BIT | RIMAGE_USAGE_TRANSFER_DST_BIT, RFORMAT_RGBA8, cubemapFaces.width(), cubemapSamplerI);
+    RImage cubemap = device.create_image(imageI);
+    RStager stager(device, RQUEUE_TYPE_GRAPHICS);
+    stager.add_image_data(cubemap, cubemapFaces.data(), RIMAGE_LAYOUT_SHADER_READ_ONLY);
+    stager.submit(device.get_graphics_queue());
+
+    RUID cubemapID = mObj->get_ruid();
+    mObj->mCubemaps[cubemapID] = cubemap;
+
+    return cubemapID;
+}
+
+void RServer::destroy_cubemap(RUID cubemapID)
+{
+    auto ite = mObj->mCubemaps.find(cubemapID);
+
+    if (ite == mObj->mCubemaps.end())
+        return;
+
+    RImage cubemap = ite->second;
+    mObj->mCubemaps.erase(ite);
+
+    mObj->mDevice.wait_idle();
+    mObj->mDevice.destroy_image(cubemap);
 }
 
 } // namespace LD

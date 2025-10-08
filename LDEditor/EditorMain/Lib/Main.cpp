@@ -57,20 +57,6 @@ public:
         mFont = Font::create_from_path(fontPathString.c_str());
         mFontAtlas = FontAtlas::create_bitmap(mFont, 32.0f);
 
-        fs::path dirPath = sLudensLFS.skyboxFolderPath;
-        std::array<std::string, 6> facePaths;
-        facePaths[0] = fs::path(dirPath).append("px.png").string();
-        facePaths[1] = fs::path(dirPath).append("nx.png").string();
-        facePaths[2] = fs::path(dirPath).append("py.png").string();
-        facePaths[3] = fs::path(dirPath).append("ny.png").string();
-        facePaths[4] = fs::path(dirPath).append("pz.png").string();
-        facePaths[5] = fs::path(dirPath).append("nz.png").string();
-        std::array<const char*, 6> facePathsCstr;
-        for (int i = 0; i < 6; i++)
-            facePathsCstr[i] = facePaths[i].c_str();
-
-        Bitmap tmpCubemapFaces = Bitmap::create_cubemap_from_paths(facePathsCstr.data());
-
         RDeviceInfo deviceI{};
         deviceI.backend = RDEVICE_BACKEND_VULKAN;
         deviceI.window = app.get_glfw_window();
@@ -80,10 +66,25 @@ public:
         RServerInfo serverI{};
         serverI.device = mRDevice;
         serverI.fontAtlas = mFontAtlas;
-        serverI.cubemapFaces = tmpCubemapFaces;
         mRServer = RServer::create(serverI);
 
-        Bitmap::destroy(tmpCubemapFaces);
+        {
+            fs::path dirPath = sLudensLFS.skyboxFolderPath;
+            std::array<std::string, 6> facePaths;
+            facePaths[0] = fs::path(dirPath).append("px.png").string();
+            facePaths[1] = fs::path(dirPath).append("nx.png").string();
+            facePaths[2] = fs::path(dirPath).append("py.png").string();
+            facePaths[3] = fs::path(dirPath).append("ny.png").string();
+            facePaths[4] = fs::path(dirPath).append("pz.png").string();
+            facePaths[5] = fs::path(dirPath).append("nz.png").string();
+            std::array<const char*, 6> facePathsCstr;
+            for (int i = 0; i < 6; i++)
+                facePathsCstr[i] = facePaths[i].c_str();
+
+            Bitmap tmpCubemapFaces = Bitmap::create_cubemap_from_paths(facePathsCstr.data());
+            mEnvCubemap = mRServer.create_cubemap(tmpCubemapFaces);
+            Bitmap::destroy(tmpCubemapFaces);
+        }
 
         // load scene into editor context
         EditorContextInfo contextI{};
@@ -108,6 +109,9 @@ public:
         LD_PROFILE_SCOPE;
 
         mEditorUI.cleanup();
+
+        mRDevice.wait_idle();
+        mRServer.destroy_cubemap(mEnvCubemap);
 
         EditorContext::destroy(mEditorCtx);
         RServer::destroy(mRServer);
@@ -145,6 +149,7 @@ public:
             frameI.mainCamera = mEditorUI.get_viewport_camera();
             frameI.screenExtent = Vec2((float)app.width(), (float)app.height());
             frameI.sceneExtent = mEditorUI.get_viewport_scene_size();
+            frameI.envCubemap = mEnvCubemap;
             mRServer.next_frame(frameI);
 
             // render game scene with overlay, the editor context is responsible for supplying object transforms
@@ -153,6 +158,7 @@ public:
             sceneP.user = mEditorCtx.unwrap();
             sceneP.overlay.enabled = !mEditorCtx.is_playing();
             sceneP.overlay.outlineRUID = mEditorUI.get_viewport_outline_ruid();
+            sceneP.hasSkybox = (mEnvCubemap != 0);
             mEditorUI.get_viewport_gizmo_state(
                 sceneP.overlay.gizmoType,
                 sceneP.overlay.gizmoCenter,
@@ -193,6 +199,7 @@ private:
     Font mFont;
     FontAtlas mFontAtlas;
     RImage mFontAtlasImage;
+    RUID mEnvCubemap;
 };
 
 } // namespace LD

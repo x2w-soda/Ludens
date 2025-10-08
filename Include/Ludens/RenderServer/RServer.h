@@ -23,7 +23,6 @@ struct RServerInfo
 {
     RDevice device;      /// render device handle
     FontAtlas fontAtlas; /// default font atlas used for text rendering
-    Bitmap cubemapFaces; /// default 6 faces of default environment cubemap
 };
 
 /// @brief Info for the server to start a new frame
@@ -33,6 +32,7 @@ struct RServerFrameInfo
     Vec2 screenExtent;     /// application screen extent
     Vec2 sceneExtent;      /// game scene extent
     Vec3 directionalLight; /// directional light vector
+    RUID envCubemap;       /// optional environment cubemap to draw in scene
 };
 
 struct RServerSceneGizmoColor
@@ -50,6 +50,7 @@ struct RServerScenePass
 {
     RServerTransformCallback transformCallback; /// callback for server to grab the transform of objects
     void* user;                                 /// user of the scene render pass
+    bool hasSkybox;                             /// whether to draw skybox with the environment cubemap
 
     // optional overlay rendering for gizmos and object outlining
     struct
@@ -128,6 +129,12 @@ struct RServer : Handle<struct RServerObj>
 
     /// @brief Destroy a draw call.
     void destroy_mesh_draw_call(RUID drawCall);
+
+    /// @brief Create a cubemap from bitmap.
+    RUID create_cubemap(Bitmap cubemapFaces);
+
+    /// @brief Destroy a cubemap.
+    void destroy_cubemap(RUID cubemap);
 };
 
 } // namespace LD
