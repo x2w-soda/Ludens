@@ -41,6 +41,11 @@ struct Bitmap : Handle<struct BitmapObj>
     /// @param paths an array of 6 paths
     static Bitmap create_cubemap_from_paths(const char** paths);
 
+    /// @brief Create 6 layered bitmap from 6-face data.
+    /// @param size Size of each face.
+    /// @param faceData An array of cubemap faces, each face contains RGBA8 pixels
+    static Bitmap create_cubemap_from_data(uint32_t size, const void* faceData[6]);
+
     /// @brief destroy bitmap
     static void destroy(Bitmap bitmap);
 

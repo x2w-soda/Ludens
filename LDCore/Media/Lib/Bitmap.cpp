@@ -44,6 +44,7 @@ Bitmap Bitmap::create_from_data(uint32_t width, uint32_t height, BitmapChannel c
     obj->channel = channel;
     obj->compression = BITMAP_COMPRESSION_LZ4;
     obj->data = (byte*)(obj + 1);
+    obj->isF32 = false;
 
     memcpy(obj->data, data, dataSize);
 
@@ -125,6 +126,7 @@ Bitmap Bitmap::create_cubemap_from_paths(const char** paths)
     obj->width = size;
     obj->height = size;
     obj->channel = BITMAP_CHANNEL_RGBA;
+    obj->isF32 = false;
 
     return {obj};
 
@@ -141,6 +143,26 @@ failure:
     }
 
     return {};
+}
+
+Bitmap Bitmap::create_cubemap_from_data(uint32_t size, const void* faceData[6])
+{
+    const uint32_t layerSize = size * size * 4;
+    BitmapObj* obj = (BitmapObj*)heap_malloc(sizeof(BitmapObj), MEMORY_USAGE_MEDIA);
+    obj->data = (byte*)heap_malloc(6 * layerSize, MEMORY_USAGE_MEDIA);
+    obj->flags = BITMAP_FLAG_USE_HEAP_FREE;
+    obj->width = size;
+    obj->height = size;
+    obj->channel = BITMAP_CHANNEL_RGBA;
+    obj->isF32 = false;
+
+    for (int i = 0; i < 6; i++)
+    {
+        // copy into contiguous memory
+        memcpy(obj->data + i * layerSize, faceData[i], layerSize);
+    }
+
+    return Bitmap(obj);
 }
 
 void Bitmap::destroy(Bitmap bitmap)
