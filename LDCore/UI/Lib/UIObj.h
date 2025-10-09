@@ -18,20 +18,6 @@
 
 namespace LD {
 
-enum UIWidgetType
-{
-    UI_WIDGET_WINDOW = 0,
-    UI_WIDGET_SCROLL,
-    UI_WIDGET_BUTTON,
-    UI_WIDGET_SLIDER,
-    UI_WIDGET_TOGGLE,
-    UI_WIDGET_PANEL,
-    UI_WIDGET_IMAGE,
-    UI_WIDGET_TEXT,
-    UI_WIDGET_TEXT_EDIT,
-    UI_WIDGET_TYPE_COUNT,
-};
-
 enum UIWidgetFlagBit
 {
     /// @brief Widget subtree will not be drawn.

@@ -121,6 +121,11 @@ void UIWidget::unblock_input()
     UIContext(ctx).input_mouse_position(ctx->cursorPos);
 }
 
+UIWidgetType UIWidget::get_type()
+{
+    return mObj->type;
+}
+
 Rect UIWidget::get_rect()
 {
     return mObj->layout.rect;
@@ -169,6 +174,12 @@ void UIWidget::set_user(void* user)
 void UIWidget::set_layout(const UILayoutInfo& layout)
 {
     mObj->layout.info = layout;
+}
+
+void UIWidget::set_layout_size(const UISize& sizeX, const UISize& sizeY)
+{
+    mObj->layout.info.sizeX = sizeX;
+    mObj->layout.info.sizeY = sizeY;
 }
 
 void UIWidget::set_layout_child_padding(const UIPadding& padding)
@@ -463,6 +474,13 @@ void UISliderWidget::on_draw(UIWidget widget, ScreenRenderComponent renderer)
     rect.w = sliderw;
     rect.x += self.ratio * sliderw * 9.0f;
     renderer.draw_rect(rect, color);
+}
+
+void UISliderWidget::set_value_range(float minValue, float maxValue)
+{
+    mObj->as.slider.min = minValue;
+    mObj->as.slider.max = maxValue;
+    mObj->as.slider.value = std::clamp(mObj->as.slider.value, minValue, maxValue);
 }
 
 float UISliderWidget::get_value()

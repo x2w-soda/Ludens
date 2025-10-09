@@ -23,6 +23,20 @@ enum UIEvent
     UI_KEY_UP,
 };
 
+enum UIWidgetType
+{
+    UI_WIDGET_WINDOW = 0,
+    UI_WIDGET_SCROLL,
+    UI_WIDGET_BUTTON,
+    UI_WIDGET_SLIDER,
+    UI_WIDGET_TOGGLE,
+    UI_WIDGET_PANEL,
+    UI_WIDGET_IMAGE,
+    UI_WIDGET_TEXT,
+    UI_WIDGET_TEXT_EDIT,
+    UI_WIDGET_TYPE_COUNT,
+};
+
 struct UIWidget : Handle<struct UIWidgetObj>
 {
     /// @brief Get node in widget hierarchy.
@@ -43,6 +57,9 @@ struct UIWidget : Handle<struct UIWidgetObj>
 
     /// @brief This widget subtree will receive input events normally.
     void unblock_input();
+
+    /// @brief Get widget type.
+    UIWidgetType get_type();
 
     /// @brief Get widget rect in screen space.
     Rect get_rect();
@@ -75,6 +92,9 @@ struct UIWidget : Handle<struct UIWidgetObj>
 
     /// @brief Update widget layout after creation.
     void set_layout(const UILayoutInfo& layout);
+
+    /// @brief Update widget sizing policy after creation.
+    void set_layout_size(const UISize& sizeX, const UISize& sizeY);
 
     /// @brief Update widget child padding after creation.
     void set_layout_child_padding(const UIPadding& padding);
@@ -162,6 +182,9 @@ struct UIButtonWidgetInfo
 /// @brief UI slider widget
 struct UISliderWidget : UIWidget
 {
+    /// @brief Set slider value range.
+    void set_value_range(float minValue, float maxValue);
+
     /// @brief get slider value
     float get_value();
 
