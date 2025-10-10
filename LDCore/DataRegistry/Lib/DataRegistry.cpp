@@ -13,7 +13,6 @@ namespace LD {
 static Log sLog("DataRegistry");
 static bool duplicate_subtree(DataRegistry dup, DataRegistry orig, CUID origRoot);
 static Transform* get_transform(void* comp);
-static Transform* get_mesh_transform(void* comp);
 static Transform2D* get_transform2d(void* comp);
 static AUID get_mesh_auid(void* comp);
 
@@ -31,7 +30,8 @@ struct ComponentMeta
 static ComponentMeta sComponentTable[] = {
     { COMPONENT_TYPE_DATA,       sizeof(ComponentBase),      "DataComponent",      nullptr,             nullptr,          nullptr },
     { COMPONENT_TYPE_TRANSFORM,  sizeof(TransformComponent), "TransformComponent", &get_transform,      nullptr,          nullptr },
-    { COMPONENT_TYPE_MESH,       sizeof(MeshComponent),      "MeshComponent",      &get_mesh_transform, nullptr,          &get_mesh_auid },
+    { COMPONENT_TYPE_CAMERA,     sizeof(CameraComponent),    "CameraComponent",    &get_transform,      nullptr,          nullptr },
+    { COMPONENT_TYPE_MESH,       sizeof(MeshComponent),      "MeshComponent",      &get_transform,      nullptr,          &get_mesh_auid },
     { COMPONENT_TYPE_SPRITE_2D,  sizeof(Sprite2DComponent),  "Sprite2DComponent",  nullptr,             &get_transform2d, nullptr },
 };
 // clang-format on
@@ -85,11 +85,6 @@ static Transform* get_transform(void* comp)
     return &((TransformComponent*)comp)->transform;
 }
 
-static Transform* get_mesh_transform(void* comp)
-{
-    return &((MeshComponent*)comp)->transform;
-}
-
 Transform2D* get_transform2d(void* comp)
 {
     return (Transform2D*)comp;
@@ -102,6 +97,7 @@ static AUID get_mesh_auid(void* comp)
 
 static_assert(sizeof(sComponentTable) / sizeof(*sComponentTable) == COMPONENT_TYPE_ENUM_COUNT);
 static_assert(LD::IsDataComponent<TransformComponent>);
+static_assert(LD::IsDataComponent<CameraComponent>);
 static_assert(LD::IsDataComponent<MeshComponent>);
 static_assert(LD::IsDataComponent<Sprite2DComponent>);
 

@@ -36,6 +36,7 @@ static int component_get_name(lua_State* l);
 static int component_set_name(lua_State* l);
 static void push_transform_table(DataRegistry reg, LuaState L, CUID compID, Transform* transform);
 static void push_transform2d_table(DataRegistry reg, LuaState L, CUID compID, Transform2D* transform);
+static void push_camera_component_table(DataRegistry reg, LuaState L, CUID compID, void* comp);
 static void push_mesh_component_table(DataRegistry reg, LuaState L, CUID compID, void* comp);
 static void push_sprite2d_component_table(DataRegistry reg, LuaState L, CUID compID, void* comp);
 static void install_component_base(DataRegistry reg, LuaState& L, CUID compID);
@@ -151,6 +152,7 @@ static inline void get_transform_cuid(LuaState L, int tIndex, CUID& compID, Data
 /// @brief Transform:get_position()
 static int transform_get_position(lua_State* l)
 {
+    LD_PROFILE_SCOPE;
     LuaState L(l);
 
     L.get_field(-1, "_ud");
@@ -165,6 +167,7 @@ static int transform_get_position(lua_State* l)
 /// @brief Transform:set_position(Vec3)
 static int transform_set_position(lua_State* l)
 {
+    LD_PROFILE_SCOPE;
     LuaState L(l);
 
     L.get_field(-2, "_ud");
@@ -185,6 +188,7 @@ static int transform_set_position(lua_State* l)
 /// @brief Transform:get_rotation()
 static int transform_get_rotation(lua_State* l)
 {
+    LD_PROFILE_SCOPE;
     LuaState L(l);
 
     L.get_field(-1, "_ud");
@@ -199,6 +203,7 @@ static int transform_get_rotation(lua_State* l)
 /// @brief Transform:set_rotation(Vec3)
 static int transform_set_rotation(lua_State* l)
 {
+    LD_PROFILE_SCOPE;
     LuaState L(l);
 
     L.get_field(-2, "_ud");
@@ -220,6 +225,7 @@ static int transform_set_rotation(lua_State* l)
 /// @brief Transform:get_scale()
 static int transform_get_scale(lua_State* l)
 {
+    LD_PROFILE_SCOPE;
     LuaState L(l);
 
     L.get_field(-1, "_ud");
@@ -234,6 +240,7 @@ static int transform_get_scale(lua_State* l)
 /// @brief Transform:set_scale(Vec3)
 static int transform_set_scale(lua_State* l)
 {
+    LD_PROFILE_SCOPE;
     LuaState L(l);
 
     L.get_field(-2, "_ud");
@@ -460,6 +467,19 @@ void push_transform2d_table(DataRegistry reg, LuaState L, CUID compID, Transform
     L.set_field(-2, "set_scale");
 }
 
+static void push_camera_component_table(DataRegistry reg, LuaState L, CUID compID, void* comp)
+{
+    CameraComponent* cameraC = (CameraComponent*)comp;
+
+    L.push_table(); // camera component
+    install_component_base(reg, L, compID);
+
+    push_transform_table(reg, L, compID, &cameraC->transform);
+    L.set_field(-2, "transform");
+
+    // TODO:
+}
+
 static void push_mesh_component_table(DataRegistry reg, LuaState L, CUID compID, void* comp)
 {
     MeshComponent* meshC = (MeshComponent*)comp;
@@ -515,10 +535,13 @@ struct
 } sComponents[] = {
     {COMPONENT_TYPE_DATA,       nullptr},
     {COMPONENT_TYPE_TRANSFORM,  nullptr},
+    {COMPONENT_TYPE_CAMERA,     nullptr},
     {COMPONENT_TYPE_MESH,       &push_mesh_component_table},
     {COMPONENT_TYPE_SPRITE_2D,  &push_sprite2d_component_table},
 };
 // clang-format on
+
+static_assert(sizeof(sComponents) / sizeof(*sComponents) == COMPONENT_TYPE_ENUM_COUNT);
 
 /// @brief ludens.application.exit
 static int application_exit(lua_State* l)
