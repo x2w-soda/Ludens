@@ -549,7 +549,22 @@ void RCommandList::cmd_dispatch(uint32_t groupCountX, uint32_t groupCountY, uint
 
 void RCommandList::cmd_set_scissor(const Rect& scissor)
 {
-    mObj->cmd_set_scissor(mObj, scissor);
+    // ensure positions are non negative
+    Rect adjusted = scissor;
+    if (adjusted.x < 0.0f)
+    {
+        adjusted.w += adjusted.x;
+        adjusted.x = 0.0f;
+    }
+    if (adjusted.y < 0.0f)
+    {
+        adjusted.h += adjusted.y;
+        adjusted.y = 0.0f;
+    }
+    if (adjusted.w <= 0.0f || adjusted.h <= 0.0f)
+        return;
+
+    mObj->cmd_set_scissor(mObj, adjusted);
 }
 
 void RCommandList::cmd_draw(const RDrawInfo& drawI)
