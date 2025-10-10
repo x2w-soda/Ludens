@@ -141,12 +141,17 @@ public:
             mEditorUI.update(delta);
 
             // If the Scene is playing in editor, this drives the scene update as well
-            mEditorCtx.update(delta);
+            mEditorCtx.update(mEditorUI.get_viewport_scene_size(), delta);
+
+            // If the Scene is playing, the main camera is from some camera component registered in scene.
+            // Otherwise it's just the viewport camera.
+            Camera mainCamera = mEditorUI.get_main_camera();
+            LD_ASSERT(mainCamera);
 
             // begin rendering a frame
             RServerFrameInfo frameI{};
             frameI.directionalLight = Vec3(0.0f, 1.0f, 0.0f);
-            frameI.mainCamera = mEditorUI.get_viewport_camera();
+            frameI.mainCamera = mainCamera;
             frameI.screenExtent = Vec2((float)app.width(), (float)app.height());
             frameI.sceneExtent = mEditorUI.get_viewport_scene_size();
             frameI.envCubemap = mEnvCubemap;

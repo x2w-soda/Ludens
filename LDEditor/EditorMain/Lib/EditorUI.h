@@ -57,6 +57,16 @@ public:
         return mCtx;
     }
 
+    /// @brief Get the main camera used to render scene from.
+    Camera get_main_camera()
+    {
+        Camera sceneCamera;
+        if (mCtx.is_playing() && (sceneCamera = mCtx.get_scene_camera()))
+            return sceneCamera;
+
+        return get_viewport_camera();
+    }
+
     Camera get_viewport_camera()
     {
         return mViewportWindow.get_editor_camera();
@@ -87,6 +97,9 @@ public:
         mViewportWindow.get_gizmo_state(gizmoType, gizmoCenter, gizmoScale, gizmoColor);
     }
 
+    /// @brief Begin dialogue to open new scene.
+    void open_scene();
+
     void show_backdrop_window();
     void hide_backdrop_window();
     void show_version_window();
@@ -99,8 +112,6 @@ public:
         FS::Path directoryPath;
         void* user;
     };
-
-    void show_select_window(const SelectWindowUsage& usage);
 
     static void on_event(const Event* event, void* user);
     static void on_render(ScreenRenderComponent renderer, void* user);
@@ -115,6 +126,9 @@ public:
         /// @brief Open dialog to add script to component.
         static void add_script_to_component(CUID compID, void* user);
     };
+
+private:
+    void show_select_window(const SelectWindowUsage& usage);
 
 private:
     EditorContext mCtx;

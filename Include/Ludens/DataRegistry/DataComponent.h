@@ -12,6 +12,7 @@
 //       a lot of headers from different subsystems into the scope.
 
 #include <Ludens/Asset/Asset.h>
+#include <Ludens/Camera/Camera.h>
 #include <Ludens/RenderBackend/RBackend.h>
 #include <Ludens/RenderServer/RServer.h>
 #include <cstdint>
@@ -29,6 +30,7 @@ enum ComponentType
 {
     COMPONENT_TYPE_DATA = 0,
     COMPONENT_TYPE_TRANSFORM,
+    COMPONENT_TYPE_CAMERA,
     COMPONENT_TYPE_MESH,
     COMPONENT_TYPE_SPRITE_2D,
     COMPONENT_TYPE_ENUM_COUNT,
@@ -73,6 +75,20 @@ struct ComponentScriptSlot
 struct TransformComponent
 {
     Transform transform;
+};
+
+/// @brief A camera in world space. The camera is responsible for
+///        providing the view matrix and projection matrix during rendering.
+struct CameraComponent
+{
+    Transform transform;
+    Camera camera;
+    union
+    {
+        CameraPerspectiveInfo perspective;
+        CameraOrthographicInfo orthographic;
+    };
+    bool isPerspective;
 };
 
 /// @brief Render data for meshes that do not deform.

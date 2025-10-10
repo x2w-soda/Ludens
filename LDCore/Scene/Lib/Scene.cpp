@@ -1,4 +1,5 @@
 #include "LuaScript.h"
+#include <Ludens/Camera/Camera.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Header/Math/Math.h>
 #include <Ludens/Lua/LuaModule.h>
@@ -19,6 +20,8 @@ struct SceneObj
     AssetManager assetManager;
     RServer renderServer;
     LuaState lua;
+    CameraComponent* mainCameraC;
+    Vec2 screenExtent = {};
     std::unordered_map<RUID, CUID> ruidToCuid; /// map draw call to corresponding component
     std::unordered_map<CUID, RUID> cuidToRuid; /// map component to corresponding draw call
     std::unordered_map<AUID, RUID> auidToRuid; /// map asset to GPU resource
@@ -48,6 +51,33 @@ struct SceneObj
     /// @brief Initialize a lua state for scripting
     void initialize_lua_state(LuaState L);
 };
+
+static void prepare_camera_component(SceneObj* scene, CUID compID)
+{
+    ComponentType componentType;
+    CameraComponent* cameraC = (CameraComponent*)scene->registry.get_component(compID, componentType);
+    LD_ASSERT(cameraC && componentType == COMPONENT_TYPE_CAMERA);
+
+    // TODO: Currently the first CameraComponent becomes the main camera in Scene.
+    //       Allow multiple cameras in scene and assign one to be the main camera.
+    LD_ASSERT(!scene->mainCameraC);
+    scene->mainCameraC = cameraC;
+
+    // TODO: main camera position must not be Vec3(0.0)
+    Vec3 mainCameraTarget(0.0f);
+
+    if (cameraC->isPerspective)
+    {
+        CameraPerspectiveInfo perspectiveI = cameraC->perspective;
+        perspectiveI.aspectRatio = 1.0f; // updated per frame
+
+        scene->mainCameraC->camera = Camera::create(perspectiveI, mainCameraTarget);
+    }
+    else
+    {
+        scene->mainCameraC->camera = Camera::create(cameraC->orthographic, mainCameraTarget);
+    }
+}
 
 static void prepare_mesh_component(SceneObj* scene, CUID compID)
 {
@@ -80,7 +110,8 @@ struct SceneComponent
 static SceneComponent sSceneComponents[] = {
     {COMPONENT_TYPE_DATA,       nullptr},
     {COMPONENT_TYPE_TRANSFORM,  nullptr},
-    {COMPONENT_TYPE_MESH,       prepare_mesh_component},
+    {COMPONENT_TYPE_CAMERA,     &prepare_camera_component},
+    {COMPONENT_TYPE_MESH,       &prepare_mesh_component},
     {COMPONENT_TYPE_SPRITE_2D,  nullptr},
 };
 // clang-format on
@@ -89,6 +120,8 @@ static_assert(sizeof(sSceneComponents) / sizeof(*sSceneComponents) == COMPONENT_
 
 void SceneObj::prepare(ComponentBase* comp)
 {
+    LD_PROFILE_SCOPE;
+
     // type-specific preparations
     if (sSceneComponents[comp->type].prepare)
         sSceneComponents[comp->type].prepare(this, comp->id);
@@ -264,6 +297,8 @@ void SceneObj::initialize_lua_state(LuaState L)
 
 Scene Scene::create()
 {
+    LD_PROFILE_SCOPE;
+
     SceneObj* obj = heap_new<SceneObj>(MEMORY_USAGE_SCENE);
     obj->registry = DataRegistry::create();
     obj->assetManager = {};
@@ -280,10 +315,15 @@ Scene Scene::create()
 
 void Scene::destroy(Scene scene)
 {
+    LD_PROFILE_SCOPE;
+
     SceneObj* obj = scene.unwrap();
 
     if (obj->registryBack)
         DataRegistry::destroy(obj->registryBack);
+
+    if (obj->mainCameraC)
+        Camera::destroy(obj->mainCameraC->camera);
 
     DataRegistry::destroy(obj->registry);
     LuaState::destroy(obj->lua);
@@ -298,10 +338,22 @@ void Scene::reset()
     // TODO: this is duplicated from Scene::create, Scene::destroy
 
     if (mObj->registryBack)
+    {
         DataRegistry::destroy(mObj->registryBack);
+        mObj->registryBack = {};
+    }
+
+    if (mObj->mainCameraC)
+    {
+        Camera::destroy(mObj->mainCameraC->camera);
+        mObj->mainCameraC = nullptr;
+    }
 
     DataRegistry::destroy(mObj->registry);
+    mObj->registry = {};
+
     LuaState::destroy(mObj->lua);
+    mObj->lua = {};
 
     LuaStateInfo stateI{};
     stateI.openLibs = true;
@@ -403,11 +455,15 @@ void Scene::swap()
     mObj->registryBack = tmp;
 }
 
-void Scene::update(float delta)
+void Scene::update(const Vec2& screenExtent, float delta)
 {
     LD_PROFILE_SCOPE;
+    LD_ASSERT(screenExtent.x > 0.0f && screenExtent.y > 0.0f);
+
+    mObj->screenExtent = screenExtent;
 
     LuaState L = mObj->lua;
+    int oldSize1 = L.size();
     L.get_global("ludens");
     L.get_field(-1, "scripts");
 
@@ -417,6 +473,7 @@ void Scene::update(float delta)
         if (!script->isEnabled)
             continue;
 
+        int oldSize2 = L.size();
         L.push_number((double)script->componentID);
         L.get_table(-2);
 
@@ -435,12 +492,34 @@ void Scene::update(float delta)
         L.push_number((double)delta);
 
         // Script:update(comp, delta)
-        L.call(3, 0);
+        {
+            LD_PROFILE_SCOPE_NAME("LuaScript pcall");
+            LuaError err = L.pcall(3, 0, 0);
+            LD_ASSERT(err == 0);
+        }
 
-        L.pop(1);
+        L.resize(oldSize2);
     }
 
-    L.pop(2);
+    L.resize(oldSize1);
+
+    if (mObj->mainCameraC)
+    {
+        const CameraComponent* cameraC = mObj->mainCameraC;
+        Camera mainCamera = mObj->mainCameraC->camera;
+        mainCamera.set_aspect_ratio(screenExtent.x / screenExtent.y);
+        mainCamera.set_pos(cameraC->transform.position);
+        // TODO: forward vector from euler angle rotations
+        mainCamera.set_target(cameraC->transform.position + Vec3(0.0f, 0.0f, 1.0f));
+    }
+}
+
+Camera Scene::get_camera()
+{
+    if (mObj->mainCameraC)
+        return mObj->mainCameraC->camera;
+
+    return {};
 }
 
 CUID Scene::create_component(ComponentType type, const char* name, CUID parent, CUID hint)

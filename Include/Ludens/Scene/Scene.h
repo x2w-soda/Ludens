@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Ludens/Asset/AssetManager.h>
+#include <Ludens/Camera/Camera.h>
 #include <Ludens/DataRegistry/DataRegistry.h>
 #include <Ludens/Header/Handle.h>
 #include <Ludens/RenderServer/RServer.h>
@@ -46,8 +47,12 @@ public:
     void swap();
 
     /// @brief Update the scene with delta time.
+    /// @param screenExtent Screen size this frame.
     /// @param delta Delta time in seconds.
-    void update(float delta);
+    void update(const Vec2& screenExtent, float delta);
+
+    /// @brief Get camera to render the Scene with.
+    Camera get_camera();
 
     /// @brief Create a component.
     /// @param type Component type.
@@ -108,6 +113,7 @@ public:
     /// @brief Supplies the transform for a draw call
     Mat4 get_ruid_transform_mat4(RUID ruid);
 
+    /// @brief Set the mesh asset of a mesh component.
     void set_mesh_component_asset(CUID meshC, AUID meshAssetID);
 };
 

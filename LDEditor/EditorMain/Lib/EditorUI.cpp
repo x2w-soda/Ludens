@@ -250,6 +250,29 @@ void EditorUI::ECB::add_script_to_component(CUID compID, void* user)
     self.show_select_window(usage);
 }
 
+void EditorUI::open_scene()
+{
+    SelectWindowUsage usage{.user = this};
+    usage.onSelect = [](const FS::Path& path, void* user) {
+        EditorUI& self = *(EditorUI*)user;
+        EditorContext ctx = self.mCtx;
+
+        self.mWM.hide_float(self.mSelectWindowID);
+        self.hide_backdrop_window();
+
+        ctx.action_open_scene(path);
+    };
+    usage.onCancel = [](void* user) {
+        EditorUI& self = *(EditorUI*)user;
+        self.mWM.hide_float(self.mSelectWindowID);
+        self.hide_backdrop_window();
+    };
+    usage.extensionFilter = "toml";
+    usage.directoryPath = mCtx.get_project_directory();
+
+    show_select_window(usage);
+}
+
 void EditorUI::show_backdrop_window()
 {
     Application app = Application::get();
@@ -274,7 +297,6 @@ void EditorUI::show_version_window()
 
         UIWMClientInfo clientI{};
         clientI.client = mVersionWindow.get_handle();
-        clientI.resizeCallback = nullptr;
         clientI.user = this;
         mVersionWindowID = mWM.create_float(clientI);
         mWM.set_close_callback(mVersionWindowID, [](UIWindow client, void* user) {
@@ -302,7 +324,6 @@ void EditorUI::show_select_window(const SelectWindowUsage& usage)
 
         UIWMClientInfo clientI{};
         clientI.client = mSelectWindow.get_handle();
-        clientI.resizeCallback = nullptr;
         clientI.user = this;
         mSelectWindowID = mWM.create_float(clientI);
         mWM.set_close_callback(mSelectWindowID, [](UIWindow client, void* user) {

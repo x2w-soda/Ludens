@@ -19,7 +19,6 @@ typedef void (*UIWMClientCloseCallback)(UIWindow client, void* user);
 struct UIWMClientInfo
 {
     UIWindow client;                         /// user provides UI window as client
-    UIWMClientResizeCallback resizeCallback; /// invoked when WM resizes the client
     void* user;                              /// dependency injection during client callbacks
 };
 

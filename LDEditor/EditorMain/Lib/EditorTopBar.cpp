@@ -217,6 +217,7 @@ bool EditorTopBar::on_file_menu_option(int opt, const Rect& rect, void* user)
         editorCtx.action_new_scene("./testScene.toml"); // TODO:
         break;
     case FILE_OPTION_OPEN_SCENE:
+        editorUI->open_scene();
         break;
     case FILE_OPTION_SAVE_SCENE:
         editorCtx.action_save_scene();

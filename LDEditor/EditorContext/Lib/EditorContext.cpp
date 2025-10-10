@@ -439,16 +439,21 @@ RImage EditorContext::get_editor_icon_atlas()
     return mObj->iconAtlas;
 }
 
+Camera EditorContext::get_scene_camera()
+{
+    return mObj->scene.get_camera();
+}
+
 void EditorContext::add_observer(EditorContextEventFn fn, void* user)
 {
     mObj->observers.push_back(std::make_pair(fn, user));
 }
 
-void EditorContext::update(float delta)
+void EditorContext::update(const Vec2& sceneExtent, float delta)
 {
     if (mObj->isPlaying)
     {
-        mObj->scene.update(delta);
+        mObj->scene.update(sceneExtent, delta);
     }
 
     // NOTE: this polls for any asset file changes.

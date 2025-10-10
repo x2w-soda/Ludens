@@ -10,6 +10,7 @@
 namespace LD {
 
 static CUID load_component(TOMLValue compTOML, Scene scene);
+static bool load_camera_component(TOMLValue compTOML, Scene scene, CUID compID, const char* compName);
 static bool load_mesh_component(TOMLValue compTOML, Scene scene, CUID compID, const char* compName);
 static bool load_sprite2d_component(TOMLValue compTOML, Scene scene, CUID compID, const char* compName);
 static void load_transform(TOMLValue transformTOML, Transform& transform);
@@ -32,8 +33,9 @@ struct
 } sSceneSchemaTable[] = {
     {COMPONENT_TYPE_DATA,      nullptr},
     {COMPONENT_TYPE_TRANSFORM, nullptr},
-    {COMPONENT_TYPE_MESH,      load_mesh_component},
-    {COMPONENT_TYPE_SPRITE_2D, load_sprite2d_component},
+    {COMPONENT_TYPE_CAMERA,    &load_camera_component},
+    {COMPONENT_TYPE_MESH,      &load_mesh_component},
+    {COMPONENT_TYPE_SPRITE_2D, &load_sprite2d_component},
 };
 // clang-format on
 
@@ -70,6 +72,11 @@ static CUID load_component(TOMLValue compTOML, Scene scene)
         bool ok = load_sprite2d_component(compTOML, scene, compID, name.c_str());
         LD_ASSERT(ok);
     }
+    else if (type == "Camera")
+    {
+        bool ok = load_camera_component(compTOML, scene, compID, name.c_str());
+        LD_ASSERT(ok);
+    }
 
     int64_t scriptID;
     TOMLValue scriptIDTOML = compTOML["script"];
@@ -80,6 +87,83 @@ static CUID load_component(TOMLValue compTOML, Scene scene)
     }
 
     return compID;
+}
+
+static bool load_camera_component(TOMLValue compTOML, Scene scene, CUID compID, const char* compName)
+{
+    ComponentType type;
+
+    compID = scene.create_component(COMPONENT_TYPE_CAMERA, compName, (CUID)0, compID);
+    if (!compID)
+        return false;
+
+    CameraComponent* cameraC = (CameraComponent*)scene.get_component(compID, type);
+
+    TOMLValue floatTOML{};
+    TOMLValue toml = compTOML["transform"];
+    load_transform(toml, cameraC->transform);
+    scene.mark_component_transform_dirty(compID);
+
+    toml = compTOML["isPerspective"];
+    if (!toml || !toml.is_bool(cameraC->isPerspective))
+        return false;
+
+    if (cameraC->isPerspective)
+    {
+        toml = compTOML["perspective"];
+        if (!toml || !toml.is_table_type())
+            return false; // missing perspective info
+
+        float fovDegrees;
+        floatTOML = toml["fov"];
+        if (!floatTOML || !floatTOML.is_f32(fovDegrees))
+            return false;
+
+        cameraC->perspective.fov = LD_TO_RADIANS(fovDegrees);
+
+        floatTOML = toml["nearClip"];
+        if (!floatTOML || !floatTOML.is_f32(cameraC->perspective.nearClip))
+            return false;
+
+        floatTOML = toml["farClip"];
+        if (!floatTOML || !floatTOML.is_f32(cameraC->perspective.farClip))
+            return false;
+
+        // initialized later
+        cameraC->perspective.aspectRatio = 0.0f;
+    }
+    else
+    {
+        toml = compTOML["orthographic"];
+        if (!toml || !toml.is_table_type())
+            return false; // missing orthographic info
+
+        floatTOML = toml["left"];
+        if (!floatTOML || !floatTOML.is_f32(cameraC->orthographic.left))
+            return false;
+
+        floatTOML = toml["right"];
+        if (!floatTOML || !floatTOML.is_f32(cameraC->orthographic.right))
+            return false;
+
+        floatTOML = toml["bottom"];
+        if (!floatTOML || !floatTOML.is_f32(cameraC->orthographic.bottom))
+            return false;
+
+        floatTOML = toml["top"];
+        if (!floatTOML || !floatTOML.is_f32(cameraC->orthographic.top))
+            return false;
+
+        floatTOML = toml["nearClip"];
+        if (!floatTOML || !floatTOML.is_f32(cameraC->orthographic.nearClip))
+            return false;
+
+        floatTOML = toml["farClip"];
+        if (!floatTOML || !floatTOML.is_f32(cameraC->orthographic.farClip))
+            return false;
+    }
+
+    return true;
 }
 
 static bool load_mesh_component(TOMLValue compTOML, Scene scene, CUID compID, const char* compName)

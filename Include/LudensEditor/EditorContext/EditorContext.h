@@ -72,12 +72,16 @@ struct EditorContext : Handle<struct EditorContextObj>
     /// @brief Get editor theme.
     inline EditorTheme get_theme() { return get_settings().get_theme(); }
 
+    /// @brief Get camera to render scene with.
+    Camera get_scene_camera();
+
     /// @brief Add an observer of the editor context
     void add_observer(EditorContextEventFn fn, void* user);
 
     /// @brief Editor context frame update, if the scene is playing, this calls the scene update.
+    /// @param sceneExtent Screen size containing the scene.
     /// @param delta Delta time in seconds.
-    void update(float delta);
+    void update(const Vec2& sceneExtent, float delta);
 
     ///@brief Load a Project to edit
     ///@warning Experimental
