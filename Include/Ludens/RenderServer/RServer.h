@@ -64,6 +64,13 @@ struct RServerScenePass
     } overlay;
 };
 
+/// @brief Info for the server to render in screen space on top of scene.
+struct RServerSceneScreenPass
+{
+    void (*renderCallback)(ScreenRenderComponent renderer, void* user);
+    void* user; /// user of the scene screen pass
+};
+
 /// @brief Info for the server to render the editor
 struct RServerEditorPass
 {
@@ -103,6 +110,9 @@ struct RServer : Handle<struct RServerObj>
 
     /// @brief Base pass to render the game scene.
     void scene_pass(const RServerScenePass& sceneRP);
+
+    /// @brief Screen pass to render on top of game scene.
+    void scene_screen_pass(const RServerSceneScreenPass& screenP);
 
     /// @brief Dependency injection for the Editor to render itself.
     ///        Not used in game Runtime.

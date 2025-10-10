@@ -41,6 +41,7 @@ public:
     void submit_frame();
 
     void scene_pass(const RServerScenePass& sceneP);
+    void scene_screen_pass(const RServerSceneScreenPass& screenP);
     void editor_pass(const RServerEditorPass& editorP);
     void editor_overlay_pass(const RServerEditorOverlayPass& editorOP);
 
@@ -326,6 +327,24 @@ void RServerObj::scene_pass(const RServerScenePass& sceneP)
     mHasRenderedScene = true;
 }
 
+void RServerObj::scene_screen_pass(const RServerSceneScreenPass& screenP)
+{
+    LD_ASSERT(mHasRenderedScene);
+
+    ScreenRenderComponentInfo screenRCI;
+    screenRCI.format = mColorFormat;
+    screenRCI.onDrawCallback = screenP.renderCallback;
+    screenRCI.user = screenP.user;
+    screenRCI.hasInputImage = true; // draws on top of the scene_pass results
+    screenRCI.hasSampledImage = false;
+    screenRCI.name = "scene_screen";
+    ScreenRenderComponent screenRC = ScreenRenderComponent::add(mGraph, screenRCI);
+    mGraph.connect_image(mLastComponent, mLastColorAttachment, screenRC.component_name(), screenRC.io_name());
+
+    mLastComponent = screenRC.component_name();
+    mLastColorAttachment = screenRC.io_name();
+}
+
 void RServerObj::editor_pass(const RServerEditorPass& editorP)
 {
     LD_ASSERT(mHasRenderedScene && mLastComponent && mLastColorAttachment && mLastIDFlagsAttachment);
@@ -521,6 +540,11 @@ void RServer::submit_frame()
 void RServer::scene_pass(const RServerScenePass& sceneP)
 {
     mObj->scene_pass(sceneP);
+}
+
+void RServer::scene_screen_pass(const RServerSceneScreenPass& screenP)
+{
+    mObj->scene_screen_pass(screenP);
 }
 
 void RServer::editor_pass(const RServerEditorPass& editorRP)
