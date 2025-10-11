@@ -3,12 +3,14 @@ set(MODULE_TEST_NAME LDSerialTest)
 
 set(MODULE_INCLUDE
 	${LUDENS_INCLUDE_DIR}/Ludens/Serial/Serial.h
+	${LUDENS_INCLUDE_DIR}/Ludens/Serial/Packet.h
 	${LUDENS_INCLUDE_DIR}/Ludens/Serial/Compress.h
 	${LUDENS_INCLUDE_DIR}/Ludens/Serial/Endianness.h
 )
 
 set(MODULE_LIB
 	Lib/Serial.cpp
+	Lib/Packet.cpp
 	Lib/Compress.cpp
 )
 
@@ -32,6 +34,7 @@ target_include_directories(${MODULE_NAME} PRIVATE
 
 set(MODULE_TEST
 	Test/SerialTest.cpp
+	Test/PacketTest.cpp
 	Test/EndiannessTest.cpp
 	Test/CompressionTest.cpp
 )
