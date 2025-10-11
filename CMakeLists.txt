@@ -230,6 +230,15 @@ else()
   set(TRACY_ENABLE OFF CACHE INTERNAL "")
 endif()
 
+## Fetch miniaudio.h
+
+FetchContent_Declare(
+  miniaudio
+  GIT_REPOSITORY https://github.com/mackron/miniaudio.git
+  GIT_TAG 0.11.23
+)
+FetchContent_MakeAvailable(miniaudio)
+
 # Find Vulkan
 # - require SPIRV-Cross for reflection
 # - require glslang for SPIRV compilation
@@ -291,6 +300,7 @@ add_subdirectory(LDCore/RenderBackend)
 add_subdirectory(LDCore/RenderGraph)
 add_subdirectory(LDCore/RenderComponent)
 add_subdirectory(LDCore/RenderServer)
+add_subdirectory(LDCore/AudioBackend)
 add_subdirectory(LDCore/UI)
 add_subdirectory(LDCore/Asset)
 add_subdirectory(LDCore/DataRegistry)
@@ -315,6 +325,7 @@ target_link_libraries(LDCoreLibs INTERFACE
   LDRenderGraph
   LDRenderComponent
   LDRenderServer
+  LDAudioBackend
   LDUI
   LDAsset
   LDDataRegistry
