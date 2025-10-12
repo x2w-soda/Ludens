@@ -85,6 +85,9 @@ UIWidgetObj* UIContextObj::alloc_widget(UIWidgetType type, const UILayoutInfo& l
 
 void UIContextObj::free_widget(UIWidgetObj* widget)
 {
+    while (widget->child)
+        free_widget(widget->child);
+
     UIWidgetObj* parent = widget->parent;
     if (parent)
         parent->remove_child(widget);
@@ -93,9 +96,9 @@ void UIContextObj::free_widget(UIWidgetObj* widget)
     size_t count = std::erase(window->widgets, widget);
     LD_ASSERT(count == 1);
 
-    invalidate_refs(widget);
+    invalidate_refs(widget); // remove all refs to out of scope widget
+    ui_obj_cleanup(widget);  // polymorphic cleanup
 
-    ui_obj_cleanup(widget);
     widgetPA.free(widget);
 }
 

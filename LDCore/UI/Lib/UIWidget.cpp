@@ -242,6 +242,14 @@ UIContextObj* UINode::get_context()
     return mObj->window->ctx;
 }
 
+void UINode::remove()
+{
+    UIContextObj* ctx = mObj->window->ctx;
+
+    ctx->free_widget(mObj);
+    mObj = nullptr;
+}
+
 //
 // UIScrollWidget
 //

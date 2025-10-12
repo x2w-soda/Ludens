@@ -272,6 +272,10 @@ struct UINode : Handle<struct UIWidgetObj>
 {
     UIContextObj* get_context();
 
+    /// @brief Remove self subtree from parent.
+    /// @warning All UIWidget handle in the removed subtree is now out of date.
+    void remove();
+
     UIScrollWidget add_scroll(const UILayoutInfo& layoutI, const UIScrollWidgetInfo& widgetI, void* user);
 
     UIPanelWidget add_panel(const UILayoutInfo& layoutI, const UIPanelWidgetInfo& widgetI, void* user);

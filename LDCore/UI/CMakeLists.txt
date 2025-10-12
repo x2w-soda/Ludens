@@ -9,6 +9,7 @@ set(MODULE_INCLUDE
     ${LUDENS_INCLUDE_DIR}/Ludens/UI/UITheme.h
     ${LUDENS_INCLUDE_DIR}/Ludens/UI/UIWindowManager.h
     ${LUDENS_INCLUDE_DIR}/Ludens/UI/UIAnimation.h
+    ${LUDENS_INCLUDE_DIR}/Ludens/UI/UIImmediate.h
 )
 
 set(MODULE_LIB
@@ -20,6 +21,7 @@ set(MODULE_LIB
     Lib/UITheme.cpp
     Lib/UIWindowManager.cpp
     Lib/UIAnimation.cpp
+    Lib/UIImmediate.cpp
     Lib/WindowManager/AreaNode.h
     Lib/WindowManager/AreaNode.cpp
     Lib/WindowManager/AreaTab.h
