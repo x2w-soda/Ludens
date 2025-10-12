@@ -127,6 +127,7 @@ RServerObj::RServerObj(const RServerInfo& serverI)
     constexpr uint32_t faceSize = 1;
     Bitmap whiteCubemapBitmap = Bitmap::create_cubemap_from_data(faceSize, (const void**)whiteFaces);
     stager.add_image_data(mWhiteCubemap, whiteCubemapBitmap.data(), RIMAGE_LAYOUT_SHADER_READ_ONLY);
+    Bitmap::destroy(whiteCubemapBitmap);
 
     stager.submit(mDevice.get_graphics_queue());
 
