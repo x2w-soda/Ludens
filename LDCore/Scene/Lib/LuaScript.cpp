@@ -3,6 +3,7 @@
 #include <Ludens/Application/Input.h>
 #include <Ludens/DataRegistry/DataComponent.h>
 #include <Ludens/Log/Log.h>
+#include <Ludens/Profiler/Profiler.h>
 #include <array>
 #include <cstring>
 #include <string>
