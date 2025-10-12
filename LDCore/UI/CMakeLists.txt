@@ -1,5 +1,6 @@
 set(MODULE_NAME LDUI)
 set(MODULE_TEST_NAME LDUITest)
+set(MODULE_SANDBOX_NAME LDUISandbox)
 
 set(MODULE_INCLUDE
     ${LUDENS_INCLUDE_DIR}/Ludens/UI/UIContext.h
@@ -37,6 +38,12 @@ set(MODULE_TEST
     Test/UITextWidgetTest.cpp
 )
 
+set(MODULE_SANDBOX
+    Sandbox/UISandboxMain.cpp
+    Sandbox/UISandbox.h
+    Sandbox/UISandbox.cpp
+)
+
 add_library(${MODULE_NAME}
     ${MODULE_INCLUDE}
     ${MODULE_LIB}
@@ -64,4 +71,22 @@ target_include_directories(${MODULE_TEST_NAME} PRIVATE
 
 target_link_libraries(${MODULE_TEST_NAME} PRIVATE
     ${MODULE_NAME}
+)
+
+add_executable(${MODULE_SANDBOX_NAME}
+    ${MODULE_SANDBOX}
+)
+
+target_include_directories(${MODULE_SANDBOX_NAME} PRIVATE
+    ${LUDENS_INCLUDE_DIR}
+    ${LUDENS_SOURCE_DIR}
+)
+
+target_link_libraries(${MODULE_SANDBOX_NAME} PRIVATE
+    ${MODULE_NAME}
+    LDApplication
+    LDRenderServer
+    LDLudensLFS
+    LDCamera
+    LDEditorContext # for the EditorIconAtlas
 )
