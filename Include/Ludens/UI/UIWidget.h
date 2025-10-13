@@ -112,10 +112,10 @@ struct UIWidget : Handle<struct UIWidgetObj>
     void set_on_key(void (*onKey)(UIWidget widget, KeyCode key, UIEvent event));
 
     /// @brief override mouse callback
-    void set_on_mouse(void (*onMouseUp)(UIWidget widget, const Vec2& pos, MouseButton btn, UIEvent event));
+    void set_on_mouse(void (*onMouse)(UIWidget widget, const Vec2& pos, MouseButton btn, UIEvent event));
 
     /// @brief override mouse hover callback
-    void set_on_hover(void (*onEnter)(UIWidget widget, UIEvent event));
+    void set_on_hover(void (*onHover)(UIWidget widget, UIEvent event));
 
     /// @brief override mouse drag callback
     void set_on_drag(void (*onDrag)(UIWidget widget, MouseButton btn, const Vec2& dragPos, bool begin));

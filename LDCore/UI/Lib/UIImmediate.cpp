@@ -14,6 +14,10 @@
 
 #define LD_ASSERT_UI_PUSH LD_ASSERT(sImFrame.imWindow && "ui_window_begin not called")
 
+#define LD_ASSERT_UI_TOP_WIDGET                             \
+    LD_ASSERT(sImFrame.ctx && "ui_frame_begin not called"); \
+    LD_ASSERT(sImFrame.imWindow && "ui_window_begin not called");
+
 namespace LD {
 
 struct UIWidgetState
@@ -21,9 +25,11 @@ struct UIWidgetState
     UIWidget widget = {};                 // actual retained widget
     std::vector<UIWidgetState*> children; // direct children, retained across frames
     Hash32 widgetHash;                    // hash that identifies this state uniquely in its window
-    Impulse isPressed;
-    Impulse isReleased;
-    int childCounter = 0; // number of children widget states in this frame
+    MouseButton mouseDownButton;
+    MouseButton mouseUpButton;
+    Impulse mouseDownImpulse;
+    Impulse mouseUpImpulse;
+    int childCounter = 0;                 // number of children widget states in this frame
     union
     {
         Impulse isTogglePressed;
@@ -65,6 +71,25 @@ struct UIImmediateFrame
 
 static UIImmediateFrame sImFrame;
 static std::unordered_map<Hash32, UIWindowState*> sImWindows;
+
+static void on_mouse_handler(UIWidget widget, const Vec2& pos, MouseButton btn, UIEvent event)
+{
+    UIWidgetState* widgetS = (UIWidgetState*)widget.get_user();
+
+    switch (event)
+    {
+    case UI_MOUSE_DOWN:
+        widgetS->mouseDownImpulse.set(true);
+        widgetS->mouseDownButton = btn;
+        break;
+    case UI_MOUSE_UP:
+        widgetS->mouseUpImpulse.set(true);
+        widgetS->mouseUpButton = btn;
+        break;
+    default:
+        break;
+    }
+}
 
 static void destroy_widget_subtree(PoolAllocator statePA, UIWidgetState* widgetS)
 {
@@ -400,6 +425,46 @@ void ui_frame_end()
 
     sImFrame.ctx = {};
     sImFrame.imWindow = nullptr;
+}
+
+void ui_top_layout(const UILayoutInfo& layoutI)
+{
+    LD_ASSERT_UI_TOP_WIDGET;
+
+    UIWidgetState* widgetS = sImFrame.imWindow->imWidgetStack.top();
+    widgetS->widget.set_layout(layoutI);
+}
+
+bool ui_top_mouse_down(MouseButton& outButton)
+{
+    LD_ASSERT_UI_TOP_WIDGET;
+
+    UIWidgetState* widgetS = sImFrame.imWindow->imWidgetStack.top();
+    widgetS->widget.set_on_mouse(&on_mouse_handler);
+    bool hasEvent = widgetS->mouseDownImpulse.read();
+
+    if (hasEvent)
+    {
+        outButton = widgetS->mouseDownButton;
+    }
+
+    return hasEvent;
+}
+
+bool ui_top_mouse_up(MouseButton& outButton)
+{
+    LD_ASSERT_UI_TOP_WIDGET;
+
+    UIWidgetState* widgetS = sImFrame.imWindow->imWidgetStack.top();
+    widgetS->widget.set_on_mouse(&on_mouse_handler);
+    bool hasEvent = widgetS->mouseUpImpulse.read();
+
+    if (hasEvent)
+    {
+        outButton = widgetS->mouseUpButton;
+    }
+
+    return hasEvent;
 }
 
 void ui_pop()

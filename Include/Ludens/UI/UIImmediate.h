@@ -1,14 +1,15 @@
 #pragma once
 
 #include <Ludens/UI/UIContext.h>
+#include <Ludens/UI/UIWidget.h>
 
 // OVERVIEW
-// 
+//
 // - This is a thin immediate-mode API layer that is completely optional,
 //   this layer wraps the standard UIWindow and UIWidget API for rapid
 //   prototyping. While this is useful for the Editor, the final game
 //   Runtime will most likely wish to avoid the overhead of this layer.
-//   
+//
 // - Since the UIWindow/UIWidget is a tree hierarchy, a stack-based
 //   API is required to specify the tree hierarchy without ambiguity.
 //
@@ -25,6 +26,19 @@ void ui_frame_begin(UIContext ctx);
 /// @brief End the immediate mode frame.
 void ui_frame_end();
 
+/// @brief Set layout of widget on top of stack.
+void ui_top_layout(const UILayoutInfo& layoutI);
+
+/// @brief Check if widget on top of stack has UI_MOUSE_DOWN event.
+/// @return True if event exists.
+/// @warning Overrides existing on_mouse callback on widget.
+bool ui_top_mouse_down(MouseButton& outButton);
+
+/// @brief Check if widget on top of stack has UI_MOUSE_UP event.
+/// @return True if event exists.
+/// @warning Overrides existing on_mouse callback on widget.
+bool ui_top_mouse_up(MouseButton& outButton);
+
 /// @brief Pop the most recent non-window widget.
 void ui_pop();
 
@@ -34,7 +48,7 @@ void ui_pop_window();
 /// @brief Push UIWindow.
 void ui_push_window(const char* name);
 
-/// @brief Push existing UIWindow as client. 
+/// @brief Push existing UIWindow as client.
 void ui_push_window_client(const char* name, UIWindow client);
 
 /// @brief Push UITextWidget.
