@@ -29,6 +29,9 @@ void ui_frame_end();
 /// @brief Set layout of widget on top of stack.
 void ui_top_layout(const UILayoutInfo& layoutI);
 
+/// @brief Set user of widget on top of stack.
+void ui_top_user(void* user);
+
 /// @brief Check if widget on top of stack has UI_MOUSE_DOWN event.
 /// @return True if event exists.
 /// @warning Overrides existing on_mouse callback on widget.
@@ -38,6 +41,16 @@ bool ui_top_mouse_down(MouseButton& outButton);
 /// @return True if event exists.
 /// @warning Overrides existing on_mouse callback on widget.
 bool ui_top_mouse_up(MouseButton& outButton);
+
+/// @brief Check if widget on top of stack has UI_KEY_DOWN event.
+/// @return True if event exists.
+/// @warning Overrides existing on_key callback on widget.
+bool ui_top_key_down(KeyCode& outKey);
+
+/// @brief Check if widget on top of stack has UI_KEY_UP event.
+/// @return True if event exists.
+/// @warning Overrides existing on_key callback on widget.
+bool ui_top_key_up(KeyCode& outKey);
 
 /// @brief Pop the most recent non-window widget.
 void ui_pop();
@@ -50,6 +63,12 @@ void ui_push_window(const char* name);
 
 /// @brief Push existing UIWindow as client.
 void ui_push_window_client(const char* name, UIWindow client);
+
+/// @brief Sets the current window to position and fixed size.
+void ui_set_window_rect(const Rect& rect);
+
+/// @brief Check if an external UIWindow client has previously been pushed.
+bool ui_has_window_client(const char* name);
 
 /// @brief Push UITextWidget.
 void ui_push_text(const char* text);

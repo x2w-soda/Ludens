@@ -8,15 +8,18 @@
 #include <unordered_map>
 #include <vector>
 
-#define LD_ASSERT_UI_PUSH_WINDOW                            \
-    LD_ASSERT(sImFrame.ctx && "ui_frame_begin not called"); \
+#define LD_ASSERT_UI_FRAME_BEGIN LD_ASSERT(sImFrame.ctx && "ui_frame_begin not called")
+#define LD_ASSERT_UI_WINDOW LD_ASSERT(sImFrame.imWindow && "ui_push_window(_client) not called")
+
+#define LD_ASSERT_UI_PUSH_WINDOW \
+    LD_ASSERT_UI_FRAME_BEGIN;    \
     LD_ASSERT(!sImFrame.imWindow && "ui_window_begin already called");
 
-#define LD_ASSERT_UI_PUSH LD_ASSERT(sImFrame.imWindow && "ui_window_begin not called")
+#define LD_ASSERT_UI_PUSH LD_ASSERT_UI_WINDOW;
 
-#define LD_ASSERT_UI_TOP_WIDGET                             \
-    LD_ASSERT(sImFrame.ctx && "ui_frame_begin not called"); \
-    LD_ASSERT(sImFrame.imWindow && "ui_window_begin not called");
+#define LD_ASSERT_UI_TOP_WIDGET \
+    LD_ASSERT_UI_FRAME_BEGIN;   \
+    LD_ASSERT_UI_WINDOW;
 
 namespace LD {
 
@@ -27,9 +30,14 @@ struct UIWidgetState
     Hash32 widgetHash;                    // hash that identifies this state uniquely in its window
     MouseButton mouseDownButton;
     MouseButton mouseUpButton;
+    KeyCode keyDown;
+    KeyCode keyUp;
     Impulse mouseDownImpulse;
     Impulse mouseUpImpulse;
-    int childCounter = 0;                 // number of children widget states in this frame
+    Impulse keyDownImpulse;
+    Impulse keyUpImpulse;
+    int childCounter = 0; // number of children widget states in this frame
+    void* imUser;
     union
     {
         Impulse isTogglePressed;
@@ -85,6 +93,25 @@ static void on_mouse_handler(UIWidget widget, const Vec2& pos, MouseButton btn, 
     case UI_MOUSE_UP:
         widgetS->mouseUpImpulse.set(true);
         widgetS->mouseUpButton = btn;
+        break;
+    default:
+        break;
+    }
+}
+
+static void on_key_handler(UIWidget widget, KeyCode key, UIEvent event)
+{
+    UIWidgetState* widgetS = (UIWidgetState*)widget.get_user();
+
+    switch (event)
+    {
+    case UI_KEY_DOWN:
+        widgetS->keyDownImpulse.set(true);
+        widgetS->keyDown = key;
+        break;
+    case UI_KEY_UP:
+        widgetS->keyUpImpulse.set(true);
+        widgetS->keyUp = key;
         break;
     default:
         break;
@@ -435,6 +462,14 @@ void ui_top_layout(const UILayoutInfo& layoutI)
     widgetS->widget.set_layout(layoutI);
 }
 
+void ui_top_user(void* imUser)
+{
+    LD_ASSERT_UI_TOP_WIDGET;
+
+    UIWidgetState* widgetS = sImFrame.imWindow->imWidgetStack.top();
+    widgetS->imUser = imUser;
+}
+
 bool ui_top_mouse_down(MouseButton& outButton)
 {
     LD_ASSERT_UI_TOP_WIDGET;
@@ -462,6 +497,38 @@ bool ui_top_mouse_up(MouseButton& outButton)
     if (hasEvent)
     {
         outButton = widgetS->mouseUpButton;
+    }
+
+    return hasEvent;
+}
+
+bool ui_top_key_down(KeyCode& outKey)
+{
+    LD_ASSERT_UI_TOP_WIDGET;
+
+    UIWidgetState* widgetS = sImFrame.imWindow->imWidgetStack.top();
+    widgetS->widget.set_on_key(&on_key_handler);
+    bool hasEvent = widgetS->keyDownImpulse.read();
+
+    if (hasEvent)
+    {
+        outKey = widgetS->keyDown;
+    }
+
+    return hasEvent;
+}
+
+bool ui_top_key_up(KeyCode& outKey)
+{
+    LD_ASSERT_UI_TOP_WIDGET;
+
+    UIWidgetState* widgetS = sImFrame.imWindow->imWidgetStack.top();
+    widgetS->widget.set_on_key(&on_key_handler);
+    bool hasEvent = widgetS->keyUpImpulse.read();
+
+    if (hasEvent)
+    {
+        outKey = widgetS->keyUp;
     }
 
     return hasEvent;
@@ -518,12 +585,27 @@ void ui_push_window_client(const char* name, UIWindow client)
     LD_ASSERT_UI_PUSH_WINDOW;
 
     Hash32 windowName(name);
-    UIWindowState* imWindow = sImFrame.imWindow = get_or_create_window_state(windowName, false);
-    imWindow->state->childCounter = 0;
-    imWindow->state->widget = (UIWidget)client;
-    imWindow->imWidgetStack.push(imWindow->state);
-    imWindow->window = client;
-    imWindow->window.show();
+    UIWindowState* windowS = sImFrame.imWindow = get_or_create_window_state(windowName, false);
+    windowS->state->childCounter = 0;
+    windowS->state->widget = (UIWidget)client;
+    windowS->imWidgetStack.push(windowS->state);
+    windowS->window = client;
+    windowS->window.show();
+}
+
+void ui_set_window_rect(const Rect& rect)
+{
+    LD_ASSERT_UI_WINDOW;
+
+    sImFrame.imWindow->window.set_rect(rect);
+}
+
+
+bool ui_has_window_client(const char* name)
+{
+    LD_ASSERT_UI_FRAME_BEGIN;
+
+    return sImWindows.contains(Hash32(name));
 }
 
 void ui_push_text(const char* text)
