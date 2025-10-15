@@ -3,6 +3,7 @@
 #include <Ludens/Header/Bitwise.h>
 #include <Ludens/Header/Math/Vec2.h>
 #include <Ludens/Profiler/Profiler.h>
+#include <Ludens/RenderComponent/ScreenRenderComponent.h>
 #include <Ludens/System/Memory.h>
 #include <Ludens/UI/UIContext.h>
 #include <algorithm>
@@ -104,17 +105,22 @@ void UIContextObj::free_widget(UIWidgetObj* widget)
 
 UIWidgetObj* UIContextObj::get_widget(const Vec2& pos, int filter)
 {
-    for (auto ite = windows.rbegin(); ite != windows.rend(); ite++)
+    for (auto layerIte = layers.rbegin(); layerIte != layers.rend(); layerIte++)
     {
-        UIWindowObj* window = *ite;
+        UIContextLayer* layer = *layerIte;
 
-        if (!window->layout.rect.contains(pos) || (window->flags & UI_WIDGET_FLAG_HIDDEN_BIT))
-            continue;
+        for (auto windowIte = layer->windows.rbegin(); windowIte != layer->windows.rend(); windowIte++)
+        {
+            UIWindowObj* window = *windowIte;
 
-        if (window->flags & UI_WIDGET_FLAG_BLOCK_INPUT_BIT)
-            return nullptr;
+            if (!window->layout.rect.contains(pos) || (window->flags & UI_WIDGET_FLAG_HIDDEN_BIT))
+                continue;
 
-        return get_widget_at_pos((UIWidgetObj*)window, pos, filter);
+            if (window->flags & UI_WIDGET_FLAG_BLOCK_INPUT_BIT)
+                return nullptr;
+
+            return get_widget_at_pos((UIWidgetObj*)window, pos, filter);
+        }
     }
 
     return nullptr;
@@ -124,24 +130,59 @@ void UIContextObj::pre_update(float delta)
 {
     for (UIWindowObj* window : deferredWindowDestruction)
     {
+        UIContextLayer* layer = window->layer;
         heap_delete<UIWindowObj>(window);
 
-        size_t count = std::erase(windows, window);
-        LD_ASSERT(count == 1);
+        layer->windows.erase(std::remove(layer->windows.begin(), layer->windows.end(), window));
     }
 
     deferredWindowDestruction.clear();
 }
 
-void UIContextObj::raise_window(UIWindowObj* window)
+UIContextLayer* UIContextObj::get_or_create_layer(Hash32 layerHash)
 {
-    auto ite = std::find(windows.begin(), windows.end(), window);
+    UIContextLayer* layer = get_layer(layerHash);
 
-    if (ite == windows.end())
+    if (layer)
+        return layer;
+
+    layer = heap_new<UIContextLayer>(MEMORY_USAGE_UI);
+    layer->layerHash = layerHash;
+    layers.push_back(layer);
+
+    return layer;
+}
+
+UIContextLayer* UIContextObj::get_layer(Hash32 layerHash)
+{
+    // just linear probe
+    for (UIContextLayer* layer : layers)
+    {
+        if (layer->layerHash == layerHash)
+            return layer;
+    }
+
+    return nullptr;
+}
+
+void UIContextObj::remove_layer(UIContextLayer* layer)
+{
+    if (!layer)
         return;
 
-    windows.erase(ite);
-    windows.push_back(window);
+    // destroy all windows in layer
+    for (UIWindowObj* window : layer->windows)
+        heap_delete<UIWindowObj>(window);
+    layer->windows.clear();
+
+    heap_delete<UIContextLayer>(layer);
+}
+
+void UIContextObj::raise_window(UIWindowObj* window)
+{
+    UIContextLayer* layer = window->layer;
+    layer->windows.erase(std::remove(layer->windows.begin(), layer->windows.end(), window));
+    layer->windows.push_back(window);
 }
 
 void UIContextObj::invalidate_refs(UIWidgetObj* removed)
@@ -277,11 +318,51 @@ void UIContext::layout()
 {
     LD_PROFILE_SCOPE;
 
-    // TODO: window flags to skip layout pass
-    for (UIWindowObj* window : mObj->windows)
+    for (UIContextLayer* layer : mObj->layers)
     {
-        ui_layout(window);
+        for (UIWindowObj* window : layer->windows)
+        {
+            ui_layout(window);
+        }
     }
+}
+
+void UIContext::add_layer(Hash32 layerHash)
+{
+    mObj->get_or_create_layer(layerHash);
+}
+
+void UIContext::remove_layer(Hash32 layerHash)
+{
+    UIContextLayer* layer = mObj->get_layer(layerHash);
+    if (!layer)
+        return;
+
+    mObj->remove_layer(layer);
+    mObj->layers.erase(std::remove(mObj->layers.begin(), mObj->layers.end(), layer));
+}
+
+void UIContext::raise_layer(Hash32 layerHash)
+{
+    UIContextLayer* layer = mObj->get_layer(layerHash);
+    if (!layer)
+        return;
+
+    mObj->layers.erase(std::remove(mObj->layers.begin(), mObj->layers.end(), layer));
+    mObj->layers.push_back(layer);
+}
+
+bool UIContext::has_layer(Hash32 layerHash)
+{
+    return mObj->get_layer(layerHash) != nullptr;
+}
+
+void UIContext::get_layers(std::vector<Hash32>& layers)
+{
+    layers.resize(mObj->layers.size());
+
+    for (int i = 0; i < (int)mObj->layers.size(); i++)
+        layers[i] = mObj->layers[i]->layerHash;
 }
 
 UIWindow UIContext::add_window(const UILayoutInfo& layoutI, const UIWindowInfo& windowI, void* user)
@@ -295,6 +376,9 @@ UIWindow UIContext::add_window(const UILayoutInfo& layoutI, const UIWindowInfo& 
     windowObj->node = {windowObj};
     windowObj->flags = 0;
     windowObj->theme = mObj->theme;
+    windowObj->layer = mObj->get_layer(windowI.layer);
+
+    LD_ASSERT(windowObj->layer); // layer must already exist
 
     if (windowI.name)
         windowObj->name = std::string(windowI.name);
@@ -308,9 +392,9 @@ UIWindow UIContext::add_window(const UILayoutInfo& layoutI, const UIWindowInfo& 
     if (windowI.defaultMouseControls)
         windowObj->cb.onDrag = UIWindowObj::on_drag;
 
-    mObj->windows.push_back(windowObj);
+    windowObj->layer->windows.push_back(windowObj);
 
-    return {(UIWidgetObj*)windowObj};
+    return UIWindow(windowObj);
 }
 
 void UIContext::remove_window(UIWindow window)
@@ -324,12 +408,16 @@ void UIContext::remove_window(UIWindow window)
     mObj->deferredWindowDestruction.insert(obj);
 }
 
-void UIContext::get_windows(std::vector<UIWindow>& windows)
+void UIContext::get_windows(Hash32 layerHash, std::vector<UIWindow>& windows)
 {
-    windows.resize(mObj->windows.size());
+    UIContextLayer* layer = mObj->get_layer(layerHash);
+    if (!layer)
+        return;
 
-    for (size_t i = 0; i < mObj->windows.size(); i++)
-        windows[i] = {mObj->windows[i]};
+    windows.resize(layer->windows.size());
+
+    for (size_t i = 0; i < layer->windows.size(); i++)
+        windows[i] = {layer->windows[i]};
 }
 
 UITheme UIContext::get_theme()
@@ -365,9 +453,9 @@ void UIContext::destroy(UIContext ctx)
 {
     UIContextObj* obj = ctx.unwrap();
 
-    for (UIWindowObj* window : obj->windows)
-        heap_delete<UIWindowObj>(window);
-    obj->windows.clear();
+    for (UIContextLayer* layer : obj->layers)
+        obj->remove_layer(layer);
+    obj->layers.clear();
 
     PoolAllocator::destroy(obj->widgetPA);
     heap_delete<UIContextObj>(obj);
@@ -375,17 +463,38 @@ void UIContext::destroy(UIContext ctx)
 
 void UIContext::update(float delta)
 {
+    LD_PROFILE_SCOPE;
+
     mObj->pre_update(delta);
 
     layout();
 
-    for (UIWindowObj* window : mObj->windows)
+    for (UIContextLayer* layer : mObj->layers)
     {
-        if (window->cb.onUpdate)
-            window->cb.onUpdate({window}, delta);
+        for (UIWindowObj* window : layer->windows)
+        {
+            if (window->cb.onUpdate)
+                window->cb.onUpdate({window}, delta);
 
-        // updates all widgets within window
-        window->update(delta);
+            // updates all widgets within window
+            window->update(delta);
+        }
+    }
+}
+
+void UIContext::render_layer(Hash32 layerHash, ScreenRenderComponent& renderer)
+{
+    LD_PROFILE_SCOPE;
+
+    UIContextLayer* layer = mObj->get_layer(layerHash);
+    if (!layer)
+        return;
+
+    for (UIWindowObj* windowObj : layer->windows)
+    {
+        UIWindow window(windowObj);
+
+        window.draw(renderer);
     }
 }
 

@@ -60,7 +60,7 @@ UIWMAreaID AreaNode::split_right(UIWindowManagerObj* wm, float ratio)
     AreaNode* lch = this;
     AreaNode* rch = heap_new<AreaNode>(MEMORY_USAGE_UI);
     split->startup_as_split(wm, wm->get_area_id(), mArea, AXIS_X, ratio, splitArea);
-    rch->startup_as_leaf(wm, wm->get_area_id(), rightArea, wm->create_window(clientArea.get_size(), "window"));
+    rch->startup_as_leaf(wm, wm->get_area_id(), rightArea, wm->create_window(wm->get_ground_layer_hash(), clientArea.get_size(), "window"));
 
     split->mParent = parent;
     if (parent)
@@ -101,7 +101,7 @@ UIWMAreaID AreaNode::split_bottom(UIWindowManagerObj* wm, float ratio)
     AreaNode* lch = this;
     AreaNode* rch = heap_new<AreaNode>(MEMORY_USAGE_UI);
     split->startup_as_split(wm, wm->get_area_id(), mArea, AXIS_Y, ratio, splitArea);
-    rch->startup_as_leaf(wm, wm->get_area_id(), bottomArea, wm->create_window(bottomArea.get_size(), "window"));
+    rch->startup_as_leaf(wm, wm->get_area_id(), bottomArea, wm->create_window(wm->get_ground_layer_hash(), bottomArea.get_size(), "window"));
 
     split->mParent = parent;
     if (parent)
@@ -154,6 +154,7 @@ void AreaNode::startup_as_split(UIWindowManagerObj* wm, UIWMAreaID areaID, const
     }
     UIWindowInfo windowI{};
     windowI.name = "splitControl";
+    windowI.layer = wm->get_ground_layer_hash();
     windowI.defaultMouseControls = false;
 
     UIContext ctx = wm->get_context();
@@ -259,20 +260,6 @@ void AreaNode::hide()
     LD_ASSERT(mType == AREA_NODE_TYPE_FLOAT);
 
     mTabControl.hide();
-}
-
-void AreaNode::draw(ScreenRenderComponent renderer)
-{
-    switch (mType)
-    {
-    case AREA_NODE_TYPE_LEAF:
-    case AREA_NODE_TYPE_FLOAT:
-        mTabControl.draw(renderer);
-        break;
-    case AREA_NODE_TYPE_SPLIT:
-        mSplitControl.draw(renderer);
-        break;
-    }
 }
 
 void AreaNode::split_control_on_draw(UIWidget widget, ScreenRenderComponent renderer)

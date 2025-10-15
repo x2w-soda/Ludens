@@ -18,8 +18,8 @@ typedef void (*UIWMClientCloseCallback)(UIWindow client, void* user);
 
 struct UIWMClientInfo
 {
-    UIWindow client;                         /// user provides UI window as client
-    void* user;                              /// dependency injection during client callbacks
+    UIWindow client; /// user provides UI window as client
+    void* user;      /// dependency injection during client callbacks
 };
 
 struct UIWindowManagerInfo
@@ -31,6 +31,8 @@ struct UIWindowManagerInfo
     RImage fontAtlasImage;
     RImage iconAtlasImage;
     UITheme theme;
+    Hash32 groundLayerHash;
+    Hash32 floatLayerHash;
 
     struct Icon
     {
@@ -53,14 +55,6 @@ struct UIWindowManager : Handle<struct UIWindowManagerObj>
 
     /// @brief Update screen size, recalculates area and invokes window resize callback.
     void resize(const Vec2& screenSize);
-
-    /// @brief Render non-floating window areas in the workspace.
-    /// @param renderer Screen space renderer dependency.
-    void render_workspace(ScreenRenderComponent renderer);
-
-    /// @brief Render floating window areas.
-    /// @param renderer Screen space renderer dependency.
-    void render_float(ScreenRenderComponent renderer);
 
     /// @brief Set window title to be displayed in tab.
     void set_window_title(UIWMAreaID areaID, const char* title);
@@ -106,6 +100,10 @@ struct UIWindowManager : Handle<struct UIWindowManagerObj>
 
     /// @brief Make a floating area invisible.
     void hide_float(UIWMAreaID areaID);
+
+    Hash32 get_ground_layer_hash();
+
+    Hash32 get_float_layer_hash();
 };
 
 } // namespace LD

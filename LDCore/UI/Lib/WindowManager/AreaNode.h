@@ -80,7 +80,6 @@ public:
 
     void show();
     void hide();
-    void draw(ScreenRenderComponent renderer);
 
 private:
     static void split_control_on_draw(UIWidget widget, ScreenRenderComponent renderer);

@@ -30,7 +30,7 @@ static void delete_node(AreaNode* node)
 }
 
 UIWindowManagerObj::UIWindowManagerObj(const UIWindowManagerInfo& wmI)
-    : icons(wmI.icons), mAreaIDCounter(1), mRoot(nullptr), mTopBarHeight(wmI.topBarHeight), mBottomBarHeight(wmI.bottomBarHeight)
+    : icons(wmI.icons), mAreaIDCounter(1), mRoot(nullptr), mGroundLayerHash(wmI.groundLayerHash), mFloatLayerHash(wmI.floatLayerHash), mTopBarHeight(wmI.topBarHeight), mBottomBarHeight(wmI.bottomBarHeight)
 {
     mIconAtlasImage = wmI.iconAtlasImage;
 
@@ -39,11 +39,13 @@ UIWindowManagerObj::UIWindowManagerObj(const UIWindowManagerInfo& wmI)
     ctxI.fontAtlasImage = wmI.fontAtlasImage;
     ctxI.theme = wmI.theme;
     mCtx = UIContext::create(ctxI);
+    mCtx.add_layer(mGroundLayerHash);
+    mCtx.add_layer(mFloatLayerHash);
 
     Rect rootArea(0, mTopBarHeight, wmI.screenSize.x, wmI.screenSize.y - mTopBarHeight - mBottomBarHeight);
 
     UIWMAreaID areaID = mAreaIDCounter++;
-    UIWindow rootWindow = create_window(rootArea.get_size(), "window");
+    UIWindow rootWindow = create_window(mGroundLayerHash, rootArea.get_size(), "window");
     rootWindow.set_pos(rootArea.get_pos());
     mCtx.layout(); // force root window size
 
@@ -82,7 +84,7 @@ void UIWindowManagerObj::update(float delta)
     std::erase_if(mFloats, [&](AreaNode* node) { return toErase.contains(node); });
 }
 
-UIWindow UIWindowManagerObj::create_window(const Vec2& extent, const char* name)
+UIWindow UIWindowManagerObj::create_window(Hash32 layer, const Vec2& extent, const char* name)
 {
     UILayoutInfo layoutI{};
     layoutI.childAxis = UIAxis::UI_AXIS_Y;
@@ -93,6 +95,7 @@ UIWindow UIWindowManagerObj::create_window(const Vec2& extent, const char* name)
 
     UIWindowInfo windowI{};
     windowI.name = name;
+    windowI.layer = layer;
     windowI.defaultMouseControls = false;
     windowI.drawWithScissor = true; // TODO: parameterize, not every window needs scissor crop
 
@@ -180,31 +183,6 @@ AreaNode* UIWindowManagerObj::get_float_node(UIWMAreaID areaID)
     return nullptr;
 }
 
-void UIWindowManagerObj::render_ground(ScreenRenderComponent renderer, AreaNode* node)
-{
-    if (!node)
-        return;
-
-    AreaNode* lch = node->get_lch();
-    AreaNode* rch = node->get_rch();
-
-    if (lch)
-        render_ground(renderer, lch);
-
-    if (rch)
-        render_ground(renderer, rch);
-
-    node->draw(renderer);
-}
-
-void UIWindowManagerObj::render_float(ScreenRenderComponent renderer)
-{
-    for (AreaNode* node : mFloats)
-    {
-        node->draw(renderer);
-    }
-}
-
 void UIWindowManagerObj::get_workspace_windows_recursive(std::vector<UIWindow>& windows, AreaNode* node)
 {
     if (!node)
@@ -251,17 +229,6 @@ void UIWindowManager::resize(const Vec2& screenSize)
     AreaNode* root = mObj->get_root();
     root->set_area(Rect(0, topBarHeight, screenSize.x, screenSize.y - topBarHeight - bottomBarHeight));
     root->invalidate();
-}
-
-void UIWindowManager::render_workspace(ScreenRenderComponent renderer)
-{
-    AreaNode* root = mObj->get_root();
-    mObj->render_ground(renderer, root);
-}
-
-void UIWindowManager::render_float(ScreenRenderComponent renderer)
-{
-    mObj->render_float(renderer);
 }
 
 void UIWindowManager::set_window_title(UIWMAreaID areaID, const char* title)
@@ -395,6 +362,16 @@ void UIWindowManager::hide_float(UIWMAreaID areaID)
         return;
 
     floatNode->hide();
+}
+
+Hash32 UIWindowManager::get_ground_layer_hash()
+{
+    return mObj->get_ground_layer_hash();
+}
+
+Hash32 UIWindowManager::get_float_layer_hash()
+{
+    return mObj->get_float_layer_hash();
 }
 
 } // namespace LD

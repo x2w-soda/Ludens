@@ -25,6 +25,7 @@ void AreaTabControl::startup_as_leaf(UIWindowManagerObj* wm, const Rect& area)
     UIWindowInfo windowI{};
     windowI.name = "AreaTabControl";
     windowI.defaultMouseControls = false;
+    windowI.layer = wm->get_ground_layer_hash();
     mWindow = mCtx.add_window(layoutI, windowI, this);
     mWindow.set_pos(area.get_pos());
     mWindow.set_on_update(&AreaTabControl::on_update);
@@ -50,6 +51,7 @@ void AreaTabControl::startup_as_float(UIWindowManagerObj* wm, const Rect& area, 
     windowI.name = "AreaTabControl";
     windowI.defaultMouseControls = false;
     windowI.hidden = true;
+    windowI.layer = wm->get_float_layer_hash();
     mWindow = mCtx.add_window(layoutI, windowI, this);
     mWindow.set_pos(area.get_pos());
     mWindow.set_on_drag(&AreaTabControl::on_float_drag);
@@ -98,18 +100,6 @@ void AreaTabControl::show()
 void AreaTabControl::hide()
 {
     mOpacityA.hiding(OPACITY_ANIM_DURATION);
-}
-
-void AreaTabControl::draw(ScreenRenderComponent renderer)
-{
-    // draws all tabs
-    mWindow.draw(renderer);
-
-    if (mActiveTab)
-    {
-        UIWindow client = mActiveTab->client;
-        client.draw(renderer);
-    }
 }
 
 void AreaTabControl::invalidate_area(const Rect& area)
@@ -263,7 +253,7 @@ void AreaTabControl::on_update(UIWidget widget, float delta)
 void AreaTabControl::on_float_drag(UIWidget widget, MouseButton btn, const Vec2& dragPos, bool begin)
 {
     AreaTabControl& self = *(AreaTabControl*)widget.get_user();
-    UIWindow window = (UIWindow)widget;
+    UIWindow window((UIWindowObj*)widget.unwrap());
     Rect windowRect = widget.get_rect();
     Vec2 mousePos = self.mCtx.get_mouse_pos();
 

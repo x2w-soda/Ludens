@@ -40,6 +40,9 @@ static_assert(IsTrivial<UIButtonWidgetObj>);
 
 void UIWidgetObj::draw(ScreenRenderComponent renderer)
 {
+    if (flags & UI_WIDGET_FLAG_HIDDEN_BIT)
+        return;
+
     if (cb.onDraw)
     {
         cb.onDraw(UIWidget(this), renderer);

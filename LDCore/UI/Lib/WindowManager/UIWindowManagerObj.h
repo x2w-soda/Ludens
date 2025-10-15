@@ -23,7 +23,7 @@ public:
 
     void update(float delta);
 
-    UIWindow create_window(const Vec2& extent, const char* name);
+    UIWindow create_window(Hash32 layer, const Vec2& extent, const char* name);
 
     UIContext get_context();
 
@@ -37,17 +37,13 @@ public:
     AreaNode* get_ground_node(UIWMAreaID areaID, AreaNode* root);
     AreaNode* get_float_node(UIWMAreaID areaID);
 
-    /// @brief Render non-floating areas.
-    void render_ground(ScreenRenderComponent renderer, AreaNode* node);
-
-    /// @brief Render floating areas.
-    void render_float(ScreenRenderComponent renderer);
-
     void get_workspace_windows_recursive(std::vector<UIWindow>& windows, AreaNode* node);
 
     inline float get_top_bar_height() const { return mTopBarHeight; }
     inline float get_bottom_bar_height() const { return mBottomBarHeight; }
     inline RImage get_icon_atlas() const { return mIconAtlasImage; };
+    inline Hash32 get_float_layer_hash() const { return mFloatLayerHash; }
+    inline Hash32 get_ground_layer_hash() const { return mGroundLayerHash; }
 
 public:
     const UIWindowManagerInfo::Icon icons;
@@ -58,6 +54,8 @@ private:
     std::vector<AreaNode*> mFloats;
     UIWMAreaID mAreaIDCounter;
     RImage mIconAtlasImage;
+    Hash32 mGroundLayerHash;
+    Hash32 mFloatLayerHash;
     float mTopBarHeight;
     float mBottomBarHeight;
 };

@@ -54,13 +54,19 @@ struct UICallback
     void (*onScroll)(UIWidget widget, const Vec2& offset);
 };
 
+struct UIContextLayer
+{
+    Hash32 layerHash;
+    std::vector<UIWindowObj*> windows;
+};
+
 struct UIContextObj
 {
     FontAtlas fontAtlas;
     RImage fontAtlasImage;
     PoolAllocator widgetPA;
     UITheme theme;
-    std::vector<UIWindowObj*> windows;
+    std::vector<UIContextLayer*> layers;
     std::unordered_set<UIWindowObj*> deferredWindowDestruction;
     UIWidgetObj* dragWidget;     /// the widget begin dragged
     UIWidgetObj* pressWidget;    /// the widget pressed and not yet released
@@ -72,11 +78,15 @@ struct UIContextObj
     UIWidgetObj* alloc_widget(UIWidgetType type, const UILayoutInfo& layoutI, UIWidgetObj* parent, void* user);
     void free_widget(UIWidgetObj* widget);
 
-    inline UIWidgetObj* get_widget(const Vec2& pos, int filter);
+    UIWidgetObj* get_widget(const Vec2& pos, int filter);
 
     void pre_update(float delta);
 
-    /// @brief Raise a window to top.
+    UIContextLayer* get_or_create_layer(Hash32 layerHash);
+    UIContextLayer* get_layer(Hash32 layerHash);
+    void remove_layer(UIContextLayer* toRemove);
+
+    /// @brief Raise a window to top within its layer.
     /// @param window Target window.
     void raise_window(UIWindowObj* window);
 
@@ -249,6 +259,7 @@ struct UIWindowObj : UIWidgetObj
     UIWindowObj& operator=(const UIWindowObj&) = delete;
 
     UIContextObj* ctx;                 /// owning context
+    UIContextLayer* layer;             /// residing layer
     std::string name;                  /// window identifier
     std::vector<UIWidgetObj*> widgets; /// all widgets within the window
     std::optional<Color> colorMask;    /// optional mask to modify widget colors in window

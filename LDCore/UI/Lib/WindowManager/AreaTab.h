@@ -43,7 +43,6 @@ public:
 
     void show();
     void hide();
-    void draw(ScreenRenderComponent renderer);
 
     /// @brief Invalidate the area rect.
     /// @param area The new area containing tabs and clients

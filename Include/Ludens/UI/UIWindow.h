@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Ludens/Header/Handle.h>
+#include <Ludens/Header/Hash.h>
 #include <Ludens/Header/KeyCode.h>
 #include <Ludens/RenderComponent/ScreenRenderComponent.h>
 #include <Ludens/UI/UIWidget.h>
@@ -11,6 +12,7 @@ namespace LD {
 struct UIWindowInfo
 {
     const char* name;          /// window identifier
+    Hash32 layer;              /// the layer this window belongs to
     bool defaultMouseControls; /// allow mouse drag to move and resize window
     bool drawWithScissor;      /// draw child widgets with scissor
     bool hidden;               /// whether the window is created hidden
@@ -18,6 +20,9 @@ struct UIWindowInfo
 
 struct UIWindow : UIWidget
 {
+    UIWindow() = default;
+    UIWindow(struct UIWindowObj*);
+
     /// @brief Raise the window to top.
     void raise();
 

@@ -46,7 +46,13 @@ public:
         ctxI.fontAtlas = instance->mFontAtlas;
         ctxI.fontAtlasImage = {};
         ctxI.theme = UITheme(&instance->mTheme);
-        return UIContext::create(ctxI);
+        UIContext ctx = UIContext::create(ctxI);
+
+        // lazy default layer
+        uint32_t layerHash = 0;
+        ctx.add_layer(layerHash);
+
+        return ctx;
     }
 
 private:

@@ -47,8 +47,8 @@ void UIWindowObj::draw_widget_subtree(UIWidgetObj* widget, ScreenRenderComponent
 
 void UIWindowObj::on_drag(UIWidget widget, MouseButton btn, const Vec2& dragPos, bool begin)
 {
-    UIWindow window = (UIWindow)widget;
-    UIWindowObj* obj = (UIWindowObj*)window.unwrap();
+    UIWindowObj* obj = (UIWindowObj*)widget.unwrap();
+    UIWindow window(obj);
     Rect rect = widget.get_rect();
 
     if (begin)
@@ -66,6 +66,11 @@ void UIWindowObj::on_drag(UIWidget widget, MouseButton btn, const Vec2& dragPos,
     }
     else
         window.set_pos(dragPos - obj->dragOffset);
+}
+
+UIWindow::UIWindow(UIWindowObj* obj)
+{
+    mObj = (UIWidgetObj*)obj;
 }
 
 void UIWindow::raise()

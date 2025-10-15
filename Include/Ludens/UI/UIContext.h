@@ -2,6 +2,7 @@
 
 #include <Ludens/Application/Event.h>
 #include <Ludens/Header/Handle.h>
+#include <Ludens/Header/Hash.h>
 #include <Ludens/Header/KeyCode.h>
 #include <Ludens/Header/Math/Rect.h>
 #include <Ludens/Header/Math/Vec2.h>
@@ -11,6 +12,8 @@
 #include <vector>
 
 namespace LD {
+
+struct ScreenRenderComponent;
 
 struct UIContextInfo
 {
@@ -34,6 +37,10 @@ struct UIContext : Handle<struct UIContextObj>
     /// @param delta delta time in seconds
     void update(float delta);
 
+    /// @brief Render all windows and widgets in a layer.
+    /// @param renderer The screen space renderer to draw the layer with.
+    void render_layer(Hash32 layer, ScreenRenderComponent& renderer);
+
     /// @brief Pass an application event to the UI context.
     bool forward_event(const Event* event);
 
@@ -56,8 +63,23 @@ struct UIContext : Handle<struct UIContextObj>
     /// @param offset A standard mouse wheel scroll provides offset along Y axis.
     void input_scroll(const Vec2& offset);
 
-    /// @brief perform layout on all widgets across all windows
+    /// @brief Perform layout on all widgets, across all windows, across all layers.
     void layout();
+
+    /// @brief Add a layer to context.
+    void add_layer(Hash32 layer);
+
+    /// @brief Remove a layer from context. This removes all windows within the layer.
+    void remove_layer(Hash32 layer);
+
+    /// @brief Raise layer to top in context.
+    void raise_layer(Hash32 layer);
+
+    /// @brief Check if layer exists in context.
+    bool has_layer(Hash32 layer);
+
+    /// @brief Get all layers in draw order (last layer in vector receives input first).
+    void get_layers(std::vector<Hash32>& layers);
 
     /// @brief add a window to the context
     UIWindow add_window(const UILayoutInfo& layoutI, const UIWindowInfo& windowI, void* user);
@@ -67,7 +89,7 @@ struct UIContext : Handle<struct UIContextObj>
 
     /// @brief get window handles
     /// @param windows outputs windows inside the context
-    void get_windows(std::vector<UIWindow>& windows);
+    void get_windows(Hash32 layer, std::vector<UIWindow>& windows);
 
     /// @brief Get current UI theme, shared by all widgets in this context.
     UITheme get_theme();
