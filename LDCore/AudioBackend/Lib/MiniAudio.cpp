@@ -1,5 +1,8 @@
 #include <Ludens/AudioBackend/MiniAudio.h>
+#include <Ludens/Header/Assert.h>
 #include <Ludens/Log/Log.h>
+#include <Ludens/Profiler/Profiler.h>
+#include <atomic>
 #include <miniaudio.h> // defintely hide this in source file.
 
 #ifndef AUDIO_DEVICE_FORMAT
@@ -14,12 +17,17 @@
 
 namespace LD {
 
+struct MiniAudioDeviceObj
+{
+    ma_device native;
+};
+
 /// @brief Miniaudio backend implementaion.
 class MiniAudioObj
 {
 public:
     /// @brief In-place startup.
-    bool startup();
+    bool startup(const MiniAudioInfo& info);
 
     /// @brief In-place cleanup.
     void cleanup();
@@ -30,15 +38,19 @@ public:
     }
 
 private:
+    static void ma_data_callback(ma_device* native, void* pOutput, const void* pInput, ma_uint32 frameCount);
+
+private:
     ma_context mCtx;
-    ma_device mDevice;
-    bool mIsActive = false;
+    MiniAudioDeviceObj mDevice;
+    MiniAudioDataCallback mDataCallback = nullptr;
+    std::atomic_bool mIsActive = false;
 };
 
 static Log sLog("MiniAudio");
 static MiniAudioObj sMiniAudio;
 
-bool MiniAudioObj::startup()
+bool MiniAudioObj::startup(const MiniAudioInfo& info)
 {
     if (mIsActive)
         return false;
@@ -74,25 +86,30 @@ bool MiniAudioObj::startup()
     deviceConfig.capture.format = ma_format_s16; // TODO:
     deviceConfig.capture.channels = 1;
     deviceConfig.sampleRate = AUDIO_DEVICE_SAMPLE_RATE;
-    deviceConfig.dataCallback = nullptr;
-    deviceConfig.pUserData = nullptr;
+    deviceConfig.dataCallback = &MiniAudioObj::ma_data_callback;
+    deviceConfig.pUserData = info.userData;
 
-    if (ma_device_init(&mCtx, &deviceConfig, &mDevice) != MA_SUCCESS)
+    mIsActive = true;
+
+    if (ma_device_init(&mCtx, &deviceConfig, &mDevice.native) != MA_SUCCESS)
     {
         sLog.error("ma_device_init failed");
+        mIsActive = false;
         return false;
     }
 
     // NOTE: Playback device only needs to be active when one or more sounds are playing,
     //       currently we have the playback device run until cleanup.
-    if (ma_device_start(&mDevice) != MA_SUCCESS)
+    if (ma_device_start(&mDevice.native) != MA_SUCCESS)
     {
         sLog.error("ma_device_start failed");
+        mIsActive = false;
         return false;
     }
 
     sLog.info("successful startup");
-    mIsActive = true;
+    mDataCallback = info.dataCallback;
+
     return true;
 }
 
@@ -101,20 +118,39 @@ void MiniAudioObj::cleanup()
     if (!mIsActive)
         return;
 
-    ma_device_stop(&mDevice);
-    ma_device_uninit(&mDevice);
+    ma_device_stop(&mDevice.native);
+    ma_device_uninit(&mDevice.native);
     ma_context_uninit(&mCtx);
 
     sLog.info("successful cleanup");
     mIsActive = false;
 }
 
-MiniAudio MiniAudio::create()
+void MiniAudioObj::ma_data_callback(ma_device* native, void* outFrames, const void* inFrames, ma_uint32 frameCount)
+{
+    LD_PROFILE_SCOPE;
+
+    LD_ASSERT(sMiniAudio.mIsActive);
+    LD_ASSERT(native->playback.format == ma_format_f32);
+    LD_ASSERT(native->playback.channels == 2);
+
+    if (sMiniAudio.mDataCallback)
+    {
+        MiniAudioDevice deviceHandle((MiniAudioDeviceObj*)native);
+        sMiniAudio.mDataCallback(deviceHandle, outFrames, inFrames, (uint32_t)frameCount);
+    }
+    else
+    {
+        memset(outFrames, 0, sizeof(float) * native->playback.channels * frameCount);
+    }
+}
+
+MiniAudio MiniAudio::create(const MiniAudioInfo& info)
 {
     if (sMiniAudio.is_active())
         return {};
 
-    if (!sMiniAudio.startup())
+    if (!sMiniAudio.startup(info))
         return {};
 
     return MiniAudio(&sMiniAudio);
@@ -126,6 +162,16 @@ void MiniAudio::destroy(MiniAudio ma)
         return;
 
     sMiniAudio.cleanup();
+}
+
+void* MiniAudioDevice::get_user_data()
+{
+    return mObj->native.pUserData;
+}
+
+uint32_t MiniAudioDevice::get_sample_rate()
+{
+    return (uint32_t)mObj->native.sampleRate;
 }
 
 } // namespace LD
