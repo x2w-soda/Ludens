@@ -2,10 +2,12 @@ set(MODULE_NAME LDAudioBackend)
 set(MODULE_TEST_NAME LDAudioBackendTest)
 
 set(MODULE_INCLUDE
+	${LUDENS_INCLUDE_DIR}/Ludens/AudioBackend/AudioBackend.h
 	${LUDENS_INCLUDE_DIR}/Ludens/AudioBackend/MiniAudio.h
 )
 
 set(MODULE_LIB
+	Lib/AudioBackend.cpp
 	Lib/MiniAudio.cpp
 	${miniaudio_SOURCE_DIR}/miniaudio.c
 )
