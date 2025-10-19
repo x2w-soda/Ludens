@@ -47,6 +47,17 @@ set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(glfw)
 message(STATUS "LUDENS GLFW SOURCE DIR:     ${glfw_SOURCE_DIR}")
 
+## Fetch readerwriterqueue (SPSC lock free queue)
+
+FetchContent_Declare(
+  readerwriterqueue
+  GIT_REPOSITORY    https://github.com/cameron314/readerwriterqueue.git
+  GIT_TAG           v1.0.7
+)
+
+FetchContent_MakeAvailable(readerwriterqueue)
+message(STATUS "LUDENS readerwriterqueue SOURCE DIR:     ${readerwriterqueue_SOURCE_DIR}")
+
 ## Fetch ZLib
 
 FetchContent_Declare(
