@@ -1,9 +1,9 @@
 #pragma once
 
 #include <Ludens/AudioMixer/AudioBuffer.h>
+#include <Ludens/AudioMixer/AudioEffect.h>
 #include <Ludens/AudioMixer/AudioPlayback.h>
 #include <Ludens/Header/Handle.h>
-#include <Ludens/Header/Hash.h>
 #include <cstdint>
 
 namespace LD {
@@ -14,45 +14,36 @@ enum AudioCommandType
     AUDIO_COMMAND_DESTROY_BUFFER,
     AUDIO_COMMAND_CREATE_PLAYBACK,
     AUDIO_COMMAND_DESTROY_PLAYBACK,
+    AUDIO_COMMAND_CREATE_PLAYBACK_EFFECT,
+    AUDIO_COMMAND_DESTROY_PLAYBACK_EFFECT,
     AUDIO_COMMAND_START_PLAYBACK,
     AUDIO_COMMAND_PAUSE_PLAYBACK,
     AUDIO_COMMAND_RESUME_PLAYBACK,
     AUDIO_COMMAND_TYPE_ENUM_COUNT
 };
 
-struct AudioCommandCreateBuffer
-{
-    AudioBuffer buffer;
-    Hash32 bufferName;
-};
-
-struct AudioCommandDestroyBuffer
-{
-    Hash32 bufferName;
-};
-
 struct AudioCommandCreatePlayback
 {
     AudioPlayback playback;
-    Hash32 playbackName;
-    Hash32 bufferName;
+    AudioBuffer buffer;
 };
 
 struct AudioCommandDestroyPlayback
 {
-    Hash32 playbackName;
+    AudioPlayback playback;
 };
 
 struct AudioCommandCreatePlaybackEffect
 {
-    Hash32 playbackName;
+    AudioPlayback playback;
+    AudioEffect effect;
     uint32_t effectIdx;
 };
 
 struct AudioCommandDestroyPlaybackEffect
 {
-    Hash32 playbackName;
-    uint32_t effectIdx;
+    AudioPlayback playback;
+    AudioEffect effect;
 };
 
 struct AudioCommand
@@ -60,15 +51,15 @@ struct AudioCommand
     AudioCommandType type;
     union
     {
-        AudioCommandCreateBuffer createBuffer;
-        AudioCommandDestroyBuffer destroyBuffer;
+        AudioBuffer createBuffer;
+        AudioBuffer destroyBuffer;
         AudioCommandCreatePlayback createPlayback;
         AudioCommandDestroyPlayback destroyPlayback;
         AudioCommandCreatePlaybackEffect createPlaybackEffect;
         AudioCommandDestroyPlaybackEffect destroyPlaybackEffect;
-        Hash32 startPlayback;
-        Hash32 pausePlayback;
-        Hash32 resumePlayback;
+        AudioPlayback startPlayback;
+        AudioPlayback pausePlayback;
+        AudioPlayback resumePlayback;
     };
 };
 

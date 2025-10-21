@@ -13,6 +13,7 @@ set(MODULE_LIB
 	Lib/AudioMixer.cpp
 	Lib/AudioBuffer.cpp
 	Lib/AudioCommand.cpp
+	Lib/AudioPlaybackObj.h
 	Lib/AudioPlayback.cpp
 	Lib/AudioEffect.cpp
 	Lib/Effect/AudioEffectLowPassFilter.cpp

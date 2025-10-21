@@ -1,8 +1,9 @@
+#include "AudioPlaybackObj.h"
 #include <Ludens/AudioMixer/AudioMixer.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/System/Memory.h>
-#include <unordered_map>
+#include <utility>
 
 #define AUDIO_MIXER_TEMP_FRAME_COUNT 256
 
@@ -13,20 +14,34 @@ static void mix_frames(float* mixFrames, const float* inFrames, uint32_t frameCo
 
 uint32_t mix_playback(float* mixFrames, uint32_t frameCount, AudioPlayback playback)
 {
-    uint32_t framesLeftToRead = frameCount;
+    LD_PROFILE_SCOPE;
 
-    float tempFrames[AUDIO_MIXER_TEMP_FRAME_COUNT * AUDIO_MIXER_CHANNELS];
+    uint32_t framesLeftToRead = frameCount;
+    AudioPlaybackObj* playbackObj = (AudioPlaybackObj*)playback.unwrap();
+
+    float tempBuffer1[AUDIO_MIXER_TEMP_FRAME_COUNT * AUDIO_MIXER_CHANNELS];
+    float tempBuffer2[AUDIO_MIXER_TEMP_FRAME_COUNT * AUDIO_MIXER_CHANNELS];
     float* dstMixFrames = mixFrames;
+    float* frontBuffer = tempBuffer1;
+    float* backBuffer = tempBuffer2;
 
     while (framesLeftToRead != 0)
     {
         uint32_t framesToRead = std::min<uint32_t>(framesLeftToRead, AUDIO_MIXER_TEMP_FRAME_COUNT);
-        uint32_t framesRead = playback.read_frames(tempFrames, framesToRead);
+        uint32_t framesRead = playback.read_frames(frontBuffer, framesToRead);
 
         if (framesRead == 0)
             break; // playback exhausted
 
-        mix_frames(dstMixFrames, tempFrames, framesRead);
+        // process playback-level DSP chain
+        for (AudioEffectObj* effectObj = playbackObj->effectList; effectObj; effectObj = effectObj->next)
+        {
+            effectObj->process(backBuffer, frontBuffer, framesRead);
+
+            std::swap(frontBuffer, backBuffer);
+        }
+
+        mix_frames(dstMixFrames, frontBuffer, framesRead);
 
         dstMixFrames += framesRead * AUDIO_MIXER_CHANNELS;
         framesLeftToRead -= framesRead;
@@ -66,6 +81,8 @@ public:
     static void destroy_buffer(AudioMixerObj* self, const AudioCommand& cmd);
     static void create_playback(AudioMixerObj* self, const AudioCommand& cmd);
     static void destroy_playback(AudioMixerObj* self, const AudioCommand& cmd);
+    static void create_playback_effect(AudioMixerObj* self, const AudioCommand& cmd);
+    static void destroy_playback_effect(AudioMixerObj* self, const AudioCommand& cmd);
     static void start_playback(AudioMixerObj* self, const AudioCommand& cmd);
     static void pause_playback(AudioMixerObj* self, const AudioCommand& cmd);
     static void resume_playback(AudioMixerObj* self, const AudioCommand& cmd);
@@ -73,77 +90,123 @@ public:
 private:
     /// @brief The command queue is accessed by both main thread and audio thread.
     AudioCommandQueue mCommands;
-    std::unordered_map<Hash32, AudioBuffer> mBuffers;
-    std::unordered_map<Hash32, AudioPlayback> mPlaybacks;
+    AudioPlaybackObj* mPlaybackList;
 };
 
 void AudioMixerObj::create_buffer(AudioMixerObj* mixer, const AudioCommand& cmd)
 {
     LD_ASSERT(cmd.type == AUDIO_COMMAND_CREATE_BUFFER);
 
-    if (mixer->mBuffers.contains(cmd.createBuffer.bufferName))
+    AudioBuffer buffer = cmd.createBuffer;
+    if (buffer.is_acquired())
         return;
 
-    AudioBuffer buffer = cmd.createBuffer.buffer;
     buffer.acquire();
-
-    mixer->mBuffers[cmd.createBuffer.bufferName] = buffer;
 }
 
 void AudioMixerObj::destroy_buffer(AudioMixerObj* mixer, const AudioCommand& cmd)
 {
     LD_ASSERT(cmd.type == AUDIO_COMMAND_DESTROY_BUFFER);
 
-    auto ite = mixer->mBuffers.find(cmd.destroyBuffer.bufferName);
-    if (ite == mixer->mBuffers.end())
+    AudioBuffer buffer = cmd.destroyBuffer;
+    if (!buffer.is_acquired())
         return;
 
-    AudioBuffer buffer = ite->second;
-    buffer.release();
+    // TODO: check for playbacks that are reading from this buffer.
 
-    mixer->mBuffers.erase(ite);
+    buffer.release();
 }
 
 void AudioMixerObj::create_playback(AudioMixerObj* mixer, const AudioCommand& cmd)
 {
     LD_ASSERT(cmd.type == AUDIO_COMMAND_CREATE_PLAYBACK);
 
-    if (mixer->mPlaybacks.contains(cmd.createPlayback.playbackName))
-        return;
-
-    if (!mixer->mBuffers.contains(cmd.createPlayback.bufferName))
-        return;
-
     AudioPlayback playback = cmd.createPlayback.playback;
-    playback.acquire();
-    playback.set_buffer(mixer->mBuffers[cmd.createPlayback.bufferName]);
+    AudioBuffer buffer = cmd.createPlayback.buffer;
 
-    mixer->mPlaybacks[cmd.createPlayback.playbackName] = playback;
+    if (playback.is_acquired() || !buffer.is_acquired())
+        return;
+
+    playback.acquire();
+    playback.set_buffer(buffer);
+
+    AudioPlaybackObj* playbackObj = (AudioPlaybackObj*)playback.unwrap();
+    playbackObj->next = mixer->mPlaybackList;
+    mixer->mPlaybackList = playbackObj;
 }
 
 void AudioMixerObj::destroy_playback(AudioMixerObj* mixer, const AudioCommand& cmd)
 {
     LD_ASSERT(cmd.type == AUDIO_COMMAND_DESTROY_PLAYBACK);
 
-    auto ite = mixer->mPlaybacks.find(cmd.destroyPlayback.playbackName);
-    if (ite == mixer->mPlaybacks.end())
+    AudioPlayback playback = cmd.destroyPlayback.playback;
+    if (!playback.is_acquired())
         return;
 
-    AudioPlayback playback = ite->second;
     playback.release();
+    AudioPlaybackObj* toRemove = (AudioPlaybackObj*)playback.unwrap();
 
-    mixer->mPlaybacks.erase(ite);
+    AudioPlaybackObj** pObj = &mixer->mPlaybackList;
+    while (*pObj && (*pObj) != toRemove)
+        pObj = &(*pObj)->next;
+
+    if (*pObj == toRemove)
+        *pObj = toRemove->next;
+}
+
+void AudioMixerObj::create_playback_effect(AudioMixerObj* self, const AudioCommand& cmd)
+{
+    LD_ASSERT(cmd.type == AUDIO_COMMAND_CREATE_PLAYBACK_EFFECT);
+
+    AudioPlayback playback = cmd.createPlaybackEffect.playback;
+    AudioPlaybackObj* playbackObj = (AudioPlaybackObj*)playback.unwrap();
+    AudioEffect effect = cmd.createPlaybackEffect.effect;
+    AudioEffectObj* effectObj = (AudioEffectObj*)effect.unwrap();
+    uint32_t idx = cmd.createPlaybackEffect.effectIdx;
+
+    if (effect.is_acquired() || !playback.is_acquired())
+        return;
+
+    AudioEffectObj** pObj = &playbackObj->effectList;
+    while (idx != 0 && *pObj)
+    {
+        idx--;
+        pObj = &(*pObj)->next;
+    }
+
+    if (idx != 0)
+        return;
+
+    effect.acquire();
+
+    effectObj->next = *pObj;
+    *pObj = effectObj;
+}
+
+void AudioMixerObj::destroy_playback_effect(AudioMixerObj* self, const AudioCommand& cmd)
+{
+    LD_ASSERT(cmd.type == AUDIO_COMMAND_DESTROY_PLAYBACK_EFFECT);
+
+    AudioPlayback playback = cmd.destroyPlaybackEffect.playback;
+    AudioEffect effect = cmd.destroyPlaybackEffect.effect;
+
+    if (!playback.is_acquired() || !effect.is_acquired())
+        return;
+
+    effect.release();
+
+    // TODO: remove from linked list
 }
 
 void AudioMixerObj::start_playback(AudioMixerObj* mixer, const AudioCommand& cmd)
 {
     LD_ASSERT(cmd.type == AUDIO_COMMAND_START_PLAYBACK);
 
-    auto ite = mixer->mPlaybacks.find(cmd.startPlayback);
-    if (ite == mixer->mPlaybacks.end())
+    AudioPlayback playback = cmd.startPlayback;
+
+    if (!playback.is_acquired())
         return;
 
-    AudioPlayback playback = ite->second;
     playback.start();
 }
 
@@ -151,11 +214,11 @@ void AudioMixerObj::pause_playback(AudioMixerObj* mixer, const AudioCommand& cmd
 {
     LD_ASSERT(cmd.type == AUDIO_COMMAND_PAUSE_PLAYBACK);
 
-    auto ite = mixer->mPlaybacks.find(cmd.pausePlayback);
-    if (ite == mixer->mPlaybacks.end())
+    AudioPlayback playback = cmd.pausePlayback;
+
+    if (!playback.is_acquired())
         return;
 
-    AudioPlayback playback = ite->second;
     playback.pause();
 }
 
@@ -163,11 +226,11 @@ void AudioMixerObj::resume_playback(AudioMixerObj* mixer, const AudioCommand& cm
 {
     LD_ASSERT(cmd.type == AUDIO_COMMAND_RESUME_PLAYBACK);
 
-    auto ite = mixer->mPlaybacks.find(cmd.resumePlayback);
-    if (ite == mixer->mPlaybacks.end())
+    AudioPlayback playback = cmd.resumePlayback;
+
+    if (!playback.is_acquired())
         return;
 
-    AudioPlayback playback = ite->second;
     playback.resume();
 }
 
@@ -181,6 +244,8 @@ struct AudioCommandMeta
     {AUDIO_COMMAND_DESTROY_BUFFER,          &AudioMixerObj::destroy_buffer},
     {AUDIO_COMMAND_CREATE_PLAYBACK,         &AudioMixerObj::create_playback},
     {AUDIO_COMMAND_DESTROY_PLAYBACK,        &AudioMixerObj::destroy_playback},
+    {AUDIO_COMMAND_CREATE_PLAYBACK_EFFECT,  &AudioMixerObj::create_playback_effect},
+    {AUDIO_COMMAND_DESTROY_PLAYBACK_EFFECT, &AudioMixerObj::destroy_playback_effect},
     {AUDIO_COMMAND_START_PLAYBACK,          &AudioMixerObj::start_playback},
     {AUDIO_COMMAND_PAUSE_PLAYBACK,          &AudioMixerObj::pause_playback},
     {AUDIO_COMMAND_RESUME_PLAYBACK,         &AudioMixerObj::resume_playback},
@@ -194,11 +259,14 @@ AudioMixerObj::AudioMixerObj()
     AudioCommandQueueInfo queueI{};
     queueI.capacity = 256;
     mCommands = AudioCommandQueue::create(queueI);
+    mPlaybackList = nullptr;
 }
 
 AudioMixerObj::~AudioMixerObj()
 {
     AudioCommandQueue::destroy(mCommands);
+
+    // TODO: mPlaybackList
 }
 
 void AudioMixerObj::poll_commands()
@@ -215,9 +283,9 @@ void AudioMixerObj::mix(float* outFrames, uint32_t frameCount)
 {
     memset(outFrames, 0, sizeof(float) * frameCount * AUDIO_MIXER_CHANNELS);
 
-    for (auto ite : mPlaybacks)
+    for (AudioPlaybackObj* playbackObj = mPlaybackList; playbackObj; playbackObj = playbackObj->next)
     {
-        AudioPlayback playback = ite.second;
+        AudioPlayback playback(playbackObj);
 
         if (!playback.is_playing())
             continue;

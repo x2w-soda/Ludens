@@ -1,3 +1,4 @@
+#include "AudioPlaybackObj.h"
 #include <Ludens/AudioMixer/AudioBuffer.h>
 #include <Ludens/AudioMixer/AudioPlayback.h>
 #include <Ludens/Header/Assert.h>
@@ -6,14 +7,6 @@
 #include <vector>
 
 namespace LD {
-
-struct AudioPlaybackObj : AudioObject
-{
-    PoolAllocator playbackPA;
-    AudioBuffer buffer;
-    uint32_t frameCursor;
-    bool isPlaying;
-};
 
 size_t AudioPlayback::byte_size()
 {
@@ -26,6 +19,7 @@ AudioPlayback AudioPlayback::create(const AudioPlaybackInfo& info)
     auto* obj = (AudioPlaybackObj*)pa.allocate();
     new (obj) AudioPlaybackObj();
     obj->playbackPA = pa;
+    obj->next = nullptr;
     obj->buffer = {};
     obj->frameCursor = 0;
     obj->isPlaying = false;
