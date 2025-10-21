@@ -47,6 +47,17 @@ set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(glfw)
 message(STATUS "LUDENS GLFW SOURCE DIR:     ${glfw_SOURCE_DIR}")
 
+## Fetch readerwriterqueue (SPSC lock free queue)
+
+FetchContent_Declare(
+  readerwriterqueue
+  GIT_REPOSITORY    https://github.com/cameron314/readerwriterqueue.git
+  GIT_TAG           v1.0.7
+)
+
+FetchContent_MakeAvailable(readerwriterqueue)
+message(STATUS "LUDENS readerwriterqueue SOURCE DIR:     ${readerwriterqueue_SOURCE_DIR}")
+
 ## Fetch ZLib
 
 FetchContent_Declare(
@@ -230,6 +241,15 @@ else()
   set(TRACY_ENABLE OFF CACHE INTERNAL "")
 endif()
 
+## Fetch miniaudio.h
+
+FetchContent_Declare(
+  miniaudio
+  GIT_REPOSITORY https://github.com/mackron/miniaudio.git
+  GIT_TAG 0.11.23
+)
+FetchContent_MakeAvailable(miniaudio)
+
 # Find Vulkan
 # - require SPIRV-Cross for reflection
 # - require glslang for SPIRV compilation
@@ -291,6 +311,8 @@ add_subdirectory(LDCore/RenderBackend)
 add_subdirectory(LDCore/RenderGraph)
 add_subdirectory(LDCore/RenderComponent)
 add_subdirectory(LDCore/RenderServer)
+add_subdirectory(LDCore/AudioBackend)
+add_subdirectory(LDCore/AudioMixer)
 add_subdirectory(LDCore/UI)
 add_subdirectory(LDCore/Asset)
 add_subdirectory(LDCore/DataRegistry)
@@ -315,6 +337,8 @@ target_link_libraries(LDCoreLibs INTERFACE
   LDRenderGraph
   LDRenderComponent
   LDRenderServer
+  LDAudioBackend
+  LDAudioMixer
   LDUI
   LDAsset
   LDDataRegistry
