@@ -17,6 +17,9 @@ struct BiquadFilterCoeff
 
     /// @brief Prepares coefficients for direct form 1 LPF.
     void as_low_pass_filter(float Q, float cutoffFreq, float sampleFreq);
+
+    /// @brief Prepares coefficients for direct form 1 HPF.
+    void as_high_pass_filter(float Q, float cutoffFreq, float sampleFreq);
 };
 
 struct BiquadFilterHistory
