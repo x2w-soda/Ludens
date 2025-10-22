@@ -1,3 +1,4 @@
+#pragma once
 #include <Ludens/AudioMixer/AudioEffect.h>
 
 namespace LD {

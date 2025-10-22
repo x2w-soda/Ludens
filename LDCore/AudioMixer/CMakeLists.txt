@@ -6,6 +6,7 @@ set(MODULE_INCLUDE
 	${LUDENS_INCLUDE_DIR}/Ludens/AudioMixer/AudioCommand.h
 	${LUDENS_INCLUDE_DIR}/Ludens/AudioMixer/AudioPlayback.h
 	${LUDENS_INCLUDE_DIR}/Ludens/AudioMixer/AudioEffect.h
+	${LUDENS_INCLUDE_DIR}/Ludens/AudioMixer/AudioEffectInfo.h
 	${LUDENS_INCLUDE_DIR}/Ludens/AudioMixer/Effect/AudioEffectLowPassFilter.h
 	${LUDENS_INCLUDE_DIR}/Ludens/AudioMixer/Effect/AudioEffectHighPassFilter.h
 )
