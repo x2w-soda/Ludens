@@ -3,6 +3,8 @@
 #include <Ludens/AudioMixer/AudioMixer.h>
 #include <Ludens/DSP/Resampler.h>
 #include <Ludens/Header/Assert.h>
+#include <Ludens/Media/Format/WAV.h>
+#include <Ludens/Profiler/Profiler.h>
 #include <Ludens/System/Memory.h>
 
 namespace LD {
@@ -14,6 +16,8 @@ struct AudioBufferObj : public AudioObject
 
 AudioBuffer AudioBuffer::create(const AudioBufferInfo& bufferI)
 {
+    LD_PROFILE_SCOPE;
+
     AudioBufferObj* obj = nullptr;
 
     LD_ASSERT(bufferI.channels == AUDIO_MIXER_CHANNELS);
@@ -55,8 +59,39 @@ AudioBuffer AudioBuffer::create(const AudioBufferInfo& bufferI)
     return AudioBuffer((AudioObject*)obj);
 }
 
+AudioBuffer AudioBuffer::create_from_wav(const FS::Path& path)
+{
+    LD_PROFILE_SCOPE;
+
+    if (!FS::exists(path))
+        return {};
+
+    uint64_t fileSize = FS::get_file_size(path);
+    std::vector<byte> bytes(fileSize);
+    if (fileSize == 0 || !FS::read_file(path, fileSize, bytes.data()))
+        return {};
+
+    WAVData wav = WAVData::create(bytes.data(), bytes.size());
+    if (!wav)
+        return {};
+
+    uint64_t dataSize;
+    AudioBufferInfo bufferI{};
+    bufferI.channels = wav.get_channels();
+    bufferI.format = wav.get_sample_format();
+    bufferI.frameCount = wav.get_sample_count() / bufferI.channels;
+    bufferI.sampleRate = wav.get_sample_rate();
+    bufferI.samples = wav.get_data(dataSize);
+    AudioBuffer buffer = AudioBuffer::create(bufferI);
+    WAVData::destroy(wav);
+
+    return buffer;
+}
+
 void AudioBuffer::destroy(AudioBuffer buffer)
 {
+    LD_PROFILE_SCOPE;
+
     LD_ASSERT(!buffer.is_acquired());
     AudioBufferObj* obj = (AudioBufferObj*)buffer.unwrap();
 
