@@ -16,6 +16,8 @@ struct AudioPlaybackObj : AudioObject
     PoolAllocator playbackPA;
     AudioBuffer buffer;
     uint32_t frameCursor;
+    float volumeLinear;
+    float pan;
     bool isPlaying = false;
 };
 

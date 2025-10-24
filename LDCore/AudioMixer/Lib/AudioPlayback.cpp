@@ -19,6 +19,8 @@ AudioPlayback AudioPlayback::create(const AudioPlaybackInfo& info)
     auto* obj = (AudioPlaybackObj*)pa.allocate();
     new (obj) AudioPlaybackObj();
     obj->playbackPA = pa;
+    obj->volumeLinear = std::clamp(info.volumeLinear, 0.0f, 1.0f);
+    obj->pan = std::clamp(info.pan, 0.0f, 1.0f);
     obj->next = nullptr;
     obj->buffer = {};
     obj->frameCursor = 0;
@@ -85,7 +87,11 @@ uint32_t AudioPlayback::read_frames(float* outFrames, uint32_t frameCount)
 
     uint32_t framesRead = std::min<uint32_t>(frameCount, bufferFrameCount - obj->frameCursor);
 
-    // TODO: Playback level pitch and panning
+    // using sine approximation y = 0.5 x (3 - x * x) as pan law.
+    float panR = obj->pan;
+    float panL = 1.0f - panR;
+    float weightL = obj->volumeLinear * 0.5f * panL * (3.0f - panL * panL);
+    float weightR = obj->volumeLinear * 0.5f * panR * (3.0f - panR * panR);
 
     if (framesRead > 0)
     {
@@ -93,8 +99,8 @@ uint32_t AudioPlayback::read_frames(float* outFrames, uint32_t frameCount)
 
         for (uint32_t i = 0; i < framesRead; i++)
         {
-            outFrames[2 * i + 0] = bufferFrames[2 * i + 0];
-            outFrames[2 * i + 1] = bufferFrames[2 * i + 1];
+            outFrames[2 * i + 0] = weightL * bufferFrames[2 * i + 0];
+            outFrames[2 * i + 1] = weightR * bufferFrames[2 * i + 1];
         }
 
         obj->frameCursor += framesRead;

@@ -8,7 +8,9 @@ namespace LD {
 
 struct AudioPlaybackInfo
 {
-    PoolAllocator playbackPA;
+    PoolAllocator playbackPA; // Used to create and destroy playback instance.
+    float volumeLinear;       // Normalized linear volume in [0, 1]
+    float pan;                // Left to right panning in [0, 1]
 };
 
 struct AudioPlayback : AudioHandle
