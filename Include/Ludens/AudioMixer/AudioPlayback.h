@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Ludens/AudioBackend/AudioBackend.h>
+#include <Ludens/AudioMixer/AudioBuffer.h>
 #include <Ludens/System/Allocator.h>
 #include <cstdint>
 
@@ -24,6 +25,11 @@ struct AudioPlayback : AudioHandle
     /// @brief Main thread destroys audio playback instance.
     static void destroy(AudioPlayback playback);
 
+    /// @brief Main thread reads playback state.
+    /// @param info Output playback state except the pool allocator field
+    /// @warning Each field is atomically read, but the full tuple of fields may not be atomic.
+    void read(AudioPlaybackInfo& info);
+
     /// @brief Set audio buffer as source, resets frame cursor to 0 and pauses.
     void set_buffer(AudioBuffer buffer);
 
@@ -39,6 +45,8 @@ struct AudioPlayback : AudioHandle
     /// @brief Resume audio playback.
     void resume();
 
+    /// @brief Reads frames to output buffer and advances frame cursor.
+    /// @return Number of frames read.
     uint32_t read_frames(float* outFrames, uint32_t frameCount);
 };
 

@@ -4,6 +4,7 @@
 #include <Ludens/AudioMixer/AudioBuffer.h>
 #include <Ludens/System/Allocator.h>
 #include <cstdint>
+#include <atomic>
 
 namespace LD {
 
@@ -16,8 +17,8 @@ struct AudioPlaybackObj : AudioObject
     PoolAllocator playbackPA;
     AudioBuffer buffer;
     uint32_t frameCursor;
-    float volumeLinear;
-    float pan;
+    std::atomic<float> volumeLinear;
+    std::atomic<float> pan;
     bool isPlaying = false;
 };
 

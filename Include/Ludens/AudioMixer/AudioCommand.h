@@ -21,7 +21,6 @@ enum AudioCommandType
     AUDIO_COMMAND_START_PLAYBACK,
     AUDIO_COMMAND_PAUSE_PLAYBACK,
     AUDIO_COMMAND_RESUME_PLAYBACK,
-    AUDIO_COMMAND_READ_PLAYBACK,
     AUDIO_COMMAND_TYPE_ENUM_COUNT
 };
 
@@ -49,25 +48,6 @@ struct AudioCommandDestroyPlaybackEffect
     AudioEffect effect;
 };
 
-struct AudioPlaybackState
-{
-    AudioEffectInfo* infos;        /// Output effect info buffer. Address must be valid until completion.
-    uint32_t infoCount;            /// Number of elements in the output info buffer, not modified.
-    uint32_t actualCount;          /// Output actual number of effects.
-    float volumeLinear;            /// Output volume in [0, 1]
-    float pan;                     /// Output panning in [0, 1]
-    bool isPlaying;                /// Output whether the playback is playing
-    std::atomic_bool readComplete; /// Set to true once the audio thread has filled out this struct.
-};
-
-/// @brief Asynchronous request from main thread to read the
-///        complete state of a playback instance.
-struct AudioCommandReadPlayback
-{
-    AudioPlayback playback;    /// Playback to query.
-    AudioPlaybackState* state; /// Output state.
-};
-
 struct AudioCommand
 {
     AudioCommandType type;
@@ -82,7 +62,6 @@ struct AudioCommand
         AudioPlayback startPlayback;
         AudioPlayback pausePlayback;
         AudioPlayback resumePlayback;
-        AudioCommandReadPlayback readPlayback;
     };
 };
 

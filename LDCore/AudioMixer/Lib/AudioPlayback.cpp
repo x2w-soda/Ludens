@@ -37,6 +37,15 @@ void AudioPlayback::destroy(AudioPlayback playback)
     obj->playbackPA.free(obj);
 }
 
+void AudioPlayback::read(AudioPlaybackInfo& info)
+{
+    auto* obj = (AudioPlaybackObj*)mObj;
+
+    info.playbackPA = {};
+    info.pan = obj->pan.load();
+    info.volumeLinear = obj->volumeLinear.load();
+}
+
 void AudioPlayback::set_buffer(AudioBuffer buffer)
 {
     auto* obj = (AudioPlaybackObj*)mObj;
@@ -88,10 +97,11 @@ uint32_t AudioPlayback::read_frames(float* outFrames, uint32_t frameCount)
     uint32_t framesRead = std::min<uint32_t>(frameCount, bufferFrameCount - obj->frameCursor);
 
     // using sine approximation y = 0.5 x (3 - x * x) as pan law.
-    float panR = obj->pan;
+    float panR = obj->pan.load();
+    float volume = obj->volumeLinear.load();
     float panL = 1.0f - panR;
-    float weightL = obj->volumeLinear * 0.5f * panL * (3.0f - panL * panL);
-    float weightR = obj->volumeLinear * 0.5f * panR * (3.0f - panR * panR);
+    float gainL = volume * 0.5f * panL * (3.0f - panL * panL);
+    float gainR = volume * 0.5f * panR * (3.0f - panR * panR);
 
     if (framesRead > 0)
     {
@@ -99,8 +109,8 @@ uint32_t AudioPlayback::read_frames(float* outFrames, uint32_t frameCount)
 
         for (uint32_t i = 0; i < framesRead; i++)
         {
-            outFrames[2 * i + 0] = weightL * bufferFrames[2 * i + 0];
-            outFrames[2 * i + 1] = weightR * bufferFrames[2 * i + 1];
+            outFrames[2 * i + 0] = gainL * bufferFrames[2 * i + 0];
+            outFrames[2 * i + 1] = gainR * bufferFrames[2 * i + 1];
         }
 
         obj->frameCursor += framesRead;

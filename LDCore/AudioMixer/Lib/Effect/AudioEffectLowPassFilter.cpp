@@ -2,6 +2,7 @@
 #include <Ludens/AudioMixer/Effect/AudioEffectLowPassFilter.h>
 #include <Ludens/DSP/BiquadFilterCoeff.h>
 #include <Ludens/System/Memory.h>
+#include <atomic>
 
 namespace LD {
 
@@ -11,7 +12,8 @@ struct AudioEffectLowPassFilterObj : AudioEffectObj
     BiquadFilterCoeff coeff;
     BiquadFilterHistory historyL;
     BiquadFilterHistory historyR;
-    AudioEffectLowPassFilterInfo info;
+    std::atomic<float> cutoffFreq;
+    std::atomic<float> sampleRate;
 
     virtual void process(float* outFrames, const float* inFrames, uint32_t frameCount) override;
 
@@ -30,13 +32,15 @@ void AudioEffectLowPassFilterObj::process(float* outFrames, const float* inFrame
 void AudioEffectLowPassFilterObj::read(AudioEffectInfo& info)
 {
     info.type = AUDIO_EFFECT_LOW_PASS_FILTER;
-    info.lowPassFilter = this->info;
+    info.lowPassFilter.cutoffFreq = cutoffFreq.load();
+    info.lowPassFilter.sampleRate = sampleRate.load();
 }
 
 AudioEffectLowPassFilter AudioEffectLowPassFilter::create(const AudioEffectLowPassFilterInfo& info)
 {
     auto* obj = heap_new<AudioEffectLowPassFilterObj>(MEMORY_USAGE_AUDIO);
-    obj->info = info;
+    obj->cutoffFreq = info.cutoffFreq;
+    obj->sampleRate = info.sampleRate;
 
     const float resonance = 1.0f;
     obj->coeff.as_low_pass_filter(resonance, info.cutoffFreq, info.sampleRate);

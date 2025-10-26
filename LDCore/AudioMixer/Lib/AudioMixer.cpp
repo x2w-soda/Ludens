@@ -86,7 +86,6 @@ public:
     static void start_playback(AudioMixerObj* self, const AudioCommand& cmd);
     static void pause_playback(AudioMixerObj* self, const AudioCommand& cmd);
     static void resume_playback(AudioMixerObj* self, const AudioCommand& cmd);
-    static void read_playback(AudioMixerObj* self, const AudioCommand& cmd);
 
 private:
     /// @brief The command queue is accessed by both main thread and audio thread.
@@ -235,37 +234,6 @@ void AudioMixerObj::resume_playback(AudioMixerObj* mixer, const AudioCommand& cm
     playback.resume();
 }
 
-void AudioMixerObj::read_playback(AudioMixerObj* self, const AudioCommand& cmd)
-{
-    LD_ASSERT(cmd.type == AUDIO_COMMAND_READ_PLAYBACK);
-
-    AudioPlayback playback = cmd.readPlayback.playback;
-
-    if (!playback.is_acquired() || !cmd.readPlayback.state)
-        return;
-
-    AudioPlaybackState* state = cmd.readPlayback.state;
-    const uint32_t bufferSize = state->infoCount;
-    uint32_t& effectCount = state->actualCount;
-    effectCount = 0;
-
-    AudioPlaybackObj* playbackObj = (AudioPlaybackObj*)playback.unwrap();
-    for (AudioEffectObj* effectObj = playbackObj->effectList; effectObj; effectObj = effectObj->next)
-    {
-        uint32_t idx = effectCount++;
-
-        if (idx < bufferSize)
-        {
-            effectObj->read(state->infos[idx]);
-        }
-    }
-
-    state->isPlaying = playbackObj->isPlaying;
-    state->volumeLinear = playbackObj->volumeLinear;
-    state->pan = playbackObj->pan;
-    state->readComplete.store(true);
-}
-
 // clang-format off
 struct AudioCommandMeta
 {
@@ -281,7 +249,6 @@ struct AudioCommandMeta
     {AUDIO_COMMAND_START_PLAYBACK,          &AudioMixerObj::start_playback},
     {AUDIO_COMMAND_PAUSE_PLAYBACK,          &AudioMixerObj::pause_playback},
     {AUDIO_COMMAND_RESUME_PLAYBACK,         &AudioMixerObj::resume_playback},
-    {AUDIO_COMMAND_READ_PLAYBACK,           &AudioMixerObj::read_playback},
 };
 // clang-format on
 
