@@ -5,7 +5,9 @@ set(MODULE_INCLUDE
     ${LUDENS_INCLUDE_DIR}/Ludens/Media/Font.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Media/Model.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Media/Bitmap.h
+    ${LUDENS_INCLUDE_DIR}/Ludens/Media/AudioData.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Media/Format/WAV.h
+    ${LUDENS_INCLUDE_DIR}/Ludens/Media/Format/MP3.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Media/Format/MD.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Media/Format/XML.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Media/Format/JSON.h
@@ -17,11 +19,14 @@ set(MODULE_LIB
     Lib/Model.cpp
     Lib/ModelObj.h
     Lib/Bitmap.cpp
+    Lib/AudioDataObj.h
+    Lib/AudioData.cpp
     Lib/GlyphTable.h
     Lib/GlyphTable.cpp
     Lib/Format/TinygltfLoader.h
     Lib/Format/TinygltfLoader.cpp
     Lib/Format/WAV.cpp
+    Lib/Format/MP3.cpp
     Lib/Format/MD.cpp
     Lib/Format/XML.cpp
     Lib/Format/JSON.cpp
@@ -58,6 +63,7 @@ target_include_directories(${MODULE_NAME} PRIVATE
     ${msdfgen_SOURCE_DIR}
     ${tinygltf_SOURCE_DIR}
     ${md4c_SOURCE_DIR}/src
+    ${miniaudio_SOURCE_DIR}
     ${toml11_SOURCE_DIR}/include
     ${LUDENS_INCLUDE_DIR}
     ${LUDENS_EXTRA_DIR}
