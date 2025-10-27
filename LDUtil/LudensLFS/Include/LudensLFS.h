@@ -11,11 +11,20 @@ struct LudensLFS
     /// @brief Attempts to locate resources in Ludens LFS submodule.
     LudensLFS();
 
+    bool isFound;
+
     std::filesystem::path lfsPath;
     std::filesystem::path materialIconsPath;
     std::filesystem::path fontPath;
     std::filesystem::path skyboxFolderPath;
     std::filesystem::path projectPath;
+
+    struct Audio
+    {
+        std::filesystem::path forestAmbiencePath;
+        std::filesystem::path uiClick1Path;
+        std::filesystem::path uiClick2Path;
+    } audio;
 };
 
 /// @brief If the LDLudensLFS library is linked, this attempts to

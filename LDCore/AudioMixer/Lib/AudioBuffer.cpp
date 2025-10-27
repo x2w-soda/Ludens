@@ -59,6 +59,20 @@ AudioBuffer AudioBuffer::create(const AudioBufferInfo& bufferI)
     return AudioBuffer((AudioObject*)obj);
 }
 
+AudioBuffer AudioBuffer::create_from_data(AudioData data)
+{
+    LD_PROFILE_SCOPE;
+
+    AudioBufferInfo bufferI{};
+    bufferI.channels = data.get_channels();
+    bufferI.format = data.get_sample_format();
+    bufferI.frameCount = data.get_frame_count();
+    bufferI.sampleRate = data.get_sample_rate();
+    bufferI.samples = data.get_samples();
+
+    return AudioBuffer::create(bufferI);
+}
+
 AudioBuffer AudioBuffer::create_from_wav(const FS::Path& path)
 {
     LD_PROFILE_SCOPE;
@@ -75,13 +89,12 @@ AudioBuffer AudioBuffer::create_from_wav(const FS::Path& path)
     if (!wav)
         return {};
 
-    uint64_t dataSize;
     AudioBufferInfo bufferI{};
     bufferI.channels = wav.get_channels();
     bufferI.format = wav.get_sample_format();
-    bufferI.frameCount = wav.get_sample_count() / bufferI.channels;
+    bufferI.frameCount = wav.get_frame_count();
     bufferI.sampleRate = wav.get_sample_rate();
-    bufferI.samples = wav.get_data(dataSize);
+    bufferI.samples = wav.get_samples();
     AudioBuffer buffer = AudioBuffer::create(bufferI);
     WAVData::destroy(wav);
 

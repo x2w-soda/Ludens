@@ -2,6 +2,7 @@
 
 #include <Ludens/AudioBackend/AudioBackend.h>
 #include <Ludens/DSP/DSP.h>
+#include <Ludens/Media/AudioData.h>
 #include <Ludens/System/FileSystem.h>
 #include <cstdint>
 
@@ -20,6 +21,9 @@ struct AudioBuffer : AudioHandle
 {
     /// @brief Create audio buffer.
     static AudioBuffer create(const AudioBufferInfo& bufferI);
+
+    /// @brief Create audio buffer from generic data.
+    static AudioBuffer create_from_data(AudioData data);
 
     /// @brief Create audio buffer from wav file on disk.
     static AudioBuffer create_from_wav(const FS::Path& path);

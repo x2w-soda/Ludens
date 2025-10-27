@@ -1,4 +1,6 @@
 set(MODULE_NAME LDAudioMixer)
+set(MODULE_TEST_NAME LDAudioMixerTest)
+set(MODULE_SANDBOX_NAME LDAudioMixerSandbox)
 
 set(MODULE_INCLUDE
 	${LUDENS_INCLUDE_DIR}/Ludens/AudioMixer/AudioMixer.h
@@ -35,4 +37,43 @@ target_link_libraries(${MODULE_NAME} PUBLIC
 target_include_directories(${MODULE_NAME} PRIVATE
 	${LUDENS_INCLUDE_DIR}
 	${readerwriterqueue_SOURCE_DIR}
+)
+
+set(MODULE_TEST
+	Test/AudioMixerTest.h
+	Test/AudioMixerTest.cpp
+	Test/AudioMixerReadbackTest.cpp
+)
+
+add_executable(${MODULE_TEST_NAME}
+	${MODULE_TEST}
+)
+
+target_link_libraries(${MODULE_TEST_NAME} PRIVATE
+	${MODULE_NAME}
+	LDLudensLFS
+)
+
+target_include_directories(${MODULE_TEST_NAME} PRIVATE
+	${LUDENS_INCLUDE_DIR}
+	${LUDENS_SOURCE_DIR}
+)
+
+set(MODULE_SANDBOX
+	Sandbox/AudioMixerSandbox.cpp
+)
+
+add_executable(${MODULE_SANDBOX_NAME}
+	${MODULE_SANDBOX}
+)
+
+target_link_libraries(${MODULE_SANDBOX_NAME} PRIVATE
+	${MODULE_NAME}
+	LDApplication
+	LDLudensLFS
+)
+
+target_include_directories(${MODULE_SANDBOX_NAME} PRIVATE
+	${LUDENS_INCLUDE_DIR}
+	${LUDENS_SOURCE_DIR}
 )
