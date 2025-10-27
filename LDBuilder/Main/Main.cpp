@@ -31,7 +31,6 @@ int main(int argc, char** argv)
         sLog.info("  options:");
         sLog.info("    run_tests [path_to_directory]");
         sLog.info("    env_to_faces [path_to_env_map]");
-        sLog.info("    resample [path_to_audio_file]");
         sLog.info("    extract_mesh_vertex [path_to_3d_model]");
         return EXIT_FAILURE;
     }
@@ -87,7 +86,7 @@ int main(int argc, char** argv)
         int passCount = run_test_exectuables(testPaths);
         sLog.info("{}/{} tests passed", passCount, testCount);
     }
-    else if (mode == "resample")
+    else if (false && mode == "resample") // TODO: API to write WAV to disk. This path is closed for now.
     {
         AudioUtil util = AudioUtil::create();
         const fs::path inputPath = fs::path(argv[2]);

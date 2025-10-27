@@ -80,7 +80,7 @@ bool AudioUtil::resample(const std::filesystem::path& srcFile, const std::filesy
     }
 
     uint32_t channels = wav.get_channels();
-    uint32_t srcSampleCount = wav.get_sample_count();
+    uint32_t srcSampleCount = wav.get_frame_count() * wav.get_channels();
     uint32_t srcSampleRate = wav.get_sample_rate();
     uint32_t dstSampleCount = mObj->resampler.get_dst_sample_count(srcSampleCount, (float)srcSampleRate);
     uint32_t dstFrameCount = dstSampleCount / channels;
@@ -92,7 +92,7 @@ bool AudioUtil::resample(const std::filesystem::path& srcFile, const std::filesy
     ResamplerProcessInfo processI{};
     processI.srcSampleRate = (float)srcSampleRate;
     processI.srcFormat = wav.get_sample_format();
-    processI.srcSamples = wav.get_data(byteSize);
+    processI.srcSamples = wav.get_samples();
     processI.srcFrameCount = srcFrameCount;
     processI.dstFormat = format;
     processI.dstSamples = (void*)dstSamples.data();
@@ -108,14 +108,7 @@ bool AudioUtil::resample(const std::filesystem::path& srcFile, const std::filesy
     dstSamples.resize(sample_format_byte_size(format, writtenSampleCount));
 
     size_t sampleSize = sample_format_byte_size(format, 1);
-    WAVHeader header;
-    wav.get_header(header);
-    header.bitsPerSample = sampleSize * 8;
-    header.audioFormat = format == SAMPLE_FORMAT_F32 ? 3 : 1;
-    header.blockAlign = sampleSize * channels;
-    header.sampleRate = sampleRate;
-    header.byteRate = header.blockAlign * header.sampleRate;
-    bool success = WAVData::save_to_disk(dstFile, header, dstSamples.data(), dstSamples.size());
+    bool success = false; //WAVData::save_to_disk(dstFile, header, dstSamples.data(), dstSamples.size());
 
     if (!success)
         sLog.warn("failed to save [{}] to disk", dstFile.string());
