@@ -31,7 +31,7 @@ struct EInspectorWindow : Handle<struct EInspectorWindowObj>
 
     /// @brief If an UIAssetSlotWidget is requesting a new asset,
     ///        this propagates the new asset ID to the widget.
-    void select_asset(AUID assetID, const char* assetName);
+    void select_asset(AUID assetID);
 };
 
 } // namespace LD

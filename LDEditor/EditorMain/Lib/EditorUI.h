@@ -100,14 +100,11 @@ public:
     /// @brief Begin dialogue to open new scene.
     void open_scene();
 
-    void show_backdrop_window();
-    void hide_backdrop_window();
     void show_version_window();
 
     struct SelectWindowUsage
     {
         void (*onSelect)(const FS::Path& path, void* user);
-        void (*onCancel)(void* user);
         const char* extensionFilter;
         FS::Path directoryPath;
         void* user;
@@ -136,13 +133,13 @@ private:
     EditorBottomBar mBottomBar;
     UIWindowManager mWM;
     UIWindow mBackdropWindow;
-    UISelectWindow mSelectWindow;
-    UIVersionWindow mVersionWindow;
+    UIVersionWindow mVersionWindow{};
     EViewportWindow mViewportWindow;
     EOutlinerWindow mOutlinerWindow;
     EInspectorWindow mInspectorWindow;
-    UIWMAreaID mVersionWindowID;
-    UIWMAreaID mSelectWindowID;
+    UIWMAreaID mVersionWindowID = 0;
+    UIWMAreaID mSelectWindowID = 0;
+    EUISelectWindow mSelectWindow{};
 
     struct CallbackState
     {

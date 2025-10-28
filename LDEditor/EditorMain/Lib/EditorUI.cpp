@@ -2,11 +2,15 @@
 #include <Ludens/Application/Application.h>
 #include <Ludens/Application/Event.h>
 #include <Ludens/Profiler/Profiler.h>
+#include <Ludens/UI/UIImmediate.h>
 #include <LudensEditor/EditorContext/EditorIconAtlas.h>
 #include <LudensEditor/EditorContext/EditorWindowObj.h>
 #include <LudensEditor/EditorWidget/UIVersionWindow.h>
 
 namespace LD {
+
+constexpr Hash32 sUIGroundLayerHash("UIGroundLayer");
+constexpr Hash32 sUIFloatLayerHash("UIFloatLayer");
 
 void EditorUI::startup(const EditorUIInfo& info)
 {
@@ -24,6 +28,8 @@ void EditorUI::startup(const EditorUIInfo& info)
     wmI.bottomBarHeight = info.barHeight;
     wmI.iconAtlasImage = mCtx.get_editor_icon_atlas();
     wmI.icons.close = EditorIconAtlas::get_icon_rect(EditorIcon::Close);
+    wmI.groundLayerHash = sUIGroundLayerHash;
+    wmI.floatLayerHash = sUIFloatLayerHash;
     mWM = UIWindowManager::create(wmI);
 
     UIWMAreaID viewportArea = mWM.get_root_area();
@@ -37,6 +43,7 @@ void EditorUI::startup(const EditorUIInfo& info)
     UIWindowInfo windowI{};
     windowI.name = "backdrop";
     windowI.hidden = true;
+    windowI.layer = sUIFloatLayerHash;
     mBackdropWindow = uiCtx.add_window(layoutI, windowI, this);
     mBackdropWindow.set_pos(Vec2(0.0f, 0.0f));
     mBackdropWindow.set_on_draw([](UIWidget widget, ScreenRenderComponent renderer) {
@@ -50,6 +57,7 @@ void EditorUI::startup(const EditorUIInfo& info)
     topBarI.editorUI = this;
     topBarI.editorTheme = mCtx.get_theme();
     topBarI.screenSize = wmI.screenSize;
+    topBarI.layer = sUIGroundLayerHash;
     mTopBar.startup(topBarI);
 
     EditorBottomBarInfo bottomBarI{};
@@ -57,6 +65,7 @@ void EditorUI::startup(const EditorUIInfo& info)
     bottomBarI.context = mWM.get_context();
     bottomBarI.theme = mCtx.get_theme();
     bottomBarI.screenSize = wmI.screenSize;
+    bottomBarI.layer = sUIGroundLayerHash;
     mBottomBar.startup(bottomBarI);
 
     // force window layout
@@ -89,13 +98,12 @@ void EditorUI::startup(const EditorUIInfo& info)
         windowI.user = this;
         mOutlinerWindow = EOutlinerWindow::create(windowI);
     }
-
-    mVersionWindowID = 0;
-    mSelectWindowID = 0;
 }
 
 void EditorUI::cleanup()
 {
+    ui_imgui_release(mWM.get_context());
+
     mBottomBar.cleanup();
     mTopBar.cleanup();
 
@@ -114,6 +122,37 @@ void EditorUI::cleanup()
 
 void EditorUI::update(float delta)
 {
+    LD_PROFILE_SCOPE;
+
+    Application app = Application::get();
+
+    ui_frame_begin(mWM.get_context());
+    ((EditorWindowObj*)(mViewportWindow.unwrap()))->on_imgui();
+    ((EditorWindowObj*)(mOutlinerWindow.unwrap()))->on_imgui();
+    ((EditorWindowObj*)(mInspectorWindow.unwrap()))->on_imgui();
+
+    bool hasBackdrop = mSelectWindow.isActive;
+    if (hasBackdrop)
+    {
+        ui_push_window("Backdrop", mBackdropWindow);
+        ui_set_window_rect(Rect(0.0f, 0.0f, app.width(), app.height()));
+        ui_pop_window();
+    }
+    else
+        mBackdropWindow.hide();
+
+    if (mSelectWindow.isActive)
+    {
+        FS::Path selectedPath;
+        if (eui_select_window(&mSelectWindow, selectedPath) && mSelectWindow.onSelect)
+            mSelectWindow.onSelect(selectedPath, mSelectWindow.user);
+
+        if (!mSelectWindow.isActive)
+            mWM.hide_float(mSelectWindowID);
+    }
+
+    ui_frame_end();
+
     mWM.update(delta);
 }
 
@@ -138,6 +177,12 @@ void EditorUI::on_render(ScreenRenderComponent renderer, void* user)
 {
     EditorUI& self = *(EditorUI*)user;
 
+    UIContext uiCtx = self.mWM.get_context();
+
+    uiCtx.render_layer(sUIGroundLayerHash, renderer);
+    uiCtx.render_layer(sUIFloatLayerHash, renderer);
+
+    /*
     // draw workspace windows
     self.mWM.render_workspace(renderer);
 
@@ -153,6 +198,7 @@ void EditorUI::on_render(ScreenRenderComponent renderer, void* user)
 
     // draw floating windows
     self.mWM.render_float(renderer);
+    */
 }
 
 void EditorUI::on_overlay_render(ScreenRenderComponent renderer, void* user)
@@ -190,7 +236,6 @@ void EditorUI::ECB::select_asset(AssetType type, AUID currentID, void* user)
         EditorContext ctx = self.mCtx;
 
         self.mWM.hide_float(self.mSelectWindowID);
-        self.hide_backdrop_window();
 
         std::string stem = path.stem().string();
         const char* assetName = stem.c_str();
@@ -198,17 +243,11 @@ void EditorUI::ECB::select_asset(AssetType type, AUID currentID, void* user)
         AUID assetID = AM.get_id_from_name(assetName, nullptr);
 
         if (assetID != 0) // TODO:
-            self.mInspectorWindow.select_asset(assetID, assetName);
-    };
-    usage.onCancel = [](void* user) {
-        EditorUI& self = *(EditorUI*)user;
-        self.mWM.hide_float(self.mSelectWindowID);
-        self.hide_backdrop_window();
+            self.mInspectorWindow.select_asset(assetID);
     };
     usage.extensionFilter = "ldb";
     usage.directoryPath = self.mCtx.get_project_directory();
 
-    self.show_backdrop_window();
     self.show_select_window(usage);
 }
 
@@ -225,7 +264,6 @@ void EditorUI::ECB::add_script_to_component(CUID compID, void* user)
         self.mState.compID = 0;
 
         self.mWM.hide_float(self.mSelectWindowID);
-        self.hide_backdrop_window();
 
         if (!ctx.get_component_base(compID))
             return; // component out of date
@@ -238,11 +276,6 @@ void EditorUI::ECB::add_script_to_component(CUID compID, void* user)
             return; // script asset out of date
 
         ctx.action_add_component_script(compID, scriptAssetID);
-    };
-    usage.onCancel = [](void* user) {
-        EditorUI& self = *(EditorUI*)user;
-        self.mWM.hide_float(self.mSelectWindowID);
-        self.hide_backdrop_window();
     };
     usage.extensionFilter = "lua";
     usage.directoryPath = self.mCtx.get_project_directory();
@@ -258,14 +291,8 @@ void EditorUI::open_scene()
         EditorContext ctx = self.mCtx;
 
         self.mWM.hide_float(self.mSelectWindowID);
-        self.hide_backdrop_window();
 
         ctx.action_open_scene(path);
-    };
-    usage.onCancel = [](void* user) {
-        EditorUI& self = *(EditorUI*)user;
-        self.mWM.hide_float(self.mSelectWindowID);
-        self.hide_backdrop_window();
     };
     usage.extensionFilter = "toml";
     usage.directoryPath = mCtx.get_project_directory();
@@ -273,27 +300,18 @@ void EditorUI::open_scene()
     show_select_window(usage);
 }
 
-void EditorUI::show_backdrop_window()
-{
-    Application app = Application::get();
-    mBackdropWindow.set_size(Vec2(app.width(), app.height()));
-    mBackdropWindow.raise();
-    mBackdropWindow.show();
-}
-
-void EditorUI::hide_backdrop_window()
-{
-    mBackdropWindow.hide();
-}
-
 void EditorUI::show_version_window()
 {
     if (mVersionWindowID == 0)
     {
-        UIVersionWindowInfo windowI{};
-        windowI.context = mWM.get_context();
-        windowI.theme = mCtx.get_theme();
-        mVersionWindow = UIVersionWindow::create(windowI);
+        if (!mVersionWindow)
+        {
+            UIVersionWindowInfo windowI{};
+            windowI.context = mWM.get_context();
+            windowI.layer = mWM.get_float_layer_hash();
+            windowI.theme = mCtx.get_theme();
+            mVersionWindow = UIVersionWindow::create(windowI);
+        }
 
         UIWMClientInfo clientI{};
         clientI.client = mVersionWindow.get_handle();
@@ -302,9 +320,6 @@ void EditorUI::show_version_window()
         mWM.set_close_callback(mVersionWindowID, [](UIWindow client, void* user) {
             EditorUI& self = *(EditorUI*)user;
             self.mVersionWindowID = 0;
-
-            UIVersionWindow::destroy(self.mVersionWindow);
-            self.mVersionWindow = {};
         });
     }
 
@@ -314,35 +329,44 @@ void EditorUI::show_version_window()
 
 void EditorUI::show_select_window(const SelectWindowUsage& usage)
 {
-    if (mSelectWindowID == 0)
-    {
-        UISelectWindowInfo windowI{};
-        windowI.context = mWM.get_context();
-        windowI.editorCtx = mCtx;
-        windowI.directory = std::filesystem::current_path();
-        mSelectWindow = UISelectWindow::create(windowI);
+    EditorTheme editorTheme = mCtx.get_theme();
+    float pad = editorTheme.get_padding();
 
+    if (!mSelectWindowID)
+    {
+        UILayoutInfo layoutI{};
+        layoutI.sizeX = UISize::fixed(600.0f);
+        layoutI.sizeY = UISize::fixed(300.0f);
+        layoutI.childAxis = UI_AXIS_Y;
+        layoutI.childPadding = {pad, pad, pad, pad};
+        UIWindowInfo windowI{};
+        windowI.name = "Select";
+        windowI.layer = sUIFloatLayerHash;
         UIWMClientInfo clientI{};
-        clientI.client = mSelectWindow.get_handle();
         clientI.user = this;
+        clientI.client = mWM.get_context().add_window(layoutI, windowI, this);
+        clientI.client.layout();
         mSelectWindowID = mWM.create_float(clientI);
         mWM.set_close_callback(mSelectWindowID, [](UIWindow client, void* user) {
             EditorUI& self = *(EditorUI*)user;
             self.mSelectWindowID = 0;
 
-            UISelectWindow::destroy(self.mSelectWindow);
-            self.mSelectWindow = {};
-
-            self.hide_backdrop_window();
+            self.mWM.get_context().remove_window(self.mSelectWindow.client);
+            self.mSelectWindow.client = {};
+            self.mSelectWindow.isActive = false;
         });
     }
 
-    show_backdrop_window();
-
-    mSelectWindow.set_directory(usage.directoryPath);
-    mSelectWindow.set_extension_filter(usage.extensionFilter);
-    mSelectWindow.set_on_select(usage.onSelect, usage.user);
-    mSelectWindow.set_on_cancel(usage.onCancel);
+    mSelectWindow.client = mWM.get_area_window(mSelectWindowID);
+    mSelectWindow.clientName = "Select";
+    mSelectWindow.isActive = true;
+    mSelectWindow.theme = mCtx.get_theme();
+    mSelectWindow.extensionFilter = usage.extensionFilter;
+    mSelectWindow.editorIconAtlas = mCtx.get_editor_icon_atlas();
+    mSelectWindow.directoryPath = usage.directoryPath;
+    mSelectWindow.directoryContents = {};
+    mSelectWindow.onSelect = usage.onSelect;
+    mSelectWindow.user = usage.user;
 
     mWM.set_float_pos_centered(mSelectWindowID);
     mWM.show_float(mSelectWindowID);

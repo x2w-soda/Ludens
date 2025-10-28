@@ -422,7 +422,7 @@ EViewportWindow EViewportWindow::create(const EViewportWindowInfo& windowI)
 
     UIContext uiCtx = wm.get_context();
     float width = obj->viewportExtent.x;
-    obj->toolbar.startup(obj->editorCtx, uiCtx, width, &obj->gizmoType);
+    obj->toolbar.startup(obj->editorCtx, uiCtx, width, &obj->gizmoType, wm.get_ground_layer_hash());
     uiCtx.layout();
 
     Rect toolbarRect = obj->toolbar.window.get_rect();

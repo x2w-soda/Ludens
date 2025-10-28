@@ -7,6 +7,8 @@ namespace LD {
 
 void ComponentMenu::startup(const ComponentMenuInfo& info)
 {
+    LD_ASSERT(info.layer);
+
     mInfo = info;
 
     UIDropdownWindowInfo dropdownWI{};
@@ -14,6 +16,7 @@ void ComponentMenu::startup(const ComponentMenuInfo& info)
     dropdownWI.context = mInfo.ctx;
     dropdownWI.theme = mInfo.theme;
     dropdownWI.user = this;
+    dropdownWI.layer = info.layer;
     mDropdown = UIDropdownWindow::create(dropdownWI);
 
     mDropdown.add_option("Add script", OPT_ADD_SCRIPT);

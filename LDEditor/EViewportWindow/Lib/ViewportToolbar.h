@@ -21,7 +21,7 @@ struct ViewportToolbar
     Impulse isRequestingStop;
     bool isPlayIcon;
 
-    void startup(EditorContext eCtx, UIContext uiCtx, float width, SceneOverlayGizmo* gizmoType);
+    void startup(EditorContext eCtx, UIContext uiCtx, float width, SceneOverlayGizmo* gizmoType, Hash32 layer);
 
     void display(bool isPlayIcon);
 

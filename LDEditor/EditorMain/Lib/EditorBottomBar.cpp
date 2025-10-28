@@ -14,6 +14,7 @@ void EditorBottomBar::startup(const EditorBottomBarInfo& info)
     layoutI.sizeY = UISize::fixed(mBottomBarHeight);
     UIWindowInfo windowI{};
     windowI.name = "EditorBottomBar";
+    windowI.layer = info.layer;
     windowI.defaultMouseControls = false;
 
     mRoot = ctx.add_window(layoutI, windowI, nullptr);

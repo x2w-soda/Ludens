@@ -10,6 +10,7 @@ struct ComponentMenuInfo
 {
     UIContext ctx;
     EditorTheme theme;
+    Hash32 layer;
     void (*onOptionAddScript)(CUID cuid, void* user);
     void* user;
 };

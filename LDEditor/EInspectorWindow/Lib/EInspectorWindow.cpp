@@ -16,17 +16,16 @@ struct EInspectorWindowObj : EditorWindowObj
     virtual ~EInspectorWindowObj() = default;
 
     CUID subjectID = 0; // subject component being inspected
-    UITransformEditWidget transformEditW;
-    UIAssetSlotWidget slotW;
-    UIAssetSlotWidget requestingNewAsset = {};
     ECBSelectAssetFn selectAssetFn;
     void* user;
+    bool isSelectingNewAsset = false;
 
     void inspect_component(CUID compID);
 
+    virtual void on_imgui() override;
+
     static void on_draw(UIWidget widget, ScreenRenderComponent renderer);
     static void on_editor_context_event(const EditorContextEvent* event, void* user);
-    static void on_request_new_asset(AssetType type, AUID currentID, void* user);
 };
 
 void EInspectorWindowObj::inspect_component(CUID compID)
@@ -34,38 +33,36 @@ void EInspectorWindowObj::inspect_component(CUID compID)
     LD_PROFILE_SCOPE;
 
     subjectID = compID;
-    requestingNewAsset = {};
+    isSelectingNewAsset = false;
+}
 
+void EInspectorWindowObj::on_imgui()
+{
+    ui_push_window("EInspectorWindow", root);
+
+    EditorTheme editorTheme = editorCtx.get_settings().get_theme();
     AssetManager AM = editorCtx.get_asset_manager();
-
-    if (subjectID == 0)
-    {
-        transformEditW.set(nullptr);
-        transformEditW.hide();
-        slotW.hide();
-        return;
-    }
-
-    transformEditW.show();
-    slotW.show();
-
     ComponentType compType;
     void* comp = editorCtx.get_component(subjectID, compType);
 
-    // TODO: map component type to its required widgets for inspection.
-    switch (compType)
+    if (subjectID == (CUID)0 || compType != COMPONENT_TYPE_MESH)
     {
-    case COMPONENT_TYPE_MESH: {
-        MeshComponent* meshC = (MeshComponent*)comp;
-        transformEditW.set(&meshC->transform);
-        MeshAsset asset = AM.get_mesh_asset(meshC->auid);
-        LD_ASSERT(asset);
-        slotW.set_asset(meshC->auid, asset.get_name());
-        break;
+        ui_pop_window();
+        return;
     }
-    default:
-        break;
+
+    MeshComponent* meshC = (MeshComponent*)comp;
+    eui_transform_edit(editorTheme, &meshC->transform);
+
+    MeshAsset asset = AM.get_mesh_asset(meshC->auid);
+    LD_ASSERT(asset);
+    if (eui_asset_slot(editorTheme, ASSET_TYPE_MESH, meshC->auid, asset.get_name()) && selectAssetFn)
+    {
+        isSelectingNewAsset = true;
+        selectAssetFn(ASSET_TYPE_MESH, meshC->auid, user);
     }
+
+    ui_pop_window();
 }
 
 void EInspectorWindowObj::on_draw(UIWidget widget, ScreenRenderComponent renderer)
@@ -87,49 +84,22 @@ void EInspectorWindowObj::on_editor_context_event(const EditorContextEvent* even
     self.inspect_component(selectionEvent->component);
 }
 
-void EInspectorWindowObj::on_request_new_asset(AssetType type, AUID currentID, void* user)
-{
-    auto& self = *(EInspectorWindowObj*)user;
-
-    // requesting a new Asset is beyond the scope of the inspector window
-    self.requestingNewAsset = self.slotW;
-
-    if (self.selectAssetFn)
-        self.selectAssetFn(type, currentID, self.user);
-}
-
 EInspectorWindow EInspectorWindow::create(const EInspectorWindowInfo& windowI)
 {
     UIWindowManager wm = windowI.wm;
 
     wm.set_window_title(windowI.areaID, "Inspector");
+    UIWindow window = wm.get_area_window(windowI.areaID);
 
     EInspectorWindowObj* obj = heap_new<EInspectorWindowObj>(MEMORY_USAGE_UI);
     obj->editorCtx = windowI.ctx;
-    obj->root = wm.get_area_window(windowI.areaID);
+    obj->root = window;
     obj->root.set_user(obj);
     obj->root.set_on_draw(EInspectorWindowObj::on_draw);
     obj->selectAssetFn = windowI.selectAssetFn;
     obj->user = windowI.user;
 
     EditorTheme theme = obj->editorCtx.get_settings().get_theme();
-    UITransformEditWidgetInfo transformEditWI{};
-    transformEditWI.parent = obj->root;
-    transformEditWI.theme = theme;
-    obj->transformEditW = UITransformEditWidget::create(transformEditWI);
-    obj->transformEditW.hide();
-
-    UIAssetSlotWidgetInfo slotWI{};
-    slotWI.parent = obj->root;
-    slotWI.theme = theme;
-    slotWI.assetID = 0;
-    slotWI.assetName = nullptr;
-    slotWI.type = ASSET_TYPE_MESH;
-    slotWI.requestAssetFn = &EInspectorWindowObj::on_request_new_asset;
-    slotWI.user = obj;
-    obj->slotW = UIAssetSlotWidget::create(slotWI);
-    obj->slotW.hide();
-
     float pad = theme.get_padding();
     UIWindow inspectorWindow = wm.get_area_window(windowI.areaID);
     UIPadding padding{};
@@ -149,20 +119,17 @@ void EInspectorWindow::destroy(EInspectorWindow window)
     heap_delete<EInspectorWindowObj>(obj);
 }
 
-void EInspectorWindow::select_asset(AUID assetID, const char* assetName)
+void EInspectorWindow::select_asset(AUID assetID)
 {
-    if (!mObj->requestingNewAsset)
+    if (!mObj->isSelectingNewAsset || !mObj->subjectID)
         return;
-
-    UIAssetSlotWidget slotW = mObj->requestingNewAsset;
-    slotW.set_asset(assetID, assetName);
 
     ComponentType compType;
     MeshComponent* comp = (MeshComponent*)mObj->editorCtx.get_component(mObj->subjectID, compType);
     LD_ASSERT(comp && compType == COMPONENT_TYPE_MESH);
     mObj->editorCtx.set_mesh_component_asset(mObj->subjectID, assetID);
 
-    mObj->requestingNewAsset = {};
+    mObj->isSelectingNewAsset = false;
 }
 
 } // namespace LD

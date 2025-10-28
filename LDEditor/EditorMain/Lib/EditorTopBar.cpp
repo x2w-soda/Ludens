@@ -31,7 +31,7 @@ class TopBarMenu
 {
 public:
     /// @brief Create top bar menu.
-    static TopBarMenu* create(EditorTopBar* bar, UINode node, EditorUI* editorUI, EditorTheme editorTheme, const char* cstr);
+    static TopBarMenu* create(EditorTopBar* bar, UINode node, EditorUI* editorUI, EditorTheme editorTheme, const char* cstr, Hash32 layer);
 
     /// @brief Destroy top bar menu.
     static void destroy(TopBarMenu* opt);
@@ -94,7 +94,7 @@ private:
     UIDropdownWindow mDropdown; /// menu dropdown window
 };
 
-TopBarMenu* TopBarMenu::create(EditorTopBar* bar, UINode node, EditorUI* editorUI, EditorTheme editorTheme, const char* cstr)
+TopBarMenu* TopBarMenu::create(EditorTopBar* bar, UINode node, EditorUI* editorUI, EditorTheme editorTheme, const char* cstr, Hash32 layer)
 {
     auto menu = heap_new<TopBarMenu>(MEMORY_USAGE_UI);
     menu->mBar = bar;
@@ -125,6 +125,7 @@ TopBarMenu* TopBarMenu::create(EditorTopBar* bar, UINode node, EditorUI* editorU
     dropdownWI.context = ctx;
     dropdownWI.theme = editorTheme;
     dropdownWI.user = menu;
+    dropdownWI.layer = layer;
     menu->mDropdown = UIDropdownWindow::create(dropdownWI);
     menu->mDropdown.hide();
 
@@ -143,6 +144,8 @@ void TopBarMenu::hide_dropdown()
 
 void EditorTopBar::startup(const EditorTopBarInfo& info)
 {
+    LD_ASSERT(info.layer);
+
     UIContext ctx = info.context;
     mTopBarHeight = info.barHeight;
 
@@ -154,6 +157,7 @@ void EditorTopBar::startup(const EditorTopBarInfo& info)
     layoutI.sizeY = UISize::fixed(mTopBarHeight);
     UIWindowInfo windowI{};
     windowI.name = "EditorTopBar";
+    windowI.layer = info.layer;
     windowI.defaultMouseControls = false;
 
     mRoot = ctx.add_window(layoutI, windowI, nullptr);
@@ -167,20 +171,20 @@ void EditorTopBar::startup(const EditorTopBarInfo& info)
         MenuOption(FILE_OPTION_NEW_PROJECT, "New Project"),
         MenuOption(FILE_OPTION_OPEN_PROJECT, "Open Project"),
     };
-    mFileMenu = TopBarMenu::create(this, mRoot.node(), info.editorUI, info.editorTheme, "File");
+    mFileMenu = TopBarMenu::create(this, mRoot.node(), info.editorUI, info.editorTheme, "File", info.layer);
     mFileMenu->set_content(fileMenuOptions.size(), fileMenuOptions.data(), &EditorTopBar::on_file_menu_option);
 
     std::array<MenuOption, 2> editMenuOptions = {
         MenuOption(EDIT_OPTION_UNDO, "Undo"),
         MenuOption(EDIT_OPTION_REDO, "Redo"),
     };
-    mEditMenu = TopBarMenu::create(this, mRoot.node(), info.editorUI, info.editorTheme, "Edit");
+    mEditMenu = TopBarMenu::create(this, mRoot.node(), info.editorUI, info.editorTheme, "Edit", info.layer);
     mEditMenu->set_content(editMenuOptions.size(), editMenuOptions.data(), &EditorTopBar::on_edit_menu_option);
 
     std::array<MenuOption, 1> aboutMenuOptions = {
         MenuOption(FILE_OPTION_NEW_SCENE, "Version"),
     };
-    mAboutMenu = TopBarMenu::create(this, mRoot.node(), info.editorUI, info.editorTheme, "About");
+    mAboutMenu = TopBarMenu::create(this, mRoot.node(), info.editorUI, info.editorTheme, "About", info.layer);
     mAboutMenu->set_content(aboutMenuOptions.size(), aboutMenuOptions.data(), &EditorTopBar::on_about_menu_option);
 }
 

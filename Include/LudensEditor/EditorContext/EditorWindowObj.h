@@ -15,6 +15,8 @@ struct EditorWindowObj
     /// The user data must be the EditorWindowObj instance pointer.
     UIWindow root;
 
+    virtual void on_imgui() {}
+
     /// @brief Allows derived class to draw additional overlays in a separate pass.
     /// @param renderer The screen space renderer, its sampled image should be
     ///                 a blurred version of the entire viewport.

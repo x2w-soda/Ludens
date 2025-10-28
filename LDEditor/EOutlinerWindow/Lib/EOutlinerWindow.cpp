@@ -237,6 +237,7 @@ EOutlinerWindow EOutlinerWindow::create(const EOutlinerWindowInfo& windowI)
     menuI.theme = obj->editorCtx.get_theme();
     menuI.onOptionAddScript = windowI.addScriptToComponent;
     menuI.user = windowI.user;
+    menuI.layer = wm.get_ground_layer_hash();
     obj->menu.startup(menuI);
 
     // create one OutlinerRow for each object in scene

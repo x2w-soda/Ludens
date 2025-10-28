@@ -15,6 +15,7 @@ struct EditorTopBarInfo
     EditorUI* editorUI;
     EditorTheme editorTheme;
     Vec2 screenSize;
+    Hash32 layer;
     float barHeight;
 };
 

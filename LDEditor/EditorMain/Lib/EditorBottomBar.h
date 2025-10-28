@@ -11,6 +11,7 @@ struct EditorBottomBarInfo
     UIContext context;
     EditorTheme theme;
     Vec2 screenSize;
+    Hash32 layer;
     float barHeight;
 };
 

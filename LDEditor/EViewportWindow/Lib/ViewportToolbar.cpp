@@ -3,7 +3,7 @@
 
 namespace LD {
 
-void ViewportToolbar::startup(EditorContext eCtx, UIContext uiCtx, float width, SceneOverlayGizmo* gizmoType)
+void ViewportToolbar::startup(EditorContext eCtx, UIContext uiCtx, float width, SceneOverlayGizmo* gizmoType, Hash32 layer)
 {
     this->eCtx = eCtx;
     this->gizmoType = gizmoType;
@@ -19,6 +19,7 @@ void ViewportToolbar::startup(EditorContext eCtx, UIContext uiCtx, float width, 
     UIWindowInfo windowI{};
     windowI.defaultMouseControls = false;
     windowI.name = "ViewportToolbar";
+    windowI.layer = layer;
     window = uiCtx.add_window(layoutI, windowI, this);
     window.set_on_draw(&ViewportToolbar::on_draw);
 
