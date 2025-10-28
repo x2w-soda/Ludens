@@ -16,6 +16,7 @@ struct UIDropdownWindowInfo
     UIContext context;
     EditorTheme theme;
     UIDropdownWindowCallback callback;
+    Hash32 layer;
     void* user;
 };
 

@@ -5,40 +5,40 @@
 #include <Ludens/UI/UIContext.h>
 #include <LudensEditor/EditorContext/EditorContext.h>
 #include <LudensEditor/EditorContext/EditorSettings.h>
+#include <vector>
 
 namespace LD {
+
+struct EUISelectWindowRow
+{
+    struct EUISelectWindow* window;
+    int idx;
+};
+
+struct EUISelectWindow
+{
+    UIWindow client;
+    EditorTheme theme;
+    RImage editorIconAtlas;
+    const char* extensionFilter;
+    const char* clientName;
+    std::vector<FS::Path> directoryContents;
+    std::vector<EUISelectWindowRow> rows;
+    FS::Path directoryPath;
+    int highlightedItemIndex = -1;
+    bool isActive;
+    bool isContentDirty = true;
+    void (*onSelect)(const FS::Path& selected, void* user) = nullptr;
+    void* user = nullptr;
+};
+
+bool eui_select_window(EUISelectWindow* window, FS::Path& selectedPath);
 
 struct UISelectWindowInfo
 {
     UIContext context;
     EditorContext editorCtx;
     FS::Path directory;
-};
-
-/// @brief Window for item selection in physical filesystem.
-struct UISelectWindow : Handle<struct UISelectWindowObj>
-{
-    /// @brief Create window for file selection.
-    static UISelectWindow create(const UISelectWindowInfo& info);
-
-    /// @brief Destroy window.
-    static void destroy(UISelectWindow window);
-
-    /// @brief Get UI framework window handle.
-    UIWindow get_handle();
-
-    /// @brief Set directory to display.
-    void set_directory(const FS::Path& directory);
-
-    /// @brief Filter files by extension.
-    /// @param extension File extension not including '.', or nullptr to disable filter.
-    void set_extension_filter(const char* extension);
-
-    /// @brief Set callback when item is selected.
-    void set_on_select(void (*onSelect)(const FS::Path& path, void* user), void* user);
-
-    /// @brief Set callback when selection is canceled.
-    void set_on_cancel(void (*onCancel)(void* user));
 };
 
 } // namespace LD

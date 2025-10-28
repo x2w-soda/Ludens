@@ -10,6 +10,7 @@ struct UIVersionWindowInfo
 {
     UIContext context;
     EditorTheme theme;
+    Hash32 layer;
 };
 
 /// @brief Window to display framework version.

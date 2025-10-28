@@ -1,3 +1,4 @@
+#include <Ludens/Header/Assert.h>
 #include <Ludens/UI/UIAnimation.h>
 #include <LudensEditor/EditorWidget/UIDropdownWindow.h>
 #include <vector>
@@ -99,6 +100,8 @@ void UIDropdownWindowObj::on_option_mouse(UIWidget widget, const Vec2& pos, Mous
 
 UIDropdownWindow UIDropdownWindow::create(const UIDropdownWindowInfo& info)
 {
+    LD_ASSERT(info.layer);
+
     auto* obj = heap_new<UIDropdownWindowObj>(MEMORY_USAGE_UI);
     obj->theme = info.theme;
     obj->user = info.user;
@@ -116,6 +119,7 @@ UIDropdownWindow UIDropdownWindow::create(const UIDropdownWindowInfo& info)
     windowI.defaultMouseControls = false;
     windowI.drawWithScissor = false;
     windowI.name = "dropdown";
+    windowI.layer = info.layer;
     windowI.hidden = true;
     obj->window = ctx.add_window(layoutI, windowI, obj);
     obj->window.set_on_draw(&UIDropdownWindowObj::on_draw);

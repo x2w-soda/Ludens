@@ -21,12 +21,14 @@ UIVersionWindow UIVersionWindow::create(const UIVersionWindowInfo& info)
 
     UILayoutInfo layoutI{};
     layoutI.childAxis = UI_AXIS_Y;
-    layoutI.sizeX = UISize::fit();
-    layoutI.sizeY = UISize::fit();
+    layoutI.childAlignY = UI_ALIGN_BEGIN;
+    layoutI.sizeX = UISize::fixed(300);
+    layoutI.sizeY = UISize::fixed(200);
     UIWindowInfo windowI{};
     windowI.defaultMouseControls = false;
     windowI.drawWithScissor = false;
     windowI.name = "Version";
+    windowI.layer = info.layer;
     obj->root = obj->uiCtx.add_window(layoutI, windowI, obj);
 
     float fontSize = obj->theme.get_font_size();
@@ -42,10 +44,10 @@ UIVersionWindow UIVersionWindow::create(const UIVersionWindowInfo& info)
     textWI.fontSize = fontSize;
     textWI.hoverHL = false;
     textWI.cstr = version.c_str();
-    obj->versionTextW = obj->root.node().add_text(layoutI, textWI, obj);
+    obj->versionTextW = obj->root.node().add_text({}, textWI, obj);
 
     textWI.cstr = build.c_str();
-    obj->buildTextW = obj->root.node().add_text(layoutI, textWI, obj);
+    obj->buildTextW = obj->root.node().add_text({}, textWI, obj);
 
     obj->root.layout();
 
