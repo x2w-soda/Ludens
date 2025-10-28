@@ -1,6 +1,22 @@
-## Ludens Framework
+## Ludens Engine
 
-A data-driven game development framework.
+A data-driven game engine.
+
+### Mission Statement
+
+The development of the engine is guided by the following principles.
+
+- Data Driven
+
+The engine behavior from editor to runtime should be primarily guided by external data rather than hard-coded logic. This includes providing tools for designers and developers to create and manipulate data, allowing the engine to interpret and execute it dynamically instead of relying on fixed, built-in solutions.
+
+- Rapid Iteration
+
+The engine should empower users for rapid prototyping and iteration. This includes keeping the editor responsive, minimizing compile times, and making the documentation of each subsystem easily accessible. Both artists and programmers should be able to iterate on assets or code rapidly.
+
+- White Box Solutions
+
+The engine will prioritize transparency in its technology. Subsystems and their algorithms should be well-documentated, allowing users to easily understand and customize them. Unlike proprietary engines that need to hide their implementations, this engine emphasizes transparency and educational value for game development.
 
 ### Early Work In Progress
 
@@ -84,6 +100,14 @@ Implementation of GPU algorithms as individual render components. First-party gr
 
 Top level graphics abstraction, provides rendering service using combinations of render components. Users of this module should not have to worry about GPU-side synchronizations.
 
+- AudioBackend
+
+Audio backend abstraction layer, currently using MiniAudio as the audio thread implementation. This layer takes 32-bit float samples from some mixer output and passes it to the actual backend such as WASAPI, performing conversions as necessary.
+
+- AudioMixer
+
+Defines audio playbacks and effects. This layer implements the mixing done on audio thread. Currently each playback has its own effect chain, this is less efficient compared to bus-routing, which will be implemented later. Eventually, bus-level DSP chain and playback-level DSP chain will both be supported.
+
 - UI
 
 User interface solution. This is a retained-mode GUI library used for both the editor and the final in-game UI.
@@ -106,7 +130,7 @@ Defines a Ludens project. This should fully specify the assets, scenes, and any 
 
 ### Ludens Builder
 
-The CMake target `LDBuilder` is a command line executable that serves as a stand-alone utility. The builder is not required by the end user to build a game, but it could be useful for advanced users since it exposes a lot of the framework's functionalities through the command line.
+The CMake target `LDBuilder` is a command line executable that serves as a stand-alone utility. The builder is not required by the end user to build a game, but it could be useful for advanced users since it exposes a lot of the engine's functionalities through the command line.
 
 The CMake target `LDBuilderLibs` contains all builder modules and links with `LDCoreLibs`.
 
@@ -122,4 +146,4 @@ Public headers are in the `Include/LudensEditor` directory, and the module imple
 
 ### License
 
-The full source code of the framework is distributed under the permissive MIT license.
+The full source code of the engine is distributed under the permissive MIT license.
