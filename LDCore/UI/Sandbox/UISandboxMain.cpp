@@ -12,11 +12,11 @@ int main(int argc, char** argv)
         sandbox.run();
     }
 
-    int count = LD::get_memory_leaks(nullptr);
+    int count = get_memory_leaks(nullptr);
 
     if (count > 0)
     {
-        std::vector<LD::MemoryProfile> leaks(count);
+        std::vector<MemoryProfile> leaks(count);
         get_memory_leaks(leaks.data());
 
         for (int i = 0; i < count; i++)

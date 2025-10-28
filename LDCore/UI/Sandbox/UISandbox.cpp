@@ -90,6 +90,8 @@ UISandbox::UISandbox()
     wmI.iconAtlasImage = mIconAtlasImage;
     wmI.icons.close = EditorIconAtlas::get_icon_rect(EditorIcon::Close);
     mUIWM = UIWindowManager::create(wmI);
+    UIContext ctx = mUIWM.get_context();
+    ctx.add_layer(Hash32(0u));
 
     // create floating client window
     UILayoutInfo layoutI{};
@@ -98,6 +100,7 @@ UISandbox::UISandbox()
     layoutI.sizeY = UISize::fixed(400.0f);
     UIWindowInfo windowI{};
     windowI.name = "demo";
+    windowI.layer = 0u;
     windowI.defaultMouseControls = false;
     windowI.drawWithScissor = false;
     mClient = mUIWM.get_context().add_window(layoutI, windowI, nullptr);
@@ -162,7 +165,7 @@ void UISandbox::imgui()
 
     bool isPressed;
 
-    ui_push_window("Demo");
+    ui_push_window("Demo", mClient);
     ui_push_scroll();
     {
         if (Input::get_key(KEY_CODE_SPACE))
@@ -254,7 +257,9 @@ void UISandbox::on_screen_render(ScreenRenderComponent renderer, void* user)
 {
     UISandbox& self = *(UISandbox*)user;
 
-    self.mUIWM.render_float(renderer);
+    UIContext ctx = self.mUIWM.get_context();
+    ctx.render_layer(self.mUIWM.get_ground_layer_hash(), renderer);
+    ctx.render_layer(self.mUIWM.get_float_layer_hash(), renderer);
 }
 
 } // namespace LD

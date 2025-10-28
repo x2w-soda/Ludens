@@ -287,24 +287,24 @@ void UIScrollWidgetObj::on_scroll(UIWidget widget, const Vec2& offset)
     UIScrollWidgetObj& self = base->as.scroll;
 
     const float sensitivity = 20.0f;
-    const float animDuration = 0.8f;
+    const float animDuration = 0.14f;
 
     if (offset.x != 0.0f)
     {
         self.offsetXDst += offset.x * sensitivity;
+        self.offsetXSpeed = (self.offsetXDst - base->scrollOffset.x) / animDuration;
+
         if (self.offsetXDst > 0.0f)
             self.offsetXDst = 0.0f;
-
-        self.offsetXSpeed = (self.offsetXDst - base->scrollOffset.x) / animDuration;
     }
 
     if (offset.y != 0.0f)
     {
         self.offsetYDst += offset.y * sensitivity;
+        self.offsetYSpeed = (self.offsetYDst - base->scrollOffset.y) / animDuration;
+        
         if (self.offsetYDst > 0.0f)
             self.offsetYDst = 0.0f;
-
-        self.offsetYSpeed = (self.offsetYDst - base->scrollOffset.y) / animDuration;
     }
 }
 

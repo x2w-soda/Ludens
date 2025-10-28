@@ -16,6 +16,8 @@
 
 namespace LD {
 
+typedef void (*IMDrawCallback)(UIWidget widget, ScreenRenderComponent renderer, void* user);
+
 /// @brief Release and free all resources allocated by immediate-mode API.
 void ui_imgui_release(UIContext ctx);
 
@@ -31,6 +33,9 @@ void ui_top_layout(const UILayoutInfo& layoutI);
 
 /// @brief Set user of widget on top of stack.
 void ui_top_user(void* user);
+
+/// @brief Set draw callback of widget on top of stack.
+void ui_top_draw(const IMDrawCallback& imDrawCallback);
 
 /// @brief Check if widget on top of stack has UI_MOUSE_DOWN event.
 /// @return True if event exists.
@@ -58,11 +63,8 @@ void ui_pop();
 /// @brief Pop current window.
 void ui_pop_window();
 
-/// @brief Push UIWindow.
-void ui_push_window(const char* name);
-
 /// @brief Push existing UIWindow as client.
-void ui_push_window_client(const char* name, UIWindow client);
+void ui_push_window(const char* name, UIWindow client);
 
 /// @brief Sets the current window to position and fixed size.
 void ui_set_window_rect(const Rect& rect);
@@ -74,7 +76,7 @@ bool ui_has_window_client(const char* name);
 void ui_push_text(const char* text);
 
 /// @brief Push UIImageWidget.
-void ui_push_image(RImage image, float width, float height);
+void ui_push_image(RImage image, float width, float height, const Rect* portion = nullptr);
 
 /// @brief Push UIPanelWidget.
 void ui_push_panel();

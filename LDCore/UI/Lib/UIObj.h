@@ -104,8 +104,6 @@ struct UIScrollWidgetObj
     float offsetYSpeed; // animation speed for scrollOffset y
     bool hasScrollBar;
 
-    void clamp_dst_offset();
-
     static void cleanup(UIWidgetObj* base);
     static void on_mouse(UIWidget widget, const Vec2& pos, MouseButton btn, UIEvent event);
     static void on_scroll(UIWidget widget, const Vec2& offset);

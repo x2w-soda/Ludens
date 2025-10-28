@@ -27,7 +27,8 @@ struct UIWidgetState
 {
     UIWidget widget = {};                 // actual retained widget
     std::vector<UIWidgetState*> children; // direct children, retained across frames
-    Hash32 widgetHash;                    // hash that identifies this state uniquely in its window
+    IMDrawCallback onDraw;
+    Hash32 widgetHash; // hash that identifies this state uniquely in its window
     MouseButton mouseDownButton;
     MouseButton mouseUpButton;
     KeyCode keyDown;
@@ -52,7 +53,6 @@ struct UIWindowState
     UIWidgetState* state; // widget state for the window itself
     std::stack<UIWidgetState*> imWidgetStack;
     Hash32 windowHash;
-    bool hasCreatedWindow;
 
     UIWindowState();
     ~UIWindowState();
@@ -194,44 +194,22 @@ static UIWidgetState* get_or_create_widget_state(std::stack<UIWidgetState*>& sta
     return widgetS;
 }
 
-static UIWindowState* get_or_create_window_state(Hash32 windowName, bool createWindowHandle)
+static UIWindowState* get_or_create_window_state(Hash32 windowHash)
 {
-    if (sImWindows.contains(windowName))
-        return sImWindows[windowName];
+    if (sImWindows.contains(windowHash))
+        return sImWindows[windowHash];
 
     UIWindowState* windowS = heap_new<UIWindowState>(MEMORY_USAGE_UI);
-    windowS->windowHash = windowName;
+    windowS->windowHash = windowHash;
     windowS->window = {};
-    windowS->hasCreatedWindow = !createWindowHandle;
     windowS->state = (UIWidgetState*)windowS->widgetStatePA.allocate();
-    new (windowS->state) UIWidgetState(); // TODO: placement delete
+    new (windowS->state) UIWidgetState();
+
     UIWidgetState* widgetS = windowS->state;
     widgetS->widget = {};
     widgetS->widgetHash = windowS->windowHash;
 
-    if (createWindowHandle)
-    {
-        UILayoutInfo layoutI{};
-        layoutI.sizeX = UISize::fit();
-        layoutI.sizeY = UISize::fit();
-        layoutI.childAxis = UI_AXIS_Y;
-        layoutI.childGap = 5.0f;
-        layoutI.childPadding = {.left = 5.0f, .right = 5.0f, .top = 5.0f, .bottom = 5.0f};
-        UIWindowInfo windowI{};
-        windowI.defaultMouseControls = false;
-        windowI.drawWithScissor = false;
-        windowI.hidden = true;
-        windowI.name = nullptr;
-        windowS->window = sImFrame.ctx.add_window(layoutI, windowI, windowS);
-        windowS->window.raise();
-        windowS->window.set_on_draw([](UIWidget widget, ScreenRenderComponent renderer) {
-            renderer.draw_rect(widget.get_rect(), Color(0x303030FF));
-        });
-
-        widgetS->widget = (UIWidget)windowS->window;
-    }
-
-    sImWindows[windowName] = windowS;
+    sImWindows[windowHash] = windowS;
 
     return windowS;
 }
@@ -240,7 +218,6 @@ static UIWindowState* get_or_create_window_state(Hash32 windowName, bool createW
 static void destroy_window_state(UIWindowState* state)
 {
     LD_ASSERT(sImFrame.ctx && state->window);
-    LD_ASSERT(sImFrame.ctx.unwrap() == state->window.node().get_context());
 
     if (!sImWindows.contains(state->windowHash))
         return;
@@ -250,6 +227,7 @@ static void destroy_window_state(UIWindowState* state)
 }
 
 UIWindowState::UIWindowState()
+    : state(nullptr), windowHash{}
 {
     PoolAllocatorInfo poolAI{};
     poolAI.blockSize = sizeof(UIWidgetState);
@@ -470,6 +448,18 @@ void ui_top_user(void* imUser)
     widgetS->imUser = imUser;
 }
 
+void ui_top_draw(const IMDrawCallback& imDrawCallback)
+{
+    LD_ASSERT_UI_TOP_WIDGET;
+
+    UIWidgetState* widgetS = sImFrame.imWindow->imWidgetStack.top();
+    widgetS->onDraw = imDrawCallback;
+    widgetS->widget.set_on_draw([](UIWidget widget, ScreenRenderComponent renderer) {
+        UIWidgetState* widgetS = (UIWidgetState*)widget.get_user();
+        widgetS->onDraw(widgetS->widget, renderer, widgetS->imUser);
+    });
+}
+
 bool ui_top_mouse_down(MouseButton& outButton)
 {
     LD_ASSERT_UI_TOP_WIDGET;
@@ -564,33 +554,29 @@ void ui_pop_window()
     sImFrame.imWindow = nullptr;
 }
 
-void ui_push_window(const char* name)
+void ui_push_window(const char* name, UIWindow client)
 {
     LD_ASSERT_UI_PUSH_WINDOW;
 
-    Hash32 windowName(name);
-    UIWindowState* windowS = sImFrame.imWindow = get_or_create_window_state(windowName, true);
+    Hash32 windowHash(name);
 
-    while (!windowS->imWidgetStack.empty())
-        windowS->imWidgetStack.pop();
+    // If client is different from last time, invalidate window state.
+    if (sImWindows.contains(windowHash))
+    {
+        UIWindowState* windowS = sImWindows[windowHash];
+        if (windowS->window.unwrap() != client.unwrap())
+        {
+            destroy_window_state(windowS);
+            sImWindows.erase(windowHash);
+        }
+    }
 
-    windowS->state->childCounter = 0; // track widget hierarchy each frame
-    windowS->state->widget = windowS->window;
-    windowS->imWidgetStack.push(windowS->state);
-    windowS->window.show();
-}
+    UIWindowState* windowS = sImFrame.imWindow = get_or_create_window_state(windowHash);
 
-void ui_push_window_client(const char* name, UIWindow client)
-{
-    LD_ASSERT_UI_PUSH_WINDOW;
-
-    Hash32 windowName(name);
-    UIWindowState* windowS = sImFrame.imWindow = get_or_create_window_state(windowName, false);
     windowS->state->childCounter = 0;
     windowS->state->widget = (UIWidget)client;
     windowS->imWidgetStack.push(windowS->state);
     windowS->window = client;
-    windowS->window.show();
 }
 
 void ui_set_window_rect(const Rect& rect)
@@ -599,7 +585,6 @@ void ui_set_window_rect(const Rect& rect)
 
     sImFrame.imWindow->window.set_rect(rect);
 }
-
 
 bool ui_has_window_client(const char* name)
 {
@@ -622,16 +607,19 @@ void ui_push_text(const char* text)
     imWindow->imWidgetStack.push(imWidget);
 }
 
-void ui_push_image(RImage image, float width, float height)
+void ui_push_image(RImage image, float width, float height, const Rect* portion)
 {
     LD_ASSERT_UI_PUSH;
 
     UIWindowState* imWindow = sImFrame.imWindow;
     UIWidgetState* imWidget = imWindow->get_or_create_image(image);
-    UITextWidget imageW = (UITextWidget)imWidget->widget;
+    UIImageWidget imageW = (UIImageWidget)imWidget->widget;
     LD_ASSERT(imageW.get_type() == UI_WIDGET_IMAGE);
 
     imageW.set_layout_size(UISize::fixed(width), UISize::fixed(height));
+
+    if (portion)
+        imageW.set_image_rect(*portion);
 
     imWindow->imWidgetStack.push(imWidget);
 }

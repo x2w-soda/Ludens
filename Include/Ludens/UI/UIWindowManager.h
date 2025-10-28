@@ -13,7 +13,10 @@ namespace LD {
 /// @brief Window area identifier distributed by the window manager, zero is invalid ID.
 using UIWMAreaID = uint32_t;
 
+/// @brief Called when the WM resizes client window.
 typedef void (*UIWMClientResizeCallback)(UIWindow client, const Vec2& size, void* user);
+
+/// @brief Called when the client window is disconnected from the WM.
 typedef void (*UIWMClientCloseCallback)(UIWindow client, void* user);
 
 struct UIWMClientInfo

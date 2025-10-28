@@ -195,6 +195,8 @@ void AreaTabControl::delete_tabs()
             if (tab == mActiveTab)
                 mActiveTab = nullptr;
 
+            tab->client.hide();
+
             if (tab->onClientClose)
                 tab->onClientClose(tab->client, tab->user);
 
