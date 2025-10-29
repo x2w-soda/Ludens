@@ -1,4 +1,4 @@
-#include <Ludens/Asset/MeshAsset.h>
+#include <Ludens/Asset/AssetType/MeshAsset.h>
 #include <Ludens/DataRegistry/DataComponent.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Profiler/Profiler.h>

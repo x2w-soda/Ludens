@@ -2,9 +2,9 @@
 
 #include "AssetWatcher.h"
 #include <Ludens/Asset/Asset.h>
-#include <Ludens/Asset/LuaScriptAsset.h>
-#include <Ludens/Asset/MeshAsset.h>
-#include <Ludens/Asset/TextureAsset.h>
+#include <Ludens/Asset/AssetType/LuaScriptAsset.h>
+#include <Ludens/Asset/AssetType/MeshAsset.h>
+#include <Ludens/Asset/AssetType/TextureAsset.h>
 #include <Ludens/DataRegistry/DataComponent.h>
 #include <Ludens/Header/Hash.h>
 #include <Ludens/Media/Bitmap.h>

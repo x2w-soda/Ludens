@@ -1,5 +1,5 @@
-#include "AssetObj.h"
-#include <Ludens/Asset/TextureAsset.h>
+#include "../AssetObj.h"
+#include <Ludens/Asset/AssetType/TextureAsset.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/Serial/Compress.h>

@@ -1,5 +1,5 @@
-#include <Ludens/Asset/MeshAsset.h>
-#include <Ludens/Asset/TextureAsset.h>
+#include <Ludens/Asset/AssetType/MeshAsset.h>
+#include <Ludens/Asset/AssetType/TextureAsset.h>
 #include <Ludens/Log/Log.h>
 #include <Ludens/System/Memory.h>
 #include <LudensBuilder/BAssetUtil/BAssetUtil.h>

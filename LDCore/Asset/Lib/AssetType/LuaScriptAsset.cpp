@@ -1,6 +1,6 @@
-#include "AssetObj.h"
+#include "../AssetObj.h"
 #include <Ludens/Asset/AssetManager.h>
-#include <Ludens/Asset/LuaScriptAsset.h>
+#include <Ludens/Asset/AssetType/LuaScriptAsset.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/System/FileSystem.h>

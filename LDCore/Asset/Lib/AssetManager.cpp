@@ -1,7 +1,7 @@
 #include "AssetObj.h"
 #include <Ludens/Asset/AssetManager.h>
-#include <Ludens/Asset/MeshAsset.h>
-#include <Ludens/Asset/TextureAsset.h>
+#include <Ludens/Asset/AssetType/MeshAsset.h>
+#include <Ludens/Asset/AssetType/TextureAsset.h>
 #include <Ludens/Header/Types.h>
 #include <Ludens/Log/Log.h>
 #include <Ludens/Profiler/Profiler.h>
