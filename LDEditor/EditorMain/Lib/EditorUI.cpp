@@ -158,6 +158,10 @@ void EditorUI::update(float delta)
 
 void EditorUI::resize(const Vec2& screenSize)
 {
+    // skip minimization
+    if (screenSize.x == 0.0f || screenSize.y == 0.0f)
+        return;
+
     // resize top bar
     UIWindow topbar = mTopBar.get_handle();
     float barHeight = topbar.get_size().y;

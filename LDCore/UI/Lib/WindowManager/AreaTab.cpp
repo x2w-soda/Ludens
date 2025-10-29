@@ -188,10 +188,19 @@ void AreaTabControl::delete_tabs()
 
     size_t eraseCount = 0;
 
-    for (AreaTab* tab : mTabs)
+    if (!mIsFloat && mTabs.size() == 1)
     {
-        if (tab && tab->shouldClose)
+        // reject close request on last tab in ground area
+        if (mTabs[0]->shouldClose)
+            mTabs[0]->shouldClose = false;
+    }
+    else
+    {
+        for (AreaTab* tab : mTabs)
         {
+            if (!tab || !tab->shouldClose)
+                continue;
+            
             if (tab == mActiveTab)
                 mActiveTab = nullptr;
 
@@ -204,7 +213,6 @@ void AreaTabControl::delete_tabs()
 
             toErase.insert(tab);
             heap_delete<AreaTab>(tab);
-            continue;
         }
     }
 
@@ -359,7 +367,7 @@ AreaTab::AreaTab(UIWindowManagerObj* wm, UIWindow client, UIWindow tabControl, v
     imageWI.rect = &wm->icons.close;
     closeW = rootW.node().add_image(layoutI, imageWI, this);
     closeW.set_on_mouse(&AreaTab::on_close);
-    closeW.set_on_hover([](UIWidget widget, UIEvent event){});
+    closeW.set_on_hover([](UIWidget widget, UIEvent event) {});
     closeW.set_on_draw([](UIWidget widget, ScreenRenderComponent renderer) {
         UITheme theme = widget.get_theme();
         if (widget.is_hovered())
