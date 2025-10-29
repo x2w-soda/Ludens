@@ -30,6 +30,9 @@ AudioDataObj* create_audio_data(const void* data, size_t dataSize, AudioDataForm
         return {};
     }
 
+    // NOTE: ma_decoder_read_pcm_frames requires external synchronization.
+    //       Although one decoder per worker-thread would be optimal, here we
+    //       are playing safe with a stack-allocated ma_decoder per call stack.
     ma_decoder decoder;
     ma_result result = ma_decoder_init_memory(data, dataSize, &config, &decoder);
 
@@ -70,6 +73,42 @@ static_assert(IsTrivial<AudioDataObj>);
 //
 // Public API
 //
+
+AudioData AudioData::create_from_path(const FS::Path& path)
+{
+    if (!path.has_extension() || !FS::exists(path))
+        return {};
+
+    uint64_t fileSize = FS::get_file_size(path);
+    if (fileSize == 0)
+        return {};
+
+    std::vector<byte> fileData(fileSize);
+    std::string ext = path.extension().string();
+    if (!FS::read_file(path, fileSize, fileData.data()))
+        return {};
+
+    AudioDataFormat format{};
+    if (ext == ".wav")
+        format = AUDIO_DATA_FORMAT_WAV;
+    else if (ext == ".mp3")
+        format = AUDIO_DATA_FORMAT_MP3;
+    else
+        return {};
+
+    AudioDataObj* obj = create_audio_data(fileData.data(), fileData.size(), format);
+    if (!obj)
+        return {};
+
+    return AudioData(obj);
+}
+
+void AudioData::destroy(AudioData data)
+{
+    AudioDataObj* obj = data.unwrap();
+
+    destroy_audio_data(obj);
+}
 
 const void* AudioData::get_samples() const
 {

@@ -2,6 +2,7 @@
 
 #include <Ludens/DSP/DSP.h>
 #include <Ludens/Header/Handle.h>
+#include <Ludens/System/FileSystem.h>
 #include <cstdint>
 
 namespace LD {
@@ -9,6 +10,15 @@ namespace LD {
 /// @brief Common interface of audio data handles.
 struct AudioData : Handle<struct AudioDataObj>
 {
+    /// @brief Create audio data from file. Decoding is based on it's
+    ///        file path extension ".wav", ".mp3", etc.
+    /// @note  The returned handle should not be downcasted to MP3Data, WAVData, etc.
+    ///        And should be destroyed using AudioData::destroy.
+    static AudioData create_from_path(const FS::Path& path);
+
+    /// @brief Destroy audio data.
+    static void destroy(AudioData data);
+
     /// @brief Get samples.
     const void* get_samples() const;
 
