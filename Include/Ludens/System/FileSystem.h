@@ -24,6 +24,9 @@ uint64_t get_file_size(const Path& path);
 /// @brief Read whole file into buffer.
 bool read_file(const Path& path, uint64_t& size, byte* buf);
 
+/// @brief Read whole file into byte vector.
+bool read_file_to_vector(const FS::Path& path, std::vector<byte>& v);
+
 /// @brief Write bytes to a file.
 bool write_file(const Path& path, uint64_t size, const byte* buf);
 

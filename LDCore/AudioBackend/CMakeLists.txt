@@ -9,7 +9,6 @@ set(MODULE_INCLUDE
 set(MODULE_LIB
 	Lib/AudioBackend.cpp
 	Lib/MiniAudio.cpp
-	${miniaudio_SOURCE_DIR}/miniaudio.c
 )
 
 set(MODULE_TEST

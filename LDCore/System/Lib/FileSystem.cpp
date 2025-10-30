@@ -72,6 +72,21 @@ bool read_file(const Path& path, uint64_t& size, byte* buf)
     return true;
 }
 
+bool read_file_to_vector(const FS::Path& path, std::vector<byte>& v)
+{
+    LD_PROFILE_SCOPE;
+
+    uint64_t fileSize;
+    if (!read_file(path, fileSize, nullptr) || fileSize == 0)
+    {
+        v.clear();
+        return false;
+    }
+
+    v.resize(fileSize);
+    return read_file(path, fileSize, v.data());
+}
+
 bool write_file(const Path& path, uint64_t size, const byte* buf)
 {
     LD_PROFILE_SCOPE;

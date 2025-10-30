@@ -31,6 +31,7 @@ set(MODULE_LIB
     Lib/Format/XML.cpp
     Lib/Format/JSON.cpp
     Lib/Format/TOML.cpp
+    ${miniaudio_SOURCE_DIR}/miniaudio.c
 )
 
 set(MODULE_TEST
