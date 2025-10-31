@@ -117,6 +117,21 @@ public:
 
     /// @brief Set the mesh asset of a mesh component.
     void set_mesh_component_asset(CUID meshC, AUID meshAssetID);
+
+    /// @brief Public interface for audio source components.
+    class IAudioSource
+    {
+    public:
+        IAudioSource(Scene scene, CUID sourceCUID);
+
+        void play();
+        void pause();
+        void resume();
+
+    private:
+        SceneObj* mScene;
+        AudioSourceComponent* mComp;
+    };
 };
 
 } // namespace LD

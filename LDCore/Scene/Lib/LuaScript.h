@@ -4,6 +4,7 @@
 #include <Ludens/DataRegistry/DataRegistry.h>
 #include <Ludens/Lua/LuaModule.h>
 #include <Ludens/Lua/LuaState.h>
+#include <Ludens/Scene/Scene.h>
 
 namespace LD {
 namespace LuaScript {
@@ -12,10 +13,10 @@ namespace LuaScript {
 LuaModule create_ludens_module();
 
 /// @brief Create lua table for data component
-void create_component_table(DataRegistry reg, LuaState L, CUID compID, ComponentType type, void* comp);
+void create_component_table(Scene scene, DataRegistry reg, LuaState L, CUID compID, ComponentType type, void* comp);
 
 /// @brief Destroy lua table associated with component
-void destroy_component_table(DataRegistry reg, LuaState L, CUID compID);
+void destroy_component_table(Scene scene, DataRegistry reg, LuaState L, CUID compID);
 
 } // namespace LuaScript
 } // namespace LD

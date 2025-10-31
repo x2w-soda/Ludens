@@ -219,7 +219,7 @@ void SceneObj::create_lua_script(ComponentScriptSlot* scriptSlot)
     void* comp = registry.get_component(compID, type);
 
     // create and store table for component type
-    LuaScript::create_component_table(registry, lua, compID, type, comp);
+    LuaScript::create_component_table(Scene(this), registry, lua, compID, type, comp);
 
     lua.resize(oldSize);
 }
@@ -235,7 +235,7 @@ void SceneObj::destroy_lua_script(ComponentScriptSlot* scriptSlot)
     lua.get_field(-1, "scripts");
 
     // destroy component lua table representation
-    LuaScript::destroy_component_table(registry, lua, compID);
+    LuaScript::destroy_component_table(Scene(this), registry, lua, compID);
 
     lua.push_number((double)compID);
     lua.push_nil();
@@ -707,6 +707,38 @@ void Scene::set_mesh_component_asset(CUID meshCompID, AUID meshAssetID)
     RUID drawCall = mObj->renderServer.create_mesh_draw_call(mesh);
     mObj->cuidToRuid[meshCompID] = drawCall;
     mObj->ruidToCuid[drawCall] = meshCompID;
+}
+
+Scene::IAudioSource::IAudioSource(Scene scene, CUID sourceCUID)
+{
+    ComponentType type;
+    mScene = scene.unwrap();
+    mComp = (AudioSourceComponent*)scene.get_component(sourceCUID, type);
+    LD_ASSERT(type == COMPONENT_TYPE_AUDIO_SOURCE);
+}
+
+void Scene::IAudioSource::play()
+{
+    if (!mComp)
+        return;
+
+    mScene->audioServer.start_playback(mComp->playback);
+}
+
+void Scene::IAudioSource::pause()
+{
+    if (!mComp)
+        return;
+
+    mScene->audioServer.pause_playback(mComp->playback);
+}
+
+void Scene::IAudioSource::resume()
+{
+    if (!mComp)
+        return;
+
+    mScene->audioServer.resume_playback(mComp->playback);
 }
 
 } // namespace LD

@@ -37,9 +37,10 @@ static int component_get_name(lua_State* l);
 static int component_set_name(lua_State* l);
 static void push_transform_table(DataRegistry reg, LuaState L, CUID compID, Transform* transform);
 static void push_transform2d_table(DataRegistry reg, LuaState L, CUID compID, Transform2D* transform);
-static void push_camera_component_table(DataRegistry reg, LuaState L, CUID compID, void* comp);
-static void push_mesh_component_table(DataRegistry reg, LuaState L, CUID compID, void* comp);
-static void push_sprite2d_component_table(DataRegistry reg, LuaState L, CUID compID, void* comp);
+static void push_audio_source_component_table(Scene scene, DataRegistry reg, LuaState L, CUID compID, void* comp);
+static void push_camera_component_table(Scene scene, DataRegistry reg, LuaState L, CUID compID, void* comp);
+static void push_mesh_component_table(Scene scene, DataRegistry reg, LuaState L, CUID compID, void* comp);
+static void push_sprite2d_component_table(Scene scene, DataRegistry reg, LuaState L, CUID compID, void* comp);
 static void install_component_base(DataRegistry reg, LuaState& L, CUID compID);
 static int application_exit(lua_State* l);
 static int debug_log(lua_State* l);
@@ -49,6 +50,9 @@ static int input_get_key(lua_State* l);
 static int input_get_mouse_down(lua_State* l);
 static int input_get_mouse_up(lua_State* l);
 static int input_get_mouse(lua_State* l);
+static int audio_source_component_play(lua_State* l);
+static int audio_source_component_pause(lua_State* l);
+static int audio_source_component_resume(lua_State* l);
 
 static KeyCode string_to_keycode(const char* cstr)
 {
@@ -468,7 +472,27 @@ void push_transform2d_table(DataRegistry reg, LuaState L, CUID compID, Transform
     L.set_field(-2, "set_scale");
 }
 
-static void push_camera_component_table(DataRegistry reg, LuaState L, CUID compID, void* comp)
+static void push_audio_source_component_table(Scene scene, DataRegistry reg, LuaState L, CUID compID, void* comp)
+{
+    AudioSourceComponent* sourceC = (AudioSourceComponent*)comp;
+
+    L.push_table(); // audio source component
+    install_component_base(reg, L, compID);
+
+    L.push_light_userdata((void*)scene.unwrap());
+    L.set_field(-2, "_scene");
+
+    L.push_fn(&audio_source_component_play);
+    L.set_field(-2, "play");
+
+    L.push_fn(&audio_source_component_pause);
+    L.set_field(-2, "pause");
+
+    L.push_fn(&audio_source_component_resume);
+    L.set_field(-2, "resume");
+}
+
+static void push_camera_component_table(Scene scene, DataRegistry reg, LuaState L, CUID compID, void* comp)
 {
     CameraComponent* cameraC = (CameraComponent*)comp;
 
@@ -481,7 +505,7 @@ static void push_camera_component_table(DataRegistry reg, LuaState L, CUID compI
     // TODO:
 }
 
-static void push_mesh_component_table(DataRegistry reg, LuaState L, CUID compID, void* comp)
+static void push_mesh_component_table(Scene scene, DataRegistry reg, LuaState L, CUID compID, void* comp)
 {
     MeshComponent* meshC = (MeshComponent*)comp;
 
@@ -492,7 +516,7 @@ static void push_mesh_component_table(DataRegistry reg, LuaState L, CUID compID,
     L.set_field(-2, "transform");
 }
 
-void push_sprite2d_component_table(DataRegistry reg, LuaState L, CUID compID, void* comp)
+void push_sprite2d_component_table(Scene scene, DataRegistry reg, LuaState L, CUID compID, void* comp)
 {
     Sprite2DComponent* spriteC = (Sprite2DComponent*)comp;
 
@@ -525,6 +549,12 @@ static void install_component_base(DataRegistry reg, LuaState& L, CUID compID)
     L.push_fn(&component_set_name);
     L.set_field(-2, "set_name");
 
+    L.push_fn(&component_get_child);
+    L.set_field(-2, "get_child");
+
+    L.push_fn(&component_get_parent);
+    L.set_field(-2, "get_parent");
+
     LD_ASSERT(L.size() == oldSize);
 }
 
@@ -532,13 +562,14 @@ static void install_component_base(DataRegistry reg, LuaState& L, CUID compID)
 struct
 {
     ComponentType type;
-    void (*push_table)(DataRegistry reg, LuaState L, CUID compID, void* comp);
+    void (*push_table)(Scene scene, DataRegistry reg, LuaState L, CUID compID, void* comp);
 } sComponents[] = {
-    {COMPONENT_TYPE_DATA,       nullptr},
-    {COMPONENT_TYPE_TRANSFORM,  nullptr},
-    {COMPONENT_TYPE_CAMERA,     nullptr},
-    {COMPONENT_TYPE_MESH,       &push_mesh_component_table},
-    {COMPONENT_TYPE_SPRITE_2D,  &push_sprite2d_component_table},
+    {COMPONENT_TYPE_DATA,         nullptr},
+    {COMPONENT_TYPE_AUDIO_SOURCE, &push_audio_source_component_table},
+    {COMPONENT_TYPE_TRANSFORM,    nullptr},
+    {COMPONENT_TYPE_CAMERA,       nullptr},
+    {COMPONENT_TYPE_MESH,         &push_mesh_component_table},
+    {COMPONENT_TYPE_SPRITE_2D,    &push_sprite2d_component_table},
 };
 // clang-format on
 
@@ -674,6 +705,73 @@ static int input_get_mouse(lua_State* l)
     return 1;
 }
 
+static int audio_source_component_play(lua_State* l)
+{
+    LD_PROFILE_SCOPE;
+
+    LuaState L(l);
+
+    if (L.get_type(-1) != LUA_TYPE_TABLE)
+        return 0;
+
+    L.get_field(-1, "_cuid");
+    LD_ASSERT(L.get_type(-1) == LUA_TYPE_NUMBER);
+    CUID compID = (CUID)L.to_number(-1);
+
+    L.get_field(-2, "_scene");
+    Scene scene((SceneObj*)L.to_userdata(-1));
+    Scene::IAudioSource source(scene, compID);
+    source.play();
+
+    return 0;
+}
+
+static int audio_source_component_pause(lua_State* l)
+{
+    LD_PROFILE_SCOPE;
+
+    LuaState L(l);
+
+    if (L.get_type(-1) != LUA_TYPE_TABLE)
+        return 0;
+
+    L.get_field(-1, "_cuid");
+    LD_ASSERT(L.get_type(-1) == LUA_TYPE_NUMBER);
+    CUID compID = (CUID)L.to_number(-1);
+
+    L.get_field(-2, "_scene");
+    Scene scene((SceneObj*)L.to_userdata(-1));
+    Scene::IAudioSource source(scene, compID);
+    source.pause();
+
+    return 0;
+}
+
+static int audio_source_component_resume(lua_State* l)
+{
+    LD_PROFILE_SCOPE;
+
+    LuaState L(l);
+
+    if (L.get_type(-1) != LUA_TYPE_TABLE)
+        return 0;
+
+    L.get_field(-1, "_cuid");
+    LD_ASSERT(L.get_type(-1) == LUA_TYPE_NUMBER);
+    CUID compID = (CUID)L.to_number(-1);
+
+    L.get_field(-2, "_scene");
+    Scene scene((SceneObj*)L.to_userdata(-1));
+    Scene::IAudioSource source(scene, compID);
+    source.resume();
+
+    return 0;
+}
+
+//
+// PUBLIC API
+//
+
 LuaModule create_ludens_module()
 {
 
@@ -718,19 +816,19 @@ LuaModule create_ludens_module()
 }
 
 // stack top should be ludens.scripts
-void create_component_table(DataRegistry reg, LuaState L, CUID compID, ComponentType type, void* comp)
+void create_component_table(Scene scene, DataRegistry reg, LuaState L, CUID compID, ComponentType type, void* comp)
 {
     L.push_number((double)compID);
     L.get_table(-2);                             // ludens.scripts[compID]
     LD_ASSERT(L.get_type(-1) == LUA_TYPE_TABLE); // script instance table missing
 
-    sComponents[(int)type].push_table(reg, L, compID, comp);
+    sComponents[(int)type].push_table(scene, reg, L, compID, comp);
     L.set_field(-2, "_comp");
     L.pop(1);
 }
 
 // stack top should be ludens.scripts
-void destroy_component_table(DataRegistry reg, LuaState L, CUID compID)
+void destroy_component_table(Scene scene, DataRegistry reg, LuaState L, CUID compID)
 {
     L.push_number((double)compID);
     L.get_table(-2);                             // ludens.scripts[compID]
