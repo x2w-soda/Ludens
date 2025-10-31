@@ -2,6 +2,7 @@
 
 #include <Ludens/Asset/Asset.h>
 #include <Ludens/Header/Handle.h>
+#include <Ludens/System/FileSystem.h>
 #include <filesystem>
 
 namespace LD {
@@ -12,13 +13,17 @@ struct AssetUtil : Handle<struct AssetUtilObj>
     static AssetUtil create();
     static void destroy(AssetUtil util);
 
-    /// @brief import a Texture2D asset from source file
-    /// @return true on success
-    bool import_texture_2d(const std::filesystem::path& sourcePath);
+    /// @brief Import a Texture2D asset from source file.
+    /// @return True on success.
+    bool import_texture_2d(const FS::Path& sourcePath);
 
-    /// @brief import a Mesh asset from source file
-    /// @return true on success
-    bool import_mesh(const std::filesystem::path& sourcePath);
+    /// @brief Import a Mesh asset from source file.
+    /// @return True on success.
+    bool import_mesh(const FS::Path& sourcePath);
+
+    /// @brief Import an AudioClip asset from source file.
+    /// @return True on success.
+    bool import_audio_clip(const FS::Path& sourcePath);
 };
 
 } // namespace LD

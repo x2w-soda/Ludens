@@ -16,6 +16,15 @@ struct AudioData : Handle<struct AudioDataObj>
     ///        And should be destroyed using AudioData::destroy.
     static AudioData create_from_path(const FS::Path& path);
 
+    /// @brief Create audio data from f32 samples in RAM.
+    /// @param channels Number of channels.
+    /// @param sampleRate Sample rate.
+    /// @param frameCount Frame count of src buffer.
+    /// @param src Sample source buffer.
+    /// @param srcSize Buffer byte size, sanity check against channels and frameCount.
+    /// @return Valid handle on success.
+    static AudioData create_from_samples(uint32_t channels, uint32_t sampleRate, uint32_t frameCount, const void* src, size_t srcSize);
+
     /// @brief Destroy audio data.
     static void destroy(AudioData data);
 

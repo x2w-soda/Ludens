@@ -103,6 +103,23 @@ AudioData AudioData::create_from_path(const FS::Path& path)
     return AudioData(obj);
 }
 
+AudioData AudioData::create_from_samples(uint32_t channels, uint32_t sampleRate, uint32_t frameCount, const void* src, size_t srcSize)
+{
+    size_t expectedSize = sizeof(float) * frameCount * channels;
+
+    if (srcSize != expectedSize)
+        return {};
+
+    auto* obj = (AudioDataObj*)heap_malloc(sizeof(AudioDataObj) + srcSize, MEMORY_USAGE_MEDIA);
+    obj->frameCount = (uint32_t)frameCount;
+    obj->sampleFormat = SAMPLE_FORMAT_F32;
+    obj->channels = channels;
+    obj->sampleRate = sampleRate;
+    obj->samples = (float*)(obj + 1);
+
+    memcpy(obj->samples, src, srcSize);
+}
+
 void AudioData::destroy(AudioData data)
 {
     AudioDataObj* obj = data.unwrap();

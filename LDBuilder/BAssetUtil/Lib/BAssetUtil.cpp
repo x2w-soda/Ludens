@@ -1,10 +1,9 @@
+#include <Ludens/Asset/AssetType/AudioClipAsset.h>
 #include <Ludens/Asset/AssetType/MeshAsset.h>
 #include <Ludens/Asset/AssetType/TextureAsset.h>
 #include <Ludens/Log/Log.h>
 #include <Ludens/System/Memory.h>
 #include <LudensBuilder/BAssetUtil/BAssetUtil.h>
-
-namespace fs = std::filesystem;
 
 namespace LD {
 
@@ -20,7 +19,7 @@ void AssetUtil::destroy(AssetUtil util)
 {
 }
 
-bool AssetUtil::import_texture_2d(const fs::path& sourcePath)
+bool AssetUtil::import_texture_2d(const FS::Path& sourcePath)
 {
     void* memory = heap_malloc(get_asset_byte_size(ASSET_TYPE_TEXTURE_2D), MEMORY_USAGE_ASSET);
     Texture2DAsset asset((Texture2DAssetObj*)memory);
@@ -32,7 +31,7 @@ bool AssetUtil::import_texture_2d(const fs::path& sourcePath)
         return false;
     }
 
-    fs::path savePath(sourcePath);
+    FS::Path savePath(sourcePath);
     savePath.replace_extension(".ldb");
 
     Texture2DAssetImportJob importJob;
@@ -53,7 +52,7 @@ bool AssetUtil::import_texture_2d(const fs::path& sourcePath)
     return true;
 }
 
-bool AssetUtil::import_mesh(const std::filesystem::path& sourcePath)
+bool AssetUtil::import_mesh(const FS::Path& sourcePath)
 {
     void* memory = heap_malloc(get_asset_byte_size(ASSET_TYPE_MESH), MEMORY_USAGE_ASSET);
     MeshAsset asset((MeshAssetObj*)memory);
@@ -65,7 +64,7 @@ bool AssetUtil::import_mesh(const std::filesystem::path& sourcePath)
         return false;
     }
 
-    fs::path savePath(sourcePath);
+    FS::Path savePath(sourcePath);
     savePath.replace_extension(".ldb");
 
     MeshAssetImportJob importJob;
@@ -78,6 +77,35 @@ bool AssetUtil::import_mesh(const std::filesystem::path& sourcePath)
 
     heap_free(memory);
     sLog.info("import_mesh: saved to {}", savePath.string());
+
+    return true;
+}
+
+bool AssetUtil::import_audio_clip(const FS::Path& sourcePath)
+{
+    void* memory = heap_malloc(get_asset_byte_size(ASSET_TYPE_AUDIO_CLIP), MEMORY_USAGE_ASSET);
+    AudioClipAsset asset((AudioClipAssetObj*)memory);
+
+    std::string ext = sourcePath.extension().string();
+    if (ext != ".wav" && ext != ".mp3")
+    {
+        sLog.warn("import_audio_clip: unsupported file type {}", ext);
+        return false;
+    }
+
+    FS::Path savePath(sourcePath);
+    savePath.replace_extension(".ldb");
+
+    AudioClipAssetImportJob importJob;
+    importJob.asset = asset;
+    importJob.sourcePath = sourcePath;
+    importJob.savePath = savePath;
+    importJob.submit();
+
+    JobSystem::get().wait_all();
+
+    heap_free(memory);
+    sLog.info("import_audio_clip: saved to {}", savePath.string());
 
     return true;
 }

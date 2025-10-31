@@ -137,6 +137,8 @@ int main(int argc, char** argv)
             success = util.import_texture_2d(sourcePath);
         else if (type == "Mesh")
             success = util.import_mesh(sourcePath);
+        else if (type == "AudioClip")
+            success = util.import_audio_clip(sourcePath);
 
         if (!success)
             sLog.warn("import failed");
