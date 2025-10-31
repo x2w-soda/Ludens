@@ -4,9 +4,10 @@ set(MODULE_INCLUDE
 	${LUDENS_INCLUDE_DIR}/Ludens/Asset/Asset.h
 	${LUDENS_INCLUDE_DIR}/Ludens/Asset/AssetManager.h
 	${LUDENS_INCLUDE_DIR}/Ludens/Asset/AssetSchema.h
-	${LUDENS_INCLUDE_DIR}/Ludens/Asset/MeshAsset.h
-	${LUDENS_INCLUDE_DIR}/Ludens/Asset/TextureAsset.h
-	${LUDENS_INCLUDE_DIR}/Ludens/Asset/LuaScriptAsset.h
+	${LUDENS_INCLUDE_DIR}/Ludens/Asset/AssetType/MeshAsset.h
+	${LUDENS_INCLUDE_DIR}/Ludens/Asset/AssetType/TextureAsset.h
+	${LUDENS_INCLUDE_DIR}/Ludens/Asset/AssetType/LuaScriptAsset.h
+	${LUDENS_INCLUDE_DIR}/Ludens/Asset/AssetType/AudioClipAsset.h
 )
 
 set(MODULE_LIB
@@ -15,9 +16,10 @@ set(MODULE_LIB
 	Lib/AssetWatcher.h
 	Lib/AssetWatcher.cpp
 	Lib/AssetSchema.cpp
-	Lib/MeshAsset.cpp
-	Lib/TextureAsset.cpp
-	Lib/LuaScriptAsset.cpp
+	Lib/AssetType/MeshAsset.cpp
+	Lib/AssetType/TextureAsset.cpp
+	Lib/AssetType/LuaScriptAsset.cpp
+	Lib/AssetType/AudioClipAsset.cpp
 )
 
 add_library(${MODULE_NAME}
@@ -27,6 +29,7 @@ add_library(${MODULE_NAME}
 
 target_link_libraries(${MODULE_NAME} PRIVATE
 	LDLog
+	LDDSP
 	LDProfiler
 	LDMedia
 	LDRenderComponent

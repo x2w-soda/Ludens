@@ -25,6 +25,7 @@ struct
     size_t size;
     void (*unload)(AssetObj* base);
 } sAssetTypeTable[] = {
+    {ASSET_TYPE_AUDIO_CLIP, "AudioClip",  sizeof(AudioClipAssetObj), AudioClipAssetObj::unload, },
     {ASSET_TYPE_MESH,       "Mesh",       sizeof(MeshAssetObj),      MeshAssetObj::unload, },
     {ASSET_TYPE_TEXTURE_2D, "Texture2D",  sizeof(Texture2DAssetObj), Texture2DAssetObj::unload, },
     {ASSET_TYPE_LUA_SCRIPT, "LuaScript",  sizeof(LuaScriptAssetObj), LuaScriptAssetObj::unload, },

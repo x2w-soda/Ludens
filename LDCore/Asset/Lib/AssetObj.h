@@ -7,6 +7,7 @@
 #include <Ludens/Asset/AssetType/TextureAsset.h>
 #include <Ludens/DataRegistry/DataComponent.h>
 #include <Ludens/Header/Hash.h>
+#include <Ludens/Media/AudioData.h>
 #include <Ludens/Media/Bitmap.h>
 #include <Ludens/Media/Model.h>
 #include <Ludens/System/Allocator.h>
@@ -60,6 +61,14 @@ private:
     AssetWatcher mWatcher;     /// optional asset file watcher
     const FS::Path mRootPath;  /// asset URIs are relative paths to root path
     bool mInLoadBatch = false; /// is within load batch scope
+};
+
+/// @brief Audio clip asset implementation.
+struct AudioClipAssetObj : AssetObj
+{
+    AudioData data;
+
+    static void unload(AssetObj* base);
 };
 
 // NOTE: Placeholder Mesh asset implementation.
