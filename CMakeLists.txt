@@ -330,6 +330,7 @@ add_subdirectory(LDCore/RenderComponent)
 add_subdirectory(LDCore/RenderServer)
 add_subdirectory(LDCore/AudioBackend)
 add_subdirectory(LDCore/AudioMixer)
+add_subdirectory(LDCore/AudioServer)
 add_subdirectory(LDCore/UI)
 add_subdirectory(LDCore/Asset)
 add_subdirectory(LDCore/DataRegistry)
@@ -356,6 +357,7 @@ target_link_libraries(LDCoreLibs INTERFACE
   LDRenderServer
   LDAudioBackend
   LDAudioMixer
+  LDAudioServer
   LDUI
   LDAsset
   LDDataRegistry
