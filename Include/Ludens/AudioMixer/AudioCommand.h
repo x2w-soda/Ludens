@@ -16,6 +16,7 @@ enum AudioCommandType
     AUDIO_COMMAND_DESTROY_BUFFER,
     AUDIO_COMMAND_CREATE_PLAYBACK,
     AUDIO_COMMAND_DESTROY_PLAYBACK,
+    AUDIO_COMMAND_SET_PLAYBACK_BUFFER,
     AUDIO_COMMAND_CREATE_PLAYBACK_EFFECT,
     AUDIO_COMMAND_DESTROY_PLAYBACK_EFFECT,
     AUDIO_COMMAND_START_PLAYBACK,
@@ -33,6 +34,12 @@ struct AudioCommandCreatePlayback
 struct AudioCommandDestroyPlayback
 {
     AudioPlayback playback;
+};
+
+struct AudioCommandSetPlaybackBuffer
+{
+    AudioPlayback playback;
+    AudioBuffer buffer;
 };
 
 struct AudioCommandCreatePlaybackEffect
@@ -57,6 +64,7 @@ struct AudioCommand
         AudioBuffer destroyBuffer;
         AudioCommandCreatePlayback createPlayback;
         AudioCommandDestroyPlayback destroyPlayback;
+        AudioCommandSetPlaybackBuffer setPlaybackBuffer;
         AudioCommandCreatePlaybackEffect createPlaybackEffect;
         AudioCommandDestroyPlaybackEffect destroyPlaybackEffect;
         AudioPlayback startPlayback;

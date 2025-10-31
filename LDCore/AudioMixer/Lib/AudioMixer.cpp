@@ -81,6 +81,7 @@ public:
     static void destroy_buffer(AudioMixerObj* self, const AudioCommand& cmd);
     static void create_playback(AudioMixerObj* self, const AudioCommand& cmd);
     static void destroy_playback(AudioMixerObj* self, const AudioCommand& cmd);
+    static void set_playback_buffer(AudioMixerObj* self, const AudioCommand& cmd);
     static void create_playback_effect(AudioMixerObj* self, const AudioCommand& cmd);
     static void destroy_playback_effect(AudioMixerObj* self, const AudioCommand& cmd);
     static void start_playback(AudioMixerObj* self, const AudioCommand& cmd);
@@ -152,6 +153,22 @@ void AudioMixerObj::destroy_playback(AudioMixerObj* mixer, const AudioCommand& c
 
     if (*pObj == toRemove)
         *pObj = toRemove->next;
+}
+
+void AudioMixerObj::set_playback_buffer(AudioMixerObj* self, const AudioCommand& cmd)
+{
+    LD_ASSERT(cmd.type == AUDIO_COMMAND_SET_PLAYBACK_BUFFER);
+
+    AudioPlayback playback = cmd.setPlaybackBuffer.playback;
+    AudioBuffer buffer = cmd.setPlaybackBuffer.buffer;
+
+    if (!playback.is_acquired() || !buffer.is_acquired())
+        return;
+
+    AudioPlaybackObj* playbackObj = (AudioPlaybackObj*)playback.unwrap();
+    playbackObj->buffer = buffer;
+    playbackObj->isPlaying = false;
+    playbackObj->frameCursor = 0;
 }
 
 void AudioMixerObj::create_playback_effect(AudioMixerObj* self, const AudioCommand& cmd)
@@ -244,6 +261,7 @@ struct AudioCommandMeta
     {AUDIO_COMMAND_DESTROY_BUFFER,          &AudioMixerObj::destroy_buffer},
     {AUDIO_COMMAND_CREATE_PLAYBACK,         &AudioMixerObj::create_playback},
     {AUDIO_COMMAND_DESTROY_PLAYBACK,        &AudioMixerObj::destroy_playback},
+    {AUDIO_COMMAND_SET_PLAYBACK_BUFFER,     &AudioMixerObj::set_playback_buffer},
     {AUDIO_COMMAND_CREATE_PLAYBACK_EFFECT,  &AudioMixerObj::create_playback_effect},
     {AUDIO_COMMAND_DESTROY_PLAYBACK_EFFECT, &AudioMixerObj::destroy_playback_effect},
     {AUDIO_COMMAND_START_PLAYBACK,          &AudioMixerObj::start_playback},
