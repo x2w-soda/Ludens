@@ -249,6 +249,23 @@ FetchContent_Declare(
   GIT_TAG 0.11.23
 )
 FetchContent_MakeAvailable(miniaudio)
+message(STATUS "LUDENS miniaudio SOURCE DIR:    ${miniaudio_SOURCE_DIR}")
+
+## Fetch Khronos Texture
+
+FetchContent_Declare(
+  ktxsoftware
+  GIT_REPOSITORY https://github.com/KhronosGroup/KTX-Software.git
+  GIT_TAG v4.4.0
+)
+set(KTX_FEATURE_DOC                OFF CACHE BOOL "" FORCE)
+set(KTX_FEATURE_JNI                OFF CACHE BOOL "" FORCE)
+set(KTX_FEATURE_PY                 OFF CACHE BOOL "" FORCE)
+set(KTX_FEATURE_TESTS              OFF CACHE BOOL "" FORCE)
+set(KTX_FEATURE_TOOLS              OFF CACHE BOOL "" FORCE)
+set(KTX_FEATURE_TOOLS_CTS          OFF CACHE BOOL "" FORCE)
+FetchContent_MakeAvailable(ktxsoftware)
+message(STATUS "LUDENS ktxsoftware SOURCE DIR:  ${ktxsoftware_SOURCE_DIR}")
 
 # Find Vulkan
 # - require SPIRV-Cross for reflection

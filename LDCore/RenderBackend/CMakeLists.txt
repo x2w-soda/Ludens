@@ -25,12 +25,13 @@ set(LUDENS_VULKAN_SDK_LIBS
 )
 
 set(MODULE_INCLUDE
-  "${LUDENS_INCLUDE_DIR}/Ludens/RenderBackend/RBackend.h"
-  "${LUDENS_INCLUDE_DIR}/Ludens/RenderBackend/RBackendEnum.h"
-  "${LUDENS_INCLUDE_DIR}/Ludens/RenderBackend/RUtil.h"
-  "${LUDENS_INCLUDE_DIR}/Ludens/RenderBackend/RStager.h"
-  "${LUDENS_INCLUDE_DIR}/Ludens/RenderBackend/LDShaderParser.h"
-  "${LUDENS_INCLUDE_DIR}/Ludens/RenderBackend/LDShaderCompiler.h"
+  ${LUDENS_INCLUDE_DIR}/Ludens/RenderBackend/RBackend.h
+  ${LUDENS_INCLUDE_DIR}/Ludens/RenderBackend/RBackendEnum.h
+  ${LUDENS_INCLUDE_DIR}/Ludens/RenderBackend/RUtil.h
+  ${LUDENS_INCLUDE_DIR}/Ludens/RenderBackend/RStager.h
+  ${LUDENS_INCLUDE_DIR}/Ludens/RenderBackend/LDShaderParser.h
+  ${LUDENS_INCLUDE_DIR}/Ludens/RenderBackend/LDShaderCompiler.h
+  ${LUDENS_INCLUDE_DIR}/Ludens/RenderBackend/KTX.h
 )
 
 set(MODULE_LIB
@@ -44,6 +45,7 @@ set(MODULE_LIB
   Lib/RStager.cpp
   Lib/LDShaderParser.cpp
   Lib/LDShaderCompiler.cpp
+  Lib/KTX.cpp
 )
 
 set(MODULE_TEST
@@ -65,11 +67,13 @@ target_include_directories(${MODULE_NAME} PRIVATE
 	${Vulkan_INCLUDE_DIR}
   ${glfw_SOURCE_DIR}/include
   ${vma_SOURCE_DIR}/include
+  ${ktxsoftware_SOURCE_DIR}/include
 )
 
 target_link_libraries(${MODULE_NAME} PUBLIC
   ${LUDENS_VULKAN_SDK_LIBS}
   ${Vulkan_LIBRARIES}
+  ktx
   LDProfiler
   LDLog
 )

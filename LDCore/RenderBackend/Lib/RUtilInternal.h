@@ -7,6 +7,10 @@
 #include <vulkan/vulkan.h> // hide from user
 
 namespace LD {
+
+struct RPassInfoData;
+struct RPassInfo;
+
 namespace RUtil {
 
 inline VkViewport make_viewport(uint32_t width, uint32_t height)
