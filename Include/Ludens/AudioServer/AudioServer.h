@@ -33,11 +33,14 @@ struct AudioServer : Handle<struct AudioServerObj>
     /// @brief Destroy playback instance.
     void destroy_playback(AudioPlayback playback);
 
-    /// @brief Start a playback.
+    /// @brief Start a playback. This sets the frame cursor to 0 and plays from beginning.
     void start_playback(AudioPlayback playback);
 
     /// @brief Pause a playback.
     void pause_playback(AudioPlayback playback);
+
+    /// @brief Resume a playback.
+    void resume_playback(AudioPlayback playback);
 };
 
 } // namespace LD
