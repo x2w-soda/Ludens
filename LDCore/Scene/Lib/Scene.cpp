@@ -17,14 +17,16 @@ struct SceneObj
 {
     DataRegistry registry;
     DataRegistry registryBack;
-    AssetManager assetManager;
-    RServer renderServer;
+    AssetManager assetManager{};
+    AudioServer audioServer{};
+    RServer renderServer{};
     LuaState lua;
     CameraComponent* mainCameraC;
     Vec2 screenExtent = {};
-    std::unordered_map<RUID, CUID> ruidToCuid; /// map draw call to corresponding component
-    std::unordered_map<CUID, RUID> cuidToRuid; /// map component to corresponding draw call
-    std::unordered_map<AUID, RUID> auidToRuid; /// map asset to GPU resource
+    std::unordered_map<RUID, CUID> ruidToCuid;          /// map draw call to corresponding component
+    std::unordered_map<CUID, RUID> cuidToRuid;          /// map component to corresponding draw call
+    std::unordered_map<AUID, RUID> auidToRuid;          /// map asset to GPU resource
+    std::unordered_map<AUID, AudioBuffer> clipToBuffer; /// map audio clip to audio buffer
     bool hasStartup = false;
 
     /// @brief Prepare components recursively, creating resources from systems/servers.
@@ -50,7 +52,28 @@ struct SceneObj
 
     /// @brief Initialize a lua state for scripting
     void initialize_lua_state(LuaState L);
+
+    /// @brief Get or create corresponding audio buffer from asset.
+    AudioBuffer get_or_create_audio_buffer(AudioClipAsset clipA);
 };
+
+static void prepare_audio_source_component(SceneObj* scene, CUID compID)
+{
+    ComponentType componentType;
+    AudioSourceComponent* sourceC = (AudioSourceComponent*)scene->registry.get_component(compID, componentType);
+    LD_ASSERT(sourceC && componentType == COMPONENT_TYPE_AUDIO_SOURCE);
+
+    if (sourceC->clipAUID)
+    {
+        AudioClipAsset clipA = scene->assetManager.get_audio_clip_asset(sourceC->clipAUID);
+        AudioBuffer buffer = scene->get_or_create_audio_buffer(clipA);
+
+        if (buffer)
+        {
+            sourceC->playback = scene->audioServer.create_playback(buffer);
+        }
+    }
+}
 
 static void prepare_camera_component(SceneObj* scene, CUID compID)
 {
@@ -108,11 +131,12 @@ struct SceneComponent
 
 // clang-format off
 static SceneComponent sSceneComponents[] = {
-    {COMPONENT_TYPE_DATA,       nullptr},
-    {COMPONENT_TYPE_TRANSFORM,  nullptr},
-    {COMPONENT_TYPE_CAMERA,     &prepare_camera_component},
-    {COMPONENT_TYPE_MESH,       &prepare_mesh_component},
-    {COMPONENT_TYPE_SPRITE_2D,  nullptr},
+    {COMPONENT_TYPE_DATA,          nullptr},
+    {COMPONENT_TYPE_AUDIO_SOURCE,  &prepare_audio_source_component},
+    {COMPONENT_TYPE_TRANSFORM,     nullptr},
+    {COMPONENT_TYPE_CAMERA,        &prepare_camera_component},
+    {COMPONENT_TYPE_MESH,          &prepare_mesh_component},
+    {COMPONENT_TYPE_SPRITE_2D,     nullptr},
 };
 // clang-format on
 
@@ -295,6 +319,27 @@ void SceneObj::initialize_lua_state(LuaState L)
     L.clear();
 }
 
+AudioBuffer SceneObj::get_or_create_audio_buffer(AudioClipAsset clipA)
+{
+    AUID clipAUID = clipA.get_auid();
+
+    if (clipToBuffer.contains(clipAUID))
+        return clipToBuffer[clipAUID];
+
+    AudioBufferInfo bufferI{};
+    bufferI.channels = clipA.get_channel_count();
+    bufferI.format = SAMPLE_FORMAT_F32;
+    bufferI.frameCount = clipA.get_frame_count();
+    bufferI.sampleRate = clipA.get_sample_rate();
+    bufferI.samples = clipA.get_frames(0);
+    AudioBuffer buffer = audioServer.create_buffer(bufferI);
+
+    if (buffer)
+        clipToBuffer[clipAUID] = buffer;
+
+    return buffer;
+}
+
 Scene Scene::create()
 {
     LD_PROFILE_SCOPE;
@@ -303,6 +348,7 @@ Scene Scene::create()
     obj->registry = DataRegistry::create();
     obj->assetManager = {};
     obj->renderServer = {};
+    obj->audioServer = {};
 
     // lua scripting context
     LuaStateInfo stateI{};
@@ -318,6 +364,13 @@ void Scene::destroy(Scene scene)
     LD_PROFILE_SCOPE;
 
     SceneObj* obj = scene.unwrap();
+
+    for (auto ite : obj->clipToBuffer)
+    {
+        AudioBuffer buffer = ite.second;
+        obj->audioServer.destroy_buffer(buffer);
+    }
+    obj->clipToBuffer.clear();
 
     if (obj->registryBack)
         DataRegistry::destroy(obj->registryBack);
@@ -367,15 +420,17 @@ void Scene::reset()
     mObj->hasStartup = false;
     mObj->assetManager = {};
     mObj->renderServer = {};
+    mObj->audioServer = {};
 }
 
 void Scene::prepare(const ScenePrepareInfo& info)
 {
     LD_PROFILE_SCOPE;
-    LD_ASSERT(info.assetManager && info.renderServer);
 
+    LD_ASSERT(info.assetManager && info.renderServer && info.audioServer);
     mObj->assetManager = info.assetManager;
     mObj->renderServer = info.renderServer;
+    mObj->audioServer = info.audioServer;
 
     std::vector<CUID> roots;
     mObj->registry.get_root_components(roots);
@@ -512,6 +567,8 @@ void Scene::update(const Vec2& screenExtent, float delta)
         // TODO: forward vector from euler angle rotations
         mainCamera.set_target(cameraC->transform.position + Vec3(0.0f, 0.0f, 1.0f));
     }
+
+    mObj->audioServer.update();
 }
 
 Camera Scene::get_camera()

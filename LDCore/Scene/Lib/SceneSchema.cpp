@@ -10,6 +10,7 @@
 namespace LD {
 
 static CUID load_component(TOMLValue compTOML, Scene scene);
+static bool load_audio_source_component(TOMLValue compTOML, Scene scene, CUID compID, const char* compName);
 static bool load_camera_component(TOMLValue compTOML, Scene scene, CUID compID, const char* compName);
 static bool load_mesh_component(TOMLValue compTOML, Scene scene, CUID compID, const char* compName);
 static bool load_sprite2d_component(TOMLValue compTOML, Scene scene, CUID compID, const char* compName);
@@ -31,11 +32,12 @@ struct
     ComponentType type;
     bool (*load)(TOMLValue compTOML, Scene scene, CUID compID, const char* compName);
 } sSceneSchemaTable[] = {
-    {COMPONENT_TYPE_DATA,      nullptr},
-    {COMPONENT_TYPE_TRANSFORM, nullptr},
-    {COMPONENT_TYPE_CAMERA,    &load_camera_component},
-    {COMPONENT_TYPE_MESH,      &load_mesh_component},
-    {COMPONENT_TYPE_SPRITE_2D, &load_sprite2d_component},
+    {COMPONENT_TYPE_DATA,           nullptr},
+    {COMPONENT_TYPE_AUDIO_SOURCE,   &load_audio_source_component},
+    {COMPONENT_TYPE_TRANSFORM,      nullptr},
+    {COMPONENT_TYPE_CAMERA,         &load_camera_component},
+    {COMPONENT_TYPE_MESH,           &load_mesh_component},
+    {COMPONENT_TYPE_SPRITE_2D,      &load_sprite2d_component},
 };
 // clang-format on
 
@@ -67,6 +69,11 @@ static CUID load_component(TOMLValue compTOML, Scene scene)
         bool ok = load_mesh_component(compTOML, scene, compID, name.c_str());
         LD_ASSERT(ok); // TODO: deserialization error handling.
     }
+    else if (type == "AudioSource")
+    {
+        bool ok = load_audio_source_component(compTOML, scene, compID, name.c_str());
+        LD_ASSERT(ok);
+    }
     else if (type == "Sprite2D")
     {
         bool ok = load_sprite2d_component(compTOML, scene, compID, name.c_str());
@@ -87,6 +94,25 @@ static CUID load_component(TOMLValue compTOML, Scene scene)
     }
 
     return compID;
+}
+
+bool load_audio_source_component(TOMLValue compTOML, Scene scene, CUID compID, const char* compName)
+{
+    ComponentType type;
+
+    compID = scene.create_component(COMPONENT_TYPE_AUDIO_SOURCE, compName, (CUID)0, compID);
+    if (!compID)
+        return false;
+
+    AudioSourceComponent* sourceC = (AudioSourceComponent*)scene.get_component(compID, type);
+
+    int64_t auid;
+    TOMLValue auidTOML = compTOML["auid"];
+    auidTOML.is_i64(auid);
+    sourceC->clipAUID = (AUID)auid;
+    sourceC->playback = {};
+
+    return true;
 }
 
 static bool load_camera_component(TOMLValue compTOML, Scene scene, CUID compID, const char* compName)

@@ -12,6 +12,7 @@
 //       a lot of headers from different subsystems into the scope.
 
 #include <Ludens/Asset/Asset.h>
+#include <Ludens/AudioServer/AudioServer.h>
 #include <Ludens/Camera/Camera.h>
 #include <Ludens/RenderBackend/RBackend.h>
 #include <Ludens/RenderServer/RServer.h>
@@ -29,6 +30,7 @@ concept IsDataComponent = LD::IsTrivial<T>;
 enum ComponentType
 {
     COMPONENT_TYPE_DATA = 0,
+    COMPONENT_TYPE_AUDIO_SOURCE,
     COMPONENT_TYPE_TRANSFORM,
     COMPONENT_TYPE_CAMERA,
     COMPONENT_TYPE_MESH,
@@ -69,6 +71,13 @@ struct ComponentScriptSlot
     AUID assetID;     /// the script asset to instantiate from
     CUID componentID; /// the component this script slot belongs to
     bool isEnabled;   /// whether the script should be updated
+};
+
+/// @brief A component that emits sound.
+struct AudioSourceComponent
+{
+    AudioPlayback playback;
+    AUID clipAUID;
 };
 
 /// @brief A component with only transform data.

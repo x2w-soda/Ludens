@@ -28,11 +28,12 @@ struct ComponentMeta
 
 // clang-format off
 static ComponentMeta sComponentTable[] = {
-    { COMPONENT_TYPE_DATA,       sizeof(ComponentBase),      "DataComponent",      nullptr,             nullptr,          nullptr },
-    { COMPONENT_TYPE_TRANSFORM,  sizeof(TransformComponent), "TransformComponent", &get_transform,      nullptr,          nullptr },
-    { COMPONENT_TYPE_CAMERA,     sizeof(CameraComponent),    "CameraComponent",    &get_transform,      nullptr,          nullptr },
-    { COMPONENT_TYPE_MESH,       sizeof(MeshComponent),      "MeshComponent",      &get_transform,      nullptr,          &get_mesh_auid },
-    { COMPONENT_TYPE_SPRITE_2D,  sizeof(Sprite2DComponent),  "Sprite2DComponent",  nullptr,             &get_transform2d, nullptr },
+    { COMPONENT_TYPE_DATA,           sizeof(ComponentBase),          "DataComponent",          nullptr,        nullptr,          nullptr },
+    { COMPONENT_TYPE_AUDIO_SOURCE,   sizeof(AudioSourceComponent),   "AudioSourceComponent",   nullptr,        nullptr,          nullptr },
+    { COMPONENT_TYPE_TRANSFORM,      sizeof(TransformComponent),     "TransformComponent",     &get_transform, nullptr,          nullptr },
+    { COMPONENT_TYPE_CAMERA,         sizeof(CameraComponent),        "CameraComponent",        &get_transform, nullptr,          nullptr },
+    { COMPONENT_TYPE_MESH,           sizeof(MeshComponent),          "MeshComponent",          &get_transform, nullptr,          &get_mesh_auid },
+    { COMPONENT_TYPE_SPRITE_2D,      sizeof(Sprite2DComponent),      "Sprite2DComponent",      nullptr,        &get_transform2d, nullptr },
 };
 // clang-format on
 
@@ -96,6 +97,7 @@ static AUID get_mesh_auid(void* comp)
 }
 
 static_assert(sizeof(sComponentTable) / sizeof(*sComponentTable) == COMPONENT_TYPE_ENUM_COUNT);
+static_assert(LD::IsDataComponent<AudioSourceComponent>);
 static_assert(LD::IsDataComponent<TransformComponent>);
 static_assert(LD::IsDataComponent<CameraComponent>);
 static_assert(LD::IsDataComponent<MeshComponent>);

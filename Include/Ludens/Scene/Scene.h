@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Ludens/Asset/AssetManager.h>
+#include <Ludens/AudioServer/AudioServer.h>
 #include <Ludens/Camera/Camera.h>
 #include <Ludens/DataRegistry/DataRegistry.h>
 #include <Ludens/Header/Handle.h>
@@ -13,6 +14,7 @@ namespace LD {
 struct ScenePrepareInfo
 {
     AssetManager assetManager;
+    AudioServer audioServer;
     RServer renderServer;
 };
 
