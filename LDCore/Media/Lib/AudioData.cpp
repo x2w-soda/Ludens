@@ -118,6 +118,8 @@ AudioData AudioData::create_from_samples(uint32_t channels, uint32_t sampleRate,
     obj->samples = (float*)(obj + 1);
 
     memcpy(obj->samples, src, srcSize);
+
+    return AudioData(obj);
 }
 
 void AudioData::destroy(AudioData data)

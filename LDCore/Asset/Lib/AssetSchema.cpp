@@ -18,6 +18,24 @@ void AssetSchema::load_assets(AssetManager manager, TOMLDocument doc)
 
     manager.begin_load_batch();
     {
+        TOMLValue clipsTOML = doc.get("AudioClip");
+        if (clipsTOML && clipsTOML.is_array_type())
+        {
+            int count = clipsTOML.get_size();
+            for (int i = 0; i < count; i++)
+            {
+                TOMLValue clipTOML = clipsTOML[i];
+                TOMLValue auidTOML = clipTOML["auid"];
+                TOMLValue uriTOML = clipTOML["uri"];
+                int64_t auid;
+                std::string uri;
+                if (auidTOML && auidTOML.is_i64(auid) && uriTOML && uriTOML.is_string(uri))
+                {
+                    manager.load_audio_clip_asset(FS::Path(uri), (AUID)auid);
+                }
+            }
+        }
+
         TOMLValue meshesTOML = doc.get("Mesh");
         if (meshesTOML && meshesTOML.is_array_type())
         {

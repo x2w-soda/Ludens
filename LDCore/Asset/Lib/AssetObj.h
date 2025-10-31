@@ -2,6 +2,7 @@
 
 #include "AssetWatcher.h"
 #include <Ludens/Asset/Asset.h>
+#include <Ludens/Asset/AssetType/AudioClipAsset.h>
 #include <Ludens/Asset/AssetType/LuaScriptAsset.h>
 #include <Ludens/Asset/AssetType/MeshAsset.h>
 #include <Ludens/Asset/AssetType/TextureAsset.h>
@@ -40,11 +41,13 @@ public:
     void begin_load_batch();
     void end_load_batch();
 
+    void load_audio_clip_asset(const FS::Path& path, AUID auid);
     void load_mesh_asset(const FS::Path& path, AUID auid);
     void load_texture_2d_asset(const FS::Path& path, AUID auid);
     void load_lua_script_asset(const FS::Path& path, AUID auid);
 
     AUID get_id_from_name(const char* name, AssetType* outType);
+    AudioClipAsset get_audio_clip_asset(AUID auid);
     Texture2DAsset get_texture_2d_asset(AUID auid);
     MeshAsset get_mesh_asset(AUID auid);
     LuaScriptAsset get_lua_script_asset(AUID auid);
@@ -56,6 +59,7 @@ private:
     std::unordered_map<AUID, AssetObj*> mAssets;
     std::unordered_map<Hash32, AUID> mNameToAsset;
     std::vector<struct MeshAssetLoadJob*> mMeshLoadJobs;
+    std::vector<struct AudioClipAssetLoadJob*> mAudioClipLoadJobs;
     std::vector<struct Texture2DAssetLoadJob*> mTexture2DLoadJobs;
     std::vector<struct LuaScriptAssetLoadJob*> mLuaScriptLoadJobs;
     AssetWatcher mWatcher;     /// optional asset file watcher

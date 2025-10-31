@@ -136,6 +136,7 @@ void AssetManagerObj::begin_load_batch()
 
     mInLoadBatch = true;
 
+    mAudioClipLoadJobs.clear();
     mMeshLoadJobs.clear();
     mTexture2DLoadJobs.clear();
     mLuaScriptLoadJobs.clear();
@@ -150,6 +151,9 @@ void AssetManagerObj::end_load_batch()
     // TODO: wait for asset load jobs only
     JobSystem::get().wait_all();
 
+    for (AudioClipAssetLoadJob* job : mAudioClipLoadJobs)
+        heap_delete<AudioClipAssetLoadJob>(job);
+
     for (MeshAssetLoadJob* job : mMeshLoadJobs)
         heap_delete<MeshAssetLoadJob>(job);
 
@@ -158,6 +162,21 @@ void AssetManagerObj::end_load_batch()
 
     for (LuaScriptAssetLoadJob* job : mLuaScriptLoadJobs)
         heap_delete<LuaScriptAssetLoadJob>(job);
+}
+
+void AssetManagerObj::load_audio_clip_asset(const FS::Path& path, AUID auid)
+{
+    LD_ASSERT(mInLoadBatch);
+
+    auto obj = (AudioClipAssetObj*)allocate_asset(ASSET_TYPE_AUDIO_CLIP, auid, path.stem().string());
+
+    FS::Path loadPath = mRootPath / path;
+
+    auto audioClipLoadJob = heap_new<AudioClipAssetLoadJob>(MEMORY_USAGE_ASSET);
+    audioClipLoadJob->asset = AudioClipAsset(obj);
+    audioClipLoadJob->loadPath = loadPath;
+    audioClipLoadJob->submit();
+    mAudioClipLoadJobs.push_back(audioClipLoadJob);
 }
 
 void AssetManagerObj::load_mesh_asset(const FS::Path& path, AUID auid)
@@ -228,6 +247,17 @@ AUID AssetManagerObj::get_id_from_name(const char* name, AssetType* outType)
         *outType = mAssets[assetID]->type;
 
     return ite->second;
+}
+
+AudioClipAsset AssetManagerObj::get_audio_clip_asset(AUID auid)
+{
+    auto ite = mAssets.find(auid);
+
+    if (ite == mAssets.end())
+        return {};
+
+    LD_ASSERT(ite->second->type == ASSET_TYPE_TEXTURE_2D);
+    return AudioClipAsset(ite->second);
 }
 
 Texture2DAsset AssetManagerObj::get_texture_2d_asset(AUID auid)
@@ -322,6 +352,13 @@ void AssetManager::load_mesh_asset(const FS::Path& path, AUID auid)
     sLog.info("load_mesh_asset {}", path.string());
 
     mObj->load_mesh_asset(path, auid);
+}
+
+void AssetManager::load_audio_clip_asset(const FS::Path& path, AUID auid)
+{
+    sLog.info("load_audio_clip_asset {}", path.string());
+
+    mObj->load_audio_clip_asset(path, auid);
 }
 
 void AssetManager::load_texture_2d_asset(const FS::Path& path, AUID auid)

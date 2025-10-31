@@ -36,6 +36,9 @@ struct AssetManager : Handle<struct AssetManagerObj>
     /// @brief Append mesh asset load job to current batch.
     void load_mesh_asset(const FS::Path& path, AUID auid);
 
+    /// @brief Append audio clip asset load job to current batch.
+    void load_audio_clip_asset(const FS::Path& path, AUID auid);
+
     /// @brief Append texture 2D asset load job to current batch.
     void load_texture_2d_asset(const FS::Path& path, AUID auid);
 
