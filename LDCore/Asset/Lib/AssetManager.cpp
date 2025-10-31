@@ -256,7 +256,7 @@ AudioClipAsset AssetManagerObj::get_audio_clip_asset(AUID auid)
     if (ite == mAssets.end())
         return {};
 
-    LD_ASSERT(ite->second->type == ASSET_TYPE_TEXTURE_2D);
+    LD_ASSERT(ite->second->type == ASSET_TYPE_AUDIO_CLIP);
     return AudioClipAsset(ite->second);
 }
 
@@ -378,6 +378,11 @@ void AssetManager::load_lua_script_asset(const FS::Path& path, AUID auid)
 AUID AssetManager::get_id_from_name(const char* name, AssetType* outType)
 {
     return mObj->get_id_from_name(name, outType);
+}
+
+AudioClipAsset AssetManager::get_audio_clip_asset(AUID auid)
+{
+    return mObj->get_audio_clip_asset(auid);
 }
 
 MeshAsset AssetManager::get_mesh_asset(AUID auid)

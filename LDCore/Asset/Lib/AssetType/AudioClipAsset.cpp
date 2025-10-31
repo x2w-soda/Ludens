@@ -24,6 +24,11 @@ uint32_t AudioClipAsset::get_channel_count()
     return mObj->data.get_channels();
 }
 
+uint32_t AudioClipAsset::get_sample_rate()
+{
+    return mObj->data.get_sample_rate();
+}
+
 const float* AudioClipAsset::get_frames(uint32_t frameOffset)
 {
     LD_ASSERT(mObj->data.get_sample_format() == SAMPLE_FORMAT_F32);

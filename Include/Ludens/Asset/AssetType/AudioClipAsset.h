@@ -17,6 +17,9 @@ struct AudioClipAsset : AssetHandle<struct AudioClipAssetObj>
     /// @brief Get number of channels in this clip.
     uint32_t get_channel_count();
 
+    /// @brief Get default sample rate of this clip.
+    uint32_t get_sample_rate();
+
     /// @brief Read frames from offset.
     const float* get_frames(uint32_t frameOffset);
 };
