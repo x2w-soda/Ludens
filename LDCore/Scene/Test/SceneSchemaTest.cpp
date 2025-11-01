@@ -9,7 +9,9 @@ TEST_CASE("SceneSchema")
 {
     const char toml[] = R"(
 [ludens_scene]
-version = 0
+version_major = 0
+version_minor = 0
+version_patch = 0
 
 [[component]]
 script = 6

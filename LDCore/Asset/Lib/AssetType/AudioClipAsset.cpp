@@ -12,6 +12,7 @@ void AudioClipAssetObj::unload(AssetObj* base)
     AudioClipAssetObj& self = *(AudioClipAssetObj*)base;
 
     AudioData::destroy(self.data);
+    self.data = {};
 }
 
 uint32_t AudioClipAsset::get_frame_count()
