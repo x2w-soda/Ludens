@@ -212,6 +212,11 @@ void SceneObj::create_lua_script(ComponentScriptSlot* scriptSlot)
 
     // this should push the script instance table onto stack
     bool isScriptValid = lua.do_string(luaSource);
+    if (!isScriptValid)
+    {
+        printf("Error: %s\n", lua.to_string(-1));
+    }
+
     LD_ASSERT(isScriptValid); // TODO: error control flow
     lua.set_table(-3);        // store script instance as ludens.scripts[compID]
 
@@ -321,6 +326,9 @@ void SceneObj::initialize_lua_state(LuaState L)
 
 AudioBuffer SceneObj::get_or_create_audio_buffer(AudioClipAsset clipA)
 {
+    if (!clipA)
+        return {};
+
     AUID clipAUID = clipA.get_auid();
 
     if (clipToBuffer.contains(clipAUID))
@@ -679,40 +687,10 @@ Mat4 Scene::get_ruid_transform_mat4(RUID ruid)
     return worldMat4;
 }
 
-void Scene::set_mesh_component_asset(CUID meshCompID, AUID meshAssetID)
-{
-    if (!mObj->auidToRuid.contains(meshAssetID))
-        return;
-
-    RUID mesh = mObj->auidToRuid[meshAssetID];
-    if (!mObj->renderServer.mesh_exists(mesh))
-        return;
-
-    ComponentType type;
-    MeshComponent* meshC = (MeshComponent*)mObj->registry.get_component(meshCompID, type);
-    if (!meshC || type != COMPONENT_TYPE_MESH)
-        return;
-
-    meshC->auid = meshAssetID;
-
-    auto ite = mObj->cuidToRuid.find(meshCompID);
-    if (ite != mObj->cuidToRuid.end())
-    {
-        RUID oldDrawCall = ite->second;
-        mObj->renderServer.destroy_mesh_draw_call(oldDrawCall);
-        mObj->ruidToCuid.erase(oldDrawCall);
-        mObj->cuidToRuid.erase(meshCompID);
-    }
-
-    RUID drawCall = mObj->renderServer.create_mesh_draw_call(mesh);
-    mObj->cuidToRuid[meshCompID] = drawCall;
-    mObj->ruidToCuid[drawCall] = meshCompID;
-}
-
 Scene::IAudioSource::IAudioSource(Scene scene, CUID sourceCUID)
+    : mScene(scene.unwrap())
 {
     ComponentType type;
-    mScene = scene.unwrap();
     mComp = (AudioSourceComponent*)scene.get_component(sourceCUID, type);
     LD_ASSERT(type == COMPONENT_TYPE_AUDIO_SOURCE);
 }
@@ -739,6 +717,54 @@ void Scene::IAudioSource::resume()
         return;
 
     mScene->audioServer.resume_playback(mComp->playback);
+}
+
+void Scene::IAudioSource::set_clip_asset(AUID clipAUID)
+{
+    if (!mComp)
+        return;
+
+    AudioClipAsset clipA = mScene->assetManager.get_audio_clip_asset(clipAUID);
+    AudioBuffer buffer = mScene->get_or_create_audio_buffer(clipA);
+
+    if (buffer)
+    {
+        mComp->clipAUID = clipAUID;
+        mScene->audioServer.set_playback_buffer(mComp->playback, buffer);
+    }
+}
+
+Scene::IMesh::IMesh(Scene scene, CUID meshCUID)
+    : mScene(scene.unwrap()), mCUID(meshCUID)
+{
+    ComponentType type;
+    mComp = (MeshComponent*)scene.get_component(meshCUID, type);
+    LD_ASSERT(type == COMPONENT_TYPE_MESH);
+}
+
+void Scene::IMesh::set_mesh_asset(AUID meshAUID)
+{
+    if (!mScene->auidToRuid.contains(meshAUID))
+        return;
+
+    RUID mesh = mScene->auidToRuid[meshAUID];
+    if (!mScene->renderServer.mesh_exists(mesh))
+        return;
+
+    mComp->auid = meshAUID;
+
+    auto ite = mScene->cuidToRuid.find(mCUID);
+    if (ite != mScene->cuidToRuid.end())
+    {
+        RUID oldDrawCall = ite->second;
+        mScene->renderServer.destroy_mesh_draw_call(oldDrawCall);
+        mScene->ruidToCuid.erase(oldDrawCall);
+        mScene->cuidToRuid.erase(mCUID);
+    }
+
+    RUID drawCall = mScene->renderServer.create_mesh_draw_call(mesh);
+    mScene->cuidToRuid[mCUID] = drawCall;
+    mScene->ruidToCuid[drawCall] = mCUID;
 }
 
 } // namespace LD

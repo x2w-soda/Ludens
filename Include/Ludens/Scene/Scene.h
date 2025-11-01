@@ -115,9 +115,6 @@ public:
     /// @brief Supplies the transform for a draw call
     Mat4 get_ruid_transform_mat4(RUID ruid);
 
-    /// @brief Set the mesh asset of a mesh component.
-    void set_mesh_component_asset(CUID meshC, AUID meshAssetID);
-
     /// @brief Public interface for audio source components.
     class IAudioSource
     {
@@ -128,9 +125,25 @@ public:
         void pause();
         void resume();
 
+        void set_clip_asset(AUID clipAUID);
+
     private:
         SceneObj* mScene;
         AudioSourceComponent* mComp;
+    };
+
+    /// @brief Public interface for mesh components.
+    class IMesh
+    {
+    public:
+        IMesh(Scene scene, CUID meshCUID);
+
+        void set_mesh_asset(AUID meshAUID);
+
+    private:
+        SceneObj* mScene;
+        MeshComponent* mComp;
+        CUID mCUID;
     };
 };
 
