@@ -41,6 +41,9 @@ struct AudioServer : Handle<struct AudioServerObj>
 
     /// @brief Resume a playback.
     void resume_playback(AudioPlayback playback);
+
+    /// @brief Set the buffer of playback.
+    void set_playback_buffer(AudioPlayback playback, AudioBuffer buffer);
 };
 
 } // namespace LD

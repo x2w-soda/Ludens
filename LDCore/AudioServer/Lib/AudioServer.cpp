@@ -32,6 +32,7 @@ public:
     void start_playback(AudioPlayback playback);
     void pause_playback(AudioPlayback playback);
     void resume_playback(AudioPlayback playback);
+    void set_playback_buffer(AudioPlayback playback, AudioBuffer buffer);
 
 private:
     /// @brief Data callback invoked on the audio thread.
@@ -179,6 +180,15 @@ void AudioServerObj::resume_playback(AudioPlayback playback)
     mAudioThread.commandQueue.enqueue(cmd);
 }
 
+void AudioServerObj::set_playback_buffer(AudioPlayback playback, AudioBuffer buffer)
+{
+    AudioCommand cmd;
+    cmd.type = AUDIO_COMMAND_SET_PLAYBACK_BUFFER;
+    cmd.setPlaybackBuffer.playback = playback;
+    cmd.setPlaybackBuffer.buffer = buffer;
+    mAudioThread.commandQueue.enqueue(cmd);
+}
+
 void AudioServerObj::data_callback(MiniAudioDevice device, void* outFrames, const void* inFrames, uint32_t frameCount)
 {
     LD_PROFILE_SCOPE;
@@ -275,6 +285,14 @@ void AudioServer::resume_playback(AudioPlayback playback)
         return;
 
     mObj->resume_playback(playback);
+}
+
+void AudioServer::set_playback_buffer(AudioPlayback playback, AudioBuffer buffer)
+{
+    if (!playback || !buffer)
+        return;
+
+    mObj->set_playback_buffer(playback, buffer);
 }
 
 } // namespace LD
