@@ -3,30 +3,13 @@
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/System/Memory.h>
+#include <Ludens/UI/UIImmediate.h>
 #include <LudensEditor/EInspectorWindow/EInspectorWindow.h>
-#include <LudensEditor/EditorContext/EditorWindowObj.h>
-#include <LudensEditor/EditorWidget/UIAssetSlotWidget.h>
-#include <LudensEditor/EditorWidget/UITransformEditWidget.h>
+
+#include "EInspectorWindowObj.h"
+#include "InspectComponent.h"
 
 namespace LD {
-
-/// @brief Editor inspector window implementation.
-struct EInspectorWindowObj : EditorWindowObj
-{
-    virtual ~EInspectorWindowObj() = default;
-
-    CUID subjectID = 0; // subject component being inspected
-    ECBSelectAssetFn selectAssetFn;
-    void* user;
-    bool isSelectingNewAsset = false;
-
-    void inspect_component(CUID compID);
-
-    virtual void on_imgui() override;
-
-    static void on_draw(UIWidget widget, ScreenRenderComponent renderer);
-    static void on_editor_context_event(const EditorContextEvent* event, void* user);
-};
 
 void EInspectorWindowObj::inspect_component(CUID compID)
 {
@@ -40,27 +23,16 @@ void EInspectorWindowObj::on_imgui()
 {
     ui_push_window("EInspectorWindow", root);
 
-    EditorTheme editorTheme = editorCtx.get_settings().get_theme();
-    AssetManager AM = editorCtx.get_asset_manager();
     ComponentType compType;
     void* comp = editorCtx.get_component(subjectID, compType);
 
-    if (subjectID == (CUID)0 || compType != COMPONENT_TYPE_MESH)
+    if (subjectID == (CUID)0)
     {
         ui_pop_window();
         return;
     }
 
-    MeshComponent* meshC = (MeshComponent*)comp;
-    eui_transform_edit(editorTheme, &meshC->transform);
-
-    MeshAsset asset = AM.get_mesh_asset(meshC->auid);
-    LD_ASSERT(asset);
-    if (eui_asset_slot(editorTheme, ASSET_TYPE_MESH, meshC->auid, asset.get_name()) && selectAssetFn)
-    {
-        isSelectingNewAsset = true;
-        selectAssetFn(ASSET_TYPE_MESH, meshC->auid, user);
-    }
+    eui_inspect_component(*this, compType, comp);
 
     ui_pop_window();
 }
@@ -125,9 +97,30 @@ void EInspectorWindow::select_asset(AUID assetID)
         return;
 
     ComponentType compType;
-    MeshComponent* comp = (MeshComponent*)mObj->editorCtx.get_component(mObj->subjectID, compType);
-    LD_ASSERT(comp && compType == COMPONENT_TYPE_MESH);
-    mObj->editorCtx.set_mesh_component_asset(mObj->subjectID, assetID);
+    void* comp = mObj->editorCtx.get_component(mObj->subjectID, compType);
+
+    if (!comp)
+        return;
+
+    Scene scene = mObj->editorCtx.get_scene();
+
+    switch (compType)
+    {
+    case COMPONENT_TYPE_AUDIO_SOURCE:
+    {
+        Scene::IAudioSource source(scene, mObj->subjectID);
+        source.set_clip_asset(assetID);
+        break;
+    }
+    case COMPONENT_TYPE_MESH:
+    {
+        Scene::IMesh mesh(scene, mObj->subjectID);
+        mesh.set_mesh_asset(assetID);
+        break;
+    }
+    default:
+        break;
+    }
 
     mObj->isSelectingNewAsset = false;
 }

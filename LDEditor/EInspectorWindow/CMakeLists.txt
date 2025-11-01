@@ -6,6 +6,9 @@ set(MODULE_INCLUDE
 
 set(MODULE_LIB
 	Lib/EInspectorWindow.cpp
+	Lib/EInspectorWindowObj.h
+	Lib/InspectComponent.h
+	Lib/InspectComponent.cpp
 )
 
 add_library(${MODULE_NAME}
