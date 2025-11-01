@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Ludens/AudioServer/AudioServer.h>
 #include <Ludens/RenderServer/RServer.h>
 #include <Ludens/Scene/Scene.h>
 #include <Ludens/System/FileSystem.h>
@@ -15,8 +16,9 @@ struct Transform;
 
 struct EditorContextInfo
 {
-    RServer renderServer;   /// render server handle
-    FS::Path iconAtlasPath; /// path to icon atlas
+    AudioServer audioServer; ///  audio server handle
+    RServer renderServer;    /// render server handle
+    FS::Path iconAtlasPath;  /// path to icon atlas
 };
 
 /// @brief Shared context among editor windows. Keeps track of
@@ -72,6 +74,9 @@ struct EditorContext : Handle<struct EditorContextObj>
     /// @brief Get editor theme.
     inline EditorTheme get_theme() { return get_settings().get_theme(); }
 
+    /// @brief Get scene handle.
+    Scene get_scene();
+
     /// @brief Get camera to render scene with.
     Camera get_scene_camera();
 
@@ -126,9 +131,6 @@ struct EditorContext : Handle<struct EditorContextObj>
 
     /// @brief Get the data component associated with some RUID in scene
     CUID get_ruid_component(RUID ruid);
-
-    /// @brief Set mesh component to use mesh asset.
-    void set_mesh_component_asset(CUID meshC, AUID meshAssetID);
 
     /// @brief get the RUID associated with the selected object in scene
     RUID get_selected_component_ruid();

@@ -29,6 +29,7 @@ using EditorContextObserver = std::pair<EditorContextEventFn, void*>;
 struct EditorContextObj
 {
     RServer renderServer;             /// render server handle
+    AudioServer audioServer;          /// audio server handle
     RImage iconAtlas;                 /// editor icon atlas handle
     ProjectSchema projectSchema;      /// schema of the project under edit
     Project project;                  /// current project under edit
@@ -241,6 +242,7 @@ void EditorContextObj::load_project_scene(const FS::Path& sceneSchemaPath)
     ScenePrepareInfo prepareInfo{};
     prepareInfo.assetManager = assetManager;
     prepareInfo.renderServer = renderServer;
+    prepareInfo.audioServer = audioServer;
     scene.prepare(prepareInfo);
 
     EditorContextSceneLoadEvent event{};
@@ -298,6 +300,7 @@ EditorContext EditorContext::create(const EditorContextInfo& info)
 {
     EditorContextObj* obj = heap_new<EditorContextObj>(MEMORY_USAGE_MISC);
     obj->renderServer = info.renderServer;
+    obj->audioServer = info.audioServer;
     obj->iconAtlasPath = info.iconAtlasPath;
     obj->settings = EditorSettings::create_default();
     obj->isPlaying = false;
@@ -439,6 +442,11 @@ RImage EditorContext::get_editor_icon_atlas()
     return mObj->iconAtlas;
 }
 
+Scene EditorContext::get_scene()
+{
+    return mObj->scene;
+}
+
 Camera EditorContext::get_scene_camera()
 {
     return mObj->scene.get_camera();
@@ -553,11 +561,6 @@ void* EditorContext::get_component(CUID compID, ComponentType& type)
 CUID EditorContext::get_ruid_component(RUID ruid)
 {
     return mObj->scene.get_ruid_component(ruid);
-}
-
-void EditorContext::set_mesh_component_asset(CUID meshC, AUID meshAssetID)
-{
-    return mObj->scene.set_mesh_component_asset(meshC, meshAssetID);
 }
 
 RUID EditorContext::get_selected_component_ruid()

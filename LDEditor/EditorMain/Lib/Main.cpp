@@ -68,6 +68,8 @@ public:
         serverI.fontAtlas = mFontAtlas;
         mRServer = RServer::create(serverI);
 
+        mAudioServer = AudioServer::create();
+
         {
             fs::path dirPath = sLudensLFS.skyboxFolderPath;
             std::array<std::string, 6> facePaths;
@@ -88,6 +90,7 @@ public:
 
         // load scene into editor context
         EditorContextInfo contextI{};
+        contextI.audioServer = mAudioServer;
         contextI.renderServer = mRServer;
         contextI.iconAtlasPath = sLudensLFS.materialIconsPath;
         mEditorCtx = EditorContext::create(contextI);
@@ -114,6 +117,7 @@ public:
         mRServer.destroy_cubemap(mEnvCubemap);
 
         EditorContext::destroy(mEditorCtx);
+        AudioServer::destroy(mAudioServer);
         RServer::destroy(mRServer);
         RDevice::destroy(mRDevice);
         FontAtlas::destroy(mFontAtlas);
@@ -199,6 +203,7 @@ public:
 private:
     RDevice mRDevice;
     RServer mRServer;
+    AudioServer mAudioServer;
     EditorContext mEditorCtx;
     EditorUI mEditorUI;
     Font mFont;
