@@ -463,6 +463,7 @@ void UISliderWidgetObj::on_drag(UIWidget widget, MouseButton btn, const Vec2& dr
 
     Rect rect = widget.get_rect();
     self.ratio = std::clamp(((float)dragPos.x - rect.x) / rect.w, 0.0f, 1.0f);
+    self.value = std::lerp(self.min, self.max, self.ratio);
 }
 
 void UISliderWidget::on_draw(UIWidget widget, ScreenRenderComponent renderer)

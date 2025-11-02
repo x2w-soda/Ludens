@@ -60,7 +60,7 @@ struct SceneObj
 
 static void prepare_audio_source_component(SceneObj* scene, CUID compID);
 static void cleanup_audio_source_component(SceneObj* scene, CUID compID);
-static void prepare_camera_component(SceneObj* scene, CUID compID);
+static void startup_camera_component(SceneObj* scene, CUID compID);
 static void prepare_mesh_component(SceneObj* scene, CUID compID);
 
 /// @brief Component behavior and operations within a Scene.
@@ -74,12 +74,12 @@ struct SceneComponent
 
 // clang-format off
 static SceneComponent sSceneComponents[] = {
-    {COMPONENT_TYPE_DATA,          nullptr,                         nullptr, nullptr},
-    {COMPONENT_TYPE_AUDIO_SOURCE,  &prepare_audio_source_component, nullptr, &cleanup_audio_source_component},
-    {COMPONENT_TYPE_TRANSFORM,     nullptr,                         nullptr, nullptr},
-    {COMPONENT_TYPE_CAMERA,        &prepare_camera_component,       nullptr, nullptr},
-    {COMPONENT_TYPE_MESH,          &prepare_mesh_component,         nullptr, nullptr},
-    {COMPONENT_TYPE_SPRITE_2D,     nullptr,                         nullptr, nullptr},
+    {COMPONENT_TYPE_DATA,          nullptr,                         nullptr,                   nullptr},
+    {COMPONENT_TYPE_AUDIO_SOURCE,  &prepare_audio_source_component, nullptr,                   &cleanup_audio_source_component},
+    {COMPONENT_TYPE_TRANSFORM,     nullptr,                         nullptr,                   nullptr},
+    {COMPONENT_TYPE_CAMERA,        nullptr,                         &startup_camera_component, nullptr},
+    {COMPONENT_TYPE_MESH,          &prepare_mesh_component,         nullptr,                   nullptr},
+    {COMPONENT_TYPE_SPRITE_2D,     nullptr,                         nullptr,                   nullptr},
 };
 // clang-format on
 
@@ -119,20 +119,22 @@ static void cleanup_audio_source_component(SceneObj* scene, CUID compID)
     }
 }
 
-static void prepare_camera_component(SceneObj* scene, CUID compID)
+static void startup_camera_component(SceneObj* scene, CUID compID)
 {
     ComponentType componentType;
     CameraComponent* cameraC = (CameraComponent*)scene->registry.get_component(compID, componentType);
     LD_ASSERT(cameraC && componentType == COMPONENT_TYPE_CAMERA);
 
-    // TODO: Currently the first CameraComponent becomes the main camera in Scene.
-    //       Allow multiple cameras in scene and assign one to be the main camera.
-    LD_ASSERT(!scene->mainCameraC);
+    if (scene->mainCameraC)
+    {
+        LD_ASSERT(!cameraC->isMainCamera); // only one main camera allowed
+        return;
+    }
+
     scene->mainCameraC = cameraC;
     scene->mainCameraCUID = compID;
 
-    // TODO: main camera position must not be Vec3(0.0)
-    Vec3 mainCameraTarget(0.0f);
+    const Vec3 mainCameraTarget(0.0f, 0.0f, 1.0f);
 
     if (cameraC->isPerspective)
     {
@@ -516,6 +518,9 @@ void Scene::cleanup()
 
     if (!mObj->hasStartup)
         return;
+
+    mObj->mainCameraC = nullptr;
+    mObj->mainCameraCUID = (CUID)0;
 
     mObj->hasStartup = false;
     mObj->lua.get_global("ludens");

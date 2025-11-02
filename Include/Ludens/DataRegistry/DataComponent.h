@@ -97,6 +97,7 @@ struct CameraComponent
         CameraPerspectiveInfo perspective;
         CameraOrthographicInfo orthographic;
     };
+    bool isMainCamera;
     bool isPerspective;
 };
 

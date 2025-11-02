@@ -134,6 +134,10 @@ static bool load_camera_component(TOMLValue compTOML, Scene scene, CUID compID, 
     if (!toml || !toml.is_bool(cameraC->isPerspective))
         return false;
 
+    toml = compTOML["isMainCamera"];
+    if (!toml || !toml.is_bool(cameraC->isMainCamera))
+        return false;
+
     if (cameraC->isPerspective)
     {
         toml = compTOML["perspective"];

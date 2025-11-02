@@ -37,7 +37,8 @@ TEST_CASE("AudioMixer read playback")
     cmd.createPlayback.playback = playback1;
     cmdQ.enqueue(cmd);
 
-    playback1.read(playbackI);
+    AudioPlayback::Accessor accessor = playback1.access();
+    accessor.read(playbackI);
     CHECK(!playbackI.playbackPA);
     CHECK(playbackI.pan == 0.0f);
     CHECK(playbackI.volumeLinear == 1.0f);
