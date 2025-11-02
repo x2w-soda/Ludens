@@ -22,6 +22,7 @@ struct SceneObj
     RServer renderServer{};
     LuaState lua;
     CameraComponent* mainCameraC;
+    CUID mainCameraCUID;
     Vec2 screenExtent = {};
     std::unordered_map<RUID, CUID> ruidToCuid;          /// map draw call to corresponding component
     std::unordered_map<CUID, RUID> cuidToRuid;          /// map component to corresponding draw call
@@ -57,6 +58,37 @@ struct SceneObj
     AudioBuffer get_or_create_audio_buffer(AudioClipAsset clipA);
 };
 
+static void prepare_audio_source_component(SceneObj* scene, CUID compID);
+static void cleanup_audio_source_component(SceneObj* scene, CUID compID);
+static void prepare_camera_component(SceneObj* scene, CUID compID);
+static void prepare_mesh_component(SceneObj* scene, CUID compID);
+
+/// @brief Component behavior and operations within a Scene.
+struct SceneComponent
+{
+    ComponentType type;
+    void (*prepare)(SceneObj* scene, CUID compID);
+    void (*startup)(SceneObj* scene, CUID compID);
+    void (*cleanup)(SceneObj* scene, CUID compID);
+};
+
+// clang-format off
+static SceneComponent sSceneComponents[] = {
+    {COMPONENT_TYPE_DATA,          nullptr,                         nullptr, nullptr},
+    {COMPONENT_TYPE_AUDIO_SOURCE,  &prepare_audio_source_component, nullptr, &cleanup_audio_source_component},
+    {COMPONENT_TYPE_TRANSFORM,     nullptr,                         nullptr, nullptr},
+    {COMPONENT_TYPE_CAMERA,        &prepare_camera_component,       nullptr, nullptr},
+    {COMPONENT_TYPE_MESH,          &prepare_mesh_component,         nullptr, nullptr},
+    {COMPONENT_TYPE_SPRITE_2D,     nullptr,                         nullptr, nullptr},
+};
+// clang-format on
+
+static_assert(sizeof(sSceneComponents) / sizeof(*sSceneComponents) == COMPONENT_TYPE_ENUM_COUNT);
+
+//
+// IMPLEMENTATION
+//
+
 static void prepare_audio_source_component(SceneObj* scene, CUID compID)
 {
     ComponentType componentType;
@@ -75,6 +107,18 @@ static void prepare_audio_source_component(SceneObj* scene, CUID compID)
     }
 }
 
+static void cleanup_audio_source_component(SceneObj* scene, CUID compID)
+{
+    ComponentType componentType;
+    AudioSourceComponent* sourceC = (AudioSourceComponent*)scene->registry.get_component(compID, componentType);
+    LD_ASSERT(sourceC && componentType == COMPONENT_TYPE_AUDIO_SOURCE);
+
+    if (sourceC->playback)
+    {
+        scene->audioServer.stop_playback(sourceC->playback);
+    }
+}
+
 static void prepare_camera_component(SceneObj* scene, CUID compID)
 {
     ComponentType componentType;
@@ -85,6 +129,7 @@ static void prepare_camera_component(SceneObj* scene, CUID compID)
     //       Allow multiple cameras in scene and assign one to be the main camera.
     LD_ASSERT(!scene->mainCameraC);
     scene->mainCameraC = cameraC;
+    scene->mainCameraCUID = compID;
 
     // TODO: main camera position must not be Vec3(0.0)
     Vec3 mainCameraTarget(0.0f);
@@ -122,26 +167,6 @@ static void prepare_mesh_component(SceneObj* scene, CUID compID)
     }
 }
 
-/// @brief Component behavior and operations within a Scene.
-struct SceneComponent
-{
-    ComponentType type;
-    void (*prepare)(SceneObj* scene, CUID compID);
-};
-
-// clang-format off
-static SceneComponent sSceneComponents[] = {
-    {COMPONENT_TYPE_DATA,          nullptr},
-    {COMPONENT_TYPE_AUDIO_SOURCE,  &prepare_audio_source_component},
-    {COMPONENT_TYPE_TRANSFORM,     nullptr},
-    {COMPONENT_TYPE_CAMERA,        &prepare_camera_component},
-    {COMPONENT_TYPE_MESH,          &prepare_mesh_component},
-    {COMPONENT_TYPE_SPRITE_2D,     nullptr},
-};
-// clang-format on
-
-static_assert(sizeof(sSceneComponents) / sizeof(*sSceneComponents) == COMPONENT_TYPE_ENUM_COUNT);
-
 void SceneObj::prepare(ComponentBase* comp)
 {
     LD_PROFILE_SCOPE;
@@ -169,6 +194,9 @@ void SceneObj::startup_root(CUID root)
     }
 
     // post-order traversal, all child components of root already have their scripts attached
+    if (sSceneComponents[rootC->type].startup)
+        sSceneComponents[rootC->type].startup(this, rootC->id);
+
     ComponentScriptSlot* script = registry.get_component_script(rootC->id);
     create_lua_script(script);
     attach_lua_script(script);
@@ -187,6 +215,9 @@ void SceneObj::cleanup_root(CUID root)
     }
 
     // post-order traversal, all child components of root already have their scripts detached
+    if (sSceneComponents[rootC->type].cleanup)
+        sSceneComponents[rootC->type].cleanup(this, rootC->id);
+
     ComponentScriptSlot* script = registry.get_component_script(rootC->id);
     detach_lua_script(script);
     destroy_lua_script(script);
@@ -348,6 +379,10 @@ AudioBuffer SceneObj::get_or_create_audio_buffer(AudioClipAsset clipA)
     return buffer;
 }
 
+//
+// PUBLIC API
+//
+
 Scene Scene::create()
 {
     LD_PROFILE_SCOPE;
@@ -385,6 +420,8 @@ void Scene::destroy(Scene scene)
 
     if (obj->mainCameraC)
         Camera::destroy(obj->mainCameraC->camera);
+
+    obj->mainCameraCUID = 0;
 
     DataRegistry::destroy(obj->registry);
     LuaState::destroy(obj->lua);
@@ -570,10 +607,13 @@ void Scene::update(const Vec2& screenExtent, float delta)
     {
         const CameraComponent* cameraC = mObj->mainCameraC;
         Camera mainCamera = mObj->mainCameraC->camera;
+        Mat4 worldTransform;
+        mObj->registry.get_component_transform_mat4(mObj->mainCameraCUID, worldTransform);
+        Vec3 forward = worldTransform.as_mat3() * Vec3(0.0f, 0.0f, 1.0f);
+
         mainCamera.set_aspect_ratio(screenExtent.x / screenExtent.y);
         mainCamera.set_pos(cameraC->transform.position);
-        // TODO: forward vector from euler angle rotations
-        mainCamera.set_target(cameraC->transform.position + Vec3(0.0f, 0.0f, 1.0f));
+        mainCamera.set_target(cameraC->transform.position + forward);
     }
 
     mObj->audioServer.update();
