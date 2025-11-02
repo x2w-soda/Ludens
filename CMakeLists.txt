@@ -318,6 +318,7 @@ add_subdirectory(LDCore/CommandLine)
 add_subdirectory(LDCore/DSA)
 add_subdirectory(LDCore/DSP)
 add_subdirectory(LDCore/Serial)
+add_subdirectory(LDCore/Lexer)
 add_subdirectory(LDCore/Log)
 add_subdirectory(LDCore/Application)
 add_subdirectory(LDCore/Lua)
@@ -346,6 +347,7 @@ target_link_libraries(LDCoreLibs INTERFACE
   LDDSA
   LDDSP
   LDSerial
+  LDLexer
   LDLog
   LDLua
   LDMedia
