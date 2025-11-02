@@ -7,6 +7,8 @@
 
 namespace LD {
 
+struct AudioPlaybackObj;
+
 struct AudioPlaybackInfo
 {
     PoolAllocator playbackPA; // Used to create and destroy playback instance.
@@ -25,27 +27,46 @@ struct AudioPlayback : AudioHandle
     /// @brief Main thread destroys audio playback instance.
     static void destroy(AudioPlayback playback);
 
-    /// @brief Main thread reads playback state.
-    /// @param info Output playback state except the pool allocator field
-    /// @warning Each field is atomically read, but the full tuple of fields may not be atomic.
-    void read(AudioPlaybackInfo& info);
+    /// @brief Thread safe API after the playback is acquired by audio thread.
+    class Accessor
+    {
+    public:
+        Accessor(AudioPlaybackObj*);
 
-    /// @brief Set audio buffer as source, resets frame cursor to 0 and pauses.
+        /// @brief Reads current playback state.
+        /// @param info Output playback state except the pool allocator field
+        /// @warning Each field is atomically read, but the full tuple of fields may not be atomic.
+        void read(AudioPlaybackInfo& info);
+
+        /// @brief Request volume change before next mix.
+        void set_volume_linear(float volume);
+
+        /// @brief Request pan change before next mix.
+        void set_pan(float pan);
+
+    private:
+        AudioPlaybackObj* mObj;
+    };
+
+    /// @brief Create accessor from main thread.
+    Accessor access();
+
+    /// @brief Audio thread sets audio buffer as source, resets frame cursor to 0 and pauses.
     void set_buffer(AudioBuffer buffer);
 
-    /// @brief Check if playback instance is playing frames.
+    /// @brief Audio thread checks if playback instance is playing frames.
     bool is_playing();
 
-    /// @brief Start audio playback from the first frame.
+    /// @brief Audio thread starts audio playback from the first frame.
     void start();
 
-    /// @brief Pause audio playback.
+    /// @brief Audio thread pauses audio playback.
     void pause();
 
-    /// @brief Resume audio playback.
+    /// @brief Audio thread resumes audio playback.
     void resume();
 
-    /// @brief Reads frames to output buffer and advances frame cursor.
+    /// @brief Audio thread reads frames to output buffer and advances frame cursor.
     /// @return Number of frames read.
     uint32_t read_frames(float* outFrames, uint32_t frameCount);
 };

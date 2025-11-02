@@ -37,13 +37,39 @@ void AudioPlayback::destroy(AudioPlayback playback)
     obj->playbackPA.free(obj);
 }
 
-void AudioPlayback::read(AudioPlaybackInfo& info)
+AudioPlayback::Accessor::Accessor(AudioPlaybackObj* obj)
+    : mObj(obj)
 {
-    auto* obj = (AudioPlaybackObj*)mObj;
+}
 
+void AudioPlayback::Accessor::read(AudioPlaybackInfo& info)
+{
     info.playbackPA = {};
-    info.pan = obj->pan.load();
-    info.volumeLinear = obj->volumeLinear.load();
+    info.pan = mObj->pan.load();
+    info.volumeLinear = mObj->volumeLinear.load();
+}
+
+void AudioPlayback::Accessor::set_volume_linear(float volume)
+{
+    AudioCommand cmd;
+    cmd.type = AUDIO_COMMAND_SET_PLAYBACK_VOLUME_LINEAR;
+    cmd.setPlaybackVolumeLinear.playback = AudioPlayback(mObj);
+    cmd.setPlaybackVolumeLinear.volumeLinear = volume;
+    mObj->commandQueue.enqueue(cmd);
+}
+
+void AudioPlayback::Accessor::set_pan(float pan)
+{
+    AudioCommand cmd;
+    cmd.type = AUDIO_COMMAND_SET_PLAYBACK_PAN;
+    cmd.setPlaybackPan.playback = AudioPlayback(mObj);
+    cmd.setPlaybackPan.pan = pan;
+    mObj->commandQueue.enqueue(cmd);
+}
+
+AudioPlayback::Accessor AudioPlayback::access()
+{
+    return Accessor((AudioPlaybackObj*)mObj);
 }
 
 void AudioPlayback::set_buffer(AudioBuffer buffer)
