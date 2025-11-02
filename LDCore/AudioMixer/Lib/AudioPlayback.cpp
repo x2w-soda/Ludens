@@ -96,6 +96,14 @@ void AudioPlayback::start()
     obj->isPlaying = true;
 }
 
+void AudioPlayback::stop()
+{
+    auto* obj = (AudioPlaybackObj*)mObj;
+
+    obj->frameCursor = 0;
+    obj->isPlaying = false;
+}
+
 void AudioPlayback::pause()
 {
     auto* obj = (AudioPlaybackObj*)mObj;

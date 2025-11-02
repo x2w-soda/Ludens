@@ -60,6 +60,9 @@ struct AudioPlayback : AudioHandle
     /// @brief Audio thread starts audio playback from the first frame.
     void start();
 
+    /// @brief Audio thread stops audio playback and resets frame cursor.
+    void stop();
+
     /// @brief Audio thread pauses audio playback.
     void pause();
 

@@ -22,6 +22,7 @@ enum AudioCommandType
     AUDIO_COMMAND_CREATE_PLAYBACK_EFFECT,
     AUDIO_COMMAND_DESTROY_PLAYBACK_EFFECT,
     AUDIO_COMMAND_START_PLAYBACK,
+    AUDIO_COMMAND_STOP_PLAYBACK,
     AUDIO_COMMAND_PAUSE_PLAYBACK,
     AUDIO_COMMAND_RESUME_PLAYBACK,
     AUDIO_COMMAND_TYPE_ENUM_COUNT
@@ -84,6 +85,7 @@ struct AudioCommand
         AudioCommandCreatePlaybackEffect createPlaybackEffect;
         AudioCommandDestroyPlaybackEffect destroyPlaybackEffect;
         AudioPlayback startPlayback;
+        AudioPlayback stopPlayback;
         AudioPlayback pausePlayback;
         AudioPlayback resumePlayback;
     };

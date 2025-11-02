@@ -87,6 +87,7 @@ public:
     static void create_playback_effect(AudioMixerObj* self, const AudioCommand& cmd);
     static void destroy_playback_effect(AudioMixerObj* self, const AudioCommand& cmd);
     static void start_playback(AudioMixerObj* self, const AudioCommand& cmd);
+    static void stop_playback(AudioMixerObj* self, const AudioCommand& cmd);
     static void pause_playback(AudioMixerObj* self, const AudioCommand& cmd);
     static void resume_playback(AudioMixerObj* self, const AudioCommand& cmd);
 
@@ -258,6 +259,18 @@ void AudioMixerObj::start_playback(AudioMixerObj* mixer, const AudioCommand& cmd
     playback.start();
 }
 
+void AudioMixerObj::stop_playback(AudioMixerObj* self, const AudioCommand& cmd)
+{
+    LD_ASSERT(cmd.type == AUDIO_COMMAND_STOP_PLAYBACK);
+
+    AudioPlayback playback = cmd.stopPlayback;
+
+    if (!playback.is_acquired())
+        return;
+
+    playback.stop();
+}
+
 void AudioMixerObj::pause_playback(AudioMixerObj* mixer, const AudioCommand& cmd)
 {
     LD_ASSERT(cmd.type == AUDIO_COMMAND_PAUSE_PLAYBACK);
@@ -298,6 +311,7 @@ struct AudioCommandMeta
     {AUDIO_COMMAND_CREATE_PLAYBACK_EFFECT,     &AudioMixerObj::create_playback_effect},
     {AUDIO_COMMAND_DESTROY_PLAYBACK_EFFECT,    &AudioMixerObj::destroy_playback_effect},
     {AUDIO_COMMAND_START_PLAYBACK,             &AudioMixerObj::start_playback},
+    {AUDIO_COMMAND_STOP_PLAYBACK,              &AudioMixerObj::stop_playback},
     {AUDIO_COMMAND_PAUSE_PLAYBACK,             &AudioMixerObj::pause_playback},
     {AUDIO_COMMAND_RESUME_PLAYBACK,            &AudioMixerObj::resume_playback},
 };

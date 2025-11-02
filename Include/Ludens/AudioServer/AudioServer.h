@@ -36,6 +36,9 @@ struct AudioServer : Handle<struct AudioServerObj>
     /// @brief Start a playback. This sets the frame cursor to 0 and plays from beginning.
     void start_playback(AudioPlayback playback);
 
+    /// @brief Stop a playback. This sets the frame cursor to 0.
+    void stop_playback(AudioPlayback playback);
+
     /// @brief Pause a playback.
     void pause_playback(AudioPlayback playback);
 

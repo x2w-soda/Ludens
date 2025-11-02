@@ -30,6 +30,7 @@ public:
     AudioPlayback create_playback(AudioBuffer buffer);
     void destroy_playback(AudioPlayback playback);
     void start_playback(AudioPlayback playback);
+    void stop_playback(AudioPlayback playback);
     void pause_playback(AudioPlayback playback);
     void resume_playback(AudioPlayback playback);
     void set_playback_buffer(AudioPlayback playback, AudioBuffer buffer);
@@ -164,6 +165,14 @@ void AudioServerObj::start_playback(AudioPlayback playback)
     mAudioThread.commandQueue.enqueue(cmd);
 }
 
+void AudioServerObj::stop_playback(AudioPlayback playback)
+{
+    AudioCommand cmd;
+    cmd.type = AUDIO_COMMAND_STOP_PLAYBACK;
+    cmd.stopPlayback = playback;
+    mAudioThread.commandQueue.enqueue(cmd);
+}
+
 void AudioServerObj::pause_playback(AudioPlayback playback)
 {
     AudioCommand cmd;
@@ -269,6 +278,14 @@ void AudioServer::start_playback(AudioPlayback playback)
         return;
 
     mObj->start_playback(playback);
+}
+
+void AudioServer::stop_playback(AudioPlayback playback)
+{
+    if (!playback)
+        return;
+
+    mObj->stop_playback(playback);
 }
 
 void AudioServer::pause_playback(AudioPlayback playback)
