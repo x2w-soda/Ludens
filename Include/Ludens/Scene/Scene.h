@@ -10,8 +10,8 @@
 
 namespace LD {
 
-/// @brief Scene preparation info
-struct ScenePrepareInfo
+/// @brief Scene load info
+struct SceneLoadInfo
 {
     AssetManager assetManager;
     AudioServer audioServer;
@@ -33,8 +33,11 @@ public:
     ///        User will have to call prepare() again.
     void reset();
 
-    /// @brief Prepare the scene. The AssetManager loads all assets used by the scene.
-    void prepare(const ScenePrepareInfo& info);
+    /// @brief Load the scene. Creates resources from assets and subsystems.
+    void load(const SceneLoadInfo& info);
+
+    /// @brief Unload the scene. Destroys resouorces.
+    void unload();
 
     /// @brief Startup the scene for simulation. This attaches scripts to their components.
     void startup();
