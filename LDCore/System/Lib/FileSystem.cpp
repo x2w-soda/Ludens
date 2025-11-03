@@ -1,5 +1,6 @@
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/System/FileSystem.h>
+#include <algorithm>
 #include <cstring>
 #include <fstream>
 

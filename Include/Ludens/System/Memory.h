@@ -3,6 +3,7 @@
 #include <cstdlib>
 #include <cstdint>
 #include <utility>
+#include <new>
 
 namespace LD {
 

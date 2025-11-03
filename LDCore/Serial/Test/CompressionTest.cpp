@@ -1,5 +1,6 @@
 #include "Extra/doctest/doctest.h"
 #include <Ludens/Serial/Compress.h>
+#include <cstring>
 #include <string>
 #include <vector>
 

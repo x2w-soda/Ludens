@@ -3,6 +3,7 @@
 #include <Ludens/Log/Log.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <atomic>
+#include <cstring>
 #include <miniaudio.h> // defintely hide this in source file.
 
 #ifndef AUDIO_DEVICE_FORMAT

@@ -4,6 +4,7 @@
 #include <Ludens/Lexer/Unicode.h>
 #include <Ludens/System/Allocator.h>
 #include <cctype>
+#include <cstring>
 
 namespace LD {
 
@@ -125,6 +126,8 @@ private:
                 return rule.matchLen;
             }
         }
+
+        return 0;
     }
 
     void skip_spaces(const uint8_t* utf8, int len, int& pos)

@@ -2,6 +2,7 @@
 #include <Ludens/Header/Types.h>
 #include <Ludens/Media/AudioData.h>
 #include <Ludens/System/Memory.h>
+#include <cstring>
 
 // using the standalone decoder API.
 #include <miniaudio.h>
@@ -39,7 +40,7 @@ AudioDataObj* create_audio_data(const void* data, size_t dataSize, AudioDataForm
     if (result != MA_SUCCESS)
         return {};
 
-    uint64_t frameCount;
+    ma_uint64 frameCount;
     result = ma_decoder_get_available_frames(&decoder, &frameCount);
 
     if (result != MA_SUCCESS)
@@ -52,7 +53,7 @@ AudioDataObj* create_audio_data(const void* data, size_t dataSize, AudioDataForm
     obj->sampleRate = RESAMPLE_RATE;
     obj->samples = (float*)(obj + 1);
 
-    uint64_t framesRead;
+    ma_uint64 framesRead;
     result = ma_decoder_read_pcm_frames(&decoder, obj->samples, frameCount, &framesRead);
     if (result != MA_SUCCESS)
     {

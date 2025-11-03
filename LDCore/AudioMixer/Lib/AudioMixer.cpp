@@ -3,6 +3,8 @@
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/System/Memory.h>
+#include <algorithm>
+#include <cstring>
 #include <utility>
 
 #define AUDIO_MIXER_TEMP_FRAME_COUNT 256

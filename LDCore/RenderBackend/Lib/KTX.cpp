@@ -1,6 +1,7 @@
 #include "RUtilInternal.h"
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/RenderBackend/KTX.h>
+#include <thread>
 #include <ktx.h>
 #include <vulkan/vulkan.h>
 

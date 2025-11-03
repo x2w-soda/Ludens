@@ -95,7 +95,7 @@ void FileWatcher::add_file(const FS::Path& path, on_modify_callback callback, vo
     {
         InotifyWatcher watcher;
         watcher.handle = inotify_add_watch(mObj->handle, canon.c_str(), IN_CLOSE_WRITE);
-        watcher.filePath = canon.string();
+        watcher.filePath = canon;
         watcher.hash = canonHash;
 
         if (watcher.handle < 0)

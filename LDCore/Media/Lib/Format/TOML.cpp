@@ -387,6 +387,8 @@ int TOMLValue::get_keys(std::vector<std::string>& keys)
     {
         keys[i++] = ite.first;
     }
+
+    return (int)keys.size();
 }
 
 TOMLDocument TOMLDocument::create()

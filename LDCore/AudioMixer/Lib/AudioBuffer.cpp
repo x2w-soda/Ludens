@@ -6,6 +6,7 @@
 #include <Ludens/Media/Format/WAV.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/System/Memory.h>
+#include <cstring>
 
 namespace LD {
 

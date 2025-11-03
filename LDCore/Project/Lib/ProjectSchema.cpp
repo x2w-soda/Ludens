@@ -2,6 +2,7 @@
 #include <Ludens/Media/Format/TOML.h>
 #include <Ludens/Project/ProjectSchema.h>
 #include <Ludens/System/Memory.h>
+#include <format>
 
 namespace LD {
 

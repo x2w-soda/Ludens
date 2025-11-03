@@ -4,7 +4,7 @@
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Header/Types.h>
 #include <Ludens/System/Memory.h>
-#include <vector>
+#include <algorithm>
 
 namespace LD {
 

@@ -160,6 +160,8 @@ struct PoolAllocatorObj
 
                 block = (PoolAllocatorObj::Block*)((byte*)block + obj->blockSize);
             }
+            
+            return nullptr;
         }
 
         inline size_t allocated_block_count()

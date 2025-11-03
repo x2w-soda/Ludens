@@ -1,10 +1,11 @@
 #include <Ludens/Header/Assert.h>
-#include <Ludens/Header/Version.h>>
+#include <Ludens/Header/Version.h>
 #include <Ludens/Media/Format/TOML.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/Scene/SceneSchema.h>
 #include <Ludens/System/Memory.h>
 #include <cstdint>
+#include <format>
 #include <unordered_map>
 
 namespace LD {
