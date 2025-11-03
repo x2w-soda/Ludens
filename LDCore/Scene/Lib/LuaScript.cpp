@@ -549,12 +549,6 @@ static void install_component_base(DataRegistry reg, LuaState& L, CUID compID)
     L.push_fn(&component_set_name);
     L.set_field(-2, "set_name");
 
-    L.push_fn(&component_get_child);
-    L.set_field(-2, "get_child");
-
-    L.push_fn(&component_get_parent);
-    L.set_field(-2, "get_parent");
-
     LD_ASSERT(L.size() == oldSize);
 }
 
