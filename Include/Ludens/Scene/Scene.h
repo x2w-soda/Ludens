@@ -29,10 +29,6 @@ public:
     /// @brief Destroy a Scene.
     static void destroy(Scene);
 
-    /// @brief Reset scene to initial state, destroying all components.
-    ///        User will have to call prepare() again.
-    void reset();
-
     /// @brief Load the scene. Creates resources from assets and subsystems.
     void load(const SceneLoadInfo& info);
 

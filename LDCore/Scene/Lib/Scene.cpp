@@ -495,44 +495,6 @@ void Scene::destroy(Scene scene)
     heap_delete<SceneObj>(obj);
 }
 
-void Scene::reset()
-{
-    LD_PROFILE_SCOPE;
-
-    // TODO: this is duplicated from Scene::create, Scene::destroy
-
-    if (mObj->registryBack)
-    {
-        DataRegistry::destroy(mObj->registryBack);
-        mObj->registryBack = {};
-    }
-
-    if (mObj->mainCameraC)
-    {
-        Camera::destroy(mObj->mainCameraC->camera);
-        mObj->mainCameraC = nullptr;
-    }
-
-    DataRegistry::destroy(mObj->registry);
-    mObj->registry = {};
-
-    LuaState::destroy(mObj->lua);
-    mObj->lua = {};
-
-    LuaStateInfo stateI{};
-    stateI.openLibs = true;
-    mObj->lua = LuaState::create(stateI);
-    mObj->initialize_lua_state(mObj->lua);
-
-    mObj->registry = DataRegistry::create();
-    mObj->ruidToCuid.clear();
-    mObj->auidToRuid.clear();
-    mObj->cuidToRuid.clear();
-    mObj->assetManager = {};
-    mObj->renderServer = {};
-    mObj->audioServer = {};
-}
-
 void Scene::load(const SceneLoadInfo& info)
 {
     LD_PROFILE_SCOPE;
