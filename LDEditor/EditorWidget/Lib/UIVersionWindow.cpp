@@ -18,10 +18,13 @@ UIVersionWindow UIVersionWindow::create(const UIVersionWindowInfo& info)
     UIVersionWindowObj* obj = heap_new<UIVersionWindowObj>(MEMORY_USAGE_UI);
     obj->uiCtx = info.context;
     obj->theme = info.theme;
+    float pad = info.theme.get_padding();
 
     UILayoutInfo layoutI{};
     layoutI.childAxis = UI_AXIS_Y;
     layoutI.childAlignY = UI_ALIGN_BEGIN;
+    layoutI.childPadding.left = pad;
+    layoutI.childPadding.right = pad;
     layoutI.sizeX = UISize::fixed(300);
     layoutI.sizeY = UISize::fixed(200);
     UIWindowInfo windowI{};

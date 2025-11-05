@@ -66,7 +66,7 @@ struct UIWindowState
     UIWidgetState* get_or_create_image(RImage image);
     UIWidgetState* get_or_create_panel();
     UIWidgetState* get_or_create_toggle();
-    UIWidgetState* get_or_create_scroll();
+    UIWidgetState* get_or_create_scroll(Color bgColor);
     UIWidgetState* get_or_create_button(const char* text);
     UIWidgetState* get_or_create_slider();
 };
@@ -331,19 +331,23 @@ UIWidgetState* UIWindowState::get_or_create_toggle()
     return widgetS;
 }
 
-UIWidgetState* UIWindowState::get_or_create_scroll()
+UIWidgetState* UIWindowState::get_or_create_scroll(Color bgColor)
 {
     UIWidgetState* widgetS = get_or_create_widget_state(imWidgetStack, widgetStatePA, UI_WIDGET_SCROLL);
 
     if (widgetS->widget && widgetS->widget.get_type() == UI_WIDGET_SCROLL)
+    {
+        UIScrollWidget scrollW = (UIScrollWidget)widgetS->widget;
+        scrollW.set_scroll_bg_color(bgColor);
         return widgetS;
+    }
 
     UILayoutInfo layoutI{};
     layoutI.sizeX = UISize::grow();
     layoutI.sizeY = UISize::grow();
     layoutI.childAxis = UI_AXIS_Y;
     UIScrollWidgetInfo scrollWI{};
-    scrollWI.hasScrollBar = false;
+    scrollWI.bgColor = bgColor;
 
     UIWidget parent = get_parent_widget();
     UIScrollWidget scrollW = parent.node().add_scroll(layoutI, scrollWI, widgetS);
@@ -438,6 +442,14 @@ void ui_top_layout(const UILayoutInfo& layoutI)
 
     UIWidgetState* widgetS = sImFrame.imWindow->imWidgetStack.top();
     widgetS->widget.set_layout(layoutI);
+}
+
+void ui_top_layout_child_padding(const UIPadding& pad)
+{
+    LD_ASSERT_UI_TOP_WIDGET;
+
+    UIWidgetState* widgetS = sImFrame.imWindow->imWidgetStack.top();
+    widgetS->widget.set_layout_child_padding(pad);
 }
 
 void ui_top_user(void* imUser)
@@ -649,12 +661,12 @@ void ui_push_toggle(bool& isPressed, bool& state)
     imWindow->imWidgetStack.push(imWidget);
 }
 
-void ui_push_scroll()
+void ui_push_scroll(Color bgColor)
 {
     LD_ASSERT_UI_PUSH;
 
     UIWindowState* imWindow = sImFrame.imWindow;
-    UIWidgetState* imWidget = imWindow->get_or_create_scroll();
+    UIWidgetState* imWidget = imWindow->get_or_create_scroll(bgColor);
 
     imWindow->imWidgetStack.push(imWidget);
 }

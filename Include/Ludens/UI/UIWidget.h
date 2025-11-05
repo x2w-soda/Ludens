@@ -138,6 +138,9 @@ struct UIScrollWidget : UIWidget
     /// @brief Set scroll offset along Y axis.
     void set_scroll_offset_y(float offset);
 
+    /// @brief Update scroll background color
+    void set_scroll_bg_color(Color color);
+
     /// @brief Default scroll widget update for smooth scrolling.
     static void on_update(UIWidget widget, float delta);
 
@@ -147,7 +150,7 @@ struct UIScrollWidget : UIWidget
 
 struct UIScrollWidgetInfo
 {
-    bool hasScrollBar;
+    Color bgColor;
 };
 
 struct UIPanelWidget : UIWidget

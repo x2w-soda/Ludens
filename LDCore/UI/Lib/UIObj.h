@@ -102,6 +102,7 @@ struct UIScrollWidgetObj
     float offsetYDst;   // destination value for scrollOffset y
     float offsetXSpeed; // animation speed for scrollOffset x
     float offsetYSpeed; // animation speed for scrollOffset y
+    Color bgColor;
     bool hasScrollBar;
 
     static void cleanup(UIWidgetObj* base);
@@ -119,6 +120,7 @@ struct UIButtonWidgetObj
 
     static void cleanup(UIWidgetObj* base);
     static void on_mouse(UIWidget widget, const Vec2& pos, MouseButton btn, UIEvent event);
+    static void on_hover(UIWidget widget, UIEvent event);
 };
 
 struct UISliderWidgetObj

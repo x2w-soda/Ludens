@@ -26,6 +26,7 @@ bool eui_select_window(EUISelectWindow* window, FS::Path& selectedPath)
         window->isContentDirty = !ok;
     }
 
+    UITheme uiTheme = window->theme.get_ui_theme();
     float fontSize = window->theme.get_font_size();
     float pad = window->theme.get_padding();
 
@@ -43,7 +44,7 @@ bool eui_select_window(EUISelectWindow* window, FS::Path& selectedPath)
     layoutI.childAxis = UI_AXIS_Y;
     layoutI.sizeX = UISize::grow();
     layoutI.sizeY = UISize::grow();
-    ui_push_scroll();
+    ui_push_scroll(uiTheme.get_surface_color());
     ui_top_layout(layoutI);
 
     int contentCount = (int)window->directoryContents.size();

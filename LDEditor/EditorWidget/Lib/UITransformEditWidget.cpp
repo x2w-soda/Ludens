@@ -1,5 +1,6 @@
 #include <Ludens/Header/Math/Transform.h>
 #include <LudensEditor/EditorWidget/UITransformEditWidget.h>
+#include <LudensEditor/EditorWidget/UIDraw.h>
 #include <format>
 
 #define PANEL_CHILD_GAP 6.0f
@@ -46,16 +47,19 @@ static void eui_transform_edit_row(const char* label, const Vec3& v, float fontS
     str = std::format("{:8.3f}", v.x);
     ui_push_text(str.c_str());
     ui_top_layout(layoutI);
+    ui_top_draw(&eui_draw_text_with_bg);
     ui_pop();
 
     str = std::format("{:8.3f}", v.y);
     ui_push_text(str.c_str());
     ui_top_layout(layoutI);
+    ui_top_draw(&eui_draw_text_with_bg);
     ui_pop();
 
     str = std::format("{:8.3f}", v.z);
     ui_push_text(str.c_str());
     ui_top_layout(layoutI);
+    ui_top_draw(&eui_draw_text_with_bg);
     ui_pop();
 
     ui_pop();

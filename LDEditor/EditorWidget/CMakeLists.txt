@@ -6,6 +6,7 @@ set(MODULE_LIB
 	Lib/UIDropdownWindow.cpp
 	Lib/UIVersionWindow.cpp
 	Lib/UISelectWindow.cpp
+	Lib/UIDraw.cpp
 )
 
 set(MODULE_INCLUDE
@@ -14,6 +15,7 @@ set(MODULE_INCLUDE
 	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorWidget/UIDropdownWindow.h
 	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorWidget/UIVersionWindow.h
 	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorWidget/UISelectWindow.h
+	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorWidget/UIDraw.h
 )
 
 add_library(${MODULE_NAME}

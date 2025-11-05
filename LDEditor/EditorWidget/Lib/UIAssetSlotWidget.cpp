@@ -2,6 +2,7 @@
 #include <Ludens/System/Memory.h>
 #include <Ludens/UI/UIImmediate.h>
 #include <LudensEditor/EditorWidget/UIAssetSlotWidget.h>
+#include <LudensEditor/EditorWidget/UIDraw.h>
 
 namespace LD {
 
@@ -24,6 +25,7 @@ bool eui_asset_slot(EditorTheme theme, AssetType assetType, AUID assetID, const 
 
     LD_ASSERT(assetName);
     ui_push_text(assetName);
+    ui_top_draw(&eui_draw_text_with_bg);
     if (ui_top_mouse_down(btn) && btn == MOUSE_BUTTON_LEFT)
         newAssetRequest = true;
     ui_pop();

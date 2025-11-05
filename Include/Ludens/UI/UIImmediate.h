@@ -31,6 +31,9 @@ void ui_frame_end();
 /// @brief Set layout of widget on top of stack.
 void ui_top_layout(const UILayoutInfo& layoutI);
 
+/// @brief Set child padding of widget on top of stack.
+void ui_top_layout_child_padding(const UIPadding& pad);
+
 /// @brief Set user of widget on top of stack.
 void ui_top_user(void* user);
 
@@ -85,7 +88,7 @@ void ui_push_panel();
 void ui_push_toggle(bool& isPressed, bool& state);
 
 /// @brief Push UIScrollWidget.
-void ui_push_scroll();
+void ui_push_scroll(Color bgColor);
 
 /// @brief Push UIButtonWidget.
 void ui_push_button(const char* text, bool& isPressed);

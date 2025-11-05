@@ -262,7 +262,7 @@ UIScrollWidget UINode::add_scroll(const UILayoutInfo& layoutI, const UIScrollWid
     UIWindowObj* window = mObj->window;
     UIWidgetObj* obj = window->ctx->alloc_widget(UI_WIDGET_SCROLL, layoutI, mObj, user);
     obj->as.scroll.base = obj;
-    obj->as.scroll.hasScrollBar = widgetI.hasScrollBar;
+    obj->as.scroll.bgColor = widgetI.bgColor;
     obj->as.scroll.offsetXDst = 0.0f;
     obj->as.scroll.offsetXSpeed = 0.0f;
     obj->as.scroll.offsetYDst = 0.0f;
@@ -302,7 +302,7 @@ void UIScrollWidgetObj::on_scroll(UIWidget widget, const Vec2& offset)
     {
         self.offsetYDst += offset.y * sensitivity;
         self.offsetYSpeed = (self.offsetYDst - base->scrollOffset.y) / animDuration;
-        
+
         if (self.offsetYDst > 0.0f)
             self.offsetYDst = 0.0f;
     }
@@ -325,6 +325,11 @@ void UIScrollWidget::set_scroll_offset_y(float offset)
     mObj->scrollOffset.y = offset;
     mObj->as.scroll.offsetYDst = offset;
     mObj->as.scroll.offsetYSpeed = 0.0f;
+}
+
+void UIScrollWidget::set_scroll_bg_color(Color color)
+{
+    mObj->as.scroll.bgColor = color;
 }
 
 void UIScrollWidget::on_update(UIWidget widget, float delta)
@@ -359,11 +364,11 @@ void UIScrollWidget::on_update(UIWidget widget, float delta)
 
 void UIScrollWidget::on_draw(UIWidget widget, ScreenRenderComponent renderer)
 {
-    UIWidgetObj* obj = (UIWidgetObj*)widget;
-    UIContextObj& ctx = *obj->window->ctx;
-    const UITheme& theme = ctx.theme;
+    UIWidgetObj* obj = widget;
+    UIScrollWidgetObj& self = obj->as.scroll;
+    Rect rect = widget.get_rect();
 
-    // renderer.draw_rect_outline(widget.get_rect(), 1.0f, 0x00FF00FF);
+    renderer.draw_rect(rect, self.bgColor);
 }
 
 //
@@ -429,6 +434,7 @@ UIButtonWidget UINode::add_button(const UILayoutInfo& layoutI, const UIButtonWid
     UIWindowObj* window = mObj->window;
     UIWidgetObj* obj = window->ctx->alloc_widget(UI_WIDGET_BUTTON, layoutI, mObj, user);
     obj->cb.onMouse = UIButtonWidgetObj::on_mouse;
+    obj->cb.onHover = UIButtonWidgetObj::on_hover;
     obj->as.button.base = obj;
     obj->as.button.text = widgetI.text ? heap_strdup(widgetI.text, MEMORY_USAGE_UI) : nullptr;
     obj->as.button.user_on_press = widgetI.on_press;
@@ -774,6 +780,13 @@ void UIButtonWidgetObj::on_mouse(UIWidget widget, const Vec2& pos, MouseButton b
         self.user_on_press((UIButtonWidget)widget, btn, obj->user);
 }
 
+void UIButtonWidgetObj::on_hover(UIWidget widget, UIEvent event)
+{
+    UIWidgetObj* obj = widget;
+
+    // TODO:
+}
+
 void UIButtonWidget::on_draw(UIWidget widget, ScreenRenderComponent renderer)
 {
     UIWidgetObj* obj = widget;
@@ -781,7 +794,7 @@ void UIButtonWidget::on_draw(UIWidget widget, ScreenRenderComponent renderer)
     UIButtonWidgetObj& self = obj->as.button;
     UITheme theme = widget.get_theme();
     Rect rect = widget.get_rect();
-    uint32_t color = theme.get_primary_color();
+    uint32_t color = theme.get_selection_color();
 
     if (widget.is_pressed())
     {
