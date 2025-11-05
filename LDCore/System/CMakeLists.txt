@@ -8,6 +8,7 @@ set(MODULE_INCLUDE
 	${LUDENS_INCLUDE_DIR}/Ludens/System/Timer.h
 	${LUDENS_INCLUDE_DIR}/Ludens/System/FileSystem.h
 	${LUDENS_INCLUDE_DIR}/Ludens/System/FileWatcher.h
+	${LUDENS_INCLUDE_DIR}/Ludens/System/DropManager.h
 )
 
 set(MODULE_LIB
@@ -17,6 +18,7 @@ set(MODULE_LIB
 	Lib/FileSystem.cpp
 	Lib/FileWatcherWin32.cpp
 	Lib/FileWatcherLinux.cpp
+	Lib/DropManagerWin32.cpp
 )
 
 set(MODULE_TEST
