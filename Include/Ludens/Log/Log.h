@@ -19,14 +19,22 @@ enum LogLevel
 struct LogObj;
 void log_message(LogObj* obj, LogLevel level, const std::string& msg);
 
+typedef void (*LogObserver)(LogLevel level, const std::string& msg);
+
 struct Log : Handle<LogObj>
 {
-    /// @brief get logger handle for the default channel
+    /// @brief Get logger handle for the default channel.
     Log();
 
-    /// @brief get logger handle for channel name
-    /// @param channelName channel name c string
+    /// @brief Get logger handle for channel name.
+    /// @param channelName Channel name c string.
     Log(const char* channelName);
+
+    /// @brief Add observer for incoming logs.
+    void add_observer(LogObserver observer);
+
+    /// @brief Remove observer from channel.
+    void remove_observer(LogObserver observer);
 
     template <typename... TArgs>
     void debug(const std::format_string<TArgs...>& fmt, TArgs&&... args)

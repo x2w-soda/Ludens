@@ -1,26 +1,37 @@
 #include <Ludens/Header/Hash.h>
 #include <Ludens/Log/Log.h>
 #include <Ludens/System/Memory.h>
+#include <cstring>
 #include <format>
 #include <iostream>
+#include <mutex>
 #include <unordered_map>
-#include <cstring>
+#include <unordered_set>
 
 namespace LD {
 
-/// @brief logger object for a single channel
+/// @brief Logger object implementation.
 struct LogObj
 {
-    std::string name;
+    LogObj() = default;
+
+    LogObj(const char* channelName)
+        : name(channelName)
+    {
+    }
+
+    const std::string name;
+    std::mutex mtx;
+    std::unordered_set<LogObserver> observers;
 };
 
 class LogChannels
 {
 public:
-    /// @brief get singleton
+    /// @brief Get singleton.
     static LogChannels* get();
 
-    /// @brief get or create logger for channel
+    /// @brief Get or create logger for channel.
     static LogObj* get_log(const char* channelName);
 
 private:
@@ -55,8 +66,10 @@ LogObj* LogChannels::get_log(const char* channelName)
     if (self->mChannels.contains(hash32))
         return self->mChannels[hash32];
 
-    LogObj* obj = new LogObj();
-    obj->name = channelName;
+    // NOTE: heap_new from LDSystem tracks allocations and reports memory leaks,
+    //       here we are using vanilla 'new' since per-channel logs live
+    //       until the very end of application lifetime.
+    LogObj* obj = new LogObj(channelName);
 
     self->mChannels[hash32] = obj;
 
@@ -80,7 +93,6 @@ const char* get_log_level_name(LogLevel level)
     return nullptr;
 }
 
-// TODO: this needs to be thread safe, same logger may be accessed from multiple threads
 void log_message(LogObj* obj, LogLevel level, const std::string& msg)
 {
     std::string prefix(get_log_level_name(level));
@@ -89,8 +101,16 @@ void log_message(LogObj* obj, LogLevel level, const std::string& msg)
     if (!isDefaultChannel)
     {
         prefix.push_back('[');
-        prefix += obj->name;
+        prefix += obj->name; // channel name is RO
         prefix.push_back(']');
+    }
+
+    // This introduces per-message mutex contention...
+    // Refactor later if this is an observable bottleneck in profiling.
+    {
+        std::unique_lock<std::mutex> lock(obj->mtx);
+        for (LogObserver observer : obj->observers)
+            observer(level, msg);
     }
 
     std::cout << prefix << ' ' << msg << std::endl;
@@ -104,6 +124,20 @@ Log::Log()
 Log::Log(const char* channelName)
 {
     mObj = LogChannels::get_log(channelName);
+}
+
+void Log::add_observer(LogObserver observer)
+{
+    std::unique_lock<std::mutex> lock(mObj->mtx);
+
+    mObj->observers.insert(observer);
+}
+
+void Log::remove_observer(LogObserver observer)
+{
+    std::unique_lock<std::mutex> lock(mObj->mtx);
+
+    mObj->observers.erase(observer);
 }
 
 } // namespace LD
