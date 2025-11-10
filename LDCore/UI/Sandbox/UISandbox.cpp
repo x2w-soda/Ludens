@@ -166,7 +166,7 @@ void UISandbox::imgui()
     bool isPressed;
 
     ui_push_window("Demo", mClient);
-    ui_push_scroll();
+    ui_push_scroll({});
     {
         if (Input::get_key(KEY_CODE_SPACE))
         {
