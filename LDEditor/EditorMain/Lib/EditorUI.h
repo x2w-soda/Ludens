@@ -1,24 +1,31 @@
 #pragma once
 
-#include "EditorBottomBar.h"
-#include "EditorTopBar.h"
 #include <Ludens/Media/Font.h>
 #include <Ludens/RenderComponent/SceneOverlayComponent.h>
 #include <Ludens/System/FileSystem.h>
 #include <Ludens/UI/UIContext.h>
 #include <Ludens/UI/UIWindow.h>
 #include <Ludens/UI/UIWindowManager.h>
-#include <LudensEditor/EInspectorWindow/EInspectorWindow.h>
-#include <LudensEditor/EOutlinerWindow/EOutlinerWindow.h>
-#include <LudensEditor/EViewportWindow/EViewportWindow.h>
+
 #include <LudensEditor/EditorContext/EditorContext.h>
 #include <LudensEditor/EditorWidget/UISelectWindow.h>
 #include <LudensEditor/EditorWidget/UIVersionWindow.h>
+
+#include <LudensEditor/EConsoleWindow/EConsoleWindow.h>
+#include <LudensEditor/EInspectorWindow/EInspectorWindow.h>
+#include <LudensEditor/EOutlinerWindow/EOutlinerWindow.h>
+#include <LudensEditor/EViewportWindow/EViewportWindow.h>
+
 #include <cstdint>
+#include <vector>
+
+#include "EditorBottomBar.h"
+#include "EditorTopBar.h"
 
 namespace LD {
 
 struct Event;
+struct EditorWindowObj;
 
 struct EditorUIInfo
 {
@@ -134,12 +141,15 @@ private:
     UIWindowManager mWM;
     UIWindow mBackdropWindow;
     UIVersionWindow mVersionWindow{};
+    EUISelectWindow mSelectWindow{};
+    UIWMAreaID mVersionWindowID = 0;
+    UIWMAreaID mSelectWindowID = 0;
+
     EViewportWindow mViewportWindow;
     EOutlinerWindow mOutlinerWindow;
     EInspectorWindow mInspectorWindow;
-    UIWMAreaID mVersionWindowID = 0;
-    UIWMAreaID mSelectWindowID = 0;
-    EUISelectWindow mSelectWindow{};
+    EConsoleWindow mConsoleWindow;
+    std::vector<EditorWindowObj*> mEditorWindows;
 
     struct CallbackState
     {

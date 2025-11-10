@@ -2,6 +2,7 @@
 #include <Ludens/Application/Application.h>
 #include <Ludens/Application/Event.h>
 #include <Ludens/Profiler/Profiler.h>
+#include <Ludens/Scene/Scene.h>
 #include <Ludens/UI/UIImmediate.h>
 #include <LudensEditor/EditorContext/EditorIconAtlas.h>
 #include <LudensEditor/EditorContext/EditorWindowObj.h>
@@ -35,6 +36,7 @@ void EditorUI::startup(const EditorUIInfo& info)
     UIWMAreaID viewportArea = mWM.get_root_area();
     UIWMAreaID outlinerArea = mWM.split_right(viewportArea, 0.7f);
     UIWMAreaID inspectorArea = mWM.split_bottom(outlinerArea, 0.5f);
+    UIWMAreaID consoleArea = mWM.split_bottom(viewportArea, 0.7f);
     UIContext uiCtx = mWM.get_context();
 
     UILayoutInfo layoutI{};
@@ -71,12 +73,15 @@ void EditorUI::startup(const EditorUIInfo& info)
     // force window layout
     mWM.update(0.0f);
 
+    mEditorWindows.clear();
+
     {
         EViewportWindowInfo windowI{};
         windowI.ctx = mCtx;
         windowI.areaID = viewportArea;
         windowI.wm = mWM;
         mViewportWindow = EViewportWindow::create(windowI);
+        mEditorWindows.push_back((EditorWindowObj*)mViewportWindow.unwrap());
     }
 
     {
@@ -87,6 +92,7 @@ void EditorUI::startup(const EditorUIInfo& info)
         windowI.selectAssetFn = &EditorUI::ECB::select_asset;
         windowI.user = this;
         mInspectorWindow = EInspectorWindow::create(windowI);
+        mEditorWindows.push_back((EditorWindowObj*)mInspectorWindow.unwrap());
     }
 
     {
@@ -97,6 +103,18 @@ void EditorUI::startup(const EditorUIInfo& info)
         windowI.addScriptToComponent = &EditorUI::ECB::add_script_to_component;
         windowI.user = this;
         mOutlinerWindow = EOutlinerWindow::create(windowI);
+        mEditorWindows.push_back((EditorWindowObj*)mOutlinerWindow.unwrap());
+    }
+
+    {
+        EConsoleWindowInfo windowI{};
+        windowI.ctx = mCtx;
+        windowI.areaID = consoleArea;
+        windowI.wm = mWM;
+        windowI.user = this;
+        mConsoleWindow = EConsoleWindow::create(windowI);
+        mConsoleWindow.observe_channel(get_lua_script_log_channel_name());
+        mEditorWindows.push_back((EditorWindowObj*)mConsoleWindow.unwrap());
     }
 }
 
@@ -114,6 +132,7 @@ void EditorUI::cleanup()
         mVersionWindowID = 0;
     }
 
+    EConsoleWindow::destroy(mConsoleWindow);
     EInspectorWindow::destroy(mInspectorWindow);
     EOutlinerWindow::destroy(mOutlinerWindow);
     EViewportWindow::destroy(mViewportWindow);
@@ -127,9 +146,11 @@ void EditorUI::update(float delta)
     Application app = Application::get();
 
     ui_frame_begin(mWM.get_context());
-    ((EditorWindowObj*)(mViewportWindow.unwrap()))->on_imgui();
-    ((EditorWindowObj*)(mOutlinerWindow.unwrap()))->on_imgui();
-    ((EditorWindowObj*)(mInspectorWindow.unwrap()))->on_imgui();
+
+    for (EditorWindowObj* window : mEditorWindows)
+    {
+        window->on_imgui();
+    }
 
     bool hasBackdrop = mSelectWindow.isActive;
     if (hasBackdrop)

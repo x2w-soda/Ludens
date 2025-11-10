@@ -229,21 +229,20 @@ void EditorContextObj::load_project_scene(const FS::Path& sceneSchemaPath)
     if (sceneSchema)
         SceneSchema::destroy(sceneSchema);
 
-    if (!scene)
-        scene = Scene::create();
-    else
-        scene.reset();
+    if (scene)
+        Scene::destroy(scene);
 
-    // create the scene
+    // create the scene from schema
+    scene = Scene::create();
     sceneSchema = SceneSchema::create_from_file(sceneSchemaPath);
     sceneSchema.load_scene(scene);
 
-    // prepare the scene
-    ScenePrepareInfo prepareInfo{};
-    prepareInfo.assetManager = assetManager;
-    prepareInfo.renderServer = renderServer;
-    prepareInfo.audioServer = audioServer;
-    scene.prepare(prepareInfo);
+    // load the scene
+    SceneLoadInfo loadInfo{};
+    loadInfo.assetManager = assetManager;
+    loadInfo.renderServer = renderServer;
+    loadInfo.audioServer = audioServer;
+    scene.load(loadInfo);
 
     EditorContextSceneLoadEvent event{};
     notify_observers(&event);
