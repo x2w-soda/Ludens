@@ -2010,9 +2010,16 @@ static void create_swapchain(RDeviceObj* obj, const SwapchainInfo& swapchainI)
     if (surfaceMaxImageCount > 0 && minImageCount > surfaceMaxImageCount)
         minImageCount = surfaceMaxImageCount; // clamp to upper limit
 
-    auto imageExtent = pdevice.surfaceCaps.currentExtent;
-    if (imageExtent.width == UINT32_MAX) imageExtent.width = 1920;
-    if (imageExtent.height == UINT32_MAX) imageExtent.height = 1080;
+    VkExtent2D imageExtent = pdevice.surfaceCaps.currentExtent;
+    if (imageExtent.width == UINT32_MAX || imageExtent.height == UINT32_MAX)
+    {
+        // if driver hasn't updated current surface extent, grab extent from glfw.
+        int fbWidth, fbHeight;
+        glfwGetFramebufferSize(obj->glfw, &fbWidth, &fbHeight);
+
+        imageExtent.width = (uint32_t)fbWidth;
+        imageExtent.height = (uint32_t)fbHeight;
+    }
 
     VkSwapchainCreateInfoKHR swapchainCI{
         .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,

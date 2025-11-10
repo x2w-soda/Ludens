@@ -12,6 +12,8 @@
 
 #define PIPELINE_LAYOUT_MAX_RESOURCE_SETS 4
 
+struct GLFWwindow;
+
 namespace LD {
 
 struct RObjectID
@@ -348,6 +350,7 @@ struct RDeviceObj
     uint64_t rid;
     uint32_t frameIndex;
     RDeviceBackend backend;
+    GLFWwindow* glfw;
     bool isHeadless;
 
     RSemaphore (*create_semaphore)(RDeviceObj* self, RSemaphoreObj* semaphoreObj);
