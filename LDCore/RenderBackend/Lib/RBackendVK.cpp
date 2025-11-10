@@ -224,6 +224,7 @@ void vk_create_device(RDeviceObj* self, const RDeviceInfo& deviceI)
 
     self->backend = RDEVICE_BACKEND_VULKAN;
     self->vk.surface = VK_NULL_HANDLE;
+    self->glfw = deviceI.window;
     self->init_vk_api();
 
     new (&self->vk.pdevice) PhysicalDevice();
@@ -322,7 +323,7 @@ void vk_create_device(RDeviceObj* self, const RDeviceInfo& deviceI)
     if (!self->isHeadless)
     {
         // delegate surface creation to GLFW
-        VK_CHECK(glfwCreateWindowSurface(self->vk.instance, deviceI.window, nullptr, &self->vk.surface));
+        VK_CHECK(glfwCreateWindowSurface(self->vk.instance, self->glfw, nullptr, &self->vk.surface));
     }
 
     // choose a physical device, taking surface capabilities into account
