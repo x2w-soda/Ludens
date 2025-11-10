@@ -1,6 +1,7 @@
 #include "LuaTest.h"
 #include <Extra/doctest/doctest.h>
 #include <LDCore/Lua/Lib/LuaAST.h>
+#include <cstdio>
 
 using namespace LD;
 
