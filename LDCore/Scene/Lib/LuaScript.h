@@ -9,6 +9,9 @@
 namespace LD {
 namespace LuaScript {
 
+/// @brief Get static C string of LuaScript log channel.
+const char* get_log_channel_name();
+
 /// @brief Create the 'ludens' lua module that contains the scripting interface.
 LuaModule create_ludens_module();
 

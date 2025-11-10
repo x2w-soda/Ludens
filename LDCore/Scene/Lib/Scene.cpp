@@ -443,6 +443,11 @@ AudioBuffer SceneObj::get_or_create_audio_buffer(AudioClipAsset clipA)
 // PUBLIC API
 //
 
+const char* get_lua_script_log_channel_name()
+{
+    return LuaScript::get_log_channel_name();
+}
+
 Scene Scene::create()
 {
     LD_PROFILE_SCOPE;

@@ -10,6 +10,9 @@
 
 namespace LD {
 
+/// @brief Get static C string of log channel used by lua scripts.
+const char* get_lua_script_log_channel_name();
+
 /// @brief Scene load info
 struct SceneLoadInfo
 {

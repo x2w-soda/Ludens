@@ -8,11 +8,12 @@
 #include <cstring>
 #include <string>
 
+#define LUDENS_LUA_SCRIPT_LOG_CHANNEL "LuaScript"
 #define LUDENS_LUA_MODULE_NAME "ludens"
 
 namespace LD {
 
-static Log sLog("LuaScript");
+static Log sLog(LUDENS_LUA_SCRIPT_LOG_CHANNEL);
 
 namespace LuaScript {
 
@@ -765,6 +766,11 @@ static int audio_source_component_resume(lua_State* l)
 //
 // PUBLIC API
 //
+
+const char* get_log_channel_name()
+{
+    return LUDENS_LUA_SCRIPT_LOG_CHANNEL;
+}
 
 LuaModule create_ludens_module()
 {
