@@ -11,6 +11,8 @@ set(MODULE_LIB
     Lib/LuaState.cpp
     Lib/LuaModule.cpp
     Lib/LuaConfig.cpp
+    Lib/LuaAST.h
+    Lib/LuaAST.cpp
 )
 
 add_library(${MODULE_NAME}
@@ -34,6 +36,7 @@ endif()
 target_link_libraries(${MODULE_NAME} PUBLIC
     LDProfiler
     LDSystem
+    LDLexer
     ${LUAJIT_LIBS}
 )
 
@@ -44,6 +47,7 @@ set(MODULE_TEST
     Test/LuaErrorTest.cpp
     Test/LuaModuleTest.cpp
     Test/LuaConfigTest.cpp
+    Test/LuaASTTest.cpp
 )
 
 add_executable(${MODULE_TEST_NAME}

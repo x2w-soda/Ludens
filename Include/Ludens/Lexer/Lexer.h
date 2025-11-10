@@ -21,6 +21,7 @@ struct LexerMatchRule
 template <typename ETokenType>
 struct LexerInfo
 {
+    ETokenType endOfFileToken;
     ETokenType singleLineCommentToken;
     const char* singleLineComment;
     const LexerMatchRule<ETokenType>* matchRules;
@@ -43,6 +44,7 @@ public:
         laI.usage = info.memoryUsage;
         laI.isMultiPage = true;
         mTokenLA = LinearAllocator::create(laI);
+        mEndOfFileToken = info.endOfFileToken;
         mSingleLineCommentToken = info.singleLineCommentToken;
         mSingleLineComment = std::string_view(info.singleLineComment);
         mMatchRules = info.matchRules;
@@ -106,6 +108,8 @@ public:
             // TODO: unreachable.
         }
 
+        tok = tok->next = alloc_token(mEndOfFileToken, {});
+
         return dummy.next;
     }
 
@@ -132,7 +136,7 @@ private:
 
     void skip_spaces(const uint8_t* utf8, int len, int& pos)
     {
-        pos += utf8_decode_whitespace(utf8, (size_t)len);
+        pos += utf8_decode_whitespace(utf8 + pos, (size_t)len);
     }
 
     Token<ETokenType>* alloc_token(ETokenType type, const std::string_view& span)
@@ -147,6 +151,7 @@ private:
 
 private:
     LinearAllocator mTokenLA;
+    ETokenType mEndOfFileToken;
     ETokenType mSingleLineCommentToken;
     std::string_view mSingleLineComment;
     const LexerMatchRule<ETokenType>* mMatchRules;
