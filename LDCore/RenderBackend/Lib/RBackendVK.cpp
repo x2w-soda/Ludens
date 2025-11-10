@@ -229,6 +229,24 @@ void vk_create_device(RDeviceObj* self, const RDeviceInfo& deviceI)
     new (&self->vk.pdevice) PhysicalDevice();
     new (&self->vk.swapchain) Swapchain();
 
+    // get supported instance extensions
+    uint32_t extCount;
+    vkEnumerateInstanceExtensionProperties(nullptr, &extCount, nullptr);
+    std::vector<VkExtensionProperties> supportedInstanceExts(extCount);
+    vkEnumerateInstanceExtensionProperties(nullptr, &extCount, supportedInstanceExts.data());
+    std::set<std::string> supportedInstanceExtSet;
+    for (const VkExtensionProperties& extProperty : supportedInstanceExts)
+        supportedInstanceExtSet.insert(std::string(extProperty.extensionName));
+
+    // get supported instance layers
+    uint32_t layerCount;
+    vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
+    std::vector<VkLayerProperties> supportedInstanceLayers(layerCount);
+    vkEnumerateInstanceLayerProperties(&layerCount, supportedInstanceLayers.data());
+    std::set<std::string> supportedInstanceLayerSet;
+    for (const VkLayerProperties& layerProperty : supportedInstanceLayers)
+        supportedInstanceLayerSet.insert(std::string(layerProperty.layerName));
+
     std::set<std::string> desiredInstanceExtSet = {
 #if defined(VK_EXT_debug_utils) && !defined(NDEBUG)
         VK_EXT_DEBUG_UTILS_EXTENSION_NAME,
@@ -249,9 +267,25 @@ void vk_create_device(RDeviceObj* self, const RDeviceInfo& deviceI)
 
     // SPACE: insert any other user-requested extensions into set
 
-    std::vector<const char*> desiredInstanceExts;
+    // requested extensions = desired && supported extensions
+    std::vector<const char*> requestedInstanceExts;
     for (const std::string& desiredExt : desiredInstanceExtSet)
-        desiredInstanceExts.push_back(desiredExt.c_str());
+    {
+        if (supportedInstanceExtSet.contains(desiredExt))
+            requestedInstanceExts.push_back(desiredExt.c_str());
+    }
+
+    std::set<std::string> desiredInstanceLayerSet = {
+        "VK_LAYER_KHRONOS_validation",
+    };
+
+    // requested layers = desired && supported layers
+    std::vector<const char*> requestedInstanceLayers;
+    for (const std::string& desiredLayer : desiredInstanceLayerSet)
+    {
+        if (supportedInstanceLayerSet.contains(desiredLayer))
+            requestedInstanceLayers.push_back(desiredLayer.c_str());
+    }
 
     VkApplicationInfo appI{
         .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
@@ -264,10 +298,14 @@ void vk_create_device(RDeviceObj* self, const RDeviceInfo& deviceI)
     VkInstanceCreateInfo instanceCI{
         .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
         .pApplicationInfo = &appI,
+#ifndef NDEBUG
+        .enabledLayerCount = (uint32_t)requestedInstanceLayers.size(),
+#else
         .enabledLayerCount = 0,
-        .ppEnabledLayerNames = nullptr,
-        .enabledExtensionCount = (uint32_t)desiredInstanceExts.size(),
-        .ppEnabledExtensionNames = desiredInstanceExts.data(),
+#endif
+        .ppEnabledLayerNames = requestedInstanceLayers.data(),
+        .enabledExtensionCount = (uint32_t)requestedInstanceExts.size(),
+        .ppEnabledExtensionNames = requestedInstanceExts.data(),
     };
 
     VK_CHECK(vkCreateInstance(&instanceCI, nullptr, &self->vk.instance));
