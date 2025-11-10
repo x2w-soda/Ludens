@@ -253,10 +253,6 @@ void vk_create_device(RDeviceObj* self, const RDeviceInfo& deviceI)
     for (const std::string& desiredExt : desiredInstanceExtSet)
         desiredInstanceExts.push_back(desiredExt.c_str());
 
-    std::vector<const char*> desiredLayers = {
-        "VK_LAYER_KHRONOS_validation",
-    };
-
     VkApplicationInfo appI{
         .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
         .pNext = nullptr,
@@ -268,12 +264,8 @@ void vk_create_device(RDeviceObj* self, const RDeviceInfo& deviceI)
     VkInstanceCreateInfo instanceCI{
         .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
         .pApplicationInfo = &appI,
-#ifndef NDEBUG
-        .enabledLayerCount = (uint32_t)desiredLayers.size(),
-#else
         .enabledLayerCount = 0,
-#endif
-        .ppEnabledLayerNames = desiredLayers.data(),
+        .ppEnabledLayerNames = nullptr,
         .enabledExtensionCount = (uint32_t)desiredInstanceExts.size(),
         .ppEnabledExtensionNames = desiredInstanceExts.data(),
     };
@@ -2018,13 +2010,17 @@ static void create_swapchain(RDeviceObj* obj, const SwapchainInfo& swapchainI)
     if (surfaceMaxImageCount > 0 && minImageCount > surfaceMaxImageCount)
         minImageCount = surfaceMaxImageCount; // clamp to upper limit
 
+    auto imageExtent = pdevice.surfaceCaps.currentExtent;
+    if (imageExtent.width == UINT32_MAX) imageExtent.width = 1920;
+    if (imageExtent.height == UINT32_MAX) imageExtent.height = 1080;
+
     VkSwapchainCreateInfoKHR swapchainCI{
         .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
         .surface = obj->vk.surface,
         .minImageCount = minImageCount,
         .imageFormat = swapchainI.imageFormat,
         .imageColorSpace = swapchainI.imageColorSpace,
-        .imageExtent = pdevice.surfaceCaps.currentExtent,
+        .imageExtent = imageExtent,
         .imageArrayLayers = 1,
         .imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, // TODO: transfer dst not guaranteed
         .preTransform = pdevice.surfaceCaps.currentTransform,
