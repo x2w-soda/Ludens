@@ -224,10 +224,29 @@ void vk_create_device(RDeviceObj* self, const RDeviceInfo& deviceI)
 
     self->backend = RDEVICE_BACKEND_VULKAN;
     self->vk.surface = VK_NULL_HANDLE;
+    self->glfw = deviceI.window;
     self->init_vk_api();
 
     new (&self->vk.pdevice) PhysicalDevice();
     new (&self->vk.swapchain) Swapchain();
+
+    // get supported instance extensions
+    uint32_t extCount;
+    vkEnumerateInstanceExtensionProperties(nullptr, &extCount, nullptr);
+    std::vector<VkExtensionProperties> supportedInstanceExts(extCount);
+    vkEnumerateInstanceExtensionProperties(nullptr, &extCount, supportedInstanceExts.data());
+    std::set<std::string> supportedInstanceExtSet;
+    for (const VkExtensionProperties& extProperty : supportedInstanceExts)
+        supportedInstanceExtSet.insert(std::string(extProperty.extensionName));
+
+    // get supported instance layers
+    uint32_t layerCount;
+    vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
+    std::vector<VkLayerProperties> supportedInstanceLayers(layerCount);
+    vkEnumerateInstanceLayerProperties(&layerCount, supportedInstanceLayers.data());
+    std::set<std::string> supportedInstanceLayerSet;
+    for (const VkLayerProperties& layerProperty : supportedInstanceLayers)
+        supportedInstanceLayerSet.insert(std::string(layerProperty.layerName));
 
     std::set<std::string> desiredInstanceExtSet = {
 #if defined(VK_EXT_debug_utils) && !defined(NDEBUG)
@@ -249,13 +268,25 @@ void vk_create_device(RDeviceObj* self, const RDeviceInfo& deviceI)
 
     // SPACE: insert any other user-requested extensions into set
 
-    std::vector<const char*> desiredInstanceExts;
+    // requested extensions = desired && supported extensions
+    std::vector<const char*> requestedInstanceExts;
     for (const std::string& desiredExt : desiredInstanceExtSet)
-        desiredInstanceExts.push_back(desiredExt.c_str());
+    {
+        if (supportedInstanceExtSet.contains(desiredExt))
+            requestedInstanceExts.push_back(desiredExt.c_str());
+    }
 
-    std::vector<const char*> desiredLayers = {
+    std::set<std::string> desiredInstanceLayerSet = {
         "VK_LAYER_KHRONOS_validation",
     };
+
+    // requested layers = desired && supported layers
+    std::vector<const char*> requestedInstanceLayers;
+    for (const std::string& desiredLayer : desiredInstanceLayerSet)
+    {
+        if (supportedInstanceLayerSet.contains(desiredLayer))
+            requestedInstanceLayers.push_back(desiredLayer.c_str());
+    }
 
     VkApplicationInfo appI{
         .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
@@ -269,13 +300,13 @@ void vk_create_device(RDeviceObj* self, const RDeviceInfo& deviceI)
         .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
         .pApplicationInfo = &appI,
 #ifndef NDEBUG
-        .enabledLayerCount = (uint32_t)desiredLayers.size(),
+        .enabledLayerCount = (uint32_t)requestedInstanceLayers.size(),
 #else
         .enabledLayerCount = 0,
 #endif
-        .ppEnabledLayerNames = desiredLayers.data(),
-        .enabledExtensionCount = (uint32_t)desiredInstanceExts.size(),
-        .ppEnabledExtensionNames = desiredInstanceExts.data(),
+        .ppEnabledLayerNames = requestedInstanceLayers.data(),
+        .enabledExtensionCount = (uint32_t)requestedInstanceExts.size(),
+        .ppEnabledExtensionNames = requestedInstanceExts.data(),
     };
 
     VK_CHECK(vkCreateInstance(&instanceCI, nullptr, &self->vk.instance));
@@ -292,7 +323,7 @@ void vk_create_device(RDeviceObj* self, const RDeviceInfo& deviceI)
     if (!self->isHeadless)
     {
         // delegate surface creation to GLFW
-        VK_CHECK(glfwCreateWindowSurface(self->vk.instance, deviceI.window, nullptr, &self->vk.surface));
+        VK_CHECK(glfwCreateWindowSurface(self->vk.instance, self->glfw, nullptr, &self->vk.surface));
     }
 
     // choose a physical device, taking surface capabilities into account
@@ -2018,13 +2049,24 @@ static void create_swapchain(RDeviceObj* obj, const SwapchainInfo& swapchainI)
     if (surfaceMaxImageCount > 0 && minImageCount > surfaceMaxImageCount)
         minImageCount = surfaceMaxImageCount; // clamp to upper limit
 
+    VkExtent2D imageExtent = pdevice.surfaceCaps.currentExtent;
+    if (imageExtent.width == UINT32_MAX || imageExtent.height == UINT32_MAX)
+    {
+        // if driver hasn't updated current surface extent, grab extent from glfw.
+        int fbWidth, fbHeight;
+        glfwGetFramebufferSize(obj->glfw, &fbWidth, &fbHeight);
+
+        imageExtent.width = (uint32_t)fbWidth;
+        imageExtent.height = (uint32_t)fbHeight;
+    }
+
     VkSwapchainCreateInfoKHR swapchainCI{
         .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
         .surface = obj->vk.surface,
         .minImageCount = minImageCount,
         .imageFormat = swapchainI.imageFormat,
         .imageColorSpace = swapchainI.imageColorSpace,
-        .imageExtent = pdevice.surfaceCaps.currentExtent,
+        .imageExtent = imageExtent,
         .imageArrayLayers = 1,
         .imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, // TODO: transfer dst not guaranteed
         .preTransform = pdevice.surfaceCaps.currentTransform,
