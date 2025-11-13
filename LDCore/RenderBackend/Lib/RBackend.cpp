@@ -244,7 +244,7 @@ void RDevice::destroy_command_pool(RCommandPool pool)
     mObj->api->destroy_command_pool(mObj, pool);
 
     mObj->api->command_pool_dtor(poolObj);
-    heap_delete(poolObj);
+    heap_free(poolObj);
 }
 
 RShader RDevice::create_shader(const RShaderInfo& shaderI)

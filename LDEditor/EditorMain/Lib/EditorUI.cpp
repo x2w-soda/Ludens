@@ -158,6 +158,7 @@ void EditorUI::update(float delta)
         ui_push_window("Backdrop", mBackdropWindow);
         ui_set_window_rect(Rect(0.0f, 0.0f, app.width(), app.height()));
         ui_pop_window();
+        mBackdropWindow.show();
     }
     else
         mBackdropWindow.hide();
