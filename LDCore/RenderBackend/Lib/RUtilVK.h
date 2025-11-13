@@ -80,6 +80,8 @@ void cast_blend_op_vk(const RBlendOp& inOp, VkBlendOp& outOp);
 
 void print_vk_queue_flags(const VkQueueFlags& inFlags, std::string& out);
 void print_vk_present_mode(const VkPresentModeKHR& inMode, std::string& out);
+void print_vk_result(VkResult result, std::string& out);
+const char* get_vk_result_cstr(VkResult result);
 
 } // namespace RUtil
 } // namespace LD

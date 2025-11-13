@@ -699,5 +699,69 @@ void print_vk_present_mode(const VkPresentModeKHR& inMode, std::string& out)
     out = str;
 }
 
+void print_vk_result(VkResult result, std::string& out)
+{
+    out = std::string(get_vk_result_cstr(result));
+}
+
+const char* get_vk_result_cstr(VkResult result)
+{
+    const char* str = nullptr;
+
+    switch (result)
+    {
+        KASE(VK_SUCCESS, str);
+        KASE(VK_NOT_READY, str);
+        KASE(VK_TIMEOUT, str);
+        KASE(VK_EVENT_SET, str);
+        KASE(VK_EVENT_RESET, str);
+        KASE(VK_INCOMPLETE, str);
+        KASE(VK_ERROR_OUT_OF_HOST_MEMORY, str);
+        KASE(VK_ERROR_OUT_OF_DEVICE_MEMORY, str);
+        KASE(VK_ERROR_INITIALIZATION_FAILED, str);
+        KASE(VK_ERROR_DEVICE_LOST, str);
+        KASE(VK_ERROR_MEMORY_MAP_FAILED, str);
+        KASE(VK_ERROR_LAYER_NOT_PRESENT, str);
+        KASE(VK_ERROR_EXTENSION_NOT_PRESENT, str);
+        KASE(VK_ERROR_FEATURE_NOT_PRESENT, str);
+        KASE(VK_ERROR_INCOMPATIBLE_DRIVER, str);
+        KASE(VK_ERROR_TOO_MANY_OBJECTS, str);
+        KASE(VK_ERROR_FORMAT_NOT_SUPPORTED, str);
+        KASE(VK_ERROR_FRAGMENTED_POOL, str);
+        KASE(VK_ERROR_UNKNOWN, str);
+        KASE(VK_ERROR_OUT_OF_POOL_MEMORY, str);
+        KASE(VK_ERROR_INVALID_EXTERNAL_HANDLE, str);
+        KASE(VK_ERROR_FRAGMENTATION, str);
+        KASE(VK_ERROR_INVALID_OPAQUE_CAPTURE_ADDRESS, str);
+        KASE(VK_PIPELINE_COMPILE_REQUIRED, str);
+        KASE(VK_ERROR_SURFACE_LOST_KHR, str);
+        KASE(VK_ERROR_NATIVE_WINDOW_IN_USE_KHR, str);
+        KASE(VK_SUBOPTIMAL_KHR, str);
+        KASE(VK_ERROR_OUT_OF_DATE_KHR, str);
+        KASE(VK_ERROR_INCOMPATIBLE_DISPLAY_KHR, str);
+        KASE(VK_ERROR_VALIDATION_FAILED_EXT, str);
+        KASE(VK_ERROR_INVALID_SHADER_NV, str);
+        KASE(VK_ERROR_IMAGE_USAGE_NOT_SUPPORTED_KHR, str);
+        KASE(VK_ERROR_VIDEO_PICTURE_LAYOUT_NOT_SUPPORTED_KHR, str);
+        KASE(VK_ERROR_VIDEO_PROFILE_OPERATION_NOT_SUPPORTED_KHR, str);
+        KASE(VK_ERROR_VIDEO_PROFILE_FORMAT_NOT_SUPPORTED_KHR, str);
+        KASE(VK_ERROR_VIDEO_PROFILE_CODEC_NOT_SUPPORTED_KHR, str);
+        KASE(VK_ERROR_VIDEO_STD_VERSION_NOT_SUPPORTED_KHR, str);
+        KASE(VK_ERROR_INVALID_DRM_FORMAT_MODIFIER_PLANE_LAYOUT_EXT, str);
+        KASE(VK_ERROR_NOT_PERMITTED_KHR, str);
+        KASE(VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT, str);
+        KASE(VK_THREAD_IDLE_KHR, str);
+        KASE(VK_THREAD_DONE_KHR, str);
+        KASE(VK_OPERATION_DEFERRED_KHR, str);
+        KASE(VK_OPERATION_NOT_DEFERRED_KHR, str);
+        KASE(VK_ERROR_COMPRESSION_EXHAUSTED_EXT, str);
+        KASE(VK_ERROR_INCOMPATIBLE_SHADER_BINARY_EXT, str);
+    default:
+        LD_UNREACHABLE;
+    }
+
+    return str;
+}
+
 } // namespace RUtil
 } // namespace LD

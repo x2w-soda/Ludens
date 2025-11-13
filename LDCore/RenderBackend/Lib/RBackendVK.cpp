@@ -6,6 +6,7 @@
 #include <Ludens/System/Memory.h>
 #include <array>
 #include <cstring>
+#include <filesystem>
 #include <set>
 #include <string>
 #include <vector>
@@ -24,15 +25,18 @@
 // RBackendVK.cpp
 // - Vulkan 1.3 backend implementation
 
-#define VK_CHECK(CALL)                                                    \
-    do                                                                    \
-    {                                                                     \
-        VkResult result_ = CALL;                                          \
-        if (result_ != VK_SUCCESS)                                        \
-        {                                                                 \
-            sLog.error("VK_CHECK failed with VkResult {}", (int)result_); \
-            LD_DEBUG_BREAK;                                               \
-        }                                                                 \
+#define VK_CHECK(CALL)                                                      \
+    do                                                                      \
+    {                                                                       \
+        VkResult result_ = CALL;                                            \
+        if (result_ != VK_SUCCESS)                                          \
+        {                                                                   \
+            sLog.error("{}:{} VK_CHECK failed with VkResult {}",            \
+                       std::filesystem::path(__FILE__).filename().string(), \
+                       __LINE__,                                            \
+                       RUtil::get_vk_result_cstr(result_));                 \
+            LD_DEBUG_BREAK;                                                 \
+        }                                                                   \
     } while (0)
 
 // clang-format off
