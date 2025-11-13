@@ -40,7 +40,8 @@ set(MODULE_LIB
   Lib/RBackend.cpp
   Lib/RShaderCompiler.h
   Lib/RShaderCompiler.cpp
-  Lib/RUtilInternal.h
+  Lib/RUtilCommon.h
+  Lib/RUtilVK.h
   Lib/RUtil.cpp
   Lib/RStager.cpp
   Lib/LDShaderParser.cpp

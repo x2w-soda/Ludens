@@ -1,9 +1,11 @@
-#include "RUtilInternal.h"
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/RenderBackend/KTX.h>
-#include <thread>
 #include <ktx.h>
+#include <thread>
 #include <vulkan/vulkan.h>
+
+#include "RUtilCommon.h"
+#include "RUtilVK.h"
 
 namespace LD {
 

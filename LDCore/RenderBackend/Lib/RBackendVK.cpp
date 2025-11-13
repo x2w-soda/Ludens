@@ -1,6 +1,3 @@
-#include "RBackendObj.h"
-#include "RShaderCompiler.h"
-#include "RUtilInternal.h"
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Header/Hash.h>
 #include <Ludens/Log/Log.h>
@@ -18,6 +15,11 @@
 #define VMA_IMPLEMENTATION
 #include <vk_mem_alloc.h> // hide from user
 #include <vulkan/vulkan.hpp>
+
+#include "RBackendObj.h"
+#include "RShaderCompiler.h"
+#include "RUtilCommon.h"
+#include "RUtilVK.h"
 
 // RBackendVK.cpp
 // - Vulkan 1.3 backend implementation

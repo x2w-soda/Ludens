@@ -1,5 +1,3 @@
-#include "RBackendObj.h"
-#include "RUtilInternal.h"
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Header/Hash.h>
 #include <Ludens/Log/Log.h>
@@ -7,6 +5,12 @@
 #include <Ludens/RenderBackend/RBackend.h>
 #include <Ludens/System/Memory.h>
 #include <unordered_map>
+
+#include "RBackendObj.h"
+#include "RUtilCommon.h"
+
+// RBackend.cpp
+// - shared functionality across graphics APIs.
 
 namespace LD {
 

@@ -1,7 +1,9 @@
-#include "RBackendObj.h"
-#include "RUtilInternal.h"
 #include <Ludens/Header/Assert.h>
 #include <cstring>
+
+#include "RBackendObj.h"
+#include "RUtilCommon.h"
+#include "RUtilVK.h"
 
 // clang-format off
 #define ARRAY_SIZE(A)  (sizeof(A) / sizeof(*A))
