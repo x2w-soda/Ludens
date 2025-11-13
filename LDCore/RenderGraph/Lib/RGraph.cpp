@@ -69,7 +69,7 @@ static bool has_pass_dependency(RComponentPassObj* srcObj, RComponentPassObj* ds
 /// @brief returns false upon invalid input
 static inline bool check_pass_image(RComponentPassObj* passObj, Hash32 name)
 {
-    RComponentObj* compObj = passObj->component;
+    RComponentObj* compObj = passObj->component.unwrap();
 
     if (!compObj->images.contains(name))
     {
@@ -305,7 +305,7 @@ static void topological_sort(const std::unordered_map<Hash32, RComponent>& compo
 
     for (auto& compIte : components)
     {
-        const RComponentObj* comp = compIte.second;
+        const RComponentObj* comp = compIte.second.unwrap();
 
         for (auto& passIte : comp->passes)
         {
@@ -567,7 +567,7 @@ void RGraphicsPass::use_image_sampled(Hash32 name)
     if (!check_pass_image(mObj, name))
         return;
 
-    RComponentObj* compObj = mObj->component;
+    RComponentObj* compObj = mObj->component.unwrap();
     GraphImage& graphImage = compObj->images[name];
 
     mObj->sampledImages.insert(name);
@@ -601,7 +601,7 @@ void RGraphicsPass::use_color_attachment(Hash32 name, RAttachmentLoadOp loadOp, 
     if (!check_loadop_clear_value(loadOp, clear))
         return;
 
-    RComponentObj* compObj = mObj->component;
+    RComponentObj* compObj = mObj->component.unwrap();
 
     const GraphImage& image = compObj->images[name];
 
@@ -663,7 +663,7 @@ void RGraphicsPass::use_depth_stencil_attachment(Hash32 name, RAttachmentLoadOp 
     if (!check_loadop_clear_value(loadOp, clear))
         return;
 
-    RComponentObj* compObj = mObj->component;
+    RComponentObj* compObj = mObj->component.unwrap();
     const GraphImage& image = compObj->images[name];
 
     if (mObj->hasDepthStencil)
@@ -715,7 +715,7 @@ RImage RGraphicsPass::get_image(Hash32 name, RImageLayout* layout)
         return {};
     }
 
-    RComponentObj* compObj = mObj->component;
+    RComponentObj* compObj = mObj->component.unwrap();
     dereference_image(&compObj, &name);
     RComponentStorage& storage = sStorages[compObj->name];
 
@@ -739,7 +739,7 @@ void RComputePass::use_image_storage_read_only(Hash32 name)
     if (!check_pass_image(mObj, name))
         return;
 
-    RComponentObj* compObj = mObj->component;
+    RComponentObj* compObj = mObj->component.unwrap();
 
     mObj->storageImages.insert(name);
 
@@ -761,7 +761,7 @@ RImage RComputePass::get_image(Hash32 name)
         return {};
     }
 
-    RComponentObj* compObj = mObj->component;
+    RComponentObj* compObj = mObj->component.unwrap();
     dereference_image(&compObj, &name);
     RComponentStorage& storage = sStorages[compObj->name];
 
@@ -962,7 +962,7 @@ void RGraph::destroy(RGraph graph)
         sDestroyCallbacks.pop();
     }
 
-    RGraphObj* graphObj = (RGraphObj*)graph;
+    RGraphObj* graphObj = graph.unwrap();
 
     // TODO: linear allocator + placement free instead of
     //       individual heap_create/heap_delete.
@@ -970,7 +970,7 @@ void RGraph::destroy(RGraph graph)
     for (auto& compIte : graphObj->components)
     {
         LD_PROFILE_SCOPE_NAME("delete component");
-        RComponentObj* compObj = compIte.second;
+        RComponentObj* compObj = compIte.second.unwrap();
         for (auto& passIte : compObj->passes)
         {
             LD_PROFILE_SCOPE_NAME("delete pass");
@@ -1071,8 +1071,8 @@ void RGraph::connect_image(const char* srcCompStr, const char* srcOutImageStr, c
     // Let set A be the set containing all GraphicsPass in srcComp that accesses srcOutImage.
     // Let set B be the set containing all GraphicsPass in dstComp that accesses dstInImage.
     // Add dependency edge for each tuple in the cartesian product A x B that has a dependency.
-    RComponentObj* srcCompObj = mObj->components[srcComp];
-    RComponentObj* dstCompObj = mObj->components[dstComp];
+    RComponentObj* srcCompObj = mObj->components[srcComp].unwrap();
+    RComponentObj* dstCompObj = mObj->components[dstComp].unwrap();
     RImageUsageFlags dstUsages = 0;
     for (auto& srcPassIte : srcCompObj->passes)
     {
@@ -1113,7 +1113,7 @@ void RGraph::connect_swapchain_image(const char* srcCompStr, const char* srcOutI
     Hash32 srcComp(srcCompStr);
     Hash32 srcOutImage(srcOutImageStr);
 
-    RComponentObj* srcCompObj = mObj->components[srcComp];
+    RComponentObj* srcCompObj = mObj->components[srcComp].unwrap();
 
     GraphImage& srcGraphImage = dereference_image(&srcCompObj, &srcOutImage);
     srcGraphImage.usage |= RIMAGE_USAGE_TRANSFER_SRC_BIT;
@@ -1145,14 +1145,14 @@ void RGraph::submit(bool save)
         if (mObj->passOrder[passIdx]->isComputePass)
         {
             RComputePassObj* passObj = (RComputePassObj*)mObj->passOrder[passIdx];
-            RComponentObj* compObj = passObj->component;
+            RComponentObj* compObj = passObj->component.unwrap();
 
             record_compute_pass(mObj, passObj, compObj, list, passIdx);
             continue;
         }
 
         RGraphicsPassObj* passObj = (RGraphicsPassObj*)mObj->passOrder[passIdx];
-        RComponentObj* compObj = passObj->component;
+        RComponentObj* compObj = passObj->component.unwrap();
 
         record_graphics_pass(mObj, passObj, compObj, list, passIdx);
     }

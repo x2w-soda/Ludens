@@ -18,10 +18,9 @@ public:
     /// @brief get an id unique to each RHandle
     /// @warning does not check for null handle before derefencing
     inline uint64_t rid() const { return *(uint64_t*)mObj; }
-
-    operator bool() const { return mObj != nullptr; }
-    operator TObject*() { return mObj; }
-    operator const TObject*() const { return mObj; }
+    inline TObject* unwrap() { return mObj; }
+    inline const TObject* unwrap() const { return mObj; }
+    inline operator bool() const { return mObj != nullptr; }
 
     /// @brief two handles are equal if they reference the same object
     /// @return true if both handles are not null and reference the same object.
