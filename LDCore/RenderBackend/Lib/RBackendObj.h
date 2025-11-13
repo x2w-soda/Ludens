@@ -7,14 +7,41 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
-#include <vk_mem_alloc.h>    // hide
-#include <vulkan/vulkan.hpp> // hide
+
+// RBackendObj.h
+// - internal header defining base object struct and their API (vtable)
+// - this header should still be graphics API agnostic
 
 #define PIPELINE_LAYOUT_MAX_RESOURCE_SETS 4
 
 struct GLFWwindow;
 
 namespace LD {
+
+struct RPipelineLayoutObj;
+struct RDeviceObj;
+
+/// @brief Render backend types.
+enum RType
+{
+    RTYPE_DEVICE,
+    RTYPE_SEMAPHORE,
+    RTYPE_FENCE,
+    RTYPE_BUFFER,
+    RTYPE_IMAGE,
+    RTYPE_SHADER,
+    RTYPE_SET_LAYOUT,
+    RTYPE_SET,
+    RTYPE_SET_POOL,
+    RTYPE_PASS,
+    RTYPE_FRAMEBUFFER,
+    RTYPE_PIPELINE_LAYOUT,
+    RTYPE_PIPELINE,
+    RTYPE_COMMAND_LIST,
+    RTYPE_COMMAND_POOL,
+    RTYPE_QUEUE,
+    RTYPE_ENUM_COUNT,
+};
 
 struct RObjectID
 {
@@ -25,75 +52,31 @@ struct RObjectID
     inline static uint64_t get() { return sCounter++; }
 };
 
-/// @brief Vulkan physical device properties
-struct PhysicalDevice
+struct RBufferAPI
 {
-    VkPhysicalDevice handle = VK_NULL_HANDLE;
-    VkPhysicalDeviceProperties deviceProps;
-    VkPhysicalDeviceFeatures deviceFeatures;
-    VkSurfaceCapabilitiesKHR surfaceCaps;
-    VkSampleCountFlags msaaCount;
-    std::vector<VkSurfaceFormatKHR> surfaceFormats;
-    std::vector<VkFormat> depthStencilFormats; /// formats with VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT
-    std::vector<VkQueueFamilyProperties> familyProps;
-    std::vector<VkPresentModeKHR> presentModes;
-};
-
-/// @brief information to create a Vulkan Swapchain
-struct SwapchainInfo
-{
-    VkFormat imageFormat;
-    VkPresentModeKHR presentMode;
-    VkColorSpaceKHR imageColorSpace;
-    bool vsyncHint;
-};
-
-/// @brief Vulkan Swapchain
-struct Swapchain
-{
-    VkSwapchainKHR handle;
-    SwapchainInfo info;
-    std::vector<VkImage> images; // external resource owned by VkSwapchainKHR
-    std::vector<RImage> colorAttachments;
-    uint32_t width;
-    uint32_t height;
-};
-
-struct RBufferObj
-{
-    uint64_t rid;
-    RDevice device;
-    RBufferInfo info;
-    void* hostMap;
-
     void (*map)(RBufferObj* self);
     void* (*map_read)(RBufferObj* self, uint64_t offset, uint64_t size);
     void (*map_write)(RBufferObj* self, uint64_t offset, uint64_t size, const void* data);
     void (*unmap)(RBufferObj* self);
-
-    void init_vk_api();
-
-    struct
-    {
-        VmaAllocation vma;
-        VkBuffer handle;
-    } vk;
 };
 
+/// @brief Base buffer object.
+struct RBufferObj
+{
+    const RBufferAPI* api;
+    uint64_t rid;
+    RDevice device;
+    RBufferInfo info;
+    void* hostMap;
+};
+
+/// @brief Base image object.
 struct RImageObj
 {
     uint64_t rid;
     RDevice device;
     RImageInfo info;
     std::unordered_set<uint32_t> fboHashes;
-
-    struct
-    {
-        VmaAllocation vma;
-        VkImage handle;
-        VkImageView viewHandle;
-        VkSampler samplerHandle;
-    } vk;
 };
 
 /// @brief while RPassInfo contains transient pointer members,
@@ -108,6 +91,7 @@ struct RPassInfoData
     std::optional<RPassDependency> dependency;
 };
 
+/// @brief Base render pass object.
 struct RPassObj
 {
     uint64_t rid;
@@ -115,11 +99,6 @@ struct RPassObj
     uint32_t colorAttachmentCount;
     RSampleCountBit samples;
     bool hasDepthStencilAttachment;
-
-    struct
-    {
-        VkRenderPass handle;
-    } vk;
 };
 
 // NOTE: Framebuffer is managed internally by the render backend,
@@ -147,21 +126,10 @@ struct RFramebufferObj
     uint32_t width;
     uint32_t height;
     RPassObj* passObj;
-
-    struct
-    {
-        VkFramebuffer handle;
-    } vk;
 };
 
-struct RPipelineLayoutObj;
-
-struct RCommandListObj
+struct RCommandListAPI
 {
-    uint64_t rid;
-    RDeviceObj* deviceObj;
-    RPassInfoData currentPass;
-
     void (*begin)(RCommandListObj* self, bool oneTimeSubmit);
     void (*end)(RCommandListObj* self);
     void (*cmd_begin_pass)(RCommandListObj* self, const RPassBeginInfo& passBI);
@@ -183,101 +151,88 @@ struct RCommandListObj
     void (*cmd_copy_buffer_to_image)(RCommandListObj* self, RBuffer srcBuffer, RImage dstImage, RImageLayout dstImageLayout, uint32_t regionCount, const RBufferImageCopy* regions);
     void (*cmd_copy_image_to_buffer)(RCommandListObj* self, RImage srcImage, RImageLayout srcImageLayout, RBuffer dstBuffer, uint32_t regionCount, const RBufferImageCopy* regions);
     void (*cmd_blit_image)(RCommandListObj* self, RImage srcImage, RImageLayout srcImageLayout, RImage dstImage, RImageLayout dstImageLayout, uint32_t regionCount, const RImageBlit* regions, RFilter filter);
-
-    void init_vk_api();
-
-    RCommandPoolObj* poolObj; /// the command pool allocated from
-
-    struct
-    {
-        VkDevice device;
-        VkCommandBuffer handle;
-    } vk;
 };
 
+/// @brief Base command list object.
+struct RCommandListObj
+{
+    const RCommandListAPI* api;
+    uint64_t rid;
+    RDeviceObj* deviceObj;
+    RCommandPoolObj* poolObj; /// the command pool allocated from
+    RPassInfoData currentPass;
+};
+
+struct RCommandPoolAPI
+{
+    RCommandList (*allocate)(RCommandPoolObj* self, RCommandListObj* listObj);
+    void (*reset)(RCommandPoolObj* self);
+};
+
+/// @brief Base command pool object.
 struct RCommandPoolObj
 {
+    const RCommandPoolAPI* api;
     uint64_t rid;
     std::vector<RCommandList> lists;
     RDeviceObj* deviceObj;
-
-    RCommandList (*allocate)(RCommandPoolObj* self, RCommandListObj* listObj);
-    void (*reset)(RCommandPoolObj* self);
-
-    void init_vk_api();
-
-    struct
-    {
-        VkDevice device;
-        VkCommandPool handle;
-    } vk;
 };
 
+/// @brief Base shader object.
 struct RShaderObj
 {
     uint64_t rid;
     RShaderType type;
-
-    struct
-    {
-        VkShaderModule handle;
-    } vk;
 };
 
+/// @brief Base set layout object.
 struct RSetLayoutObj
 {
     uint64_t rid;
     uint32_t hash;
     RDeviceObj* deviceObj;
-
-    struct
-    {
-        VkDescriptorSetLayout handle;
-    } vk;
 };
 
+/// @brief Base set object.
 struct RSetObj
 {
-    struct
-    {
-        VkDescriptorSet handle;
-    } vk;
+    uint64_t rid; // TODO: unused
 };
 
+struct RSetPoolAPI
+{
+    RSet (*allocate)(RSetPoolObj* self, RSetObj* setObj);
+    void (*reset)(RSetPoolObj* self);
+};
+
+/// @brief Base set pool object.
 struct RSetPoolObj
 {
+    const RSetPoolAPI* api;
     uint64_t rid;
     LinearAllocator setLA;
     RDeviceObj* deviceObj;
     RSetLayoutObj* layoutObj;
-
-    RSet (*allocate)(RSetPoolObj* self, RSetObj* setObj);
-    void (*reset)(RSetPoolObj* self);
-
-    void init_vk_api();
-
-    struct
-    {
-        VkDevice device;
-        VkDescriptorPool handle;
-    } vk;
 };
 
+/// @brief Base pipeline layout object.
 struct RPipelineLayoutObj
 {
     uint64_t rid;
     uint32_t hash;
     uint32_t setCount;
     RSetLayoutObj* setLayoutObjs[PIPELINE_LAYOUT_MAX_RESOURCE_SETS];
-
-    struct
-    {
-        VkPipelineLayout handle;
-    } vk;
 };
 
+struct RPipelineAPI
+{
+    void (*create_variant)(RPipelineObj* self);
+};
+
+/// @brief Base pipeline object.
 struct RPipelineObj
 {
+    const RPipelineAPI* api;
     uint64_t rid;
     RDeviceObj* deviceObj;
     RPipelineLayoutObj* layoutObj;
@@ -288,117 +243,110 @@ struct RPipelineObj
         RPassObj* passObj;
         std::vector<RColorComponentFlags> colorWriteMasks;
     } variant;
-
-    void (*create_variant)(RPipelineObj* self);
-
-    void init_vk_api();
-
-    struct
-    {
-        std::vector<VkPipelineShaderStageCreateInfo> shaderStageCI;
-        std::vector<VkVertexInputAttributeDescription> attributeD;
-        std::vector<VkVertexInputBindingDescription> bindingD;
-        std::vector<VkPipelineColorBlendAttachmentState> blendStates;
-        std::unordered_map<uint32_t, VkPipeline> handles;
-        VkPipelineViewportStateCreateInfo viewportSCI;
-        VkPipelineVertexInputStateCreateInfo vertexInputSCI;
-        VkPipelineInputAssemblyStateCreateInfo inputAsmSCI;
-        VkPipelineTessellationStateCreateInfo tessellationSCI;
-        VkPipelineRasterizationStateCreateInfo rasterizationSCI;
-        VkPipelineDepthStencilStateCreateInfo depthStencilSCI;
-        VkPipelineColorBlendStateCreateInfo colorBlendSCI;
-        uint32_t variantHash;
-    } vk;
 };
 
-struct RQueueObj
+struct RQueueAPI
 {
     void (*wait_idle)(RQueueObj* self);
     void (*submit)(RQueueObj* self, const RSubmitInfo& submitI, RFence fence);
-
-    void init_vk_api();
-
-    struct
-    {
-        uint32_t familyIdx;
-        VkQueue handle;
-    } vk;
 };
 
+/// @brief Base queue object.
+struct RQueueObj
+{
+    const RQueueAPI* api;
+};
+
+/// @brief Base semaphore object.
 struct RSemaphoreObj
 {
     uint64_t rid;
-
-    struct
-    {
-        VkSemaphore handle;
-    } vk;
 };
 
+/// @brief Base fence object.
 struct RFenceObj
 {
     uint64_t rid;
-
-    struct
-    {
-        VkFence handle;
-    } vk;
 };
 
-struct RDeviceObj
+struct RDeviceAPI
 {
-    uint64_t rid;
-    uint32_t frameIndex;
-    RDeviceBackend backend;
-    GLFWwindow* glfw;
-    bool isHeadless;
+    size_t (*get_obj_size)(RType type);
 
+    void (*semaphore_ctor)(RSemaphoreObj* semaphoreObj);
+    void (*semaphore_dtor)(RSemaphoreObj* semaphoreObj);
     RSemaphore (*create_semaphore)(RDeviceObj* self, RSemaphoreObj* semaphoreObj);
     void (*destroy_semaphore)(RDeviceObj* self, RSemaphore semaphore);
 
+    void (*fence_ctor)(RFenceObj* fenceObj);
+    void (*fence_dtor)(RFenceObj* fenceObj);
     RFence (*create_fence)(RDeviceObj* self, bool createSignaled, RFenceObj* fenceObj);
     void (*destroy_fence)(RDeviceObj* self, RFence fence);
 
+    void (*buffer_ctor)(RBufferObj* bufferObj);
+    void (*buffer_dtor)(RBufferObj* bufferObj);
     RBuffer (*create_buffer)(RDeviceObj* self, const RBufferInfo& bufferI, RBufferObj* bufferObj);
     void (*destroy_buffer)(RDeviceObj* self, RBuffer buffer);
 
+    void (*image_ctor)(RImageObj* imageObj);
+    void (*image_dtor)(RImageObj* imageObj);
     RImage (*create_image)(RDeviceObj* self, const RImageInfo& imageI, RImageObj* imageObj);
     void (*destroy_image)(RDeviceObj* self, RImage image);
 
+    void (*pass_ctor)(RPassObj* passObj);
+    void (*pass_dtor)(RPassObj* passObj);
     void (*create_pass)(RDeviceObj* self, const RPassInfo& passI, RPassObj* passObj);
     void (*destroy_pass)(RDeviceObj* self, RPassObj* passObj);
 
+    void (*framebuffer_ctor)(RFramebufferObj* framebufferObj);
+    void (*framebuffer_dtor)(RFramebufferObj* framebufferObj);
     void (*create_framebuffer)(RDeviceObj* self, const RFramebufferInfo& fbI, RFramebufferObj* framebufferObj);
     void (*destroy_framebuffer)(RDeviceObj* self, RFramebufferObj* framebufferObj);
 
+    void (*command_pool_ctor)(RCommandPoolObj* commandPoolObj);
+    void (*command_pool_dtor)(RCommandPoolObj* commandPoolObj);
     RCommandPool (*create_command_pool)(RDeviceObj* self, const RCommandPoolInfo& poolI, RCommandPoolObj* poolObj);
     void (*destroy_command_pool)(RDeviceObj* self, RCommandPool pool);
 
+    void (*command_list_ctor)(RCommandListObj* commandListObj);
+    void (*command_list_dtor)(RCommandListObj* commandListObj);
+
+    void (*shader_ctor)(RShaderObj* shaderObj);
+    void (*shader_dtor)(RShaderObj* shaderObj);
     RShader (*create_shader)(RDeviceObj* self, const RShaderInfo& shaderI, RShaderObj* shaderObj);
     void (*destroy_shader)(RDeviceObj* self, RShader shader);
 
+    void (*set_pool_ctor)(RSetPoolObj* setPoolObj);
+    void (*set_pool_dtor)(RSetPoolObj* setPoolObj);
     RSetPool (*create_set_pool)(RDeviceObj* self, const RSetPoolInfo& poolI, RSetPoolObj* poolObj);
     void (*destroy_set_pool)(RDeviceObj* self, RSetPool pool);
 
+    void (*set_layout_ctor)(RSetLayoutObj* setLayoutObj);
+    void (*set_layout_dtor)(RSetLayoutObj* setLayoutObj);
     void (*create_set_layout)(RDeviceObj* self, const RSetLayoutInfo& layoutI, RSetLayoutObj* layoutObj);
     void (*destroy_set_layout)(RDeviceObj* self, RSetLayoutObj* layout);
 
+    void (*pipeline_layout_ctor)(RPipelineLayoutObj* layoutObj);
+    void (*pipeline_layout_dtor)(RPipelineLayoutObj* layoutObj);
     void (*create_pipeline_layout)(RDeviceObj* self, const RPipelineLayoutInfo& layoutI, RPipelineLayoutObj* layoutObj);
     void (*destroy_pipeline_layout)(RDeviceObj* self, RPipelineLayoutObj* layoutObj);
 
+    void (*pipeline_ctor)(RPipelineObj* pipelineObj);
+    void (*pipeline_dtor)(RPipelineObj* pipelineObj);
     RPipeline (*create_pipeline)(RDeviceObj* self, const RPipelineInfo& pipelineI, RPipelineObj* pipelineObj);
     RPipeline (*create_compute_pipeline)(RDeviceObj* self, const RComputePipelineInfo& pipelineI, RPipelineObj* pipelineObj);
     void (*destroy_pipeline)(RDeviceObj* self, RPipeline pipeline);
+
     void (*pipeline_variant_pass)(RDeviceObj* self, RPipelineObj* pipelineObj, const RPassInfo& passI);
     void (*pipeline_variant_color_write_mask)(RDeviceObj* self, RPipelineObj* pipelineObj, uint32_t index, RColorComponentFlags mask);
     void (*pipeline_variant_depth_test_enable)(RDeviceObj* self, RPipelineObj* pipelineObj, bool enable);
 
     void (*update_set_images)(RDeviceObj* self, uint32_t updateCount, const RSetImageUpdateInfo* updates);
-
     void (*update_set_buffers)(RDeviceObj* self, uint32_t updateCount, const RSetBufferUpdateInfo* updates);
 
     uint32_t (*next_frame)(RDeviceObj* self, RSemaphore& imageAcquired, RSemaphore& presentReady, RFence& frameComplete);
     void (*present_frame)(RDeviceObj* self);
+
     void (*get_depth_stencil_formats)(RDeviceObj* self, RFormat* format, uint32_t& count);
     RSampleCountBit (*get_max_sample_count)(RDeviceObj* self);
     RFormat (*get_swapchain_color_format)(RDeviceObj* self);
@@ -408,34 +356,27 @@ struct RDeviceObj
     uint32_t (*get_frames_in_flight_count)(RDeviceObj* self);
     RQueue (*get_graphics_queue)(RDeviceObj* self);
     void (*wait_idle)(RDeviceObj* self);
+};
 
-    void init_vk_api();
+/// @brief Base render device object.
+struct RDeviceObj
+{
+    const RDeviceAPI* api;
+    uint64_t rid;
+    uint32_t frameIndex;
+    RDeviceBackend backend;
+    GLFWwindow* glfw;
+    bool isHeadless;
 
     RPassObj* get_or_create_pass_obj(const RPassInfo& passI);
     RSetLayoutObj* get_or_create_set_layout_obj(const RSetLayoutInfo& layoutI);
     RPipelineLayoutObj* get_or_create_pipeline_layout_obj(const RPipelineLayoutInfo& layoutI);
     RFramebufferObj* get_or_create_framebuffer_obj(const RFramebufferInfo& framebufferI);
-
-    struct
-    {
-        VmaAllocator vma;
-        VkInstance instance;
-        VkSurfaceKHR surface;
-        PhysicalDevice pdevice;
-        Swapchain swapchain;
-        VkDevice device;
-        uint32_t imageIdx;
-        uint32_t familyIdxGraphics;
-        uint32_t familyIdxTransfer;
-        uint32_t familyIdxCompute;
-        uint32_t familyIdxPresent;
-        RQueue queueGraphics;
-        RQueue queueTransfer;
-        RQueue queueCompute;
-        RQueue queuePresent;
-    } vk;
 };
 
+size_t vk_device_byte_size();
+void vk_device_ctor(RDeviceObj* obj);
+void vk_device_dtor(RDeviceObj* obj);
 void vk_create_device(struct RDeviceObj* obj, const RDeviceInfo& info);
 void vk_destroy_device(struct RDeviceObj* obj);
 

@@ -17,6 +17,10 @@
 #define VMA_VULKAN_VERSION 1003000
 #define VMA_IMPLEMENTATION
 #include <vk_mem_alloc.h> // hide from user
+#include <vulkan/vulkan.hpp>
+
+// RBackendVK.cpp
+// - Vulkan 1.3 backend implementation
 
 #define VK_CHECK(CALL)                                                    \
     do                                                                    \
@@ -39,18 +43,41 @@
 
 namespace LD {
 
-static Log sLog("RBackend");
+static Log sLog("RBackendVK");
 
-// @brief Vulkan frame boundary
-struct VulkanFrame
+/// @brief Vulkan physical device properties
+struct PhysicalDevice
 {
-    RFence frameComplete;
-    RSemaphore imageAcquired;
-    RSemaphore presentReady;
-    RFenceObj frameCompleteObj;
-    RSemaphoreObj imageAcquiredObj;
-    RSemaphoreObj presentReadyObj;
-} sVulkanFrames[FRAMES_IN_FLIGHT];
+    VkPhysicalDevice handle = VK_NULL_HANDLE;
+    VkPhysicalDeviceProperties deviceProps;
+    VkPhysicalDeviceFeatures deviceFeatures;
+    VkSurfaceCapabilitiesKHR surfaceCaps;
+    VkSampleCountFlags msaaCount;
+    std::vector<VkSurfaceFormatKHR> surfaceFormats;
+    std::vector<VkFormat> depthStencilFormats; /// formats with VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT
+    std::vector<VkQueueFamilyProperties> familyProps;
+    std::vector<VkPresentModeKHR> presentModes;
+};
+
+/// @brief information to create a Vulkan Swapchain
+struct SwapchainInfo
+{
+    VkFormat imageFormat;
+    VkPresentModeKHR presentMode;
+    VkColorSpaceKHR imageColorSpace;
+    bool vsyncHint;
+};
+
+/// @brief Vulkan Swapchain
+struct Swapchain
+{
+    VkSwapchainKHR handle;
+    SwapchainInfo info;
+    std::vector<VkImage> images; // external resource owned by VkSwapchainKHR
+    std::vector<RImage> colorAttachments;
+    uint32_t width;
+    uint32_t height;
+};
 
 /// @brief Vulkan extension function pointers
 struct VulkanExtensions
@@ -125,36 +152,78 @@ VKAPI_ATTR VkBool32 VulkanDebugMessenger::callback(VkDebugUtilsMessageSeverityFl
 
 VulkanDebugMessenger* sDebugMessenger = nullptr;
 
+static size_t vk_device_get_obj_size(RType objType);
+
+static void vk_device_semaphore_ctor(RSemaphoreObj* obj);
+static void vk_device_semaphore_dtor(RSemaphoreObj* obj);
 static RSemaphore vk_device_create_semaphore(RDeviceObj* self, RSemaphoreObj* obj);
 static void vk_device_destroy_semaphore(RDeviceObj* self, RSemaphore semaphore);
+
+static void vk_device_fence_ctor(RFenceObj* baseObj);
+static void vk_device_fence_dtor(RFenceObj* baseObj);
 static RFence vk_device_create_fence(RDeviceObj* self, bool createSignaled, RFenceObj* obj);
 static void vk_device_destroy_fence(RDeviceObj* self, RFence fence);
+
+static void vk_device_buffer_ctor(RBufferObj* baseObj);
+static void vk_device_buffer_dtor(RBufferObj* baseObj);
 static RBuffer vk_device_create_buffer(RDeviceObj* self, const RBufferInfo& bufferI, RBufferObj* obj);
 static void vk_device_destroy_buffer(RDeviceObj* self, RBuffer buffer);
+
+static void vk_device_image_ctor(RImageObj* baseObj);
+static void vk_device_image_dtor(RImageObj* baseObj);
 static RImage vk_device_create_image(RDeviceObj* self, const RImageInfo& imageI, RImageObj* obj);
 static void vk_device_destroy_image(RDeviceObj* self, RImage image);
+
+static void vk_device_pass_ctor(RPassObj* baseObj);
+static void vk_device_pass_dtor(RPassObj* baseObj);
 static void vk_device_create_pass(RDeviceObj* self, const RPassInfo& passI, RPassObj* obj);
 static void vk_device_destroy_pass(RDeviceObj* self, RPassObj* obj);
+
+static void vk_device_framebuffer_ctor(RFramebufferObj* baseObj);
+static void vk_device_framebuffer_dtor(RFramebufferObj* baseObj);
 static void vk_device_create_framebuffer(RDeviceObj* self, const RFramebufferInfo& fbI, RFramebufferObj* obj);
 static void vk_device_destroy_framebuffer(RDeviceObj* self, RFramebufferObj* obj);
+
+static void vk_device_command_pool_ctor(RCommandPoolObj* baseObj);
+static void vk_device_command_pool_dtor(RCommandPoolObj* baseObj);
 static RCommandPool vk_device_create_command_pool(RDeviceObj* self, const RCommandPoolInfo& poolI, RCommandPoolObj* obj);
 static void vk_device_destroy_command_pool(RDeviceObj* self, RCommandPool pool);
+
+static void vk_device_command_list_ctor(RCommandListObj* baseObj);
+static void vk_device_command_list_dtor(RCommandListObj* baseObj);
+
+static void vk_device_shader_ctor(RShaderObj* baseObj);
+static void vk_device_shader_dtor(RShaderObj* baseObj);
 static RShader vk_device_create_shader(RDeviceObj* self, const RShaderInfo& shaderI, RShaderObj* obj);
 static void vk_device_destroy_shader(RDeviceObj* self, RShader shader);
+
+static void vk_device_set_pool_ctor(RSetPoolObj* baseObj);
+static void vk_device_set_pool_dtor(RSetPoolObj* baseObj);
 static RSetPool vk_device_create_set_pool(RDeviceObj* self, const RSetPoolInfo& poolI, RSetPoolObj* obj);
 static void vk_device_destroy_set_pool(RDeviceObj* self, RSetPool pool);
+
+static void vk_device_set_layout_ctor(RSetLayoutObj* baseObj);
+static void vk_device_set_layout_dtor(RSetLayoutObj* baseObj);
 static void vk_device_create_set_layout(RDeviceObj* self, const RSetLayoutInfo& layoutI, RSetLayoutObj* obj);
 static void vk_device_destroy_set_layout(RDeviceObj* self, RSetLayoutObj* layoutObj);
+
+static void vk_device_pipeline_layout_ctor(RPipelineLayoutObj* baseObj);
+static void vk_device_pipeline_layout_dtor(RPipelineLayoutObj* baseObj);
 static void vk_device_create_pipeline_layout(RDeviceObj* self, const RPipelineLayoutInfo& layoutI, RPipelineLayoutObj* obj);
 static void vk_device_destroy_pipeline_layout(RDeviceObj* self, RPipelineLayoutObj* layoutObj);
+
+static void vk_device_pipeline_ctor(RPipelineObj* baseObj);
+static void vk_device_pipeline_dtor(RPipelineObj* baseObj);
 static RPipeline vk_device_create_pipeline(RDeviceObj* self, const RPipelineInfo& pipelineI, RPipelineObj* obj);
 static RPipeline vk_device_create_compute_pipeline(RDeviceObj* self, const RComputePipelineInfo& pipelineI, RPipelineObj* pipelineObj);
 static void vk_device_destroy_pipeline(RDeviceObj* self, RPipeline pipeline);
 static void vk_device_pipeline_variant_pass(RDeviceObj* self, RPipelineObj* pipelineObj, const RPassInfo& passI);
 static void vk_device_pipeline_variant_color_write_mask(RDeviceObj* self, RPipelineObj* pipelineObj, uint32_t index, RColorComponentFlags mask);
 static void vk_device_pipeline_variant_depth_test_enable(RDeviceObj* self, RPipelineObj* pipelineObj, bool enable);
+
 static void vk_device_update_set_images(RDeviceObj* self, uint32_t updateCount, const RSetImageUpdateInfo* updates);
 static void vk_device_update_set_buffers(RDeviceObj* self, uint32_t updateCount, const RSetBufferUpdateInfo* updates);
+
 static uint32_t vk_device_next_frame(RDeviceObj* self, RSemaphore& imageAcquired, RSemaphore& presentReady, RFence& frameComplete);
 static void vk_device_present_frame(RDeviceObj* self);
 static void vk_device_get_depth_stencil_formats(RDeviceObj* self, RFormat* formats, uint32_t& count);
@@ -167,11 +236,163 @@ static uint32_t vk_device_get_frames_in_flight_count(RDeviceObj* self);
 static RQueue vk_device_get_graphics_queue(RDeviceObj* self);
 static void vk_device_wait_idle(RDeviceObj* self);
 
+static constexpr RDeviceAPI sRDeviceVKAPI = {
+    .get_obj_size = &vk_device_get_obj_size,
+    .semaphore_ctor = &vk_device_semaphore_ctor,
+    .semaphore_dtor = &vk_device_semaphore_dtor,
+    .create_semaphore = &vk_device_create_semaphore,
+    .destroy_semaphore = &vk_device_destroy_semaphore,
+    .fence_ctor = &vk_device_fence_ctor,
+    .fence_dtor = &vk_device_fence_dtor,
+    .create_fence = &vk_device_create_fence,
+    .destroy_fence = &vk_device_destroy_fence,
+    .buffer_ctor = &vk_device_buffer_ctor,
+    .buffer_dtor = &vk_device_buffer_dtor,
+    .create_buffer = &vk_device_create_buffer,
+    .destroy_buffer = &vk_device_destroy_buffer,
+    .image_ctor = &vk_device_image_ctor,
+    .image_dtor = &vk_device_image_dtor,
+    .create_image = &vk_device_create_image,
+    .destroy_image = &vk_device_destroy_image,
+    .pass_ctor = &vk_device_pass_ctor,
+    .pass_dtor = &vk_device_pass_dtor,
+    .create_pass = &vk_device_create_pass,
+    .destroy_pass = &vk_device_destroy_pass,
+    .framebuffer_ctor = &vk_device_framebuffer_ctor,
+    .framebuffer_dtor = &vk_device_framebuffer_dtor,
+    .create_framebuffer = &vk_device_create_framebuffer,
+    .destroy_framebuffer = &vk_device_destroy_framebuffer,
+    .command_pool_ctor = &vk_device_command_pool_ctor,
+    .command_pool_dtor = &vk_device_command_pool_dtor,
+    .create_command_pool = &vk_device_create_command_pool,
+    .destroy_command_pool = &vk_device_destroy_command_pool,
+    .command_list_ctor = &vk_device_command_list_ctor,
+    .command_list_dtor = &vk_device_command_list_dtor,
+    .shader_ctor = &vk_device_shader_ctor,
+    .shader_dtor = &vk_device_shader_dtor,
+    .create_shader = &vk_device_create_shader,
+    .destroy_shader = &vk_device_destroy_shader,
+    .set_pool_ctor = &vk_device_set_pool_ctor,
+    .set_pool_dtor = &vk_device_set_pool_dtor,
+    .create_set_pool = &vk_device_create_set_pool,
+    .destroy_set_pool = &vk_device_destroy_set_pool,
+    .set_layout_ctor = &vk_device_set_layout_ctor,
+    .set_layout_dtor = &vk_device_set_layout_dtor,
+    .create_set_layout = &vk_device_create_set_layout,
+    .destroy_set_layout = &vk_device_destroy_set_layout,
+    .pipeline_layout_ctor = &vk_device_pipeline_layout_ctor,
+    .pipeline_layout_dtor = &vk_device_pipeline_layout_dtor,
+    .create_pipeline_layout = &vk_device_create_pipeline_layout,
+    .destroy_pipeline_layout = &vk_device_destroy_pipeline_layout,
+    .pipeline_ctor = &vk_device_pipeline_ctor,
+    .pipeline_dtor = &vk_device_pipeline_dtor,
+    .create_pipeline = &vk_device_create_pipeline,
+    .create_compute_pipeline = &vk_device_create_compute_pipeline,
+    .destroy_pipeline = &vk_device_destroy_pipeline,
+    .pipeline_variant_pass = &vk_device_pipeline_variant_pass,
+    .pipeline_variant_color_write_mask = &vk_device_pipeline_variant_color_write_mask,
+    .pipeline_variant_depth_test_enable = &vk_device_pipeline_variant_depth_test_enable,
+    .update_set_images = &vk_device_update_set_images,
+    .update_set_buffers = &vk_device_update_set_buffers,
+    .next_frame = &vk_device_next_frame,
+    .present_frame = &vk_device_present_frame,
+    .get_depth_stencil_formats = &vk_device_get_depth_stencil_formats,
+    .get_max_sample_count = &vk_device_get_max_sample_count,
+    .get_swapchain_color_format = &vk_device_get_swapchain_color_format,
+    .get_swapchain_color_attachment = &vk_device_get_swapchain_color_attachment,
+    .get_swapchain_image_count = &vk_device_get_swapchain_image_count,
+    .get_swapchain_extent = &vk_device_get_swapchain_extent,
+    .get_frames_in_flight_count = &vk_device_get_frames_in_flight_count,
+    .get_graphics_queue = &vk_device_get_graphics_queue,
+    .wait_idle = &vk_device_wait_idle,
+};
+
+/// @brief Vulkan device object.
+struct RDeviceVKObj : RDeviceObj
+{
+    RDeviceVKObj()
+    {
+        api = &sRDeviceVKAPI;
+        backend = RDEVICE_BACKEND_VULKAN;
+    }
+
+    struct VK
+    {
+        VmaAllocator vma;
+        VkInstance instance;
+        VkSurfaceKHR surface;
+        PhysicalDevice pdevice;
+        Swapchain swapchain;
+        VkDevice device;
+        uint32_t imageIdx;
+        uint32_t familyIdxGraphics;
+        uint32_t familyIdxTransfer;
+        uint32_t familyIdxCompute;
+        uint32_t familyIdxPresent;
+        RQueue queueGraphics;
+        RQueue queueTransfer;
+        RQueue queueCompute;
+        RQueue queuePresent;
+    } vk;
+};
+
 static void vk_buffer_map(RBufferObj* self);
+static void* vk_buffer_map_read(RBufferObj* baseSelf, uint64_t offset, uint64_t size);
 static void vk_buffer_map_write(RBufferObj* self, uint64_t offset, uint64_t size, const void* data);
 static void vk_buffer_unmap(RBufferObj* self);
 
-static void vk_command_list_free(RCommandListObj* self);
+static constexpr RBufferAPI sRBufferVKAPI = {
+    .map = &vk_buffer_map,
+    .map_read = &vk_buffer_map_read,
+    .map_write = &vk_buffer_map_write,
+    .unmap = &vk_buffer_unmap,
+};
+
+/// @brief Vulkan buffer object.
+struct RBufferVKObj : RBufferObj
+{
+    RBufferVKObj()
+    {
+        api = &sRBufferVKAPI;
+    }
+
+    struct VK
+    {
+        VmaAllocation vma;
+        VkBuffer handle;
+    } vk;
+};
+
+/// @brief Vulkan image object.
+struct RImageVKObj : RImageObj
+{
+    struct VK
+    {
+        VmaAllocation vma;
+        VkImage handle;
+        VkImageView viewHandle;
+        VkSampler samplerHandle;
+    } vk;
+};
+
+/// @brief Vulkan render pass object.
+struct RPassVKObj : RPassObj
+{
+    struct
+    {
+        VkRenderPass handle;
+    } vk;
+};
+
+/// @brief Vulkan framebuffer object.
+struct RFramebufferVKObj : RFramebufferObj
+{
+    struct
+    {
+        VkFramebuffer handle;
+    } vk;
+};
+
 static void vk_command_list_begin(RCommandListObj* self, bool oneTimeSubmit);
 static void vk_command_list_end(RCommandListObj* self);
 static void vk_command_list_cmd_begin_pass(RCommandListObj* self, const RPassBeginInfo& passBI);
@@ -194,41 +415,277 @@ static void vk_command_list_cmd_copy_buffer_to_image(RCommandListObj* self, RBuf
 static void vk_command_list_cmd_copy_image_to_buffer(RCommandListObj* self, RImage srcImage, RImageLayout srcImageLayout, RBuffer dstBuffer, uint32_t regionCount, const RBufferImageCopy* regions);
 static void vk_command_list_cmd_blit_image(RCommandListObj* self, RImage srcImage, RImageLayout srcImageLayout, RImage dstImage, RImageLayout dstImageLayout, uint32_t regionCount, const RImageBlit* regions, RFilter filter);
 
-static void vk_pipeline_create_variant(RPipelineObj* self);
+static const RCommandListAPI sRCommandListVKAPI = {
+    .begin = &vk_command_list_begin,
+    .end = &vk_command_list_end,
+    .cmd_begin_pass = &vk_command_list_cmd_begin_pass,
+    .cmd_push_constant = &vk_command_list_cmd_push_constant,
+    .cmd_bind_graphics_pipeline = &vk_command_list_cmd_bind_graphics_pipeline,
+    .cmd_bind_graphics_sets = &vk_command_list_cmd_bind_graphics_sets,
+    .cmd_bind_compute_pipeline = &vk_command_list_cmd_bind_compute_pipeline,
+    .cmd_bind_compute_sets = &vk_command_list_cmd_bind_compute_sets,
+    .cmd_bind_vertex_buffers = &vk_command_list_cmd_bind_vertex_buffers,
+    .cmd_bind_index_buffer = &vk_command_list_cmd_bind_index_buffer,
+    .cmd_dispatch = &vk_command_list_cmd_dispatch,
+    .cmd_set_scissor = &vk_command_list_cmd_set_scissor,
+    .cmd_draw = &vk_command_list_cmd_draw,
+    .cmd_draw_indexed = &vk_command_list_cmd_draw_indexed,
+    .cmd_end_pass = &vk_command_list_cmd_end_pass,
+    .cmd_buffer_memory_barrier = &vk_command_list_cmd_buffer_memory_barrier,
+    .cmd_image_memory_barrier = &vk_command_list_cmd_image_memory_barrier,
+    .cmd_copy_buffer = &vk_command_list_cmd_copy_buffer,
+    .cmd_copy_buffer_to_image = &vk_command_list_cmd_copy_buffer_to_image,
+    .cmd_copy_image_to_buffer = &vk_command_list_cmd_copy_image_to_buffer,
+    .cmd_blit_image = &vk_command_list_cmd_blit_image,
+};
+
+/// @brief Vulkan command list object.
+struct RCommandListVKObj : RCommandListObj
+{
+    RCommandListVKObj()
+    {
+        api = &sRCommandListVKAPI;
+    }
+
+    struct
+    {
+        VkDevice device;
+        VkCommandBuffer handle;
+    } vk;
+};
 
 static RCommandList vk_command_pool_allocate(RCommandPoolObj* self, RCommandListObj* listObj);
 static void vk_command_pool_reset(RCommandPoolObj* self);
 
+static const RCommandPoolAPI sRCommandPoolVKAPI = {
+    .allocate = &vk_command_pool_allocate,
+    .reset = &vk_command_pool_reset,
+};
+
+/// @brief Vulkan command pool object.
+struct RCommandPoolVKObj : RCommandPoolObj
+{
+    RCommandPoolVKObj()
+    {
+        api = &sRCommandPoolVKAPI;
+    }
+
+    struct
+    {
+        VkDevice device;
+        VkCommandPool handle;
+    } vk;
+};
+
+/// @brief Vulkan shader object.
+struct RShaderVKObj : RShaderObj
+{
+    struct
+    {
+        VkShaderModule handle;
+    } vk;
+};
+
+/// @brief Vulkan set layout object.
+struct RSetLayoutVKObj : RSetLayoutObj
+{
+    struct
+    {
+        VkDescriptorSetLayout handle;
+    } vk;
+};
+
+/// @brief Vulkan set object.
+struct RSetVKObj : RSetObj
+{
+    struct
+    {
+        VkDescriptorSet handle;
+    } vk;
+};
+
 static RSet vk_set_pool_allocate(RSetPoolObj* self, RSetObj* setObj);
 static void vk_set_pool_reset(RSetPoolObj* self);
+
+static const RSetPoolAPI sRSetPoolVKAPI = {
+    .allocate = &vk_set_pool_allocate,
+    .reset = &vk_set_pool_reset,
+};
+
+/// @brief Vulkan set pool object.
+struct RSetPoolVKObj : RSetPoolObj
+{
+    RSetPoolVKObj()
+    {
+        api = &sRSetPoolVKAPI;
+    }
+
+    struct
+    {
+        VkDevice device;
+        VkDescriptorPool handle;
+    } vk;
+};
+
+/// @brief Vulkan pipeline layout object.
+struct RPipelineLayoutVKObj : RPipelineLayoutObj
+{
+    struct
+    {
+        VkPipelineLayout handle;
+    } vk;
+};
+
+static void vk_pipeline_create_variant(RPipelineObj* self);
+
+static const RPipelineAPI sPipelineVKAPI = {
+    .create_variant = &vk_pipeline_create_variant,
+};
+
+/// @brief Vulkan pipeline object.
+struct RPipelineVKObj : RPipelineObj
+{
+    RPipelineVKObj()
+    {
+        api = &sPipelineVKAPI;
+    }
+
+    struct
+    {
+        std::vector<VkPipelineShaderStageCreateInfo> shaderStageCI;
+        std::vector<VkVertexInputAttributeDescription> attributeD;
+        std::vector<VkVertexInputBindingDescription> bindingD;
+        std::vector<VkPipelineColorBlendAttachmentState> blendStates;
+        std::unordered_map<uint32_t, VkPipeline> handles;
+        VkPipelineViewportStateCreateInfo viewportSCI;
+        VkPipelineVertexInputStateCreateInfo vertexInputSCI;
+        VkPipelineInputAssemblyStateCreateInfo inputAsmSCI;
+        VkPipelineTessellationStateCreateInfo tessellationSCI;
+        VkPipelineRasterizationStateCreateInfo rasterizationSCI;
+        VkPipelineDepthStencilStateCreateInfo depthStencilSCI;
+        VkPipelineColorBlendStateCreateInfo colorBlendSCI;
+        uint32_t variantHash;
+    } vk;
+};
 
 static void vk_queue_wait_idle(RQueueObj* self);
 static void vk_queue_submit(RQueueObj* self, const RSubmitInfo& submitI, RFence fence);
 
-static VkResult acquire_next_image(RDeviceObj* obj, VkSemaphore imageAcquiredSemaphore);
-static void choose_physical_device(RDeviceObj* obj);
-static void configure_swapchain(RDeviceObj* obj, SwapchainInfo* swapchainI);
-static void create_swapchain(RDeviceObj* obj, const SwapchainInfo& swapchainI);
-static RImage create_swapchain_color_attachment(RDeviceObj* deviceObj, VkImage image, VkFormat colorFormat, uint32_t width, uint32_t height);
-static void destroy_swapchain(RDeviceObj* obj);
-static void destroy_swapchain_color_attachment(RDeviceObj* deviceObj, RImage attachment);
-static void invalidate_swapchain(RDeviceObj* obj);
-static void create_vma_allocator(RDeviceObj* obj);
-static void destroy_vma_allocator(RDeviceObj* obj);
+static const RQueueAPI sRQueueVKAPI = {
+    .wait_idle = &vk_queue_wait_idle,
+    .submit = &vk_queue_submit,
+};
+
+/// @brief Vulkan queue object.
+struct RQueueVKObj : RQueueObj
+{
+    RQueueVKObj()
+    {
+        api = &sRQueueVKAPI;
+    }
+
+    struct
+    {
+        uint32_t familyIdx;
+        VkQueue handle;
+    } vk;
+};
+
+/// @brief Vulkan semaphore object.
+struct RSemaphoreVKObj : RSemaphoreObj
+{
+    struct
+    {
+        VkSemaphore handle;
+    } vk;
+};
+
+/// @brief Vulkan fence object.
+struct RFenceVKObj : RFenceObj
+{
+    struct
+    {
+        VkFence handle;
+    } vk;
+};
+
+// @brief Vulkan frame boundary
+struct VulkanFrame
+{
+    RFence frameComplete;
+    RSemaphore imageAcquired;
+    RSemaphore presentReady;
+    RFenceVKObj frameCompleteObj;
+    RSemaphoreVKObj imageAcquiredObj;
+    RSemaphoreVKObj presentReadyObj;
+} sVulkanFrames[FRAMES_IN_FLIGHT];
+
+static VkResult acquire_next_image(RDeviceVKObj* obj, VkSemaphore imageAcquiredSemaphore);
+static void choose_physical_device(RDeviceVKObj* obj);
+static void configure_swapchain(RDeviceVKObj* obj, SwapchainInfo* swapchainI);
+static void create_swapchain(RDeviceVKObj* obj, const SwapchainInfo& swapchainI);
+static RImage create_swapchain_color_attachment(RDeviceVKObj* deviceObj, VkImage image, VkFormat colorFormat, uint32_t width, uint32_t height);
+static void destroy_swapchain(RDeviceVKObj* obj);
+static void destroy_swapchain_color_attachment(RDeviceVKObj* deviceObj, RImage attachment);
+static void invalidate_swapchain(RDeviceVKObj* obj);
+static void create_vma_allocator(RDeviceVKObj* obj);
+static void destroy_vma_allocator(RDeviceVKObj* obj);
 static RQueue create_queue(uint32_t queueFamilyIdx, VkQueue handle);
 static void destroy_queue(RQueue queue);
 
-void vk_create_device(RDeviceObj* self, const RDeviceInfo& deviceI)
+// clang-format off
+struct RTypeVK
+{
+    RType type;
+    size_t byteSize;
+} sTypeVKTable[] = {
+    { RTYPE_DEVICE,          sizeof(RDeviceVKObj) },
+    { RTYPE_SEMAPHORE,       sizeof(RSemaphoreVKObj)},
+    { RTYPE_FENCE,           sizeof(RFenceVKObj)},
+    { RTYPE_BUFFER,          sizeof(RBufferVKObj)},
+    { RTYPE_IMAGE,           sizeof(RImageVKObj)},
+    { RTYPE_SHADER,          sizeof(RShaderVKObj)},
+    { RTYPE_SET_LAYOUT,      sizeof(RSetLayoutVKObj)},
+    { RTYPE_SET,             sizeof(RSetVKObj)},
+    { RTYPE_SET_POOL,        sizeof(RSetPoolVKObj)},
+    { RTYPE_PASS,            sizeof(RPassVKObj)},
+    { RTYPE_FRAMEBUFFER,     sizeof(RFramebufferVKObj)},
+    { RTYPE_PIPELINE_LAYOUT, sizeof(RPipelineLayoutVKObj)},
+    { RTYPE_PIPELINE,        sizeof(RPipelineVKObj)},
+    { RTYPE_COMMAND_LIST,    sizeof(RCommandListVKObj)},
+    { RTYPE_COMMAND_POOL,    sizeof(RCommandPoolVKObj)},
+    { RTYPE_QUEUE,           sizeof(RQueueVKObj)},
+};
+// clang-format on
+
+static_assert(sizeof(sTypeVKTable) / sizeof(*sTypeVKTable) == (size_t)RTYPE_ENUM_COUNT);
+
+size_t vk_device_byte_size()
+{
+    return sizeof(RDeviceVKObj);
+}
+
+void vk_device_ctor(RDeviceObj* baseObj)
+{
+    auto* obj = (RDeviceVKObj*)baseObj;
+
+    new (obj) RDeviceVKObj();
+}
+
+void vk_device_dtor(RDeviceObj* baseObj)
+{
+    auto* obj = (RDeviceVKObj*)baseObj;
+
+    obj->~RDeviceVKObj();
+}
+
+void vk_create_device(RDeviceObj* baseSelf, const RDeviceInfo& deviceI)
 {
     LD_PROFILE_SCOPE;
 
-    self->backend = RDEVICE_BACKEND_VULKAN;
+    auto* self = (RDeviceVKObj*)baseSelf;
     self->vk.surface = VK_NULL_HANDLE;
     self->glfw = deviceI.window;
-    self->init_vk_api();
-
-    new (&self->vk.pdevice) PhysicalDevice();
-    new (&self->vk.swapchain) Swapchain();
 
     // get supported instance extensions
     uint32_t extCount;
@@ -455,8 +912,9 @@ void vk_create_device(RDeviceObj* self, const RDeviceInfo& deviceI)
     }
 }
 
-void vk_destroy_device(RDeviceObj* self)
+void vk_destroy_device(RDeviceObj* baseSelf)
 {
+    auto* self = (RDeviceVKObj*)baseSelf;
     vkDeviceWaitIdle(self->vk.device);
 
     if (self->vk.surface != VK_NULL_HANDLE)
@@ -489,13 +947,32 @@ void vk_destroy_device(RDeviceObj* self)
         heap_delete<VulkanDebugMessenger>(sDebugMessenger);
 
     vkDestroyInstance(self->vk.instance, nullptr);
-
-    self->vk.swapchain.~Swapchain();
-    self->vk.pdevice.~PhysicalDevice();
 }
 
-static RSemaphore vk_device_create_semaphore(RDeviceObj* self, RSemaphoreObj* obj)
+static size_t vk_device_get_obj_size(RType objType)
 {
+    return sTypeVKTable[(int)objType].byteSize;
+}
+
+static void vk_device_semaphore_ctor(RSemaphoreObj* baseObj)
+{
+    auto* obj = (RSemaphoreVKObj*)baseObj;
+
+    new (obj) RSemaphoreVKObj();
+}
+
+static void vk_device_semaphore_dtor(RSemaphoreObj* baseObj)
+{
+    auto* obj = (RSemaphoreVKObj*)baseObj;
+
+    obj->~RSemaphoreVKObj();
+}
+
+static RSemaphore vk_device_create_semaphore(RDeviceObj* baseSelf, RSemaphoreObj* baseObj)
+{
+    auto* self = (RDeviceVKObj*)baseSelf;
+    auto* obj = (RSemaphoreVKObj*)baseObj;
+
     VkSemaphoreCreateInfo semaphoreCI{
         .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
         .flags = 0,
@@ -505,15 +982,33 @@ static RSemaphore vk_device_create_semaphore(RDeviceObj* self, RSemaphoreObj* ob
     return {obj};
 }
 
-static void vk_device_destroy_semaphore(RDeviceObj* self, RSemaphore semaphore)
+static void vk_device_destroy_semaphore(RDeviceObj* baseSelf, RSemaphore semaphore)
 {
-    RSemaphoreObj* obj = (RSemaphoreObj*)semaphore;
+    auto* self = (RDeviceVKObj*)baseSelf;
+    auto* obj = (RSemaphoreVKObj*)semaphore.unwrap();
 
     vkDestroySemaphore(self->vk.device, obj->vk.handle, nullptr);
 }
 
-static RFence vk_device_create_fence(RDeviceObj* self, bool createSignaled, RFenceObj* obj)
+static void vk_device_fence_ctor(RFenceObj* baseObj)
 {
+    auto* obj = (RFenceVKObj*)baseObj;
+
+    new (obj) RFenceVKObj();
+}
+
+static void vk_device_fence_dtor(RFenceObj* baseObj)
+{
+    auto* obj = (RFenceVKObj*)baseObj;
+
+    obj->~RFenceVKObj();
+}
+
+static RFence vk_device_create_fence(RDeviceObj* baseSelf, bool createSignaled, RFenceObj* baseObj)
+{
+    auto* self = (RDeviceVKObj*)baseSelf;
+    auto* obj = (RFenceVKObj*)baseObj;
+
     VkFenceCreateInfo fenceCI{
         .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
         .flags = createSignaled ? VK_FENCE_CREATE_SIGNALED_BIT : (VkFenceCreateFlags)0,
@@ -523,16 +1018,32 @@ static RFence vk_device_create_fence(RDeviceObj* self, bool createSignaled, RFen
     return {obj};
 }
 
-static void vk_device_destroy_fence(RDeviceObj* self, RFence fence)
+static void vk_device_destroy_fence(RDeviceObj* baseSelf, RFence fence)
 {
-    RFenceObj* obj = (RFenceObj*)fence;
+    auto* self = (RDeviceVKObj*)baseSelf;
+    auto* obj = (RFenceVKObj*)fence.unwrap();
 
     vkDestroyFence(self->vk.device, obj->vk.handle, nullptr);
 }
 
-static RBuffer vk_device_create_buffer(RDeviceObj* self, const RBufferInfo& bufferI, RBufferObj* obj)
+static void vk_device_buffer_ctor(RBufferObj* baseObj)
 {
-    obj->init_vk_api();
+    auto* obj = (RBufferVKObj*)baseObj;
+
+    new (obj) RBufferVKObj();
+}
+
+static void vk_device_buffer_dtor(RBufferObj* baseObj)
+{
+    auto* obj = (RBufferVKObj*)baseObj;
+
+    obj->~RBufferVKObj();
+}
+
+static RBuffer vk_device_create_buffer(RDeviceObj* baseSelf, const RBufferInfo& bufferI, RBufferObj* baseObj)
+{
+    auto* self = (RDeviceVKObj*)baseSelf;
+    auto* obj = (RBufferVKObj*)baseObj;
 
     VmaAllocationCreateFlags vmaFlags = 0;
     VkMemoryPropertyFlags vkProps = 0;
@@ -563,16 +1074,32 @@ static RBuffer vk_device_create_buffer(RDeviceObj* self, const RBufferInfo& buff
     return {obj};
 }
 
-static void vk_device_destroy_buffer(RDeviceObj* self, RBuffer buffer)
+static void vk_device_destroy_buffer(RDeviceObj* baseSelf, RBuffer buffer)
 {
-    RBufferObj* obj = (RBufferObj*)buffer;
+    auto* self = (RDeviceVKObj*)baseSelf;
+    auto* obj = (RBufferVKObj*)buffer.unwrap();
 
     vmaDestroyBuffer(self->vk.vma, obj->vk.handle, obj->vk.vma);
 }
 
-static RImage vk_device_create_image(RDeviceObj* self, const RImageInfo& imageI, RImageObj* obj)
+static void vk_device_image_ctor(RImageObj* baseObj)
 {
-    new (obj) RImageObj();
+    auto* obj = (RImageVKObj*)baseObj;
+
+    new (obj) RImageVKObj();
+}
+
+static void vk_device_image_dtor(RImageObj* baseObj)
+{
+    auto* obj = (RImageVKObj*)baseObj;
+
+    obj->~RImageVKObj();
+}
+
+static RImage vk_device_create_image(RDeviceObj* baseSelf, const RImageInfo& imageI, RImageObj* baseObj)
+{
+    auto* self = (RDeviceVKObj*)baseSelf;
+    auto* obj = (RImageVKObj*)baseObj;
 
     VkFormat vkFormat;
     VkImageType vkType;
@@ -661,24 +1188,40 @@ static RImage vk_device_create_image(RDeviceObj* self, const RImageInfo& imageI,
     return {obj};
 }
 
-static void vk_device_destroy_image(RDeviceObj* self, RImage image)
+static void vk_device_destroy_image(RDeviceObj* baseSelf, RImage image)
 {
-    RImageObj* obj = (RImageObj*)image;
+    auto* self = (RDeviceVKObj*)baseSelf;
+    auto* obj = (RImageVKObj*)image.unwrap();
 
     if (obj->vk.samplerHandle != VK_NULL_HANDLE)
         vkDestroySampler(self->vk.device, obj->vk.samplerHandle, nullptr);
 
     vkDestroyImageView(self->vk.device, obj->vk.viewHandle, nullptr);
     vmaDestroyImage(self->vk.vma, obj->vk.handle, obj->vk.vma);
+}
 
-    obj->~RImageObj();
+static void vk_device_pass_ctor(RPassObj* baseObj)
+{
+    auto* obj = (RPassVKObj*)baseObj;
+
+    new (obj) RPassVKObj();
+}
+
+static void vk_device_pass_dtor(RPassObj* baseObj)
+{
+    auto* obj = (RPassVKObj*)baseObj;
+
+    obj->~RPassVKObj();
 }
 
 // NOTE: the RPass is simplified to contain only a single Vulkan subpass,
 //       multiple subpasses may be useful for tiled renderers commonly
 //       found in mobile devices, but we keep the render pass API simple for now.
-static void vk_device_create_pass(RDeviceObj* self, const RPassInfo& passI, RPassObj* obj)
+static void vk_device_create_pass(RDeviceObj* baseSelf, const RPassInfo& passI, RPassObj* basePassObj)
 {
+    auto* self = (RDeviceVKObj*)baseSelf;
+    auto* obj = (RPassVKObj*)basePassObj;
+
     std::vector<VkAttachmentDescription> attachmentD(passI.colorAttachmentCount);
     std::vector<VkAttachmentReference> colorAttachmentRefs(passI.colorAttachmentCount);
     std::vector<VkAttachmentReference> colorResolveAttachmentRefs(passI.colorAttachmentCount);
@@ -755,24 +1298,44 @@ static void vk_device_create_pass(RDeviceObj* self, const RPassInfo& passI, RPas
     VK_CHECK(vkCreateRenderPass(self->vk.device, &renderPassCI, nullptr, &obj->vk.handle));
 }
 
-static void vk_device_destroy_pass(RDeviceObj* self, RPassObj* passObj)
+static void vk_device_destroy_pass(RDeviceObj* baseSelf, RPassObj* basePassObj)
 {
+    auto* self = (RDeviceVKObj*)baseSelf;
+    auto* passObj = (RPassVKObj*)basePassObj;
+
     vkDestroyRenderPass(self->vk.device, passObj->vk.handle, nullptr);
 }
 
-static void vk_device_create_framebuffer(RDeviceObj* self, const RFramebufferInfo& fbI, RFramebufferObj* obj)
+static void vk_device_framebuffer_ctor(RFramebufferObj* baseObj)
 {
+    auto* obj = (RFramebufferVKObj*)baseObj;
+
+    new (obj) RFramebufferVKObj();
+}
+
+static void vk_device_framebuffer_dtor(RFramebufferObj* baseObj)
+{
+    auto* obj = (RFramebufferVKObj*)baseObj;
+
+    obj->~RFramebufferVKObj();
+}
+
+static void vk_device_create_framebuffer(RDeviceObj* baseSelf, const RFramebufferInfo& fbI, RFramebufferObj* baseObj)
+{
+    auto* self = (RDeviceVKObj*)baseSelf;
+    auto* obj = (RFramebufferVKObj*)baseObj;
+
     std::vector<VkImageView> attachments(fbI.colorAttachmentCount);
     for (uint32_t i = 0; i < fbI.colorAttachmentCount; i++)
     {
-        RImageObj* imageObj = fbI.colorAttachments[i];
+        RImageVKObj* imageObj = static_cast<RImageVKObj*>(fbI.colorAttachments[i].unwrap());
         attachments[i] = imageObj->vk.viewHandle;
     }
 
     if (fbI.depthStencilAttachment)
     {
         RImage image = fbI.depthStencilAttachment;
-        RImageObj* imageObj = image;
+        RImageVKObj* imageObj = (RImageVKObj*)image.unwrap();
         attachments.push_back(imageObj->vk.viewHandle);
     }
 
@@ -780,14 +1343,14 @@ static void vk_device_create_framebuffer(RDeviceObj* self, const RFramebufferInf
     {
         for (uint32_t i = 0; i < fbI.colorAttachmentCount; i++)
         {
-            RImageObj* imageObj = fbI.colorResolveAttachments[i];
+            RImageVKObj* imageObj = static_cast<RImageVKObj*>(fbI.colorResolveAttachments[i].unwrap());
             attachments.push_back(imageObj->vk.viewHandle);
         }
     }
 
     VkFramebufferCreateInfo fbCI{
         .sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
-        .renderPass = obj->passObj->vk.handle,
+        .renderPass = static_cast<RPassVKObj*>(obj->passObj)->vk.handle,
         .attachmentCount = (uint32_t)attachments.size(),
         .pAttachments = attachments.data(),
         .width = fbI.width,
@@ -797,14 +1360,33 @@ static void vk_device_create_framebuffer(RDeviceObj* self, const RFramebufferInf
     VK_CHECK(vkCreateFramebuffer(self->vk.device, &fbCI, nullptr, &obj->vk.handle));
 }
 
-static void vk_device_destroy_framebuffer(RDeviceObj* self, RFramebufferObj* obj)
+static void vk_device_destroy_framebuffer(RDeviceObj* baseSelf, RFramebufferObj* baseObj)
 {
+    auto* self = (RDeviceVKObj*)baseSelf;
+    auto* obj = (RFramebufferVKObj*)baseObj;
+
     vkDestroyFramebuffer(self->vk.device, obj->vk.handle, nullptr);
 }
 
-static RCommandPool vk_device_create_command_pool(RDeviceObj* self, const RCommandPoolInfo& poolI, RCommandPoolObj* obj)
+static void vk_device_command_pool_ctor(RCommandPoolObj* baseObj)
 {
-    obj->init_vk_api();
+    auto* obj = (RCommandPoolVKObj*)baseObj;
+
+    new (obj) RCommandPoolVKObj();
+}
+
+static void vk_device_command_pool_dtor(RCommandPoolObj* baseObj)
+{
+    auto* obj = (RCommandPoolVKObj*)baseObj;
+
+    obj->~RCommandPoolVKObj();
+}
+
+static RCommandPool vk_device_create_command_pool(RDeviceObj* baseSelf, const RCommandPoolInfo& poolI, RCommandPoolObj* baseObj)
+{
+    auto* self = (RDeviceVKObj*)baseSelf;
+    auto* obj = (RCommandPoolVKObj*)baseObj;
+
     obj->vk.device = self->vk.device;
 
     VkCommandPoolCreateInfo poolCI{
@@ -821,15 +1403,47 @@ static RCommandPool vk_device_create_command_pool(RDeviceObj* self, const RComma
     return {obj};
 }
 
-static void vk_device_destroy_command_pool(RDeviceObj* self, RCommandPool pool)
+static void vk_device_destroy_command_pool(RDeviceObj* baseSelf, RCommandPool pool)
 {
-    RCommandPoolObj* poolObj = (RCommandPoolObj*)pool;
+    auto* self = (RDeviceVKObj*)baseSelf;
+    auto* poolObj = (RCommandPoolVKObj*)pool.unwrap();
 
     vkDestroyCommandPool(self->vk.device, poolObj->vk.handle, nullptr);
 }
 
-static RShader vk_device_create_shader(RDeviceObj* self, const RShaderInfo& shaderI, RShaderObj* obj)
+static void vk_device_command_list_ctor(RCommandListObj* baseObj)
 {
+    auto* obj = (RCommandListVKObj*)baseObj;
+
+    new (obj) RCommandListVKObj();
+}
+
+static void vk_device_command_list_dtor(RCommandListObj* baseObj)
+{
+    auto* obj = (RCommandListVKObj*)baseObj;
+
+    obj->~RCommandListVKObj();
+}
+
+static void vk_device_shader_ctor(RShaderObj* baseObj)
+{
+    auto* obj = (RShaderVKObj*)baseObj;
+
+    new (obj) RShaderVKObj();
+}
+
+static void vk_device_shader_dtor(RShaderObj* baseObj)
+{
+    auto* obj = (RShaderVKObj*)baseObj;
+
+    obj->~RShaderVKObj();
+}
+
+static RShader vk_device_create_shader(RDeviceObj* baseSelf, const RShaderInfo& shaderI, RShaderObj* baseObj)
+{
+    auto* self = (RDeviceVKObj*)baseSelf;
+    auto* obj = (RShaderVKObj*)baseObj;
+
     std::vector<uint32_t> spirvCode;
     RShaderCompiler compiler(self->backend);
     bool success = compiler.compile(shaderI.type, shaderI.glsl, spirvCode);
@@ -848,16 +1462,32 @@ static RShader vk_device_create_shader(RDeviceObj* self, const RShaderInfo& shad
     return {obj};
 }
 
-static void vk_device_destroy_shader(RDeviceObj* self, RShader shader)
+static void vk_device_destroy_shader(RDeviceObj* baseSelf, RShader shader)
 {
-    RShaderObj* shaderObj = (RShaderObj*)shader;
+    auto* self = (RDeviceVKObj*)baseSelf;
+    RShaderVKObj* shaderObj = (RShaderVKObj*)shader.unwrap();
 
     vkDestroyShaderModule(self->vk.device, shaderObj->vk.handle, nullptr);
 }
 
-static RSetPool vk_device_create_set_pool(RDeviceObj* self, const RSetPoolInfo& poolI, RSetPoolObj* poolObj)
+static void vk_device_set_pool_ctor(RSetPoolObj* baseObj)
 {
-    poolObj->init_vk_api();
+    auto* obj = (RSetPoolVKObj*)baseObj;
+
+    new (obj) RSetPoolVKObj();
+}
+
+static void vk_device_set_pool_dtor(RSetPoolObj* baseObj)
+{
+    auto* obj = (RSetPoolVKObj*)baseObj;
+
+    obj->~RSetPoolVKObj();
+}
+
+static RSetPool vk_device_create_set_pool(RDeviceObj* baseSelf, const RSetPoolInfo& poolI, RSetPoolObj* basePoolObj)
+{
+    auto* self = (RDeviceVKObj*)baseSelf;
+    RSetPoolVKObj* poolObj = (RSetPoolVKObj*)basePoolObj;
     poolObj->vk.device = self->vk.device;
 
     std::vector<VkDescriptorPoolSize> poolSizes(poolI.layout.bindingCount);
@@ -884,15 +1514,33 @@ static RSetPool vk_device_create_set_pool(RDeviceObj* self, const RSetPoolInfo& 
     return {poolObj};
 }
 
-static void vk_device_destroy_set_pool(RDeviceObj* self, RSetPool pool)
+static void vk_device_destroy_set_pool(RDeviceObj* baseSelf, RSetPool pool)
 {
-    RSetPoolObj* poolObj = (RSetPoolObj*)pool;
+    auto* self = (RDeviceVKObj*)baseSelf;
+    auto* poolObj = (RSetPoolVKObj*)pool.unwrap();
 
     vkDestroyDescriptorPool(self->vk.device, poolObj->vk.handle, nullptr);
 }
 
-void vk_device_create_set_layout(RDeviceObj* self, const RSetLayoutInfo& layoutI, RSetLayoutObj* obj)
+static void vk_device_set_layout_ctor(RSetLayoutObj* baseObj)
 {
+    auto* obj = (RSetLayoutVKObj*)baseObj;
+
+    new (obj) RSetLayoutVKObj();
+}
+
+static void vk_device_set_layout_dtor(RSetLayoutObj* baseObj)
+{
+    auto* obj = (RSetLayoutVKObj*)baseObj;
+
+    obj->~RSetLayoutVKObj();
+}
+
+static void vk_device_create_set_layout(RDeviceObj* baseSelf, const RSetLayoutInfo& layoutI, RSetLayoutObj* baseObj)
+{
+    auto* self = (RDeviceVKObj*)baseSelf;
+    auto* obj = (RSetLayoutVKObj*)baseObj;
+
     std::vector<VkDescriptorSetLayoutBinding> bindings(layoutI.bindingCount);
     for (uint32_t i = 0; i < layoutI.bindingCount; i++)
         RUtil::cast_set_layout_binding_vk(layoutI.bindings[i], bindings[i]);
@@ -906,13 +1554,33 @@ void vk_device_create_set_layout(RDeviceObj* self, const RSetLayoutInfo& layoutI
     VK_CHECK(vkCreateDescriptorSetLayout(self->vk.device, &layoutCI, nullptr, &obj->vk.handle));
 }
 
-void vk_device_destroy_set_layout(RDeviceObj* self, RSetLayoutObj* layoutObj)
+static void vk_device_destroy_set_layout(RDeviceObj* baseSelf, RSetLayoutObj* baseObj)
 {
-    vkDestroyDescriptorSetLayout(self->vk.device, layoutObj->vk.handle, nullptr);
+    auto* self = (RDeviceVKObj*)baseSelf;
+    auto* obj = (RSetLayoutVKObj*)baseObj;
+
+    vkDestroyDescriptorSetLayout(self->vk.device, obj->vk.handle, nullptr);
 }
 
-void vk_device_create_pipeline_layout(RDeviceObj* self, const RPipelineLayoutInfo& layoutI, RPipelineLayoutObj* layoutObj)
+static void vk_device_pipeline_layout_ctor(RPipelineLayoutObj* baseObj)
 {
+    auto* obj = (RPipelineLayoutVKObj*)baseObj;
+
+    new (obj) RPipelineLayoutVKObj();
+}
+
+static void vk_device_pipeline_layout_dtor(RPipelineLayoutObj* baseObj)
+{
+    auto* obj = (RPipelineLayoutVKObj*)baseObj;
+
+    obj->~RPipelineLayoutVKObj();
+}
+
+static void vk_device_create_pipeline_layout(RDeviceObj* baseSelf, const RPipelineLayoutInfo& layoutI, RPipelineLayoutObj* baseLayoutObj)
+{
+    auto* self = (RDeviceVKObj*)baseSelf;
+    auto* layoutObj = (RPipelineLayoutVKObj*)baseLayoutObj;
+
     // NOTE: Here we make the simplification that all pipelines use the minimum 128 bytes
     //       of push constant as a single range. Different pipelines will alias these bytes as
     //       different fields, but the pipeline layouts will be compatible as long as they have
@@ -925,7 +1593,10 @@ void vk_device_create_pipeline_layout(RDeviceObj* self, const RPipelineLayoutInf
 
     std::vector<VkDescriptorSetLayout> setLayoutHandles(layoutI.setLayoutCount);
     for (uint32_t i = 0; i < layoutObj->setCount; i++)
-        setLayoutHandles[i] = layoutObj->setLayoutObjs[i]->vk.handle;
+    {
+        auto* setLayoutObj = static_cast<RSetLayoutVKObj*>(layoutObj->setLayoutObjs[i]);
+        setLayoutHandles[i] = setLayoutObj->vk.handle;
+    }
 
     VkPipelineLayoutCreateInfo layoutCI{
         .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
@@ -938,13 +1609,35 @@ void vk_device_create_pipeline_layout(RDeviceObj* self, const RPipelineLayoutInf
     VK_CHECK(vkCreatePipelineLayout(self->vk.device, &layoutCI, nullptr, &layoutObj->vk.handle));
 }
 
-static void vk_device_destroy_pipeline_layout(RDeviceObj* self, RPipelineLayoutObj* layoutObj)
+static void vk_device_destroy_pipeline_layout(RDeviceObj* baseSelf, RPipelineLayoutObj* baseLayoutObj)
 {
+    auto* self = (RDeviceVKObj*)baseSelf;
+    auto* layoutObj = (RPipelineLayoutVKObj*)baseLayoutObj;
+
     vkDestroyPipelineLayout(self->vk.device, layoutObj->vk.handle, nullptr);
+
+    layoutObj->~RPipelineLayoutVKObj();
 }
 
-RPipeline vk_device_create_pipeline(RDeviceObj* self, const RPipelineInfo& pipelineI, RPipelineObj* pipelineObj)
+static void vk_device_pipeline_ctor(RPipelineObj* baseObj)
 {
+    auto* obj = (RPipelineVKObj*)baseObj;
+
+    new (obj) RPipelineVKObj();
+}
+
+static void vk_device_pipeline_dtor(RPipelineObj* baseObj)
+{
+    auto* obj = (RPipelineVKObj*)baseObj;
+
+    obj->~RPipelineVKObj();
+}
+
+static RPipeline vk_device_create_pipeline(RDeviceObj* baseSelf, const RPipelineInfo& pipelineI, RPipelineObj* basePipelineObj)
+{
+    auto* self = (RDeviceVKObj*)baseSelf;
+    auto* pipelineObj = (RPipelineVKObj*)basePipelineObj;
+
     // NOTE: here we only initialize the base pipeline properties,
     //       the actual graphics pipeline is created when variant properties
     //       such as the render pass is known at a later stage.
@@ -966,7 +1659,7 @@ RPipeline vk_device_create_pipeline(RDeviceObj* self, const RPipelineInfo& pipel
 
     for (uint32_t i = 0; i < pipelineI.shaderCount; i++)
     {
-        RShaderObj* shaderObj = (RShaderObj*)pipelineI.shaders[i];
+        auto* shaderObj = static_cast<RShaderVKObj*>(pipelineI.shaders[i].unwrap());
         VkShaderStageFlagBits shaderStage;
         RUtil::cast_shader_type_vk(shaderObj->type, shaderStage);
 
@@ -1073,10 +1766,12 @@ RPipeline vk_device_create_pipeline(RDeviceObj* self, const RPipelineInfo& pipel
     return {pipelineObj};
 }
 
-static RPipeline vk_device_create_compute_pipeline(RDeviceObj* self, const RComputePipelineInfo& pipelineI, RPipelineObj* pipelineObj)
+static RPipeline vk_device_create_compute_pipeline(RDeviceObj* baseSelf, const RComputePipelineInfo& pipelineI, RPipelineObj* basePipelineObj)
 {
-    const RShaderObj* shaderObj = static_cast<const RShaderObj*>(pipelineI.shader);
-    RPipelineLayoutObj* layoutObj = self->get_or_create_pipeline_layout_obj(pipelineI.layout);
+    auto* self = (RDeviceVKObj*)baseSelf;
+    const auto* shaderObj = static_cast<const RShaderVKObj*>(pipelineI.shader.unwrap());
+    auto* layoutObj = (RPipelineLayoutVKObj*)self->get_or_create_pipeline_layout_obj(pipelineI.layout);
+    auto* pipelineObj = (RPipelineVKObj*)basePipelineObj;
 
     VkPipelineShaderStageCreateInfo stage{
         .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
@@ -1102,28 +1797,31 @@ static RPipeline vk_device_create_compute_pipeline(RDeviceObj* self, const RComp
     return {pipelineObj};
 }
 
-static void vk_device_destroy_pipeline(RDeviceObj* self, RPipeline pipeline)
+static void vk_device_destroy_pipeline(RDeviceObj* baseSelf, RPipeline pipeline)
 {
-    RPipelineObj* pipelineObj = (RPipelineObj*)pipeline;
+    auto* self = (RDeviceVKObj*)baseSelf;
+    auto* pipelineObj = (RPipelineVKObj*)pipeline.unwrap();
 
     // destroy all variants
     for (auto& ite : pipelineObj->vk.handles)
         vkDestroyPipeline(self->vk.device, ite.second, nullptr);
 }
 
-static void vk_device_pipeline_variant_pass(RDeviceObj* self, RPipelineObj* pipelineObj, const RPassInfo& passI)
+static void vk_device_pipeline_variant_pass(RDeviceObj* baseSelf, RPipelineObj* pipelineObj, const RPassInfo& passI)
 {
+    auto* self = (RDeviceVKObj*)baseSelf;
+
     pipelineObj->variant.passObj = self->get_or_create_pass_obj(passI);
 }
 
-static void vk_device_pipeline_variant_color_write_mask(RDeviceObj* self, RPipelineObj* pipelineObj, uint32_t index, RColorComponentFlags mask)
+static void vk_device_pipeline_variant_color_write_mask(RDeviceObj* baseSelf, RPipelineObj* pipelineObj, uint32_t index, RColorComponentFlags mask)
 {
     LD_ASSERT((size_t)index < pipelineObj->variant.colorWriteMasks.size());
 
     pipelineObj->variant.colorWriteMasks[index] = mask;
 }
 
-void vk_device_pipeline_variant_depth_test_enable(RDeviceObj* self, RPipelineObj* pipelineObj, bool enable)
+void vk_device_pipeline_variant_depth_test_enable(RDeviceObj* baseSelf, RPipelineObj* pipelineObj, bool enable)
 {
     // NOTE: the command list should call vkCmdSetDepthTestEnable when binding the graphics pipeline.
     //       Vulkan considers the depthTestEnabled dynamic state to be part of the command buffer
@@ -1132,8 +1830,10 @@ void vk_device_pipeline_variant_depth_test_enable(RDeviceObj* self, RPipelineObj
     pipelineObj->variant.depthTestEnabled = enable;
 }
 
-static void vk_device_update_set_images(RDeviceObj* self, uint32_t updateCount, const RSetImageUpdateInfo* updates)
+static void vk_device_update_set_images(RDeviceObj* baseSelf, uint32_t updateCount, const RSetImageUpdateInfo* updates)
 {
+    auto* self = (RDeviceVKObj*)baseSelf;
+
     std::vector<VkDescriptorImageInfo> imageI;
     std::vector<VkWriteDescriptorSet> writes(updateCount);
 
@@ -1143,7 +1843,7 @@ static void vk_device_update_set_images(RDeviceObj* self, uint32_t updateCount, 
 
         for (uint32_t j = 0; j < update.imageCount; j++)
         {
-            RImageObj* imageObj = static_cast<RImageObj*>(update.images[j]);
+            RImageVKObj* imageObj = static_cast<RImageVKObj*>(update.images[j].unwrap());
             VkImageLayout vkLayout;
             RUtil::cast_image_layout_vk(update.imageLayouts[j], vkLayout);
 
@@ -1164,7 +1864,7 @@ static void vk_device_update_set_images(RDeviceObj* self, uint32_t updateCount, 
 
         writes[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         writes[i].pNext = nullptr;
-        writes[i].dstSet = static_cast<const RSetObj*>(updates[i].set)->vk.handle;
+        writes[i].dstSet = static_cast<const RSetVKObj*>(updates[i].set.unwrap())->vk.handle;
         writes[i].dstBinding = updates[i].dstBinding;
         writes[i].dstArrayElement = updates[i].dstArrayIndex;
         writes[i].descriptorCount = updates[i].imageCount;
@@ -1179,8 +1879,10 @@ static void vk_device_update_set_images(RDeviceObj* self, uint32_t updateCount, 
     vkUpdateDescriptorSets(self->vk.device, updateCount, writes.data(), 0, nullptr);
 }
 
-static void vk_device_update_set_buffers(RDeviceObj* self, uint32_t updateCount, const RSetBufferUpdateInfo* updates)
+static void vk_device_update_set_buffers(RDeviceObj* baseSelf, uint32_t updateCount, const RSetBufferUpdateInfo* updates)
 {
+    auto* self = (RDeviceVKObj*)baseSelf;
+
     std::vector<VkDescriptorBufferInfo> bufferI;
     std::vector<VkWriteDescriptorSet> writes(updateCount);
 
@@ -1190,7 +1892,7 @@ static void vk_device_update_set_buffers(RDeviceObj* self, uint32_t updateCount,
 
         for (uint32_t j = 0; j < update.bufferCount; j++)
         {
-            RBufferObj* bufferObj = static_cast<RBufferObj*>(update.buffers[j]);
+            RBufferVKObj* bufferObj = static_cast<RBufferVKObj*>(update.buffers[j].unwrap());
 
             bufferI.push_back({
                 .buffer = bufferObj->vk.handle,
@@ -1209,7 +1911,7 @@ static void vk_device_update_set_buffers(RDeviceObj* self, uint32_t updateCount,
 
         writes[i].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
         writes[i].pNext = nullptr;
-        writes[i].dstSet = static_cast<const RSetObj*>(updates[i].set)->vk.handle;
+        writes[i].dstSet = static_cast<const RSetVKObj*>(updates[i].set.unwrap())->vk.handle;
         writes[i].dstBinding = updates[i].dstBinding;
         writes[i].dstArrayElement = updates[i].dstArrayIndex;
         writes[i].descriptorCount = updates[i].bufferCount;
@@ -1224,11 +1926,12 @@ static void vk_device_update_set_buffers(RDeviceObj* self, uint32_t updateCount,
     vkUpdateDescriptorSets(self->vk.device, updateCount, writes.data(), 0, nullptr);
 }
 
-static uint32_t vk_device_next_frame(RDeviceObj* self, RSemaphore& imageAcquired, RSemaphore& presentReady, RFence& frameComplete)
+static uint32_t vk_device_next_frame(RDeviceObj* baseSelf, RSemaphore& imageAcquired, RSemaphore& presentReady, RFence& frameComplete)
 {
+    auto* self = (RDeviceVKObj*)baseSelf;
     VulkanFrame* frame = sVulkanFrames + self->frameIndex;
-    VkSemaphore imageAcquiredSemaphore = static_cast<RSemaphoreObj*>(frame->imageAcquired)->vk.handle;
-    VkFence frameCompleteFence = static_cast<RFenceObj*>(frame->frameComplete)->vk.handle;
+    VkSemaphore imageAcquiredSemaphore = static_cast<RSemaphoreVKObj*>(frame->imageAcquired.unwrap())->vk.handle;
+    VkFence frameCompleteFence = static_cast<RFenceVKObj*>(frame->frameComplete.unwrap())->vk.handle;
 
     {
         LD_PROFILE_SCOPE_NAME("vkWaitForFences");
@@ -1241,8 +1944,8 @@ static uint32_t vk_device_next_frame(RDeviceObj* self, RSemaphore& imageAcquired
     {
         invalidate_swapchain(self);
 
-        imageAcquiredSemaphore = static_cast<RSemaphoreObj*>(frame->imageAcquired)->vk.handle;
-        frameCompleteFence = static_cast<RFenceObj*>(frame->frameComplete)->vk.handle;
+        imageAcquiredSemaphore = static_cast<RSemaphoreVKObj*>(frame->imageAcquired.unwrap())->vk.handle;
+        frameCompleteFence = static_cast<RFenceVKObj*>(frame->frameComplete.unwrap())->vk.handle;
 
         // try again with the new swapchain and synchronization primitives
         acquireResult = acquire_next_image(self, imageAcquiredSemaphore);
@@ -1264,10 +1967,12 @@ static uint32_t vk_device_next_frame(RDeviceObj* self, RSemaphore& imageAcquired
     return self->vk.imageIdx;
 }
 
-static void vk_device_present_frame(RDeviceObj* self)
+static void vk_device_present_frame(RDeviceObj* baseSelf)
 {
+    auto* self = (RDeviceVKObj*)baseSelf;
+    auto* queueObj = (RQueueVKObj*)self->vk.queuePresent.unwrap();
     VulkanFrame* frame = sVulkanFrames + self->frameIndex;
-    VkSemaphore presentReadySemaphore = static_cast<RSemaphoreObj*>(frame->presentReady)->vk.handle;
+    VkSemaphore presentReadySemaphore = static_cast<RSemaphoreVKObj*>(frame->presentReady.unwrap())->vk.handle;
 
     VkPresentInfoKHR presentI{
         .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
@@ -1278,7 +1983,7 @@ static void vk_device_present_frame(RDeviceObj* self)
         .pImageIndices = &self->vk.imageIdx,
     };
 
-    VkQueue queueHandle = static_cast<RQueueObj*>(self->vk.queuePresent)->vk.handle;
+    VkQueue queueHandle = queueObj->vk.handle;
 
     // NOTE: this may or may not block, depending on the implementation and
     //       the selected swapchain present mode.
@@ -1296,8 +2001,9 @@ static void vk_device_present_frame(RDeviceObj* self)
     }
 }
 
-static void vk_device_get_depth_stencil_formats(RDeviceObj* self, RFormat* formats, uint32_t& count)
+static void vk_device_get_depth_stencil_formats(RDeviceObj* baseSelf, RFormat* formats, uint32_t& count)
 {
+    auto* self = (RDeviceVKObj*)baseSelf;
     count = (uint32_t)self->vk.pdevice.depthStencilFormats.size();
 
     if (!formats)
@@ -1307,8 +2013,9 @@ static void vk_device_get_depth_stencil_formats(RDeviceObj* self, RFormat* forma
         RUtil::cast_format_from_vk(self->vk.pdevice.depthStencilFormats[i], formats[i]);
 }
 
-static RSampleCountBit vk_device_get_max_sample_count(RDeviceObj* self)
+static RSampleCountBit vk_device_get_max_sample_count(RDeviceObj* baseSelf)
 {
+    auto* self = (RDeviceVKObj*)baseSelf;
     RSampleCountBit sampleCount;
     VkSampleCountFlagBits vkSampleCount = (VkSampleCountFlagBits)self->vk.pdevice.msaaCount;
     RUtil::cast_sample_count_from_vk(vkSampleCount, sampleCount);
@@ -1316,26 +2023,33 @@ static RSampleCountBit vk_device_get_max_sample_count(RDeviceObj* self)
     return sampleCount;
 }
 
-static RFormat vk_device_get_swapchain_color_format(RDeviceObj* self)
+static RFormat vk_device_get_swapchain_color_format(RDeviceObj* baseSelf)
 {
+    auto* self = (RDeviceVKObj*)baseSelf;
     RFormat format;
     RUtil::cast_format_from_vk(self->vk.swapchain.info.imageFormat, format);
 
     return format;
 }
 
-static RImage vk_device_get_swapchain_color_attachment(RDeviceObj* self, uint32_t imageIdx)
+static RImage vk_device_get_swapchain_color_attachment(RDeviceObj* baseSelf, uint32_t imageIdx)
 {
+    auto* self = (RDeviceVKObj*)baseSelf;
+
     return self->vk.swapchain.colorAttachments[imageIdx];
 }
 
-static uint32_t vk_device_get_swapchain_image_count(RDeviceObj* self)
+static uint32_t vk_device_get_swapchain_image_count(RDeviceObj* baseSelf)
 {
+    auto* self = (RDeviceVKObj*)baseSelf;
+
     return (uint32_t)self->vk.swapchain.images.size();
 }
 
-static void vk_device_get_swapchain_extent(RDeviceObj* self, uint32_t* width, uint32_t* height)
+static void vk_device_get_swapchain_extent(RDeviceObj* baseSelf, uint32_t* width, uint32_t* height)
 {
+    auto* self = (RDeviceVKObj*)baseSelf;
+
     if (width)
         *width = self->vk.swapchain.width;
 
@@ -1348,53 +2062,56 @@ static uint32_t vk_device_get_frames_in_flight_count(RDeviceObj* self)
     return FRAMES_IN_FLIGHT;
 }
 
-static RQueue vk_device_get_graphics_queue(RDeviceObj* self)
+static RQueue vk_device_get_graphics_queue(RDeviceObj* baseSelf)
 {
+    auto* self = (RDeviceVKObj*)baseSelf;
+
     return self->vk.queueGraphics;
 }
 
-static void vk_device_wait_idle(RDeviceObj* self)
+static void vk_device_wait_idle(RDeviceObj* baseSelf)
 {
+    auto* self = (RDeviceVKObj*)baseSelf;
+
     VK_CHECK(vkDeviceWaitIdle(self->vk.device));
 }
 
-static void vk_buffer_map(RBufferObj* self)
+static void vk_buffer_map(RBufferObj* baseSelf)
 {
-    RDeviceObj* deviceObj = (RDeviceObj*)self->device;
+    auto* self = (RBufferVKObj*)baseSelf;
+    RDeviceVKObj* deviceObj = (RDeviceVKObj*)self->device.unwrap();
 
     VK_CHECK(vmaMapMemory(deviceObj->vk.vma, self->vk.vma, &self->hostMap));
 }
 
-static void* vk_buffer_map_read(RBufferObj* self, uint64_t offset, uint64_t size)
+static void* vk_buffer_map_read(RBufferObj* baseSelf, uint64_t offset, uint64_t size)
 {
+    auto* self = (RBufferVKObj*)baseSelf;
     char* src = (char*)self->hostMap + offset;
 
     return (void*)src;
 }
 
-static void vk_buffer_map_write(RBufferObj* self, uint64_t offset, uint64_t size, const void* data)
+static void vk_buffer_map_write(RBufferObj* baseSelf, uint64_t offset, uint64_t size, const void* data)
 {
+    auto* self = (RBufferVKObj*)baseSelf;
     char* dst = (char*)self->hostMap + offset;
 
     memcpy(dst, data, size);
 }
 
-static void vk_buffer_unmap(RBufferObj* self)
+static void vk_buffer_unmap(RBufferObj* baseSelf)
 {
-    RDeviceObj* deviceObj = (RDeviceObj*)self->device;
+    auto* self = (RBufferVKObj*)baseSelf;
+    RDeviceVKObj* deviceObj = (RDeviceVKObj*)self->device.unwrap();
 
     vmaUnmapMemory(deviceObj->vk.vma, self->vk.vma);
 }
 
-static void vk_command_list_free(RCommandListObj* self)
+static void vk_command_list_begin(RCommandListObj* baseSelf, bool oneTimeSubmit)
 {
-    vkFreeCommandBuffers(self->vk.device, self->poolObj->vk.handle, 1, &self->vk.handle);
+    auto* self = (RCommandListVKObj*)baseSelf;
 
-    heap_free(self);
-}
-
-static void vk_command_list_begin(RCommandListObj* self, bool oneTimeSubmit)
-{
     VkCommandBufferBeginInfo beginBI{
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
         .flags = oneTimeSubmit ? VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT : (VkCommandBufferUsageFlags)0,
@@ -1404,13 +2121,17 @@ static void vk_command_list_begin(RCommandListObj* self, bool oneTimeSubmit)
     VK_CHECK(vkBeginCommandBuffer(self->vk.handle, &beginBI));
 }
 
-static void vk_command_list_end(RCommandListObj* self)
+static void vk_command_list_end(RCommandListObj* baseSelf)
 {
+    auto* self = (RCommandListVKObj*)baseSelf;
+
     VK_CHECK(vkEndCommandBuffer(self->vk.handle));
 }
 
-static void vk_command_list_cmd_begin_pass(RCommandListObj* self, const RPassBeginInfo& passBI)
+static void vk_command_list_cmd_begin_pass(RCommandListObj* baseSelf, const RPassBeginInfo& passBI)
 {
+    auto* self = (RCommandListVKObj*)baseSelf;
+
     RFramebufferInfo framebufferI{
         .width = passBI.width,
         .height = passBI.height,
@@ -1448,8 +2169,8 @@ static void vk_command_list_cmd_begin_pass(RCommandListObj* self, const RPassBeg
 
     VkRenderPassBeginInfo vkBI{
         .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-        .renderPass = passObj->vk.handle,
-        .framebuffer = framebufferObj->vk.handle,
+        .renderPass = static_cast<RPassVKObj*>(passObj)->vk.handle,
+        .framebuffer = static_cast<RFramebufferVKObj*>(framebufferObj)->vk.handle,
         .renderArea = renderArea,
         .clearValueCount = (uint32_t)clearValues.size(),
         .pClearValues = clearValues.data(),
@@ -1467,14 +2188,18 @@ static void vk_command_list_cmd_begin_pass(RCommandListObj* self, const RPassBeg
     vkCmdSetScissor(self->vk.handle, 0, 1, &scissor);
 }
 
-static void vk_command_list_cmd_push_constant(RCommandListObj* self, RPipelineLayoutObj* layoutObj, uint32_t offset, uint32_t size, const void* data)
+static void vk_command_list_cmd_push_constant(RCommandListObj* baseSelf, RPipelineLayoutObj* baseLayoutObj, uint32_t offset, uint32_t size, const void* data)
 {
+    auto* self = (RCommandListVKObj*)baseSelf;
+    auto* layoutObj = (RPipelineLayoutVKObj*)baseLayoutObj;
+
     vkCmdPushConstants(self->vk.handle, layoutObj->vk.handle, VK_SHADER_STAGE_ALL, offset, size, data);
 }
 
-static void vk_command_list_cmd_bind_graphics_pipeline(RCommandListObj* self, RPipeline pipeline)
+static void vk_command_list_cmd_bind_graphics_pipeline(RCommandListObj* baseSelf, RPipeline pipeline)
 {
-    RPipelineObj* pipelineObj = (RPipelineObj*)pipeline;
+    auto* self = (RCommandListVKObj*)baseSelf;
+    auto* pipelineObj = (RPipelineVKObj*)pipeline.unwrap();
 
     LD_ASSERT(pipelineObj->vk.handles.contains(pipelineObj->vk.variantHash));
     VkPipeline vkHandle = pipelineObj->vk.handles[pipelineObj->vk.variantHash];
@@ -1484,18 +2209,25 @@ static void vk_command_list_cmd_bind_graphics_pipeline(RCommandListObj* self, RP
     vkCmdSetDepthTestEnable(self->vk.handle, (VkBool32)pipelineObj->variant.depthTestEnabled);
 }
 
-static void vk_command_list_cmd_bind_graphics_sets(RCommandListObj* self, RPipelineLayoutObj* layoutObj, uint32_t setStart, uint32_t setCount, RSet* sets)
+static void vk_command_list_cmd_bind_graphics_sets(RCommandListObj* baseSelf, RPipelineLayoutObj* baseLayoutObj, uint32_t setStart, uint32_t setCount, RSet* sets)
 {
+    auto* self = (RCommandListVKObj*)baseSelf;
+    auto* layoutObj = (RPipelineLayoutVKObj*)baseLayoutObj;
+
     std::vector<VkDescriptorSet> setHandles(setCount);
     for (uint32_t i = 0; i < setCount; i++)
-        setHandles[i] = static_cast<RSetObj*>(sets[i])->vk.handle;
+    {
+        auto* setObj = (RSetVKObj*)sets[i].unwrap();
+        setHandles[i] = setObj->vk.handle;
+    }
 
     vkCmdBindDescriptorSets(self->vk.handle, VK_PIPELINE_BIND_POINT_GRAPHICS, layoutObj->vk.handle, setStart, setCount, setHandles.data(), 0, nullptr);
 }
 
-static void vk_command_list_cmd_bind_compute_pipeline(RCommandListObj* self, RPipeline pipeline)
+static void vk_command_list_cmd_bind_compute_pipeline(RCommandListObj* baseSelf, RPipeline pipeline)
 {
-    RPipelineObj* pipelineObj = (RPipelineObj*)pipeline;
+    auto* self = (RCommandListVKObj*)baseSelf;
+    auto* pipelineObj = (RPipelineVKObj*)pipeline.unwrap();
 
     LD_ASSERT(pipelineObj->vk.handles.contains(0));
     VkPipeline vkHandle = pipelineObj->vk.handles[0];
@@ -1503,32 +2235,42 @@ static void vk_command_list_cmd_bind_compute_pipeline(RCommandListObj* self, RPi
     vkCmdBindPipeline(self->vk.handle, VK_PIPELINE_BIND_POINT_COMPUTE, vkHandle);
 }
 
-static void vk_command_list_cmd_bind_compute_sets(RCommandListObj* self, RPipelineLayoutObj* layoutObj, uint32_t setStart, uint32_t setCount, RSet* sets)
+static void vk_command_list_cmd_bind_compute_sets(RCommandListObj* baseSelf, RPipelineLayoutObj* baseLayoutObj, uint32_t setStart, uint32_t setCount, RSet* sets)
 {
+    auto* self = (RCommandListVKObj*)baseSelf;
+    auto* layoutObj = (RPipelineLayoutVKObj*)baseLayoutObj;
+
     std::vector<VkDescriptorSet> setHandles(setCount);
     for (uint32_t i = 0; i < setCount; i++)
-        setHandles[i] = static_cast<RSetObj*>(sets[i])->vk.handle;
+    {
+        auto* setObj = (RSetVKObj*)sets[i].unwrap();
+        setHandles[i] = setObj->vk.handle;
+    }
 
     vkCmdBindDescriptorSets(self->vk.handle, VK_PIPELINE_BIND_POINT_COMPUTE, layoutObj->vk.handle, setStart, setCount, setHandles.data(), 0, nullptr);
 }
 
-static void vk_command_list_cmd_bind_vertex_buffers(RCommandListObj* self, uint32_t firstBinding, uint32_t bindingCount, RBuffer* buffers)
+static void vk_command_list_cmd_bind_vertex_buffers(RCommandListObj* baseSelf, uint32_t firstBinding, uint32_t bindingCount, RBuffer* buffers)
 {
+    auto* self = (RCommandListVKObj*)baseSelf;
     std::vector<VkBuffer> bufferHandles(bindingCount);
     std::vector<VkDeviceSize> bufferOffsets(bindingCount);
 
     for (uint32_t i = 0; i < bindingCount; i++)
     {
-        bufferHandles[i] = static_cast<RBufferObj*>(buffers[i])->vk.handle;
+        auto* bufferObj = (RBufferVKObj*)buffers[i].unwrap();
+        bufferHandles[i] = bufferObj->vk.handle;
         bufferOffsets[i] = 0;
     }
 
     vkCmdBindVertexBuffers(self->vk.handle, firstBinding, bindingCount, bufferHandles.data(), bufferOffsets.data());
 }
 
-static void vk_command_list_cmd_bind_index_buffer(RCommandListObj* self, RBuffer buffer, RIndexType indexType)
+static void vk_command_list_cmd_bind_index_buffer(RCommandListObj* baseSelf, RBuffer buffer, RIndexType indexType)
 {
-    VkBuffer bufferHandle = static_cast<RBufferObj*>(buffer)->vk.handle;
+    auto* self = (RCommandListVKObj*)baseSelf;
+    auto* bufferObj = (RBufferVKObj*)buffer.unwrap();
+    VkBuffer bufferHandle = bufferObj->vk.handle;
     VkIndexType vkIndexType;
 
     RUtil::cast_index_type_vk(indexType, vkIndexType);
@@ -1536,34 +2278,46 @@ static void vk_command_list_cmd_bind_index_buffer(RCommandListObj* self, RBuffer
     vkCmdBindIndexBuffer(self->vk.handle, bufferHandle, 0, vkIndexType);
 }
 
-static void vk_command_list_cmd_dispatch(RCommandListObj* self, uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ)
+static void vk_command_list_cmd_dispatch(RCommandListObj* baseSelf, uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ)
 {
+    auto* self = (RCommandListVKObj*)baseSelf;
+
     vkCmdDispatch(self->vk.handle, groupCountX, groupCountY, groupCountZ);
 }
 
-static void vk_command_list_cmd_set_scissor(RCommandListObj* self, const Rect& scissor)
+static void vk_command_list_cmd_set_scissor(RCommandListObj* baseSelf, const Rect& scissor)
 {
+    auto* self = (RCommandListVKObj*)baseSelf;
+
     VkRect2D vkScissor = RUtil::make_scissor(scissor);
     vkCmdSetScissor(self->vk.handle, 0, 1, &vkScissor);
 }
 
-static void vk_command_list_cmd_draw(RCommandListObj* self, const RDrawInfo& drawI)
+static void vk_command_list_cmd_draw(RCommandListObj* baseSelf, const RDrawInfo& drawI)
 {
+    auto* self = (RCommandListVKObj*)baseSelf;
+
     vkCmdDraw(self->vk.handle, drawI.vertexCount, drawI.instanceCount, drawI.vertexStart, drawI.instanceStart);
 }
 
-static void vk_command_list_cmd_draw_indexed(RCommandListObj* self, const RDrawIndexedInfo& drawI)
+static void vk_command_list_cmd_draw_indexed(RCommandListObj* baseSelf, const RDrawIndexedInfo& drawI)
 {
+    auto* self = (RCommandListVKObj*)baseSelf;
+
     vkCmdDrawIndexed(self->vk.handle, drawI.indexCount, drawI.instanceCount, drawI.indexStart, 0, drawI.instanceStart);
 }
 
-static void vk_command_list_cmd_end_pass(RCommandListObj* self)
+static void vk_command_list_cmd_end_pass(RCommandListObj* baseSelf)
 {
+    auto* self = (RCommandListVKObj*)baseSelf;
+
     vkCmdEndRenderPass(self->vk.handle);
 }
 
-static void vk_command_list_cmd_buffer_memory_barrier(RCommandListObj* self, RPipelineStageFlags srcStages, RPipelineStageFlags dstStages, const RBufferMemoryBarrier& barrier)
+static void vk_command_list_cmd_buffer_memory_barrier(RCommandListObj* baseSelf, RPipelineStageFlags srcStages, RPipelineStageFlags dstStages, const RBufferMemoryBarrier& barrier)
 {
+    auto* self = (RCommandListVKObj*)baseSelf;
+
     VkPipelineStageFlags vkSrcStages;
     VkPipelineStageFlags vkDstStages;
     VkAccessFlags vkSrcAccess;
@@ -1580,7 +2334,7 @@ static void vk_command_list_cmd_buffer_memory_barrier(RCommandListObj* self, RPi
         .dstAccessMask = vkDstAccess,
         .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
         .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-        .buffer = static_cast<const RBufferObj*>(barrier.buffer)->vk.handle,
+        .buffer = static_cast<const RBufferVKObj*>(barrier.buffer.unwrap())->vk.handle,
         .offset = 0,
         .size = VK_WHOLE_SIZE,
     };
@@ -1588,8 +2342,10 @@ static void vk_command_list_cmd_buffer_memory_barrier(RCommandListObj* self, RPi
     vkCmdPipelineBarrier(self->vk.handle, vkSrcStages, vkDstStages, 0, 0, nullptr, 1, &vkBarrier, 0, nullptr);
 }
 
-static void vk_command_list_cmd_image_memory_barrier(RCommandListObj* self, RPipelineStageFlags srcStages, RPipelineStageFlags dstStages, const RImageMemoryBarrier& barrier)
+static void vk_command_list_cmd_image_memory_barrier(RCommandListObj* baseSelf, RPipelineStageFlags srcStages, RPipelineStageFlags dstStages, const RImageMemoryBarrier& barrier)
 {
+    auto* self = (RCommandListVKObj*)baseSelf;
+
     VkPipelineStageFlags vkSrcStages;
     VkPipelineStageFlags vkDstStages;
     VkImageLayout vkOldLayout;
@@ -1622,17 +2378,19 @@ static void vk_command_list_cmd_image_memory_barrier(RCommandListObj* self, RPip
         .newLayout = vkNewLayout,
         .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
         .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-        .image = static_cast<const RImageObj*>(barrier.image)->vk.handle,
+        .image = static_cast<const RImageVKObj*>(barrier.image.unwrap())->vk.handle,
         .subresourceRange = range,
     };
 
     vkCmdPipelineBarrier(self->vk.handle, vkSrcStages, vkDstStages, 0, 0, nullptr, 0, nullptr, 1, &vkBarrier);
 }
 
-static void vk_command_list_cmd_copy_buffer(RCommandListObj* self, RBuffer srcBuffer, RBuffer dstBuffer, uint32_t regionCount, const RBufferCopy* regions)
+static void vk_command_list_cmd_copy_buffer(RCommandListObj* baseSelf, RBuffer srcBuffer, RBuffer dstBuffer, uint32_t regionCount, const RBufferCopy* regions)
 {
-    VkBuffer srcBufferHandle = static_cast<RBufferObj*>(srcBuffer)->vk.handle;
-    VkBuffer dstBufferHandle = static_cast<RBufferObj*>(dstBuffer)->vk.handle;
+    auto* self = (RCommandListVKObj*)baseSelf;
+
+    VkBuffer srcBufferHandle = static_cast<RBufferVKObj*>(srcBuffer.unwrap())->vk.handle;
+    VkBuffer dstBufferHandle = static_cast<RBufferVKObj*>(dstBuffer.unwrap())->vk.handle;
 
     std::vector<VkBufferCopy> copies(regionCount);
     for (uint32_t i = 0; i < regionCount; i++)
@@ -1645,10 +2403,12 @@ static void vk_command_list_cmd_copy_buffer(RCommandListObj* self, RBuffer srcBu
     vkCmdCopyBuffer(self->vk.handle, srcBufferHandle, dstBufferHandle, regionCount, copies.data());
 }
 
-static void vk_command_list_cmd_copy_buffer_to_image(RCommandListObj* self, RBuffer srcBuffer, RImage dstImage, RImageLayout dstImageLayout, uint32_t regionCount, const RBufferImageCopy* regions)
+static void vk_command_list_cmd_copy_buffer_to_image(RCommandListObj* baseSelf, RBuffer srcBuffer, RImage dstImage, RImageLayout dstImageLayout, uint32_t regionCount, const RBufferImageCopy* regions)
 {
-    VkBuffer srcBufferHandle = static_cast<RBufferObj*>(srcBuffer)->vk.handle;
-    VkImage dstImageHandle = static_cast<RImageObj*>(dstImage)->vk.handle;
+    auto* self = (RCommandListVKObj*)baseSelf;
+
+    VkBuffer srcBufferHandle = static_cast<RBufferVKObj*>(srcBuffer.unwrap())->vk.handle;
+    VkImage dstImageHandle = static_cast<RImageVKObj*>(dstImage.unwrap())->vk.handle;
     VkImageLayout vkLayout;
     VkImageAspectFlags vkAspects;
 
@@ -1673,10 +2433,12 @@ static void vk_command_list_cmd_copy_buffer_to_image(RCommandListObj* self, RBuf
     vkCmdCopyBufferToImage(self->vk.handle, srcBufferHandle, dstImageHandle, vkLayout, regionCount, copies.data());
 }
 
-static void vk_command_list_cmd_copy_image_to_buffer(RCommandListObj* self, RImage srcImage, RImageLayout srcImageLayout, RBuffer dstBuffer, uint32_t regionCount, const RBufferImageCopy* regions)
+static void vk_command_list_cmd_copy_image_to_buffer(RCommandListObj* baseSelf, RImage srcImage, RImageLayout srcImageLayout, RBuffer dstBuffer, uint32_t regionCount, const RBufferImageCopy* regions)
 {
-    VkBuffer dstBufferHandle = static_cast<RBufferObj*>(dstBuffer)->vk.handle;
-    VkImage srcImageHandle = static_cast<RImageObj*>(srcImage)->vk.handle;
+    auto* self = (RCommandListVKObj*)baseSelf;
+
+    VkBuffer dstBufferHandle = static_cast<RBufferVKObj*>(dstBuffer.unwrap())->vk.handle;
+    VkImage srcImageHandle = static_cast<RImageVKObj*>(srcImage.unwrap())->vk.handle;
     VkImageLayout vkLayout;
     VkImageAspectFlags vkAspects;
 
@@ -1701,10 +2463,11 @@ static void vk_command_list_cmd_copy_image_to_buffer(RCommandListObj* self, RIma
     vkCmdCopyImageToBuffer(self->vk.handle, srcImageHandle, vkLayout, dstBufferHandle, regionCount, copies.data());
 }
 
-static void vk_command_list_cmd_blit_image(RCommandListObj* self, RImage srcImage, RImageLayout srcImageLayout, RImage dstImage, RImageLayout dstImageLayout, uint32_t regionCount, const RImageBlit* regions, RFilter filter)
+static void vk_command_list_cmd_blit_image(RCommandListObj* baseSelf, RImage srcImage, RImageLayout srcImageLayout, RImage dstImage, RImageLayout dstImageLayout, uint32_t regionCount, const RImageBlit* regions, RFilter filter)
 {
-    RImageObj* srcImageObj = (RImageObj*)srcImage;
-    RImageObj* dstImageObj = (RImageObj*)dstImage;
+    auto* self = (RCommandListVKObj*)baseSelf;
+    RImageVKObj* srcImageObj = (RImageVKObj*)srcImage.unwrap();
+    RImageVKObj* dstImageObj = (RImageVKObj*)dstImage.unwrap();
 
     VkImageLayout srcLayout;
     VkImageLayout dstLayout;
@@ -1745,8 +2508,10 @@ static void vk_command_list_cmd_blit_image(RCommandListObj* self, RImage srcImag
     vkCmdBlitImage(self->vk.handle, srcImageObj->vk.handle, srcLayout, dstImageObj->vk.handle, dstLayout, regionCount, blits.data(), vkFilter);
 }
 
-static void vk_pipeline_create_variant(RPipelineObj* self)
+static void vk_pipeline_create_variant(RPipelineObj* baseSelf)
 {
+    auto* self = (RPipelineVKObj*)baseSelf;
+
     // the same RPipeline handle can refer to Vulkan pipelines that vary in:
     // - render passes
     // - per-attachment color write masks
@@ -1799,12 +2564,12 @@ static void vk_pipeline_create_variant(RPipelineObj* self)
         .pDepthStencilState = &self->vk.depthStencilSCI,
         .pColorBlendState = &self->vk.colorBlendSCI,
         .pDynamicState = &dynamicSCI,
-        .layout = self->layoutObj->vk.handle,
-        .renderPass = self->variant.passObj->vk.handle,
+        .layout = static_cast<RPipelineLayoutVKObj*>(self->layoutObj)->vk.handle,
+        .renderPass = static_cast<RPassVKObj*>(self->variant.passObj)->vk.handle,
     };
 
     VkPipeline vkHandle;
-    VkDevice vkDeviceHandle = self->deviceObj->vk.device;
+    VkDevice vkDeviceHandle = static_cast<RDeviceVKObj*>(self->deviceObj)->vk.device;
 
     VK_CHECK(vkCreateGraphicsPipelines(vkDeviceHandle, VK_NULL_HANDLE, 1, &pipelineCI, nullptr, &vkHandle));
 
@@ -1812,8 +2577,11 @@ static void vk_pipeline_create_variant(RPipelineObj* self)
     self->vk.handles[variantHash] = vkHandle;
 }
 
-static RCommandList vk_command_pool_allocate(RCommandPoolObj* self, RCommandListObj* listObj)
+static RCommandList vk_command_pool_allocate(RCommandPoolObj* baseSelf, RCommandListObj* baseListObj)
 {
+    auto* self = (RCommandPoolVKObj*)baseSelf;
+    auto* listObj = (RCommandListVKObj*)baseListObj;
+
     VkCommandBufferAllocateInfo bufferAI{
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
         .commandPool = self->vk.handle,
@@ -1821,7 +2589,7 @@ static RCommandList vk_command_pool_allocate(RCommandPoolObj* self, RCommandList
         .commandBufferCount = 1,
     };
 
-    listObj->init_vk_api();
+    listObj->api = &sRCommandListVKAPI;
     listObj->vk.device = self->vk.device;
 
     VK_CHECK(vkAllocateCommandBuffers(self->vk.device, &bufferAI, &listObj->vk.handle));
@@ -1829,18 +2597,24 @@ static RCommandList vk_command_pool_allocate(RCommandPoolObj* self, RCommandList
     return {listObj};
 }
 
-static void vk_command_pool_reset(RCommandPoolObj* self)
+static void vk_command_pool_reset(RCommandPoolObj* baseSelf)
 {
+    auto* self = (RCommandPoolVKObj*)baseSelf;
+
     VK_CHECK(vkResetCommandPool(self->vk.device, self->vk.handle, 0));
 }
 
-static RSet vk_set_pool_allocate(RSetPoolObj* self, RSetObj* setObj)
+static RSet vk_set_pool_allocate(RSetPoolObj* baseSelf, RSetObj* baseSetObj)
 {
+    auto* self = (RSetPoolVKObj*)baseSelf;
+    auto* setObj = (RSetVKObj*)baseSetObj;
+    auto* setLayoutObj = (RSetLayoutVKObj*)self->layoutObj;
+
     VkDescriptorSetAllocateInfo setAI{
         .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
         .descriptorPool = self->vk.handle,
         .descriptorSetCount = 1,
-        .pSetLayouts = &self->layoutObj->vk.handle,
+        .pSetLayouts = &setLayoutObj->vk.handle,
     };
 
     VK_CHECK(vkAllocateDescriptorSets(self->vk.device, &setAI, &setObj->vk.handle));
@@ -1848,34 +2622,39 @@ static RSet vk_set_pool_allocate(RSetPoolObj* self, RSetObj* setObj)
     return {setObj};
 }
 
-static void vk_set_pool_reset(RSetPoolObj* self)
+static void vk_set_pool_reset(RSetPoolObj* baseSelf)
 {
+    auto* self = (RSetPoolVKObj*)baseSelf;
+
     VK_CHECK(vkResetDescriptorPool(self->vk.device, self->vk.handle, 0));
 }
 
-static void vk_queue_wait_idle(RQueueObj* self)
+static void vk_queue_wait_idle(RQueueObj* baseSelf)
 {
+    auto* self = (RQueueVKObj*)baseSelf;
+
     VK_CHECK(vkQueueWaitIdle(self->vk.handle));
 }
 
-static void vk_queue_submit(RQueueObj* self, const RSubmitInfo& submitI, RFence fence)
+static void vk_queue_submit(RQueueObj* baseSelf, const RSubmitInfo& submitI, RFence fence)
 {
-    VkFence fenceHandle = fence ? static_cast<RFenceObj*>(fence)->vk.handle : VK_NULL_HANDLE;
+    auto* self = (RQueueVKObj*)baseSelf;
+    VkFence fenceHandle = fence ? static_cast<RFenceVKObj*>(fence.unwrap())->vk.handle : VK_NULL_HANDLE;
 
     std::vector<VkSemaphore> semaphoreHandles(submitI.waitCount + submitI.signalCount);
 
     uint32_t i;
 
     for (i = 0; i < submitI.waitCount; i++)
-        semaphoreHandles[i] = static_cast<RSemaphoreObj*>(submitI.waits[i])->vk.handle;
+        semaphoreHandles[i] = static_cast<RSemaphoreVKObj*>(submitI.waits[i].unwrap())->vk.handle;
 
     for (i = 0; i < submitI.signalCount; i++)
-        semaphoreHandles[submitI.waitCount + i] = static_cast<RSemaphoreObj*>(submitI.signals[i])->vk.handle;
+        semaphoreHandles[submitI.waitCount + i] = static_cast<RSemaphoreVKObj*>(submitI.signals[i].unwrap())->vk.handle;
 
     std::vector<VkCommandBuffer> commandHandles(submitI.listCount);
 
     for (i = 0; i < submitI.listCount; i++)
-        commandHandles[i] = static_cast<RCommandListObj*>(submitI.lists[i])->vk.handle;
+        commandHandles[i] = static_cast<RCommandListVKObj*>(submitI.lists[i].unwrap())->vk.handle;
 
     std::vector<VkPipelineStageFlags> waitStages(submitI.waitCount);
     for (i = 0; i < submitI.waitCount; i++)
@@ -1895,7 +2674,7 @@ static void vk_queue_submit(RQueueObj* self, const RSubmitInfo& submitI, RFence 
     VK_CHECK(vkQueueSubmit(self->vk.handle, 1, &submit, fenceHandle));
 }
 
-VkResult acquire_next_image(RDeviceObj* obj, VkSemaphore imageAcquiredSemaphore)
+static VkResult acquire_next_image(RDeviceVKObj* obj, VkSemaphore imageAcquiredSemaphore)
 {
     LD_PROFILE_SCOPE_NAME("vkAcquireNextImageKHR");
 
@@ -1908,7 +2687,7 @@ VkResult acquire_next_image(RDeviceObj* obj, VkSemaphore imageAcquiredSemaphore)
         &obj->vk.imageIdx);
 }
 
-static void choose_physical_device(RDeviceObj* obj)
+static void choose_physical_device(RDeviceVKObj* obj)
 {
     std::vector<VkPhysicalDevice> handles;
 
@@ -1991,7 +2770,7 @@ static void choose_physical_device(RDeviceObj* obj)
     }
 }
 
-static void configure_swapchain(RDeviceObj* obj, SwapchainInfo* swapchainI)
+static void configure_swapchain(RDeviceVKObj* obj, SwapchainInfo* swapchainI)
 {
     PhysicalDevice& pdevice = obj->vk.pdevice;
 
@@ -2029,7 +2808,7 @@ static void configure_swapchain(RDeviceObj* obj, SwapchainInfo* swapchainI)
     }
 }
 
-static void create_swapchain(RDeviceObj* obj, const SwapchainInfo& swapchainI)
+static void create_swapchain(RDeviceVKObj* obj, const SwapchainInfo& swapchainI)
 {
     LD_PROFILE_SCOPE;
 
@@ -2120,9 +2899,9 @@ static void create_swapchain(RDeviceObj* obj, const SwapchainInfo& swapchainI)
               presentMode);
 }
 
-static RImage create_swapchain_color_attachment(RDeviceObj* deviceObj, VkImage image, VkFormat colorFormat, uint32_t width, uint32_t height)
+static RImage create_swapchain_color_attachment(RDeviceVKObj* deviceObj, VkImage image, VkFormat colorFormat, uint32_t width, uint32_t height)
 {
-    RImageObj* obj = (RImageObj*)heap_malloc(sizeof(RImageObj), MEMORY_USAGE_RENDER);
+    auto* obj = (RImageVKObj*)heap_new<RImageVKObj>(MEMORY_USAGE_RENDER);
     obj->rid = RObjectID::get();
     obj->vk.handle = image;
     obj->vk.vma = nullptr; // unrelated to VMA
@@ -2157,7 +2936,7 @@ static RImage create_swapchain_color_attachment(RDeviceObj* deviceObj, VkImage i
     return {obj};
 }
 
-static void destroy_swapchain(RDeviceObj* obj)
+static void destroy_swapchain(RDeviceVKObj* obj)
 {
     for (RImage attachment : obj->vk.swapchain.colorAttachments)
         destroy_swapchain_color_attachment(obj, attachment);
@@ -2165,16 +2944,16 @@ static void destroy_swapchain(RDeviceObj* obj)
     vkDestroySwapchainKHR(obj->vk.device, obj->vk.swapchain.handle, nullptr);
 }
 
-static void destroy_swapchain_color_attachment(RDeviceObj* deviceObj, RImage attachment)
+static void destroy_swapchain_color_attachment(RDeviceVKObj* deviceObj, RImage attachment)
 {
-    RImageObj* obj = (RImageObj*)attachment;
+    auto* obj = (RImageVKObj*)attachment.unwrap();
 
     vkDestroyImageView(deviceObj->vk.device, obj->vk.viewHandle, nullptr);
 
-    heap_free(obj);
+    heap_delete<RImageVKObj>(obj);
 }
 
-static void invalidate_swapchain(RDeviceObj* obj)
+static void invalidate_swapchain(RDeviceVKObj* obj)
 {
     // wait until all frames in flight complete.
     vkDeviceWaitIdle(obj->vk.device);
@@ -2218,7 +2997,7 @@ static void invalidate_swapchain(RDeviceObj* obj)
     }
 }
 
-static void create_vma_allocator(RDeviceObj* obj)
+static void create_vma_allocator(RDeviceVKObj* obj)
 {
     VmaVulkanFunctions vulkanFunctions{};
     vulkanFunctions.vkGetInstanceProcAddr = &vkGetInstanceProcAddr;
@@ -2235,15 +3014,14 @@ static void create_vma_allocator(RDeviceObj* obj)
     VK_CHECK(vmaCreateAllocator(&allocatorCI, &obj->vk.vma));
 }
 
-static void destroy_vma_allocator(RDeviceObj* obj)
+static void destroy_vma_allocator(RDeviceVKObj* obj)
 {
     vmaDestroyAllocator(obj->vk.vma);
 }
 
 static RQueue create_queue(uint32_t queueFamilyIdx, VkQueue handle)
 {
-    RQueueObj* obj = (RQueueObj*)heap_malloc(sizeof(RQueueObj), MEMORY_USAGE_RENDER);
-    obj->init_vk_api();
+    auto* obj = heap_new<RQueueVKObj>(MEMORY_USAGE_RENDER);
     obj->vk.familyIdx = queueFamilyIdx;
     obj->vk.handle = handle;
 
@@ -2252,110 +3030,9 @@ static RQueue create_queue(uint32_t queueFamilyIdx, VkQueue handle)
 
 static void destroy_queue(RQueue queue)
 {
-    RQueueObj* obj = (RQueueObj*)queue;
+    auto* obj = (RQueueVKObj*)queue.unwrap();
 
-    heap_free(obj);
-}
-
-void RBufferObj::init_vk_api()
-{
-    map = &vk_buffer_map;
-    map_read = &vk_buffer_map_read;
-    map_write = &vk_buffer_map_write;
-    unmap = &vk_buffer_unmap;
-}
-
-void RCommandListObj::init_vk_api()
-{
-    begin = &vk_command_list_begin;
-    end = &vk_command_list_end;
-    cmd_begin_pass = &vk_command_list_cmd_begin_pass;
-    cmd_push_constant = &vk_command_list_cmd_push_constant;
-    cmd_bind_graphics_pipeline = &vk_command_list_cmd_bind_graphics_pipeline;
-    cmd_bind_graphics_sets = &vk_command_list_cmd_bind_graphics_sets;
-    cmd_bind_compute_pipeline = &vk_command_list_cmd_bind_compute_pipeline;
-    cmd_bind_compute_sets = &vk_command_list_cmd_bind_compute_sets;
-    cmd_bind_vertex_buffers = &vk_command_list_cmd_bind_vertex_buffers;
-    cmd_bind_index_buffer = &vk_command_list_cmd_bind_index_buffer;
-    cmd_dispatch = &vk_command_list_cmd_dispatch;
-    cmd_set_scissor = &vk_command_list_cmd_set_scissor;
-    cmd_draw = &vk_command_list_cmd_draw;
-    cmd_draw_indexed = &vk_command_list_cmd_draw_indexed;
-    cmd_end_pass = &vk_command_list_cmd_end_pass;
-    cmd_buffer_memory_barrier = &vk_command_list_cmd_buffer_memory_barrier;
-    cmd_image_memory_barrier = &vk_command_list_cmd_image_memory_barrier;
-    cmd_copy_buffer = &vk_command_list_cmd_copy_buffer;
-    cmd_copy_buffer_to_image = &vk_command_list_cmd_copy_buffer_to_image;
-    cmd_copy_image_to_buffer = &vk_command_list_cmd_copy_image_to_buffer;
-    cmd_blit_image = &vk_command_list_cmd_blit_image;
-}
-
-void RCommandPoolObj::init_vk_api()
-{
-    allocate = &vk_command_pool_allocate;
-    reset = &vk_command_pool_reset;
-}
-
-void RSetPoolObj::init_vk_api()
-{
-    allocate = &vk_set_pool_allocate;
-    reset = &vk_set_pool_reset;
-}
-
-void RPipelineObj::init_vk_api()
-{
-    create_variant = vk_pipeline_create_variant;
-}
-
-void RQueueObj::init_vk_api()
-{
-    wait_idle = &vk_queue_wait_idle;
-    submit = &vk_queue_submit;
-}
-
-void RDeviceObj::init_vk_api()
-{
-    create_fence = &vk_device_create_fence;
-    destroy_fence = &vk_device_destroy_fence;
-    create_semaphore = &vk_device_create_semaphore;
-    destroy_semaphore = &vk_device_destroy_semaphore;
-    create_buffer = &vk_device_create_buffer;
-    destroy_buffer = &vk_device_destroy_buffer;
-    create_image = &vk_device_create_image;
-    destroy_image = &vk_device_destroy_image;
-    create_pass = &vk_device_create_pass;
-    destroy_pass = &vk_device_destroy_pass;
-    create_framebuffer = &vk_device_create_framebuffer;
-    destroy_framebuffer = &vk_device_destroy_framebuffer;
-    create_command_pool = &vk_device_create_command_pool;
-    destroy_command_pool = &vk_device_destroy_command_pool;
-    create_shader = &vk_device_create_shader;
-    destroy_shader = &vk_device_destroy_shader;
-    create_set_pool = &vk_device_create_set_pool;
-    destroy_set_pool = &vk_device_destroy_set_pool;
-    create_set_layout = &vk_device_create_set_layout;
-    destroy_set_layout = &vk_device_destroy_set_layout;
-    create_pipeline_layout = &vk_device_create_pipeline_layout;
-    destroy_pipeline_layout = &vk_device_destroy_pipeline_layout;
-    create_pipeline = &vk_device_create_pipeline;
-    create_compute_pipeline = &vk_device_create_compute_pipeline;
-    destroy_pipeline = &vk_device_destroy_pipeline;
-    pipeline_variant_pass = &vk_device_pipeline_variant_pass;
-    pipeline_variant_color_write_mask = &vk_device_pipeline_variant_color_write_mask;
-    pipeline_variant_depth_test_enable = &vk_device_pipeline_variant_depth_test_enable;
-    update_set_images = &vk_device_update_set_images;
-    update_set_buffers = &vk_device_update_set_buffers;
-    next_frame = &vk_device_next_frame;
-    present_frame = &vk_device_present_frame;
-    get_depth_stencil_formats = &vk_device_get_depth_stencil_formats;
-    get_max_sample_count = &vk_device_get_max_sample_count;
-    get_swapchain_color_format = &vk_device_get_swapchain_color_format;
-    get_swapchain_color_attachment = &vk_device_get_swapchain_color_attachment;
-    get_swapchain_image_count = &vk_device_get_swapchain_image_count;
-    get_swapchain_extent = &vk_device_get_swapchain_extent;
-    get_frames_in_flight_count = &vk_device_get_frames_in_flight_count;
-    get_graphics_queue = &vk_device_get_graphics_queue;
-    wait_idle = &vk_device_wait_idle;
+    heap_delete<RQueueVKObj>(obj);
 }
 
 } // namespace LD

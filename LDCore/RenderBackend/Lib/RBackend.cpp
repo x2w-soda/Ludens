@@ -21,21 +21,24 @@ void RQueue::wait_idle()
 {
     LD_PROFILE_SCOPE;
 
-    mObj->wait_idle(mObj);
+    mObj->api->wait_idle(mObj);
 }
 
 void RQueue::submit(const RSubmitInfo& submitI, RFence fence)
 {
     LD_PROFILE_SCOPE;
 
-    mObj->submit(mObj, submitI, fence);
+    mObj->api->submit(mObj, submitI, fence);
 }
 
 RDevice RDevice::create(const RDeviceInfo& info)
 {
     LD_PROFILE_SCOPE;
 
-    RDeviceObj* obj = (RDeviceObj*)heap_malloc(sizeof(RDeviceObj), MEMORY_USAGE_RENDER);
+    size_t objSize = vk_device_byte_size();
+    auto* obj = (RDeviceObj*)heap_malloc(objSize, MEMORY_USAGE_RENDER);
+    vk_device_ctor(obj);
+
     obj->rid = RObjectID::get();
     obj->frameIndex = 0;
     obj->isHeadless = info.window == nullptr;
@@ -52,11 +55,12 @@ void RDevice::destroy(RDevice device)
 {
     LD_PROFILE_SCOPE;
 
-    RDeviceObj* obj = device.mObj;
+    RDeviceObj* obj = device.unwrap();
 
     for (auto& ite : sPipelineLayouts)
     {
-        obj->destroy_pipeline_layout(obj, ite.second);
+        obj->api->destroy_pipeline_layout(obj, ite.second);
+        obj->api->pipeline_layout_dtor(ite.second);
         heap_free(ite.second);
     }
     sLog.info("RDevice destroyed {} pipeline layouts", (int)sPipelineLayouts.size());
@@ -64,7 +68,8 @@ void RDevice::destroy(RDevice device)
 
     for (auto& ite : sSetLayouts)
     {
-        obj->destroy_set_layout(obj, ite.second);
+        obj->api->destroy_set_layout(obj, ite.second);
+        obj->api->set_layout_dtor(ite.second);
         heap_free(ite.second);
     }
     sLog.info("RDevice destroyed {} set layouts", (int)sSetLayouts.size());
@@ -72,7 +77,8 @@ void RDevice::destroy(RDevice device)
 
     for (auto& ite : sPasses)
     {
-        obj->destroy_pass(obj, ite.second);
+        obj->api->destroy_pass(obj, ite.second);
+        obj->api->pass_dtor(ite.second);
         heap_free(ite.second);
     }
     sLog.info("RDevice destroyed {} passes", (int)sPasses.size());
@@ -82,66 +88,84 @@ void RDevice::destroy(RDevice device)
     //       reference them, so we probably have zero framebuffers left already.
     for (auto& ite : sFramebuffers)
     {
-        obj->destroy_framebuffer(obj, ite.second);
+        obj->api->destroy_framebuffer(obj, ite.second);
         heap_free(ite.second);
     }
     sLog.info("RDevice destroyed {} framebuffers", (int)sFramebuffers.size());
     sFramebuffers.clear();
 
     if (obj->backend == RDEVICE_BACKEND_VULKAN)
-        vk_destroy_device(device.mObj);
+    {
+        vk_destroy_device(obj);
+        vk_device_dtor(obj);
+    }
     else
         LD_UNREACHABLE;
 
-    heap_free(device.mObj);
+    heap_free(obj);
 }
 
 RSemaphore RDevice::create_semaphore()
 {
-    RSemaphoreObj* semaphoreObj = (RSemaphoreObj*)heap_malloc(sizeof(RSemaphoreObj), MEMORY_USAGE_RENDER);
+    size_t objSize = mObj->api->get_obj_size(RTYPE_SEMAPHORE);
+    RSemaphoreObj* semaphoreObj = (RSemaphoreObj*)heap_malloc(objSize, MEMORY_USAGE_RENDER);
+    mObj->api->semaphore_ctor(semaphoreObj);
+
     semaphoreObj->rid = RObjectID::get();
 
-    return mObj->create_semaphore(mObj, semaphoreObj);
+    return mObj->api->create_semaphore(mObj, semaphoreObj);
 }
 
 void RDevice::destroy_semaphore(RSemaphore semaphore)
 {
-    mObj->destroy_semaphore(mObj, semaphore);
+    mObj->api->destroy_semaphore(mObj, semaphore);
 
-    heap_free((RSemaphoreObj*)semaphore);
+    RSemaphoreObj* obj = semaphore.unwrap();
+    mObj->api->semaphore_dtor(obj);
+    heap_free(obj);
 }
 
 RFence RDevice::create_fence(bool createSignaled)
 {
-    RFenceObj* fenceObj = (RFenceObj*)heap_malloc(sizeof(RFenceObj), MEMORY_USAGE_RENDER);
+    size_t objSize = mObj->api->get_obj_size(RTYPE_FENCE);
+    RFenceObj* fenceObj = (RFenceObj*)heap_malloc(objSize, MEMORY_USAGE_RENDER);
+    mObj->api->fence_ctor(fenceObj);
+
     fenceObj->rid = RObjectID::get();
 
-    return mObj->create_fence(mObj, createSignaled, fenceObj);
+    return mObj->api->create_fence(mObj, createSignaled, fenceObj);
 }
 
 void RDevice::destroy_fence(RFence fence)
 {
-    mObj->destroy_fence(mObj, fence);
+    mObj->api->destroy_fence(mObj, fence);
 
-    heap_free((RFenceObj*)fence);
+    RFenceObj* obj = fence.unwrap();
+    mObj->api->fence_dtor(obj);
+    heap_free(obj);
 }
 
 RBuffer RDevice::create_buffer(const RBufferInfo& bufferI)
 {
-    RBufferObj* bufferObj = (RBufferObj*)heap_malloc(sizeof(RBufferObj), MEMORY_USAGE_RENDER);
+    size_t objSize = mObj->api->get_obj_size(RTYPE_BUFFER);
+    RBufferObj* bufferObj = (RBufferObj*)heap_malloc(objSize, MEMORY_USAGE_RENDER);
+    mObj->api->buffer_ctor(bufferObj);
+
     bufferObj->rid = RObjectID::get();
     bufferObj->info = bufferI;
     bufferObj->device = *this;
     bufferObj->hostMap = nullptr;
 
-    return mObj->create_buffer(mObj, bufferI, bufferObj);
+    return mObj->api->create_buffer(mObj, bufferI, bufferObj);
 }
 
 void RDevice::destroy_buffer(RBuffer buffer)
 {
-    mObj->destroy_buffer(mObj, buffer);
+    mObj->api->destroy_buffer(mObj, buffer);
 
-    heap_free((RBufferObj*)buffer);
+    RBufferObj* obj = buffer.unwrap();
+    mObj->api->buffer_dtor(obj);
+    heap_free(obj);
 }
 
 RImage RDevice::create_image(const RImageInfo& imageI)
@@ -150,19 +174,22 @@ RImage RDevice::create_image(const RImageInfo& imageI)
     LD_ASSERT(!(imageI.type == RIMAGE_TYPE_2D && imageI.layers != 1));
     LD_ASSERT(!(imageI.type == RIMAGE_TYPE_CUBE && imageI.layers != 6));
 
-    RImageObj* imageObj = (RImageObj*)heap_malloc(sizeof(RImageObj), MEMORY_USAGE_RENDER);
-    mObj->create_image(mObj, imageI, imageObj);
+    size_t objSize = mObj->api->get_obj_size(RTYPE_IMAGE);
+    RImageObj* imageObj = (RImageObj*)heap_malloc(objSize, MEMORY_USAGE_RENDER);
+    mObj->api->image_ctor(imageObj);
 
     imageObj->rid = RObjectID::get();
     imageObj->info = imageI;
     imageObj->device = *this;
 
-    return {imageObj};
+    return mObj->api->create_image(mObj, imageI, imageObj);
 }
 
 void RDevice::destroy_image(RImage image)
 {
-    RImageObj* obj = image;
+    mObj->api->destroy_image(mObj, image);
+
+    RImageObj* obj = image.unwrap();
 
     if (obj->fboHashes.size() > 0)
     {
@@ -173,7 +200,7 @@ void RDevice::destroy_image(RImage image)
         {
             if (sFramebuffers.contains(fboHash))
             {
-                mObj->destroy_framebuffer(mObj, sFramebuffers[fboHash]);
+                mObj->api->destroy_framebuffer(mObj, sFramebuffers[fboHash]);
                 heap_free((RFramebufferObj*)sFramebuffers[fboHash]);
                 sFramebuffers.erase(fboHash);
             }
@@ -182,79 +209,98 @@ void RDevice::destroy_image(RImage image)
         obj->fboHashes.clear();
     }
 
-    mObj->destroy_image(mObj, image);
+    mObj->api->image_dtor(obj);
     heap_free(obj);
 }
 
 RCommandPool RDevice::create_command_pool(const RCommandPoolInfo& poolI)
 {
-    RCommandPoolObj* poolObj = heap_new<RCommandPoolObj>(MEMORY_USAGE_RENDER);
+    size_t objSize = mObj->api->get_obj_size(RTYPE_COMMAND_POOL);
+    auto* poolObj = (RCommandPoolObj*)heap_malloc(objSize, MEMORY_USAGE_RENDER);
+    mObj->api->command_pool_ctor(poolObj);
+
     poolObj->rid = RObjectID::get();
     poolObj->deviceObj = mObj;
 
-    return mObj->create_command_pool(mObj, poolI, poolObj);
+    return mObj->api->create_command_pool(mObj, poolI, poolObj);
 }
 
 void RDevice::destroy_command_pool(RCommandPool pool)
 {
-    RCommandPoolObj* poolObj = (RCommandPoolObj*)pool;
+    RCommandPoolObj* poolObj = pool.unwrap();
 
     for (RCommandList list : poolObj->lists)
-        heap_delete((RCommandListObj*)list);
+    {
+        RCommandListObj* listObj = list.unwrap();
+        mObj->api->command_list_dtor(listObj);
+        heap_free(listObj);
+    }
+    poolObj->lists.clear();
 
-    mObj->destroy_command_pool(mObj, pool);
+    mObj->api->destroy_command_pool(mObj, pool);
 
+    mObj->api->command_pool_dtor(poolObj);
     heap_delete(poolObj);
 }
 
 RShader RDevice::create_shader(const RShaderInfo& shaderI)
 {
-    RShaderObj* shaderObj = (RShaderObj*)heap_malloc(sizeof(RShaderObj), MEMORY_USAGE_RENDER);
+    size_t objSize = mObj->api->get_obj_size(RTYPE_SHADER);
+    RShaderObj* shaderObj = (RShaderObj*)heap_malloc(objSize, MEMORY_USAGE_RENDER);
+    mObj->api->shader_ctor(shaderObj);
+
     shaderObj->rid = RObjectID::get();
     shaderObj->type = shaderI.type;
 
-    return mObj->create_shader(mObj, shaderI, shaderObj);
+    return mObj->api->create_shader(mObj, shaderI, shaderObj);
 }
 
 void RDevice::destroy_shader(RShader shader)
 {
-    mObj->destroy_shader(mObj, shader);
+    mObj->api->destroy_shader(mObj, shader);
 
-    heap_free((RShaderObj*)shader);
+    RShaderObj* shaderObj = shader.unwrap();
+    mObj->api->shader_dtor(shaderObj);
+    heap_free(shaderObj);
 }
 
 RSetPool RDevice::create_set_pool(const RSetPoolInfo& poolI)
 {
-    RSetPoolObj* poolObj = (RSetPoolObj*)heap_malloc(sizeof(RSetPoolObj), MEMORY_USAGE_RENDER);
+    size_t objSize = mObj->api->get_obj_size(RTYPE_SET_POOL);
+    RSetPoolObj* poolObj = (RSetPoolObj*)heap_malloc(objSize, MEMORY_USAGE_RENDER);
+    mObj->api->set_pool_ctor(poolObj);
+
     poolObj->rid = RObjectID::get();
     poolObj->deviceObj = mObj;
     poolObj->layoutObj = mObj->get_or_create_set_layout_obj(poolI.layout);
-    new (&poolObj->setLA) LinearAllocator();
 
+    size_t setObjSize = mObj->api->get_obj_size(RTYPE_SET);
     LinearAllocatorInfo laI{};
     laI.usage = MEMORY_USAGE_RENDER;
-    laI.capacity = sizeof(RSetObj) * poolI.maxSets;
+    laI.capacity = setObjSize * poolI.maxSets;
     poolObj->setLA = LinearAllocator::create(laI);
 
-    return mObj->create_set_pool(mObj, poolI, poolObj);
+    return mObj->api->create_set_pool(mObj, poolI, poolObj);
 }
 
 void RDevice::destroy_set_pool(RSetPool pool)
 {
-    RSetPoolObj* poolObj = (RSetPoolObj*)pool;
+    mObj->api->destroy_set_pool(mObj, pool);
 
-    mObj->destroy_set_pool(mObj, pool);
-
+    RSetPoolObj* poolObj = pool.unwrap();
     LinearAllocator::destroy(poolObj->setLA);
+    poolObj->setLA = {};
 
-    poolObj->setLA.~LinearAllocator();
-    heap_free((RSetPoolObj*)pool);
+    mObj->api->set_pool_dtor(poolObj);
+    heap_free(poolObj);
 }
 
 RPipeline RDevice::create_pipeline(const RPipelineInfo& pipelineI)
 {
-    RPipelineObj* pipelineObj = heap_new<RPipelineObj>(MEMORY_USAGE_RENDER);
-    pipelineObj->init_vk_api();
+    size_t objSize = mObj->api->get_obj_size(RTYPE_PIPELINE);
+    auto* pipelineObj = (RPipelineObj*)heap_malloc(objSize, MEMORY_USAGE_RENDER);
+    mObj->api->pipeline_ctor(pipelineObj);
+
     pipelineObj->rid = RObjectID::get();
     pipelineObj->variant.passObj = nullptr;
     pipelineObj->variant.depthTestEnabled = false;
@@ -263,23 +309,28 @@ RPipeline RDevice::create_pipeline(const RPipelineInfo& pipelineI)
 
     // NOTE: the exact render pass is only known during command recording,
     //       this only creates a shell object and the actual graphics API handle is not created yet.
-    return mObj->create_pipeline(mObj, pipelineI, pipelineObj);
+    return mObj->api->create_pipeline(mObj, pipelineI, pipelineObj);
 }
 
 RPipeline RDevice::create_compute_pipeline(const RComputePipelineInfo& pipelineI)
 {
-    RPipelineObj* pipelineObj = heap_new<RPipelineObj>(MEMORY_USAGE_RENDER);
+    size_t objSize = mObj->api->get_obj_size(RTYPE_PIPELINE);
+    auto* pipelineObj = (RPipelineObj*)heap_malloc(objSize, MEMORY_USAGE_RENDER);
+    mObj->api->pipeline_ctor(pipelineObj);
+
     pipelineObj->rid = RObjectID::get();
     pipelineObj->layoutObj = mObj->get_or_create_pipeline_layout_obj(pipelineI.layout);
 
-    return mObj->create_compute_pipeline(mObj, pipelineI, pipelineObj);
+    return mObj->api->create_compute_pipeline(mObj, pipelineI, pipelineObj);
 }
 
 void RDevice::destroy_pipeline(RPipeline pipeline)
 {
-    mObj->destroy_pipeline(mObj, pipeline);
+    mObj->api->destroy_pipeline(mObj, pipeline);
 
-    heap_delete((RPipelineObj*)pipeline);
+    RPipelineObj* pipelineObj = pipeline.unwrap();
+    mObj->api->pipeline_dtor(pipelineObj);
+    heap_free(pipelineObj);
 }
 
 void RDevice::update_set_images(uint32_t updateCount, const RSetImageUpdateInfo* updates)
@@ -289,7 +340,7 @@ void RDevice::update_set_images(uint32_t updateCount, const RSetImageUpdateInfo*
     if (updateCount == 0)
         return;
 
-    mObj->update_set_images(mObj, updateCount, updates);
+    mObj->api->update_set_images(mObj, updateCount, updates);
 }
 
 void RDevice::update_set_buffers(uint32_t updateCount, const RSetBufferUpdateInfo* updates)
@@ -299,59 +350,59 @@ void RDevice::update_set_buffers(uint32_t updateCount, const RSetBufferUpdateInf
     if (updateCount == 0)
         return;
 
-    mObj->update_set_buffers(mObj, updateCount, updates);
+    mObj->api->update_set_buffers(mObj, updateCount, updates);
 }
 
 uint32_t RDevice::next_frame(RSemaphore& imageAcquired, RSemaphore& presentReady, RFence& frameComplete)
 {
     LD_PROFILE_SCOPE;
 
-    uint32_t framesInFlightCount = mObj->get_frames_in_flight_count(mObj);
+    uint32_t framesInFlightCount = mObj->api->get_frames_in_flight_count(mObj);
     mObj->frameIndex = (mObj->frameIndex + 1) % framesInFlightCount;
 
-    return mObj->next_frame(mObj, imageAcquired, presentReady, frameComplete);
+    return mObj->api->next_frame(mObj, imageAcquired, presentReady, frameComplete);
 }
 
 void RDevice::present_frame()
 {
     LD_PROFILE_SCOPE;
 
-    return mObj->present_frame(mObj);
+    return mObj->api->present_frame(mObj);
 }
 
 void RDevice::get_depth_stencil_formats(RFormat* formats, uint32_t& count)
 {
-    mObj->get_depth_stencil_formats(mObj, formats, count);
+    mObj->api->get_depth_stencil_formats(mObj, formats, count);
 }
 
 RSampleCountBit RDevice::get_max_sample_count()
 {
-    return mObj->get_max_sample_count(mObj);
+    return mObj->api->get_max_sample_count(mObj);
 }
 
 RFormat RDevice::get_swapchain_color_format()
 {
-    return mObj->get_swapchain_color_format(mObj);
+    return mObj->api->get_swapchain_color_format(mObj);
 }
 
 RImage RDevice::get_swapchain_color_attachment(uint32_t frameIdx)
 {
-    return mObj->get_swapchain_color_attachment(mObj, frameIdx);
+    return mObj->api->get_swapchain_color_attachment(mObj, frameIdx);
 }
 
 uint32_t RDevice::get_swapchain_image_count()
 {
-    return mObj->get_swapchain_image_count(mObj);
+    return mObj->api->get_swapchain_image_count(mObj);
 }
 
 void RDevice::get_swapchain_extent(uint32_t* width, uint32_t* height)
 {
-    return mObj->get_swapchain_extent(mObj, width, height);
+    return mObj->api->get_swapchain_extent(mObj, width, height);
 }
 
 uint32_t RDevice::get_frames_in_flight_count()
 {
-    return mObj->get_frames_in_flight_count(mObj);
+    return mObj->api->get_frames_in_flight_count(mObj);
 }
 
 uint32_t RDevice::get_frame_index()
@@ -361,12 +412,12 @@ uint32_t RDevice::get_frame_index()
 
 RQueue RDevice::get_graphics_queue()
 {
-    return mObj->get_graphics_queue(mObj);
+    return mObj->api->get_graphics_queue(mObj);
 }
 
 void RDevice::wait_idle()
 {
-    return mObj->wait_idle(mObj);
+    return mObj->api->wait_idle(mObj);
 }
 
 RImageUsageFlags RImage::usage() const
@@ -427,7 +478,7 @@ void RBuffer::map()
     LD_ASSERT(mObj->info.hostVisible);
     LD_ASSERT(mObj->hostMap == nullptr);
 
-    mObj->map(mObj);
+    mObj->api->map(mObj);
 }
 
 void* RBuffer::map_read(uint32_t offset, uint64_t size)
@@ -435,7 +486,7 @@ void* RBuffer::map_read(uint32_t offset, uint64_t size)
     LD_ASSERT(mObj->hostMap != nullptr);
     LD_ASSERT(offset + size <= mObj->info.size);
 
-    return mObj->map_read(mObj, offset, size);
+    return mObj->api->map_read(mObj, offset, size);
 }
 
 void RBuffer::map_write(uint64_t offset, uint64_t size, const void* data)
@@ -443,14 +494,14 @@ void RBuffer::map_write(uint64_t offset, uint64_t size, const void* data)
     LD_ASSERT(mObj->hostMap != nullptr);
     LD_ASSERT(offset + size <= mObj->info.size);
 
-    mObj->map_write(mObj, offset, size, data);
+    mObj->api->map_write(mObj, offset, size, data);
 }
 
 void RBuffer::unmap()
 {
     LD_ASSERT(mObj->hostMap != nullptr);
 
-    mObj->unmap(mObj);
+    mObj->api->unmap(mObj);
 
     mObj->hostMap = nullptr;
 }
@@ -459,24 +510,24 @@ void RPipeline::set_color_write_mask(uint32_t index, RColorComponentFlags mask)
 {
     RDeviceObj* deviceObj = mObj->deviceObj;
 
-    deviceObj->pipeline_variant_color_write_mask(deviceObj, mObj, index, mask);
+    deviceObj->api->pipeline_variant_color_write_mask(deviceObj, mObj, index, mask);
 }
 
 void RPipeline::set_depth_test_enable(bool enable)
 {
     RDeviceObj* deviceObj = mObj->deviceObj;
 
-    deviceObj->pipeline_variant_depth_test_enable(deviceObj, mObj, enable);
+    deviceObj->api->pipeline_variant_depth_test_enable(deviceObj, mObj, enable);
 }
 
 void RCommandList::begin()
 {
-    mObj->begin(mObj, false);
+    mObj->api->begin(mObj, false);
 }
 
 void RCommandList::end()
 {
-    mObj->end(mObj);
+    mObj->api->end(mObj);
 }
 
 void RCommandList::cmd_begin_pass(const RPassBeginInfo& passBI)
@@ -484,14 +535,14 @@ void RCommandList::cmd_begin_pass(const RPassBeginInfo& passBI)
     // save pass information for later, used to invalidate graphics pipelines in cmd_bind_graphics_pipeline
     RUtil::save_pass_info(passBI.pass, mObj->currentPass);
 
-    mObj->cmd_begin_pass(mObj, passBI);
+    mObj->api->cmd_begin_pass(mObj, passBI);
 }
 
 void RCommandList::cmd_push_constant(const RPipelineLayoutInfo& layout, uint32_t offset, uint32_t size, const void* data)
 {
     RPipelineLayoutObj* layoutObj = mObj->deviceObj->get_or_create_pipeline_layout_obj(layout);
 
-    mObj->cmd_push_constant(mObj, layoutObj, offset, size, data);
+    mObj->api->cmd_push_constant(mObj, layoutObj, offset, size, data);
 }
 
 void RCommandList::cmd_bind_graphics_pipeline(RPipeline pipeline)
@@ -499,32 +550,32 @@ void RCommandList::cmd_bind_graphics_pipeline(RPipeline pipeline)
     RPassInfo passI;
     RUtil::load_pass_info(mObj->currentPass, passI);
 
-    RPipelineObj* pipelineObj = pipeline;
+    RPipelineObj* pipelineObj = pipeline.unwrap();
 
     // get or create graphics pipeline variant
-    mObj->deviceObj->pipeline_variant_pass(mObj->deviceObj, pipelineObj, passI);
-    pipelineObj->create_variant(pipelineObj);
+    mObj->deviceObj->api->pipeline_variant_pass(mObj->deviceObj, pipelineObj, passI);
+    pipelineObj->api->create_variant(pipelineObj);
 
-    mObj->cmd_bind_graphics_pipeline(mObj, pipeline);
+    mObj->api->cmd_bind_graphics_pipeline(mObj, pipeline);
 }
 
 void RCommandList::cmd_bind_graphics_sets(const RPipelineLayoutInfo& layout, uint32_t firstSet, uint32_t setCount, RSet* sets)
 {
     RPipelineLayoutObj* layoutObj = mObj->deviceObj->get_or_create_pipeline_layout_obj(layout);
 
-    mObj->cmd_bind_graphics_sets(mObj, layoutObj, firstSet, setCount, sets);
+    mObj->api->cmd_bind_graphics_sets(mObj, layoutObj, firstSet, setCount, sets);
 }
 
 void RCommandList::cmd_bind_compute_pipeline(RPipeline pipeline)
 {
-    mObj->cmd_bind_compute_pipeline(mObj, pipeline);
+    mObj->api->cmd_bind_compute_pipeline(mObj, pipeline);
 }
 
 void RCommandList::cmd_bind_compute_sets(const RPipelineLayoutInfo& layout, uint32_t firstSet, uint32_t setCount, RSet* sets)
 {
     RPipelineLayoutObj* layoutObj = mObj->deviceObj->get_or_create_pipeline_layout_obj(layout);
 
-    mObj->cmd_bind_compute_sets(mObj, layoutObj, firstSet, setCount, sets);
+    mObj->api->cmd_bind_compute_sets(mObj, layoutObj, firstSet, setCount, sets);
 }
 
 void RCommandList::cmd_bind_vertex_buffers(uint32_t firstBinding, uint32_t bindingCount, RBuffer* buffers)
@@ -532,19 +583,19 @@ void RCommandList::cmd_bind_vertex_buffers(uint32_t firstBinding, uint32_t bindi
     for (uint32_t i = 0; i < bindingCount; i++)
         LD_ASSERT(buffers[i].usage() & RBUFFER_USAGE_VERTEX_BIT);
 
-    mObj->cmd_bind_vertex_buffers(mObj, firstBinding, bindingCount, buffers);
+    mObj->api->cmd_bind_vertex_buffers(mObj, firstBinding, bindingCount, buffers);
 }
 
 void RCommandList::cmd_bind_index_buffer(RBuffer buffer, RIndexType indexType)
 {
     LD_ASSERT(buffer.usage() & RBUFFER_USAGE_INDEX_BIT);
 
-    mObj->cmd_bind_index_buffer(mObj, buffer, indexType);
+    mObj->api->cmd_bind_index_buffer(mObj, buffer, indexType);
 }
 
 void RCommandList::cmd_dispatch(uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ)
 {
-    mObj->cmd_dispatch(mObj, groupCountX, groupCountY, groupCountZ);
+    mObj->api->cmd_dispatch(mObj, groupCountX, groupCountY, groupCountZ);
 }
 
 void RCommandList::cmd_set_scissor(const Rect& scissor)
@@ -564,32 +615,32 @@ void RCommandList::cmd_set_scissor(const Rect& scissor)
     if (adjusted.w <= 0.0f || adjusted.h <= 0.0f)
         return;
 
-    mObj->cmd_set_scissor(mObj, adjusted);
+    mObj->api->cmd_set_scissor(mObj, adjusted);
 }
 
 void RCommandList::cmd_draw(const RDrawInfo& drawI)
 {
-    mObj->cmd_draw(mObj, drawI);
+    mObj->api->cmd_draw(mObj, drawI);
 }
 
 void RCommandList::cmd_draw_indexed(const RDrawIndexedInfo& drawI)
 {
-    mObj->cmd_draw_indexed(mObj, drawI);
+    mObj->api->cmd_draw_indexed(mObj, drawI);
 }
 
 void RCommandList::cmd_end_pass()
 {
-    mObj->cmd_end_pass(mObj);
+    mObj->api->cmd_end_pass(mObj);
 }
 
 void RCommandList::cmd_buffer_memory_barrier(RPipelineStageFlags srcStages, RPipelineStageFlags dstStages, const RBufferMemoryBarrier& barrier)
 {
-    mObj->cmd_buffer_memory_barrier(mObj, srcStages, dstStages, barrier);
+    mObj->api->cmd_buffer_memory_barrier(mObj, srcStages, dstStages, barrier);
 }
 
 void RCommandList::cmd_image_memory_barrier(RPipelineStageFlags srcStages, RPipelineStageFlags dstStages, const RImageMemoryBarrier& barrier)
 {
-    mObj->cmd_image_memory_barrier(mObj, srcStages, dstStages, barrier);
+    mObj->api->cmd_image_memory_barrier(mObj, srcStages, dstStages, barrier);
 }
 
 void RCommandList::cmd_copy_buffer(RBuffer srcBuffer, RBuffer dstBuffer, uint32_t regionCount, const RBufferCopy* regions)
@@ -597,7 +648,7 @@ void RCommandList::cmd_copy_buffer(RBuffer srcBuffer, RBuffer dstBuffer, uint32_
     LD_ASSERT(srcBuffer.usage() & RBUFFER_USAGE_TRANSFER_SRC_BIT);
     LD_ASSERT(dstBuffer.usage() & RBUFFER_USAGE_TRANSFER_DST_BIT);
 
-    mObj->cmd_copy_buffer(mObj, srcBuffer, dstBuffer, regionCount, regions);
+    mObj->api->cmd_copy_buffer(mObj, srcBuffer, dstBuffer, regionCount, regions);
 }
 
 void RCommandList::cmd_copy_buffer_to_image(RBuffer srcBuffer, RImage dstImage, RImageLayout dstImageLayout, uint32_t regionCount, const RBufferImageCopy* regions)
@@ -605,7 +656,7 @@ void RCommandList::cmd_copy_buffer_to_image(RBuffer srcBuffer, RImage dstImage, 
     LD_ASSERT(srcBuffer.usage() & RBUFFER_USAGE_TRANSFER_SRC_BIT);
     LD_ASSERT(dstImage.usage() & RIMAGE_USAGE_TRANSFER_DST_BIT);
 
-    mObj->cmd_copy_buffer_to_image(mObj, srcBuffer, dstImage, dstImageLayout, regionCount, regions);
+    mObj->api->cmd_copy_buffer_to_image(mObj, srcBuffer, dstImage, dstImageLayout, regionCount, regions);
 }
 
 void RCommandList::cmd_copy_image_to_buffer(RImage srcImage, RImageLayout srcImageLayout, RBuffer dstBuffer, uint32_t regionCount, const RBufferImageCopy* regions)
@@ -613,27 +664,32 @@ void RCommandList::cmd_copy_image_to_buffer(RImage srcImage, RImageLayout srcIma
     LD_ASSERT(srcImage.usage() & RIMAGE_USAGE_TRANSFER_SRC_BIT);
     LD_ASSERT(dstBuffer.usage() & RBUFFER_USAGE_TRANSFER_DST_BIT);
 
-    mObj->cmd_copy_image_to_buffer(mObj, srcImage, srcImageLayout, dstBuffer, regionCount, regions);
+    mObj->api->cmd_copy_image_to_buffer(mObj, srcImage, srcImageLayout, dstBuffer, regionCount, regions);
 }
 
 void RCommandList::cmd_blit_image(RImage srcImage, RImageLayout srcImageLayout, RImage dstImage, RImageLayout dstImageLayout, uint32_t regionCount, const RImageBlit* regions, RFilter filter)
 {
-    mObj->cmd_blit_image(mObj, srcImage, srcImageLayout, dstImage, dstImageLayout, regionCount, regions, filter);
+    mObj->api->cmd_blit_image(mObj, srcImage, srcImageLayout, dstImage, dstImageLayout, regionCount, regions, filter);
 }
 
 RCommandList RCommandPool::allocate()
 {
-    RCommandListObj* listObj = heap_new<RCommandListObj>(MEMORY_USAGE_RENDER);
-    listObj->deviceObj = mObj->deviceObj;
+    const RDeviceAPI* deviceAPI = mObj->deviceObj->api;
 
+    size_t objSize = deviceAPI->get_obj_size(RTYPE_COMMAND_LIST);
+    RCommandListObj* listObj = (RCommandListObj*)heap_malloc(objSize, MEMORY_USAGE_RENDER);
+    deviceAPI->command_list_ctor(listObj);
+
+    listObj->poolObj = mObj;
+    listObj->deviceObj = mObj->deviceObj;
     mObj->lists.push_back({listObj});
 
-    return mObj->allocate(mObj, listObj);
+    return mObj->api->allocate(mObj, listObj);
 }
 
 void RCommandPool::reset()
 {
-    mObj->reset(mObj);
+    mObj->api->reset(mObj);
 }
 
 uint32_t hash32_pass_info(const RPassInfo& passI)
@@ -783,16 +839,20 @@ uint32_t hash32_pipeline_rasterization_state(const RPipelineRasterizationInfo& r
 
 RSet RSetPool::allocate()
 {
-    RSetObj* setObj = (RSetObj*)mObj->setLA.allocate(sizeof(RSetObj));
+    const RDeviceAPI* deviceAPI = mObj->deviceObj->api;
 
-    return mObj->allocate(mObj, setObj);
+    size_t objSize = deviceAPI->get_obj_size(RTYPE_SET);
+    RSetObj* setObj = (RSetObj*)mObj->setLA.allocate(objSize);
+    // TODO: set ctor
+
+    return mObj->api->allocate(mObj, setObj);
 }
 
 void RSetPool::reset()
 {
     mObj->setLA.free();
 
-    return mObj->reset(mObj);
+    return mObj->api->reset(mObj);
 }
 
 RPassObj* RDeviceObj::get_or_create_pass_obj(const RPassInfo& passI)
@@ -801,13 +861,16 @@ RPassObj* RDeviceObj::get_or_create_pass_obj(const RPassInfo& passI)
 
     if (!sPasses.contains(passHash))
     {
-        RPassObj* passObj = (RPassObj*)heap_malloc(sizeof(RPassObj), MEMORY_USAGE_RENDER);
+        size_t objSize = api->get_obj_size(RTYPE_PASS);
+        RPassObj* passObj = (RPassObj*)heap_malloc(objSize, MEMORY_USAGE_RENDER);
+        api->pass_ctor(passObj);
+
         passObj->rid = RObjectID::get();
         passObj->hash = passHash;
         passObj->colorAttachmentCount = passI.colorAttachmentCount;
         passObj->hasDepthStencilAttachment = passI.depthStencilAttachment != nullptr;
         passObj->samples = passI.samples;
-        this->create_pass(this, passI, passObj);
+        api->create_pass(this, passI, passObj);
         sPasses[passHash] = passObj;
     }
 
@@ -820,11 +883,14 @@ RSetLayoutObj* RDeviceObj::get_or_create_set_layout_obj(const RSetLayoutInfo& la
 
     if (!sSetLayouts.contains(layoutHash))
     {
-        RSetLayoutObj* layoutObj = (RSetLayoutObj*)heap_malloc(sizeof(RSetLayoutObj), MEMORY_USAGE_RENDER);
+        size_t objSize = api->get_obj_size(RTYPE_SET_LAYOUT);
+        RSetLayoutObj* layoutObj = (RSetLayoutObj*)heap_malloc(objSize, MEMORY_USAGE_RENDER);
+        api->set_layout_ctor(layoutObj);
+
         layoutObj->rid = RObjectID::get();
         layoutObj->hash = layoutHash;
         layoutObj->deviceObj = this;
-        this->create_set_layout(this, layoutI, layoutObj);
+        api->create_set_layout(this, layoutI, layoutObj);
         sSetLayouts[layoutHash] = layoutObj;
     }
 
@@ -839,13 +905,16 @@ RPipelineLayoutObj* RDeviceObj::get_or_create_pipeline_layout_obj(const RPipelin
 
     if (!sPipelineLayouts.contains(layoutHash))
     {
-        RPipelineLayoutObj* layoutObj = (RPipelineLayoutObj*)heap_malloc(sizeof(RPipelineLayoutObj), MEMORY_USAGE_RENDER);
+        size_t objSize = api->get_obj_size(RTYPE_PIPELINE_LAYOUT);
+        RPipelineLayoutObj* layoutObj = (RPipelineLayoutObj*)heap_malloc(objSize, MEMORY_USAGE_RENDER);
+        api->pipeline_layout_ctor(layoutObj);
+
         layoutObj->rid = RObjectID::get();
         layoutObj->hash = layoutHash;
         layoutObj->setCount = layoutI.setLayoutCount;
         for (uint32_t i = 0; i < layoutObj->setCount; i++)
             layoutObj->setLayoutObjs[i] = this->get_or_create_set_layout_obj(layoutI.setLayouts[i]);
-        this->create_pipeline_layout(this, layoutI, layoutObj);
+        api->create_pipeline_layout(this, layoutI, layoutObj);
         sPipelineLayouts[layoutHash] = layoutObj;
     }
 
@@ -858,24 +927,28 @@ RFramebufferObj* RDeviceObj::get_or_create_framebuffer_obj(const RFramebufferInf
 
     if (!sFramebuffers.contains(framebufferHash))
     {
-        RFramebufferObj* framebufferObj = (RFramebufferObj*)heap_malloc(sizeof(RFramebufferObj), MEMORY_USAGE_RENDER);
+        size_t objSize = api->get_obj_size(RTYPE_FRAMEBUFFER);
+        RFramebufferObj* framebufferObj = (RFramebufferObj*)heap_malloc(objSize, MEMORY_USAGE_RENDER);
+        api->framebuffer_ctor(framebufferObj);
+
         framebufferObj->rid = RObjectID::get();
         framebufferObj->hash = framebufferHash;
         framebufferObj->width = framebufferI.width;
         framebufferObj->height = framebufferI.height;
         framebufferObj->passObj = get_or_create_pass_obj(framebufferI.pass);
-        create_framebuffer(this, framebufferI, framebufferObj);
+        api->create_framebuffer(this, framebufferI, framebufferObj);
         sFramebuffers[framebufferHash] = framebufferObj;
 
         for (uint32_t i = 0; i < framebufferI.colorAttachmentCount; i++)
         {
-            RImageObj* imageObj = framebufferI.colorAttachments[i];
+            RImageObj* imageObj = framebufferI.colorAttachments[i].unwrap();
             imageObj->fboHashes.insert(framebufferHash);
         }
 
         if (framebufferI.depthStencilAttachment)
         {
-            RImageObj* imageObj = (RImageObj*)((RImage)framebufferI.depthStencilAttachment);
+            RImage depthStencil = framebufferI.depthStencilAttachment;
+            RImageObj* imageObj = depthStencil.unwrap();
             imageObj->fboHashes.insert(framebufferHash);
         }
 
@@ -883,7 +956,7 @@ RFramebufferObj* RDeviceObj::get_or_create_framebuffer_obj(const RFramebufferInf
         {
             for (uint32_t i = 0; i < framebufferI.colorAttachmentCount; i++)
             {
-                RImageObj* imageObj = framebufferI.colorResolveAttachments[i];
+                RImageObj* imageObj = framebufferI.colorResolveAttachments[i].unwrap();
                 imageObj->fboHashes.insert(framebufferHash);
             }
         }
