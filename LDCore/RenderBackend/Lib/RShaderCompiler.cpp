@@ -14,6 +14,28 @@
 
 namespace LD {
 
+static EShLanguage get_glslang_shader_stage(RShaderType type)
+{
+    EShLanguage stage{};
+
+    switch (type)
+    {
+    case RSHADER_TYPE_COMPUTE:
+        stage = EShLangCompute;
+        break;
+    case RSHADER_TYPE_VERTEX:
+        stage = EShLangVertex;
+        break;
+    case RSHADER_TYPE_FRAGMENT:
+        stage = EShLangFragment;
+        break;
+    default:
+        LD_UNREACHABLE;
+    }
+
+    return stage;
+}
+
 static bool glslang_compile_glsl(glslang::EShClient client, glslang::EshTargetClientVersion clientVersion, EShLanguage stage, const char* glsl, std::vector<uint32_t>& spirvCode)
 {
     static bool hasInitialized = false;
@@ -70,40 +92,31 @@ static bool glslang_compile_glsl(glslang::EShClient client, glslang::EshTargetCl
     return true;
 }
 
-RShaderCompiler::RShaderCompiler(RDeviceBackend backend)
-    : mBackend(backend)
+bool RShaderCompiler::compile_to_spirv(RShaderType type, const char* vkGLSL, std::vector<uint32_t>& spirvCode)
 {
+    const EShLanguage stage = get_glslang_shader_stage(type);
+    const glslang::EShClient client = glslang::EShClientVulkan;
+    const glslang::EshTargetClientVersion clientVersion = LD_GLSLANG_VULKAN_CLIENT_VERSION;
+
+    return glslang_compile_glsl(client, clientVersion, stage, vkGLSL, spirvCode);
 }
 
-bool RShaderCompiler::compile(RShaderType type, const char* glsl, std::vector<uint32_t>& spirvCode)
+bool RShaderCompiler::compile_to_opengl_glsl(RShaderType type, const char* vkGLSL, std::string& glGLSL)
 {
-    EShLanguage stage{};
+    const EShLanguage stage = get_glslang_shader_stage(type);
+    const glslang::EShClient client = glslang::EShClientVulkan;
+    const glslang::EshTargetClientVersion clientVersion = LD_GLSLANG_VULKAN_CLIENT_VERSION;
 
-    switch (type)
-    {
-    case RSHADER_TYPE_COMPUTE:
-        stage = EShLangCompute;
-        break;
-    case RSHADER_TYPE_VERTEX:
-        stage = EShLangVertex;
-        break;
-    case RSHADER_TYPE_FRAGMENT:
-        stage = EShLangFragment;
-        break;
-    default:
-        LD_UNREACHABLE;
-    }
+    std::vector<uint32_t> spirvCode;
+    if (!glslang_compile_glsl(client, clientVersion, stage, vkGLSL, spirvCode))
+        return false;
 
-    if (mBackend == RDEVICE_BACKEND_VULKAN)
-    {
-        const glslang::EShClient client = glslang::EShClientVulkan;
-        const glslang::EshTargetClientVersion clientVersion = LD_GLSLANG_VULKAN_CLIENT_VERSION;
+    spirv_cross::CompilerGLSL compiler(std::move(spirvCode));
 
-        return glslang_compile_glsl(client, clientVersion, stage, glsl, spirvCode);
-    } else
-        LD_UNREACHABLE;
+    // TODO: remap layout qualifiers "set" + "binding" to OpenGL
+    glGLSL = compiler.compile();
 
-    return false;
+    return true;
 }
 
 } // namespace LD

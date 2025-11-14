@@ -1451,8 +1451,8 @@ static RShader vk_device_create_shader(RDeviceObj* baseSelf, const RShaderInfo& 
     auto* obj = (RShaderVKObj*)baseObj;
 
     std::vector<uint32_t> spirvCode;
-    RShaderCompiler compiler(self->backend);
-    bool success = compiler.compile(shaderI.type, shaderI.glsl, spirvCode);
+    RShaderCompiler compiler;
+    bool success = compiler.compile_to_spirv(shaderI.type, shaderI.glsl, spirvCode);
 
     if (!success)
         return {};
