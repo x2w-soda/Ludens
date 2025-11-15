@@ -539,7 +539,18 @@ void RCommandList::cmd_begin_pass(const RPassBeginInfo& passBI)
     // save pass information for later, used to invalidate graphics pipelines in cmd_bind_graphics_pipeline
     RUtil::save_pass_info(passBI.pass, mObj->currentPass);
 
-    mObj->api->cmd_begin_pass(mObj, passBI);
+    RFramebufferInfo framebufferI{
+        .width = passBI.width,
+        .height = passBI.height,
+        .colorAttachmentCount = passBI.colorAttachmentCount,
+        .colorAttachments = passBI.colorAttachments,
+        .colorResolveAttachments = passBI.colorResolveAttachments,
+        .depthStencilAttachment = passBI.depthStencilAttachment,
+        .pass = passBI.pass,
+    };
+
+    RFramebufferObj* framebufferObj = mObj->deviceObj->get_or_create_framebuffer_obj(framebufferI);
+        mObj->api->cmd_begin_pass(mObj, passBI, framebufferObj);
 }
 
 void RCommandList::cmd_push_constant(const RPipelineLayoutInfo& layout, uint32_t offset, uint32_t size, const void* data)
