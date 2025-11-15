@@ -35,6 +35,7 @@ set(MODULE_INCLUDE
 )
 
 set(MODULE_LIB
+  Lib/RData.h
   Lib/RBackendObj.h
   Lib/RBackendVK.cpp
   Lib/RBackend.cpp

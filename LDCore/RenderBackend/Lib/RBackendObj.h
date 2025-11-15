@@ -8,6 +8,8 @@
 #include <unordered_set>
 #include <vector>
 
+#include "RData.h"
+
 // RBackendObj.h
 // - internal header defining base object struct and their API (vtable)
 // - this header should still be graphics API agnostic
@@ -77,18 +79,6 @@ struct RImageObj
     RDevice device;
     RImageInfo info;
     std::unordered_set<uint32_t> fboHashes;
-};
-
-/// @brief while RPassInfo contains transient pointer members,
-///        this data representation is safe to be read at any time.
-struct RPassInfoData
-{
-    RSampleCountBit samples;
-    uint32_t colorAttachmentCount;
-    std::vector<RPassColorAttachment> colorAttachments;
-    std::vector<RPassResolveAttachment> colorResolveAttachments;
-    std::optional<RPassDepthStencilAttachment> depthStencilAttachment;
-    std::optional<RPassDependency> dependency;
 };
 
 /// @brief Base render pass object.
