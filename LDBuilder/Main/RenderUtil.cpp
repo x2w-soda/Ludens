@@ -114,7 +114,7 @@ void RenderUtil::from_equirectangular_to_faces(const fs::path& path, const fs::p
                 .data = (const char*)pixels,
             };
 
-            save_bitmap_to_disk(view, job->savePath.string().c_str());
+            Bitmap::save_to_disk(view, job->savePath.string().c_str());
             job->faceBuffer.unmap();
         }
     };
