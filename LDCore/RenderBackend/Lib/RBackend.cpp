@@ -39,18 +39,33 @@ RDevice RDevice::create(const RDeviceInfo& info)
 {
     LD_PROFILE_SCOPE;
 
-    size_t objSize = vk_device_byte_size();
-    auto* obj = (RDeviceObj*)heap_malloc(objSize, MEMORY_USAGE_RENDER);
-    vk_device_ctor(obj);
+    RDeviceObj* obj = nullptr;
+
+    if (info.backend == RDEVICE_BACKEND_VULKAN)
+    {
+        size_t objSize = vk_device_byte_size();
+        obj = (RDeviceObj*)heap_malloc(objSize, MEMORY_USAGE_RENDER);
+        vk_device_ctor(obj);
+    }
+    else
+    {
+        size_t objSize = gl_device_byte_size();
+        obj = (RDeviceObj*)heap_malloc(objSize, MEMORY_USAGE_RENDER);
+        gl_device_ctor(obj);
+    }
 
     obj->rid = RObjectID::get();
     obj->frameIndex = 0;
     obj->isHeadless = info.window == nullptr;
 
     if (info.backend == RDEVICE_BACKEND_VULKAN)
+    {
         vk_create_device(obj, info);
+    }
     else
-        LD_UNREACHABLE;
+    {
+        gl_create_device(obj, info);
+    }
 
     return {obj};
 }
@@ -104,7 +119,10 @@ void RDevice::destroy(RDevice device)
         vk_device_dtor(obj);
     }
     else
-        LD_UNREACHABLE;
+    {
+        gl_destroy_device(obj);
+        gl_device_dtor(obj);
+    }
 
     heap_free(obj);
 }
@@ -236,6 +254,16 @@ void RDevice::destroy_command_pool(RCommandPool pool)
     for (RCommandList list : poolObj->lists)
     {
         RCommandListObj* listObj = list.unwrap();
+
+        if (listObj->captureLA)
+        {
+            for (const RCommandType* cmd : listObj->captures)
+                render_command_placement_delete(cmd);
+
+            listObj->captures.clear();
+            listObj->captureLA.free();
+        }
+
         mObj->api->command_list_dtor(listObj);
         heap_free(listObj);
     }
@@ -526,12 +554,16 @@ void RPipeline::set_depth_test_enable(bool enable)
 
 void RCommandList::begin()
 {
-    mObj->api->begin(mObj, false);
+    LD_ASSERT(mObj->captures.empty()); // TODO: placement delete for commands from previous recording
+
+    if (mObj->api)
+        mObj->api->begin(mObj, false);
 }
 
 void RCommandList::end()
 {
-    mObj->api->end(mObj);
+    if (mObj->api)
+        mObj->api->end(mObj);
 }
 
 void RCommandList::cmd_begin_pass(const RPassBeginInfo& passBI)
@@ -550,6 +582,15 @@ void RCommandList::cmd_begin_pass(const RPassBeginInfo& passBI)
     };
 
     RFramebufferObj* framebufferObj = mObj->deviceObj->get_or_create_framebuffer_obj(framebufferI);
+
+    if (mObj->captureLA)
+    {
+        auto* cmd = (RCommandBeginPass*)mObj->captureLA.allocate(sizeof(RCommandBeginPass));
+        new (cmd) RCommandBeginPass(passBI, framebufferObj);
+        mObj->captures.push_back((const RCommandType*)cmd);
+    }
+
+    if (mObj->api)
         mObj->api->cmd_begin_pass(mObj, passBI, framebufferObj);
 }
 
@@ -557,7 +598,15 @@ void RCommandList::cmd_push_constant(const RPipelineLayoutInfo& layout, uint32_t
 {
     RPipelineLayoutObj* layoutObj = mObj->deviceObj->get_or_create_pipeline_layout_obj(layout);
 
-    mObj->api->cmd_push_constant(mObj, layoutObj, offset, size, data);
+    if (mObj->captureLA)
+    {
+        auto* cmd = (RCommandPushConstant*)mObj->captureLA.allocate(sizeof(RCommandPushConstant));
+        new (cmd) RCommandPushConstant(offset, size, data);
+        mObj->captures.push_back((const RCommandType*)cmd);
+    }
+
+    if (mObj->api)
+        mObj->api->cmd_push_constant(mObj, layoutObj, offset, size, data);
 }
 
 void RCommandList::cmd_bind_graphics_pipeline(RPipeline pipeline)
@@ -571,26 +620,58 @@ void RCommandList::cmd_bind_graphics_pipeline(RPipeline pipeline)
     mObj->deviceObj->api->pipeline_variant_pass(mObj->deviceObj, pipelineObj, passI);
     pipelineObj->api->create_variant(pipelineObj);
 
-    mObj->api->cmd_bind_graphics_pipeline(mObj, pipeline);
+    if (mObj->captureLA)
+    {
+        auto* cmd = (RCommandBindGraphicsPipeline*)mObj->captureLA.allocate(sizeof(RCommandBindGraphicsPipeline));
+        new (cmd) RCommandBindGraphicsPipeline(pipeline);
+        mObj->captures.push_back((const RCommandType*)cmd);
+    }
+
+    if (mObj->api)
+        mObj->api->cmd_bind_graphics_pipeline(mObj, pipeline);
 }
 
 void RCommandList::cmd_bind_graphics_sets(const RPipelineLayoutInfo& layout, uint32_t firstSet, uint32_t setCount, RSet* sets)
 {
     RPipelineLayoutObj* layoutObj = mObj->deviceObj->get_or_create_pipeline_layout_obj(layout);
 
-    mObj->api->cmd_bind_graphics_sets(mObj, layoutObj, firstSet, setCount, sets);
+    if (mObj->captureLA)
+    {
+        auto* cmd = (RCommandBindGraphicsSets*)mObj->captureLA.allocate(sizeof(RCommandBindGraphicsSets));
+        new (cmd) RCommandBindGraphicsSets(firstSet, setCount, sets);
+        mObj->captures.push_back((const RCommandType*)cmd);
+    }
+
+    if (mObj->api)
+        mObj->api->cmd_bind_graphics_sets(mObj, layoutObj, firstSet, setCount, sets);
 }
 
 void RCommandList::cmd_bind_compute_pipeline(RPipeline pipeline)
 {
-    mObj->api->cmd_bind_compute_pipeline(mObj, pipeline);
+    if (mObj->captureLA)
+    {
+        auto* cmd = (RCommandBindComputePipeline*)mObj->captureLA.allocate(sizeof(RCommandBindComputePipeline));
+        new (cmd) RCommandBindComputePipeline(pipeline);
+        mObj->captures.push_back((const RCommandType*)cmd);
+    }
+
+    if (mObj->api)
+        mObj->api->cmd_bind_compute_pipeline(mObj, pipeline);
 }
 
 void RCommandList::cmd_bind_compute_sets(const RPipelineLayoutInfo& layout, uint32_t firstSet, uint32_t setCount, RSet* sets)
 {
     RPipelineLayoutObj* layoutObj = mObj->deviceObj->get_or_create_pipeline_layout_obj(layout);
 
-    mObj->api->cmd_bind_compute_sets(mObj, layoutObj, firstSet, setCount, sets);
+    if (mObj->captureLA)
+    {
+        auto* cmd = (RCommandBindComputeSets*)mObj->captureLA.allocate(sizeof(RCommandBindComputeSets));
+        new (cmd) RCommandBindComputeSets(firstSet, setCount, sets);
+        mObj->captures.push_back((const RCommandType*)cmd);
+    }
+
+    if (mObj->api)
+        mObj->api->cmd_bind_compute_sets(mObj, layoutObj, firstSet, setCount, sets);
 }
 
 void RCommandList::cmd_bind_vertex_buffers(uint32_t firstBinding, uint32_t bindingCount, RBuffer* buffers)
@@ -598,19 +679,43 @@ void RCommandList::cmd_bind_vertex_buffers(uint32_t firstBinding, uint32_t bindi
     for (uint32_t i = 0; i < bindingCount; i++)
         LD_ASSERT(buffers[i].usage() & RBUFFER_USAGE_VERTEX_BIT);
 
-    mObj->api->cmd_bind_vertex_buffers(mObj, firstBinding, bindingCount, buffers);
+    if (mObj->captureLA)
+    {
+        auto* cmd = (RCommandBindVertexBuffers*)mObj->captureLA.allocate(sizeof(RCommandBindVertexBuffers));
+        new (cmd) RCommandBindVertexBuffers(firstBinding, bindingCount, buffers);
+        mObj->captures.push_back((const RCommandType*)cmd);
+    }
+
+    if (mObj->api)
+        mObj->api->cmd_bind_vertex_buffers(mObj, firstBinding, bindingCount, buffers);
 }
 
 void RCommandList::cmd_bind_index_buffer(RBuffer buffer, RIndexType indexType)
 {
     LD_ASSERT(buffer.usage() & RBUFFER_USAGE_INDEX_BIT);
 
-    mObj->api->cmd_bind_index_buffer(mObj, buffer, indexType);
+    if (mObj->captureLA)
+    {
+        auto* cmd = (RCommandBindIndexBuffer*)mObj->captureLA.allocate(sizeof(RCommandBindIndexBuffer));
+        new (cmd) RCommandBindIndexBuffer(buffer, indexType);
+        mObj->captures.push_back((const RCommandType*)cmd);
+    }
+
+    if (mObj->api)
+        mObj->api->cmd_bind_index_buffer(mObj, buffer, indexType);
 }
 
 void RCommandList::cmd_dispatch(uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ)
 {
-    mObj->api->cmd_dispatch(mObj, groupCountX, groupCountY, groupCountZ);
+    if (mObj->captureLA)
+    {
+        auto* cmd = (RCommandDispatch*)mObj->captureLA.allocate(sizeof(RCommandDispatch));
+        new (cmd) RCommandDispatch(groupCountX, groupCountY, groupCountZ);
+        mObj->captures.push_back((const RCommandType*)cmd);
+    }
+
+    if (mObj->api)
+        mObj->api->cmd_dispatch(mObj, groupCountX, groupCountY, groupCountZ);
 }
 
 void RCommandList::cmd_set_scissor(const Rect& scissor)
@@ -630,32 +735,80 @@ void RCommandList::cmd_set_scissor(const Rect& scissor)
     if (adjusted.w <= 0.0f || adjusted.h <= 0.0f)
         return;
 
-    mObj->api->cmd_set_scissor(mObj, adjusted);
+    if (mObj->captureLA)
+    {
+        auto* cmd = (RCommandSetScissor*)mObj->captureLA.allocate(sizeof(RCommandSetScissor));
+        new (cmd) RCommandSetScissor(adjusted);
+        mObj->captures.push_back((const RCommandType*)cmd);
+    }
+
+    if (mObj->api)
+        mObj->api->cmd_set_scissor(mObj, adjusted);
 }
 
 void RCommandList::cmd_draw(const RDrawInfo& drawI)
 {
-    mObj->api->cmd_draw(mObj, drawI);
+    if (mObj->captureLA)
+    {
+        auto* cmd = (RCommandDraw*)mObj->captureLA.allocate(sizeof(RCommandDraw));
+        new (cmd) RCommandDraw(drawI);
+        mObj->captures.push_back((const RCommandType*)cmd);
+    }
+
+    if (mObj->api)
+        mObj->api->cmd_draw(mObj, drawI);
 }
 
 void RCommandList::cmd_draw_indexed(const RDrawIndexedInfo& drawI)
 {
-    mObj->api->cmd_draw_indexed(mObj, drawI);
+    if (mObj->captureLA)
+    {
+        auto* cmd = (RCommandDrawIndexed*)mObj->captureLA.allocate(sizeof(RCommandDrawIndexed));
+        new (cmd) RCommandDrawIndexed(drawI);
+        mObj->captures.push_back((const RCommandType*)cmd);
+    }
+
+    if (mObj->api)
+        mObj->api->cmd_draw_indexed(mObj, drawI);
 }
 
 void RCommandList::cmd_end_pass()
 {
-    mObj->api->cmd_end_pass(mObj);
+    if (mObj->captureLA)
+    {
+        auto* cmd = (RCommandType*)mObj->captureLA.allocate(sizeof(RCommandType));
+        *cmd = RCOMMAND_END_PASS;
+        mObj->captures.push_back((const RCommandType*)cmd);
+    }
+
+    if (mObj->api)
+        mObj->api->cmd_end_pass(mObj);
 }
 
 void RCommandList::cmd_buffer_memory_barrier(RPipelineStageFlags srcStages, RPipelineStageFlags dstStages, const RBufferMemoryBarrier& barrier)
 {
-    mObj->api->cmd_buffer_memory_barrier(mObj, srcStages, dstStages, barrier);
+    if (mObj->captureLA)
+    {
+        auto* cmd = (RCommandBufferMemoryBarrier*)mObj->captureLA.allocate(sizeof(RCommandBufferMemoryBarrier));
+        new (cmd) RCommandBufferMemoryBarrier(srcStages, dstStages, barrier);
+        mObj->captures.push_back((const RCommandType*)cmd);
+    }
+
+    if (mObj->api)
+        mObj->api->cmd_buffer_memory_barrier(mObj, srcStages, dstStages, barrier);
 }
 
 void RCommandList::cmd_image_memory_barrier(RPipelineStageFlags srcStages, RPipelineStageFlags dstStages, const RImageMemoryBarrier& barrier)
 {
-    mObj->api->cmd_image_memory_barrier(mObj, srcStages, dstStages, barrier);
+    if (mObj->captureLA)
+    {
+        auto* cmd = (RCommandImageMemoryBarrier*)mObj->captureLA.allocate(sizeof(RCommandImageMemoryBarrier));
+        new (cmd) RCommandImageMemoryBarrier(srcStages, dstStages, barrier);
+        mObj->captures.push_back((const RCommandType*)cmd);
+    }
+
+    if (mObj->api)
+        mObj->api->cmd_image_memory_barrier(mObj, srcStages, dstStages, barrier);
 }
 
 void RCommandList::cmd_copy_buffer(RBuffer srcBuffer, RBuffer dstBuffer, uint32_t regionCount, const RBufferCopy* regions)
@@ -663,7 +816,15 @@ void RCommandList::cmd_copy_buffer(RBuffer srcBuffer, RBuffer dstBuffer, uint32_
     LD_ASSERT(srcBuffer.usage() & RBUFFER_USAGE_TRANSFER_SRC_BIT);
     LD_ASSERT(dstBuffer.usage() & RBUFFER_USAGE_TRANSFER_DST_BIT);
 
-    mObj->api->cmd_copy_buffer(mObj, srcBuffer, dstBuffer, regionCount, regions);
+    if (mObj->captureLA)
+    {
+        auto* cmd = (RCommandCopyBuffer*)mObj->captureLA.allocate(sizeof(RCommandCopyBuffer));
+        new (cmd) RCommandCopyBuffer(srcBuffer, dstBuffer, regionCount, regions);
+        mObj->captures.push_back((const RCommandType*)cmd);
+    }
+
+    if (mObj->api)
+        mObj->api->cmd_copy_buffer(mObj, srcBuffer, dstBuffer, regionCount, regions);
 }
 
 void RCommandList::cmd_copy_buffer_to_image(RBuffer srcBuffer, RImage dstImage, RImageLayout dstImageLayout, uint32_t regionCount, const RBufferImageCopy* regions)
@@ -671,7 +832,15 @@ void RCommandList::cmd_copy_buffer_to_image(RBuffer srcBuffer, RImage dstImage, 
     LD_ASSERT(srcBuffer.usage() & RBUFFER_USAGE_TRANSFER_SRC_BIT);
     LD_ASSERT(dstImage.usage() & RIMAGE_USAGE_TRANSFER_DST_BIT);
 
-    mObj->api->cmd_copy_buffer_to_image(mObj, srcBuffer, dstImage, dstImageLayout, regionCount, regions);
+    if (mObj->captureLA)
+    {
+        auto* cmd = (RCommandCopyBufferToImage*)mObj->captureLA.allocate(sizeof(RCommandCopyBufferToImage));
+        new (cmd) RCommandCopyBufferToImage(srcBuffer, dstImage, dstImageLayout, regionCount, regions);
+        mObj->captures.push_back((const RCommandType*)cmd);
+    }
+
+    if (mObj->api)
+        mObj->api->cmd_copy_buffer_to_image(mObj, srcBuffer, dstImage, dstImageLayout, regionCount, regions);
 }
 
 void RCommandList::cmd_copy_image_to_buffer(RImage srcImage, RImageLayout srcImageLayout, RBuffer dstBuffer, uint32_t regionCount, const RBufferImageCopy* regions)
@@ -679,12 +848,21 @@ void RCommandList::cmd_copy_image_to_buffer(RImage srcImage, RImageLayout srcIma
     LD_ASSERT(srcImage.usage() & RIMAGE_USAGE_TRANSFER_SRC_BIT);
     LD_ASSERT(dstBuffer.usage() & RBUFFER_USAGE_TRANSFER_DST_BIT);
 
-    mObj->api->cmd_copy_image_to_buffer(mObj, srcImage, srcImageLayout, dstBuffer, regionCount, regions);
+    if (mObj->captureLA)
+    {
+        auto* cmd = (RCommandCopyImageToBuffer*)mObj->captureLA.allocate(sizeof(RCommandCopyImageToBuffer));
+        new (cmd) RCommandCopyImageToBuffer(srcImage, srcImageLayout, dstBuffer, regionCount, regions);
+        mObj->captures.push_back((const RCommandType*)cmd);
+    }
+
+    if (mObj->api)
+        mObj->api->cmd_copy_image_to_buffer(mObj, srcImage, srcImageLayout, dstBuffer, regionCount, regions);
 }
 
 void RCommandList::cmd_blit_image(RImage srcImage, RImageLayout srcImageLayout, RImage dstImage, RImageLayout dstImageLayout, uint32_t regionCount, const RImageBlit* regions, RFilter filter)
 {
-    mObj->api->cmd_blit_image(mObj, srcImage, srcImageLayout, dstImage, dstImageLayout, regionCount, regions, filter);
+    if (mObj->api)
+        mObj->api->cmd_blit_image(mObj, srcImage, srcImageLayout, dstImage, dstImageLayout, regionCount, regions, filter);
 }
 
 RCommandList RCommandPool::allocate()
@@ -704,6 +882,8 @@ RCommandList RCommandPool::allocate()
 
 void RCommandPool::reset()
 {
+    // TODO: reset all command lists allocated from this pool.
+
     mObj->api->reset(mObj);
 }
 
