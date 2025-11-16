@@ -108,6 +108,7 @@ void RDevice::destroy(RDevice device)
     for (auto& ite : sFramebuffers)
     {
         obj->api->destroy_framebuffer(obj, ite.second);
+        obj->api->framebuffer_dtor(ite.second);
         heap_free(ite.second);
     }
     sLog.info("RDevice destroyed {} framebuffers", (int)sFramebuffers.size());
@@ -222,8 +223,10 @@ void RDevice::destroy_image(RImage image)
         {
             if (sFramebuffers.contains(fboHash))
             {
-                mObj->api->destroy_framebuffer(mObj, sFramebuffers[fboHash]);
-                heap_free((RFramebufferObj*)sFramebuffers[fboHash]);
+                RFramebufferObj* fboObj = sFramebuffers[fboHash];
+                mObj->api->destroy_framebuffer(mObj, fboObj);
+                mObj->api->framebuffer_dtor(fboObj);
+                heap_free(fboObj);
                 sFramebuffers.erase(fboHash);
             }
         }
