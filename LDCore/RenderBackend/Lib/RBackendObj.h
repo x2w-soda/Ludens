@@ -8,6 +8,7 @@
 #include <unordered_set>
 #include <vector>
 
+#include "RCommand.h"
 #include "RData.h"
 
 // RBackendObj.h
@@ -20,6 +21,7 @@ struct GLFWwindow;
 
 namespace LD {
 
+struct RCommandPoolObj;
 struct RPipelineLayoutObj;
 struct RDeviceObj;
 
@@ -151,6 +153,8 @@ struct RCommandListObj
     RDeviceObj* deviceObj;
     RCommandPoolObj* poolObj; /// the command pool allocated from
     RPassInfoData currentPass;
+    std::vector<const RCommandType*> captures;
+    LinearAllocator captureLA = {};
 };
 
 struct RCommandPoolAPI
@@ -355,7 +359,7 @@ struct RDeviceObj
     uint64_t rid;
     uint32_t frameIndex;
     RDeviceBackend backend;
-    GLFWwindow* glfw;
+    GLFWwindow* glfw = nullptr;
     bool isHeadless;
 
     RPassObj* get_or_create_pass_obj(const RPassInfo& passI);
@@ -369,5 +373,11 @@ void vk_device_ctor(RDeviceObj* obj);
 void vk_device_dtor(RDeviceObj* obj);
 void vk_create_device(struct RDeviceObj* obj, const RDeviceInfo& info);
 void vk_destroy_device(struct RDeviceObj* obj);
+
+size_t gl_device_byte_size();
+void gl_device_ctor(RDeviceObj* obj);
+void gl_device_dtor(RDeviceObj* obj);
+void gl_create_device(struct RDeviceObj* obj, const RDeviceInfo& info);
+void gl_destroy_device(struct RDeviceObj* obj);
 
 } // namespace LD

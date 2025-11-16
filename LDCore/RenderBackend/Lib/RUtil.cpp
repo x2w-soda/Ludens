@@ -4,6 +4,7 @@
 #include "RBackendObj.h"
 #include "RUtilCommon.h"
 #include "RUtilVK.h"
+#include "RUtilGL.h"
 
 // clang-format off
 #define ARRAY_SIZE(A)  (sizeof(A) / sizeof(*A))
@@ -26,9 +27,10 @@ struct
     RFilter filter;
     VkFilter vkFilter;
     VkSamplerMipmapMode vkMipmapMode;
+    GLenum glFilter;
 } filterTable[] = {
-    { RFILTER_NEAREST, VK_FILTER_NEAREST, VK_SAMPLER_MIPMAP_MODE_NEAREST },
-    { RFILTER_LINEAR,  VK_FILTER_LINEAR,  VK_SAMPLER_MIPMAP_MODE_LINEAR },
+    { RFILTER_NEAREST, VK_FILTER_NEAREST, VK_SAMPLER_MIPMAP_MODE_NEAREST, GL_NEAREST },
+    { RFILTER_LINEAR,  VK_FILTER_LINEAR,  VK_SAMPLER_MIPMAP_MODE_LINEAR,  GL_LINEAR },
 };
 // clang-format on
 
@@ -42,21 +44,43 @@ void cast_filter_mipmap_mode_vk(const RFilter& inFilter, VkSamplerMipmapMode& ou
     outMipmapMode = filterTable[(int)inFilter].vkMipmapMode;
 }
 
+void cast_filter_gl(const RSamplerInfo& inSampler, GLenum& outMinFilter, GLenum& outMagFilter)
+{
+    outMagFilter = filterTable[(int)inSampler.filter].filter;
+
+	if (inSampler.filter == RFILTER_LINEAR && inSampler.mipmapFilter == RFILTER_LINEAR)
+        outMinFilter = GL_LINEAR_MIPMAP_LINEAR;
+    else if (inSampler.filter == RFILTER_LINEAR && inSampler.mipmapFilter == RFILTER_NEAREST)
+        outMinFilter = GL_LINEAR_MIPMAP_NEAREST;
+    else if (inSampler.filter == RFILTER_NEAREST && inSampler.mipmapFilter == RFILTER_LINEAR)
+        outMinFilter = GL_NEAREST_MIPMAP_LINEAR;
+    else if (inSampler.filter == RFILTER_NEAREST && inSampler.mipmapFilter == RFILTER_NEAREST)
+        outMinFilter = GL_NEAREST_MIPMAP_NEAREST;
+    else
+        LD_UNREACHABLE;
+}
+
 // clang-format off
 struct
 {
     RSamplerAddressMode mode;
     VkSamplerAddressMode vkMode;
+    GLenum glMode;
 } samplerAddressModeTable[] = {
-    { RSAMPLER_ADDRESS_MODE_REPEAT,           VK_SAMPLER_ADDRESS_MODE_REPEAT },
-    { RSAMPLER_ADDRESS_MODE_MIRRORED_REPEAT,  VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT },
-    { RSAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,    VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE },
+    { RSAMPLER_ADDRESS_MODE_REPEAT,           VK_SAMPLER_ADDRESS_MODE_REPEAT,          GL_REPEAT },
+    { RSAMPLER_ADDRESS_MODE_MIRRORED_REPEAT,  VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT, GL_MIRRORED_REPEAT },
+    { RSAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,    VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,   GL_CLAMP_TO_EDGE },
 };
 // clang-format on
 
 void cast_sampler_address_mode_vk(const RSamplerAddressMode& inMode, VkSamplerAddressMode& outMode)
 {
     outMode = samplerAddressModeTable[(int)inMode].vkMode;
+}
+
+void cast_sampler_address_mode_gl(const RSamplerAddressMode& inMode, GLenum& outMode)
+{
+    outMode = samplerAddressModeTable[(int)inMode].glMode;
 }
 
 // clang-format off
@@ -66,19 +90,22 @@ struct
     uint32_t texelSize;
     VkFormat vkFormat;
     VkImageAspectFlags vkImageAspects;
+    GLenum glInternalFormat;
+    GLenum glDataFormat;
+    GLenum glDataType;
 } formatTable[] = {
-    { RFORMAT_UNDEFINED, 0, VK_FORMAT_UNDEFINED,            (VkImageAspectFlags)0,     },
-    { RFORMAT_R8,        1, VK_FORMAT_R8_UNORM,             VK_IMAGE_ASPECT_COLOR_BIT, },
-    { RFORMAT_R8U,       1, VK_FORMAT_R8_UINT,              VK_IMAGE_ASPECT_COLOR_BIT, },
-    { RFORMAT_R32U,      4, VK_FORMAT_R32_UINT,             VK_IMAGE_ASPECT_COLOR_BIT, },
-    { RFORMAT_RGB8,      3, VK_FORMAT_R8G8B8_UNORM,         VK_IMAGE_ASPECT_COLOR_BIT, },
-    { RFORMAT_RGB8U,     3, VK_FORMAT_R8G8B8_UINT,          VK_IMAGE_ASPECT_COLOR_BIT, },
-    { RFORMAT_BGRA8,     4, VK_FORMAT_B8G8R8A8_UNORM,       VK_IMAGE_ASPECT_COLOR_BIT, },
-    { RFORMAT_RGBA8,     4, VK_FORMAT_R8G8B8A8_UNORM,       VK_IMAGE_ASPECT_COLOR_BIT, },
-    { RFORMAT_RGBA8U,    4, VK_FORMAT_R8G8B8A8_UINT,        VK_IMAGE_ASPECT_COLOR_BIT, },
-    { RFORMAT_RGBA32F,  16, VK_FORMAT_R32G32B32A32_SFLOAT,  VK_IMAGE_ASPECT_COLOR_BIT, },
-    { RFORMAT_D32F_S8U,  5, VK_FORMAT_D32_SFLOAT_S8_UINT,   VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT, },
-    { RFORMAT_D24_S8U,   5, VK_FORMAT_D24_UNORM_S8_UINT,    VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT, },
+    { RFORMAT_UNDEFINED, 0, VK_FORMAT_UNDEFINED,            (VkImageAspectFlags)0,                                   GL_NONE,              GL_NONE,          GL_NONE },
+    { RFORMAT_R8,        1, VK_FORMAT_R8_UNORM,             VK_IMAGE_ASPECT_COLOR_BIT,                               GL_R8,                GL_RED,           GL_UNSIGNED_BYTE },
+    { RFORMAT_R8U,       1, VK_FORMAT_R8_UINT,              VK_IMAGE_ASPECT_COLOR_BIT,                               GL_R8UI,              GL_RED_INTEGER,   GL_UNSIGNED_BYTE },
+    { RFORMAT_R32U,      4, VK_FORMAT_R32_UINT,             VK_IMAGE_ASPECT_COLOR_BIT,                               GL_R32UI,             GL_RED_INTEGER,   GL_UNSIGNED_INT },
+    { RFORMAT_RGB8,      3, VK_FORMAT_R8G8B8_UNORM,         VK_IMAGE_ASPECT_COLOR_BIT,                               GL_RGB8,              GL_RGB,           GL_UNSIGNED_BYTE },
+    { RFORMAT_RGB8U,     3, VK_FORMAT_R8G8B8_UINT,          VK_IMAGE_ASPECT_COLOR_BIT,                               GL_RGB8UI,            GL_RGB_INTEGER,   GL_UNSIGNED_BYTE },
+    { RFORMAT_BGRA8,     4, VK_FORMAT_B8G8R8A8_UNORM,       VK_IMAGE_ASPECT_COLOR_BIT,                               GL_RGBA8,             GL_BGRA,          GL_UNSIGNED_BYTE },
+    { RFORMAT_RGBA8,     4, VK_FORMAT_R8G8B8A8_UNORM,       VK_IMAGE_ASPECT_COLOR_BIT,                               GL_RGBA8,             GL_RGBA,          GL_UNSIGNED_BYTE },
+    { RFORMAT_RGBA8U,    4, VK_FORMAT_R8G8B8A8_UINT,        VK_IMAGE_ASPECT_COLOR_BIT,                               GL_RGBA8UI,           GL_RGBA_INTEGER,  GL_UNSIGNED_BYTE },
+    { RFORMAT_RGBA32F,  16, VK_FORMAT_R32G32B32A32_SFLOAT,  VK_IMAGE_ASPECT_COLOR_BIT,                               GL_RGBA32F,           GL_RGBA,          GL_FLOAT },
+    { RFORMAT_D32F_S8U,  5, VK_FORMAT_D32_SFLOAT_S8_UINT,   VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT, GL_DEPTH32F_STENCIL8, GL_DEPTH_STENCIL, GL_FLOAT_32_UNSIGNED_INT_24_8_REV },
+    { RFORMAT_D24_S8U,   5, VK_FORMAT_D24_UNORM_S8_UINT,    VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT, GL_DEPTH24_STENCIL8,  GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8 },
 };
 // clang-format on
 
@@ -104,6 +131,13 @@ void cast_format_from_vk(const VkFormat& inFormat, RFormat& outFormat)
 void cast_format_image_aspect_vk(const RFormat& inFormat, VkImageAspectFlags& outFlags)
 {
     outFlags = formatTable[(int)inFormat].vkImageAspects;
+}
+
+void cast_format_gl(const RFormat& inFormat, GLenum& outInternalFormat, GLenum& outDataFormat, GLenum& outDataType)
+{
+    outInternalFormat = formatTable[(int)inFormat].glInternalFormat;
+    outDataFormat = formatTable[(int)inFormat].glDataFormat;
+    outDataType = formatTable[(int)inFormat].glDataType;
 }
 
 uint32_t get_format_texel_size(const RFormat& format)
@@ -351,16 +385,22 @@ struct
 {
     RShaderType type;
     VkShaderStageFlagBits vkType;
+    GLenum glType;
 } shaderTypeTable[] = {
-    { RSHADER_TYPE_COMPUTE,  VK_SHADER_STAGE_COMPUTE_BIT },
-    { RSHADER_TYPE_VERTEX,   VK_SHADER_STAGE_VERTEX_BIT },
-    { RSHADER_TYPE_FRAGMENT, VK_SHADER_STAGE_FRAGMENT_BIT },
+    { RSHADER_TYPE_COMPUTE,  VK_SHADER_STAGE_COMPUTE_BIT,  GL_COMPUTE_SHADER },
+    { RSHADER_TYPE_VERTEX,   VK_SHADER_STAGE_VERTEX_BIT,   GL_VERTEX_SHADER },
+    { RSHADER_TYPE_FRAGMENT, VK_SHADER_STAGE_FRAGMENT_BIT, GL_FRAGMENT_SHADER },
 };
 // clang-format on
 
 void cast_shader_type_vk(const RShaderType& inType, VkShaderStageFlagBits& outType)
 {
     outType = shaderTypeTable[(int)inType].vkType;
+}
+
+void cast_shader_type_gl(const RShaderType& inType, GLenum& outType)
+{
+    outType = shaderTypeTable[(int)inType].glType;
 }
 
 // clang-format off
@@ -472,9 +512,10 @@ struct
     RImageType type;
     VkImageType vkType;
     VkImageViewType vkViewType;
+    GLenum glTarget;
 } imageTypeTable[] = {
-    { RIMAGE_TYPE_2D,    VK_IMAGE_TYPE_2D, VK_IMAGE_VIEW_TYPE_2D },
-    { RIMAGE_TYPE_CUBE,  VK_IMAGE_TYPE_2D, VK_IMAGE_VIEW_TYPE_CUBE },
+    { RIMAGE_TYPE_2D,    VK_IMAGE_TYPE_2D, VK_IMAGE_VIEW_TYPE_2D,   GL_TEXTURE_2D },
+    { RIMAGE_TYPE_CUBE,  VK_IMAGE_TYPE_2D, VK_IMAGE_VIEW_TYPE_CUBE, GL_TEXTURE_CUBE_MAP },
 };
 // clang-format on
 
@@ -486,6 +527,11 @@ void cast_image_type_vk(const RImageType& inType, VkImageType& outType)
 void cast_image_view_type_vk(const RImageType& inType, VkImageViewType& outType)
 {
     outType = imageTypeTable[(int)inType].vkViewType;
+}
+
+void cast_image_type_gl(const RImageType& inType, GLenum& outTarget)
+{
+    outTarget = imageTypeTable[(int)inType].glTarget;
 }
 
 // clang-format off
@@ -509,16 +555,22 @@ struct
 {
     RPrimitiveTopology topo;
     VkPrimitiveTopology vkTopo;
+    GLenum glTopo;
 } primitiveTopologyTable[] = {
-    { RPRIMITIVE_TOPOLOGY_TRIANGLE_LIST,   VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST },
-    { RPRIMITIVE_TOPOLOGY_POINT_LIST,      VK_PRIMITIVE_TOPOLOGY_POINT_LIST },
-    { RPRIMITIVE_TOPOLOGY_LINE_LIST,       VK_PRIMITIVE_TOPOLOGY_LINE_LIST },
+    { RPRIMITIVE_TOPOLOGY_TRIANGLE_LIST,   VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST, GL_TRIANGLES },
+    { RPRIMITIVE_TOPOLOGY_POINT_LIST,      VK_PRIMITIVE_TOPOLOGY_POINT_LIST,    GL_POINTS },
+    { RPRIMITIVE_TOPOLOGY_LINE_LIST,       VK_PRIMITIVE_TOPOLOGY_LINE_LIST,     GL_LINES },
 };
 // clang-format on
 
 void cast_primitive_topology_vk(const RPrimitiveTopology& inTopo, VkPrimitiveTopology& outTopo)
 {
     outTopo = primitiveTopologyTable[(int)inTopo].vkTopo;
+}
+
+void cast_primitive_topology_gl(const RPrimitiveTopology& inTopo, GLenum& outTopo)
+{
+    outTopo = primitiveTopologyTable[(int)inTopo].glTopo;
 }
 
 static_assert((int)RSAMPLE_COUNT_1_BIT == (int)VK_SAMPLE_COUNT_1_BIT);

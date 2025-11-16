@@ -40,16 +40,19 @@ set(MODULE_LIB
   Lib/RCommand.cpp
   Lib/RBackendObj.h
   Lib/RBackendVK.cpp
+  Lib/RBackendGL.cpp
   Lib/RBackend.cpp
   Lib/RShaderCompiler.h
   Lib/RShaderCompiler.cpp
   Lib/RUtilCommon.h
   Lib/RUtilVK.h
+  Lib/RUtilGL.h
   Lib/RUtil.cpp
   Lib/RStager.cpp
   Lib/LDShaderParser.cpp
   Lib/LDShaderCompiler.cpp
   Lib/KTX.cpp
+  ${LUDENS_EXTRA_DIR}/glad/src/glad.c
 )
 
 set(MODULE_TEST
@@ -72,6 +75,7 @@ target_include_directories(${MODULE_NAME} PRIVATE
   ${glfw_SOURCE_DIR}/include
   ${vma_SOURCE_DIR}/include
   ${ktxsoftware_SOURCE_DIR}/include
+  ${LUDENS_EXTRA_DIR}/glad/include
 )
 
 target_link_libraries(${MODULE_NAME} PUBLIC
