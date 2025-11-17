@@ -130,6 +130,8 @@ void RDevice::destroy(RDevice device)
 
 RSemaphore RDevice::create_semaphore()
 {
+    LD_PROFILE_SCOPE;
+
     size_t objSize = mObj->api->get_obj_size(RTYPE_SEMAPHORE);
     RSemaphoreObj* semaphoreObj = (RSemaphoreObj*)heap_malloc(objSize, MEMORY_USAGE_RENDER);
     mObj->api->semaphore_ctor(semaphoreObj);
@@ -141,6 +143,8 @@ RSemaphore RDevice::create_semaphore()
 
 void RDevice::destroy_semaphore(RSemaphore semaphore)
 {
+    LD_PROFILE_SCOPE;
+
     mObj->api->destroy_semaphore(mObj, semaphore);
 
     RSemaphoreObj* obj = semaphore.unwrap();
@@ -150,6 +154,8 @@ void RDevice::destroy_semaphore(RSemaphore semaphore)
 
 RFence RDevice::create_fence(bool createSignaled)
 {
+    LD_PROFILE_SCOPE;
+
     size_t objSize = mObj->api->get_obj_size(RTYPE_FENCE);
     RFenceObj* fenceObj = (RFenceObj*)heap_malloc(objSize, MEMORY_USAGE_RENDER);
     mObj->api->fence_ctor(fenceObj);
@@ -161,6 +167,8 @@ RFence RDevice::create_fence(bool createSignaled)
 
 void RDevice::destroy_fence(RFence fence)
 {
+    LD_PROFILE_SCOPE;
+
     mObj->api->destroy_fence(mObj, fence);
 
     RFenceObj* obj = fence.unwrap();
@@ -170,6 +178,8 @@ void RDevice::destroy_fence(RFence fence)
 
 RBuffer RDevice::create_buffer(const RBufferInfo& bufferI)
 {
+    LD_PROFILE_SCOPE;
+
     size_t objSize = mObj->api->get_obj_size(RTYPE_BUFFER);
     RBufferObj* bufferObj = (RBufferObj*)heap_malloc(objSize, MEMORY_USAGE_RENDER);
     mObj->api->buffer_ctor(bufferObj);
@@ -184,6 +194,8 @@ RBuffer RDevice::create_buffer(const RBufferInfo& bufferI)
 
 void RDevice::destroy_buffer(RBuffer buffer)
 {
+    LD_PROFILE_SCOPE;
+
     mObj->api->destroy_buffer(mObj, buffer);
 
     RBufferObj* obj = buffer.unwrap();
@@ -193,6 +205,8 @@ void RDevice::destroy_buffer(RBuffer buffer)
 
 RImage RDevice::create_image(const RImageInfo& imageI)
 {
+    LD_PROFILE_SCOPE;
+
     // early sanity checks
     LD_ASSERT(!(imageI.type == RIMAGE_TYPE_2D && imageI.layers != 1));
     LD_ASSERT(!(imageI.type == RIMAGE_TYPE_CUBE && imageI.layers != 6));
@@ -210,6 +224,8 @@ RImage RDevice::create_image(const RImageInfo& imageI)
 
 void RDevice::destroy_image(RImage image)
 {
+    LD_PROFILE_SCOPE;
+
     mObj->api->destroy_image(mObj, image);
 
     RImageObj* obj = image.unwrap();
@@ -240,6 +256,8 @@ void RDevice::destroy_image(RImage image)
 
 RCommandPool RDevice::create_command_pool(const RCommandPoolInfo& poolI)
 {
+    LD_PROFILE_SCOPE;
+
     size_t objSize = mObj->api->get_obj_size(RTYPE_COMMAND_POOL);
     auto* poolObj = (RCommandPoolObj*)heap_malloc(objSize, MEMORY_USAGE_RENDER);
     mObj->api->command_pool_ctor(poolObj);
@@ -252,6 +270,8 @@ RCommandPool RDevice::create_command_pool(const RCommandPoolInfo& poolI)
 
 void RDevice::destroy_command_pool(RCommandPool pool)
 {
+    LD_PROFILE_SCOPE;
+
     RCommandPoolObj* poolObj = pool.unwrap();
 
     for (RCommandList list : poolObj->lists)
@@ -280,9 +300,19 @@ void RDevice::destroy_command_pool(RCommandPool pool)
 
 RShader RDevice::create_shader(const RShaderInfo& shaderI)
 {
+    LD_PROFILE_SCOPE;
+
     size_t objSize = mObj->api->get_obj_size(RTYPE_SHADER);
     RShaderObj* shaderObj = (RShaderObj*)heap_malloc(objSize, MEMORY_USAGE_RENDER);
     mObj->api->shader_ctor(shaderObj);
+
+    // NOTE: Compiling to SPIRV is common across backends, OpenGL backend
+    //       will later descompile the SPIRV back to OpenGL-compatible GLSL.
+    RShaderCompiler compiler;
+    bool success = compiler.compile_to_spirv(shaderI.type, shaderI.glsl, shaderObj->spirv, &shaderObj->reflection);
+
+    if (!success)
+        return {};
 
     shaderObj->rid = RObjectID::get();
     shaderObj->type = shaderI.type;
@@ -292,6 +322,8 @@ RShader RDevice::create_shader(const RShaderInfo& shaderI)
 
 void RDevice::destroy_shader(RShader shader)
 {
+    LD_PROFILE_SCOPE;
+
     mObj->api->destroy_shader(mObj, shader);
 
     RShaderObj* shaderObj = shader.unwrap();
@@ -301,6 +333,8 @@ void RDevice::destroy_shader(RShader shader)
 
 RSetPool RDevice::create_set_pool(const RSetPoolInfo& poolI)
 {
+    LD_PROFILE_SCOPE;
+
     size_t objSize = mObj->api->get_obj_size(RTYPE_SET_POOL);
     RSetPoolObj* poolObj = (RSetPoolObj*)heap_malloc(objSize, MEMORY_USAGE_RENDER);
     mObj->api->set_pool_ctor(poolObj);
@@ -320,6 +354,8 @@ RSetPool RDevice::create_set_pool(const RSetPoolInfo& poolI)
 
 void RDevice::destroy_set_pool(RSetPool pool)
 {
+    LD_PROFILE_SCOPE;
+
     mObj->api->destroy_set_pool(mObj, pool);
 
     RSetPoolObj* poolObj = pool.unwrap();
@@ -332,6 +368,8 @@ void RDevice::destroy_set_pool(RSetPool pool)
 
 RPipeline RDevice::create_pipeline(const RPipelineInfo& pipelineI)
 {
+    LD_PROFILE_SCOPE;
+
     size_t objSize = mObj->api->get_obj_size(RTYPE_PIPELINE);
     auto* pipelineObj = (RPipelineObj*)heap_malloc(objSize, MEMORY_USAGE_RENDER);
     mObj->api->pipeline_ctor(pipelineObj);
@@ -349,6 +387,8 @@ RPipeline RDevice::create_pipeline(const RPipelineInfo& pipelineI)
 
 RPipeline RDevice::create_compute_pipeline(const RComputePipelineInfo& pipelineI)
 {
+    LD_PROFILE_SCOPE;
+
     size_t objSize = mObj->api->get_obj_size(RTYPE_PIPELINE);
     auto* pipelineObj = (RPipelineObj*)heap_malloc(objSize, MEMORY_USAGE_RENDER);
     mObj->api->pipeline_ctor(pipelineObj);
@@ -361,6 +401,8 @@ RPipeline RDevice::create_compute_pipeline(const RComputePipelineInfo& pipelineI
 
 void RDevice::destroy_pipeline(RPipeline pipeline)
 {
+    LD_PROFILE_SCOPE;
+
     mObj->api->destroy_pipeline(mObj, pipeline);
 
     RPipelineObj* pipelineObj = pipeline.unwrap();

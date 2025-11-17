@@ -137,6 +137,7 @@ struct RPipelineLayoutGLObj : RPipelineLayoutObj
 
 static void gl_pipeline_create_variant(RPipelineObj* baseObj)
 {
+    (void)baseObj;
 }
 
 static constexpr RPipelineAPI sRPipelineGLAPI = {
@@ -735,10 +736,9 @@ static RShader gl_device_create_shader(RDeviceObj* baseSelf, const RShaderInfo& 
     RUtil::cast_shader_type_gl(shaderI.type, shaderType);
     obj->gl.handle = glCreateShader(shaderType);
 
-    // Vulkan-GLSL -> SPIRV -> OpenGL-GLSL
     RShaderCompiler compiler;
     std::string glsl;
-    bool success = compiler.compile_to_opengl_glsl(shaderI.type, shaderI.glsl, glsl);
+    bool success = compiler.decompile_to_opengl_glsl(obj->spirv, glsl);
 
     if (!success)
         return {};

@@ -1450,17 +1450,10 @@ static RShader vk_device_create_shader(RDeviceObj* baseSelf, const RShaderInfo& 
     auto* self = (RDeviceVKObj*)baseSelf;
     auto* obj = (RShaderVKObj*)baseObj;
 
-    std::vector<uint32_t> spirvCode;
-    RShaderCompiler compiler;
-    bool success = compiler.compile_to_spirv(shaderI.type, shaderI.glsl, spirvCode);
-
-    if (!success)
-        return {};
-
     VkShaderModuleCreateInfo shaderCI{
         .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-        .codeSize = spirvCode.size() * 4,
-        .pCode = spirvCode.data(),
+        .codeSize = obj->spirv.size() * 4,
+        .pCode = obj->spirv.data(),
     };
 
     VK_CHECK(vkCreateShaderModule(self->vk.device, &shaderCI, nullptr, &obj->vk.handle));

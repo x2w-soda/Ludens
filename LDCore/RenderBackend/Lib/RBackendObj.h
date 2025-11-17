@@ -10,6 +10,7 @@
 
 #include "RCommand.h"
 #include "RData.h"
+#include "RShaderCompiler.h"
 
 // RBackendObj.h
 // - internal header defining base object struct and their API (vtable)
@@ -177,6 +178,8 @@ struct RShaderObj
 {
     uint64_t rid;
     RShaderType type;
+    RShaderReflection reflection;
+    std::vector<uint32_t> spirv;
 };
 
 /// @brief Base set layout object.
