@@ -188,6 +188,7 @@ struct RSetLayoutObj
     uint64_t rid;
     uint32_t hash;
     RDeviceObj* deviceObj;
+    std::vector<RSetBindingInfo> bindings;
 };
 
 /// @brief Base set object.

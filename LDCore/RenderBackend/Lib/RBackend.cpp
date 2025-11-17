@@ -4,6 +4,8 @@
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/RenderBackend/RBackend.h>
 #include <Ludens/System/Memory.h>
+
+#include <algorithm>
 #include <unordered_map>
 
 #include "RBackendObj.h"
@@ -15,11 +17,54 @@
 namespace LD {
 
 static Log sLog("RBackend");
-std::unordered_map<uint32_t, RPassObj*> sPasses;
-std::unordered_map<uint32_t, RSetLayoutObj*> sSetLayouts;
-std::unordered_map<uint32_t, RPipelineLayoutObj*> sPipelineLayouts;
-std::unordered_map<uint32_t, RFramebufferObj*> sFramebuffers;
+static std::unordered_map<uint32_t, RPassObj*> sPasses;
+static std::unordered_map<uint32_t, RSetLayoutObj*> sSetLayouts;
+static std::unordered_map<uint32_t, RPipelineLayoutObj*> sPipelineLayouts;
+static std::unordered_map<uint32_t, RFramebufferObj*> sFramebuffers;
+
 uint64_t RObjectID::sCounter = 0;
+
+static bool validate_pipeline_shader(RPipelineLayoutObj* layoutObj, RShaderObj* shaderObj);
+static bool validate_pipeline_shaders(RPipelineLayoutObj* layoutObj, uint32_t shaderCount, RShader* shaders);
+
+static bool validate_pipeline_shader(RPipelineLayoutObj* layoutObj, RShaderObj* shaderObj)
+{
+    for (const RShaderBinding& binding : shaderObj->reflection.bindings)
+    {
+        if (binding.setIndex >= layoutObj->setCount)
+            return false;
+
+        RSetLayoutObj* setLayoutObj = layoutObj->setLayoutObjs[binding.setIndex];
+        const uint32_t bindingCount = (uint32_t)setLayoutObj->bindings.size();
+
+        if (binding.bindingIndex >= bindingCount)
+            return false;
+
+        const RSetBindingInfo& truth = setLayoutObj->bindings[binding.bindingIndex];
+        if (truth.type != binding.type)
+            return false;
+
+        if (truth.arrayCount != binding.arrayCount)
+            return false;
+    }
+
+    return true;
+}
+
+/// @brief Check if all shaders are compatible with the pipeline layout.
+///        When there is a conflict the pipeline layout is always the ground truth.
+static bool validate_pipeline_shaders(RPipelineLayoutObj* layoutObj, uint32_t shaderCount, RShader* shaders)
+{
+    for (uint32_t i = 0; i < shaderCount; i++)
+    {
+        RShaderObj* shaderObj = shaders[i].unwrap();
+
+        if (!validate_pipeline_shader(layoutObj, shaderObj))
+            return false;
+    }
+
+    return true;
+}
 
 void RQueue::wait_idle()
 {
@@ -312,7 +357,11 @@ RShader RDevice::create_shader(const RShaderInfo& shaderI)
     bool success = compiler.compile_to_spirv(shaderI.type, shaderI.glsl, shaderObj->spirv, &shaderObj->reflection);
 
     if (!success)
+    {
+        mObj->api->shader_dtor(shaderObj);
+        heap_free(shaderObj);
         return {};
+    }
 
     shaderObj->rid = RObjectID::get();
     shaderObj->type = shaderI.type;
@@ -379,6 +428,13 @@ RPipeline RDevice::create_pipeline(const RPipelineInfo& pipelineI)
     pipelineObj->variant.depthTestEnabled = false;
     pipelineObj->deviceObj = mObj;
     pipelineObj->layoutObj = mObj->get_or_create_pipeline_layout_obj(pipelineI.layout);
+
+    if (!validate_pipeline_shaders(pipelineObj->layoutObj, pipelineI.shaderCount, pipelineI.shaders))
+    {
+        mObj->api->pipeline_dtor(pipelineObj);
+        heap_free(pipelineObj);
+        return {};
+    }
 
     // NOTE: the exact render pass is only known during command recording,
     //       this only creates a shell object and the actual graphics API handle is not created yet.
@@ -1130,6 +1186,9 @@ RSetLayoutObj* RDeviceObj::get_or_create_set_layout_obj(const RSetLayoutInfo& la
         layoutObj->rid = RObjectID::get();
         layoutObj->hash = layoutHash;
         layoutObj->deviceObj = this;
+        layoutObj->bindings.resize(layoutI.bindingCount);
+        std::copy(layoutI.bindings, layoutI.bindings + layoutI.bindingCount, layoutObj->bindings.begin());
+
         api->create_set_layout(this, layoutI, layoutObj);
         sSetLayouts[layoutHash] = layoutObj;
     }
