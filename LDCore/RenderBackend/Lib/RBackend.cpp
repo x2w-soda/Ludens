@@ -6,6 +6,8 @@
 #include <Ludens/System/Memory.h>
 
 #include <algorithm>
+#include <format>
+#include <string>
 #include <unordered_map>
 
 #include "RBackendObj.h"
@@ -24,8 +26,56 @@ static std::unordered_map<uint32_t, RFramebufferObj*> sFramebuffers;
 
 uint64_t RObjectID::sCounter = 0;
 
+static std::string print_set_bindings(uint32_t setIndex, uint32_t bindingCount, const RSetBindingInfo* bindings);
+static std::string print_shader_reflection(const RShaderReflection& reflection);
+static std::string print_pipeline_layout(const RPipelineLayoutObj* layoutObj);
 static bool validate_pipeline_shader(RPipelineLayoutObj* layoutObj, RShaderObj* shaderObj);
-static bool validate_pipeline_shaders(RPipelineLayoutObj* layoutObj, uint32_t shaderCount, RShader* shaders);
+static bool validate_pipeline_shaders(RPipelineLayoutObj* layoutObj, uint32_t shaderCount, RShader* shaders, std::string& err);
+
+static std::string print_set_bindings(uint32_t setIndex, uint32_t bindingCount, const RSetBindingInfo* bindings)
+{
+    std::string str;
+    std::string type;
+
+    for (uint32_t i = 0; i < bindingCount; i++)
+    {
+        RUtil::print_binding_type(bindings[i].type, type);
+        str += std::format("layout (set = {}, binding = {}) {} [{}]\n", setIndex, bindings[i].binding, type, bindings[i].arrayCount);
+    }
+
+    return str;
+}
+
+static std::string print_shader_reflection(const RShaderReflection& reflection)
+{
+    std::string str;
+
+    for (const RShaderBinding& shaderBinding : reflection.bindings)
+    {
+        RSetBindingInfo bindingI;
+        bindingI.arrayCount = shaderBinding.arrayCount;
+        bindingI.binding = shaderBinding.bindingIndex;
+        bindingI.type = shaderBinding.type;
+
+        str += print_set_bindings(shaderBinding.setIndex, 1, &bindingI);
+    }
+
+    return str;
+}
+
+std::string print_pipeline_layout(const RPipelineLayoutObj* layoutObj)
+{
+    std::string str;
+
+    for (uint32_t setIndex = 0; setIndex < layoutObj->setCount; setIndex++)
+    {
+        const auto& bindings = layoutObj->setLayoutObjs[setIndex]->bindings;
+
+        str += print_set_bindings(setIndex, (uint32_t)bindings.size(), bindings.data());
+    }
+
+    return str;
+}
 
 static bool validate_pipeline_shader(RPipelineLayoutObj* layoutObj, RShaderObj* shaderObj)
 {
@@ -53,14 +103,23 @@ static bool validate_pipeline_shader(RPipelineLayoutObj* layoutObj, RShaderObj* 
 
 /// @brief Check if all shaders are compatible with the pipeline layout.
 ///        When there is a conflict the pipeline layout is always the ground truth.
-static bool validate_pipeline_shaders(RPipelineLayoutObj* layoutObj, uint32_t shaderCount, RShader* shaders)
+static bool validate_pipeline_shaders(RPipelineLayoutObj* layoutObj, uint32_t shaderCount, RShader* shaders, std::string& err)
 {
+    err.clear();
+
     for (uint32_t i = 0; i < shaderCount; i++)
     {
         RShaderObj* shaderObj = shaders[i].unwrap();
 
         if (!validate_pipeline_shader(layoutObj, shaderObj))
+        {
+            err = "validate_pipeline_shaders failed\n";
+            err += "shader reflection:\n";
+            err += print_shader_reflection(shaderObj->reflection);
+            err += "pipeline layout:\n";
+            err += print_pipeline_layout(layoutObj);
             return false;
+        }
     }
 
     return true;
@@ -429,10 +488,12 @@ RPipeline RDevice::create_pipeline(const RPipelineInfo& pipelineI)
     pipelineObj->deviceObj = mObj;
     pipelineObj->layoutObj = mObj->get_or_create_pipeline_layout_obj(pipelineI.layout);
 
-    if (!validate_pipeline_shaders(pipelineObj->layoutObj, pipelineI.shaderCount, pipelineI.shaders))
+    std::string err;
+    if (!validate_pipeline_shaders(pipelineObj->layoutObj, pipelineI.shaderCount, pipelineI.shaders, err))
     {
         mObj->api->pipeline_dtor(pipelineObj);
         heap_free(pipelineObj);
+        sLog.error("{}", err);
         return {};
     }
 

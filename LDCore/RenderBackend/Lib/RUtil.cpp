@@ -3,8 +3,8 @@
 
 #include "RBackendObj.h"
 #include "RUtilCommon.h"
-#include "RUtilVK.h"
 #include "RUtilGL.h"
+#include "RUtilVK.h"
 
 // clang-format off
 #define ARRAY_SIZE(A)  (sizeof(A) / sizeof(*A))
@@ -48,7 +48,7 @@ void cast_filter_gl(const RSamplerInfo& inSampler, GLenum& outMinFilter, GLenum&
 {
     outMagFilter = filterTable[(int)inSampler.filter].filter;
 
-	if (inSampler.filter == RFILTER_LINEAR && inSampler.mipmapFilter == RFILTER_LINEAR)
+    if (inSampler.filter == RFILTER_LINEAR && inSampler.mipmapFilter == RFILTER_LINEAR)
         outMinFilter = GL_LINEAR_MIPMAP_LINEAR;
     else if (inSampler.filter == RFILTER_LINEAR && inSampler.mipmapFilter == RFILTER_NEAREST)
         outMinFilter = GL_LINEAR_MIPMAP_NEAREST;
@@ -177,6 +177,23 @@ void load_pass_info(const RPassInfoData& inData, RPassInfo& outInfo)
     outInfo.colorResolveAttachments = inData.colorResolveAttachments.empty() ? nullptr : inData.colorResolveAttachments.data();
     outInfo.depthStencilAttachment = inData.depthStencilAttachment ? std::to_address(inData.depthStencilAttachment) : nullptr;
     outInfo.dependency = inData.dependency ? std::to_address(inData.dependency) : nullptr;
+}
+
+void print_binding_type(const RBindingType& inType, std::string& outType)
+{
+    std::string str;
+
+    switch (inType)
+    {
+        KASE(RBINDING_TYPE_COMBINED_IMAGE_SAMPLER, str);
+        KASE(RBINDING_TYPE_STORAGE_IMAGE, str);
+        KASE(RBINDING_TYPE_UNIFORM_BUFFER, str);
+        KASE(RBINDING_TYPE_STORAGE_BUFFER, str);
+    default:
+        LD_UNREACHABLE;
+    }
+
+    outType = str;
 }
 
 // clang-format off
