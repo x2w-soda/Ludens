@@ -417,7 +417,10 @@ struct RImageMemoryBarrier
 struct RCommandList : RHandle<struct RCommandListObj>
 {
     void begin();
+
     void end();
+
+    void reset();
 
     /// @brief begin a render pass instance
     void cmd_begin_pass(const RPassBeginInfo& passBI);
@@ -475,7 +478,8 @@ struct RCommandList : RHandle<struct RCommandListObj>
 struct RCommandPoolInfo
 {
     RQueueType queueType;
-    bool hintTransient; /// hint to the implementation that command lists allocated from this pool will be short lived
+    bool hintTransient;  /// hint to the implementation that command lists allocated from this pool will be short lived
+    bool listResettable; /// whether or not command lists allocated from this pool can be reset individually.
 };
 
 /// @brief command pool handle, used to allocate command lists

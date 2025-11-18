@@ -401,6 +401,7 @@ struct RFramebufferVKObj : RFramebufferObj
 
 static void vk_command_list_begin(RCommandListObj* self, bool oneTimeSubmit);
 static void vk_command_list_end(RCommandListObj* self);
+static void vk_command_list_reset(RCommandListObj* self);
 static void vk_command_list_cmd_begin_pass(RCommandListObj* self, const RPassBeginInfo& passBI, RFramebufferObj* baseFBObj);
 static void vk_command_list_cmd_push_constant(RCommandListObj* self, RPipelineLayoutObj* layoutObj, uint32_t offset, uint32_t size, const void* data);
 static void vk_command_list_cmd_bind_graphics_pipeline(RCommandListObj* self, RPipeline pipeline);
@@ -424,6 +425,7 @@ static void vk_command_list_cmd_blit_image(RCommandListObj* self, RImage srcImag
 static const RCommandListAPI sRCommandListVKAPI = {
     .begin = &vk_command_list_begin,
     .end = &vk_command_list_end,
+    .reset = &vk_command_list_reset,
     .cmd_begin_pass = &vk_command_list_cmd_begin_pass,
     .cmd_push_constant = &vk_command_list_cmd_push_constant,
     .cmd_bind_graphics_pipeline = &vk_command_list_cmd_bind_graphics_pipeline,
@@ -1401,8 +1403,11 @@ static RCommandPool vk_device_create_command_pool(RDeviceObj* baseSelf, const RC
         .queueFamilyIndex = self->vk.familyIdxGraphics, // TODO: parameterize against poolI.queueType
     };
 
-    if (poolI.hintTransient)
+    if (obj->hintTransient)
         poolCI.flags |= VK_COMMAND_POOL_CREATE_TRANSIENT_BIT;
+
+    if (obj->listResettable)
+        poolCI.flags |= VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
 
     VK_CHECK(vkCreateCommandPool(self->vk.device, &poolCI, nullptr, &obj->vk.handle));
 
@@ -2125,6 +2130,13 @@ static void vk_command_list_end(RCommandListObj* baseSelf)
     auto* self = (RCommandListVKObj*)baseSelf;
 
     VK_CHECK(vkEndCommandBuffer(self->vk.handle));
+}
+
+static void vk_command_list_reset(RCommandListObj* baseSelf)
+{
+    auto* self = (RCommandListVKObj*)baseSelf;
+
+    VK_CHECK(vkResetCommandBuffer(self->vk.handle, 0));
 }
 
 static void vk_command_list_cmd_begin_pass(RCommandListObj* baseSelf, const RPassBeginInfo& passBI, RFramebufferObj* baseFBObj)

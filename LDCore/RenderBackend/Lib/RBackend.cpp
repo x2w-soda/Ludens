@@ -31,6 +31,7 @@ static std::string print_shader_reflection(const RShaderReflection& reflection);
 static std::string print_pipeline_layout(const RPipelineLayoutObj* layoutObj);
 static bool validate_pipeline_shader(RPipelineLayoutObj* layoutObj, RShaderObj* shaderObj);
 static bool validate_pipeline_shaders(RPipelineLayoutObj* layoutObj, uint32_t shaderCount, RShader* shaders, std::string& err);
+static void reset_command_list(RCommandListObj* listObj);
 
 static std::string print_set_bindings(uint32_t setIndex, uint32_t bindingCount, const RSetBindingInfo* bindings)
 {
@@ -123,6 +124,18 @@ static bool validate_pipeline_shaders(RPipelineLayoutObj* layoutObj, uint32_t sh
     }
 
     return true;
+}
+
+static void reset_command_list(RCommandListObj* listObj)
+{
+    if (listObj->captureLA)
+    {
+        for (const RCommandType* cmd : listObj->captures)
+            render_command_placement_delete(cmd);
+
+        listObj->captures.clear();
+        listObj->captureLA.free();
+    }
 }
 
 void RQueue::wait_idle()
@@ -368,6 +381,8 @@ RCommandPool RDevice::create_command_pool(const RCommandPoolInfo& poolI)
 
     poolObj->rid = RObjectID::get();
     poolObj->deviceObj = mObj;
+    poolObj->hintTransient = poolI.hintTransient;
+    poolObj->listResettable = poolI.listResettable;
 
     return mObj->api->create_command_pool(mObj, poolI, poolObj);
 }
@@ -381,16 +396,7 @@ void RDevice::destroy_command_pool(RCommandPool pool)
     for (RCommandList list : poolObj->lists)
     {
         RCommandListObj* listObj = list.unwrap();
-
-        if (listObj->captureLA)
-        {
-            for (const RCommandType* cmd : listObj->captures)
-                render_command_placement_delete(cmd);
-
-            listObj->captures.clear();
-            listObj->captureLA.free();
-        }
-
+        reset_command_list(listObj);
         mObj->api->command_list_dtor(listObj);
         heap_free(listObj);
     }
@@ -726,6 +732,16 @@ void RCommandList::end()
 {
     if (mObj->api)
         mObj->api->end(mObj);
+}
+
+void RCommandList::reset()
+{
+    LD_ASSERT(mObj->poolObj->listResettable);
+
+    reset_command_list(mObj);
+
+    if (mObj->api)
+        mObj->api->reset(mObj);
 }
 
 void RCommandList::cmd_begin_pass(const RPassBeginInfo& passBI)
