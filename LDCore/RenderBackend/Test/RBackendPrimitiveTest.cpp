@@ -1,7 +1,11 @@
-#include "Extra/doctest/doctest.h"
+#include <Extra/doctest/doctest.h>
+#include <Ludens/Media/Bitmap.h>
 #include <Ludens/RenderBackend/RBackend.h>
 #include <Ludens/RenderBackend/RUtil.h>
-#include <Ludens/Media/Bitmap.h>
+
+#include <array>
+
+#include "RBackendTest.h"
 
 #define IMAGE_WIDTH 256
 #define IMAGE_HEIGHT 256
@@ -27,7 +31,29 @@ void main()
 }
 )";
 
-static const char sTriangleFSGLSL[] = R"(
+static const char sQuadVSGLSL[] = R"(
+#version 460 core
+
+layout (location = 0) out vec3 vColor;
+
+float attr[30] = float[](
+    -0.5, -0.5, 0.0, 0.0, 0.0,
+    +0.5, -0.5, 0.0, 1.0, 0.0,
+    +0.5, +0.5, 1.0, 1.0, 0.0,
+    +0.5, +0.5, 1.0, 1.0, 0.0,
+    -0.5, +0.5, 1.0, 0.0, 0.0,
+    -0.5, -0.5, 0.0, 0.0, 0.0
+);
+
+void main()
+{
+    uint base = uint(gl_VertexIndex) * 5;
+    vColor = vec3(attr[base + 2], attr[base + 3], attr[base + 4]);
+    gl_Position = vec4(attr[base], attr[base + 1], 0.0, 1.0);
+}
+)";
+
+static const char sBasicFSGLSL[] = R"(
 #version 460 core
 
 layout (location = 0) in vec3 vColor;
@@ -39,10 +65,17 @@ void main()
 }
 )";
 
-static void test_render_triangle(RDeviceBackend backend, const char* outPath)
+struct RBackendPrimitiveTestInfo
+{
+    RDeviceBackend backend;
+    const char* triangleImageSavePath;
+    const char* quadImageSavePath;
+};
+
+static void rbackend_primitive_test(const RBackendPrimitiveTestInfo& info)
 {
     RDeviceInfo deviceI{};
-    deviceI.backend = backend;
+    deviceI.backend = info.backend;
     deviceI.window = nullptr;
     RDevice device = RDevice::create(deviceI);
     CHECK(device);
@@ -53,25 +86,34 @@ static void test_render_triangle(RDeviceBackend backend, const char* outPath)
     RShader triangleVS = device.create_shader(shaderI);
     CHECK(triangleVS);
 
-    shaderI.type = RSHADER_TYPE_FRAGMENT;
-    shaderI.glsl = sTriangleFSGLSL;
-    RShader triangleFS = device.create_shader(shaderI);
-    CHECK(triangleFS);
+    shaderI.type = RSHADER_TYPE_VERTEX;
+    shaderI.glsl = sQuadVSGLSL;
+    RShader quadVS = device.create_shader(shaderI);
+    CHECK(quadVS);
 
-    RShader shaders[2] = {triangleVS, triangleFS};
+    shaderI.type = RSHADER_TYPE_FRAGMENT;
+    shaderI.glsl = sBasicFSGLSL;
+    RShader basicFS = device.create_shader(shaderI);
+    CHECK(basicFS);
+
+    std::array<RShader, 2> shaders = {triangleVS, basicFS};
 
     RPipelineBlendState bs = RUtil::make_default_blend_state();
     RPipelineInfo pipelineI{};
-    pipelineI.shaderCount = 2;
-    pipelineI.shaders = shaders;
+    pipelineI.shaderCount = (uint32_t)shaders.size();
+    pipelineI.shaders = shaders.data();
     pipelineI.vertexAttributeCount = 0;
     pipelineI.vertexBindingCount = 0;
     pipelineI.primitiveTopology = RPRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
     pipelineI.layout.setLayoutCount = 0;
     pipelineI.blend.colorAttachmentCount = 1;
     pipelineI.blend.colorAttachments = &bs;
-    RPipeline pipeline = device.create_pipeline(pipelineI);
-    CHECK(pipeline);
+    RPipeline trianglePipeline = device.create_pipeline(pipelineI);
+    CHECK(trianglePipeline);
+
+    shaders[0] = quadVS;
+    RPipeline quadPipeline = device.create_pipeline(pipelineI);
+    CHECK(quadPipeline);
 
     RBufferInfo bufferI{};
     bufferI.usage = RBUFFER_USAGE_TRANSFER_DST_BIT;
@@ -95,6 +137,7 @@ static void test_render_triangle(RDeviceBackend backend, const char* outPath)
     RCommandPoolInfo cmdPoolI{};
     cmdPoolI.queueType = RQUEUE_TYPE_GRAPHICS;
     cmdPoolI.hintTransient = true;
+    cmdPoolI.listResettable = true;
     RCommandPool cmdPool = device.create_command_pool(cmdPoolI);
     CHECK(cmdPool);
 
@@ -120,7 +163,7 @@ static void test_render_triangle(RDeviceBackend backend, const char* outPath)
     passBI.pass.dependency = nullptr;
     cmdList.begin();
     cmdList.cmd_begin_pass(passBI);
-    cmdList.cmd_bind_graphics_pipeline(pipeline);
+    cmdList.cmd_bind_graphics_pipeline(trianglePipeline);
     cmdList.cmd_draw({3, 0, 1, 0});
     cmdList.cmd_end_pass();
     RImageMemoryBarrier barrier{}; // copy rendered contents to host visible buffer
@@ -148,22 +191,51 @@ static void test_render_triangle(RDeviceBackend backend, const char* outPath)
     hostBuffer.map();
     void* pixels = hostBuffer.map_read(0, hostBuffer.size());
     BitmapView view{IMAGE_WIDTH, IMAGE_HEIGHT, BITMAP_CHANNEL_RGBA, (const char*)pixels};
-    Bitmap::save_to_disk(view, outPath);
+    Bitmap::save_to_disk(view, info.triangleImageSavePath);
+    hostBuffer.unmap();
+
+    cmdList.reset();
+    cmdList.begin();
+    cmdList.cmd_begin_pass(passBI);
+    cmdList.cmd_bind_graphics_pipeline(quadPipeline);
+    cmdList.cmd_draw({6, 0, 1, 0});
+    cmdList.cmd_end_pass();
+    cmdList.cmd_image_memory_barrier(RPIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, RPIPELINE_STAGE_TRANSFER_BIT, barrier);
+    cmdList.cmd_copy_image_to_buffer(colorImage, RIMAGE_LAYOUT_TRANSFER_SRC, hostBuffer, 1, &region);
+    cmdList.end();
+
+    queue.submit(submitI, {});
+    device.wait_idle();
+
+    hostBuffer.map();
+    pixels = hostBuffer.map_read(0, hostBuffer.size());
+    BitmapView view2 = {IMAGE_WIDTH, IMAGE_HEIGHT, BITMAP_CHANNEL_RGBA, (const char*)pixels};
+    Bitmap::save_to_disk(view2, info.quadImageSavePath);
     hostBuffer.unmap();
 
     device.destroy_command_pool(cmdPool);
     device.destroy_image(colorImage);
     device.destroy_buffer(hostBuffer);
-    device.destroy_pipeline(pipeline);
-    device.destroy_shader(triangleFS);
+    device.destroy_pipeline(quadPipeline);
+    device.destroy_pipeline(trianglePipeline);
+    device.destroy_shader(basicFS);
+    device.destroy_shader(quadVS);
     device.destroy_shader(triangleVS);
     RDevice::destroy(device);
 }
 
-TEST_CASE("RenderTriangle")
+TEST_CASE("RBackendPrimitiveTest")
 {
-    test_render_triangle(RDEVICE_BACKEND_VULKAN, "./vk_triangle.png");
-    test_render_triangle(RDEVICE_BACKEND_OPENGL, "./gl_triangle.png");
+    RBackendPrimitiveTestInfo info{};
+    info.backend = RDEVICE_BACKEND_VULKAN;
+    info.triangleImageSavePath = "./vk_triangle.png";
+    info.quadImageSavePath = "./vk_quad.png";
+    rbackend_primitive_test(info);
+
+    info.backend = RDEVICE_BACKEND_OPENGL;
+    info.triangleImageSavePath = "./gl_triangle.png";
+    info.quadImageSavePath = "./gl_quad.png";
+    rbackend_primitive_test(info);
 
     Bitmap vkTriangle = Bitmap::create_from_path("./vk_triangle.png");
     Bitmap glTriangle = Bitmap::create_from_path("./gl_triangle.png");
@@ -174,6 +246,9 @@ TEST_CASE("RenderTriangle")
     //       even if both backends generate identical output,
     //       they could still be both wrong.
     double mse;
-    CHECK(Bitmap::compute_mse(vkTriangle.view(), glTriangle.view(), mse));
-    CHECK(mse < 0.001);
+    CHECK(compute_bitmap_mse("./vk_triangle.png", "./gl_triangle.png", mse));
+    CHECK(mse < BITMAP_MSE_TOLERANCE);
+
+    CHECK(compute_bitmap_mse("./vk_quad.png", "./gl_quad.png", mse));
+    CHECK(mse < BITMAP_MSE_TOLERANCE);
 }

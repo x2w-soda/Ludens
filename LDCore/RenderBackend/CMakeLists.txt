@@ -56,6 +56,7 @@ set(MODULE_LIB
 )
 
 set(MODULE_TEST
+  Test/RBackendTest.h
   Test/RBackendTest.cpp
   Test/RBackendShaderParserTest.cpp
   Test/RBackendPrimitiveTest.cpp

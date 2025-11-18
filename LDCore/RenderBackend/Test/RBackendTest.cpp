@@ -1,8 +1,31 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
-#include "Extra/doctest/doctest.h"
+#include "RBackendTest.h"
+#include <Extra/doctest/doctest.h>
+#include <Ludens/Media/Bitmap.h>
 #include <Ludens/RenderBackend/RBackend.h>
 
+#include <cstdio>
+
 using namespace LD;
+
+namespace LD {
+
+bool compute_bitmap_mse(const char* lhsPath, const char* rhsPath, double& outMSE)
+{
+    Bitmap lhsBitmap = Bitmap::create_from_path(lhsPath);
+    Bitmap rhsBitmap = Bitmap::create_from_path(rhsPath);
+    if (!lhsBitmap || !rhsBitmap)
+        return false;
+
+    if (!Bitmap::compute_mse(lhsBitmap.view(), rhsBitmap.view(), outMSE))
+        return false;
+
+    printf("compute_bitmap_mse: %f\n- %s\n- %s\n", outMSE, lhsPath, rhsPath);
+
+    return true;
+}
+
+} // namespace LD
 
 TEST_CASE("hash_pipeline_rasterization_state")
 {
