@@ -35,23 +35,30 @@ set(MODULE_INCLUDE
 )
 
 set(MODULE_LIB
+  Lib/RData.h
+  Lib/RCommand.h
+  Lib/RCommand.cpp
   Lib/RBackendObj.h
   Lib/RBackendVK.cpp
+  Lib/RBackendGL.cpp
   Lib/RBackend.cpp
   Lib/RShaderCompiler.h
   Lib/RShaderCompiler.cpp
   Lib/RUtilCommon.h
   Lib/RUtilVK.h
+  Lib/RUtilGL.h
   Lib/RUtil.cpp
   Lib/RStager.cpp
   Lib/LDShaderParser.cpp
   Lib/LDShaderCompiler.cpp
   Lib/KTX.cpp
+  ${LUDENS_EXTRA_DIR}/glad/src/glad.c
 )
 
 set(MODULE_TEST
-  Test/RenderBackendTest.cpp
-  Test/LDShaderParserTest.cpp
+  Test/RBackendTest.cpp
+  Test/RBackendShaderParserTest.cpp
+  Test/RBackendPrimitiveTest.cpp
 )
 
 add_library(${MODULE_NAME} STATIC
@@ -69,6 +76,7 @@ target_include_directories(${MODULE_NAME} PRIVATE
   ${glfw_SOURCE_DIR}/include
   ${vma_SOURCE_DIR}/include
   ${ktxsoftware_SOURCE_DIR}/include
+  ${LUDENS_EXTRA_DIR}/glad/include
 )
 
 target_link_libraries(${MODULE_NAME} PUBLIC
@@ -86,6 +94,7 @@ add_executable(${MODULE_TEST_NAME}
 target_link_libraries(${MODULE_TEST_NAME} PRIVATE
   ${MODULE_NAME}
   LDSystem
+  LDMedia
 )
 
 target_include_directories(${MODULE_TEST_NAME} PRIVATE

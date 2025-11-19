@@ -243,8 +243,8 @@ struct RPassBeginInfo
 /// @brief shader module creation info
 struct RShaderInfo
 {
-    RShaderType type;
-    const char* glsl; /// glsl source code string, null terminated
+    RShaderType type; /// shader module type
+    const char* glsl; /// Vulkan glsl source code string, null terminated
 };
 
 /// @brief shader handle
@@ -290,7 +290,6 @@ struct RSetPool : RHandle<struct RSetPoolObj>
     void reset();
 };
 
-/// @brief pipeline layout handle
 struct RPipelineLayoutInfo
 {
     uint32_t setLayoutCount;    /// number of sets the pipeline layout

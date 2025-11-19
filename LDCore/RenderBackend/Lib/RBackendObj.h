@@ -8,6 +8,10 @@
 #include <unordered_set>
 #include <vector>
 
+#include "RCommand.h"
+#include "RData.h"
+#include "RShaderCompiler.h"
+
 // RBackendObj.h
 // - internal header defining base object struct and their API (vtable)
 // - this header should still be graphics API agnostic
@@ -18,6 +22,7 @@ struct GLFWwindow;
 
 namespace LD {
 
+struct RCommandPoolObj;
 struct RPipelineLayoutObj;
 struct RDeviceObj;
 
@@ -79,18 +84,6 @@ struct RImageObj
     std::unordered_set<uint32_t> fboHashes;
 };
 
-/// @brief while RPassInfo contains transient pointer members,
-///        this data representation is safe to be read at any time.
-struct RPassInfoData
-{
-    RSampleCountBit samples;
-    uint32_t colorAttachmentCount;
-    std::vector<RPassColorAttachment> colorAttachments;
-    std::vector<RPassResolveAttachment> colorResolveAttachments;
-    std::optional<RPassDepthStencilAttachment> depthStencilAttachment;
-    std::optional<RPassDependency> dependency;
-};
-
 /// @brief Base render pass object.
 struct RPassObj
 {
@@ -132,7 +125,7 @@ struct RCommandListAPI
 {
     void (*begin)(RCommandListObj* self, bool oneTimeSubmit);
     void (*end)(RCommandListObj* self);
-    void (*cmd_begin_pass)(RCommandListObj* self, const RPassBeginInfo& passBI);
+    void (*cmd_begin_pass)(RCommandListObj* self, const RPassBeginInfo& passBI, RFramebufferObj* framebufferObj);
     void (*cmd_push_constant)(RCommandListObj* self, RPipelineLayoutObj* layoutObj, uint32_t offset, uint32_t size, const void* data);
     void (*cmd_bind_graphics_pipeline)(RCommandListObj* self, RPipeline pipeline);
     void (*cmd_bind_graphics_sets)(RCommandListObj* self, RPipelineLayoutObj* layoutObj, uint32_t firstSet, uint32_t setCount, RSet* sets);
@@ -161,6 +154,8 @@ struct RCommandListObj
     RDeviceObj* deviceObj;
     RCommandPoolObj* poolObj; /// the command pool allocated from
     RPassInfoData currentPass;
+    std::vector<const RCommandType*> captures;
+    LinearAllocator captureLA = {};
 };
 
 struct RCommandPoolAPI
@@ -183,6 +178,8 @@ struct RShaderObj
 {
     uint64_t rid;
     RShaderType type;
+    RShaderReflection reflection;
+    std::vector<uint32_t> spirv;
 };
 
 /// @brief Base set layout object.
@@ -191,6 +188,7 @@ struct RSetLayoutObj
     uint64_t rid;
     uint32_t hash;
     RDeviceObj* deviceObj;
+    std::vector<RSetBindingInfo> bindings;
 };
 
 /// @brief Base set object.
@@ -365,7 +363,7 @@ struct RDeviceObj
     uint64_t rid;
     uint32_t frameIndex;
     RDeviceBackend backend;
-    GLFWwindow* glfw;
+    GLFWwindow* glfw = nullptr;
     bool isHeadless;
 
     RPassObj* get_or_create_pass_obj(const RPassInfo& passI);
@@ -379,5 +377,11 @@ void vk_device_ctor(RDeviceObj* obj);
 void vk_device_dtor(RDeviceObj* obj);
 void vk_create_device(struct RDeviceObj* obj, const RDeviceInfo& info);
 void vk_destroy_device(struct RDeviceObj* obj);
+
+size_t gl_device_byte_size();
+void gl_device_ctor(RDeviceObj* obj);
+void gl_device_dtor(RDeviceObj* obj);
+void gl_create_device(struct RDeviceObj* obj, const RDeviceInfo& info);
+void gl_destroy_device(struct RDeviceObj* obj);
 
 } // namespace LD

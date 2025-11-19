@@ -401,7 +401,7 @@ struct RFramebufferVKObj : RFramebufferObj
 
 static void vk_command_list_begin(RCommandListObj* self, bool oneTimeSubmit);
 static void vk_command_list_end(RCommandListObj* self);
-static void vk_command_list_cmd_begin_pass(RCommandListObj* self, const RPassBeginInfo& passBI);
+static void vk_command_list_cmd_begin_pass(RCommandListObj* self, const RPassBeginInfo& passBI, RFramebufferObj* baseFBObj);
 static void vk_command_list_cmd_push_constant(RCommandListObj* self, RPipelineLayoutObj* layoutObj, uint32_t offset, uint32_t size, const void* data);
 static void vk_command_list_cmd_bind_graphics_pipeline(RCommandListObj* self, RPipeline pipeline);
 static void vk_command_list_cmd_bind_graphics_sets(RCommandListObj* self, RPipelineLayoutObj* layoutObj, uint32_t setStart, uint32_t setCount, RSet* sets);
@@ -1450,17 +1450,10 @@ static RShader vk_device_create_shader(RDeviceObj* baseSelf, const RShaderInfo& 
     auto* self = (RDeviceVKObj*)baseSelf;
     auto* obj = (RShaderVKObj*)baseObj;
 
-    std::vector<uint32_t> spirvCode;
-    RShaderCompiler compiler(self->backend);
-    bool success = compiler.compile(shaderI.type, shaderI.glsl, spirvCode);
-
-    if (!success)
-        return {};
-
     VkShaderModuleCreateInfo shaderCI{
         .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-        .codeSize = spirvCode.size() * 4,
-        .pCode = spirvCode.data(),
+        .codeSize = obj->spirv.size() * 4,
+        .pCode = obj->spirv.data(),
     };
 
     VK_CHECK(vkCreateShaderModule(self->vk.device, &shaderCI, nullptr, &obj->vk.handle));
@@ -2134,21 +2127,9 @@ static void vk_command_list_end(RCommandListObj* baseSelf)
     VK_CHECK(vkEndCommandBuffer(self->vk.handle));
 }
 
-static void vk_command_list_cmd_begin_pass(RCommandListObj* baseSelf, const RPassBeginInfo& passBI)
+static void vk_command_list_cmd_begin_pass(RCommandListObj* baseSelf, const RPassBeginInfo& passBI, RFramebufferObj* baseFBObj)
 {
     auto* self = (RCommandListVKObj*)baseSelf;
-
-    RFramebufferInfo framebufferI{
-        .width = passBI.width,
-        .height = passBI.height,
-        .colorAttachmentCount = passBI.colorAttachmentCount,
-        .colorAttachments = passBI.colorAttachments,
-        .colorResolveAttachments = passBI.colorResolveAttachments,
-        .depthStencilAttachment = passBI.depthStencilAttachment,
-        .pass = passBI.pass,
-    };
-
-    RFramebufferObj* framebufferObj = self->deviceObj->get_or_create_framebuffer_obj(framebufferI);
 
     VkRect2D renderArea;
     renderArea.offset.x = 0;
@@ -2176,7 +2157,7 @@ static void vk_command_list_cmd_begin_pass(RCommandListObj* baseSelf, const RPas
     VkRenderPassBeginInfo vkBI{
         .sType = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
         .renderPass = static_cast<RPassVKObj*>(passObj)->vk.handle,
-        .framebuffer = static_cast<RFramebufferVKObj*>(framebufferObj)->vk.handle,
+        .framebuffer = static_cast<RFramebufferVKObj*>(baseFBObj)->vk.handle,
         .renderArea = renderArea,
         .clearValueCount = (uint32_t)clearValues.size(),
         .pClearValues = clearValues.data(),

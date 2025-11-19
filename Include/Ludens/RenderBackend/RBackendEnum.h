@@ -9,6 +9,7 @@ namespace LD {
 enum RDeviceBackend
 {
     RDEVICE_BACKEND_VULKAN = 0,
+    RDEVICE_BACKEND_OPENGL
 };
 
 enum RQueueType

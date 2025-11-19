@@ -81,8 +81,13 @@ struct Bitmap : Handle<struct BitmapObj>
 
     /// @brief Set bitmap compression method for serialize().
     void set_compression(BitmapCompression compression);
-};
 
-bool save_bitmap_to_disk(const BitmapView& view, const char* path);
+    /// @brief Save bitmap to disk.
+    static bool save_to_disk(const BitmapView& view, const char* path);
+
+    /// @brief Compute mean squared error between two bitmaps of equal dimension.
+    /// @return True if MSE could be computed.
+    static bool compute_mse(const BitmapView& lhs, const BitmapView& rhs, double& outMSE);
+};
 
 } // namespace LD

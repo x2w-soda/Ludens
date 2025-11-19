@@ -1,9 +1,17 @@
+#include <array>
+
 #include "ComponentMenu.h"
 
-#define OPT_ADD_SCRIPT 0
-#define OPT_ADD_CHILD 1
+#define COMPONENT_OPTION_ADD_SCRIPT 0
+#define COMPONENT_OPTION_ADD_CHILD 1
 
 namespace LD {
+
+struct MenuOption
+{
+    int index;
+    const char *name;
+};
 
 void ComponentMenu::startup(const ComponentMenuInfo& info)
 {
@@ -19,8 +27,14 @@ void ComponentMenu::startup(const ComponentMenuInfo& info)
     dropdownWI.layer = info.layer;
     mDropdown = UIDropdownWindow::create(dropdownWI);
 
-    mDropdown.add_option("Add script", OPT_ADD_SCRIPT);
-    mDropdown.add_option("Add child", OPT_ADD_CHILD);
+    std::array<MenuOption, 2> componentMenuOptions = {
+        MenuOption(COMPONENT_OPTION_ADD_SCRIPT, "Add script"),
+        MenuOption(COMPONENT_OPTION_ADD_CHILD, "Add child"),
+    };
+
+    for (auto& menuOpt : componentMenuOptions) {
+        mDropdown.add_option(menuOpt.name, menuOpt.index);
+    }
 }
 
 void ComponentMenu::cleanup()
@@ -51,11 +65,11 @@ bool ComponentMenu::on_option(int option, const Rect& optionRect, void* user)
 
     switch (option)
     {
-    case OPT_ADD_SCRIPT:
+    case COMPONENT_OPTION_ADD_SCRIPT:
         if (self.mInfo.onOptionAddScript)
             self.mInfo.onOptionAddScript(self.mCUID, self.mInfo.user);
         break;
-    case OPT_ADD_CHILD:
+    case COMPONENT_OPTION_ADD_CHILD:
         break;
     default:
         return false;

@@ -310,7 +310,7 @@ void Bitmap::set_compression(BitmapCompression compression)
     mObj->compression = compression;
 }
 
-bool save_bitmap_to_disk(const BitmapView& view, const char* c_path)
+bool Bitmap::save_to_disk(const BitmapView& view, const char* c_path)
 {
     LD_PROFILE_SCOPE;
 
@@ -337,6 +337,51 @@ bool save_bitmap_to_disk(const BitmapView& view, const char* c_path)
     }
 
     return false;
+}
+
+bool Bitmap::compute_mse(const BitmapView& lhs, const BitmapView& rhs, double& outMSE)
+{
+    LD_PROFILE_SCOPE;
+
+    if (lhs.channel != rhs.channel || lhs.width != rhs.width || lhs.height != rhs.height)
+    {
+        outMSE = -1.0;
+        return false;
+    }
+
+    if (lhs.data == rhs.data)
+    {
+        outMSE = 0.0;
+        return true;
+    }
+
+    outMSE = 0.0;
+
+    const uint32_t W = lhs.width;
+    const uint32_t H = lhs.height;
+    const uint32_t CH = (uint32_t)lhs.channel;
+    const uint8_t* ldata = (const uint8_t*)lhs.data;
+    const uint8_t* rdata = (const uint8_t*)rhs.data;
+
+    for (uint32_t h = 0; h < H; h++)
+    {
+        for (uint32_t w = 0; w < W; w++)
+        {
+            uint32_t texelIdx = h * W + w;
+            double texelSE = 0.0;
+
+            for (uint32_t c = 0; c < CH; c++)
+            {
+                double err = (ldata[texelIdx * CH + c] / 255.0) - (rdata[texelIdx * CH + c] / 255.0);
+                texelSE += err * err;
+            }
+
+            outMSE += texelSE;
+        }
+    }
+
+    outMSE /= static_cast<double>(W * H * CH);
+    return true;
 }
 
 } // namespace LD
