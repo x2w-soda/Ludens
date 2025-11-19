@@ -214,6 +214,7 @@ struct RSetPoolObj
     LinearAllocator setLA;
     RDeviceObj* deviceObj;
     RSetLayoutObj* layoutObj;
+    std::vector<RSet> sets;
 };
 
 /// @brief Base pipeline layout object.
@@ -321,6 +322,9 @@ struct RDeviceAPI
     void (*set_pool_dtor)(RSetPoolObj* setPoolObj);
     RSetPool (*create_set_pool)(RDeviceObj* self, const RSetPoolInfo& poolI, RSetPoolObj* poolObj);
     void (*destroy_set_pool)(RDeviceObj* self, RSetPool pool);
+
+    void (*set_ctor)(RSetObj* setObj);
+    void (*set_dtor)(RSetObj* setObj);
 
     void (*set_layout_ctor)(RSetLayoutObj* setLayoutObj);
     void (*set_layout_dtor)(RSetLayoutObj* setLayoutObj);

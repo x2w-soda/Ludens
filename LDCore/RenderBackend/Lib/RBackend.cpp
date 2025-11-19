@@ -26,6 +26,7 @@ static std::unordered_map<uint32_t, RFramebufferObj*> sFramebuffers;
 
 uint64_t RObjectID::sCounter = 0;
 
+static std::string print_shader_binding(const RShaderBinding& shaderBinding);
 static std::string print_set_bindings(uint32_t setIndex, uint32_t bindingCount, const RSetBindingInfo* bindings);
 static std::string print_shader_reflection(const RShaderReflection& reflection);
 static std::string print_pipeline_layout(const RPipelineLayoutObj* layoutObj);
@@ -33,15 +34,39 @@ static bool validate_pipeline_shader(RPipelineLayoutObj* layoutObj, RShaderObj* 
 static bool validate_pipeline_shaders(RPipelineLayoutObj* layoutObj, uint32_t shaderCount, RShader* shaders, std::string& err);
 static void reset_command_list(RCommandListObj* listObj);
 
+static std::string print_shader_binding(const RShaderBinding& shaderBinding)
+{
+    std::string bindingType;
+    RUtil::print_binding_type(shaderBinding.type, bindingType);
+
+    std::string str = std::format("{} layout (set = {}, binding = {}) {} {}",
+                                  bindingType,
+                                  shaderBinding.setIndex,
+                                  shaderBinding.bindingIndex,
+                                  get_glsl_type_cstr(shaderBinding.glslType),
+                                  shaderBinding.name);
+
+    if (shaderBinding.arrayCount > 1)
+        str += std::format("[{}]", shaderBinding.arrayCount);
+
+    str.push_back('\n');
+
+    return str;
+}
+
 static std::string print_set_bindings(uint32_t setIndex, uint32_t bindingCount, const RSetBindingInfo* bindings)
 {
     std::string str;
-    std::string type;
+    std::string bindingType;
 
     for (uint32_t i = 0; i < bindingCount; i++)
     {
-        RUtil::print_binding_type(bindings[i].type, type);
-        str += std::format("layout (set = {}, binding = {}) {} [{}]\n", setIndex, bindings[i].binding, type, bindings[i].arrayCount);
+        RUtil::print_binding_type(bindings[i].type, bindingType);
+        str += std::format("{} layout (set = {}, binding = {}) [{}]\n",
+                           bindingType,
+                           setIndex,
+                           bindings[i].binding,
+                           bindings[i].arrayCount);
     }
 
     return str;
@@ -53,12 +78,7 @@ static std::string print_shader_reflection(const RShaderReflection& reflection)
 
     for (const RShaderBinding& shaderBinding : reflection.bindings)
     {
-        RSetBindingInfo bindingI;
-        bindingI.arrayCount = shaderBinding.arrayCount;
-        bindingI.binding = shaderBinding.bindingIndex;
-        bindingI.type = shaderBinding.type;
-
-        str += print_set_bindings(shaderBinding.setIndex, 1, &bindingI);
+        str += print_shader_binding(shaderBinding);
     }
 
     return str;
@@ -469,6 +489,8 @@ RSetPool RDevice::create_set_pool(const RSetPoolInfo& poolI)
 void RDevice::destroy_set_pool(RSetPool pool)
 {
     LD_PROFILE_SCOPE;
+
+    pool.reset();
 
     mObj->api->destroy_set_pool(mObj, pool);
 
@@ -1060,7 +1082,8 @@ RCommandList RCommandPool::allocate()
 
 void RCommandPool::reset()
 {
-    // TODO: reset all command lists allocated from this pool.
+    for (RCommandList list : mObj->lists)
+        reset_command_list(list.unwrap());
 
     mObj->api->reset(mObj);
 }
@@ -1216,13 +1239,23 @@ RSet RSetPool::allocate()
 
     size_t objSize = deviceAPI->get_obj_size(RTYPE_SET);
     RSetObj* setObj = (RSetObj*)mObj->setLA.allocate(objSize);
-    // TODO: set ctor
+    deviceAPI->set_ctor(setObj);
+
+    mObj->sets.push_back({setObj});
 
     return mObj->api->allocate(mObj, setObj);
 }
 
 void RSetPool::reset()
 {
+    const RDeviceAPI* deviceAPI = mObj->deviceObj->api;
+
+    for (RSet set : mObj->sets)
+    {
+        deviceAPI->set_dtor(set.unwrap());   
+    }
+
+    mObj->sets.clear();
     mObj->setLA.free();
 
     return mObj->api->reset(mObj);

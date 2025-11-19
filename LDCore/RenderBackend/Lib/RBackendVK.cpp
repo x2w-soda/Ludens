@@ -208,6 +208,9 @@ static void vk_device_set_pool_dtor(RSetPoolObj* baseObj);
 static RSetPool vk_device_create_set_pool(RDeviceObj* self, const RSetPoolInfo& poolI, RSetPoolObj* obj);
 static void vk_device_destroy_set_pool(RDeviceObj* self, RSetPool pool);
 
+static void vk_device_set_ctor(RSetObj* baseObj);
+static void vk_device_set_dtor(RSetObj* baseObj);
+
 static void vk_device_set_layout_ctor(RSetLayoutObj* baseObj);
 static void vk_device_set_layout_dtor(RSetLayoutObj* baseObj);
 static void vk_device_create_set_layout(RDeviceObj* self, const RSetLayoutInfo& layoutI, RSetLayoutObj* obj);
@@ -282,6 +285,8 @@ static constexpr RDeviceAPI sRDeviceVKAPI = {
     .set_pool_dtor = &vk_device_set_pool_dtor,
     .create_set_pool = &vk_device_create_set_pool,
     .destroy_set_pool = &vk_device_destroy_set_pool,
+    .set_ctor = &vk_device_set_ctor,
+    .set_dtor = &vk_device_set_dtor,
     .set_layout_ctor = &vk_device_set_layout_ctor,
     .set_layout_dtor = &vk_device_set_layout_dtor,
     .create_set_layout = &vk_device_create_set_layout,
@@ -1524,6 +1529,20 @@ static void vk_device_destroy_set_pool(RDeviceObj* baseSelf, RSetPool pool)
     auto* poolObj = (RSetPoolVKObj*)pool.unwrap();
 
     vkDestroyDescriptorPool(self->vk.device, poolObj->vk.handle, nullptr);
+}
+
+static void vk_device_set_ctor(RSetObj* baseObj)
+{
+    auto* obj = (RSetVKObj*)baseObj;
+
+    new (obj) RSetVKObj();
+}
+
+static void vk_device_set_dtor(RSetObj* baseObj)
+{
+    auto* obj = (RSetVKObj*)baseObj;
+
+    obj->~RSetVKObj();
 }
 
 static void vk_device_set_layout_ctor(RSetLayoutObj* baseObj)
