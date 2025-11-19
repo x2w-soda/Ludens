@@ -9,6 +9,7 @@
 #include <spirv_cross/spirv_cross.hpp>
 #include <spirv_cross/spirv_glsl.hpp>
 
+#include "RBackendObj.h"
 #include "RShaderCompiler.h"
 
 #define LD_GLSLANG_VULKAN_CLIENT_VERSION glslang::EShTargetVulkan_1_3
@@ -16,9 +17,52 @@
 
 namespace LD {
 
+// clang-format off
+struct
+{
+    GLSLType glslType;
+    const char* cstr;
+} sGLSLTypeTable[] = {
+    {GLSL_TYPE_STRUCT,        "struct"},
+    {GLSL_TYPE_FLOAT,         "float"},
+    {GLSL_TYPE_VEC2,          "vec2"},
+    {GLSL_TYPE_VEC3,          "vec3"},
+    {GLSL_TYPE_VEC4,          "vec4"},
+    {GLSL_TYPE_DOUBLE,        "double"},
+    {GLSL_TYPE_DVEC2,         "dvec2"},
+    {GLSL_TYPE_DVEC3,         "dvec3"},
+    {GLSL_TYPE_DVEC4,         "dvec4"},
+    {GLSL_TYPE_UINT,          "uint"},
+    {GLSL_TYPE_UVEC2,         "uvec2"},
+    {GLSL_TYPE_UVEC3,         "uvec3"},
+    {GLSL_TYPE_UVEC4,         "uvec4"},
+    {GLSL_TYPE_INT,           "int"},
+    {GLSL_TYPE_IVEC2,         "ivec2"},
+    {GLSL_TYPE_IVEC3,         "ivec3"},
+    {GLSL_TYPE_IVEC4,         "ivec4"},
+    {GLSL_TYPE_BOOL,          "bool"},
+    {GLSL_TYPE_BVEC2,         "bvec2"},
+    {GLSL_TYPE_BVEC3,         "bvec3"},
+    {GLSL_TYPE_BVEC4,         "bvec4"},
+    {GLSL_TYPE_MAT4,          "mat4"},
+    {GLSL_TYPE_SAMPLER_2D,    "sampler2D"},
+    {GLSL_TYPE_SAMPLER_CUBE,  "samplerCube"},
+    {GLSL_TYPE_USAMPLER_2D,   "usampler2D"},
+    {GLSL_TYPE_UIMAGE_2D,     "uimage2D"},
+};
+// clang-format on
+
+static_assert(sizeof(sGLSLTypeTable) / sizeof(*sGLSLTypeTable) == (size_t)GLSL_TYPE_ENUM_COUNT);
+
 static bool glslang_compile_glsl(glslang::EShClient client, glslang::EshTargetClientVersion clientVersion, EShLanguage stage, const char* glsl, std::vector<uint32_t>& spirvCode, RShaderReflection* reflection);
 static void glslang_reflect_spirv(const std::vector<uint32_t>& spirv, RShaderReflection& reflection);
+static RShaderLocation glslang_reflect_location(spirv_cross::Compiler& compiler, const spirv_cross::Resource& resource);
 static RShaderBinding glslang_reflect_binding(spirv_cross::Compiler& compiler, const spirv_cross::Resource& resource, RBindingType type);
+static void cast_glsl_type(spirv_cross::Compiler& compiler, const spirv_cross::SPIRType& inType, GLSLType& outType);
+static void cast_glsl_sampler_type(spirv_cross::Compiler& compiler, const spirv_cross::SPIRType& inType, GLSLType& outType);
+static void cast_glsl_image_type(spirv_cross::Compiler& compiler, const spirv_cross::SPIRType& inType, GLSLType& outType);
+static EShLanguage get_glslang_shader_stage(RShaderType type);
+static void remap_vk_resource(const RShaderOpenGLRemap& remap, const spirv_cross::Resource& resource, spirv_cross::Compiler& compiler);
 
 static EShLanguage get_glslang_shader_stage(RShaderType type)
 {
@@ -40,6 +84,17 @@ static EShLanguage get_glslang_shader_stage(RShaderType type)
     }
 
     return stage;
+}
+
+static void remap_vk_resource(const RShaderOpenGLRemap& remap, const spirv_cross::Resource& resource, spirv_cross::Compiler& compiler)
+{
+    uint32_t vkSetIndex = compiler.get_decoration(resource.id, spv::DecorationDescriptorSet);
+    uint32_t vkBindingIndex = compiler.get_decoration(resource.id, spv::DecorationBinding);
+    const auto* bindingRemap = remap.get_binding_remap(vkSetIndex, vkBindingIndex);
+    LD_ASSERT(bindingRemap);
+
+    compiler.unset_decoration(resource.id, spv::DecorationDescriptorSet);
+    compiler.set_decoration(resource.id, spv::DecorationBinding, bindingRemap->glBindingIndex);
 }
 
 static bool glslang_compile_glsl(glslang::EShClient client, glslang::EshTargetClientVersion clientVersion, EShLanguage stage, const char* glsl, std::vector<uint32_t>& spirvCode, RShaderReflection* reflection)
@@ -103,7 +158,7 @@ static bool glslang_compile_glsl(glslang::EShClient client, glslang::EshTargetCl
     return true;
 }
 
-void glslang_reflect_spirv(const std::vector<uint32_t>& spirv, RShaderReflection& reflection)
+static void glslang_reflect_spirv(const std::vector<uint32_t>& spirv, RShaderReflection& reflection)
 {
     LD_PROFILE_SCOPE;
 
@@ -111,6 +166,12 @@ void glslang_reflect_spirv(const std::vector<uint32_t>& spirv, RShaderReflection
     spirv_cross::ShaderResources shaderResources = compiler.get_shader_resources();
 
     reflection.bindings.clear();
+
+    for (const spirv_cross::Resource& resource : shaderResources.stage_inputs)
+        reflection.inputs.emplace_back(glslang_reflect_location(compiler, resource));
+
+    for (const spirv_cross::Resource& resource : shaderResources.stage_outputs)
+        reflection.outputs.emplace_back(glslang_reflect_location(compiler, resource));
 
     for (const spirv_cross::Resource& resource : shaderResources.uniform_buffers)
         reflection.bindings.emplace_back(glslang_reflect_binding(compiler, resource, RBINDING_TYPE_UNIFORM_BUFFER));
@@ -125,9 +186,28 @@ void glslang_reflect_spirv(const std::vector<uint32_t>& spirv, RShaderReflection
         reflection.bindings.emplace_back(glslang_reflect_binding(compiler, resource, RBINDING_TYPE_STORAGE_IMAGE));
 }
 
-RShaderBinding glslang_reflect_binding(spirv_cross::Compiler& compiler, const spirv_cross::Resource& resource, RBindingType bindingType)
+static RShaderLocation glslang_reflect_location(spirv_cross::Compiler& compiler, const spirv_cross::Resource& resource)
 {
     const spirv_cross::SPIRType& type = compiler.get_type(resource.type_id);
+
+    GLSLType glslType;
+    cast_glsl_type(compiler, type, glslType);
+
+    RShaderLocation loc;
+    loc.name = resource.name;
+    loc.location = compiler.get_decoration(resource.id, spv::DecorationLocation);
+    loc.glslType = glslType;
+    loc.arrayCount = type.array.empty() ? 1 : type.array[0];
+
+    return loc;
+}
+
+static RShaderBinding glslang_reflect_binding(spirv_cross::Compiler& compiler, const spirv_cross::Resource& resource, RBindingType bindingType)
+{
+    const spirv_cross::SPIRType& type = compiler.get_type(resource.type_id);
+
+    GLSLType glslType;
+    cast_glsl_type(compiler, type, glslType);
 
     RShaderBinding binding;
     binding.setIndex = compiler.get_decoration(resource.id, spv::DecorationDescriptorSet);
@@ -135,8 +215,175 @@ RShaderBinding glslang_reflect_binding(spirv_cross::Compiler& compiler, const sp
     binding.arrayCount = type.array.empty() ? 1 : type.array[0];
     binding.name = resource.name;
     binding.type = bindingType;
+    binding.glslType = glslType;
 
     return binding;
+}
+
+static void cast_glsl_type(spirv_cross::Compiler& compiler, const spirv_cross::SPIRType& inType, GLSLType& outType)
+{
+    if (inType.basetype == spirv_cross::SPIRType::Float)
+    {
+        switch (inType.vecsize)
+        {
+        case 1:
+            outType = GLSL_TYPE_FLOAT;
+            return;
+        case 2:
+            outType = GLSL_TYPE_VEC2;
+            return;
+        case 3:
+            outType = GLSL_TYPE_VEC3;
+            return;
+        case 4:
+            if (inType.columns == 4)
+            {
+                outType = GLSL_TYPE_MAT4;
+                return;
+            }
+            outType = GLSL_TYPE_VEC4;
+            return;
+        }
+    }
+    else if (inType.basetype == spirv_cross::SPIRType::Double)
+    {
+        switch (inType.vecsize)
+        {
+        case 1:
+            outType = GLSL_TYPE_DOUBLE;
+            return;
+        case 2:
+            outType = GLSL_TYPE_DVEC2;
+            return;
+        case 3:
+            outType = GLSL_TYPE_DVEC3;
+            return;
+        case 4:
+            outType = GLSL_TYPE_DVEC4;
+            return;
+        }
+    }
+    else if (inType.basetype == spirv_cross::SPIRType::UInt)
+    {
+        switch (inType.vecsize)
+        {
+        case 1:
+            outType = GLSL_TYPE_UINT;
+            return;
+        case 2:
+            outType = GLSL_TYPE_UVEC2;
+            return;
+        case 3:
+            outType = GLSL_TYPE_UVEC3;
+            return;
+        case 4:
+            outType = GLSL_TYPE_UVEC4;
+            return;
+        }
+    }
+    else if (inType.basetype == spirv_cross::SPIRType::Struct)
+    {
+        outType = GLSL_TYPE_STRUCT;
+        return;
+    }
+    else if (inType.basetype == spirv_cross::SPIRType::SampledImage)
+    {
+        cast_glsl_sampler_type(compiler, inType, outType);
+        return;
+    }
+    else if (inType.basetype == spirv_cross::SPIRType::Image)
+    {
+        cast_glsl_image_type(compiler, inType, outType);
+        return;
+    }
+
+    LD_UNREACHABLE;
+}
+
+static void cast_glsl_sampler_type(spirv_cross::Compiler& compiler, const spirv_cross::SPIRType& inType, GLSLType& outType)
+{
+    LD_ASSERT(inType.basetype == spirv_cross::SPIRType::SampledImage);
+    LD_ASSERT(!inType.image.depth);
+
+    const spirv_cross::SPIRType& imageType = compiler.get_type(inType.image.type);
+
+    switch (imageType.basetype)
+    {
+    case spirv_cross::SPIRType::Float:
+        switch (inType.image.dim)
+        {
+        case spv::Dim2D:
+            outType = GLSL_TYPE_SAMPLER_2D;
+            return;
+        case spv::DimCube:
+            outType = GLSL_TYPE_SAMPLER_CUBE;
+            return;
+        case spv::Dim1D: // TODO:
+        case spv::Dim3D: // TODO:
+        default:
+            break;
+        }
+        break;
+    case spirv_cross::SPIRType::UInt:
+        switch (inType.image.dim)
+        {
+        case spv::Dim2D:
+            outType = GLSL_TYPE_SAMPLER_2D;
+            return;
+        case spv::DimCube: // TODO:
+        case spv::Dim1D:   // TODO:
+        case spv::Dim3D:   // TODO:
+        default:
+            break;
+        }
+        break;
+    case spirv_cross::SPIRType::Int: // TODO:
+    default:
+        break;
+    }
+
+    LD_UNREACHABLE;
+}
+
+static void cast_glsl_image_type(spirv_cross::Compiler& compiler, const spirv_cross::SPIRType& inType, GLSLType& outType)
+{
+    LD_ASSERT(inType.basetype == spirv_cross::SPIRType::Image);
+    LD_ASSERT(!inType.image.depth);
+
+    const spirv_cross::SPIRType& imageType = compiler.get_type(inType.image.type);
+
+    switch (imageType.basetype)
+    {
+    case spirv_cross::SPIRType::UInt:
+        switch (inType.image.dim)
+        {
+        case spv::Dim2D:
+            outType = GLSL_TYPE_UIMAGE_2D;
+            return;
+        default:
+            break;
+        }
+        break;
+    case spirv_cross::SPIRType::Float: // TODO:
+    case spirv_cross::SPIRType::Int:   // TODO:
+    default:
+        break;
+    }
+
+    LD_UNREACHABLE;
+}
+
+const RShaderOpenGLBindingRemap* RShaderOpenGLRemap::get_binding_remap(uint32_t vkSetIndex, uint32_t vkBindingIndex) const
+{
+    for (size_t i = 0; i < bindingRemaps.size(); i++)
+    {
+        const RShaderOpenGLBindingRemap* remap = bindingRemaps.data() + i;
+
+        if (remap->vkSetIndex == vkSetIndex && remap->vkBindingIndex == vkBindingIndex)
+            return remap;
+    }
+
+    return nullptr;
 }
 
 bool RShaderCompiler::compile_to_spirv(RShaderType type, const char* vkGLSL, std::vector<uint32_t>& spirvCode, RShaderReflection* reflection)
@@ -150,14 +397,86 @@ bool RShaderCompiler::compile_to_spirv(RShaderType type, const char* vkGLSL, std
     return glslang_compile_glsl(client, clientVersion, stage, vkGLSL, spirvCode, reflection);
 }
 
-bool RShaderCompiler::decompile_to_opengl_glsl(const std::vector<uint32_t>& spirvCode, std::string& glGLSL)
+bool RShaderCompiler::compute_opengl_remap(const RPipelineLayoutObj* layoutObj, RShaderOpenGLRemap& remap)
+{
+    remap.bindingRemaps.clear();
+
+    uint32_t uboBindingCtr = 0;
+    uint32_t ssboBindingCtr = 0;
+    uint32_t sampledImageBindingCtr = 0;
+    uint32_t storageImageBindingCtr = 0;
+
+    for (uint32_t setIdx = 0; setIdx < layoutObj->setCount; setIdx++)
+    {
+        RSetLayoutObj* setLayoutObj = layoutObj->setLayoutObjs[setIdx];
+
+        for (uint32_t bindingIdx = 0; bindingIdx < (uint32_t)setLayoutObj->bindings.size(); bindingIdx++)
+        {
+            const RSetBindingInfo& bindingI = setLayoutObj->bindings[bindingIdx];
+            RShaderOpenGLBindingRemap bindingRemap;
+            bindingRemap.vkBindingIndex = bindingIdx;
+            bindingRemap.vkSetIndex = setIdx;
+
+            switch (bindingI.type)
+            {
+            case RBINDING_TYPE_COMBINED_IMAGE_SAMPLER:
+                bindingRemap.glBindingIndex = sampledImageBindingCtr;
+                sampledImageBindingCtr += bindingI.arrayCount;
+                break;
+            case RBINDING_TYPE_STORAGE_IMAGE:
+                bindingRemap.glBindingIndex = storageImageBindingCtr;
+                storageImageBindingCtr += bindingI.arrayCount;
+                break;
+            case RBINDING_TYPE_UNIFORM_BUFFER:
+                bindingRemap.glBindingIndex = uboBindingCtr;
+                uboBindingCtr += bindingI.arrayCount;
+                break;
+            case RBINDING_TYPE_STORAGE_BUFFER:
+                bindingRemap.glBindingIndex = ssboBindingCtr;
+                ssboBindingCtr += bindingI.arrayCount;
+                break;
+            default:
+                LD_UNREACHABLE;
+            }
+
+            remap.bindingRemaps.push_back(bindingRemap);
+        }
+    }
+
+    return true;
+}
+
+bool RShaderCompiler::decompile_to_opengl_glsl(const RShaderOpenGLRemap& remap, const std::vector<uint32_t>& spirvCode, std::string& glGLSL)
 {
     spirv_cross::CompilerGLSL compiler(spirvCode);
+    spirv_cross::ShaderResources shaderResources = compiler.get_shader_resources();
 
-    // TODO: remap layout qualifiers "set" + "binding" to OpenGL
+    // Only 4 types in GLSL require binding remap
+    // 1. UBO
+    // 2. SSBO
+    // 3. Sampled Image (Combined Image Sampler)
+    // 4. Storage Image
+
+    for (const spirv_cross::Resource& resource : shaderResources.uniform_buffers)
+        remap_vk_resource(remap, resource, compiler);
+
+    for (const spirv_cross::Resource& resource : shaderResources.storage_buffers)
+        remap_vk_resource(remap, resource, compiler);
+
+    for (const spirv_cross::Resource& resource : shaderResources.sampled_images)
+        remap_vk_resource(remap, resource, compiler);
+
+    for (const spirv_cross::Resource& resource : shaderResources.storage_images)
+        remap_vk_resource(remap, resource, compiler);
+
     glGLSL = compiler.compile();
 
     return true;
+}
+
+const char* get_glsl_type_cstr(GLSLType type)
+{
+    return sGLSLTypeTable[(int)type].cstr;
 }
 
 } // namespace LD
