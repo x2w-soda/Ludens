@@ -516,6 +516,10 @@ RPipeline RDevice::create_pipeline(const RPipelineInfo& pipelineI)
     pipelineObj->variant.depthTestEnabled = false;
     pipelineObj->deviceObj = mObj;
     pipelineObj->layoutObj = mObj->get_or_create_pipeline_layout_obj(pipelineI.layout);
+    pipelineObj->vertexBindings.resize(pipelineI.vertexBindingCount);
+    std::copy(pipelineI.vertexBindings, pipelineI.vertexBindings + pipelineI.vertexBindingCount, pipelineObj->vertexBindings.begin());
+    pipelineObj->vertexAttributes.resize(pipelineI.vertexAttributeCount);
+    std::copy(pipelineI.vertexAttributes, pipelineI.vertexAttributes + pipelineI.vertexAttributeCount, pipelineObj->vertexAttributes.begin());
 
     std::string err;
     if (!validate_pipeline_shaders(pipelineObj->layoutObj, pipelineI.shaderCount, pipelineI.shaders, err))

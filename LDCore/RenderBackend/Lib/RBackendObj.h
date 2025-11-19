@@ -238,6 +238,8 @@ struct RPipelineObj
     uint64_t rid;
     RDeviceObj* deviceObj;
     RPipelineLayoutObj* layoutObj;
+    std::vector<RVertexBinding> vertexBindings;
+    std::vector<RVertexAttribute> vertexAttributes;
 
     struct
     {

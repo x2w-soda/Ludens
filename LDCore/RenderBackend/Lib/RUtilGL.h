@@ -6,6 +6,7 @@
 namespace LD {
 namespace RUtil {
 
+void cast_glsl_type_gl(const GLSLType& inType, GLint& outComponentCount, GLenum& outComponentType);
 void cast_format_gl(const RFormat& inFormat, GLenum& outInternalFormat, GLenum& outDataFormat, GLenum& outDataType);
 void cast_shader_type_gl(const RShaderType& inType, GLenum& outType);
 void cast_image_type_gl(const RImageType& inType, GLenum& outTarget);

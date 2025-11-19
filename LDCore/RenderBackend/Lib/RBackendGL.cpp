@@ -181,6 +181,7 @@ struct RPipelineGLObj : RPipelineObj
         std::vector<GLuint> shaderHandles;
         GLenum primitiveMode;
         GLuint programHandle;
+        GLuint vao;
     } gl;
 };
 
@@ -356,6 +357,7 @@ struct RDeviceGLObj : RDeviceObj
     RPipelineGLObj* boundGraphicsPipeline = nullptr;
 };
 
+static void gl_copy_buffer(RBufferGLObj* srcBufferObj, RBufferGLObj* dstBufferObj, const RBufferCopy& region);
 static void gl_copy_buffer_to_image(RBufferGLObj* bufferObj, RImageGLObj* imageObj, const RBufferImageCopy& region);
 static void gl_copy_image_to_buffer(RImageGLObj* imageObj, RBufferGLObj* bufferObj, const RBufferImageCopy& region);
 static void gl_bind_set(RPipelineLayoutGLObj* layoutObj, uint32_t setIndex, RSetGLObj* setObj);
@@ -364,10 +366,13 @@ static void gl_command_execute(const RCommandType* type, RDeviceGLObj* deviceObj
 static void gl_command_begin_pass(const RCommandType* type, RDeviceGLObj* deviceObj);
 static void gl_command_bind_graphics_pipeline(const RCommandType* type, RDeviceGLObj* deviceObj);
 static void gl_command_bind_graphics_sets(const RCommandType* type, RDeviceGLObj* deviceObj);
+static void gl_command_bind_vertex_buffers(const RCommandType* type, RDeviceGLObj* deviceObj);
+static void gl_command_bind_index_buffer(const RCommandType* type, RDeviceGLObj* deviceObj);
 static void gl_command_draw(const RCommandType* type, RDeviceGLObj* deviceObj);
 static void gl_command_draw_indexed(const RCommandType* type, RDeviceGLObj* deviceObj);
 static void gl_command_end_pass(const RCommandType* type, RDeviceGLObj* deviceObj);
 static void gl_command_image_memory_barrier(const RCommandType* type, RDeviceGLObj* deviceObj);
+static void gl_command_copy_buffer(const RCommandType* type, RDeviceGLObj* deviceObj);
 static void gl_command_copy_buffer_to_image(const RCommandType* type, RDeviceGLObj* deviceObj);
 static void gl_command_copy_image_to_buffer(const RCommandType* type, RDeviceGLObj* deviceObj);
 
@@ -378,8 +383,8 @@ static constexpr void (*sCommandTable[])(const RCommandType*, RDeviceGLObj*) = {
     &gl_command_bind_graphics_sets,
     nullptr,
     nullptr,
-    nullptr,
-    nullptr,
+    &gl_command_bind_vertex_buffers,
+    &gl_command_bind_index_buffer,
     nullptr,
     &gl_command_draw,
     &gl_command_draw_indexed,
@@ -387,7 +392,7 @@ static constexpr void (*sCommandTable[])(const RCommandType*, RDeviceGLObj*) = {
     nullptr,
     nullptr,
     &gl_command_image_memory_barrier,
-    nullptr,
+    &gl_command_copy_buffer,
     &gl_command_copy_buffer_to_image,
     &gl_command_copy_image_to_buffer,
     nullptr,
@@ -931,6 +936,37 @@ static RPipeline gl_device_create_pipeline(RDeviceObj* baseSelf, const RPipeline
     auto* obj = (RPipelineGLObj*)baseObj;
     auto* layoutObj = (RPipelineLayoutGLObj*)obj->layoutObj;
 
+    glCreateVertexArrays(1, &obj->gl.vao);
+    glBindVertexArray(obj->gl.vao);
+
+    // vertex attribute description
+    uint32_t attrLocation = 0;
+    for (const RVertexAttribute& attr : obj->vertexAttributes)
+    {
+        GLint attrComponentCount;
+        GLenum attrComponentType;
+        GLuint attrOffset = (GLuint)attr.offset;
+        GLuint attrBinding = (GLuint)attr.binding;
+        GLboolean normalized = GL_FALSE; // TODO:
+        RUtil::cast_glsl_type_gl(attr.type, attrComponentCount, attrComponentType);
+
+        glEnableVertexAttribArray(attrLocation);
+        glVertexAttribFormat(attrLocation, attrComponentCount, attrComponentType, normalized, attrOffset);
+        glVertexAttribBinding(attrLocation, attrBinding);
+        LD_ASSERT(glGetError() == 0);
+
+        // TODO: vertex input such as mat4 would span multiple locations
+        attrLocation++;
+    }
+
+    // vertex binding description
+    for (uint32_t binding = 0; binding < (uint32_t)obj->vertexBindings.size(); binding++)
+    {
+        GLuint divisor = obj->vertexBindings[binding].inputRate == RBINDING_INPUT_RATE_INSTANCE ? 1 : 0;
+
+        glVertexBindingDivisor(binding, divisor);
+    }
+
     // link shaders into single program
     obj->gl.programHandle = glCreateProgram();
 
@@ -998,6 +1034,9 @@ static void gl_device_destroy_pipeline(RDeviceObj* baseSelf, RPipeline pipeline)
 
     glDeleteProgram(obj->gl.programHandle);
     obj->gl.programHandle = 0;
+
+    glDeleteVertexArrays(1, &obj->gl.vao);
+    obj->gl.vao = 0;
 }
 
 static void gl_device_pipeline_variant_pass(RDeviceObj* self, RPipelineObj* pipelineObj, const RPassInfo& passI)
@@ -1077,6 +1116,7 @@ void gl_command_bind_graphics_pipeline(const RCommandType* type, RDeviceGLObj* d
     auto* pipelineObj = (RPipelineGLObj*)cmd.pipeline.unwrap();
     deviceObj->boundGraphicsPipeline = pipelineObj;
 
+    glBindVertexArray(pipelineObj->gl.vao);
     glUseProgram(pipelineObj->gl.programHandle);
 }
 
@@ -1097,6 +1137,33 @@ static void gl_command_bind_graphics_sets(const RCommandType* type, RDeviceGLObj
     }
 }
 
+static void gl_command_bind_vertex_buffers(const RCommandType* type, RDeviceGLObj* deviceObj)
+{
+    LD_ASSERT(*type == RCOMMAND_BIND_VERTEX_BUFFERS);
+    LD_ASSERT(deviceObj->boundGraphicsPipeline);
+
+    const auto& cmd = *(const RCommandBindVertexBuffers*)type;
+
+    for (uint32_t i = 0; i < (uint32_t)cmd.buffers.size(); i++)
+    {
+        uint32_t bindingIndex = cmd.firstBinding + i;
+
+        LD_ASSERT(bindingIndex < deviceObj->boundGraphicsPipeline->vertexBindings.size());
+        GLsizei vertexStride = (GLsizei)deviceObj->boundGraphicsPipeline->vertexBindings[bindingIndex].stride; 
+        auto* bufferObj = (RBufferGLObj*)cmd.buffers[i].unwrap();
+
+        glBindVertexBuffer(bindingIndex, bufferObj->gl.handle, 0, vertexStride);
+        LD_ASSERT(glGetError() == 0);
+    }
+}
+
+static void gl_command_bind_index_buffer(const RCommandType* type, RDeviceGLObj* deviceObj)
+{
+    LD_ASSERT(*type == RCOMMAND_BIND_INDEX_BUFFER);
+
+    // TODO:
+}
+
 static void gl_command_draw(const RCommandType* type, RDeviceGLObj* deviceObj)
 {
     LD_ASSERT(*type == RCOMMAND_DRAW);
@@ -1109,6 +1176,7 @@ static void gl_command_draw(const RCommandType* type, RDeviceGLObj* deviceObj)
     const GLsizei instanceCount = (GLsizei)cmd.drawInfo.instanceCount;
     const GLuint baseInstance = (GLuint)cmd.drawInfo.instanceStart;
     glDrawArraysInstancedBaseInstance(mode, first, count, instanceCount, baseInstance);
+    LD_ASSERT(glGetError() == 0);
 }
 
 static void gl_command_draw_indexed(const RCommandType* type, RDeviceGLObj* deviceObj)
@@ -1139,8 +1207,24 @@ static void gl_command_end_pass(const RCommandType* type, RDeviceGLObj* deviceOb
 
 static void gl_command_image_memory_barrier(const RCommandType* type, RDeviceGLObj* deviceObj)
 {
+    LD_ASSERT(*type == RCOMMAND_IMAGE_MEMORY_BARRIER);
+
     (void)type;
     (void)deviceObj;
+}
+
+static void gl_command_copy_buffer(const RCommandType* type, RDeviceGLObj* deviceObj)
+{
+    LD_ASSERT(*type == RCOMMAND_COPY_BUFFER);
+
+    const auto& cmd = *(const RCommandCopyBuffer*)type;
+    auto* srcBufferObj = (RBufferGLObj*)cmd.srcBuffer.unwrap();
+    auto* dstBufferObj = (RBufferGLObj*)cmd.dstBuffer.unwrap();
+
+    for (const RBufferCopy& region : cmd.regions)
+    {
+        gl_copy_buffer(srcBufferObj, dstBufferObj, region);
+    }
 }
 
 static void gl_command_copy_buffer_to_image(const RCommandType* type, RDeviceGLObj* deviceObj)
@@ -1169,6 +1253,18 @@ static void gl_command_copy_image_to_buffer(const RCommandType* type, RDeviceGLO
     {
         gl_copy_image_to_buffer(imageObj, bufferObj, region);
     }
+}
+
+static void gl_copy_buffer(RBufferGLObj* srcBufferObj, RBufferGLObj* dstBufferObj, const RBufferCopy& region)
+{
+    GLintptr readOffset = (GLintptr)region.srcOffset;
+    GLintptr writeOffset = (GLintptr)region.dstOffset;
+    GLsizeiptr copySize = (GLsizeiptr)region.size;
+
+    LD_ASSERT(readOffset + copySize <= srcBufferObj->info.size);
+    LD_ASSERT(writeOffset + copySize <= dstBufferObj->info.size);
+
+    glCopyNamedBufferSubData(srcBufferObj->gl.handle, dstBufferObj->gl.handle, readOffset, writeOffset, copySize);
 }
 
 static void gl_copy_buffer_to_image(RBufferGLObj* bufferObj, RImageGLObj* imageObj, const RBufferImageCopy& region)

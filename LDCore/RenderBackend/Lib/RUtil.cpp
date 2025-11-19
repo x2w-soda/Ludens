@@ -234,9 +234,22 @@ struct
 };
 // clang-format on
 
-void cast_glsl_type_vk(const RGLSLType& inType, VkFormat& outFormat)
+static_assert(sizeof(sGLSLTypeTable) / sizeof(*sGLSLTypeTable) == (size_t)GLSL_TYPE_ENUM_COUNT);
+
+void cast_glsl_type_vk(const GLSLType& inType, VkFormat& outFormat)
 {
-    outFormat = glslTypeTable[(int)inType].vkFormat;
+    outFormat = sGLSLTypeTable[(int)inType].vkFormat;
+}
+
+void cast_glsl_type_gl(const GLSLType& inType, GLint& outComponentCount, GLenum& outComponentType)
+{
+    outComponentCount = sGLSLTypeTable[(int)inType].glComponentCount;
+    outComponentType = sGLSLTypeTable[(int)inType].glComponentType;
+}
+
+const char* get_glsl_type_cstr(GLSLType type)
+{
+    return sGLSLTypeTable[(int)type].cstr;
 }
 
 // clang-format off
