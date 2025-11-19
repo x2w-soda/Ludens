@@ -48,7 +48,7 @@ void cast_sampler_address_mode_vk(const RSamplerAddressMode& inMode, VkSamplerAd
 void cast_format_vk(const RFormat& inFormat, VkFormat& outFormat);
 void cast_format_from_vk(const VkFormat& inFormat, RFormat& outFormat);
 void cast_format_image_aspect_vk(const RFormat& inFormat, VkImageAspectFlags& outFlags);
-void cast_glsl_type_vk(const RGLSLType& inType, VkFormat& outFormat);
+void cast_glsl_type_vk(const GLSLType& inType, VkFormat& outFormat);
 void cast_image_layout_vk(const RImageLayout& inLayout, VkImageLayout& outLayout);
 void cast_attachment_load_op_vk(const RAttachmentLoadOp& inOp, VkAttachmentLoadOp& outOp);
 void cast_attachment_store_op_vk(const RAttachmentStoreOp& inOp, VkAttachmentStoreOp& outOp);

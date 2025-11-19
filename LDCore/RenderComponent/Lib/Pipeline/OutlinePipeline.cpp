@@ -99,8 +99,8 @@ OutlinePipeline OutlinePipeline::create(RDevice device)
 
     RPipelineBlendState blendState = RUtil::make_default_blend_state();
     std::vector<RVertexAttribute> attrs{
-        {RGLSL_TYPE_VEC2, 0, 0},                 // aPos
-        {RGLSL_TYPE_VEC2, sizeof(float) * 2, 0}, // aUV
+        {GLSL_TYPE_VEC2, 0, 0},                 // aPos
+        {GLSL_TYPE_VEC2, sizeof(float) * 2, 0}, // aUV
     };
     RVertexBinding binding{RBINDING_INPUT_RATE_VERTEX, sizeof(float) * 4};
 

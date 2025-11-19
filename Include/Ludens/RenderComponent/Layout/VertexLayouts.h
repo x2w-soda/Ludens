@@ -10,9 +10,9 @@ namespace LD {
 static inline void get_mesh_vertex_attributes(std::vector<RVertexAttribute>& attrs)
 {
     attrs.resize(3);
-    attrs[0] = {RGLSL_TYPE_VEC3, sizeof(float) * 0, 0}; // offset
-    attrs[1] = {RGLSL_TYPE_VEC3, sizeof(float) * 3, 0}; // normal
-    attrs[2] = {RGLSL_TYPE_VEC2, sizeof(float) * 6, 0}; // uv
+    attrs[0] = {GLSL_TYPE_VEC3, sizeof(float) * 0, 0}; // offset
+    attrs[1] = {GLSL_TYPE_VEC3, sizeof(float) * 3, 0}; // normal
+    attrs[2] = {GLSL_TYPE_VEC2, sizeof(float) * 6, 0}; // uv
 
     static_assert(sizeof(MeshVertex) == 32);
 }
@@ -28,16 +28,16 @@ struct RectVertex
 static inline void get_rect_vertex_attributes(std::vector<RVertexAttribute>& attr)
 {
     attr.resize(4);
-    attr[0].type = RGLSL_TYPE_VEC2; // position
+    attr[0].type = GLSL_TYPE_VEC2; // position
     attr[0].binding = 0;
     attr[0].offset = offsetof(RectVertex, x);
-    attr[1].type = RGLSL_TYPE_VEC2; // uv
+    attr[1].type = GLSL_TYPE_VEC2; // uv
     attr[1].binding = 0;
     attr[1].offset = offsetof(RectVertex, u);
-    attr[2].type = RGLSL_TYPE_UINT; // color
+    attr[2].type = GLSL_TYPE_UINT; // color
     attr[2].binding = 0;
     attr[2].offset = offsetof(RectVertex, color);
-    attr[3].type = RGLSL_TYPE_UINT; // control
+    attr[3].type = GLSL_TYPE_UINT; // control
     attr[3].binding = 0;
     attr[3].offset = offsetof(RectVertex, control);
 
@@ -141,10 +141,10 @@ struct PointVertex
 static inline void get_point_vertex_attributes(std::vector<RVertexAttribute>& attr)
 {
     attr.resize(2);
-    attr[0].type = RGLSL_TYPE_VEC3;
+    attr[0].type = GLSL_TYPE_VEC3;
     attr[0].offset = offsetof(PointVertex, x);
     attr[0].binding = 0;
-    attr[1].type = RGLSL_TYPE_UINT;
+    attr[1].type = GLSL_TYPE_UINT;
     attr[1].offset = offsetof(PointVertex, color);
     attr[1].binding = 0;
 }

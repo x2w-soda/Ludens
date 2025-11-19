@@ -74,7 +74,7 @@ EquirectangularPipeline EquirectangularPipeline::create(RDevice device)
     obj->vertexShader = device.create_shader({RSHADER_TYPE_VERTEX, sEquirectangularVS});
     obj->fragmentShader = device.create_shader({RSHADER_TYPE_FRAGMENT, sEquirectangularFS});
 
-    RVertexAttribute attribute{RGLSL_TYPE_VEC3, 0, 0};
+    RVertexAttribute attribute{GLSL_TYPE_VEC3, 0, 0};
     RVertexBinding binding{RBINDING_INPUT_RATE_VERTEX, sizeof(Vec3)};
 
     sSingleSampleSetLayout;

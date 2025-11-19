@@ -12,37 +12,6 @@ namespace LD {
 
 struct RPipelineLayoutObj;
 
-enum GLSLType
-{
-    GLSL_TYPE_STRUCT = 0,
-    GLSL_TYPE_FLOAT,
-    GLSL_TYPE_VEC2,
-    GLSL_TYPE_VEC3,
-    GLSL_TYPE_VEC4,
-    GLSL_TYPE_DOUBLE,
-    GLSL_TYPE_DVEC2,
-    GLSL_TYPE_DVEC3,
-    GLSL_TYPE_DVEC4,
-    GLSL_TYPE_UINT,
-    GLSL_TYPE_UVEC2,
-    GLSL_TYPE_UVEC3,
-    GLSL_TYPE_UVEC4,
-    GLSL_TYPE_INT,
-    GLSL_TYPE_IVEC2,
-    GLSL_TYPE_IVEC3,
-    GLSL_TYPE_IVEC4,
-    GLSL_TYPE_BOOL,
-    GLSL_TYPE_BVEC2,
-    GLSL_TYPE_BVEC3,
-    GLSL_TYPE_BVEC4,
-    GLSL_TYPE_MAT4,
-    GLSL_TYPE_SAMPLER_2D,
-    GLSL_TYPE_SAMPLER_CUBE,
-    GLSL_TYPE_USAMPLER_2D,
-    GLSL_TYPE_UIMAGE_2D,
-    GLSL_TYPE_ENUM_COUNT,
-};
-
 struct RShaderBinding
 {
     std::string name;
@@ -97,8 +66,5 @@ public:
     /// @brief Decompiles SPIRV back to OpenGL-compatible GLSL
     bool decompile_to_opengl_glsl(const RShaderOpenGLRemap& remap, const std::vector<uint32_t>& spirvCode, std::string& glGLSL);
 };
-
-/// @brief Get static c string of GLSL data type.
-const char* get_glsl_type_cstr(GLSLType type);
 
 } // namespace LD

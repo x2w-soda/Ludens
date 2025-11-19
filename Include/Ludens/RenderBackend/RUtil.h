@@ -125,5 +125,8 @@ inline RBufferMemoryBarrier make_buffer_memory_barrier(RBuffer buffer, RAccessFl
     };
 }
 
+/// @brief Get static C string for GLSL type.
+const char* get_glsl_type_cstr(GLSLType type);
+
 } // namespace RUtil
 } // namespace LD

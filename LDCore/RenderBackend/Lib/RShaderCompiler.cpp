@@ -17,43 +17,6 @@
 
 namespace LD {
 
-// clang-format off
-struct
-{
-    GLSLType glslType;
-    const char* cstr;
-} sGLSLTypeTable[] = {
-    {GLSL_TYPE_STRUCT,        "struct"},
-    {GLSL_TYPE_FLOAT,         "float"},
-    {GLSL_TYPE_VEC2,          "vec2"},
-    {GLSL_TYPE_VEC3,          "vec3"},
-    {GLSL_TYPE_VEC4,          "vec4"},
-    {GLSL_TYPE_DOUBLE,        "double"},
-    {GLSL_TYPE_DVEC2,         "dvec2"},
-    {GLSL_TYPE_DVEC3,         "dvec3"},
-    {GLSL_TYPE_DVEC4,         "dvec4"},
-    {GLSL_TYPE_UINT,          "uint"},
-    {GLSL_TYPE_UVEC2,         "uvec2"},
-    {GLSL_TYPE_UVEC3,         "uvec3"},
-    {GLSL_TYPE_UVEC4,         "uvec4"},
-    {GLSL_TYPE_INT,           "int"},
-    {GLSL_TYPE_IVEC2,         "ivec2"},
-    {GLSL_TYPE_IVEC3,         "ivec3"},
-    {GLSL_TYPE_IVEC4,         "ivec4"},
-    {GLSL_TYPE_BOOL,          "bool"},
-    {GLSL_TYPE_BVEC2,         "bvec2"},
-    {GLSL_TYPE_BVEC3,         "bvec3"},
-    {GLSL_TYPE_BVEC4,         "bvec4"},
-    {GLSL_TYPE_MAT4,          "mat4"},
-    {GLSL_TYPE_SAMPLER_2D,    "sampler2D"},
-    {GLSL_TYPE_SAMPLER_CUBE,  "samplerCube"},
-    {GLSL_TYPE_USAMPLER_2D,   "usampler2D"},
-    {GLSL_TYPE_UIMAGE_2D,     "uimage2D"},
-};
-// clang-format on
-
-static_assert(sizeof(sGLSLTypeTable) / sizeof(*sGLSLTypeTable) == (size_t)GLSL_TYPE_ENUM_COUNT);
-
 static bool glslang_compile_glsl(glslang::EShClient client, glslang::EshTargetClientVersion clientVersion, EShLanguage stage, const char* glsl, std::vector<uint32_t>& spirvCode, RShaderReflection* reflection);
 static void glslang_reflect_spirv(const std::vector<uint32_t>& spirv, RShaderReflection& reflection);
 static RShaderLocation glslang_reflect_location(spirv_cross::Compiler& compiler, const spirv_cross::Resource& resource);
@@ -472,11 +435,6 @@ bool RShaderCompiler::decompile_to_opengl_glsl(const RShaderOpenGLRemap& remap, 
     glGLSL = compiler.compile();
 
     return true;
-}
-
-const char* get_glsl_type_cstr(GLSLType type)
-{
-    return sGLSLTypeTable[(int)type].cstr;
 }
 
 } // namespace LD

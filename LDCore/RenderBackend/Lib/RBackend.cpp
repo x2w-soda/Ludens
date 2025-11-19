@@ -3,6 +3,7 @@
 #include <Ludens/Log/Log.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/RenderBackend/RBackend.h>
+#include <Ludens/RenderBackend/RUtil.h>
 #include <Ludens/System/Memory.h>
 
 #include <algorithm>
@@ -43,7 +44,7 @@ static std::string print_shader_binding(const RShaderBinding& shaderBinding)
                                   bindingType,
                                   shaderBinding.setIndex,
                                   shaderBinding.bindingIndex,
-                                  get_glsl_type_cstr(shaderBinding.glslType),
+                                  RUtil::get_glsl_type_cstr(shaderBinding.glslType),
                                   shaderBinding.name);
 
     if (shaderBinding.arrayCount > 1)
@@ -1252,7 +1253,7 @@ void RSetPool::reset()
 
     for (RSet set : mObj->sets)
     {
-        deviceAPI->set_dtor(set.unwrap());   
+        deviceAPI->set_dtor(set.unwrap());
     }
 
     mObj->sets.clear();

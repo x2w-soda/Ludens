@@ -199,14 +199,38 @@ void print_binding_type(const RBindingType& inType, std::string& outType)
 // clang-format off
 struct
 {
-    RGLSLType type;
+    GLSLType glslType;
+    const char* cstr;
     VkFormat vkFormat;
-} glslTypeTable[] = {
-    { RGLSL_TYPE_FLOAT,  VK_FORMAT_R32_SFLOAT },
-    { RGLSL_TYPE_VEC2,   VK_FORMAT_R32G32_SFLOAT },
-    { RGLSL_TYPE_VEC3,   VK_FORMAT_R32G32B32_SFLOAT },
-    { RGLSL_TYPE_VEC4,   VK_FORMAT_R32G32B32A32_SFLOAT },
-    { RGLSL_TYPE_UINT,   VK_FORMAT_R32_UINT },
+    GLint glComponentCount;
+    GLenum glComponentType;
+} sGLSLTypeTable[] = {
+    {GLSL_TYPE_STRUCT,        "struct",      VK_FORMAT_UNDEFINED,           0,  GL_NONE},
+    {GLSL_TYPE_FLOAT,         "float",       VK_FORMAT_R32_SFLOAT,          1,  GL_FLOAT},
+    {GLSL_TYPE_VEC2,          "vec2",        VK_FORMAT_R32G32_SFLOAT,       2,  GL_FLOAT},
+    {GLSL_TYPE_VEC3,          "vec3",        VK_FORMAT_R32G32B32_SFLOAT,    3,  GL_FLOAT},
+    {GLSL_TYPE_VEC4,          "vec4",        VK_FORMAT_R32G32B32A32_SFLOAT, 4,  GL_FLOAT},
+    {GLSL_TYPE_DOUBLE,        "double",      VK_FORMAT_R64_SFLOAT,          1,  GL_DOUBLE},
+    {GLSL_TYPE_DVEC2,         "dvec2",       VK_FORMAT_R64G64_SFLOAT,       2,  GL_DOUBLE},
+    {GLSL_TYPE_DVEC3,         "dvec3",       VK_FORMAT_R64G64B64_SFLOAT,    3,  GL_DOUBLE},
+    {GLSL_TYPE_DVEC4,         "dvec4",       VK_FORMAT_R64G64B64A64_SFLOAT, 4,  GL_DOUBLE},
+    {GLSL_TYPE_UINT,          "uint",        VK_FORMAT_R32_UINT,            1,  GL_UNSIGNED_INT},
+    {GLSL_TYPE_UVEC2,         "uvec2",       VK_FORMAT_R32G32_UINT,         2,  GL_UNSIGNED_INT},
+    {GLSL_TYPE_UVEC3,         "uvec3",       VK_FORMAT_R32G32B32_UINT,      3,  GL_UNSIGNED_INT},
+    {GLSL_TYPE_UVEC4,         "uvec4",       VK_FORMAT_R32G32B32A32_UINT,   4,  GL_UNSIGNED_INT},
+    {GLSL_TYPE_INT,           "int",         VK_FORMAT_R32_SINT,            1,  GL_INT},
+    {GLSL_TYPE_IVEC2,         "ivec2",       VK_FORMAT_R32G32_SINT,         2,  GL_INT},
+    {GLSL_TYPE_IVEC3,         "ivec3",       VK_FORMAT_R32G32B32_SINT,      3,  GL_INT},
+    {GLSL_TYPE_IVEC4,         "ivec4",       VK_FORMAT_R32G32B32A32_SINT,   4,  GL_INT},
+    {GLSL_TYPE_BOOL,          "bool",        VK_FORMAT_UNDEFINED,           1,  GL_BOOL},
+    {GLSL_TYPE_BVEC2,         "bvec2",       VK_FORMAT_UNDEFINED,           2,  GL_BOOL},
+    {GLSL_TYPE_BVEC3,         "bvec3",       VK_FORMAT_UNDEFINED,           3,  GL_BOOL},
+    {GLSL_TYPE_BVEC4,         "bvec4",       VK_FORMAT_UNDEFINED,           4,  GL_BOOL},
+    {GLSL_TYPE_MAT4,          "mat4",        VK_FORMAT_UNDEFINED,           16, GL_FLOAT},
+    {GLSL_TYPE_SAMPLER_2D,    "sampler2D",   VK_FORMAT_UNDEFINED,           0,  GL_NONE},
+    {GLSL_TYPE_SAMPLER_CUBE,  "samplerCube", VK_FORMAT_UNDEFINED,           0,  GL_NONE},
+    {GLSL_TYPE_USAMPLER_2D,   "usampler2D",  VK_FORMAT_UNDEFINED,           0,  GL_NONE},
+    {GLSL_TYPE_UIMAGE_2D,     "uimage2D",    VK_FORMAT_UNDEFINED,           0,  GL_NONE},
 };
 // clang-format on
 
