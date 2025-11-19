@@ -1,3 +1,5 @@
+#include <array>
+
 #include "ComponentMenu.h"
 
 #define COMPONENT_OPTION_ADD_SCRIPT 0
