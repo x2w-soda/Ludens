@@ -361,7 +361,7 @@ static void gl_copy_image_to_buffer(RImageGLObj* imageObj, RBufferGLObj* bufferO
 static void gl_bind_set(RPipelineLayoutGLObj* layoutObj, uint32_t setIndex, RSetGLObj* setObj);
 
 static void gl_command_execute(const RCommandType* type, RDeviceGLObj* deviceObj);
-static void gl_command_execute_begin_pass(const RCommandType* type, RDeviceGLObj* deviceObj);
+static void gl_command_begin_pass(const RCommandType* type, RDeviceGLObj* deviceObj);
 static void gl_command_bind_graphics_pipeline(const RCommandType* type, RDeviceGLObj* deviceObj);
 static void gl_command_bind_graphics_sets(const RCommandType* type, RDeviceGLObj* deviceObj);
 static void gl_command_draw(const RCommandType* type, RDeviceGLObj* deviceObj);
@@ -372,7 +372,7 @@ static void gl_command_copy_buffer_to_image(const RCommandType* type, RDeviceGLO
 static void gl_command_copy_image_to_buffer(const RCommandType* type, RDeviceGLObj* deviceObj);
 
 static constexpr void (*sCommandTable[])(const RCommandType*, RDeviceGLObj*) = {
-    &gl_command_execute_begin_pass,
+    &gl_command_begin_pass,
     nullptr,
     &gl_command_bind_graphics_pipeline,
     &gl_command_bind_graphics_sets,
@@ -1043,7 +1043,7 @@ static void gl_command_execute(const RCommandType* type, RDeviceGLObj* deviceObj
     sCommandTable[(int)*type](type, deviceObj);
 }
 
-void gl_command_execute_begin_pass(const RCommandType* type, RDeviceGLObj* deviceObj)
+void gl_command_begin_pass(const RCommandType* type, RDeviceGLObj* deviceObj)
 {
     LD_ASSERT(*type == RCOMMAND_BEGIN_PASS);
 

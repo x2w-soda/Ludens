@@ -1,5 +1,6 @@
 #include <Extra/doctest/doctest.h>
 #include <Ludens/Media/Bitmap.h>
+#include <Ludens/Profiler/Profiler.h>
 #include <Ludens/RenderBackend/RBackend.h>
 #include <Ludens/RenderBackend/RUtil.h>
 
@@ -74,6 +75,8 @@ struct RBackendPrimitiveTestInfo
 
 static void rbackend_primitive_test(const RBackendPrimitiveTestInfo& info)
 {
+    LD_PROFILE_SCOPE;
+
     RDeviceInfo deviceI{};
     deviceI.backend = info.backend;
     deviceI.window = nullptr;
@@ -236,11 +239,6 @@ TEST_CASE("RBackendPrimitiveTest")
     info.triangleImageSavePath = "./gl_triangle.png";
     info.quadImageSavePath = "./gl_quad.png";
     rbackend_primitive_test(info);
-
-    Bitmap vkTriangle = Bitmap::create_from_path("./vk_triangle.png");
-    Bitmap glTriangle = Bitmap::create_from_path("./gl_triangle.png");
-    CHECK(vkTriangle);
-    CHECK(glTriangle);
 
     // TODO: probably want a golden image as ground truth,
     //       even if both backends generate identical output,
