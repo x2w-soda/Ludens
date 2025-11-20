@@ -94,6 +94,7 @@ enum RBufferUsageBit : RBufferUsageFlags
     RBUFFER_USAGE_INDEX_BIT = LD_BIT(3),        /// index buffer (IBO) usage
     RBUFFER_USAGE_UNIFORM_BIT = LD_BIT(4),      /// uniform buffer (UBO) usage
     RBUFFER_USAGE_STORAGE_BIT = LD_BIT(5),      /// storage buffer (SSBO) usage
+    RBUFFER_USAGE_INDIRECT_BIT = LD_BIT(6),     /// indirect draw call usage
 };
 
 enum RImageType

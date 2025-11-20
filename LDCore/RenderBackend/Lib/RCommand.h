@@ -24,6 +24,7 @@ enum RCommandType
     RCOMMAND_SET_SCISSOR,
     RCOMMAND_DRAW,
     RCOMMAND_DRAW_INDEXED,
+    RCOMMAND_DRAW_INDIRECT,
     RCOMMAND_END_PASS,
     RCOMMAND_DISPATCH,
     RCOMMAND_BUFFER_MEMORY_BARRIER,
@@ -169,6 +170,16 @@ struct RCommandDrawIndexed
 
     RCommandDrawIndexed() = delete;
     RCommandDrawIndexed(const RDrawIndexedInfo& info);
+};
+
+/// @brief Capture of RCOMMAND_DRAW_INDIRECT
+struct RCommandDrawIndirect
+{
+    const RCommandType type = RCOMMAND_DRAW_INDIRECT;
+    RDrawIndirectInfo drawIndirectInfo;
+
+    RCommandDrawIndirect() = delete;
+    RCommandDrawIndirect(const RDrawIndirectInfo& info);
 };
 
 /// @brief Capture of RCOMMAND_BUFFER_MEMORY_BARRIER

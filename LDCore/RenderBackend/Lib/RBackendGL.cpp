@@ -374,6 +374,7 @@ static void gl_command_bind_vertex_buffers(const RCommandType* type, RCommandLis
 static void gl_command_bind_index_buffer(const RCommandType* type, RCommandListGLObj* listObj);
 static void gl_command_draw(const RCommandType* type, RCommandListGLObj* listObj);
 static void gl_command_draw_indexed(const RCommandType* type, RCommandListGLObj* listObj);
+static void gl_command_draw_indirect(const RCommandType* type, RCommandListGLObj* listObj);
 static void gl_command_end_pass(const RCommandType* type, RCommandListGLObj* listObj);
 static void gl_command_image_memory_barrier(const RCommandType* type, RCommandListGLObj* listObj);
 static void gl_command_copy_buffer(const RCommandType* type, RCommandListGLObj* listObj);
@@ -392,6 +393,7 @@ static constexpr void (*sCommandTable[])(const RCommandType*, RCommandListGLObj*
     nullptr,
     &gl_command_draw,
     &gl_command_draw_indexed,
+    &gl_command_draw_indirect,
     &gl_command_end_pass,
     nullptr,
     nullptr,
@@ -1204,6 +1206,24 @@ static void gl_command_draw_indexed(const RCommandType* type, RCommandListGLObj*
     const GLuint baseInstance = (GLuint)cmd.drawIndexedInfo.instanceStart;
     const size_t byteOffset = indexByteSize * cmd.drawIndexedInfo.indexStart;
     glDrawElementsInstancedBaseInstance(mode, count, glIndexType, (const void*)byteOffset, instanceCount, baseInstance);
+    LD_ASSERT(glGetError() == 0);
+}
+
+static void gl_command_draw_indirect(const RCommandType* type, RCommandListGLObj* listObj)
+{
+    LD_ASSERT(*type == RCOMMAND_DRAW_INDIRECT);
+    LD_ASSERT(listObj->boundGraphicsPipeline); // missing graphics pipeline
+
+    const auto& cmd = *(const RCommandDrawIndirect*)type;
+
+    auto* bufferObj = (RBufferGLObj*)cmd.drawIndirectInfo.indirectBuffer.unwrap();
+    glBindBuffer(GL_DRAW_INDIRECT_BUFFER, bufferObj->gl.handle);
+    LD_ASSERT(glGetError() == 0);
+
+    const GLenum mode = listObj->boundGraphicsPipeline->gl.primitiveMode;
+    const GLsizei drawCount = (GLsizei)cmd.drawIndirectInfo.infoCount;
+    const GLsizei stride = (GLsizei)cmd.drawIndirectInfo.stride;
+    glMultiDrawArraysIndirect(mode, (const void*)cmd.drawIndirectInfo.offset, drawCount, stride);
     LD_ASSERT(glGetError() == 0);
 }
 

@@ -397,6 +397,15 @@ struct RDrawIndexedInfo
     uint32_t instanceStart; /// the starting gl_InstanceIndex
 };
 
+/// @brief Indirect vertex draw call information.
+struct RDrawIndirectInfo
+{
+    RBuffer indirectBuffer; /// buffer containing RDrawInfo structs.
+    uint64_t offset;        /// byte offset into indirectBuffer for the first RDrawInfo.
+    uint32_t infoCount;     /// number of RDrawInfos to execute.
+    uint32_t stride;        /// byte stride between two RDrawInfos.
+};
+
 struct RBufferMemoryBarrier
 {
     RBuffer buffer;
@@ -451,6 +460,9 @@ struct RCommandList : RHandle<struct RCommandListObj>
 
     /// @brief indexed draw call
     void cmd_draw_indexed(const RDrawIndexedInfo& drawI);
+
+    /// @brief Indirect draw call where RDrawInfo is supplied through some buffer.
+    void cmd_draw_indirect(const RDrawIndirectInfo& drawI);
 
     /// @brief end the current render pass instance
     void cmd_end_pass();

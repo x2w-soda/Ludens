@@ -977,6 +977,21 @@ void RCommandList::cmd_draw_indexed(const RDrawIndexedInfo& drawI)
         mObj->api->cmd_draw_indexed(mObj, drawI);
 }
 
+void RCommandList::cmd_draw_indirect(const RDrawIndirectInfo& drawI)
+{
+    LD_ASSERT(drawI.indirectBuffer && (drawI.indirectBuffer.unwrap()->info.usage & RBUFFER_USAGE_INDIRECT_BIT));
+
+    if (mObj->captureLA)
+    {
+        auto* cmd = (RCommandDrawIndirect*)mObj->captureLA.allocate(sizeof(RCommandDrawIndirect));
+        new (cmd) RCommandDrawIndirect(drawI);
+        mObj->captures.push_back((const RCommandType*)cmd);
+    }
+
+    if (mObj->api)
+        mObj->api->cmd_draw_indirect(mObj, drawI);
+}
+
 void RCommandList::cmd_end_pass()
 {
     if (mObj->captureLA)

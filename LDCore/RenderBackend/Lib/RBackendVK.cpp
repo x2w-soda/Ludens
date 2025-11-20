@@ -419,6 +419,7 @@ static void vk_command_list_cmd_dispatch(RCommandListObj* self, uint32_t groupCo
 static void vk_command_list_cmd_set_scissor(RCommandListObj* self, const Rect& scissor);
 static void vk_command_list_cmd_draw(RCommandListObj* self, const RDrawInfo& drawI);
 static void vk_command_list_cmd_draw_indexed(RCommandListObj* self, const RDrawIndexedInfo& drawI);
+static void vk_command_list_cmd_draw_indirect(RCommandListObj* self, const RDrawIndirectInfo& drawI);
 static void vk_command_list_cmd_end_pass(RCommandListObj* self);
 static void vk_command_list_cmd_buffer_memory_barrier(RCommandListObj* self, RPipelineStageFlags srcStages, RPipelineStageFlags dstStages, const RBufferMemoryBarrier& barrier);
 static void vk_command_list_cmd_image_memory_barrier(RCommandListObj* self, RPipelineStageFlags srcStages, RPipelineStageFlags dstStages, const RImageMemoryBarrier& barrier);
@@ -443,6 +444,7 @@ static const RCommandListAPI sRCommandListVKAPI = {
     .cmd_set_scissor = &vk_command_list_cmd_set_scissor,
     .cmd_draw = &vk_command_list_cmd_draw,
     .cmd_draw_indexed = &vk_command_list_cmd_draw_indexed,
+    .cmd_draw_indirect = &vk_command_list_cmd_draw_indirect,
     .cmd_end_pass = &vk_command_list_cmd_end_pass,
     .cmd_buffer_memory_barrier = &vk_command_list_cmd_buffer_memory_barrier,
     .cmd_image_memory_barrier = &vk_command_list_cmd_image_memory_barrier,
@@ -2330,6 +2332,15 @@ static void vk_command_list_cmd_draw_indexed(RCommandListObj* baseSelf, const RD
     auto* self = (RCommandListVKObj*)baseSelf;
 
     vkCmdDrawIndexed(self->vk.handle, drawI.indexCount, drawI.instanceCount, drawI.indexStart, 0, drawI.instanceStart);
+}
+
+static void vk_command_list_cmd_draw_indirect(RCommandListObj* baseSelf, const RDrawIndirectInfo& drawI)
+{
+    auto* self = (RCommandListVKObj*)baseSelf;
+
+    auto* bufferObj = (RBufferVKObj*)drawI.indirectBuffer.unwrap();
+
+    vkCmdDrawIndirect(self->vk.handle, bufferObj->vk.handle, (VkDeviceSize)drawI.offset, drawI.infoCount, drawI.stride);
 }
 
 static void vk_command_list_cmd_end_pass(RCommandListObj* baseSelf)
