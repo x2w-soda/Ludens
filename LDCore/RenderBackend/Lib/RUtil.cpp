@@ -592,16 +592,24 @@ void cast_image_type_gl(const RImageType& inType, GLenum& outTarget)
 struct
 {
     RIndexType type;
+    size_t byteSize;
     VkIndexType vkType;
+    GLenum glType;
 } indexTypeTable[] = {
-    { RINDEX_TYPE_U16, VK_INDEX_TYPE_UINT16 },
-    { RINDEX_TYPE_U32, VK_INDEX_TYPE_UINT32 },
+    { RINDEX_TYPE_U16, 2, VK_INDEX_TYPE_UINT16, GL_UNSIGNED_SHORT },
+    { RINDEX_TYPE_U32, 4, VK_INDEX_TYPE_UINT32, GL_UNSIGNED_INT },
 };
 // clang-format on
 
 void cast_index_type_vk(const RIndexType& inType, VkIndexType& outType)
 {
     outType = indexTypeTable[(int)inType].vkType;
+}
+
+void cast_index_type_gl(const RIndexType& inType, GLenum& outType, size_t& outByteSize)
+{
+    outType = indexTypeTable[(int)inType].glType;
+    outByteSize = indexTypeTable[(int)inType].byteSize;
 }
 
 // clang-format off
