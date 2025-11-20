@@ -1,9 +1,11 @@
 #include <Ludens/Asset/AssetType/AudioClipAsset.h>
 #include <Ludens/Asset/AssetType/MeshAsset.h>
-#include <Ludens/Asset/AssetType/TextureAsset.h>
+#include <Ludens/Asset/AssetType/Texture2DAsset.h>
 #include <Ludens/Log/Log.h>
 #include <Ludens/System/Memory.h>
 #include <LudensBuilder/BAssetUtil/BAssetUtil.h>
+
+#define LD_ASSET_EXT ".lda"
 
 namespace LD {
 
@@ -32,7 +34,7 @@ bool AssetUtil::import_texture_2d(const FS::Path& sourcePath)
     }
 
     FS::Path savePath(sourcePath);
-    savePath.replace_extension(".ldb");
+    savePath.replace_extension(LD_ASSET_EXT);
 
     Texture2DAssetImportJob importJob;
     importJob.asset = asset;
@@ -65,7 +67,7 @@ bool AssetUtil::import_mesh(const FS::Path& sourcePath)
     }
 
     FS::Path savePath(sourcePath);
-    savePath.replace_extension(".ldb");
+    savePath.replace_extension(LD_ASSET_EXT);
 
     MeshAssetImportJob importJob;
     importJob.asset = asset;
@@ -94,7 +96,7 @@ bool AssetUtil::import_audio_clip(const FS::Path& sourcePath)
     }
 
     FS::Path savePath(sourcePath);
-    savePath.replace_extension(".ldb");
+    savePath.replace_extension(LD_ASSET_EXT);
 
     AudioClipAssetImportJob importJob;
     importJob.asset = asset;

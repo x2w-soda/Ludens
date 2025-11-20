@@ -1,8 +1,9 @@
 #include "AssetObj.h"
 #include <Ludens/Asset/AssetManager.h>
 #include <Ludens/Asset/AssetType/MeshAsset.h>
-#include <Ludens/Asset/AssetType/TextureAsset.h>
+#include <Ludens/Asset/AssetType/Texture2DAsset.h>
 #include <Ludens/Header/Types.h>
+#include <Ludens/Header/Version.h>
 #include <Ludens/Log/Log.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/RenderBackend/RBackend.h>
@@ -21,19 +22,24 @@ static Log sLog("AssetManager");
 struct
 {
     AssetType type;
-    const char* typeName;
-    size_t size;
-    void (*unload)(AssetObj* base);
+    const char* typeMagic;          /// 8-byte magic embedded in binary header
+    const char* typeName;           /// human readable name
+    size_t size;                    /// object byte size
+    void (*unload)(AssetObj* base); /// polymorphic unload
 } sAssetTypeTable[] = {
-    {ASSET_TYPE_AUDIO_CLIP, "AudioClip",  sizeof(AudioClipAssetObj), AudioClipAssetObj::unload, },
-    {ASSET_TYPE_MESH,       "Mesh",       sizeof(MeshAssetObj),      MeshAssetObj::unload, },
-    {ASSET_TYPE_TEXTURE_2D, "Texture2D",  sizeof(Texture2DAssetObj), Texture2DAssetObj::unload, },
-    {ASSET_TYPE_LUA_SCRIPT, "LuaScript",  sizeof(LuaScriptAssetObj), LuaScriptAssetObj::unload, },
+    {ASSET_TYPE_AUDIO_CLIP, "AU_CLIP_", "AudioClip",  sizeof(AudioClipAssetObj), &AudioClipAssetObj::unload, },
+    {ASSET_TYPE_MESH,       "MESH____", "Mesh",       sizeof(MeshAssetObj),      &MeshAssetObj::unload, },
+    {ASSET_TYPE_TEXTURE_2D, "TX_2D___", "Texture2D",  sizeof(Texture2DAssetObj), &Texture2DAssetObj::unload, },
+    {ASSET_TYPE_LUA_SCRIPT, "LUA_SCPT", "LuaScript",  sizeof(LuaScriptAssetObj), &LuaScriptAssetObj::unload, },
 };
 // clang-format on
 
 static_assert(sizeof(sAssetTypeTable) / sizeof(*sAssetTypeTable) == ASSET_TYPE_ENUM_COUNT);
 static_assert(LD::IsTrivial<AssetObj>);
+static_assert(LD::IsTrivial<AudioClipAssetObj>);
+static_assert(LD::IsTrivial<MeshAssetObj>);
+static_assert(LD::IsTrivial<Texture2DAssetObj>);
+static_assert(LD::IsTrivial<LuaScriptAssetObj>);
 
 size_t get_asset_byte_size(AssetType type)
 {
@@ -408,6 +414,54 @@ void asset_unload(AssetObj* base)
         return;
 
     sAssetTypeTable[base->type].unload(base);
+}
+
+const char* get_asset_type_magic_cstr(AssetType type)
+{
+    return sAssetTypeTable[(int)type].typeMagic;
+}
+
+void asset_header_write(Serializer& serializer, AssetType type)
+{
+    serializer.write((const byte*)LD_ASSET_MAGIC, 4);
+    serializer.write_u16(LD_VERSION_MAJOR);
+    serializer.write_u16(LD_VERSION_MINOR);
+    serializer.write_u16(LD_VERSION_PATCH);
+    serializer.write((const byte*)get_asset_type_magic_cstr(type), 8);
+}
+
+bool asset_header_read(Serializer& serializer, uint16_t& outMajor, uint16_t& outMinor, uint16_t& outPatch, AssetType& outType)
+{
+    if (serializer.size() < 18)
+        return false;
+
+    char ldaMagic[4];
+    serializer.read((byte*)ldaMagic, 4);
+
+    if (strncmp(ldaMagic, LD_ASSET_MAGIC, 4))
+        return false;
+
+    serializer.read_u16(outMajor);
+    serializer.read_u16(outMinor);
+    serializer.read_u16(outPatch);
+
+    char typeMagic[8];
+    serializer.read((byte*)typeMagic, 8);
+
+    // TODO: this can be hashed for O(1) lookup but we barely have any asset type variety right now.
+    for (int type = 0; type < (int)ASSET_TYPE_ENUM_COUNT; type++)
+    {
+        const char* match = get_asset_type_magic_cstr((AssetType)type);
+
+        if (!strncmp(typeMagic, match, 8))
+        {
+            outType = (AssetType)type;
+            return true;
+        }
+    }
+
+    // unrecognized asset type
+    return false;
 }
 
 } // namespace LD

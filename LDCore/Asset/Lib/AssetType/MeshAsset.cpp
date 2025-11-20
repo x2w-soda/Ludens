@@ -54,6 +54,8 @@ void MeshAssetImportJob::execute(void* user)
 
     // save asset to disk
     Serializer serializer;
+    asset_header_write(serializer, ASSET_TYPE_MESH);
+
     ModelBinary::serialize(serializer, *obj->modelBinary);
 
     size_t binarySize;
@@ -86,6 +88,15 @@ void MeshAssetLoadJob::execute(void* user)
 
     Serializer serializer(binarySize);
     FS::read_file(self.loadPath, binarySize, serializer.data());
+
+    AssetType type;
+    uint16_t major, minor, patch;
+    if (!asset_header_read(serializer, major, minor, patch, type))
+        return;
+
+    if (type != ASSET_TYPE_MESH)
+        return;
+
     ModelBinary::deserialize(serializer, *obj->modelBinary);
 }
 

@@ -1,10 +1,11 @@
-#include "../AssetObj.h"
-#include <Ludens/Asset/AssetType/TextureAsset.h>
+#include <Ludens/Asset/AssetType/Texture2DAsset.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/Serial/Compress.h>
 #include <Ludens/Serial/Serial.h>
 #include <Ludens/System/FileSystem.h>
+
+#include "../AssetObj.h"
 
 namespace LD {
 
@@ -59,8 +60,8 @@ void Texture2DAssetImportJob::execute(void* user)
 
     // serialize asset to disk
     Serializer serializer;
+    asset_header_write(serializer, ASSET_TYPE_TEXTURE_2D);
 
-    serializer.write_u32(obj->auid);
     serializer.write_i32((int)obj->compression);
     serializer.write_i32((int)obj->samplerHint.filter);
     serializer.write_i32((int)obj->samplerHint.mipmapFilter);
@@ -101,8 +102,13 @@ void Texture2DAssetLoadJob::execute(void* user)
     Serializer serializer(binarySize);
     FS::read_file(self.loadPath, binarySize, serializer.data());
 
-    uint32_t unused;
-    serializer.read_u32(unused); // TODO: AUID is already known by now
+    AssetType type;
+    uint16_t major, minor, patch;
+    if (!asset_header_read(serializer, major, minor, patch, type))
+        return;
+
+    if (type != ASSET_TYPE_TEXTURE_2D)
+        return;
 
     serializer.read_i32((int32_t&)obj->compression);
     serializer.read_i32((int32_t&)obj->samplerHint.filter);

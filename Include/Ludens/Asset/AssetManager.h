@@ -4,7 +4,7 @@
 #include <Ludens/Asset/AssetType/AudioClipAsset.h>
 #include <Ludens/Asset/AssetType/LuaScriptAsset.h>
 #include <Ludens/Asset/AssetType/MeshAsset.h>
-#include <Ludens/Asset/AssetType/TextureAsset.h>
+#include <Ludens/Asset/AssetType/Texture2DAsset.h>
 #include <Ludens/Header/Handle.h>
 #include <Ludens/RenderServer/RServer.h>
 #include <Ludens/System/FileSystem.h>

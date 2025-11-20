@@ -5,7 +5,7 @@
 #include <Ludens/Asset/AssetType/AudioClipAsset.h>
 #include <Ludens/Asset/AssetType/LuaScriptAsset.h>
 #include <Ludens/Asset/AssetType/MeshAsset.h>
-#include <Ludens/Asset/AssetType/TextureAsset.h>
+#include <Ludens/Asset/AssetType/Texture2DAsset.h>
 #include <Ludens/DataRegistry/DataComponent.h>
 #include <Ludens/Header/Hash.h>
 #include <Ludens/Media/AudioData.h>
@@ -18,8 +18,12 @@
 #include <unordered_map>
 #include <vector>
 
+// first four bytes of any Ludens Asset file.
+#define LD_ASSET_MAGIC "LDA."
+
 namespace LD {
 
+struct Serializer;
 struct AssetManagerInfo;
 
 /// @brief Asset manager implementation.
@@ -105,6 +109,24 @@ struct LuaScriptAssetObj : AssetObj
 };
 
 /// @brief Polymorphic unload/cleanup for each asset type.
-extern void asset_unload(AssetObj* base);
+void asset_unload(AssetObj* base);
+
+/// @brief Get 8 bytes of magic unique to each asset type.
+/// @return Static C string of length 8.
+const char* get_asset_type_magic_cstr(AssetType type);
+
+/// @brief Write binary header for asset type.
+/// @param serializer Serializer used to write the header.
+/// @param type Asset type information to serialize.
+void asset_header_write(Serializer& serializer, AssetType type);
+
+/// @brief Attempts to read binary header from memory.
+/// @param serializer Serializer used to read header.
+/// @param outMajor Outputs the major framework version this asset is created with.
+/// @param outMinor Outputs the minor framework version this asset is created with.
+/// @param outPatch Outputs the patch framework version this asset is created with.
+/// @param outType Outputs the asset type enum if recognized.
+/// @return True if the header is recognized with this framework version, and the serializer cursor sits right after the header.
+bool asset_header_read(Serializer& serializer, uint16_t& outMajor, uint16_t& outMinor, uint16_t& outPatch, AssetType& outType);
 
 } // namespace LD

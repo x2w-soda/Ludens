@@ -62,6 +62,8 @@ void AudioClipAssetImportJob::execute(void* user)
     uint64_t sampleByteSize = (uint64_t)sample_format_byte_size(data.get_sample_format(), sampleCount);
 
     Serializer serializer;
+    asset_header_write(serializer, ASSET_TYPE_AUDIO_CLIP);
+    
     serializer.write_u32((uint32_t)data.get_sample_format());
     serializer.write_u32((uint32_t)data.get_sample_rate());
     serializer.write_u32((uint32_t)data.get_channels());
@@ -98,6 +100,14 @@ void AudioClipAssetLoadJob::execute(void* user)
 
     Serializer serializer(binarySize);
     FS::read_file(self.loadPath, binarySize, serializer.data());
+
+    AssetType type;
+    uint16_t major, minor, patch;
+    if (!asset_header_read(serializer, major, minor, patch, type))
+        return;
+
+    if (type != ASSET_TYPE_AUDIO_CLIP)
+        return;
 
     uint32_t u32;
     uint32_t channels;
