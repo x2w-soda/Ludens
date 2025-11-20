@@ -392,8 +392,9 @@ struct RDrawInfo
 struct RDrawIndexedInfo
 {
     uint32_t indexCount;
-    uint32_t indexStart; /// first index is sourced from IndexBuffer[indexStart]
     uint32_t instanceCount;
+    uint32_t indexStart;    /// first index is sourced from (IndexBuffer[indexStart] + vertexOffset)
+    int32_t vertexOffset;   /// constant offset applied to indices found in the IndexBuffer
     uint32_t instanceStart; /// the starting gl_InstanceIndex
 };
 

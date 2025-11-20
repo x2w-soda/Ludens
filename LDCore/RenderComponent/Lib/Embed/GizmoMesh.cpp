@@ -266,6 +266,7 @@ void EmbeddedGizmoMesh::get_translation_gizmo_axis_draw_info(RDrawIndexedInfo& d
     drawInfo.indexStart = 0;
     drawInfo.instanceCount = 1;
     drawInfo.instanceStart = 0;
+    drawInfo.vertexOffset = 0;
 }
 
 void EmbeddedGizmoMesh::get_rotation_gizmo_plane(const MeshVertex** vertices, uint32_t& vertexCount, const uint32_t** indices, uint32_t& indexCount)

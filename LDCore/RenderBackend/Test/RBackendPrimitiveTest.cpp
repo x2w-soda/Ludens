@@ -167,7 +167,7 @@ static void rbackend_primitive_test(const RBackendPrimitiveTestInfo& info)
     cmdList.begin();
     cmdList.cmd_begin_pass(passBI);
     cmdList.cmd_bind_graphics_pipeline(trianglePipeline);
-    cmdList.cmd_draw({3, 0, 1, 0});
+    cmdList.cmd_draw({3, 1, 0, 0});
     cmdList.cmd_end_pass();
     RImageMemoryBarrier barrier{}; // copy rendered contents to host visible buffer
     barrier.image = colorImage;
@@ -201,7 +201,7 @@ static void rbackend_primitive_test(const RBackendPrimitiveTestInfo& info)
     cmdList.begin();
     cmdList.cmd_begin_pass(passBI);
     cmdList.cmd_bind_graphics_pipeline(quadPipeline);
-    cmdList.cmd_draw({6, 0, 1, 0});
+    cmdList.cmd_draw({6, 1, 0, 0});
     cmdList.cmd_end_pass();
     cmdList.cmd_image_memory_barrier(RPIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, RPIPELINE_STAGE_TRANSFER_BIT, barrier);
     cmdList.cmd_copy_image_to_buffer(colorImage, RIMAGE_LAYOUT_TRANSFER_SRC, hostBuffer, 1, &region);

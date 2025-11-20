@@ -682,6 +682,14 @@ static_assert(offsetof(VkDrawIndirectCommand, instanceCount) == offsetof(RDrawIn
 static_assert(offsetof(VkDrawIndirectCommand, firstVertex) == offsetof(RDrawInfo, vertexStart));
 static_assert(offsetof(VkDrawIndirectCommand, firstInstance) == offsetof(RDrawInfo, instanceStart));
 
+// RDrawIndexedInfo should already be eligible as indexed indirect draw command struct
+static_assert(sizeof(VkDrawIndexedIndirectCommand) == sizeof(RDrawIndexedInfo));
+static_assert(offsetof(VkDrawIndexedIndirectCommand, indexCount) == offsetof(RDrawIndexedInfo, indexCount));
+static_assert(offsetof(VkDrawIndexedIndirectCommand, instanceCount) == offsetof(RDrawIndexedInfo, instanceCount));
+static_assert(offsetof(VkDrawIndexedIndirectCommand, firstIndex) == offsetof(RDrawIndexedInfo, indexStart));
+static_assert(offsetof(VkDrawIndexedIndirectCommand, vertexOffset) == offsetof(RDrawIndexedInfo, vertexOffset));
+static_assert(offsetof(VkDrawIndexedIndirectCommand, firstInstance) == offsetof(RDrawIndexedInfo, instanceStart));
+
 size_t vk_device_byte_size()
 {
     return sizeof(RDeviceVKObj);
@@ -2331,7 +2339,7 @@ static void vk_command_list_cmd_draw_indexed(RCommandListObj* baseSelf, const RD
 {
     auto* self = (RCommandListVKObj*)baseSelf;
 
-    vkCmdDrawIndexed(self->vk.handle, drawI.indexCount, drawI.instanceCount, drawI.indexStart, 0, drawI.instanceStart);
+    vkCmdDrawIndexed(self->vk.handle, drawI.indexCount, drawI.instanceCount, drawI.indexStart, drawI.vertexOffset, drawI.instanceStart);
 }
 
 static void vk_command_list_cmd_draw_indirect(RCommandListObj* baseSelf, const RDrawIndirectInfo& drawI)

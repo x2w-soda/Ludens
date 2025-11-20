@@ -261,8 +261,9 @@ void ScreenRenderComponentObj::flush_rects()
 
     RDrawIndexedInfo drawI = {
         .indexCount = rectCount * 6,
-        .indexStart = 0,
         .instanceCount = 1,
+        .indexStart = 0,
+        .vertexOffset = 0,
         .instanceStart = 0,
     };
     mList.cmd_draw_indexed(drawI);

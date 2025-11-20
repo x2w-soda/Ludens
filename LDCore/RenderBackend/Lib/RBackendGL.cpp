@@ -1202,10 +1202,11 @@ static void gl_command_draw_indexed(const RCommandType* type, RCommandListGLObj*
     const auto& cmd = *(const RCommandDrawIndexed*)type;
     const GLenum mode = listObj->boundGraphicsPipeline->gl.primitiveMode;
     const GLsizei count = (GLsizei)cmd.drawIndexedInfo.indexCount;
-    const GLsizei instanceCount = (GLsizei)cmd.drawIndexedInfo.instanceCount;
-    const GLuint baseInstance = (GLuint)cmd.drawIndexedInfo.instanceStart;
     const size_t byteOffset = indexByteSize * cmd.drawIndexedInfo.indexStart;
-    glDrawElementsInstancedBaseInstance(mode, count, glIndexType, (const void*)byteOffset, instanceCount, baseInstance);
+    const GLsizei instanceCount = (GLsizei)cmd.drawIndexedInfo.instanceCount;
+    const GLint baseVertex = (GLint)cmd.drawIndexedInfo.vertexOffset;
+    const GLuint baseInstance = (GLuint)cmd.drawIndexedInfo.instanceStart;
+    glDrawElementsInstancedBaseVertexBaseInstance(mode, count, glIndexType, (const void*)byteOffset, instanceCount, baseVertex, baseInstance);
     LD_ASSERT(glGetError() == 0);
 }
 

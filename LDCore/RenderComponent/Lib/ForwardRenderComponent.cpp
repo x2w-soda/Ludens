@@ -96,6 +96,7 @@ void ForwardRenderComponentObj::draw_mesh_ex(RCommandList list, RMesh& mesh)
         drawI.indexStart = prim.indexStart;
         drawI.instanceCount = 1;
         drawI.instanceStart = 0;
+        drawI.vertexOffset = 0;
         list.cmd_draw_indexed(drawI);
     }
 }
