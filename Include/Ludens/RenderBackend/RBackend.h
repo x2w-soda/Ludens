@@ -298,7 +298,7 @@ struct RPipelineLayoutInfo
 
 struct RVertexAttribute
 {
-    GLSLType type;   // vertex attribute glsl data type
+    GLSLType type;    // vertex attribute glsl data type
     uint32_t offset;  // offset from start of vertex
     uint32_t binding; // corresponding RVertexBinding
 };
@@ -383,8 +383,8 @@ struct RPipeline : RHandle<struct RPipelineObj>
 struct RDrawInfo
 {
     uint32_t vertexCount;
-    uint32_t vertexStart; /// the starting gl_VertexIndex
     uint32_t instanceCount;
+    uint32_t vertexStart;   /// the starting gl_VertexIndex
     uint32_t instanceStart; /// the starting gl_InstanceIndex
 };
 

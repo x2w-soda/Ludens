@@ -673,6 +673,13 @@ struct RTypeVK
 
 static_assert(sizeof(sTypeVKTable) / sizeof(*sTypeVKTable) == (size_t)RTYPE_ENUM_COUNT);
 
+// RDrawInfo should already be eligible as indirect draw command struct
+static_assert(sizeof(VkDrawIndirectCommand) == sizeof(RDrawInfo));
+static_assert(offsetof(VkDrawIndirectCommand, vertexCount) == offsetof(RDrawInfo, vertexCount));
+static_assert(offsetof(VkDrawIndirectCommand, instanceCount) == offsetof(RDrawInfo, instanceCount));
+static_assert(offsetof(VkDrawIndirectCommand, firstVertex) == offsetof(RDrawInfo, vertexStart));
+static_assert(offsetof(VkDrawIndirectCommand, firstInstance) == offsetof(RDrawInfo, instanceStart));
+
 size_t vk_device_byte_size()
 {
     return sizeof(RDeviceVKObj);

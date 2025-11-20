@@ -257,7 +257,7 @@ void DualKawaseComponentObj::on_down_sample(RGraphicsPass pass, RCommandList lis
 
     list.cmd_bind_graphics_pipeline(obj->downSamplePipeline);
     list.cmd_bind_graphics_sets(obj->blurPipelineLayout, 1, 1, &blurSet);
-    list.cmd_draw({.vertexCount = 6, .vertexStart = 0, .instanceCount = 1, .instanceStart = 0});
+    list.cmd_draw({.vertexCount = 6, .instanceCount = 1, .vertexStart = 0, .instanceStart = 0});
 }
 
 void DualKawaseComponentObj::on_up_sample(RGraphicsPass pass, RCommandList list, void* user)
@@ -290,7 +290,7 @@ void DualKawaseComponentObj::on_up_sample(RGraphicsPass pass, RCommandList list,
     list.cmd_push_constant(obj->blurPipelineLayout, 0, sizeof(mixColorPC), &mixColorPC);
     list.cmd_bind_graphics_pipeline(obj->upSamplePipeline);
     list.cmd_bind_graphics_sets(obj->blurPipelineLayout, 1, 1, &blurSet);
-    list.cmd_draw({.vertexCount = 6, .vertexStart = 0, .instanceCount = 1, .instanceStart = 0});
+    list.cmd_draw({.vertexCount = 6, .instanceCount = 1, .vertexStart = 0, .instanceStart = 0});
 }
 
 DualKawaseComponent DualKawaseComponent::add(RGraph graph, const DualKawaseComponentInfo& info)

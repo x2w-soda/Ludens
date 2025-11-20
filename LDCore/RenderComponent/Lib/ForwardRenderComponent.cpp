@@ -120,8 +120,8 @@ void ForwardRenderComponentObj::flush_lines()
 
     RDrawInfo drawI{
         .vertexCount = pointCount,
-        .vertexStart = 0,
         .instanceCount = 1,
+        .vertexStart = 0,
         .instanceStart = 0,
     };
     list.cmd_draw(drawI);
@@ -292,8 +292,8 @@ void ForwardRenderComponent::draw_skybox()
 
     RDrawInfo drawI{
         .vertexCount = 36,
-        .vertexStart = 0,
         .instanceCount = 1,
+        .vertexStart = 0,
         .instanceStart = 0,
     };
     mObj->list.cmd_draw(drawI);

@@ -349,7 +349,7 @@ void SceneOverlayComponentObj::on_outline_graphics_pass(RGraphicsPass pass, RCom
     list.cmd_bind_graphics_sets(sOutlinePipelineLayout, 1, 1, &frame.outlineSet);
     list.cmd_bind_vertex_buffers(0, 1, &sScreenVBO);
     list.cmd_bind_graphics_pipeline(obj->outlinePipeline);
-    list.cmd_draw({.vertexCount = 6, .vertexStart = 0, .instanceCount = 1, .instanceStart = 0});
+    list.cmd_draw({.vertexCount = 6, .instanceCount = 1, .vertexStart = 0, .instanceStart = 0});
 }
 
 /// @brief Render Gizmo in world space.
@@ -372,7 +372,7 @@ void SceneOverlayComponentObj::on_gizmo_graphics_pass(RGraphicsPass pass, RComma
     list.cmd_bind_graphics_pipeline(obj->copyPipeline);
     list.cmd_bind_graphics_sets(sCopyPipelineLayout, 1, 1, &frame.gizmoSet);
     list.cmd_bind_vertex_buffers(0, 1, &sScreenVBO);
-    list.cmd_draw({.vertexCount = 6, .vertexStart = 0, .instanceCount = 1, .instanceStart = 0});
+    list.cmd_draw({.vertexCount = 6, .instanceCount = 1, .vertexStart = 0, .instanceStart = 0});
 
     // render gizmo mesh with ambient shading
     // write color and write 16-bit ID

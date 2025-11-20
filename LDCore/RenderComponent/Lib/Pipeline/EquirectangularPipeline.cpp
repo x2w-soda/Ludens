@@ -187,7 +187,7 @@ void equirectangular_cmd_render_to_faces(RDevice device, EquirectangularPipeline
         list.cmd_bind_graphics_pipeline(pipeline.handle());
         list.cmd_bind_graphics_sets(sEquirectangularPipelineLayout, 0, 1, &equirectangularImageSet);
         list.cmd_bind_vertex_buffers(0, 1, &cubeVBO);
-        list.cmd_draw({.vertexCount = 36, .vertexStart = 0, .instanceCount = 1, .instanceStart = 0});
+        list.cmd_draw({.vertexCount = 36, .instanceCount = 1, .vertexStart = 0, .instanceStart = 0});
         list.cmd_end_pass();
     }
 
