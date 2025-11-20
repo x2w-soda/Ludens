@@ -717,6 +717,10 @@ void ScreenRenderComponent::draw_text(FontAtlas atlas, RImage atlasImage, float 
 
     Vec2 baseline(pos.x, pos.y + metrics.ascent);
 
+    // add small bias to ensure that floating point errors
+    // do not cause the last character in single-line text to wrap.
+    wrapWidth += 0.1f;
+
     size_t len = strlen(text);
     for (size_t i = 0; i < len; i++)
     {
