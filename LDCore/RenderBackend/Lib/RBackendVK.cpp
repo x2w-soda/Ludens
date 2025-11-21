@@ -2762,9 +2762,9 @@ static void choose_physical_device(RDeviceVKObj* obj)
         vkGetPhysicalDeviceProperties(pdevice.handle, &pdevice.deviceProps);
         sLog.info("VkPhysicalDevice: {}", pdevice.deviceProps.deviceName);
 
-        const VkPhysicalDeviceLimits& limits = pdevice.deviceProps.limits;
+        const VkPhysicalDeviceLimits& vkLimits = pdevice.deviceProps.limits;
 
-        VkSampleCountFlags count = limits.framebufferColorSampleCounts & limits.framebufferDepthSampleCounts;
+        VkSampleCountFlags count = vkLimits.framebufferColorSampleCounts & vkLimits.framebufferDepthSampleCounts;
         pdevice.msaaCount = VK_SAMPLE_COUNT_1_BIT;
         if (count & VK_SAMPLE_COUNT_64_BIT)
             pdevice.msaaCount = VK_SAMPLE_COUNT_64_BIT;
@@ -2819,6 +2819,15 @@ static void choose_physical_device(RDeviceVKObj* obj)
             pdevice.presentModes.resize(modeCount);
             VK_CHECK(vkGetPhysicalDeviceSurfacePresentModesKHR(handle, obj->vk.surface, &modeCount, pdevice.presentModes.data()));
         }
+
+        // physical limits
+        obj->limits.maxComputeWorkGroupCount[0] = vkLimits.maxComputeWorkGroupCount[0];
+        obj->limits.maxComputeWorkGroupCount[1] = vkLimits.maxComputeWorkGroupCount[1];
+        obj->limits.maxComputeWorkGroupCount[2] = vkLimits.maxComputeWorkGroupCount[2];
+        obj->limits.maxComputeWorkGroupSize[0] = vkLimits.maxComputeWorkGroupSize[0];
+        obj->limits.maxComputeWorkGroupSize[1] = vkLimits.maxComputeWorkGroupSize[1];
+        obj->limits.maxComputeWorkGroupSize[2] = vkLimits.maxComputeWorkGroupSize[2];
+        obj->limits.maxComputeWorkGroupInvocations = vkLimits.maxComputeWorkGroupInvocations;
 
         if (chosen)
             break;

@@ -561,6 +561,14 @@ struct RSetBufferUpdateInfo
     RBuffer* buffers;
 };
 
+/// @brief Render device limits that the user must respect.
+struct RDeviceLimits
+{
+    uint32_t maxComputeWorkGroupCount[3];    // RCommandList::cmd_dispatch dimension limits
+    uint32_t maxComputeWorkGroupSize[3];     // compute workgroup local size limits
+    uint32_t maxComputeWorkGroupInvocations; // compute workgroup local size product limit
+};
+
 /// @brief render device creation info
 struct RDeviceInfo
 {

@@ -1,4 +1,5 @@
 #include <Ludens/Header/Assert.h>
+#include <Ludens/Log/Log.h>
 #include <Ludens/Profiler/Profiler.h>
 
 // OpenGL 4.6 Core Profile
@@ -7,7 +8,6 @@
 #include <GLFW/glfw3.h>
 
 #include <cstring>
-#include <iostream>
 #include <vector>
 
 #include "RBackendObj.h"
@@ -17,8 +17,18 @@
 
 namespace LD {
 
+static Log sLog("RBackendGL");
+
 struct RPipelineGLObj;
 struct RDeviceGLObj;
+
+/// @brief Attempts to compile OpenGL GLSL of shader type.
+/// @return Non-zero shader handle on success, zero otherwise.
+static GLuint gl_compile_shader(GLenum glShaderType, const GLchar* glsl);
+
+/// @brief Attempts to link OpenGL program with shaders.
+/// @return Non-zero program handle on success, zero otherwise.
+static GLuint gl_link_program(size_t shaderCount, GLuint* shaders);
 
 static void gl_buffer_map(RBufferObj* self);
 static void* gl_buffer_map_read(RBufferObj* self, uint64_t offset, uint64_t size);
@@ -117,6 +127,7 @@ struct RCommandListGLObj : RCommandListObj
     }
 
     RPipelineGLObj* boundGraphicsPipeline = nullptr;
+    RPipelineGLObj* boundComputePipeline = nullptr;
     RIndexType indexType;
 };
 
@@ -267,9 +278,11 @@ static void gl_device_destroy_pipeline_layout(RDeviceObj* baseSelf, RPipelineLay
 static void gl_device_pipeline_ctor(RPipelineObj* baseObj);
 static void gl_device_pipeline_dtor(RPipelineObj* baseObj);
 static RPipeline gl_device_create_pipeline(RDeviceObj* baseSelf, const RPipelineInfo& pipelineI, RPipelineObj* baseObj);
+static RPipeline gl_device_create_compute_pipeline(RDeviceObj* self, const RComputePipelineInfo& pipelineI, RPipelineObj* pipelineObj);
 static void gl_device_destroy_pipeline(RDeviceObj* baseSelf, RPipeline pipeline);
 static void gl_device_pipeline_variant_pass(RDeviceObj* self, RPipelineObj* pipelineObj, const RPassInfo& passI);
 static void gl_device_update_set_images(RDeviceObj* self, uint32_t updateCount, const RSetImageUpdateInfo* updates);
+static void gl_device_update_set_buffers(RDeviceObj* self, uint32_t updateCount, const RSetBufferUpdateInfo* updates);
 static RQueue gl_device_get_graphics_queue(RDeviceObj* self);
 static void gl_device_wait_idle(RDeviceObj* self);
 
@@ -326,13 +339,13 @@ static constexpr RDeviceAPI sRDeviceGLAPI = {
     .pipeline_ctor = &gl_device_pipeline_ctor,
     .pipeline_dtor = &gl_device_pipeline_dtor,
     .create_pipeline = &gl_device_create_pipeline,
-    .create_compute_pipeline = nullptr,
+    .create_compute_pipeline = &gl_device_create_compute_pipeline,
     .destroy_pipeline = &gl_device_destroy_pipeline,
     .pipeline_variant_pass = &gl_device_pipeline_variant_pass,
     .pipeline_variant_color_write_mask = nullptr,
     .pipeline_variant_depth_test_enable = nullptr,
     .update_set_images = &gl_device_update_set_images,
-    .update_set_buffers = nullptr,
+    .update_set_buffers = &gl_device_update_set_buffers,
     .next_frame = nullptr,
     .present_frame = nullptr,
     .get_depth_stencil_formats = nullptr,
@@ -371,6 +384,8 @@ static void gl_command_execute(const RCommandType* type, RCommandListGLObj* list
 static void gl_command_begin_pass(const RCommandType* type, RCommandListGLObj* listObj);
 static void gl_command_bind_graphics_pipeline(const RCommandType* type, RCommandListGLObj* listObj);
 static void gl_command_bind_graphics_sets(const RCommandType* type, RCommandListGLObj* listObj);
+static void gl_command_bind_compute_pipeline(const RCommandType* type, RCommandListGLObj* listObj);
+static void gl_command_bind_compute_sets(const RCommandType* type, RCommandListGLObj* listObj);
 static void gl_command_bind_vertex_buffers(const RCommandType* type, RCommandListGLObj* listObj);
 static void gl_command_bind_index_buffer(const RCommandType* type, RCommandListGLObj* listObj);
 static void gl_command_draw(const RCommandType* type, RCommandListGLObj* listObj);
@@ -378,6 +393,7 @@ static void gl_command_draw_indexed(const RCommandType* type, RCommandListGLObj*
 static void gl_command_draw_indirect(const RCommandType* type, RCommandListGLObj* listObj);
 static void gl_command_draw_indexed_indirect(const RCommandType* type, RCommandListGLObj* listObj);
 static void gl_command_end_pass(const RCommandType* type, RCommandListGLObj* listObj);
+static void gl_command_dispatch(const RCommandType* type, RCommandListGLObj* listObj);
 static void gl_command_image_memory_barrier(const RCommandType* type, RCommandListGLObj* listObj);
 static void gl_command_copy_buffer(const RCommandType* type, RCommandListGLObj* listObj);
 static void gl_command_copy_buffer_to_image(const RCommandType* type, RCommandListGLObj* listObj);
@@ -388,8 +404,8 @@ static constexpr void (*sCommandTable[])(const RCommandType*, RCommandListGLObj*
     nullptr,
     &gl_command_bind_graphics_pipeline,
     &gl_command_bind_graphics_sets,
-    nullptr,
-    nullptr,
+    &gl_command_bind_compute_pipeline,
+    &gl_command_bind_compute_sets,
     &gl_command_bind_vertex_buffers,
     &gl_command_bind_index_buffer,
     nullptr,
@@ -398,7 +414,7 @@ static constexpr void (*sCommandTable[])(const RCommandType*, RCommandListGLObj*
     &gl_command_draw_indirect,
     &gl_command_draw_indexed_indirect,
     &gl_command_end_pass,
-    nullptr,
+    &gl_command_dispatch,
     nullptr,
     &gl_command_image_memory_barrier,
     &gl_command_copy_buffer,
@@ -433,6 +449,57 @@ struct RTypeGL
     { RTYPE_QUEUE,           sizeof(RQueueGLObj) },
 };
 // clang-format on
+
+static GLuint gl_compile_shader(GLenum glShaderType, const GLchar* glsl)
+{
+    GLuint shaderHandle = glCreateShader(glShaderType);
+
+    GLint len = (GLint)strlen(glsl);
+    glShaderSource(shaderHandle, 1, &glsl, &len);
+    glCompileShader(shaderHandle);
+
+    GLint status;
+    glGetShaderiv(shaderHandle, GL_COMPILE_STATUS, &status);
+
+    if (status != GL_TRUE)
+    {
+        char buf[512];
+        GLsizei length;
+        glGetShaderInfoLog(shaderHandle, sizeof(buf), &length, buf);
+        sLog.error("glCompileShader failed: {}", std::string_view(buf, length));
+
+        glDeleteShader(shaderHandle);
+        return (GLuint)0;
+    }
+
+    return shaderHandle;
+}
+
+static GLuint gl_link_program(size_t shaderCount, GLuint* shaders)
+{
+    GLuint programHandle = glCreateProgram();
+
+    for (size_t i = 0; i < shaderCount; i++)
+        glAttachShader(programHandle, shaders[i]);
+
+    glLinkProgram(programHandle);
+
+    GLint status;
+    glGetProgramiv(programHandle, GL_LINK_STATUS, &status);
+
+    if (status != GL_TRUE)
+    {
+        char buf[512];
+        GLsizei length;
+        glGetProgramInfoLog(programHandle, sizeof(buf), &length, buf);
+        sLog.error("glLinkProgram failed: {}", std::string_view(buf, length));
+
+        glDeleteProgram(programHandle);
+        return (GLuint)0;
+    }
+
+    return programHandle;
+}
 
 static void gl_buffer_map(RBufferObj* baseSelf)
 {
@@ -571,6 +638,26 @@ void gl_create_device(struct RDeviceObj* baseObj, const RDeviceInfo& info)
     //       so that there is a valid OpenGL context on main thread.
     int ret = gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
     LD_ASSERT(ret != 0);
+
+    // extract limits
+    GLint glMaxComputeWorkGroupInvocations;
+    GLint glMaxComputeWorkGroupCountX, glMaxComputeWorkGroupSizeX;
+    GLint glMaxComputeWorkGroupCountY, glMaxComputeWorkGroupSizeY;
+    GLint glMaxComputeWorkGroupCountZ, glMaxComputeWorkGroupSizeZ;
+    glGetIntegerv(GL_MAX_COMPUTE_WORK_GROUP_INVOCATIONS, &glMaxComputeWorkGroupInvocations);
+    glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 0, &glMaxComputeWorkGroupCountX);
+    glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 1, &glMaxComputeWorkGroupCountY);
+    glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_COUNT, 2, &glMaxComputeWorkGroupCountZ);
+    glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 0, &glMaxComputeWorkGroupSizeX);
+    glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 1, &glMaxComputeWorkGroupSizeY);
+    glGetIntegeri_v(GL_MAX_COMPUTE_WORK_GROUP_SIZE, 2, &glMaxComputeWorkGroupSizeZ);
+    obj->limits.maxComputeWorkGroupInvocations = (uint32_t)glMaxComputeWorkGroupInvocations;
+    obj->limits.maxComputeWorkGroupCount[0] = (uint32_t)glMaxComputeWorkGroupCountX;
+    obj->limits.maxComputeWorkGroupCount[1] = (uint32_t)glMaxComputeWorkGroupCountY;
+    obj->limits.maxComputeWorkGroupCount[2] = (uint32_t)glMaxComputeWorkGroupCountZ;
+    obj->limits.maxComputeWorkGroupSize[0] = (uint32_t)glMaxComputeWorkGroupSizeX;
+    obj->limits.maxComputeWorkGroupSize[1] = (uint32_t)glMaxComputeWorkGroupSizeY;
+    obj->limits.maxComputeWorkGroupSize[2] = (uint32_t)glMaxComputeWorkGroupSizeZ;
 }
 
 void gl_destroy_device(struct RDeviceObj* baseObj)
@@ -978,16 +1065,10 @@ static RPipeline gl_device_create_pipeline(RDeviceObj* baseSelf, const RPipeline
         glVertexBindingDivisor(binding, divisor);
     }
 
-    // link shaders into single program
-    obj->gl.programHandle = glCreateProgram();
-
+    // compile and link shaders into single program
     for (uint32_t i = 0; i < pipelineI.shaderCount; i++)
     {
         RShaderGLObj* shaderObj = (RShaderGLObj*)pipelineI.shaders[i].unwrap();
-
-        GLenum shaderType;
-        RUtil::cast_shader_type_gl(shaderObj->type, shaderType);
-        GLuint shaderHandle = glCreateShader(shaderType);
 
         RShaderCompiler compiler;
         std::string glsl;
@@ -996,39 +1077,49 @@ static RPipeline gl_device_create_pipeline(RDeviceObj* baseSelf, const RPipeline
         if (!success)
             return {};
 
-        const GLchar* source = (const GLchar*)glsl.c_str();
-        GLint len = (GLint)strlen(source);
-        glShaderSource(shaderHandle, 1, &source, &len);
-        glCompileShader(shaderHandle);
+        GLenum shaderType;
+        RUtil::cast_shader_type_gl(shaderObj->type, shaderType);
 
-        GLint status;
-        glGetShaderiv(shaderHandle, GL_COMPILE_STATUS, &status);
-        if (status != GL_TRUE)
-        {
-            char buf[512];
-            GLsizei length;
-            glGetShaderInfoLog(shaderHandle, sizeof(buf), &length, buf);
-            std::cout << buf << std::endl;
-            LD_UNREACHABLE;
-        }
+        GLuint shaderHandle = gl_compile_shader(shaderType, (const GLchar*)glsl.c_str());
+        if (shaderHandle == 0)
+            return {};
 
         obj->gl.shaderHandles.push_back(shaderHandle);
-        glAttachShader(obj->gl.programHandle, shaderHandle);
     }
 
-    glLinkProgram(obj->gl.programHandle);
-
-    GLint status;
-    glGetProgramiv(obj->gl.programHandle, GL_LINK_STATUS, &status);
-    if (status != GL_TRUE)
-    {
-        char buf[512];
-        glGetProgramInfoLog(obj->gl.programHandle, sizeof(buf), nullptr, buf);
-        std::cout << buf << std::endl;
-        LD_UNREACHABLE;
-    }
+    obj->gl.programHandle = gl_link_program(obj->gl.shaderHandles.size(), obj->gl.shaderHandles.data());
+    if (obj->gl.programHandle == 0)
+        return {};
 
     RUtil::cast_primitive_topology_gl(pipelineI.primitiveTopology, obj->gl.primitiveMode);
+
+    return RPipeline(obj);
+}
+
+static RPipeline gl_device_create_compute_pipeline(RDeviceObj* baseSelf, const RComputePipelineInfo& pipelineI, RPipelineObj* baseObj)
+{
+    auto* self = (RDeviceGLObj*)baseSelf;
+    auto* obj = (RPipelineGLObj*)baseObj;
+    auto* layoutObj = (RPipelineLayoutGLObj*)obj->layoutObj;
+    auto* shaderObj = (RShaderGLObj*)pipelineI.shader.unwrap();
+
+    RShaderCompiler compiler;
+    std::string glsl;
+    bool success = compiler.decompile_to_opengl_glsl(layoutObj->gl.remap, shaderObj->spirv, glsl);
+
+    if (!success)
+        return {};
+
+    GLuint shaderHandle = gl_compile_shader(GL_COMPUTE_SHADER, (const GLchar*)glsl.c_str());
+    if (shaderHandle == 0)
+        return {};
+
+    obj->gl.shaderHandles.resize(1);
+    obj->gl.shaderHandles[0] = shaderHandle;
+
+    obj->gl.programHandle = gl_link_program(1, &shaderHandle);
+    if (obj->gl.programHandle == 0)
+        return {};
 
     return RPipeline(obj);
 }
@@ -1068,6 +1159,22 @@ static void gl_device_update_set_images(RDeviceObj* self, uint32_t updateCount, 
             std::vector<void*>& descriptorArray = setObj->gl.bindingSites[update.dstBinding];
             uint32_t arrayIdx = update.dstArrayIndex + j;
             descriptorArray[arrayIdx] = (void*)update.images[j].unwrap();
+        }
+    }
+}
+
+static void gl_device_update_set_buffers(RDeviceObj* self, uint32_t updateCount, const RSetBufferUpdateInfo* updates)
+{
+    for (uint32_t i = 0; i < updateCount; i++)
+    {
+        const RSetBufferUpdateInfo& update = updates[i];
+        auto* setObj = (RSetGLObj*)update.set.unwrap();
+
+        for (uint32_t j = 0; j < update.bufferCount; j++)
+        {
+            std::vector<void*>& descriptorArray = setObj->gl.bindingSites[update.dstBinding];
+            uint32_t arrayIdx = update.dstArrayIndex + j;
+            descriptorArray[arrayIdx] = (void*)update.buffers[j].unwrap();
         }
     }
 }
@@ -1134,9 +1241,38 @@ void gl_command_bind_graphics_pipeline(const RCommandType* type, RCommandListGLO
 static void gl_command_bind_graphics_sets(const RCommandType* type, RCommandListGLObj* listObj)
 {
     LD_ASSERT(*type == RCOMMAND_BIND_GRAPHICS_SETS);
+    LD_ASSERT(listObj->boundGraphicsPipeline);
 
     const auto& cmd = *(const RCommandBindGraphicsSets*)type;
     auto* layoutObj = (RPipelineLayoutGLObj*)listObj->boundGraphicsPipeline->layoutObj;
+
+    for (uint32_t i = 0; i < (uint32_t)cmd.sets.size(); i++)
+    {
+        RSetGLObj* setObj = (RSetGLObj*)cmd.sets[i].unwrap();
+        uint32_t setIdx = cmd.firstSet + i;
+
+        gl_bind_set(layoutObj, setIdx, setObj);
+    }
+}
+
+static void gl_command_bind_compute_pipeline(const RCommandType* type, RCommandListGLObj* listObj)
+{
+    LD_ASSERT(*type == RCOMMAND_BIND_COMPUTE_PIPELINE);
+
+    const auto& cmd = *(const RCommandBindComputePipeline*)type;
+    auto* pipelineObj = (RPipelineGLObj*)cmd.pipeline.unwrap();
+    listObj->boundComputePipeline = pipelineObj;
+
+    glUseProgram(pipelineObj->gl.programHandle);
+}
+
+static void gl_command_bind_compute_sets(const RCommandType* type, RCommandListGLObj* listObj)
+{
+    LD_ASSERT(*type == RCOMMAND_BIND_COMPUTE_SETS);
+    LD_ASSERT(listObj->boundComputePipeline);
+
+    const auto& cmd = *(const RCommandBindComputeSets*)type;
+    auto* layoutObj = (RPipelineLayoutGLObj*)listObj->boundComputePipeline->layoutObj;
 
     for (uint32_t i = 0; i < (uint32_t)cmd.sets.size(); i++)
     {
@@ -1263,6 +1399,15 @@ static void gl_command_end_pass(const RCommandType* type, RCommandListGLObj* lis
     (void)listObj;
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+static void gl_command_dispatch(const RCommandType* type, RCommandListGLObj* listObj)
+{
+    LD_ASSERT(*type == RCOMMAND_DISPATCH);
+
+    const auto& cmd = *(const RCommandDispatch*)type;
+
+    glDispatchCompute((GLuint)cmd.groupCountX, (GLuint)cmd.groupCountY, (GLuint)cmd.groupCountZ);
 }
 
 static void gl_command_image_memory_barrier(const RCommandType* type, RCommandListGLObj* listObj)
@@ -1409,6 +1554,7 @@ static void gl_bind_set(RPipelineLayoutGLObj* layoutObj, uint32_t setIndex, RSet
         LD_ASSERT(bindingI.arrayCount == 1);
 
         RImageGLObj* imageObj = nullptr;
+        RBufferGLObj* bufferObj = nullptr;
 
         switch (bindingI.type)
         {
@@ -1420,9 +1566,21 @@ static void gl_bind_set(RPipelineLayoutGLObj* layoutObj, uint32_t setIndex, RSet
                 glBindTexture(imageObj->gl.target, imageObj->gl.handle);
             }
             break;
+        case RBINDING_TYPE_UNIFORM_BUFFER:
+            bufferObj = (RBufferGLObj*)setObj->gl.bindingSites[bindingIdx][0];
+            if (bufferObj)
+            {
+                glBindBufferBase(GL_UNIFORM_BUFFER, remap->glBindingIndex, bufferObj->gl.handle);
+            }
+            break;
+        case RBINDING_TYPE_STORAGE_BUFFER:
+            bufferObj = (RBufferGLObj*)setObj->gl.bindingSites[bindingIdx][0];
+            if (bufferObj)
+            {
+                glBindBufferBase(GL_SHADER_STORAGE_BUFFER, remap->glBindingIndex, bufferObj->gl.handle);
+            }
+            break;
         case RBINDING_TYPE_STORAGE_IMAGE:  // TODO:
-        case RBINDING_TYPE_UNIFORM_BUFFER: // TODO:
-        case RBINDING_TYPE_STORAGE_BUFFER: // TODO:
         default:
             LD_UNREACHABLE;
         }

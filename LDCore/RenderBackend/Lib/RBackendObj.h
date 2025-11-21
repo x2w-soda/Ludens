@@ -374,6 +374,7 @@ struct RDeviceObj
     uint64_t rid;
     uint32_t frameIndex;
     RDeviceBackend backend;
+    RDeviceLimits limits;
     GLFWwindow* glfw = nullptr;
     bool isHeadless;
 

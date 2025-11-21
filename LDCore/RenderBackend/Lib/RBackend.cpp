@@ -205,6 +205,17 @@ RDevice RDevice::create(const RDeviceInfo& info)
         gl_create_device(obj, info);
     }
 
+    sLog.debug("- max cmd_dispatch({},{},{})",
+               obj->limits.maxComputeWorkGroupCount[0],
+               obj->limits.maxComputeWorkGroupCount[1],
+               obj->limits.maxComputeWorkGroupCount[2]);
+    sLog.debug("- max layout(local_size_x = {}, local_size_y = {}, local_size_z = {}) in;",
+               obj->limits.maxComputeWorkGroupSize[0],
+               obj->limits.maxComputeWorkGroupSize[1],
+               obj->limits.maxComputeWorkGroupSize[2]);
+    sLog.debug("- max local_size_x * local_size_y * local_size_z = {}",
+               obj->limits.maxComputeWorkGroupInvocations);
+
     return {obj};
 }
 
@@ -544,6 +555,7 @@ RPipeline RDevice::create_compute_pipeline(const RComputePipelineInfo& pipelineI
     mObj->api->pipeline_ctor(pipelineObj);
 
     pipelineObj->rid = RObjectID::get();
+    pipelineObj->deviceObj = mObj;
     pipelineObj->layoutObj = mObj->get_or_create_pipeline_layout_obj(pipelineI.layout);
 
     return mObj->api->create_compute_pipeline(mObj, pipelineI, pipelineObj);
@@ -912,6 +924,11 @@ void RCommandList::cmd_bind_index_buffer(RBuffer buffer, RIndexType indexType)
 
 void RCommandList::cmd_dispatch(uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ)
 {
+    // early sanity checks
+    LD_ASSERT(0 < groupCountX && groupCountX < mObj->deviceObj->limits.maxComputeWorkGroupCount[0]);
+    LD_ASSERT(0 < groupCountY && groupCountY < mObj->deviceObj->limits.maxComputeWorkGroupCount[1]);
+    LD_ASSERT(0 < groupCountZ && groupCountZ < mObj->deviceObj->limits.maxComputeWorkGroupCount[2]);
+
     if (mObj->captureLA)
     {
         auto* cmd = (RCommandDispatch*)mObj->captureLA.allocate(sizeof(RCommandDispatch));
