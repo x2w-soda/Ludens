@@ -100,6 +100,11 @@ RCommandDrawIndirect::RCommandDrawIndirect(const RDrawIndirectInfo& info)
 {
 }
 
+RCommandDrawIndexedIndirect::RCommandDrawIndexedIndirect(const RDrawIndexedIndirectInfo& info)
+    : drawIndexedIndirectInfo(info)
+{
+}
+
 RCommandBufferMemoryBarrier::RCommandBufferMemoryBarrier(RPipelineStageFlags srcStages, RPipelineStageFlags dstStages, const RBufferMemoryBarrier& barrier)
     : srcStages(srcStages), dstStages(dstStages), barrier(barrier)
 {
@@ -170,6 +175,9 @@ void render_command_placement_delete(const RCommandType* type)
         break;
     case RCOMMAND_DRAW_INDIRECT:
         ((RCommandDrawIndirect*)(type))->~RCommandDrawIndirect();
+        break;
+    case RCOMMAND_DRAW_INDEXED_INDIRECT:
+        ((RCommandDrawIndexedIndirect*)(type))->~RCommandDrawIndexedIndirect();
         break;
     case RCOMMAND_DISPATCH:
         ((RCommandDispatch*)(type))->~RCommandDispatch();

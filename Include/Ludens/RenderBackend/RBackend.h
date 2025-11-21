@@ -407,6 +407,15 @@ struct RDrawIndirectInfo
     uint32_t stride;        /// byte stride between two RDrawInfos.
 };
 
+/// @brief Indirect indexed draw call information.
+struct RDrawIndexedIndirectInfo
+{
+    RBuffer indirectBuffer; /// buffer containing RDrawIndexedInfo structs.
+    uint64_t offset;        /// byte offset into indirectBuffer for the first RDrawIndexedInfo.
+    uint32_t infoCount;     /// number of RDrawIndexedInfo to execute.
+    uint32_t stride;        /// byte stride between two RDrawIndexedInfo.
+};
+
 struct RBufferMemoryBarrier
 {
     RBuffer buffer;
@@ -464,6 +473,9 @@ struct RCommandList : RHandle<struct RCommandListObj>
 
     /// @brief Indirect draw call where RDrawInfo is supplied through some buffer.
     void cmd_draw_indirect(const RDrawIndirectInfo& drawI);
+
+    /// @brief Indirect draw call where RDrawIndexedInfo is supplied through some buffer.
+    void cmd_draw_indexed_indirect(const RDrawIndexedIndirectInfo& drawI);
 
     /// @brief end the current render pass instance
     void cmd_end_pass();

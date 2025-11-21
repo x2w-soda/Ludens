@@ -139,6 +139,7 @@ struct RCommandListAPI
     void (*cmd_draw)(RCommandListObj* self, const RDrawInfo& drawI);
     void (*cmd_draw_indexed)(RCommandListObj* self, const RDrawIndexedInfo& drawI);
     void (*cmd_draw_indirect)(RCommandListObj* self, const RDrawIndirectInfo& drawI);
+    void (*cmd_draw_indexed_indirect)(RCommandListObj* self, const RDrawIndexedIndirectInfo& drawI);
     void (*cmd_end_pass)(RCommandListObj* self);
     void (*cmd_buffer_memory_barrier)(RCommandListObj* self, RPipelineStageFlags srcStages, RPipelineStageFlags dstStages, const RBufferMemoryBarrier& barrier);
     void (*cmd_image_memory_barrier)(RCommandListObj* self, RPipelineStageFlags srcStages, RPipelineStageFlags dstStages, const RImageMemoryBarrier& barrier);

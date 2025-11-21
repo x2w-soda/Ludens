@@ -1,4 +1,5 @@
 #include <Ludens/Header/Assert.h>
+#include <Ludens/Profiler/Profiler.h>
 
 // OpenGL 4.6 Core Profile
 #include <glad/glad.h>
@@ -375,6 +376,7 @@ static void gl_command_bind_index_buffer(const RCommandType* type, RCommandListG
 static void gl_command_draw(const RCommandType* type, RCommandListGLObj* listObj);
 static void gl_command_draw_indexed(const RCommandType* type, RCommandListGLObj* listObj);
 static void gl_command_draw_indirect(const RCommandType* type, RCommandListGLObj* listObj);
+static void gl_command_draw_indexed_indirect(const RCommandType* type, RCommandListGLObj* listObj);
 static void gl_command_end_pass(const RCommandType* type, RCommandListGLObj* listObj);
 static void gl_command_image_memory_barrier(const RCommandType* type, RCommandListGLObj* listObj);
 static void gl_command_copy_buffer(const RCommandType* type, RCommandListGLObj* listObj);
@@ -394,6 +396,7 @@ static constexpr void (*sCommandTable[])(const RCommandType*, RCommandListGLObj*
     &gl_command_draw,
     &gl_command_draw_indexed,
     &gl_command_draw_indirect,
+    &gl_command_draw_indexed_indirect,
     &gl_command_end_pass,
     nullptr,
     nullptr,
@@ -510,6 +513,8 @@ static void gl_queue_wait_idle(RQueueObj* baseSelf)
 
 static void gl_queue_submit(RQueueObj* baseSelf, const RSubmitInfo& submitI, RFence fence)
 {
+    LD_PROFILE_SCOPE;
+
     auto* self = (RQueueGLObj*)baseSelf;
 
     // TODO: simulate semaphore synchronization
@@ -1225,6 +1230,28 @@ static void gl_command_draw_indirect(const RCommandType* type, RCommandListGLObj
     const GLsizei drawCount = (GLsizei)cmd.drawIndirectInfo.infoCount;
     const GLsizei stride = (GLsizei)cmd.drawIndirectInfo.stride;
     glMultiDrawArraysIndirect(mode, (const void*)cmd.drawIndirectInfo.offset, drawCount, stride);
+    LD_ASSERT(glGetError() == 0);
+}
+
+static void gl_command_draw_indexed_indirect(const RCommandType* type, RCommandListGLObj* listObj)
+{
+    LD_ASSERT(*type == RCOMMAND_DRAW_INDEXED_INDIRECT);
+    LD_ASSERT(listObj->boundGraphicsPipeline); // missing graphics pipeline
+
+    const auto& cmd = *(const RCommandDrawIndexedIndirect*)type;
+
+    size_t indexByteSize;
+    GLenum glIndexType;
+    RUtil::cast_index_type_gl(listObj->indexType, glIndexType, indexByteSize);
+
+    auto* bufferObj = (RBufferGLObj*)cmd.drawIndexedIndirectInfo.indirectBuffer.unwrap();
+    glBindBuffer(GL_DRAW_INDIRECT_BUFFER, bufferObj->gl.handle);
+    LD_ASSERT(glGetError() == 0);
+
+    const GLenum mode = listObj->boundGraphicsPipeline->gl.primitiveMode;
+    const GLsizei drawCount = (GLsizei)cmd.drawIndexedIndirectInfo.infoCount;
+    const GLsizei stride = (GLsizei)cmd.drawIndexedIndirectInfo.stride;
+    glMultiDrawElementsIndirect(mode, glIndexType, (const void*)cmd.drawIndexedIndirectInfo.offset, drawCount, stride);
     LD_ASSERT(glGetError() == 0);
 }
 

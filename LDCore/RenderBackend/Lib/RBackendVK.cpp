@@ -420,6 +420,7 @@ static void vk_command_list_cmd_set_scissor(RCommandListObj* self, const Rect& s
 static void vk_command_list_cmd_draw(RCommandListObj* self, const RDrawInfo& drawI);
 static void vk_command_list_cmd_draw_indexed(RCommandListObj* self, const RDrawIndexedInfo& drawI);
 static void vk_command_list_cmd_draw_indirect(RCommandListObj* self, const RDrawIndirectInfo& drawI);
+static void vk_command_list_cmd_draw_indexed_indirect(RCommandListObj* self, const RDrawIndexedIndirectInfo& drawI);
 static void vk_command_list_cmd_end_pass(RCommandListObj* self);
 static void vk_command_list_cmd_buffer_memory_barrier(RCommandListObj* self, RPipelineStageFlags srcStages, RPipelineStageFlags dstStages, const RBufferMemoryBarrier& barrier);
 static void vk_command_list_cmd_image_memory_barrier(RCommandListObj* self, RPipelineStageFlags srcStages, RPipelineStageFlags dstStages, const RImageMemoryBarrier& barrier);
@@ -445,6 +446,7 @@ static const RCommandListAPI sRCommandListVKAPI = {
     .cmd_draw = &vk_command_list_cmd_draw,
     .cmd_draw_indexed = &vk_command_list_cmd_draw_indexed,
     .cmd_draw_indirect = &vk_command_list_cmd_draw_indirect,
+    .cmd_draw_indexed_indirect = &vk_command_list_cmd_draw_indexed_indirect,
     .cmd_end_pass = &vk_command_list_cmd_end_pass,
     .cmd_buffer_memory_barrier = &vk_command_list_cmd_buffer_memory_barrier,
     .cmd_image_memory_barrier = &vk_command_list_cmd_image_memory_barrier,
@@ -2349,6 +2351,15 @@ static void vk_command_list_cmd_draw_indirect(RCommandListObj* baseSelf, const R
     auto* bufferObj = (RBufferVKObj*)drawI.indirectBuffer.unwrap();
 
     vkCmdDrawIndirect(self->vk.handle, bufferObj->vk.handle, (VkDeviceSize)drawI.offset, drawI.infoCount, drawI.stride);
+}
+
+static void vk_command_list_cmd_draw_indexed_indirect(RCommandListObj* baseSelf, const RDrawIndexedIndirectInfo& drawI)
+{
+    auto* self = (RCommandListVKObj*)baseSelf;
+
+    auto* bufferObj = (RBufferVKObj*)drawI.indirectBuffer.unwrap();
+
+    vkCmdDrawIndexedIndirect(self->vk.handle, bufferObj->vk.handle, (VkDeviceSize)drawI.offset, drawI.infoCount, drawI.stride);
 }
 
 static void vk_command_list_cmd_end_pass(RCommandListObj* baseSelf)
