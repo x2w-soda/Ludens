@@ -388,12 +388,14 @@ static void gl_command_bind_compute_pipeline(const RCommandType* type, RCommandL
 static void gl_command_bind_compute_sets(const RCommandType* type, RCommandListGLObj* listObj);
 static void gl_command_bind_vertex_buffers(const RCommandType* type, RCommandListGLObj* listObj);
 static void gl_command_bind_index_buffer(const RCommandType* type, RCommandListGLObj* listObj);
+static void gl_command_set_scissor(const RCommandType* type, RCommandListGLObj* listObj);
 static void gl_command_draw(const RCommandType* type, RCommandListGLObj* listObj);
 static void gl_command_draw_indexed(const RCommandType* type, RCommandListGLObj* listObj);
 static void gl_command_draw_indirect(const RCommandType* type, RCommandListGLObj* listObj);
 static void gl_command_draw_indexed_indirect(const RCommandType* type, RCommandListGLObj* listObj);
 static void gl_command_end_pass(const RCommandType* type, RCommandListGLObj* listObj);
 static void gl_command_dispatch(const RCommandType* type, RCommandListGLObj* listObj);
+static void gl_command_buffer_memory_barrier(const RCommandType* type, RCommandListGLObj* listObj);
 static void gl_command_image_memory_barrier(const RCommandType* type, RCommandListGLObj* listObj);
 static void gl_command_copy_buffer(const RCommandType* type, RCommandListGLObj* listObj);
 static void gl_command_copy_buffer_to_image(const RCommandType* type, RCommandListGLObj* listObj);
@@ -408,14 +410,14 @@ static constexpr void (*sCommandTable[])(const RCommandType*, RCommandListGLObj*
     &gl_command_bind_compute_sets,
     &gl_command_bind_vertex_buffers,
     &gl_command_bind_index_buffer,
-    nullptr,
+    &gl_command_set_scissor,
     &gl_command_draw,
     &gl_command_draw_indexed,
     &gl_command_draw_indirect,
     &gl_command_draw_indexed_indirect,
     &gl_command_end_pass,
     &gl_command_dispatch,
-    nullptr,
+    &gl_command_buffer_memory_barrier,
     &gl_command_image_memory_barrier,
     &gl_command_copy_buffer,
     &gl_command_copy_buffer_to_image,
@@ -1207,6 +1209,8 @@ void gl_command_begin_pass(const RCommandType* type, RCommandListGLObj* listObj)
     const auto& cmd = *(const RCommandBeginPass*)type;
     auto* fbObj = (RFramebufferGLObj*)cmd.framebufferObj;
 
+    glDisable(GL_SCISSOR_TEST);
+
     glViewport(0, 0, (GLsizei)cmd.width, (GLsizei)cmd.height);
     glBindFramebuffer(GL_FRAMEBUFFER, fbObj->gl.handle);
 
@@ -1316,6 +1320,20 @@ static void gl_command_bind_index_buffer(const RCommandType* type, RCommandListG
     LD_ASSERT(glGetError() == 0);
 }
 
+static void gl_command_set_scissor(const RCommandType* type, RCommandListGLObj* listObj)
+{
+    LD_ASSERT(*type == RCOMMAND_SET_SCISSOR);
+
+    const auto& cmd = *(const RCommandSetScissor*)type;
+    GLint x = (GLint)cmd.scissor.x;
+    GLint y = (GLint)cmd.scissor.y;
+    GLsizei width = (GLsizei)cmd.scissor.w;
+    GLsizei height = (GLsizei)cmd.scissor.h;
+
+    glEnable(GL_SCISSOR_TEST);
+    glScissor(x, y, width, height);
+}
+
 static void gl_command_draw(const RCommandType* type, RCommandListGLObj* listObj)
 {
     LD_ASSERT(*type == RCOMMAND_DRAW);
@@ -1408,6 +1426,14 @@ static void gl_command_dispatch(const RCommandType* type, RCommandListGLObj* lis
     const auto& cmd = *(const RCommandDispatch*)type;
 
     glDispatchCompute((GLuint)cmd.groupCountX, (GLuint)cmd.groupCountY, (GLuint)cmd.groupCountZ);
+}
+
+static void gl_command_buffer_memory_barrier(const RCommandType* type, RCommandListGLObj* listObj)
+{
+    LD_ASSERT(*type == RCOMMAND_BUFFER_MEMORY_BARRIER);
+
+    (void)type;
+    (void)listObj;
 }
 
 static void gl_command_image_memory_barrier(const RCommandType* type, RCommandListGLObj* listObj)
@@ -1580,7 +1606,7 @@ static void gl_bind_set(RPipelineLayoutGLObj* layoutObj, uint32_t setIndex, RSet
                 glBindBufferBase(GL_SHADER_STORAGE_BUFFER, remap->glBindingIndex, bufferObj->gl.handle);
             }
             break;
-        case RBINDING_TYPE_STORAGE_IMAGE:  // TODO:
+        case RBINDING_TYPE_STORAGE_IMAGE: // TODO:
         default:
             LD_UNREACHABLE;
         }
