@@ -33,11 +33,21 @@ struct RShaderLocation
 using RShaderInput = RShaderLocation;
 using RShaderOutput = RShaderLocation;
 
+struct RShaderPushConstant
+{
+    uint32_t size;
+    uint32_t offset;
+    uint32_t uniformArraysize;
+    GLSLType uniformGLSLType;
+    std::string uniformName;
+};
+
 struct RShaderReflection
 {
     std::vector<RShaderInput> inputs;
     std::vector<RShaderOutput> outputs;
     std::vector<RShaderBinding> bindings;
+    std::vector<RShaderPushConstant> pushConstants;
 };
 
 struct RShaderOpenGLBindingRemap

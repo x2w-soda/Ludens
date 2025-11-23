@@ -130,6 +130,46 @@ static void glslang_reflect_spirv(const std::vector<uint32_t>& spirv, RShaderRef
 
     reflection.bindings.clear();
 
+    if (!shaderResources.push_constant_buffers.empty())
+    {
+        spirv_cross::ID id = shaderResources.push_constant_buffers.front().id;
+        spirv_cross::TypeID baseTypeID = shaderResources.push_constant_buffers.front().base_type_id;
+        spirv_cross::SPIRType blockType = compiler.get_type(baseTypeID);
+        const std::string& instanceName = shaderResources.push_constant_buffers.front().name;
+
+        // push_constant block name reflection not supported: https://github.com/KhronosGroup/SPIRV-Cross/issues/518
+        // push_constant block must define an instance name.
+        LD_ASSERT(!instanceName.empty());
+
+        size_t pushConstantCount = blockType.member_types.size();
+        reflection.pushConstants.resize(pushConstantCount);
+
+        for (size_t i = 0; i < pushConstantCount; i++)
+        {
+            const spirv_cross::SPIRType& memberType = compiler.get_type(blockType.member_types[i]);
+            const std::string& memberName = compiler.get_member_name(baseTypeID, i);
+            uint32_t memberOffset = (uint32_t)compiler.type_struct_member_offset(blockType, i);
+            uint32_t memberSize = (uint32_t)compiler.get_declared_struct_member_size(blockType, i);
+
+            GLSLType glslType;
+            cast_glsl_type(compiler, memberType, glslType);
+
+            reflection.pushConstants[i].offset = memberOffset;
+            reflection.pushConstants[i].size = memberSize;
+            reflection.pushConstants[i].uniformGLSLType = glslType;
+            reflection.pushConstants[i].uniformName = instanceName;
+            reflection.pushConstants[i].uniformName.push_back('.');
+            reflection.pushConstants[i].uniformName += memberName;
+            reflection.pushConstants[i].uniformArraysize = 1;
+
+            if (!memberType.array.empty())
+            {
+                LD_ASSERT(memberType.array.size() == 1 && "does not support array of arrays");
+                reflection.pushConstants[i].uniformArraysize = memberType.array[0];
+            }
+        }
+    }
+
     for (const spirv_cross::Resource& resource : shaderResources.stage_inputs)
         reflection.inputs.emplace_back(glslang_reflect_location(compiler, resource));
 
