@@ -37,9 +37,13 @@ struct RShaderPushConstant
 {
     uint32_t size;
     uint32_t offset;
-    uint32_t uniformArraysize;
+    uint32_t uniformArraySize;
     GLSLType uniformGLSLType;
     std::string uniformName;
+
+    std::string to_string() const;
+    bool operator==(const RShaderPushConstant& rhs) const;
+    inline bool operator!=(const RShaderPushConstant& rhs) const { return !(*this == rhs); }
 };
 
 struct RShaderReflection

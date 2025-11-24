@@ -242,6 +242,7 @@ struct RPipelineObj
     RPipelineLayoutObj* layoutObj;
     std::vector<RVertexBinding> vertexBindings;
     std::vector<RVertexAttribute> vertexAttributes;
+    std::vector<RShaderPushConstant> pushConstants;
 
     struct
     {

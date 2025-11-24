@@ -32,7 +32,8 @@ static std::string print_set_bindings(uint32_t setIndex, uint32_t bindingCount, 
 static std::string print_shader_reflection(const RShaderReflection& reflection);
 static std::string print_pipeline_layout(const RPipelineLayoutObj* layoutObj);
 static bool validate_pipeline_shader(RPipelineLayoutObj* layoutObj, RShaderObj* shaderObj);
-static bool validate_pipeline_shaders(RPipelineLayoutObj* layoutObj, uint32_t shaderCount, RShader* shaders, std::string& err);
+static bool combine_pipeline_push_constants(RPipelineLayoutObj* layoutObj, RShaderObj* shaderObj, std::string& err);
+static bool combine_pipeline_shaders(RPipelineLayoutObj* layoutObj, uint32_t shaderCount, RShader* shaders, std::string& err);
 static void reset_command_list(RCommandListObj* listObj);
 
 static std::string print_shader_binding(const RShaderBinding& shaderBinding)
@@ -123,11 +124,50 @@ static bool validate_pipeline_shader(RPipelineLayoutObj* layoutObj, RShaderObj* 
     return true;
 }
 
+static bool combine_pipeline_push_constants(RPipelineObj* pipelineObj, RShaderObj* shaderObj, std::string& err)
+{
+    std::vector<size_t> validShaderPC;
+
+    for (size_t i = 0; i < shaderObj->reflection.pushConstants.size(); i++)
+    {
+        const RShaderPushConstant& stagePC = shaderObj->reflection.pushConstants[i];
+
+        for (const RShaderPushConstant& pipelinePC : pipelineObj->pushConstants)
+        {
+            if (stagePC.offset != pipelinePC.offset)
+                continue;
+
+            if (stagePC != pipelinePC)
+            {
+                err = "combine_pipeline_push_constants failed: shader PC conflict with pipeline PCs\n";
+                err += "- pipeline PC ";
+                err += pipelinePC.to_string();
+                err.push_back('\n');
+                err += "- shader PC ";
+                err += stagePC.to_string();
+                err.push_back('\n');
+                return false;
+            }
+        }
+
+        validShaderPC.push_back(i);
+    }
+
+    // merge shader PC into pipeline PC
+    for (size_t i : validShaderPC)
+        pipelineObj->pushConstants.push_back(shaderObj->reflection.pushConstants[i]);
+
+    return true;
+}
+
 /// @brief Check if all shaders are compatible with the pipeline layout.
 ///        When there is a conflict the pipeline layout is always the ground truth.
-static bool validate_pipeline_shaders(RPipelineLayoutObj* layoutObj, uint32_t shaderCount, RShader* shaders, std::string& err)
+static bool combine_pipeline_shaders(RPipelineObj* pipelineObj, uint32_t shaderCount, RShader* shaders, std::string& err)
 {
     err.clear();
+
+    pipelineObj->pushConstants.clear();
+    RPipelineLayoutObj* layoutObj = pipelineObj->layoutObj;
 
     for (uint32_t i = 0; i < shaderCount; i++)
     {
@@ -140,6 +180,14 @@ static bool validate_pipeline_shaders(RPipelineLayoutObj* layoutObj, uint32_t sh
             err += print_shader_reflection(shaderObj->reflection);
             err += "pipeline layout:\n";
             err += print_pipeline_layout(layoutObj);
+            return false;
+        }
+
+        // Each shader declares the push constant ranges that it will access.
+        // Ranges that are used across stages must be consistent in naming.
+        if (!combine_pipeline_push_constants(pipelineObj, shaderObj, err))
+        {
+            pipelineObj->pushConstants.clear();
             return false;
         }
     }
@@ -533,7 +581,7 @@ RPipeline RDevice::create_pipeline(const RPipelineInfo& pipelineI)
     std::copy(pipelineI.vertexAttributes, pipelineI.vertexAttributes + pipelineI.vertexAttributeCount, pipelineObj->vertexAttributes.begin());
 
     std::string err;
-    if (!validate_pipeline_shaders(pipelineObj->layoutObj, pipelineI.shaderCount, pipelineI.shaders, err))
+    if (!combine_pipeline_shaders(pipelineObj, pipelineI.shaderCount, pipelineI.shaders, err))
     {
         mObj->api->pipeline_dtor(pipelineObj);
         heap_free(pipelineObj);

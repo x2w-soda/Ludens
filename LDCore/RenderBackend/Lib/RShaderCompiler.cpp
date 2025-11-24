@@ -1,5 +1,7 @@
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Profiler/Profiler.h>
+#include <Ludens/RenderBackend/RUtil.h>
+#include <format>
 #include <iostream>
 
 // hide from module user
@@ -160,12 +162,12 @@ static void glslang_reflect_spirv(const std::vector<uint32_t>& spirv, RShaderRef
             reflection.pushConstants[i].uniformName = instanceName;
             reflection.pushConstants[i].uniformName.push_back('.');
             reflection.pushConstants[i].uniformName += memberName;
-            reflection.pushConstants[i].uniformArraysize = 1;
+            reflection.pushConstants[i].uniformArraySize = 1;
 
             if (!memberType.array.empty())
             {
                 LD_ASSERT(memberType.array.size() == 1 && "does not support array of arrays");
-                reflection.pushConstants[i].uniformArraysize = memberType.array[0];
+                reflection.pushConstants[i].uniformArraySize = memberType.array[0];
             }
         }
     }
@@ -374,6 +376,22 @@ static void cast_glsl_image_type(spirv_cross::Compiler& compiler, const spirv_cr
     }
 
     LD_UNREACHABLE;
+}
+
+std::string RShaderPushConstant::to_string() const
+{
+    std::string str = std::format("{}:{} {} {}", offset, size, RUtil::get_glsl_type_cstr(uniformGLSLType), uniformName);
+
+    if (uniformArraySize != 1)
+        str += std::format("[{}]", uniformArraySize);
+
+    return str;
+}
+
+bool RShaderPushConstant::operator==(const RShaderPushConstant& rhs) const
+{
+    // also requires exact same uniform name, being strict just to be safe.
+    return offset == rhs.offset && size == rhs.size && uniformGLSLType == rhs.uniformGLSLType && uniformArraySize == rhs.uniformArraySize && uniformName == rhs.uniformName;
 }
 
 const RShaderOpenGLBindingRemap* RShaderOpenGLRemap::get_binding_remap(uint32_t vkSetIndex, uint32_t vkBindingIndex) const
