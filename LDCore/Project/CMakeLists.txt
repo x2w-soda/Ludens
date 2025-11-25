@@ -4,11 +4,14 @@ set(MODULE_TEST_NAME LDProjectTest)
 set(MODULE_INCLUDE
     ${LUDENS_INCLUDE_DIR}/Ludens/Project/Project.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Project/ProjectSchema.h
+    ${LUDENS_INCLUDE_DIR}/Ludens/Project/ProjectSettings.h
+    ${LUDENS_INCLUDE_DIR}/Ludens/Project/ProjectSettingsDefault.h
 )
 
 set(MODULE_LIB
     Lib/Project.cpp
     Lib/ProjectSchema.cpp
+    Lib/ProjectSettings.cpp
 )
 
 set(MODULE_TEST

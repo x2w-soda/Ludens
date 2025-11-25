@@ -20,12 +20,14 @@ scenes = [
     "./scenes/scene2.toml",
     "./scenes/scene3.toml",
 ]
+
+[settings.startup]
+window_width = 1234
+window_height = 5678
+window_name = 'Foo'
 )";
     Project proj = Project::create(FS::Path("./directory"));
-    ProjectSchema schema = ProjectSchema::create_from_source(schemaTOML, strlen(schemaTOML));
-    CHECK(schema);
-
-    schema.load_project(proj);
+    ProjectSchema::load_project_from_source(proj, schemaTOML, strlen(schemaTOML));
 
     CHECK(proj.get_name() == "hello world");
 
@@ -39,7 +41,11 @@ scenes = [
     CHECK(scenePaths[1] == FS::Path("directory/scenes/scene2.toml"));
     CHECK(scenePaths[2] == FS::Path("directory/scenes/scene3.toml"));
 
-    ProjectSchema::destroy(schema);
+    ProjectStartupSettings startupS = proj.get_settings().get_startup_settings();
+    CHECK(startupS.get_window_width() == 1234);
+    CHECK(startupS.get_window_height() == 5678);
+    CHECK(startupS.get_window_name() == "Foo");
+
     Project::destroy(proj);
 
     int leaks = get_memory_leaks(nullptr);

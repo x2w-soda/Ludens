@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Ludens/Header/Handle.h>
+#include <Ludens/Project/ProjectSettings.h>
 #include <Ludens/System/FileSystem.h>
 #include <filesystem>
 #include <string>
@@ -43,6 +44,9 @@ struct Project : Handle<struct ProjectObj>
     /// @brief Get paths to scene schemas.
     /// @param scenePaths Outputs paths to scene schemas after concatenating project root path.
     void get_scene_paths(std::vector<FS::Path>& scenePaths) const;
+
+    /// @brief Get interface to project settings.
+    ProjectSettings get_settings();
 };
 
 } // namespace LD

@@ -12,12 +12,14 @@ struct ProjectObj
     std::vector<FS::Path> scenePaths; /// relative paths to project schemas
     FS::Path assetsPath;              /// relative path to project assets schema
     FS::Path rootPath;                /// project root path
+    ProjectSettings settings;         /// project-wide settings
 };
 
 Project Project::create(const FS::Path& rootPath)
 {
     ProjectObj* obj = heap_new<ProjectObj>(MEMORY_USAGE_MISC);
     obj->rootPath = rootPath;
+    obj->settings = ProjectSettings::create();
 
     return Project(obj);
 }
@@ -25,6 +27,7 @@ Project Project::create(const FS::Path& rootPath)
 void Project::destroy(Project project)
 {
     ProjectObj* obj = project.unwrap();
+    ProjectSettings::destroy(obj->settings);
 
     heap_delete<ProjectObj>(obj);
 }
@@ -73,6 +76,11 @@ void Project::get_scene_paths(std::vector<std::filesystem::path>& scenePaths) co
     {
         scenePaths[i] = (mObj->rootPath / mObj->scenePaths[i]).lexically_normal();
     }
+}
+
+ProjectSettings Project::get_settings()
+{
+    return mObj->settings;
 }
 
 } // namespace LD
