@@ -195,6 +195,7 @@ struct RPipelineGLObj : RPipelineObj
     struct
     {
         std::vector<GLuint> shaderHandles;
+        std::vector<GLint> pcLocations;
         GLenum primitiveMode;
         GLuint programHandle;
         GLuint vao;
@@ -382,6 +383,7 @@ static void gl_bind_set(RPipelineLayoutGLObj* layoutObj, uint32_t setIndex, RSet
 
 static void gl_command_execute(const RCommandType* type, RCommandListGLObj* listObj);
 static void gl_command_begin_pass(const RCommandType* type, RCommandListGLObj* listObj);
+static void gl_command_push_constant(const RCommandType* type, RCommandListGLObj* listObj);
 static void gl_command_bind_graphics_pipeline(const RCommandType* type, RCommandListGLObj* listObj);
 static void gl_command_bind_graphics_sets(const RCommandType* type, RCommandListGLObj* listObj);
 static void gl_command_bind_compute_pipeline(const RCommandType* type, RCommandListGLObj* listObj);
@@ -403,7 +405,7 @@ static void gl_command_copy_image_to_buffer(const RCommandType* type, RCommandLi
 
 static constexpr void (*sCommandTable[])(const RCommandType*, RCommandListGLObj*) = {
     &gl_command_begin_pass,
-    nullptr,
+    &gl_command_push_constant,
     &gl_command_bind_graphics_pipeline,
     &gl_command_bind_graphics_sets,
     &gl_command_bind_compute_pipeline,
@@ -1093,6 +1095,19 @@ static RPipeline gl_device_create_pipeline(RDeviceObj* baseSelf, const RPipeline
     if (obj->gl.programHandle == 0)
         return {};
 
+    // Push constants should be organized into a uniform block,
+    // we retrieve uniform locations for each push constant member.
+    obj->gl.pcLocations.resize(obj->pushConstants.size());
+    for (size_t i = 0; i < obj->pushConstants.size(); i++)
+    {
+        obj->gl.pcLocations[i] = glGetUniformLocation(obj->gl.programHandle, obj->pushConstants[i].uniformName.c_str());
+
+        // It is possible that the linked program strips out members that are not used,
+        // in which case it is safe to ignore this warning.
+        if (obj->gl.pcLocations[i] < 0)
+            sLog.warn("failed to retrieve uniform location for PC {}", obj->pushConstants[i].to_string());
+    }
+
     RUtil::cast_primitive_topology_gl(pipelineI.primitiveTopology, obj->gl.primitiveMode);
 
     return RPipeline(obj);
@@ -1228,6 +1243,76 @@ void gl_command_begin_pass(const RCommandType* type, RCommandListGLObj* listObj)
     }
 
     // TODO: clear depth stencil attachment
+}
+
+static void gl_command_push_constant(const RCommandType* type, RCommandListGLObj* listObj)
+{
+    LD_ASSERT(*type == RCOMMAND_PUSH_CONSTANT);
+    LD_ASSERT(listObj->boundGraphicsPipeline);
+
+    const auto& cmd = *(const RCommandPushConstant*)type;
+
+    // zero or more members could be updated in one push constant command.
+    RPipelineGLObj* pipelineObj = listObj->boundGraphicsPipeline;
+    const size_t pcCount = pipelineObj->pushConstants.size();
+
+    for (size_t i = 0; i < pcCount; i++)
+    {
+        const RShaderPushConstant& pc = pipelineObj->pushConstants[i];
+        const GLint location = pipelineObj->gl.pcLocations[i];
+
+        if (location < 0 || (cmd.offset > pc.offset) || (pc.offset + pc.size > cmd.offset + cmd.size))
+            continue;
+
+        // PC is completely in range and we have a valid uniform location.
+        const uint8_t* valueBase = (const uint8_t*)cmd.data + (pc.offset - cmd.offset);
+
+        switch (pc.uniformGLSLType)
+        {
+        case GLSL_TYPE_FLOAT:
+            glUniform1fv(location, pc.uniformArraySize, (const GLfloat*)valueBase);
+            break;
+        case GLSL_TYPE_VEC2:
+            glUniform2fv(location, pc.uniformArraySize, (const GLfloat*)valueBase);
+            break;
+        case GLSL_TYPE_VEC3:
+            glUniform3fv(location, pc.uniformArraySize, (const GLfloat*)valueBase);
+            break;
+        case GLSL_TYPE_VEC4:
+            glUniform4fv(location, pc.uniformArraySize, (const GLfloat*)valueBase);
+            break;
+        case GLSL_TYPE_UINT:
+            glUniform1uiv(location, pc.uniformArraySize, (const GLuint*)valueBase);
+            break;
+        case GLSL_TYPE_UVEC2:
+            glUniform2uiv(location, pc.uniformArraySize, (const GLuint*)valueBase);
+            break;
+        case GLSL_TYPE_UVEC3:
+            glUniform3uiv(location, pc.uniformArraySize, (const GLuint*)valueBase);
+            break;
+        case GLSL_TYPE_UVEC4:
+            glUniform4uiv(location, pc.uniformArraySize, (const GLuint*)valueBase);
+            break;
+        case GLSL_TYPE_INT:
+            glUniform1iv(location, pc.uniformArraySize, (const GLint*)valueBase);
+            break;
+        case GLSL_TYPE_IVEC2:
+            glUniform2iv(location, pc.uniformArraySize, (const GLint*)valueBase);
+            break;
+        case GLSL_TYPE_IVEC3:
+            glUniform3iv(location, pc.uniformArraySize, (const GLint*)valueBase);
+            break;
+        case GLSL_TYPE_IVEC4:
+            glUniform4iv(location, pc.uniformArraySize, (const GLint*)valueBase);
+            break;
+        case GLSL_TYPE_MAT4:
+            glUniformMatrix4fv(location, 1, false, (const GLfloat*)valueBase);
+            break;
+        default: // crash in debug build, fall through in release build.
+            LD_UNREACHABLE;
+            break;
+        }
+    }
 }
 
 void gl_command_bind_graphics_pipeline(const RCommandType* type, RCommandListGLObj* listObj)
