@@ -159,7 +159,7 @@ TOMLType TOMLValue::get_type() const
     return (TOMLType)mObj->val.type();
 }
 
-bool TOMLValue::is_bool(bool& boolean) const
+bool TOMLValue::get_bool(bool& boolean) const
 {
     if (get_type() != TOML_TYPE_BOOL)
         return false;
@@ -177,7 +177,7 @@ bool TOMLValue::set_bool(bool boolean)
     return true;
 }
 
-bool TOMLValue::is_i64(int64_t& i64) const
+bool TOMLValue::get_i64(int64_t& i64) const
 {
     if (get_type() != TOML_TYPE_INT)
         return false;
@@ -195,7 +195,7 @@ bool TOMLValue::set_i64(int64_t i64)
     return true;
 }
 
-bool TOMLValue::is_i32(int32_t& i32) const
+bool TOMLValue::get_i32(int32_t& i32) const
 {
     if (get_type() != TOML_TYPE_INT)
         return false;
@@ -215,7 +215,7 @@ bool TOMLValue::set_i32(int32_t i32)
     return true;
 }
 
-bool TOMLValue::is_u32(uint32_t& u32) const
+bool TOMLValue::get_u32(uint32_t& u32) const
 {
     if (get_type() != TOML_TYPE_INT)
         return false;
@@ -235,7 +235,7 @@ bool TOMLValue::set_u32(uint32_t u32)
     return true;
 }
 
-bool TOMLValue::is_f64(double& f64) const
+bool TOMLValue::get_f64(double& f64) const
 {
     if (get_type() != TOML_TYPE_FLOAT)
         return false;
@@ -253,7 +253,7 @@ bool TOMLValue::set_f64(double f64)
     return true;
 }
 
-bool TOMLValue::is_f32(float& f32) const
+bool TOMLValue::get_f32(float& f32) const
 {
     if (get_type() != TOML_TYPE_FLOAT)
         return false;
@@ -271,7 +271,7 @@ bool TOMLValue::set_f32(float f32)
     return true;
 }
 
-bool TOMLValue::is_string(std::string& string) const
+bool TOMLValue::get_string(std::string& string) const
 {
     if (get_type() != TOML_TYPE_STRING)
         return false;

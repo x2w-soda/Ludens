@@ -13,7 +13,7 @@ void AssetSchema::load_assets(AssetManager manager, TOMLDocument doc)
 
     int32_t version;
     TOMLValue versionTOML = assetsTOML["version"];
-    if (!versionTOML || !versionTOML.is_i32(version) || version != 0)
+    if (!versionTOML || !versionTOML.get_i32(version) || version != 0)
         return;
 
     manager.begin_load_batch();
@@ -29,7 +29,7 @@ void AssetSchema::load_assets(AssetManager manager, TOMLDocument doc)
                 TOMLValue uriTOML = clipTOML["uri"];
                 int64_t auid;
                 std::string uri;
-                if (auidTOML && auidTOML.is_i64(auid) && uriTOML && uriTOML.is_string(uri))
+                if (auidTOML && auidTOML.get_i64(auid) && uriTOML && uriTOML.get_string(uri))
                 {
                     manager.load_audio_clip_asset(FS::Path(uri), (AUID)auid);
                 }
@@ -47,7 +47,7 @@ void AssetSchema::load_assets(AssetManager manager, TOMLDocument doc)
                 TOMLValue uriTOML = meshTOML["uri"];
                 int64_t auid;
                 std::string uri;
-                if (auidTOML && auidTOML.is_i64(auid) && uriTOML && uriTOML.is_string(uri))
+                if (auidTOML && auidTOML.get_i64(auid) && uriTOML && uriTOML.get_string(uri))
                 {
                     manager.load_mesh_asset(FS::Path(uri), (AUID)auid);
                 }
@@ -65,7 +65,7 @@ void AssetSchema::load_assets(AssetManager manager, TOMLDocument doc)
                 TOMLValue uriTOML = texture2DTOML["uri"];
                 int64_t auid;
                 std::string uri;
-                if (auidTOML && auidTOML.is_i64(auid) && uriTOML && uriTOML.is_string(uri))
+                if (auidTOML && auidTOML.get_i64(auid) && uriTOML && uriTOML.get_string(uri))
                 {
                     manager.load_texture_2d_asset(FS::Path(uri), (AUID)auid);
                 }
@@ -83,7 +83,7 @@ void AssetSchema::load_assets(AssetManager manager, TOMLDocument doc)
                 TOMLValue uriTOML = luaScriptTOML["uri"];
                 int64_t auid;
                 std::string uri;
-                if (auidTOML && auidTOML.is_i64(auid) && uriTOML && uriTOML.is_string(uri))
+                if (auidTOML && auidTOML.get_i64(auid) && uriTOML && uriTOML.get_string(uri))
                 {
                     manager.load_lua_script_asset(FS::Path(uri), (AUID)auid);
                 }

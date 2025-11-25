@@ -37,7 +37,7 @@ struct TOMLValue : Handle<struct TOMLValueObj>
 
     /// @brief Check if value is a TOML bool.
     /// @param boolean Output boolean upon success.
-    bool is_bool(bool& boolean) const;
+    bool get_bool(bool& boolean) const;
 
     /// @brief Set TOML boolean value.
     /// @return True on success.
@@ -45,7 +45,7 @@ struct TOMLValue : Handle<struct TOMLValueObj>
 
     /// @brief Check if value is a TOML int that is castable to i64.
     /// @param i64 Output 64-bit signed integer upon success.
-    bool is_i64(int64_t& i64) const;
+    bool get_i64(int64_t& i64) const;
 
     /// @brief Set TOML 64-bit int value.
     /// @return True on success.
@@ -53,7 +53,7 @@ struct TOMLValue : Handle<struct TOMLValueObj>
 
     /// @brief Check if value is a TOML int that is castable to i32.
     /// @param i32 Output 32-bit signed integer upon success.
-    bool is_i32(int32_t& i32) const;
+    bool get_i32(int32_t& i32) const;
 
     /// @brief Set TOML 32-bit int value.
     /// @return True on success.
@@ -61,7 +61,7 @@ struct TOMLValue : Handle<struct TOMLValueObj>
 
     /// @brief Check if value is a TOML int that is castable to u32.
     /// @param u32 Output 32-bit unsigned integer upon success.
-    bool is_u32(uint32_t& u32) const;
+    bool get_u32(uint32_t& u32) const;
 
     /// @brief Set TOML 32-bit unsigned int value.
     /// @return True on success.
@@ -70,7 +70,7 @@ struct TOMLValue : Handle<struct TOMLValueObj>
     /// @brief Check if value is a TOML floating point.
     /// @param f64 Output 64-bit floating point number on success.
     /// @note TOML integers will be implicitly casted to float.
-    bool is_f64(double& f64) const;
+    bool get_f64(double& f64) const;
 
     /// @brief Set TOML 64-bit floating point value.
     /// @return True on success.
@@ -79,7 +79,7 @@ struct TOMLValue : Handle<struct TOMLValueObj>
     /// @brief Check if value is a TOML floating point.
     /// @param f32 Output 32-bit floating point number on success.
     /// @note TOML integers will be implicitly casted to float.
-    bool is_f32(float& f32) const;
+    bool get_f32(float& f32) const;
 
     /// @brief Set TOML 32-bit floating point value.
     /// @return True on success.
@@ -87,7 +87,7 @@ struct TOMLValue : Handle<struct TOMLValueObj>
 
     /// @brief Check if value is a TOML string.
     /// @param string Output string upon success.
-    bool is_string(std::string& string) const;
+    bool get_string(std::string& string) const;
 
     /// @brief Set TOML string value.
     /// @return True on success.

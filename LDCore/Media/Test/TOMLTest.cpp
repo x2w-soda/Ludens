@@ -26,52 +26,52 @@ i1 = 1234
     bool b;
     TOMLValue v = doc.get("b1");
     CHECK(v);
-    CHECK(v.is_bool(b));
+    CHECK(v.get_bool(b));
     CHECK(b == true);
 
     v = doc.get("b2");
     CHECK(v);
-    CHECK(v.is_bool(b));
+    CHECK(v.get_bool(b));
     CHECK(b == false);
     CHECK(v.set_bool(true));
-    CHECK(v.is_bool(b));
+    CHECK(v.get_bool(b));
     CHECK(b == true);
 
     std::string string;
     v = doc.get("s1");
     CHECK(v);
-    CHECK(v.is_string(string));
+    CHECK(v.get_string(string));
     CHECK(string == "string value");
     CHECK(v.set_string("modified value"));
-    CHECK(v.is_string(string));
+    CHECK(v.get_string(string));
     CHECK(string == "modified value");
 
     float f;
     double d;
     v = doc.get("f1");
     CHECK(v);
-    CHECK(v.is_f32(f));
+    CHECK(v.get_f32(f));
     CHECK(is_equal_epsilon(f, 2.71828f));
-    CHECK(v.is_f64(d));
+    CHECK(v.get_f64(d));
     CHECK(is_equal_epsilon(d, 2.71828));
     CHECK(v.set_f64(3.1415));
-    CHECK(v.is_f32(f));
+    CHECK(v.get_f32(f));
     CHECK(is_equal_epsilon(f, 3.1415f));
-    CHECK(v.is_f64(d));
+    CHECK(v.get_f64(d));
     CHECK(is_equal_epsilon(d, 3.1415));
 
     int32_t i32;
     int64_t i64;
     v = doc.get("i1");
     CHECK(v);
-    CHECK(v.is_i32(i32));
+    CHECK(v.get_i32(i32));
     CHECK(i32 == 1234);
-    CHECK(v.is_i64(i64));
+    CHECK(v.get_i64(i64));
     CHECK(i64 == 1234);
     CHECK(v.set_i32(5678));
-    CHECK(v.is_i32(i32));
+    CHECK(v.get_i32(i32));
     CHECK(i32 == 5678);
-    CHECK(v.is_i64(i64));
+    CHECK(v.get_i64(i64));
     CHECK(i64 == 5678);
 
     TOMLDocument::destroy(doc);
@@ -100,13 +100,13 @@ a2 = []
         bool b;
         TOMLValue v = a1[0];
         CHECK(v);
-        CHECK(v.is_bool(b));
+        CHECK(v.get_bool(b));
         CHECK(b == true);
 
         int i32;
         v = a1[1];
         CHECK(v);
-        CHECK(v.is_i32(i32));
+        CHECK(v.get_i32(i32));
         CHECK(i32 == -12345);
 
         v = a1[-1];
@@ -158,7 +158,7 @@ TEST_CASE("TOML table set_key")
     v = t["foo"];
     int32_t i32;
     CHECK(v);
-    CHECK(v.is_i32(i32));
+    CHECK(v.get_i32(i32));
     CHECK(i32 == 30);
 
     // override existing key
@@ -173,7 +173,7 @@ TEST_CASE("TOML table set_key")
     v = t["foo"];
     bool b;
     CHECK(v);
-    CHECK(v.is_bool(b));
+    CHECK(v.get_bool(b));
     CHECK(b == true);
     typeMatch = TOML_TYPE_BOOL;
     CHECK(t.has_key("foo", &typeMatch));

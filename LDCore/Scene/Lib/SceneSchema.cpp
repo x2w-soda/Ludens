@@ -51,17 +51,17 @@ static CUID load_component(TOMLValue compTOML, Scene scene)
 
     std::string type;
     TOMLValue typeTOML = compTOML["type"];
-    if (!typeTOML || !typeTOML.is_string(type))
+    if (!typeTOML || !typeTOML.get_string(type))
         return 0;
 
     std::string name;
     TOMLValue nameTOML = compTOML["name"];
-    if (!nameTOML || !nameTOML.is_string(name))
+    if (!nameTOML || !nameTOML.get_string(name))
         return 0;
 
     CUID compID;
     TOMLValue compIDTOML = compTOML["cuid"];
-    if (!compIDTOML || !compIDTOML.is_u32(compID))
+    if (!compIDTOML || !compIDTOML.get_u32(compID))
         return 0;
 
     // TODO: table of function pointers
@@ -88,7 +88,7 @@ static CUID load_component(TOMLValue compTOML, Scene scene)
 
     int64_t scriptID;
     TOMLValue scriptIDTOML = compTOML["script"];
-    if (scriptIDTOML && scriptIDTOML.is_i64(scriptID))
+    if (scriptIDTOML && scriptIDTOML.get_i64(scriptID))
     {
         // the actual script is instantiated later
         scene.create_component_script_slot(compID, (AUID)scriptID);
@@ -109,7 +109,7 @@ bool load_audio_source_component(TOMLValue compTOML, Scene scene, CUID compID, c
 
     int64_t auid;
     TOMLValue auidTOML = compTOML["auid"];
-    auidTOML.is_i64(auid);
+    auidTOML.get_i64(auid);
     sourceC->clipAUID = (AUID)auid;
     sourceC->playback = {};
 
@@ -132,11 +132,11 @@ static bool load_camera_component(TOMLValue compTOML, Scene scene, CUID compID, 
     scene.mark_component_transform_dirty(compID);
 
     toml = compTOML["isPerspective"];
-    if (!toml || !toml.is_bool(cameraC->isPerspective))
+    if (!toml || !toml.get_bool(cameraC->isPerspective))
         return false;
 
     toml = compTOML["isMainCamera"];
-    if (!toml || !toml.is_bool(cameraC->isMainCamera))
+    if (!toml || !toml.get_bool(cameraC->isMainCamera))
         return false;
 
     if (cameraC->isPerspective)
@@ -147,17 +147,17 @@ static bool load_camera_component(TOMLValue compTOML, Scene scene, CUID compID, 
 
         float fovDegrees;
         floatTOML = toml["fov"];
-        if (!floatTOML || !floatTOML.is_f32(fovDegrees))
+        if (!floatTOML || !floatTOML.get_f32(fovDegrees))
             return false;
 
         cameraC->perspective.fov = LD_TO_RADIANS(fovDegrees);
 
         floatTOML = toml["nearClip"];
-        if (!floatTOML || !floatTOML.is_f32(cameraC->perspective.nearClip))
+        if (!floatTOML || !floatTOML.get_f32(cameraC->perspective.nearClip))
             return false;
 
         floatTOML = toml["farClip"];
-        if (!floatTOML || !floatTOML.is_f32(cameraC->perspective.farClip))
+        if (!floatTOML || !floatTOML.get_f32(cameraC->perspective.farClip))
             return false;
 
         // initialized later
@@ -170,27 +170,27 @@ static bool load_camera_component(TOMLValue compTOML, Scene scene, CUID compID, 
             return false; // missing orthographic info
 
         floatTOML = toml["left"];
-        if (!floatTOML || !floatTOML.is_f32(cameraC->orthographic.left))
+        if (!floatTOML || !floatTOML.get_f32(cameraC->orthographic.left))
             return false;
 
         floatTOML = toml["right"];
-        if (!floatTOML || !floatTOML.is_f32(cameraC->orthographic.right))
+        if (!floatTOML || !floatTOML.get_f32(cameraC->orthographic.right))
             return false;
 
         floatTOML = toml["bottom"];
-        if (!floatTOML || !floatTOML.is_f32(cameraC->orthographic.bottom))
+        if (!floatTOML || !floatTOML.get_f32(cameraC->orthographic.bottom))
             return false;
 
         floatTOML = toml["top"];
-        if (!floatTOML || !floatTOML.is_f32(cameraC->orthographic.top))
+        if (!floatTOML || !floatTOML.get_f32(cameraC->orthographic.top))
             return false;
 
         floatTOML = toml["nearClip"];
-        if (!floatTOML || !floatTOML.is_f32(cameraC->orthographic.nearClip))
+        if (!floatTOML || !floatTOML.get_f32(cameraC->orthographic.nearClip))
             return false;
 
         floatTOML = toml["farClip"];
-        if (!floatTOML || !floatTOML.is_f32(cameraC->orthographic.farClip))
+        if (!floatTOML || !floatTOML.get_f32(cameraC->orthographic.farClip))
             return false;
     }
 
@@ -213,7 +213,7 @@ static bool load_mesh_component(TOMLValue compTOML, Scene scene, CUID compID, co
 
     int64_t auid;
     TOMLValue auidTOML = compTOML["auid"];
-    auidTOML.is_i64(auid);
+    auidTOML.get_i64(auid);
     meshC->auid = (AUID)auid;
 
     return true;
@@ -235,7 +235,7 @@ bool load_sprite2d_component(TOMLValue compTOML, Scene scene, CUID compID, const
 
     int64_t auid;
     TOMLValue auidTOML = compTOML["auid"];
-    auidTOML.is_i64(auid);
+    auidTOML.get_i64(auid);
     spriteC->auid = (AUID)auid;
 
     return true;
@@ -248,24 +248,24 @@ static void load_transform(TOMLValue transformTOML, Transform& transform)
     TOMLValue positionTOML = transformTOML["position"];
     LD_ASSERT(positionTOML && positionTOML.is_array_type() && positionTOML.get_size() == 3);
 
-    positionTOML[0].is_f32(transform.position.x);
-    positionTOML[1].is_f32(transform.position.y);
-    positionTOML[2].is_f32(transform.position.z);
+    positionTOML[0].get_f32(transform.position.x);
+    positionTOML[1].get_f32(transform.position.y);
+    positionTOML[2].get_f32(transform.position.z);
 
     TOMLValue rotationTOML = transformTOML["rotation"];
     LD_ASSERT(rotationTOML && rotationTOML.is_array_type() && rotationTOML.get_size() == 3);
 
-    rotationTOML[0].is_f32(transform.rotation.x);
-    rotationTOML[1].is_f32(transform.rotation.y);
-    rotationTOML[2].is_f32(transform.rotation.z);
+    rotationTOML[0].get_f32(transform.rotation.x);
+    rotationTOML[1].get_f32(transform.rotation.y);
+    rotationTOML[2].get_f32(transform.rotation.z);
     transform.quat = Quat::from_euler(transform.rotation);
 
     TOMLValue scaleTOML = transformTOML["scale"];
     LD_ASSERT(scaleTOML && scaleTOML.is_array_type() && scaleTOML.get_size() == 3);
 
-    scaleTOML[0].is_f32(transform.scale.x);
-    scaleTOML[1].is_f32(transform.scale.y);
-    scaleTOML[2].is_f32(transform.scale.z);
+    scaleTOML[0].get_f32(transform.scale.x);
+    scaleTOML[1].get_f32(transform.scale.y);
+    scaleTOML[2].get_f32(transform.scale.z);
 }
 
 void load_transform_2d(TOMLValue transformTOML, Transform2D& transform)
@@ -274,17 +274,17 @@ void load_transform_2d(TOMLValue transformTOML, Transform2D& transform)
 
     TOMLValue positionTOML = transformTOML["position"];
     LD_ASSERT(positionTOML && positionTOML.is_array_type() && positionTOML.get_size() == 2);
-    positionTOML[0].is_f32(transform.position.x);
-    positionTOML[1].is_f32(transform.position.y);
+    positionTOML[0].get_f32(transform.position.x);
+    positionTOML[1].get_f32(transform.position.y);
 
     TOMLValue rotationTOML = transformTOML["rotation"];
     LD_ASSERT(rotationTOML && rotationTOML.is_float_type());
-    rotationTOML.is_f32(transform.rotation);
+    rotationTOML.get_f32(transform.rotation);
 
     TOMLValue scaleTOML = transformTOML["scale"];
     LD_ASSERT(scaleTOML && scaleTOML.is_array_type() && scaleTOML.get_size() == 2);
-    scaleTOML[0].is_f32(transform.scale.x);
-    scaleTOML[1].is_f32(transform.scale.y);
+    scaleTOML[0].get_f32(transform.scale.x);
+    scaleTOML[1].get_f32(transform.scale.y);
 }
 
 void SceneSchemaObj::initialize_from_doc()
@@ -304,7 +304,7 @@ void SceneSchemaObj::initialize_from_doc()
 
             CUID compID;
             TOMLValue compIDTOML = compTOML["cuid"];
-            if (compIDTOML && compIDTOML.is_u32(compID))
+            if (compIDTOML && compIDTOML.get_u32(compID))
                 compValues[compID] = compTOML;
         }
     }
@@ -325,15 +325,15 @@ void SceneSchema::load_scene(Scene scene)
 
     int32_t version;
     TOMLValue versionTOML = sceneTOML["version_major"];
-    if (!versionTOML || !versionTOML.is_i32(version) || version != LD_VERSION_MAJOR)
+    if (!versionTOML || !versionTOML.get_i32(version) || version != LD_VERSION_MAJOR)
         return;
 
     versionTOML = sceneTOML["version_minor"];
-    if (!versionTOML || !versionTOML.is_i32(version) || version != LD_VERSION_MINOR)
+    if (!versionTOML || !versionTOML.get_i32(version) || version != LD_VERSION_MINOR)
         return;
 
     versionTOML = sceneTOML["version_patch"];
-    if (!versionTOML || !versionTOML.is_i32(version) || version != LD_VERSION_PATCH)
+    if (!versionTOML || !versionTOML.get_i32(version) || version != LD_VERSION_PATCH)
         return;
 
     for (auto ite : mObj->compValues)
@@ -360,7 +360,7 @@ void SceneSchema::load_scene(Scene scene)
         for (int i = 0; i < count; i++)
         {
             CUID child;
-            if (!childrenTOML[i].is_u32(child))
+            if (!childrenTOML[i].get_u32(child))
                 continue;
 
             scene.reparent(child, parent);
@@ -384,7 +384,7 @@ AUID SceneSchema::get_component_script(CUID compID)
     TOMLValue scriptIDTOML = compTOML["script"];
 
     int64_t scriptAssetID;
-    if (!scriptIDTOML || !scriptIDTOML.is_i64(scriptAssetID))
+    if (!scriptIDTOML || !scriptIDTOML.get_i64(scriptAssetID))
         return 0;
 
     return (AUID)scriptAssetID;
