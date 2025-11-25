@@ -31,7 +31,6 @@ struct EditorContextObj
     RServer renderServer;             /// render server handle
     AudioServer audioServer;          /// audio server handle
     RImage iconAtlas;                 /// editor icon atlas handle
-    ProjectSchema projectSchema;      /// schema of the project under edit
     Project project;                  /// current project under edit
     SceneSchema sceneSchema;          /// schema of the scene under edit
     Scene scene;                      /// current scene under edit
@@ -161,9 +160,8 @@ void EditorContextObj::load_project(const FS::Path& projectSchemaPath)
 
     projectDirPath = projectSchemaPath.parent_path();
 
-    projectSchema = ProjectSchema::create_from_file(projectSchemaPath);
     project = Project::create(projectDirPath);
-    projectSchema.load_project(project);
+    ProjectSchema::load_project_from_file(project, projectSchemaPath);
 
     projectName = project.get_name();
 
@@ -342,7 +340,6 @@ void EditorContext::destroy(EditorContext ctx)
     }
 
     Project::destroy(obj->project);
-    ProjectSchema::destroy(obj->projectSchema);
     Scene::destroy(obj->scene);
     SceneSchema::destroy(obj->sceneSchema);
     EditorActionQueue::destroy(obj->actionQueue);
