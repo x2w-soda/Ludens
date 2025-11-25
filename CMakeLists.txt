@@ -317,6 +317,7 @@ add_subdirectory(LDCore/JobSystem)
 add_subdirectory(LDCore/CommandLine)
 add_subdirectory(LDCore/DSA)
 add_subdirectory(LDCore/DSP)
+add_subdirectory(LDCore/Text)
 add_subdirectory(LDCore/Serial)
 add_subdirectory(LDCore/Lexer)
 add_subdirectory(LDCore/Log)
@@ -346,6 +347,7 @@ target_link_libraries(LDCoreLibs INTERFACE
   LDCommandLine
   LDDSA
   LDDSP
+  LDText
   LDSerial
   LDLexer
   LDLog
