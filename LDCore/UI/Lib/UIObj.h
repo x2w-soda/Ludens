@@ -6,6 +6,7 @@
 #include <Ludens/Media/Font.h>
 #include <Ludens/RenderBackend/RBackend.h>
 #include <Ludens/System/Allocator.h>
+#include <Ludens/Text/TextBuffer.h>
 #include <Ludens/UI/UIAnimation.h>
 #include <Ludens/UI/UIContext.h>
 #include <Ludens/UI/UITheme.h>
@@ -161,7 +162,7 @@ struct UITextWidgetObj
 struct UITextEditWidgetObj
 {
     UIWidgetObj* base;
-    std::string* value;
+    TextBuffer<char> buf;
     const char* placeHolder;
     float fontSize;
 

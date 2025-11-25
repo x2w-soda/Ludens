@@ -1,4 +1,5 @@
 #include "UIObj.h"
+#include <Ludens/Application/Input.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Header/Types.h>
 #include <Ludens/UI/UIWidget.h>
@@ -612,7 +613,7 @@ UITextEditWidget UINode::add_text_edit(const UILayoutInfo& layoutI, const UIText
     UIWindowObj* window = mObj->window;
     UIWidgetObj* obj = window->ctx->alloc_widget(UI_WIDGET_TEXT_EDIT, layoutI, mObj, user);
     obj->as.textEdit.fontSize = widgetI.fontSize;
-    obj->as.textEdit.value = heap_new<std::string>(MEMORY_USAGE_UI);
+    obj->as.textEdit.buf = TextBuffer<char>::create();
     obj->cb.onKey = &UITextEditWidgetObj::on_key;
     obj->cb.onDraw = &UITextEditWidget::on_draw;
 
@@ -623,7 +624,11 @@ void UITextEditWidgetObj::cleanup(UIWidgetObj* base)
 {
     UITextEditWidgetObj& self = base->as.textEdit;
 
-    heap_delete<std::string>(self.value);
+    if (self.buf)
+    {
+        TextBuffer<char>::destroy(self.buf);
+        self.buf = {};
+    }
 
     if (self.placeHolder)
     {
@@ -632,7 +637,7 @@ void UITextEditWidgetObj::cleanup(UIWidgetObj* base)
     }
 }
 
-void UITextEditWidgetObj::on_key(UIWidget widget, KeyCode key, UIEvent event)
+void UITextEditWidgetObj::on_key(UIWidget widget, KeyCode keyCode, UIEvent event)
 {
     UIWidgetObj* obj = widget.unwrap();
     auto& self = obj->as.textEdit;
@@ -640,13 +645,22 @@ void UITextEditWidgetObj::on_key(UIWidget widget, KeyCode key, UIEvent event)
     if (event != UI_KEY_DOWN)
         return;
 
-    if (KEY_CODE_A <= key && key <= KEY_CODE_Z)
+    if (KEY_CODE_A <= keyCode && keyCode <= KEY_CODE_Z)
     {
-        self.value->push_back((char)key);
+        char key = (char)keyCode + 32;
+
+        if (Input::get_key(KEY_CODE_LEFT_SHIFT) || Input::get_key(KEY_CODE_RIGHT_SHIFT))
+            key -= 32;
+
+        self.buf.push_back(key);
     }
-    else if (key == KEY_CODE_BACKSPACE && !self.value->empty())
+    else if (keyCode == KEY_CODE_SPACE)
     {
-        self.value->pop_back();
+        self.buf.push_back(' ');
+    }
+    else if (keyCode == KEY_CODE_BACKSPACE)
+    {
+        self.buf.pop_back();
     }
 }
 
@@ -656,6 +670,7 @@ void UITextEditWidget::on_draw(UIWidget widget, ScreenRenderComponent renderer)
     auto& self = obj->as.textEdit;
     UIContextObj& ctx = *obj->window->ctx;
     const UITheme& theme = ctx.theme;
+    std::string str;
 
     Rect rect = widget.get_rect();
     renderer.draw_rect(rect, theme.get_field_color());
@@ -663,10 +678,11 @@ void UITextEditWidget::on_draw(UIWidget widget, ScreenRenderComponent renderer)
     if (widget.is_hovered())
         renderer.draw_rect_outline(rect, 1, theme.get_primary_color());
 
-    if (!self.value->empty())
+    if (!self.buf.empty())
     {
         float wrapWidth = rect.w;
-        renderer.draw_text(ctx.fontAtlas, ctx.fontAtlasImage, self.fontSize, rect.get_pos(), self.value->c_str(), theme.get_on_surface_color(), wrapWidth);
+        str = self.buf.to_string();
+        renderer.draw_text(ctx.fontAtlas, ctx.fontAtlasImage, self.fontSize, rect.get_pos(), str.c_str(), theme.get_on_surface_color(), wrapWidth);
     }
     else if (self.placeHolder)
     {

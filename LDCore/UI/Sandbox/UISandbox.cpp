@@ -168,22 +168,19 @@ void UISandbox::imgui()
     ui_push_window("Demo", mClient);
     ui_push_scroll({});
     {
-        if (Input::get_key(KEY_CODE_SPACE))
+        ui_push_button("Button1", isPressed);
+        if (isPressed)
         {
-            ui_push_button("Button1", isPressed);
-            if (isPressed)
-            {
-                sLog.info("Button1 pressed!");
-            }
-            ui_pop();
-
-            ui_push_button("Button2", isPressed);
-            if (isPressed)
-            {
-                sLog.info("Button2 pressed!");
-            }
-            ui_pop();
+            sLog.info("Button1 pressed!");
         }
+        ui_pop();
+
+        ui_push_button("Button2", isPressed);
+        if (isPressed)
+        {
+            sLog.info("Button2 pressed!");
+        }
+        ui_pop();
 
         ui_push_panel();
         {
@@ -205,6 +202,9 @@ void UISandbox::imgui()
         {
             sLog.info("Button3 pressed!");
         }
+        ui_pop();
+
+        ui_push_text_edit("Text here");
         ui_pop();
     }
     ui_pop();

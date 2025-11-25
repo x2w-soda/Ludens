@@ -52,6 +52,7 @@ add_library(${MODULE_NAME}
 
 target_link_libraries(${MODULE_NAME} PUBLIC
     LDSystem
+    LDText
     LDMedia
     LDRenderComponent
 )

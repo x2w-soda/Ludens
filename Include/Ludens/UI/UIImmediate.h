@@ -78,6 +78,9 @@ bool ui_has_window_client(const char* name);
 /// @brief Push UITextWidget.
 void ui_push_text(const char* text);
 
+/// @brief Push UITextEditWidget.
+void ui_push_text_edit(const char* text);
+
 /// @brief Push UIImageWidget.
 void ui_push_image(RImage image, float width, float height, const Rect* portion = nullptr);
 

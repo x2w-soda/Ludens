@@ -63,6 +63,7 @@ struct UIWindowState
     }
 
     UIWidgetState* get_or_create_text();
+    UIWidgetState* get_or_create_text_edit();
     UIWidgetState* get_or_create_image(RImage image);
     UIWidgetState* get_or_create_panel();
     UIWidgetState* get_or_create_toggle();
@@ -262,6 +263,28 @@ UIWidgetState* UIWindowState::get_or_create_text()
 
     UIWidget parent = get_parent_widget();
     UITextWidget textW = parent.node().add_text({}, textWI, widgetS);
+    widgetS->widget = (UIWidget)textW;
+
+    return widgetS;
+}
+
+UIWidgetState* UIWindowState::get_or_create_text_edit()
+{
+    UIWidgetState* widgetS = get_or_create_widget_state(imWidgetStack, widgetStatePA, UI_WIDGET_TEXT_EDIT);
+
+    if (widgetS->widget && widgetS->widget.get_type() == UI_WIDGET_TEXT_EDIT)
+        return widgetS;
+
+    UITextEditWidgetInfo textWI{};
+    textWI.fontSize = 16.0f; // TODO:
+    textWI.placeHolder = nullptr;
+    
+    UILayoutInfo layoutI{};
+    layoutI.sizeX = UISize::fixed(100.0f); // TODO:
+    layoutI.sizeY = UISize::fixed(textWI.fontSize * 1.2f);
+
+    UIWidget parent = get_parent_widget();
+    UITextEditWidget textW = parent.node().add_text_edit(layoutI, textWI, widgetS);
     widgetS->widget = (UIWidget)textW;
 
     return widgetS;
@@ -615,6 +638,18 @@ void ui_push_text(const char* text)
     LD_ASSERT(textW.get_type() == UI_WIDGET_TEXT);
 
     textW.set_text(text);
+
+    imWindow->imWidgetStack.push(imWidget);
+}
+
+void ui_push_text_edit(const char* text)
+{
+    LD_ASSERT_UI_PUSH;
+
+    UIWindowState* imWindow = sImFrame.imWindow;
+    UIWidgetState* imWidget = imWindow->get_or_create_text_edit();
+    UITextEditWidget textW = (UITextEditWidget)imWidget->widget;
+    LD_ASSERT(textW.get_type() == UI_WIDGET_TEXT_EDIT);
 
     imWindow->imWidgetStack.push(imWidget);
 }
