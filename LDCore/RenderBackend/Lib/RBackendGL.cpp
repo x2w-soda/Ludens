@@ -548,9 +548,9 @@ static RSet gl_set_pool_allocate(RSetPoolObj* baseSelf, RSetObj* baseSetObj)
     for (uint32_t bindingIdx = 0; bindingIdx < bindingCount; bindingIdx++)
     {
         const RSetBindingInfo& bindingI = self->layoutObj->bindings[bindingIdx];
-        obj->gl.bindingSites[bindingIdx].resize(bindingI.arrayCount);
+        obj->gl.bindingSites[bindingIdx].resize(bindingI.arraySize);
 
-        for (uint32_t arrayIdx = 0; arrayIdx < bindingI.arrayCount; arrayIdx++)
+        for (uint32_t arrayIdx = 0; arrayIdx < bindingI.arraySize; arrayIdx++)
             obj->gl.bindingSites[bindingIdx][arrayIdx] = nullptr;
     }
 
@@ -1662,7 +1662,7 @@ static void gl_bind_set(RPipelineLayoutGLObj* layoutObj, uint32_t setIndex, RSet
         LD_ASSERT(remap);
 
         // TODO: array of samplers
-        LD_ASSERT(bindingI.arrayCount == 1);
+        LD_ASSERT(bindingI.arraySize == 1);
 
         RImageGLObj* imageObj = nullptr;
         RBufferGLObj* bufferObj = nullptr;

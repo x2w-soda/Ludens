@@ -17,7 +17,7 @@ struct RShaderBinding
     std::string name;
     uint32_t setIndex;
     uint32_t bindingIndex;
-    uint32_t arrayCount;
+    uint32_t arraySize;
     RBindingType type;
     GLSLType glslType;
 };
@@ -26,8 +26,10 @@ struct RShaderLocation
 {
     std::string name;
     uint32_t location;
-    uint32_t arrayCount;
+    uint32_t arraySize;
     GLSLType glslType;
+
+    std::string to_string() const;
 };
 
 using RShaderInput = RShaderLocation;

@@ -479,7 +479,7 @@ void cast_set_layout_binding_vk(const RSetBindingInfo& inBinding, VkDescriptorSe
 {
     outBinding.binding = inBinding.binding;
     outBinding.pImmutableSamplers = nullptr;
-    outBinding.descriptorCount = inBinding.arrayCount;
+    outBinding.descriptorCount = inBinding.arraySize;
     cast_binding_type_vk(inBinding.type, outBinding.descriptorType);
 
     /// NOTE: we make the simplification that all vulkan descriptors may be accessed at all shader stages.

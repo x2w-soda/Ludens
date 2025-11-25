@@ -257,7 +257,7 @@ struct RSetBindingInfo
 {
     uint32_t binding;    /// the index of this binding within the set
     RBindingType type;   /// the type of this binding
-    uint32_t arrayCount; /// if greater than one, the binding array size
+    uint32_t arraySize;  /// if greater than one, the binding array size
 };
 
 /// @brief resource set layout info

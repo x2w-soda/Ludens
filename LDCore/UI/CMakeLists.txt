@@ -54,6 +54,7 @@ target_link_libraries(${MODULE_NAME} PUBLIC
     LDSystem
     LDText
     LDMedia
+    LDApplication
     LDRenderComponent
 )
 

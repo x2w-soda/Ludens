@@ -32,8 +32,10 @@ static std::string print_set_bindings(uint32_t setIndex, uint32_t bindingCount, 
 static std::string print_shader_reflection(const RShaderReflection& reflection);
 static std::string print_pipeline_layout(const RPipelineLayoutObj* layoutObj);
 static bool validate_pipeline_shader(RPipelineLayoutObj* layoutObj, RShaderObj* shaderObj);
-static bool combine_pipeline_push_constants(RPipelineLayoutObj* layoutObj, RShaderObj* shaderObj, std::string& err);
-static bool combine_pipeline_shaders(RPipelineLayoutObj* layoutObj, uint32_t shaderCount, RShader* shaders, std::string& err);
+static bool validate_pipeline_vertex_input(RPipelineObj* pipelineObj, RShaderObj* vsObj, std::string& err);
+static bool validate_pipeline_vertex_output_fragment_input(RPipelineObj* pipelineObj, RShaderObj* vsObj, RShaderObj* fsObj, std::string& err);
+static bool combine_pipeline_push_constants(RPipelineObj* pipelineObj, RShaderObj* shaderObj, std::string& err);
+static bool combine_pipeline_shaders(RPipelineObj* pipelineObj, uint32_t shaderCount, RShader* shaders, std::string& err);
 static void reset_command_list(RCommandListObj* listObj);
 
 static std::string print_shader_binding(const RShaderBinding& shaderBinding)
@@ -48,8 +50,8 @@ static std::string print_shader_binding(const RShaderBinding& shaderBinding)
                                   RUtil::get_glsl_type_cstr(shaderBinding.glslType),
                                   shaderBinding.name);
 
-    if (shaderBinding.arrayCount > 1)
-        str += std::format("[{}]", shaderBinding.arrayCount);
+    if (shaderBinding.arraySize > 1)
+        str += std::format("[{}]", shaderBinding.arraySize);
 
     str.push_back('\n');
 
@@ -68,7 +70,7 @@ static std::string print_set_bindings(uint32_t setIndex, uint32_t bindingCount, 
                            bindingType,
                            setIndex,
                            bindings[i].binding,
-                           bindings[i].arrayCount);
+                           bindings[i].arraySize);
     }
 
     return str;
@@ -117,8 +119,70 @@ static bool validate_pipeline_shader(RPipelineLayoutObj* layoutObj, RShaderObj* 
         if (truth.type != binding.type)
             return false;
 
-        if (truth.arrayCount != binding.arrayCount)
+        if (truth.arraySize != binding.arraySize)
             return false;
+    }
+
+    return true;
+}
+
+static bool validate_pipeline_vertex_input(RPipelineObj* pipelineObj, RShaderObj* vsObj, std::string& err)
+{
+    LD_ASSERT(vsObj && vsObj->type == RSHADER_TYPE_VERTEX);
+
+    // TODO: this assumes each vertex attribute spans 1 location and starts at 0.
+    for (uint32_t location = 0; location < pipelineObj->vertexAttributes.size(); location++)
+    {
+        const RVertexAttribute& attr = pipelineObj->vertexAttributes[location];
+
+        for (const RShaderInput& vsInput : vsObj->reflection.inputs)
+        {
+            if (vsInput.location != location)
+                continue;
+
+            if (attr.type != vsInput.glslType)
+            {
+                err = "pipeline vertex attribute and vertex shader input mismatch:\n";
+                err += std::format("- vertex attribute has type {}\n", RUtil::get_glsl_type_cstr(attr.type));
+                err += std::format("- vertex shader has input {}\n", vsInput.to_string());
+                return false;
+            }
+
+            break;
+        }
+
+        // SPACE: maybe emit warning if vertex attribute is unused by vertex shader?
+    }
+
+    return true;
+}
+
+static bool validate_pipeline_vertex_output_fragment_input(RPipelineObj* pipelineObj, RShaderObj* vsObj, RShaderObj* fsObj, std::string& err)
+{
+    LD_ASSERT(vsObj && vsObj->type == RSHADER_TYPE_VERTEX);
+    LD_ASSERT(fsObj && fsObj->type == RSHADER_TYPE_FRAGMENT);
+
+    (void)pipelineObj;
+
+    for (const RShaderOutput& vsOutput : vsObj->reflection.outputs)
+    {
+        for (const RShaderInput& fsInput : fsObj->reflection.inputs)
+        {
+            if (vsOutput.location != fsInput.location)
+                continue;
+
+            if (vsOutput.glslType != fsInput.glslType || vsOutput.arraySize != fsInput.arraySize)
+            {
+                err = "pipeline vertex shader output and fragment shader input mismatch:\n";
+                err += std::format("- vertex shader has output {}\n", fsInput.to_string());
+                err += std::format("- fragment shader has input {}\n", vsOutput.to_string());
+                return false;
+            }
+
+            break;
+        }
+
+        // SPACE: maybe emit warning if vertex shader output is unused by fragment shader?
     }
 
     return true;
@@ -164,14 +228,41 @@ static bool combine_pipeline_push_constants(RPipelineObj* pipelineObj, RShaderOb
 ///        When there is a conflict the pipeline layout is always the ground truth.
 static bool combine_pipeline_shaders(RPipelineObj* pipelineObj, uint32_t shaderCount, RShader* shaders, std::string& err)
 {
+    LD_PROFILE_SCOPE;
+
     err.clear();
 
     pipelineObj->pushConstants.clear();
     RPipelineLayoutObj* layoutObj = pipelineObj->layoutObj;
 
+    RShaderObj* stageVS = nullptr;
+    RShaderObj* stageFS = nullptr;
+
     for (uint32_t i = 0; i < shaderCount; i++)
     {
         RShaderObj* shaderObj = shaders[i].unwrap();
+
+        if (shaderObj->type == RSHADER_TYPE_VERTEX)
+        {
+            if (stageVS)
+            {
+                err = "multiple vertex shaders in one pipeline\n";
+                return false;
+            }
+
+            stageVS = shaderObj;
+        }
+
+        if (shaderObj->type == RSHADER_TYPE_FRAGMENT)
+        {
+            if (stageFS)
+            {
+                err = "multiple fragment shaders in one pipeline\n";
+                return false;
+            }
+
+            stageFS = shaderObj;
+        }
 
         if (!validate_pipeline_shader(layoutObj, shaderObj))
         {
@@ -191,6 +282,24 @@ static bool combine_pipeline_shaders(RPipelineObj* pipelineObj, uint32_t shaderC
             return false;
         }
     }
+
+    if (!stageVS)
+    {
+        err = "missing vertex shaders in pipeline\n";
+        return false;
+    }
+
+    if (!validate_pipeline_vertex_input(pipelineObj, stageVS, err))
+        return false;
+
+    if (!stageFS)
+    {
+        err = "missing fragment shader in pipeline\n";
+        return false;
+    }
+
+    if (!validate_pipeline_vertex_output_fragment_input(pipelineObj, stageVS, stageFS, err))
+        return false;
 
     return true;
 }
@@ -1269,7 +1378,7 @@ uint32_t hash32_set_layout_info(const RSetLayoutInfo& layoutI)
         str.push_back('t');
         str += std::to_string((int)layoutI.bindings[i].type);
         str.push_back('a');
-        str += std::to_string(layoutI.bindings[i].arrayCount);
+        str += std::to_string(layoutI.bindings[i].arraySize);
     }
 
     return hash32_FNV_1a(str.data(), str.size());

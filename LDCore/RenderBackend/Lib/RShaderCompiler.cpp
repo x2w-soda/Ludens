@@ -202,7 +202,7 @@ static RShaderLocation glslang_reflect_location(spirv_cross::Compiler& compiler,
     loc.name = resource.name;
     loc.location = compiler.get_decoration(resource.id, spv::DecorationLocation);
     loc.glslType = glslType;
-    loc.arrayCount = type.array.empty() ? 1 : type.array[0];
+    loc.arraySize = type.array.empty() ? 1 : type.array[0];
 
     return loc;
 }
@@ -217,7 +217,7 @@ static RShaderBinding glslang_reflect_binding(spirv_cross::Compiler& compiler, c
     RShaderBinding binding;
     binding.setIndex = compiler.get_decoration(resource.id, spv::DecorationDescriptorSet);
     binding.bindingIndex = compiler.get_decoration(resource.id, spv::DecorationBinding);
-    binding.arrayCount = type.array.empty() ? 1 : type.array[0];
+    binding.arraySize = type.array.empty() ? 1 : type.array[0];
     binding.name = resource.name;
     binding.type = bindingType;
     binding.glslType = glslType;
@@ -378,6 +378,16 @@ static void cast_glsl_image_type(spirv_cross::Compiler& compiler, const spirv_cr
     LD_UNREACHABLE;
 }
 
+std::string RShaderLocation::to_string() const
+{
+    std::string str = std::format("layout (location = {}) {} {}", location, RUtil::get_glsl_type_cstr(glslType), name);
+
+    if (arraySize != 1)
+        str += std::format("[{}]", arraySize);
+
+    return str;
+}
+
 std::string RShaderPushConstant::to_string() const
 {
     std::string str = std::format("{}:{} {} {}", offset, size, RUtil::get_glsl_type_cstr(uniformGLSLType), uniformName);
@@ -442,19 +452,19 @@ bool RShaderCompiler::compute_opengl_remap(const RPipelineLayoutObj* layoutObj, 
             {
             case RBINDING_TYPE_COMBINED_IMAGE_SAMPLER:
                 bindingRemap.glBindingIndex = sampledImageBindingCtr;
-                sampledImageBindingCtr += bindingI.arrayCount;
+                sampledImageBindingCtr += bindingI.arraySize;
                 break;
             case RBINDING_TYPE_STORAGE_IMAGE:
                 bindingRemap.glBindingIndex = storageImageBindingCtr;
-                storageImageBindingCtr += bindingI.arrayCount;
+                storageImageBindingCtr += bindingI.arraySize;
                 break;
             case RBINDING_TYPE_UNIFORM_BUFFER:
                 bindingRemap.glBindingIndex = uboBindingCtr;
-                uboBindingCtr += bindingI.arrayCount;
+                uboBindingCtr += bindingI.arraySize;
                 break;
             case RBINDING_TYPE_STORAGE_BUFFER:
                 bindingRemap.glBindingIndex = ssboBindingCtr;
-                ssboBindingCtr += bindingI.arrayCount;
+                ssboBindingCtr += bindingI.arraySize;
                 break;
             default:
                 LD_UNREACHABLE;
