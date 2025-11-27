@@ -5,7 +5,6 @@
 #include <Ludens/System/Memory.h>
 #include <Ludens/Text/TextBuffer.h>
 #include <cstdint>
-#include <vector>
 
 namespace LD {
 

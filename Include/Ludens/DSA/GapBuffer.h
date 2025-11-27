@@ -3,6 +3,7 @@
 #include <Ludens/Header/Bitwise.h>
 #include <algorithm>
 #include <cstddef>
+#include <cstring>
 #include <string>
 #include <vector>
 
