@@ -2,6 +2,7 @@
 #include <Ludens/System/FileSystem.h>
 #include <algorithm>
 #include <cstring>
+#include <format>
 #include <fstream>
 
 namespace LD {
@@ -99,6 +100,61 @@ bool write_file(const Path& path, uint64_t size, const byte* buf)
 
     file.write((const char*)buf, size);
     file.close();
+
+    return true;
+}
+
+bool write_file_and_swap_backup(const Path& path, uint64_t size, const byte* buf, std::string& err)
+{
+    LD_PROFILE_SCOPE;
+
+    if (!FS::exists(path))
+    {
+        if (!FS::write_file(path, size, buf))
+        {
+            err = std::format("failed to write_file to [{}]", path.string());
+            return false;
+        }
+
+        return true;
+    }
+
+    // 1. rename existing file as backup
+    FS::Path backupPath = path;
+    FS::Path backupExt = path.has_extension() ? FS::Path(".bak" + path.extension().string()) : FS::Path(".bak");
+    backupPath.replace_extension(backupExt);
+
+    try
+    {
+        fs::rename(path, backupPath);
+    }
+    catch (const std::filesystem::filesystem_error& e)
+    {
+        err = std::format("failed to rename [{}] to [{}]\nfilesystem_error: {}", path.string(), backupPath.string(), e.what());
+        return false;
+    }
+
+    // 2. write new contents to temporary file
+    FS::Path tmpPath = path;
+    FS::Path tmpExt = path.has_extension() ? FS::Path(".tmp" + path.extension().string()) : FS::Path(".tmp");
+    tmpPath.replace_extension(tmpExt);
+
+    if (!FS::write_file(tmpPath, size, buf))
+    {
+        err = std::format("failed to write new contents to [{}]", tmpPath.string());
+        return false;
+    }
+
+    // 3. rename temporary file to destination save path
+    try
+    {
+        fs::rename(tmpPath, path);
+    }
+    catch (const std::filesystem::filesystem_error& e)
+    {
+        err = std::format("failed to rename [{}] to [{}]\nfilesystem_error: {}", tmpPath.string(), path.string(), e.what());
+        return false;
+    }
 
     return true;
 }
