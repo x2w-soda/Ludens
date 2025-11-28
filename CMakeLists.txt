@@ -351,6 +351,7 @@ target_link_libraries(LDCoreLibs INTERFACE
   LDSerial
   LDLexer
   LDLog
+  LDApplication
   LDLua
   LDMedia
   LDCamera
@@ -367,7 +368,6 @@ target_link_libraries(LDCoreLibs INTERFACE
   LDDataRegistry
   LDScene
   LDProject
-  LDApplication
 )
 
 
@@ -375,6 +375,7 @@ target_link_libraries(LDCoreLibs INTERFACE
 # Ludens Builder
 # - standalone command line utility
 # - headers in ${LUDENS_INCLUDE_DIR}/LudensBuilder
+# - links with LDCoreLibs
 
 add_subdirectory(LDBuilder/BDocumentCompiler)
 add_subdirectory(LDBuilder/BAssetUtil)
@@ -390,6 +391,7 @@ add_subdirectory(LDBuilder)
 # Ludens Editor
 # - graphical user interface for editing scenes
 # - headers in ${LUDENS_INCLUDE_DIR}/LudensEditor
+# - links with LDCoreLibs and LDBuilderLibs
 
 add_subdirectory(LDEditor/EditorContext)
 add_subdirectory(LDEditor/EditorWidget)
