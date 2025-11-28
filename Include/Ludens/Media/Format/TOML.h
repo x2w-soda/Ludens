@@ -115,7 +115,7 @@ struct TOMLValue : Handle<struct TOMLValueObj>
     /// @brief Set key of TOML table. May override existing key.
     /// @return The value associated with key on success.
     TOMLValue set_key(const char* key, TOMLType type);
-    
+
     /// @brief Lookup key in TOML table.
     TOMLValue get_key(const char* key);
 
@@ -147,10 +147,18 @@ struct TOMLDocument : Handle<struct TOMLDocumentObj>
     /// @brief Consolidate all value modifications to TOML DOM.
     void consolidate();
 
-    /// @brief Get value by name.
+    /// @brief Get value under root TOML table.
     TOMLValue get(const char* name);
 
+    /// @brief Set value of root TOML table. May override existing key.
+    /// @return The value associated with key on success.
+    TOMLValue set(const char* key, TOMLType type);
+
+    /// @brief Save TOML document to string.
+    bool save_to_string(std::string& str);
+
     /// @brief Save TOML document to disk after consolidation.
+    /// @warning Directly overwrites existing file.
     bool save_to_disk(const FS::Path& path);
 };
 

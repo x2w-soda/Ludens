@@ -54,7 +54,9 @@ static toml::value get_toml_value(TOMLType type)
     case TOML_TYPE_LOCAL_TIME:
         return toml::value(toml::local_time{});
     case TOML_TYPE_ARRAY: // TODO: this is templated
+        return toml::array();
     case TOML_TYPE_TABLE: // TODO: this is templated
+        return toml::table();
     default:
         LD_UNREACHABLE;
     }
@@ -151,6 +153,26 @@ struct TOMLDocumentObj
                 root->val.as_array()[child->selfIndex] = child->val;
             }
         }
+    }
+
+    void initialize()
+    {
+        if (valuePA)
+            PoolAllocator::destroy(valuePA);
+
+        PoolAllocatorInfo paI{};
+        paI.usage = MEMORY_USAGE_MEDIA;
+        paI.blockSize = sizeof(TOMLValueObj);
+        paI.pageSize = 64; // TOML values per page
+        paI.isMultiPage = true;
+        valuePA = PoolAllocator::create(paI);
+
+        root.val = toml::table();
+        root.child = nullptr;
+        root.next = nullptr;
+        root.doc = this;
+        root.selfIndex = -1;
+        root.selfKey = nullptr;
     }
 };
 
@@ -437,20 +459,7 @@ void TOMLDocument::destroy(TOMLDocument doc)
 
 bool TOMLDocument::parse(const char* toml, size_t len, std::string& error)
 {
-    if (mObj->valuePA)
-        PoolAllocator::destroy(mObj->valuePA);
-
-    PoolAllocatorInfo paI{};
-    paI.usage = MEMORY_USAGE_MEDIA;
-    paI.blockSize = sizeof(TOMLValueObj);
-    paI.pageSize = 64; // TOML values per page
-    paI.isMultiPage = true;
-    mObj->valuePA = PoolAllocator::create(paI);
-    mObj->root.child = nullptr;
-    mObj->root.next = nullptr;
-    mObj->root.doc = nullptr;
-    mObj->root.selfIndex = -1;
-    mObj->root.selfKey = nullptr;
+    mObj->initialize();
 
     std::string source(toml, len);
     const auto& result = toml::try_parse_str(source, toml::spec::default_version());
@@ -498,7 +507,17 @@ TOMLValue TOMLDocument::get(const char* name)
     return TOMLValue(obj);
 }
 
-bool TOMLDocument::save_to_disk(const FS::Path& path)
+TOMLValue TOMLDocument::set(const char* key, TOMLType type)
+{
+    if (mObj->root.val.is_empty())
+        mObj->initialize();
+
+    TOMLValue rootTOML(&mObj->root);
+
+    return rootTOML.set_key(key, type);
+}
+
+bool TOMLDocument::save_to_string(std::string& str)
 {
     LD_PROFILE_SCOPE;
 
@@ -506,8 +525,19 @@ bool TOMLDocument::save_to_disk(const FS::Path& path)
         return false;
 
     mObj->consolidate(&mObj->root);
+    str = toml::format(mObj->root.val);
 
-    std::string str = toml::format(mObj->root.val);
+    return true;
+}
+
+bool TOMLDocument::save_to_disk(const FS::Path& path)
+{
+    LD_PROFILE_SCOPE;
+
+    std::string str;
+    if (!save_to_string(str))
+        return false;
+
     return FS::write_file(path, str.size(), (byte*)str.data());
 }
 
