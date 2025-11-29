@@ -23,6 +23,12 @@ enum TOMLType
     TOML_TYPE_TABLE,
 };
 
+enum TOMLFormat
+{
+    TOML_FORMAT_TABLE_MULTI_LINE = 0,
+    TOML_FORMAT_TABLE_ONE_LINE,
+};
+
 struct TOMLValue : Handle<struct TOMLValueObj>
 {
     /// @brief Get value data type.
@@ -107,6 +113,9 @@ struct TOMLValue : Handle<struct TOMLValueObj>
         return get_index(idx);
     }
 
+    /// @brief Appends a new TOML value at the end of an array.
+    TOMLValue append(const TOMLType type);
+
     /// @brief Check if table contains a key.
     /// @param typeMatch If not null, checks if the value matches the type.
     /// @return True if value is table type, contains the key, and satisfies optional type matching.
@@ -127,6 +136,10 @@ struct TOMLValue : Handle<struct TOMLValueObj>
 
     /// @brief Get all keys in a table.
     int get_keys(std::vector<std::string>& keys);
+
+    /// @brief Hint format to use when saving, format is type specific.
+    /// @return True if format enum can be applied to underlying TOML type.
+    bool format(TOMLFormat format);
 };
 
 /// @brief TOML document handle.

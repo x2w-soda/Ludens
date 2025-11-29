@@ -326,13 +326,31 @@ TOMLValue TOMLValue::get_index(int idx)
     if (!is_array_type() || idx < 0 || idx >= get_size())
         return {};
 
-    TOMLValueObj* value = mObj->doc->alloc_value();
-    value->selfIndex = idx;
-    value->val = mObj->val.at((size_t)idx);
-    value->next = mObj->child;
-    mObj->child = value;
+    TOMLValueObj* obj = mObj->doc->alloc_value();
+    obj->selfIndex = idx;
+    obj->val = mObj->val.at((size_t)idx);
+    obj->next = mObj->child;
+    mObj->child = obj;
 
-    return TOMLValue(value);
+    return TOMLValue(obj);
+}
+
+TOMLValue TOMLValue::append(const TOMLType type)
+{
+    if (!is_array_type())
+        return {};
+
+    TOMLValueObj* obj = mObj->doc->alloc_value();
+    obj->selfIndex = (int)mObj->val.size();
+    obj->val = get_toml_value(type);
+    obj->next = mObj->child;
+    mObj->child = obj;
+
+    // this will eventually be done during consolidate(),
+    // but we try to keep the DOM as syncrhonized as we can.
+    mObj->val.push_back(obj->val);
+
+    return TOMLValue(obj);
 }
 
 bool TOMLValue::has_key(const char* key, const TOMLType* typeMatch)
@@ -411,6 +429,27 @@ int TOMLValue::get_keys(std::vector<std::string>& keys)
     }
 
     return (int)keys.size();
+}
+
+bool TOMLValue::format(TOMLFormat fmt)
+{
+    switch (fmt)
+    {
+    case TOML_FORMAT_TABLE_MULTI_LINE:
+        if (!mObj->val.is_table())
+            return false;
+        mObj->val.as_table_fmt().fmt = toml::table_format::multiline;
+        break;
+    case TOML_FORMAT_TABLE_ONE_LINE:
+        if (!mObj->val.is_table())
+            return false;
+        mObj->val.as_table_fmt().fmt = toml::table_format::oneline;
+        break;
+    default:
+        return false;
+    }
+
+    return true;
 }
 
 TOMLDocument TOMLDocument::create()
