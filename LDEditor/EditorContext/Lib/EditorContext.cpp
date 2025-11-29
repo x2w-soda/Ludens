@@ -179,17 +179,16 @@ void EditorContextObj::load_project(const FS::Path& projectSchemaPath)
         AssetManager::destroy(assetManager);
     }
 
-    // Load all project assets at once using job system.
-    // Once we have asynchronous-load-jobs maybe we can load assets
-    // used by the loaded scene first?
-    TOMLDocument assetDoc = TOMLDocument::create_from_file(assetSchemaPath);
-
     AssetManagerInfo amI{};
     amI.rootPath = projectDirPath;
     amI.watchAssets = true;
+    amI.assetSchemaPath = assetSchemaPath;
     assetManager = AssetManager::create(amI);
-    AssetSchema::load_assets(assetManager, assetDoc);
-    TOMLDocument::destroy(assetDoc);
+
+    // Load all project assets at once using job system.
+    // Once we have asynchronous-load-jobs maybe we can load assets
+    // used by the loaded scene first?
+    assetManager.load_all_assets();
 
     project.get_scene_paths(scenePaths);
 

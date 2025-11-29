@@ -3,6 +3,7 @@ set(MODULE_NAME LDAsset)
 set(MODULE_INCLUDE
 	${LUDENS_INCLUDE_DIR}/Ludens/Asset/Asset.h
 	${LUDENS_INCLUDE_DIR}/Ludens/Asset/AssetManager.h
+	${LUDENS_INCLUDE_DIR}/Ludens/Asset/AssetRegistry.h
 	${LUDENS_INCLUDE_DIR}/Ludens/Asset/AssetSchema.h
 	${LUDENS_INCLUDE_DIR}/Ludens/Asset/AssetType/MeshAsset.h
 	${LUDENS_INCLUDE_DIR}/Ludens/Asset/AssetType/Texture2DAsset.h
@@ -13,6 +14,7 @@ set(MODULE_INCLUDE
 set(MODULE_LIB
 	Lib/AssetObj.h
 	Lib/AssetManager.cpp
+	Lib/AssetRegistry.cpp
 	Lib/AssetWatcher.h
 	Lib/AssetWatcher.cpp
 	Lib/AssetSchema.cpp

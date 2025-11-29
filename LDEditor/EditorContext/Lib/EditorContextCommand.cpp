@@ -3,28 +3,23 @@
 
 namespace LD {
 
-AddComponentScriptCommand::AddComponentScriptCommand(SceneSchema sceneSchema, Scene scene, CUID compID, AUID scriptAssetID)
-    : mSchema(sceneSchema), mScene(scene), mCompID(compID), mScriptAssetID(scriptAssetID)
+AddComponentScriptCommand::AddComponentScriptCommand(Scene scene, CUID compID, AUID scriptAssetID)
+    : mScene(scene), mCompID(compID), mScriptAssetID(scriptAssetID), mPrevScriptAssetID(0)
 {
-    LD_ASSERT(mSchema && mScene && mCompID && mScriptAssetID);
+    LD_ASSERT(mScene && mCompID && mScriptAssetID);
 
-    mPrevScriptAssetID = mSchema.get_component_script(mCompID);
+    ComponentScriptSlot* scriptSlot = mScene.get_component_script_slot(mCompID);
+    if (scriptSlot)
+        mPrevScriptAssetID = scriptSlot->assetID;
 }
 
 void AddComponentScriptCommand::redo()
 {
-    // update Schema
-    mSchema.set_component_script(mCompID, mScriptAssetID);
-
-    // update Scene
     mScene.create_component_script_slot(mCompID, mScriptAssetID);
 }
 
 void AddComponentScriptCommand::undo()
 {
-    // update Schema
-    mSchema.set_component_script(mCompID, mPrevScriptAssetID);
-
     // update Scene
     if (mPrevScriptAssetID != 0)
     {
