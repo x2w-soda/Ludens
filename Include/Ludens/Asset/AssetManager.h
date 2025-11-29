@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Ludens/Asset/Asset.h>
+#include <Ludens/Asset/AssetRegistry.h>
 #include <Ludens/Asset/AssetType/AudioClipAsset.h>
 #include <Ludens/Asset/AssetType/LuaScriptAsset.h>
 #include <Ludens/Asset/AssetType/MeshAsset.h>
@@ -13,8 +14,9 @@ namespace LD {
 
 struct AssetManagerInfo
 {
-    FS::Path rootPath; // project root directory path
-    bool watchAssets;  // whether to watch asset files in project
+    FS::Path rootPath;        // project root directory path
+    FS::Path assetSchemaPath; // path to asset schema
+    bool watchAssets;         // whether to watch asset files in project
 };
 
 struct AssetManager : Handle<struct AssetManagerObj>
@@ -27,6 +29,9 @@ struct AssetManager : Handle<struct AssetManagerObj>
 
     /// @brief If file watching is enabled, this polls for any changes.
     void update();
+
+    /// @brief Loads all assets in registry in one batch.
+    void load_all_assets();
 
     /// @brief Begin asset load batch.
     void begin_load_batch();

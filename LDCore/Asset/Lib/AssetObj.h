@@ -2,6 +2,7 @@
 
 #include "AssetWatcher.h"
 #include <Ludens/Asset/Asset.h>
+#include <Ludens/Asset/AssetRegistry.h>
 #include <Ludens/Asset/AssetType/AudioClipAsset.h>
 #include <Ludens/Asset/AssetType/LuaScriptAsset.h>
 #include <Ludens/Asset/AssetType/MeshAsset.h>
@@ -56,6 +57,11 @@ public:
     MeshAsset get_mesh_asset(AUID auid);
     LuaScriptAsset get_lua_script_asset(AUID auid);
 
+    inline void find_assets_by_type(AssetType type, std::vector<const AssetEntry*>& entries)
+    {
+        mRegistry.find_assets_by_type(type, entries);
+    }
+
     static void on_asset_modified(const FS::Path& path, AUID id, void* user);
 
 private:
@@ -67,6 +73,7 @@ private:
     std::vector<struct Texture2DAssetLoadJob*> mTexture2DLoadJobs;
     std::vector<struct LuaScriptAssetLoadJob*> mLuaScriptLoadJobs;
     AssetWatcher mWatcher;     /// optional asset file watcher
+    AssetRegistry mRegistry;   /// bookkeeping for all assets in project
     const FS::Path mRootPath;  /// asset URIs are relative paths to root path
     bool mInLoadBatch = false; /// is within load batch scope
 };

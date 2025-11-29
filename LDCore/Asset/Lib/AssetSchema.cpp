@@ -1,96 +1,140 @@
 #include <Ludens/Asset/AssetSchema.h>
+#include <Ludens/Header/Assert.h>
+#include <Ludens/Header/Version.h>
+#include <Ludens/Media/Format/TOML.h>
 #include <Ludens/Profiler/Profiler.h>
 
 namespace LD {
 
-void AssetSchema::load_assets(AssetManager manager, TOMLDocument doc)
-{
-    LD_PROFILE_SCOPE;
+static void load_registry_from_schema(AssetRegistry registry, TOMLDocument doc);
+static void load_registry_entries(AssetRegistry registry, TOMLDocument doc);
+static void save_registry_to_schema(AssetRegistry registry, TOMLDocument doc);
+static void save_registry_entries(AssetRegistry registry, TOMLDocument doc);
 
-    TOMLValue assetsTOML = doc.get("ludens_assets");
-    if (!assetsTOML || !assetsTOML.is_table_type())
+static void load_registry_from_schema(AssetRegistry registry, TOMLDocument doc)
+{
+    if (!registry || !doc)
+        return;
+
+    TOMLValue registryTOML = doc.get("ludens_assets");
+    if (!registryTOML || registryTOML.get_type() != TOML_TYPE_TABLE)
         return;
 
     int32_t version;
-    TOMLValue versionTOML = assetsTOML["version"];
-    if (!versionTOML || !versionTOML.get_i32(version) || version != 0)
+    TOMLValue versionTOML = registryTOML["version_major"];
+    if (!versionTOML || !versionTOML.get_i32(version) || version != LD_VERSION_MAJOR)
         return;
 
-    manager.begin_load_batch();
+    versionTOML = registryTOML["version_minor"];
+    if (!versionTOML || !versionTOML.get_i32(version) || version != LD_VERSION_MINOR)
+        return;
+
+    versionTOML = registryTOML["version_patch"];
+    if (!versionTOML || !versionTOML.get_i32(version) || version != LD_VERSION_PATCH)
+        return;
+
+    uint32_t auidCounter = 1;
+    TOMLValue counterTOML = registryTOML["auid_counter"];
+    if (counterTOML)
+        counterTOML.get_u32(auidCounter);
+
+    registry.set_auid_counter(auidCounter);
+
+    load_registry_entries(registry, doc);
+}
+
+static void load_registry_entries(AssetRegistry registry, TOMLDocument doc)
+{
+    for (int i = 0; i < (int)ASSET_TYPE_ENUM_COUNT; i++)
     {
-        TOMLValue clipsTOML = doc.get("AudioClip");
-        if (clipsTOML && clipsTOML.is_array_type())
-        {
-            int count = clipsTOML.get_size();
-            for (int i = 0; i < count; i++)
-            {
-                TOMLValue clipTOML = clipsTOML[i];
-                TOMLValue auidTOML = clipTOML["auid"];
-                TOMLValue uriTOML = clipTOML["uri"];
-                int64_t auid;
-                std::string uri;
-                if (auidTOML && auidTOML.get_i64(auid) && uriTOML && uriTOML.get_string(uri))
-                {
-                    manager.load_audio_clip_asset(FS::Path(uri), (AUID)auid);
-                }
-            }
-        }
+        AssetType assetType = (AssetType)i;
+        const char* typeCstr = get_asset_type_cstr(assetType);
+        TOMLValue entryArrayTOML = doc.get(typeCstr);
+        if (!entryArrayTOML || !entryArrayTOML.is_array_type())
+            continue;
 
-        TOMLValue meshesTOML = doc.get("Mesh");
-        if (meshesTOML && meshesTOML.is_array_type())
+        int arraySize = entryArrayTOML.get_size();
+        for (int j = 0; j < arraySize; j++)
         {
-            int count = meshesTOML.get_size();
-            for (int i = 0; i < count; i++)
-            {
-                TOMLValue meshTOML = meshesTOML[i];
-                TOMLValue auidTOML = meshTOML["auid"];
-                TOMLValue uriTOML = meshTOML["uri"];
-                int64_t auid;
-                std::string uri;
-                if (auidTOML && auidTOML.get_i64(auid) && uriTOML && uriTOML.get_string(uri))
-                {
-                    manager.load_mesh_asset(FS::Path(uri), (AUID)auid);
-                }
-            }
-        }
+            TOMLValue entryTOML = entryArrayTOML[j];
+            if (!entryTOML.is_table_type())
+                continue;
 
-        TOMLValue texture2DsTOML = doc.get("Texture2D");
-        if (texture2DsTOML && texture2DsTOML.is_array_type())
-        {
-            int count = texture2DsTOML.get_size();
-            for (int i = 0; i < count; i++)
-            {
-                TOMLValue texture2DTOML = texture2DsTOML[i];
-                TOMLValue auidTOML = texture2DTOML["auid"];
-                TOMLValue uriTOML = texture2DTOML["uri"];
-                int64_t auid;
-                std::string uri;
-                if (auidTOML && auidTOML.get_i64(auid) && uriTOML && uriTOML.get_string(uri))
-                {
-                    manager.load_texture_2d_asset(FS::Path(uri), (AUID)auid);
-                }
-            }
-        }
+            AssetEntry entry = {.type = assetType};
+            TOMLValue uriTOML = entryTOML["uri"];
+            TOMLValue nameTOML = entryTOML["name"];
+            TOMLValue auidTOML = entryTOML["auid"];
+            if (!uriTOML || !uriTOML.get_string(entry.uri) ||
+                !nameTOML || !nameTOML.get_string(entry.name) ||
+                !auidTOML || !auidTOML.get_u32(entry.id))
+                continue;
 
-        TOMLValue luaScriptsTOML = doc.get("LuaScript");
-        if (luaScriptsTOML && luaScriptsTOML.is_array_type())
-        {
-            int count = luaScriptsTOML.get_size();
-            for (int i = 0; i < count; i++)
-            {
-                TOMLValue luaScriptTOML = luaScriptsTOML[i];
-                TOMLValue auidTOML = luaScriptTOML["auid"];
-                TOMLValue uriTOML = luaScriptTOML["uri"];
-                int64_t auid;
-                std::string uri;
-                if (auidTOML && auidTOML.get_i64(auid) && uriTOML && uriTOML.get_string(uri))
-                {
-                    manager.load_lua_script_asset(FS::Path(uri), (AUID)auid);
-                }
-            }
+            bool ok = registry.register_asset_with_id(entry);
+            LD_ASSERT(ok); // TODO: invalid toml schema code path
         }
     }
-    manager.end_load_batch();
+}
+
+static void save_registry_to_schema(AssetRegistry registry, TOMLDocument doc)
+{
+    TOMLValue registryTOML = doc.set("ludens_assets", TOML_TYPE_TABLE);
+    registryTOML.set_key("version_major", TOML_TYPE_INT).set_i32(LD_VERSION_MAJOR);
+    registryTOML.set_key("version_minor", TOML_TYPE_INT).set_i32(LD_VERSION_MINOR);
+    registryTOML.set_key("version_patch", TOML_TYPE_INT).set_i32(LD_VERSION_PATCH);
+
+    save_registry_entries(registry, doc);
+}
+
+static void save_registry_entries(AssetRegistry registry, TOMLDocument doc)
+{
+    for (int i = 0; i < (int)ASSET_TYPE_ENUM_COUNT; i++)
+    {
+        AssetType assetType = (AssetType)i;
+        const char* typeCstr = get_asset_type_cstr(assetType);
+        TOMLValue entryArrayTOML = doc.set(typeCstr, TOML_TYPE_ARRAY);
+
+        std::vector<const AssetEntry*> entries;
+        registry.find_assets_by_type(assetType, entries);
+
+        for (const AssetEntry* entry : entries)
+        {
+            TOMLValue entryTOML = entryArrayTOML.append(TOML_TYPE_TABLE);
+            entryTOML.set_key("uri", TOML_TYPE_STRING).set_string(entry->uri);
+            entryTOML.set_key("name", TOML_TYPE_STRING).set_string(entry->name);
+            entryTOML.set_key("auid", TOML_TYPE_INT).set_u32(entry->id);
+        }
+    }
+}
+
+//
+// Public API
+//
+
+void AssetSchema::load_registry_from_file(AssetRegistry registry, const FS::Path& tomlPath)
+{
+    LD_PROFILE_SCOPE;
+
+    TOMLDocument doc = TOMLDocument::create_from_file(tomlPath);
+    load_registry_from_schema(registry, doc);
+    TOMLDocument::destroy(doc);
+}
+
+bool AssetSchema::save_registry(AssetRegistry registry, const FS::Path& savePath, std::string& err)
+{
+    LD_PROFILE_SCOPE;
+
+    TOMLDocument doc = TOMLDocument::create();
+    save_registry_to_schema(registry, doc);
+
+    std::string str;
+    if (!doc.save_to_string(str))
+    {
+        TOMLDocument::destroy(doc);
+        return false;
+    }
+
+    TOMLDocument::destroy(doc);
+    return FS::write_file_and_swap_backup(savePath, str.size(), (const byte*)str.data(), err);
 }
 
 } // namespace LD

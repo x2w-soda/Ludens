@@ -1,5 +1,6 @@
 #include "AssetObj.h"
 #include <Ludens/Asset/AssetManager.h>
+#include <Ludens/Asset/AssetSchema.h>
 #include <Ludens/Asset/AssetType/MeshAsset.h>
 #include <Ludens/Asset/AssetType/Texture2DAsset.h>
 #include <Ludens/Header/Types.h>
@@ -61,6 +62,9 @@ AssetManagerObj::AssetManagerObj(const AssetManagerInfo& info)
         watcherI.user = this;
         mWatcher.startup(watcherI);
     }
+
+    mRegistry = AssetRegistry::create();
+    AssetSchema::load_registry_from_file(mRegistry, info.assetSchemaPath);
 }
 
 AssetManagerObj::~AssetManagerObj()
@@ -83,6 +87,8 @@ AssetManagerObj::~AssetManagerObj()
 
     for (auto ite : mAllocators)
         PoolAllocator::destroy(ite.second);
+
+    AssetRegistry::destroy(mRegistry);
 
     if (mWatcher)
         mWatcher.cleanup();
@@ -341,6 +347,44 @@ void AssetManager::destroy(AssetManager manager)
 void AssetManager::update()
 {
     mObj->poll();
+}
+
+void AssetManager::load_all_assets()
+{
+    LD_PROFILE_SCOPE;
+
+    begin_load_batch();
+
+    for (int i = 0; i < (int)ASSET_TYPE_ENUM_COUNT; i++)
+    {
+        AssetType type = (AssetType)i;
+
+        std::vector<const AssetEntry*> entries;
+        mObj->find_assets_by_type(type, entries);
+
+        for (const AssetEntry* entry : entries)
+        {
+            switch (entry->type)
+            {
+            case ASSET_TYPE_AUDIO_CLIP:
+                load_audio_clip_asset(entry->uri, entry->id);
+                break;
+            case ASSET_TYPE_MESH:
+                load_mesh_asset(entry->uri, entry->id);
+                break;
+            case ASSET_TYPE_TEXTURE_2D:
+                load_texture_2d_asset(entry->uri, entry->id);
+                break;
+            case ASSET_TYPE_LUA_SCRIPT:
+                load_lua_script_asset(entry->uri, entry->id);
+                break;
+            default:
+                break;
+            }
+        }
+    }
+
+    end_load_batch();
 }
 
 void AssetManager::begin_load_batch()
