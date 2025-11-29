@@ -11,14 +11,13 @@ namespace LD {
 class AddComponentScriptCommand : public EditCommand
 {
 public:
-    AddComponentScriptCommand(SceneSchema sceneSchema, Scene scene, CUID compID, AUID scriptAssetID);
+    AddComponentScriptCommand(Scene scene, CUID compID, AUID scriptAssetID);
 
     virtual void redo() override;
 
     virtual void undo() override;
 
 private:
-    SceneSchema mSchema;
     Scene mScene;
     CUID mCompID;
     AUID mScriptAssetID;

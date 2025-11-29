@@ -29,12 +29,9 @@ auid = 2
 cuid = 300
 )";
 
-    SceneSchema schema = SceneSchema::create_from_source(toml, strlen(toml));
-    CHECK(schema);
-
     Scene scene = Scene::create();
-    schema.load_scene(scene);
     CHECK(scene);
+    SceneSchema::load_scene_from_source(scene, toml, strlen(toml));
 
     std::vector<CUID> roots;
     scene.get_root_components(roots);
@@ -67,7 +64,6 @@ cuid = 300
     }
 
     Scene::destroy(scene);
-    SceneSchema::destroy(schema);
     int leaks = get_memory_leaks(nullptr);
     CHECK(leaks == 0);
 }

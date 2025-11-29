@@ -32,7 +32,6 @@ struct EditorContextObj
     AudioServer audioServer;          /// audio server handle
     RImage iconAtlas;                 /// editor icon atlas handle
     Project project;                  /// current project under edit
-    SceneSchema sceneSchema;          /// schema of the scene under edit
     Scene scene;                      /// current scene under edit
     AssetManager assetManager;        /// loads assets for the scene
     EditorSettings settings;          /// editor global settings
@@ -140,7 +139,6 @@ static void editor_action_add_component_script(EditStack stack, void* user)
     const auto& params = obj->addComponentScriptParams;
 
     stack.execute(EditStack::new_command<AddComponentScriptCommand>(
-        obj->sceneSchema,
         obj->scene,
         params.compID,
         params.scriptAssetID));
@@ -224,16 +222,12 @@ void EditorContextObj::load_project_scene(const FS::Path& sceneSchemaPath)
     selectedComponent = 0;
     selectedComponentRUID = 0;
 
-    if (sceneSchema)
-        SceneSchema::destroy(sceneSchema);
-
     if (scene)
         Scene::destroy(scene);
 
     // create the scene from schema
     scene = Scene::create();
-    sceneSchema = SceneSchema::create_from_file(sceneSchemaPath);
-    sceneSchema.load_scene(scene);
+    SceneSchema::load_scene_from_file(scene, sceneSchemaPath);
 
     // load the scene
     SceneLoadInfo loadInfo{};
@@ -276,21 +270,17 @@ void EditorContextObj::new_project_scene(const FS::Path& newSchemaPath)
 
 void EditorContextObj::save_project_scene()
 {
-    if (!sceneSchema || sceneSchemaPath.empty())
+    if (!scene || sceneSchemaPath.empty())
         return;
 
     Timer timer;
     timer.start();
 
-    // TODO: overwrite actual schema after this is stable
-    FS::Path dst = sceneSchemaPath;
-    std::string stem = dst.stem().string();
-    stem += ".bak.toml";
-    dst.replace_filename(stem);
-    sceneSchema.save_to_disk(dst);
+    std::string err;
+    SceneSchema::save_scene(scene, sceneSchemaPath, err);
 
     size_t us = timer.stop();
-    sLog.info("saved scene to {} ({} ms)", dst.string(), us / 1000.0f);
+    sLog.info("saved scene to {} ({} ms)", sceneSchemaPath.string(), us / 1000.0f);
 }
 
 EditorContext EditorContext::create(const EditorContextInfo& info)
@@ -341,7 +331,6 @@ void EditorContext::destroy(EditorContext ctx)
 
     Project::destroy(obj->project);
     Scene::destroy(obj->scene);
-    SceneSchema::destroy(obj->sceneSchema);
     EditorActionQueue::destroy(obj->actionQueue);
     EditStack::destroy(obj->editStack);
     EditorSettings::destroy(obj->settings);
