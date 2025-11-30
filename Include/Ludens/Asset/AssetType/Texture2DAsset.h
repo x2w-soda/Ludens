@@ -50,21 +50,4 @@ private:
     JobHeader mHeader;
 };
 
-/// @brief Loads Texture2DAsset from disk
-class Texture2DAssetLoadJob
-{
-public:
-    Texture2DAsset asset;           /// subject asset handle
-    std::filesystem::path loadPath; /// path to load the imported format
-
-    /// @brief Submit to job system. Address of this job instance must not
-    ///        change until the worker thread completes execution.
-    void submit();
-
-private:
-    static void execute(void*);
-
-    JobHeader mHeader;
-};
-
 } // namespace LD

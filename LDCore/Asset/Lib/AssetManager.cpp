@@ -23,15 +23,16 @@ static Log sLog("AssetManager");
 struct
 {
     AssetType type;
-    const char* typeMagic;          /// 8-byte magic embedded in binary header
-    const char* typeName;           /// human readable name
-    size_t size;                    /// object byte size
-    void (*unload)(AssetObj* base); /// polymorphic unload
+    const char* typeMagic;            /// 8-byte magic embedded in binary header
+    const char* typeName;             /// human readable name
+    size_t size;                      /// object byte size
+    void (*load)(void* assetLoadJob); /// polymorphic load, note that this is executed on worker threads
+    void (*unload)(AssetObj* base);   /// polymorphic unload
 } sAssetTypeTable[] = {
-    {ASSET_TYPE_AUDIO_CLIP, "AU_CLIP_", "AudioClip",  sizeof(AudioClipAssetObj), &AudioClipAssetObj::unload, },
-    {ASSET_TYPE_MESH,       "MESH____", "Mesh",       sizeof(MeshAssetObj),      &MeshAssetObj::unload, },
-    {ASSET_TYPE_TEXTURE_2D, "TX_2D___", "Texture2D",  sizeof(Texture2DAssetObj), &Texture2DAssetObj::unload, },
-    {ASSET_TYPE_LUA_SCRIPT, "LUA_SCPT", "LuaScript",  sizeof(LuaScriptAssetObj), &LuaScriptAssetObj::unload, },
+    {ASSET_TYPE_AUDIO_CLIP, "AU_CLIP_", "AudioClip",  sizeof(AudioClipAssetObj), &AudioClipAssetObj::load, &AudioClipAssetObj::unload, },
+    {ASSET_TYPE_MESH,       "MESH____", "Mesh",       sizeof(MeshAssetObj),      &MeshAssetObj::load,      &MeshAssetObj::unload, },
+    {ASSET_TYPE_TEXTURE_2D, "TX_2D___", "Texture2D",  sizeof(Texture2DAssetObj), &Texture2DAssetObj::load, &Texture2DAssetObj::unload, },
+    {ASSET_TYPE_LUA_SCRIPT, "LUA_SCPT", "LuaScript",  sizeof(LuaScriptAssetObj), &LuaScriptAssetObj::load, &LuaScriptAssetObj::unload, },
 };
 // clang-format on
 
@@ -65,11 +66,21 @@ AssetManagerObj::AssetManagerObj(const AssetManagerInfo& info)
 
     mRegistry = AssetRegistry::create();
     AssetSchema::load_registry_from_file(mRegistry, info.assetSchemaPath);
+
+    PoolAllocatorInfo paI{};
+    paI.blockSize = sizeof(AssetLoadJob);
+    paI.isMultiPage = true;
+    paI.pageSize = 32;
+    paI.usage = MEMORY_USAGE_ASSET;
+    mLoadJobPA = PoolAllocator::create(paI);
 }
 
 AssetManagerObj::~AssetManagerObj()
 {
     LD_PROFILE_SCOPE;
+
+    free_load_jobs();
+    PoolAllocator::destroy(mLoadJobPA);
 
     std::vector<AssetObj*> assets;
     assets.reserve(mAssets.size());
@@ -85,7 +96,7 @@ AssetManagerObj::~AssetManagerObj()
 
     LD_ASSERT(mAssets.empty());
 
-    for (auto ite : mAllocators)
+    for (auto ite : mAssetPA)
         PoolAllocator::destroy(ite.second);
 
     AssetRegistry::destroy(mRegistry);
@@ -96,17 +107,17 @@ AssetManagerObj::~AssetManagerObj()
 
 AssetObj* AssetManagerObj::allocate_asset(AssetType type, AUID auid, const std::string& name)
 {
-    if (!mAllocators.contains(type))
+    if (!mAssetPA.contains(type))
     {
         PoolAllocatorInfo paI{};
         paI.usage = MEMORY_USAGE_ASSET;
         paI.blockSize = get_asset_byte_size(type);
         paI.pageSize = 16;
         paI.isMultiPage = true;
-        mAllocators[type] = PoolAllocator::create(paI);
+        mAssetPA[type] = PoolAllocator::create(paI);
     }
 
-    AssetObj* obj = (AssetObj*)mAllocators[type].allocate();
+    AssetObj* obj = (AssetObj*)mAssetPA[type].allocate();
     obj->manager = this;
     obj->name = heap_strdup(name.c_str(), MEMORY_USAGE_ASSET);
     obj->auid = auid;
@@ -124,7 +135,7 @@ AssetObj* AssetManagerObj::allocate_asset(AssetType type, AUID auid, const std::
 
 void AssetManagerObj::free_asset(AssetObj* obj)
 {
-    LD_ASSERT(obj && mAllocators.contains(obj->type));
+    LD_ASSERT(obj && mAssetPA.contains(obj->type));
 
     mNameToAsset.erase(Hash32(obj->name));
     mAssets.erase(obj->auid);
@@ -132,8 +143,33 @@ void AssetManagerObj::free_asset(AssetObj* obj)
     if (obj->name)
         heap_free((void*)obj->name);
 
-    PoolAllocator pa = mAllocators[obj->type];
+    PoolAllocator pa = mAssetPA[obj->type];
     pa.free(obj);
+}
+
+AssetLoadJob* AssetManagerObj::allocate_load_job(AssetType type, const FS::Path& loadPath, AssetObj* assetObj)
+{
+    AssetLoadJob* job = (AssetLoadJob*)mLoadJobPA.allocate();
+    new (job) AssetLoadJob();
+
+    job->loadPath = loadPath;
+    job->assetHandle = {assetObj};
+    job->jobHeader.fn = sAssetTypeTable[(int)type].load;
+    job->jobHeader.type = (uint32_t)0; // TODO: job type for asset loading
+    job->jobHeader.user = (void*)job;
+
+    return job;
+}
+
+void AssetManagerObj::free_load_jobs()
+{
+    for (AssetLoadJob* job : mLoadJobs)
+    {
+        job->~AssetLoadJob();
+        mLoadJobPA.free(job);
+    }
+
+    mLoadJobs.clear();
 }
 
 void AssetManagerObj::poll()
@@ -148,10 +184,8 @@ void AssetManagerObj::begin_load_batch()
 
     mInLoadBatch = true;
 
-    mAudioClipLoadJobs.clear();
-    mMeshLoadJobs.clear();
-    mTexture2DLoadJobs.clear();
-    mLuaScriptLoadJobs.clear();
+    // just sanity checking
+    free_load_jobs();
 }
 
 void AssetManagerObj::end_load_batch()
@@ -163,82 +197,29 @@ void AssetManagerObj::end_load_batch()
     // TODO: wait for asset load jobs only
     JobSystem::get().wait_all();
 
-    for (AudioClipAssetLoadJob* job : mAudioClipLoadJobs)
-        heap_delete<AudioClipAssetLoadJob>(job);
-
-    for (MeshAssetLoadJob* job : mMeshLoadJobs)
-        heap_delete<MeshAssetLoadJob>(job);
-
-    for (Texture2DAssetLoadJob* job : mTexture2DLoadJobs)
-        heap_delete<Texture2DAssetLoadJob>(job);
-
-    for (LuaScriptAssetLoadJob* job : mLuaScriptLoadJobs)
-        heap_delete<LuaScriptAssetLoadJob>(job);
+    free_load_jobs();
 }
 
-void AssetManagerObj::load_audio_clip_asset(const FS::Path& path, AUID auid)
+void AssetManagerObj::load_asset(AssetType type, AUID auid, const FS::Path& uri, const std::string& name)
 {
     LD_ASSERT(mInLoadBatch);
 
-    auto obj = (AudioClipAssetObj*)allocate_asset(ASSET_TYPE_AUDIO_CLIP, auid, path.stem().string());
+    const FS::Path loadPath = mRootPath / uri;
+    sLog.info("load_asset {}", loadPath.string());
 
-    FS::Path loadPath = mRootPath / path;
-
-    auto audioClipLoadJob = heap_new<AudioClipAssetLoadJob>(MEMORY_USAGE_ASSET);
-    audioClipLoadJob->asset = AudioClipAsset(obj);
-    audioClipLoadJob->loadPath = loadPath;
-    audioClipLoadJob->submit();
-    mAudioClipLoadJobs.push_back(audioClipLoadJob);
-}
-
-void AssetManagerObj::load_mesh_asset(const FS::Path& path, AUID auid)
-{
-    LD_ASSERT(mInLoadBatch);
-
-    auto obj = (MeshAssetObj*)allocate_asset(ASSET_TYPE_MESH, auid, path.stem().string());
-
-    FS::Path loadPath = mRootPath / path;
-
-    auto meshLoadJob = heap_new<MeshAssetLoadJob>(MEMORY_USAGE_ASSET);
-    meshLoadJob->asset = MeshAsset(obj);
-    meshLoadJob->loadPath = loadPath;
-    meshLoadJob->submit();
-    mMeshLoadJobs.push_back(meshLoadJob);
-}
-
-void AssetManagerObj::load_texture_2d_asset(const FS::Path& path, AUID auid)
-{
-    LD_ASSERT(mInLoadBatch);
-
-    auto obj = (Texture2DAssetObj*)allocate_asset(ASSET_TYPE_TEXTURE_2D, auid, path.stem().string());
-
-    FS::Path loadPath = mRootPath / path;
-
-    auto textureLoadJob = heap_new<Texture2DAssetLoadJob>(MEMORY_USAGE_ASSET);
-    textureLoadJob->asset = Texture2DAsset(obj);
-    textureLoadJob->loadPath = loadPath;
-    textureLoadJob->submit();
-    mTexture2DLoadJobs.push_back(textureLoadJob);
-}
-
-void AssetManagerObj::load_lua_script_asset(const FS::Path& path, AUID auid)
-{
-    LD_ASSERT(mInLoadBatch);
-
-    auto obj = (LuaScriptAssetObj*)allocate_asset(ASSET_TYPE_LUA_SCRIPT, auid, path.stem().string());
-
-    FS::Path loadPath = mRootPath / path;
-
-    if (mWatcher)
+    if (mWatcher && type == ASSET_TYPE_LUA_SCRIPT)
     {
         mWatcher.add_watch(loadPath, auid);
     }
 
-    auto scriptLoadJob = heap_new<LuaScriptAssetLoadJob>(MEMORY_USAGE_ASSET);
-    scriptLoadJob->asset = LuaScriptAsset(obj);
-    scriptLoadJob->loadPath = loadPath;
-    scriptLoadJob->submit();
-    mLuaScriptLoadJobs.push_back(scriptLoadJob);
+    AssetObj* obj = allocate_asset(type, auid, name);
+    AssetLoadJob* job = allocate_load_job(type, loadPath, obj);
+    mLoadJobs.push_back(job);
+
+    // We need to guarantee that the address of the job header does not change.
+    // method 1. allocations from a PoolAllocator do not migrate
+    // method 2. individual heap_new / heap_malloc for each AssetLoadJob
+    JobSystem::get().submit(&job->jobHeader, JOB_DISPATCH_STANDARD);
 }
 
 AUID AssetManagerObj::get_id_from_name(const char* name, AssetType* outType)
@@ -353,8 +334,6 @@ void AssetManager::load_all_assets()
 {
     LD_PROFILE_SCOPE;
 
-    begin_load_batch();
-
     for (int i = 0; i < (int)ASSET_TYPE_ENUM_COUNT; i++)
     {
         AssetType type = (AssetType)i;
@@ -364,27 +343,14 @@ void AssetManager::load_all_assets()
 
         for (const AssetEntry* entry : entries)
         {
-            switch (entry->type)
-            {
-            case ASSET_TYPE_AUDIO_CLIP:
-                load_audio_clip_asset(entry->uri, entry->id);
-                break;
-            case ASSET_TYPE_MESH:
-                load_mesh_asset(entry->uri, entry->id);
-                break;
-            case ASSET_TYPE_TEXTURE_2D:
-                load_texture_2d_asset(entry->uri, entry->id);
-                break;
-            case ASSET_TYPE_LUA_SCRIPT:
-                load_lua_script_asset(entry->uri, entry->id);
-                break;
-            default:
-                break;
-            }
+            mObj->load_asset(entry->type, entry->id, entry->uri, entry->name);
         }
     }
+}
 
-    end_load_batch();
+void AssetManager::load_asset(AssetType type, AUID auid, const FS::Path& path, const std::string& name)
+{
+    mObj->load_asset(type, auid, path, name);
 }
 
 void AssetManager::begin_load_batch()
@@ -395,34 +361,6 @@ void AssetManager::begin_load_batch()
 void AssetManager::end_load_batch()
 {
     mObj->end_load_batch();
-}
-
-void AssetManager::load_mesh_asset(const FS::Path& path, AUID auid)
-{
-    sLog.info("load_mesh_asset {}", path.string());
-
-    mObj->load_mesh_asset(path, auid);
-}
-
-void AssetManager::load_audio_clip_asset(const FS::Path& path, AUID auid)
-{
-    sLog.info("load_audio_clip_asset {}", path.string());
-
-    mObj->load_audio_clip_asset(path, auid);
-}
-
-void AssetManager::load_texture_2d_asset(const FS::Path& path, AUID auid)
-{
-    sLog.info("load_texture_2d_asset {}", path.string());
-
-    mObj->load_texture_2d_asset(path, auid);
-}
-
-void AssetManager::load_lua_script_asset(const FS::Path& path, AUID auid)
-{
-    sLog.info("load_lua_script_asset {}", path.string());
-
-    mObj->load_lua_script_asset(path, auid);
 }
 
 AUID AssetManager::get_id_from_name(const char* name, AssetType* outType)

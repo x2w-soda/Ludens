@@ -188,7 +188,9 @@ void EditorContextObj::load_project(const FS::Path& projectSchemaPath)
     // Load all project assets at once using job system.
     // Once we have asynchronous-load-jobs maybe we can load assets
     // used by the loaded scene first?
+    assetManager.begin_load_batch();
     assetManager.load_all_assets();
+    assetManager.end_load_batch();
 
     project.get_scene_paths(scenePaths);
 

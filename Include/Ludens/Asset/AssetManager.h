@@ -30,26 +30,17 @@ struct AssetManager : Handle<struct AssetManagerObj>
     /// @brief If file watching is enabled, this polls for any changes.
     void update();
 
-    /// @brief Loads all assets in registry in one batch.
+    /// @brief Append load jobs to loads all assets in registry.
     void load_all_assets();
+
+    /// @brief Append a load job to current patch.
+    void load_asset(AssetType type, AUID auid, const FS::Path& path, const std::string& name);
 
     /// @brief Begin asset load batch.
     void begin_load_batch();
 
     /// @brief End asset load batch.
     void end_load_batch();
-
-    /// @brief Append mesh asset load job to current batch.
-    void load_mesh_asset(const FS::Path& path, AUID auid);
-
-    /// @brief Append audio clip asset load job to current batch.
-    void load_audio_clip_asset(const FS::Path& path, AUID auid);
-
-    /// @brief Append texture 2D asset load job to current batch.
-    void load_texture_2d_asset(const FS::Path& path, AUID auid);
-
-    /// @brief Append lua script asset load job to current batch.
-    void load_lua_script_asset(const FS::Path& path, AUID auid);
 
     /// @brief Get asset ID from name
     AUID get_id_from_name(const char* name, AssetType* outType);

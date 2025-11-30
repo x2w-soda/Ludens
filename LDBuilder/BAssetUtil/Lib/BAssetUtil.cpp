@@ -24,7 +24,7 @@ void AssetUtil::destroy(AssetUtil util)
 bool AssetUtil::import_texture_2d(const FS::Path& sourcePath)
 {
     void* memory = heap_malloc(get_asset_byte_size(ASSET_TYPE_TEXTURE_2D), MEMORY_USAGE_ASSET);
-    Texture2DAsset asset((Texture2DAssetObj*)memory);
+    Texture2DAsset asset((AssetObj*)memory);
 
     std::string ext = sourcePath.extension().string();
     if (ext != ".png")
@@ -57,7 +57,7 @@ bool AssetUtil::import_texture_2d(const FS::Path& sourcePath)
 bool AssetUtil::import_mesh(const FS::Path& sourcePath)
 {
     void* memory = heap_malloc(get_asset_byte_size(ASSET_TYPE_MESH), MEMORY_USAGE_ASSET);
-    MeshAsset asset((MeshAssetObj*)memory);
+    MeshAsset asset((AssetObj*)memory);
 
     std::string ext = sourcePath.extension().string();
     if (ext != ".gltf")
@@ -86,7 +86,7 @@ bool AssetUtil::import_mesh(const FS::Path& sourcePath)
 bool AssetUtil::import_audio_clip(const FS::Path& sourcePath)
 {
     void* memory = heap_malloc(get_asset_byte_size(ASSET_TYPE_AUDIO_CLIP), MEMORY_USAGE_ASSET);
-    AudioClipAsset asset((AudioClipAssetObj*)memory);
+    AudioClipAsset asset((AssetObj*)memory);
 
     std::string ext = sourcePath.extension().string();
     if (ext != ".wav" && ext != ".mp3")

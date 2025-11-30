@@ -7,6 +7,48 @@
 
 namespace LD {
 
+void AudioClipAssetObj::load(void* user)
+{
+    LD_PROFILE_SCOPE;
+
+    auto& job = *(AssetLoadJob*)user;
+    AudioClipAssetObj* obj = (AudioClipAssetObj*)job.assetHandle.unwrap();
+
+    uint64_t binarySize = FS::get_file_size(job.loadPath);
+    if (binarySize == 0)
+        return;
+
+    Serializer serializer(binarySize);
+    FS::read_file(job.loadPath, binarySize, serializer.data());
+
+    AssetType type;
+    uint16_t major, minor, patch;
+    if (!asset_header_read(serializer, major, minor, patch, type))
+        return;
+
+    if (type != ASSET_TYPE_AUDIO_CLIP)
+        return;
+
+    uint32_t u32;
+    uint32_t channels;
+    uint32_t sampleRate;
+    uint32_t frameCount;
+    serializer.read_u32(u32);
+    serializer.read_u32(sampleRate);
+    serializer.read_u32(channels);
+    serializer.read_u32(frameCount);
+    SampleFormat format = (SampleFormat)u32;
+    LD_ASSERT(format == SAMPLE_FORMAT_F32);
+
+    uint64_t sampleByteSize;
+    serializer.read_u64(sampleByteSize);
+
+    const byte* sampleData = serializer.view_now();
+    serializer.advance(sampleByteSize);
+
+    obj->data = AudioData::create_from_samples(channels, sampleRate, frameCount, sampleData, sampleByteSize);
+}
+
 void AudioClipAssetObj::unload(AssetObj* base)
 {
     AudioClipAssetObj& self = *(AudioClipAssetObj*)base;
@@ -63,7 +105,7 @@ void AudioClipAssetImportJob::execute(void* user)
 
     Serializer serializer;
     asset_header_write(serializer, ASSET_TYPE_AUDIO_CLIP);
-    
+
     serializer.write_u32((uint32_t)data.get_sample_format());
     serializer.write_u32((uint32_t)data.get_sample_rate());
     serializer.write_u32((uint32_t)data.get_channels());
@@ -75,58 +117,6 @@ void AudioClipAssetImportJob::execute(void* user)
     size_t binarySize;
     const byte* binary = serializer.view(binarySize);
     FS::write_file(self.savePath, binarySize, binary);
-}
-
-void AudioClipAssetLoadJob::submit()
-{
-    mHeader.type = 0;
-    mHeader.user = this;
-    mHeader.fn = &AudioClipAssetLoadJob::execute;
-
-    JobSystem js = JobSystem::get();
-    js.submit(&mHeader, JOB_DISPATCH_STANDARD);
-}
-
-void AudioClipAssetLoadJob::execute(void* user)
-{
-    LD_PROFILE_SCOPE;
-
-    auto& self = *(AudioClipAssetLoadJob*)user;
-    AudioClipAssetObj* obj = self.asset.unwrap();
-
-    uint64_t binarySize = FS::get_file_size(self.loadPath);
-    if (binarySize == 0)
-        return;
-
-    Serializer serializer(binarySize);
-    FS::read_file(self.loadPath, binarySize, serializer.data());
-
-    AssetType type;
-    uint16_t major, minor, patch;
-    if (!asset_header_read(serializer, major, minor, patch, type))
-        return;
-
-    if (type != ASSET_TYPE_AUDIO_CLIP)
-        return;
-
-    uint32_t u32;
-    uint32_t channels;
-    uint32_t sampleRate;
-    uint32_t frameCount;
-    serializer.read_u32(u32);
-    serializer.read_u32(sampleRate);
-    serializer.read_u32(channels);
-    serializer.read_u32(frameCount);
-    SampleFormat format = (SampleFormat)u32;
-    LD_ASSERT(format == SAMPLE_FORMAT_F32);
-
-    uint64_t sampleByteSize;
-    serializer.read_u64(sampleByteSize);
-
-    const byte* sampleData = serializer.view_now();
-    serializer.advance(sampleByteSize);
-
-    obj->data = AudioData::create_from_samples(channels, sampleRate, frameCount, sampleData, sampleByteSize);
 }
 
 } // namespace LD

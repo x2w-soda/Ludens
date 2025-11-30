@@ -9,6 +9,40 @@
 
 namespace LD {
 
+void Texture2DAssetObj::load(void* user)
+{
+    LD_PROFILE_SCOPE;
+
+    auto& job = *(AssetLoadJob*)user;
+    Texture2DAssetObj* obj = (Texture2DAssetObj*)job.assetHandle.unwrap();
+
+    uint64_t binarySize = FS::get_file_size(job.loadPath);
+    if (binarySize == 0)
+        return;
+
+    std::vector<byte> binary(binarySize);
+    FS::read_file(job.loadPath, binarySize, binary.data());
+
+    // deserialize asset from disk
+    Serializer serializer(binarySize);
+    FS::read_file(job.loadPath, binarySize, serializer.data());
+
+    AssetType type;
+    uint16_t major, minor, patch;
+    if (!asset_header_read(serializer, major, minor, patch, type))
+        return;
+
+    if (type != ASSET_TYPE_TEXTURE_2D)
+        return;
+
+    serializer.read_i32((int32_t&)obj->compression);
+    serializer.read_i32((int32_t&)obj->samplerHint.filter);
+    serializer.read_i32((int32_t&)obj->samplerHint.mipmapFilter);
+    serializer.read_i32((int32_t&)obj->samplerHint.addressMode);
+
+    Bitmap::deserialize(serializer, obj->bitmap);
+}
+
 void Texture2DAssetObj::unload(AssetObj* base)
 {
     Texture2DAssetObj& self = *(Texture2DAssetObj*)base;
@@ -73,49 +107,6 @@ void Texture2DAssetImportJob::execute(void* user)
     size_t binarySize;
     const byte* binary = serializer.view(binarySize);
     FS::write_file(self.info.savePath, binarySize, binary);
-}
-
-void Texture2DAssetLoadJob::submit()
-{
-    mHeader.user = this;
-    mHeader.type = 0;
-    mHeader.fn = &Texture2DAssetLoadJob::execute;
-
-    JobSystem::get().submit(&mHeader, JOB_DISPATCH_STANDARD);
-}
-
-void Texture2DAssetLoadJob::execute(void* user)
-{
-    LD_PROFILE_SCOPE;
-
-    auto& self = *(Texture2DAssetLoadJob*)user;
-    Texture2DAssetObj* obj = self.asset.unwrap();
-
-    uint64_t binarySize = FS::get_file_size(self.loadPath);
-    if (binarySize == 0)
-        return;
-
-    std::vector<byte> binary(binarySize);
-    FS::read_file(self.loadPath, binarySize, binary.data());
-
-    // deserialize asset from disk
-    Serializer serializer(binarySize);
-    FS::read_file(self.loadPath, binarySize, serializer.data());
-
-    AssetType type;
-    uint16_t major, minor, patch;
-    if (!asset_header_read(serializer, major, minor, patch, type))
-        return;
-
-    if (type != ASSET_TYPE_TEXTURE_2D)
-        return;
-
-    serializer.read_i32((int32_t&)obj->compression);
-    serializer.read_i32((int32_t&)obj->samplerHint.filter);
-    serializer.read_i32((int32_t&)obj->samplerHint.mipmapFilter);
-    serializer.read_i32((int32_t&)obj->samplerHint.addressMode);
-
-    Bitmap::deserialize(serializer, obj->bitmap);
 }
 
 } // namespace LD

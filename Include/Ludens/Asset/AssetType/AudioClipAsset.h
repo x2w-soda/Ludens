@@ -41,20 +41,4 @@ private:
     JobHeader mHeader;
 };
 
-class AudioClipAssetLoadJob
-{
-public:
-    AudioClipAsset asset; /// subject handle
-    FS::Path loadPath;    /// path to audio clip asset file on disk.
-
-    /// @brief Submit to job system. Address of this job instance must not
-    ///        change until the worker thread completes execution.
-    void submit();
-
-private:
-    static void execute(void*);
-
-    JobHeader mHeader;
-};
-
 } // namespace LD

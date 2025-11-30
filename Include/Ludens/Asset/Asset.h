@@ -39,8 +39,6 @@ template <typename TAssetObj>
 struct AssetHandle : public Handle<TAssetObj>
 {
     AssetHandle() = default;
-    AssetHandle(TAssetObj* obj)
-        : Handle<TAssetObj>(obj) {}
     AssetHandle(AssetObj* obj)
         : Handle<TAssetObj>((TAssetObj*)obj) {}
 

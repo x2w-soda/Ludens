@@ -26,6 +26,7 @@ namespace LD {
 
 struct Serializer;
 struct AssetManagerInfo;
+struct AssetLoadJob;
 
 /// @brief Asset manager implementation.
 class AssetManagerObj
@@ -41,15 +42,14 @@ public:
     AssetObj* allocate_asset(AssetType type, AUID auid, const std::string& name);
     void free_asset(AssetObj* obj);
 
+    AssetLoadJob* allocate_load_job(AssetType type, const FS::Path& loadPath, AssetObj* assetObj);
+    void free_load_jobs();
+
     void poll();
 
     void begin_load_batch();
     void end_load_batch();
-
-    void load_audio_clip_asset(const FS::Path& path, AUID auid);
-    void load_mesh_asset(const FS::Path& path, AUID auid);
-    void load_texture_2d_asset(const FS::Path& path, AUID auid);
-    void load_lua_script_asset(const FS::Path& path, AUID auid);
+    void load_asset(AssetType type, AUID auid, const FS::Path& uri, const std::string& name);
 
     AUID get_id_from_name(const char* name, AssetType* outType);
     AudioClipAsset get_audio_clip_asset(AUID auid);
@@ -65,17 +65,25 @@ public:
     static void on_asset_modified(const FS::Path& path, AUID id, void* user);
 
 private:
-    std::unordered_map<AssetType, PoolAllocator> mAllocators;
+    std::unordered_map<AssetType, PoolAllocator> mAssetPA;
     std::unordered_map<AUID, AssetObj*> mAssets;
     std::unordered_map<Hash32, AUID> mNameToAsset;
-    std::vector<struct MeshAssetLoadJob*> mMeshLoadJobs;
-    std::vector<struct AudioClipAssetLoadJob*> mAudioClipLoadJobs;
-    std::vector<struct Texture2DAssetLoadJob*> mTexture2DLoadJobs;
-    std::vector<struct LuaScriptAssetLoadJob*> mLuaScriptLoadJobs;
+    std::vector<AssetLoadJob*> mLoadJobs;
+    PoolAllocator mLoadJobPA;
     AssetWatcher mWatcher;     /// optional asset file watcher
     AssetRegistry mRegistry;   /// bookkeeping for all assets in project
     const FS::Path mRootPath;  /// asset URIs are relative paths to root path
     bool mInLoadBatch = false; /// is within load batch scope
+};
+
+/// @brief Job context for loading an Asset.
+/// @warning Address of this struct must not change since it is supplied as JobHeader::user,
+///          that means worker threads will be accessing this struct.
+struct AssetLoadJob
+{
+    FS::Path loadPath;                 /// path to .lda file on disk
+    AssetHandle<AssetObj> assetHandle; /// base class handle
+    JobHeader jobHeader;               /// submitted to the job system
 };
 
 /// @brief Audio clip asset implementation.
@@ -83,6 +91,7 @@ struct AudioClipAssetObj : AssetObj
 {
     AudioData data;
 
+    static void load(void* assetLoadJob);
     static void unload(AssetObj* base);
 };
 
@@ -92,6 +101,7 @@ struct MeshAssetObj : AssetObj
 {
     ModelBinary* modelBinary;
 
+    static void load(void* assetLoadJob);
     static void unload(AssetObj* base);
 };
 
@@ -102,6 +112,7 @@ struct Texture2DAssetObj : AssetObj
     TextureCompression compression;
     Bitmap bitmap;
 
+    static void load(void* assetLoadJob);
     static void unload(AssetObj* base);
 };
 
@@ -112,6 +123,7 @@ struct LuaScriptAssetObj : AssetObj
     CUID duid;    /// component ID identifies script instance
     char* source; /// lua source code string
 
+    static void load(void* assetLoadJob);
     static void unload(AssetObj* base);
 };
 

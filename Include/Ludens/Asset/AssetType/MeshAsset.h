@@ -39,20 +39,4 @@ private:
     JobHeader mHeader;
 };
 
-class MeshAssetLoadJob
-{
-public:
-    MeshAsset asset;
-    std::filesystem::path loadPath;
-
-    /// @brief Submit to job system. Address of this job instance must not
-    ///        change until the worker thread completes execution.
-    void submit();
-
-private:
-    static void execute(void*);
-
-    JobHeader mHeader;
-};
-
 } // namespace LD
