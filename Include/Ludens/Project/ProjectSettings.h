@@ -17,6 +17,9 @@ struct ProjectStartupSettings : Handle<struct ProjectSettingsObj>
 
     std::string get_window_name();
     void set_window_name(const std::string& name);
+
+    std::string get_default_scene_path();
+    void set_default_scene_path(const std::string& scenePath);
 };
 
 /// @brief Ground truth data for project-wide settings.

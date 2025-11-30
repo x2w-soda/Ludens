@@ -104,6 +104,13 @@ static void load_project_startup_settings(ProjectStartupSettings settings, TOMLV
         windowNameTOML.get_string(windowName);
 
     settings.set_window_name(windowName);
+
+    std::string defaultScenePath = DEFAULT_STARTUP_DEFAULT_SCENE_PATH;
+    TOMLValue defaultScenePathTOML = startupTOML["default_scene_path"];
+    if (defaultScenePathTOML)
+        defaultScenePathTOML.get_string(defaultScenePath);
+
+    settings.set_default_scene_path(defaultScenePath);
 }
 
 static void save_project_to_schema(Project project, TOMLDocument doc)
@@ -146,6 +153,10 @@ static void save_project_startup_settings(ProjectStartupSettings settings, TOMLV
     TOMLValue windowNameTOML = startupTOML.set_key("window_name", TOML_TYPE_STRING);
     if (windowNameTOML)
         windowNameTOML.set_string(settings.get_window_name());
+
+    TOMLValue defaultScenePathTOML = startupTOML.set_key("default_scene_path", TOML_TYPE_STRING);
+    if (defaultScenePathTOML)
+        defaultScenePathTOML.set_string(settings.get_default_scene_path());
 }
 
 //
@@ -188,7 +199,10 @@ bool ProjectSchema::save_project(Project project, const FS::Path& savePath, std:
 
     std::string str;
     if (!doc.save_to_string(str))
+    {
+        TOMLDocument::destroy(doc);
         return false;
+    }
 
     TOMLDocument::destroy(doc);
     return FS::write_file_and_swap_backup(savePath, str.size(), (const byte*)str.data(), err);

@@ -49,6 +49,11 @@ std::string Project::get_name() const
     return mObj->name;
 }
 
+FS::Path Project::get_root_path() const
+{
+    return mObj->rootPath;
+}
+
 void Project::set_assets_path(const std::filesystem::path& assetsPath)
 {
     mObj->assetsPath = assetsPath;

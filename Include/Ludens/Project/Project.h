@@ -29,6 +29,9 @@ struct Project : Handle<struct ProjectObj>
     /// @brief Get project name.
     std::string get_name() const;
 
+    /// @brief Get path to directory containing Project schema.
+    FS::Path get_root_path() const;
+
     /// @brief Set relative path to project Assets schema.
     /// @param assetsPath Relative path to project root.
     void set_assets_path(const FS::Path& assetsPath);
