@@ -242,48 +242,14 @@ AUID AssetManagerObj::get_id_from_name(const char* name, AssetType* outType)
     return ite->second;
 }
 
-AudioClipAsset AssetManagerObj::get_audio_clip_asset(AUID auid)
+AssetHandle<AssetObj> AssetManagerObj::get_asset(AUID auid)
 {
     auto ite = mAssets.find(auid);
 
     if (ite == mAssets.end())
         return {};
 
-    LD_ASSERT(ite->second->type == ASSET_TYPE_AUDIO_CLIP);
-    return AudioClipAsset(ite->second);
-}
-
-Texture2DAsset AssetManagerObj::get_texture_2d_asset(AUID auid)
-{
-    auto ite = mAssets.find(auid);
-
-    if (ite == mAssets.end())
-        return {};
-
-    LD_ASSERT(ite->second->type == ASSET_TYPE_TEXTURE_2D);
-    return Texture2DAsset(ite->second);
-}
-
-MeshAsset AssetManagerObj::get_mesh_asset(AUID auid)
-{
-    auto ite = mAssets.find(auid);
-
-    if (ite == mAssets.end())
-        return {};
-
-    LD_ASSERT(ite->second->type == ASSET_TYPE_MESH);
-    return MeshAsset(ite->second);
-}
-
-LuaScriptAsset AssetManagerObj::get_lua_script_asset(AUID auid)
-{
-    auto ite = mAssets.find(auid);
-
-    if (ite == mAssets.end())
-        return {};
-
-    LD_ASSERT(ite->second->type == ASSET_TYPE_LUA_SCRIPT);
-    return LuaScriptAsset(ite->second);
+    return AssetHandle<AssetObj>(ite->second);
 }
 
 void AssetManagerObj::on_asset_modified(const FS::Path& path, AUID id, void* user)
@@ -368,24 +334,9 @@ AUID AssetManager::get_id_from_name(const char* name, AssetType* outType)
     return mObj->get_id_from_name(name, outType);
 }
 
-AudioClipAsset AssetManager::get_audio_clip_asset(AUID auid)
+AssetHandle<AssetObj> AssetManager::get_asset(AUID auid)
 {
-    return mObj->get_audio_clip_asset(auid);
-}
-
-MeshAsset AssetManager::get_mesh_asset(AUID auid)
-{
-    return mObj->get_mesh_asset(auid);
-}
-
-Texture2DAsset AssetManager::get_texture_2d_asset(AUID auid)
-{
-    return mObj->get_texture_2d_asset(auid);
-}
-
-LuaScriptAsset AssetManager::get_lua_script_asset(AUID auid)
-{
-    return mObj->get_lua_script_asset(auid);
+    return mObj->get_asset(auid);
 }
 
 void asset_unload(AssetObj* base)

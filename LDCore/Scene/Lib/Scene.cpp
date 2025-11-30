@@ -108,7 +108,7 @@ static void load_audio_source_component(SceneObj* scene, ComponentBase* base, vo
 
     if (sourceC->clipAUID)
     {
-        AudioClipAsset clipA = scene->assetManager.get_audio_clip_asset(sourceC->clipAUID);
+        AudioClipAsset clipA(scene->assetManager.get_asset(sourceC->clipAUID).unwrap());
 
         // NOTE: Buffer not destroyed upon component unload.
         //       Other components may still be using it for playback.
@@ -185,7 +185,7 @@ static void load_mesh_component(SceneObj* scene, ComponentBase* base, void* comp
 
     if (meshC->auid)
     {
-        MeshAsset meshA = scene->assetManager.get_mesh_asset(meshC->auid);
+        MeshAsset meshA(scene->assetManager.get_asset(meshC->auid).unwrap());
 
         if (!scene->auidToRuid.contains(meshA.get_auid()))
             scene->auidToRuid[meshC->auid] = scene->renderServer.create_mesh(*meshA.data());
@@ -297,8 +297,9 @@ void SceneObj::create_lua_script(ComponentScriptSlot* scriptSlot)
     lua.get_field(-1, "scripts");
     lua.push_number((double)compID);
 
-    LuaScriptAsset asset = assetManager.get_lua_script_asset(assetID);
-    LD_ASSERT(asset);
+    AssetObj* assetObj = assetManager.get_asset(assetID).unwrap();
+    LD_ASSERT(assetObj && assetObj->type == ASSET_TYPE_LUA_SCRIPT);
+    LuaScriptAsset asset(assetObj);
     const char* luaSource = asset.get_source();
 
     // this should push the script instance table onto stack
@@ -827,7 +828,7 @@ void Scene::IAudioSource::set_clip_asset(AUID clipAUID)
     if (!mComp)
         return;
 
-    AudioClipAsset clipA = mScene->assetManager.get_audio_clip_asset(clipAUID);
+    AudioClipAsset clipA(mScene->assetManager.get_asset(clipAUID).unwrap());
     AudioBuffer buffer = mScene->get_or_create_audio_buffer(clipA);
 
     if (buffer)

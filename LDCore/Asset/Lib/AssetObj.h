@@ -52,10 +52,7 @@ public:
     void load_asset(AssetType type, AUID auid, const FS::Path& uri, const std::string& name);
 
     AUID get_id_from_name(const char* name, AssetType* outType);
-    AudioClipAsset get_audio_clip_asset(AUID auid);
-    Texture2DAsset get_texture_2d_asset(AUID auid);
-    MeshAsset get_mesh_asset(AUID auid);
-    LuaScriptAsset get_lua_script_asset(AUID auid);
+    AssetHandle<AssetObj> get_asset(AUID auid);
 
     inline void find_assets_by_type(AssetType type, std::vector<const AssetEntry*>& entries)
     {

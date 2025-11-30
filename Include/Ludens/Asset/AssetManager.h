@@ -45,17 +45,8 @@ struct AssetManager : Handle<struct AssetManagerObj>
     /// @brief Get asset ID from name
     AUID get_id_from_name(const char* name, AssetType* outType);
 
-    /// @brief Get audio clip asset from ID
-    AudioClipAsset get_audio_clip_asset(AUID auid);
-
-    /// @brief Get mesh asset from ID.
-    MeshAsset get_mesh_asset(AUID auid);
-
-    /// @brief Get texture 2D asset from ID.
-    Texture2DAsset get_texture_2d_asset(AUID auid);
-
-    /// @brief Get Lua script asset from ID.
-    LuaScriptAsset get_lua_script_asset(AUID auid);
+    /// @brief Get asset from ID
+    AssetHandle<AssetObj> get_asset(AUID auid);
 };
 
 } // namespace LD

@@ -33,7 +33,7 @@ void eui_inspect_audio_source_component(EInspectorWindowObj& self, ComponentType
     AssetManager AM = self.editorCtx.get_asset_manager();
 
     AudioSourceComponent* sourceC = (AudioSourceComponent*)comp;
-    AudioClipAsset clipA = AM.get_audio_clip_asset(sourceC->clipAUID);
+    AudioClipAsset clipA(AM.get_asset(sourceC->clipAUID).unwrap());
     LD_ASSERT(clipA);
 
     if (eui_asset_slot(editorTheme, ASSET_TYPE_AUDIO_CLIP, sourceC->clipAUID, clipA.get_name()) && self.selectAssetFn)
@@ -77,7 +77,7 @@ static void eui_inspect_mesh_component(EInspectorWindowObj& self, ComponentType 
     MeshComponent* meshC = (MeshComponent*)comp;
     eui_transform_edit(editorTheme, &meshC->transform);
 
-    MeshAsset asset = AM.get_mesh_asset(meshC->auid);
+    MeshAsset asset(AM.get_asset(meshC->auid).unwrap());
     LD_ASSERT(asset);
     if (eui_asset_slot(editorTheme, ASSET_TYPE_MESH, meshC->auid, asset.get_name()) && self.selectAssetFn)
     {
