@@ -19,6 +19,10 @@ struct AssetUtil : Handle<struct AssetUtilObj>
 
     /// @brief Import a Mesh asset from source file.
     /// @return True on success.
+    bool import_font(const FS::Path& sourcePath);
+
+    /// @brief Import a Mesh asset from source file.
+    /// @return True on success.
     bool import_mesh(const FS::Path& sourcePath);
 
     /// @brief Import an AudioClip asset from source file.

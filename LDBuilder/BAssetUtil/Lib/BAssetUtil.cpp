@@ -1,4 +1,5 @@
 #include <Ludens/Asset/AssetType/AudioClipAsset.h>
+#include <Ludens/Asset/AssetType/FontAsset.h>
 #include <Ludens/Asset/AssetType/MeshAsset.h>
 #include <Ludens/Asset/AssetType/Texture2DAsset.h>
 #include <Ludens/Log/Log.h>
@@ -50,6 +51,36 @@ bool AssetUtil::import_texture_2d(const FS::Path& sourcePath)
 
     heap_free(memory);
     sLog.info("import_texture_2d: saved to {}", savePath.string());
+
+    return true;
+}
+
+bool AssetUtil::import_font(const FS::Path& sourcePath)
+{
+    void* memory = heap_malloc(get_asset_byte_size(ASSET_TYPE_FONT), MEMORY_USAGE_ASSET);
+    FontAsset asset((AssetObj*)memory);
+
+    std::string ext = sourcePath.extension().string();
+    if (ext != ".ttf")
+    {
+        sLog.warn("import_font: unsupported file type {}", ext);
+        return false;
+    }
+
+    FS::Path savePath(sourcePath);
+    savePath.replace_extension(LD_ASSET_EXT);
+
+    FontAssetImportJob importJob{};
+    importJob.asset = asset;
+    importJob.info.sourcePath = sourcePath;
+    importJob.info.savePath = savePath;
+    importJob.info.fontSize = 36.0; // TODO: either parameterize or use some config
+    importJob.submit();
+
+    JobSystem::get().wait_all();
+
+    heap_free(memory);
+    sLog.info("import_font: saved to {}", savePath.string());
 
     return true;
 }
