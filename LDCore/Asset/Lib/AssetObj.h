@@ -28,6 +28,15 @@ struct Serializer;
 struct AssetManagerInfo;
 struct AssetLoadJob;
 
+/// @brief Base members of asset object implementation.
+struct AssetObj
+{
+    const char* name;
+    struct AssetManagerObj* manager;
+    AUID auid;
+    AssetType type;
+};
+
 /// @brief Asset manager implementation.
 class AssetManagerObj
 {
@@ -52,7 +61,7 @@ public:
     void load_asset(AssetType type, AUID auid, const FS::Path& uri, const std::string& name);
 
     AUID get_id_from_name(const char* name, AssetType* outType);
-    AssetHandle<AssetObj> get_asset(AUID auid);
+    AssetHandle get_asset(AUID auid);
 
     inline void find_assets_by_type(AssetType type, std::vector<const AssetEntry*>& entries)
     {
@@ -78,9 +87,9 @@ private:
 ///          that means worker threads will be accessing this struct.
 struct AssetLoadJob
 {
-    FS::Path loadPath;                 /// path to .lda file on disk
-    AssetHandle<AssetObj> assetHandle; /// base class handle
-    JobHeader jobHeader;               /// submitted to the job system
+    FS::Path loadPath;       /// path to .lda file on disk
+    AssetHandle assetHandle; /// base class handle
+    JobHeader jobHeader;     /// submitted to the job system
 };
 
 /// @brief Audio clip asset implementation.
@@ -117,7 +126,6 @@ struct Texture2DAssetObj : AssetObj
 ///        to instantiate lua script instances.
 struct LuaScriptAssetObj : AssetObj
 {
-    CUID duid;    /// component ID identifies script instance
     char* source; /// lua source code string
 
     static void load(void* assetLoadJob);

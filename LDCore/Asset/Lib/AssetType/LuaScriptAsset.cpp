@@ -43,21 +43,23 @@ void LuaScriptAsset::unload()
 
 const char* LuaScriptAsset::get_source()
 {
-    LD_ASSERT(mObj->source);
+    auto* obj = (LuaScriptAssetObj*)mObj;
+    LD_ASSERT(obj->source);
 
-    return mObj->source;
+    return obj->source;
 }
 
 void LuaScriptAsset::set_source(const char* src, size_t len)
 {
-    LD_ASSERT(mObj->source);
+    auto* obj = (LuaScriptAssetObj*)mObj;
+    LD_ASSERT(obj->source);
 
-    if (mObj->source)
-        heap_free(mObj->source);
+    if (obj->source)
+        heap_free(obj->source);
 
-    mObj->source = (char*)heap_malloc(len + 1, MEMORY_USAGE_ASSET);
-    memcpy(mObj->source, src, len);
-    mObj->source[len] = '\0';
+    obj->source = (char*)heap_malloc(len + 1, MEMORY_USAGE_ASSET);
+    memcpy(obj->source, src, len);
+    obj->source[len] = '\0';
 }
 
 } // namespace LD

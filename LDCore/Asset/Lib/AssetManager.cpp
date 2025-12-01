@@ -242,14 +242,14 @@ AUID AssetManagerObj::get_id_from_name(const char* name, AssetType* outType)
     return ite->second;
 }
 
-AssetHandle<AssetObj> AssetManagerObj::get_asset(AUID auid)
+AssetHandle AssetManagerObj::get_asset(AUID auid)
 {
     auto ite = mAssets.find(auid);
 
     if (ite == mAssets.end())
         return {};
 
-    return AssetHandle<AssetObj>(ite->second);
+    return AssetHandle(ite->second);
 }
 
 void AssetManagerObj::on_asset_modified(const FS::Path& path, AUID id, void* user)
@@ -275,6 +275,25 @@ void AssetManagerObj::on_asset_modified(const FS::Path& path, AUID id, void* use
             scriptA.set_source((const char*)buf.data(), (size_t)buf.size());
         }
     }
+}
+
+//
+// Public API
+//
+
+AssetType AssetHandle::get_type()
+{
+    return mObj->type;
+}
+
+const char* AssetHandle::get_name()
+{
+    return mObj->name;
+}
+
+AUID AssetHandle::get_auid()
+{
+    return mObj->auid;
 }
 
 AssetManager AssetManager::create(const AssetManagerInfo& info)
@@ -334,7 +353,7 @@ AUID AssetManager::get_id_from_name(const char* name, AssetType* outType)
     return mObj->get_id_from_name(name, outType);
 }
 
-AssetHandle<AssetObj> AssetManager::get_asset(AUID auid)
+AssetHandle AssetManager::get_asset(AUID auid)
 {
     return mObj->get_asset(auid);
 }

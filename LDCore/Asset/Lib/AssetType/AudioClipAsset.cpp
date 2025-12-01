@@ -59,25 +59,33 @@ void AudioClipAssetObj::unload(AssetObj* base)
 
 uint32_t AudioClipAsset::get_frame_count()
 {
-    return mObj->data.get_frame_count();
+    auto* obj = (AudioClipAssetObj*)mObj;
+
+    return obj->data.get_frame_count();
 }
 
 uint32_t AudioClipAsset::get_channel_count()
 {
-    return mObj->data.get_channels();
+    auto* obj = (AudioClipAssetObj*)mObj;
+
+    return obj->data.get_channels();
 }
 
 uint32_t AudioClipAsset::get_sample_rate()
 {
-    return mObj->data.get_sample_rate();
+    auto* obj = (AudioClipAssetObj*)mObj;
+
+    return obj->data.get_sample_rate();
 }
 
 const float* AudioClipAsset::get_frames(uint32_t frameOffset)
 {
-    LD_ASSERT(mObj->data.get_sample_format() == SAMPLE_FORMAT_F32);
-    const float* samples = (const float*)mObj->data.get_samples();
+    auto* obj = (AudioClipAssetObj*)mObj;
 
-    return samples + frameOffset * mObj->data.get_channels();
+    LD_ASSERT(obj->data.get_sample_format() == SAMPLE_FORMAT_F32);
+    const float* samples = (const float*)obj->data.get_samples();
+
+    return samples + frameOffset * obj->data.get_channels();
 }
 
 void AudioClipAssetImportJob::submit()
@@ -94,7 +102,7 @@ void AudioClipAssetImportJob::execute(void* user)
     LD_PROFILE_SCOPE;
 
     auto& self = *(AudioClipAssetImportJob*)user;
-    AudioClipAssetObj* obj = self.asset.unwrap();
+    AudioClipAssetObj* obj = (AudioClipAssetObj*)self.asset.unwrap();
 
     std::string sourcePath = self.sourcePath.string();
     AudioData data = obj->data = AudioData::create_from_path(sourcePath);

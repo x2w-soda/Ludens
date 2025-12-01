@@ -54,7 +54,9 @@ void MeshAsset::unload()
 
 ModelBinary* MeshAsset::data()
 {
-    return mObj->modelBinary;
+    auto* obj = (MeshAssetObj*)mObj;
+
+    return obj->modelBinary;
 }
 
 void MeshAssetImportJob::submit()
@@ -70,7 +72,7 @@ void MeshAssetImportJob::submit()
 void MeshAssetImportJob::execute(void* user)
 {
     auto& self = *(MeshAssetImportJob*)user;
-    MeshAssetObj* obj = self.asset.unwrap();
+    auto* obj = (MeshAssetObj*)self.asset.unwrap();
 
     std::string sourcePath = self.info.sourcePath.string();
     Model model = Model::load_gltf_model(sourcePath.c_str());

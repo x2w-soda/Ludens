@@ -42,7 +42,7 @@ public:
     static void on_file_modify(const FS::Path& path, void* user);
 
 private:
-    FileWatcher mWatcher;
+    FileWatcher mWatcher = {};
     std::unordered_map<Hash32, AUID> mPathToID;
     void (*mUserCallback)(const FS::Path& path, AUID id, void* user);
     void* mUser;

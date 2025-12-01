@@ -9,7 +9,7 @@ namespace LD {
 
 /// @brief Audio clip asset handle. This is typically a static buffer of
 ///        audio samples after decoding and resampling from WAV, MP3, etc.
-struct AudioClipAsset : AssetHandle<struct AudioClipAssetObj>
+struct AudioClipAsset : AssetHandle
 {
     /// @brief Get number of frames in this clip.
     uint32_t get_frame_count();

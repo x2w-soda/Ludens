@@ -297,9 +297,9 @@ void SceneObj::create_lua_script(ComponentScriptSlot* scriptSlot)
     lua.get_field(-1, "scripts");
     lua.push_number((double)compID);
 
-    AssetObj* assetObj = assetManager.get_asset(assetID).unwrap();
-    LD_ASSERT(assetObj && assetObj->type == ASSET_TYPE_LUA_SCRIPT);
-    LuaScriptAsset asset(assetObj);
+    AssetHandle assetHandle = assetManager.get_asset(assetID);
+    LD_ASSERT(assetHandle && assetHandle.get_type() == ASSET_TYPE_LUA_SCRIPT);
+    LuaScriptAsset asset = (LuaScriptAsset)assetHandle;
     const char* luaSource = asset.get_source();
 
     // this should push the script instance table onto stack

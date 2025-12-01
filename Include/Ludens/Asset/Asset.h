@@ -24,29 +24,20 @@ size_t get_asset_byte_size(AssetType type);
 /// @brief Get static C string for asset type.
 const char* get_asset_type_cstr(AssetType type);
 
-/// @brief Base members of asset object implementation.
-struct AssetObj
-{
-    const char* name;
-    struct AssetManagerObj* manager;
-    AUID auid;
-    AssetType type;
-};
-
-/// @brief Asset handle, no reference counting.
-/// @tparam TAssetObj Derived class of AssetObj
-template <typename TAssetObj>
-struct AssetHandle : public Handle<TAssetObj>
+struct AssetHandle : Handle<struct AssetObj>
 {
     AssetHandle() = default;
     AssetHandle(AssetObj* obj)
-        : Handle<TAssetObj>((TAssetObj*)obj) {}
+        : Handle<AssetObj>(obj) {}
+
+    /// @brief Get asset type.
+    AssetType get_type();
 
     /// @brief Get asset name.
-    const char* get_name() { return ((AssetObj*)(this->mObj))->name; }
+    const char* get_name();
 
     /// @brief Get asset identifier.
-    AUID get_auid() const { return ((AssetObj*)(this->mObj))->auid; }
+    AUID get_auid();
 };
 
 } // namespace LD

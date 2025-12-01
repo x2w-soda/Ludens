@@ -64,7 +64,9 @@ void Texture2DAsset::unload()
 
 RSamplerInfo Texture2DAsset::get_sampler_hint() const
 {
-    return mObj->samplerHint;
+    auto* obj = (Texture2DAssetObj*)mObj;
+
+    return obj->samplerHint;
 }
 
 void Texture2DAssetImportJob::submit()
@@ -81,7 +83,7 @@ void Texture2DAssetImportJob::execute(void* user)
     LD_PROFILE_SCOPE;
 
     auto& self = *(Texture2DAssetImportJob*)user;
-    Texture2DAssetObj* obj = self.asset.unwrap();
+    auto* obj = (Texture2DAssetObj*)self.asset.unwrap();
 
     LD_ASSERT(self.info.compression == TEXTURE_COMPRESSION_LZ4);
 
