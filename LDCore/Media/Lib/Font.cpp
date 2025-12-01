@@ -143,6 +143,24 @@ Font Font::create_from_path(const char* path)
     return {obj};
 }
 
+Font Font::create_from_memory(const void* memory, size_t size)
+{
+    LD_PROFILE_SCOPE;
+
+    FontObj* obj = heap_new<FontObj>(MEMORY_USAGE_MEDIA);
+
+    if (!msdfFreeType)
+    {
+        msdfFreeType = msdfgen::initializeFreetype(); // TODO: deinitialize
+        LD_ASSERT(msdfFreeType);
+    }
+
+    obj->msdfHandle = msdfgen::loadFontData(msdfFreeType, (const msdfgen::byte*)memory, (int)size);
+    LD_ASSERT(obj->msdfHandle);
+
+    return {obj};
+}
+
 void Font::get_metrics(FontMetrics& metrics, float fontSizePx)
 {
     msdfgen::FontMetrics msdfMetrics;

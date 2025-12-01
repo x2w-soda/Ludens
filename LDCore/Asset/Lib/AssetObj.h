@@ -11,6 +11,7 @@
 #include <Ludens/Header/Hash.h>
 #include <Ludens/Media/AudioData.h>
 #include <Ludens/Media/Bitmap.h>
+#include <Ludens/Media/Font.h>
 #include <Ludens/Media/Model.h>
 #include <Ludens/System/Allocator.h>
 #include <Ludens/System/FileSystem.h>
@@ -106,6 +107,17 @@ struct AudioClipAssetObj : AssetObj
 struct MeshAssetObj : AssetObj
 {
     ModelBinary* modelBinary;
+
+    static void load(void* assetLoadJob);
+    static void unload(AssetObj* base);
+};
+
+/// @brief Font asset implementation.
+struct FontAssetObj : AssetObj
+{
+    Font font;
+    FontAtlas fontAtlas;
+    float fontSize;
 
     static void load(void* assetLoadJob);
     static void unload(AssetObj* base);

@@ -9,6 +9,7 @@ namespace LD {
 enum AssetType
 {
     ASSET_TYPE_AUDIO_CLIP,
+    ASSET_TYPE_FONT,
     ASSET_TYPE_MESH,
     ASSET_TYPE_TEXTURE_2D,
     ASSET_TYPE_LUA_SCRIPT,

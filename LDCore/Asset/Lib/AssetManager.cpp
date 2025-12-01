@@ -30,6 +30,7 @@ struct
     void (*unload)(AssetObj* base);   /// polymorphic unload
 } sAssetTypeTable[] = {
     {ASSET_TYPE_AUDIO_CLIP, "AU_CLIP_", "AudioClip",  sizeof(AudioClipAssetObj), &AudioClipAssetObj::load, &AudioClipAssetObj::unload, },
+    {ASSET_TYPE_FONT,       "FONT____", "Font",       sizeof(FontAssetObj),      &FontAssetObj::load,      &FontAssetObj::unload, },
     {ASSET_TYPE_MESH,       "MESH____", "Mesh",       sizeof(MeshAssetObj),      &MeshAssetObj::load,      &MeshAssetObj::unload, },
     {ASSET_TYPE_TEXTURE_2D, "TX_2D___", "Texture2D",  sizeof(Texture2DAssetObj), &Texture2DAssetObj::load, &Texture2DAssetObj::unload, },
     {ASSET_TYPE_LUA_SCRIPT, "LUA_SCPT", "LuaScript",  sizeof(LuaScriptAssetObj), &LuaScriptAssetObj::load, &LuaScriptAssetObj::unload, },
@@ -39,6 +40,7 @@ struct
 static_assert(sizeof(sAssetTypeTable) / sizeof(*sAssetTypeTable) == ASSET_TYPE_ENUM_COUNT);
 static_assert(LD::IsTrivial<AssetObj>);
 static_assert(LD::IsTrivial<AudioClipAssetObj>);
+static_assert(LD::IsTrivial<FontAssetObj>);
 static_assert(LD::IsTrivial<MeshAssetObj>);
 static_assert(LD::IsTrivial<Texture2DAssetObj>);
 static_assert(LD::IsTrivial<LuaScriptAssetObj>);

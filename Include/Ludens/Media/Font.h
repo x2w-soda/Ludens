@@ -4,6 +4,7 @@
 #include <Ludens/Header/Math/Rect.h>
 #include <Ludens/Header/Math/Vec2.h>
 #include <Ludens/Media/Bitmap.h>
+#include <cstddef>
 
 namespace LD {
 
@@ -17,6 +18,7 @@ struct FontMetrics
 struct Font : Handle<struct FontObj>
 {
     static Font create_from_path(const char* path);
+    static Font create_from_memory(const void* memory, size_t size);
     static void destroy(Font font);
 
     void get_metrics(FontMetrics& metrics, float fontSizePx);
