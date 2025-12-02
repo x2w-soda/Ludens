@@ -143,12 +143,14 @@ static void builder_mode_import(int argc, char** argv)
     std::string type(argv[1]);
     FS::Path sourcePath(argv[2]);
 
-    if (type == "Texture2D")
-        success = util.import_texture_2d(sourcePath);
+    if (type == "Blob")
+        success = util.import_blob(sourcePath);
     else if (type == "Font")
         success = util.import_font(sourcePath);
     else if (type == "Mesh")
         success = util.import_mesh(sourcePath);
+    else if (type == "Texture2D")
+        success = util.import_texture_2d(sourcePath);
     else if (type == "AudioClip")
         success = util.import_audio_clip(sourcePath);
 

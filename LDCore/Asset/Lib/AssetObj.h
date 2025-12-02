@@ -1,6 +1,5 @@
 #pragma once
 
-#include "AssetWatcher.h"
 #include <Ludens/Asset/Asset.h>
 #include <Ludens/Asset/AssetRegistry.h>
 #include <Ludens/Asset/AssetType/AudioClipAsset.h>
@@ -16,9 +15,13 @@
 #include <Ludens/System/Allocator.h>
 #include <Ludens/System/FileSystem.h>
 #include <Ludens/System/FileWatcher.h>
+
+#include <cstdint>
 #include <filesystem>
 #include <unordered_map>
 #include <vector>
+
+#include "AssetWatcher.h"
 
 // first four bytes of any Ludens Asset file.
 #define LD_ASSET_MAGIC "LDA."
@@ -91,6 +94,16 @@ struct AssetLoadJob
     FS::Path loadPath;       /// path to .lda file on disk
     AssetHandle assetHandle; /// base class handle
     JobHeader jobHeader;     /// submitted to the job system
+};
+
+/// @brief Blob asset implementation.
+struct BlobAssetObj : AssetObj
+{
+    void* data;
+    uint64_t dataSize;
+
+    static void load(void* assetLoadJob);
+    static void unload(AssetObj* base);
 };
 
 /// @brief Audio clip asset implementation.

@@ -13,6 +13,10 @@ struct AssetUtil : Handle<struct AssetUtilObj>
     static AssetUtil create();
     static void destroy(AssetUtil util);
 
+    /// @brief Import a Blob asset from source file.
+    /// @return True on success.
+    bool import_blob(const FS::Path& sourcePath);
+
     /// @brief Import a Texture2D asset from source file.
     /// @return True on success.
     bool import_texture_2d(const FS::Path& sourcePath);
