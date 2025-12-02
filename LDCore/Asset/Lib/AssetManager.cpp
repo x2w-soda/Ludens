@@ -206,7 +206,7 @@ void AssetManagerObj::load_asset(AssetType type, AUID auid, const FS::Path& uri,
 {
     LD_ASSERT(mInLoadBatch);
 
-    const FS::Path loadPath = mRootPath / uri;
+    const FS::Path loadPath = FS::Path(mRootPath / uri).lexically_normal();
     sLog.info("load_asset {}", loadPath.string());
 
     if (mWatcher && type == ASSET_TYPE_LUA_SCRIPT)

@@ -101,6 +101,7 @@ void FontAssetImportJob::execute(void* user)
     asset_header_write(serializer, ASSET_TYPE_FONT);
 
     serializer.write_f32(obj->fontSize);
+    serializer.write_u32(sourceDataSize);
     serializer.write(sourceData, sourceDataSize);
 
     size_t binarySize;

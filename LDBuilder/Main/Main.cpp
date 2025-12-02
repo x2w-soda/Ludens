@@ -51,7 +51,6 @@ public:
 private:
     ArgParser mParser;
     BuilderMode mMode = BUILDER_MODE_ERROR;
-    int argvIndex = 0;
 };
 
 BuilderArgs::BuilderArgs(int argc, char** argv)
@@ -68,11 +67,10 @@ BuilderArgs::BuilderArgs(int argc, char** argv)
     mParser.parse(argc - 1, (const char**)argv + 1);
 
     int optIndex, errIndex;
-    const char* optPayload;
-    while ((optIndex = mParser.getopt(&optPayload, errIndex)))
+    const char* optPayload = nullptr;
+    do
     {
-        if (optIndex < 0 && ((ArgResult)optIndex == ARG_RESULT_EOF))
-            break;
+        optIndex = mParser.getopt(&optPayload, errIndex);
 
         // first positional argument decides builder mode.
         if (optIndex < 0 && ((ArgResult)optIndex == ARG_RESULT_POSITIONAL))
@@ -93,7 +91,7 @@ BuilderArgs::BuilderArgs(int argc, char** argv)
                 break;
             }
         }
-    }
+    } while ((ArgResult)optIndex != ARG_RESULT_EOF);
 }
 
 BuilderArgs::~BuilderArgs()
