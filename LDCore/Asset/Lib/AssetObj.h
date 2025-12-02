@@ -147,9 +147,8 @@ struct LuaScriptAssetObj : AssetObj
 /// @brief Polymorphic unload/cleanup for each asset type.
 void asset_unload(AssetObj* base);
 
-/// @brief Get 8 bytes of magic unique to each asset type.
-/// @return Static C string of length 8.
-const char* get_asset_type_magic_cstr(AssetType type);
+/// @return Static C string of asset type enum.
+const char* get_asset_type_name_cstr(AssetType type);
 
 /// @brief Write binary header for asset type.
 /// @param serializer Serializer used to write the header.

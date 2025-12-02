@@ -23,17 +23,16 @@ static Log sLog("AssetManager");
 struct
 {
     AssetType type;
-    const char* typeMagic;            /// 8-byte magic embedded in binary header
     const char* typeName;             /// human readable name
     size_t size;                      /// object byte size
     void (*load)(void* assetLoadJob); /// polymorphic load, note that this is executed on worker threads
     void (*unload)(AssetObj* base);   /// polymorphic unload
 } sAssetTypeTable[] = {
-    {ASSET_TYPE_AUDIO_CLIP, "AU_CLIP_", "AudioClip",  sizeof(AudioClipAssetObj), &AudioClipAssetObj::load, &AudioClipAssetObj::unload, },
-    {ASSET_TYPE_FONT,       "FONT____", "Font",       sizeof(FontAssetObj),      &FontAssetObj::load,      &FontAssetObj::unload, },
-    {ASSET_TYPE_MESH,       "MESH____", "Mesh",       sizeof(MeshAssetObj),      &MeshAssetObj::load,      &MeshAssetObj::unload, },
-    {ASSET_TYPE_TEXTURE_2D, "TX_2D___", "Texture2D",  sizeof(Texture2DAssetObj), &Texture2DAssetObj::load, &Texture2DAssetObj::unload, },
-    {ASSET_TYPE_LUA_SCRIPT, "LUA_SCPT", "LuaScript",  sizeof(LuaScriptAssetObj), &LuaScriptAssetObj::load, &LuaScriptAssetObj::unload, },
+    {ASSET_TYPE_AUDIO_CLIP, "AudioClip",  sizeof(AudioClipAssetObj), &AudioClipAssetObj::load, &AudioClipAssetObj::unload, },
+    {ASSET_TYPE_FONT,       "Font",       sizeof(FontAssetObj),      &FontAssetObj::load,      &FontAssetObj::unload, },
+    {ASSET_TYPE_MESH,       "Mesh",       sizeof(MeshAssetObj),      &MeshAssetObj::load,      &MeshAssetObj::unload, },
+    {ASSET_TYPE_TEXTURE_2D, "Texture2D",  sizeof(Texture2DAssetObj), &Texture2DAssetObj::load, &Texture2DAssetObj::unload, },
+    {ASSET_TYPE_LUA_SCRIPT, "LuaScript",  sizeof(LuaScriptAssetObj), &LuaScriptAssetObj::load, &LuaScriptAssetObj::unload, },
 };
 // clang-format on
 
@@ -370,9 +369,9 @@ void asset_unload(AssetObj* base)
     sAssetTypeTable[base->type].unload(base);
 }
 
-const char* get_asset_type_magic_cstr(AssetType type)
+const char* get_asset_type_name_cstr(AssetType type)
 {
-    return sAssetTypeTable[(int)type].typeMagic;
+    return sAssetTypeTable[(int)type].typeName;
 }
 
 void asset_header_write(Serializer& serializer, AssetType type)
@@ -381,7 +380,12 @@ void asset_header_write(Serializer& serializer, AssetType type)
     serializer.write_u16(LD_VERSION_MAJOR);
     serializer.write_u16(LD_VERSION_MINOR);
     serializer.write_u16(LD_VERSION_PATCH);
-    serializer.write((const byte*)get_asset_type_magic_cstr(type), 8);
+
+    const char* typeName = get_asset_type_name_cstr(type);
+    size_t len = strlen(typeName);
+
+    serializer.write_u16((uint16_t)len);
+    serializer.write((const byte*)typeName, len);
 }
 
 bool asset_header_read(Serializer& serializer, uint16_t& outMajor, uint16_t& outMinor, uint16_t& outPatch, AssetType& outType)
@@ -399,15 +403,19 @@ bool asset_header_read(Serializer& serializer, uint16_t& outMajor, uint16_t& out
     serializer.read_u16(outMinor);
     serializer.read_u16(outPatch);
 
-    char typeMagic[8];
-    serializer.read((byte*)typeMagic, 8);
+    uint16_t len;
+    serializer.read_u16(len);
+
+    std::string typeName;
+    typeName.resize(len);
+    serializer.read((byte*)typeName.data(), typeName.size());
 
     // TODO: this can be hashed for O(1) lookup but we barely have any asset type variety right now.
     for (int type = 0; type < (int)ASSET_TYPE_ENUM_COUNT; type++)
     {
-        const char* match = get_asset_type_magic_cstr((AssetType)type);
+        const char* match = get_asset_type_name_cstr((AssetType)type);
 
-        if (!strncmp(typeMagic, match, 8))
+        if (typeName == match)
         {
             outType = (AssetType)type;
             return true;
