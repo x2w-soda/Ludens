@@ -2,7 +2,6 @@
 
 #include <Ludens/Asset/Asset.h>
 #include <Ludens/DataRegistry/DataComponent.h>
-#include <Ludens/Header/Handle.h>
 #include <Ludens/Scene/Scene.h>
 #include <cstdint>
 #include <string>
@@ -10,7 +9,7 @@
 namespace LD {
 
 /// @brief Schema for defining a Scene under the current framework version.
-struct SceneSchema : Handle<struct SceneSchemaObj>
+struct SceneSchema
 {
     /// @brief Load a scene from TOML schema source string.
     static void load_scene_from_source(Scene scene, const char* source, size_t len);
