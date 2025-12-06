@@ -175,6 +175,11 @@ void UIWidget::set_user(void* user)
     mObj->user = user;
 }
 
+void UIWidget::get_layout(UILayoutInfo& layout)
+{
+    layout = mObj->layout.info;
+}
+
 void UIWidget::set_layout(const UILayoutInfo& layout)
 {
     mObj->layout.info = layout;
@@ -872,6 +877,11 @@ bool UIToggleWidget::get_state()
 void UIPanelWidget::set_panel_color(Color color)
 {
     mObj->as.panel.color = color;
+}
+
+Color UIPanelWidget::get_panel_color()
+{
+    return mObj->as.panel.color;
 }
 
 void ui_obj_cleanup(UIWidgetObj* widget)

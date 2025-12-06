@@ -90,6 +90,9 @@ struct UIWidget : Handle<struct UIWidgetObj>
     /// @brief set user data pointer
     void set_user(void* user);
 
+    /// @brief Get current widget layout.
+    void get_layout(UILayoutInfo& layout);
+
     /// @brief Update widget layout after creation.
     void set_layout(const UILayoutInfo& layout);
 
@@ -157,6 +160,9 @@ struct UIPanelWidget : UIWidget
 {
     /// @brief Update panel color
     void set_panel_color(Color color);
+
+    /// @brief Get panel color.
+    Color get_panel_color();
 
     /// @brief Default panel widget rendering.
     static void on_draw(UIWidget widget, ScreenRenderComponent renderer);
