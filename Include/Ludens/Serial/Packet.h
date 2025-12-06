@@ -1,26 +1,11 @@
 #pragma once
 
 #include <Ludens/Header/Handle.h>
+#include <Ludens/Serial/Value.h>
 #include <cstdint>
 #include <string>
 
 namespace LD {
-
-enum PacketFieldType : uint16_t
-{
-    PACKET_FIELD_F32,
-    PACKET_FIELD_F64,
-    PACKET_FIELD_I8,
-    PACKET_FIELD_U8,
-    PACKET_FIELD_I16,
-    PACKET_FIELD_U16,
-    PACKET_FIELD_I32,
-    PACKET_FIELD_U32,
-    PACKET_FIELD_I64,
-    PACKET_FIELD_U64,
-    PACKET_FIELD_BOOL,
-    PACKET_FIELD_TYPE_ENUM_COUNT,
-};
 
 /// @brief A packet schema describes how a binary packet
 ///        can be safely serialized.
@@ -51,7 +36,7 @@ public:
     PacketSchemaBuilder& new_schema(const char* schemaName);
 
     /// @brief Append a field to the current schema being defined.
-    PacketSchemaBuilder& add_field(PacketFieldType type, const char* fieldName);
+    PacketSchemaBuilder& add_field(ValueType type, const char* fieldName);
 
     /// @brief Finalize and create the schema.
     /// @return The handle to the new schema on success.

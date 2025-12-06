@@ -2,6 +2,7 @@ set(MODULE_NAME LDSerial)
 set(MODULE_TEST_NAME LDSerialTest)
 
 set(MODULE_INCLUDE
+	${LUDENS_INCLUDE_DIR}/Ludens/Serial/Value.h
 	${LUDENS_INCLUDE_DIR}/Ludens/Serial/Serial.h
 	${LUDENS_INCLUDE_DIR}/Ludens/Serial/Packet.h
 	${LUDENS_INCLUDE_DIR}/Ludens/Serial/Compress.h
@@ -9,6 +10,7 @@ set(MODULE_INCLUDE
 )
 
 set(MODULE_LIB
+	Lib/Value.cpp
 	Lib/Serial.cpp
 	Lib/Packet.cpp
 	Lib/Compress.cpp

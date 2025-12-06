@@ -10,11 +10,11 @@ static PacketSchema create_schema()
 {
     PacketSchemaBuilder builder;
     PacketSchema schema = builder.new_schema("UpdateEntityPosition")
-                              .add_field(PACKET_FIELD_U32, "EntityID")
-                              .add_field(PACKET_FIELD_U16, "DeltaX")
-                              .add_field(PACKET_FIELD_U16, "DeltaY")
-                              .add_field(PACKET_FIELD_U16, "DeltaZ")
-                              .add_field(PACKET_FIELD_BOOL, "OnGround")
+                              .add_field(VALUE_TYPE_U32, "EntityID")
+                              .add_field(VALUE_TYPE_U16, "DeltaX")
+                              .add_field(VALUE_TYPE_U16, "DeltaY")
+                              .add_field(VALUE_TYPE_U16, "DeltaZ")
+                              .add_field(VALUE_TYPE_BOOL, "OnGround")
                               .create();
 
     assert(schema);
