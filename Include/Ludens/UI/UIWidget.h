@@ -158,11 +158,8 @@ struct UIScrollWidgetInfo
 
 struct UIPanelWidget : UIWidget
 {
-    /// @brief Update panel color
-    void set_panel_color(Color color);
-
-    /// @brief Get panel color.
-    Color get_panel_color();
+    /// @brief Access panel color.
+    Color* panel_color();
 
     /// @brief Default panel widget rendering.
     static void on_draw(UIWidget widget, ScreenRenderComponent renderer);
@@ -235,6 +232,9 @@ struct UIImageWidget : UIWidget
     /// @brief Set rect in image to display.
     void set_image_rect(const Rect& rect);
 
+    /// @brief Get displayed rect in image.
+    Rect get_image_rect();
+
     /// @brief Set image tint color.
     void set_image_tint(Color color);
 
@@ -250,7 +250,14 @@ struct UIImageWidgetInfo
 
 struct UITextWidget : UIWidget
 {
+    /// @brief Set text content.
     void set_text(const char* cstr);
+
+    /// @brief Get text content. Treat return value as a transient pointer.
+    const char* get_text();
+
+    /// @brief Access text font size.
+    float* font_size();
 
     /// @brief Default text widget rendering.
     static void on_draw(UIWidget widget, ScreenRenderComponent renderer);
@@ -281,6 +288,8 @@ struct UINode : Handle<struct UIWidgetObj>
 {
     UIContextObj* get_context();
 
+    void get_children(std::vector<UIWidget>& widgets);
+
     /// @brief Remove self subtree from parent.
     /// @warning All UIWidget handle in the removed subtree is now out of date.
     void remove();
@@ -301,5 +310,12 @@ struct UINode : Handle<struct UIWidgetObj>
 
     UITextEditWidget add_text_edit(const UILayoutInfo& layoutI, const UITextEditWidgetInfo& widgetI, void* user);
 };
+
+/// @brief Get static C string for widget type.
+const char* get_ui_widget_type_cstr(UIWidgetType type);
+
+/// @brief Try get widget type from C string.
+/// @return True on success.
+bool get_ui_widget_type_from_cstr(UIWidgetType& outType, const char* cstr);
 
 } // namespace LD

@@ -130,7 +130,7 @@ static void ui_layout_pass_fit_x(UIWidgetObj* root)
             child->layout.rect.w = childLayout.sizeX.extent;
             child->layout.minw = child->layout.rect.w;
         }
-        else if (childLayout.sizeX.type == UI_SIZE_WRAP_PRIMARY)
+        else if (childLayout.sizeX.type == UI_SIZE_WRAP)
         {
             LD_ASSERT(child->type == UI_WIDGET_TEXT);
 
@@ -183,7 +183,7 @@ void ui_layout_pass_fit_y(UIWidgetObj* root)
             child->layout.rect.h = childLayout.sizeY.extent;
             child->layout.minh = child->layout.rect.h;
         }
-        else if (childLayout.sizeY.type == UI_SIZE_WRAP_PRIMARY)
+        else if (childLayout.sizeY.type == UI_SIZE_WRAP)
         {
             LD_ASSERT(child->type == UI_WIDGET_TEXT);
             LD_UNREACHABLE; // TODO:
@@ -236,7 +236,7 @@ static void ui_layout_pass_grow_shrink_x(UIWidgetObj* root)
 
         if (sizeX.type == UI_SIZE_GROW)
             growableX.push_back(child);
-        else if (sizeX.type == UI_SIZE_WRAP_PRIMARY)
+        else if (sizeX.type == UI_SIZE_WRAP)
             shrinkableX.push_back(child);
     }
 
@@ -259,7 +259,7 @@ static void ui_layout_pass_grow_shrink_x(UIWidgetObj* root)
             {
                 child->layout.rect.w = remainW;
             }
-            else if (sizeX.type == UI_SIZE_WRAP_PRIMARY)
+            else if (sizeX.type == UI_SIZE_WRAP)
             {
                 float childRemainW = remainW - child->layout.rect.w;
                 std::vector<UIWidgetObj*> v{child};
@@ -323,14 +323,13 @@ static void ui_layout_pass_wrap_x(UIWidgetObj* root)
         ui_layout_pass_wrap_x(child);
         const UILayoutInfo& childLayout = child->layout.info;
 
-        if (childLayout.sizeX.type == UI_SIZE_WRAP_PRIMARY)
+        if (childLayout.sizeX.type == UI_SIZE_WRAP)
         {
             LD_ASSERT(child->type == UI_WIDGET_TEXT);
 
             // ui_layout_pass_grow_shrink_x should have determined width along primary axis
             float wrappedH = ui_layout_wrap_size(child, child->layout.rect.w);
 
-            LD_ASSERT(childLayout.sizeY.type == UI_SIZE_WRAP_SECONDARY);
             child->layout.rect.h = wrappedH;
         }
     }

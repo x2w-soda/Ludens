@@ -251,6 +251,14 @@ UIContextObj* UINode::get_context()
     return mObj->window->ctx;
 }
 
+void UINode::get_children(std::vector<UIWidget>& widgets)
+{
+    widgets.clear();
+
+    for (UIWidgetObj* child = mObj->child; child; child = child->next)
+        widgets.push_back(UIWidget(child));
+}
+
 void UINode::remove()
 {
     UIContextObj* ctx = mObj->window->ctx;
@@ -426,6 +434,11 @@ void UIImageWidget::set_image_rect(const Rect& rect)
     mObj->as.image.imageRect = rect;
 }
 
+Rect UIImageWidget::get_image_rect()
+{
+    return mObj->as.image.imageRect;
+}
+
 void UIImageWidget::set_image_tint(Color color)
 {
     mObj->as.image.tint = color;
@@ -544,8 +557,8 @@ UITextWidget UINode::add_text(const UILayoutInfo& layoutI, const UITextWidgetInf
     UILayoutInfo textLayoutI = layoutI;
     if (layoutI.sizeX.type != UI_SIZE_FIXED)
     {
-        textLayoutI.sizeX = UISize::wrap_primary();
-        textLayoutI.sizeY = UISize::wrap_secondary();
+        textLayoutI.sizeX = UISize::wrap();
+        textLayoutI.sizeY = UISize::fit();
     }
 
     UIWindowObj* window = mObj->window;
@@ -607,6 +620,16 @@ void UITextWidget::set_text(const char* cstr)
         heap_free((void*)mObj->as.text.value);
 
     mObj->as.text.value = cstr ? heap_strdup(cstr, MEMORY_USAGE_UI) : nullptr;
+}
+
+const char* UITextWidget::get_text()
+{
+    return mObj->as.text.value;
+}
+
+float* UITextWidget::font_size()
+{
+    return &mObj->as.text.fontSize;
 }
 
 //
@@ -706,6 +729,11 @@ UIPanelWidget UINode::add_panel(const UILayoutInfo& layoutI, const UIPanelWidget
     obj->as.panel.color = widgetI.color;
 
     return {obj};
+}
+
+Color* UIPanelWidget::panel_color()
+{
+    return &mObj->as.panel.color;
 }
 
 void UIPanelWidget::on_draw(UIWidget widget, ScreenRenderComponent renderer)
@@ -874,16 +902,6 @@ bool UIToggleWidget::get_state()
     return mObj->as.toggle.state;
 }
 
-void UIPanelWidget::set_panel_color(Color color)
-{
-    mObj->as.panel.color = color;
-}
-
-Color UIPanelWidget::get_panel_color()
-{
-    return mObj->as.panel.color;
-}
-
 void ui_obj_cleanup(UIWidgetObj* widget)
 {
     LD_ASSERT(widget);
@@ -892,6 +910,30 @@ void ui_obj_cleanup(UIWidgetObj* widget)
         return;
 
     sWidgetTable[widget->type].cleanup(widget);
+}
+
+const char* get_ui_widget_type_cstr(UIWidgetType type)
+{
+    return sWidgetTable[(int)type].typeName;
+}
+
+bool get_ui_widget_type_from_cstr(UIWidgetType& outType, const char* cstr)
+{
+    if (!cstr)
+        return false;
+
+    outType = UI_WIDGET_TYPE_COUNT;
+
+    for (int i = 0; i < (int)UI_WIDGET_TYPE_COUNT; i++)
+    {
+        if (!strcmp(cstr, sWidgetTable[i].typeName))
+        {
+            outType = (UIWidgetType)i;
+            return true;
+        }
+    }
+
+    return false;
 }
 
 } // namespace LD

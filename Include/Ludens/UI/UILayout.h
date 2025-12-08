@@ -21,11 +21,10 @@ enum UIAlign : char
 
 enum UISizeType
 {
-    UI_SIZE_FIT = 0,
+    UI_SIZE_FIXED = 0,
     UI_SIZE_GROW,
-    UI_SIZE_FIXED,
-    UI_SIZE_WRAP_PRIMARY,
-    UI_SIZE_WRAP_SECONDARY,
+    UI_SIZE_WRAP,
+    UI_SIZE_FIT,
 };
 
 struct UIPadding
@@ -53,15 +52,10 @@ struct UISize
         return {.type = UI_SIZE_GROW};
     }
 
-    /// @brief if text does not fit into main axis, wrap around and grow along the secondary axis
-    static inline UISize wrap_primary()
+    /// @brief wrap around and grow along the other axis
+    static inline UISize wrap()
     {
-        return {.type = UI_SIZE_WRAP_PRIMARY};
-    }
-
-    static inline UISize wrap_secondary()
-    {
-        return {.type = UI_SIZE_WRAP_SECONDARY};
+        return {.type = UI_SIZE_WRAP};
     }
 
     /// @brief declare fixed size for this UI node
