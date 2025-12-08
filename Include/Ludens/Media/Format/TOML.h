@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Ludens/Header/Handle.h>
+#include <Ludens/Header/Math/Rect.h>
 #include <Ludens/System/FileSystem.h>
 #include <cstdint>
 #include <string>
@@ -128,6 +129,9 @@ struct TOMLValue : Handle<struct TOMLValueObj>
     /// @brief Lookup key in TOML table.
     TOMLValue get_key(const char* key);
 
+    /// @brief Lookup key in TOML table with expected type.
+    TOMLValue get_key(const char* key, TOMLType type);
+
     /// @brief Shorthand for table get_key.
     inline TOMLValue operator[](const char* key)
     {
@@ -175,4 +179,15 @@ struct TOMLDocument : Handle<struct TOMLDocumentObj>
     bool save_to_disk(const FS::Path& path);
 };
 
+namespace TOMLUtil {
+
+/// @brief Save rect into toml table value.
+/// @return True on success.
+bool save_rect_table(const Rect& rect, TOMLValue table);
+
+/// @brief Load rect from toml table value.
+/// @return True on success.
+bool load_rect_table(Rect& rect, TOMLValue table);
+
+} // namespace TOMLUtil
 } // namespace LD

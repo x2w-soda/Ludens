@@ -182,3 +182,24 @@ TEST_CASE("TOML table set_key")
     int leaks = get_memory_leaks(nullptr);
     CHECK(leaks == 0);
 }
+
+TEST_CASE("TOML util")
+{
+    TOMLDocument doc = TOMLDocument::create();
+
+    TOMLValue rectTOML = doc.set("rect", TOML_TYPE_TABLE);
+    CHECK(rectTOML);
+
+    const Rect r1(1.0f, -3.14f, 2.71f, 8.0f);
+    bool ok = TOMLUtil::save_rect_table(r1, rectTOML);
+    CHECK(ok);
+
+    Rect r2{};
+    ok = TOMLUtil::load_rect_table(r2, rectTOML);
+    CHECK(ok);
+    CHECK(r1 == r2);
+
+    TOMLDocument::destroy(doc);
+    int leaks = get_memory_leaks(nullptr);
+    CHECK(leaks == 0);
+}

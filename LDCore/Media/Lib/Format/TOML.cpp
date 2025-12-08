@@ -1,4 +1,5 @@
 #include <Ludens/Header/Assert.h>
+#include <Ludens/Header/Math/Rect.h>
 #include <Ludens/Media/Format/TOML.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/System/Allocator.h>
@@ -259,11 +260,18 @@ bool TOMLValue::set_u32(uint32_t u32)
 
 bool TOMLValue::get_f64(double& f64) const
 {
-    if (get_type() != TOML_TYPE_FLOAT)
-        return false;
+    if (get_type() == TOML_TYPE_FLOAT)
+    {
+        f64 = (double)mObj->val.as_floating();
+        return true;
+    }
+    else if (get_type() == TOML_TYPE_INT)
+    {
+        f64 = (double)mObj->val.as_integer();
+        return true;
+    }
 
-    f64 = (double)mObj->val.as_floating();
-    return true;
+    return false;
 }
 
 bool TOMLValue::set_f64(double f64)
@@ -277,11 +285,18 @@ bool TOMLValue::set_f64(double f64)
 
 bool TOMLValue::get_f32(float& f32) const
 {
-    if (get_type() != TOML_TYPE_FLOAT)
-        return false;
+    if (get_type() == TOML_TYPE_FLOAT)
+    {
+        f32 = (float)mObj->val.as_floating();
+        return true;
+    }
+    else if (get_type() == TOML_TYPE_INT)
+    {
+        f32 = (float)mObj->val.as_integer();
+        return true;
+    }
 
-    f32 = (float)mObj->val.as_floating();
-    return true;
+    return false;
 }
 
 bool TOMLValue::set_f32(float f32)
@@ -413,6 +428,16 @@ TOMLValue TOMLValue::get_key(const char* key)
     }
 
     return TOMLValue(obj);
+}
+
+TOMLValue TOMLValue::get_key(const char* key, TOMLType type)
+{
+    TOMLValue val = get_key(key);
+
+    if (!val || val.get_type() != type)
+        return {};
+
+    return val;
 }
 
 int TOMLValue::get_keys(std::vector<std::string>& keys)
@@ -580,4 +605,44 @@ bool TOMLDocument::save_to_disk(const FS::Path& path)
     return FS::write_file(path, str.size(), (byte*)str.data());
 }
 
+namespace TOMLUtil {
+
+bool save_rect_table(const Rect& rect, TOMLValue table)
+{
+    if (!table || !table.is_table_type())
+        return false;
+
+    table.format(TOML_FORMAT_TABLE_ONE_LINE);
+    table.set_key("x", TOML_TYPE_FLOAT).set_f32(rect.x);
+    table.set_key("y", TOML_TYPE_FLOAT).set_f32(rect.y);
+    table.set_key("w", TOML_TYPE_FLOAT).set_f32(rect.w);
+    table.set_key("h", TOML_TYPE_FLOAT).set_f32(rect.h);
+    return true;
+}
+
+bool load_rect_table(Rect& rect, TOMLValue table)
+{
+    if (!table || !table.is_table_type())
+        return false;
+
+    TOMLValue x = table.get_key("x");
+    if (!x || !x.get_f32(rect.x))
+        return false;
+
+    TOMLValue y = table.get_key("y");
+    if (!y || !y.get_f32(rect.y))
+        return false;
+
+    TOMLValue w = table.get_key("w");
+    if (!w || !w.get_f32(rect.w))
+        return false;
+
+    TOMLValue h = table.get_key("h");
+    if (!h || !h.get_f32(rect.h))
+        return false;
+
+    return true;
+}
+
+} // namespace TOMLUtil
 } // namespace LD
