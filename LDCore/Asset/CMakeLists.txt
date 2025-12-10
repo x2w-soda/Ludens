@@ -5,12 +5,15 @@ set(MODULE_INCLUDE
 	${LUDENS_INCLUDE_DIR}/Ludens/Asset/AssetManager.h
 	${LUDENS_INCLUDE_DIR}/Ludens/Asset/AssetRegistry.h
 	${LUDENS_INCLUDE_DIR}/Ludens/Asset/AssetSchema.h
+	${LUDENS_INCLUDE_DIR}/Ludens/Asset/Template/UITemplate.h
+	${LUDENS_INCLUDE_DIR}/Ludens/Asset/Template/UITemplateSchema.h
 	${LUDENS_INCLUDE_DIR}/Ludens/Asset/AssetType/BlobAsset.h
 	${LUDENS_INCLUDE_DIR}/Ludens/Asset/AssetType/FontAsset.h
 	${LUDENS_INCLUDE_DIR}/Ludens/Asset/AssetType/MeshAsset.h
 	${LUDENS_INCLUDE_DIR}/Ludens/Asset/AssetType/Texture2DAsset.h
 	${LUDENS_INCLUDE_DIR}/Ludens/Asset/AssetType/LuaScriptAsset.h
 	${LUDENS_INCLUDE_DIR}/Ludens/Asset/AssetType/AudioClipAsset.h
+	${LUDENS_INCLUDE_DIR}/Ludens/Asset/AssetType/UITemplateAsset.h
 )
 
 set(MODULE_LIB
@@ -20,12 +23,16 @@ set(MODULE_LIB
 	Lib/AssetWatcher.h
 	Lib/AssetWatcher.cpp
 	Lib/AssetSchema.cpp
+	Lib/Template/UITemplate.cpp
+	Lib/Template/UITemplateObj.h
+	Lib/Template/UITemplateSchema.cpp
 	Lib/AssetType/BlobAsset.cpp
 	Lib/AssetType/FontAsset.cpp
 	Lib/AssetType/MeshAsset.cpp
 	Lib/AssetType/Texture2DAsset.cpp
 	Lib/AssetType/LuaScriptAsset.cpp
 	Lib/AssetType/AudioClipAsset.cpp
+	Lib/AssetType/UITemplateAsset.cpp
 )
 
 add_library(${MODULE_NAME}
@@ -39,6 +46,7 @@ target_link_libraries(${MODULE_NAME} PRIVATE
 	LDProfiler
 	LDMedia
 	LDRenderComponent
+	LDUI
 )
 
 target_include_directories(${MODULE_NAME} PRIVATE

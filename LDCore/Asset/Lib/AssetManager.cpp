@@ -28,12 +28,13 @@ struct
     void (*load)(void* assetLoadJob); /// polymorphic load, note that this is executed on worker threads
     void (*unload)(AssetObj* base);   /// polymorphic unload
 } sAssetTypeTable[] = {
-    {ASSET_TYPE_BLOB,       "Blob",       sizeof(BlobAssetObj),      &BlobAssetObj::load,      &BlobAssetObj::unload, },
-    {ASSET_TYPE_FONT,       "Font",       sizeof(FontAssetObj),      &FontAssetObj::load,      &FontAssetObj::unload, },
-    {ASSET_TYPE_MESH,       "Mesh",       sizeof(MeshAssetObj),      &MeshAssetObj::load,      &MeshAssetObj::unload, },
-    {ASSET_TYPE_AUDIO_CLIP, "AudioClip",  sizeof(AudioClipAssetObj), &AudioClipAssetObj::load, &AudioClipAssetObj::unload, },
-    {ASSET_TYPE_TEXTURE_2D, "Texture2D",  sizeof(Texture2DAssetObj), &Texture2DAssetObj::load, &Texture2DAssetObj::unload, },
-    {ASSET_TYPE_LUA_SCRIPT, "LuaScript",  sizeof(LuaScriptAssetObj), &LuaScriptAssetObj::load, &LuaScriptAssetObj::unload, },
+    {ASSET_TYPE_BLOB,        "Blob",       sizeof(BlobAssetObj),       &BlobAssetObj::load,       &BlobAssetObj::unload, },
+    {ASSET_TYPE_FONT,        "Font",       sizeof(FontAssetObj),       &FontAssetObj::load,       &FontAssetObj::unload, },
+    {ASSET_TYPE_MESH,        "Mesh",       sizeof(MeshAssetObj),       &MeshAssetObj::load,       &MeshAssetObj::unload, },
+    {ASSET_TYPE_UI_TEMPLATE, "UITemplate", sizeof(UITemplateAssetObj), &UITemplateAssetObj::load, &UITemplateAssetObj::unload, },
+    {ASSET_TYPE_AUDIO_CLIP,  "AudioClip",  sizeof(AudioClipAssetObj),  &AudioClipAssetObj::load,  &AudioClipAssetObj::unload, },
+    {ASSET_TYPE_TEXTURE_2D,  "Texture2D",  sizeof(Texture2DAssetObj),  &Texture2DAssetObj::load,  &Texture2DAssetObj::unload, },
+    {ASSET_TYPE_LUA_SCRIPT,  "LuaScript",  sizeof(LuaScriptAssetObj),  &LuaScriptAssetObj::load,  &LuaScriptAssetObj::unload, },
 };
 // clang-format on
 
@@ -42,6 +43,7 @@ static_assert(LD::IsTrivial<AssetObj>);
 static_assert(LD::IsTrivial<BlobAssetObj>);
 static_assert(LD::IsTrivial<FontAssetObj>);
 static_assert(LD::IsTrivial<MeshAssetObj>);
+static_assert(LD::IsTrivial<UITemplateAssetObj>);
 static_assert(LD::IsTrivial<AudioClipAssetObj>);
 static_assert(LD::IsTrivial<Texture2DAssetObj>);
 static_assert(LD::IsTrivial<LuaScriptAssetObj>);

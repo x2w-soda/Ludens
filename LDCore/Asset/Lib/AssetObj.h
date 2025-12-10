@@ -6,6 +6,7 @@
 #include <Ludens/Asset/AssetType/LuaScriptAsset.h>
 #include <Ludens/Asset/AssetType/MeshAsset.h>
 #include <Ludens/Asset/AssetType/Texture2DAsset.h>
+#include <Ludens/Asset/Template/UITemplate.h>
 #include <Ludens/DataRegistry/DataComponent.h>
 #include <Ludens/Header/Hash.h>
 #include <Ludens/Media/AudioData.h>
@@ -120,6 +121,16 @@ struct AudioClipAssetObj : AssetObj
 struct MeshAssetObj : AssetObj
 {
     ModelBinary* modelBinary;
+
+    static void load(void* assetLoadJob);
+    static void unload(AssetObj* base);
+};
+
+/// @brief UITemplateAsset implementation
+struct UITemplateAssetObj : AssetObj
+{
+    UITemplate tmpl;
+    // TODO: AUID luaScriptAUID;
 
     static void load(void* assetLoadJob);
     static void unload(AssetObj* base);
