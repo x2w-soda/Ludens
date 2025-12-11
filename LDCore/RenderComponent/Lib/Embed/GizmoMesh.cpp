@@ -283,6 +283,7 @@ void EmbeddedGizmoMesh::get_rotation_gizmo_plane_draw_info(RDrawIndexedInfo& dra
     drawInfo.indexStart = 0;
     drawInfo.instanceCount = 1;
     drawInfo.instanceStart = 0;
+    drawInfo.vertexOffset = 0;
 }
 
 void EmbeddedGizmoMesh::get_scale_gizmo_axis(const MeshVertex** vertices, uint32_t& vertexCount, const uint32_t** indices, uint32_t& indexCount)
@@ -299,6 +300,7 @@ void EmbeddedGizmoMesh::get_scale_gizmo_axis_draw_info(RDrawIndexedInfo& drawInf
     drawInfo.indexStart = 0;
     drawInfo.instanceCount = 1;
     drawInfo.instanceStart = 0;
+    drawInfo.vertexOffset = 0;
 }
 
 void EmbeddedGizmoMesh::get_gizmo_plane_xy(const MeshVertex** vertices, uint32_t& vertexCount)
