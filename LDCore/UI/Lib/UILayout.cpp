@@ -213,6 +213,8 @@ void ui_layout_pass_fit_y(UIWidgetObj* root)
     switch (rootLayout.sizeY.type)
     {
     case UI_SIZE_FIT:
+        if (rootLayout.sizeX.type == UI_SIZE_WRAP)
+            break;
         root->layout.rect.h = height + rootLayout.childPadding.bottom;
         break;
     case UI_SIZE_FIXED:

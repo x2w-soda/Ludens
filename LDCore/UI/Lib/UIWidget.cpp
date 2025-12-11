@@ -555,7 +555,7 @@ UIToggleWidget UINode::add_toggle(const UILayoutInfo& layoutI, const UIToggleWid
 UITextWidget UINode::add_text(const UILayoutInfo& layoutI, const UITextWidgetInfo& widgetI, void* user)
 {
     UILayoutInfo textLayoutI = layoutI;
-    if (layoutI.sizeX.type != UI_SIZE_FIXED)
+    if (!(layoutI.sizeX.type == UI_SIZE_FIXED && layoutI.sizeX.extent > 0.0f))
     {
         textLayoutI.sizeX = UISize::wrap();
         textLayoutI.sizeY = UISize::fit();
@@ -599,6 +599,9 @@ void UITextWidget::on_draw(UIWidget widget, ScreenRenderComponent renderer)
     UITextWidgetObj& self = obj->as.text;
     Rect rect = widget.get_rect();
     float wrapWidth = rect.w;
+
+    if (self.value && rect.h == 0) // likely a layout bug in UI text wrapping
+        LD_DEBUG_BREAK;
 
     if (self.bgColor.get_alpha() > 0.0f)
         renderer.draw_rect(rect, self.bgColor);
