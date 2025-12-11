@@ -53,6 +53,8 @@ static MiniAudioObj sMiniAudio;
 
 bool MiniAudioObj::startup(const MiniAudioInfo& info)
 {
+    LD_PROFILE_SCOPE;
+
     if (mIsActive)
         return false;
 
@@ -116,6 +118,8 @@ bool MiniAudioObj::startup(const MiniAudioInfo& info)
 
 void MiniAudioObj::cleanup()
 {
+    LD_PROFILE_SCOPE;
+
     if (!mIsActive)
         return;
 
