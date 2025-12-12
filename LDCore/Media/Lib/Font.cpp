@@ -76,7 +76,7 @@ static Bitmap generate_bitmap_atlas(FontObj* obj, std::vector<msdf_atlas::GlyphG
     generator.generate(glyphs.data(), (int)glyphs.size());
 
     const msdfgen::BitmapConstRef<msdfgen::byte, 1>& bitmap = generator.atlasStorage();
-    Bitmap handle = Bitmap::create_from_data(bitmap.width, bitmap.height, BITMAP_CHANNEL_R, bitmap.pixels);
+    Bitmap handle = Bitmap::create_from_data(bitmap.width, bitmap.height, BITMAP_FORMAT_R8U, bitmap.pixels);
     handle.flipy();
 
     return handle;
@@ -119,7 +119,7 @@ static Bitmap generate_sdf_atlas(FontObj* obj, std::vector<msdf_atlas::GlyphGeom
     generator.generate(glyphs.data(), (int)glyphs.size());
 
     const msdfgen::BitmapConstRef<msdfgen::byte, 1>& bitmap = generator.atlasStorage();
-    Bitmap handle = Bitmap::create_from_data(bitmap.width, bitmap.height, BITMAP_CHANNEL_R, bitmap.pixels);
+    Bitmap handle = Bitmap::create_from_data(bitmap.width, bitmap.height, BITMAP_FORMAT_R8U, bitmap.pixels);
     handle.flipy();
 
     return handle;

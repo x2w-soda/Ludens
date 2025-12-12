@@ -6,11 +6,19 @@
 
 namespace LD {
 
-enum BitmapChannel
+enum BitmapFormat
 {
-    BITMAP_CHANNEL_R = 1,
-    BITMAP_CHANNEL_RGB = 3,
-    BITMAP_CHANNEL_RGBA = 4,
+    /// @brief Grayscale, uint8_t in RAM
+    BITMAP_FORMAT_R8U = 0,
+
+    /// @brief RGB Colored, uint8_t channels in RAM
+    BITMAP_FORMAT_RGB8U,
+
+    /// @brief RGB with Alpha, uint8_t channels in RAM
+    BITMAP_FORMAT_RGBA8U,
+
+    /// @brief RGB with Alpha, float channels in RAM
+    BITMAP_FORMAT_RGBA32F,
 };
 
 enum BitmapCompression
@@ -19,12 +27,12 @@ enum BitmapCompression
     BITMAP_COMPRESSION_LZ4 = 0,
 };
 
-/// read only view of bitmap data
+/// @brief Read only view of bitmap data.
 struct BitmapView
 {
     const uint32_t width;
     const uint32_t height;
-    BitmapChannel channel;
+    BitmapFormat format;
     const char* data;
 };
 
@@ -32,7 +40,7 @@ struct Bitmap : Handle<struct BitmapObj>
 {
     /// @brief create bitmap from copying existing data,
     ///        the memory is released after calling destroy
-    static Bitmap create_from_data(uint32_t width, uint32_t height, BitmapChannel channel, const void* data);
+    static Bitmap create_from_data(uint32_t width, uint32_t height, BitmapFormat format, const void* data);
 
     /// @brief create bitmap from file on disk
     static Bitmap create_from_path(const char* path, bool isF32 = false);
@@ -70,8 +78,8 @@ struct Bitmap : Handle<struct BitmapObj>
     /// @brief get the byte size of one pixel
     uint32_t pixel_size() const;
 
-    /// @brief get bitmap channels
-    BitmapChannel channel() const;
+    /// @brief get bitmap format for underlying data.
+    BitmapFormat format() const;
 
     /// @brief view of bitmap as byte stream
     byte* data();

@@ -85,7 +85,7 @@ bool TinygltfLoader::load_images()
         if (tinyImage.component != 4)
             return false; // TODO:
 
-        mObj->textures[i] = Bitmap::create_from_data(tinyImage.width, tinyImage.height, BITMAP_CHANNEL_RGBA, tinyImage.image.data());
+        mObj->textures[i] = Bitmap::create_from_data(tinyImage.width, tinyImage.height, BITMAP_FORMAT_RGBA8U, tinyImage.image.data());
     }
 
     return true;

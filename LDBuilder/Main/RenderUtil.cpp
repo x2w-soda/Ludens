@@ -110,7 +110,7 @@ void RenderUtil::from_equirectangular_to_faces(const fs::path& path, const fs::p
             BitmapView view{
                 .width = job->faceSize,
                 .height = job->faceSize,
-                .channel = BITMAP_CHANNEL_RGBA,
+                .format = BITMAP_FORMAT_RGBA8U,
                 .data = (const char*)pixels,
             };
 

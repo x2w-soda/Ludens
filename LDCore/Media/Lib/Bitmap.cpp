@@ -25,26 +25,47 @@ struct BitmapObj
     uint32_t flags;
     uint32_t width;
     uint32_t height;
-    BitmapChannel channel;
+    BitmapFormat format;
     BitmapCompression compression;
     byte* data;
-    bool isF32;
 };
 
-Bitmap Bitmap::create_from_data(uint32_t width, uint32_t height, BitmapChannel channel, const void* data)
+// clang-format off
+struct
+{
+    uint32_t channels;
+    uint32_t pixelSize;
+} sBitmapFormatTable[] = {
+    { 1, 1 },  // BITMAP_FORMAT_R8U
+    { 3, 3 },  // BITMAP_FORMAT_RGB8U
+    { 4, 4 },  // BITMAP_FORMAT_RGBA8U
+    { 4, 16 }, // BITMAP_FORMAT_RGBA32F
+};
+// clang-format on
+
+inline uint32_t get_channels_from_format(BitmapFormat format)
+{
+    return sBitmapFormatTable[(int)format].channels;
+}
+
+inline uint32_t get_pixel_size_from_format(BitmapFormat format)
+{
+    return sBitmapFormatTable[(int)format].pixelSize;
+}
+
+Bitmap Bitmap::create_from_data(uint32_t width, uint32_t height, BitmapFormat format, const void* data)
 {
     LD_PROFILE_SCOPE;
 
-    uint64_t dataSize = width * height * channel;
+    uint64_t pixelSize = (uint64_t)get_pixel_size_from_format(format);
+    uint64_t dataSize = width * height * pixelSize;
 
     BitmapObj* obj = (BitmapObj*)heap_malloc(sizeof(BitmapObj) + dataSize, MEMORY_USAGE_MEDIA);
     obj->flags = 0;
     obj->width = width;
     obj->height = height;
-    obj->channel = channel;
-    obj->compression = BITMAP_COMPRESSION_LZ4;
+    obj->format = format;
     obj->data = (byte*)(obj + 1);
-    obj->isF32 = false;
 
     memcpy(obj->data, data, dataSize);
 
@@ -56,14 +77,19 @@ Bitmap Bitmap::create_from_path(const char* path, bool isF32)
     LD_PROFILE_SCOPE;
 
     BitmapObj* obj = (BitmapObj*)heap_malloc(sizeof(BitmapObj), MEMORY_USAGE_MEDIA);
-    obj->isF32 = isF32;
 
     int x, y, ch;
 
     if (isF32)
+    {
         obj->data = (byte*)stbi_loadf(path, &x, &y, &ch, STBI_rgb_alpha);
+        obj->format = BITMAP_FORMAT_RGBA32F;
+    }
     else
+    {
         obj->data = (byte*)stbi_load(path, &x, &y, &ch, STBI_rgb_alpha);
+        obj->format = BITMAP_FORMAT_RGBA8U;
+    }
 
     if (!obj->data)
         return {};
@@ -71,7 +97,6 @@ Bitmap Bitmap::create_from_path(const char* path, bool isF32)
     obj->flags = BITMAP_FLAG_USE_STB_FREE;
     obj->width = (uint32_t)x;
     obj->height = (uint32_t)y;
-    obj->channel = BITMAP_CHANNEL_RGBA;
 
     return {obj};
 }
@@ -125,8 +150,7 @@ Bitmap Bitmap::create_cubemap_from_paths(const char** paths)
     obj->flags = BITMAP_FLAG_USE_HEAP_FREE;
     obj->width = size;
     obj->height = size;
-    obj->channel = BITMAP_CHANNEL_RGBA;
-    obj->isF32 = false;
+    obj->format = BITMAP_FORMAT_RGBA8U;
 
     return {obj};
 
@@ -153,8 +177,7 @@ Bitmap Bitmap::create_cubemap_from_data(uint32_t size, const void* faceData[6])
     obj->flags = BITMAP_FLAG_USE_HEAP_FREE;
     obj->width = size;
     obj->height = size;
-    obj->channel = BITMAP_CHANNEL_RGBA;
-    obj->isF32 = false;
+    obj->format = BITMAP_FORMAT_RGBA8U;
 
     for (int i = 0; i < 6; i++)
     {
@@ -184,15 +207,16 @@ void Bitmap::serialize(Serializer& serializer, const Bitmap& bitmap)
     LD_PROFILE_SCOPE;
 
     const BitmapObj* obj = bitmap;
+    const uint32_t pixelSize = get_pixel_size_from_format(obj->format);
 
     serializer.write_u32(obj->width);
     serializer.write_u32(obj->height);
-    serializer.write_u32((uint32_t)obj->channel);
+    serializer.write_u32((uint32_t)obj->format);
     serializer.write_u32((uint32_t)obj->compression);
 
     LD_ASSERT(obj->compression == BITMAP_COMPRESSION_LZ4);
 
-    size_t dataSize = obj->width * obj->height * obj->channel;
+    size_t dataSize = obj->width * obj->height * pixelSize;
     size_t sizeBound = lz4_compress_bound(dataSize);
     std::vector<byte> compressed(sizeBound);
     size_t us;
@@ -207,13 +231,15 @@ void Bitmap::deserialize(Serializer& serializer, Bitmap& bitmap)
 {
     LD_PROFILE_SCOPE;
 
-    uint32_t width, height;
-    BitmapChannel channel;
-    BitmapCompression compression;
+    uint32_t width, height, formatU32, compressionU32;
     serializer.read_u32(width);
     serializer.read_u32(height);
-    serializer.read_u32((uint32_t&)channel);
-    serializer.read_u32((uint32_t&)compression);
+    serializer.read_u32(formatU32);
+    serializer.read_u32(compressionU32);
+
+    const BitmapFormat format = (BitmapFormat)formatU32;
+    const BitmapCompression compression = (BitmapCompression)compressionU32;
+    const uint32_t pixelSize = get_pixel_size_from_format(format);
 
     LD_ASSERT(compression == BITMAP_COMPRESSION_LZ4);
 
@@ -223,11 +249,11 @@ void Bitmap::deserialize(Serializer& serializer, Bitmap& bitmap)
     const byte* lz4BlockData = serializer.view_now();
     serializer.advance(lz4BlockSize);
 
-    size_t dataSize = width * height * channel;
+    size_t dataSize = width * height * pixelSize;
     std::vector<byte> pixels(dataSize);
     lz4_decompress(pixels.data(), pixels.size(), lz4BlockData, lz4BlockSize);
 
-    bitmap = Bitmap::create_from_data(width, height, channel, pixels.data());
+    bitmap = Bitmap::create_from_data(width, height, format, pixels.data());
 }
 
 void Bitmap::flipy()
@@ -238,8 +264,8 @@ void Bitmap::flipy()
     byte tmp[2048];
     const uint32_t width = mObj->width;
     const uint32_t height = mObj->height;
-    const uint32_t texelSize = mObj->channel; // currently only supports one byte per pixel channel
-    const uint32_t bytesPerRow = texelSize * width;
+    const uint32_t pixelSize = get_pixel_size_from_format(mObj->format); // currently only supports one byte per pixel channel
+    const uint32_t bytesPerRow = pixelSize * width;
 
     for (uint32_t row = 0; row < height / 2; row++)
     {
@@ -265,7 +291,7 @@ BitmapView Bitmap::view() const
     return {
         .width = mObj->width,
         .height = mObj->height,
-        .channel = mObj->channel,
+        .format = mObj->format,
         .data = (const char*)mObj->data,
     };
 }
@@ -282,17 +308,12 @@ uint32_t Bitmap::height() const
 
 uint32_t Bitmap::pixel_size() const
 {
-    uint32_t pixelSize = mObj->channel;
-
-    if (mObj->isF32)
-        pixelSize *= 4; // 32-bit float per channel
-
-    return pixelSize;
+    return get_pixel_size_from_format(mObj->format);
 }
 
-BitmapChannel Bitmap::channel() const
+BitmapFormat Bitmap::format() const
 {
-    return mObj->channel;
+    return mObj->format;
 }
 
 byte* Bitmap::data()
@@ -321,7 +342,8 @@ bool Bitmap::save_to_disk(const BitmapView& view, const char* c_path)
 
     if (ext == ".png")
     {
-        int success = stbi_write_png(c_path, view.width, view.height, view.channel, view.data, 0);
+        int ch = (int)get_channels_from_format(view.format);
+        int success = stbi_write_png(c_path, view.width, view.height, ch, view.data, 0);
         if (!success)
         {
             printf("save_bitmap_to_disk: stbi_write_png error\n");
@@ -343,7 +365,7 @@ bool Bitmap::compute_mse(const BitmapView& lhs, const BitmapView& rhs, double& o
 {
     LD_PROFILE_SCOPE;
 
-    if (lhs.channel != rhs.channel || lhs.width != rhs.width || lhs.height != rhs.height)
+    if (lhs.format != rhs.format || lhs.width != rhs.width || lhs.height != rhs.height)
     {
         outMSE = -1.0;
         return false;
@@ -359,7 +381,7 @@ bool Bitmap::compute_mse(const BitmapView& lhs, const BitmapView& rhs, double& o
 
     const uint32_t W = lhs.width;
     const uint32_t H = lhs.height;
-    const uint32_t CH = (uint32_t)lhs.channel;
+    const uint32_t CH = get_channels_from_format(lhs.format);
     const uint8_t* ldata = (const uint8_t*)lhs.data;
     const uint8_t* rdata = (const uint8_t*)rhs.data;
 

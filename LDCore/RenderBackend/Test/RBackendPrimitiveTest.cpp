@@ -226,7 +226,7 @@ void RBackendPrimitiveTest::run_backend(RBackendPrimitiveTestInfo& info)
 
     hostBuffer.map();
     void* pixels = hostBuffer.map_read(0, hostBuffer.size());
-    BitmapView view{IMAGE_WIDTH, IMAGE_HEIGHT, BITMAP_CHANNEL_RGBA, (const char*)pixels};
+    BitmapView view{IMAGE_WIDTH, IMAGE_HEIGHT, BITMAP_FORMAT_RGBA8U, (const char*)pixels};
     Bitmap::save_to_disk(view, info.triangleImageSavePath);
     hostBuffer.unmap();
 
@@ -247,7 +247,7 @@ void RBackendPrimitiveTest::run_backend(RBackendPrimitiveTestInfo& info)
 
         hostBuffer.map();
         pixels = hostBuffer.map_read(0, hostBuffer.size());
-        BitmapView view = {IMAGE_WIDTH, IMAGE_HEIGHT, BITMAP_CHANNEL_RGBA, (const char*)pixels};
+        BitmapView view = {IMAGE_WIDTH, IMAGE_HEIGHT, BITMAP_FORMAT_RGBA8U, (const char*)pixels};
         Bitmap::save_to_disk(view, info.quadImageSavePath);
         hostBuffer.unmap();
     }
