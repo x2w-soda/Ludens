@@ -155,15 +155,56 @@ TEST_CASE("struct serialization")
 
     Foo f2;
     deserialize(serial, f2);
-
     CHECK(f2.name == "gameobject");
     CHECK(f2.health == 100);
-    CHECK(f2.hitbox.x == f.hitbox.x);
-    CHECK(f2.hitbox.y == f.hitbox.y);
-    CHECK(f2.hitbox.w == f.hitbox.w);
-    CHECK(f2.hitbox.h == f.hitbox.h);
-    CHECK(f2.hurtbox.x == f.hurtbox.x);
-    CHECK(f2.hurtbox.y == f.hurtbox.y);
-    CHECK(f2.hurtbox.w == f.hurtbox.w);
-    CHECK(f2.hurtbox.h == f.hurtbox.h);
+    CHECK(f2.hitbox == f.hitbox);
+    CHECK(f2.hurtbox == f.hurtbox);
+}
+
+TEST_CASE("chunk serialization")
+{
+    Foo f;
+    f.name = "object";
+    f.health = 123;
+    f.hitbox = {1.0f, 2.0f, 3.0f, 4.0f};
+    f.hurtbox = {5.0f, 6.0f, 7.0f, 8.0f};
+
+    uint32_t chunkSize;
+    Serializer serial;
+    serial.write_chunk_begin("Foo.");
+    serial.write_i32(1234);
+    {
+        serial.write_chunk_begin("Foo1");
+        serialize(serial, f);
+        chunkSize = serial.write_chunk_end();
+        CHECK(chunkSize == 46);
+    }
+    serial.write_i32(5678);
+    chunkSize = serial.write_chunk_end();
+    CHECK(chunkSize == 62);
+
+    std::string name;
+    name.resize(4);
+
+    serial.read_chunk(name.data(), chunkSize);
+    CHECK(chunkSize == 62);
+    CHECK(name == "Foo.");
+
+    int32_t i32;
+    serial.read_i32(i32);
+    CHECK(i32 == 1234);
+
+    serial.read_chunk(name.data(), chunkSize);
+    CHECK(chunkSize == 46);
+    CHECK(name == "Foo1");
+
+    Foo f2;
+    deserialize(serial, f2);
+    CHECK(f2.name == "object");
+    CHECK(f2.health == 123);
+    CHECK(f2.hitbox == f.hitbox);
+    CHECK(f2.hurtbox == f.hurtbox);
+
+    serial.read_i32(i32);
+    CHECK(i32 == 5678);
 }

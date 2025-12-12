@@ -1,12 +1,14 @@
 #pragma once
 
 #include <Ludens/DSA/Buffer.h>
+#include <Ludens/Header/Assert.h>
 #include <Ludens/Header/Class.h>
 #include <Ludens/Header/Math/Vec4.h>
 #include <Ludens/Serial/Endianness.h>
 #include <Ludens/System/Memory.h>
 #include <cstdint>
 #include <cstring>
+#include <stack>
 
 namespace LD {
 
@@ -18,6 +20,8 @@ public:
     /// @brief Create buffer with fixed size
     /// @param size Initial buffer byte size
     Serializer(size_t size);
+
+    ~Serializer();
 
     inline void write(const byte* bytes, size_t size)
     {
@@ -105,6 +109,31 @@ public:
         mBuffer.write((byte*)&v.y, 4);
         mBuffer.write((byte*)&v.z, 4);
         mBuffer.write((byte*)&v.w, 4);
+    }
+
+    inline void write_chunk_begin(const char* name)
+    {
+        mBuffer.write((const byte*)name, 4);
+
+        // mark the offset for 4 byte size field
+        mChunkStack.push(mBuffer.size());
+        write_u32(0xFFFFFFFF);
+    }
+
+    inline uint32_t write_chunk_end()
+    {
+        LD_ASSERT(!mChunkStack.empty());
+
+        size_t fieldOffset = mChunkStack.top();
+        size_t chunkBegin = fieldOffset + 4;
+        size_t chunkEnd = mBuffer.size();
+        mChunkStack.pop();
+
+        byte* sizeField = mBuffer.data() + fieldOffset;
+        uint32_t chunkSize = static_cast<uint32_t>(chunkEnd - chunkBegin);
+        le_u32_to_bytes(chunkSize, sizeField);
+
+        return chunkSize;
     }
 
     inline void read(byte* bytes, size_t size)
@@ -202,6 +231,14 @@ public:
         mReadPos += 16;
     }
 
+    inline const byte* read_chunk(const char* outName, uint32_t& chunkSize)
+    {
+        read((byte*)outName, 4);
+        read_u32(chunkSize);
+
+        return view_now();
+    }
+
     /// @brief Get underlying buffer size in bytes.
     inline size_t size() const { return mBuffer.size(); }
 
@@ -231,6 +268,7 @@ public:
 private:
     size_t mReadPos = 0;
     Buffer mBuffer;
+    std::stack<size_t> mChunkStack;
 };
 
 template <typename T>

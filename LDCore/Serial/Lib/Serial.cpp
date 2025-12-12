@@ -8,4 +8,9 @@ Serializer::Serializer(size_t size)
     mBuffer.resize(size);
 }
 
+Serializer::~Serializer()
+{
+    LD_ASSERT(mChunkStack.empty());
+}
+
 } // namespace LD
