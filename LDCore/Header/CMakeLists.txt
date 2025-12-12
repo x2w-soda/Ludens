@@ -4,7 +4,6 @@ set(MODULE_BENCHMARK_NAME LDHeaderBenchmark)
 set(MODULE_INCLUDE
     ${LUDENS_INCLUDE_DIR}/Ludens/Header/Assert.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Header/Bitwise.h
-    ${LUDENS_INCLUDE_DIR}/Ludens/Header/Class.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Header/Handle.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Header/Platform.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Header/SIMD.h

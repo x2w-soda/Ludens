@@ -16,31 +16,26 @@ void Texture2DAssetObj::load(void* user)
     auto& job = *(AssetLoadJob*)user;
     Texture2DAssetObj* obj = (Texture2DAssetObj*)job.assetHandle.unwrap();
 
-    uint64_t binarySize = FS::get_file_size(job.loadPath);
-    if (binarySize == 0)
+    std::vector<byte> tmp;
+    if (!FS::read_file_to_vector(job.loadPath, tmp) || tmp.empty())
         return;
 
-    std::vector<byte> binary(binarySize);
-    FS::read_file(job.loadPath, binarySize, binary.data());
-
-    // deserialize asset from disk
-    Serializer serializer(binarySize);
-    FS::read_file(job.loadPath, binarySize, serializer.data());
+    Deserializer serial(tmp.data(), tmp.size());
 
     AssetType type;
     uint16_t major, minor, patch;
-    if (!asset_header_read(serializer, major, minor, patch, type))
+    if (!asset_header_read(serial, major, minor, patch, type))
         return;
 
     if (type != ASSET_TYPE_TEXTURE_2D)
         return;
 
-    serializer.read_i32((int32_t&)obj->compression);
-    serializer.read_i32((int32_t&)obj->samplerHint.filter);
-    serializer.read_i32((int32_t&)obj->samplerHint.mipmapFilter);
-    serializer.read_i32((int32_t&)obj->samplerHint.addressMode);
+    serial.read_i32((int32_t&)obj->compression);
+    serial.read_i32((int32_t&)obj->samplerHint.filter);
+    serial.read_i32((int32_t&)obj->samplerHint.mipmapFilter);
+    serial.read_i32((int32_t&)obj->samplerHint.addressMode);
 
-    Bitmap::deserialize(serializer, obj->bitmap);
+    Bitmap::deserialize(serial, obj->bitmap);
 }
 
 void Texture2DAssetObj::unload(AssetObj* base)

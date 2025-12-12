@@ -378,41 +378,41 @@ const char* get_asset_type_name_cstr(AssetType type)
     return sAssetTypeTable[(int)type].typeName;
 }
 
-void asset_header_write(Serializer& serializer, AssetType type)
+void asset_header_write(Serializer& serial, AssetType type)
 {
-    serializer.write((const byte*)LD_ASSET_MAGIC, 4);
-    serializer.write_u16(LD_VERSION_MAJOR);
-    serializer.write_u16(LD_VERSION_MINOR);
-    serializer.write_u16(LD_VERSION_PATCH);
+    serial.write((const byte*)LD_ASSET_MAGIC, 4);
+    serial.write_u16(LD_VERSION_MAJOR);
+    serial.write_u16(LD_VERSION_MINOR);
+    serial.write_u16(LD_VERSION_PATCH);
 
     const char* typeName = get_asset_type_name_cstr(type);
     size_t len = strlen(typeName);
 
-    serializer.write_u16((uint16_t)len);
-    serializer.write((const byte*)typeName, len);
+    serial.write_u16((uint16_t)len);
+    serial.write((const byte*)typeName, len);
 }
 
-bool asset_header_read(Serializer& serializer, uint16_t& outMajor, uint16_t& outMinor, uint16_t& outPatch, AssetType& outType)
+bool asset_header_read(Deserializer& serial, uint16_t& outMajor, uint16_t& outMinor, uint16_t& outPatch, AssetType& outType)
 {
-    if (serializer.size() < 18)
+    if (serial.size() < 18)
         return false;
 
     char ldaMagic[4];
-    serializer.read((byte*)ldaMagic, 4);
+    serial.read((byte*)ldaMagic, 4);
 
     if (strncmp(ldaMagic, LD_ASSET_MAGIC, 4))
         return false;
 
-    serializer.read_u16(outMajor);
-    serializer.read_u16(outMinor);
-    serializer.read_u16(outPatch);
+    serial.read_u16(outMajor);
+    serial.read_u16(outMinor);
+    serial.read_u16(outPatch);
 
     uint16_t len;
-    serializer.read_u16(len);
+    serial.read_u16(len);
 
     std::string typeName;
     typeName.resize(len);
-    serializer.read((byte*)typeName.data(), typeName.size());
+    serial.read((byte*)typeName.data(), typeName.size());
 
     // TODO: this can be hashed for O(1) lookup but we barely have any asset type variety right now.
     for (int type = 0; type < (int)ASSET_TYPE_ENUM_COUNT; type++)

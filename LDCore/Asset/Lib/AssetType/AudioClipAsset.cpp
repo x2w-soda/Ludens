@@ -14,16 +14,15 @@ void AudioClipAssetObj::load(void* user)
     auto& job = *(AssetLoadJob*)user;
     AudioClipAssetObj* obj = (AudioClipAssetObj*)job.assetHandle.unwrap();
 
-    uint64_t binarySize = FS::get_file_size(job.loadPath);
-    if (binarySize == 0)
+    std::vector<byte> tmp;
+    if (!FS::read_file_to_vector(job.loadPath, tmp) || tmp.empty())
         return;
 
-    Serializer serializer(binarySize);
-    FS::read_file(job.loadPath, binarySize, serializer.data());
+    Deserializer serial(tmp.data(), tmp.size());
 
     AssetType type;
     uint16_t major, minor, patch;
-    if (!asset_header_read(serializer, major, minor, patch, type))
+    if (!asset_header_read(serial, major, minor, patch, type))
         return;
 
     if (type != ASSET_TYPE_AUDIO_CLIP)
@@ -33,18 +32,18 @@ void AudioClipAssetObj::load(void* user)
     uint32_t channels;
     uint32_t sampleRate;
     uint32_t frameCount;
-    serializer.read_u32(u32);
-    serializer.read_u32(sampleRate);
-    serializer.read_u32(channels);
-    serializer.read_u32(frameCount);
+    serial.read_u32(u32);
+    serial.read_u32(sampleRate);
+    serial.read_u32(channels);
+    serial.read_u32(frameCount);
     SampleFormat format = (SampleFormat)u32;
     LD_ASSERT(format == SAMPLE_FORMAT_F32);
 
     uint64_t sampleByteSize;
-    serializer.read_u64(sampleByteSize);
+    serial.read_u64(sampleByteSize);
 
-    const byte* sampleData = serializer.view_now();
-    serializer.advance(sampleByteSize);
+    const byte* sampleData = serial.view_now();
+    serial.advance(sampleByteSize);
 
     obj->data = AudioData::create_from_samples(channels, sampleRate, frameCount, sampleData, sampleByteSize);
 }

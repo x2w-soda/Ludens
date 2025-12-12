@@ -222,50 +222,52 @@ void ModelBinary::from_rigid_mesh(Model& model)
     model.get_primitives(primCount, prims.data());
 }
 
-void ModelBinary::serialize(Serializer& serializer, const ModelBinary& bin)
+bool ModelBinary::serialize(Serializer& serial, const ModelBinary& bin)
 {
     LD_PROFILE_SCOPE;
 
-    serializer.write_u32((uint32_t)bin.vertices.size());
-    serializer.write_u32((uint32_t)bin.indices.size());
-    serializer.write_u32((uint32_t)bin.textures.size());
-    serializer.write_u32((uint32_t)bin.mats.size());
-    serializer.write_u32((uint32_t)bin.prims.size());
+    serial.write_u32((uint32_t)bin.vertices.size());
+    serial.write_u32((uint32_t)bin.indices.size());
+    serial.write_u32((uint32_t)bin.textures.size());
+    serial.write_u32((uint32_t)bin.mats.size());
+    serial.write_u32((uint32_t)bin.prims.size());
 
     for (const MeshVertex& v : bin.vertices)
     {
-        serializer.write_vec3(v.pos);
-        serializer.write_vec3(v.normal);
-        serializer.write_vec2(v.uv);
+        serial.write_vec3(v.pos);
+        serial.write_vec3(v.normal);
+        serial.write_vec2(v.uv);
     }
 
     for (uint32_t index : bin.indices)
-        serializer.write_u32(index);
+        serial.write_u32(index);
 
     for (const Bitmap& texture : bin.textures)
-        Bitmap::serialize(serializer, texture);
+        Bitmap::serialize(serial, texture);
 
     for (const MeshMaterial& mat : bin.mats)
     {
-        serializer.write_vec4(mat.baseColorFactor);
-        serializer.write_f32(mat.metallicFactor);
-        serializer.write_f32(mat.roughnessFactor);
-        serializer.write_i32(mat.baseColorTextureIndex);
-        serializer.write_i32(mat.normalTextureIndex);
-        serializer.write_i32(mat.metallicRoughnessTextureIndex);
+        serial.write_vec4(mat.baseColorFactor);
+        serial.write_f32(mat.metallicFactor);
+        serial.write_f32(mat.roughnessFactor);
+        serial.write_i32(mat.baseColorTextureIndex);
+        serial.write_i32(mat.normalTextureIndex);
+        serial.write_i32(mat.metallicRoughnessTextureIndex);
     }
 
     for (const MeshPrimitive& prim : bin.prims)
     {
-        serializer.write_u32(prim.indexStart);
-        serializer.write_u32(prim.indexCount);
-        serializer.write_u32(prim.vertexStart);
-        serializer.write_u32(prim.vertexCount);
-        serializer.write_i32(prim.matIndex);
+        serial.write_u32(prim.indexStart);
+        serial.write_u32(prim.indexCount);
+        serial.write_u32(prim.vertexStart);
+        serial.write_u32(prim.vertexCount);
+        serial.write_i32(prim.matIndex);
     }
+
+    return true;
 }
 
-void ModelBinary::deserialize(Serializer& serializer, ModelBinary& bin)
+bool ModelBinary::deserialize(Deserializer& serial, ModelBinary& bin)
 {
     LD_PROFILE_SCOPE;
 
@@ -277,51 +279,53 @@ void ModelBinary::deserialize(Serializer& serializer, ModelBinary& bin)
     uint32_t matCount;
     uint32_t primCount;
 
-    serializer.read_u32(vertexCount);
-    serializer.read_u32(indexCount);
-    serializer.read_u32(textureCount);
-    serializer.read_u32(matCount);
-    serializer.read_u32(primCount);
+    serial.read_u32(vertexCount);
+    serial.read_u32(indexCount);
+    serial.read_u32(textureCount);
+    serial.read_u32(matCount);
+    serial.read_u32(primCount);
 
     bin.vertices.resize(vertexCount);
     for (uint32_t i = 0; i < vertexCount; i++)
     {
         MeshVertex& v = bin.vertices[i];
-        serializer.read_vec3(v.pos);
-        serializer.read_vec3(v.normal);
-        serializer.read_vec2(v.uv);
+        serial.read_vec3(v.pos);
+        serial.read_vec3(v.normal);
+        serial.read_vec2(v.uv);
     }
 
     bin.indices.resize(indexCount);
     for (uint32_t i = 0; i < indexCount; i++)
-        serializer.read_u32(bin.indices[i]);
+        serial.read_u32(bin.indices[i]);
 
     bin.textures.resize(textureCount);
     for (uint32_t i = 0; i < textureCount; i++)
-        Bitmap::deserialize(serializer, bin.textures[i]);
+        Bitmap::deserialize(serial, bin.textures[i]);
 
     bin.mats.resize(matCount);
     for (uint32_t i = 0; i < matCount; i++)
     {
         MeshMaterial& mat = bin.mats[i];
-        serializer.read_vec4(mat.baseColorFactor);
-        serializer.read_f32(mat.metallicFactor);
-        serializer.read_f32(mat.roughnessFactor);
-        serializer.read_i32(mat.baseColorTextureIndex);
-        serializer.read_i32(mat.normalTextureIndex);
-        serializer.read_i32(mat.metallicRoughnessTextureIndex);
+        serial.read_vec4(mat.baseColorFactor);
+        serial.read_f32(mat.metallicFactor);
+        serial.read_f32(mat.roughnessFactor);
+        serial.read_i32(mat.baseColorTextureIndex);
+        serial.read_i32(mat.normalTextureIndex);
+        serial.read_i32(mat.metallicRoughnessTextureIndex);
     }
 
     bin.prims.resize(primCount);
     for (uint32_t i = 0; i < primCount; i++)
     {
         MeshPrimitive& prim = bin.prims[i];
-        serializer.read_u32(prim.indexStart);
-        serializer.read_u32(prim.indexCount);
-        serializer.read_u32(prim.vertexStart);
-        serializer.read_u32(prim.vertexCount);
-        serializer.read_i32(prim.matIndex);
+        serial.read_u32(prim.indexStart);
+        serial.read_u32(prim.indexCount);
+        serial.read_u32(prim.vertexStart);
+        serial.read_u32(prim.vertexCount);
+        serial.read_i32(prim.matIndex);
     }
+
+    return true;
 }
 
 void get_mesh_vertex_aabb(const MeshVertex* vertices, uint32_t vertexCount, Vec3& min, Vec3& max)

@@ -58,10 +58,10 @@ struct Bitmap : Handle<struct BitmapObj>
     static void destroy(Bitmap bitmap);
 
     /// @brief serialize a bitmap to binary data
-    static void serialize(Serializer& serializer, const Bitmap& bitmap);
+    static bool serialize(Serializer& serializer, const Bitmap& bitmap);
 
     /// @brief create bitmap from binary data
-    static void deserialize(Serializer& serializer, Bitmap& bitmap);
+    static bool deserialize(Deserializer& serial, Bitmap& bitmap);
 
     /// @brief flip image vertically along the Y axis
     void flipy();

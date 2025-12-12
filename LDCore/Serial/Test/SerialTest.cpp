@@ -15,7 +15,7 @@ struct Foo
     Rect hurtbox;
     int32_t health;
 
-    static void serialize(Serializer& serial, const Foo& foo)
+    static bool serialize(Serializer& serial, const Foo& foo)
     {
         serial.write_u32((uint32_t)foo.name.size());
         serial.write((byte*)foo.name.data(), foo.name.size());
@@ -28,9 +28,11 @@ struct Foo
         serial.write_f32(foo.hurtbox.y);
         serial.write_f32(foo.hurtbox.w);
         serial.write_f32(foo.hurtbox.h);
+
+        return true;
     }
 
-    static void deserialize(Serializer& serial, Foo& foo)
+    static bool deserialize(Deserializer& serial, Foo& foo)
     {
         uint32_t nameLen;
         serial.read_u32(nameLen);
@@ -45,44 +47,50 @@ struct Foo
         serial.read_f32(foo.hurtbox.y);
         serial.read_f32(foo.hurtbox.w);
         serial.read_f32(foo.hurtbox.h);
+
+        return true;
     }
 };
 
 TEST_CASE("integer serialization")
 {
-    Serializer serial;
-    serial.write_i8(std::numeric_limits<int8_t>::min());
-    serial.write_i8(std::numeric_limits<int8_t>::max());
-    serial.write_i16(std::numeric_limits<int16_t>::min());
-    serial.write_i16(std::numeric_limits<int16_t>::max());
-    serial.write_i32(std::numeric_limits<int32_t>::min());
-    serial.write_i32(std::numeric_limits<int32_t>::max());
-    serial.write_i64(std::numeric_limits<int64_t>::min());
-    serial.write_i64(std::numeric_limits<int64_t>::max());
-    CHECK(serial.size() == 30);
+    Serializer serializer;
+    serializer.write_i8(std::numeric_limits<int8_t>::min());
+    serializer.write_i8(std::numeric_limits<int8_t>::max());
+    serializer.write_i16(std::numeric_limits<int16_t>::min());
+    serializer.write_i16(std::numeric_limits<int16_t>::max());
+    serializer.write_i32(std::numeric_limits<int32_t>::min());
+    serializer.write_i32(std::numeric_limits<int32_t>::max());
+    serializer.write_i64(std::numeric_limits<int64_t>::min());
+    serializer.write_i64(std::numeric_limits<int64_t>::max());
+    CHECK(serializer.size() == 30);
 
-    serial.write_u8(std::numeric_limits<uint8_t>::min());
-    serial.write_u8(std::numeric_limits<uint8_t>::max());
-    serial.write_u16(std::numeric_limits<uint16_t>::min());
-    serial.write_u16(std::numeric_limits<uint16_t>::max());
-    serial.write_u32(std::numeric_limits<uint32_t>::min());
-    serial.write_u32(std::numeric_limits<uint32_t>::max());
-    serial.write_u64(std::numeric_limits<uint64_t>::min());
-    serial.write_u64(std::numeric_limits<uint64_t>::max());
-    CHECK(serial.size() == 60);
+    serializer.write_u8(std::numeric_limits<uint8_t>::min());
+    serializer.write_u8(std::numeric_limits<uint8_t>::max());
+    serializer.write_u16(std::numeric_limits<uint16_t>::min());
+    serializer.write_u16(std::numeric_limits<uint16_t>::max());
+    serializer.write_u32(std::numeric_limits<uint32_t>::min());
+    serializer.write_u32(std::numeric_limits<uint32_t>::max());
+    serializer.write_u64(std::numeric_limits<uint64_t>::min());
+    serializer.write_u64(std::numeric_limits<uint64_t>::max());
+    CHECK(serializer.size() == 60);
+
+    size_t dataSize;
+    const byte* data = serializer.view(dataSize);
+    Deserializer deserializer(data, dataSize);
 
     int8_t i8min, i8max;
     int16_t i16min, i16max;
     int32_t i32min, i32max;
     int64_t i64min, i64max;
-    serial.read_i8(i8min);
-    serial.read_i8(i8max);
-    serial.read_i16(i16min);
-    serial.read_i16(i16max);
-    serial.read_i32(i32min);
-    serial.read_i32(i32max);
-    serial.read_i64(i64min);
-    serial.read_i64(i64max);
+    deserializer.read_i8(i8min);
+    deserializer.read_i8(i8max);
+    deserializer.read_i16(i16min);
+    deserializer.read_i16(i16max);
+    deserializer.read_i32(i32min);
+    deserializer.read_i32(i32max);
+    deserializer.read_i64(i64min);
+    deserializer.read_i64(i64max);
     CHECK(i8min == std::numeric_limits<int8_t>::min());
     CHECK(i8max == std::numeric_limits<int8_t>::max());
     CHECK(i16min == std::numeric_limits<int16_t>::min());
@@ -96,14 +104,14 @@ TEST_CASE("integer serialization")
     uint16_t u16min, u16max;
     uint32_t u32min, u32max;
     uint64_t u64min, u64max;
-    serial.read_u8(u8min);
-    serial.read_u8(u8max);
-    serial.read_u16(u16min);
-    serial.read_u16(u16max);
-    serial.read_u32(u32min);
-    serial.read_u32(u32max);
-    serial.read_u64(u64min);
-    serial.read_u64(u64max);
+    deserializer.read_u8(u8min);
+    deserializer.read_u8(u8max);
+    deserializer.read_u16(u16min);
+    deserializer.read_u16(u16max);
+    deserializer.read_u32(u32min);
+    deserializer.read_u32(u32max);
+    deserializer.read_u64(u64min);
+    deserializer.read_u64(u64max);
     CHECK(u8min == std::numeric_limits<uint8_t>::min());
     CHECK(u8max == std::numeric_limits<uint8_t>::max());
     CHECK(u16min == std::numeric_limits<uint16_t>::min());
@@ -128,13 +136,17 @@ TEST_CASE("floating point serialization")
     serial.write_vec4(v4);
     CHECK(serial.size() == 48);
 
+    size_t dataSize;
+    const byte* data = serial.view(dataSize);
+    Deserializer deserializer(data, dataSize);
+
     float f32;
     double f64;
-    serial.read_f32(f32);
-    serial.read_f64(f64);
-    serial.read_vec2(v2);
-    serial.read_vec3(v3);
-    serial.read_vec4(v4);
+    deserializer.read_f32(f32);
+    deserializer.read_f64(f64);
+    deserializer.read_vec2(v2);
+    deserializer.read_vec3(v3);
+    deserializer.read_vec4(v4);
     CHECK(f32 == 3.14f);
     CHECK(f64 == 3.1415926535);
     CHECK(v2 == Vec2(2.0f, 3.0f));
@@ -153,8 +165,12 @@ TEST_CASE("struct serialization")
     Serializer serial;
     serialize(serial, f);
 
+    size_t dataSize;
+    const byte* data = serial.view(dataSize);
+    Deserializer deserializer(data, dataSize);
+
     Foo f2;
-    deserialize(serial, f2);
+    deserialize(deserializer, f2);
     CHECK(f2.name == "gameobject");
     CHECK(f2.health == 100);
     CHECK(f2.hitbox == f.hitbox);
@@ -186,25 +202,29 @@ TEST_CASE("chunk serialization")
     std::string name;
     name.resize(4);
 
-    serial.read_chunk(name.data(), chunkSize);
+    size_t dataSize;
+    const byte* data = serial.view(dataSize);
+    Deserializer deserializer(data, dataSize);
+
+    deserializer.read_chunk(name.data(), chunkSize);
     CHECK(chunkSize == 62);
     CHECK(name == "Foo.");
 
     int32_t i32;
-    serial.read_i32(i32);
+    deserializer.read_i32(i32);
     CHECK(i32 == 1234);
 
-    serial.read_chunk(name.data(), chunkSize);
+    deserializer.read_chunk(name.data(), chunkSize);
     CHECK(chunkSize == 46);
     CHECK(name == "Foo1");
 
     Foo f2;
-    deserialize(serial, f2);
+    deserialize(deserializer, f2);
     CHECK(f2.name == "object");
     CHECK(f2.health == 123);
     CHECK(f2.hitbox == f.hitbox);
     CHECK(f2.hurtbox == f.hurtbox);
 
-    serial.read_i32(i32);
+    deserializer.read_i32(i32);
     CHECK(i32 == 5678);
 }

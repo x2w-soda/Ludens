@@ -107,8 +107,8 @@ public:
     ///        and stores MeshVertex in world space.
     void from_rigid_mesh(Model& model);
 
-    static void serialize(Serializer& serializer, const ModelBinary& bin);
-    static void deserialize(Serializer& serializer, ModelBinary& bin);
+    static bool serialize(Serializer& serial, const ModelBinary& bin);
+    static bool deserialize(Deserializer& serial, ModelBinary& bin);
 
 private:
     bool mIsTextureOwner = false;

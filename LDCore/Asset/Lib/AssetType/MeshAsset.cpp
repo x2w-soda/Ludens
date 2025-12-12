@@ -15,22 +15,21 @@ void MeshAssetObj::load(void* user)
 
     obj->modelBinary = heap_new<ModelBinary>(MEMORY_USAGE_ASSET);
 
-    uint64_t binarySize = FS::get_file_size(job.loadPath);
-    if (binarySize == 0)
+    std::vector<byte> tmp;
+    if (!FS::read_file_to_vector(job.loadPath, tmp) || tmp.empty())
         return;
 
-    Serializer serializer(binarySize);
-    FS::read_file(job.loadPath, binarySize, serializer.data());
+    Deserializer serial(tmp.data(), tmp.size());
 
     AssetType type;
     uint16_t major, minor, patch;
-    if (!asset_header_read(serializer, major, minor, patch, type))
+    if (!asset_header_read(serial, major, minor, patch, type))
         return;
 
     if (type != ASSET_TYPE_MESH)
         return;
 
-    ModelBinary::deserialize(serializer, *obj->modelBinary);
+    ModelBinary::deserialize(serial, *obj->modelBinary);
 }
 
 void MeshAssetObj::unload(AssetObj* base)

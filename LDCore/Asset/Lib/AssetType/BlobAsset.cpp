@@ -12,32 +12,34 @@ void BlobAssetObj::load(void* assetLoadJob)
     auto& job = *(AssetLoadJob*)assetLoadJob;
     auto* obj = (BlobAssetObj*)job.assetHandle.unwrap();
 
-    uint64_t binarySize = FS::get_file_size(job.loadPath);
-    if (binarySize == 0)
+    uint64_t fileSize = FS::get_file_size(job.loadPath);
+    if (fileSize == 0)
         return;
 
-    Serializer serializer(binarySize);
-    FS::read_file(job.loadPath, binarySize, serializer.data());
+    obj->fileData = heap_malloc(fileSize, MEMORY_USAGE_ASSET);
+    if (!FS::read_file(job.loadPath, fileSize, (byte*)obj->data))
+        return;
+
+    Deserializer serial(obj->fileData, fileSize);
 
     AssetType type;
     uint16_t major, minor, patch;
-    if (!asset_header_read(serializer, major, minor, patch, type))
+    if (!asset_header_read(serial, major, minor, patch, type))
         return;
 
     if (type != ASSET_TYPE_BLOB)
         return;
 
-    serializer.read_u64(obj->dataSize);
-    obj->data = heap_malloc((size_t)obj->dataSize, MEMORY_USAGE_ASSET);
-    
-    serializer.read((byte*)obj->data, obj->dataSize);
+    serial.read_u64(obj->dataSize);
+    obj->data = (void*)serial.view_now();
 }
 
 void BlobAssetObj::unload(AssetObj* base)
 {
     auto* obj = (BlobAssetObj*)base;
 
-    heap_free(obj->data);
+    heap_free(obj->fileData);
+    obj->fileData = nullptr;
     obj->data = nullptr;
     obj->dataSize = 0;
 }

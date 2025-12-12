@@ -202,17 +202,17 @@ void Bitmap::destroy(Bitmap bitmap)
     heap_free(obj);
 }
 
-void Bitmap::serialize(Serializer& serializer, const Bitmap& bitmap)
+bool Bitmap::serialize(Serializer& serial, const Bitmap& bitmap)
 {
     LD_PROFILE_SCOPE;
 
     const BitmapObj* obj = bitmap;
     const uint32_t pixelSize = get_pixel_size_from_format(obj->format);
 
-    serializer.write_u32(obj->width);
-    serializer.write_u32(obj->height);
-    serializer.write_u32((uint32_t)obj->format);
-    serializer.write_u32((uint32_t)obj->compression);
+    serial.write_u32(obj->width);
+    serial.write_u32(obj->height);
+    serial.write_u32((uint32_t)obj->format);
+    serial.write_u32((uint32_t)obj->compression);
 
     LD_ASSERT(obj->compression == BITMAP_COMPRESSION_LZ4);
 
@@ -223,19 +223,21 @@ void Bitmap::serialize(Serializer& serializer, const Bitmap& bitmap)
     size_t cmpSize = lz4_compress(compressed.data(), compressed.size(), obj->data, dataSize);
     compressed.resize(cmpSize);
 
-    serializer.write_u64((uint64_t)compressed.size());
-    serializer.write(compressed.data(), compressed.size());
+    serial.write_u64((uint64_t)compressed.size());
+    serial.write(compressed.data(), compressed.size());
+
+    return true;
 }
 
-void Bitmap::deserialize(Serializer& serializer, Bitmap& bitmap)
+bool Bitmap::deserialize(Deserializer& serial, Bitmap& bitmap)
 {
     LD_PROFILE_SCOPE;
 
     uint32_t width, height, formatU32, compressionU32;
-    serializer.read_u32(width);
-    serializer.read_u32(height);
-    serializer.read_u32(formatU32);
-    serializer.read_u32(compressionU32);
+    serial.read_u32(width);
+    serial.read_u32(height);
+    serial.read_u32(formatU32);
+    serial.read_u32(compressionU32);
 
     const BitmapFormat format = (BitmapFormat)formatU32;
     const BitmapCompression compression = (BitmapCompression)compressionU32;
@@ -244,16 +246,18 @@ void Bitmap::deserialize(Serializer& serializer, Bitmap& bitmap)
     LD_ASSERT(compression == BITMAP_COMPRESSION_LZ4);
 
     uint64_t lz4BlockSize;
-    serializer.read_u64(lz4BlockSize);
+    serial.read_u64(lz4BlockSize);
 
-    const byte* lz4BlockData = serializer.view_now();
-    serializer.advance(lz4BlockSize);
+    const byte* lz4BlockData = serial.view_now();
+    serial.advance(lz4BlockSize);
 
     size_t dataSize = width * height * pixelSize;
     std::vector<byte> pixels(dataSize);
     lz4_decompress(pixels.data(), pixels.size(), lz4BlockData, lz4BlockSize);
 
     bitmap = Bitmap::create_from_data(width, height, format, pixels.data());
+
+    return true;
 }
 
 void Bitmap::flipy()

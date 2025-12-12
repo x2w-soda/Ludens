@@ -12,26 +12,25 @@ void FontAssetObj::load(void* user)
     auto& job = *(AssetLoadJob*)user;
     auto* obj = (FontAssetObj*)job.assetHandle.unwrap();
 
-    uint64_t binarySize = FS::get_file_size(job.loadPath);
-    if (binarySize == 0)
+    std::vector<byte> tmp;
+    if (!FS::read_file_to_vector(job.loadPath, tmp) || tmp.empty())
         return;
 
-    Serializer serializer(binarySize);
-    FS::read_file(job.loadPath, binarySize, serializer.data());
+    Deserializer serial(tmp.data(), tmp.size());
 
     AssetType type;
     uint16_t major, minor, patch;
-    if (!asset_header_read(serializer, major, minor, patch, type))
+    if (!asset_header_read(serial, major, minor, patch, type))
         return;
 
     if (type != ASSET_TYPE_FONT)
         return;
 
-    serializer.read_f32(obj->fontSize);
+    serial.read_f32(obj->fontSize);
 
     uint32_t fontDataSize;
-    serializer.read_u32(fontDataSize);
-    const byte* fontData = serializer.view_now();
+    serial.read_u32(fontDataSize);
+    const byte* fontData = serial.view_now();
 
     obj->font = Font::create_from_memory(fontData, (size_t)fontDataSize);
     obj->fontAtlas = FontAtlas::create_bitmap(obj->font, obj->fontSize);

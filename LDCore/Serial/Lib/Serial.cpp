@@ -3,7 +3,6 @@
 namespace LD {
 
 Serializer::Serializer(size_t size)
-    : mReadPos(0)
 {
     mBuffer.resize(size);
 }
@@ -11,6 +10,11 @@ Serializer::Serializer(size_t size)
 Serializer::~Serializer()
 {
     LD_ASSERT(mChunkStack.empty());
+}
+
+Deserializer::Deserializer(const void* data, size_t size)
+    : mReadPos(0), mData((const byte*)data), mDataSize(size)
+{
 }
 
 } // namespace LD
