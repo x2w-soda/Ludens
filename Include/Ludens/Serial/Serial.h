@@ -116,15 +116,22 @@ public:
         mBuffer.write((byte*)&v.w, 4);
     }
 
-    inline void write_chunk_begin(const char* name)
+    /// @brief Begin writing a chunk.
+    /// @param name 4 byte chunk name.
+    /// @return Chunk data byte offset. 
+    inline size_t write_chunk_begin(const char* name)
     {
         mBuffer.write((const byte*)name, 4);
 
         // mark the offset for 4 byte size field
         mChunkStack.push(mBuffer.size());
         write_u32(0xFFFFFFFF);
+
+        return mBuffer.size();
     }
 
+    /// @brief End writing the most recent chunk.
+    /// @return Size of written chunk data, not including headers.
     inline uint32_t write_chunk_end()
     {
         LD_ASSERT(!mChunkStack.empty());
@@ -139,6 +146,18 @@ public:
         le_u32_to_bytes(chunkSize, sizeField);
 
         return chunkSize;
+    }
+
+    /// @brief Retrieve an address for writing and advance the write pointer.
+    /// @param dist Number of bytes to advance.
+    /// @return The address mapped for writing, with the size of dist bytes.
+    /// @warning Returned address is invalidated the moment the underlying buffer is resized again.
+    inline byte* advance(size_t dist)
+    {
+        size_t offset = mBuffer.size();
+        mBuffer.resize(mBuffer.size() + dist);
+
+        return mBuffer.data() + offset;
     }
 
     /// @brief Get underlying buffer size in bytes.
