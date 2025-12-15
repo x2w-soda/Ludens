@@ -28,7 +28,7 @@ using EditorContextObserver = std::pair<EditorContextEventFn, void*>;
 ///        and active scene states.
 struct EditorContextObj
 {
-    RServer renderServer;             /// render server handle
+    RenderServer renderServer;        /// render server handle
     AudioServer audioServer;          /// audio server handle
     RImage iconAtlas;                 /// editor icon atlas handle
     Project project;                  /// current project under edit

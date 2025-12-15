@@ -5,7 +5,7 @@
 #include <Ludens/Camera/Camera.h>
 #include <Ludens/DataRegistry/DataRegistry.h>
 #include <Ludens/Header/Handle.h>
-#include <Ludens/RenderServer/RServer.h>
+#include <Ludens/RenderServer/RenderServer.h>
 #include <vector>
 
 namespace LD {
@@ -18,7 +18,7 @@ struct SceneLoadInfo
 {
     AssetManager assetManager;
     AudioServer audioServer;
-    RServer renderServer;
+    RenderServer renderServer;
 };
 
 /// @brief The basic unit of game simulation.

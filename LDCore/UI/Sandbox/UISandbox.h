@@ -4,7 +4,7 @@
 #include <Ludens/Camera/Camera.h>
 #include <Ludens/Media/Font.h>
 #include <Ludens/RenderBackend/RBackend.h>
-#include <Ludens/RenderServer/RServer.h>
+#include <Ludens/RenderServer/RenderServer.h>
 #include <Ludens/UI/UIContext.h>
 #include <Ludens/UI/UIWindowManager.h>
 
@@ -30,7 +30,7 @@ private:
     Font mFont;
     FontAtlas mFontAtlas;
     RDevice mRDevice;
-    RServer mRServer;
+    RenderServer mRenderServer;
     RImage mFontAtlasImage;
     RImage mIconAtlasImage;
     UIWindow mClient;

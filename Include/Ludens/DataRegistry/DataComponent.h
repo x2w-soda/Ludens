@@ -15,7 +15,7 @@
 #include <Ludens/AudioServer/AudioServer.h>
 #include <Ludens/Camera/Camera.h>
 #include <Ludens/RenderBackend/RBackend.h>
-#include <Ludens/RenderServer/RServer.h>
+#include <Ludens/RenderServer/RenderServer.h>
 #include <cstdint>
 
 namespace LD {

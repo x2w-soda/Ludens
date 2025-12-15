@@ -14,19 +14,19 @@ namespace LD {
 /// @brief Unique identifier distributed by the render server, zero is invalid ID
 typedef uint32_t RUID;
 
-typedef void (*RServerEditorRenderCallback)(ScreenRenderComponent renderer, void* user);
-typedef void (*RServerEditorScenePickCallback)(SceneOverlayGizmoID gizmoID, RUID ruid, void* user);
-typedef Mat4 (*RServerTransformCallback)(RUID ruid, void* user);
+typedef void (*RenderServerEditorRenderCallback)(ScreenRenderComponent renderer, void* user);
+typedef void (*RenderServerEditorScenePickCallback)(SceneOverlayGizmoID gizmoID, RUID ruid, void* user);
+typedef Mat4 (*RenderServerTransformCallback)(RUID ruid, void* user);
 
 /// @brief Render server creation info
-struct RServerInfo
+struct RenderServerInfo
 {
     RDevice device;      /// render device handle
     FontAtlas fontAtlas; /// default font atlas used for text rendering
 };
 
 /// @brief Info for the server to start a new frame
-struct RServerFrameInfo
+struct RenderServerFrameInfo
 {
     Camera mainCamera;     /// main camera to view the scene from
     Vec2 screenExtent;     /// application screen extent
@@ -35,7 +35,7 @@ struct RServerFrameInfo
     RUID envCubemap;       /// optional environment cubemap to draw in scene
 };
 
-struct RServerSceneGizmoColor
+struct RenderServerSceneGizmoColor
 {
     Color axisX;   /// color of X axis gizmo mesh
     Color axisY;   /// color of Y axis gizmo mesh
@@ -46,81 +46,81 @@ struct RServerSceneGizmoColor
 };
 
 /// @brief Info for the server to render the game scene
-struct RServerScenePass
+struct RenderServerScenePass
 {
-    RServerTransformCallback transformCallback; /// callback for server to grab the transform of objects
-    void* user;                                 /// user of the scene render pass
-    bool hasSkybox;                             /// whether to draw skybox with the environment cubemap
+    RenderServerTransformCallback transformCallback; /// callback for server to grab the transform of objects
+    void* user;                                      /// user of the scene render pass
+    bool hasSkybox;                                  /// whether to draw skybox with the environment cubemap
 
     // optional overlay rendering for gizmos and object outlining
     struct
     {
-        bool enabled;                      /// probably true in Editor, false in Runtime
-        RUID outlineRUID;                  /// mesh in scene to be outlined
-        SceneOverlayGizmo gizmoType;       /// gizmo to render
-        Vec3 gizmoCenter;                  /// gizmo center position
-        float gizmoScale;                  /// gizmo size scale, default world size is 1x1x1
-        RServerSceneGizmoColor gizmoColor; /// gizmo mesh color for this frame
+        bool enabled;                           /// probably true in Editor, false in Runtime
+        RUID outlineRUID;                       /// mesh in scene to be outlined
+        SceneOverlayGizmo gizmoType;            /// gizmo to render
+        Vec3 gizmoCenter;                       /// gizmo center position
+        float gizmoScale;                       /// gizmo size scale, default world size is 1x1x1
+        RenderServerSceneGizmoColor gizmoColor; /// gizmo mesh color for this frame
     } overlay;
 };
 
 /// @brief Info for the server to render in screen space on top of scene.
-struct RServerSceneScreenPass
+struct RenderServerScreenPass
 {
     void (*renderCallback)(ScreenRenderComponent renderer, void* user);
     void* user; /// user of the scene screen pass
 };
 
 /// @brief Info for the server to render the editor
-struct RServerEditorPass
+struct RenderServerEditorPass
 {
-    const Vec2* sceneMousePickQuery;                  /// if not null, a mouse picking query within RServerFrameInfo::sceneExtent
-    RServerEditorRenderCallback renderCallback;       /// for the Editor to render itself via a ScreenRenderComponent
-    RServerEditorScenePickCallback scenePickCallback; /// for the Editor to respond to scene mouse picking
-    void* user;                                       /// user of the editor render pass
+    const Vec2* sceneMousePickQuery;                       /// if not null, a mouse picking query within RServerFrameInfo::sceneExtent
+    RenderServerEditorRenderCallback renderCallback;       /// for the Editor to render itself via a ScreenRenderComponent
+    RenderServerEditorScenePickCallback scenePickCallback; /// for the Editor to respond to scene mouse picking
+    void* user;                                            /// user of the editor render pass
 };
 
 /// @brief Info for the server to render the editor overlay
-struct RServerEditorOverlayPass
+struct RenderServerEditorOverlayPass
 {
-    RServerEditorRenderCallback renderCallback; /// for the Editor to render additional overlays after the base pass
-    Color blurMixColor;                         /// mix color RGB for the blurred editor background, keep alpha channel at 0xFF
-    float blurMixFactor;                        /// lerp factor between blur color and mix color, 0 performs no blur
-    void* user;                                 /// user of the editor overlay render pass
+    RenderServerEditorRenderCallback renderCallback; /// for the Editor to render additional overlays after the base pass
+    Color blurMixColor;                              /// mix color RGB for the blurred editor background, keep alpha channel at 0xFF
+    float blurMixFactor;                             /// lerp factor between blur color and mix color, 0 performs no blur
+    void* user;                                      /// user of the editor overlay render pass
 };
 
 /// @brief Render server handle. This is the top-level graphics abstraction,
 ///        Renderer resources are managed internally and are identified via a RUID.
-struct RServer : Handle<struct RServerObj>
+struct RenderServer : Handle<struct RenderServerObj>
 {
     /// @brief Create the render server
-    static RServer create(const RServerInfo& serverI);
+    static RenderServer create(const RenderServerInfo& serverI);
 
     /// @brief Destroy the render server
-    static void destroy(RServer service);
+    static void destroy(RenderServer service);
 
     /// @brief Initiate the next GPU frame, this may block until the GPU has
     ///        finished processing the corresponding frame-in-flight. User must
     ///        also call submit() later.
     /// @param frameInfo parameters to use for this frame
-    void next_frame(const RServerFrameInfo& frameInfo);
+    void next_frame(const RenderServerFrameInfo& frameInfo);
 
     /// @brief Submit the frame for the GPU to process.
     void submit_frame();
 
     /// @brief Base pass to render the game scene.
-    void scene_pass(const RServerScenePass& sceneRP);
+    void scene_pass(const RenderServerScenePass& sceneRP);
 
     /// @brief Screen pass to render on top of game scene.
-    void scene_screen_pass(const RServerSceneScreenPass& screenP);
+    void screen_pass(const RenderServerScreenPass& screenP);
 
     /// @brief Dependency injection for the Editor to render itself.
     ///        Not used in game Runtime.
-    void editor_pass(const RServerEditorPass& editorPass);
+    void editor_pass(const RenderServerEditorPass& editorPass);
 
     /// @brief Dependency injection for the Editor to render more stuff on top of the editor pass.
     ///        Not used in game Runtime.
-    void editor_overlay_pass(const RServerEditorOverlayPass& editorPass);
+    void editor_overlay_pass(const RenderServerEditorOverlayPass& editorPass);
 
     /// @brief Get the underlying render device.
     RDevice get_device();

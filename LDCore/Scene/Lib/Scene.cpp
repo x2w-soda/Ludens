@@ -26,7 +26,7 @@ struct SceneObj
     DataRegistry registryBack;
     AssetManager assetManager{};
     AudioServer audioServer{};
-    RServer renderServer{};
+    RenderServer renderServer{};
     LuaState lua;
     CameraComponent* mainCameraC;
     CUID mainCameraCUID;
@@ -297,9 +297,9 @@ void SceneObj::create_lua_script(ComponentScriptSlot* scriptSlot)
     lua.get_field(-1, "scripts");
     lua.push_number((double)compID);
 
-    AssetHandle assetHandle = assetManager.get_asset(assetID);
-    LD_ASSERT(assetHandle && assetHandle.get_type() == ASSET_TYPE_LUA_SCRIPT);
-    LuaScriptAsset asset = (LuaScriptAsset)assetHandle;
+    LuaScriptAsset asset = (LuaScriptAsset)assetManager.get_asset(assetID, ASSET_TYPE_LUA_SCRIPT);
+    LD_ASSERT(asset);
+
     const char* luaSource = asset.get_source();
 
     // this should push the script instance table onto stack

@@ -6,7 +6,7 @@
 #include <Ludens/Log/Log.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/RenderComponent/ScreenRenderComponent.h>
-#include <Ludens/RenderServer/RServer.h>
+#include <Ludens/RenderServer/RenderServer.h>
 #include <Ludens/Scene/Scene.h>
 #include <array>
 #include <cstdint>
@@ -63,10 +63,10 @@ public:
         deviceI.vsync = true; // TODO: config
         mRDevice = RDevice::create(deviceI);
 
-        RServerInfo serverI{};
+        RenderServerInfo serverI{};
         serverI.device = mRDevice;
         serverI.fontAtlas = mFontAtlas;
-        mRServer = RServer::create(serverI);
+        mRenderServer = RenderServer::create(serverI);
 
         mAudioServer = AudioServer::create();
 
@@ -84,14 +84,14 @@ public:
                 facePathsCstr[i] = facePaths[i].c_str();
 
             Bitmap tmpCubemapFaces = Bitmap::create_cubemap_from_paths(facePathsCstr.data());
-            mEnvCubemap = mRServer.create_cubemap(tmpCubemapFaces);
+            mEnvCubemap = mRenderServer.create_cubemap(tmpCubemapFaces);
             Bitmap::destroy(tmpCubemapFaces);
         }
 
         // load scene into editor context
         EditorContextInfo contextI{};
         contextI.audioServer = mAudioServer;
-        contextI.renderServer = mRServer;
+        contextI.renderServer = mRenderServer;
         contextI.iconAtlasPath = sLudensLFS.materialIconsPath;
         mEditorCtx = EditorContext::create(contextI);
         mEditorCtx.load_project(sLudensLFS.projectPath);
@@ -100,7 +100,7 @@ public:
         EditorUIInfo uiI{};
         uiI.ctx = mEditorCtx;
         uiI.fontAtlas = mFontAtlas;
-        uiI.fontAtlasImage = mRServer.get_font_atlas_image();
+        uiI.fontAtlasImage = mRenderServer.get_font_atlas_image();
         uiI.screenWidth = appI.width;
         uiI.screenHeight = appI.height;
         uiI.barHeight = 22;
@@ -114,11 +114,11 @@ public:
         mEditorUI.cleanup();
 
         mRDevice.wait_idle();
-        mRServer.destroy_cubemap(mEnvCubemap);
+        mRenderServer.destroy_cubemap(mEnvCubemap);
 
         EditorContext::destroy(mEditorCtx);
         AudioServer::destroy(mAudioServer);
-        RServer::destroy(mRServer);
+        RenderServer::destroy(mRenderServer);
         RDevice::destroy(mRDevice);
         FontAtlas::destroy(mFontAtlas);
         Font::destroy(mFont);
@@ -153,16 +153,16 @@ public:
             LD_ASSERT(mainCamera);
 
             // begin rendering a frame
-            RServerFrameInfo frameI{};
+            RenderServerFrameInfo frameI{};
             frameI.directionalLight = Vec3(0.0f, 1.0f, 0.0f);
             frameI.mainCamera = mainCamera;
             frameI.screenExtent = Vec2((float)app.width(), (float)app.height());
             frameI.sceneExtent = mEditorUI.get_viewport_scene_size();
             frameI.envCubemap = mEnvCubemap;
-            mRServer.next_frame(frameI);
+            mRenderServer.next_frame(frameI);
 
             // render game scene with overlay, the editor context is responsible for supplying object transforms
-            RServerScenePass sceneP{};
+            RenderServerScenePass sceneP{};
             sceneP.transformCallback = &EditorContext::render_server_transform_callback;
             sceneP.user = mEditorCtx.unwrap();
             sceneP.overlay.enabled = !mEditorCtx.is_playing();
@@ -173,10 +173,10 @@ public:
                 sceneP.overlay.gizmoCenter,
                 sceneP.overlay.gizmoScale,
                 sceneP.overlay.gizmoColor);
-            mRServer.scene_pass(sceneP);
+            mRenderServer.scene_pass(sceneP);
 
             // render the editor UI
-            RServerEditorPass editorP{};
+            RenderServerEditorPass editorP{};
             editorP.renderCallback = &EditorUI::on_render;
             editorP.scenePickCallback = &EditorUI::on_scene_pick;
             editorP.user = &mEditorUI;
@@ -184,17 +184,17 @@ public:
             Vec2 queryPos;
             if (mEditorUI.get_viewport_mouse_pos(queryPos))
                 editorP.sceneMousePickQuery = &queryPos;
-            mRServer.editor_pass(editorP);
+            mRenderServer.editor_pass(editorP);
 
             // render the editor overlay UI
-            RServerEditorOverlayPass editorOP{};
+            RenderServerEditorOverlayPass editorOP{};
             editorOP.renderCallback = &EditorUI::on_overlay_render;
             editorOP.blurMixColor = 0x101010FF;
             editorOP.blurMixFactor = 0.1f;
             editorOP.user = &mEditorUI;
-            mRServer.editor_overlay_pass(editorOP);
+            mRenderServer.editor_overlay_pass(editorOP);
 
-            mRServer.submit_frame();
+            mRenderServer.submit_frame();
 
             LD_PROFILE_FRAME_MARK;
         }
@@ -202,7 +202,7 @@ public:
 
 private:
     RDevice mRDevice;
-    RServer mRServer;
+    RenderServer mRenderServer;
     AudioServer mAudioServer;
     EditorContext mEditorCtx;
     EditorUI mEditorUI;

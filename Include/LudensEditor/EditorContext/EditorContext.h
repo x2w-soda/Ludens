@@ -1,7 +1,7 @@
 #pragma once
 
 #include <Ludens/AudioServer/AudioServer.h>
-#include <Ludens/RenderServer/RServer.h>
+#include <Ludens/RenderServer/RenderServer.h>
 #include <Ludens/Scene/Scene.h>
 #include <Ludens/System/FileSystem.h>
 #include <LudensEditor/EditorContext/EditorAction.h>
@@ -16,9 +16,9 @@ struct Transform;
 
 struct EditorContextInfo
 {
-    AudioServer audioServer; ///  audio server handle
-    RServer renderServer;    /// render server handle
-    FS::Path iconAtlasPath;  /// path to icon atlas
+    AudioServer audioServer;   /// audio server handle
+    RenderServer renderServer; /// render server handle
+    FS::Path iconAtlasPath;    /// path to icon atlas
 };
 
 /// @brief Shared context among editor windows. Keeps track of

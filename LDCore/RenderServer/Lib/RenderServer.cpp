@@ -12,8 +12,9 @@
 #include <Ludens/RenderComponent/ScreenPickComponent.h>
 #include <Ludens/RenderComponent/ScreenRenderComponent.h>
 #include <Ludens/RenderGraph/RGraph.h>
-#include <Ludens/RenderServer/RServer.h>
+#include <Ludens/RenderServer/RenderServer.h>
 #include <Ludens/System/Memory.h>
+
 #include <unordered_set>
 #include <vector>
 
@@ -29,21 +30,21 @@ struct RMeshEntry
 };
 
 /// @brief Render server implementation.
-class RServerObj
+class RenderServerObj
 {
-    friend class RServer;
+    friend class RenderServer;
 
 public:
-    RServerObj(const RServerInfo& serviceI);
-    ~RServerObj();
+    RenderServerObj(const RenderServerInfo& serviceI);
+    ~RenderServerObj();
 
-    void next_frame(const RServerFrameInfo& frameI);
+    void next_frame(const RenderServerFrameInfo& frameI);
     void submit_frame();
 
-    void scene_pass(const RServerScenePass& sceneP);
-    void scene_screen_pass(const RServerSceneScreenPass& screenP);
-    void editor_pass(const RServerEditorPass& editorP);
-    void editor_overlay_pass(const RServerEditorOverlayPass& editorOP);
+    void scene_pass(const RenderServerScenePass& sceneP);
+    void screen_pass(const RenderServerScreenPass& screenP);
+    void editor_pass(const RenderServerEditorPass& editorP);
+    void editor_overlay_pass(const RenderServerEditorOverlayPass& editorOP);
 
     RUID get_ruid();
 
@@ -69,7 +70,7 @@ private:
     Camera mMainCamera;
     RMeshBlinnPhongPipeline mMeshPipeline;
     RUID mRUIDCtr;
-    RServerTransformCallback mTransformCallback;
+    RenderServerTransformCallback mTransformCallback;
     Vec2 mSceneExtent;
     Vec2 mScreenExtent;
     std::vector<Frame> mFrames;
@@ -92,7 +93,7 @@ private:
     bool mHasRenderedScene;
 };
 
-RServerObj::RServerObj(const RServerInfo& serverI)
+RenderServerObj::RenderServerObj(const RenderServerInfo& serverI)
     : mDevice(serverI.device), mColorFormat(RFORMAT_RGBA8), mFontAtlas(serverI.fontAtlas), mRUIDCtr(1)
 {
     RSampleCountBit supportedMSCount = mDevice.get_max_sample_count();
@@ -166,7 +167,7 @@ RServerObj::RServerObj(const RServerInfo& serverI)
     }
 }
 
-RServerObj::~RServerObj()
+RenderServerObj::~RenderServerObj()
 {
     mDevice.wait_idle();
 
@@ -203,7 +204,7 @@ RServerObj::~RServerObj()
     mDevice.destroy_image(mFontAtlasImage);
 }
 
-void RServerObj::next_frame(const RServerFrameInfo& frameI)
+void RenderServerObj::next_frame(const RenderServerFrameInfo& frameI)
 {
     RSemaphore imageAcquired, presentReady;
     RFence frameComplete;
@@ -263,7 +264,7 @@ void RServerObj::next_frame(const RServerFrameInfo& frameI)
     mHasRenderedScene = false;
 }
 
-void RServerObj::submit_frame()
+void RenderServerObj::submit_frame()
 {
     // blit to swapchain image and submit
     mGraph.connect_swapchain_image(mLastComponent, mLastColorAttachment);
@@ -273,7 +274,7 @@ void RServerObj::submit_frame()
     mDevice.present_frame();
 }
 
-void RServerObj::scene_pass(const RServerScenePass& sceneP)
+void RenderServerObj::scene_pass(const RenderServerScenePass& sceneP)
 {
     Frame& frame = mFrames[mFrameIndex];
     RClearColorValue clearColor = RUtil::make_clear_color(0.1f, 0.1f, 0.1f, 1.0f);
@@ -292,7 +293,7 @@ void RServerObj::scene_pass(const RServerScenePass& sceneP)
     forwardI.clearDepthStencil = clearDS;
     forwardI.samples = mMSAA;
     forwardI.hasSkybox = sceneP.hasSkybox;
-    ForwardRenderComponent sceneFR = ForwardRenderComponent::add(mGraph, forwardI, frame.frameSet, &RServerObj::forward_rendering, this);
+    ForwardRenderComponent sceneFR = ForwardRenderComponent::add(mGraph, forwardI, frame.frameSet, &RenderServerObj::forward_rendering, this);
 
     if (sceneP.overlay.enabled) // mesh outlining and gizmo rendering is provided by the SceneOverlayComponent
     {
@@ -328,7 +329,7 @@ void RServerObj::scene_pass(const RServerScenePass& sceneP)
     mHasRenderedScene = true;
 }
 
-void RServerObj::scene_screen_pass(const RServerSceneScreenPass& screenP)
+void RenderServerObj::screen_pass(const RenderServerScreenPass& screenP)
 {
     LD_ASSERT(mHasRenderedScene);
 
@@ -346,7 +347,7 @@ void RServerObj::scene_screen_pass(const RServerSceneScreenPass& screenP)
     mLastColorAttachment = screenRC.io_name();
 }
 
-void RServerObj::editor_pass(const RServerEditorPass& editorP)
+void RenderServerObj::editor_pass(const RenderServerEditorPass& editorP)
 {
     LD_ASSERT(mHasRenderedScene && mLastComponent && mLastColorAttachment && mLastIDFlagsAttachment);
 
@@ -400,7 +401,7 @@ void RServerObj::editor_pass(const RServerEditorPass& editorP)
     }
 }
 
-void RServerObj::editor_overlay_pass(const RServerEditorOverlayPass& editorOP)
+void RenderServerObj::editor_overlay_pass(const RenderServerEditorOverlayPass& editorOP)
 {
     /*
     DualKawaseComponentInfo blurCI{};
@@ -426,7 +427,7 @@ void RServerObj::editor_overlay_pass(const RServerEditorOverlayPass& editorOP)
     mLastColorAttachment = editorSRC.io_name();
 }
 
-RUID RServerObj::get_ruid()
+RUID RenderServerObj::get_ruid()
 {
     return mRUIDCtr++;
 }
@@ -434,11 +435,11 @@ RUID RServerObj::get_ruid()
 // NOTE: This is super early placeholder scene renderer implementation.
 //       Once other engine subsystems such as Assets and Scenes are resolved,
 //       we will come back and replace this silly procedure.
-void RServerObj::forward_rendering(ForwardRenderComponent renderer, void* user)
+void RenderServerObj::forward_rendering(ForwardRenderComponent renderer, void* user)
 {
     LD_PROFILE_SCOPE;
 
-    RServerObj& self = *(RServerObj*)user;
+    RenderServerObj& self = *(RenderServerObj*)user;
     RPipeline meshPipeline = self.mMeshPipeline.handle();
 
     renderer.set_mesh_pipeline(meshPipeline);
@@ -490,12 +491,12 @@ void RServerObj::forward_rendering(ForwardRenderComponent renderer, void* user)
     renderer.draw_skybox();
 }
 
-bool RServerObj::pickid_is_gizmo(uint32_t pickID)
+bool RenderServerObj::pickid_is_gizmo(uint32_t pickID)
 {
     return 1 <= pickID && pickID <= SCENE_OVERLAY_GIZMO_ID_LAST;
 }
 
-RUID RServerObj::pickid_to_ruid(uint32_t pickID)
+RUID RenderServerObj::pickid_to_ruid(uint32_t pickID)
 {
     // reserved SceneOverlayGizmoID
     if (pickID <= SCENE_OVERLAY_GIZMO_ID_LAST)
@@ -504,28 +505,28 @@ RUID RServerObj::pickid_to_ruid(uint32_t pickID)
     return pickID - SCENE_OVERLAY_GIZMO_ID_LAST;
 }
 
-uint32_t RServerObj::ruid_to_pickid(RUID ruid)
+uint32_t RenderServerObj::ruid_to_pickid(RUID ruid)
 {
     // NOTE: this should not cause an u32 overflow for counter-based RUID,
     //       but the possibility isn't zero either.
     return ruid + SCENE_OVERLAY_GIZMO_ID_LAST;
 }
 
-RServer RServer::create(const RServerInfo& serverI)
+RenderServer RenderServer::create(const RenderServerInfo& serverI)
 {
-    RServerObj* obj = heap_new<RServerObj>(MEMORY_USAGE_RENDER, serverI);
+    RenderServerObj* obj = heap_new<RenderServerObj>(MEMORY_USAGE_RENDER, serverI);
 
     return {obj};
 }
 
-void RServer::destroy(RServer service)
+void RenderServer::destroy(RenderServer service)
 {
-    RServerObj* obj = service;
+    RenderServerObj* obj = service;
 
-    heap_delete<RServerObj>(obj);
+    heap_delete<RenderServerObj>(obj);
 }
 
-void RServer::next_frame(const RServerFrameInfo& frameI)
+void RenderServer::next_frame(const RenderServerFrameInfo& frameI)
 {
     LD_ASSERT(frameI.mainCamera);
     LD_ASSERT(frameI.screenExtent.x > 0 && frameI.screenExtent.y > 0);
@@ -533,47 +534,47 @@ void RServer::next_frame(const RServerFrameInfo& frameI)
     mObj->next_frame(frameI);
 }
 
-void RServer::submit_frame()
+void RenderServer::submit_frame()
 {
     mObj->submit_frame();
 }
 
-void RServer::scene_pass(const RServerScenePass& sceneP)
+void RenderServer::scene_pass(const RenderServerScenePass& sceneP)
 {
     mObj->scene_pass(sceneP);
 }
 
-void RServer::scene_screen_pass(const RServerSceneScreenPass& screenP)
+void RenderServer::screen_pass(const RenderServerScreenPass& screenP)
 {
-    mObj->scene_screen_pass(screenP);
+    mObj->screen_pass(screenP);
 }
 
-void RServer::editor_pass(const RServerEditorPass& editorRP)
+void RenderServer::editor_pass(const RenderServerEditorPass& editorRP)
 {
     mObj->editor_pass(editorRP);
 }
 
-void RServer::editor_overlay_pass(const RServerEditorOverlayPass& editorOP)
+void RenderServer::editor_overlay_pass(const RenderServerEditorOverlayPass& editorOP)
 {
     mObj->editor_overlay_pass(editorOP);
 }
 
-RDevice RServer::get_device()
+RDevice RenderServer::get_device()
 {
     return mObj->mDevice;
 }
 
-RImage RServer::get_font_atlas_image()
+RImage RenderServer::get_font_atlas_image()
 {
     return mObj->mFontAtlasImage;
 }
 
-bool RServer::mesh_exists(RUID mesh)
+bool RenderServer::mesh_exists(RUID mesh)
 {
     return mObj->mMeshes.contains(mesh);
 }
 
-RUID RServer::create_mesh(ModelBinary& modelBinary)
+RUID RenderServer::create_mesh(ModelBinary& modelBinary)
 {
     RStager stager(mObj->mDevice, RQUEUE_TYPE_GRAPHICS);
 
@@ -588,7 +589,7 @@ RUID RServer::create_mesh(ModelBinary& modelBinary)
     return meshID;
 }
 
-RUID RServer::create_mesh_draw_call(RUID meshID)
+RUID RenderServer::create_mesh_draw_call(RUID meshID)
 {
     auto ite = mObj->mMeshes.find(meshID);
 
@@ -603,7 +604,7 @@ RUID RServer::create_mesh_draw_call(RUID meshID)
     return drawCall;
 }
 
-void RServer::destroy_mesh_draw_call(RUID drawCall)
+void RenderServer::destroy_mesh_draw_call(RUID drawCall)
 {
     auto ite = mObj->mDrawCallToMesh.find(drawCall);
 
@@ -616,7 +617,7 @@ void RServer::destroy_mesh_draw_call(RUID drawCall)
     entry->drawCalls.erase(drawCall);
 }
 
-RUID RServer::create_cubemap(Bitmap cubemapFaces)
+RUID RenderServer::create_cubemap(Bitmap cubemapFaces)
 {
     RSamplerInfo cubemapSamplerI{};
     cubemapSamplerI.filter = RFILTER_LINEAR;
@@ -636,7 +637,7 @@ RUID RServer::create_cubemap(Bitmap cubemapFaces)
     return cubemapID;
 }
 
-void RServer::destroy_cubemap(RUID cubemapID)
+void RenderServer::destroy_cubemap(RUID cubemapID)
 {
     auto ite = mObj->mCubemaps.find(cubemapID);
 

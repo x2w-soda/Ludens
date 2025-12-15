@@ -229,7 +229,6 @@ void EViewportWindowObj::on_mouse(UIWidget widget, const Vec2& pos, MouseButton 
             self.enableCameraControls = false;
         break;
     }
-
 }
 
 void EViewportWindowObj::on_drag(UIWidget widget, MouseButton btn, const Vec2& dragPos, bool begin)
@@ -483,7 +482,7 @@ bool EViewportWindow::get_mouse_pos(Vec2& mousePos)
     return true;
 }
 
-void EViewportWindow::get_gizmo_state(SceneOverlayGizmo& gizmoType, Vec3& gizmoCenter, float& gizmoScale, RServerSceneGizmoColor& gizmoColor)
+void EViewportWindow::get_gizmo_state(SceneOverlayGizmo& gizmoType, Vec3& gizmoCenter, float& gizmoScale, RenderServerSceneGizmoColor& gizmoColor)
 {
     if (!mObj->isGizmoVisible)
     {

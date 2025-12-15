@@ -58,12 +58,12 @@ UISandbox::UISandbox()
     deviceI.vsync = true;
     mRDevice = RDevice::create(deviceI);
 
-    RServerInfo serverI{};
+    RenderServerInfo serverI{};
     serverI.device = mRDevice;
     serverI.fontAtlas = mFontAtlas;
-    mRServer = RServer::create(serverI);
+    mRenderServer = RenderServer::create(serverI);
 
-    mFontAtlasImage = mRServer.get_font_atlas_image();
+    mFontAtlasImage = mRenderServer.get_font_atlas_image();
 
     {
         Bitmap tmpBitmap = Bitmap::create_from_path(sLudensLFS.materialIconsPath.string().c_str(), false);
@@ -125,7 +125,7 @@ UISandbox::~UISandbox()
 
     UIWindowManager::destroy(mUIWM);
     Camera::destroy(mCamera);
-    RServer::destroy(mRServer);
+    RenderServer::destroy(mRenderServer);
     RDevice::destroy(mRDevice);
     FontAtlas::destroy(mFontAtlas);
     Font::destroy(mFont);
@@ -219,29 +219,29 @@ void UISandbox::render()
     Vec2 screenExtent((float)app.width(), (float)app.height());
 
     // begin rendering a frame
-    RServerFrameInfo frameI{};
+    RenderServerFrameInfo frameI{};
     frameI.directionalLight = Vec3(0.0f, 1.0f, 0.0f);
     frameI.mainCamera = mCamera;
     frameI.screenExtent = screenExtent;
     frameI.sceneExtent = screenExtent;
     frameI.envCubemap = (RUID)0;
-    mRServer.next_frame(frameI);
+    mRenderServer.next_frame(frameI);
 
     // render empty scene
-    RServerScenePass sceneP{};
+    RenderServerScenePass sceneP{};
     sceneP.transformCallback = nullptr;
     sceneP.overlay.enabled = false;
     sceneP.hasSkybox = false;
     sceneP.user = this;
-    mRServer.scene_pass(sceneP);
+    mRenderServer.scene_pass(sceneP);
 
     // render UI in screen space
-    RServerSceneScreenPass screenP{};
+    RenderServerScreenPass screenP{};
     screenP.renderCallback = &UISandbox::on_screen_render;
     screenP.user = this;
-    mRServer.scene_screen_pass(screenP);
+    mRenderServer.screen_pass(screenP);
 
-    mRServer.submit_frame();
+    mRenderServer.submit_frame();
 }
 
 void UISandbox::on_event(const Event* event, void* user)
