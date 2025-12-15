@@ -12,6 +12,7 @@ set(MODULE_INCLUDE
 	${LUDENS_INCLUDE_DIR}/Ludens/Asset/AssetType/FontAsset.h
 	${LUDENS_INCLUDE_DIR}/Ludens/Asset/AssetType/MeshAsset.h
 	${LUDENS_INCLUDE_DIR}/Ludens/Asset/AssetType/Texture2DAsset.h
+	${LUDENS_INCLUDE_DIR}/Ludens/Asset/AssetType/TextureCubeAsset.h
 	${LUDENS_INCLUDE_DIR}/Ludens/Asset/AssetType/LuaScriptAsset.h
 	${LUDENS_INCLUDE_DIR}/Ludens/Asset/AssetType/AudioClipAsset.h
 	${LUDENS_INCLUDE_DIR}/Ludens/Asset/AssetType/UITemplateAsset.h
@@ -31,6 +32,7 @@ set(MODULE_LIB
 	Lib/AssetType/FontAsset.cpp
 	Lib/AssetType/MeshAsset.cpp
 	Lib/AssetType/Texture2DAsset.cpp
+	Lib/AssetType/TextureCubeAsset.cpp
 	Lib/AssetType/LuaScriptAsset.cpp
 	Lib/AssetType/AudioClipAsset.cpp
 	Lib/AssetType/UITemplateAsset.cpp
