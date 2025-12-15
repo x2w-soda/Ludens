@@ -3,6 +3,7 @@
 #include <Ludens/Asset/Asset.h>
 #include <Ludens/Header/Handle.h>
 #include <Ludens/JobSystem/JobSystem.h>
+#include <Ludens/Media/Bitmap.h>
 #include <Ludens/RenderBackend/RBackend.h>
 #include <Ludens/System/FileSystem.h>
 #include <cstdint>
@@ -12,11 +13,8 @@ namespace LD {
 /// @brief TextureCube asset handle.
 struct TextureCubeAsset : AssetHandle
 {
-    /// @brief Unload asset from RAM.
-    void unload();
-
-    /// @brief Get desired texture sampling mode.
-    RSamplerInfo get_sampler_hint() const;
+    /// @brief Get bitmap for cubemap.
+    Bitmap get_bitmap() const;
 };
 
 struct TextureCubeAssetImportInfo

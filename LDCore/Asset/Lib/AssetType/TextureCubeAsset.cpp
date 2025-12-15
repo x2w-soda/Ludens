@@ -20,6 +20,7 @@ static void deserialize_face(Deserializer& serial, TextureCubeAssetObj& obj, con
 {
     obj.faceSize[faceIndex] = fileSize;
     obj.faceData[faceIndex] = fileData;
+    serial.advance(fileSize);
 }
 
 static void serialize_samp(Serializer& serial, const RSamplerInfo& samplerHint)
@@ -48,8 +49,6 @@ bool TextureCubeAssetObj::deserialize(Deserializer& serial, TextureCubeAssetObj&
 {
     char name[4];
     uint32_t chunkSize;
-    serial.read_chunk(name, chunkSize);
-
     const byte* chunkData;
 
     while ((chunkData = serial.read_chunk(name, chunkSize)))
@@ -68,7 +67,7 @@ bool TextureCubeAssetObj::deserialize(Deserializer& serial, TextureCubeAssetObj&
 
         for (int i = 0; i < 6; i++)
         {
-            if (strncmp(sFaceChunkNames[i], name, 4))
+            if (!strncmp(sFaceChunkNames[i], name, 4))
             {
                 deserialize_face(serial, obj, chunkData, chunkSize, i);
                 break;
@@ -85,7 +84,6 @@ void TextureCubeAssetObj::load(void* user)
 
     auto& job = *(AssetLoadJob*)user;
     TextureCubeAssetObj* obj = (TextureCubeAssetObj*)job.assetHandle.unwrap();
-    memset(obj, 0, sizeof(TextureCubeAssetObj));
 
     uint64_t fileSize = FS::get_file_size(job.loadPath);
     if (fileSize == 0)
@@ -102,7 +100,8 @@ void TextureCubeAssetObj::load(void* user)
     if (!asset_header_read(serial, major, minor, patch, type) || type != ASSET_TYPE_TEXTURE_CUBE)
         return;
 
-    LD::deserialize<TextureCubeAssetObj>(serial, *obj);
+    if (!LD::deserialize<TextureCubeAssetObj>(serial, *obj))
+        return;
 
     for (int i = 0; i < 6; i++)
     {
@@ -134,6 +133,13 @@ void TextureCubeAssetObj::unload(AssetObj* base)
         self.faceData[i] = nullptr;
         self.faceSize[i] = 0;
     }
+}
+
+Bitmap TextureCubeAsset::get_bitmap() const
+{
+    auto* obj = (TextureCubeAssetObj*)mObj;
+
+    return obj->bitmap;
 }
 
 void TextureCubeAssetImportJob::submit()
@@ -170,7 +176,7 @@ void TextureCubeAssetImportJob::execute(void* user)
         obj->faceSize[i] = faceSize;
 
         faceDataOffsets[i] = serial.write_chunk_begin(sFaceChunkNames[i]);
-        
+
         byte* faceData = serial.advance(faceSize);
         if (!FS::read_file(path, faceSize, faceData) || faceSize == 0)
             return; // TODO: fix leaks

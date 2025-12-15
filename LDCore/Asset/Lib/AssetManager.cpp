@@ -114,17 +114,21 @@ AssetManagerObj::~AssetManagerObj()
 
 AssetObj* AssetManagerObj::allocate_asset(AssetType type, AUID auid, const std::string& name)
 {
+    size_t assetByteSize = get_asset_byte_size(type);
+
     if (!mAssetPA.contains(type))
     {
         PoolAllocatorInfo paI{};
         paI.usage = MEMORY_USAGE_ASSET;
-        paI.blockSize = get_asset_byte_size(type);
+        paI.blockSize = assetByteSize;
         paI.pageSize = 16;
         paI.isMultiPage = true;
         mAssetPA[type] = PoolAllocator::create(paI);
     }
 
     AssetObj* obj = (AssetObj*)mAssetPA[type].allocate();
+    memset(obj, 0, assetByteSize);
+
     obj->manager = this;
     obj->name = heap_strdup(name.c_str(), MEMORY_USAGE_ASSET);
     obj->auid = auid;
