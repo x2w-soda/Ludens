@@ -188,6 +188,34 @@ Bitmap Bitmap::create_cubemap_from_data(uint32_t size, const void* faceData[6])
     return Bitmap(obj);
 }
 
+Bitmap Bitmap::create_cubemap_from_file_data(uint32_t fileSizes[6], const void* fileData[6])
+{
+    int width, height, ch;
+
+    uint32_t faceSize = 0;
+    void* faceData[6];
+
+    faceData[0] = stbi_load_from_memory((const stbi_uc*)fileData[0], (int)fileSizes[0], &width, &height, &ch, STBI_rgb_alpha);
+    if (width != height)
+        return {};
+
+    faceSize = (uint32_t)width;
+
+    for (int i = 1; i < 6; i++)
+    {
+        faceData[i] = stbi_load_from_memory((const stbi_uc*)fileData[i], (int)fileSizes[i], &width, &height, &ch, STBI_rgb_alpha);
+        if (width != faceSize || height != faceSize)
+            return {}; // TODO: fix leak
+    }
+
+    Bitmap cubemap = create_cubemap_from_data(faceSize, (const void**)faceData);
+
+    for (int i = 0; i < 6; i++)
+        stbi_image_free((void*)faceData[i]);
+
+    return cubemap;
+}
+
 void Bitmap::destroy(Bitmap bitmap)
 {
     LD_PROFILE_SCOPE;

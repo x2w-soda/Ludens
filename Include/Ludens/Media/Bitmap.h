@@ -54,6 +54,8 @@ struct Bitmap : Handle<struct BitmapObj>
     /// @param faceData An array of cubemap faces, each face contains RGBA8 pixels
     static Bitmap create_cubemap_from_data(uint32_t size, const void* faceData[6]);
 
+    static Bitmap create_cubemap_from_file_data(uint32_t fileSizes[6], const void* fileData[6]);
+
     /// @brief destroy bitmap
     static void destroy(Bitmap bitmap);
 
