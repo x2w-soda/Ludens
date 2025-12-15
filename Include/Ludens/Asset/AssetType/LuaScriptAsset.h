@@ -7,7 +7,7 @@
 namespace LD {
 
 /// @brief Lua script asset handle.
-struct LuaScriptAsset : AssetHandle
+struct LuaScriptAsset : Asset
 {
     /// @brief Unload asset from RAM.
     void unload();

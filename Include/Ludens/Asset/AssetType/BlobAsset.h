@@ -8,7 +8,7 @@
 namespace LD {
 
 /// @brief Blob asset handle. The engine makes no assumptions about the binary contents.
-struct BlobAsset : AssetHandle
+struct BlobAsset : Asset
 {
     /// @brief Get blob data.
     void* get_data(size_t& dataSize);

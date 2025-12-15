@@ -11,7 +11,7 @@
 namespace LD {
 
 /// @brief TextureCube asset handle.
-struct TextureCubeAsset : AssetHandle
+struct TextureCubeAsset : Asset
 {
     /// @brief Get bitmap for cubemap.
     Bitmap get_bitmap() const;

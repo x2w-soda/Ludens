@@ -67,7 +67,7 @@ public:
     void load_asset(AssetType type, AUID auid, const FS::Path& uri, const std::string& name);
 
     AUID get_id_from_name(const char* name, AssetType* outType);
-    AssetHandle get_asset(AUID auid);
+    Asset get_asset(AUID auid);
 
     inline void find_assets_by_type(AssetType type, std::vector<const AssetEntry*>& entries)
     {
@@ -93,9 +93,9 @@ private:
 ///          that means worker threads will be accessing this struct.
 struct AssetLoadJob
 {
-    FS::Path loadPath;       /// path to .lda file on disk
-    AssetHandle assetHandle; /// base class handle
-    JobHeader jobHeader;     /// submitted to the job system
+    FS::Path loadPath;   /// path to .lda file on disk
+    Asset assetHandle;   /// base class handle
+    JobHeader jobHeader; /// submitted to the job system
 };
 
 /// @brief Blob asset implementation.
@@ -163,10 +163,10 @@ struct Texture2DAssetObj : AssetObj
 /// @brief TextureCube asset implementation.
 struct TextureCubeAssetObj : AssetObj
 {
-    Bitmap bitmap;              // single bitmap with 6 faces
-    const void* fileData;       // entire LDA file loaded
-    const void* faceData[6];    // source image data for each face.
-    uint32_t faceSize[6];       // source image data size for each face.
+    Bitmap bitmap;           // single bitmap with 6 faces
+    const void* fileData;    // entire LDA file loaded
+    const void* faceData[6]; // source image data for each face.
+    uint32_t faceSize[6];    // source image data size for each face.
     RSamplerInfo samplerHint;
 
     static bool serialize(Serializer& serial, const TextureCubeAssetObj& obj);

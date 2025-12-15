@@ -8,7 +8,7 @@
 namespace LD {
 
 /// @brief Mesh asset handle.
-struct MeshAsset : AssetHandle
+struct MeshAsset : Asset
 {
     /// @brief get mesh binary data
     struct ModelBinary* data();

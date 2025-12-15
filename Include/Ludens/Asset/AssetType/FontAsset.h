@@ -8,7 +8,7 @@
 namespace LD {
 
 /// @brief Font asset handle.
-struct FontAsset : AssetHandle
+struct FontAsset : Asset
 {
     /// @brief Get font handle.
     Font get_font();

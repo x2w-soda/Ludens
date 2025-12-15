@@ -8,7 +8,7 @@
 namespace LD {
 
 /// @brief UITemplate asset handle.
-struct UITemplateAsset : AssetHandle
+struct UITemplateAsset : Asset
 {
     UIWidget load_ui_subtree(UIWidget parent, UITemplateOnLoadCallback callback, void* user);
 };

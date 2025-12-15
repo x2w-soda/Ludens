@@ -15,7 +15,7 @@ enum TextureCompression
 };
 
 /// @brief Texture2D asset handle.
-struct Texture2DAsset : AssetHandle
+struct Texture2DAsset : Asset
 {
     /// @brief Unload asset from RAM.
     void unload();

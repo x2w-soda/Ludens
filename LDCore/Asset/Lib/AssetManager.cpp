@@ -253,14 +253,14 @@ AUID AssetManagerObj::get_id_from_name(const char* name, AssetType* outType)
     return ite->second;
 }
 
-AssetHandle AssetManagerObj::get_asset(AUID auid)
+Asset AssetManagerObj::get_asset(AUID auid)
 {
     auto ite = mAssets.find(auid);
 
     if (ite == mAssets.end())
         return {};
 
-    return AssetHandle(ite->second);
+    return Asset(ite->second);
 }
 
 void AssetManagerObj::on_asset_modified(const FS::Path& path, AUID id, void* user)
@@ -292,17 +292,17 @@ void AssetManagerObj::on_asset_modified(const FS::Path& path, AUID id, void* use
 // Public API
 //
 
-AssetType AssetHandle::get_type()
+AssetType Asset::get_type()
 {
     return mObj->type;
 }
 
-const char* AssetHandle::get_name()
+const char* Asset::get_name()
 {
     return mObj->name;
 }
 
-AUID AssetHandle::get_auid()
+AUID Asset::get_auid()
 {
     return mObj->auid;
 }
@@ -364,9 +364,31 @@ AUID AssetManager::get_id_from_name(const char* name, AssetType* outType)
     return mObj->get_id_from_name(name, outType);
 }
 
-AssetHandle AssetManager::get_asset(AUID auid)
+Asset AssetManager::get_asset(AUID auid)
 {
     return mObj->get_asset(auid);
+}
+
+Asset AssetManager::get_asset(AUID auid, AssetType type)
+{
+    Asset asset = mObj->get_asset(auid);
+
+    if (!asset || asset.get_type() != type)
+        return {};
+
+    return asset;
+}
+
+Asset AssetManager::get_asset(const char* name, AssetType type)
+{
+    AssetType assetType;
+    AUID assetID = mObj->get_id_from_name(name, &assetType);
+    Asset asset = mObj->get_asset(assetID);
+
+    if (!asset || asset.get_type() != type)
+        return {};
+
+    return asset;
 }
 
 void asset_unload(AssetObj* base)

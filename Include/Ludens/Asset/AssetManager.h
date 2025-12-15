@@ -46,7 +46,13 @@ struct AssetManager : Handle<struct AssetManagerObj>
     AUID get_id_from_name(const char* name, AssetType* outType);
 
     /// @brief Get asset from ID
-    AssetHandle get_asset(AUID auid);
+    Asset get_asset(AUID auid);
+
+    /// @brief Get asset from ID and expected type, fails upon type mismatch.
+    Asset get_asset(AUID auid, AssetType type);
+
+    /// @brief Get asset from name and expected type, fails upon type mismatch.
+    Asset get_asset(const char* name, AssetType type);
 };
 
 } // namespace LD
