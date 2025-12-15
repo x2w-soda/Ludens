@@ -1,9 +1,11 @@
-#include "../AssetObj.h"
 #include <Ludens/Asset/AssetType/AudioClipAsset.h>
 #include <Ludens/DSP/DSP.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Media/AudioData.h>
 #include <Ludens/Profiler/Profiler.h>
+
+#include "../AssetObj.h"
+#include "AudioClipAssetObj.h"
 
 namespace LD {
 

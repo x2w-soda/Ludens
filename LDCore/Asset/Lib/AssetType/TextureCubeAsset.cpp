@@ -4,6 +4,7 @@
 #include <cstring>
 
 #include "../AssetObj.h"
+#include "TextureCubeAssetObj.h"
 
 namespace LD {
 

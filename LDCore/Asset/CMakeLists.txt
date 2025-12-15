@@ -28,13 +28,21 @@ set(MODULE_LIB
 	Lib/Template/UITemplate.cpp
 	Lib/Template/UITemplateObj.h
 	Lib/Template/UITemplateSchema.cpp
+	Lib/AssetType/BlobAssetObj.h
 	Lib/AssetType/BlobAsset.cpp
+	Lib/AssetType/FontAssetObj.h
 	Lib/AssetType/FontAsset.cpp
+	Lib/AssetType/MeshAssetObj.h
 	Lib/AssetType/MeshAsset.cpp
+	Lib/AssetType/Texture2DAssetObj.h
 	Lib/AssetType/Texture2DAsset.cpp
+	Lib/AssetType/TextureCubeAssetObj.h
 	Lib/AssetType/TextureCubeAsset.cpp
+	Lib/AssetType/LuaScriptAssetObj.h
 	Lib/AssetType/LuaScriptAsset.cpp
+	Lib/AssetType/AudioClipAssetObj.h
 	Lib/AssetType/AudioClipAsset.cpp
+	Lib/AssetType/UITemplateAssetObj.h
 	Lib/AssetType/UITemplateAsset.cpp
 )
 

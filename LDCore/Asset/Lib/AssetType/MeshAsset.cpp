@@ -1,8 +1,10 @@
-#include "../AssetObj.h"
 #include <Ludens/Asset/AssetType/MeshAsset.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/RenderComponent/Layout/RMesh.h>
 #include <Ludens/System/FileSystem.h>
+
+#include "../AssetObj.h"
+#include "MeshAssetObj.h"
 
 namespace LD {
 

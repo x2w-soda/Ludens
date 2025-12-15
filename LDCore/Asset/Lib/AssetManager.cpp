@@ -1,4 +1,3 @@
-#include "AssetObj.h"
 #include <Ludens/Asset/AssetManager.h>
 #include <Ludens/Asset/AssetSchema.h>
 #include <Ludens/Asset/AssetType/MeshAsset.h>
@@ -12,8 +11,19 @@
 #include <Ludens/RenderComponent/Layout/RMaterial.h>
 #include <Ludens/RenderComponent/Layout/RMesh.h>
 #include <Ludens/System/Allocator.h>
+
 #include <string>
 #include <unordered_map>
+
+#include "AssetObj.h"
+#include "AssetType/AudioClipAssetObj.h"
+#include "AssetType/BlobAssetObj.h"
+#include "AssetType/FontAssetObj.h"
+#include "AssetType/LuaScriptAssetObj.h"
+#include "AssetType/MeshAssetObj.h"
+#include "AssetType/Texture2DAssetObj.h"
+#include "AssetType/TextureCubeAssetObj.h"
+#include "AssetType/UITemplateAssetObj.h"
 
 namespace LD {
 

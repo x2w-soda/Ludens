@@ -1,11 +1,11 @@
-#include "../AssetObj.h"
 #include <Ludens/Asset/AssetManager.h>
 #include <Ludens/Asset/AssetType/LuaScriptAsset.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/System/FileSystem.h>
 
-namespace fs = std::filesystem;
+#include "../AssetObj.h"
+#include "LuaScriptAssetObj.h"
 
 namespace LD {
 

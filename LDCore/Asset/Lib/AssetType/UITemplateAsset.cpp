@@ -2,7 +2,7 @@
 #include <Ludens/Asset/Template/UITemplateSchema.h>
 #include <Ludens/Profiler/Profiler.h>
 
-#include "../AssetObj.h"
+#include "UITemplateAssetObj.h"
 
 namespace LD {
 

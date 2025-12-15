@@ -6,6 +6,7 @@
 #include <Ludens/System/FileSystem.h>
 
 #include "../AssetObj.h"
+#include "Texture2DAssetObj.h"
 
 namespace LD {
 

@@ -2,6 +2,7 @@
 #include <Ludens/Profiler/Profiler.h>
 
 #include "../AssetObj.h"
+#include "FontAssetObj.h"
 
 namespace LD {
 
