@@ -21,6 +21,12 @@ struct AssetUtil : Handle<struct AssetUtilObj>
     /// @return True on success.
     bool import_texture_2d(const FS::Path& sourcePath);
 
+    /// @brief Import a TextureCube asset from source PNG faces.
+    /// @param sourcePath Path to a directory containing 6 cubemap PNGs. The faces are expected to be
+    ///        "px.png", "nx.png", "py.png", "ny.png", "pz.png" and "nz.png".
+    /// @return True on success.
+    bool import_texture_cube(const FS::Path& sourcePath);
+
     /// @brief Import a Mesh asset from source file.
     /// @return True on success.
     bool import_font(const FS::Path& sourcePath);

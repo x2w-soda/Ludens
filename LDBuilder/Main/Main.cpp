@@ -4,6 +4,7 @@
 #include <Ludens/JobSystem/JobSystem.h>
 #include <Ludens/Log/Log.h>
 #include <Ludens/System/FileSystem.h>
+#include <Ludens/System/Timer.h>
 #include <LudensBuilder/BAssetUtil/BAssetUtil.h>
 #include <LudensBuilder/BDocumentCompiler/BDocumentCompiler.h>
 
@@ -140,6 +141,9 @@ static void builder_mode_import(int argc, char** argv)
     AssetUtil util = AssetUtil::create();
     bool success = false;
 
+    Timer timer;
+    timer.start();
+
     std::string type(argv[1]);
     FS::Path sourcePath(argv[2]);
 
@@ -151,11 +155,17 @@ static void builder_mode_import(int argc, char** argv)
         success = util.import_mesh(sourcePath);
     else if (type == "Texture2D")
         success = util.import_texture_2d(sourcePath);
+    else if (type == "TextureCube")
+        success = util.import_texture_cube(sourcePath);
     else if (type == "AudioClip")
         success = util.import_audio_clip(sourcePath);
 
+    size_t durationUS = timer.stop();
+
     if (!success)
         sLog.warn("import failed");
+    else
+        sLog.info("import complete in {:.2f} ms", durationUS / 1000.0f);
 
     AssetUtil::destroy(util);
 }

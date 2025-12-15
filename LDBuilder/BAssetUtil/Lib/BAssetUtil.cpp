@@ -3,6 +3,7 @@
 #include <Ludens/Asset/AssetType/FontAsset.h>
 #include <Ludens/Asset/AssetType/MeshAsset.h>
 #include <Ludens/Asset/AssetType/Texture2DAsset.h>
+#include <Ludens/Asset/AssetType/TextureCubeAsset.h>
 #include <Ludens/Log/Log.h>
 #include <Ludens/System/Memory.h>
 #include <LudensBuilder/BAssetUtil/BAssetUtil.h>
@@ -74,6 +75,62 @@ bool AssetUtil::import_texture_2d(const FS::Path& sourcePath)
 
     heap_free(memory);
     sLog.info("import_texture_2d: saved to {}", savePath.string());
+
+    return true;
+}
+
+bool AssetUtil::import_texture_cube(const FS::Path& sourcePath)
+{
+    void* memory = heap_malloc(get_asset_byte_size(ASSET_TYPE_TEXTURE_CUBE), MEMORY_USAGE_ASSET);
+    TextureCubeAsset asset((AssetObj*)memory);
+
+    if (!FS::is_directory(sourcePath))
+    {
+        sLog.warn("import_texture_cube: directory not found {}", sourcePath.string());
+        return false;
+    }
+
+    FS::Path savePath = sourcePath / FS::Path("cubemap");
+    savePath.replace_extension(LD_ASSET_EXT);
+
+    const char* faceFileNames[6] = {
+        "px.png",
+        "nx.png",
+        "py.png",
+        "ny.png",
+        "pz.png",
+        "nz.png",
+    };
+
+    TextureCubeAssetImportJob importJob{};
+    importJob.asset = asset;
+    importJob.info.samplerHint.filter = RFILTER_LINEAR;
+    importJob.info.samplerHint.mipmapFilter = RFILTER_LINEAR;
+    importJob.info.samplerHint.addressMode = RSAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    importJob.info.savePath = savePath;
+
+    bool allFacesFound = true;
+
+    for (int i = 0; i < 6; i++)
+    {
+        FS::Path faceFilePath = importJob.info.sourcePaths[i] = sourcePath / FS::Path(faceFileNames[i]);
+
+        if (!FS::exists(faceFilePath))
+        {
+            sLog.warn("import_texture_cube: face image not found {}", faceFilePath.string());
+            allFacesFound = false;
+        }
+    }
+
+    if (!allFacesFound)
+        return false;
+
+    importJob.submit();
+
+    JobSystem::get().wait_all();
+
+    heap_free(memory);
+    sLog.info("import_texture_cube: saved to {}", savePath.string());
 
     return true;
 }
