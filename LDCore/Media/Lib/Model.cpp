@@ -1,8 +1,9 @@
-#include "ModelObj.h"
 #include "Format/TinygltfLoader.h"
+#include "ModelObj.h"
 #include <Ludens/Header/Math/Mat3.h>
 #include <Ludens/Media/Model.h>
 #include <Ludens/Profiler/Profiler.h>
+#include <Ludens/Serial/Serial.h>
 #include <Ludens/System/Memory.h>
 #include <iostream>
 
@@ -226,25 +227,37 @@ bool ModelBinary::serialize(Serializer& serial, const ModelBinary& bin)
 {
     LD_PROFILE_SCOPE;
 
+    serial.write_chunk_begin("SIZE");
     serial.write_u32((uint32_t)bin.vertices.size());
     serial.write_u32((uint32_t)bin.indices.size());
     serial.write_u32((uint32_t)bin.textures.size());
     serial.write_u32((uint32_t)bin.mats.size());
     serial.write_u32((uint32_t)bin.prims.size());
+    serial.write_chunk_end();
 
+    serial.write_chunk_begin("VTX.");
     for (const MeshVertex& v : bin.vertices)
     {
         serial.write_vec3(v.pos);
         serial.write_vec3(v.normal);
         serial.write_vec2(v.uv);
     }
+    serial.write_chunk_end();
 
+    serial.write_chunk_begin("IDX.");
     for (uint32_t index : bin.indices)
         serial.write_u32(index);
+    serial.write_chunk_end();
 
-    for (const Bitmap& texture : bin.textures)
+    serial.write_chunk_begin("TEX.");
+    for (Bitmap texture : bin.textures)
+    {
+        texture.set_compression(BITMAP_COMPRESSION_LZ4);
         Bitmap::serialize(serial, texture);
+    }
+    serial.write_chunk_end();
 
+    serial.write_chunk_begin("MAT.");
     for (const MeshMaterial& mat : bin.mats)
     {
         serial.write_vec4(mat.baseColorFactor);
@@ -254,7 +267,9 @@ bool ModelBinary::serialize(Serializer& serial, const ModelBinary& bin)
         serial.write_i32(mat.normalTextureIndex);
         serial.write_i32(mat.metallicRoughnessTextureIndex);
     }
+    serial.write_chunk_end();
 
+    serial.write_chunk_begin("PRIM");
     for (const MeshPrimitive& prim : bin.prims)
     {
         serial.write_u32(prim.indexStart);
@@ -263,6 +278,7 @@ bool ModelBinary::serialize(Serializer& serial, const ModelBinary& bin)
         serial.write_u32(prim.vertexCount);
         serial.write_i32(prim.matIndex);
     }
+    serial.write_chunk_end();
 
     return true;
 }
@@ -279,11 +295,23 @@ bool ModelBinary::deserialize(Deserializer& serial, ModelBinary& bin)
     uint32_t matCount;
     uint32_t primCount;
 
+    uint32_t chunkSize;
+    std::string chunkName;
+    chunkName.resize(4);
+
+    serial.read_chunk(chunkName.data(), chunkSize);
+    if (chunkName != "SIZE")
+        return false;
+
     serial.read_u32(vertexCount);
     serial.read_u32(indexCount);
     serial.read_u32(textureCount);
     serial.read_u32(matCount);
     serial.read_u32(primCount);
+
+    serial.read_chunk(chunkName.data(), chunkSize);
+    if (chunkName != "VTX.")
+        return false;
 
     bin.vertices.resize(vertexCount);
     for (uint32_t i = 0; i < vertexCount; i++)
@@ -294,13 +322,25 @@ bool ModelBinary::deserialize(Deserializer& serial, ModelBinary& bin)
         serial.read_vec2(v.uv);
     }
 
+    serial.read_chunk(chunkName.data(), chunkSize);
+    if (chunkName != "IDX.")
+        return false;
+
     bin.indices.resize(indexCount);
     for (uint32_t i = 0; i < indexCount; i++)
         serial.read_u32(bin.indices[i]);
 
+    serial.read_chunk(chunkName.data(), chunkSize);
+    if (chunkName != "TEX.")
+        return false;
+
     bin.textures.resize(textureCount);
     for (uint32_t i = 0; i < textureCount; i++)
         Bitmap::deserialize(serial, bin.textures[i]);
+
+    serial.read_chunk(chunkName.data(), chunkSize);
+    if (chunkName != "MAT.")
+        return false;
 
     bin.mats.resize(matCount);
     for (uint32_t i = 0; i < matCount; i++)
@@ -313,6 +353,10 @@ bool ModelBinary::deserialize(Deserializer& serial, ModelBinary& bin)
         serial.read_i32(mat.normalTextureIndex);
         serial.read_i32(mat.metallicRoughnessTextureIndex);
     }
+
+    serial.read_chunk(chunkName.data(), chunkSize);
+    if (chunkName != "PRIM")
+        return false;
 
     bin.prims.resize(primCount);
     for (uint32_t i = 0; i < primCount; i++)

@@ -29,7 +29,8 @@ void MeshAssetObj::load(void* user)
     if (type != ASSET_TYPE_MESH)
         return;
 
-    ModelBinary::deserialize(serial, *obj->modelBinary);
+    bool success = ModelBinary::deserialize(serial, *obj->modelBinary);
+    LD_ASSERT(success);
 }
 
 void MeshAssetObj::unload(AssetObj* base)
