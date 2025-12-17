@@ -839,5 +839,206 @@ void destroy_component_table(Scene scene, DataRegistry reg, LuaState L, CUID com
     L.pop(1);
 }
 
+void Context::startup(Scene scene, DataRegistry registry, AssetManager assetManager)
+{
+    LD_PROFILE_SCOPE;
+
+    mScene = scene;
+    mRegistry = registry;
+    mAssetManager = assetManager;
+
+    LuaStateInfo stateI{};
+    stateI.openLibs = true;
+    mL = LuaState::create(stateI);
+
+    LuaModule ludensLuaModule = LuaScript::create_ludens_module();
+    ludensLuaModule.load(mL);
+    LuaModule::destroy(ludensLuaModule);
+
+    bool isModuleReady = mL.do_string("_G.ludens = require 'ludens'");
+    LD_ASSERT(isModuleReady);
+
+    mL.get_global("ludens");
+    mL.push_table();
+    mL.set_field(-2, "scripts");
+    mL.clear();
+}
+
+void Context::cleanup()
+{
+    LD_PROFILE_SCOPE;
+
+    LuaState::destroy(mL);
+    mL = {};
+    mAssetManager = {};
+    mRegistry = {};
+    mScene = {};
+}
+
+void Context::set_registry(DataRegistry registry)
+{
+    mRegistry = registry;
+}
+
+void Context::update(float delta)
+{
+    int oldSize1 = mL.size();
+    mL.get_global("ludens");
+    mL.get_field(-1, "scripts");
+
+    for (auto ite = mRegistry.get_component_scripts(); ite; ++ite)
+    {
+        auto* script = (ComponentScriptSlot*)ite.data();
+        if (!script->isEnabled)
+            continue;
+
+        int oldSize2 = mL.size();
+        mL.push_number((double)script->componentID);
+        mL.get_table(-2);
+
+        mL.get_field(-1, "update");
+        LD_ASSERT(mL.get_type(-1) == LUA_TYPE_FN);
+
+        // arg1 is the script instance (lua table)
+        mL.push_number((double)script->componentID);
+        mL.get_table(-4);
+
+        // arg2 is the component (lua table) the script is attached to
+        mL.get_field(-1, "_comp");
+        LD_ASSERT(mL.get_type(-1) == LUA_TYPE_TABLE);
+
+        // arg3 is the frame delta time
+        mL.push_number((double)delta);
+
+        // Script:update(comp, delta)
+        {
+            LD_PROFILE_SCOPE_NAME("LuaScript pcall");
+            LuaError err = mL.pcall(3, 0, 0);
+            LD_ASSERT(err == 0);
+        }
+
+        mL.resize(oldSize2);
+    }
+
+    mL.resize(oldSize1);
+}
+
+bool Context::create_lua_script(ComponentScriptSlot* scriptSlot)
+{
+    if (!scriptSlot)
+        return true; // not an error
+
+    int oldSize = mL.size();
+    CUID compID = scriptSlot->componentID;
+    AUID assetID = scriptSlot->assetID;
+
+    mL.get_global("ludens");
+    mL.get_field(-1, "scripts");
+    mL.push_number((double)compID);
+
+    LuaScriptAsset asset = (LuaScriptAsset)mAssetManager.get_asset(assetID, ASSET_TYPE_LUA_SCRIPT);
+    LD_ASSERT(asset);
+
+    const char* luaSource = asset.get_source();
+
+    // this should push the script instance table onto stack
+    bool isScriptValid = mL.do_string(luaSource);
+    if (!isScriptValid)
+    {
+        printf("Error: %s\n", mL.to_string(-1)); // TODO: error control flow
+        mL.resize(oldSize);
+        return false;
+    }
+
+    mL.set_table(-3); // store script instance as ludens.scripts[compID]
+
+    ComponentType type;
+    void* comp = mRegistry.get_component(compID, type);
+
+    // create and store table for component type
+    LuaScript::create_component_table(mScene, mRegistry, mL, compID, type, comp);
+
+    mL.resize(oldSize);
+    return true;
+}
+
+void Context::destroy_lua_script(ComponentScriptSlot* scriptSlot)
+{
+    if (!scriptSlot)
+        return;
+
+    CUID compID = scriptSlot->componentID;
+    int oldSize = mL.size();
+    mL.get_global("ludens");
+    mL.get_field(-1, "scripts");
+
+    // destroy component lua table representation
+    LuaScript::destroy_component_table(mScene, mRegistry, mL, compID);
+
+    mL.push_number((double)compID);
+    mL.push_nil();
+    mL.set_table(-3);
+
+    mL.resize(oldSize);
+}
+
+void Context::attach_lua_script(ComponentScriptSlot* scriptSlot)
+{
+    if (!scriptSlot)
+        return;
+
+    LuaType type;
+    CUID compID = scriptSlot->componentID;
+    int oldSize = mL.size();
+    mL.get_global("ludens");
+    mL.get_field(-1, "scripts");
+
+    // call 'attach' lua method on script
+    mL.push_number((double)compID);
+    mL.get_table(-2);
+    LD_ASSERT(mL.get_type(-1) == LUA_TYPE_TABLE); // script instance
+
+    mL.get_field(-1, "attach");
+    LD_ASSERT(mL.get_type(-1) == LUA_TYPE_FN); // script attach method
+
+    // arg1 is script instance
+    mL.push_value(-2);
+    LD_ASSERT((type = mL.get_type(-1)) == LUA_TYPE_TABLE);
+
+    // arg2 is the component
+    mL.get_field(-3, "_comp");
+    LD_ASSERT(mL.get_type(-1) == LUA_TYPE_TABLE);
+
+    mL.call(2, 0);
+
+    mL.resize(oldSize);
+}
+
+void Context::detach_lua_script(ComponentScriptSlot* scriptSlot)
+{
+    if (!scriptSlot)
+        return;
+
+    LuaType type;
+    CUID compID = scriptSlot->componentID;
+    int oldSize = mL.size();
+    mL.get_global("ludens");
+    mL.get_field(-1, "scripts");
+
+    // call 'detach' lua method on script
+    mL.push_number((double)compID);
+    mL.get_table(-2);
+    mL.get_field(-1, "detach");
+    LD_ASSERT((type = mL.get_type(-1)) == LUA_TYPE_FN); // script detach method
+
+    // arg1 is script instance
+    mL.push_value(-2);
+    LD_ASSERT((type = mL.get_type(-1)) == LUA_TYPE_TABLE);
+
+    mL.call(1, 0);
+
+    mL.resize(oldSize);
+}
+
 } // namespace LuaScript
 } // namespace LD
