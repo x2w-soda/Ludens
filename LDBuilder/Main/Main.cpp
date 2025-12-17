@@ -159,6 +159,8 @@ static void builder_mode_import(int argc, char** argv)
         success = util.import_texture_cube(sourcePath);
     else if (type == "AudioClip")
         success = util.import_audio_clip(sourcePath);
+    else if (type == "LuaScript")
+        success = util.import_lua_script(sourcePath, LUA_SCRIPT_DOMAIN_COMPONENT);
 
     size_t durationUS = timer.stop();
 

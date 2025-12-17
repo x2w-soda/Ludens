@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Ludens/Asset/Asset.h>
+#include <Ludens/Asset/AssetType/LuaScriptAsset.h>
 #include <Ludens/Header/Handle.h>
 #include <Ludens/System/FileSystem.h>
 #include <filesystem>
@@ -38,6 +39,11 @@ struct AssetUtil : Handle<struct AssetUtilObj>
     /// @brief Import an AudioClip asset from source file.
     /// @return True on success.
     bool import_audio_clip(const FS::Path& sourcePath);
+
+    /// @brief Import a Lua script.
+    /// @param sourcePath Relative path to lua file to import.
+    /// @return True on success.
+    bool import_lua_script(const FS::Path& sourcePath, LuaScriptDomain domain);
 };
 
 } // namespace LD

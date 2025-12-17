@@ -1,6 +1,7 @@
 #include <Ludens/Asset/AssetType/AudioClipAsset.h>
 #include <Ludens/Asset/AssetType/BlobAsset.h>
 #include <Ludens/Asset/AssetType/FontAsset.h>
+#include <Ludens/Asset/AssetType/LuaScriptAsset.h>
 #include <Ludens/Asset/AssetType/MeshAsset.h>
 #include <Ludens/Asset/AssetType/Texture2DAsset.h>
 #include <Ludens/Asset/AssetType/TextureCubeAsset.h>
@@ -219,6 +220,36 @@ bool AssetUtil::import_audio_clip(const FS::Path& sourcePath)
 
     heap_free(memory);
     sLog.info("import_audio_clip: saved to {}", savePath.string());
+
+    return true;
+}
+
+bool AssetUtil::import_lua_script(const FS::Path& sourcePath, LuaScriptDomain domain)
+{
+    void* memory = heap_malloc(get_asset_byte_size(ASSET_TYPE_LUA_SCRIPT), MEMORY_USAGE_ASSET);
+    LuaScriptAsset asset((AssetObj*)memory);
+
+    std::string ext = sourcePath.extension().string();
+    if (ext != ".lua")
+    {
+        sLog.warn("import_lua_script: expected .lua file, found {}", ext);
+        return false;
+    }
+
+    FS::Path savePath(sourcePath);
+    savePath.replace_extension(LD_ASSET_EXT);
+
+    LuaScriptAssetImportJob importJob;
+    importJob.asset = asset;
+    importJob.info.sourcePath = sourcePath;
+    importJob.info.savePath = savePath;
+    importJob.info.domain = domain;
+    importJob.submit();
+
+    JobSystem::get().wait_all();
+
+    heap_free(memory);
+    sLog.info("import_lua_script: saved to {}", savePath.string());
 
     return true;
 }
