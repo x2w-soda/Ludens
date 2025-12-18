@@ -11,6 +11,8 @@ set(MODULE_LIB
     Lib/SceneSchema.cpp
     Lib/LuaScript.h
     Lib/LuaScript.cpp
+    Lib/LuaScriptFFI.h
+    Lib/LuaScriptFFI.cpp
 )
 
 add_library(${MODULE_NAME}
@@ -36,6 +38,7 @@ target_link_libraries(${MODULE_NAME} PUBLIC
 set(MODULE_TEST
     Test/SceneTest.cpp
     Test/SceneSchemaTest.cpp
+    Test/SceneLuaScriptFFITest.cpp
 )
 
 add_executable(${MODULE_TEST_NAME}

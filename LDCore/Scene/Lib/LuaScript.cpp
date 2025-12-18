@@ -1,12 +1,16 @@
-#include "LuaScript.h"
 #include <Ludens/Application/Application.h>
 #include <Ludens/Application/Input.h>
 #include <Ludens/DataRegistry/DataComponent.h>
 #include <Ludens/Log/Log.h>
 #include <Ludens/Profiler/Profiler.h>
+
 #include <array>
 #include <cstring>
+#include <format>
 #include <string>
+
+#include "LuaScript.h"
+#include "LuaScriptFFI.h"
 
 #define LUDENS_LUA_SCRIPT_LOG_CHANNEL "LuaScript"
 #define LUDENS_LUA_MODULE_NAME "ludens"
@@ -21,28 +25,14 @@ static KeyCode string_to_keycode(const char* str);
 static MouseButton string_to_mouse_button(const char* cstr);
 static inline ComponentBase* get_component_base(LuaState& L, DataRegistry* outReg);
 static inline bool push_script_table(LuaState& L, CUID compID);
-static int transform_get_position(lua_State* l);
-static int transform_set_position(lua_State* l);
-static int transform_get_rotation(lua_State* l);
-static int transform_set_rotation(lua_State* l);
-static int transform_get_scale(lua_State* l);
-static int transform_set_scale(lua_State* l);
-static int transform2d_get_position(lua_State* l);
-static int transform2d_set_position(lua_State* l);
-static int transform2d_get_rotation(lua_State* l);
-static int transform2d_set_rotation(lua_State* l);
-static int transform2d_get_scale(lua_State* l);
-static int transform2d_set_scale(lua_State* l);
+static inline void push_component_table(LuaState& L, const char* ffiCast, void* comp);
 static int component_get_id(lua_State* l);
 static int component_get_name(lua_State* l);
 static int component_set_name(lua_State* l);
-static void push_transform_table(DataRegistry reg, LuaState L, CUID compID, Transform* transform);
-static void push_transform2d_table(DataRegistry reg, LuaState L, CUID compID, Transform2D* transform);
 static void push_audio_source_component_table(Scene scene, DataRegistry reg, LuaState L, CUID compID, void* comp);
 static void push_camera_component_table(Scene scene, DataRegistry reg, LuaState L, CUID compID, void* comp);
 static void push_mesh_component_table(Scene scene, DataRegistry reg, LuaState L, CUID compID, void* comp);
 static void push_sprite2d_component_table(Scene scene, DataRegistry reg, LuaState L, CUID compID, void* comp);
-static void install_component_base(DataRegistry reg, LuaState& L, CUID compID);
 static int application_exit(lua_State* l);
 static int debug_log(lua_State* l);
 static int input_get_key_down(lua_State* l);
@@ -143,227 +133,25 @@ static inline bool push_script_table(LuaState& L, CUID compID)
     return false;
 }
 
-static inline void get_transform_cuid(LuaState L, int tIndex, CUID& compID, DataRegistry& reg)
+static inline void push_component_table(LuaState& L, const char* ffiCast, void* comp)
+{
+    L.push_light_userdata(comp);
+    L.set_global("tmp"); // TODO: this ugly
+
+    std::string str = std::format("local ffi = require 'ffi' return ffi.cast(\"{}\", _G.tmp)", ffiCast);
+    bool ok = L.do_string(str.c_str());
+    LD_ASSERT(ok);
+
+    LuaType type = L.get_type(-1);
+    LD_ASSERT(type == LUA_TYPE_CDATA);
+}
+
+static inline void get_transform_cuid(LuaState L, int tIndex, CUID& compID)
 {
     L.get_field(tIndex, "_cuid");
     LD_ASSERT(L.get_type(-1) == LUA_TYPE_NUMBER);
     compID = (CUID)L.to_number(-1);
     L.pop(1);
-
-    L.get_field(tIndex, "_reg");
-    LD_ASSERT(L.get_type(-1) == LUA_TYPE_LIGHTUSERDATA);
-    reg = DataRegistry((DataRegistryObj*)L.to_userdata(-1));
-}
-
-/// @brief Transform:get_position()
-static int transform_get_position(lua_State* l)
-{
-    LD_PROFILE_SCOPE;
-    LuaState L(l);
-
-    L.get_field(-1, "_ud");
-    LD_ASSERT(L.get_type(-1) == LUA_TYPE_LIGHTUSERDATA);
-
-    Transform* transform = (Transform*)L.to_userdata(-1);
-    L.push_vec3(transform->position);
-
-    return 1;
-}
-
-/// @brief Transform:set_position(Vec3)
-static int transform_set_position(lua_State* l)
-{
-    LD_PROFILE_SCOPE;
-    LuaState L(l);
-
-    L.get_field(-2, "_ud");
-    LD_ASSERT(L.get_type(-1) == LUA_TYPE_LIGHTUSERDATA);
-
-    Transform* transform = (Transform*)L.to_userdata(-1);
-    transform->position = L.to_vec3(-2);
-    L.pop(1);
-
-    DataRegistry reg;
-    CUID compID;
-    get_transform_cuid(L, -2, compID, reg);
-    reg.mark_component_transform_dirty(compID);
-
-    return 0;
-}
-
-/// @brief Transform:get_rotation()
-static int transform_get_rotation(lua_State* l)
-{
-    LD_PROFILE_SCOPE;
-    LuaState L(l);
-
-    L.get_field(-1, "_ud");
-    LD_ASSERT(L.get_type(-1) == LUA_TYPE_LIGHTUSERDATA);
-
-    Transform* transform = (Transform*)L.to_userdata(-1);
-    L.push_vec3(transform->rotation);
-
-    return 1;
-}
-
-/// @brief Transform:set_rotation(Vec3)
-static int transform_set_rotation(lua_State* l)
-{
-    LD_PROFILE_SCOPE;
-    LuaState L(l);
-
-    L.get_field(-2, "_ud");
-    LD_ASSERT(L.get_type(-1) == LUA_TYPE_LIGHTUSERDATA);
-
-    Transform* transform = (Transform*)L.to_userdata(-1);
-    transform->rotation = L.to_vec3(-2);
-    transform->quat = Quat::from_euler(transform->rotation);
-    L.pop(1);
-
-    DataRegistry reg;
-    CUID compID;
-    get_transform_cuid(L, -2, compID, reg);
-    reg.mark_component_transform_dirty(compID);
-
-    return 0;
-}
-
-/// @brief Transform:get_scale()
-static int transform_get_scale(lua_State* l)
-{
-    LD_PROFILE_SCOPE;
-    LuaState L(l);
-
-    L.get_field(-1, "_ud");
-    LD_ASSERT(L.get_type(-1) == LUA_TYPE_LIGHTUSERDATA);
-
-    Transform* transform = (Transform*)L.to_userdata(-1);
-    L.push_vec3(transform->scale);
-
-    return 1;
-}
-
-/// @brief Transform:set_scale(Vec3)
-static int transform_set_scale(lua_State* l)
-{
-    LD_PROFILE_SCOPE;
-    LuaState L(l);
-
-    L.get_field(-2, "_ud");
-    LD_ASSERT(L.get_type(-1) == LUA_TYPE_LIGHTUSERDATA);
-
-    Transform* transform = (Transform*)L.to_userdata(-1);
-    transform->scale = L.to_vec3(-2);
-    L.pop(1);
-
-    DataRegistry reg;
-    CUID compID;
-    get_transform_cuid(L, -2, compID, reg);
-    reg.mark_component_transform_dirty(compID);
-
-    return 0;
-}
-
-/// @brief Transform2D:get_position()
-static int transform2d_get_position(lua_State* l)
-{
-    LuaState L(l);
-
-    L.get_field(-1, "_ud");
-    LD_ASSERT(L.get_type(-1) == LUA_TYPE_LIGHTUSERDATA);
-
-    Transform2D* transform = (Transform2D*)L.to_userdata(-1);
-    L.push_vec2(transform->position);
-
-    return 1;
-}
-
-/// @brief Transform2D:set_position(Vec2)
-static int transform2d_set_position(lua_State* l)
-{
-    LuaState L(l);
-
-    L.get_field(-2, "_ud");
-    LD_ASSERT(L.get_type(-1) == LUA_TYPE_LIGHTUSERDATA);
-
-    Transform2D* transform = (Transform2D*)L.to_userdata(-1);
-    transform->scale = L.to_vec2(-2);
-    L.pop(1);
-
-    DataRegistry reg;
-    CUID compID;
-    get_transform_cuid(L, -2, compID, reg);
-    reg.mark_component_transform_dirty(compID);
-
-    return 0;
-}
-
-/// @brief Transform2D:get_rotation()
-static int transform2d_get_rotation(lua_State* l)
-{
-    LuaState L(l);
-
-    L.get_field(-1, "_ud");
-    LD_ASSERT(L.get_type(-1) == LUA_TYPE_LIGHTUSERDATA);
-
-    Transform2D* transform = (Transform2D*)L.to_userdata(-1);
-    L.push_number((double)transform->rotation);
-
-    return 1;
-}
-
-/// @brief Transform2D:set_rotation(number)
-static int transform2d_set_rotation(lua_State* l)
-{
-    LuaState L(l);
-
-    L.get_field(-2, "_ud");
-    LD_ASSERT(L.get_type(-1) == LUA_TYPE_LIGHTUSERDATA);
-
-    Transform2D* transform = (Transform2D*)L.to_userdata(-1);
-    transform->scale = (float)L.to_number(-2);
-    L.pop(1);
-
-    DataRegistry reg;
-    CUID compID;
-    get_transform_cuid(L, -2, compID, reg);
-    reg.mark_component_transform_dirty(compID);
-
-    return 0;
-}
-
-/// @brief Transform2D:get_scale()
-static int transform2d_get_scale(lua_State* l)
-{
-    LuaState L(l);
-
-    L.get_field(-1, "_ud");
-    LD_ASSERT(L.get_type(-1) == LUA_TYPE_LIGHTUSERDATA);
-
-    Transform2D* transform = (Transform2D*)L.to_userdata(-1);
-    L.push_vec2(transform->scale);
-
-    return 1;
-}
-
-/// @brief Transform2D:set_scale(Vec2)
-static int transform2d_set_scale(lua_State* l)
-{
-    LuaState L(l);
-
-    L.get_field(-2, "_ud");
-    LD_ASSERT(L.get_type(-1) == LUA_TYPE_LIGHTUSERDATA);
-
-    Transform2D* transform = (Transform2D*)L.to_userdata(-1);
-    transform->scale = L.to_vec2(-2);
-    L.pop(1);
-
-    DataRegistry reg;
-    CUID compID;
-    get_transform_cuid(L, -2, compID, reg);
-    reg.mark_component_transform_dirty(compID);
-
-    return 0;
 }
 
 /// @brief Component:get_id()
@@ -407,78 +195,11 @@ static int component_set_name(lua_State* l)
     return 0;
 }
 
-/// @brief Pushes a lua table representing a Transform.
-static void push_transform_table(DataRegistry reg, LuaState L, CUID compID, Transform* transform)
-{
-    L.push_table(); // transform
-
-    L.push_light_userdata(transform);
-    L.set_field(-2, "_ud");
-
-    L.push_light_userdata(reg.unwrap());
-    L.set_field(-2, "_reg");
-
-    L.push_number((double)compID);
-    L.set_field(-2, "_cuid");
-
-    L.push_fn(&transform_get_position);
-    L.set_field(-2, "get_position");
-
-    L.push_fn(&transform_set_position);
-    L.set_field(-2, "set_position");
-
-    L.push_fn(&transform_get_rotation);
-    L.set_field(-2, "get_rotation");
-
-    L.push_fn(&transform_set_rotation);
-    L.set_field(-2, "set_rotation");
-
-    L.push_fn(&transform_get_scale);
-    L.set_field(-2, "get_scale");
-
-    L.push_fn(&transform_set_scale);
-    L.set_field(-2, "set_scale");
-}
-
-/// @brief Pushes a lua table representing a Transform2D.
-void push_transform2d_table(DataRegistry reg, LuaState L, CUID compID, Transform2D* transform)
-{
-    L.push_table(); // Transform2D
-
-    L.push_light_userdata(transform);
-    L.set_field(-2, "_ud");
-
-    L.push_light_userdata(reg.unwrap());
-    L.set_field(-2, "_reg");
-
-    L.push_number((double)compID);
-    L.set_field(-2, "_cuid");
-
-    L.push_fn(&transform2d_get_position);
-    L.set_field(-2, "get_position");
-
-    L.push_fn(&transform2d_set_position);
-    L.set_field(-2, "set_position");
-
-    L.push_fn(&transform2d_get_rotation);
-    L.set_field(-2, "get_rotation");
-
-    L.push_fn(&transform2d_set_rotation);
-    L.set_field(-2, "set_rotation");
-
-    L.push_fn(&transform2d_get_scale);
-    L.set_field(-2, "get_scale");
-
-    L.push_fn(&transform2d_set_scale);
-    L.set_field(-2, "set_scale");
-}
-
 static void push_audio_source_component_table(Scene scene, DataRegistry reg, LuaState L, CUID compID, void* comp)
 {
     AudioSourceComponent* sourceC = (AudioSourceComponent*)comp;
 
-    L.push_table(); // audio source component
-    install_component_base(reg, L, compID);
+    L.push_table(); // // TODO: FFI
 
     L.push_light_userdata((void*)scene.unwrap());
     L.set_field(-2, "_scene");
@@ -497,60 +218,21 @@ static void push_camera_component_table(Scene scene, DataRegistry reg, LuaState 
 {
     CameraComponent* cameraC = (CameraComponent*)comp;
 
-    L.push_table(); // camera component
-    install_component_base(reg, L, compID);
-
-    push_transform_table(reg, L, compID, &cameraC->transform);
-    L.set_field(-2, "transform");
-
-    // TODO:
+    L.push_table(); // TODO: FFI
 }
 
 static void push_mesh_component_table(Scene scene, DataRegistry reg, LuaState L, CUID compID, void* comp)
 {
     MeshComponent* meshC = (MeshComponent*)comp;
 
-    L.push_table(); // mesh component
-    install_component_base(reg, L, compID);
-
-    push_transform_table(reg, L, compID, &meshC->transform);
-    L.set_field(-2, "transform");
+    push_component_table(L, "MeshComponent*", comp);
 }
 
 void push_sprite2d_component_table(Scene scene, DataRegistry reg, LuaState L, CUID compID, void* comp)
 {
     Sprite2DComponent* spriteC = (Sprite2DComponent*)comp;
 
-    L.push_table(); // Sprite2D component
-    install_component_base(reg, L, compID);
-
-    push_transform2d_table(reg, L, compID, &spriteC->transform);
-    L.set_field(-2, "transform");
-}
-
-static void install_component_base(DataRegistry reg, LuaState& L, CUID compID)
-{
-    int oldSize = L.size();
-
-    // TODO: use metatable instead
-    LD_ASSERT(L.get_type(-1) == LUA_TYPE_TABLE);
-
-    L.push_light_userdata(reg.unwrap());
-    L.set_field(-2, "_reg");
-
-    L.push_number((double)compID);
-    L.set_field(-2, "_cuid");
-
-    L.push_fn(&component_get_id);
-    L.set_field(-2, "get_id");
-
-    L.push_fn(&component_get_name);
-    L.set_field(-2, "get_name");
-
-    L.push_fn(&component_set_name);
-    L.set_field(-2, "set_name");
-
-    LD_ASSERT(L.size() == oldSize);
+    L.push_table(); // TODO: FFI
 }
 
 // clang-format off
@@ -855,8 +537,24 @@ void Context::startup(Scene scene, DataRegistry registry, AssetManager assetMana
     ludensLuaModule.load(mL);
     LuaModule::destroy(ludensLuaModule);
 
-    bool isModuleReady = mL.do_string("_G.ludens = require 'ludens'");
-    LD_ASSERT(isModuleReady);
+    if (!mL.do_string("_G.ludens = require 'ludens'"))
+    {
+        sLog.error("module initialization failed: {}", mL.to_string(-1));
+        LD_UNREACHABLE;
+    }
+
+    std::string cdef = std::format("local ffi = require 'ffi' ffi.cdef [[ {} ]]", LuaScript::get_ffi_cdef());
+    if (!mL.do_string(cdef.c_str()))
+    {
+        sLog.error("FFI cdef initialization failed: {}", mL.to_string(-1));
+        LD_UNREACHABLE;
+    }
+
+    if (!mL.do_string(LuaScript::get_ffi_mt()))
+    {
+        sLog.error("FFI metatable initialization failed: {}", mL.to_string(-1));
+        LD_UNREACHABLE;
+    }
 
     mL.get_global("ludens");
     mL.push_table();
@@ -882,9 +580,13 @@ void Context::set_registry(DataRegistry registry)
 
 void Context::update(float delta)
 {
+    LD_PROFILE_SCOPE;
+
     int oldSize1 = mL.size();
     mL.get_global("ludens");
     mL.get_field(-1, "scripts");
+
+    // TODO: iterate scripts in Lua to avoid pcall overhead.
 
     for (auto ite = mRegistry.get_component_scripts(); ite; ++ite)
     {
@@ -892,20 +594,22 @@ void Context::update(float delta)
         if (!script->isEnabled)
             continue;
 
+        CUID componentID = script->componentID;
+
         int oldSize2 = mL.size();
-        mL.push_number((double)script->componentID);
+        mL.push_number((double)componentID);
         mL.get_table(-2);
 
         mL.get_field(-1, "update");
         LD_ASSERT(mL.get_type(-1) == LUA_TYPE_FN);
 
         // arg1 is the script instance (lua table)
-        mL.push_number((double)script->componentID);
+        mL.push_number((double)componentID);
         mL.get_table(-4);
 
         // arg2 is the component (lua table) the script is attached to
         mL.get_field(-1, "_comp");
-        LD_ASSERT(mL.get_type(-1) == LUA_TYPE_TABLE);
+        LD_ASSERT(mL.get_type(-1) == LUA_TYPE_CDATA);
 
         // arg3 is the frame delta time
         mL.push_number((double)delta);
@@ -913,9 +617,19 @@ void Context::update(float delta)
         // Script:update(comp, delta)
         {
             LD_PROFILE_SCOPE_NAME("LuaScript pcall");
+
             LuaError err = mL.pcall(3, 0, 0);
             LD_ASSERT(err == 0);
+
+            if (err != 0)
+            {
+                sLog.warn("script update error: {}", mL.to_string(-1));
+            }
         }
+
+        // NOTE: This is a pessimistic assumption that all script updates
+        //       write to component transform.
+        mRegistry.mark_component_transform_dirty(componentID);
 
         mL.resize(oldSize2);
     }
@@ -1005,9 +719,9 @@ void Context::attach_lua_script(ComponentScriptSlot* scriptSlot)
     mL.push_value(-2);
     LD_ASSERT((type = mL.get_type(-1)) == LUA_TYPE_TABLE);
 
-    // arg2 is the component
+    // arg2 is the component cdata from FFI
     mL.get_field(-3, "_comp");
-    LD_ASSERT(mL.get_type(-1) == LUA_TYPE_TABLE);
+    LD_ASSERT((type = mL.get_type(-1)) == LUA_TYPE_CDATA);
 
     mL.call(2, 0);
 
