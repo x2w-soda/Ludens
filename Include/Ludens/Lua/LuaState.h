@@ -27,6 +27,7 @@ enum LuaType
     LUA_TYPE_FN,
     LUA_TYPE_USERDATA,
     LUA_TYPE_THREAD,
+    LUA_TYPE_CDATA,
 };
 
 enum LuaError

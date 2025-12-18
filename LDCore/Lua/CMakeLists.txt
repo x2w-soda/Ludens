@@ -48,6 +48,7 @@ set(MODULE_TEST
     Test/LuaModuleTest.cpp
     Test/LuaConfigTest.cpp
     Test/LuaASTTest.cpp
+    Test/LuaFFITest.cpp
 )
 
 add_executable(${MODULE_TEST_NAME}

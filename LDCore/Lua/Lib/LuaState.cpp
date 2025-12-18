@@ -9,6 +9,7 @@
 extern "C" {
 #include <lauxlib.h>
 #include <lua.h>
+#include <luajit.h>
 #include <lualib.h>
 }
 
@@ -217,6 +218,7 @@ LuaType LuaState::get_type(int index)
     case LUA_TFUNCTION:      return LUA_TYPE_FN;
     case LUA_TUSERDATA:      return LUA_TYPE_USERDATA;
     case LUA_TTHREAD:        return LUA_TYPE_THREAD;
+    case 10:                 return LUA_TYPE_CDATA;
     }
     // clang-format on
 
