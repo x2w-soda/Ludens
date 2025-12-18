@@ -230,7 +230,8 @@ void AssetManagerObj::load_asset(AssetType type, AUID auid, const FS::Path& uri,
 
     if (mWatcher && type == ASSET_TYPE_LUA_SCRIPT)
     {
-        mWatcher.add_watch(loadPath, auid);
+        FS::Path luaPath = loadPath;
+        mWatcher.add_watch(luaPath.replace_extension(".lua"), auid);
     }
 
     AssetObj* obj = allocate_asset(type, auid, name);

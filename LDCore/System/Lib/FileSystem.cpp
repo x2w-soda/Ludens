@@ -47,6 +47,9 @@ bool get_directory_content(const Path& directory, std::vector<Path>& contents, s
 
 uint64_t get_file_size(const Path& path)
 {
+    if (!fs::exists(path))
+        return 0;
+
     return (uint64_t)fs::file_size(path);
 }
 

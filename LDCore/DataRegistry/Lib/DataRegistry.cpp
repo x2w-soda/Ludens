@@ -239,6 +239,7 @@ bool DataRegistryObj::get_component_transform_mat4(ComponentBase* base, Mat4& ma
         if (!DataRegistry(this).get_component_transform(base->id, transform))
             return false;
 
+        transform.quat = Quat::from_euler(transform.rotation);
         base->localMat4 = transform.as_mat4();
         base->worldMat4 = parentWorldMat4 * base->localMat4;
         base->flags &= ~COMPONENT_FLAG_TRANSFORM_DIRTY_BIT;

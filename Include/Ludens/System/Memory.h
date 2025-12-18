@@ -1,9 +1,9 @@
 #pragma once
 
-#include <cstdlib>
 #include <cstdint>
-#include <utility>
+#include <cstdlib>
 #include <new>
+#include <utility>
 
 namespace LD {
 
@@ -46,7 +46,7 @@ void heap_free(void* ptr);
 /// @return a copy of input cstr, must be freed with heap_free
 char* heap_strdup(const char* cstr, MemoryUsage usage);
 
-/// @brief examine memory profile for a given usage 
+/// @brief examine memory profile for a given usage
 const MemoryProfile& get_memory_profile(MemoryUsage usage);
 
 /// @brief Examine memory leaks for all usages
