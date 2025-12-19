@@ -419,9 +419,17 @@ ScreenRenderComponent ScreenRenderComponent::add(RGraph graph, const ScreenRende
         sInstances[nameHash] = obj;
     }
 
-    RDevice device = graph.get_device();
-    graph.get_screen_extent(obj->mScreenWidth, obj->mScreenHeight);
+    if (info.screenExtent)
+    {
+        obj->mScreenWidth = (uint32_t)info.screenExtent->x;
+        obj->mScreenHeight = (uint32_t)info.screenExtent->y;
+    }
+    else
+    {
+        graph.get_screen_extent(obj->mScreenWidth, obj->mScreenHeight);
+    }
 
+    RDevice device = graph.get_device();
     obj->mFrameIdx = device.get_frame_index();
     obj->mUser = info.user;
     obj->mOnDraw = info.onDrawCallback;

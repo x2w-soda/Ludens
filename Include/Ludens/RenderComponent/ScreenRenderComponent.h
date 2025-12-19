@@ -102,6 +102,7 @@ struct ScreenRenderComponentInfo
     bool hasInputImage;                                                 /// whether to draw on top of existing image, or to generate a new one
     Color clearColor;                                                   /// if hasInputImage is false, the clear color used to initialize the output
     void (*onDrawCallback)(ScreenRenderComponent renderer, void* user); /// invoked at draw time
+    const Vec2* screenExtent;                                           /// if not null, replaces the default render graph screen extent
     void* user;                                                         /// component instance user
 };
 
