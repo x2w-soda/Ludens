@@ -13,6 +13,8 @@ set(MODULE_LIB
     Lib/AudioServerCache.cpp
     Lib/RenderServerCache.h
     Lib/RenderServerCache.cpp
+    Lib/ScreenRenderer.h
+    Lib/ScreenRenderer.cpp
     Lib/LuaScript.h
     Lib/LuaScript.cpp
     Lib/LuaScriptFFI.h
