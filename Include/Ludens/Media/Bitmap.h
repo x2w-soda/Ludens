@@ -38,12 +38,15 @@ struct BitmapView
 
 struct Bitmap : Handle<struct BitmapObj>
 {
+    /// @brief create bitmap from file on disk
+    static Bitmap create_from_path(const char* path, bool isF32 = false);
+
     /// @brief create bitmap from copying existing data,
     ///        the memory is released after calling destroy
     static Bitmap create_from_data(uint32_t width, uint32_t height, BitmapFormat format, const void* data);
 
-    /// @brief create bitmap from file on disk
-    static Bitmap create_from_path(const char* path, bool isF32 = false);
+    /// @brief Create bitmap from file data in RAM.
+    static Bitmap create_from_file_data(uint32_t fileSize, const void* fileData);
 
     /// @brief create 6 layered bitmap from 6 paths to each face
     /// @param paths an array of 6 paths
@@ -54,6 +57,7 @@ struct Bitmap : Handle<struct BitmapObj>
     /// @param faceData An array of cubemap faces, each face contains RGBA8 pixels
     static Bitmap create_cubemap_from_data(uint32_t size, const void* faceData[6]);
 
+    /// @brief Create 6 layered bitmap from 6-face file data in RAM.
     static Bitmap create_cubemap_from_file_data(uint32_t fileSizes[6], const void* fileData[6]);
 
     /// @brief destroy bitmap

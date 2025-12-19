@@ -4,12 +4,14 @@
 #include <Ludens/Media/Bitmap.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/Serial/Compress.h>
+#include <Ludens/System/FileSystem.h>
 #include <Ludens/System/Memory.h>
+
 #include <cstring>
-#include <filesystem>
+#include <vector>
+
 #include <stb/stb_image.h>
 #include <stb/stb_image_write.h>
-#include <vector>
 
 namespace LD {
 
@@ -70,6 +72,29 @@ Bitmap Bitmap::create_from_data(uint32_t width, uint32_t height, BitmapFormat fo
     memcpy(obj->data, data, dataSize);
 
     return {obj};
+}
+
+Bitmap Bitmap::create_from_file_data(uint32_t fileSize, const void* fileData)
+{
+    LD_PROFILE_SCOPE;
+
+    int x, y, ch;
+
+    BitmapObj* obj = (BitmapObj*)heap_malloc(sizeof(BitmapObj), MEMORY_USAGE_MEDIA);
+    obj->data = (byte*)stbi_load_from_memory((const stbi_uc*)fileData, (int)fileSize, &x, &y, &ch, STBI_rgb_alpha);
+
+    if (!obj->data)
+    {
+        heap_free(obj);
+        return {};
+    }
+
+    obj->format = BITMAP_FORMAT_RGBA8U;
+    obj->flags = BITMAP_FLAG_USE_STB_FREE;
+    obj->width = (uint32_t)x;
+    obj->height = (uint32_t)y;
+
+    return Bitmap(obj);
 }
 
 Bitmap Bitmap::create_from_path(const char* path, bool isF32)
@@ -367,9 +392,7 @@ bool Bitmap::save_to_disk(const BitmapView& view, const char* c_path)
 {
     LD_PROFILE_SCOPE;
 
-    namespace fs = std::filesystem;
-
-    fs::path path(c_path);
+    FS::Path path(c_path);
     std::string ext = path.extension().string();
 
     if (ext == ".png")
