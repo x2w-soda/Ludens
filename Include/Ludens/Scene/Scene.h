@@ -13,8 +13,8 @@ namespace LD {
 /// @brief Get static C string of log channel used by lua scripts.
 const char* get_lua_script_log_channel_name();
 
-/// @brief Scene load info
-struct SceneLoadInfo
+/// @brief Scene creation info, connects to external asset manager and subsystems.
+struct SceneInfo
 {
     AssetManager assetManager;
     AudioServer audioServer;
@@ -27,13 +27,16 @@ struct Scene : Handle<struct SceneObj>
 {
 public:
     /// @brief Create empty scene with no components.
-    static Scene create();
+    static Scene create(const SceneInfo& sceneI);
 
     /// @brief Destroy a Scene.
     static void destroy(Scene);
 
+    /// @brief In-place reset to initial state after creation.
+    void reset();
+
     /// @brief Load the scene. Creates resources from assets and subsystems.
-    void load(const SceneLoadInfo& info);
+    void load();
 
     /// @brief Unload the scene. Destroys resouorces.
     void unload();
@@ -57,6 +60,9 @@ public:
 
     /// @brief Get camera to render the Scene with.
     Camera get_camera();
+
+    // NOTE: temporary
+    ScreenLayer get_screen_layer();
 
     /// @brief Create a component.
     /// @param type Component type.

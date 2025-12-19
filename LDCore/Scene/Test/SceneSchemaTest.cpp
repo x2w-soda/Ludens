@@ -24,12 +24,13 @@ cuid = 345
 [[component]]
 name = "sprite1"
 type = "Sprite2D"
+local = { x = 1, y = 1, w = 10, h = 10 }
 transform = { position = [3.0, 4.0], rotation = 345.0, scale = [2.0, 3.0] }
 auid = 2
 cuid = 300
 )";
 
-    Scene scene = Scene::create();
+    Scene scene = Scene::create({});
     CHECK(scene);
     SceneSchema::load_scene_from_source(scene, toml, strlen(toml));
 

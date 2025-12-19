@@ -41,6 +41,7 @@ static bool load_audio_source_component(Scene scene, TOMLValue compTOML, CUID co
 static bool load_camera_component(Scene scene, TOMLValue compTOML, CUID compID, const char* compName);
 static bool load_mesh_component(Scene scene, TOMLValue compTOML, CUID compID, const char* compName);
 static bool load_sprite_2d_component(Scene scene, TOMLValue compTOML, CUID compID, const char* compName);
+static bool load_rect(Rect& rect, TOMLValue rectTOML);
 static void load_transform(Transform& transform, TOMLValue transformTOML);
 static void load_transform_2d(Transform2D& transform, TOMLValue transformTOML);
 
@@ -50,6 +51,7 @@ static bool save_audio_source_component(Scene scene, TOMLValue compTOML, CUID co
 static bool save_camera_component(Scene scene, TOMLValue compTOML, CUID compID, const char* compName);
 static bool save_mesh_component(Scene scene, TOMLValue compTOML, CUID compID, const char* compName);
 static bool save_sprite_2d_component(Scene scene, TOMLValue compTOML, CUID compID, const char* compName);
+static bool save_rect(const Rect& rect, TOMLValue rectTOML);
 static void save_transform(const Transform& transform, TOMLValue transformTOML);
 static void save_transform_2d(const Transform2D& transform, TOMLValue transformTOML);
 
@@ -76,6 +78,8 @@ static void load_scene_from_schema(Scene scene, TOMLDocument doc)
 {
     if (!scene || !doc)
         return;
+
+    scene.reset();
 
     TOMLValue sceneTOML = doc.get("ludens_scene");
     if (!sceneTOML || sceneTOML.get_type() != TOML_TYPE_TABLE)
@@ -314,6 +318,10 @@ static bool load_sprite_2d_component(Scene scene, TOMLValue compTOML, CUID compI
 
     Sprite2DComponent* spriteC = (Sprite2DComponent*)scene.get_component(compID, type);
 
+    TOMLValue localTOML = compTOML.get_key("local", TOML_TYPE_TABLE);
+    if (!load_rect(spriteC->local, localTOML))
+        return false;
+
     TOMLValue transformTOML = compTOML["transform"];
     load_transform_2d(spriteC->transform, transformTOML);
     scene.mark_component_transform_dirty(compID);
@@ -322,6 +330,13 @@ static bool load_sprite_2d_component(Scene scene, TOMLValue compTOML, CUID compI
     auidTOML.get_u32(spriteC->auid);
 
     return true;
+}
+
+static bool load_rect(Rect& rect, TOMLValue rectTOML)
+{
+    LD_ASSERT(rectTOML && rectTOML.is_table_type());
+
+    return TOMLUtil::load_rect_table(rect, rectTOML);
 }
 
 static void load_transform(Transform& transform, TOMLValue transformTOML)
@@ -508,6 +523,9 @@ static bool save_sprite_2d_component(Scene scene, TOMLValue compTOML, CUID compI
     if (type != COMPONENT_TYPE_SPRITE_2D)
         return false;
 
+    TOMLValue localTOML = compTOML.set_key("local", TOML_TYPE_TABLE);
+    save_rect(spriteC->local, localTOML);
+
     TOMLValue transformTOML = compTOML.set_key("transform", TOML_TYPE_TABLE);
     save_transform_2d(spriteC->transform, transformTOML);
 
@@ -515,6 +533,11 @@ static bool save_sprite_2d_component(Scene scene, TOMLValue compTOML, CUID compI
     auidTOML.set_u32(spriteC->auid);
 
     return true;
+}
+
+static bool save_rect(const Rect& rect, TOMLValue rectTOML)
+{
+    return TOMLUtil::save_rect_table(rect, rectTOML);
 }
 
 static void save_transform(const Transform& transform, TOMLValue transformTOML)
