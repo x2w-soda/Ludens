@@ -10,6 +10,9 @@ void AudioServerCache::startup(AudioServer server)
 
 void AudioServerCache::cleanup()
 {
+    if (!mServer)
+        return;
+
     for (auto ite : mClipToBuffer)
     {
         AudioBuffer buffer = ite.second;

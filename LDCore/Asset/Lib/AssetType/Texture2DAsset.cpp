@@ -121,6 +121,13 @@ void Texture2DAsset::unload()
     mObj = nullptr;
 }
 
+Bitmap Texture2DAsset::get_bitmap()
+{
+    auto* obj = (Texture2DAssetObj*)mObj;
+
+    return obj->bitmap;
+}
+
 RSamplerInfo Texture2DAsset::get_sampler_hint() const
 {
     auto* obj = (Texture2DAssetObj*)mObj;
@@ -160,7 +167,7 @@ void Texture2DAssetImportJob::execute(void* user)
 
     size_t fileDataOffset = serial.write_chunk_begin("FILE");
     byte* fileData = serial.advance(fileSize);
-    
+
     if (!FS::read_file(path, fileSize, fileData) || fileSize == 0)
         return; // TODO: fix leaks
 

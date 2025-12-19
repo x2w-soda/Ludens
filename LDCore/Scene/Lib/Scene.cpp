@@ -60,6 +60,7 @@ static void cleanup_audio_source_component(SceneObj* scene, ComponentBase* base,
 static void startup_camera_component(SceneObj* scene, ComponentBase* base, void* comp);
 static void cleanup_camera_component(SceneObj* scene, ComponentBase* base, void* comp);
 static void load_mesh_component(SceneObj* scene, ComponentBase* base, void* comp);
+static void load_sprite_2d_component(SceneObj* scene, ComponentBase* base, void* comp);
 
 /// @brief Component behavior and operations within a Scene.
 struct SceneComponent
@@ -78,7 +79,7 @@ static SceneComponent sSceneComponents[] = {
     {COMPONENT_TYPE_TRANSFORM,     nullptr,                      nullptr,                        nullptr,                    nullptr},
     {COMPONENT_TYPE_CAMERA,        nullptr,                      nullptr,                        &startup_camera_component,  &cleanup_camera_component},
     {COMPONENT_TYPE_MESH,          &load_mesh_component,         nullptr,                        nullptr,                    nullptr},
-    {COMPONENT_TYPE_SPRITE_2D,     nullptr,                      nullptr,                        nullptr,                    nullptr},
+    {COMPONENT_TYPE_SPRITE_2D,     &load_sprite_2d_component,    nullptr,                        nullptr,                    nullptr},
 };
 // clang-format on
 
@@ -175,6 +176,17 @@ static void load_mesh_component(SceneObj* scene, ComponentBase* base, void* comp
 
         RUID mesh = scene->renderServerCache.get_or_create_mesh(meshA);
         scene->renderServerCache.create_mesh_draw_call(mesh, base->id);
+    }
+}
+
+static void load_sprite_2d_component(SceneObj* scene, ComponentBase* base, void* comp)
+{
+    auto* spriteC = (Sprite2DComponent*)comp;
+
+    if (spriteC->auid)
+    {
+        Texture2DAsset textureA = (Texture2DAsset)scene->assetManager.get_asset(spriteC->auid, ASSET_TYPE_TEXTURE_2D);
+        spriteC->image = scene->renderServerCache.get_or_create_image(textureA);
     }
 }
 

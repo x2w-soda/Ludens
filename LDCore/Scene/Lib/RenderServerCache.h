@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Ludens/Asset/AssetType/MeshAsset.h>
+#include <Ludens/Asset/AssetType/Texture2DAsset.h>
 #include <Ludens/DataRegistry/DataComponent.h>
 #include <Ludens/RenderServer/RenderServer.h>
 
@@ -22,6 +23,8 @@ public:
 
     RUID get_mesh(AUID meshAUID);
 
+    RImage get_or_create_image(Texture2DAsset textureA);
+
     /// @brief Create mesh draw call for component.
     RUID create_mesh_draw_call(RUID meshID, CUID compID);
 
@@ -31,12 +34,12 @@ public:
     /// @brief Get component associated with draw call.
     CUID get_ruid_component(RUID drawI);
 
-
 private:
     RenderServer mServer{};
-    std::unordered_map<RUID, CUID> mRuidToCuid; /// map draw call to corresponding component
-    std::unordered_map<CUID, RUID> mCuidToRuid; /// map component to corresponding draw call
-    std::unordered_map<AUID, RUID> mAuidToRuid; /// map asset to GPU resource
+    std::unordered_map<RUID, CUID> mRuidToCuid;    /// map draw call to corresponding component
+    std::unordered_map<CUID, RUID> mCuidToRuid;    /// map component to corresponding draw call
+    std::unordered_map<AUID, RUID> mAuidToRuid;    /// map asset to GPU resource
+    std::unordered_map<AUID, RImage> mAuidToImage; /// map asset to GPU image resource
 };
 
 } // namespace LD
