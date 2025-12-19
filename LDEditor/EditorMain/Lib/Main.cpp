@@ -175,6 +175,12 @@ public:
                 sceneP.overlay.gizmoColor);
             mRenderServer.scene_pass(sceneP);
 
+            // render screen space items on top of game scene.
+            RenderServerScreenPass screenP{};
+            screenP.renderCallback = &EditorContext::render_server_screen_pass_callback;
+            screenP.user = mEditorCtx.unwrap();
+            mRenderServer.screen_pass(screenP);
+
             // render the editor UI
             RenderServerEditorPass editorP{};
             editorP.renderCallback = &EditorUI::on_render;

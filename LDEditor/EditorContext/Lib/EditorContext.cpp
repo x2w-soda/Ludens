@@ -223,19 +223,15 @@ void EditorContextObj::load_project_scene(const FS::Path& sceneSchemaPath)
     selectedComponent = 0;
     selectedComponentRUID = 0;
 
-    if (scene)
-        Scene::destroy(scene);
-
-    // create the scene from schema
-    scene = Scene::create();
-    SceneSchema::load_scene_from_file(scene, sceneSchemaPath);
+    SceneInfo sceneI{};
+    sceneI.assetManager = assetManager;
+    sceneI.renderServer = renderServer;
+    sceneI.audioServer = audioServer;
+    scene = Scene::create(sceneI);
 
     // load the scene
-    SceneLoadInfo loadInfo{};
-    loadInfo.assetManager = assetManager;
-    loadInfo.renderServer = renderServer;
-    loadInfo.audioServer = audioServer;
-    scene.load(loadInfo);
+    SceneSchema::load_scene_from_file(scene, sceneSchemaPath);
+    scene.load();
 
     EditorContextSceneLoadEvent event{};
     notify_observers(&event);
@@ -324,14 +320,15 @@ void EditorContext::destroy(EditorContext ctx)
         device.destroy_image(obj->iconAtlas);
     }
 
+    Project::destroy(obj->project);
+    Scene::destroy(obj->scene);
+
     if (obj->assetManager)
     {
         AssetManager::destroy(obj->assetManager);
         obj->assetManager = {};
     }
 
-    Project::destroy(obj->project);
-    Scene::destroy(obj->scene);
     EditorActionQueue::destroy(obj->actionQueue);
     EditStack::destroy(obj->editStack);
     EditorSettings::destroy(obj->settings);
@@ -344,6 +341,15 @@ Mat4 EditorContext::render_server_transform_callback(RUID ruid, void* user)
     EditorContextObj& self = *(EditorContextObj*)user;
 
     return self.scene.get_ruid_transform_mat4(ruid);
+}
+
+ScreenLayer EditorContext::render_server_screen_pass_callback(void* user)
+{
+    EditorContextObj& self = *(EditorContextObj*)user;
+
+    // SPACE: In the editor maybe we can filter what screen layers to render?
+
+    return self.scene.get_screen_layer();
 }
 
 void EditorContext::action_redo()

@@ -35,6 +35,9 @@ struct EditorContext : Handle<struct EditorContextObj>
     /// @brief Callback to inform the render server the transforms of RUIDs
     static Mat4 render_server_transform_callback(RUID ruid, void* user);
 
+    /// @brief Callback to render screen space items on top of game scene.
+    static ScreenLayer render_server_screen_pass_callback(void* user);
+
     /// @brief Redo most recent undo.
     void action_redo();
 
