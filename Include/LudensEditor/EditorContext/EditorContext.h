@@ -130,7 +130,7 @@ struct EditorContext : Handle<struct EditorContextObj>
     CUID get_selected_component();
 
     /// @brief Get component in current Scene
-    void* get_component(CUID compID, ComponentType& type);
+    void* get_component(CUID compID, ComponentType* outType);
 
     /// @brief Get the data component associated with some RUID in scene
     CUID get_ruid_component(RUID ruid);

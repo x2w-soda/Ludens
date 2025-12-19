@@ -545,9 +545,9 @@ CUID EditorContext::get_selected_component()
     return mObj->selectedComponent;
 }
 
-void* EditorContext::get_component(CUID compID, ComponentType& type)
+void* EditorContext::get_component(CUID compID, ComponentType* outType)
 {
-    return mObj->scene.get_component(compID, type);
+    return mObj->scene.get_component(compID, outType);
 }
 
 CUID EditorContext::get_ruid_component(RUID ruid)

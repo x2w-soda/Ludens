@@ -24,7 +24,7 @@ void EInspectorWindowObj::on_imgui()
     ui_push_window("EInspectorWindow", root);
 
     ComponentType compType;
-    void* comp = editorCtx.get_component(subjectID, compType);
+    void* comp = editorCtx.get_component(subjectID, &compType);
 
     if (subjectID == (CUID)0)
     {
@@ -97,7 +97,7 @@ void EInspectorWindow::select_asset(AUID assetID)
         return;
 
     ComponentType compType;
-    void* comp = mObj->editorCtx.get_component(mObj->subjectID, compType);
+    void* comp = mObj->editorCtx.get_component(mObj->subjectID, &compType);
 
     if (!comp)
         return;
@@ -116,6 +116,12 @@ void EInspectorWindow::select_asset(AUID assetID)
     {
         Scene::IMesh mesh(scene, mObj->subjectID);
         mesh.set_mesh_asset(assetID);
+        break;
+    }
+    case COMPONENT_TYPE_SPRITE_2D:
+    {
+        Scene::ISprite2D sprite(scene, mObj->subjectID);
+        sprite.set_texture_2d_asset(assetID);
         break;
     }
     default:

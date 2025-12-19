@@ -71,14 +71,15 @@ static void eui_inspect_mesh_component(EInspectorWindowObj& self, ComponentType 
 {
     LD_ASSERT(type == COMPONENT_TYPE_MESH);
 
-    EditorTheme editorTheme = self.editorCtx.get_settings().get_theme();
+    EditorTheme editorTheme = self.editorCtx.get_theme();
     AssetManager AM = self.editorCtx.get_asset_manager();
 
     MeshComponent* meshC = (MeshComponent*)comp;
     eui_transform_edit(editorTheme, &meshC->transform);
 
-    MeshAsset asset(AM.get_asset(meshC->auid).unwrap());
+    MeshAsset asset = (MeshAsset)AM.get_asset(meshC->auid, ASSET_TYPE_MESH);
     LD_ASSERT(asset);
+
     if (eui_asset_slot(editorTheme, ASSET_TYPE_MESH, meshC->auid, asset.get_name()) && self.selectAssetFn)
     {
         self.isSelectingNewAsset = true;
@@ -89,7 +90,22 @@ static void eui_inspect_mesh_component(EInspectorWindowObj& self, ComponentType 
 void eui_inspect_sprite_2d_component(EInspectorWindowObj& self, ComponentType type, void* comp)
 {
     LD_ASSERT(type == COMPONENT_TYPE_SPRITE_2D);
+
+    EditorTheme editorTheme = self.editorCtx.get_theme();
+    AssetManager AM = self.editorCtx.get_asset_manager();
+
     // TODO:
+    auto* spriteC = (Sprite2DComponent*)comp;
+    eui_transform_2d_edit(editorTheme, &spriteC->transform);
+
+    Texture2DAsset asset = (Texture2DAsset)AM.get_asset(spriteC->auid, ASSET_TYPE_TEXTURE_2D);
+    LD_ASSERT(asset);
+
+    if (eui_asset_slot(editorTheme, ASSET_TYPE_TEXTURE_2D, spriteC->auid, asset.get_name()) && self.selectAssetFn)
+    {
+        self.isSelectingNewAsset = true;
+        self.selectAssetFn(ASSET_TYPE_TEXTURE_2D, spriteC->auid, self.user);
+    }
 }
 
 void eui_inspect_component(EInspectorWindowObj& self, ComponentType type, void* comp)
