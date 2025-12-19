@@ -56,6 +56,7 @@ private:
     };
 
     static void forward_rendering(ForwardRenderComponent renderer, void* user);
+    static void screen_rendering(ScreenRenderComponent renderer, void* user);
 
     bool pickid_is_gizmo(uint32_t pickID);
     RUID pickid_to_ruid(uint32_t pickID);
@@ -70,7 +71,10 @@ private:
     Camera mMainCamera;
     RMeshBlinnPhongPipeline mMeshPipeline;
     RUID mRUIDCtr;
-    RenderServerTransformCallback mTransformCallback;
+    RenderServerTransformCallback mTransformCallback = nullptr;
+    void* mTransformCallbackUser = nullptr;
+    RenderServerScreenPassCallback mScreenPassCallback = nullptr;
+    void* mScreenPassCallbackUser = nullptr;
     Vec2 mSceneExtent;
     Vec2 mScreenExtent;
     std::vector<Frame> mFrames;
@@ -86,10 +90,10 @@ private:
     uint32_t mFramesInFlight;                       /// number of frames in flight
     uint32_t mFrameIndex;                           /// [0, mFramesInFlight)
     FontAtlas mFontAtlas;                           /// default font atlas for text rendering
-    const char* mLastComponent;                     /// last render component
+    const char* mLastColorComponent;                /// last component with scene color attachment
     const char* mLastColorAttachment;               /// last scene color attachment output
+    const char* mLastIDFlagsComponent;              /// last component with scene ID flags color attachment
     const char* mLastIDFlagsAttachment;             /// last scene ID flags attachment output
-    void* mTransformCallbackUser;
     bool mHasRenderedScene;
 };
 
@@ -104,8 +108,6 @@ RenderServerObj::RenderServerObj(const RenderServerInfo& serverI)
     RFormat depthStencilFormats[8];
     mDevice.get_depth_stencil_formats(depthStencilFormats, count);
     mDepthStencilFormat = depthStencilFormats[0];
-    mTransformCallback = nullptr;
-    mTransformCallbackUser = nullptr;
 
     //
     // Render Server Resources
@@ -258,8 +260,9 @@ void RenderServerObj::next_frame(const RenderServerFrameInfo& frameI)
     // initialization
     //
 
-    mLastComponent = nullptr;
+    mLastColorComponent = nullptr;
     mLastColorAttachment = nullptr;
+    mLastIDFlagsComponent = nullptr;
     mLastIDFlagsAttachment = nullptr;
     mHasRenderedScene = false;
 }
@@ -267,7 +270,7 @@ void RenderServerObj::next_frame(const RenderServerFrameInfo& frameI)
 void RenderServerObj::submit_frame()
 {
     // blit to swapchain image and submit
-    mGraph.connect_swapchain_image(mLastComponent, mLastColorAttachment);
+    mGraph.connect_swapchain_image(mLastColorComponent, mLastColorAttachment);
     mGraph.submit();
     RGraph::destroy(mGraph);
 
@@ -315,14 +318,16 @@ void RenderServerObj::scene_pass(const RenderServerScenePass& sceneP)
         SceneOverlayComponent overlayC = SceneOverlayComponent::add(mGraph, overlayI);
         mGraph.connect_image(sceneFR.component_name(), sceneFR.out_color_name(), overlayC.component_name(), overlayC.in_color_name());
         mGraph.connect_image(sceneFR.component_name(), sceneFR.out_idflags_name(), overlayC.component_name(), overlayC.in_idflags_name());
-        mLastComponent = overlayC.component_name();
+        mLastColorComponent = overlayC.component_name();
         mLastColorAttachment = overlayC.out_color_name();
+        mLastIDFlagsComponent = overlayC.component_name();
         mLastIDFlagsAttachment = overlayC.out_idflags_name();
     }
     else
     {
-        mLastComponent = sceneFR.component_name();
+        mLastColorComponent = sceneFR.component_name();
         mLastColorAttachment = sceneFR.out_color_name();
+        mLastIDFlagsComponent = sceneFR.component_name();
         mLastIDFlagsAttachment = sceneFR.out_idflags_name();
     }
 
@@ -333,23 +338,27 @@ void RenderServerObj::screen_pass(const RenderServerScreenPass& screenP)
 {
     LD_ASSERT(mHasRenderedScene);
 
-    ScreenRenderComponentInfo screenRCI;
+    mScreenPassCallback = screenP.renderCallback;
+    mScreenPassCallbackUser = screenP.user;
+
+    ScreenRenderComponentInfo screenRCI{};
     screenRCI.format = mColorFormat;
-    screenRCI.onDrawCallback = screenP.renderCallback;
-    screenRCI.user = screenP.user;
+    screenRCI.onDrawCallback = &RenderServerObj::screen_rendering;
+    screenRCI.user = this;
     screenRCI.hasInputImage = true; // draws on top of the scene_pass results
     screenRCI.hasSampledImage = false;
     screenRCI.name = "scene_screen";
+    screenRCI.screenExtent = &mSceneExtent; // scene extent is typically smaller than screen extent in editor
     ScreenRenderComponent screenRC = ScreenRenderComponent::add(mGraph, screenRCI);
-    mGraph.connect_image(mLastComponent, mLastColorAttachment, screenRC.component_name(), screenRC.io_name());
+    mGraph.connect_image(mLastColorComponent, mLastColorAttachment, screenRC.component_name(), screenRC.io_name());
 
-    mLastComponent = screenRC.component_name();
+    mLastColorComponent = screenRC.component_name();
     mLastColorAttachment = screenRC.io_name();
 }
 
 void RenderServerObj::editor_pass(const RenderServerEditorPass& editorP)
 {
-    LD_ASSERT(mHasRenderedScene && mLastComponent && mLastColorAttachment && mLastIDFlagsAttachment);
+    LD_ASSERT(mHasRenderedScene && mLastColorComponent && mLastColorAttachment && mLastIDFlagsComponent && mLastIDFlagsAttachment);
 
     ScreenRenderComponentInfo screenRCI{};
     screenRCI.format = mColorFormat;
@@ -360,7 +369,7 @@ void RenderServerObj::editor_pass(const RenderServerEditorPass& editorP)
     screenRCI.clearColor = 0x000000FF;
     screenRCI.name = "editor";
     ScreenRenderComponent editorSRC = ScreenRenderComponent::add(mGraph, screenRCI);
-    mGraph.connect_image(mLastComponent, mLastColorAttachment, editorSRC.component_name(), editorSRC.sampled_name());
+    mGraph.connect_image(mLastColorComponent, mLastColorAttachment, editorSRC.component_name(), editorSRC.sampled_name());
 
     ScreenPickComponentInfo pickCI{};
     pickCI.pickQueryCount = 0;
@@ -370,9 +379,9 @@ void RenderServerObj::editor_pass(const RenderServerEditorPass& editorP)
         pickCI.pickPositions = editorP.sceneMousePickQuery;
     }
     ScreenPickComponent screenPick = ScreenPickComponent::add(mGraph, pickCI);
-    mGraph.connect_image(mLastComponent, mLastIDFlagsAttachment, screenPick.component_name(), screenPick.input_name());
+    mGraph.connect_image(mLastIDFlagsComponent, mLastIDFlagsAttachment, screenPick.component_name(), screenPick.input_name());
 
-    mLastComponent = editorSRC.component_name();
+    mLastColorComponent = editorSRC.component_name();
     mLastColorAttachment = editorSRC.io_name();
 
     // NOTE: The results are actually from mFramesInFlight frames ago,
@@ -420,10 +429,10 @@ void RenderServerObj::editor_overlay_pass(const RenderServerEditorOverlayPass& e
     screenRCI.hasSampledImage = false;
     screenRCI.name = "editor_overlay";
     ScreenRenderComponent editorSRC = ScreenRenderComponent::add(mGraph, screenRCI);
-    mGraph.connect_image(mLastComponent, mLastColorAttachment, editorSRC.component_name(), editorSRC.io_name());
+    mGraph.connect_image(mLastColorComponent, mLastColorAttachment, editorSRC.component_name(), editorSRC.io_name());
     // mGraph.connect_image(blurC.component_name(), blurC.output_name(), editorSRC.component_name(), editorSRC.sampled_name());
 
-    mLastComponent = editorSRC.component_name();
+    mLastColorComponent = editorSRC.component_name();
     mLastColorAttachment = editorSRC.io_name();
 }
 
@@ -489,6 +498,27 @@ void RenderServerObj::forward_rendering(ForwardRenderComponent renderer, void* u
     }
 
     renderer.draw_skybox();
+}
+
+void RenderServerObj::screen_rendering(ScreenRenderComponent renderer, void* user)
+{
+    LD_PROFILE_SCOPE;
+    RenderServerObj& self = *(RenderServerObj*)user;
+
+    if (!self.mScreenPassCallback)
+        return;
+
+    // ask server user for ScreenLayer to render
+    ScreenLayer layer = self.mScreenPassCallback(self.mScreenPassCallbackUser);
+    if (!layer)
+        return;
+
+    std::vector<ScreenLayerItem> drawList = layer.get_draw_list();
+
+    for (const ScreenLayerItem& item : drawList)
+    {
+        renderer.draw_rect(item.rect, item.color);
+    }
 }
 
 bool RenderServerObj::pickid_is_gizmo(uint32_t pickID)

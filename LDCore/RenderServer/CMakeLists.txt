@@ -2,10 +2,12 @@ set(MODULE_NAME LDRenderServer)
 
 set(MODULE_INCLUDE
     ${LUDENS_INCLUDE_DIR}/Ludens/RenderServer/RenderServer.h
+    ${LUDENS_INCLUDE_DIR}/Ludens/RenderServer/ScreenLayer.h
 )
 
 set(MODULE_LIB
     Lib/RenderServer.cpp
+    Lib/ScreenLayer.cpp
 )
 
 add_library(${MODULE_NAME}
