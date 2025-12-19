@@ -51,9 +51,9 @@ struct DataRegistry : Handle<struct DataRegistryObj>
 
     /// @brief Get data component struct, or null on failure
     /// @param compID Data component ID
-    /// @param type Outputs data component type on success
+    /// @param outType If not null, outputs data component type on success
     /// @return Address of some data component
-    void* get_component(CUID compID, ComponentType& type);
+    void* get_component(CUID compID, ComponentType* outType);
 
     /// @brief Get all data components with no parents.
     void get_root_components(std::vector<CUID>& roots);

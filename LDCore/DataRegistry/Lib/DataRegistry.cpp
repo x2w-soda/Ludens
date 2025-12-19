@@ -58,8 +58,8 @@ static bool duplicate_subtree(DataRegistry dup, DataRegistry orig, CUID origRoot
 
     // duplicate type-sepcific fields
     ComponentType type;
-    void* dupComp = dup.get_component(dupID, type);
-    void* origComp = orig.get_component(dupID, type);
+    void* dupComp = dup.get_component(dupID, &type);
+    void* origComp = orig.get_component(dupID, &type);
     memcpy(dupComp, origComp, sComponentTable[(int)type].byteSize);
 
     // duplicate script
@@ -447,13 +447,15 @@ AUID DataRegistry::get_component_auid(CUID compID)
     return sComponentTable[type].get_auid(ite->second.comp);
 }
 
-void* DataRegistry::get_component(CUID id, ComponentType& type)
+void* DataRegistry::get_component(CUID compID, ComponentType* outType)
 {
-    auto ite = mObj->components.find(id);
+    auto ite = mObj->components.find(compID);
     if (ite == mObj->components.end())
         return nullptr;
 
-    type = ite->second.base->type;
+    if (outType)
+        *outType = ite->second.base->type;
+
     return ite->second.comp;
 }
 
