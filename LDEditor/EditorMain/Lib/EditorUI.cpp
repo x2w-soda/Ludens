@@ -271,7 +271,7 @@ void EditorUI::ECB::select_asset(AssetType type, AUID currentID, void* user)
         if (assetID != 0) // TODO:
             self.mInspectorWindow.select_asset(assetID);
     };
-    usage.extensionFilter = "ldb";
+    usage.extensionFilter = "lda";
     usage.directoryPath = self.mCtx.get_project_directory();
 
     self.show_select_window(usage);

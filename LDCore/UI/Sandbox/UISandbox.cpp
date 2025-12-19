@@ -236,10 +236,13 @@ void UISandbox::render()
     mRenderServer.scene_pass(sceneP);
 
     // render UI in screen space
+    LD_UNREACHABLE; // TODO: allow screen pass to directly submit via ScreenRenderComponent
+    /*
     RenderServerScreenPass screenP{};
     screenP.renderCallback = &UISandbox::on_screen_render;
     screenP.user = this;
     mRenderServer.screen_pass(screenP);
+    */
 
     mRenderServer.submit_frame();
 }
