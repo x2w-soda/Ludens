@@ -5,9 +5,10 @@
 
 namespace LD {
 
-void RenderServerCache::startup(RenderServer server)
+void RenderServerCache::startup(RenderServer server, AssetManager assetManager)
 {
     mServer = server;
+    mAssetManager = assetManager;
     mRuidToCuid.clear();
     mCuidToRuid.clear();
     mAuidToRuid.clear();
@@ -25,12 +26,14 @@ void RenderServerCache::cleanup()
     for (auto ite : mAuidToImage)
         device.destroy_image(ite.second);
 
+    mAssetManager = {};
     mServer = {};
 }
 
-RUID RenderServerCache::get_or_create_mesh(MeshAsset meshA)
+RUID RenderServerCache::get_or_create_mesh(AUID meshAUID)
 {
-    AUID meshAUID = meshA.get_auid();
+    MeshAsset meshA = (MeshAsset)mAssetManager.get_asset(meshAUID, ASSET_TYPE_MESH);
+    LD_ASSERT(meshA);
 
     if (!mAuidToRuid.contains(meshAUID))
         mAuidToRuid[meshAUID] = mServer.create_mesh(*meshA.data());
@@ -50,9 +53,10 @@ RUID RenderServerCache::get_mesh(AUID meshAUID)
     return meshID;
 }
 
-RImage RenderServerCache::get_or_create_image(Texture2DAsset textureA)
+RImage RenderServerCache::get_or_create_image(AUID textureAUID)
 {
-    AUID textureAUID = textureA.get_auid();
+    Texture2DAsset textureA = (Texture2DAsset)mAssetManager.get_asset(textureAUID, ASSET_TYPE_TEXTURE_2D);
+    LD_ASSERT(textureA);
 
     auto ite = mAuidToImage.find(textureAUID);
     if (!mAuidToImage.contains(textureAUID))

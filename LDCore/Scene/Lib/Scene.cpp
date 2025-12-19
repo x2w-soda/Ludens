@@ -172,9 +172,7 @@ static void load_mesh_component(SceneObj* scene, ComponentBase* base, void* comp
 
     if (meshC->auid)
     {
-        MeshAsset meshA = (MeshAsset)scene->assetManager.get_asset(meshC->auid, ASSET_TYPE_MESH);
-
-        RUID mesh = scene->renderServerCache.get_or_create_mesh(meshA);
+        RUID mesh = scene->renderServerCache.get_or_create_mesh(meshC->auid);
         scene->renderServerCache.create_mesh_draw_call(mesh, base->id);
     }
 }
@@ -185,8 +183,7 @@ static void load_sprite_2d_component(SceneObj* scene, ComponentBase* base, void*
 
     if (spriteC->auid)
     {
-        Texture2DAsset textureA = (Texture2DAsset)scene->assetManager.get_asset(spriteC->auid, ASSET_TYPE_TEXTURE_2D);
-        spriteC->image = scene->renderServerCache.get_or_create_image(textureA);
+        spriteC->image = scene->renderServerCache.get_or_create_image(spriteC->auid);
     }
 }
 
@@ -196,7 +193,7 @@ void SceneObj::load(ComponentBase* base)
 
     // polymorphic loading
     ComponentType type;
-    void* comp = registry.get_component(base->id, type);
+    void* comp = registry.get_component(base->id, &type);
     LD_ASSERT(type == base->type);
 
     if (sSceneComponents[(int)type].load)
@@ -214,7 +211,7 @@ void SceneObj::unload(ComponentBase* base)
 
     // polymorphic unloading
     ComponentType type;
-    void* comp = registry.get_component(base->id, type);
+    void* comp = registry.get_component(base->id, &type);
     LD_ASSERT(type == base->type);
 
     if (sSceneComponents[(int)type].unload)
@@ -240,7 +237,7 @@ void SceneObj::startup_root(CUID root)
 
     // post-order traversal, all child components of root already have their scripts attached
     ComponentType type;
-    void* comp = registry.get_component(rootC->id, type);
+    void* comp = registry.get_component(rootC->id, &type);
     LD_ASSERT(type == rootC->type);
 
     if (sSceneComponents[(int)type].startup)
@@ -266,7 +263,7 @@ void SceneObj::cleanup_root(CUID root)
 
     // post-order traversal, all child components of root already have their scripts detached
     ComponentType type;
-    void* comp = registry.get_component(rootC->id, type);
+    void* comp = registry.get_component(rootC->id, &type);
     LD_ASSERT(type == rootC->type);
 
     if (sSceneComponents[(int)type].cleanup)
@@ -295,7 +292,7 @@ Scene Scene::create(const SceneInfo& sceneI)
     obj->screenRenderer.startup();
     obj->assetManager = sceneI.assetManager;
     obj->renderServer = sceneI.renderServer;
-    obj->renderServerCache.startup(sceneI.renderServer);
+    obj->renderServerCache.startup(sceneI.renderServer, sceneI.assetManager);
     obj->audioServer = sceneI.audioServer;
     obj->audioServerCache.startup(sceneI.audioServer);
 
@@ -541,9 +538,20 @@ ComponentScriptSlot* Scene::get_component_script_slot(CUID compID)
     return mObj->registry.get_component_script(compID);
 }
 
-void* Scene::get_component(CUID compID, ComponentType& type)
+void* Scene::get_component(CUID compID, ComponentType* outType)
 {
-    return mObj->registry.get_component(compID, type);
+    return mObj->registry.get_component(compID, outType);
+}
+
+void* Scene::get_component(CUID compID, ComponentType expectedType)
+{
+    ComponentType foundType;
+    void* comp = mObj->registry.get_component(compID, &foundType);
+
+    if (!comp || foundType != expectedType)
+        return nullptr;
+
+    return comp;
 }
 
 RUID Scene::get_component_ruid(CUID compID)
@@ -641,9 +649,8 @@ void Scene::IAudioSource::set_clip_asset(AUID clipAUID)
 Scene::IMesh::IMesh(Scene scene, CUID meshCUID)
     : mScene(scene.unwrap()), mCUID(meshCUID)
 {
-    ComponentType type;
-    mComp = (MeshComponent*)scene.get_component(meshCUID, type);
-    LD_ASSERT(type == COMPONENT_TYPE_MESH);
+    mComp = (MeshComponent*)scene.get_component(meshCUID, COMPONENT_TYPE_MESH);
+    LD_ASSERT(mComp);
 }
 
 void Scene::IMesh::set_mesh_asset(AUID meshAUID)
@@ -653,6 +660,19 @@ void Scene::IMesh::set_mesh_asset(AUID meshAUID)
 
     mComp->auid = meshAUID;
     mScene->renderServerCache.create_mesh_draw_call(meshID, mCUID);
+}
+
+Scene::ISprite2D::ISprite2D(Scene scene, CUID spriteCUID)
+    : mScene(scene.unwrap()), mCUID(spriteCUID)
+{
+    mComp = (Sprite2DComponent*)scene.get_component(spriteCUID, COMPONENT_TYPE_SPRITE_2D);
+    LD_ASSERT(mComp);
+}
+
+void Scene::ISprite2D::set_texture_2d_asset(AUID textureAUID)
+{
+    mComp->auid = textureAUID;
+    mComp->image = mScene->renderServerCache.get_or_create_image(textureAUID);
 }
 
 } // namespace LD

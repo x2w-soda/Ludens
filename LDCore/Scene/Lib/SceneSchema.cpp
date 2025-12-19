@@ -198,7 +198,8 @@ static bool load_audio_source_component(Scene scene, TOMLValue compTOML, CUID co
     if (!compID)
         return false;
 
-    AudioSourceComponent* sourceC = (AudioSourceComponent*)scene.get_component(compID, type);
+    auto* sourceC = (AudioSourceComponent*)scene.get_component(compID, COMPONENT_TYPE_AUDIO_SOURCE);
+    LD_ASSERT(sourceC);
 
     TOMLValue auidTOML = compTOML["auid"];
     auidTOML.get_u32(sourceC->clipAUID);
@@ -209,13 +210,12 @@ static bool load_audio_source_component(Scene scene, TOMLValue compTOML, CUID co
 
 static bool load_camera_component(Scene scene, TOMLValue compTOML, CUID compID, const char* compName)
 {
-    ComponentType type;
-
     compID = scene.create_component(COMPONENT_TYPE_CAMERA, compName, (CUID)0, compID);
     if (!compID)
         return false;
 
-    CameraComponent* cameraC = (CameraComponent*)scene.get_component(compID, type);
+    auto* cameraC = (CameraComponent*)scene.get_component(compID, COMPONENT_TYPE_CAMERA);
+    LD_ASSERT(cameraC);
 
     TOMLValue floatTOML{};
     TOMLValue toml = compTOML["transform"];
@@ -290,13 +290,12 @@ static bool load_camera_component(Scene scene, TOMLValue compTOML, CUID compID, 
 
 static bool load_mesh_component(Scene scene, TOMLValue compTOML, CUID compID, const char* compName)
 {
-    ComponentType type;
-
     compID = scene.create_component(COMPONENT_TYPE_MESH, compName, (CUID)0, compID);
     if (!compID)
         return false;
 
-    MeshComponent* meshC = (MeshComponent*)scene.get_component(compID, type);
+    MeshComponent* meshC = (MeshComponent*)scene.get_component(compID, COMPONENT_TYPE_MESH);
+    LD_ASSERT(meshC);
 
     TOMLValue transformTOML = compTOML["transform"];
     load_transform(meshC->transform, transformTOML);
@@ -310,13 +309,12 @@ static bool load_mesh_component(Scene scene, TOMLValue compTOML, CUID compID, co
 
 static bool load_sprite_2d_component(Scene scene, TOMLValue compTOML, CUID compID, const char* compName)
 {
-    ComponentType type;
-
     compID = scene.create_component(COMPONENT_TYPE_SPRITE_2D, compName, (CUID)0, compID);
     if (!compID)
         return false;
 
-    Sprite2DComponent* spriteC = (Sprite2DComponent*)scene.get_component(compID, type);
+    Sprite2DComponent* spriteC = (Sprite2DComponent*)scene.get_component(compID, COMPONENT_TYPE_SPRITE_2D);
+    LD_ASSERT(spriteC);
 
     TOMLValue localTOML = compTOML.get_key("local", TOML_TYPE_TABLE);
     if (!load_rect(spriteC->local, localTOML))
@@ -443,9 +441,8 @@ static bool save_audio_source_component(Scene scene, TOMLValue compTOML, CUID co
 {
     LD_ASSERT(scene && compTOML && compID && compName);
 
-    ComponentType type;
-    AudioSourceComponent* sourceC = (AudioSourceComponent*)scene.get_component(compID, type);
-    if (type != COMPONENT_TYPE_AUDIO_SOURCE)
+    auto* sourceC = (AudioSourceComponent*)scene.get_component(compID, COMPONENT_TYPE_AUDIO_SOURCE);
+    if (!sourceC)
         return false;
 
     TOMLValue auidTOML = compTOML.set_key("auid", TOML_TYPE_INT);
@@ -458,9 +455,8 @@ static bool save_camera_component(Scene scene, TOMLValue compTOML, CUID compID, 
 {
     LD_ASSERT(scene && compTOML && compID && compName);
 
-    ComponentType type;
-    const CameraComponent* cameraC = (CameraComponent*)scene.get_component(compID, type);
-    if (type != COMPONENT_TYPE_CAMERA)
+    auto* cameraC = (CameraComponent*)scene.get_component(compID, COMPONENT_TYPE_CAMERA);
+    if (!cameraC)
         return false;
 
     TOMLValue floatTOML{};
@@ -500,9 +496,8 @@ static bool save_mesh_component(Scene scene, TOMLValue compTOML, CUID compID, co
 {
     LD_ASSERT(scene && compTOML && compID && compName);
 
-    ComponentType type;
-    MeshComponent* meshC = (MeshComponent*)scene.get_component(compID, type);
-    if (type != COMPONENT_TYPE_MESH)
+    auto* meshC = (MeshComponent*)scene.get_component(compID, COMPONENT_TYPE_MESH);
+    if (!meshC)
         return false;
 
     TOMLValue transformTOML = compTOML.set_key("transform", TOML_TYPE_TABLE);
@@ -518,9 +513,8 @@ static bool save_sprite_2d_component(Scene scene, TOMLValue compTOML, CUID compI
 {
     LD_ASSERT(scene && compTOML && compID && compName);
 
-    ComponentType type;
-    Sprite2DComponent* spriteC = (Sprite2DComponent*)scene.get_component(compID, type);
-    if (type != COMPONENT_TYPE_SPRITE_2D)
+    auto* spriteC = (Sprite2DComponent*)scene.get_component(compID, COMPONENT_TYPE_SPRITE_2D);
+    if (!spriteC)
         return false;
 
     TOMLValue localTOML = compTOML.set_key("local", TOML_TYPE_TABLE);

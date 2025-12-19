@@ -667,7 +667,7 @@ bool Context::create_lua_script(ComponentScriptSlot* scriptSlot)
     mL.set_table(-3); // store script instance as ludens.scripts[compID]
 
     ComponentType type;
-    void* comp = mRegistry.get_component(compID, type);
+    void* comp = mRegistry.get_component(compID, &type);
 
     // create and store table for component type
     LuaScript::create_component_table(mScene, mRegistry, mL, compID, type, comp);

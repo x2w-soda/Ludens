@@ -95,8 +95,11 @@ public:
     /// @brief Get data component script slot, or null if not found.
     ComponentScriptSlot* get_component_script_slot(CUID compID);
 
-    /// @brief Get data component
-    void* get_component(CUID compID, ComponentType& type);
+    /// @brief Get data component from ID.
+    void* get_component(CUID compID, ComponentType* outType);
+
+    /// @brief Get data component from ID and expected type, fails upon type mismatch.
+    void* get_component(CUID compID, ComponentType expectedType);
 
     /// @brief Lookup some render server ID for data component.
     ///        Only graphical components such as Meshes are applicable.
@@ -151,6 +154,20 @@ public:
     private:
         SceneObj* mScene;
         MeshComponent* mComp;
+        CUID mCUID;
+    };
+
+    /// @brief Public interface for Sprite2D components.
+    class ISprite2D
+    {
+    public:
+        ISprite2D(Scene scene, CUID spriteCUID);
+
+        void set_texture_2d_asset(AUID textureAUID);
+
+    private:
+        SceneObj* mScene;
+        Sprite2DComponent* mComp;
         CUID mCUID;
     };
 };
