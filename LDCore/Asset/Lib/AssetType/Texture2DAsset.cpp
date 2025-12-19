@@ -10,6 +10,58 @@
 
 namespace LD {
 
+static void serialize_samp(Serializer& serial, const RSamplerInfo& samplerHint)
+{
+    serial.write_chunk_begin("SAMP");
+    serial.write_u32((uint32_t)samplerHint.filter);
+    serial.write_u32((uint32_t)samplerHint.mipmapFilter);
+    serial.write_u32((uint32_t)samplerHint.addressMode);
+    serial.write_chunk_end();
+}
+
+bool Texture2DAssetObj::serialize(Serializer& serial, const Texture2DAssetObj& obj)
+{
+    serialize_samp(serial, obj.samplerHint);
+    serial.write_chunk_begin("FILE");
+    serial.write((const byte*)obj.fileData, (size_t)obj.fileSize);
+    serial.write_chunk_end();
+
+    return true;
+}
+
+bool Texture2DAssetObj::deserialize(Deserializer& serial, Texture2DAssetObj& obj)
+{
+    std::string name(4, ' ');
+    uint32_t chunkSize;
+    const byte* chunkData;
+
+    bool hasSampChunk = false;
+
+    while ((chunkData = serial.read_chunk(name.data(), chunkSize)))
+    {
+        if (name == "SAMP")
+        {
+            hasSampChunk = true;
+
+            uint32_t filterU32, mipmapFilterU32, addressModeU32;
+            serial.read_u32(filterU32);
+            serial.read_u32(mipmapFilterU32);
+            serial.read_u32(addressModeU32);
+            obj.samplerHint.filter = (RFilter)filterU32;
+            obj.samplerHint.mipmapFilter = (RFilter)mipmapFilterU32;
+            obj.samplerHint.addressMode = (RSamplerAddressMode)addressModeU32;
+        }
+        else if (name == "FILE")
+        {
+            obj.fileSize = chunkSize;
+            obj.fileData = (void*)chunkData;
+            serial.advance(chunkSize);
+        }
+    }
+
+    return hasSampChunk && obj.fileSize > 0 && obj.fileData;
+}
+
 void Texture2DAssetObj::load(void* user)
 {
     LD_PROFILE_SCOPE;
@@ -17,11 +69,15 @@ void Texture2DAssetObj::load(void* user)
     auto& job = *(AssetLoadJob*)user;
     Texture2DAssetObj* obj = (Texture2DAssetObj*)job.assetHandle.unwrap();
 
-    std::vector<byte> tmp;
-    if (!FS::read_file_to_vector(job.loadPath, tmp) || tmp.empty())
+    uint64_t serialSize = FS::get_file_size(job.loadPath);
+    if (serialSize == 0)
         return;
 
-    Deserializer serial(tmp.data(), tmp.size());
+    obj->serialData = heap_malloc(serialSize, MEMORY_USAGE_ASSET);
+    if (!FS::read_file(job.loadPath, serialSize, (byte*)obj->serialData))
+        return;
+
+    Deserializer serial(obj->serialData, serialSize);
 
     AssetType type;
     uint16_t major, minor, patch;
@@ -31,12 +87,10 @@ void Texture2DAssetObj::load(void* user)
     if (type != ASSET_TYPE_TEXTURE_2D)
         return;
 
-    serial.read_i32((int32_t&)obj->compression);
-    serial.read_i32((int32_t&)obj->samplerHint.filter);
-    serial.read_i32((int32_t&)obj->samplerHint.mipmapFilter);
-    serial.read_i32((int32_t&)obj->samplerHint.addressMode);
+    if (!Texture2DAssetObj::deserialize(serial, *obj))
+        return;
 
-    Bitmap::deserialize(serial, obj->bitmap);
+    obj->bitmap = Bitmap::create_from_file_data(obj->fileSize, obj->fileData);
 }
 
 void Texture2DAssetObj::unload(AssetObj* base)
@@ -48,6 +102,15 @@ void Texture2DAssetObj::unload(AssetObj* base)
         Bitmap::destroy(self.bitmap);
         self.bitmap = {};
     }
+
+    if (self.serialData)
+    {
+        heap_free((void*)self.serialData);
+        self.serialData = nullptr;
+    }
+
+    self.fileData = nullptr;
+    self.fileSize = 0;
 }
 
 void Texture2DAsset::unload()
@@ -81,30 +144,38 @@ void Texture2DAssetImportJob::execute(void* user)
     auto& self = *(Texture2DAssetImportJob*)user;
     auto* obj = (Texture2DAssetObj*)self.asset.unwrap();
 
-    LD_ASSERT(self.info.compression == TEXTURE_COMPRESSION_LZ4);
-
     obj->auid = 0;
-    obj->compression = self.info.compression;
     obj->samplerHint = self.info.samplerHint;
+    obj->serialData = nullptr;
 
-    std::string sourcePath = self.info.sourcePath.string();
-    obj->bitmap = Bitmap::create_from_path(sourcePath.c_str(), false);
+    // serialize and load at the same time.
+    Serializer serial;
+    asset_header_write(serial, ASSET_TYPE_TEXTURE_2D);
 
-    // serialize asset to disk
-    Serializer serializer;
-    asset_header_write(serializer, ASSET_TYPE_TEXTURE_2D);
+    serialize_samp(serial, obj->samplerHint);
 
-    serializer.write_i32((int)obj->compression);
-    serializer.write_i32((int)obj->samplerHint.filter);
-    serializer.write_i32((int)obj->samplerHint.mipmapFilter);
-    serializer.write_i32((int)obj->samplerHint.addressMode);
+    const FS::Path& path = self.info.sourcePath;
+    uint64_t fileSize = FS::get_file_size(path);
+    obj->fileSize = fileSize;
 
-    obj->bitmap.set_compression(BITMAP_COMPRESSION_LZ4);
-    Bitmap::serialize(serializer, obj->bitmap);
+    size_t fileDataOffset = serial.write_chunk_begin("FILE");
+    byte* fileData = serial.advance(fileSize);
+    
+    if (!FS::read_file(path, fileSize, fileData) || fileSize == 0)
+        return; // TODO: fix leaks
 
-    size_t binarySize;
-    const byte* binary = serializer.view(binarySize);
-    FS::write_file(self.info.savePath, binarySize, binary);
+    serial.write_chunk_end();
+
+    size_t serialSize;
+    const byte* serialData = serial.view(serialSize);
+
+    // only retrieve address after serializer has completed all writes
+    obj->fileData = serialData + fileDataOffset;
+
+    FS::write_file(self.info.savePath, serialSize, serialData);
+
+    obj->bitmap = Bitmap::create_from_file_data(obj->fileSize, obj->fileData);
+    LD_ASSERT(obj->bitmap);
 }
 
 } // namespace LD

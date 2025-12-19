@@ -6,9 +6,9 @@ namespace LD {
 struct TextureCubeAssetObj : AssetObj
 {
     Bitmap bitmap;           // single bitmap with 6 faces
-    const void* fileData;    // entire LDA file loaded
-    const void* faceData[6]; // source image data for each face.
-    uint32_t faceSize[6];    // source image data size for each face.
+    const void* serialData;  // entire LDA file loaded
+    const void* fileData[6]; // source image data for each face.
+    uint32_t fileSize[6];    // source image data size for each face.
     RSamplerInfo samplerHint;
 
     static bool serialize(Serializer& serial, const TextureCubeAssetObj& obj);

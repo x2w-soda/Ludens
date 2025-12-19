@@ -4,7 +4,7 @@
 #include <Ludens/Header/Handle.h>
 #include <Ludens/JobSystem/JobSystem.h>
 #include <Ludens/RenderBackend/RBackend.h>
-#include <filesystem>
+#include <Ludens/System/FileSystem.h>
 
 namespace LD {
 
@@ -26,10 +26,9 @@ struct Texture2DAsset : Asset
 
 struct Texture2DAssetImportInfo
 {
-    RSamplerInfo samplerHint;         /// desired texture sampler mode
-    TextureCompression compression;   /// desired asset compression
-    std::filesystem::path sourcePath; /// path to load the source format
-    std::filesystem::path savePath;   /// path to save the imported format
+    RSamplerInfo samplerHint; /// desired texture sampler mode
+    FS::Path sourcePath;      /// path to load the source format
+    FS::Path savePath;        /// path to save the imported format
 };
 
 /// @brief Creates Texture2DAsset from source file,
