@@ -318,10 +318,12 @@ CUID DataRegistry::create_component(ComponentType type, const char* name, CUID p
         return 0;
     }
 
+    size_t componentByteSize = get_component_byte_size(type);
+
     if (!mObj->componentPAs.contains(type))
     {
         PoolAllocatorInfo paI{};
-        paI.blockSize = get_component_byte_size(type);
+        paI.blockSize = componentByteSize;
         paI.pageSize = 1024;
         paI.isMultiPage = true;
         paI.usage = MEMORY_USAGE_MISC;
@@ -330,11 +332,9 @@ CUID DataRegistry::create_component(ComponentType type, const char* name, CUID p
 
     // allocate base members
     ComponentBase* base = (ComponentBase*)mObj->componentBasePA.allocate();
+    memset(base, 0, sizeof(ComponentBase));
+
     base->name = heap_strdup(name, MEMORY_USAGE_MISC);
-    base->next = nullptr;
-    base->child = nullptr;
-    base->parent = nullptr;
-    base->flags = 0;
     base->type = type;
     base->id = hintID ? hintID : mObj->get_id();
 
@@ -349,8 +349,11 @@ CUID DataRegistry::create_component(ComponentType type, const char* name, CUID p
     }
 
     // allocate component type
+    void* comp = mObj->componentPAs[type].allocate();
+    memset(comp, 0, componentByteSize);
+
     mObj->components[base->id].base = base;
-    mObj->components[base->id].comp = mObj->componentPAs[type].allocate();
+    mObj->components[base->id].comp = comp;
     mObj->components[base->id].script = nullptr;
 
     return base->id;
@@ -466,9 +469,11 @@ void DataRegistry::get_root_components(std::vector<CUID>& roots)
 
 PoolAllocator::Iterator DataRegistry::get_components(ComponentType type)
 {
-    LD_ASSERT(mObj->componentPAs.contains(type));
+    auto ite = mObj->componentPAs.find(type);
+    if (ite == mObj->componentPAs.end())
+        return {nullptr, nullptr, 0};
 
-    return mObj->componentPAs[type].begin();
+    return ite->second.begin();
 }
 
 ComponentScriptSlot* DataRegistry::get_component_script(CUID comp)
