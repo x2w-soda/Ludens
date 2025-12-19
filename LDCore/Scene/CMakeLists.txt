@@ -9,6 +9,10 @@ set(MODULE_INCLUDE
 set(MODULE_LIB
     Lib/Scene.cpp
     Lib/SceneSchema.cpp
+    Lib/AudioServerCache.h
+    Lib/AudioServerCache.cpp
+    Lib/RenderServerCache.h
+    Lib/RenderServerCache.cpp
     Lib/LuaScript.h
     Lib/LuaScript.cpp
     Lib/LuaScriptFFI.h
