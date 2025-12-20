@@ -1,7 +1,9 @@
 #include <Extra/doctest/doctest.h>
 #include <Ludens/Header/Math/Transform.h>
 #include <Ludens/Lua/LuaState.h>
+
 #include <cstddef>
+#include <cstdint>
 
 #include "LuaTest.h"
 
@@ -28,6 +30,10 @@ typedef struct {
     Transform2D transform;
     uint32_t assetID;
 } Sprite2D;
+
+typedef struct {
+    int32_t _value;
+} Box;
 ]])";
 
 const char sLuaFFI_mt[] = R"(
@@ -41,6 +47,24 @@ local mt = {
 _G.Vec2 = ffi.metatype("Vec2", mt)
 
 _G.Transform2D = ffi.metatype("Transform2D", {})
+
+_G.Box = nil
+mt = {
+    __index = function (t, k) -- read field with side effects
+        if k == 'value' then
+            _G.index_ctr._value = _G.index_ctr._value + 1
+            return t._value
+        end
+        return nil
+    end,
+    __newindex = function (t, k, v) -- write field with side effects
+        if k == 'value' then
+            _G.newindex_ctr._value = _G.newindex_ctr._value + 1
+            t._value = v
+        end
+    end,
+}
+_G.Box = ffi.metatype("Box", mt)
 )";
 
 const char sLuaFFI_test1[] = R"(
@@ -59,6 +83,13 @@ return sprite.transform.pos.x
 )";
 
 namespace {
+
+struct Box
+{
+    int32_t value;
+
+    Box(int32_t value) : value(value) {}
+};
 
 struct Sprite2D
 {
@@ -90,8 +121,53 @@ TEST_CASE("Lua FFI")
     CHECK(L.size() == 1);
     CHECK(L.to_number(-1) == 246.0f);
     L.clear();
-    
+
     CHECK(sprite.transform.position.x == 246.0f);
+
+    Box box(0xBeef), indexCtr(0), newindexCtr(0);
+    L.push_light_userdata(&box);
+    L.set_global("box");
+    L.push_light_userdata(&indexCtr);
+    L.set_global("index_ctr");
+    L.push_light_userdata(&newindexCtr);
+    L.set_global("newindex_ctr");
+
+    {
+        CHECK(L.do_string(R"(
+local ffi = require 'ffi'
+local box = ffi.cast('Box*', _G.box)
+_G.index_ctr = ffi.cast('Box*', _G.index_ctr)
+_G.newindex_ctr = ffi.cast('Box*', _G.newindex_ctr)
+
+return box.value
+)"));
+        CHECK(L.to_number(-1) == 0xBeef);
+        L.clear();
+
+        CHECK(box.value == 0xBeef);
+        CHECK(indexCtr.value == 1);
+        CHECK(newindexCtr.value == 0);
+    }
+
+    {
+        CHECK(L.do_string(R"(
+local ffi = require 'ffi'
+local box = ffi.cast('Box*', _G.box)
+_G.index_ctr = ffi.cast('Box*', _G.index_ctr)
+_G.newindex_ctr = ffi.cast('Box*', _G.newindex_ctr)
+
+box.value = 0xCAFE
+box.value = box.value + 1
+
+return box.value
+)"));
+        CHECK(L.to_number(-1) == 0xCAFF);
+        L.clear();
+
+        CHECK(box.value == 0xCAFF);
+        CHECK(indexCtr.value == 3);
+        CHECK(newindexCtr.value == 2);
+    }
 
     LuaState::destroy(L);
 }

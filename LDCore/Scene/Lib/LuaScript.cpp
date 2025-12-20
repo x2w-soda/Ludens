@@ -32,7 +32,7 @@ static int component_set_name(lua_State* l);
 static void push_audio_source_component_table(Scene scene, DataRegistry reg, LuaState L, CUID compID, void* comp);
 static void push_camera_component_table(Scene scene, DataRegistry reg, LuaState L, CUID compID, void* comp);
 static void push_mesh_component_table(Scene scene, DataRegistry reg, LuaState L, CUID compID, void* comp);
-static void push_sprite2d_component_table(Scene scene, DataRegistry reg, LuaState L, CUID compID, void* comp);
+static void push_sprite_2d_component_table(Scene scene, DataRegistry reg, LuaState L, CUID compID, void* comp);
 static int application_exit(lua_State* l);
 static int debug_log(lua_State* l);
 static int input_get_key_down(lua_State* l);
@@ -228,11 +228,11 @@ static void push_mesh_component_table(Scene scene, DataRegistry reg, LuaState L,
     push_component_table(L, "MeshComponent*", comp);
 }
 
-void push_sprite2d_component_table(Scene scene, DataRegistry reg, LuaState L, CUID compID, void* comp)
+void push_sprite_2d_component_table(Scene scene, DataRegistry reg, LuaState L, CUID compID, void* comp)
 {
     Sprite2DComponent* spriteC = (Sprite2DComponent*)comp;
 
-    L.push_table(); // TODO: FFI
+    push_component_table(L, "Sprite2DComponent*", comp);
 }
 
 // clang-format off
@@ -246,7 +246,7 @@ struct
     {COMPONENT_TYPE_TRANSFORM,    nullptr},
     {COMPONENT_TYPE_CAMERA,       nullptr},
     {COMPONENT_TYPE_MESH,         &push_mesh_component_table},
-    {COMPONENT_TYPE_SPRITE_2D,    &push_sprite2d_component_table},
+    {COMPONENT_TYPE_SPRITE_2D,    &push_sprite_2d_component_table},
 };
 // clang-format on
 
