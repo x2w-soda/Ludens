@@ -1,3 +1,5 @@
+#include <Ludens/Header/Math/Mat3.h>
+#include <Ludens/Header/Math/Transform.h>
 #include <Ludens/RenderServer/ScreenLayer.h>
 #include <Ludens/System/Memory.h>
 
@@ -37,23 +39,22 @@ void ScreenLayer::end()
     // TODO: Z depth radix sort
 }
 
-void ScreenLayer::add_rect(const Rect& rect, const Color& color, uint32_t zDepth)
+void ScreenLayer::add_image(const Transform2D& transform, const Rect& rect, RImage image, uint32_t zDepth)
 {
-    ScreenLayerItem item;
-    item.image = {};
-    item.rect = rect;
-    item.color = color;
-    item.zDepth = zDepth;
-    mObj->drawList.push_back(item);
-}
+    Mat3 modelMat = transform.as_mat3();
+    Vec3 tl = modelMat * Vec3(rect.get_pos(), 1.0f);
+    Vec3 tr = modelMat * Vec3(rect.get_pos_tr(), 1.0f);
+    Vec3 br = modelMat * Vec3(rect.get_pos_br(), 1.0f);
+    Vec3 bl = modelMat * Vec3(rect.get_pos_bl(), 1.0f);
 
-void ScreenLayer::add_image(const Rect& rect, RImage image, uint32_t zDepth)
-{
     ScreenLayerItem item;
     item.image = image;
-    item.rect = rect;
     item.color = Color(0xFFFFFFFF);
     item.zDepth = zDepth;
+    item.tl = Vec2(tl.x / tl.z, tl.y / tl.z);
+    item.tr = Vec2(tr.x / tr.z, tr.y / tr.z);
+    item.br = Vec2(br.x / br.z, br.y / br.z);
+    item.bl = Vec2(bl.x / bl.z, bl.y / bl.z);
     mObj->drawList.push_back(item);
 }
 

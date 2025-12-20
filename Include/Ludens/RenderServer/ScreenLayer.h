@@ -9,12 +9,14 @@
 
 namespace LD {
 
+struct Transform2D;
+
 struct ScreenLayerItem
 {
     RImage image;
-    Rect rect;
     Color color;
     uint32_t zDepth;
+    Vec2 tl, tr, bl, br;
 };
 
 struct ScreenLayer : Handle<struct ScreenLayerObj>
@@ -25,8 +27,7 @@ struct ScreenLayer : Handle<struct ScreenLayerObj>
     void begin();
     void end();
 
-    void add_rect(const Rect& rect, const Color& color, uint32_t zDepth);
-    void add_image(const Rect& rect, RImage image, uint32_t zDepth);
+    void add_image(const Transform2D& transform, const Rect& rect, RImage image, uint32_t zDepth);
 
     const std::vector<ScreenLayerItem>& get_draw_list() const;
 };

@@ -47,6 +47,9 @@ struct ScreenRenderComponent : Handle<struct ScreenRenderComponentObj>
     /// @brief Pop a color mask off the stack, the remaining top color mask takes effect.
     void pop_color_mask();
 
+    /// @brief Draw a 2D primitive.
+    void draw(const Vec2& tl, const Vec2& tr, const Vec2& br, const Vec2& bl, RImage image, Color color);
+
     /// @brief draw a rect
     /// @param rect render area in screen space
     /// @param color rect fill color

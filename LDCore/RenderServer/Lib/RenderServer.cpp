@@ -517,7 +517,7 @@ void RenderServerObj::screen_rendering(ScreenRenderComponent renderer, void* use
 
     for (const ScreenLayerItem& item : drawList)
     {
-        renderer.draw_image(item.rect, item.image, item.color);
+        renderer.draw(item.tl, item.tr, item.br, item.bl, item.image, item.color);
     }
 }
 

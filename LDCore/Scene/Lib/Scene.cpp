@@ -602,9 +602,8 @@ Mat4 Scene::get_ruid_transform_mat4(RUID ruid)
 Scene::IAudioSource::IAudioSource(Scene scene, CUID sourceCUID)
     : mScene(scene.unwrap())
 {
-    ComponentType type;
-    mComp = (AudioSourceComponent*)scene.get_component(sourceCUID, type);
-    LD_ASSERT(type == COMPONENT_TYPE_AUDIO_SOURCE);
+    mComp = (AudioSourceComponent*)scene.get_component(sourceCUID, COMPONENT_TYPE_AUDIO_SOURCE);
+    LD_ASSERT(mComp);
 }
 
 void Scene::IAudioSource::play()
