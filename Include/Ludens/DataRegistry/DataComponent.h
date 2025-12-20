@@ -78,6 +78,8 @@ struct AudioSourceComponent
 {
     AudioPlayback playback;
     AUID clipAUID;
+    float pan;
+    float volumeLinear;
 };
 
 /// @brief A component with only transform data.

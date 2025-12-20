@@ -103,7 +103,7 @@ static void load_audio_source_component(SceneObj* scene, ComponentBase* base, vo
 
         if (buffer)
         {
-            sourceC->playback = scene->audioServer.create_playback(buffer);
+            sourceC->playback = scene->audioServer.create_playback(buffer, sourceC->pan, sourceC->volumeLinear);
         }
     }
 }

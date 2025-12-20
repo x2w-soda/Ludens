@@ -4,6 +4,8 @@
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/System/Allocator.h>
 #include <Ludens/System/Memory.h>
+
+#include <algorithm>
 #include <chrono>
 #include <thread>
 #include <unordered_set>
@@ -27,7 +29,7 @@ public:
 
     AudioBuffer create_buffer(const AudioBufferInfo& bufferI);
     void destroy_buffer(AudioBuffer buffer);
-    AudioPlayback create_playback(AudioBuffer buffer);
+    AudioPlayback create_playback(AudioBuffer buffer, float pan, float volumeLinear);
     void destroy_playback(AudioPlayback playback);
     void start_playback(AudioPlayback playback);
     void stop_playback(AudioPlayback playback);
@@ -132,12 +134,12 @@ void AudioServerObj::destroy_buffer(AudioBuffer buffer)
     mDeferredBufferDestruction.insert(buffer.unwrap());
 }
 
-AudioPlayback AudioServerObj::create_playback(AudioBuffer buffer)
+AudioPlayback AudioServerObj::create_playback(AudioBuffer buffer, float pan, float volumeLinear)
 {
     AudioPlaybackInfo playbackI{};
     playbackI.playbackPA = mPlaybackPA;
-    playbackI.pan = 0.5f;
-    playbackI.volumeLinear = 1.0f;
+    playbackI.pan = pan;
+    playbackI.volumeLinear = volumeLinear;
     AudioPlayback playback = AudioPlayback::create(playbackI);
 
     AudioCommand cmd;
@@ -256,12 +258,12 @@ void AudioServer::destroy_buffer(AudioBuffer buffer)
     mObj->destroy_buffer(buffer);
 }
 
-AudioPlayback AudioServer::create_playback(AudioBuffer buffer)
+AudioPlayback AudioServer::create_playback(AudioBuffer buffer, float pan, float volumeLinear)
 {
     if (!buffer)
         return {};
 
-    return mObj->create_playback(buffer);
+    return mObj->create_playback(buffer, pan, volumeLinear);
 }
 
 void AudioServer::destroy_playback(AudioPlayback playback)

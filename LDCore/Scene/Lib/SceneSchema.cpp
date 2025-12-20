@@ -204,6 +204,16 @@ static bool load_audio_source_component(Scene scene, TOMLValue compTOML, CUID co
     TOMLValue auidTOML = compTOML["auid"];
     auidTOML.get_u32(sourceC->clipAUID);
     sourceC->playback = {};
+    sourceC->pan = 0.5f;
+    sourceC->volumeLinear = 1.0f;
+
+    TOMLValue panTOML = compTOML["pan"];
+    if (panTOML)
+        panTOML.get_f32(sourceC->pan);
+
+    TOMLValue volumeTOML = compTOML["volume_linear"];
+    if (volumeTOML)
+        volumeTOML.get_f32(sourceC->volumeLinear);
 
     return true;
 }
@@ -447,6 +457,14 @@ static bool save_audio_source_component(Scene scene, TOMLValue compTOML, CUID co
 
     TOMLValue auidTOML = compTOML.set_key("auid", TOML_TYPE_INT);
     auidTOML.set_u32(sourceC->clipAUID);
+
+    TOMLValue panTOML = compTOML.set_key("pan", TOML_TYPE_FLOAT);
+    if (panTOML)
+        panTOML.set_f32(sourceC->pan);
+
+    TOMLValue volumeTOML = compTOML.set_key("volume_linear", TOML_TYPE_FLOAT);
+    if (volumeTOML)
+        volumeTOML.set_f32(sourceC->volumeLinear);
 
     return true;
 }
