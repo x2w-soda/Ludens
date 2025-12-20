@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Ludens/Header/Math/Mat3.h>
 #include <Ludens/Header/Math/Mat4.h>
 #include <Ludens/Header/Math/Quat.h>
 #include <Ludens/Header/Math/Vec2.h>
@@ -67,7 +68,13 @@ struct Transform2D
 {
     Vec2 position;  /// world position in 2D space
     Vec2 scale;     /// scale in 2 axis
-    float rotation; /// counter-clockwise rotation
+    float rotation; /// rotation in degrees
+    
+    /// @brief Get transform matrix for homogeneous 2D.
+    inline Mat3 as_mat3() const
+    {
+        return Mat3::translate_2d(position) * Mat3::rotate_2d(rotation) * Mat3::scale_2d(scale);
+    }
 };
 
 } // namespace LD

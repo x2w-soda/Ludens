@@ -577,6 +577,20 @@ TEST_CASE("Mat3 method")
     m3 = Mat3::rotate_z(90);
     p2 = m3 * p1;
     CHECK(p2 == Vec3(2, 2, 3));
+
+    p1 = Vec3(5.0f, -4.0f, 1.0f);
+    m3 = Mat3::translate_2d(Vec2(10.0f, 20.0f));
+    p2 = m3 * p1;
+    CHECK(p2 == Vec3(15.0f, 16.0f, 1.0f));
+
+    m3 = Mat3::scale_2d(Vec2(-1.0f, 0.5f));
+    p2 = m3 * p2;
+    CHECK(p2 == Vec3(-15.0f, 8.0f, 1.0f));
+
+    p2 = Vec3(3.0f, 4.0f, 1.0f);
+    m3 = Mat3::rotate_2d(90.0f);
+    p2 = m3 * p2;
+    CHECK(p2 == Vec3(-4.0f, 3.0f, 1.0f));
 }
 
 TEST_CASE("Mat3 decomposition")

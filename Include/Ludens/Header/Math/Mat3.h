@@ -2,6 +2,7 @@
 
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Header/Math/Math.h>
+#include <Ludens/Header/Math/Vec2.h>
 #include <Ludens/Header/Math/Vec3.h>
 
 namespace LD {
@@ -17,6 +18,7 @@ struct TMat3
     TMat3() : col{} {}
     TMat3(const TVec& c0, const TVec& c1, const TVec& c2) : col{c0, c1, c2} {}
     TMat3(T x) : col{TVec(x, 0, 0), TVec(0, x, 0), TVec(0, 0, x)} {}
+    TMat3(T m00, T m11, T m22) : col{TVec(m00, 0, 0), TVec(0, m11, 0), TVec(0, 0, m22)} {}
 
     inline TVec& operator[](int i) { return col[i]; }
     inline const TVec& operator[](int i) const { return col[i]; }
@@ -109,6 +111,32 @@ struct TMat3
         T s = LD_SIN(radX);
         return TMat3<T>(TVec(c, s, 0), TVec(-s, c, 0), TVec(0, 0, 1));
     }
+
+    /// @brief Create translation matrix for homogeneous 2D.
+    static inline TMat3 translate_2d(const TVec2<T>& offset)
+    {
+        TMat3<T> m((T)1);
+        m[2].x = offset.x;
+        m[2].y = offset.y;
+
+        return m;
+    }
+
+    /// @brief Create rotation matrix for homogeneous 2D.
+    /// @note For screen space with top-left origin, the rotation will appear clockwise.
+    static inline TMat3 rotate_2d(float degrees)
+    {
+        T c = LD_COS(LD_TO_RADIANS(degrees));
+        T s = LD_SIN(LD_TO_RADIANS(degrees));
+
+        return TMat3<T>(TVec3<T>(c, s, 0), TVec3<T>(-s, c, 0), TVec3<T>(0, 0, 1));
+    }
+
+    /// @brief Create scale matrix for homogeneous 2D.
+    static inline TMat3 scale_2d(const TVec2<T>& scale)
+    {
+        return TMat3<T>(scale.x, scale.y, (T)1);
+    }
 };
 
 template <typename T>
@@ -132,7 +160,7 @@ template <typename T>
 inline bool decompose_mat3_rot(const TMat3<T>& m, TVec3<T>& rotation)
 {
     T sy = -m[2].x;
-    
+
     if (sy * sy > (T)1)
         return false;
 
@@ -151,7 +179,6 @@ inline bool decompose_mat3_rot(const TMat3<T>& m, TVec3<T>& rotation)
         y = LD_ASIN(sy);
         z = LD_ATAN2(m[1].x, m[0].x);
     }
-
 
     x = -LD_TO_DEGREES(x);
     y = -LD_TO_DEGREES(y);
