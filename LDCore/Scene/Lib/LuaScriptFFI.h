@@ -6,7 +6,7 @@
 #if defined(LD_PLATFORM_WIN32)
 #define LD_FFI_EXPORT __declspec(dllexport)
 #elif defined(LD_PLATFORM_LINUX)
-#define LD_FFI_EXPORT extern
+#define LD_FFI_EXPORT __attribute__((visibility("default")))
 #endif
 #endif // LD_FFI_EXPORT
 

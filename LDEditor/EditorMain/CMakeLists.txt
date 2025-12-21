@@ -21,6 +21,8 @@ target_link_libraries(${MODULE_NAME} PRIVATE
 	LDLudensLFS # TODO: embed required media instead of fetching from submodule
 )
 
+target_link_options(${MODULE_NAME} PRIVATE -rdynamic)
+
 target_include_directories(${MODULE_NAME} PRIVATE
     ${LUDENS_SOURCE_DIR}
     ${LUDENS_INCLUDE_DIR}
