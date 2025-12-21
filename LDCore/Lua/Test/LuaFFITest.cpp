@@ -1,13 +1,21 @@
 #include <Extra/doctest/doctest.h>
 #include <Ludens/Header/Math/Transform.h>
+#include <Ludens/Header/Platform.h>
 #include <Ludens/Lua/LuaState.h>
 
 #include <cstddef>
 #include <cstdint>
+#include <iostream>
 
 #include "LuaTest.h"
 
 using namespace LD;
+
+#ifdef LD_PLATFORM_WIN32
+# define FFI_EXPORT __declspec(dllexport)
+#elif defined(LD_PLATFORM_LINUX)
+# define FFI_EXPORT __attribute__((visibility("default")))
+#endif
 
 const char sLuaFFI_cdef[] = R"(
 local ffi = require 'ffi'
@@ -34,6 +42,8 @@ typedef struct {
 typedef struct {
     int32_t _value;
 } Box;
+
+float vec2_length_sq(Vec2* v);
 ]])";
 
 const char sLuaFFI_mt[] = R"(
@@ -82,6 +92,19 @@ sprite.transform.pos.x = sprite.transform.pos.x * 2.0
 return sprite.transform.pos.x
 )";
 
+const char sLuaFFI_test3[] = R"(
+local ffi = require 'ffi'
+local cdata = ffi.cast('Vec2*', _G.v1)
+print(cdata)
+return tonumber(ffi.cast('uintptr_t', cdata))
+)";
+
+const char sLuaFFI_test4[] = R"(
+local ffi = require 'ffi'
+local v1 = ffi.cast('Vec2*', _G.v1)
+return ffi.C.vec2_length_sq(v1);
+)";
+
 namespace {
 
 struct Box
@@ -99,6 +122,13 @@ struct Sprite2D
 
 } // namespace
 
+extern "C" {
+FFI_EXPORT float vec2_length_sq(Vec2* v)
+{
+    return v->x * v->x + v->y * v->y;
+}
+} // extern "C"
+
 TEST_CASE("Lua FFI")
 {
     LuaState L = LuaState::create(sTestStateInfo);
@@ -110,6 +140,19 @@ TEST_CASE("Lua FFI")
     L.set_global("v1");
     CHECK(L.do_string(sLuaFFI_test1));
     CHECK(L.size() == 1);
+    CHECK(L.to_number(-1) == 25.0f);
+    L.clear();
+
+    CHECK(L.do_string(sLuaFFI_test3));
+    CHECK(L.size() == 1);
+    CHECK(L.get_type(-1) == LUA_TYPE_NUMBER);
+    void* ptr = (void*)((uintptr_t)L.to_number(-1));
+    CHECK(ptr == &v1);
+    L.clear();
+
+    CHECK(L.do_string(sLuaFFI_test4));
+    CHECK(L.size() == 1);
+    CHECK(L.get_type(-1) == LUA_TYPE_NUMBER);
     CHECK(L.to_number(-1) == 25.0f);
     L.clear();
 
