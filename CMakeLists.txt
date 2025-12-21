@@ -5,8 +5,19 @@ project(Ludens LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+set(CPP_RTTI_ENABLED OFF CACHE INTERNAL "")
+
 option(LD_COMPILE_WITH_PROFILER "compile with profiler" OFF)
 message(STATUS "LD_COMPILE_WITH_PROFILER:  ${LD_COMPILE_WITH_PROFILER}")
+
+if (LD_COMPILE_WITH_PROFILER)
+  set(TRACY_ENABLE ON CACHE INTERNAL "")
+  add_compile_definitions(TRACY_ENABLE=1)
+else()
+  set(TRACY_ENABLE OFF CACHE INTERNAL "")
+  add_compile_definitions(TRACY_ENABLE=0)
+endif()
+message(STATUS "LUDENS TRACY_ENABLE=${TRACY_ENABLE}")
 
 option(LD_BUILD_BENCHMARKS "build benchmarks" ON)
 message(STATUS "LD_BUILD_BENCHMARKS:       ${LD_BUILD_BENCHMARKS}")
@@ -235,11 +246,6 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(tracy)
 message(STATUS "LUDENS tracy SOURCE DIR:    ${tracy_SOURCE_DIR}")
-if (LD_COMPILE_WITH_PROFILER)
-  set(TRACY_ENABLE ON CACHE INTERNAL "")
-else()
-  set(TRACY_ENABLE OFF CACHE INTERNAL "")
-endif()
 
 ## Fetch miniaudio.h
 
