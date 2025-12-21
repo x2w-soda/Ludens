@@ -54,6 +54,8 @@ struct SceneObj
     void cleanup_root(CUID compID);
 };
 
+static SceneObj* sScene = nullptr;
+
 static void load_audio_source_component(SceneObj* scene, ComponentBase* base, void* comp);
 static void unload_audio_source_component(SceneObj* scene, ComponentBase* base, void* comp);
 static void cleanup_audio_source_component(SceneObj* scene, ComponentBase* base, void* comp);
@@ -287,33 +289,35 @@ Scene Scene::create(const SceneInfo& sceneI)
 {
     LD_PROFILE_SCOPE;
 
-    SceneObj* obj = heap_new<SceneObj>(MEMORY_USAGE_SCENE);
-    obj->registry = DataRegistry::create();
-    obj->screenRenderer.startup();
-    obj->assetManager = sceneI.assetManager;
-    obj->renderServer = sceneI.renderServer;
-    obj->renderServerCache.startup(sceneI.renderServer, sceneI.assetManager);
-    obj->audioServer = sceneI.audioServer;
-    obj->audioServerCache.startup(sceneI.audioServer);
+    LD_ASSERT(sScene == nullptr);
+    sScene = heap_new<SceneObj>(MEMORY_USAGE_SCENE);
+    sScene->registry = DataRegistry::create();
+    sScene->screenRenderer.startup();
+    sScene->assetManager = sceneI.assetManager;
+    sScene->renderServer = sceneI.renderServer;
+    sScene->renderServerCache.startup(sceneI.renderServer, sceneI.assetManager);
+    sScene->audioServer = sceneI.audioServer;
+    sScene->audioServerCache.startup(sceneI.audioServer);
 
-    return Scene(obj);
+    return Scene(sScene);
 }
 
 void Scene::destroy(Scene scene)
 {
     LD_PROFILE_SCOPE;
 
+    LD_ASSERT(sScene && sScene == scene.unwrap());
+
     // destroy all components
     scene.reset();
 
-    SceneObj* obj = scene.unwrap();
+    sScene->audioServerCache.cleanup();
+    sScene->renderServerCache.cleanup();
+    sScene->screenRenderer.cleanup();
+    DataRegistry::destroy(sScene->registry);
 
-    obj->audioServerCache.cleanup();
-    obj->renderServerCache.cleanup();
-    obj->screenRenderer.cleanup();
-    DataRegistry::destroy(obj->registry);
-
-    heap_delete<SceneObj>(obj);
+    heap_delete<SceneObj>(sScene);
+    sScene = nullptr;
 }
 
 void Scene::reset()
@@ -599,10 +603,9 @@ Mat4 Scene::get_ruid_transform_mat4(RUID ruid)
     return worldMat4;
 }
 
-Scene::IAudioSource::IAudioSource(Scene scene, CUID sourceCUID)
-    : mScene(scene.unwrap())
+Scene::IAudioSource::IAudioSource(AudioSourceComponent* comp)
+    : mComp(comp)
 {
-    mComp = (AudioSourceComponent*)scene.get_component(sourceCUID, COMPONENT_TYPE_AUDIO_SOURCE);
     LD_ASSERT(mComp);
 }
 
@@ -611,7 +614,7 @@ void Scene::IAudioSource::play()
     if (!mComp)
         return;
 
-    mScene->audioServer.start_playback(mComp->playback);
+    sScene->audioServer.start_playback(mComp->playback);
 }
 
 void Scene::IAudioSource::pause()
@@ -619,7 +622,7 @@ void Scene::IAudioSource::pause()
     if (!mComp)
         return;
 
-    mScene->audioServer.pause_playback(mComp->playback);
+    sScene->audioServer.pause_playback(mComp->playback);
 }
 
 void Scene::IAudioSource::resume()
@@ -627,7 +630,7 @@ void Scene::IAudioSource::resume()
     if (!mComp)
         return;
 
-    mScene->audioServer.resume_playback(mComp->playback);
+    sScene->audioServer.resume_playback(mComp->playback);
 }
 
 void Scene::IAudioSource::set_clip_asset(AUID clipAUID)
@@ -635,43 +638,42 @@ void Scene::IAudioSource::set_clip_asset(AUID clipAUID)
     if (!mComp)
         return;
 
-    AudioClipAsset clipA(mScene->assetManager.get_asset(clipAUID).unwrap());
-    AudioBuffer buffer = mScene->audioServerCache.get_or_create_audio_buffer(clipA);
+    AudioClipAsset clipA(sScene->assetManager.get_asset(clipAUID).unwrap());
+    AudioBuffer buffer = sScene->audioServerCache.get_or_create_audio_buffer(clipA);
 
     if (buffer)
     {
         mComp->clipAUID = clipAUID;
-        mScene->audioServer.set_playback_buffer(mComp->playback, buffer);
+        sScene->audioServer.set_playback_buffer(mComp->playback, buffer);
     }
 }
 
-Scene::IMesh::IMesh(Scene scene, CUID meshCUID)
-    : mScene(scene.unwrap()), mCUID(meshCUID)
+Scene::IMesh::IMesh(CUID meshCUID)
+    :  mCUID(meshCUID)
 {
-    mComp = (MeshComponent*)scene.get_component(meshCUID, COMPONENT_TYPE_MESH);
+    mComp = (MeshComponent*)Scene(sScene).get_component(meshCUID, COMPONENT_TYPE_MESH);
     LD_ASSERT(mComp);
 }
 
 void Scene::IMesh::set_mesh_asset(AUID meshAUID)
 {
-    RUID meshID = mScene->renderServerCache.get_mesh(meshAUID);
+    RUID meshID = sScene->renderServerCache.get_mesh(meshAUID);
     LD_ASSERT(meshID != 0);
 
     mComp->auid = meshAUID;
-    mScene->renderServerCache.create_mesh_draw_call(meshID, mCUID);
+    sScene->renderServerCache.create_mesh_draw_call(meshID, mCUID);
 }
 
-Scene::ISprite2D::ISprite2D(Scene scene, CUID spriteCUID)
-    : mScene(scene.unwrap()), mCUID(spriteCUID)
+Scene::ISprite2D::ISprite2D(Sprite2DComponent* comp)
+    : mComp(comp)
 {
-    mComp = (Sprite2DComponent*)scene.get_component(spriteCUID, COMPONENT_TYPE_SPRITE_2D);
     LD_ASSERT(mComp);
 }
 
 void Scene::ISprite2D::set_texture_2d_asset(AUID textureAUID)
 {
     mComp->auid = textureAUID;
-    mComp->image = mScene->renderServerCache.get_or_create_image(textureAUID);
+    mComp->image = sScene->renderServerCache.get_or_create_image(textureAUID);
 }
 
 } // namespace LD

@@ -41,9 +41,7 @@ static int input_get_key(lua_State* l);
 static int input_get_mouse_down(lua_State* l);
 static int input_get_mouse_up(lua_State* l);
 static int input_get_mouse(lua_State* l);
-static int audio_source_component_play(lua_State* l);
-static int audio_source_component_pause(lua_State* l);
-static int audio_source_component_resume(lua_State* l);
+
 
 static KeyCode string_to_keycode(const char* cstr)
 {
@@ -199,19 +197,7 @@ static void push_audio_source_component_table(Scene scene, DataRegistry reg, Lua
 {
     AudioSourceComponent* sourceC = (AudioSourceComponent*)comp;
 
-    L.push_table(); // // TODO: FFI
-
-    L.push_light_userdata((void*)scene.unwrap());
-    L.set_field(-2, "_scene");
-
-    L.push_fn(&audio_source_component_play);
-    L.set_field(-2, "play");
-
-    L.push_fn(&audio_source_component_pause);
-    L.set_field(-2, "pause");
-
-    L.push_fn(&audio_source_component_resume);
-    L.set_field(-2, "resume");
+    push_component_table(L, "AudioSourceComponent*", comp);
 }
 
 static void push_camera_component_table(Scene scene, DataRegistry reg, LuaState L, CUID compID, void* comp)
@@ -380,69 +366,6 @@ static int input_get_mouse(lua_State* l)
     L.push_bool(Input::get_mouse(btn));
 
     return 1;
-}
-
-static int audio_source_component_play(lua_State* l)
-{
-    LD_PROFILE_SCOPE;
-
-    LuaState L(l);
-
-    if (L.get_type(-1) != LUA_TYPE_TABLE)
-        return 0;
-
-    L.get_field(-1, "_cuid");
-    LD_ASSERT(L.get_type(-1) == LUA_TYPE_NUMBER);
-    CUID compID = (CUID)L.to_number(-1);
-
-    L.get_field(-2, "_scene");
-    Scene scene((SceneObj*)L.to_userdata(-1));
-    Scene::IAudioSource source(scene, compID);
-    source.play();
-
-    return 0;
-}
-
-static int audio_source_component_pause(lua_State* l)
-{
-    LD_PROFILE_SCOPE;
-
-    LuaState L(l);
-
-    if (L.get_type(-1) != LUA_TYPE_TABLE)
-        return 0;
-
-    L.get_field(-1, "_cuid");
-    LD_ASSERT(L.get_type(-1) == LUA_TYPE_NUMBER);
-    CUID compID = (CUID)L.to_number(-1);
-
-    L.get_field(-2, "_scene");
-    Scene scene((SceneObj*)L.to_userdata(-1));
-    Scene::IAudioSource source(scene, compID);
-    source.pause();
-
-    return 0;
-}
-
-static int audio_source_component_resume(lua_State* l)
-{
-    LD_PROFILE_SCOPE;
-
-    LuaState L(l);
-
-    if (L.get_type(-1) != LUA_TYPE_TABLE)
-        return 0;
-
-    L.get_field(-1, "_cuid");
-    LD_ASSERT(L.get_type(-1) == LUA_TYPE_NUMBER);
-    CUID compID = (CUID)L.to_number(-1);
-
-    L.get_field(-2, "_scene");
-    Scene scene((SceneObj*)L.to_userdata(-1));
-    Scene::IAudioSource source(scene, compID);
-    source.resume();
-
-    return 0;
 }
 
 //
@@ -619,12 +542,13 @@ void Context::update(float delta)
             LD_PROFILE_SCOPE_NAME("LuaScript pcall");
 
             LuaError err = mL.pcall(3, 0, 0);
-            LD_ASSERT(err == 0);
 
             if (err != 0)
             {
                 sLog.warn("script update error: {}", mL.to_string(-1));
             }
+
+            LD_ASSERT(err == 0);
         }
 
         // NOTE: This is a pessimistic assumption that all script updates
@@ -723,7 +647,12 @@ void Context::attach_lua_script(ComponentScriptSlot* scriptSlot)
     mL.get_field(-3, "_comp");
     LD_ASSERT((type = mL.get_type(-1)) == LUA_TYPE_CDATA);
 
-    mL.call(2, 0);
+    LuaError err = mL.pcall(2, 0, 0);
+    if (err != 0)
+    {
+        sLog.error("script attach failed: {}", mL.to_string(-1));
+    }
+    LD_ASSERT(err == 0);
 
     mL.resize(oldSize);
 }
@@ -749,7 +678,12 @@ void Context::detach_lua_script(ComponentScriptSlot* scriptSlot)
     mL.push_value(-2);
     LD_ASSERT((type = mL.get_type(-1)) == LUA_TYPE_TABLE);
 
-    mL.call(1, 0);
+    LuaError err = mL.pcall(1, 0, 0);
+    if (err != 0)
+    {
+        sLog.error("script detach failed: {}", mL.to_string(-1));
+    }
+    LD_ASSERT(err == 0);
 
     mL.resize(oldSize);
 }

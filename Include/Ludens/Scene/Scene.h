@@ -130,7 +130,7 @@ public:
     class IAudioSource
     {
     public:
-        IAudioSource(Scene scene, CUID sourceCUID);
+        IAudioSource(AudioSourceComponent* comp);
 
         void play();
         void pause();
@@ -139,7 +139,6 @@ public:
         void set_clip_asset(AUID clipAUID);
 
     private:
-        SceneObj* mScene;
         AudioSourceComponent* mComp;
     };
 
@@ -147,12 +146,11 @@ public:
     class IMesh
     {
     public:
-        IMesh(Scene scene, CUID meshCUID);
+        IMesh(CUID meshCUID);
 
         void set_mesh_asset(AUID meshAUID);
 
     private:
-        SceneObj* mScene;
         MeshComponent* mComp;
         CUID mCUID;
     };
@@ -161,14 +159,12 @@ public:
     class ISprite2D
     {
     public:
-        ISprite2D(Scene scene, CUID spriteCUID);
+        ISprite2D(Sprite2DComponent* comp);
 
         void set_texture_2d_asset(AUID textureAUID);
 
     private:
-        SceneObj* mScene;
         Sprite2DComponent* mComp;
-        CUID mCUID;
     };
 };
 

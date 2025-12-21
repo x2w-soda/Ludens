@@ -1,7 +1,10 @@
+#include <Ludens/DataRegistry/DataComponent.h>
 #include <Ludens/Header/Math/Quat.h>
 #include <Ludens/Header/Math/Rect.h>
 #include <Ludens/Header/Math/Transform.h>
 #include <Ludens/Header/Math/Vec4.h>
+#include <Ludens/Profiler/Profiler.h>
+#include <Ludens/Scene/Scene.h>
 
 #include "LuaScriptFFI.h"
 
@@ -45,6 +48,12 @@ static_assert(alignof(Transform2D) == 4);
 static_assert(offsetof(Transform2D, position) == 0);
 static_assert(offsetof(Transform2D, scale) == 8);
 static_assert(offsetof(Transform2D, rotation) == 16);
+
+static_assert(alignof(AudioSourceComponent) == 8);
+static_assert(offsetof(AudioSourceComponent, playback) == 0);
+static_assert(offsetof(AudioSourceComponent, clipAUID) == 8);
+static_assert(offsetof(AudioSourceComponent, pan) == 12);
+static_assert(offsetof(AudioSourceComponent, volumeLinear) == 16);
 
 static const char sLuaFFICdef[] = R"(
 typedef struct __attribute__((aligned(4))) {
@@ -96,6 +105,17 @@ typedef struct {
     Transform transform;
 } MeshComponent;
 
+typedef struct __attribute__((aligned(8))) {
+    void* __private_playback;
+    uint32_t __private_clipAUID;
+    float __private_pan;
+    float __private_volumeLinear;
+} AudioSourceComponent;
+
+void ffi_audio_source_component_play(AudioSourceComponent* comp);
+void ffi_audio_source_component_pause(AudioSourceComponent* comp);
+void ffi_audio_source_component_resume(AudioSourceComponent* comp);
+
 typedef struct {
     Transform2D transform;
     Rect local;
@@ -125,6 +145,34 @@ _G.ludens.math.Vec4 = ffi.metatype("Vec4", {
     __add = function (lhs, rhs) return _G.ludens.math.Vec4(lhs.x + rhs.x, lhs.y + rhs.y, lhs.z + rhs.z, lhs.w + rhs.w) end,
     __len = function (v) return math.sqrt(v.x * v.x + v.y * v.y + v.z * v.z + v.w * v.w) end,
 })
+
+ffi.metatype("AudioSourceComponent", {
+    __index = function (t, k)
+        if k == 'pan' then
+            _G.ludens.debug.log('AudioSourceComponent read pan %.2f', t.__private_pan)
+            return t.__private_pan
+        elseif k == 'play' then
+            return function (comp)
+                ffi.C.ffi_audio_source_component_play(comp)
+            end
+        elseif k == 'pause' then
+            return function (comp)
+                ffi.C.ffi_audio_source_component_pause(comp)
+            end
+        elseif k == 'resume' then
+            return function (comp)
+                ffi.C.ffi_audio_source_component_resume(comp)
+            end
+        end
+        return nil
+    end,
+    __newindex = function (t, k, v)
+        if k == 'pan' and tonumber(v) ~= nil then
+            t.__private_pan = tonumber(v)
+            _G.ludens.debug.log('AudioSourceComponent set pan %.2f', t.__private_pan)
+        end
+    end,
+})
 )";
 
 const char* get_ffi_cdef()
@@ -137,5 +185,26 @@ const char* get_ffi_mt()
     return sLuaFFImt;
 }
 
+extern "C" {
+
+void ffi_audio_source_component_play(AudioSourceComponent* comp)
+{
+    Scene::IAudioSource source(comp);
+    source.play();
+}
+
+void ffi_audio_source_component_pause(AudioSourceComponent* comp)
+{
+    Scene::IAudioSource source(comp);
+    source.pause();
+}
+
+void ffi_audio_source_component_resume(AudioSourceComponent* comp)
+{
+    Scene::IAudioSource source(comp);
+    source.resume();
+}
+
+} // extern "C"
 } // namespace LuaScript
 } // namespace LD
