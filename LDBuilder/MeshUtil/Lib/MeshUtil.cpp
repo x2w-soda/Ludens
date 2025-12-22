@@ -1,8 +1,9 @@
-#include "MeshUtil.h"
 #include <Ludens/Header/Math/Math.h>
 #include <Ludens/Log/Log.h>
 #include <Ludens/Media/Model.h>
 #include <Ludens/System/FileSystem.h>
+#include <LudensBuilder/MeshUtil/MeshUtil.h>
+
 #include <filesystem>
 #include <iomanip>
 

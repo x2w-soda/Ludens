@@ -5,16 +5,16 @@
 #include <Ludens/Log/Log.h>
 #include <Ludens/System/FileSystem.h>
 #include <Ludens/System/Timer.h>
-#include <LudensBuilder/BAssetUtil/BAssetUtil.h>
-#include <LudensBuilder/BDocumentCompiler/BDocumentCompiler.h>
+#include <LudensBuilder/AssetUtil/AssetUtil.h>
+#include <LudensBuilder/AudioUtil/AudioUtil.h>
+#include <LudensBuilder/DocumentCompiler/DocumentCompiler.h>
+#include <LudensBuilder/MeshUtil/MeshUtil.h>
+#include <LudensBuilder/RenderUtil/RenderUtil.h>
 
 #include <array>
 #include <cstdlib>
 #include <cstring>
 
-#include "AudioUtil.h"
-#include "MeshUtil.h"
-#include "RenderUtil.h"
 #include "RunTests.h"
 
 using namespace LD;
