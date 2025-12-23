@@ -7,6 +7,7 @@
 #include <Ludens/Scene/Scene.h>
 
 #include "LuaScriptFFI.h"
+#include "SceneObj.h"
 
 namespace LD {
 namespace LuaScript {
@@ -56,56 +57,59 @@ static_assert(offsetof(AudioSourceComponent, pan) == 12);
 static_assert(offsetof(AudioSourceComponent, volumeLinear) == 16);
 
 static const char sLuaFFICdef[] = R"(
-typedef struct __attribute__((aligned(4))) {
+typedef struct __attribute__((aligned(4))) Vec2 {
     float x;
     float y;
 } Vec2;
 
-typedef struct __attribute__((aligned(4))) {
+typedef struct __attribute__((aligned(4))) Vec3 {
     float x;
     float y;
     float z;
 } Vec3;
 
-typedef struct __attribute__((aligned(16))) {
+typedef struct __attribute__((aligned(16))) Vec4 {
     float x;
     float y;
     float z;
     float w;
 } Vec4;
 
-typedef struct __attribute__((aligned(4))) {
+typedef struct __attribute__((aligned(4))) Quat {
     float x;
     float y;
     float z;
     float w;
 } Quat;
 
-typedef struct __attribute__((aligned(4))) {
+typedef struct __attribute__((aligned(4))) Rect {
     float x;
     float y;
     float w;
     float h;
 } Rect;
 
-typedef struct __attribute__((aligned(4))) {
+typedef struct __attribute__((aligned(4))) Transform {
     Vec3 rotation;
     Vec3 position;
     Vec3 scale;
     Quat __private_quat;
 } Transform;
 
-typedef struct __attribute__((aligned(4))) {
+typedef struct __attribute__((aligned(4))) Transform2D {
     Vec2 position;
     Vec2 scale;
     float rotation;
 } Transform2D;
 
-typedef struct {
+uint32_t ffi_get_parent_id(uint32_t compID);
+uint32_t ffi_get_child_id_by_name(uint32_t compID, const char* name);
+
+typedef struct MeshComponent {
     Transform transform;
 } MeshComponent;
 
-typedef struct __attribute__((aligned(8))) {
+typedef struct __attribute__((aligned(8))) AudioSourceComponent {
     void* __private_playback;
     uint32_t __private_clipAUID;
     float __private_pan;
@@ -116,7 +120,7 @@ void ffi_audio_source_component_play(AudioSourceComponent* comp);
 void ffi_audio_source_component_pause(AudioSourceComponent* comp);
 void ffi_audio_source_component_resume(AudioSourceComponent* comp);
 
-typedef struct {
+typedef struct Sprite2DComponent {
     Transform2D transform;
     Rect local;
     void* __private_image;
@@ -149,27 +153,25 @@ _G.ludens.math.Vec4 = ffi.metatype("Vec4", {
 ffi.metatype("AudioSourceComponent", {
     __index = function (t, k)
         if k == 'pan' then
-            _G.ludens.debug.log('AudioSourceComponent read pan %.2f', t.__private_pan)
-            return t.__private_pan
+            return t.cdata.__private_pan
         elseif k == 'play' then
             return function (comp)
-                ffi.C.ffi_audio_source_component_play(comp)
+                ffi.C.ffi_audio_source_component_play(comp.cdata)
             end
         elseif k == 'pause' then
             return function (comp)
-                ffi.C.ffi_audio_source_component_pause(comp)
+                ffi.C.ffi_audio_source_component_pause(comp.cdata)
             end
         elseif k == 'resume' then
             return function (comp)
-                ffi.C.ffi_audio_source_component_resume(comp)
+                ffi.C.ffi_audio_source_component_resume(comp.cdata)
             end
         end
         return nil
     end,
     __newindex = function (t, k, v)
         if k == 'pan' and tonumber(v) ~= nil then
-            t.__private_pan = tonumber(v)
-            _G.ludens.debug.log('AudioSourceComponent set pan %.2f', t.__private_pan)
+            t.cdata.__private_pan = tonumber(v)
         end
     end,
 })
@@ -186,6 +188,30 @@ const char* get_ffi_mt()
 }
 
 extern "C" {
+
+uint32_t ffi_get_parent_id(uint32_t compID)
+{
+    ComponentBase* base = sScene->registry.get_component_base(compID);
+    LD_ASSERT(base);
+    ComponentBase* parent = base->parent;
+    return parent ? parent->id : 0;
+}
+
+uint32_t ffi_get_child_id_by_name(uint32_t compID, const char* name)
+{
+    ComponentBase* base = sScene->registry.get_component_base(compID);
+    LD_ASSERT(base && base->name);
+
+    for (ComponentBase* child = base->child; child; child = child->next)
+    {
+        LD_ASSERT(child && child->name);
+
+        if (!strcmp(child->name, name))
+            return child->id;
+    }
+
+    return 0;
+}
 
 void ffi_audio_source_component_play(AudioSourceComponent* comp)
 {

@@ -52,10 +52,10 @@ const char* get_log_channel_name();
 LuaModule create_ludens_module();
 
 /// @brief Create lua table for data component
-void create_component_table(Scene scene, DataRegistry reg, LuaState L, CUID compID, ComponentType type, void* comp);
+void create_component_table(LuaState L, CUID compID);
 
 /// @brief Destroy lua table associated with component
-void destroy_component_table(Scene scene, DataRegistry reg, LuaState L, CUID compID);
+void destroy_component_table(LuaState L, CUID compID);
 
 } // namespace LuaScript
 } // namespace LD

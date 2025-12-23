@@ -11,6 +11,7 @@
 
 #include "LuaScript.h"
 #include "LuaScriptFFI.h"
+#include "SceneObj.h"
 
 #define LUDENS_LUA_SCRIPT_LOG_CHANNEL "LuaScript"
 #define LUDENS_LUA_MODULE_NAME "ludens"
@@ -24,15 +25,10 @@ namespace LuaScript {
 static KeyCode string_to_keycode(const char* str);
 static MouseButton string_to_mouse_button(const char* cstr);
 static inline ComponentBase* get_component_base(LuaState& L, DataRegistry* outReg);
-static inline bool push_script_table(LuaState& L, CUID compID);
-static inline void push_component_table(LuaState& L, const char* ffiCast, void* comp);
+static inline void push_component_ref(LuaState& L, CUID compID);
 static int component_get_id(lua_State* l);
 static int component_get_name(lua_State* l);
 static int component_set_name(lua_State* l);
-static void push_audio_source_component_table(Scene scene, DataRegistry reg, LuaState L, CUID compID, void* comp);
-static void push_camera_component_table(Scene scene, DataRegistry reg, LuaState L, CUID compID, void* comp);
-static void push_mesh_component_table(Scene scene, DataRegistry reg, LuaState L, CUID compID, void* comp);
-static void push_sprite_2d_component_table(Scene scene, DataRegistry reg, LuaState L, CUID compID, void* comp);
 static int application_exit(lua_State* l);
 static int debug_log(lua_State* l);
 static int input_get_key_down(lua_State* l);
@@ -41,7 +37,7 @@ static int input_get_key(lua_State* l);
 static int input_get_mouse_down(lua_State* l);
 static int input_get_mouse_up(lua_State* l);
 static int input_get_mouse(lua_State* l);
-
+static int get_component(lua_State* l);
 
 static KeyCode string_to_keycode(const char* cstr)
 {
@@ -105,43 +101,15 @@ static inline ComponentBase* get_component_base(LuaState& L, DataRegistry* outRe
     return base;
 }
 
-/// @brief try and push ludens.scripts[compID], or nil on failure
-static inline bool push_script_table(LuaState& L, CUID compID)
+static void push_component_ref(LuaState& L, CUID compID)
 {
-    int oldSize = L.size();
-
-    L.get_global("ludens");
-    L.get_field(-1, "scripts");
-    L.push_number((double)compID);
-    L.get_table(-2);
-
-    LuaType type = L.get_type(-1);
-
-    if (L.get_type(-1) == LUA_TYPE_TABLE) // script table
-    {
-        L.remove(-2);
-        L.remove(-2);
-        LD_ASSERT(L.size() == oldSize + 1);
-
-        return true;
-    }
-
-    L.resize(oldSize);
-    L.push_nil();
-    return false;
-}
-
-static inline void push_component_table(LuaState& L, const char* ffiCast, void* comp)
-{
-    L.push_light_userdata(comp);
-    L.set_global("tmp"); // TODO: this ugly
-
-    std::string str = std::format("local ffi = require 'ffi' return ffi.cast(\"{}\", _G.tmp)", ffiCast);
+    std::string str = std::format("return _G.ludens.create_component_ref({})", compID);
     bool ok = L.do_string(str.c_str());
+    if (!ok)
+    {
+        sLog.error("{}", L.to_string(-1));
+    }
     LD_ASSERT(ok);
-
-    LuaType type = L.get_type(-1);
-    LD_ASSERT(type == LUA_TYPE_CDATA);
 }
 
 static inline void get_transform_cuid(LuaState L, int tIndex, CUID& compID)
@@ -192,51 +160,6 @@ static int component_set_name(lua_State* l)
 
     return 0;
 }
-
-static void push_audio_source_component_table(Scene scene, DataRegistry reg, LuaState L, CUID compID, void* comp)
-{
-    AudioSourceComponent* sourceC = (AudioSourceComponent*)comp;
-
-    push_component_table(L, "AudioSourceComponent*", comp);
-}
-
-static void push_camera_component_table(Scene scene, DataRegistry reg, LuaState L, CUID compID, void* comp)
-{
-    CameraComponent* cameraC = (CameraComponent*)comp;
-
-    L.push_table(); // TODO: FFI
-}
-
-static void push_mesh_component_table(Scene scene, DataRegistry reg, LuaState L, CUID compID, void* comp)
-{
-    MeshComponent* meshC = (MeshComponent*)comp;
-
-    push_component_table(L, "MeshComponent*", comp);
-}
-
-void push_sprite_2d_component_table(Scene scene, DataRegistry reg, LuaState L, CUID compID, void* comp)
-{
-    Sprite2DComponent* spriteC = (Sprite2DComponent*)comp;
-
-    push_component_table(L, "Sprite2DComponent*", comp);
-}
-
-// clang-format off
-struct
-{
-    ComponentType type;
-    void (*push_table)(Scene scene, DataRegistry reg, LuaState L, CUID compID, void* comp);
-} sComponents[] = {
-    {COMPONENT_TYPE_DATA,         nullptr},
-    {COMPONENT_TYPE_AUDIO_SOURCE, &push_audio_source_component_table},
-    {COMPONENT_TYPE_TRANSFORM,    nullptr},
-    {COMPONENT_TYPE_CAMERA,       nullptr},
-    {COMPONENT_TYPE_MESH,         &push_mesh_component_table},
-    {COMPONENT_TYPE_SPRITE_2D,    &push_sprite_2d_component_table},
-};
-// clang-format on
-
-static_assert(sizeof(sComponents) / sizeof(*sComponents) == COMPONENT_TYPE_ENUM_COUNT);
 
 /// @brief ludens.application.exit
 static int application_exit(lua_State* l)
@@ -368,6 +291,32 @@ static int input_get_mouse(lua_State* l)
     return 1;
 }
 
+/// @brief ludens.C.get_component(compID)
+static int get_component(lua_State* l)
+{
+    LuaState L(l);
+
+    LD_ASSERT(L.get_type(-1) == LUA_TYPE_NUMBER);
+    CUID compID = (CUID)L.to_number(-1);
+
+    ComponentType type;
+    void* comp = sScene->registry.get_component(compID, &type);
+
+    if (!comp)
+    {
+        L.push_nil();
+        L.push_nil();
+        return 2;
+    }
+
+    std::string ffiType(get_component_type_name(type));
+    ffiType.push_back('*');
+
+    L.push_string(ffiType.c_str());
+    L.push_light_userdata(comp);
+    return 2;
+}
+
 //
 // PUBLIC API
 //
@@ -397,9 +346,13 @@ LuaModule create_ludens_module()
         {.type = LUA_TYPE_FN, .name = "get_mouse_up",   .fn = &LuaScript::input_get_mouse_up},
         {.type = LUA_TYPE_FN, .name = "get_mouse",      .fn = &LuaScript::input_get_mouse},
     };
+
+    const LuaModuleValue CVals[] = {
+        {.type = LUA_TYPE_FN, .name = "get_component", .fn = &LuaScript::get_component},
+    };
     // clang-format on
 
-    std::array<LuaModuleNamespace, 3> spaces;
+    std::array<LuaModuleNamespace, 4> spaces;
     spaces[0].name = "application";
     spaces[0].valueCount = sizeof(applicationVals) / sizeof(*applicationVals);
     spaces[0].values = applicationVals;
@@ -412,6 +365,11 @@ LuaModule create_ludens_module()
     spaces[2].valueCount = sizeof(inputVals) / sizeof(*inputVals);
     spaces[2].values = inputVals;
 
+    // NOTE: these are bindings that use the Lua stack, there are also FFI bindings in LuaScriptFFI.cpp
+    spaces[3].name = "C";
+    spaces[3].valueCount = sizeof(CVals) / sizeof(CVals);
+    spaces[3].values = CVals;
+
     LuaModuleInfo modI;
     modI.name = LUDENS_LUA_MODULE_NAME;
     modI.spaceCount = (uint32_t)spaces.size();
@@ -420,28 +378,29 @@ LuaModule create_ludens_module()
     return LuaModule::create(modI); // caller destroys
 }
 
-// stack top should be ludens.scripts
-void create_component_table(Scene scene, DataRegistry reg, LuaState L, CUID compID, ComponentType type, void* comp)
+void create_component_table(LuaState L, CUID compID)
 {
-    L.push_number((double)compID);
-    L.get_table(-2);                             // ludens.scripts[compID]
-    LD_ASSERT(L.get_type(-1) == LUA_TYPE_TABLE); // script instance table missing
+    int oldSize = L.size();
 
-    sComponents[(int)type].push_table(scene, reg, L, compID, comp);
-    L.set_field(-2, "_comp");
+    push_component_ref(L, compID);
     L.pop(1);
+
+    LD_ASSERT(L.size() == oldSize);
 }
 
-// stack top should be ludens.scripts
-void destroy_component_table(Scene scene, DataRegistry reg, LuaState L, CUID compID)
+void destroy_component_table(LuaState L, CUID compID)
 {
-    L.push_number((double)compID);
-    L.get_table(-2);                             // ludens.scripts[compID]
-    LD_ASSERT(L.get_type(-1) == LUA_TYPE_TABLE); // script instance table missing
+    int oldSize = L.size();
 
+    L.get_global("ludens");
+    L.get_field(-1, "components");
+    L.push_number((double)compID);
     L.push_nil();
-    L.set_field(-2, "_comp"); // ludens.scripts[compID]._comp = nil
-    L.pop(1);
+    L.set_table(-3); // ludens.components[compID] = nil
+
+    // TODO: solve dangling references
+
+    L.resize(oldSize);
 }
 
 void Context::startup(Scene scene, DataRegistry registry, AssetManager assetManager)
@@ -466,6 +425,10 @@ void Context::startup(Scene scene, DataRegistry registry, AssetManager assetMana
         LD_UNREACHABLE;
     }
 
+    // Register FFI declarations
+    // - Components are accessed via FFI cdata to avoid state duplication
+    // - some functions are visible to FFI to call directly
+
     std::string cdef = std::format("local ffi = require 'ffi' ffi.cdef [[ {} ]]", LuaScript::get_ffi_cdef());
     if (!mL.do_string(cdef.c_str()))
     {
@@ -473,15 +436,74 @@ void Context::startup(Scene scene, DataRegistry registry, AssetManager assetMana
         LD_UNREACHABLE;
     }
 
+    // Register FFI metatype
+    // - ffi.metatype for Component cdata structs
+
     if (!mL.do_string(LuaScript::get_ffi_mt()))
     {
         sLog.error("FFI metatable initialization failed: {}", mL.to_string(-1));
         LD_UNREACHABLE;
     }
 
-    mL.get_global("ludens");
-    mL.push_table();
-    mL.set_field(-2, "scripts");
+    // Bootstrapping for LuaScript runtime
+    // - empty ludens.scripts table
+    // - empty ludens.components table
+    // - ComponentRef mechanism
+
+    if (!mL.do_string(R"(
+local ffi = require 'ffi'
+_G.ludens.scripts = {}
+_G.ludens.components = {}
+
+_G.ludens.ComponentRef = {
+    get_child = function (compRef, childName)
+        local compID = ffi.C.ffi_get_child_id_by_name(compRef.compID, childName)
+        return _G.ludens.create_component_ref(compID)
+    end,
+    get_parent = function (compRef)
+        local compID = ffi.C.ffi_get_parent_id(compRef.compID)
+        return _G.ludens.create_component_ref(compID)
+    end,
+    __index = function (compRef, k)
+        local method = _G.ludens.ComponentRef[k]
+        if method ~= nil then
+            return method
+        end
+
+        return compRef.cdata[k]
+    end,
+    __newindex = function (compRef, k, v)
+        compRef.cdata.k = v
+    end,
+}
+
+_G.ludens.create_component_ref = function (compID)
+    if compID == 0 then
+        return nil
+    end
+
+    local comp = _G.ludens.components[compID]
+
+    if comp == nil then -- roundtrip to C++, find component address and FFI type
+        local ffiType, compAddr = _G.ludens.C.get_component(compID);
+        comp = {}
+        comp.ffiType = ffiType
+        comp.compAddr = compAddr
+        _G.ludens.components[compID] = comp
+    end
+
+    local compRef = {}
+    compRef.compID = compID
+    compRef.cdata = ffi.cast(comp.ffiType, comp.compAddr)
+    setmetatable(compRef, _G.ludens.ComponentRef)
+    return compRef
+end
+)"))
+    {
+        sLog.error("Bootstrapping failed: {}", mL.to_string(-1));
+        LD_UNREACHABLE;
+    }
+
     mL.clear();
 }
 
@@ -529,19 +551,16 @@ void Context::update(float delta)
         // arg1 is the script instance (lua table)
         mL.push_number((double)componentID);
         mL.get_table(-4);
+        LD_ASSERT(mL.get_type(-1) == LUA_TYPE_TABLE);
 
-        // arg2 is the component (lua table) the script is attached to
-        mL.get_field(-1, "_comp");
-        LD_ASSERT(mL.get_type(-1) == LUA_TYPE_CDATA);
-
-        // arg3 is the frame delta time
+        // arg2 is the frame delta time
         mL.push_number((double)delta);
 
-        // Script:update(comp, delta)
         {
             LD_PROFILE_SCOPE_NAME("LuaScript pcall");
 
-            LuaError err = mL.pcall(3, 0, 0);
+            // Script:update(delta)
+            LuaError err = mL.pcall(2, 0, 0);
 
             if (err != 0)
             {
@@ -594,7 +613,7 @@ bool Context::create_lua_script(ComponentScriptSlot* scriptSlot)
     void* comp = mRegistry.get_component(compID, &type);
 
     // create and store table for component type
-    LuaScript::create_component_table(mScene, mRegistry, mL, compID, type, comp);
+    LuaScript::create_component_table(mL, compID);
 
     mL.resize(oldSize);
     return true;
@@ -610,8 +629,8 @@ void Context::destroy_lua_script(ComponentScriptSlot* scriptSlot)
     mL.get_global("ludens");
     mL.get_field(-1, "scripts");
 
-    // destroy component lua table representation
-    LuaScript::destroy_component_table(mScene, mRegistry, mL, compID);
+    // destroy component lua table
+    LuaScript::destroy_component_table(mL, compID);
 
     mL.push_number((double)compID);
     mL.push_nil();
@@ -643,9 +662,9 @@ void Context::attach_lua_script(ComponentScriptSlot* scriptSlot)
     mL.push_value(-2);
     LD_ASSERT((type = mL.get_type(-1)) == LUA_TYPE_TABLE);
 
-    // arg2 is the component cdata from FFI
-    mL.get_field(-3, "_comp");
-    LD_ASSERT((type = mL.get_type(-1)) == LUA_TYPE_CDATA);
+    // arg2 is the component
+    push_component_ref(mL, compID);
+    LD_ASSERT((type = mL.get_type(-1)) == LUA_TYPE_TABLE);
 
     LuaError err = mL.pcall(2, 0, 0);
     if (err != 0)
