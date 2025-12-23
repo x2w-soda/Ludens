@@ -31,6 +31,8 @@ add_executable(${MODULE_TEST_NAME}
     ${MODULE_TEST}
 )
 
+set_target_properties(${MODULE_TEST_NAME} PROPERTIES FOLDER ${LD_CORE_MODULE_FOLDER})
+
 target_include_directories(${MODULE_TEST_NAME} PRIVATE
     ${LUDENS_INCLUDE_DIR}
     ${LUDENS_SOURCE_DIR}
@@ -41,6 +43,7 @@ if (LD_BUILD_BENCHMARKS)
         ${MODULE_INCLUDE}
         Benchmark/simd.cpp
     )
+    set_target_properties(${MODULE_BENCHMARK_NAME} PROPERTIES FOLDER ${LD_CORE_MODULE_FOLDER})
     target_include_directories(${MODULE_BENCHMARK_NAME} PRIVATE
         ${LUDENS_INCLUDE_DIR}
         ${LUDENS_SOURCE_DIR}

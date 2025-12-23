@@ -7,7 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(CPP_RTTI_ENABLED OFF CACHE INTERNAL "")
 
-option(LD_COMPILE_WITH_PROFILER "compile with profiler" OFF)
+option(LD_COMPILE_WITH_PROFILER "compile with profiler" ON)
 message(STATUS "LD_COMPILE_WITH_PROFILER:  ${LD_COMPILE_WITH_PROFILER}")
 
 if (LD_COMPILE_WITH_PROFILER)
@@ -316,6 +316,7 @@ add_subdirectory(LDUtil/LudensLFS)
 # - strict dependency ordering
 # - user facing API in ${LUDENS_INCLUDE_DIR}
 
+set(LD_CORE_MODULE_FOLDER "LDCore")
 add_subdirectory(LDCore/Header)
 add_subdirectory(LDCore/Profiler)
 add_subdirectory(LDCore/System)

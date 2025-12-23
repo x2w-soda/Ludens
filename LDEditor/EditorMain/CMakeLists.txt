@@ -1,7 +1,7 @@
 set(MODULE_NAME LDEditor)
 
 set(MODULE_LIB
-	Lib/Main.cpp
+	Lib/EditorMain.cpp
 	Lib/EditorUI.h
 	Lib/EditorUI.cpp
 	Lib/EditorTopBar.h

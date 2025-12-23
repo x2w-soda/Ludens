@@ -50,6 +50,8 @@ add_library(${MODULE_NAME}
     ${MODULE_LIB}
 )
 
+set_target_properties(${MODULE_NAME} PROPERTIES FOLDER ${LD_CORE_MODULE_FOLDER})
+
 target_link_libraries(${MODULE_NAME} PUBLIC
     LDSystem
     LDText
@@ -67,6 +69,8 @@ add_executable(${MODULE_TEST_NAME}
     ${MODULE_TEST}
 )
 
+set_target_properties(${MODULE_TEST_NAME} PROPERTIES FOLDER ${LD_CORE_MODULE_FOLDER})
+
 target_include_directories(${MODULE_TEST_NAME} PRIVATE
     ${LUDENS_INCLUDE_DIR}
     ${LUDENS_SOURCE_DIR}
@@ -79,6 +83,8 @@ target_link_libraries(${MODULE_TEST_NAME} PRIVATE
 add_executable(${MODULE_SANDBOX_NAME}
     ${MODULE_SANDBOX}
 )
+
+set_target_properties(${MODULE_SANDBOX_NAME} PROPERTIES FOLDER ${LD_CORE_MODULE_FOLDER})
 
 target_include_directories(${MODULE_SANDBOX_NAME} PRIVATE
     ${LUDENS_INCLUDE_DIR}

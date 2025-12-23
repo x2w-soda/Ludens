@@ -19,6 +19,8 @@ add_library(${MODULE_NAME}
     ${MODULE_LIB}
 )
 
+set_target_properties(${MODULE_NAME} PROPERTIES FOLDER ${LD_CORE_MODULE_FOLDER})
+
 target_include_directories(${MODULE_NAME} PRIVATE
     ${LUDENS_INCLUDE_DIR}
 )
@@ -30,6 +32,8 @@ target_link_libraries(${MODULE_NAME} PUBLIC
 add_executable(${MODULE_TEST_NAME}
     ${MODULE_TEST}
 )
+
+set_target_properties(${MODULE_TEST_NAME} PROPERTIES FOLDER ${LD_CORE_MODULE_FOLDER})
 
 target_include_directories(${MODULE_TEST_NAME} PRIVATE
     ${LUDENS_INCLUDE_DIR}
