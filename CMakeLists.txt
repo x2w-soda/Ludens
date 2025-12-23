@@ -383,16 +383,25 @@ target_link_libraries(LDCoreLibs INTERFACE
 # - headers in ${LUDENS_INCLUDE_DIR}/LudensBuilder
 # - links with LDCoreLibs
 
-add_subdirectory(LDBuilder/BDocumentCompiler)
-add_subdirectory(LDBuilder/BAssetUtil)
+set(LD_BUILDER_MODULE_FOLDER "LDBuilder")
+add_subdirectory(LDBuilder/RenderUtil)
+add_subdirectory(LDBuilder/AudioUtil)
+add_subdirectory(LDBuilder/AssetUtil)
+add_subdirectory(LDBuilder/Win32Util)
+add_subdirectory(LDBuilder/MeshUtil)
+add_subdirectory(LDBuilder/DocumentCompiler)
 
 add_library(LDBuilderLibs INTERFACE)
 target_link_libraries(LDBuilderLibs INTERFACE
-  LDBAssetUtil
-  LDBDocumentCompiler
+  LDRenderUtil
+  LDAudioUtil
+  LDAssetUtil
+  LDWin32Util
+  LDMeshUtil
+  LDDocumentCompiler
 )
 
-add_subdirectory(LDBuilder)
+add_subdirectory(LDBuilder/BuilderMain)
 
 # Ludens Editor
 # - graphical user interface for editing scenes

@@ -1,7 +1,7 @@
 set(MODULE_NAME LDBuilder)
 
 set(MODULE_LIB
-	Lib/Main.cpp
+	Lib/BuilderMain.cpp
 	Lib/RunTests.h
 	Lib/RunTests.cpp
 )

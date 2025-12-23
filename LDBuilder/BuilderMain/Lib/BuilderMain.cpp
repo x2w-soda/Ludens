@@ -10,6 +10,7 @@
 #include <LudensBuilder/DocumentCompiler/DocumentCompiler.h>
 #include <LudensBuilder/MeshUtil/MeshUtil.h>
 #include <LudensBuilder/RenderUtil/RenderUtil.h>
+#include <LudensBuilder/Win32Util/Win32Util.h>
 
 #include <array>
 #include <cstdlib>
@@ -35,6 +36,7 @@ enum BuilderMode
     BUILDER_MODE_IMPORT,
     BUILDER_MODE_RENDER,
     BUILDER_MODE_RUN_TESTS,
+    BUILDER_MODE_WIN32,
 };
 
 class BuilderArgs
@@ -91,6 +93,13 @@ BuilderArgs::BuilderArgs(int argc, char** argv)
                 mMode = BUILDER_MODE_RUN_TESTS;
                 break;
             }
+#ifdef LD_PLATFORM_WIN32
+            else if (!strcmp(optPayload, "win32"))
+            {
+                mMode = BUILDER_MODE_WIN32;
+                break;
+            }
+#endif
         }
     } while ((ArgResult)optIndex != ARG_RESULT_EOF);
 }
@@ -251,6 +260,57 @@ static void builder_mode_run_tests(int argc, char** argv)
     sLog.info("{}/{} tests passed", passCount, testCount);
 }
 
+#ifdef LD_PLATFORM_WIN32
+static void builder_mode_win32(int argc, char** argv)
+{
+    int argi = find_argi(argc, argv, "win32");
+    if (argi >= argc)
+    {
+        LD_UNREACHABLE; // caller is gaslighting
+        return;
+    }
+    argv += argi;
+    argc -= argi;
+
+    if (argc != 4 || std::string(argv[1]) != "icon")
+    {
+        // TODO: help message for win32 mode
+        sLog.info("win32 mode invalid args");
+        return;
+    }
+
+    FS::Path path(argv[2]);
+    FS::Path icoPath(argv[3]);
+
+    if (!FS::exists(path))
+    {
+        sLog.info("PE file {} does not exist", path.string());
+        return;
+    }
+
+    if (!FS::exists(icoPath))
+    {
+        sLog.info("icon file {} does not exist", path.string());
+        return;
+    }
+
+    if (!icoPath.has_extension() || icoPath.extension() != ".ico")
+    {
+        sLog.info("expected .ico file, found {}", icoPath.string());
+        return;
+    }
+
+    Win32Util util = Win32Util::create();
+
+    if (!util.patch_icon_resources(path, icoPath))
+        sLog.error("failed to patch icon");
+    else
+        sLog.info("icon patch completed", path.string());
+
+    Win32Util::destroy(util);
+}
+#endif
+
 } // namespace LD
 
 int main(int argc, char** argv)
@@ -275,6 +335,11 @@ int main(int argc, char** argv)
     case BUILDER_MODE_RUN_TESTS:
         builder_mode_run_tests(argc, argv);
         break;
+#ifdef LD_PLATFORM_WIN32
+    case BUILDER_MODE_WIN32:
+        builder_mode_win32(argc, argv);
+        break;
+#endif
     case BUILDER_MODE_ERROR:
     default:
         print_help(argv[0]);
