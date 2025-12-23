@@ -6,8 +6,10 @@ set(MODULE_INCLUDE
     ${LUDENS_INCLUDE_DIR}/Ludens/Media/Model.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Media/Bitmap.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Media/AudioData.h
+    ${LUDENS_INCLUDE_DIR}/Ludens/Media/Win32Struct.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Media/Format/WAV.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Media/Format/MP3.h
+    ${LUDENS_INCLUDE_DIR}/Ludens/Media/Format/ICO.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Media/Format/MD.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Media/Format/XML.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Media/Format/JSON.h
@@ -23,10 +25,12 @@ set(MODULE_LIB
     Lib/AudioData.cpp
     Lib/GlyphTable.h
     Lib/GlyphTable.cpp
+    Lib/Win32Struct.cpp
     Lib/Format/TinygltfLoader.h
     Lib/Format/TinygltfLoader.cpp
     Lib/Format/WAV.cpp
     Lib/Format/MP3.cpp
+    Lib/Format/ICO.cpp
     Lib/Format/MD.cpp
     Lib/Format/XML.cpp
     Lib/Format/JSON.cpp
