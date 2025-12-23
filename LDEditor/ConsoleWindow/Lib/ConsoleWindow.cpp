@@ -1,7 +1,7 @@
 #include <Ludens/Log/Log.h>
 #include <Ludens/System/Memory.h>
 #include <Ludens/UI/UIImmediate.h>
-#include <LudensEditor/EConsoleWindow/EConsoleWindow.h>
+#include <LudensEditor/ConsoleWindow/ConsoleWindow.h>
 #include <LudensEditor/EditorContext/EditorWindowObj.h>
 
 namespace LD {

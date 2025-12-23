@@ -11,10 +11,10 @@
 #include <LudensEditor/EditorWidget/UISelectWindow.h>
 #include <LudensEditor/EditorWidget/UIVersionWindow.h>
 
-#include <LudensEditor/EConsoleWindow/EConsoleWindow.h>
-#include <LudensEditor/EInspectorWindow/EInspectorWindow.h>
-#include <LudensEditor/EOutlinerWindow/EOutlinerWindow.h>
-#include <LudensEditor/EViewportWindow/EViewportWindow.h>
+#include <LudensEditor/ConsoleWindow/ConsoleWindow.h>
+#include <LudensEditor/InspectorWindow/InspectorWindow.h>
+#include <LudensEditor/OutlinerWindow/OutlinerWindow.h>
+#include <LudensEditor/ViewportWindow/ViewportWindow.h>
 
 #include <cstdint>
 #include <vector>

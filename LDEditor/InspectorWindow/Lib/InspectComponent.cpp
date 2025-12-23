@@ -3,8 +3,8 @@
 #include <LudensEditor/EditorWidget/UIAssetSlotWidget.h>
 #include <LudensEditor/EditorWidget/UITransformEditWidget.h>
 
-#include "EInspectorWindowObj.h"
 #include "InspectComponent.h"
+#include "InspectorWindowObj.h"
 
 namespace LD {
 

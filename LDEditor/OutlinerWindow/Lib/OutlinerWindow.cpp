@@ -1,10 +1,11 @@
-#include "ComponentMenu.h"
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/System/Memory.h>
-#include <LudensEditor/EOutlinerWindow/EOutlinerWindow.h>
 #include <LudensEditor/EditorContext/EditorIconAtlas.h>
 #include <LudensEditor/EditorContext/EditorWindowObj.h>
+#include <LudensEditor/OutlinerWindow/OutlinerWindow.h>
 #include <iostream>
+
+#include "ComponentMenu.h"
 
 #define OUTLINER_ROW_SIZE 20.0f
 #define OUTLINER_ROW_ODD_COLOR 0x272727FF

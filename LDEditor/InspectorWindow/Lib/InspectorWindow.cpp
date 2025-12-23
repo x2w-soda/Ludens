@@ -4,10 +4,10 @@
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/System/Memory.h>
 #include <Ludens/UI/UIImmediate.h>
-#include <LudensEditor/EInspectorWindow/EInspectorWindow.h>
+#include <LudensEditor/InspectorWindow/InspectorWindow.h>
 
-#include "EInspectorWindowObj.h"
 #include "InspectComponent.h"
+#include "InspectorWindowObj.h"
 
 namespace LD {
 
@@ -106,20 +106,17 @@ void EInspectorWindow::select_asset(AUID assetID)
 
     switch (compType)
     {
-    case COMPONENT_TYPE_AUDIO_SOURCE:
-    {
+    case COMPONENT_TYPE_AUDIO_SOURCE: {
         Scene::IAudioSource source((AudioSourceComponent*)comp);
         source.set_clip_asset(assetID);
         break;
     }
-    case COMPONENT_TYPE_MESH:
-    {
+    case COMPONENT_TYPE_MESH: {
         Scene::IMesh mesh(mObj->subjectID);
         mesh.set_mesh_asset(assetID);
         break;
     }
-    case COMPONENT_TYPE_SPRITE_2D:
-    {
+    case COMPONENT_TYPE_SPRITE_2D: {
         Scene::ISprite2D sprite((Sprite2DComponent*)comp);
         sprite.set_texture_2d_asset(assetID);
         break;
