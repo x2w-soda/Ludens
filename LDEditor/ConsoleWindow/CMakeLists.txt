@@ -1,20 +1,19 @@
-set(MODULE_NAME LDEInspectorWindow)
+set(MODULE_NAME LDConsoleWindow)
 
 set(MODULE_INCLUDE
-	${LUDENS_INCLUDE_DIR}/LudensEditor/EInspectorWindow/EInspectorWindow.h
+	${LUDENS_INCLUDE_DIR}/LudensEditor/ConsoleWindow/ConsoleWindow.h
 )
 
 set(MODULE_LIB
-	Lib/EInspectorWindow.cpp
-	Lib/EInspectorWindowObj.h
-	Lib/InspectComponent.h
-	Lib/InspectComponent.cpp
+	Lib/ConsoleWindow.cpp
 )
 
 add_library(${MODULE_NAME}
 	${MODULE_LIB}
 	${MODULE_INCLUDE}
 )
+
+set_target_properties(${MODULE_NAME} PROPERTIES FOLDER ${LD_EDITOR_MODULE_FOLDER})
 
 target_link_libraries(${MODULE_NAME} PRIVATE
 	LDCoreLibs

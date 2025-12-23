@@ -409,21 +409,22 @@ add_subdirectory(LDBuilder/BuilderMain)
 # - headers in ${LUDENS_INCLUDE_DIR}/LudensEditor
 # - links with LDCoreLibs and LDBuilderLibs
 
+set(LD_EDITOR_MODULE_FOLDER "LDEditor")
 add_subdirectory(LDEditor/EditorContext)
 add_subdirectory(LDEditor/EditorWidget)
-add_subdirectory(LDEditor/EConsoleWindow)
-add_subdirectory(LDEditor/EViewportWindow)
-add_subdirectory(LDEditor/EOutlinerWindow)
-add_subdirectory(LDEditor/EInspectorWindow)
+add_subdirectory(LDEditor/ConsoleWindow)
+add_subdirectory(LDEditor/ViewportWindow)
+add_subdirectory(LDEditor/OutlinerWindow)
+add_subdirectory(LDEditor/InspectorWindow)
 
 add_library(LDEditorLibs INTERFACE)
 target_link_libraries(LDEditorLibs INTERFACE
   LDEditorContext
   LDEditorWidget
-  LDEConsoleWindow
-  LDEViewportWindow
-  LDEOutlinerWindow
-  LDEInspectorWindow
+  LDConsoleWindow
+  LDViewportWindow
+  LDOutlinerWindow
+  LDInspectorWindow
 )
 
 add_subdirectory(LDEditor/EditorMain)

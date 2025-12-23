@@ -1,13 +1,13 @@
-set(MODULE_NAME LDEViewportWindow)
+set(MODULE_NAME LDOutlinerWindow)
 
 set(MODULE_INCLUDE
-	${LUDENS_INCLUDE_DIR}/LudensEditor/EViewportWindow/EViewportWindow.h
+	${LUDENS_INCLUDE_DIR}/LudensEditor/OutlinerWindow/OutlinerWindow.h
 )
 
 set(MODULE_LIB
-	Lib/EViewportWindow.cpp
-	Lib/ViewportToolbar.h
-	Lib/ViewportToolbar.cpp
+	Lib/OutlinerWindow.cpp
+	Lib/ComponentMenu.h
+	Lib/ComponentMenu.cpp
 )
 
 add_library(${MODULE_NAME}
@@ -15,10 +15,11 @@ add_library(${MODULE_NAME}
 	${MODULE_INCLUDE}
 )
 
+set_target_properties(${MODULE_NAME} PROPERTIES FOLDER ${LD_EDITOR_MODULE_FOLDER})
+
 target_link_libraries(${MODULE_NAME} PRIVATE
 	LDCoreLibs
 	LDEditorContext
-    LDEditorWidget
 )
 
 target_include_directories(${MODULE_NAME} PRIVATE
