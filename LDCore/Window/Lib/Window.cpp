@@ -1,11 +1,14 @@
 #include <Ludens/Event/Event.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Log/Log.h>
+#include <Ludens/Media/Bitmap.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/System/Memory.h>
 #include <Ludens/Window/Window.h>
 
 #include <GLFW/glfw3.h>
+
+#include <vector>
 
 #include "InputInternal.h"
 #include "WindowObj.h"
@@ -341,6 +344,31 @@ void Window::set_cursor_mode_normal()
 void Window::set_cursor_mode_disabled()
 {
     mObj->set_cursor_mode_disabled();
+}
+
+void Window::hint_icon(int iconCount, Bitmap* icons)
+{
+    LD_PROFILE_SCOPE;
+
+    std::vector<GLFWimage> images;
+
+    for (int i = 0; i < iconCount; i++)
+    {
+        Bitmap icon = icons[i];
+
+        if (!icon || icon.format() != BITMAP_FORMAT_RGBA8U)
+        {
+            sLog.warn("hint_window_icon ignoring icons[{}]", i);
+            continue;
+        }
+
+        images.emplace_back((int)icon.width(), (int)icon.height(), (unsigned char*)icon.data());
+    }
+
+    if (images.empty())
+        return;
+
+    glfwSetWindowIcon(mObj->get_glfw_handle(), (int)images.size(), images.data());
 }
 
 void Window::hint_border_color(Color color)

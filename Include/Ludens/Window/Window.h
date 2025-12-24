@@ -10,6 +10,7 @@ struct GLFWwindow;
 namespace LD {
 
 struct Event;
+struct Bitmap;
 
 enum CursorType
 {
@@ -83,8 +84,17 @@ struct Window : Handle<struct WindowObj>
     /// @brief signal the last frame of the window, closes window after the current frame is completed
     void exit();
 
+    /// @brief Makes cursor visible and behave normally.
     void set_cursor_mode_normal();
+
+    /// @brief Hides and grabs the cursor.
     void set_cursor_mode_disabled();
+
+    /// @brief Hint at the platform window manager to use icon for decoration.
+    /// @param iconCount Number of candidates in icons array.
+    /// @param icons Candidate bitmaps for icon, good sizes include 16x16, 32x32 and 48x48.
+    /// @warning Candidate bitmap format must be BITMAP_FORMAT_RGBA8U.
+    void hint_icon(int iconCount, Bitmap* icons);
 
     /// @brief Hint at the platform window manager to use border color
     void hint_border_color(Color color);

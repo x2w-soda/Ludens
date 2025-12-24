@@ -329,9 +329,9 @@ add_subdirectory(LDCore/Serial)
 add_subdirectory(LDCore/Lexer)
 add_subdirectory(LDCore/Log)
 add_subdirectory(LDCore/Event)
-add_subdirectory(LDCore/Window)
 add_subdirectory(LDCore/Lua)
 add_subdirectory(LDCore/Media)
+add_subdirectory(LDCore/Window)
 add_subdirectory(LDCore/Camera)
 add_subdirectory(LDCore/Gizmo)
 add_subdirectory(LDCore/RenderBackend)
@@ -360,9 +360,9 @@ target_link_libraries(LDCoreLibs INTERFACE
   LDLexer
   LDLog
   LDEvent
-  LDWindow
   LDLua
   LDMedia
+  LDWindow
   LDCamera
   LDGizmo
   LDRenderBackend
