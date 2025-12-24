@@ -1,10 +1,13 @@
 #include <Ludens/Header/Platform.h>
+#include <Ludens/Log/Log.h>
 #ifdef LD_PLATFORM_WIN32
+
 #define GLFW_EXPOSE_NATIVE_WIN32
-#include "Window.h"
 #include <GLFW/glfw3.h>
 #include <GLFW/glfw3native.h>
-#include <Ludens/Log/Log.h>
+
+#include "WindowObj.h"
+
 #include <dwmapi.h>
 
 #pragma comment(lib, "dwmapi.lib")
@@ -23,7 +26,7 @@ static COLORREF to_colorref(Color color)
     return colorRef;
 }
 
-void Window::hint_border_color(Color color)
+void WindowObj::hint_border_color(Color color)
 {
     HWND hwnd = glfwGetWin32Window(mHandle);
     COLORREF colorRef = to_colorref(color);
@@ -35,7 +38,7 @@ void Window::hint_border_color(Color color)
     }
 }
 
-void Window::hint_title_bar_color(Color color)
+void WindowObj::hint_title_bar_color(Color color)
 {
     HWND hwnd = glfwGetWin32Window(mHandle);
     COLORREF colorRef = to_colorref(color);
@@ -47,7 +50,7 @@ void Window::hint_title_bar_color(Color color)
     }
 }
 
-void Window::hint_title_bar_text_color(Color color)
+void WindowObj::hint_title_bar_text_color(Color color)
 {
     HWND hwnd = glfwGetWin32Window(mHandle);
     COLORREF colorRef = to_colorref(color);

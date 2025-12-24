@@ -328,7 +328,8 @@ add_subdirectory(LDCore/Text)
 add_subdirectory(LDCore/Serial)
 add_subdirectory(LDCore/Lexer)
 add_subdirectory(LDCore/Log)
-add_subdirectory(LDCore/Application)
+add_subdirectory(LDCore/Event)
+add_subdirectory(LDCore/Window)
 add_subdirectory(LDCore/Lua)
 add_subdirectory(LDCore/Media)
 add_subdirectory(LDCore/Camera)
@@ -358,7 +359,8 @@ target_link_libraries(LDCoreLibs INTERFACE
   LDSerial
   LDLexer
   LDLog
-  LDApplication
+  LDEvent
+  LDWindow
   LDLua
   LDMedia
   LDCamera

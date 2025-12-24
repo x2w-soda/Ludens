@@ -1,11 +1,15 @@
 #pragma once
 
 #include <Ludens/Header/Color.h>
+#include <Ludens/Header/Handle.h>
+#include <Ludens/Header/Math/Vec2.h>
 #include <cstdint>
 
 struct GLFWwindow;
 
 namespace LD {
+
+struct Event;
 
 enum CursorType
 {
@@ -18,56 +22,53 @@ enum CursorType
     CURSOR_TYPE_ENUM_COUNT,
 };
 
-struct Event;
-
-struct ApplicationInfo
+struct WindowInfo
 {
-    const char* name;                                /// application window name
+    const char* name;                                /// initial window name
     void* user;                                      /// arbitrary user data
     void (*onEvent)(const Event* event, void* user); /// event callback
-    uint32_t width;                                  /// application window width
-    uint32_t height;                                 /// application window height
-    Color hintBorderColor;                           /// If not zero, the desired window border color.
-    Color hintTitleBarColor;                         /// If not zero, the desired window title bar color.
-    Color hintTitleBarTextColor;                     /// If not zero, the desired window title bar text color.
+    uint32_t width;                                  /// initial window width
+    uint32_t height;                                 /// initial window height
+    Color hintBorderColor;                           /// if not zero, the desired window border color.
+    Color hintTitleBarColor;                         /// if not zero, the desired window title bar color.
+    Color hintTitleBarTextColor;                     /// if not zero, the desired window title bar text color.
 };
 
-/// @brief handle of a windowed application
-class Application
+/// @brief Handle of a platform specific Window.
+struct Window : Handle<struct WindowObj>
 {
-public:
-    Application() = delete;
+    /// @brief Create a window.
+    /// @param windowI Window creation info
+    static Window create(const WindowInfo& windowI);
 
-    /// @brief create application singleton
-    /// @param appI application info
-    /// @return handle to the singleton application
-    static Application create(const ApplicationInfo& appI);
+    /// @brief Destroy a window.
+    static void destroy(Window window);
 
-    /// @brief destroy application singleton
-    static void destroy();
+    /// @brief Get main window handle.
+    static Window get();
 
-    /// @brief get singleton handle
-    static Application get();
-
-    /// @brief pass an event to the application singleton
+    /// @brief Pass an event to the main window.
     static void on_event(const Event* event);
 
-    /// @brief get window width
+    /// @brief Get window width.
     uint32_t width() const;
 
-    /// @brief get window height
+    /// @brief Get window height.
     uint32_t height() const;
 
-    /// @brief get window aspect ratio
+    /// @brief Get window extent.
+    Vec2 extent() const;
+
+    /// @brief Get window aspect ratio.
     float aspect_ratio() const;
 
-    /// @brief check whether the window is currently minimized
-    bool is_window_minimized();
+    /// @brief Check whether the window is currently minimized
+    bool is_minimized();
 
-    /// @brief chech whether the window is still active
-    bool is_window_open();
+    /// @brief Check whether the window is still active
+    bool is_open();
 
-    /// @brief poll window events
+    /// @brief Poll window events.
     void poll_events();
 
     /// @brief Get native GLFWwindow* handle
@@ -79,7 +80,7 @@ public:
     /// @brief get time in seconds between the current frame and previous frame
     double get_delta_time();
 
-    /// @brief signal the last frame of the application, closes window after the current frame is completed
+    /// @brief signal the last frame of the window, closes window after the current frame is completed
     void exit();
 
     void set_cursor_mode_normal();
@@ -100,11 +101,6 @@ public:
 
     /// @brief Hint at the platform window manager to use cursor shape
     void hint_cursor_shape(CursorType cursor);
-
-private:
-    Application(struct ApplicationObj* obj);
-
-    struct ApplicationObj* mObj;
 };
 
 } // namespace LD

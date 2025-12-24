@@ -1,8 +1,10 @@
-#include "InputInternal.h"
-#include <GLFW/glfw3.h>
-#include <Ludens/Application/Input.h>
+#include <Ludens/Event/Event.h>
 #include <cstdint>
 #include <cstring>
+
+#include <GLFW/glfw3.h>
+
+#include "InputInternal.h"
 
 namespace LD {
 namespace Input {

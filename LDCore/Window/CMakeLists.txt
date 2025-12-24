@@ -1,16 +1,14 @@
-set(MODULE_NAME LDApplication)
+set(MODULE_NAME LDWindow)
 
 set(MODULE_INCLUDE
-	${LUDENS_INCLUDE_DIR}/Ludens/Application/Application.h
-	${LUDENS_INCLUDE_DIR}/Ludens/Application/Input.h
-	${LUDENS_INCLUDE_DIR}/Ludens/Application/Event.h
+	${LUDENS_INCLUDE_DIR}/Ludens/Window/Window.h
+	${LUDENS_INCLUDE_DIR}/Ludens/Window/Input.h
 )
 
 set(MODULE_LIB
-	Lib/Application.cpp
 	Lib/Input.cpp
 	Lib/InputInternal.h
-	Lib/Window.h
+	Lib/WindowObj.h
 	Lib/Window.cpp
 	Lib/WindowWin32.cpp
     Lib/WindowLinux.cpp
@@ -27,6 +25,7 @@ target_link_libraries(${MODULE_NAME} PRIVATE
 	LDSystem
 	LDLog
 	LDProfiler
+	LDEvent
 )
 
 target_include_directories(${MODULE_NAME} PRIVATE
