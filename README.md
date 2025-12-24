@@ -64,9 +64,13 @@ Binary serializtaion and compression schemes.
 
 Console Logger.
 
-- Application
+- Event
 
-The backbone of a windowed application. Handles user input and window events in an event-polling fasion.
+Event system. Will eventually be generalized to register custom event types at runtime.
+
+- Window
+
+OS specific Windows for Win32, X11, Wayland, etc. Generates input events and window events for the user to process.
 
 - Lua
 

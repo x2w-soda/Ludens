@@ -1,6 +1,6 @@
 #pragma once
 
-#include <Ludens/Application/Event.h>
+#include <Ludens/Event/Event.h>
 #include <Ludens/Header/Handle.h>
 #include <Ludens/Header/Hash.h>
 #include <Ludens/Header/KeyCode.h>

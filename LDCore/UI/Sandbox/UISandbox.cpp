@@ -1,7 +1,4 @@
-#include "UISandbox.h"
 #include <LDUtil/LudensLFS/Include/LudensLFS.h>
-#include <Ludens/Application/Application.h>
-#include <Ludens/Application/Input.h>
 #include <Ludens/JobSystem/JobSystem.h>
 #include <Ludens/Log/Log.h>
 #include <Ludens/Profiler/Profiler.h>
@@ -9,10 +6,15 @@
 #include <Ludens/RenderBackend/RUtil.h>
 #include <Ludens/System/FileSystem.h>
 #include <Ludens/UI/UIImmediate.h>
+#include <Ludens/Window/Input.h>
+#include <Ludens/Window/Window.h>
 #include <LudensEditor/EditorContext/EditorIconAtlas.h>
+
 #include <array>
 #include <string>
 #include <vector>
+
+#include "UISandbox.h"
 
 namespace LD {
 
@@ -29,20 +31,20 @@ UISandbox::UISandbox()
     jsI.standardQueueCapacity = 128;
     JobSystem::init(jsI);
 
-    ApplicationInfo appI{};
-    appI.width = 1600;
-    appI.height = 900;
-    appI.name = "UISandbox";
-    appI.onEvent = &UISandbox::on_event;
-    appI.user = this;
-    appI.hintBorderColor = 0;
-    appI.hintTitleBarColor = 0x000000FF;
-    appI.hintTitleBarTextColor = 0xDFDFDFFF;
-    Application app = Application::create(appI);
-    Vec2 screenExtent((float)app.width(), (float)app.height());
+    WindowInfo windowI{};
+    windowI.width = 1600;
+    windowI.height = 900;
+    windowI.name = "UISandbox";
+    windowI.onEvent = &UISandbox::on_event;
+    windowI.user = this;
+    windowI.hintBorderColor = 0;
+    windowI.hintTitleBarColor = 0x000000FF;
+    windowI.hintTitleBarTextColor = 0xDFDFDFFF;
+    Window window = Window::create(windowI);
+    const Vec2 screenExtent = window.extent();
 
     CameraPerspectiveInfo perspectiveI{};
-    perspectiveI.aspectRatio = (float)app.width() / (float)app.height();
+    perspectiveI.aspectRatio = window.aspect_ratio();
     perspectiveI.nearClip = 0.1f;
     perspectiveI.farClip = 100.0f;
     perspectiveI.fov = LD_TO_RADIANS(45.0f);
@@ -54,7 +56,7 @@ UISandbox::UISandbox()
 
     RDeviceInfo deviceI{};
     deviceI.backend = RDEVICE_BACKEND_VULKAN;
-    deviceI.window = app.get_glfw_window();
+    deviceI.window = window.get_glfw_window();
     deviceI.vsync = true;
     mRDevice = RDevice::create(deviceI);
 
@@ -98,12 +100,12 @@ UISandbox::UISandbox()
     layoutI.childAxis = UI_AXIS_Y;
     layoutI.sizeX = UISize::fixed(250.0f);
     layoutI.sizeY = UISize::fixed(400.0f);
-    UIWindowInfo windowI{};
-    windowI.name = "demo";
-    windowI.layer = 0u;
-    windowI.defaultMouseControls = false;
-    windowI.drawWithScissor = false;
-    mClient = mUIWM.get_context().add_window(layoutI, windowI, nullptr);
+    UIWindowInfo uiWindowI{};
+    uiWindowI.name = "demo";
+    uiWindowI.layer = 0u;
+    uiWindowI.defaultMouseControls = false;
+    uiWindowI.drawWithScissor = false;
+    mClient = mUIWM.get_context().add_window(layoutI, uiWindowI, nullptr);
     mClient.layout();
     mClient.set_on_draw([](UIWidget widget, ScreenRenderComponent renderer) {
         renderer.draw_rect(widget.get_rect(), Color(0x303030FF));
@@ -135,19 +137,19 @@ UISandbox::~UISandbox()
 
 void UISandbox::run()
 {
-    Application app = Application::get();
+    Window window = Window::get();
 
-    while (app.is_window_open())
+    while (window.is_open())
     {
-        app.poll_events();
+        window.poll_events();
 
-        if (app.is_window_minimized())
+        if (window.is_minimized())
             continue;
 
         imgui();
 
         // update and render
-        float delta = (float)app.get_delta_time();
+        float delta = (float)window.get_delta_time();
         mUIWM.update(delta);
         render();
 
@@ -156,7 +158,7 @@ void UISandbox::run()
 
     ui_imgui_release(mUIWM.get_context());
 
-    Application::destroy();
+    Window::destroy(window);
 }
 
 void UISandbox::imgui()
@@ -215,8 +217,8 @@ void UISandbox::imgui()
 
 void UISandbox::render()
 {
-    Application app = Application::get();
-    Vec2 screenExtent((float)app.width(), (float)app.height());
+    Window window = Window::get();
+    const Vec2 screenExtent = window.extent();
 
     // begin rendering a frame
     RenderServerFrameInfo frameI{};

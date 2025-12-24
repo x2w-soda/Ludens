@@ -1,12 +1,13 @@
-#include "EditorUI.h"
-#include <Ludens/Application/Application.h>
-#include <Ludens/Application/Event.h>
+#include <Ludens/Event/Event.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/Scene/Scene.h>
 #include <Ludens/UI/UIImmediate.h>
+#include <Ludens/Window/Window.h>
 #include <LudensEditor/EditorContext/EditorIconAtlas.h>
 #include <LudensEditor/EditorContext/EditorWindowObj.h>
 #include <LudensEditor/EditorWidget/UIVersionWindow.h>
+
+#include "EditorUI.h"
 
 namespace LD {
 
@@ -143,7 +144,7 @@ void EditorUI::update(float delta)
 {
     LD_PROFILE_SCOPE;
 
-    Application app = Application::get();
+    Window window = Window::get();
 
     ui_frame_begin(mWM.get_context());
 
@@ -156,7 +157,7 @@ void EditorUI::update(float delta)
     if (hasBackdrop)
     {
         ui_push_window("Backdrop", mBackdropWindow);
-        ui_set_window_rect(Rect(0.0f, 0.0f, app.width(), app.height()));
+        ui_set_window_rect(Rect(0.0f, 0.0f, window.width(), window.height()));
         ui_pop_window();
         mBackdropWindow.show();
     }
@@ -405,9 +406,9 @@ void EditorUI::on_event(const Event* event, void* user)
 
     switch (event->type)
     {
-    case EVENT_TYPE_APPLICAITON_RESIZE:
-        self.resize(Vec2(static_cast<const ApplicationResizeEvent*>(event)->width,
-                         static_cast<const ApplicationResizeEvent*>(event)->height));
+    case EVENT_TYPE_WINDOW_RESIZE:
+        self.resize(Vec2(static_cast<const WindowResizeEvent*>(event)->width,
+                         static_cast<const WindowResizeEvent*>(event)->height));
         break;
     default:
         ctx.forward_event(event);

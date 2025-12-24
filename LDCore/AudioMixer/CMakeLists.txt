@@ -75,7 +75,7 @@ set_target_properties(${MODULE_SANDBOX_NAME} PROPERTIES FOLDER ${LD_CORE_MODULE_
 
 target_link_libraries(${MODULE_SANDBOX_NAME} PRIVATE
 	${MODULE_NAME}
-	LDApplication
+	LDWindow
 	LDLudensLFS
 )
 

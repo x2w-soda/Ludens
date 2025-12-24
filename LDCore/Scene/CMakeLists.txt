@@ -41,7 +41,7 @@ target_link_libraries(${MODULE_NAME} PUBLIC
     LDMedia
     LDCamera
     LDDataRegistry
-    LDApplication
+    LDWindow
 )
 
 set(MODULE_TEST

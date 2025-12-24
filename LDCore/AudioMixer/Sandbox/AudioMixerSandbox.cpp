@@ -1,17 +1,17 @@
-#include <Ludens/Application/Application.h>
-#include <Ludens/Application/Event.h>
-#include <Ludens/Application/Input.h>
 #include <Ludens/AudioBackend/MiniAudio.h>
 #include <Ludens/AudioMixer/AudioBuffer.h>
 #include <Ludens/AudioMixer/AudioMixer.h>
 #include <Ludens/AudioMixer/AudioPlayback.h>
 #include <Ludens/AudioMixer/Effect/AudioEffectHighPassFilter.h>
 #include <Ludens/AudioMixer/Effect/AudioEffectLowPassFilter.h>
+#include <Ludens/Event/Event.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/JobSystem/JobSystem.h>
 #include <Ludens/Media/Format/MP3.h>
 #include <Ludens/Media/Format/WAV.h>
 #include <Ludens/System/FileSystem.h>
+#include <Ludens/Window/Input.h>
+#include <Ludens/Window/Window.h>
 
 // Using audio samples from the LFS repository.
 #include <LDUtil/LudensLFS/Include/LudensLFS.h>
@@ -86,13 +86,13 @@ public:
             mCommands.enqueue(cmd);
         }
 
-        ApplicationInfo appI{};
-        appI.user = this;
-        appI.width = 600;
-        appI.height = 600;
-        appI.name = "AudioMixerSandbox";
-        appI.onEvent = nullptr;
-        Application app = Application::create(appI);
+        WindowInfo windowI{};
+        windowI.user = this;
+        windowI.width = 600;
+        windowI.height = 600;
+        windowI.name = "AudioMixerSandbox";
+        windowI.onEvent = nullptr;
+        Window::create(windowI);
     }
 
     ~AudioMixerSandbox()
@@ -121,7 +121,7 @@ public:
             AudioBuffer::destroy(mClickAB);
         }
 
-        Application::destroy();
+        Window::destroy(Window::get());
         MiniAudio::destroy(mMA);
         AudioMixer::destroy(mMixer);
         PoolAllocator::destroy(mPlaybackPA);
@@ -129,11 +129,11 @@ public:
 
     void run()
     {
-        Application app = Application::get();
+        Window window = Window::get();
 
-        while (app.is_window_open())
+        while (window.is_open())
         {
-            app.poll_events();
+            window.poll_events();
 
             AudioCommand cmd;
 

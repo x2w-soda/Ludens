@@ -1,6 +1,4 @@
-#include "EditorUI.h"
-#include <Ludens/Application/Application.h>
-#include <Ludens/Application/Event.h>
+#include <Ludens/Event/Event.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/JobSystem/JobSystem.h>
 #include <Ludens/Log/Log.h>
@@ -8,12 +6,16 @@
 #include <Ludens/RenderComponent/ScreenRenderComponent.h>
 #include <Ludens/RenderServer/RenderServer.h>
 #include <Ludens/Scene/Scene.h>
+#include <Ludens/Window/Window.h>
+
 #include <array>
 #include <cstdint>
 #include <filesystem>
 #include <iostream>
 #include <string>
 #include <vector>
+
+#include "EditorUI.h"
 
 // NOTE: THIS IS TEMPORARY. We are experimenting with editor icons, fonts, and other files.
 //       Eventually such files will be embedded in the editor, currently we are fetching
@@ -42,16 +44,16 @@ public:
         jsI.standardQueueCapacity = 128;
         JobSystem::init(jsI);
 
-        ApplicationInfo appI{};
-        appI.width = 1600;
-        appI.height = 900;
-        appI.name = "Ludens";
-        appI.onEvent = &EditorUI::on_event;
-        appI.user = &mEditorUI;
-        appI.hintBorderColor = 0;
-        appI.hintTitleBarColor = 0x000000FF;
-        appI.hintTitleBarTextColor = 0xDFDFDFFF;
-        Application app = Application::create(appI);
+        WindowInfo windowI{};
+        windowI.width = 1600;
+        windowI.height = 900;
+        windowI.name = "Ludens";
+        windowI.onEvent = &EditorUI::on_event;
+        windowI.user = &mEditorUI;
+        windowI.hintBorderColor = 0;
+        windowI.hintTitleBarColor = 0x000000FF;
+        windowI.hintTitleBarTextColor = 0xDFDFDFFF;
+        Window window = Window::create(windowI);
 
         std::string fontPathString = sLudensLFS.fontPath.string();
         mFont = Font::create_from_path(fontPathString.c_str());
@@ -59,7 +61,7 @@ public:
 
         RDeviceInfo deviceI{};
         deviceI.backend = RDEVICE_BACKEND_VULKAN;
-        deviceI.window = app.get_glfw_window();
+        deviceI.window = window.get_glfw_window();
         deviceI.vsync = true; // TODO: config
         mRDevice = RDevice::create(deviceI);
 
@@ -101,8 +103,8 @@ public:
         uiI.ctx = mEditorCtx;
         uiI.fontAtlas = mFontAtlas;
         uiI.fontAtlasImage = mRenderServer.get_font_atlas_image();
-        uiI.screenWidth = appI.width;
-        uiI.screenHeight = appI.height;
+        uiI.screenWidth = window.width();
+        uiI.screenHeight = window.height();
         uiI.barHeight = 22;
         mEditorUI.startup(uiI);
     }
@@ -122,22 +124,22 @@ public:
         RDevice::destroy(mRDevice);
         FontAtlas::destroy(mFontAtlas);
         Font::destroy(mFont);
-        Application::destroy();
+        Window::destroy(Window::get());
         JobSystem::shutdown();
     }
 
     void run()
     {
-        Application app = Application::get();
+        Window window = Window::get();
 
-        while (app.is_window_open())
+        while (window.is_open())
         {
-            app.poll_events();
+            window.poll_events();
 
-            if (app.is_window_minimized())
+            if (window.is_minimized())
                 continue;
 
-            float delta = (float)app.get_delta_time();
+            float delta = (float)window.get_delta_time();
 
             // The current project or scene could change after this.
             mEditorCtx.poll_actions();
@@ -156,7 +158,7 @@ public:
             RenderServerFrameInfo frameI{};
             frameI.directionalLight = Vec3(0.0f, 1.0f, 0.0f);
             frameI.mainCamera = mainCamera;
-            frameI.screenExtent = Vec2((float)app.width(), (float)app.height());
+            frameI.screenExtent = window.extent();
             frameI.sceneExtent = mEditorUI.get_viewport_scene_size();
             frameI.envCubemap = mEnvCubemap;
             mRenderServer.next_frame(frameI);

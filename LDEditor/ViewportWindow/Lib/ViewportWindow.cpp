@@ -1,7 +1,7 @@
-#include <Ludens/Application/Input.h>
 #include <Ludens/Camera/CameraController.h>
 #include <Ludens/Gizmo/Gizmo.h>
 #include <Ludens/System/Memory.h>
+#include <Ludens/Window/Input.h>
 #include <LudensEditor/EditorContext/EditorWindowObj.h>
 #include <LudensEditor/ViewportWindow/ViewportWindow.h>
 

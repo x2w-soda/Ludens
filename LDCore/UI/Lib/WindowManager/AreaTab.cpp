@@ -1,9 +1,11 @@
-#include "AreaTab.h"
-#include "UIWindowManagerObj.h"
-#include <Ludens/Application/Application.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/System/Memory.h>
+#include <Ludens/Window/Window.h>
+
 #include <unordered_set>
+
+#include "AreaTab.h"
+#include "UIWindowManagerObj.h"
 
 #define OPACITY_ANIM_DURATION 0.1f
 
@@ -200,7 +202,7 @@ void AreaTabControl::delete_tabs()
         {
             if (!tab || !tab->shouldClose)
                 continue;
-            
+
             if (tab == mActiveTab)
                 mActiveTab = nullptr;
 
@@ -316,7 +318,7 @@ void AreaTabControl::on_float_draw(UIWidget widget, ScreenRenderComponent render
 
 void AreaTabControl::on_float_hover(UIWidget widget, UIEvent event)
 {
-    Application app = Application::get();
+    Window window = Window::get();
     AreaTabControl& self = *(AreaTabControl*)widget.get_user();
     Vec2 mousePos = self.mCtx.get_mouse_pos();
     Rect windowRect = widget.get_rect();
@@ -327,13 +329,13 @@ void AreaTabControl::on_float_hover(UIWidget widget, UIEvent event)
         windowRect.get_edge_distances(mousePos, &distToLeft, nullptr, &distToRight, &distToBot);
 
         if (distToBot < self.mFloatBorder)
-            app.hint_cursor_shape(CURSOR_TYPE_VRESIZE);
+            window.hint_cursor_shape(CURSOR_TYPE_VRESIZE);
         else if ((distToLeft < self.mFloatBorder) || (distToRight < self.mFloatBorder))
-            app.hint_cursor_shape(CURSOR_TYPE_HRESIZE);
+            window.hint_cursor_shape(CURSOR_TYPE_HRESIZE);
     }
     else if (event == UI_MOUSE_LEAVE)
     {
-        app.hint_cursor_shape(CURSOR_TYPE_DEFAULT);
+        window.hint_cursor_shape(CURSOR_TYPE_DEFAULT);
     }
 }
 

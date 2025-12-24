@@ -1,10 +1,11 @@
-#include "UIObj.h"
-#include <Ludens/Application/Input.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Header/Types.h>
 #include <Ludens/UI/UIWidget.h>
 #include <Ludens/UI/UIWindow.h>
+#include <Ludens/Window/Input.h>
 #include <algorithm>
+
+#include "UIObj.h"
 
 namespace LD {
 

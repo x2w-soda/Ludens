@@ -1,7 +1,7 @@
 #pragma once
 
-#include <Ludens/Application/Event.h>
 #include <Ludens/Camera/Camera.h>
+#include <Ludens/Event/Event.h>
 #include <Ludens/Media/Font.h>
 #include <Ludens/RenderBackend/RBackend.h>
 #include <Ludens/RenderServer/RenderServer.h>

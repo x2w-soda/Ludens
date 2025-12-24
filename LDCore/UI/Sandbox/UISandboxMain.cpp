@@ -1,7 +1,8 @@
-#include "UISandbox.h"
-#include <Ludens/Application/Application.h>
 #include <Ludens/System/Memory.h>
+#include <Ludens/Window/Window.h>
 #include <iostream>
+
+#include "UISandbox.h"
 
 using namespace LD;
 

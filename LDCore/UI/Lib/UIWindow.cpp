@@ -1,6 +1,6 @@
 #include "UIObj.h"
-#include <Ludens/Application/Input.h>
 #include <Ludens/UI/UIWindow.h>
+#include <Ludens/Window/Input.h>
 #include <vector>
 
 namespace LD {

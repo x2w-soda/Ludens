@@ -1,6 +1,7 @@
+#include <Ludens/Window/Window.h>
+
 #include "AreaNode.h"
 #include "UIWindowManagerObj.h"
-#include <Ludens/Application/Application.h>
 
 namespace LD {
 
@@ -308,16 +309,16 @@ void AreaNode::split_control_on_drag(UIWidget widget, MouseButton btn, const Vec
 
 void AreaNode::split_control_on_hover(UIWidget widget, UIEvent event)
 {
-    Application app = Application::get();
+    Window window = Window::get();
     AreaNode* node = (AreaNode*)widget.get_user();
 
     switch (event)
     {
     case UI_MOUSE_ENTER:
-        app.hint_cursor_shape(node->mSplitAxis == AXIS_X ? CURSOR_TYPE_HRESIZE : CURSOR_TYPE_VRESIZE);
+        window.hint_cursor_shape(node->mSplitAxis == AXIS_X ? CURSOR_TYPE_HRESIZE : CURSOR_TYPE_VRESIZE);
         break;
     case UI_MOUSE_LEAVE:
-        app.hint_cursor_shape(CURSOR_TYPE_DEFAULT);
+        window.hint_cursor_shape(CURSOR_TYPE_DEFAULT);
         break;
     }
 }

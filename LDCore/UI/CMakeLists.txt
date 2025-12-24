@@ -56,7 +56,7 @@ target_link_libraries(${MODULE_NAME} PUBLIC
     LDSystem
     LDText
     LDMedia
-    LDApplication
+    LDWindow
     LDRenderComponent
 )
 
@@ -93,7 +93,7 @@ target_include_directories(${MODULE_SANDBOX_NAME} PRIVATE
 
 target_link_libraries(${MODULE_SANDBOX_NAME} PRIVATE
     ${MODULE_NAME}
-    LDApplication
+    LDWindow
     LDRenderServer
     LDLudensLFS
     LDCamera

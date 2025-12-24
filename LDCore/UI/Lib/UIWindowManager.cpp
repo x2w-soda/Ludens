@@ -1,13 +1,15 @@
-#include "WindowManager/AreaNode.h"
-#include "WindowManager/AreaTab.h"
-#include "WindowManager/UIWindowManagerObj.h"
-#include <Ludens/Application/Application.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Header/Math/Rect.h>
 #include <Ludens/System/Allocator.h>
 #include <Ludens/UI/UIContext.h>
 #include <Ludens/UI/UITheme.h>
 #include <Ludens/UI/UIWindowManager.h>
+#include <Ludens/Window/Window.h>
+
+#include "WindowManager/AreaNode.h"
+#include "WindowManager/AreaTab.h"
+#include "WindowManager/UIWindowManagerObj.h"
+
 #include <cstring>
 #include <unordered_set>
 #include <vector>
