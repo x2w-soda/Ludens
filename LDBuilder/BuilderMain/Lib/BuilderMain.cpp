@@ -16,6 +16,7 @@
 #include <cstdlib>
 #include <cstring>
 
+#include "FileTest.h"
 #include "RunTests.h"
 
 using namespace LD;
@@ -24,8 +25,10 @@ namespace LD {
 
 static void print_help(const char* argv0);
 static int find_argi(int argc, char** argv, const char* match);
+static char** find_mode_argv(int* argc, char** argv, const char* match);
 static void builder_mode_import(int argc, char** argv);
 static void builder_mode_render(int argc, char** argv);
+static void builder_mode_file(int argc, char** argv);
 static void builder_mode_run_tests(int argc, char** argv);
 
 static Log sLog("LDBuilder");
@@ -35,6 +38,7 @@ enum BuilderMode
     BUILDER_MODE_ERROR = 0,
     BUILDER_MODE_IMPORT,
     BUILDER_MODE_RENDER,
+    BUILDER_MODE_FILE,
     BUILDER_MODE_RUN_TESTS,
     BUILDER_MODE_WIN32,
 };
@@ -88,6 +92,11 @@ BuilderArgs::BuilderArgs(int argc, char** argv)
                 mMode = BUILDER_MODE_RENDER;
                 break;
             }
+            else if (!strcmp(optPayload, "file"))
+            {
+                mMode = BUILDER_MODE_FILE;
+                break;
+            }
             else if (!strcmp(optPayload, "run_tests"))
             {
                 mMode = BUILDER_MODE_RUN_TESTS;
@@ -129,16 +138,22 @@ static int find_argi(int argc, char** argv, const char* match)
     return argi;
 }
 
-static void builder_mode_import(int argc, char** argv)
+static char** find_mode_argv(int* argc, char** argv, const char* match)
 {
-    int argi = find_argi(argc, argv, "import");
-    if (argi >= argc)
+    int argi = find_argi(*argc, argv, match);
+    if (argi >= *argc)
     {
         LD_UNREACHABLE; // caller is gaslighting
-        return;
+        return nullptr;
     }
-    argv += argi;
-    argc -= argi;
+    *argc -= argi;
+
+    return argv + argi;
+}
+
+static void builder_mode_import(int argc, char** argv)
+{
+    argv = find_mode_argv(&argc, argv, "import");
 
     if (argc != 3)
     {
@@ -183,14 +198,7 @@ static void builder_mode_import(int argc, char** argv)
 
 static void builder_mode_render(int argc, char** argv)
 {
-    int argi = find_argi(argc, argv, "render");
-    if (argi >= argc)
-    {
-        LD_UNREACHABLE; // caller is gaslighting
-        return;
-    }
-    argv += argi;
-    argc -= argi;
+    argv = find_mode_argv(&argc, argv, "render");
 
     if (argc != 3 || std::string(argv[1]) != "env_to_faces")
     {
@@ -214,16 +222,24 @@ static void builder_mode_render(int argc, char** argv)
     RenderUtil::destroy(util);
 }
 
-static void builder_mode_run_tests(int argc, char** argv)
+static void builder_mode_file(int argc, char** argv)
 {
-    int argi = find_argi(argc, argv, "run_tests");
-    if (argi >= argc)
+    argv = find_mode_argv(&argc, argv, "file");
+
+    if (argc != 2)
     {
-        LD_UNREACHABLE; // caller is gaslighting
+        // TODO: help message for run_tests mode
+        sLog.info("file mode invalid args");
         return;
     }
-    argv += argi;
-    argc -= argi;
+
+    FS::Path filePath = FS::Path(argv[1]);
+    FileTest::check_file(filePath);
+}
+
+static void builder_mode_run_tests(int argc, char** argv)
+{
+    argv = find_mode_argv(&argc, argv, "run_tests");
 
     if (argc != 2)
     {
@@ -263,14 +279,7 @@ static void builder_mode_run_tests(int argc, char** argv)
 #ifdef LD_PLATFORM_WIN32
 static void builder_mode_win32(int argc, char** argv)
 {
-    int argi = find_argi(argc, argv, "win32");
-    if (argi >= argc)
-    {
-        LD_UNREACHABLE; // caller is gaslighting
-        return;
-    }
-    argv += argi;
-    argc -= argi;
+    argv = find_mode_argv(&argc, argv, "win32");
 
     if (argc != 4 || std::string(argv[1]) != "icon")
     {
@@ -331,6 +340,9 @@ int main(int argc, char** argv)
         break;
     case BUILDER_MODE_RENDER:
         builder_mode_render(argc, argv);
+        break;
+    case BUILDER_MODE_FILE:
+        builder_mode_file(argc, argv);
         break;
     case BUILDER_MODE_RUN_TESTS:
         builder_mode_run_tests(argc, argv);

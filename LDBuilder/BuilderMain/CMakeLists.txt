@@ -2,6 +2,8 @@ set(MODULE_NAME LDBuilder)
 
 set(MODULE_LIB
 	Lib/BuilderMain.cpp
+	Lib/FileTest.h
+	Lib/FileTest.cpp
 	Lib/RunTests.h
 	Lib/RunTests.cpp
 )
