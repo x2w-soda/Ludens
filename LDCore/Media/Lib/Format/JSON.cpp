@@ -3,12 +3,14 @@
 #include <Ludens/System/Allocator.h>
 #include <Ludens/System/FileSystem.h>
 #include <Ludens/System/Memory.h>
+
 #include <format>
 #include <string>
 
 // NOTE: rapidjson is a header only C++ library,
 //       definitely hide the headers from user via pimpl
 #include <rapidjson/document.h>
+#include <rapidjson/memorystream.h>
 #include <rapidjson/rapidjson.h>
 
 namespace LD {
@@ -314,5 +316,97 @@ const char* get_error_code_cstr(rapidjson::ParseErrorCode code)
 }
 
 #undef KASE
+
+struct RapidJSONEventHandler : public rapidjson::BaseReaderHandler<rapidjson::UTF8<>, RapidJSONEventHandler>
+{
+    JSONEventCallback callbacks;
+    void* user;
+
+    inline bool Null()
+    {
+        return callbacks.onNull(user);
+    }
+
+    inline bool Bool(bool b)
+    {
+        return callbacks.onBool(b, user);
+    }
+
+    inline bool Int(int i)
+    {
+        return callbacks.onI32((int32_t)i, user);
+    }
+
+    inline bool Uint(unsigned u)
+    {
+        return callbacks.onU32((uint32_t)u, user);
+    }
+
+    inline bool Int64(int64_t i)
+    {
+        return callbacks.onI64((int64_t)i, user);
+    }
+
+    inline bool Uint64(uint64_t u)
+    {
+        return callbacks.onU64((uint64_t)u, user);
+    }
+
+    inline bool Double(double d)
+    {
+        return callbacks.onF64(d, user);
+    }
+
+    inline bool String(const char* str, rapidjson::SizeType length, bool copy)
+    {
+        return callbacks.onString({str, (size_t)length}, user);
+    }
+
+    inline bool StartObject()
+    {
+        return callbacks.onEnterObject(user);
+    }
+
+    inline bool EndObject(rapidjson::SizeType memberCount)
+    {
+        return callbacks.onLeaveObject((size_t)memberCount, user);
+    }
+
+    inline bool Key(const char* str, rapidjson::SizeType length, bool copy)
+    {
+        return callbacks.onKey({str, (size_t)length}, user);
+    }
+
+    inline bool StartArray()
+    {
+        return callbacks.onEnterArray(user);
+    }
+
+    inline bool EndArray(rapidjson::SizeType elementCount)
+    {
+        return callbacks.onLeaveArray((size_t)elementCount, user);
+    }
+};
+
+bool JSONEventParser::parse(const void* fileData, size_t fileSize, std::string& error, const JSONEventCallback& callbacks, void* user)
+{
+    RapidJSONEventHandler eventHandler{};
+    eventHandler.callbacks = callbacks;
+    eventHandler.user = user;
+
+    rapidjson::MemoryStream memoryStream((const char*)fileData, fileSize);
+
+    rapidjson::Reader reader;
+    rapidjson::ParseResult result = reader.Parse(memoryStream, eventHandler);
+
+    if (!result)
+    {
+        const char* errorCstr = get_error_code_cstr(result.Code());
+        error = std::format("rapidjson error at offset {}: {}", result.Offset(), errorCstr);
+        return false;
+    }
+
+    return true;
+}
 
 } // namespace LD

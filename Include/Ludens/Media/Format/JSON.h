@@ -1,8 +1,10 @@
 #pragma once
 
+#include <Ludens/DSA/View.h>
 #include <Ludens/Header/Handle.h>
+#include <Ludens/System/FileSystem.h>
+
 #include <cstdint>
-#include <filesystem>
 #include <string>
 
 namespace LD {
@@ -75,6 +77,7 @@ struct JSONNode : Handle<struct JSONNodeObj>
     inline JSONNode operator[](int idx) { return get_index(idx); }
 };
 
+/// @brief JSON Document Object Model.
 struct JSONDocument : Handle<struct JSONDocumentObj>
 {
     static JSONDocument create();
@@ -88,6 +91,34 @@ struct JSONDocument : Handle<struct JSONDocumentObj>
     bool parse(const char* json, size_t size, std::string& error);
 
     JSONNode get_root();
+};
+
+struct JSONEventCallback
+{
+    bool (*onEnterObject)(void* user);
+    bool (*onLeaveObject)(size_t memberCount, void* user);
+
+    // Object key callback. The view is a transient UTF-8 bytestream.
+    bool (*onKey)(const View& key, void* user);
+
+    bool (*onEnterArray)(void* user);
+    bool (*onLeaveArray)(size_t elementCount, void* user);
+
+    bool (*onNull)(void* user);
+    bool (*onBool)(bool b, void* user);
+    bool (*onI32)(int32_t i32, void* user);
+    bool (*onU32)(uint32_t u32, void* user);
+    bool (*onI64)(int64_t i64, void* user);
+    bool (*onU64)(uint64_t u64, void* user);
+    bool (*onF64)(double f64, void* user);
+
+    // String value callback. The view is a transient UTF-8 bytestream.
+    bool (*onString)(const View& string, void* user);
+};
+
+struct JSONEventParser
+{
+    static bool parse(const void* fileData, size_t fileSize, std::string& error, const JSONEventCallback& callbacks, void* user);
 };
 
 } // namespace LD
