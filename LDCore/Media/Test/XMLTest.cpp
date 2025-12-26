@@ -19,7 +19,7 @@ TEST_CASE("XML basic")
 
     XMLString mixed;
     XMLElement b = root.get_child(mixed);
-    CHECK(mixed.size() == 0);
+    CHECK(mixed.size == 0);
     CHECK(!b.get_child(mixed));
     CHECK(mixed == "some text");
 

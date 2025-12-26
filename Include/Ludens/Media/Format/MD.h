@@ -1,11 +1,11 @@
 #pragma once
 
-#include <Ludens/DSA/StringView.h>
+#include <Ludens/DSA/View.h>
 #include <Ludens/Header/Handle.h>
 
 namespace LD {
 
-using MDString = StringView;
+using MDString = View;
 
 enum MDBlockType
 {

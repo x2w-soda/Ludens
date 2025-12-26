@@ -1,6 +1,6 @@
 #pragma once
 
-#include <Ludens/DSA/StringView.h>
+#include <Ludens/DSA/View.h>
 #include <Ludens/Header/Handle.h>
 #include <Ludens/JobSystem/JobSystem.h>
 #include <filesystem>
@@ -8,7 +8,7 @@
 
 namespace LD {
 
-using XMLString = StringView;
+using XMLString = View;
 
 struct XMLAttribute : Handle<struct XMLNode>
 {

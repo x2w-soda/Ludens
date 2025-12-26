@@ -77,13 +77,13 @@ struct XMLDocumentObj
 
     inline XMLString trim_tail(const XMLString& XMLString)
     {
-        const char* data = XMLString.data();
-        size_t size = XMLString.size();
+        const char* data = XMLString.data;
+        size_t size = XMLString.size;
 
         while (size > 0 && isspace(data[size - 1]))
             size--;
 
-        return StringView(data, size);
+        return View(data, size);
     }
 };
 

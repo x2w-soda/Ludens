@@ -2,12 +2,12 @@ set(MODULE_NAME LDDSA)
 set(MODULE_TEST_NAME LDDSATest)
 
 set(MODULE_INCLUDE
+	${LUDENS_INCLUDE_DIR}/Ludens/DSA/View.h
 	${LUDENS_INCLUDE_DIR}/Ludens/DSA/Buffer.h
 	${LUDENS_INCLUDE_DIR}/Ludens/DSA/GapBuffer.h
 	${LUDENS_INCLUDE_DIR}/Ludens/DSA/HeapStorage.h
 	${LUDENS_INCLUDE_DIR}/Ludens/DSA/Vector.h
 	${LUDENS_INCLUDE_DIR}/Ludens/DSA/String.h
-	${LUDENS_INCLUDE_DIR}/Ludens/DSA/StringView.h
 )
 
 set(MODULE_LIB

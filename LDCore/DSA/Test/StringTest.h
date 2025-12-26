@@ -2,12 +2,12 @@
 
 #include <Extra/doctest/doctest.h>
 #include <Ludens/DSA/String.h>
-#include <Ludens/DSA/StringView.h>
+#include <Ludens/DSA/View.h>
 #include <Ludens/Header/Types.h>
 
 using namespace LD;
 
-static_assert(LD::IsTrivial<StringView>);
+static_assert(LD::IsTrivial<View>);
 
 template <typename T, size_t TLocalSize>
 void test_string_ctor()

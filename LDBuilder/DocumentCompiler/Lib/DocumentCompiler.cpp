@@ -21,20 +21,20 @@ enum CppItemType
 
 struct CppCompound
 {
-    StringView name;
-    StringView refid;
+    View name;
+    View refid;
     CppItemType type;
 };
 
 struct CppMember
 {
     CppMember* next;
-    StringView name;
-    StringView refid;
+    View name;
+    View refid;
     CppItemType type;
 };
 
-static CppItemType get_item_type(const StringView& view)
+static CppItemType get_item_type(const View& view)
 {
     if (view == "class")
         return CPP_ITEM_CLASS;
@@ -99,10 +99,10 @@ DocumentCompiler DocumentCompiler::create(const DocumentCompilerInfo& compilerI)
                 compoundType = get_item_type(attr.get_value());
         }
 
-        if (compoundRefid.size() == 0 || compoundType == CPP_ITEM_INVALID)
+        if (compoundRefid.size == 0 || compoundType == CPP_ITEM_INVALID)
             continue; // TODO: warn ignored compound
 
-        Hash32 refidHash(compoundRefid.data(), (int)compoundRefid.size());
+        Hash32 refidHash(compoundRefid.data, (int)compoundRefid.size);
         CppCompound* comp = (CppCompound*)obj->cppCompoundPA.allocate();
         comp->name = {};
         comp->refid = compoundRefid;
