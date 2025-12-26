@@ -10,6 +10,8 @@ set(MODULE_INCLUDE
     ${LUDENS_INCLUDE_DIR}/Ludens/Media/Format/WAV.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Media/Format/MP3.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Media/Format/ICO.h
+    ${LUDENS_INCLUDE_DIR}/Ludens/Media/Format/PNG.h
+    ${LUDENS_INCLUDE_DIR}/Ludens/Media/Format/BMP.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Media/Format/MD.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Media/Format/XML.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Media/Format/JSON.h
@@ -31,6 +33,8 @@ set(MODULE_LIB
     Lib/Format/WAV.cpp
     Lib/Format/MP3.cpp
     Lib/Format/ICO.cpp
+    Lib/Format/PNG.cpp
+    Lib/Format/BMP.cpp
     Lib/Format/MD.cpp
     Lib/Format/XML.cpp
     Lib/Format/JSON.cpp
