@@ -16,6 +16,7 @@ set(MODULE_INCLUDE
     ${LUDENS_INCLUDE_DIR}/Ludens/Media/Format/XML.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Media/Format/JSON.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Media/Format/TOML.h
+    ${LUDENS_INCLUDE_DIR}/Ludens/Media/Format/GLTF.h
 )
 
 set(MODULE_LIB
@@ -39,6 +40,7 @@ set(MODULE_LIB
     Lib/Format/XML.cpp
     Lib/Format/JSON.cpp
     Lib/Format/TOML.cpp
+    Lib/Format/GLTF.cpp
     ${miniaudio_SOURCE_DIR}/miniaudio.c
 )
 

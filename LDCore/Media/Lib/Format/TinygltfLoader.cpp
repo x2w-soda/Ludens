@@ -1,10 +1,12 @@
-#include "TinygltfLoader.h"
-#include "../ModelObj.h"
 #include <Ludens/Media/Model.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/System/Memory.h>
+
 #include <iostream>
 #include <string>
+
+#include "../ModelObj.h"
+#include "TinygltfLoader.h"
 
 namespace LD {
 
@@ -14,7 +16,7 @@ bool TinygltfLoader::load_from_file(ModelObj* obj, const char* path)
 
     std::string err, warn;
     bool result;
-    
+
     {
         LD_PROFILE_SCOPE_NAME("Tinygltf::LoadASCIIFromFile");
         result = mContext.LoadASCIIFromFile(&mTinyModel, &err, &warn, path);
