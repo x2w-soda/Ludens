@@ -6,6 +6,8 @@
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/Scene/Scene.h>
 
+#include <algorithm>
+
 #include "LuaScriptFFI.h"
 #include "SceneObj.h"
 
@@ -119,6 +121,8 @@ typedef struct __attribute__((aligned(8))) AudioSourceComponent {
 void ffi_audio_source_component_play(AudioSourceComponent* comp);
 void ffi_audio_source_component_pause(AudioSourceComponent* comp);
 void ffi_audio_source_component_resume(AudioSourceComponent* comp);
+void ffi_audio_source_component_set_pan(AudioSourceComponent* comp, float pan);
+void ffi_audio_source_component_set_volume_linear(AudioSourceComponent* comp, float volumeLinear);
 
 typedef struct Sprite2DComponent {
     Transform2D transform;
@@ -171,7 +175,9 @@ ffi.metatype("AudioSourceComponent", {
     end,
     __newindex = function (t, k, v)
         if k == 'pan' and tonumber(v) ~= nil then
-            t.cdata.__private_pan = tonumber(v)
+            ffi.C.ffi_audio_source_component_set_pan(t, tonumber(v))
+        elseif k == 'volume' and tonumber(v) ~= nil then
+            ffi.C.ffi_audio_source_component_set_volume_linear(t, tonumber(v))
         end
     end,
 })
@@ -229,6 +235,28 @@ void ffi_audio_source_component_resume(AudioSourceComponent* comp)
 {
     Scene::IAudioSource source(comp);
     source.resume();
+}
+
+void ffi_audio_source_component_set_pan(AudioSourceComponent* comp, float pan)
+{
+    if (!comp->playback)
+        return;
+
+    comp->pan = std::clamp<float>(pan, 0.0f, 1.0f);
+
+    AudioPlayback::Accessor accessor = comp->playback.access();
+    accessor.set_pan(pan);
+}
+
+void ffi_audio_source_component_set_volume_linear(AudioSourceComponent* comp, float volumeLinear)
+{
+    if (!comp->playback)
+        return;
+
+    comp->volumeLinear = std::clamp<float>(volumeLinear, 0.0f, 1.0f);
+
+    AudioPlayback::Accessor accessor = comp->playback.access();
+    accessor.set_volume_linear(volumeLinear);
 }
 
 } // extern "C"

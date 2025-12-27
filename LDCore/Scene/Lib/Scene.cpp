@@ -13,8 +13,8 @@
 #include "AudioServerCache.h"
 #include "LuaScript.h"
 #include "RenderServerCache.h"
-#include "ScreenRenderer.h"
 #include "SceneObj.h"
+#include "ScreenRenderer.h"
 
 namespace LD {
 
@@ -615,7 +615,7 @@ void Scene::IAudioSource::set_clip_asset(AUID clipAUID)
 }
 
 Scene::IMesh::IMesh(CUID meshCUID)
-    :  mCUID(meshCUID)
+    : mCUID(meshCUID)
 {
     mComp = (MeshComponent*)Scene(sScene).get_component(meshCUID, COMPONENT_TYPE_MESH);
     LD_ASSERT(mComp);

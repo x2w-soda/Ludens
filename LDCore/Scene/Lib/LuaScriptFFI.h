@@ -26,6 +26,8 @@ LD_FFI_EXPORT uint32_t ffi_get_child_id_by_name(uint32_t compID, const char* nam
 LD_FFI_EXPORT void ffi_audio_source_component_play(AudioSourceComponent* comp);
 LD_FFI_EXPORT void ffi_audio_source_component_pause(AudioSourceComponent* comp);
 LD_FFI_EXPORT void ffi_audio_source_component_resume(AudioSourceComponent* comp);
+LD_FFI_EXPORT void ffi_audio_source_component_set_pan(AudioSourceComponent* comp, float pan);
+LD_FFI_EXPORT void ffi_audio_source_component_set_volume_linear(AudioSourceComponent* comp, float volumeLinear);
 } // extern "C"
 } // namespace LuaScript
 } // namespace LD

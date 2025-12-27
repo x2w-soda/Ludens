@@ -472,7 +472,7 @@ _G.ludens.ComponentRef = {
         return compRef.cdata[k]
     end,
     __newindex = function (compRef, k, v)
-        compRef.cdata.k = v
+        compRef.cdata[k] = v
     end,
 }
 
