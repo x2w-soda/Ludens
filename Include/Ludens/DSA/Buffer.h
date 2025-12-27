@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Ludens/DSA/View.h>
 #include <Ludens/Header/Types.h>
 #include <cstdlib>
 
@@ -25,8 +26,14 @@ public:
     /// @brief Append bytes to buffer.
     void write(const byte* bytes, size_t size);
 
+    /// @brief Append bytes in view to buffer.
+    inline void write(const View& view) { write((const byte*)view.data, view.size); };
+
     /// @brief View bytes at position.
     void* read(size_t pos);
+
+    /// @brief Empty buffer contents.
+    inline void clear() { resize(0); }
 
     /// @brief Get buffer size in bytes.
     inline size_t size() const { return mSize; }
@@ -36,6 +43,9 @@ public:
 
     /// @brief Get writable buffer data
     inline byte* data() { return mData; }
+
+    /// @brief Create a view into buffer data, the view is invalidated the moment buffer size changes.
+    inline View view() { return {(const char*)mData, mSize}; }
 
 private:
     size_t mSize;
