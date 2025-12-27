@@ -42,7 +42,38 @@ void eui_inspect_audio_source_component(EInspectorWindowObj& self, ComponentType
         self.selectAssetFn(ASSET_TYPE_AUDIO_CLIP, sourceC->clipAUID, self.user);
     }
 
-    // TODO:
+    UILayoutInfo layoutI{};
+    layoutI.childAxis = UI_AXIS_X;
+    layoutI.childGap = 6.0f;
+    layoutI.sizeX = UISize::grow();
+    layoutI.sizeY = UISize::fit();
+    ui_push_panel();
+    {
+        ui_top_layout(layoutI);
+        ui_push_text("Volume");
+        ui_pop();
+        ui_push_slider(0.0f, 1.0f, &sourceC->volumeLinear);
+        ui_pop();
+    }
+    ui_pop();
+    ui_push_panel();
+    {
+        ui_top_layout(layoutI);
+        ui_push_text("Pan   ");
+        ui_pop();
+        ui_push_slider(0.0f, 1.0f, &sourceC->pan);
+        ui_pop();
+    }
+    ui_pop();
+
+    // sync with audio server
+    if (sourceC->playback)
+    {
+        AudioPlayback::Accessor accessor = sourceC->playback.access();
+
+        accessor.set_pan(sourceC->pan);
+        accessor.set_volume_linear(sourceC->volumeLinear);
+    }
 }
 
 void eui_inspect_transform_component(EInspectorWindowObj& self, ComponentType type, void* comp)

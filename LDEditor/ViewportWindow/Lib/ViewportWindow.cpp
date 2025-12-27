@@ -264,13 +264,13 @@ void EViewportWindowObj::on_drag(UIWidget widget, MouseButton btn, const Vec2& d
         switch (plane)
         {
         case GIZMO_PLANE_XY:
-            worldT.rotation.z = LD_TO_DEGREES(self.gizmo.get_plane_rotate());
+            worldT.rotationEuler.z = LD_TO_DEGREES(self.gizmo.get_plane_rotate());
             break;
         case GIZMO_PLANE_XZ:
-            worldT.rotation.y = LD_TO_DEGREES(self.gizmo.get_plane_rotate());
+            worldT.rotationEuler.y = LD_TO_DEGREES(self.gizmo.get_plane_rotate());
             break;
         case GIZMO_PLANE_YZ:
-            worldT.rotation.x = LD_TO_DEGREES(self.gizmo.get_plane_rotate());
+            worldT.rotationEuler.x = LD_TO_DEGREES(self.gizmo.get_plane_rotate());
             break;
         }
         worldT.rotation = Quat::from_euler(worldT.rotationEuler);

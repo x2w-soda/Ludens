@@ -22,6 +22,7 @@ void EInspectorWindowObj::inspect_component(CUID compID)
 void EInspectorWindowObj::on_imgui()
 {
     ui_push_window("EInspectorWindow", root);
+    ui_top_layout_child_gap(10.0f);
 
     ComponentType compType;
     void* comp = editorCtx.get_component(subjectID, &compType);
