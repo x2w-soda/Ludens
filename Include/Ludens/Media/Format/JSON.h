@@ -106,8 +106,6 @@ struct JSONEventCallback
 
     bool (*onNull)(void* user);
     bool (*onBool)(bool b, void* user);
-    bool (*onI32)(int32_t i32, void* user);
-    bool (*onU32)(uint32_t u32, void* user);
     bool (*onI64)(int64_t i64, void* user);
     bool (*onU64)(uint64_t u64, void* user);
     bool (*onF64)(double f64, void* user);

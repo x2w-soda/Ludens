@@ -334,12 +334,12 @@ struct RapidJSONEventHandler : public rapidjson::BaseReaderHandler<rapidjson::UT
 
     inline bool Int(int i)
     {
-        return callbacks.onI32((int32_t)i, user);
+        return callbacks.onI64((int64_t)i, user);
     }
 
     inline bool Uint(unsigned u)
     {
-        return callbacks.onU32((uint32_t)u, user);
+        return callbacks.onU64((uint64_t)u, user);
     }
 
     inline bool Int64(int64_t i)
