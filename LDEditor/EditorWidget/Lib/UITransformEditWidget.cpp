@@ -111,7 +111,7 @@ static void eui_transform_2d_edit_float(const char* label, float f32, float font
     ui_pop();
 }
 
-void eui_transform_edit(EditorTheme editorTheme, Transform* transform)
+void eui_transform_edit(EditorTheme editorTheme, TransformEx* transform)
 {
     UILayoutInfo layoutI{};
     layoutI.childAxis = UI_AXIS_Y;
@@ -122,7 +122,7 @@ void eui_transform_edit(EditorTheme editorTheme, Transform* transform)
 
     float fontSize = editorTheme.get_font_size();
     eui_transform_edit_vec3("Position", transform->position, fontSize);
-    eui_transform_edit_vec3("Rotation", transform->rotation, fontSize);
+    eui_transform_edit_vec3("Rotation", transform->rotationEuler, fontSize);
     eui_transform_edit_vec3("Scale", transform->scale, fontSize);
 
     ui_pop();

@@ -529,12 +529,12 @@ RUID Scene::get_component_ruid(CUID compID)
     return mObj->renderServerCache.get_component_ruid(compID);
 }
 
-bool Scene::get_component_transform(CUID compID, Transform& transform)
+bool Scene::get_component_transform(CUID compID, TransformEx& transform)
 {
     return mObj->registry.get_component_transform(compID, transform);
 }
 
-bool Scene::set_component_transform(CUID compID, const Transform& transform)
+bool Scene::set_component_transform(CUID compID, const TransformEx& transform)
 {
     return mObj->registry.set_component_transform(compID, transform);
 }

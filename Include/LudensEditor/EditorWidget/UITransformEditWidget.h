@@ -7,9 +7,10 @@
 namespace LD {
 
 struct Transform;
+struct TransformEx;
 struct Transform2D;
 
-void eui_transform_edit(EditorTheme editorTheme, Transform* transform);
+void eui_transform_edit(EditorTheme editorTheme, TransformEx* transform);
 void eui_transform_2d_edit(EditorTheme editorTheme, Transform2D* transform2D);
 
 } // namespace LD

@@ -39,11 +39,11 @@ static_assert(offsetof(Rect, y) == 4);
 static_assert(offsetof(Rect, w) == 8);
 static_assert(offsetof(Rect, h) == 12);
 
-static_assert(alignof(Transform) == 4);
-static_assert(offsetof(Transform, rotation) == 0);
-static_assert(offsetof(Transform, position) == 12);
-static_assert(offsetof(Transform, scale) == 24);
-static_assert(offsetof(Transform, quat) == 36);
+static_assert(alignof(TransformEx) == 4);
+static_assert(offsetof(TransformEx, position) == 0);
+static_assert(offsetof(TransformEx, scale) == 12);
+static_assert(offsetof(TransformEx, rotation) == 24);
+static_assert(offsetof(TransformEx, rotationEuler) == 40);
 
 static_assert(alignof(Transform2D) == 4);
 static_assert(offsetof(Transform2D, position) == 0);
@@ -89,11 +89,11 @@ typedef struct __attribute__((aligned(4))) Rect {
     float h;
 } Rect;
 
-typedef struct __attribute__((aligned(4))) Transform {
-    Vec3 rotation;
+typedef struct __attribute__((aligned(4))) TransformEx {
     Vec3 position;
     Vec3 scale;
     Quat __private_quat;
+    Vec3 rotation;
 } Transform;
 
 typedef struct __attribute__((aligned(4))) Transform2D {

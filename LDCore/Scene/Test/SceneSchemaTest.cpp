@@ -40,11 +40,11 @@ cuid = 300
 
     {
         CUID meshCID = 345;
-        Transform transform;
+        TransformEx transform;
         bool ok = scene.get_component_transform(meshCID, transform);
         CHECK(ok);
         CHECK(transform.position == Vec3(0.0f, 0.0f, 0.0f));
-        CHECK(transform.rotation == Vec3(0.0f, 0.0f, 0.0f));
+        CHECK(transform.rotationEuler == Vec3(0.0f, 0.0f, 0.0f));
         CHECK(transform.scale == Vec3(0.01f, 0.01f, 0.01f));
 
         ComponentBase* base = scene.get_component_base(roots[0]);

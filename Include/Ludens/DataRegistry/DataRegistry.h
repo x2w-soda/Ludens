@@ -69,11 +69,11 @@ struct DataRegistry : Handle<struct DataRegistryObj>
 
     /// @brief Get the local transform of a data component.
     /// @return True on success.
-    bool get_component_transform(CUID compID, Transform& transform);
+    bool get_component_transform(CUID compID, TransformEx& transform);
 
     /// @brief Set the local transform of a data component.
     /// @return True on success.
-    bool set_component_transform(CUID compID, const Transform& transform);
+    bool set_component_transform(CUID compID, const TransformEx& transform);
 
     /// @brief Get the local 2D transform of a data component.
     /// @return True on success.

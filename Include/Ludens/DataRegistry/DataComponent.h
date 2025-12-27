@@ -85,14 +85,14 @@ struct AudioSourceComponent
 /// @brief A component with only transform data.
 struct TransformComponent
 {
-    Transform transform;
+    TransformEx transform;
 };
 
 /// @brief A camera in world space. The camera is responsible for
 ///        providing the view matrix and projection matrix during rendering.
 struct CameraComponent
 {
-    Transform transform;
+    TransformEx transform;
     Camera camera;
     union
     {
@@ -107,8 +107,8 @@ struct CameraComponent
 /// @warning Placeholder implementation, this is very immature
 struct MeshComponent
 {
-    Transform transform; /// mesh transform
-    AUID auid;           /// mesh asset handle
+    TransformEx transform; /// mesh transform
+    AUID auid;             /// mesh asset handle
 };
 
 /// @brief Render data to draw a texture in 2D space

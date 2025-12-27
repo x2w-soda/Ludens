@@ -19,7 +19,7 @@ struct EViewportWindowObj : EditorWindowObj
     virtual ~EViewportWindowObj() = default;
 
     ViewportToolbar toolbar;
-    Transform subjectWorldTransform;
+    TransformEx subjectWorldTransform;
     CUID subjectComp;
     Camera editorCamera;
     CameraController editorCameraController;
@@ -130,7 +130,7 @@ void EViewportWindowObj::pick_gizmo(SceneOverlayGizmoID id)
         break;
     case SCENE_OVERLAY_GIZMO_ROTATION:
         if (get_gizmo_plane(id, plane))
-            gizmo.begin_plane_rotate(plane, gizmoCenter, get_plane_rotation(plane, subjectWorldTransform.rotation));
+            gizmo.begin_plane_rotate(plane, gizmoCenter, get_plane_rotation(plane, subjectWorldTransform.rotationEuler));
         break;
     case SCENE_OVERLAY_GIZMO_SCALE:
         if (get_gizmo_axis(id, axis))
@@ -247,7 +247,7 @@ void EViewportWindowObj::on_drag(UIWidget widget, MouseButton btn, const Vec2& d
         return;
 
     LD_ASSERT(self.subjectComp);
-    Transform& worldT = self.subjectWorldTransform;
+    TransformEx& worldT = self.subjectWorldTransform;
 
     // drag position is relative to window origin, i.e. already within sceneExtent range
     self.gizmo.update(self.editorCamera, dragPos, self.sceneExtent);
@@ -273,7 +273,7 @@ void EViewportWindowObj::on_drag(UIWidget widget, MouseButton btn, const Vec2& d
             worldT.rotation.x = LD_TO_DEGREES(self.gizmo.get_plane_rotate());
             break;
         }
-        worldT.quat = Quat::from_euler(worldT.rotation);
+        worldT.rotation = Quat::from_euler(worldT.rotationEuler);
         break;
     case GIZMO_CONTROL_AXIS_SCALE:
         worldT.scale = self.gizmo.get_axis_scale();
@@ -296,7 +296,7 @@ void EViewportWindowObj::on_drag(UIWidget widget, MouseButton btn, const Vec2& d
     Mat4 localMat4 = parentInv * worldMat4;
 
     // decompose local matrix to local transform
-    Transform localTransform;
+    TransformEx localTransform;
     bool ok = decompose_mat4_to_transform(localMat4, localTransform);
     LD_ASSERT(ok);
     self.editorCtx.set_component_transform(self.subjectComp, localTransform);
@@ -387,7 +387,7 @@ void EViewportWindowObj::on_editor_context_event(const EditorContextEvent* event
     const auto* selectionEvent = static_cast<const EditorContextComponentSelectionEvent*>(event);
     EditorContext ctx = self.editorCtx;
 
-    Transform localTransform;
+    TransformEx localTransform;
     if (!selectionEvent->component || !ctx.get_selected_component_transform(localTransform))
     {
         self.isGizmoVisible = false;

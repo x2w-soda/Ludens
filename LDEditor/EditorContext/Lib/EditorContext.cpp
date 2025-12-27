@@ -560,12 +560,12 @@ RUID EditorContext::get_selected_component_ruid()
     return mObj->selectedComponentRUID;
 }
 
-bool EditorContext::get_selected_component_transform(Transform& transform)
+bool EditorContext::get_selected_component_transform(TransformEx& transform)
 {
     return mObj->scene.get_component_transform(mObj->selectedComponent, transform);
 }
 
-bool EditorContext::set_component_transform(CUID compID, const Transform& transform)
+bool EditorContext::set_component_transform(CUID compID, const TransformEx& transform)
 {
     return mObj->scene.set_component_transform(compID, transform);
 }

@@ -86,7 +86,7 @@ int main(int argc, char** argv)
         for (size_t i = 0; i < N; ++i)
         {
             tA[i].transform.position = Vec3(1);
-            tA[i].transform.rotation = Vec3(2);
+            tA[i].transform.rotationEuler = Vec3(2);
             tA[i].transform.scale = Vec3(3);
         }
     }
@@ -99,7 +99,7 @@ int main(int argc, char** argv)
         {
             size_t idx = randI[i];
             tA[idx].transform.position = Vec3(1);
-            tA[idx].transform.rotation = Vec3(2);
+            tA[idx].transform.rotationEuler = Vec3(2);
             tA[idx].transform.scale = Vec3(3);
         }
     }
@@ -111,7 +111,7 @@ int main(int argc, char** argv)
         for (size_t i = 0; i < N; ++i)
         {
             tB[i]->transform.position = Vec3(1);
-            tB[i]->transform.rotation = Vec3(2);
+            tB[i]->transform.rotationEuler = Vec3(2);
             tB[i]->transform.scale = Vec3(3);
         }
     }
@@ -124,7 +124,7 @@ int main(int argc, char** argv)
         {
             size_t idx = randI[i];
             tB[idx]->transform.position = Vec3(1);
-            tB[idx]->transform.rotation = Vec3(2);
+            tB[idx]->transform.rotationEuler = Vec3(2);
             tB[idx]->transform.scale = Vec3(3);
         }
     }
@@ -136,7 +136,7 @@ int main(int argc, char** argv)
         {
             TransformComponent* t = (TransformComponent*)ite.data();
             t->transform.position = Vec3(1);
-            t->transform.rotation = Vec3(2);
+            t->transform.rotationEuler = Vec3(2);
             t->transform.scale = Vec3(3);
         }
     }

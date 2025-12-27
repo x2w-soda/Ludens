@@ -738,27 +738,27 @@ TEST_CASE("Mat4 method")
 TEST_CASE("Transform decomposition")
 {
     Mat4 mat = Mat4::rotate(LD_TO_RADIANS(90), Vec3(0.0f, 1.0f, 0.0f));
-    Transform t;
+    TransformEx t;
     bool ok = decompose_mat4_to_transform(mat, t);
     CHECK(ok);
     CHECK(t.position == Vec3(0.0f, 0.0f, 0.0f));
-    CHECK(t.rotation == Vec3(0.0f, 90.0f, 0.0f));
+    CHECK(t.rotationEuler == Vec3(0.0f, 90.0f, 0.0f));
     CHECK(t.scale == Vec3(1.0f, 1.0f, 1.0f));
-    CHECK(t.quat.is_normalized());
+    CHECK(t.rotation.is_normalized());
 
     mat = mat * Mat4::scale(Vec3(1.0f, 2.0f, 3.0f));
     ok = decompose_mat4_to_transform(mat, t);
     CHECK(ok);
     CHECK(t.position == Vec3(0.0f, 0.0f, 0.0f));
-    CHECK(t.rotation == Vec3(0.0f, 90.0f, 0.0f));
+    CHECK(t.rotationEuler == Vec3(0.0f, 90.0f, 0.0f));
     CHECK(t.scale == Vec3(1.0f, 2.0f, 3.0f));
-    CHECK(t.quat.is_normalized());
+    CHECK(t.rotation.is_normalized());
 
     mat = Mat4::translate(Vec3(-3.0f, 4.0f, 5.0f)) * mat;
     ok = decompose_mat4_to_transform(mat, t);
     CHECK(ok);
     CHECK(t.position == Vec3(-3.0f, 4.0f, 5.0f));
-    CHECK(t.rotation == Vec3(0.0f, 90.0f, 0.0f));
+    CHECK(t.rotationEuler == Vec3(0.0f, 90.0f, 0.0f));
     CHECK(t.scale == Vec3(1.0f, 2.0f, 3.0f));
-    CHECK(t.quat.is_normalized());
+    CHECK(t.rotation.is_normalized());
 }

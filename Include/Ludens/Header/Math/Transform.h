@@ -11,26 +11,31 @@ namespace LD {
 /// @brief Transformation in 3D space
 struct Transform
 {
-    Vec3 rotation; /// rotation in 3 axis
     Vec3 position; /// world position in 3D space
     Vec3 scale;    /// scale in 3 axis
-    Quat quat;     /// rotation as quaternion
+    Quat rotation; /// rotation as quaternion
 
     inline Mat4 as_mat4() const
     {
-        LD_ASSERT(quat.is_normalized());
-        Mat4 R = quat.as_mat4();
+        LD_ASSERT(rotation.is_normalized());
+        Mat4 R = rotation.as_mat4();
         return Mat4::translate(position) * R * Mat4::scale(scale);
     }
 };
 
-inline bool decompose_mat4_to_transform(const Mat4& m, Transform& transform)
+/// @brief Transformation in 3D space, extended for tooling.
+struct TransformEx : Transform
+{
+    Vec3 rotationEuler; /// rotation in 3 axis
+};
+
+inline bool decompose_mat4_to_transform(const Mat4& m, TransformEx& transform)
 {
     if (!is_equal_epsilon(m[3].w, 1.0f) || !is_zero_epsilon(m[0].w) || !is_zero_epsilon(m[1].w) || !is_zero_epsilon(m[2].w))
         return false;
 
     Vec3& translation = transform.position;
-    Quat& rotation = transform.quat;
+    Quat& rotation = transform.rotation;
     Vec3& scale = transform.scale;
 
     translation = Vec3(m[3].x, m[3].y, m[3].z);
@@ -58,7 +63,7 @@ inline bool decompose_mat4_to_transform(const Mat4& m, Transform& transform)
     }
 
     rotation = Quat::normalize(Quat::from_mat3(rotMat));
-    transform.rotation = rotation.as_euler();
+    transform.rotationEuler = rotation.as_euler();
 
     return true;
 }
@@ -69,7 +74,7 @@ struct Transform2D
     Vec2 position;  /// world position in 2D space
     Vec2 scale;     /// scale in 2 axis
     float rotation; /// rotation in degrees
-    
+
     /// @brief Get transform matrix for homogeneous 2D.
     inline Mat3 as_mat3() const
     {

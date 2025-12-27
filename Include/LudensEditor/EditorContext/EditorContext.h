@@ -13,6 +13,7 @@ namespace LD {
 
 struct ComponentBase;
 struct Transform;
+struct TransformEx;
 
 struct EditorContextInfo
 {
@@ -139,10 +140,10 @@ struct EditorContext : Handle<struct EditorContextObj>
     RUID get_selected_component_ruid();
 
     /// @brief Get the local transform associated with the selected object in scene.
-    bool get_selected_component_transform(Transform& transform);
+    bool get_selected_component_transform(TransformEx& transform);
 
     /// @brief Set local transform of a component.
-    bool set_component_transform(CUID compID, const Transform& transform);
+    bool set_component_transform(CUID compID, const TransformEx& transform);
 
     /// @brief Get component world matrix.
     bool get_component_transform_mat4(CUID compID, Mat4& worldMat4);

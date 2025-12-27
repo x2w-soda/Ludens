@@ -42,7 +42,7 @@ static bool load_camera_component(Scene scene, TOMLValue compTOML, CUID compID, 
 static bool load_mesh_component(Scene scene, TOMLValue compTOML, CUID compID, const char* compName);
 static bool load_sprite_2d_component(Scene scene, TOMLValue compTOML, CUID compID, const char* compName);
 static bool load_rect(Rect& rect, TOMLValue rectTOML);
-static void load_transform(Transform& transform, TOMLValue transformTOML);
+static void load_transform(TransformEx& transform, TOMLValue transformTOML);
 static void load_transform_2d(Transform2D& transform, TOMLValue transformTOML);
 
 static void save_scene_to_schema(Scene scene, TOMLDocument doc);
@@ -52,7 +52,7 @@ static bool save_camera_component(Scene scene, TOMLValue compTOML, CUID compID, 
 static bool save_mesh_component(Scene scene, TOMLValue compTOML, CUID compID, const char* compName);
 static bool save_sprite_2d_component(Scene scene, TOMLValue compTOML, CUID compID, const char* compName);
 static bool save_rect(const Rect& rect, TOMLValue rectTOML);
-static void save_transform(const Transform& transform, TOMLValue transformTOML);
+static void save_transform(const TransformEx& transform, TOMLValue transformTOML);
 static void save_transform_2d(const Transform2D& transform, TOMLValue transformTOML);
 
 // clang-format off
@@ -347,7 +347,7 @@ static bool load_rect(Rect& rect, TOMLValue rectTOML)
     return TOMLUtil::load_rect_table(rect, rectTOML);
 }
 
-static void load_transform(Transform& transform, TOMLValue transformTOML)
+static void load_transform(TransformEx& transform, TOMLValue transformTOML)
 {
     LD_ASSERT(transformTOML && transformTOML.is_table_type());
 
@@ -364,7 +364,7 @@ static void load_transform(Transform& transform, TOMLValue transformTOML)
     rotationTOML[0].get_f32(transform.rotation.x);
     rotationTOML[1].get_f32(transform.rotation.y);
     rotationTOML[2].get_f32(transform.rotation.z);
-    transform.quat = Quat::from_euler(transform.rotation);
+    transform.rotation = Quat::from_euler(transform.rotationEuler);
 
     TOMLValue scaleTOML = transformTOML["scale"];
     LD_ASSERT(scaleTOML && scaleTOML.is_array_type() && scaleTOML.get_size() == 3);
@@ -552,7 +552,7 @@ static bool save_rect(const Rect& rect, TOMLValue rectTOML)
     return TOMLUtil::save_rect_table(rect, rectTOML);
 }
 
-static void save_transform(const Transform& transform, TOMLValue transformTOML)
+static void save_transform(const TransformEx& transform, TOMLValue transformTOML)
 {
     LD_ASSERT(transformTOML && transformTOML.is_table_type());
 
@@ -564,9 +564,9 @@ static void save_transform(const Transform& transform, TOMLValue transformTOML)
     positionTOML.append(TOML_TYPE_FLOAT).set_f32(transform.position.z);
 
     TOMLValue rotationTOML = transformTOML.set_key("rotation", TOML_TYPE_ARRAY);
-    rotationTOML.append(TOML_TYPE_FLOAT).set_f32(transform.rotation.x);
-    rotationTOML.append(TOML_TYPE_FLOAT).set_f32(transform.rotation.y);
-    rotationTOML.append(TOML_TYPE_FLOAT).set_f32(transform.rotation.z);
+    rotationTOML.append(TOML_TYPE_FLOAT).set_f32(transform.rotationEuler.x);
+    rotationTOML.append(TOML_TYPE_FLOAT).set_f32(transform.rotationEuler.y);
+    rotationTOML.append(TOML_TYPE_FLOAT).set_f32(transform.rotationEuler.z);
 
     TOMLValue scaleTOML = transformTOML.set_key("scale", TOML_TYPE_ARRAY);
     scaleTOML.append(TOML_TYPE_FLOAT).set_f32(transform.scale.x);

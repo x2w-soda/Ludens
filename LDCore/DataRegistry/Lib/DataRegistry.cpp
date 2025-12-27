@@ -12,7 +12,7 @@ namespace LD {
 
 static Log sLog("DataRegistry");
 static bool duplicate_subtree(DataRegistry dup, DataRegistry orig, CUID origRoot);
-static Transform* get_transform(void* comp);
+static TransformEx* get_transform(void* comp);
 static Transform2D* get_transform2d(void* comp);
 static AUID get_mesh_auid(void* comp);
 
@@ -21,7 +21,7 @@ struct ComponentMeta
     ComponentType type;
     size_t byteSize;
     const char* typeName;
-    Transform* (*get_transform)(void* comp);     // TODO: redundant
+    TransformEx* (*get_transform)(void* comp);   // TODO: redundant
     Transform2D* (*get_transform2d)(void* comp); // TODO: redundant
     AUID (*get_auid)(void* comp);
 };
@@ -81,7 +81,7 @@ static bool duplicate_subtree(DataRegistry dup, DataRegistry orig, CUID origRoot
     return success;
 }
 
-static Transform* get_transform(void* comp)
+static TransformEx* get_transform(void* comp)
 {
     return &((TransformComponent*)comp)->transform;
 }
@@ -153,7 +153,7 @@ struct DataRegistryObj
     void add_child(ComponentBase* parent, ComponentBase* child);
 
     /// @brief Get component local transform
-    Transform* get_component_transform(ComponentBase* base, void* comp);
+    TransformEx* get_component_transform(ComponentBase* base, void* comp);
 
     /// @brief Get component local 2D transform
     Transform2D* get_component_transform2d(ComponentBase* base, void* comp);
@@ -195,7 +195,7 @@ void DataRegistryObj::add_child(ComponentBase* parent, ComponentBase* child)
     }
 }
 
-Transform* DataRegistryObj::get_component_transform(ComponentBase* base, void* comp)
+TransformEx* DataRegistryObj::get_component_transform(ComponentBase* base, void* comp)
 {
     if (!base || !sComponentTable[base->type].get_transform)
         return nullptr;
@@ -235,11 +235,11 @@ bool DataRegistryObj::get_component_transform_mat4(ComponentBase* base, Mat4& ma
         if (base->parent && !get_component_transform_mat4(base->parent, parentWorldMat4))
             return false;
 
-        Transform transform;
+        TransformEx transform;
         if (!DataRegistry(this).get_component_transform(base->id, transform))
             return false;
 
-        transform.quat = Quat::from_euler(transform.rotation);
+        transform.rotation = Quat::from_euler(transform.rotationEuler);
         base->localMat4 = transform.as_mat4();
         base->worldMat4 = parentWorldMat4 * base->localMat4;
         base->flags &= ~COMPONENT_FLAG_TRANSFORM_DIRTY_BIT;
@@ -493,13 +493,13 @@ PoolAllocator::Iterator DataRegistry::get_component_scripts()
     return mObj->scriptPA.begin();
 }
 
-bool DataRegistry::get_component_transform(CUID compID, Transform& transform)
+bool DataRegistry::get_component_transform(CUID compID, TransformEx& transform)
 {
     auto ite = mObj->components.find(compID);
     if (ite == mObj->components.end())
         return false;
 
-    Transform* ptr = mObj->get_component_transform(ite->second.base, ite->second.comp);
+    TransformEx* ptr = mObj->get_component_transform(ite->second.base, ite->second.comp);
     if (!ptr)
         return false;
 
@@ -507,13 +507,13 @@ bool DataRegistry::get_component_transform(CUID compID, Transform& transform)
     return true;
 }
 
-bool DataRegistry::set_component_transform(CUID compID, const Transform& transform)
+bool DataRegistry::set_component_transform(CUID compID, const TransformEx& transform)
 {
     auto ite = mObj->components.find(compID);
     if (ite == mObj->components.end())
         return false;
 
-    Transform* ptr = mObj->get_component_transform(ite->second.base, ite->second.comp);
+    TransformEx* ptr = mObj->get_component_transform(ite->second.base, ite->second.comp);
     if (!ptr)
         return false;
 

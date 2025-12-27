@@ -106,10 +106,10 @@ public:
     RUID get_component_ruid(CUID compID);
 
     /// @brief Get local transform of a data component.
-    bool get_component_transform(CUID compID, Transform& transform);
+    bool get_component_transform(CUID compID, TransformEx& transform);
 
     /// @brief Get local transform of a data component.
-    bool set_component_transform(CUID compID, const Transform& transform);
+    bool set_component_transform(CUID compID, const TransformEx& transform);
 
     /// @brief Get local 2D transform of a data component.
     bool get_component_transform2d(CUID compID, Transform2D& transform);
