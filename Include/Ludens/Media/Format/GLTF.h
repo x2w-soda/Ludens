@@ -36,6 +36,17 @@ struct GLTFBufferProp
     uint64_t byteLength;
 };
 
+/// @brief Element in top-level 'bufferViews' property in the spec.
+struct GLTFBufferViewProp
+{
+    Buffer name;                   // authored name for this view
+    uint32_t buffer;               // index into 'buffers' array
+    uint64_t byteOffset = 0;       // byte offset into subject buffer
+    uint64_t byteLength;           // length of the view in bytes
+    Optional<uint64_t> byteStride; // byte stride, data is tightly packed if not defined
+    Optional<uint32_t> target;     // hint representing the intended GPU buffer type to use with this buffer view
+};
+
 /// @brief Element in top-level 'scenes' property in the spec.
 struct GLTFSceneProp
 {
@@ -115,6 +126,9 @@ struct GLTFEventCallback
 
     /// @brief Element in top-level 'buffers' property in the spec.
     bool (*onBuffer)(const GLTFBufferProp& buf, void* user);
+
+    /// @brief Element in top-level 'bufferViews' property in the spec.
+    bool (*onBufferView)(const GLTFBufferViewProp& buf, void* user);
 };
 
 struct GLTFEventParser

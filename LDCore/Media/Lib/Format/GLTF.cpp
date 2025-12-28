@@ -46,6 +46,7 @@ private:
     bool on_json_material_pbr_base_color_texture_key(const View& key);
     bool on_json_material_pbr_metallic_roughness_texture_key(const View& key);
     bool on_json_buffer_key(const View& key);
+    bool on_json_buffer_view_key(const View& key);
 
 private:
     enum State
@@ -58,6 +59,7 @@ private:
         STATE_ROOT_NODES_KEY,
         STATE_ROOT_MATERIALS_KEY,
         STATE_ROOT_BUFFERS_KEY,
+        STATE_ROOT_BUFFER_VIEWS_KEY,
         STATE_ASSET,
         STATE_SCENES_ARRAY,
         STATE_SCENE,
@@ -99,6 +101,13 @@ private:
         STATE_BUFFERS_ARRAY,
         STATE_BUFFER,
         STATE_BUFFER_BYTE_LENGTH,
+        STATE_BUFFER_VIEWS_ARRAY,
+        STATE_BUFFER_VIEW,
+        STATE_BUFFER_VIEW_BUFFER,
+        STATE_BUFFER_VIEW_BYTE_LENGTH,
+        STATE_BUFFER_VIEW_BYTE_OFFSET,
+        STATE_BUFFER_VIEW_BYTE_STRIDE,
+        STATE_BUFFER_VIEW_TARGET,
     };
 
     State mState;
@@ -111,6 +120,7 @@ private:
     GLTFNodeProp mNodeProp{};
     GLTFMaterialProp mMaterialProp{};
     GLTFBufferProp mBufferProp{};
+    GLTFBufferViewProp mBufferViewProp{};
     uint32_t mSceneIndexProp = 0;
     uint32_t mArrayCtr = 0;
 };
@@ -149,6 +159,10 @@ bool GLTFEventParserObj::on_json_enter_object(void* obj)
     case STATE_BUFFERS_ARRAY:
         self.mState = STATE_BUFFER;
         self.mBufferProp = {};
+        return true;
+    case STATE_BUFFER_VIEWS_ARRAY:
+        self.mState = STATE_BUFFER_VIEW;
+        self.mBufferViewProp = {};
         return true;
     case STATE_MATERIAL_EMISSIVE_TEXTURE:
         self.mMaterialProp.emissiveTexture = GLTFTextureInfo();
@@ -215,6 +229,11 @@ bool GLTFEventParserObj::on_json_leave_object(size_t memberCount, void* obj)
         if (self.mCallbacks.onBuffer)
             self.mCallbacks.onBuffer(self.mBufferProp, self.mUser);
         return true;
+    case STATE_BUFFER_VIEW:
+        self.mState = STATE_BUFFER_VIEWS_ARRAY;
+        if (self.mCallbacks.onBufferView)
+            self.mCallbacks.onBufferView(self.mBufferViewProp, self.mUser);
+        return true;
     case STATE_MATERIAL_EMISSIVE_TEXTURE:
     case STATE_MATERIAL_NORMAL_TEXTURE:
     case STATE_MATERIAL_OCCLUSION_TEXTURE:
@@ -259,6 +278,9 @@ bool GLTFEventParserObj::on_json_enter_array(void* obj)
     case STATE_ROOT_BUFFERS_KEY:
         self.mState = STATE_BUFFERS_ARRAY;
         return true;
+    case STATE_ROOT_BUFFER_VIEWS_KEY:
+        self.mState = STATE_BUFFER_VIEWS_ARRAY;
+        return true;
     case STATE_SCENE_NODES:
     case STATE_NODE_CHILDREN:
     case STATE_NODE_MATRIX:
@@ -293,6 +315,7 @@ bool GLTFEventParserObj::on_json_leave_array(size_t elementCount, void* obj)
     case STATE_NODES_ARRAY:
     case STATE_MATERIALS_ARRAY:
     case STATE_BUFFERS_ARRAY:
+    case STATE_BUFFER_VIEWS_ARRAY:
         self.mState = STATE_ROOT;
         return true;
     case STATE_SCENE_NODES:
@@ -352,6 +375,8 @@ bool GLTFEventParserObj::on_json_key(const View& key, void* obj)
         return self.on_json_material_pbr_metallic_roughness_texture_key(key);
     case STATE_BUFFER:
         return self.on_json_buffer_key(key);
+    case STATE_BUFFER_VIEW:
+        return self.on_json_buffer_view_key(key);
     default:
         break; // not in a state to accept keys
     }
@@ -511,6 +536,18 @@ bool GLTFEventParserObj::on_json_u64_value(uint64_t u64)
         mBufferProp.byteLength = u64;
         mState = STATE_BUFFER;
         return true;
+    case STATE_BUFFER_VIEW_BYTE_LENGTH:
+        mBufferViewProp.byteLength = u64;
+        mState = STATE_BUFFER_VIEW;
+        return true;
+    case STATE_BUFFER_VIEW_BYTE_OFFSET:
+        mBufferViewProp.byteOffset = u64;
+        mState = STATE_BUFFER_VIEW;
+        return true;
+    case STATE_BUFFER_VIEW_BYTE_STRIDE:
+        mBufferViewProp.byteStride = u64;
+        mState = STATE_BUFFER_VIEW;
+        return true;
     default:
         break;
     }
@@ -588,6 +625,14 @@ bool GLTFEventParserObj::on_json_u32_value(uint32_t u32)
         mMaterialProp.pbr->metallicRoughnessTexture->texCoord = u32;
         mState = STATE_MATERIAL_PBR_METALLIC_ROUGHNESS_TEXTURE;
         return true;
+    case STATE_BUFFER_VIEW_BUFFER:
+        mBufferViewProp.buffer = u32;
+        mState = STATE_BUFFER_VIEW;
+        return true;
+    case STATE_BUFFER_VIEW_TARGET:
+        mBufferViewProp.target = u32;
+        mState = STATE_BUFFER_VIEW;
+        return true;
     default:
         break;
     }
@@ -609,6 +654,8 @@ bool GLTFEventParserObj::on_json_root_key(const View& key)
         mState = STATE_ROOT_MATERIALS_KEY;
     else if (key == "buffers")
         mState = STATE_ROOT_BUFFERS_KEY;
+    else if (key == "bufferViews")
+        mState = STATE_ROOT_BUFFER_VIEWS_KEY;
     else
         mEscapeDepth = 1;
 
@@ -791,6 +838,26 @@ bool GLTFEventParserObj::on_json_buffer_key(const View& key)
     return true;
 }
 
+bool GLTFEventParserObj::on_json_buffer_view_key(const View& key)
+{
+    if (key == "name")
+        mStringSlot = &mBufferViewProp.name;
+    else if (key == "buffer")
+        mState = STATE_BUFFER_VIEW_BUFFER;
+    else if (key == "byteLength")
+        mState = STATE_BUFFER_VIEW_BYTE_LENGTH;
+    else if (key == "byteOffset")
+        mState = STATE_BUFFER_VIEW_BYTE_OFFSET;
+    else if (key == "byteStride")
+        mState = STATE_BUFFER_VIEW_BYTE_STRIDE;
+    else if (key == "target")
+        mState = STATE_BUFFER_VIEW_TARGET;
+    else
+        mEscapeDepth++;
+
+    return true;
+}
+
 bool GLTFEventParserObj::parse(const void* fileData, size_t fileSize, std::string& error)
 {
     mState = STATE_ZERO;
@@ -840,6 +907,7 @@ private:
     static bool on_node(const GLTFNodeProp& node, void*);
     static bool on_material(const GLTFMaterialProp& mat, void*);
     static bool on_buffer(const GLTFBufferProp& buf, void*);
+    static bool on_buffer_view(const GLTFBufferViewProp& bufView, void*);
 
 private:
     View mFile;
@@ -848,6 +916,7 @@ private:
     std::string mNodesStr;
     std::string mMaterialsStr;
     std::string mBuffersStr;
+    std::string mBufferViewsStr;
 };
 
 bool GLTFPrinter::print(std::string& outStr, std::string& outErr)
@@ -860,6 +929,7 @@ bool GLTFPrinter::print(std::string& outStr, std::string& outErr)
     mNodesStr.clear();
     mMaterialsStr.clear();
     mBuffersStr.clear();
+    mBufferViewsStr.clear();
 
     GLTFEventCallback callbacks{};
     callbacks.onAsset = &GLTFPrinter::on_asset;
@@ -867,6 +937,7 @@ bool GLTFPrinter::print(std::string& outStr, std::string& outErr)
     callbacks.onNode = &GLTFPrinter::on_node;
     callbacks.onMaterial = &GLTFPrinter::on_material;
     callbacks.onBuffer = &GLTFPrinter::on_buffer;
+    callbacks.onBufferView = &GLTFPrinter::on_buffer_view;
 
     if (!GLTFEventParser::parse(mFile, outErr, callbacks, this))
         return false;
@@ -878,6 +949,7 @@ bool GLTFPrinter::print(std::string& outStr, std::string& outErr)
     outStr += mNodesStr;
     outStr += mMaterialsStr;
     outStr += mBuffersStr;
+    outStr += mBufferViewsStr;
 
     return true;
 }
@@ -1024,6 +1096,26 @@ bool GLTFPrinter::on_buffer(const GLTFBufferProp& buf, void* user)
         bufStr += std::format("- uri {}\n", buf.uri.view());
 
     self.mBuffersStr += bufStr;
+    return true;
+}
+
+bool GLTFPrinter::on_buffer_view(const GLTFBufferViewProp& bufView, void* user)
+{
+    auto& self = *(GLTFPrinter*)user;
+
+    std::string bufViewStr = std::format("bufferView: buffer {:>2} byteOffset {:>6} byteLength {:>6}", bufView.buffer, bufView.byteOffset, bufView.byteLength);
+
+    if (bufView.byteStride.has_value())
+        bufViewStr += std::format(" byteStride {:>6}", bufView.byteStride.value());
+    
+    if (bufView.target.has_value())
+        bufViewStr += std::format(" target {}", bufView.target.value());
+
+    if (bufView.name.size() > 0)
+        bufViewStr += std::format(" name {}", bufView.name.view());
+
+    bufViewStr.push_back('\n');
+    self.mBufferViewsStr += bufViewStr;
     return true;
 }
 
