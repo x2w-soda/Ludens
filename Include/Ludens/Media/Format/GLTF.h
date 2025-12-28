@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Ludens/DSA/Buffer.h>
+#include <Ludens/DSA/Optional.h>
 #include <Ludens/DSA/View.h>
 #include <Ludens/Header/Math/Mat4.h>
 #include <Ludens/Header/Math/Transform.h>
@@ -37,7 +38,7 @@ struct GLTFSceneProp
 struct GLTFNodeProp
 {
     Buffer name;                    // authored node name
-    std::optional<uint32_t> mesh;   // node.mesh, the index into top-level meshes array
+    Optional<uint32_t> mesh;        // node.mesh, the index into top-level meshes array
     std::vector<uint32_t> children; // node.children, indices of children nodes
     Mat4 matrix;                    // node.matrix, a column major local transformation for the node
     Transform TRS;                  // node.translation, node.rotation, and node.scale
@@ -50,22 +51,37 @@ struct GLTFTextureInfo
     uint32_t texCoord = 0; // set index of texture's TEXCOORD attribute used, defaults to 0
 };
 
+/// @brief 'material.normalTextureInfo' in the spec.
+struct GLTFNormalTextureInfo : GLTFTextureInfo
+{
+    float scale = 1.0f;
+};
+
+/// @brief 'material.occlusionTextureInfo' in the spec.
+struct GLTFOcclusionTextureInfo : GLTFTextureInfo
+{
+    float strength = 1.0f;
+};
+
 /// @brief Metallic-roughness model in the spec.
 struct GLTFPbrMetallicRoughness
 {
     Vec4 baseColorFactor = Vec4(1.0f); // defaults to [1.0, 1.0, 1.0, 1.0]
     float metallicFactor = 1.0f;
     float roughnessFactor = 1.0f;
-    std::optional<GLTFTextureInfo> baseColorTexture;
-    std::optional<GLTFTextureInfo> metallicRoughnessTexture;
+    Optional<GLTFTextureInfo> baseColorTexture;
+    Optional<GLTFTextureInfo> metallicRoughnessTexture;
 };
 
 /// @brief Element in top-level 'materials' property in the spec.
 struct GLTFMaterialProp
 {
-    Buffer name;                                 // authored material name
-    std::optional<GLTFPbrMetallicRoughness> pbr; // material.pbrMetallicRoughness
-    bool doubleSided = false;                    // material.doubleSided
+    Buffer name;                                         // authored material name
+    Optional<GLTFPbrMetallicRoughness> pbr;              // material.pbrMetallicRoughness
+    Optional<GLTFNormalTextureInfo> normalTexture;       // material.normalTextureInfo
+    Optional<GLTFOcclusionTextureInfo> occlusionTexture; // material.occlusionTextureInfo
+    bool doubleSided = false;                            // material.doubleSided
+    float alphaCutoff = 0.5f;                            // material.alphaCutoff
 };
 
 struct GLTFEventCallback

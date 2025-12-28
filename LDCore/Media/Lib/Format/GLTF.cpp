@@ -40,6 +40,8 @@ private:
     bool on_json_scene_key(const View& key);
     bool on_json_node_key(const View& key);
     bool on_json_material_key(const View& key);
+    bool on_json_material_normal_texture_key(const View& key);
+    bool on_json_material_occlusion_texture_key(const View& key);
     bool on_json_material_pbr_key(const View& key);
     bool on_json_material_pbr_base_color_texture_key(const View& key);
     bool on_json_material_pbr_metallic_roughness_texture_key(const View& key);
@@ -69,6 +71,15 @@ private:
         STATE_MATERIALS_ARRAY,
         STATE_MATERIAL,
         STATE_MATERIAL_DOUBLE_SIDED,
+        STATE_MATERIAL_ALPHA_CUTOFF,
+        STATE_MATERIAL_NORMAL_TEXTURE,
+        STATE_MATERIAL_NORMAL_TEXTURE_INDEX,
+        STATE_MATERIAL_NORMAL_TEXTURE_TEXCOORD,
+        STATE_MATERIAL_NORMAL_TEXTURE_SCALE,
+        STATE_MATERIAL_OCCLUSION_TEXTURE,
+        STATE_MATERIAL_OCCLUSION_TEXTURE_INDEX,
+        STATE_MATERIAL_OCCLUSION_TEXTURE_TEXCOORD,
+        STATE_MATERIAL_OCCLUSION_TEXTURE_STRENGTH,
         STATE_MATERIAL_PBR,
         STATE_MATERIAL_PBR_BASE_COLOR_FACTOR,
         STATE_MATERIAL_PBR_METALLIC_FACTOR,
@@ -125,6 +136,12 @@ bool GLTFEventParserObj::on_json_enter_object(void* obj)
         self.mState = STATE_MATERIAL;
         self.mMaterialProp = {};
         return true;
+    case STATE_MATERIAL_NORMAL_TEXTURE:
+        self.mMaterialProp.normalTexture = GLTFNormalTextureInfo();
+        return true;
+    case STATE_MATERIAL_OCCLUSION_TEXTURE:
+        self.mMaterialProp.occlusionTexture = GLTFOcclusionTextureInfo();
+        return true;
     case STATE_MATERIAL_PBR:
         self.mMaterialProp.pbr = GLTFPbrMetallicRoughness();
         return true;
@@ -176,6 +193,8 @@ bool GLTFEventParserObj::on_json_leave_object(size_t memberCount, void* obj)
         if (self.mCallbacks.onMaterial)
             self.mCallbacks.onMaterial(self.mMaterialProp, self.mUser);
         return true;
+    case STATE_MATERIAL_NORMAL_TEXTURE:
+    case STATE_MATERIAL_OCCLUSION_TEXTURE:
     case STATE_MATERIAL_PBR:
         self.mState = STATE_MATERIAL;
         return true;
@@ -288,6 +307,10 @@ bool GLTFEventParserObj::on_json_key(const View& key, void* obj)
         return self.on_json_node_key(key);
     case STATE_MATERIAL:
         return self.on_json_material_key(key);
+    case STATE_MATERIAL_NORMAL_TEXTURE:
+        return self.on_json_material_normal_texture_key(key);
+    case STATE_MATERIAL_OCCLUSION_TEXTURE:
+        return self.on_json_material_occlusion_texture_key(key);
     case STATE_MATERIAL_PBR:
         return self.on_json_material_pbr_key(key);
     case STATE_MATERIAL_PBR_BASE_COLOR_TEXTURE:
@@ -405,6 +428,18 @@ bool GLTFEventParserObj::on_json_f64_value(double f64)
             return false;
         mNodeProp.TRS.scale[mArrayCtr++] = (float)f64;
         return true;
+    case STATE_MATERIAL_ALPHA_CUTOFF:
+        mMaterialProp.alphaCutoff = (float)f64;
+        mState = STATE_MATERIAL;
+        return true;
+    case STATE_MATERIAL_NORMAL_TEXTURE_SCALE:
+        LD_ASSERT(mMaterialProp.normalTexture.has_value());
+        mMaterialProp.normalTexture->scale = (float)f64;
+        return true;
+    case STATE_MATERIAL_OCCLUSION_TEXTURE_STRENGTH:
+        LD_ASSERT(mMaterialProp.occlusionTexture.has_value());
+        mMaterialProp.occlusionTexture->strength = (float)f64;
+        return true;
     case STATE_MATERIAL_PBR_BASE_COLOR_FACTOR:
         if (mArrayCtr >= 4)
             return false;
@@ -452,6 +487,26 @@ bool GLTFEventParserObj::on_json_u32_value(uint32_t u32)
     case STATE_NODE_MESH:
         mNodeProp.mesh = u32;
         mState = STATE_NODE;
+        return true;
+    case STATE_MATERIAL_NORMAL_TEXTURE_INDEX:
+        LD_ASSERT(mMaterialProp.normalTexture.has_value());
+        mMaterialProp.normalTexture->index = u32;
+        mState = STATE_MATERIAL_NORMAL_TEXTURE;
+        return true;
+    case STATE_MATERIAL_NORMAL_TEXTURE_TEXCOORD:
+        LD_ASSERT(mMaterialProp.normalTexture.has_value());
+        mMaterialProp.normalTexture->texCoord = u32;
+        mState = STATE_MATERIAL_NORMAL_TEXTURE;
+        return true;
+    case STATE_MATERIAL_OCCLUSION_TEXTURE_INDEX:
+        LD_ASSERT(mMaterialProp.occlusionTexture.has_value());
+        mMaterialProp.occlusionTexture->index = u32;
+        mState = STATE_MATERIAL_OCCLUSION_TEXTURE;
+        return true;
+    case STATE_MATERIAL_OCCLUSION_TEXTURE_TEXCOORD:
+        LD_ASSERT(mMaterialProp.occlusionTexture.has_value());
+        mMaterialProp.occlusionTexture->texCoord = u32;
+        mState = STATE_MATERIAL_OCCLUSION_TEXTURE;
         return true;
     case STATE_MATERIAL_PBR_BASE_COLOR_TEXTURE_INDEX:
         LD_ASSERT(mMaterialProp.pbr.has_value() && mMaterialProp.pbr->baseColorTexture.has_value());
@@ -542,8 +597,10 @@ bool GLTFEventParserObj::on_json_node_key(const View& key)
         mState = STATE_NODE_SCALE;
     else if (key == "translation")
         mState = STATE_NODE_TRANSLATION;
+    else
+        mEscapeDepth++;
 
-    return true; // TODO: ignore prop code path
+    return true;
 }
 
 bool GLTFEventParserObj::on_json_material_key(const View& key)
@@ -552,10 +609,46 @@ bool GLTFEventParserObj::on_json_material_key(const View& key)
         mStringSlot = &mMaterialProp.name;
     else if (key == "doubleSided")
         mState = STATE_MATERIAL_DOUBLE_SIDED;
+    else if (key == "alphaCutoff")
+        mState = STATE_MATERIAL_ALPHA_CUTOFF;
     else if (key == "pbrMetallicRoughness")
         mState = STATE_MATERIAL_PBR;
+    else if (key == "normalTexture")
+        mState = STATE_MATERIAL_NORMAL_TEXTURE;
+    else if (key == "occlusionTexture")
+        mState = STATE_MATERIAL_OCCLUSION_TEXTURE;
+    else
+        mEscapeDepth++;
 
-    return true; // TODO: ignore prop code path
+    return true;
+}
+
+bool GLTFEventParserObj::on_json_material_normal_texture_key(const View& key)
+{
+    if (key == "index")
+        mState = STATE_MATERIAL_NORMAL_TEXTURE_INDEX;
+    else if (key == "texCoord")
+        mState = STATE_MATERIAL_NORMAL_TEXTURE_TEXCOORD;
+    else if (key == "scale")
+        mState = STATE_MATERIAL_NORMAL_TEXTURE_SCALE;
+    else
+        mEscapeDepth++;
+
+    return true;
+}
+
+bool GLTFEventParserObj::on_json_material_occlusion_texture_key(const View& key)
+{
+    if (key == "index")
+        mState = STATE_MATERIAL_OCCLUSION_TEXTURE_INDEX;
+    else if (key == "texCoord")
+        mState = STATE_MATERIAL_OCCLUSION_TEXTURE_TEXCOORD;
+    else if (key == "strength")
+        mState = STATE_MATERIAL_OCCLUSION_TEXTURE_STRENGTH;
+    else
+        mEscapeDepth++;
+
+    return true;
 }
 
 bool GLTFEventParserObj::on_json_material_pbr_key(const View& key)
@@ -760,6 +853,18 @@ bool GLTFPrinter::on_material(const GLTFMaterialProp& mat, void* user)
     if (mat.name.size() > 0)
         matStr += std::format(" {}", mat.name.view());
     matStr.push_back('\n');
+
+    if (mat.normalTexture.has_value())
+    {
+        const GLTFNormalTextureInfo& info = mat.normalTexture.value();
+        matStr += std::format("- normalTexture: index {}, texCoord {}, scale {:.2f}\n", info.index, info.texCoord, info.scale);
+    }
+
+    if (mat.occlusionTexture.has_value())
+    {
+        const GLTFOcclusionTextureInfo& info = mat.occlusionTexture.value();
+        matStr += std::format("- occlusionTexture: index {}, texCoord {}, strength {:.2f}\n", info.index, info.texCoord, info.strength);
+    }
 
     if (mat.pbr.has_value())
     {
