@@ -43,6 +43,22 @@ struct GLTFNodeProp
     Transform TRS;                  // node.translation, node.rotation, and node.scale
 };
 
+/// @brief Metallic-roughness model in the spec.
+struct GLTFPbrMetallicRoughness
+{
+    Vec4 baseColorFactor = Vec4(1.0f); // defaults to [1.0, 1.0, 1.0, 1.0]
+    float metallicFactor = 1.0f;
+    float roughnessFactor = 1.0f;
+};
+
+/// @brief Element in top-level 'materials' property in the spec.
+struct GLTFMaterialProp
+{
+    Buffer name;                                 // authored material name
+    std::optional<GLTFPbrMetallicRoughness> pbr; // material.pbrMetallicRoughness
+    bool doubleSided = false;                    // material.doubleSided
+};
+
 struct GLTFEventCallback
 {
     /// @brief Top-level 'asset' property in the spec.
@@ -56,6 +72,9 @@ struct GLTFEventCallback
 
     /// @brief Element in top-level 'nodes' property in the spec.
     bool (*onNode)(const GLTFNodeProp& node, void* user);
+
+    /// @brief Element in top-level 'materials' property in the spec.
+    bool (*onMaterial)(const GLTFMaterialProp& mat, void* user);
 };
 
 struct GLTFEventParser

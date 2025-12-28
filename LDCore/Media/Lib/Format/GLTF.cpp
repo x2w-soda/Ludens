@@ -35,6 +35,12 @@ private:
     bool on_json_f64_value(double f64);
     bool on_json_u64_value(uint64_t u64);
     bool on_json_u32_value(uint32_t u32);
+    bool on_json_root_key(const View& key);
+    bool on_json_asset_key(const View& key);
+    bool on_json_scene_key(const View& key);
+    bool on_json_node_key(const View& key);
+    bool on_json_material_key(const View& key);
+    bool on_json_material_pbr_key(const View& key);
 
 private:
     enum State
@@ -45,6 +51,7 @@ private:
         STATE_ROOT_SCENE_KEY,
         STATE_ROOT_SCENES_KEY,
         STATE_ROOT_NODES_KEY,
+        STATE_ROOT_MATERIALS_KEY,
         STATE_ASSET,
         STATE_SCENES_ARRAY,
         STATE_SCENE,
@@ -57,6 +64,13 @@ private:
         STATE_NODE_TRANSLATION,
         STATE_NODE_ROTATION,
         STATE_NODE_SCALE,
+        STATE_MATERIALS_ARRAY,
+        STATE_MATERIAL,
+        STATE_MATERIAL_DOUBLE_SIDED,
+        STATE_MATERIAL_PBR,
+        STATE_MATERIAL_PBR_BASE_COLOR_FACTOR,
+        STATE_MATERIAL_PBR_METALLIC_FACTOR,
+        STATE_MATERIAL_PBR_ROUGHNESS_FACTOR,
     };
 
     State mState;
@@ -66,6 +80,7 @@ private:
     GLTFAssetProp mAssetProp{};
     GLTFSceneProp mSceneProp{};
     GLTFNodeProp mNodeProp{};
+    GLTFMaterialProp mMaterialProp{};
     uint32_t mSceneIndexProp = 0;
     uint32_t mArrayCtr = 0;
 };
@@ -90,6 +105,13 @@ bool GLTFEventParserObj::on_json_enter_object(void* obj)
     case STATE_NODES_ARRAY:
         self.mState = STATE_NODE;
         self.mNodeProp = {};
+        return true;
+    case STATE_MATERIALS_ARRAY:
+        self.mState = STATE_MATERIAL;
+        self.mMaterialProp = {};
+        return true;
+    case STATE_MATERIAL_PBR:
+        self.mMaterialProp.pbr = GLTFPbrMetallicRoughness();
         return true;
     default:
         break;
@@ -119,6 +141,14 @@ bool GLTFEventParserObj::on_json_leave_object(size_t memberCount, void* obj)
         if (self.mCallbacks.onNode)
             self.mCallbacks.onNode(self.mNodeProp, self.mUser);
         return true;
+    case STATE_MATERIAL:
+        self.mState = STATE_MATERIALS_ARRAY;
+        if (self.mCallbacks.onMaterial)
+            self.mCallbacks.onMaterial(self.mMaterialProp, self.mUser);
+        return true;
+    case STATE_MATERIAL_PBR:
+        self.mState = STATE_MATERIAL;
+        return true;
     default:
         break;
     }
@@ -138,12 +168,16 @@ bool GLTFEventParserObj::on_json_enter_array(void* obj)
     case STATE_ROOT_NODES_KEY:
         self.mState = STATE_NODES_ARRAY;
         return true;
+    case STATE_ROOT_MATERIALS_KEY:
+        self.mState = STATE_MATERIALS_ARRAY;
+        return true;
     case STATE_SCENE_NODES:
     case STATE_NODE_CHILDREN:
     case STATE_NODE_MATRIX:
     case STATE_NODE_TRANSLATION:
     case STATE_NODE_ROTATION:
     case STATE_NODE_SCALE:
+    case STATE_MATERIAL_PBR_BASE_COLOR_FACTOR:
         self.mArrayCtr = 0;
         return true;
     default:
@@ -160,6 +194,8 @@ bool GLTFEventParserObj::on_json_leave_array(size_t elementCount, void* obj)
     switch (self.mState)
     {
     case STATE_SCENES_ARRAY:
+    case STATE_NODES_ARRAY:
+    case STATE_MATERIALS_ARRAY:
         self.mState = STATE_ROOT;
         return true;
     case STATE_SCENE_NODES:
@@ -172,6 +208,9 @@ bool GLTFEventParserObj::on_json_leave_array(size_t elementCount, void* obj)
     case STATE_NODE_ROTATION:
     case STATE_NODE_SCALE:
         self.mState = STATE_NODE;
+        return true;
+    case STATE_MATERIAL_PBR_BASE_COLOR_FACTOR:
+        self.mState = STATE_MATERIAL_PBR;
         return true;
     default:
         break;
@@ -187,53 +226,17 @@ bool GLTFEventParserObj::on_json_key(const View& key, void* obj)
     switch (self.mState)
     {
     case STATE_ROOT:
-        if (key == "asset")
-            self.mState = STATE_ROOT_ASSET_KEY;
-        else if (key == "scene")
-            self.mState = STATE_ROOT_SCENE_KEY;
-        else if (key == "scenes")
-            self.mState = STATE_ROOT_SCENES_KEY;
-        else if (key == "nodes")
-            self.mState = STATE_ROOT_NODES_KEY;
-        else
-            return false; // unrecognized root object key
-        return true;
+        return self.on_json_root_key(key);
     case STATE_ASSET:
-        if (key == "version")
-            self.mStringSlot = &self.mAssetProp.version;
-        else if (key == "copyright")
-            self.mStringSlot = &self.mAssetProp.copyright;
-        else if (key == "generator")
-            self.mStringSlot = &self.mAssetProp.generator;
-        return true; // TODO: ignore prop code path
+        return self.on_json_asset_key(key);
     case STATE_SCENE:
-        if (key == "name")
-            self.mStringSlot = &self.mSceneProp.name;
-        else if (key == "nodes")
-        {
-            self.mState = STATE_SCENE_NODES;
-            self.mSceneProp.nodes.clear();
-        }
-        return true; // TODO: ignore prop code path
+        return self.on_json_scene_key(key);
     case STATE_NODE:
-        if (key == "name")
-            self.mStringSlot = &self.mNodeProp.name;
-        else if (key == "children")
-        {
-            self.mState = STATE_NODE_CHILDREN;
-            self.mNodeProp.children.clear();
-        }
-        else if (key == "mesh")
-            self.mState = STATE_NODE_MESH;
-        else if (key == "matrix")
-            self.mState = STATE_NODE_MATRIX;
-        else if (key == "rotation")
-            self.mState = STATE_NODE_ROTATION;
-        else if (key == "scale")
-            self.mState = STATE_NODE_SCALE;
-        else if (key == "translation")
-            self.mState = STATE_NODE_TRANSLATION;
-        return true; // TODO: ignore prop code path
+        return self.on_json_node_key(key);
+    case STATE_MATERIAL:
+        return self.on_json_material_key(key);
+    case STATE_MATERIAL_PBR:
+        return self.on_json_material_pbr_key(key);
     default:
         break; // not in a state to accept keys
     }
@@ -265,6 +268,18 @@ bool GLTFEventParserObj::on_json_null(void* obj)
 
 bool GLTFEventParserObj::on_json_bool(bool b, void* obj)
 {
+    auto& self = *(GLTFEventParserObj*)obj;
+
+    switch (self.mState)
+    {
+    case STATE_MATERIAL_DOUBLE_SIDED:
+        self.mMaterialProp.doubleSided = b;
+        self.mState = STATE_MATERIAL;
+        return true;
+    default:
+        break;
+    }
+
     return false; // not expecting boolean
 }
 
@@ -314,6 +329,22 @@ bool GLTFEventParserObj::on_json_f64_value(double f64)
             return false;
         mNodeProp.TRS.scale[mArrayCtr++] = (float)f64;
         return true;
+    case STATE_MATERIAL_PBR_BASE_COLOR_FACTOR:
+        if (mArrayCtr >= 4)
+            return false;
+        LD_ASSERT(mMaterialProp.pbr.has_value());
+        mMaterialProp.pbr->baseColorFactor[mArrayCtr++] = (float)f64;
+        return true;
+    case STATE_MATERIAL_PBR_METALLIC_FACTOR:
+        LD_ASSERT(mMaterialProp.pbr.has_value());
+        mMaterialProp.pbr->metallicFactor = (float)f64;
+        mState = STATE_MATERIAL_PBR;
+        return true;
+    case STATE_MATERIAL_PBR_ROUGHNESS_FACTOR:
+        LD_ASSERT(mMaterialProp.pbr.has_value());
+        mMaterialProp.pbr->roughnessFactor = (float)f64;
+        mState = STATE_MATERIAL_PBR;
+        return true;
     default:
         break;
     }
@@ -351,6 +382,96 @@ bool GLTFEventParserObj::on_json_u32_value(uint32_t u32)
     }
 
     return false;
+}
+
+bool GLTFEventParserObj::on_json_root_key(const View& key)
+{
+    if (key == "asset")
+        mState = STATE_ROOT_ASSET_KEY;
+    else if (key == "scene")
+        mState = STATE_ROOT_SCENE_KEY;
+    else if (key == "scenes")
+        mState = STATE_ROOT_SCENES_KEY;
+    else if (key == "nodes")
+        mState = STATE_ROOT_NODES_KEY;
+    else if (key == "materials")
+        mState = STATE_ROOT_MATERIALS_KEY;
+    else
+        return false; // unrecognized root object key
+
+    return true;
+}
+
+bool GLTFEventParserObj::on_json_asset_key(const View& key)
+{
+    if (key == "version")
+        mStringSlot = &mAssetProp.version;
+    else if (key == "copyright")
+        mStringSlot = &mAssetProp.copyright;
+    else if (key == "generator")
+        mStringSlot = &mAssetProp.generator;
+
+    return true; // TODO: ignore prop code path
+}
+
+bool GLTFEventParserObj::on_json_scene_key(const View& key)
+{
+    if (key == "name")
+        mStringSlot = &mSceneProp.name;
+    else if (key == "nodes")
+    {
+        mState = STATE_SCENE_NODES;
+        mSceneProp.nodes.clear();
+    }
+
+    return true; // TODO: ignore prop code path
+}
+
+bool GLTFEventParserObj::on_json_node_key(const View& key)
+{
+    if (key == "name")
+        mStringSlot = &mNodeProp.name;
+    else if (key == "children")
+    {
+        mState = STATE_NODE_CHILDREN;
+        mNodeProp.children.clear();
+    }
+    else if (key == "mesh")
+        mState = STATE_NODE_MESH;
+    else if (key == "matrix")
+        mState = STATE_NODE_MATRIX;
+    else if (key == "rotation")
+        mState = STATE_NODE_ROTATION;
+    else if (key == "scale")
+        mState = STATE_NODE_SCALE;
+    else if (key == "translation")
+        mState = STATE_NODE_TRANSLATION;
+
+    return true; // TODO: ignore prop code path
+}
+
+bool GLTFEventParserObj::on_json_material_key(const View& key)
+{
+    if (key == "name")
+        mStringSlot = &mMaterialProp.name;
+    else if (key == "doubleSided")
+        mState = STATE_MATERIAL_DOUBLE_SIDED;
+    else if (key == "pbrMetallicRoughness")
+        mState = STATE_MATERIAL_PBR;
+
+    return true; // TODO: ignore prop code path
+}
+
+bool GLTFEventParserObj::on_json_material_pbr_key(const View& key)
+{
+    if (key == "baseColorFactor")
+        mState = STATE_MATERIAL_PBR_BASE_COLOR_FACTOR;
+    else if (key == "metallicFactor")
+        mState = STATE_MATERIAL_PBR_METALLIC_FACTOR;
+    else if (key == "roughnessFactor")
+        mState = STATE_MATERIAL_PBR_ROUGHNESS_FACTOR;
+
+    return true; // TODO: ignore prop code path
 }
 
 bool GLTFEventParserObj::parse(const void* fileData, size_t fileSize, std::string& error)
@@ -400,12 +521,14 @@ private:
     static bool on_asset(const GLTFAssetProp& asset, void*);
     static bool on_scene(const GLTFSceneProp& scene, void*);
     static bool on_node(const GLTFNodeProp& node, void*);
+    static bool on_material(const GLTFMaterialProp& mat, void*);
 
 private:
     View mFile;
     std::string mAssetStr;
     std::string mScenesStr;
     std::string mNodesStr;
+    std::string mMaterialsStr;
 };
 
 bool GLTFPrinter::print(std::string& outStr, std::string& outErr)
@@ -415,11 +538,14 @@ bool GLTFPrinter::print(std::string& outStr, std::string& outErr)
 
     mAssetStr.clear();
     mScenesStr.clear();
+    mNodesStr.clear();
+    mMaterialsStr.clear();
 
     GLTFEventCallback callbacks{};
     callbacks.onAsset = &GLTFPrinter::on_asset;
     callbacks.onScene = &GLTFPrinter::on_scene;
     callbacks.onNode = &GLTFPrinter::on_node;
+    callbacks.onMaterial = &GLTFPrinter::on_material;
 
     if (!GLTFEventParser::parse(mFile, outErr, callbacks, this))
         return false;
@@ -429,6 +555,7 @@ bool GLTFPrinter::print(std::string& outStr, std::string& outErr)
     outStr = mAssetStr;
     outStr += mScenesStr;
     outStr += mNodesStr;
+    outStr += mMaterialsStr;
 
     return true;
 }
@@ -501,6 +628,29 @@ bool GLTFPrinter::on_node(const GLTFNodeProp& node, void* user)
         nodeStr += std::format("- mesh: {}", node.mesh.value());
 
     self.mNodesStr += nodeStr;
+    return true;
+}
+
+bool GLTFPrinter::on_material(const GLTFMaterialProp& mat, void* user)
+{
+    auto& self = *(GLTFPrinter*)user;
+
+    std::string matStr = std::format("material:");
+
+    if (mat.name.size() > 0)
+        matStr += std::format(" {}", mat.name.view());
+    matStr.push_back('\n');
+
+    if (mat.pbr.has_value())
+    {
+        const Vec4& clr = mat.pbr->baseColorFactor;
+        matStr += "- pbrMetallicRoughness\n";
+        matStr += std::format("  - baseColorFactor [{:.2f},{:.2f},{:.2f},{:.2f}]\n", clr.r, clr.g, clr.b, clr.a);
+        matStr += std::format("  - metallicFactor  {}\n", mat.pbr->metallicFactor);
+        matStr += std::format("  - roughnessFactor {}\n", mat.pbr->roughnessFactor);
+    }
+
+    self.mMaterialsStr += matStr;
     return true;
 }
 
