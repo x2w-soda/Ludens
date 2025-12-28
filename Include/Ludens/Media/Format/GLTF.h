@@ -5,6 +5,7 @@
 #include <Ludens/DSA/View.h>
 #include <Ludens/Header/Math/Mat4.h>
 #include <Ludens/Header/Math/Transform.h>
+#include <Ludens/Header/Math/Vec3.h>
 
 #include <cstddef>
 #include <cstdint>
@@ -80,8 +81,11 @@ struct GLTFMaterialProp
     Optional<GLTFPbrMetallicRoughness> pbr;              // material.pbrMetallicRoughness
     Optional<GLTFNormalTextureInfo> normalTexture;       // material.normalTextureInfo
     Optional<GLTFOcclusionTextureInfo> occlusionTexture; // material.occlusionTextureInfo
+    Optional<GLTFTextureInfo> emissiveTexture;           // material.textureInfo
+    Vec3 emissiveFactor = Vec3(0.0f);                    // material.emissiveFactor
     bool doubleSided = false;                            // material.doubleSided
     float alphaCutoff = 0.5f;                            // material.alphaCutoff
+    Buffer alphaMode = "OPAQUE";                         // material.alphaMode
 };
 
 struct GLTFEventCallback

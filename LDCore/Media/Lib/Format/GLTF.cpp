@@ -40,6 +40,7 @@ private:
     bool on_json_scene_key(const View& key);
     bool on_json_node_key(const View& key);
     bool on_json_material_key(const View& key);
+    bool on_json_material_emissive_texture_key(const View& key);
     bool on_json_material_normal_texture_key(const View& key);
     bool on_json_material_occlusion_texture_key(const View& key);
     bool on_json_material_pbr_key(const View& key);
@@ -72,6 +73,10 @@ private:
         STATE_MATERIAL,
         STATE_MATERIAL_DOUBLE_SIDED,
         STATE_MATERIAL_ALPHA_CUTOFF,
+        STATE_MATERIAL_EMISSIVE_FACTOR,
+        STATE_MATERIAL_EMISSIVE_TEXTURE,
+        STATE_MATERIAL_EMISSIVE_TEXTURE_INDEX,
+        STATE_MATERIAL_EMISSIVE_TEXTURE_TEXCOORD,
         STATE_MATERIAL_NORMAL_TEXTURE,
         STATE_MATERIAL_NORMAL_TEXTURE_INDEX,
         STATE_MATERIAL_NORMAL_TEXTURE_TEXCOORD,
@@ -136,6 +141,9 @@ bool GLTFEventParserObj::on_json_enter_object(void* obj)
         self.mState = STATE_MATERIAL;
         self.mMaterialProp = {};
         return true;
+    case STATE_MATERIAL_EMISSIVE_TEXTURE:
+        self.mMaterialProp.emissiveTexture = GLTFTextureInfo();
+        return true;
     case STATE_MATERIAL_NORMAL_TEXTURE:
         self.mMaterialProp.normalTexture = GLTFNormalTextureInfo();
         return true;
@@ -193,6 +201,7 @@ bool GLTFEventParserObj::on_json_leave_object(size_t memberCount, void* obj)
         if (self.mCallbacks.onMaterial)
             self.mCallbacks.onMaterial(self.mMaterialProp, self.mUser);
         return true;
+    case STATE_MATERIAL_EMISSIVE_TEXTURE:
     case STATE_MATERIAL_NORMAL_TEXTURE:
     case STATE_MATERIAL_OCCLUSION_TEXTURE:
     case STATE_MATERIAL_PBR:
@@ -239,6 +248,7 @@ bool GLTFEventParserObj::on_json_enter_array(void* obj)
     case STATE_NODE_TRANSLATION:
     case STATE_NODE_ROTATION:
     case STATE_NODE_SCALE:
+    case STATE_MATERIAL_EMISSIVE_FACTOR:
     case STATE_MATERIAL_PBR_BASE_COLOR_FACTOR:
         self.mArrayCtr = 0;
         return true;
@@ -278,6 +288,9 @@ bool GLTFEventParserObj::on_json_leave_array(size_t elementCount, void* obj)
     case STATE_NODE_SCALE:
         self.mState = STATE_NODE;
         return true;
+    case STATE_MATERIAL_EMISSIVE_FACTOR:
+        self.mState = STATE_MATERIAL;
+        return true;
     case STATE_MATERIAL_PBR_BASE_COLOR_FACTOR:
         self.mState = STATE_MATERIAL_PBR;
         return true;
@@ -307,6 +320,8 @@ bool GLTFEventParserObj::on_json_key(const View& key, void* obj)
         return self.on_json_node_key(key);
     case STATE_MATERIAL:
         return self.on_json_material_key(key);
+    case STATE_MATERIAL_EMISSIVE_TEXTURE:
+        return self.on_json_material_emissive_texture_key(key);
     case STATE_MATERIAL_NORMAL_TEXTURE:
         return self.on_json_material_normal_texture_key(key);
     case STATE_MATERIAL_OCCLUSION_TEXTURE:
@@ -440,6 +455,11 @@ bool GLTFEventParserObj::on_json_f64_value(double f64)
         LD_ASSERT(mMaterialProp.occlusionTexture.has_value());
         mMaterialProp.occlusionTexture->strength = (float)f64;
         return true;
+    case STATE_MATERIAL_EMISSIVE_FACTOR:
+        if (mArrayCtr >= 3)
+            return false;
+        mMaterialProp.emissiveFactor[mArrayCtr++] = (float)f64;
+        return true;
     case STATE_MATERIAL_PBR_BASE_COLOR_FACTOR:
         if (mArrayCtr >= 4)
             return false;
@@ -487,6 +507,16 @@ bool GLTFEventParserObj::on_json_u32_value(uint32_t u32)
     case STATE_NODE_MESH:
         mNodeProp.mesh = u32;
         mState = STATE_NODE;
+        return true;
+    case STATE_MATERIAL_EMISSIVE_TEXTURE_INDEX:
+        LD_ASSERT(mMaterialProp.emissiveTexture.has_value());
+        mMaterialProp.emissiveTexture->index = u32;
+        mState = STATE_MATERIAL_EMISSIVE_TEXTURE;
+        return true;
+    case STATE_MATERIAL_EMISSIVE_TEXTURE_TEXCOORD:
+        LD_ASSERT(mMaterialProp.emissiveTexture.has_value());
+        mMaterialProp.emissiveTexture->texCoord = u32;
+        mState = STATE_MATERIAL_EMISSIVE_TEXTURE;
         return true;
     case STATE_MATERIAL_NORMAL_TEXTURE_INDEX:
         LD_ASSERT(mMaterialProp.normalTexture.has_value());
@@ -561,8 +591,10 @@ bool GLTFEventParserObj::on_json_asset_key(const View& key)
         mStringSlot = &mAssetProp.copyright;
     else if (key == "generator")
         mStringSlot = &mAssetProp.generator;
+    else
+        mEscapeDepth++;
 
-    return true; // TODO: ignore prop code path
+    return true;
 }
 
 bool GLTFEventParserObj::on_json_scene_key(const View& key)
@@ -574,8 +606,10 @@ bool GLTFEventParserObj::on_json_scene_key(const View& key)
         mState = STATE_SCENE_NODES;
         mSceneProp.nodes.clear();
     }
+    else
+        mEscapeDepth++;
 
-    return true; // TODO: ignore prop code path
+    return true;
 }
 
 bool GLTFEventParserObj::on_json_node_key(const View& key)
@@ -611,12 +645,30 @@ bool GLTFEventParserObj::on_json_material_key(const View& key)
         mState = STATE_MATERIAL_DOUBLE_SIDED;
     else if (key == "alphaCutoff")
         mState = STATE_MATERIAL_ALPHA_CUTOFF;
+    else if (key == "alphaMode")
+        mStringSlot = &mMaterialProp.alphaMode;
     else if (key == "pbrMetallicRoughness")
         mState = STATE_MATERIAL_PBR;
+    else if (key == "emissiveTexture")
+        mState = STATE_MATERIAL_EMISSIVE_TEXTURE;
+    else if (key == "emissiveFactor")
+        mState = STATE_MATERIAL_EMISSIVE_FACTOR;
     else if (key == "normalTexture")
         mState = STATE_MATERIAL_NORMAL_TEXTURE;
     else if (key == "occlusionTexture")
         mState = STATE_MATERIAL_OCCLUSION_TEXTURE;
+    else
+        mEscapeDepth++;
+
+    return true;
+}
+
+bool GLTFEventParserObj::on_json_material_emissive_texture_key(const View& key)
+{
+    if (key == "index")
+        mState = STATE_MATERIAL_EMISSIVE_TEXTURE_INDEX;
+    else if (key == "texCoord")
+        mState = STATE_MATERIAL_EMISSIVE_TEXTURE_TEXCOORD;
     else
         mEscapeDepth++;
 
@@ -663,8 +715,10 @@ bool GLTFEventParserObj::on_json_material_pbr_key(const View& key)
         mState = STATE_MATERIAL_PBR_BASE_COLOR_TEXTURE;
     else if (key == "metallicRoughnessTexture")
         mState = STATE_MATERIAL_PBR_METALLIC_ROUGHNESS_TEXTURE;
+    else
+        mEscapeDepth++;
 
-    return true; // TODO: ignore prop code path
+    return true;
 }
 
 bool GLTFEventParserObj::on_json_material_pbr_base_color_texture_key(const View& key)
@@ -673,6 +727,8 @@ bool GLTFEventParserObj::on_json_material_pbr_base_color_texture_key(const View&
         mState = STATE_MATERIAL_PBR_BASE_COLOR_TEXTURE_INDEX;
     else if (key == "texCoord")
         mState = STATE_MATERIAL_PBR_BASE_COLOR_TEXTURE_TEXCOORD;
+    else
+        mEscapeDepth++;
 
     return true;
 }
@@ -683,6 +739,8 @@ bool GLTFEventParserObj::on_json_material_pbr_metallic_roughness_texture_key(con
         mState = STATE_MATERIAL_PBR_METALLIC_ROUGHNESS_TEXTURE_INDEX;
     else if (key == "texCoord")
         mState = STATE_MATERIAL_PBR_METALLIC_ROUGHNESS_TEXTURE_TEXCOORD;
+    else
+        mEscapeDepth++;
 
     return true;
 }
@@ -854,10 +912,20 @@ bool GLTFPrinter::on_material(const GLTFMaterialProp& mat, void* user)
         matStr += std::format(" {}", mat.name.view());
     matStr.push_back('\n');
 
+    matStr += std::format("- alphaMode: {}\n", mat.alphaMode.view());
+    matStr += std::format("- alphaCutoff: {:.2f}\n", mat.alphaCutoff);
+    matStr += std::format("- emissiveFactor: [{:.2f},{:.2f},{:.2f}]\n", mat.emissiveFactor.r, mat.emissiveFactor.g, mat.emissiveFactor.b);
+
+    if (mat.emissiveTexture.has_value())
+    {
+        const GLTFTextureInfo& info = mat.emissiveTexture.value();
+        matStr += std::format("- emissiveTexture:  index {}, texCoord {}\n", info.index, info.texCoord);
+    }
+
     if (mat.normalTexture.has_value())
     {
         const GLTFNormalTextureInfo& info = mat.normalTexture.value();
-        matStr += std::format("- normalTexture: index {}, texCoord {}, scale {:.2f}\n", info.index, info.texCoord, info.scale);
+        matStr += std::format("- normalTexture:    index {}, texCoord {}, scale {:.2f}\n", info.index, info.texCoord, info.scale);
     }
 
     if (mat.occlusionTexture.has_value())
