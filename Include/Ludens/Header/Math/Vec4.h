@@ -42,6 +42,9 @@ struct alignas(TVEC4_ALIGNMENT) TVec4
 #endif
     // clang-format on
 
+    inline T& operator[](int i) { return *(&x + i); }
+    inline T operator[](int i) const { return *(&x + i); }
+
     /// @brief get a vec3 rvalue by dropping the w component
     inline TVec3<T> as_vec3() const { return {x, y, z}; }
 

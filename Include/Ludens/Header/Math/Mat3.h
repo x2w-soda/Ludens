@@ -23,6 +23,9 @@ struct TMat3
     inline TVec& operator[](int i) { return col[i]; }
     inline const TVec& operator[](int i) const { return col[i]; }
 
+    inline T& element(int i) { return col[i / 3][i % 3]; }
+    inline T element(int i) const { return col[i / 3][i % 3]; }
+
     /// @brief evaluate the deterimant of the matrix
     inline T det() const
     {

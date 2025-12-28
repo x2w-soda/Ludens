@@ -31,6 +31,9 @@ struct alignas(TVEC4_ALIGNMENT) TMat4
     inline TVec& operator[](int i) { return col[i]; }
     inline const TVec& operator[](int i) const { return col[i]; }
 
+    inline T& element(int i) { return col[i / 4][i % 4]; }
+    inline T element(int i) const { return col[i / 4][i % 4]; }
+
     /// @brief return a Mat3 rvalue by dropping the last column and row
     inline TMat3<T> as_mat3() const
     {

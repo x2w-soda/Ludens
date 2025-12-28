@@ -19,6 +19,9 @@ struct TQuat
     TQuat(T x, T y, T z, T w) : x(x), y(y), z(z), w(w) {}
     TQuat(const TVec3<T>& v, T w) : x(v.x), y(v.y), z(v.z), w(w) {}
 
+    inline T& operator[](int i) { return *(&x + i); }
+    inline T operator[](int i) const { return *(&x + i); }
+
     /// @brief Get length of quaternion.
     /// @return Scalar length.
     inline T length() const

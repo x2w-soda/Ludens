@@ -215,6 +215,18 @@ TEST_CASE("Vec3 member")
     CHECK(v.x == 5);
     CHECK(v.y == 6);
     CHECK(v.z == 7);
+
+    CHECK(v[0] == 5);
+    CHECK(v[1] == 6);
+    CHECK(v[2] == 7);
+
+    v[0] = 8;
+    v[1] = 9;
+    v[2] = 10;
+
+    CHECK(v.r == 8);
+    CHECK(v.g == 9);
+    CHECK(v.b == 10);
 }
 
 TEST_CASE("Vec3 operator")
@@ -342,6 +354,21 @@ TEST_CASE("Vec4 member")
     CHECK(v.y == 6);
     CHECK(v.z == 7);
     CHECK(v.w == 8);
+
+    CHECK(v[0] == 5);
+    CHECK(v[1] == 6);
+    CHECK(v[2] == 7);
+    CHECK(v[3] == 8);
+
+    v[0] = 9;
+    v[1] = 10;
+    v[2] = 11;
+    v[3] = 12;
+
+    CHECK(v.r == 9);
+    CHECK(v.g == 10);
+    CHECK(v.b == 11);
+    CHECK(v.a == 12);
 }
 
 TEST_CASE("Vec4 operator")
@@ -423,6 +450,21 @@ TEST_CASE("Quat ctor")
     CHECK(q.y == 2.0f);
     CHECK(q.z == 3.0f);
     CHECK(q.w == 4.0f);
+
+    CHECK(q[0] == 1.0f);
+    CHECK(q[1] == 2.0f);
+    CHECK(q[2] == 3.0f);
+    CHECK(q[3] == 4.0f);
+
+    q[0] = 5.0f;
+    q[1] = 6.0f;
+    q[2] = 7.0f;
+    q[3] = 8.0f;
+
+    CHECK(q.x == 5.0f);
+    CHECK(q.y == 6.0f);
+    CHECK(q.z == 7.0f);
+    CHECK(q.w == 8.0f);
 }
 
 TEST_CASE("Quat operator")
@@ -552,10 +594,22 @@ TEST_CASE("Mat3 operator")
 TEST_CASE("Mat3 method")
 {
     Mat3 m({1, 0, 0}, {2, 1, 0}, {3, 2, 1});
+    CHECK(m.element(0) == 1);
+    CHECK(m.element(1) == 0);
+    CHECK(m.element(2) == 0);
+    CHECK(m.element(3) == 2);
+    CHECK(m.element(4) == 1);
+    CHECK(m.element(5) == 0);
+    CHECK(m.element(6) == 3);
+    CHECK(m.element(7) == 2);
+    CHECK(m.element(8) == 1);
+
     Mat3 m2 = Mat3::transpose(m);
     CHECK(m2[0] == Vec3(1, 2, 3));
     CHECK(m2[1] == Vec3(0, 1, 2));
     CHECK(m2[2] == Vec3(0, 0, 1));
+
+
 
     Vec3 p1(2, -2, 3);
 
@@ -727,6 +781,24 @@ TEST_CASE("Mat4 method")
              {3, 6, 1, 0},
              {2, 5, 9, 0},
              {1, 0, 0, 1});
+
+    CHECK(m.element(0) == 4);
+    CHECK(m.element(1) == 7);
+    CHECK(m.element(2) == 2);
+    CHECK(m.element(3) == 0);
+    CHECK(m.element(4) == 3);
+    CHECK(m.element(5) == 6);
+    CHECK(m.element(6) == 1);
+    CHECK(m.element(7) == 0);
+    CHECK(m.element(8) == 2);
+    CHECK(m.element(9) == 5);
+    CHECK(m.element(10) == 9);
+    CHECK(m.element(11) == 0);
+    CHECK(m.element(12) == 1);
+    CHECK(m.element(13) == 0);
+    CHECK(m.element(14) == 0);
+    CHECK(m.element(15) == 1);
+
     Mat4 m3 = Mat4::inverse(m);
     Mat4 m4 = m3 * m;
     CHECK(m4[0] == Vec4(1.0f, 0.0f, 0.0f, 0.0f));

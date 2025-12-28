@@ -20,6 +20,9 @@ struct TVec3
     TVec3(const TVec2<T>& v, T z) : x(v.x), y(v.y), z((T)z) {}
     // clang-format on
 
+    inline T& operator[](int i) { return *(&x + i); }
+    inline T operator[](int i) const { return *(&x + i); }
+
     inline T length_squared() const { return x * x + y * y + z * z; }
 
     /// @brief get the length of the vector
