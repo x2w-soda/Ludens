@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <cstring>
+#include <format>
 
 namespace LD {
 
@@ -59,3 +60,17 @@ struct TView
 using View = TView<char>;
 
 } // namespace LD
+
+template <>
+struct std::formatter<LD::View, char>
+{
+    constexpr auto parse(std::format_parse_context& ctx)
+    {
+        return ctx.begin();
+    }
+
+    auto format(const LD::View& view, std::format_context& ctx) const
+    {
+        return std::format_to(ctx.out(), "{}", std::string(view.data, view.size));
+    }
+};

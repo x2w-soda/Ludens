@@ -45,7 +45,7 @@ public:
     inline byte* data() { return mData; }
 
     /// @brief Create a view into buffer data, the view is invalidated the moment buffer size changes.
-    inline View view() { return {(const char*)mData, mSize}; }
+    inline View view() const { return {(const char*)mData, mSize}; }
 
 private:
     size_t mSize;
