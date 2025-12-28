@@ -10,6 +10,7 @@ class Buffer
 {
 public:
     Buffer();
+    Buffer(const char* cstr);
     Buffer(const Buffer&);
     Buffer(Buffer&&) = delete;
     ~Buffer();

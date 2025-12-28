@@ -1,14 +1,26 @@
 #include <Ludens/DSA/Buffer.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/System/Memory.h>
+
+#include <algorithm>
 #include <cstdio>
 #include <cstring>
-#include <algorithm>
 
 namespace LD {
 
-Buffer::Buffer() : mSize(0), mCap(0), mData(nullptr)
+Buffer::Buffer()
+    : mSize(0), mCap(0), mData(nullptr)
 {
+}
+
+Buffer::Buffer(const char* cstr)
+    : mSize(0), mCap(0), mData(nullptr)
+{
+    if (!cstr)
+        return;
+
+    resize(strlen(cstr));
+    strncpy((char*)mData, cstr, mSize);
 }
 
 Buffer::Buffer(const Buffer& other)
