@@ -28,6 +28,14 @@ struct GLTFAssetProp
     Buffer copyright;
 };
 
+/// @brief Element in top-level 'buffers' property in the spec.
+struct GLTFBufferProp
+{
+    Buffer name;
+    Buffer uri;
+    uint64_t byteLength;
+};
+
 /// @brief Element in top-level 'scenes' property in the spec.
 struct GLTFSceneProp
 {
@@ -104,6 +112,9 @@ struct GLTFEventCallback
 
     /// @brief Element in top-level 'materials' property in the spec.
     bool (*onMaterial)(const GLTFMaterialProp& mat, void* user);
+
+    /// @brief Element in top-level 'buffers' property in the spec.
+    bool (*onBuffer)(const GLTFBufferProp& buf, void* user);
 };
 
 struct GLTFEventParser

@@ -18,7 +18,6 @@ public:
     }
 
     bool parse(const void* fileData, size_t fileSize, std::string& error);
-
     static bool on_json_enter_object(void*);
     static bool on_json_leave_object(size_t memberCount, void*);
     static bool on_json_enter_array(void*);
@@ -46,6 +45,7 @@ private:
     bool on_json_material_pbr_key(const View& key);
     bool on_json_material_pbr_base_color_texture_key(const View& key);
     bool on_json_material_pbr_metallic_roughness_texture_key(const View& key);
+    bool on_json_buffer_key(const View& key);
 
 private:
     enum State
@@ -57,6 +57,7 @@ private:
         STATE_ROOT_SCENES_KEY,
         STATE_ROOT_NODES_KEY,
         STATE_ROOT_MATERIALS_KEY,
+        STATE_ROOT_BUFFERS_KEY,
         STATE_ASSET,
         STATE_SCENES_ARRAY,
         STATE_SCENE,
@@ -95,6 +96,9 @@ private:
         STATE_MATERIAL_PBR_METALLIC_ROUGHNESS_TEXTURE,
         STATE_MATERIAL_PBR_METALLIC_ROUGHNESS_TEXTURE_INDEX,
         STATE_MATERIAL_PBR_METALLIC_ROUGHNESS_TEXTURE_TEXCOORD,
+        STATE_BUFFERS_ARRAY,
+        STATE_BUFFER,
+        STATE_BUFFER_BYTE_LENGTH,
     };
 
     State mState;
@@ -106,6 +110,7 @@ private:
     GLTFSceneProp mSceneProp{};
     GLTFNodeProp mNodeProp{};
     GLTFMaterialProp mMaterialProp{};
+    GLTFBufferProp mBufferProp{};
     uint32_t mSceneIndexProp = 0;
     uint32_t mArrayCtr = 0;
 };
@@ -140,6 +145,10 @@ bool GLTFEventParserObj::on_json_enter_object(void* obj)
     case STATE_MATERIALS_ARRAY:
         self.mState = STATE_MATERIAL;
         self.mMaterialProp = {};
+        return true;
+    case STATE_BUFFERS_ARRAY:
+        self.mState = STATE_BUFFER;
+        self.mBufferProp = {};
         return true;
     case STATE_MATERIAL_EMISSIVE_TEXTURE:
         self.mMaterialProp.emissiveTexture = GLTFTextureInfo();
@@ -201,6 +210,11 @@ bool GLTFEventParserObj::on_json_leave_object(size_t memberCount, void* obj)
         if (self.mCallbacks.onMaterial)
             self.mCallbacks.onMaterial(self.mMaterialProp, self.mUser);
         return true;
+    case STATE_BUFFER:
+        self.mState = STATE_BUFFERS_ARRAY;
+        if (self.mCallbacks.onBuffer)
+            self.mCallbacks.onBuffer(self.mBufferProp, self.mUser);
+        return true;
     case STATE_MATERIAL_EMISSIVE_TEXTURE:
     case STATE_MATERIAL_NORMAL_TEXTURE:
     case STATE_MATERIAL_OCCLUSION_TEXTURE:
@@ -242,6 +256,9 @@ bool GLTFEventParserObj::on_json_enter_array(void* obj)
     case STATE_ROOT_MATERIALS_KEY:
         self.mState = STATE_MATERIALS_ARRAY;
         return true;
+    case STATE_ROOT_BUFFERS_KEY:
+        self.mState = STATE_BUFFERS_ARRAY;
+        return true;
     case STATE_SCENE_NODES:
     case STATE_NODE_CHILDREN:
     case STATE_NODE_MATRIX:
@@ -275,6 +292,7 @@ bool GLTFEventParserObj::on_json_leave_array(size_t elementCount, void* obj)
     case STATE_SCENES_ARRAY:
     case STATE_NODES_ARRAY:
     case STATE_MATERIALS_ARRAY:
+    case STATE_BUFFERS_ARRAY:
         self.mState = STATE_ROOT;
         return true;
     case STATE_SCENE_NODES:
@@ -332,6 +350,8 @@ bool GLTFEventParserObj::on_json_key(const View& key, void* obj)
         return self.on_json_material_pbr_base_color_texture_key(key);
     case STATE_MATERIAL_PBR_METALLIC_ROUGHNESS_TEXTURE:
         return self.on_json_material_pbr_metallic_roughness_texture_key(key);
+    case STATE_BUFFER:
+        return self.on_json_buffer_key(key);
     default:
         break; // not in a state to accept keys
     }
@@ -485,6 +505,16 @@ bool GLTFEventParserObj::on_json_f64_value(double f64)
 
 bool GLTFEventParserObj::on_json_u64_value(uint64_t u64)
 {
+    switch (mState)
+    {
+    case STATE_BUFFER_BYTE_LENGTH:
+        mBufferProp.byteLength = u64;
+        mState = STATE_BUFFER;
+        return true;
+    default:
+        break;
+    }
+
     return false; // not expecting u64
 }
 
@@ -577,6 +607,8 @@ bool GLTFEventParserObj::on_json_root_key(const View& key)
         mState = STATE_ROOT_NODES_KEY;
     else if (key == "materials")
         mState = STATE_ROOT_MATERIALS_KEY;
+    else if (key == "buffers")
+        mState = STATE_ROOT_BUFFERS_KEY;
     else
         mEscapeDepth = 1;
 
@@ -745,6 +777,20 @@ bool GLTFEventParserObj::on_json_material_pbr_metallic_roughness_texture_key(con
     return true;
 }
 
+bool GLTFEventParserObj::on_json_buffer_key(const View& key)
+{
+    if (key == "name")
+        mStringSlot = &mBufferProp.name;
+    else if (key == "uri")
+        mStringSlot = &mBufferProp.uri;
+    else if (key == "byteLength")
+        mState = STATE_BUFFER_BYTE_LENGTH;
+    else
+        mEscapeDepth++;
+
+    return true;
+}
+
 bool GLTFEventParserObj::parse(const void* fileData, size_t fileSize, std::string& error)
 {
     mState = STATE_ZERO;
@@ -793,6 +839,7 @@ private:
     static bool on_scene(const GLTFSceneProp& scene, void*);
     static bool on_node(const GLTFNodeProp& node, void*);
     static bool on_material(const GLTFMaterialProp& mat, void*);
+    static bool on_buffer(const GLTFBufferProp& buf, void*);
 
 private:
     View mFile;
@@ -800,6 +847,7 @@ private:
     std::string mScenesStr;
     std::string mNodesStr;
     std::string mMaterialsStr;
+    std::string mBuffersStr;
 };
 
 bool GLTFPrinter::print(std::string& outStr, std::string& outErr)
@@ -811,12 +859,14 @@ bool GLTFPrinter::print(std::string& outStr, std::string& outErr)
     mScenesStr.clear();
     mNodesStr.clear();
     mMaterialsStr.clear();
+    mBuffersStr.clear();
 
     GLTFEventCallback callbacks{};
     callbacks.onAsset = &GLTFPrinter::on_asset;
     callbacks.onScene = &GLTFPrinter::on_scene;
     callbacks.onNode = &GLTFPrinter::on_node;
     callbacks.onMaterial = &GLTFPrinter::on_material;
+    callbacks.onBuffer = &GLTFPrinter::on_buffer;
 
     if (!GLTFEventParser::parse(mFile, outErr, callbacks, this))
         return false;
@@ -827,6 +877,7 @@ bool GLTFPrinter::print(std::string& outStr, std::string& outErr)
     outStr += mScenesStr;
     outStr += mNodesStr;
     outStr += mMaterialsStr;
+    outStr += mBuffersStr;
 
     return true;
 }
@@ -954,6 +1005,25 @@ bool GLTFPrinter::on_material(const GLTFMaterialProp& mat, void* user)
     }
 
     self.mMaterialsStr += matStr;
+    return true;
+}
+
+bool GLTFPrinter::on_buffer(const GLTFBufferProp& buf, void* user)
+{
+    auto& self = *(GLTFPrinter*)user;
+
+    std::string bufStr = std::format("buffer:");
+
+    if (buf.name.size() > 0)
+        bufStr += std::format(" {}", buf.name.view());
+    bufStr.push_back('\n');
+
+    bufStr += std::format("- byteLength {}\n", buf.byteLength);
+
+    if (buf.uri.size() > 0)
+        bufStr += std::format("- uri {}\n", buf.uri.view());
+
+    self.mBuffersStr += bufStr;
     return true;
 }
 
