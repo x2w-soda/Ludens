@@ -43,12 +43,21 @@ struct GLTFNodeProp
     Transform TRS;                  // node.translation, node.rotation, and node.scale
 };
 
+/// @brief 'textureInfo' in the spec.
+struct GLTFTextureInfo
+{
+    uint32_t index;        // index into top-level 'textures' array
+    uint32_t texCoord = 0; // set index of texture's TEXCOORD attribute used, defaults to 0
+};
+
 /// @brief Metallic-roughness model in the spec.
 struct GLTFPbrMetallicRoughness
 {
     Vec4 baseColorFactor = Vec4(1.0f); // defaults to [1.0, 1.0, 1.0, 1.0]
     float metallicFactor = 1.0f;
     float roughnessFactor = 1.0f;
+    std::optional<GLTFTextureInfo> baseColorTexture;
+    std::optional<GLTFTextureInfo> metallicRoughnessTexture;
 };
 
 /// @brief Element in top-level 'materials' property in the spec.

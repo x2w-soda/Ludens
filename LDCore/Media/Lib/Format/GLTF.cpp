@@ -41,6 +41,8 @@ private:
     bool on_json_node_key(const View& key);
     bool on_json_material_key(const View& key);
     bool on_json_material_pbr_key(const View& key);
+    bool on_json_material_pbr_base_color_texture_key(const View& key);
+    bool on_json_material_pbr_metallic_roughness_texture_key(const View& key);
 
 private:
     enum State
@@ -71,10 +73,17 @@ private:
         STATE_MATERIAL_PBR_BASE_COLOR_FACTOR,
         STATE_MATERIAL_PBR_METALLIC_FACTOR,
         STATE_MATERIAL_PBR_ROUGHNESS_FACTOR,
+        STATE_MATERIAL_PBR_BASE_COLOR_TEXTURE,
+        STATE_MATERIAL_PBR_BASE_COLOR_TEXTURE_INDEX,
+        STATE_MATERIAL_PBR_BASE_COLOR_TEXTURE_TEXCOORD,
+        STATE_MATERIAL_PBR_METALLIC_ROUGHNESS_TEXTURE,
+        STATE_MATERIAL_PBR_METALLIC_ROUGHNESS_TEXTURE_INDEX,
+        STATE_MATERIAL_PBR_METALLIC_ROUGHNESS_TEXTURE_TEXCOORD,
     };
 
     State mState;
     void* mUser;
+    uint32_t mEscapeDepth = 0;
     Buffer* mStringSlot;
     GLTFEventCallback mCallbacks;
     GLTFAssetProp mAssetProp{};
@@ -88,6 +97,12 @@ private:
 bool GLTFEventParserObj::on_json_enter_object(void* obj)
 {
     auto& self = *(GLTFEventParserObj*)obj;
+
+    if (self.mEscapeDepth)
+    {
+        self.mEscapeDepth++;
+        return true; // skip object
+    }
 
     switch (self.mState)
     {
@@ -113,6 +128,14 @@ bool GLTFEventParserObj::on_json_enter_object(void* obj)
     case STATE_MATERIAL_PBR:
         self.mMaterialProp.pbr = GLTFPbrMetallicRoughness();
         return true;
+    case STATE_MATERIAL_PBR_BASE_COLOR_TEXTURE:
+        LD_ASSERT(self.mMaterialProp.pbr.has_value());
+        self.mMaterialProp.pbr->baseColorTexture = GLTFTextureInfo();
+        return true;
+    case STATE_MATERIAL_PBR_METALLIC_ROUGHNESS_TEXTURE:
+        LD_ASSERT(self.mMaterialProp.pbr.has_value());
+        self.mMaterialProp.pbr->metallicRoughnessTexture = GLTFTextureInfo();
+        return true;
     default:
         break;
     }
@@ -123,6 +146,13 @@ bool GLTFEventParserObj::on_json_enter_object(void* obj)
 bool GLTFEventParserObj::on_json_leave_object(size_t memberCount, void* obj)
 {
     auto& self = *(GLTFEventParserObj*)obj;
+
+    if (self.mEscapeDepth)
+    {
+        if (--self.mEscapeDepth == 1)
+            self.mEscapeDepth = 0;
+        return true;
+    }
 
     switch (self.mState)
     {
@@ -149,6 +179,13 @@ bool GLTFEventParserObj::on_json_leave_object(size_t memberCount, void* obj)
     case STATE_MATERIAL_PBR:
         self.mState = STATE_MATERIAL;
         return true;
+    case STATE_MATERIAL_PBR_BASE_COLOR_TEXTURE:
+    case STATE_MATERIAL_PBR_METALLIC_ROUGHNESS_TEXTURE:
+        self.mState = STATE_MATERIAL_PBR;
+        return true;
+    case STATE_ROOT: // parsing complete
+        self.mState = STATE_ZERO;
+        return true;
     default:
         break;
     }
@@ -159,6 +196,12 @@ bool GLTFEventParserObj::on_json_leave_object(size_t memberCount, void* obj)
 bool GLTFEventParserObj::on_json_enter_array(void* obj)
 {
     auto& self = *(GLTFEventParserObj*)obj;
+
+    if (self.mEscapeDepth)
+    {
+        self.mEscapeDepth++;
+        return true; // skip array
+    }
 
     switch (self.mState)
     {
@@ -190,6 +233,13 @@ bool GLTFEventParserObj::on_json_enter_array(void* obj)
 bool GLTFEventParserObj::on_json_leave_array(size_t elementCount, void* obj)
 {
     auto& self = *(GLTFEventParserObj*)obj;
+
+    if (self.mEscapeDepth)
+    {
+        if (--self.mEscapeDepth == 1)
+            self.mEscapeDepth = 0;
+        return true;
+    }
 
     switch (self.mState)
     {
@@ -223,6 +273,9 @@ bool GLTFEventParserObj::on_json_key(const View& key, void* obj)
 {
     auto& self = *(GLTFEventParserObj*)obj;
 
+    if (self.mEscapeDepth)
+        return true;
+
     switch (self.mState)
     {
     case STATE_ROOT:
@@ -237,6 +290,10 @@ bool GLTFEventParserObj::on_json_key(const View& key, void* obj)
         return self.on_json_material_key(key);
     case STATE_MATERIAL_PBR:
         return self.on_json_material_pbr_key(key);
+    case STATE_MATERIAL_PBR_BASE_COLOR_TEXTURE:
+        return self.on_json_material_pbr_base_color_texture_key(key);
+    case STATE_MATERIAL_PBR_METALLIC_ROUGHNESS_TEXTURE:
+        return self.on_json_material_pbr_metallic_roughness_texture_key(key);
     default:
         break; // not in a state to accept keys
     }
@@ -247,6 +304,9 @@ bool GLTFEventParserObj::on_json_key(const View& key, void* obj)
 bool GLTFEventParserObj::on_json_string(const View& string, void* obj)
 {
     auto& self = *(GLTFEventParserObj*)obj;
+
+    if (self.mEscapeDepth)
+        return true;
 
     // NOTE: The view from JSON event parser is transient,
     //       we must make a copy before this function returns.
@@ -263,12 +323,20 @@ bool GLTFEventParserObj::on_json_string(const View& string, void* obj)
 
 bool GLTFEventParserObj::on_json_null(void* obj)
 {
+    auto& self = *(GLTFEventParserObj*)obj;
+
+    if (self.mEscapeDepth)
+        return true;
+
     return false; // not expecting boolean
 }
 
 bool GLTFEventParserObj::on_json_bool(bool b, void* obj)
 {
     auto& self = *(GLTFEventParserObj*)obj;
+
+    if (self.mEscapeDepth)
+        return true;
 
     switch (self.mState)
     {
@@ -285,6 +353,11 @@ bool GLTFEventParserObj::on_json_bool(bool b, void* obj)
 
 bool GLTFEventParserObj::on_json_i64(int64_t i64, void* obj)
 {
+    auto& self = *(GLTFEventParserObj*)obj;
+
+    if (self.mEscapeDepth)
+        return true;
+
     return false; // not expecting signed integer
 }
 
@@ -292,7 +365,7 @@ bool GLTFEventParserObj::on_json_u64(uint64_t u64, void* obj)
 {
     auto& self = *(GLTFEventParserObj*)obj;
 
-    if (self.on_json_u64_value(u64) || self.on_json_f64_value((double)u64))
+    if (self.mEscapeDepth || self.on_json_u64_value(u64) || self.on_json_f64_value((double)u64))
         return true;
 
     return u64 <= UINT32_MAX && self.on_json_u32_value((uint32_t)u64);
@@ -301,6 +374,9 @@ bool GLTFEventParserObj::on_json_u64(uint64_t u64, void* obj)
 bool GLTFEventParserObj::on_json_f64(double f64, void* obj)
 {
     auto& self = *(GLTFEventParserObj*)obj;
+
+    if (self.mEscapeDepth)
+        return true;
 
     return self.on_json_f64_value(f64);
 }
@@ -377,6 +453,26 @@ bool GLTFEventParserObj::on_json_u32_value(uint32_t u32)
         mNodeProp.mesh = u32;
         mState = STATE_NODE;
         return true;
+    case STATE_MATERIAL_PBR_BASE_COLOR_TEXTURE_INDEX:
+        LD_ASSERT(mMaterialProp.pbr.has_value() && mMaterialProp.pbr->baseColorTexture.has_value());
+        mMaterialProp.pbr->baseColorTexture->index = u32;
+        mState = STATE_MATERIAL_PBR_BASE_COLOR_TEXTURE;
+        return true;
+    case STATE_MATERIAL_PBR_BASE_COLOR_TEXTURE_TEXCOORD:
+        LD_ASSERT(mMaterialProp.pbr.has_value() && mMaterialProp.pbr->baseColorTexture.has_value());
+        mMaterialProp.pbr->baseColorTexture->texCoord = u32;
+        mState = STATE_MATERIAL_PBR_BASE_COLOR_TEXTURE;
+        return true;
+    case STATE_MATERIAL_PBR_METALLIC_ROUGHNESS_TEXTURE_INDEX:
+        LD_ASSERT(mMaterialProp.pbr.has_value() && mMaterialProp.pbr->metallicRoughnessTexture.has_value());
+        mMaterialProp.pbr->metallicRoughnessTexture->index = u32;
+        mState = STATE_MATERIAL_PBR_METALLIC_ROUGHNESS_TEXTURE;
+        return true;
+    case STATE_MATERIAL_PBR_METALLIC_ROUGHNESS_TEXTURE_TEXCOORD:
+        LD_ASSERT(mMaterialProp.pbr.has_value() && mMaterialProp.pbr->metallicRoughnessTexture.has_value());
+        mMaterialProp.pbr->metallicRoughnessTexture->texCoord = u32;
+        mState = STATE_MATERIAL_PBR_METALLIC_ROUGHNESS_TEXTURE;
+        return true;
     default:
         break;
     }
@@ -397,7 +493,7 @@ bool GLTFEventParserObj::on_json_root_key(const View& key)
     else if (key == "materials")
         mState = STATE_ROOT_MATERIALS_KEY;
     else
-        return false; // unrecognized root object key
+        mEscapeDepth = 1;
 
     return true;
 }
@@ -470,8 +566,32 @@ bool GLTFEventParserObj::on_json_material_pbr_key(const View& key)
         mState = STATE_MATERIAL_PBR_METALLIC_FACTOR;
     else if (key == "roughnessFactor")
         mState = STATE_MATERIAL_PBR_ROUGHNESS_FACTOR;
+    else if (key == "baseColorTexture")
+        mState = STATE_MATERIAL_PBR_BASE_COLOR_TEXTURE;
+    else if (key == "metallicRoughnessTexture")
+        mState = STATE_MATERIAL_PBR_METALLIC_ROUGHNESS_TEXTURE;
 
     return true; // TODO: ignore prop code path
+}
+
+bool GLTFEventParserObj::on_json_material_pbr_base_color_texture_key(const View& key)
+{
+    if (key == "index")
+        mState = STATE_MATERIAL_PBR_BASE_COLOR_TEXTURE_INDEX;
+    else if (key == "texCoord")
+        mState = STATE_MATERIAL_PBR_BASE_COLOR_TEXTURE_TEXCOORD;
+
+    return true;
+}
+
+bool GLTFEventParserObj::on_json_material_pbr_metallic_roughness_texture_key(const View& key)
+{
+    if (key == "index")
+        mState = STATE_MATERIAL_PBR_METALLIC_ROUGHNESS_TEXTURE_INDEX;
+    else if (key == "texCoord")
+        mState = STATE_MATERIAL_PBR_METALLIC_ROUGHNESS_TEXTURE_TEXCOORD;
+
+    return true;
 }
 
 bool GLTFEventParserObj::parse(const void* fileData, size_t fileSize, std::string& error)
@@ -605,7 +725,7 @@ bool GLTFPrinter::on_scene(const GLTFSceneProp& scene, void* user)
     sceneStr.push_back('\n');
 
     if (scene.nodes.size() > 0)
-        sceneStr += std::format("- nodes: {}", self.fmt_indices(scene.nodes));
+        sceneStr += std::format("- nodes: {}\n", self.fmt_indices(scene.nodes));
 
     self.mScenesStr += sceneStr;
     return true;
@@ -622,10 +742,10 @@ bool GLTFPrinter::on_node(const GLTFNodeProp& node, void* user)
     nodeStr.push_back('\n');
 
     if (node.children.size() > 0)
-        nodeStr += std::format("- children: {}", self.fmt_indices(node.children));
+        nodeStr += std::format("- children: {}\n", self.fmt_indices(node.children));
 
     if (node.mesh.has_value())
-        nodeStr += std::format("- mesh: {}", node.mesh.value());
+        nodeStr += std::format("- mesh: {}\n", node.mesh.value());
 
     self.mNodesStr += nodeStr;
     return true;
@@ -646,8 +766,18 @@ bool GLTFPrinter::on_material(const GLTFMaterialProp& mat, void* user)
         const Vec4& clr = mat.pbr->baseColorFactor;
         matStr += "- pbrMetallicRoughness\n";
         matStr += std::format("  - baseColorFactor [{:.2f},{:.2f},{:.2f},{:.2f}]\n", clr.r, clr.g, clr.b, clr.a);
-        matStr += std::format("  - metallicFactor  {}\n", mat.pbr->metallicFactor);
-        matStr += std::format("  - roughnessFactor {}\n", mat.pbr->roughnessFactor);
+        if (mat.pbr->baseColorTexture.has_value())
+        {
+            const GLTFTextureInfo& info = mat.pbr->baseColorTexture.value();
+            matStr += std::format("  - baseColorTexture: index {}, texCoord {}\n", info.index, info.texCoord);
+        }
+        matStr += std::format("  - metallicFactor  {:.2f}\n", mat.pbr->metallicFactor);
+        matStr += std::format("  - roughnessFactor {:.2f}\n", mat.pbr->roughnessFactor);
+        if (mat.pbr->metallicRoughnessTexture.has_value())
+        {
+            const GLTFTextureInfo& info = mat.pbr->metallicRoughnessTexture.value();
+            matStr += std::format("  - metallicRoughnessTexture: index {}, texCoord {}\n", info.index, info.texCoord);
+        }
     }
 
     self.mMaterialsStr += matStr;
