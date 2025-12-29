@@ -28,6 +28,15 @@ struct GLTFAssetProp
     Buffer copyright;
 };
 
+/// @brief Element in top-level 'images' property in the spec.
+struct GLTFImageProp
+{
+    Buffer name;                        // optional authored name for this image
+    Buffer uri;                         // optional URI of the image
+    Buffer mimeType;                    // image media type, must be defined if bufferView is defined
+    std::optional<uint32_t> bufferView; // index of buffer view that contains the image, must not be defined if uri is defined
+};
+
 /// @brief Element in top-level 'buffers' property in the spec.
 struct GLTFBufferProp
 {
@@ -123,6 +132,9 @@ struct GLTFEventCallback
 
     /// @brief Element in top-level 'materials' property in the spec.
     bool (*onMaterial)(const GLTFMaterialProp& mat, void* user);
+
+    /// @brief Element in top-level 'images' property in the spec.
+    bool (*onImage)(const GLTFImageProp& image, void* user);
 
     /// @brief Element in top-level 'buffers' property in the spec.
     bool (*onBuffer)(const GLTFBufferProp& buf, void* user);
