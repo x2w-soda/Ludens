@@ -45,6 +45,7 @@ private:
     bool on_json_material_pbr_key(const View& key);
     bool on_json_material_pbr_base_color_texture_key(const View& key);
     bool on_json_material_pbr_metallic_roughness_texture_key(const View& key);
+    bool on_json_sampler_key(const View& key);
     bool on_json_image_key(const View& key);
     bool on_json_buffer_key(const View& key);
     bool on_json_buffer_view_key(const View& key);
@@ -60,6 +61,7 @@ private:
         STATE_ROOT_SCENES_KEY,
         STATE_ROOT_NODES_KEY,
         STATE_ROOT_MATERIALS_KEY,
+        STATE_ROOT_SAMPLERS_KEY,
         STATE_ROOT_IMAGES_KEY,
         STATE_ROOT_BUFFERS_KEY,
         STATE_ROOT_BUFFER_VIEWS_KEY,
@@ -102,6 +104,12 @@ private:
         STATE_MATERIAL_PBR_METALLIC_ROUGHNESS_TEXTURE,
         STATE_MATERIAL_PBR_METALLIC_ROUGHNESS_TEXTURE_INDEX,
         STATE_MATERIAL_PBR_METALLIC_ROUGHNESS_TEXTURE_TEXCOORD,
+        STATE_SAMPLERS_ARRAY,
+        STATE_SAMPLER,
+        STATE_SAMPLER_MIN_FILTER,
+        STATE_SAMPLER_MAG_FILTER,
+        STATE_SAMPLER_WRAP_S,
+        STATE_SAMPLER_WRAP_T,
         STATE_IMAGES_ARRAY,
         STATE_IMAGE,
         STATE_IMAGE_BUFFER_VIEW,
@@ -135,6 +143,7 @@ private:
     GLTFSceneProp mSceneProp{};
     GLTFNodeProp mNodeProp{};
     GLTFMaterialProp mMaterialProp{};
+    GLTFSamplerProp mSamplerProp{};
     GLTFImageProp mImageProp{};
     GLTFBufferProp mBufferProp{};
     GLTFBufferViewProp mBufferViewProp{};
@@ -173,6 +182,10 @@ bool GLTFEventParserObj::on_json_enter_object(void* obj)
     case STATE_MATERIALS_ARRAY:
         self.mState = STATE_MATERIAL;
         self.mMaterialProp = {};
+        return true;
+    case STATE_SAMPLERS_ARRAY:
+        self.mState = STATE_SAMPLER;
+        self.mSamplerProp = {};
         return true;
     case STATE_IMAGES_ARRAY:
         self.mState = STATE_IMAGE;
@@ -250,6 +263,11 @@ bool GLTFEventParserObj::on_json_leave_object(size_t memberCount, void* obj)
         if (self.mCallbacks.onMaterial)
             self.mCallbacks.onMaterial(self.mMaterialProp, self.mUser);
         return true;
+    case STATE_SAMPLER:
+        self.mState = STATE_SAMPLERS_ARRAY;
+        if (self.mCallbacks.onSampler)
+            self.mCallbacks.onSampler(self.mSamplerProp, self.mUser);
+        return true;
     case STATE_IMAGE:
         self.mState = STATE_IMAGES_ARRAY;
         if (self.mCallbacks.onImage)
@@ -311,6 +329,9 @@ bool GLTFEventParserObj::on_json_enter_array(void* obj)
     case STATE_ROOT_MATERIALS_KEY:
         self.mState = STATE_MATERIALS_ARRAY;
         return true;
+    case STATE_ROOT_SAMPLERS_KEY:
+        self.mState = STATE_SAMPLERS_ARRAY;
+        return true;
     case STATE_ROOT_IMAGES_KEY:
         self.mState = STATE_IMAGES_ARRAY;
         return true;
@@ -359,6 +380,7 @@ bool GLTFEventParserObj::on_json_leave_array(size_t elementCount, void* obj)
     case STATE_NODES_ARRAY:
     case STATE_MATERIALS_ARRAY:
     case STATE_IMAGES_ARRAY:
+    case STATE_SAMPLERS_ARRAY:
     case STATE_BUFFERS_ARRAY:
     case STATE_BUFFER_VIEWS_ARRAY:
     case STATE_ACCESSORS_ARRAY:
@@ -423,6 +445,8 @@ bool GLTFEventParserObj::on_json_key(const View& key, void* obj)
         return self.on_json_material_pbr_base_color_texture_key(key);
     case STATE_MATERIAL_PBR_METALLIC_ROUGHNESS_TEXTURE:
         return self.on_json_material_pbr_metallic_roughness_texture_key(key);
+    case STATE_SAMPLER:
+        return self.on_json_sampler_key(key);
     case STATE_IMAGE:
         return self.on_json_image_key(key);
     case STATE_BUFFER:
@@ -695,6 +719,22 @@ bool GLTFEventParserObj::on_json_u32_value(uint32_t u32)
         mMaterialProp.pbr->metallicRoughnessTexture->texCoord = u32;
         mState = STATE_MATERIAL_PBR_METALLIC_ROUGHNESS_TEXTURE;
         return true;
+    case STATE_SAMPLER_MIN_FILTER:
+        mSamplerProp.minFilter = u32;
+        mState = STATE_SAMPLER;
+        return true;
+    case STATE_SAMPLER_MAG_FILTER:
+        mSamplerProp.magFilter = u32;
+        mState = STATE_SAMPLER;
+        return true;
+    case STATE_SAMPLER_WRAP_S:
+        mSamplerProp.wrapS = u32;
+        mState = STATE_SAMPLER;
+        return true;
+    case STATE_SAMPLER_WRAP_T:
+        mSamplerProp.wrapT = u32;
+        mState = STATE_SAMPLER;
+        return true;
     case STATE_IMAGE_BUFFER_VIEW:
         mImageProp.bufferView = u32;
         mState = STATE_IMAGE;
@@ -738,6 +778,8 @@ bool GLTFEventParserObj::on_json_root_key(const View& key)
         mState = STATE_ROOT_NODES_KEY;
     else if (key == "materials")
         mState = STATE_ROOT_MATERIALS_KEY;
+    else if (key == "samplers")
+        mState = STATE_ROOT_SAMPLERS_KEY;
     else if (key == "images")
         mState = STATE_ROOT_IMAGES_KEY;
     else if (key == "buffers")
@@ -914,6 +956,24 @@ bool GLTFEventParserObj::on_json_material_pbr_metallic_roughness_texture_key(con
     return true;
 }
 
+bool GLTFEventParserObj::on_json_sampler_key(const View& key)
+{
+    if (key == "name")
+        mStringSlot = &mSamplerProp.name;
+    else if (key == "magFilter")
+        mState = STATE_SAMPLER_MAG_FILTER;
+    else if (key == "minFilter")
+        mState = STATE_SAMPLER_MIN_FILTER;
+    else if (key == "wrapS")
+        mState = STATE_SAMPLER_WRAP_S;
+    else if (key == "wrapT")
+        mState = STATE_SAMPLER_WRAP_T;
+    else
+        mEscapeDepth++;
+
+    return true;
+}
+
 bool GLTFEventParserObj::on_json_image_key(const View& key)
 {
     if (key == "name")
@@ -1039,6 +1099,7 @@ private:
     static bool on_scene(const GLTFSceneProp& scene, void*);
     static bool on_node(const GLTFNodeProp& node, void*);
     static bool on_material(const GLTFMaterialProp& mat, void*);
+    static bool on_sampler(const GLTFSamplerProp& sampler, void*);
     static bool on_image(const GLTFImageProp& image, void*);
     static bool on_buffer(const GLTFBufferProp& buf, void*);
     static bool on_buffer_view(const GLTFBufferViewProp& bufView, void*);
@@ -1050,6 +1111,7 @@ private:
     std::string mScenesStr;
     std::string mNodesStr;
     std::string mMaterialsStr;
+    std::string mSamplersStr;
     std::string mImagesStr;
     std::string mBuffersStr;
     std::string mBufferViewsStr;
@@ -1065,6 +1127,7 @@ bool GLTFPrinter::print(std::string& outStr, std::string& outErr)
     mScenesStr.clear();
     mNodesStr.clear();
     mMaterialsStr.clear();
+    mSamplersStr.clear();
     mImagesStr.clear();
     mBuffersStr.clear();
     mBufferViewsStr.clear();
@@ -1075,6 +1138,7 @@ bool GLTFPrinter::print(std::string& outStr, std::string& outErr)
     callbacks.onScene = &GLTFPrinter::on_scene;
     callbacks.onNode = &GLTFPrinter::on_node;
     callbacks.onMaterial = &GLTFPrinter::on_material;
+    callbacks.onSampler = &GLTFPrinter::on_sampler;
     callbacks.onImage = &GLTFPrinter::on_image;
     callbacks.onBuffer = &GLTFPrinter::on_buffer;
     callbacks.onBufferView = &GLTFPrinter::on_buffer_view;
@@ -1089,6 +1153,7 @@ bool GLTFPrinter::print(std::string& outStr, std::string& outErr)
     outStr += mScenesStr;
     outStr += mNodesStr;
     outStr += mMaterialsStr;
+    outStr += mSamplersStr;
     outStr += mImagesStr;
     outStr += mBuffersStr;
     outStr += mBufferViewsStr;
@@ -1236,6 +1301,26 @@ bool GLTFPrinter::on_material(const GLTFMaterialProp& mat, void* user)
     }
 
     self.mMaterialsStr += matStr;
+    return true;
+}
+
+bool GLTFPrinter::on_sampler(const GLTFSamplerProp& sampler, void* user)
+{
+    auto& self = *(GLTFPrinter*)user;
+
+    std::string samplerStr = std::format("sampler: wrapS {} wrapT {}", sampler.wrapS, sampler.wrapT);
+
+    if (sampler.minFilter.has_value())
+        samplerStr += std::format(" minFilter {}", sampler.minFilter.value());
+
+    if (sampler.magFilter.has_value())
+        samplerStr += std::format(" magFilter {}", sampler.magFilter.value());
+
+    if (sampler.name.size() > 0)
+        samplerStr += std::format(" name {}", sampler.name.view());
+
+    samplerStr.push_back('\n');
+    self.mSamplersStr += samplerStr;
     return true;
 }
 

@@ -70,6 +70,16 @@ struct GLTFAccessorProp
     bool normalized = false;       // specifies whether unsigned types are normalized to [0, 1] and signed types to [-1, 1] when they are accessed.
 };
 
+/// @brief Element in top-level 'samplers' property in spec.
+struct GLTFSamplerProp
+{
+    Buffer name;                  // optional authored name for this sampler
+    Optional<uint32_t> magFilter; // optional magnification filter
+    Optional<uint32_t> minFilter; // optional minification filter
+    uint32_t wrapS = 10497;       // optional S (U) wrapping mode
+    uint32_t wrapT = 10497;       // optional T (V) wrapping mode
+};
+
 /// @brief Element in top-level 'scenes' property in the spec.
 struct GLTFSceneProp
 {
@@ -146,6 +156,9 @@ struct GLTFEventCallback
 
     /// @brief Element in top-level 'materials' property in the spec.
     bool (*onMaterial)(const GLTFMaterialProp& mat, void* user);
+
+    /// @brief Element in top-level 'samplers' property in the spec.
+    bool (*onSampler)(const GLTFSamplerProp& sampler, void* user);
 
     /// @brief Element in top-level 'images' property in the spec.
     bool (*onImage)(const GLTFImageProp& image, void* user);
