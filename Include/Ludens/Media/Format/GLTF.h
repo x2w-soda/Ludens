@@ -80,6 +80,14 @@ struct GLTFSamplerProp
     uint32_t wrapT = 10497;       // optional T (V) wrapping mode
 };
 
+/// @brief Element in top-level 'textures' property in spec.
+struct GLTFTextureProp
+{
+    Buffer name;                // optional authored name for this texture
+    Optional<uint32_t> sampler; // optional sampler
+    Optional<uint32_t> source;  // optional image
+};
+
 /// @brief Element in top-level 'scenes' property in the spec.
 struct GLTFSceneProp
 {
@@ -156,6 +164,9 @@ struct GLTFEventCallback
 
     /// @brief Element in top-level 'materials' property in the spec.
     bool (*onMaterial)(const GLTFMaterialProp& mat, void* user);
+
+    /// @brief Element in top-level 'textures' property in the spec.
+    bool (*onTexture)(const GLTFTextureProp& texture, void* user);
 
     /// @brief Element in top-level 'samplers' property in the spec.
     bool (*onSampler)(const GLTFSamplerProp& sampler, void* user);
