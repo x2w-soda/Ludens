@@ -31,10 +31,10 @@ struct GLTFAssetProp
 /// @brief Element in top-level 'images' property in the spec.
 struct GLTFImageProp
 {
-    Buffer name;                        // optional authored name for this image
-    Buffer uri;                         // optional URI of the image
-    Buffer mimeType;                    // image media type, must be defined if bufferView is defined
-    std::optional<uint32_t> bufferView; // index of buffer view that contains the image, must not be defined if uri is defined
+    Buffer name;                   // optional authored name for this image
+    Buffer uri;                    // optional URI of the image
+    Buffer mimeType;               // image media type, must be defined if bufferView is defined
+    Optional<uint32_t> bufferView; // index of buffer view that contains the image, must not be defined if uri is defined
 };
 
 /// @brief Element in top-level 'buffers' property in the spec.
@@ -54,6 +54,18 @@ struct GLTFBufferViewProp
     uint64_t byteLength;           // length of the view in bytes
     Optional<uint64_t> byteStride; // byte stride, data is tightly packed if not defined
     Optional<uint32_t> target;     // hint representing the intended GPU buffer type to use with this buffer view
+};
+
+/// @brief Element in top-level 'accessors' property in the spec.
+struct GLTFAccessorProp
+{
+    Buffer name;                   // authored name for this accessor
+    Buffer type;                   // required, specifies element type, must be one of "SCALAR", "VEC2", "VEC3", "VEC4", "MAT2", "MAT3", "MAT4"
+    uint64_t byteOffset = 0;       // additional offset applied after bufferView.byteOffset, must be a multiple of the size of the componentType
+    uint32_t componentType = 0;    // required, data type of the accessor's components
+    uint32_t count = 0;            // required, number of elements references by this accessor
+    Optional<uint32_t> bufferView; // index of buffer view. When undefined, the accessor must be initialized with zeros
+    bool normalized = false;       // specifies whether unsigned types are normalized to [0, 1] and signed types to [-1, 1] when they are accessed.
 };
 
 /// @brief Element in top-level 'scenes' property in the spec.
@@ -141,6 +153,9 @@ struct GLTFEventCallback
 
     /// @brief Element in top-level 'bufferViews' property in the spec.
     bool (*onBufferView)(const GLTFBufferViewProp& buf, void* user);
+
+    /// @brief Element in top-level 'accessors' property in the spec.
+    bool (*onAccessor)(const GLTFAccessorProp& accessor, void* user);
 };
 
 struct GLTFEventParser

@@ -48,6 +48,7 @@ private:
     bool on_json_image_key(const View& key);
     bool on_json_buffer_key(const View& key);
     bool on_json_buffer_view_key(const View& key);
+    bool on_json_accessor_key(const View& key);
 
 private:
     enum State
@@ -62,6 +63,7 @@ private:
         STATE_ROOT_IMAGES_KEY,
         STATE_ROOT_BUFFERS_KEY,
         STATE_ROOT_BUFFER_VIEWS_KEY,
+        STATE_ROOT_ACCESSORS_KEY,
         STATE_ASSET,
         STATE_SCENES_ARRAY,
         STATE_SCENE,
@@ -113,6 +115,13 @@ private:
         STATE_BUFFER_VIEW_BYTE_OFFSET,
         STATE_BUFFER_VIEW_BYTE_STRIDE,
         STATE_BUFFER_VIEW_TARGET,
+        STATE_ACCESSORS_ARRAY,
+        STATE_ACCESSOR,
+        STATE_ACCESSOR_BUFFER_VIEW,
+        STATE_ACCESSOR_BYTE_OFFSET,
+        STATE_ACCESSOR_COMPONENT_TYPE,
+        STATE_ACCESSOR_COUNT,
+        STATE_ACCESSOR_NORMALIZED,
     };
 
     State mState;
@@ -127,6 +136,7 @@ private:
     GLTFImageProp mImageProp{};
     GLTFBufferProp mBufferProp{};
     GLTFBufferViewProp mBufferViewProp{};
+    GLTFAccessorProp mAccessorProp{};
     uint32_t mSceneIndexProp = 0;
     uint32_t mArrayCtr = 0;
 };
@@ -173,6 +183,10 @@ bool GLTFEventParserObj::on_json_enter_object(void* obj)
     case STATE_BUFFER_VIEWS_ARRAY:
         self.mState = STATE_BUFFER_VIEW;
         self.mBufferViewProp = {};
+        return true;
+    case STATE_ACCESSORS_ARRAY:
+        self.mState = STATE_ACCESSOR;
+        self.mAccessorProp = {};
         return true;
     case STATE_MATERIAL_EMISSIVE_TEXTURE:
         self.mMaterialProp.emissiveTexture = GLTFTextureInfo();
@@ -249,6 +263,11 @@ bool GLTFEventParserObj::on_json_leave_object(size_t memberCount, void* obj)
         if (self.mCallbacks.onBufferView)
             self.mCallbacks.onBufferView(self.mBufferViewProp, self.mUser);
         return true;
+    case STATE_ACCESSOR:
+        self.mState = STATE_ACCESSORS_ARRAY;
+        if (self.mCallbacks.onAccessor)
+            self.mCallbacks.onAccessor(self.mAccessorProp, self.mUser);
+        return true;
     case STATE_MATERIAL_EMISSIVE_TEXTURE:
     case STATE_MATERIAL_NORMAL_TEXTURE:
     case STATE_MATERIAL_OCCLUSION_TEXTURE:
@@ -299,6 +318,9 @@ bool GLTFEventParserObj::on_json_enter_array(void* obj)
     case STATE_ROOT_BUFFER_VIEWS_KEY:
         self.mState = STATE_BUFFER_VIEWS_ARRAY;
         return true;
+    case STATE_ROOT_ACCESSORS_KEY:
+        self.mState = STATE_ACCESSORS_ARRAY;
+        return true;
     case STATE_SCENE_NODES:
     case STATE_NODE_CHILDREN:
     case STATE_NODE_MATRIX:
@@ -335,6 +357,7 @@ bool GLTFEventParserObj::on_json_leave_array(size_t elementCount, void* obj)
     case STATE_IMAGES_ARRAY:
     case STATE_BUFFERS_ARRAY:
     case STATE_BUFFER_VIEWS_ARRAY:
+    case STATE_ACCESSORS_ARRAY:
         self.mState = STATE_ROOT;
         return true;
     case STATE_SCENE_NODES:
@@ -398,6 +421,8 @@ bool GLTFEventParserObj::on_json_key(const View& key, void* obj)
         return self.on_json_buffer_key(key);
     case STATE_BUFFER_VIEW:
         return self.on_json_buffer_view_key(key);
+    case STATE_ACCESSOR:
+        return self.on_json_accessor_key(key);
     default:
         break; // not in a state to accept keys
     }
@@ -447,6 +472,10 @@ bool GLTFEventParserObj::on_json_bool(bool b, void* obj)
     case STATE_MATERIAL_DOUBLE_SIDED:
         self.mMaterialProp.doubleSided = b;
         self.mState = STATE_MATERIAL;
+        return true;
+    case STATE_ACCESSOR_NORMALIZED:
+        self.mAccessorProp.normalized = b;
+        self.mState = STATE_ACCESSOR;
         return true;
     default:
         break;
@@ -569,6 +598,10 @@ bool GLTFEventParserObj::on_json_u64_value(uint64_t u64)
         mBufferViewProp.byteStride = u64;
         mState = STATE_BUFFER_VIEW;
         return true;
+    case STATE_ACCESSOR_BYTE_OFFSET:
+        mAccessorProp.byteOffset = u64;
+        mState = STATE_ACCESSOR;
+        return true;
     default:
         break;
     }
@@ -658,6 +691,18 @@ bool GLTFEventParserObj::on_json_u32_value(uint32_t u32)
         mBufferViewProp.target = u32;
         mState = STATE_BUFFER_VIEW;
         return true;
+    case STATE_ACCESSOR_BUFFER_VIEW:
+        mAccessorProp.bufferView = u32;
+        mState = STATE_ACCESSOR;
+        return true;
+    case STATE_ACCESSOR_COMPONENT_TYPE:
+        mAccessorProp.componentType = u32;
+        mState = STATE_ACCESSOR;
+        return true;
+    case STATE_ACCESSOR_COUNT:
+        mAccessorProp.count = u32;
+        mState = STATE_ACCESSOR;
+        return true;
     default:
         break;
     }
@@ -683,6 +728,8 @@ bool GLTFEventParserObj::on_json_root_key(const View& key)
         mState = STATE_ROOT_BUFFERS_KEY;
     else if (key == "bufferViews")
         mState = STATE_ROOT_BUFFER_VIEWS_KEY;
+    else if (key == "accessors")
+        mState = STATE_ROOT_ACCESSORS_KEY;
     else
         mEscapeDepth = 1;
 
@@ -901,6 +948,28 @@ bool GLTFEventParserObj::on_json_buffer_view_key(const View& key)
     return true;
 }
 
+bool GLTFEventParserObj::on_json_accessor_key(const View& key)
+{
+    if (key == "name")
+        mStringSlot = &mAccessorProp.name;
+    else if (key == "type")
+        mStringSlot = &mAccessorProp.type;
+    else if (key == "bufferView")
+        mState = STATE_ACCESSOR_BUFFER_VIEW;
+    else if (key == "byteOffset")
+        mState = STATE_ACCESSOR_BYTE_OFFSET;
+    else if (key == "componentType")
+        mState = STATE_ACCESSOR_COMPONENT_TYPE;
+    else if (key == "count")
+        mState = STATE_ACCESSOR_COUNT;
+    else if (key == "normalized")
+        mState = STATE_ACCESSOR_NORMALIZED;
+    else
+        mEscapeDepth++;
+
+    return true;
+}
+
 bool GLTFEventParserObj::parse(const void* fileData, size_t fileSize, std::string& error)
 {
     mState = STATE_ZERO;
@@ -952,6 +1021,7 @@ private:
     static bool on_image(const GLTFImageProp& image, void*);
     static bool on_buffer(const GLTFBufferProp& buf, void*);
     static bool on_buffer_view(const GLTFBufferViewProp& bufView, void*);
+    static bool on_accessor(const GLTFAccessorProp& accessor, void*);
 
 private:
     View mFile;
@@ -962,6 +1032,7 @@ private:
     std::string mImagesStr;
     std::string mBuffersStr;
     std::string mBufferViewsStr;
+    std::string mAccessorsStr;
 };
 
 bool GLTFPrinter::print(std::string& outStr, std::string& outErr)
@@ -976,6 +1047,7 @@ bool GLTFPrinter::print(std::string& outStr, std::string& outErr)
     mImagesStr.clear();
     mBuffersStr.clear();
     mBufferViewsStr.clear();
+    mAccessorsStr.clear();
 
     GLTFEventCallback callbacks{};
     callbacks.onAsset = &GLTFPrinter::on_asset;
@@ -985,6 +1057,7 @@ bool GLTFPrinter::print(std::string& outStr, std::string& outErr)
     callbacks.onImage = &GLTFPrinter::on_image;
     callbacks.onBuffer = &GLTFPrinter::on_buffer;
     callbacks.onBufferView = &GLTFPrinter::on_buffer_view;
+    callbacks.onAccessor = &GLTFPrinter::on_accessor;
 
     if (!GLTFEventParser::parse(mFile, outErr, callbacks, this))
         return false;
@@ -998,6 +1071,7 @@ bool GLTFPrinter::print(std::string& outStr, std::string& outErr)
     outStr += mImagesStr;
     outStr += mBuffersStr;
     outStr += mBufferViewsStr;
+    outStr += mAccessorsStr;
 
     return true;
 }
@@ -1185,6 +1259,32 @@ bool GLTFPrinter::on_buffer_view(const GLTFBufferViewProp& bufView, void* user)
 
     bufViewStr.push_back('\n');
     self.mBufferViewsStr += bufViewStr;
+    return true;
+}
+
+bool GLTFPrinter::on_accessor(const GLTFAccessorProp& acc, void* user)
+{
+    auto& self = *(GLTFPrinter*)user;
+
+    std::string accStr = "accessor";
+
+    if (acc.bufferView.has_value())
+    {
+        accStr += std::format(" bufferView {}", acc.bufferView.value());
+        if (acc.byteOffset != 0)
+            accStr += std::format(" byteOffset {}", acc.byteOffset);
+    }
+
+    accStr += std::format(" count {:>6} type {} componentType {}", acc.count, acc.type.view(), acc.componentType);
+
+    if (acc.normalized)
+        accStr += " normalized";
+
+    if (acc.name.size() > 0)
+        accStr += std::format(" name {}", acc.name.view());
+
+    accStr.push_back('\n');
+    self.mAccessorsStr += accStr;
     return true;
 }
 
