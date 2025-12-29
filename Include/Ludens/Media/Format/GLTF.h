@@ -65,6 +65,8 @@ struct GLTFAccessorProp
     uint32_t componentType = 0;    // required, data type of the accessor's components
     uint32_t count = 0;            // required, number of elements references by this accessor
     Optional<uint32_t> bufferView; // index of buffer view. When undefined, the accessor must be initialized with zeros
+    std::vector<float> min;        // minimum value of each component in this accessor, length is determined by type property
+    std::vector<float> max;        // maximum value of each component in this accessor, length is determined by type property
     bool normalized = false;       // specifies whether unsigned types are normalized to [0, 1] and signed types to [-1, 1] when they are accessed.
 };
 

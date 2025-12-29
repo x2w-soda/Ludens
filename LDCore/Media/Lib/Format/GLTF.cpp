@@ -122,6 +122,8 @@ private:
         STATE_ACCESSOR_COMPONENT_TYPE,
         STATE_ACCESSOR_COUNT,
         STATE_ACCESSOR_NORMALIZED,
+        STATE_ACCESSOR_MIN,
+        STATE_ACCESSOR_MAX,
     };
 
     State mState;
@@ -329,6 +331,8 @@ bool GLTFEventParserObj::on_json_enter_array(void* obj)
     case STATE_NODE_SCALE:
     case STATE_MATERIAL_EMISSIVE_FACTOR:
     case STATE_MATERIAL_PBR_BASE_COLOR_FACTOR:
+    case STATE_ACCESSOR_MIN:
+    case STATE_ACCESSOR_MAX:
         self.mArrayCtr = 0;
         return true;
     default:
@@ -359,6 +363,10 @@ bool GLTFEventParserObj::on_json_leave_array(size_t elementCount, void* obj)
     case STATE_BUFFER_VIEWS_ARRAY:
     case STATE_ACCESSORS_ARRAY:
         self.mState = STATE_ROOT;
+        return true;
+    case STATE_ACCESSOR_MAX:
+    case STATE_ACCESSOR_MIN:
+        self.mState = STATE_ACCESSOR;
         return true;
     case STATE_SCENE_NODES:
         self.mState = STATE_SCENE;
@@ -537,6 +545,14 @@ bool GLTFEventParserObj::on_json_f64_value(double f64)
         if (mArrayCtr >= 3)
             return false;
         mNodeProp.TRS.scale[mArrayCtr++] = (float)f64;
+        return true;
+    case STATE_ACCESSOR_MIN:
+        mAccessorProp.min.push_back((float)f64);
+        mArrayCtr++;
+        return true;
+    case STATE_ACCESSOR_MAX:
+        mAccessorProp.max.push_back((float)f64);
+        mArrayCtr++;
         return true;
     case STATE_MATERIAL_ALPHA_CUTOFF:
         mMaterialProp.alphaCutoff = (float)f64;
@@ -964,6 +980,10 @@ bool GLTFEventParserObj::on_json_accessor_key(const View& key)
         mState = STATE_ACCESSOR_COUNT;
     else if (key == "normalized")
         mState = STATE_ACCESSOR_NORMALIZED;
+    else if (key == "min")
+        mState = STATE_ACCESSOR_MIN;
+    else if (key == "max")
+        mState = STATE_ACCESSOR_MAX;
     else
         mEscapeDepth++;
 
@@ -1013,6 +1033,7 @@ public:
 
 private:
     std::string fmt_indices(const std::vector<uint32_t>& indices);
+    std::string fmt_floats(const std::vector<float>& floats);
 
     static bool on_asset(const GLTFAssetProp& asset, void*);
     static bool on_scene(const GLTFSceneProp& scene, void*);
@@ -1086,6 +1107,22 @@ std::string GLTFPrinter::fmt_indices(const std::vector<uint32_t>& indices)
             str += ", ";
 
         str += std::to_string(indices[i]);
+    }
+
+    str.push_back(']');
+    return str;
+}
+
+std::string GLTFPrinter::fmt_floats(const std::vector<float>& floats)
+{
+    std::string str(1, '[');
+
+    for (int i = 0; i < (int)floats.size(); i++)
+    {
+        if (i > 0)
+            str += ", ";
+
+        str += std::format("{:.2f}", floats[i]);
     }
 
     str.push_back(']');
@@ -1266,7 +1303,7 @@ bool GLTFPrinter::on_accessor(const GLTFAccessorProp& acc, void* user)
 {
     auto& self = *(GLTFPrinter*)user;
 
-    std::string accStr = "accessor";
+    std::string accStr = "accessor:";
 
     if (acc.bufferView.has_value())
     {
@@ -1275,10 +1312,16 @@ bool GLTFPrinter::on_accessor(const GLTFAccessorProp& acc, void* user)
             accStr += std::format(" byteOffset {}", acc.byteOffset);
     }
 
-    accStr += std::format(" count {:>6} type {} componentType {}", acc.count, acc.type.view(), acc.componentType);
+    accStr += std::format(" count {} type {} componentType {}", acc.count, acc.type.view(), acc.componentType);
 
     if (acc.normalized)
         accStr += " normalized";
+
+    if (acc.min.size() > 0)
+        accStr += std::format(" min {}", self.fmt_floats(acc.min));
+
+    if (acc.max.size() > 0)
+        accStr += std::format(" max {}", self.fmt_floats(acc.max));
 
     if (acc.name.size() > 0)
         accStr += std::format(" name {}", acc.name.view());
