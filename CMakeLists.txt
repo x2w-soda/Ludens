@@ -379,7 +379,13 @@ target_link_libraries(LDCoreLibs INTERFACE
   LDProject
 )
 
+# Ludens Runtime
+# - standalone game runtime that is shipped
+# - links with LDCoreLibs
 
+set(LD_RUNTIME_MODULE_FOLDER "LDRuntime")
+add_subdirectory(LDRuntime/RuntimeContext)
+add_subdirectory(LDRuntime/RuntimeMain)
 
 # Ludens Builder
 # - standalone command line utility
