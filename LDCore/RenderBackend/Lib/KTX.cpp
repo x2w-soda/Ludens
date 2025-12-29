@@ -1,7 +1,10 @@
+#include <Ludens/Header/Assert.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/RenderBackend/KTX.h>
-#include <ktx.h>
+
 #include <thread>
+
+//#include <ktx.h>
 #include <vulkan/vulkan.h>
 
 #include "RUtilCommon.h"
@@ -11,6 +14,7 @@ namespace LD {
 
 bool KTXTexture::create(const KTXTextureInfo& info, KTXTexture& texture)
 {
+#if 0
     LD_PROFILE_SCOPE;
 
     texture.handle = nullptr;
@@ -76,20 +80,29 @@ bool KTXTexture::create(const KTXTextureInfo& info, KTXTexture& texture)
     }
 
     return true;
+#else
+    LD_UNREACHABLE;
+    return false;
+#endif
 }
 
 void KTXTexture::destroy(KTXTexture texture)
 {
+#if 0
     LD_PROFILE_SCOPE;
 
     if (!texture.handle)
         return;
 
     ktxTexture2_Destroy(texture.handle);
+#else
+    LD_UNREACHABLE;
+#endif
 }
 
 bool KTXTexture::write_to_disk(const FS::Path& path)
 {
+#if 0
     LD_PROFILE_SCOPE;
 
     if (!handle)
@@ -99,6 +112,10 @@ bool KTXTexture::write_to_disk(const FS::Path& path)
     KTX_error_code result = ktxTexture2_WriteToNamedFile(handle, pathString.c_str());
 
     return result == KTX_SUCCESS;
+#else
+    LD_UNREACHABLE;
+    return false;
+#endif
 }
 
 } // namespace LD
