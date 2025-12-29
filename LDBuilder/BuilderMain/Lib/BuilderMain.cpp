@@ -226,15 +226,21 @@ static void builder_mode_file(int argc, char** argv)
 {
     argv = find_mode_argv(&argc, argv, "file");
 
+    Timer timer;
+    timer.start();
+
     if (argc != 2)
     {
-        // TODO: help message for run_tests mode
+        // TODO: help message for file mode
         sLog.info("file mode invalid args");
         return;
     }
 
     FS::Path filePath = FS::Path(argv[1]);
     FileTest::check_file(filePath);
+
+    size_t durationUS = timer.stop();
+    sLog.info("{:.2f} ms", durationUS / 1000.0f);
 }
 
 static void builder_mode_run_tests(int argc, char** argv)

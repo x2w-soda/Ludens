@@ -1,4 +1,5 @@
 #include <Ludens/Log/Log.h>
+#include <Ludens/Media/Format/GLTF.h>
 #include <Ludens/Media/Format/PNG.h>
 
 #include <cctype>
@@ -12,6 +13,7 @@ static Log sLog("LDBuilder");
 static bool str_equal(const char* lhs, const char* rhs);
 static bool check_by_extension(const std::vector<byte>& fileData, const FS::Path& fileExt);
 static bool check_png(const std::vector<byte>& fileData);
+static bool check_gltf(const std::vector<byte>& fileData);
 
 /// @brief Case insenstive compare between two C strings.
 static bool str_equal(const char* lhs, const char* rhs)
@@ -29,23 +31,41 @@ static bool str_equal(const char* lhs, const char* rhs)
 static bool check_by_extension(const std::vector<byte>& fileData, const FS::Path& fileExt)
 {
     std::string extStr = fileExt.string();
+    const char* extCstr = extStr.c_str();
 
-    if (str_equal(extStr.c_str(), ".png") && check_png(fileData))
+    if (str_equal(extCstr, ".png") && check_png(fileData))
+        return true;
+
+    if (str_equal(extCstr, ".gltf") && check_gltf(fileData))
         return true;
 
     sLog.info("unhandled extension [{}]", extStr);
     return false;
 }
 
-static bool check_png(const std::vector<byte>& fileData)
+static bool check_png(const std::vector<byte>& fileBytes)
 {
-    if (!PNGData::test_magic(fileData.data(), fileData.size()))
+    if (!PNGData::test_magic(fileBytes.data(), fileBytes.size()))
     {
         sLog.info("invalid PNG data");
         return false;
     }
 
     sLog.info("PNG image");
+    return true;
+}
+
+static bool check_gltf(const std::vector<byte>& fileBytes)
+{
+    std::string summary, error;
+
+    if (!print_gltf_data({(const char*)fileBytes.data(), fileBytes.size()}, summary, error))
+    {
+        sLog.info("failed to parse GLTF:\n{}", error);
+        return false;
+    }
+
+    sLog.info("GLTF data:\n{}", summary);
     return true;
 }
 

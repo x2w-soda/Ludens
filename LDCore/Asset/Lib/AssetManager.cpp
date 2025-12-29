@@ -433,7 +433,7 @@ void asset_header_write(Serializer& serial, AssetType type)
 
 bool asset_header_read(Deserializer& serial, uint16_t& outMajor, uint16_t& outMinor, uint16_t& outPatch, AssetType& outType)
 {
-    if (serial.size() < 18)
+    if (serial.size() < 12)
         return false;
 
     char ldaMagic[4];

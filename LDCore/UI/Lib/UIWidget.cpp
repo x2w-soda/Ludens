@@ -507,7 +507,7 @@ void UISliderWidget::on_draw(UIWidget widget, ScreenRenderComponent renderer)
     float sliderw = rect.w * 0.1f;
     renderer.draw_rect(rect, theme.get_background_color());
 
-    uint32_t color = theme.get_primary_color();
+    uint32_t color = theme.get_selection_color();
     if (widget.is_hovered())
     {
         color &= ~0xFF;
