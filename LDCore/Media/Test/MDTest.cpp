@@ -38,7 +38,7 @@ struct MDValidator
 
         return 0;
     }
-    
+
     static int on_text(MDTextType type, const MDString& text, void* user)
     {
         MDValidator& self = *(MDValidator*)user;
@@ -75,10 +75,11 @@ TEST_CASE("MD blocks")
         {MD_BLOCK_TYPE_H, "h6"},
     };
 
-    MDEventParser parser;
-    parser.on_enter_block = &MDValidator::on_enter_block;
-    parser.on_leave_block = &MDValidator::on_leave_block;
-    parser.on_text = &MDValidator::on_text;
-    parser.user = &validator;
-    MDDocument::parse_events(md, sizeof(md) - 1, parser);
+    std::string err;
+    MDEventCallback cb;
+    cb.onEnterBlock = &MDValidator::on_enter_block;
+    cb.onLeaveBlock = &MDValidator::on_leave_block;
+    cb.onText = &MDValidator::on_text;
+    bool ok = MDEventParser::parse(View(md, sizeof(md) - 1), err, cb, &validator);
+    CHECK(ok);
 }

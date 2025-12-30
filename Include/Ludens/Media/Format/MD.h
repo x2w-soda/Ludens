@@ -3,6 +3,8 @@
 #include <Ludens/DSA/View.h>
 #include <Ludens/Header/Handle.h>
 
+#include <string>
+
 namespace LD {
 
 using MDString = View;
@@ -61,17 +63,16 @@ enum MDTextType
     MD_TEXT_TYPE_NORMAL = 0,
 };
 
-struct MDEventParser
+struct MDEventCallback
 {
-    void* user; /// arbitrary user data propagated through events
-    int (*on_enter_block)(MDBlockType type, const MDBlockDetail& detail, void* user);
-    int (*on_leave_block)(MDBlockType type, const MDBlockDetail& detail, void* user);
-    int (*on_text)(MDTextType type, const MDString& text, void* user);
+    int (*onEnterBlock)(MDBlockType type, const MDBlockDetail& detail, void* user);
+    int (*onLeaveBlock)(MDBlockType type, const MDBlockDetail& detail, void* user);
+    int (*onText)(MDTextType type, const MDString& text, void* user);
 };
 
-struct MDDocument : Handle<struct MDDocumentObj>
+struct MDEventParser
 {
-    static void parse_events(const char* md, size_t size, const MDEventParser& eventParser);
+    static bool parse(const View& file, std::string& error, const MDEventCallback& callbacks, void* user);
 };
 
 } // namespace LD

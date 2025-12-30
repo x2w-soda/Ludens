@@ -4,23 +4,23 @@
 namespace LD {
 
 // static paranoia
-static_assert(LD::MD_BLOCK_TYPE_DOC == ::MD_BLOCK_DOC);
-static_assert(LD::MD_BLOCK_TYPE_QUOTE == ::MD_BLOCK_QUOTE);
-static_assert(LD::MD_BLOCK_TYPE_UL == ::MD_BLOCK_UL);
-static_assert(LD::MD_BLOCK_TYPE_OL == ::MD_BLOCK_OL);
-static_assert(LD::MD_BLOCK_TYPE_LI == ::MD_BLOCK_LI);
-static_assert(LD::MD_BLOCK_TYPE_HR == ::MD_BLOCK_HR);
-static_assert(LD::MD_BLOCK_TYPE_H == ::MD_BLOCK_H);
-static_assert(LD::MD_BLOCK_TYPE_CODE == ::MD_BLOCK_CODE);
-static_assert(LD::MD_BLOCK_TYPE_HTML == ::MD_BLOCK_HTML);
-static_assert(LD::MD_BLOCK_TYPE_P == ::MD_BLOCK_P);
-static_assert(LD::MD_BLOCK_TYPE_TABLE == ::MD_BLOCK_TABLE);
-static_assert(LD::MD_BLOCK_TYPE_THEAD == ::MD_BLOCK_THEAD);
-static_assert(LD::MD_BLOCK_TYPE_TBODY == ::MD_BLOCK_TBODY);
-static_assert(LD::MD_BLOCK_TYPE_TR == ::MD_BLOCK_TR);
-static_assert(LD::MD_BLOCK_TYPE_TH == ::MD_BLOCK_TH);
-static_assert(LD::MD_BLOCK_TYPE_TD == ::MD_BLOCK_TD);
-static_assert(LD::MD_TEXT_TYPE_NORMAL == ::MD_TEXT_NORMAL);
+static_assert((int)LD::MD_BLOCK_TYPE_DOC == (int)::MD_BLOCK_DOC);
+static_assert((int)LD::MD_BLOCK_TYPE_QUOTE == (int)::MD_BLOCK_QUOTE);
+static_assert((int)LD::MD_BLOCK_TYPE_UL == (int)::MD_BLOCK_UL);
+static_assert((int)LD::MD_BLOCK_TYPE_OL == (int)::MD_BLOCK_OL);
+static_assert((int)LD::MD_BLOCK_TYPE_LI == (int)::MD_BLOCK_LI);
+static_assert((int)LD::MD_BLOCK_TYPE_HR == (int)::MD_BLOCK_HR);
+static_assert((int)LD::MD_BLOCK_TYPE_H == (int)::MD_BLOCK_H);
+static_assert((int)LD::MD_BLOCK_TYPE_CODE == (int)::MD_BLOCK_CODE);
+static_assert((int)LD::MD_BLOCK_TYPE_HTML == (int)::MD_BLOCK_HTML);
+static_assert((int)LD::MD_BLOCK_TYPE_P == (int)::MD_BLOCK_P);
+static_assert((int)LD::MD_BLOCK_TYPE_TABLE == (int)::MD_BLOCK_TABLE);
+static_assert((int)LD::MD_BLOCK_TYPE_THEAD == (int)::MD_BLOCK_THEAD);
+static_assert((int)LD::MD_BLOCK_TYPE_TBODY == (int)::MD_BLOCK_TBODY);
+static_assert((int)LD::MD_BLOCK_TYPE_TR == (int)::MD_BLOCK_TR);
+static_assert((int)LD::MD_BLOCK_TYPE_TH == (int)::MD_BLOCK_TH);
+static_assert((int)LD::MD_BLOCK_TYPE_TD == (int)::MD_BLOCK_TD);
+static_assert((int)LD::MD_TEXT_TYPE_NORMAL == (int)::MD_TEXT_NORMAL);
 
 static inline MDBlockType get_native_block_type(MD_BLOCKTYPE inType)
 {
@@ -66,8 +66,8 @@ class MD4CParser
 public:
     MD4CParser() = delete;
 
-    MD4CParser(const MDEventParser& eventParser)
-        : mEvents(eventParser)
+    MD4CParser(const MDEventCallback& callbacks, void* user)
+        : mCallbacks(callbacks), mUser(user)
     {
         mMD4C.abi_version = 0;
         mMD4C.flags = 0;
@@ -90,26 +90,26 @@ private:
     static int on_enter_block(MD_BLOCKTYPE type, void* detail, void* user)
     {
         MD4CParser& self = *(MD4CParser*)user;
-        if (!self.mEvents.on_enter_block)
+        if (!self.mCallbacks.onEnterBlock)
             return 0;
 
         MDBlockDetail blkDetail;
         MDBlockType blkType = get_native_block_type(type);
         get_native_block_detail(blkType, detail, blkDetail);
-        self.mEvents.on_enter_block(blkType, blkDetail, self.mEvents.user);
+        self.mCallbacks.onEnterBlock(blkType, blkDetail, self.mUser);
         return 0;
     }
 
     static int on_leave_block(MD_BLOCKTYPE type, void* detail, void* user)
     {
         MD4CParser& self = *(MD4CParser*)user;
-        if (!self.mEvents.on_leave_block)
+        if (!self.mCallbacks.onLeaveBlock)
             return 0;
 
         MDBlockDetail blkDetail;
         MDBlockType blkType = get_native_block_type(type);
         get_native_block_detail(blkType, detail, blkDetail);
-        self.mEvents.on_leave_block(blkType, blkDetail, self.mEvents.user);
+        self.mCallbacks.onLeaveBlock(blkType, blkDetail, self.mUser);
         return 0;
     }
 
@@ -128,24 +128,26 @@ private:
     static int on_text(MD_TEXTTYPE type, const MD_CHAR* text, MD_SIZE size, void* user)
     {
         MD4CParser& self = *(MD4CParser*)user;
-        if (!self.mEvents.on_text)
+        if (!self.mCallbacks.onText)
             return 0;
 
         MDTextType txtType = get_native_text_type(type);
         MDString txt((const char*)text, (size_t)size);
-        self.mEvents.on_text(txtType, txt, self.mEvents.user);
+        self.mCallbacks.onText(txtType, txt, self.mUser);
         return 0;
     }
 
 private:
     MD_PARSER mMD4C;
-    MDEventParser mEvents;
+    MDEventCallback mCallbacks;
+    void* mUser;
 };
 
-void MDDocument::parse_events(const char* md, size_t size, const MDEventParser& eventParser)
+bool MDEventParser::parse(const View& file, std::string& error, const MDEventCallback& callbacks, void* user)
 {
-    MD4CParser parser(eventParser);
-    parser.parse(md, size);
+    MD4CParser parser(callbacks, user);
+
+    return parser.parse(file.data, file.size) == 0;
 }
 
 } // namespace LD
