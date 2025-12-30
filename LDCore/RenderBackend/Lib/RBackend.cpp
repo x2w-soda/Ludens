@@ -1,3 +1,4 @@
+#include <Ludens/DSA/Vector.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Header/Hash.h>
 #include <Ludens/Log/Log.h>
@@ -20,10 +21,10 @@
 namespace LD {
 
 static Log sLog("RBackend");
-static std::unordered_map<uint32_t, RPassObj*> sPasses;
-static std::unordered_map<uint32_t, RSetLayoutObj*> sSetLayouts;
-static std::unordered_map<uint32_t, RPipelineLayoutObj*> sPipelineLayouts;
-static std::unordered_map<uint32_t, RFramebufferObj*> sFramebuffers;
+static std::unordered_map<Hash64, RPassObj*> sPasses;
+static std::unordered_map<Hash64, RSetLayoutObj*> sSetLayouts;
+static std::unordered_map<Hash64, RPipelineLayoutObj*> sPipelineLayouts;
+static std::unordered_map<Hash64, RFramebufferObj*> sFramebuffers;
 
 uint64_t RObjectID::sCounter = 0;
 
@@ -190,7 +191,7 @@ static bool validate_pipeline_vertex_output_fragment_input(RPipelineObj* pipelin
 
 static bool combine_pipeline_push_constants(RPipelineObj* pipelineObj, RShaderObj* shaderObj, std::string& err)
 {
-    std::vector<size_t> validShaderPC;
+    Vector<size_t> validShaderPC;
 
     for (size_t i = 0; i < shaderObj->reflection.pushConstants.size(); i++)
     {
@@ -1297,7 +1298,20 @@ void RCommandPool::reset()
     mObj->api->reset(mObj);
 }
 
-uint32_t hash32_pass_info(const RPassInfo& passI)
+Hash64 hash64_sampler_info(const RSamplerInfo& samplerI)
+{
+    std::string str;
+    str.push_back('f');
+    str += std::to_string((int)samplerI.filter);
+    str.push_back('m');
+    str += std::to_string((int)samplerI.mipmapFilter);
+    str.push_back('a');
+    str += std::to_string((int)samplerI.addressMode);
+
+    return hash64_FNV_1a(str.data(), str.size());
+}
+
+Hash64 hash64_pass_info(const RPassInfo& passI)
 {
     std::string str = std::to_string(passI.colorAttachmentCount);
 
@@ -1364,10 +1378,10 @@ uint32_t hash32_pass_info(const RPassInfo& passI)
         str += std::to_string(dep->dstAccessMask);
     }
 
-    return hash32_FNV_1a(str.data(), str.size());
+    return hash64_FNV_1a(str.data(), str.size());
 }
 
-uint32_t hash32_set_layout_info(const RSetLayoutInfo& layoutI)
+Hash64 hash64_set_layout_info(const RSetLayoutInfo& layoutI)
 {
     std::string str = std::to_string(layoutI.bindingCount);
 
@@ -1381,29 +1395,28 @@ uint32_t hash32_set_layout_info(const RSetLayoutInfo& layoutI)
         str += std::to_string(layoutI.bindings[i].arraySize);
     }
 
-    return hash32_FNV_1a(str.data(), str.size());
+    return hash64_FNV_1a(str.data(), str.size());
 }
 
-uint32_t hash32_pipeline_layout_info(const RPipelineLayoutInfo& layoutI)
+Hash64 hash64_pipeline_layout_info(const RPipelineLayoutInfo& layoutI)
 {
     if (layoutI.setLayoutCount == 0)
-        return 0;
+        return Hash64(0ull);
 
     // NOTE: if a pipeline layout only has a single set layout,
     //       the pipeline layout hash will be equivalent to
     //       the set layout hash, but this shouldn't be an issue.
-    std::size_t hash = (std::size_t)hash32_set_layout_info(layoutI.setLayouts[0]);
+    std::size_t hash = (std::size_t)hash64_set_layout_info(layoutI.setLayouts[0]);
 
     for (uint32_t i = 1; i < layoutI.setLayoutCount; i++)
-        hash_combine(hash, hash32_set_layout_info(layoutI.setLayouts[i]));
+        hash_combine(hash, hash64_set_layout_info(layoutI.setLayouts[i]));
 
-    // TODO: this truncates since std::size_t is most likely 8 bytes on 64-bit systems
-    return (uint32_t)hash;
+    return Hash64(hash);
 }
 
-uint32_t hash32_framebuffer_info(const RFramebufferInfo& framebufferI)
+Hash64 hash64_framebuffer_info(const RFramebufferInfo& framebufferI)
 {
-    std::size_t hash = (std::size_t)hash32_pass_info(framebufferI.pass);
+    std::size_t hash = (std::size_t)hash64_pass_info(framebufferI.pass);
 
     // invalidation by size
     hash_combine(hash, framebufferI.width);
@@ -1421,10 +1434,10 @@ uint32_t hash32_framebuffer_info(const RFramebufferInfo& framebufferI)
     if (framebufferI.depthStencilAttachment)
         hash_combine(hash, framebufferI.depthStencilAttachment.rid());
 
-    return (uint32_t)hash;
+    return Hash64(hash);
 }
 
-uint32_t hash32_pipeline_rasterization_state(const RPipelineRasterizationInfo& rasterizationI)
+Hash64 hash64_pipeline_rasterization_state(const RPipelineRasterizationInfo& rasterizationI)
 {
     std::string str;
 
@@ -1439,7 +1452,7 @@ uint32_t hash32_pipeline_rasterization_state(const RPipelineRasterizationInfo& r
         str += std::to_string(rasterizationI.lineWidth);
     }
 
-    return hash32_FNV_1a(str.data(), str.size());
+    return hash64_FNV_1a(str.data(), str.size());
 }
 
 RSet RSetPool::allocate()
@@ -1472,7 +1485,7 @@ void RSetPool::reset()
 
 RPassObj* RDeviceObj::get_or_create_pass_obj(const RPassInfo& passI)
 {
-    uint32_t passHash = hash32_pass_info(passI);
+    Hash64 passHash = hash64_pass_info(passI);
 
     if (!sPasses.contains(passHash))
     {
@@ -1494,7 +1507,7 @@ RPassObj* RDeviceObj::get_or_create_pass_obj(const RPassInfo& passI)
 
 RSetLayoutObj* RDeviceObj::get_or_create_set_layout_obj(const RSetLayoutInfo& layoutI)
 {
-    uint32_t layoutHash = hash32_set_layout_info(layoutI);
+    Hash64 layoutHash = hash64_set_layout_info(layoutI);
 
     if (!sSetLayouts.contains(layoutHash))
     {
@@ -1519,7 +1532,7 @@ RPipelineLayoutObj* RDeviceObj::get_or_create_pipeline_layout_obj(const RPipelin
 {
     LD_ASSERT(layoutI.setLayoutCount <= PIPELINE_LAYOUT_MAX_RESOURCE_SETS);
 
-    uint32_t layoutHash = hash32_pipeline_layout_info(layoutI);
+    Hash64 layoutHash = hash64_pipeline_layout_info(layoutI);
 
     if (!sPipelineLayouts.contains(layoutHash))
     {
@@ -1541,7 +1554,7 @@ RPipelineLayoutObj* RDeviceObj::get_or_create_pipeline_layout_obj(const RPipelin
 
 RFramebufferObj* RDeviceObj::get_or_create_framebuffer_obj(const RFramebufferInfo& framebufferI)
 {
-    uint32_t framebufferHash = hash32_framebuffer_info(framebufferI);
+    Hash64 framebufferHash = hash64_framebuffer_info(framebufferI);
 
     if (!sFramebuffers.contains(framebufferHash))
     {

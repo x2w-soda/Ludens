@@ -1,15 +1,18 @@
+#include <Ludens/DSA/Vector.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Header/Hash.h>
 #include <Ludens/Log/Log.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/RenderBackend/RBackend.h>
 #include <Ludens/System/Memory.h>
+
 #include <array>
 #include <cstring>
 #include <filesystem>
 #include <set>
 #include <string>
-#include <vector>
+#include <unordered_map>
+
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h> // hide from user
 #define VMA_VULKAN_VERSION 1003000
@@ -344,7 +347,41 @@ struct RDeviceVKObj : RDeviceObj
         RQueue queueTransfer;
         RQueue queueCompute;
         RQueue queuePresent;
+        std::unordered_map<Hash64, VkSampler> samplerCache;
     } vk;
+
+    VkSampler get_or_create_sampler(const RSamplerInfo& samplerI)
+    {
+        Hash64 samplerHash = hash64_sampler_info(samplerI);
+        if (vk.samplerCache.contains(samplerHash))
+            return vk.samplerCache[samplerHash];
+
+        VkFilter vkFilter;
+        VkSamplerMipmapMode vkMipmapMode;
+        VkSamplerAddressMode vkAddressMode;
+        RUtil::cast_filter_vk(samplerI.filter, vkFilter);
+        RUtil::cast_filter_mipmap_mode_vk(samplerI.mipmapFilter, vkMipmapMode);
+        RUtil::cast_sampler_address_mode_vk(samplerI.addressMode, vkAddressMode);
+
+        VkSamplerCreateInfo samplerCI{
+            .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+            .magFilter = vkFilter,
+            .minFilter = vkFilter,
+            .mipmapMode = vkMipmapMode,
+            .addressModeU = vkAddressMode,
+            .addressModeV = vkAddressMode,
+            .addressModeW = vkAddressMode,
+            .mipLodBias = 0.0f,
+            .minLod = 0.0f,
+            .maxLod = 1.0f,
+        };
+
+        VkSampler vkSampler = VK_NULL_HANDLE;
+        VK_CHECK(vkCreateSampler(vk.device, &samplerCI, nullptr, &vkSampler));
+
+        vk.samplerCache[samplerHash] = vkSampler;
+        return vkSampler;
+    }
 };
 
 static void vk_buffer_map(RBufferObj* self);
@@ -949,6 +986,10 @@ void vk_destroy_device(RDeviceObj* baseSelf)
     auto* self = (RDeviceVKObj*)baseSelf;
     vkDeviceWaitIdle(self->vk.device);
 
+    for (const auto& it : self->vk.samplerCache)
+        vkDestroySampler(self->vk.device, it.second, nullptr);
+    self->vk.samplerCache.clear();
+
     if (self->vk.surface != VK_NULL_HANDLE)
     {
         for (uint32_t i = 0; i < FRAMES_IN_FLIGHT; i++)
@@ -1191,29 +1232,7 @@ static RImage vk_device_create_image(RDeviceObj* baseSelf, const RImageInfo& ima
     VK_CHECK(vkCreateImageView(self->vk.device, &viewCI, nullptr, &obj->vk.viewHandle));
 
     if (vkUsage & VK_IMAGE_USAGE_SAMPLED_BIT)
-    {
-        VkFilter vkFilter;
-        VkSamplerMipmapMode vkMipmapMode;
-        VkSamplerAddressMode vkAddressMode;
-        RUtil::cast_filter_vk(imageI.sampler.filter, vkFilter);
-        RUtil::cast_filter_mipmap_mode_vk(imageI.sampler.mipmapFilter, vkMipmapMode);
-        RUtil::cast_sampler_address_mode_vk(imageI.sampler.addressMode, vkAddressMode);
-
-        VkSamplerCreateInfo samplerCI{
-            .sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
-            .magFilter = vkFilter,
-            .minFilter = vkFilter,
-            .mipmapMode = vkMipmapMode,
-            .addressModeU = vkAddressMode,
-            .addressModeV = vkAddressMode,
-            .addressModeW = vkAddressMode,
-            .mipLodBias = 0.0f,
-            .minLod = 0.0f,
-            .maxLod = 1.0f,
-        };
-
-        VK_CHECK(vkCreateSampler(self->vk.device, &samplerCI, nullptr, &obj->vk.samplerHandle));
-    }
+        obj->vk.samplerHandle = self->get_or_create_sampler(imageI.sampler);
     else
         obj->vk.samplerHandle = VK_NULL_HANDLE;
 
@@ -1224,9 +1243,6 @@ static void vk_device_destroy_image(RDeviceObj* baseSelf, RImage image)
 {
     auto* self = (RDeviceVKObj*)baseSelf;
     auto* obj = (RImageVKObj*)image.unwrap();
-
-    if (obj->vk.samplerHandle != VK_NULL_HANDLE)
-        vkDestroySampler(self->vk.device, obj->vk.samplerHandle, nullptr);
 
     vkDestroyImageView(self->vk.device, obj->vk.viewHandle, nullptr);
     vmaDestroyImage(self->vk.vma, obj->vk.handle, obj->vk.vma);

@@ -88,7 +88,7 @@ struct RImageObj
 struct RPassObj
 {
     uint64_t rid;
-    uint32_t hash;
+    Hash64 hash;
     uint32_t colorAttachmentCount;
     RSampleCountBit samples;
     bool hasDepthStencilAttachment;
@@ -110,12 +110,12 @@ struct RFramebufferInfo
     RPassInfo pass;
 };
 
-uint32_t hash32_framebuffer_info(const RFramebufferInfo& framebufferI);
+Hash64 hash64_framebuffer_info(const RFramebufferInfo& framebufferI);
 
 struct RFramebufferObj
 {
     uint64_t rid;
-    uint32_t hash;
+    Hash64 hash;
     uint32_t width;
     uint32_t height;
     RPassObj* passObj;

@@ -36,12 +36,12 @@ TEST_CASE("hash_pipeline_rasterization_state")
     };
     RPipelineRasterizationInfo r2(r1);
 
-    uint32_t h1 = hash32_pipeline_rasterization_state(r1);
-    uint32_t h2 = hash32_pipeline_rasterization_state(r2);
+    Hash64 h1 = hash64_pipeline_rasterization_state(r1);
+    Hash64 h2 = hash64_pipeline_rasterization_state(r2);
     CHECK(h1 == h2);
 
     r2.cullMode = RCULL_MODE_NONE;
-    h2 = hash32_pipeline_rasterization_state(r2);
+    h2 = hash64_pipeline_rasterization_state(r2);
     CHECK(h1 != h2); // respect cull mode difference
 
     r1 = {
@@ -54,13 +54,13 @@ TEST_CASE("hash_pipeline_rasterization_state")
         .cullMode = RCULL_MODE_NONE,
         .lineWidth = 3,
     };
-    h1 = hash32_pipeline_rasterization_state(r1);
-    h2 = hash32_pipeline_rasterization_state(r2);
+    h1 = hash64_pipeline_rasterization_state(r1);
+    h2 = hash64_pipeline_rasterization_state(r2);
     CHECK(h1 == h2); // ignore line width difference
 
     r1.polygonMode = RPOLYGON_MODE_LINE;
     r2.polygonMode = RPOLYGON_MODE_LINE;
-    h1 = hash32_pipeline_rasterization_state(r1);
-    h2 = hash32_pipeline_rasterization_state(r2);
+    h1 = hash64_pipeline_rasterization_state(r1);
+    h2 = hash64_pipeline_rasterization_state(r2);
     CHECK(h1 != h2); // respect line width difference
 }

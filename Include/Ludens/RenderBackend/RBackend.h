@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Ludens/Header/Hash.h>
 #include <Ludens/Header/Math/Rect.h>
 #include <Ludens/RenderBackend/RBackendEnum.h>
 #include <cstdint>
@@ -255,9 +256,9 @@ struct RShader : RHandle<struct RShaderObj>
 /// @brief describes a resource binding within a resource set
 struct RSetBindingInfo
 {
-    uint32_t binding;    /// the index of this binding within the set
-    RBindingType type;   /// the type of this binding
-    uint32_t arraySize;  /// if greater than one, the binding array size
+    uint32_t binding;   /// the index of this binding within the set
+    RBindingType type;  /// the type of this binding
+    uint32_t arraySize; /// if greater than one, the binding array size
 };
 
 /// @brief resource set layout info
@@ -649,16 +650,19 @@ struct RDevice : RHandle<struct RDeviceObj>
     void wait_idle();
 };
 
-/// @brief get a 32 bit hash of render pass
-uint32_t hash32_pass_info(const RPassInfo& passI);
+/// @brief Get a 64 bit hash of sampler.
+Hash64 hash64_sampler_info(const RSamplerInfo& samplerI);
 
-/// @brief get a 32 bit hash of resource set layout
-uint32_t hash32_set_layout_info(const RSetLayoutInfo& layoutI);
+/// @brief Get a 64 bit hash of render pass.
+Hash64 hash64_pass_info(const RPassInfo& passI);
 
-/// @brief get a 32 bit hash of pipeline layout
-uint32_t hash32_pipeline_layout_info(const RPipelineLayoutInfo& layoutI);
+/// @brief Get a 64 bit hash of resource set layout.
+Hash64 hash64_set_layout_info(const RSetLayoutInfo& layoutI);
 
-/// @brief get a 32 bit hash of pipeline rasterization state
-uint32_t hash32_pipeline_rasterization_state(const RPipelineRasterizationInfo& ratserizationI);
+/// @brief Get a 64 bit hash of pipeline layout.
+Hash64 hash64_pipeline_layout_info(const RPipelineLayoutInfo& layoutI);
+
+/// @brief Get a 64 bit hash of pipeline rasterization state.
+Hash64 hash64_pipeline_rasterization_state(const RPipelineRasterizationInfo& ratserizationI);
 
 } // namespace LD
