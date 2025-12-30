@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Ludens/DSA/View.h>
+#include <Ludens/Header/Hash.h>
 #include <Ludens/Header/Types.h>
 #include <cstdlib>
 
@@ -17,6 +18,16 @@ public:
 
     Buffer& operator=(const Buffer&);
     Buffer& operator=(Buffer&&) = delete;
+
+    /// @brief Two buffers are equal if and only if they contain the exact same byte sequence in length and content.
+    bool operator==(const Buffer& other) const;
+
+    /// @brief Assign buffer contents from view contents.
+    inline void operator=(const View& view)
+    {
+        clear();
+        write(view);
+    }
 
     /// @brief Reserve for capacity, does not effect size.
     void reserve(size_t cap);
@@ -55,3 +66,12 @@ private:
 };
 
 } // namespace LD
+
+template <>
+struct std::hash<LD::Buffer>
+{
+    std::size_t operator()(const LD::Buffer& buf) const noexcept
+    {
+        return (std::size_t)hash64_FNV_1a((const char*)buf.data(), buf.view());
+    }
+};

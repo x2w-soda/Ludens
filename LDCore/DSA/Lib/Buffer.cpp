@@ -39,6 +39,14 @@ Buffer::~Buffer()
         heap_free(mData);
 }
 
+bool Buffer::operator==(const Buffer& other) const
+{
+    if (mSize != other.mSize)
+        return false;
+
+    return mData == other.mData || !memcmp(mData, other.mData, other.mSize);
+}
+
 void Buffer::reserve(size_t cap)
 {
     if (cap <= mCap)
