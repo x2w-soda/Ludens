@@ -2,10 +2,16 @@
 
 #include <Ludens/DSA/HeapStorage.h>
 #include <Ludens/System/Memory.h>
+
 #include <utility>
+#include <vector>
 
 namespace LD {
 
+template <typename T>
+using Vector = std::vector<T>;
+
+#if 0
 /// @brief small vector optimization via local storage
 /// @tparam T element type, must be default-constructable
 /// @tparam TLocalSize local array size
@@ -209,5 +215,6 @@ private:
     T mLocal[TLocalSize];
     THeapStorage<T, TUsage> mHeap;
 };
+#endif
 
 } // namespace LD

@@ -48,7 +48,7 @@ struct LuaConfigEntry
     };
 
     LuaConfigType type;
-    SVector<Value, 1, MEMORY_USAGE_LUA> values; /// does not heap-allocate if arrayCount equals 1
+    Vector<Value> values; /// does not heap-allocate if arrayCount equals 1
 };
 
 struct LuaConfigObj

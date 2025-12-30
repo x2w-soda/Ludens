@@ -6,6 +6,7 @@
 
 using namespace LD;
 
+#if 0
 template <typename T, size_t N>
 void test_svector()
 {
@@ -163,3 +164,4 @@ TEST_CASE("SVector move")
     const MemoryProfile& profile = get_memory_profile(MEMORY_USAGE_MISC);
     CHECK(profile.current == 0);
 }
+#endif

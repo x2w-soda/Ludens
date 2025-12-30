@@ -2,6 +2,7 @@
 
 #include <Ludens/DSA/Buffer.h>
 #include <Ludens/DSA/Optional.h>
+#include <Ludens/DSA/Vector.h>
 #include <Ludens/DSA/View.h>
 #include <Ludens/Header/Math/Mat4.h>
 #include <Ludens/Header/Math/Transform.h>
@@ -12,7 +13,6 @@
 #include <optional>
 #include <string>
 #include <unordered_map>
-#include <vector>
 
 // Support for the glTF v2.0 format
 // - Throughout this header, 'the spec' refers to the 2.0 version of the glTF file format specification as defined by the Khronos Group.
@@ -66,8 +66,8 @@ struct GLTFAccessorProp
     uint32_t componentType = 0;    // required, data type of the accessor's components
     uint32_t count = 0;            // required, number of elements references by this accessor
     Optional<uint32_t> bufferView; // index of buffer view. When undefined, the accessor must be initialized with zeros
-    std::vector<float> min;        // minimum value of each component in this accessor, length is determined by type property
-    std::vector<float> max;        // maximum value of each component in this accessor, length is determined by type property
+    Vector<float> min;             // minimum value of each component in this accessor, length is determined by type property
+    Vector<float> max;             // maximum value of each component in this accessor, length is determined by type property
     bool normalized = false;       // specifies whether unsigned types are normalized to [0, 1] and signed types to [-1, 1] when they are accessed.
 };
 
@@ -92,18 +92,18 @@ struct GLTFTextureProp
 /// @brief Element in top-level 'scenes' property in the spec.
 struct GLTFSceneProp
 {
-    Buffer name;                 // authored scene name
-    std::vector<uint32_t> nodes; // indices of nodes in this scene
+    Buffer name;            // authored scene name
+    Vector<uint32_t> nodes; // indices of nodes in this scene
 };
 
 /// @brief Element in top-level 'nodes' property in the spec.
 struct GLTFNodeProp
 {
-    Buffer name;                    // authored node name
-    Optional<uint32_t> mesh;        // node.mesh, the index into top-level meshes array
-    std::vector<uint32_t> children; // node.children, indices of children nodes
-    Mat4 matrix;                    // node.matrix, a column major local transformation for the node
-    Transform TRS;                  // node.translation, node.rotation, and node.scale
+    Buffer name;               // authored node name
+    Optional<uint32_t> mesh;   // node.mesh, the index into top-level meshes array
+    Vector<uint32_t> children; // node.children, indices of children nodes
+    Mat4 matrix;               // node.matrix, a column major local transformation for the node
+    Transform TRS;             // node.translation, node.rotation, and node.scale
 };
 
 /// @brief 'mesh.primitive' property in the spec.

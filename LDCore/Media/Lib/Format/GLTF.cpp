@@ -1272,8 +1272,8 @@ public:
     bool print(std::string& str, std::string& err);
 
 private:
-    std::string fmt_indices(const std::vector<uint32_t>& indices);
-    std::string fmt_floats(const std::vector<float>& floats);
+    std::string fmt_indices(const Vector<uint32_t>& indices);
+    std::string fmt_floats(const Vector<float>& floats);
 
     static bool on_asset(const GLTFAssetProp& asset, void*);
     static bool on_scene(const GLTFSceneProp& scene, void*);
@@ -1356,7 +1356,7 @@ bool GLTFPrinter::print(std::string& outStr, std::string& outErr)
     return true;
 }
 
-std::string GLTFPrinter::fmt_indices(const std::vector<uint32_t>& indices)
+std::string GLTFPrinter::fmt_indices(const Vector<uint32_t>& indices)
 {
     std::string str(1, '[');
 
@@ -1372,7 +1372,7 @@ std::string GLTFPrinter::fmt_indices(const std::vector<uint32_t>& indices)
     return str;
 }
 
-std::string GLTFPrinter::fmt_floats(const std::vector<float>& floats)
+std::string GLTFPrinter::fmt_floats(const Vector<float>& floats)
 {
     std::string str(1, '[');
 
