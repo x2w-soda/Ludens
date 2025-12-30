@@ -31,6 +31,7 @@ public:
     static bool on_json_f64(double f64, void* user);
 
 private:
+    bool escape_json_value();
     bool on_json_f64_value(double f64);
     bool on_json_u64_value(uint64_t u64);
     bool on_json_u32_value(uint32_t u32);
@@ -38,6 +39,9 @@ private:
     bool on_json_asset_key(const View& key);
     bool on_json_scene_key(const View& key);
     bool on_json_node_key(const View& key);
+    bool on_json_mesh_key(const View& key);
+    bool on_json_mesh_primitive_key(const View& key);
+    bool on_json_mesh_primitive_attributes_key(const View& key);
     bool on_json_material_key(const View& key);
     bool on_json_material_emissive_texture_key(const View& key);
     bool on_json_material_normal_texture_key(const View& key);
@@ -61,6 +65,7 @@ private:
         STATE_ROOT_SCENE_KEY,
         STATE_ROOT_SCENES_KEY,
         STATE_ROOT_NODES_KEY,
+        STATE_ROOT_MESHES_KEY,
         STATE_ROOT_MATERIALS_KEY,
         STATE_ROOT_TEXTURES_KEY,
         STATE_ROOT_SAMPLERS_KEY,
@@ -80,6 +85,17 @@ private:
         STATE_NODE_TRANSLATION,
         STATE_NODE_ROTATION,
         STATE_NODE_SCALE,
+        STATE_MESHES_ARRAY,
+        STATE_MESH,
+        STATE_MESH_PRIMITIVES_KEY,
+        STATE_MESH_PRIMITIVES_ARRAY,
+        STATE_MESH_PRIMITIVE,
+        STATE_MESH_PRIMITIVE_INDICES,
+        STATE_MESH_PRIMITIVE_MATERIAL,
+        STATE_MESH_PRIMITIVE_MODE,
+        STATE_MESH_PRIMITIVE_ATTRIBUTES_KEY,
+        STATE_MESH_PRIMITIVE_ATTRIBUTES,
+        STATE_MESH_PRIMITIVE_ATTRIBUTES_INDEX,
         STATE_MATERIALS_ARRAY,
         STATE_MATERIAL,
         STATE_MATERIAL_DOUBLE_SIDED,
@@ -143,11 +159,14 @@ private:
     State mState;
     void* mUser;
     uint32_t mEscapeDepth = 0;
+    Buffer mPrimitiveAttributeKey;
     Buffer* mStringSlot;
     GLTFEventCallback mCallbacks;
     GLTFAssetProp mAssetProp{};
     GLTFSceneProp mSceneProp{};
     GLTFNodeProp mNodeProp{};
+    GLTFMeshProp mMeshProp{};
+    GLTFMeshPrimitiveProp mMeshPrimitiveProp{};
     GLTFMaterialProp mMaterialProp{};
     GLTFTextureProp mTextureProp{};
     GLTFSamplerProp mSamplerProp{};
@@ -185,6 +204,18 @@ bool GLTFEventParserObj::on_json_enter_object(void* obj)
     case STATE_NODES_ARRAY:
         self.mState = STATE_NODE;
         self.mNodeProp = {};
+        return true;
+    case STATE_MESHES_ARRAY:
+        self.mState = STATE_MESH;
+        self.mMeshProp = {};
+        return true;
+    case STATE_MESH_PRIMITIVES_ARRAY:
+        self.mState = STATE_MESH_PRIMITIVE;
+        self.mMeshPrimitiveProp = {};
+        return true;
+    case STATE_MESH_PRIMITIVE_ATTRIBUTES_KEY:
+        self.mState = STATE_MESH_PRIMITIVE_ATTRIBUTES;
+        self.mMeshPrimitiveProp.attributes.clear();
         return true;
     case STATE_MATERIALS_ARRAY:
         self.mState = STATE_MATERIAL;
@@ -269,6 +300,19 @@ bool GLTFEventParserObj::on_json_leave_object(size_t memberCount, void* obj)
         if (self.mCallbacks.onNode)
             self.mCallbacks.onNode(self.mNodeProp, self.mUser);
         return true;
+    case STATE_MESH:
+        self.mState = STATE_MESHES_ARRAY;
+        if (self.mCallbacks.onMesh)
+            self.mCallbacks.onMesh(self.mMeshProp, self.mUser);
+        return true;
+    case STATE_MESH_PRIMITIVE:
+        self.mState = STATE_MESH_PRIMITIVES_ARRAY;
+        if (self.mCallbacks.onMeshPrimitive)
+            self.mCallbacks.onMeshPrimitive(self.mMeshPrimitiveProp, self.mUser);
+        return true;
+    case STATE_MESH_PRIMITIVE_ATTRIBUTES:
+        self.mState = STATE_MESH_PRIMITIVE;
+        return true;
     case STATE_MATERIAL:
         self.mState = STATE_MATERIALS_ARRAY;
         if (self.mCallbacks.onMaterial)
@@ -342,6 +386,9 @@ bool GLTFEventParserObj::on_json_enter_array(void* obj)
     case STATE_ROOT_NODES_KEY:
         self.mState = STATE_NODES_ARRAY;
         return true;
+    case STATE_ROOT_MESHES_KEY:
+        self.mState = STATE_MESHES_ARRAY;
+        return true;
     case STATE_ROOT_MATERIALS_KEY:
         self.mState = STATE_MATERIALS_ARRAY;
         return true;
@@ -362,6 +409,9 @@ bool GLTFEventParserObj::on_json_enter_array(void* obj)
         return true;
     case STATE_ROOT_ACCESSORS_KEY:
         self.mState = STATE_ACCESSORS_ARRAY;
+        return true;
+    case STATE_MESH_PRIMITIVES_KEY:
+        self.mState = STATE_MESH_PRIMITIVES_ARRAY;
         return true;
     case STATE_SCENE_NODES:
     case STATE_NODE_CHILDREN:
@@ -397,6 +447,7 @@ bool GLTFEventParserObj::on_json_leave_array(size_t elementCount, void* obj)
     {
     case STATE_SCENES_ARRAY:
     case STATE_NODES_ARRAY:
+    case STATE_MESHES_ARRAY:
     case STATE_MATERIALS_ARRAY:
     case STATE_IMAGES_ARRAY:
     case STATE_TEXTURES_ARRAY:
@@ -405,6 +456,9 @@ bool GLTFEventParserObj::on_json_leave_array(size_t elementCount, void* obj)
     case STATE_BUFFER_VIEWS_ARRAY:
     case STATE_ACCESSORS_ARRAY:
         self.mState = STATE_ROOT;
+        return true;
+    case STATE_MESH_PRIMITIVES_ARRAY:
+        self.mState = STATE_MESH;
         return true;
     case STATE_ACCESSOR_MAX:
     case STATE_ACCESSOR_MIN:
@@ -455,6 +509,12 @@ bool GLTFEventParserObj::on_json_key(const View& key, void* obj)
         return self.on_json_scene_key(key);
     case STATE_NODE:
         return self.on_json_node_key(key);
+    case STATE_MESH:
+        return self.on_json_mesh_key(key);
+    case STATE_MESH_PRIMITIVE:
+        return self.on_json_mesh_primitive_key(key);
+    case STATE_MESH_PRIMITIVE_ATTRIBUTES:
+        return self.on_json_mesh_primitive_attributes_key(key);
     case STATE_MATERIAL:
         return self.on_json_material_key(key);
     case STATE_MATERIAL_EMISSIVE_TEXTURE:
@@ -492,7 +552,7 @@ bool GLTFEventParserObj::on_json_string(const View& string, void* obj)
 {
     auto& self = *(GLTFEventParserObj*)obj;
 
-    if (self.mEscapeDepth)
+    if (self.escape_json_value())
         return true;
 
     // NOTE: The view from JSON event parser is transient,
@@ -512,7 +572,7 @@ bool GLTFEventParserObj::on_json_null(void* obj)
 {
     auto& self = *(GLTFEventParserObj*)obj;
 
-    if (self.mEscapeDepth)
+    if (self.escape_json_value())
         return true;
 
     return false; // not expecting boolean
@@ -522,7 +582,7 @@ bool GLTFEventParserObj::on_json_bool(bool b, void* obj)
 {
     auto& self = *(GLTFEventParserObj*)obj;
 
-    if (self.mEscapeDepth)
+    if (self.escape_json_value())
         return true;
 
     switch (self.mState)
@@ -546,7 +606,7 @@ bool GLTFEventParserObj::on_json_i64(int64_t i64, void* obj)
 {
     auto& self = *(GLTFEventParserObj*)obj;
 
-    if (self.mEscapeDepth)
+    if (self.escape_json_value())
         return true;
 
     return false; // not expecting signed integer
@@ -556,7 +616,7 @@ bool GLTFEventParserObj::on_json_u64(uint64_t u64, void* obj)
 {
     auto& self = *(GLTFEventParserObj*)obj;
 
-    if (self.mEscapeDepth || self.on_json_u64_value(u64) || self.on_json_f64_value((double)u64))
+    if (self.escape_json_value() || self.on_json_u64_value(u64) || self.on_json_f64_value((double)u64))
         return true;
 
     return u64 <= UINT32_MAX && self.on_json_u32_value((uint32_t)u64);
@@ -566,10 +626,23 @@ bool GLTFEventParserObj::on_json_f64(double f64, void* obj)
 {
     auto& self = *(GLTFEventParserObj*)obj;
 
-    if (self.mEscapeDepth)
+    if (self.escape_json_value())
         return true;
 
     return self.on_json_f64_value(f64);
+}
+
+bool GLTFEventParserObj::escape_json_value()
+{
+    if (mEscapeDepth)
+    {
+        if (mEscapeDepth == 1)
+            mEscapeDepth = 0; // escape single value
+
+        return true;
+    }
+
+    return false;
 }
 
 bool GLTFEventParserObj::on_json_f64_value(double f64)
@@ -695,6 +768,23 @@ bool GLTFEventParserObj::on_json_u32_value(uint32_t u32)
         mNodeProp.mesh = u32;
         mState = STATE_NODE;
         return true;
+    case STATE_MESH_PRIMITIVE_INDICES:
+        mMeshPrimitiveProp.indices = u32;
+        mState = STATE_MESH_PRIMITIVE;
+        return true;
+    case STATE_MESH_PRIMITIVE_MATERIAL:
+        mMeshPrimitiveProp.material = u32;
+        mState = STATE_MESH_PRIMITIVE;
+        return true;
+    case STATE_MESH_PRIMITIVE_MODE:
+        mMeshPrimitiveProp.mode = u32;
+        mState = STATE_MESH_PRIMITIVE;
+        return true;
+    case STATE_MESH_PRIMITIVE_ATTRIBUTES_INDEX:
+        LD_ASSERT(mPrimitiveAttributeKey.size() > 0);
+        mMeshPrimitiveProp.attributes[mPrimitiveAttributeKey] = u32;
+        mState = STATE_MESH_PRIMITIVE_ATTRIBUTES;
+        return true;
     case STATE_MATERIAL_EMISSIVE_TEXTURE_INDEX:
         LD_ASSERT(mMaterialProp.emissiveTexture.has_value());
         mMaterialProp.emissiveTexture->index = u32;
@@ -810,6 +900,8 @@ bool GLTFEventParserObj::on_json_root_key(const View& key)
         mState = STATE_ROOT_SCENES_KEY;
     else if (key == "nodes")
         mState = STATE_ROOT_NODES_KEY;
+    else if (key == "meshes")
+        mState = STATE_ROOT_MESHES_KEY;
     else if (key == "materials")
         mState = STATE_ROOT_MATERIALS_KEY;
     else if (key == "textures")
@@ -880,6 +972,44 @@ bool GLTFEventParserObj::on_json_node_key(const View& key)
         mState = STATE_NODE_TRANSLATION;
     else
         mEscapeDepth++;
+
+    return true;
+}
+
+bool GLTFEventParserObj::on_json_mesh_key(const View& key)
+{
+    if (key == "name")
+        mStringSlot = &mMeshProp.name;
+    else if (key == "primitives")
+        mState = STATE_MESH_PRIMITIVES_KEY;
+    else
+        mEscapeDepth++;
+
+    return true;
+}
+
+bool GLTFEventParserObj::on_json_mesh_primitive_key(const View& key)
+{
+    if (key == "indices")
+        mState = STATE_MESH_PRIMITIVE_INDICES;
+    else if (key == "material")
+        mState = STATE_MESH_PRIMITIVE_MATERIAL;
+    else if (key == "mode")
+        mState = STATE_MESH_PRIMITIVE_MODE;
+    else if (key == "attributes")
+        mState = STATE_MESH_PRIMITIVE_ATTRIBUTES_KEY;
+    else
+        mEscapeDepth++;
+
+    return true;
+}
+
+bool GLTFEventParserObj::on_json_mesh_primitive_attributes_key(const View& key)
+{
+    // Attribute keys are UTF-8, hence the Buffer key instead of std::string key.
+    // Common attribute keys are ascii "POSITION", "NORMAL", "TEXCOORD_*", but any key is valid.
+    mPrimitiveAttributeKey = key;
+    mState = STATE_MESH_PRIMITIVE_ATTRIBUTES_INDEX;
 
     return true;
 }
@@ -1148,6 +1278,8 @@ private:
     static bool on_asset(const GLTFAssetProp& asset, void*);
     static bool on_scene(const GLTFSceneProp& scene, void*);
     static bool on_node(const GLTFNodeProp& node, void*);
+    static bool on_mesh(const GLTFMeshProp& mesh, void*);
+    static bool on_mesh_primitive(const GLTFMeshPrimitiveProp& prim, void*);
     static bool on_material(const GLTFMaterialProp& mat, void*);
     static bool on_texture(const GLTFTextureProp& texture, void*);
     static bool on_sampler(const GLTFSamplerProp& sampler, void*);
@@ -1161,6 +1293,8 @@ private:
     std::string mAssetStr;
     std::string mScenesStr;
     std::string mNodesStr;
+    std::string mMeshesStr;
+    std::string mMeshPrimitivesStr;
     std::string mMaterialsStr;
     std::string mTexturesStr;
     std::string mSamplersStr;
@@ -1178,6 +1312,8 @@ bool GLTFPrinter::print(std::string& outStr, std::string& outErr)
     mAssetStr.clear();
     mScenesStr.clear();
     mNodesStr.clear();
+    mMeshesStr.clear();
+    mMeshPrimitivesStr.clear();
     mMaterialsStr.clear();
     mTexturesStr.clear();
     mSamplersStr.clear();
@@ -1190,6 +1326,8 @@ bool GLTFPrinter::print(std::string& outStr, std::string& outErr)
     callbacks.onAsset = &GLTFPrinter::on_asset;
     callbacks.onScene = &GLTFPrinter::on_scene;
     callbacks.onNode = &GLTFPrinter::on_node;
+    callbacks.onMesh = &GLTFPrinter::on_mesh;
+    callbacks.onMeshPrimitive = &GLTFPrinter::on_mesh_primitive;
     callbacks.onMaterial = &GLTFPrinter::on_material;
     callbacks.onTexture = &GLTFPrinter::on_texture;
     callbacks.onSampler = &GLTFPrinter::on_sampler;
@@ -1206,6 +1344,7 @@ bool GLTFPrinter::print(std::string& outStr, std::string& outErr)
     outStr = mAssetStr;
     outStr += mScenesStr;
     outStr += mNodesStr;
+    outStr += mMeshesStr;
     outStr += mMaterialsStr;
     outStr += mTexturesStr;
     outStr += mSamplersStr;
@@ -1301,6 +1440,48 @@ bool GLTFPrinter::on_node(const GLTFNodeProp& node, void* user)
         nodeStr += std::format("- mesh: {}\n", node.mesh.value());
 
     self.mNodesStr += nodeStr;
+    return true;
+}
+
+bool GLTFPrinter::on_mesh(const GLTFMeshProp& mesh, void* user)
+{
+    auto& self = *(GLTFPrinter*)user;
+
+    std::string meshStr = std::format("mesh:");
+
+    if (mesh.name.size() > 0)
+        meshStr += std::format(" {}", mesh.name.view());
+    meshStr.push_back('\n');
+
+    meshStr += self.mMeshPrimitivesStr;
+    self.mMeshPrimitivesStr.clear();
+
+    self.mMeshesStr += meshStr;
+    return true;
+}
+
+bool GLTFPrinter::on_mesh_primitive(const GLTFMeshPrimitiveProp& prim, void* user)
+{
+    auto& self = *(GLTFPrinter*)user;
+
+    std::string primStr = "- primitive: attributes {";
+
+    for (const auto& it : prim.attributes)
+    {
+        primStr += std::format(" {} : {}", it.first.view(), it.second);
+    }
+
+    primStr += " }";
+    primStr += std::format(" mode {}", prim.mode);
+
+    if (prim.indices.has_value())
+        primStr += std::format(" indices {}", prim.indices.value());
+
+    if (prim.material.has_value())
+        primStr += std::format(" material {}", prim.material.value());
+
+    primStr.push_back('\n');
+    self.mMeshPrimitivesStr += primStr;
     return true;
 }
 
@@ -1466,13 +1647,9 @@ bool GLTFPrinter::on_accessor(const GLTFAccessorProp& acc, void* user)
     std::string accStr = "accessor:";
 
     if (acc.bufferView.has_value())
-    {
-        accStr += std::format(" bufferView {}", acc.bufferView.value());
-        if (acc.byteOffset != 0)
-            accStr += std::format(" byteOffset {}", acc.byteOffset);
-    }
+        accStr += std::format(" bufferView {:>2} byteOffset {:>6}", acc.bufferView.value(), acc.byteOffset);
 
-    accStr += std::format(" count {} type {} componentType {}", acc.count, acc.type.view(), acc.componentType);
+    accStr += std::format(" count {:>6} type {} componentType {}", acc.count, acc.type.view(), acc.componentType);
 
     if (acc.normalized)
         accStr += " normalized";

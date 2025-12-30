@@ -11,6 +11,7 @@
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 // Support for the glTF v2.0 format
@@ -105,6 +106,21 @@ struct GLTFNodeProp
     Transform TRS;                  // node.translation, node.rotation, and node.scale
 };
 
+/// @brief 'mesh.primitive' property in the spec.
+struct GLTFMeshPrimitiveProp
+{
+    std::unordered_map<Buffer, uint32_t> attributes;
+    Optional<uint32_t> indices;  // index of accessor that contains vertex indices
+    Optional<uint32_t> material; // index of material used for this primitive
+    uint32_t mode = 4;           // topology of primitives
+};
+
+/// @brief Element in top-level 'meshes' property in the spec.
+struct GLTFMeshProp
+{
+    Buffer name;
+};
+
 /// @brief 'textureInfo' in the spec.
 struct GLTFTextureInfo
 {
@@ -161,6 +177,13 @@ struct GLTFEventCallback
 
     /// @brief Element in top-level 'nodes' property in the spec.
     bool (*onNode)(const GLTFNodeProp& node, void* user);
+
+    /// @brief Element in 'mesh.primitives' property in a mesh.
+    bool (*onMeshPrimitive)(const GLTFMeshPrimitiveProp& prim, void* user);
+
+    /// @brief Element in top-level 'meshes' property in the spec. Previous MeshPrimitive properties
+    ///        all belong to this mesh, upcoming MeshPrimitives belong to next mesh.
+    bool (*onMesh)(const GLTFMeshProp& mesh, void* user);
 
     /// @brief Element in top-level 'materials' property in the spec.
     bool (*onMaterial)(const GLTFMaterialProp& mat, void* user);
