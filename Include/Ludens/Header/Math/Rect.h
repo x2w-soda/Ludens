@@ -93,6 +93,60 @@ struct TRect
     {
         return is_equal_epsilon(x, other.x) && is_equal_epsilon(y, other.y) && is_equal_epsilon(w, other.w) && is_equal_epsilon(h, other.h);
     }
+
+    /// @brief Split a rect vertically into left, right, and split area.
+    /// @param ratio Normalized split ratio.
+    /// @param splitWidth If positive, the width of the split area.
+    /// @param area Original area before split.
+    /// @param left Outputs left area after split.
+    /// @param right Outputs right area after split.
+    /// @param splitArea Outputs split area after split.
+    static void split_v(float ratio, T splitWidth, const TRect& area, TRect& left, TRect& right, TRect& splitArea)
+    {
+        left = area;
+        left.w = area.w * ratio;
+        left.w -= splitWidth / static_cast<T>(2);
+
+        splitArea = TRect(left.x + left.w, left.y, splitWidth, left.h);
+
+        right = area;
+        right.x += left.w + splitWidth;
+        right.w = area.w * (static_cast<T>(1) - ratio) - splitWidth / static_cast<T>(2);
+    }
+
+    /// @brief Split a rect vertically into left and right area.
+    static inline void split_v(float ratio, const TRect& area, TRect& left, TRect& right)
+    {
+        TRect splitArea; // zero area
+        return TRect::split_v(ratio, (T)0, area, left, right, splitArea);
+    }
+
+    /// @brief Split a rect horizontally into top, bottom, and split area.
+    /// @param ratio Normalized split ratio.
+    /// @param splitHeight If positive, the height of the split area.
+    /// @param area Original area before split.
+    /// @param top Outputs top area after split.
+    /// @param bottom Outputs bottom area after split.
+    /// @param splitArea Outputs split area after split.
+    static void split_h(float ratio, T splitHeight, const TRect& area, TRect& top, TRect& bottom, TRect& splitArea)
+    {
+        top = area;
+        top.h = area.h * ratio;
+        top.h -= splitHeight / static_cast<T>(2);
+
+        splitArea = TRect(top.x, top.y + top.h, top.w, splitHeight);
+
+        bottom = area;
+        bottom.y += top.h + splitHeight;
+        bottom.h = area.h * (static_cast<T>(1) - ratio) - splitHeight / static_cast<T>(2);
+    }
+
+    /// @brief Split a rect horizontally into top and bottom area.
+    static inline void split_h(float ratio, const TRect& area, TRect& top, TRect& bottom)
+    {
+        TRect splitArea; // zero area
+        return TRect::split_h(ratio, (T)0, area, top, bottom, splitArea);
+    }
 };
 
 using Rect = TRect<float>;

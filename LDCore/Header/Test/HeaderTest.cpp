@@ -558,6 +558,26 @@ TEST_CASE("Rect method")
     CHECK(is_equal_epsilon(top, 10.0f));
     CHECK(is_equal_epsilon(right, 50.0f));
     CHECK(is_equal_epsilon(bot, 70.0f));
+
+    Rect area(10.0f, 10.0f, 100.0f, 100.0f);
+    Rect tl, br, splitArea;
+    Rect::split_v(0.25f, area, tl, br);
+    CHECK(tl == Rect(10, 10, 25, 100));
+    CHECK(br == Rect(35, 10, 75, 100));
+
+    Rect::split_h(0.25f, area, tl, br);
+    CHECK(tl == Rect(10, 10, 100, 25));
+    CHECK(br == Rect(10, 35, 100, 75));
+
+    Rect::split_v(0.25f, 10.0f, area, tl, br, splitArea);
+    CHECK(tl == Rect(10, 10, 20, 100));
+    CHECK(br == Rect(40, 10, 70, 100));
+    CHECK(splitArea == Rect(30, 10, 10, 100));
+
+    Rect::split_h(0.25f, 10.0f, area, tl, br, splitArea);
+    CHECK(tl == Rect(10, 10, 100, 20));
+    CHECK(br == Rect(10, 40, 100, 70));
+    CHECK(splitArea == Rect(10, 30, 100, 10));
 }
 
 TEST_CASE("Mat3 ctor")
@@ -608,8 +628,6 @@ TEST_CASE("Mat3 method")
     CHECK(m2[0] == Vec3(1, 2, 3));
     CHECK(m2[1] == Vec3(0, 1, 2));
     CHECK(m2[2] == Vec3(0, 0, 1));
-
-
 
     Vec3 p1(2, -2, 3);
 
