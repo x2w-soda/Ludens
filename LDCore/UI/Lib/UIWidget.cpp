@@ -40,6 +40,11 @@ static_assert(IsTrivial<UIToggleWidgetObj>);
 static_assert(IsTrivial<UISliderWidgetObj>);
 static_assert(IsTrivial<UIButtonWidgetObj>);
 
+inline UIContextObj* UIWidgetObj::ctx() const
+{
+    return window->space->layer->ctx;
+}
+
 void UIWidgetObj::draw(ScreenRenderComponent renderer)
 {
     if (flags & UI_WIDGET_FLAG_HIDDEN_BIT)
@@ -54,6 +59,7 @@ void UIWidgetObj::draw(ScreenRenderComponent renderer)
     switch (type)
     {
     case UI_WIDGET_WINDOW:
+        UIWindowObj::on_draw(UIWidget(this), renderer);
         break;
     case UI_WIDGET_PANEL:
         UIPanelWidget::on_draw(UIWidget(this), renderer);
@@ -80,13 +86,13 @@ void UIWidgetObj::draw(ScreenRenderComponent renderer)
 
 bool UIWidget::is_hovered()
 {
-    UIContextObj* ctx = mObj->window->ctx;
+    UIContextObj* ctx = mObj->ctx();
     return ctx->cursorWidget == mObj;
 }
 
 bool UIWidget::is_pressed()
 {
-    UIContextObj* ctx = mObj->window->ctx;
+    UIContextObj* ctx = mObj->ctx();
     return ctx->pressWidget == mObj;
 }
 
@@ -114,16 +120,16 @@ void UIWidget::block_input()
 {
     mObj->flags |= UI_WIDGET_FLAG_BLOCK_INPUT_BIT;
 
-    UIContextObj* ctx = mObj->window->ctx;
-    UIContext(ctx).input_mouse_position(ctx->cursorPos);
+    UIContextObj* ctx = mObj->ctx();
+    ctx->input_mouse_position(ctx->cursorPos);
 }
 
 void UIWidget::unblock_input()
 {
     mObj->flags &= ~UI_WIDGET_FLAG_BLOCK_INPUT_BIT;
 
-    UIContextObj* ctx = mObj->window->ctx;
-    UIContext(ctx).input_mouse_position(ctx->cursorPos);
+    UIContextObj* ctx = mObj->ctx();
+    ctx->input_mouse_position(ctx->cursorPos);
 }
 
 UIWidgetType UIWidget::get_type()
@@ -153,7 +159,7 @@ UITheme UIWidget::get_theme()
 
 bool UIWidget::get_mouse_pos(Vec2& pos)
 {
-    UIContextObj* ctx = mObj->window->ctx;
+    UIContextObj* ctx = mObj->ctx();
 
     const Rect& widgetRect = mObj->layout.rect;
 
@@ -254,7 +260,7 @@ void UIWidget::set_on_draw(void (*onDraw)(UIWidget widget, ScreenRenderComponent
 
 UIContextObj* UINode::get_context()
 {
-    return mObj->window->ctx;
+    return mObj->ctx();
 }
 
 void UINode::get_children(std::vector<UIWidget>& widgets)
@@ -267,7 +273,7 @@ void UINode::get_children(std::vector<UIWidget>& widgets)
 
 void UINode::remove()
 {
-    UIContextObj* ctx = mObj->window->ctx;
+    UIContextObj* ctx = mObj->ctx();
 
     ctx->free_widget(mObj);
     mObj = nullptr;
@@ -279,8 +285,7 @@ void UINode::remove()
 
 UIScrollWidget UINode::add_scroll(const UILayoutInfo& layoutI, const UIScrollWidgetInfo& widgetI, void* user)
 {
-    UIWindowObj* window = mObj->window;
-    UIWidgetObj* obj = window->ctx->alloc_widget(UI_WIDGET_SCROLL, layoutI, mObj, user);
+    UIWidgetObj* obj = mObj->ctx()->alloc_widget(UI_WIDGET_SCROLL, layoutI, mObj, user);
     obj->as.scroll.base = obj;
     obj->as.scroll.bgColor = widgetI.bgColor;
     obj->as.scroll.offsetXDst = 0.0f;
@@ -397,8 +402,7 @@ void UIScrollWidget::on_draw(UIWidget widget, ScreenRenderComponent renderer)
 
 UIImageWidget UINode::add_image(const UILayoutInfo& layoutI, const UIImageWidgetInfo& widgetI, void* user)
 {
-    UIWindowObj* window = mObj->window;
-    UIWidgetObj* obj = window->ctx->alloc_widget(UI_WIDGET_IMAGE, layoutI, mObj, user);
+    UIWidgetObj* obj = mObj->ctx()->alloc_widget(UI_WIDGET_IMAGE, layoutI, mObj, user);
     obj->as.image.base = obj;
     obj->as.image.imageHandle = widgetI.image;
     obj->as.image.imageRect.w = 0;
@@ -456,8 +460,7 @@ void UIImageWidget::set_image_tint(Color color)
 
 UIButtonWidget UINode::add_button(const UILayoutInfo& layoutI, const UIButtonWidgetInfo& widgetI, void* user)
 {
-    UIWindowObj* window = mObj->window;
-    UIWidgetObj* obj = window->ctx->alloc_widget(UI_WIDGET_BUTTON, layoutI, mObj, user);
+    UIWidgetObj* obj = mObj->ctx()->alloc_widget(UI_WIDGET_BUTTON, layoutI, mObj, user);
     obj->cb.onMouse = UIButtonWidgetObj::on_mouse;
     obj->cb.onHover = UIButtonWidgetObj::on_hover;
     obj->as.button.base = obj;
@@ -476,8 +479,7 @@ UIButtonWidget UINode::add_button(const UILayoutInfo& layoutI, const UIButtonWid
 
 UISliderWidget UINode::add_slider(const UILayoutInfo& layoutI, const UISliderWidgetInfo& widgetI, void* user)
 {
-    UIWindowObj* window = mObj->window;
-    UIWidgetObj* obj = window->ctx->alloc_widget(UI_WIDGET_SLIDER, layoutI, mObj, user);
+    UIWidgetObj* obj = mObj->ctx()->alloc_widget(UI_WIDGET_SLIDER, layoutI, mObj, user);
     obj->cb.onDrag = &UISliderWidgetObj::on_drag;
     obj->as.slider.base = obj;
     obj->as.slider.min = widgetI.min;
@@ -500,7 +502,7 @@ void UISliderWidgetObj::on_drag(UIWidget widget, MouseButton btn, const Vec2& dr
 void UISliderWidget::on_draw(UIWidget widget, ScreenRenderComponent renderer)
 {
     UIWidgetObj* obj = widget;
-    const UITheme& theme = obj->window->ctx->theme;
+    const UITheme& theme = obj->theme;
     UISliderWidgetObj& self = obj->as.slider;
     Rect rect = widget.get_rect();
 
@@ -542,8 +544,7 @@ float UISliderWidget::get_ratio()
 
 UIToggleWidget UINode::add_toggle(const UILayoutInfo& layoutI, const UIToggleWidgetInfo& widgetI, void* user)
 {
-    UIWindowObj* window = mObj->window;
-    UIWidgetObj* obj = window->ctx->alloc_widget(UI_WIDGET_TOGGLE, layoutI, mObj, user);
+    UIWidgetObj* obj = mObj->ctx()->alloc_widget(UI_WIDGET_TOGGLE, layoutI, mObj, user);
     obj->cb.onMouse = &UIToggleWidgetObj::on_mouse;
     obj->cb.onUpdate = &UIToggleWidgetObj::on_update;
     obj->as.toggle.base = obj;
@@ -567,11 +568,11 @@ UITextWidget UINode::add_text(const UILayoutInfo& layoutI, const UITextWidgetInf
         textLayoutI.sizeY = UISize::fit();
     }
 
-    UIWindowObj* window = mObj->window;
-    UIWidgetObj* obj = window->ctx->alloc_widget(UI_WIDGET_TEXT, textLayoutI, mObj, user);
+    UIContextObj* ctx = mObj->ctx();
+    UIWidgetObj* obj = ctx->alloc_widget(UI_WIDGET_TEXT, textLayoutI, mObj, user);
     obj->as.text.fontSize = widgetI.fontSize;
     obj->as.text.value = widgetI.cstr ? heap_strdup(widgetI.cstr, MEMORY_USAGE_UI) : nullptr;
-    obj->as.text.fontAtlas = window->ctx->fontAtlas;
+    obj->as.text.fontAtlas = ctx->fontAtlas;
     obj->as.text.hoverHL = widgetI.hoverHL;
     obj->as.text.bgColor = 0;
 
@@ -600,8 +601,8 @@ void UITextWidgetObj::cleanup(UIWidgetObj* base)
 void UITextWidget::on_draw(UIWidget widget, ScreenRenderComponent renderer)
 {
     UIWidgetObj* obj = (UIWidgetObj*)widget;
-    UIContextObj& ctx = *obj->window->ctx;
-    const UITheme& theme = ctx.theme;
+    UIContextObj& ctx = *obj->ctx();
+    const UITheme& theme = obj->theme;
     UITextWidgetObj& self = obj->as.text;
     Rect rect = widget.get_rect();
     float wrapWidth = rect.w;
@@ -647,8 +648,7 @@ float* UITextWidget::font_size()
 
 UITextEditWidget UINode::add_text_edit(const UILayoutInfo& layoutI, const UITextEditWidgetInfo& widgetI, void* user)
 {
-    UIWindowObj* window = mObj->window;
-    UIWidgetObj* obj = window->ctx->alloc_widget(UI_WIDGET_TEXT_EDIT, layoutI, mObj, user);
+    UIWidgetObj* obj = mObj->ctx()->alloc_widget(UI_WIDGET_TEXT_EDIT, layoutI, mObj, user);
     obj->as.textEdit.fontSize = widgetI.fontSize;
     obj->as.textEdit.buf = TextBuffer<char>::create();
     obj->cb.onKey = &UITextEditWidgetObj::on_key;
@@ -705,7 +705,7 @@ void UITextEditWidget::on_draw(UIWidget widget, ScreenRenderComponent renderer)
 {
     UIWidgetObj* obj = widget.unwrap();
     auto& self = obj->as.textEdit;
-    UIContextObj& ctx = *obj->window->ctx;
+    UIContextObj& ctx = *obj->ctx();
     const UITheme& theme = ctx.theme;
     std::string str;
 
@@ -733,8 +733,7 @@ void UITextEditWidget::on_draw(UIWidget widget, ScreenRenderComponent renderer)
 
 UIPanelWidget UINode::add_panel(const UILayoutInfo& layoutI, const UIPanelWidgetInfo& widgetI, void* user)
 {
-    UIWindowObj* window = mObj->window;
-    UIWidgetObj* obj = window->ctx->alloc_widget(UI_WIDGET_PANEL, layoutI, mObj, user);
+    UIWidgetObj* obj = mObj->ctx()->alloc_widget(UI_WIDGET_PANEL, layoutI, mObj, user);
     obj->as.panel.color = widgetI.color;
 
     return {obj};
@@ -848,7 +847,7 @@ void UIButtonWidgetObj::on_hover(UIWidget widget, UIEvent event)
 void UIButtonWidget::on_draw(UIWidget widget, ScreenRenderComponent renderer)
 {
     UIWidgetObj* obj = widget;
-    UIContextObj* ctx = obj->window->ctx;
+    UIContextObj* ctx = obj->ctx();
     UIButtonWidgetObj& self = obj->as.button;
     UITheme theme = widget.get_theme();
     Rect rect = widget.get_rect();

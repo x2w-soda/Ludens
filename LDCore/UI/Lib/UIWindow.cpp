@@ -13,7 +13,7 @@ UIWindowObj::UIWindowObj()
 UIWindowObj::~UIWindowObj()
 {
     while (!widgets.empty())
-        ctx->free_widget(widgets.front());
+        ctx()->free_widget(widgets.front());
 }
 
 void UIWindowObj::update(float delta)
@@ -45,9 +45,17 @@ void UIWindowObj::draw_widget_subtree(UIWidgetObj* widget, ScreenRenderComponent
         renderer.pop_scissor();
 }
 
+void UIWindowObj::on_draw(UIWidget widget, ScreenRenderComponent renderer)
+{
+    auto* obj = (UIWindowObj*)widget.unwrap();
+    Rect rect = widget.get_rect();
+
+    renderer.draw_rect(rect, obj->color);
+}
+
 void UIWindowObj::on_drag(UIWidget widget, MouseButton btn, const Vec2& dragPos, bool begin)
 {
-    UIWindowObj* obj = (UIWindowObj*)widget.unwrap();
+    auto* obj = (UIWindowObj*)widget.unwrap();
     UIWindow window(obj);
     Rect rect = widget.get_rect();
 
@@ -68,19 +76,21 @@ void UIWindowObj::on_drag(UIWidget widget, MouseButton btn, const Vec2& dragPos,
         window.set_pos(dragPos - obj->dragOffset);
 }
 
+//
+// Public API
+//
+
 UIWindow::UIWindow(UIWindowObj* obj)
 {
     mObj = (UIWidgetObj*)obj;
 }
 
-void UIWindow::raise()
+void UIWindow::layout()
 {
-    UIWindowObj* obj = (UIWindowObj*)mObj;
-
-    obj->ctx->raise_window(obj);
+    ui_layout(mObj);
 }
 
-void UIWindow::draw(ScreenRenderComponent renderer)
+void UIWindow::render(ScreenRenderComponent& renderer)
 {
     UIWindowObj* obj = (UIWindowObj*)mObj;
 
@@ -95,11 +105,6 @@ void UIWindow::draw(ScreenRenderComponent renderer)
 
     if (useColorMask)
         renderer.pop_color_mask();
-}
-
-void UIWindow::layout()
-{
-    ui_layout(mObj);
 }
 
 void UIWindow::set_pos(const Vec2& pos)
@@ -125,6 +130,13 @@ void UIWindow::set_rect(const Rect& rect)
     mObj->layout.info.sizeY = UISize::fixed(rect.h);
 }
 
+void UIWindow::set_color(Color bg)
+{
+    UIWindowObj* obj = (UIWindowObj*)mObj;
+
+    obj->color = bg;
+}
+
 void UIWindow::set_color_mask(Color mask)
 {
     UIWindowObj* obj = (UIWindowObj*)mObj;
@@ -132,7 +144,7 @@ void UIWindow::set_color_mask(Color mask)
     obj->colorMask = mask;
 }
 
-void UIWindow::get_widgets(std::vector<UIWidget>& widgets)
+void UIWindow::get_widgets(Vector<UIWidget>& widgets)
 {
     UIWindowObj* obj = (UIWindowObj*)mObj;
     widgets.resize(obj->widgets.size());
@@ -150,6 +162,13 @@ std::string UIWindow::get_name() const
 {
     UIWindowObj* obj = (UIWindowObj*)mObj;
     return obj->name;
+}
+
+void UIWindow::set_on_resize(void (*onResize)(UIWindow window, const Vec2& size))
+{
+    UIWindowObj* obj = (UIWindowObj*)mObj;
+
+    obj->onResize = onResize;
 }
 
 } // namespace LD

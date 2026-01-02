@@ -1,19 +1,18 @@
 #pragma once
 
 #include <Ludens/Event/Event.h>
+#include <Ludens/DSA/Vector.h>
 #include <Ludens/Header/Handle.h>
 #include <Ludens/Header/Hash.h>
 #include <Ludens/Header/KeyCode.h>
 #include <Ludens/Header/Math/Rect.h>
 #include <Ludens/Header/Math/Vec2.h>
 #include <Ludens/UI/UITheme.h>
-#include <Ludens/UI/UIWindow.h>
+#include <Ludens/UI/UILayer.h>
+
 #include <cstdint>
-#include <vector>
 
 namespace LD {
-
-struct ScreenRenderComponent;
 
 struct UIContextInfo
 {
@@ -37,59 +36,17 @@ struct UIContext : Handle<struct UIContextObj>
     /// @param delta delta time in seconds
     void update(float delta);
 
-    /// @brief Render all windows and widgets in a layer.
-    /// @param renderer The screen space renderer to draw the layer with.
-    void render_layer(Hash32 layer, ScreenRenderComponent& renderer);
-
     /// @brief Pass an application event to the UI context.
-    bool forward_event(const Event* event);
+    bool on_event(const Event* event);
 
-    /// @brief update mouse cursor position in context
-    void input_mouse_position(const Vec2& pos);
+    /// @brief Create and add a layer to context.
+    UILayer create_layer(const char* layerName);
 
-    /// @brief notify that a mouse button has been pressed
-    void input_mouse_down(MouseButton btn);
-
-    /// @brief notify that a mouse button has been released
-    void input_mouse_up(MouseButton btn);
-
-    /// @brief Notify that a key has been pressed.
-    void input_key_down(KeyCode key);
-
-    /// @brief Notify that a key has been released.
-    void input_key_up(KeyCode key);
-
-    /// @brief Notify that the mouse wheel or touchpad has been scrolled.
-    /// @param offset A standard mouse wheel scroll provides offset along Y axis.
-    void input_scroll(const Vec2& offset);
-
-    /// @brief Perform layout on all widgets, across all windows, across all layers.
-    void layout();
-
-    /// @brief Add a layer to context.
-    void add_layer(Hash32 layer);
-
-    /// @brief Remove a layer from context. This removes all windows within the layer.
-    void remove_layer(Hash32 layer);
-
-    /// @brief Raise layer to top in context.
-    void raise_layer(Hash32 layer);
-
-    /// @brief Check if layer exists in context.
-    bool has_layer(Hash32 layer);
+    /// @brief Destroy a layer in context. This destroys all workspaces within the layer.
+    void destroy_layer(UILayer layer);
 
     /// @brief Get all layers in draw order (last layer in vector receives input first).
-    void get_layers(std::vector<Hash32>& layers);
-
-    /// @brief add a window to the context
-    UIWindow add_window(const UILayoutInfo& layoutI, const UIWindowInfo& windowI, void* user);
-
-    /// @brief Remove a window from the context.
-    void remove_window(UIWindow window);
-
-    /// @brief get window handles
-    /// @param windows outputs windows inside the context
-    void get_windows(Hash32 layer, std::vector<UIWindow>& windows);
+    void get_layers(Vector<UILayer>& layers);
 
     /// @brief Get current UI theme, shared by all widgets in this context.
     UITheme get_theme();

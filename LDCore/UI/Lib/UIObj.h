@@ -1,5 +1,9 @@
 #pragma once
 
+#include <Ludens/DSA/HashSet.h>
+#include <Ludens/DSA/Optional.h>
+#include <Ludens/DSA/RectSplit.h>
+#include <Ludens/DSA/Vector.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Header/Bitwise.h>
 #include <Ludens/Header/Math/Vec2.h>
@@ -12,10 +16,9 @@
 #include <Ludens/UI/UITheme.h>
 #include <Ludens/UI/UIWidget.h>
 #include <Ludens/UI/UIWindow.h>
-#include <optional>
+
 #include <string>
 #include <unordered_set>
-#include <vector>
 
 namespace LD {
 
@@ -35,6 +38,9 @@ enum UIWidgetFlagBit
 
 struct UIWidgetObj;
 struct UIWindowObj;
+struct UIWorkspaceObj;
+struct UILayerObj;
+struct UIContextObj;
 
 struct UILayout
 {
@@ -55,47 +61,112 @@ struct UICallback
     void (*onScroll)(UIWidget widget, const Vec2& offset);
 };
 
-struct UIContextLayer
+struct UIWorkspaceNode
 {
-    Hash32 layerHash;
-    std::vector<UIWindowObj*> windows;
+    float ratio;
+    bool isLeaf;
+    UIAreaID nodeID;
+    Rect area;
+    UIWorkspaceNode* parent = nullptr;
+    UIWorkspaceNode* lch = nullptr;
+    UIWorkspaceNode* rch = nullptr;
+    UIWindow window = {};
 };
 
+/// @brief UI workspace implementation.
+struct UIWorkspaceObj
+{
+    UILayerObj* layer = nullptr;
+    HashSet<UIWindowObj*> deferredWindowDestruction;
+    Vector<UIWindowObj*> windows;
+    RectSplit<UIWorkspaceNode> partition;
+    const float splitGap = 6.0f; // TODO:
+
+    UIWorkspaceObj() = delete;
+    UIWorkspaceObj(const UIWorkspaceObj&) = delete;
+    UIWorkspaceObj(const Rect& area)
+        : partition(area)
+    {
+    }
+    ~UIWorkspaceObj();
+
+    UIWorkspaceObj& operator=(const UIWorkspaceObj&) = delete;
+
+    void pre_update();
+    void update(float delta);
+    void layout();
+};
+
+/// @brief UI layer implementation.
+struct UILayerObj
+{
+    UIContextObj* ctx = nullptr;
+    std::string name;
+    HashSet<UIWorkspaceObj*> deferredWorkspaceDestruction;
+    Vector<UIWorkspaceObj*> workspaces;
+
+    UILayerObj() = default;
+    UILayerObj(const UILayerObj&) = delete;
+    ~UILayerObj();
+
+    UILayerObj& operator=(const UILayerObj&) = delete;
+
+    void pre_update();
+    void update(float delta);
+    void layout();
+    void raise_workspace(UIWorkspaceObj* obj);
+};
+
+/// @brief UI context implementation.
 struct UIContextObj
 {
     FontAtlas fontAtlas;
     RImage fontAtlasImage;
     PoolAllocator widgetPA;
     UITheme theme;
-    std::vector<UIContextLayer*> layers;
-    std::unordered_set<UIWindowObj*> deferredWindowDestruction;
-    UIWidgetObj* dragWidget;     /// the widget begin dragged
-    UIWidgetObj* pressWidget;    /// the widget pressed and not yet released
-    UIWidgetObj* cursorWidget;   /// the widget under mouse cursor
-    Vec2 cursorPos;              /// mouse cursor global position
-    Vec2 dragStartPos;           /// mouse cursor drag start global position
-    MouseButton dragMouseButton; /// mouse button used for dragging
+    Vector<UILayerObj*> layers;
+    HashSet<UILayerObj*> deferredLayerDestruction;
+    UIWidgetObj* dragWidget = nullptr;   /// the widget begin dragged
+    UIWidgetObj* pressWidget = nullptr;  /// the widget pressed and not yet released
+    UIWidgetObj* cursorWidget = nullptr; /// the widget under mouse cursor
+    Vec2 cursorPos;                      /// mouse cursor global position
+    Vec2 dragStartPos;                   /// mouse cursor drag start global position
+    MouseButton dragMouseButton;         /// mouse button used for dragging
 
     UIWidgetObj* alloc_widget(UIWidgetType type, const UILayoutInfo& layoutI, UIWidgetObj* parent, void* user);
     void free_widget(UIWidgetObj* widget);
 
     UIWidgetObj* get_widget(const Vec2& pos, int filter);
 
-    void pre_update(float delta);
+    void pre_update();
 
-    UIContextLayer* get_or_create_layer(Hash32 layerHash);
-    UIContextLayer* get_layer(Hash32 layerHash);
-    void remove_layer(UIContextLayer* toRemove);
-
-    /// @brief Raise a window to top within its layer.
-    /// @param window Target window.
-    void raise_window(UIWindowObj* window);
+    UILayerObj* get_or_create_layer(const char* name);
+    UILayerObj* get_layer(const char* name);
+    void raise_layer(UILayerObj* obj);
 
     /// @brief When a widget is removed, reset all references to it.
     void invalidate_refs(UIWidgetObj* removed);
+
+    /// @brief update mouse cursor position in context
+    void input_mouse_position(const Vec2& pos);
+
+    /// @brief notify that a mouse button has been pressed
+    void input_mouse_down(MouseButton btn);
+
+    /// @brief notify that a mouse button has been released
+    void input_mouse_up(MouseButton btn);
+
+    /// @brief Notify that a key has been pressed.
+    void input_key_down(KeyCode key);
+
+    /// @brief Notify that a key has been released.
+    void input_key_up(KeyCode key);
+
+    /// @brief Notify that the mouse wheel or touchpad has been scrolled.
+    /// @param offset A standard mouse wheel scroll provides offset along Y axis.
+    void input_scroll(const Vec2& offset);
 };
 
-/// @brief Scroll widget implementation.
 struct UIScrollWidgetObj
 {
     UIWidgetObj* base;
@@ -245,6 +316,8 @@ struct UIWidgetObj
         return count;
     }
 
+    inline UIContextObj* ctx() const;
+
     /// @brief Draw the widget with default or custom render callback.
     void draw(ScreenRenderComponent renderer);
 };
@@ -259,20 +332,24 @@ struct UIWindowObj : UIWidgetObj
 
     UIWindowObj& operator=(const UIWindowObj&) = delete;
 
-    UIContextObj* ctx;                 /// owning context
-    UIContextLayer* layer;             /// residing layer
-    std::string name;                  /// window identifier
-    std::vector<UIWidgetObj*> widgets; /// all widgets within the window
-    std::optional<Color> colorMask;    /// optional mask to modify widget colors in window
+    UIWorkspaceObj* space = nullptr; /// owning workspace
+    std::string name;                /// window identifier
+    Vector<UIWidgetObj*> widgets;    /// all widgets within the window
+    Optional<Color> colorMask;       /// optional mask to modify widget colors in window
+    Color color = 0;                 /// window background color
     Vec2 dragOffset;
     Vec2 dragBeginPos;
     Vec2 dragBeginSize;
+    void (*onResize)(UIWindow window, const Vec2& size) = nullptr;
     bool dragResize; // resize or reposition
+
+    inline UIContextObj* ctx() const { return space->layer->ctx; }
+    inline UILayerObj* layer() const { return space->layer; }
 
     void update(float delta);
 
     static void draw_widget_subtree(UIWidgetObj* widget, ScreenRenderComponent renderer);
-
+    static void on_draw(UIWidget widget, ScreenRenderComponent renderer);
     static void on_drag(UIWidget widget, MouseButton btn, const Vec2& dragPos, bool begin);
 };
 

@@ -82,39 +82,28 @@ UISandbox::UISandbox()
     }
 
     static UIThemeInfo sUITheme = UITheme::get_default_info();
-    UIWindowManagerInfo wmI{};
-    wmI.topBarHeight = 20.0f;
-    wmI.bottomBarHeight = 20.0f;
-    wmI.theme = UITheme(&sUITheme);
-    wmI.screenSize = screenExtent;
-    wmI.fontAtlas = mFontAtlas;
-    wmI.fontAtlasImage = mFontAtlasImage;
-    wmI.iconAtlasImage = mIconAtlasImage;
-    wmI.icons.close = EditorIconAtlas::get_icon_rect(EditorIcon::Close);
-    mUIWM = UIWindowManager::create(wmI);
-    UIContext ctx = mUIWM.get_context();
-    ctx.add_layer(Hash32(0u));
+
+    UIContextInfo ctxI{};
+    ctxI.fontAtlas = mFontAtlas;
+    ctxI.fontAtlasImage = mFontAtlasImage;
+    ctxI.theme = UITheme(&sUITheme);
+    mCtx = UIContext::create(ctxI);
+    UILayer groundLayer = mCtx.create_layer("ground");
+    UILayer floatLayer = mCtx.create_layer("float");
+    UIWorkspace space = floatLayer.create_workspace(Rect(100.0f, 50.0f, 250.0f, 400.0f));
 
     // create floating client window
     UILayoutInfo layoutI{};
     layoutI.childAxis = UI_AXIS_Y;
-    layoutI.sizeX = UISize::fixed(250.0f);
-    layoutI.sizeY = UISize::fixed(400.0f);
     UIWindowInfo uiWindowI{};
     uiWindowI.name = "demo";
-    uiWindowI.layer = 0u;
     uiWindowI.defaultMouseControls = false;
     uiWindowI.drawWithScissor = false;
-    mClient = mUIWM.get_context().add_window(layoutI, uiWindowI, nullptr);
-    mClient.layout();
-    mClient.set_on_draw([](UIWidget widget, ScreenRenderComponent renderer) {
+    mDemo = space.create_window(space.get_root_id(), layoutI, uiWindowI, nullptr);
+    mDemo.layout();
+    mDemo.set_on_draw([](UIWidget widget, ScreenRenderComponent renderer) {
         renderer.draw_rect(widget.get_rect(), Color(0x303030FF));
     });
-    UIWMClientInfo clientI{};
-    clientI.client = mClient;
-    clientI.user = nullptr;
-    UIWMAreaID areaID = mUIWM.create_float(clientI);
-    mUIWM.show_float(areaID);
 }
 
 UISandbox::~UISandbox()
@@ -123,9 +112,8 @@ UISandbox::~UISandbox()
 
     mRDevice.wait_idle();
     mRDevice.destroy_image(mIconAtlasImage);
-    mUIWM.get_context().remove_window(mClient);
 
-    UIWindowManager::destroy(mUIWM);
+    UIContext::destroy(mCtx);
     Camera::destroy(mCamera);
     RenderServer::destroy(mRenderServer);
     RDevice::destroy(mRDevice);
@@ -150,25 +138,26 @@ void UISandbox::run()
 
         // update and render
         float delta = (float)window.get_delta_time();
-        mUIWM.update(delta);
+        mCtx.update(delta);
         render();
 
         LD_PROFILE_FRAME_MARK;
     }
 
-    ui_imgui_release(mUIWM.get_context());
+    ui_imgui_release(mCtx);
 
     Window::destroy(window);
 }
 
 void UISandbox::imgui()
 {
-    ui_frame_begin(mUIWM.get_context());
+    ui_frame_begin(mCtx);
 
     bool isPressed;
 
-    ui_push_window("Demo", mClient);
+    ui_push_window("Demo", mDemo);
     ui_push_scroll({});
+    ui_top_layout_child_gap(10.0f);
     {
         ui_push_button("Button1", isPressed);
         if (isPressed)
@@ -238,13 +227,10 @@ void UISandbox::render()
     mRenderServer.scene_pass(sceneP);
 
     // render UI in screen space
-    LD_UNREACHABLE; // TODO: allow screen pass to directly submit via ScreenRenderComponent
-    /*
     RenderServerScreenPass screenP{};
-    screenP.renderCallback = &UISandbox::on_screen_render;
+    screenP.callback = &UISandbox::on_screen_render;
     screenP.user = this;
     mRenderServer.screen_pass(screenP);
-    */
 
     mRenderServer.submit_frame();
 }
@@ -254,17 +240,21 @@ void UISandbox::on_event(const Event* event, void* user)
     UISandbox& self = *(UISandbox*)user;
 
     // pass events to UI
-    UIContext uiCtx = self.mUIWM.get_context();
-    uiCtx.forward_event(event);
+    UIContext uiCtx = self.mCtx;
+    uiCtx.on_event(event);
 }
 
 void UISandbox::on_screen_render(ScreenRenderComponent renderer, void* user)
 {
     UISandbox& self = *(UISandbox*)user;
 
-    UIContext ctx = self.mUIWM.get_context();
-    ctx.render_layer(self.mUIWM.get_ground_layer_hash(), renderer);
-    ctx.render_layer(self.mUIWM.get_float_layer_hash(), renderer);
+    UIContext ctx = self.mCtx;
+
+    Vector<UILayer> layers;
+    ctx.get_layers(layers);
+
+    for (UILayer layer : layers)
+        layer.render(renderer);
 }
 
 } // namespace LD

@@ -38,7 +38,8 @@ public:
         return get_lfs_directory(lfsPath);
     }
 
-    static inline UIContext create_test_context()
+    /// @brief Creates a context with a single layer with a single workspace.
+    static inline UIContext create_test_context(const Vec2& workspaceExtent, UIWorkspace& outWorkspace)
     {
         UITest* instance = get();
 
@@ -48,9 +49,8 @@ public:
         ctxI.theme = UITheme(&instance->mTheme);
         UIContext ctx = UIContext::create(ctxI);
 
-        // lazy default layer
-        uint32_t layerHash = 0;
-        ctx.add_layer(layerHash);
+        UILayer layer = ctx.create_layer("test");
+        outWorkspace = layer.create_workspace(Rect(0.0f, 0.0f, workspaceExtent.x, workspaceExtent.y));
 
         return ctx;
     }

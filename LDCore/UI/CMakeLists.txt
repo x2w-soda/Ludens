@@ -4,11 +4,12 @@ set(MODULE_SANDBOX_NAME LDUISandbox)
 
 set(MODULE_INCLUDE
     ${LUDENS_INCLUDE_DIR}/Ludens/UI/UIContext.h
-    ${LUDENS_INCLUDE_DIR}/Ludens/UI/UILayout.h
+    ${LUDENS_INCLUDE_DIR}/Ludens/UI/UILayer.h
+    ${LUDENS_INCLUDE_DIR}/Ludens/UI/UIWorkspace.h
     ${LUDENS_INCLUDE_DIR}/Ludens/UI/UIWindow.h
     ${LUDENS_INCLUDE_DIR}/Ludens/UI/UIWidget.h
+    ${LUDENS_INCLUDE_DIR}/Ludens/UI/UILayout.h
     ${LUDENS_INCLUDE_DIR}/Ludens/UI/UITheme.h
-    ${LUDENS_INCLUDE_DIR}/Ludens/UI/UIWindowManager.h
     ${LUDENS_INCLUDE_DIR}/Ludens/UI/UIAnimation.h
     ${LUDENS_INCLUDE_DIR}/Ludens/UI/UIImmediate.h
 )
@@ -16,18 +17,14 @@ set(MODULE_INCLUDE
 set(MODULE_LIB
     Lib/UIObj.h
     Lib/UIContext.cpp
-    Lib/UILayout.cpp
+    Lib/UILayer.cpp
+    Lib/UIWorkspace.cpp
     Lib/UIWindow.cpp
     Lib/UIWidget.cpp
+    Lib/UILayout.cpp
     Lib/UITheme.cpp
-    Lib/UIWindowManager.cpp
     Lib/UIAnimation.cpp
     Lib/UIImmediate.cpp
-    Lib/WindowManager/AreaNode.h
-    Lib/WindowManager/AreaNode.cpp
-    Lib/WindowManager/AreaTab.h
-    Lib/WindowManager/AreaTab.cpp
-    Lib/WindowManager/UIWindowManagerObj.h
 )
 
 set(MODULE_TEST

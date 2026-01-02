@@ -4,14 +4,15 @@
 
 TEST_CASE("UITextWidget in fit container" * doctest::skip(!UITest::found_lfs_directory()))
 {
-    UIContext ctx = UITest::create_test_context();
+    UIWorkspace space;
+    UIContext ctx = UITest::create_test_context(Vec2(100.0f, 100.0f), space);
 
     UILayoutInfo layoutI{};
     layoutI.childAxis = UI_AXIS_X;
     layoutI.sizeX = UISize::fit();
     layoutI.sizeY = UISize::fit();
     UIWindowInfo windowI{};
-    UIWindow window = ctx.add_window(layoutI, windowI, nullptr);
+    UIWindow window = space.create_window(space.get_root_id(), layoutI, windowI, nullptr);
 
     UITextWidgetInfo textWI{};
     textWI.cstr = "foo";
@@ -21,7 +22,7 @@ TEST_CASE("UITextWidget in fit container" * doctest::skip(!UITest::found_lfs_dir
     textWI.cstr = "bar";
     UITextWidget textW2 = window.node().add_text({}, textWI, nullptr);
 
-    ctx.layout();
+    ctx.update(0.0f);
 
     Rect rect = textW1.get_rect();
     CHECK(rect.x == 0);
@@ -37,7 +38,7 @@ TEST_CASE("UITextWidget in fit container" * doctest::skip(!UITest::found_lfs_dir
 
     window.set_layout_child_axis(UI_AXIS_Y);
 
-    ctx.layout();
+    ctx.update(0.0f);
 
     rect = textW1.get_rect();
     CHECK(rect.x == 0);

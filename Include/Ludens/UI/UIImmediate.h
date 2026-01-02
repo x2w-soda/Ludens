@@ -88,7 +88,7 @@ void ui_push_text_edit(const char* text);
 void ui_push_image(RImage image, float width, float height, const Rect* portion = nullptr);
 
 /// @brief Push UIPanelWidget.
-void ui_push_panel();
+void ui_push_panel(const Color* color = nullptr);
 
 /// @brief Push UIToggleWidget.
 void ui_push_toggle(bool& isPressed, bool& state);

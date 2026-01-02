@@ -6,7 +6,6 @@
 #include <Ludens/RenderBackend/RBackend.h>
 #include <Ludens/RenderServer/RenderServer.h>
 #include <Ludens/UI/UIContext.h>
-#include <Ludens/UI/UIWindowManager.h>
 
 namespace LD {
 
@@ -33,8 +32,8 @@ private:
     RenderServer mRenderServer;
     RImage mFontAtlasImage;
     RImage mIconAtlasImage;
-    UIWindow mClient;
-    UIWindowManager mUIWM;
+    UIWindow mDemo;
+    UIContext mCtx;
     Camera mCamera;
 };
 

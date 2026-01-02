@@ -74,7 +74,7 @@ UIWidgetObj* UIContextObj::alloc_widget(UIWidgetType type, const UILayoutInfo& l
     obj->window = window;
     obj->user = user;
     obj->node = {obj};
-    obj->theme = window->ctx->theme;
+    obj->theme = window->ctx()->theme;
     obj->scrollOffset = Vec2(0.0f);
     obj->flags = 0;
 
@@ -107,82 +107,86 @@ UIWidgetObj* UIContextObj::get_widget(const Vec2& pos, int filter)
 {
     for (auto layerIte = layers.rbegin(); layerIte != layers.rend(); layerIte++)
     {
-        UIContextLayer* layer = *layerIte;
+        UILayerObj* layer = *layerIte;
 
-        for (auto windowIte = layer->windows.rbegin(); windowIte != layer->windows.rend(); windowIte++)
+        for (auto spaceIt = layer->workspaces.rbegin(); spaceIt != layer->workspaces.rend(); spaceIt++)
         {
-            UIWindowObj* window = *windowIte;
+            UIWorkspaceObj* space = *spaceIt;
 
-            if (!window->layout.rect.contains(pos) || (window->flags & UI_WIDGET_FLAG_HIDDEN_BIT))
+            Rect workspaceRect = UIWorkspace(space).get_root_rect();
+            if (!workspaceRect.contains(pos))
                 continue;
 
-            if (window->flags & UI_WIDGET_FLAG_BLOCK_INPUT_BIT)
-                return nullptr;
+            for (auto windowIte = space->windows.rbegin(); windowIte != space->windows.rend(); windowIte++)
+            {
+                UIWindowObj* window = *windowIte;
 
-            return get_widget_at_pos((UIWidgetObj*)window, pos, filter);
+                if (!window->layout.rect.contains(pos) || (window->flags & UI_WIDGET_FLAG_HIDDEN_BIT))
+                    continue;
+
+                if (window->flags & UI_WIDGET_FLAG_BLOCK_INPUT_BIT)
+                    return nullptr;
+
+                return get_widget_at_pos((UIWidgetObj*)window, pos, filter);
+            }
         }
     }
 
     return nullptr;
 }
 
-void UIContextObj::pre_update(float delta)
+void UIContextObj::pre_update()
 {
-    for (UIWindowObj* window : deferredWindowDestruction)
+    for (UILayerObj* layer : layers)
     {
-        UIContextLayer* layer = window->layer;
-        heap_delete<UIWindowObj>(window);
-
-        layer->windows.erase(std::remove(layer->windows.begin(), layer->windows.end(), window));
+        // removes workspaces from layers
+        layer->pre_update();
     }
 
-    deferredWindowDestruction.clear();
+    for (UILayerObj* layer : deferredLayerDestruction)
+    {
+        heap_delete<UILayerObj>(layer);
+
+        layers.erase(std::remove(layers.begin(), layers.end(), layer));
+    }
+
+    deferredLayerDestruction.clear();
 }
 
-UIContextLayer* UIContextObj::get_or_create_layer(Hash32 layerHash)
+void UIContextObj::raise_layer(UILayerObj* obj)
 {
-    UIContextLayer* layer = get_layer(layerHash);
+    if (!obj)
+        return;
 
-    if (layer)
-        return layer;
-
-    layer = heap_new<UIContextLayer>(MEMORY_USAGE_UI);
-    layer->layerHash = layerHash;
-    layers.push_back(layer);
-
-    return layer;
+    layers.erase(std::remove(layers.begin(), layers.end(), obj));
+    layers.push_back(obj);
 }
 
-UIContextLayer* UIContextObj::get_layer(Hash32 layerHash)
+UILayerObj* UIContextObj::get_or_create_layer(const char* name)
+{
+    UILayerObj* obj = get_layer(name);
+
+    if (obj)
+        return obj;
+
+    obj = heap_new<UILayerObj>(MEMORY_USAGE_UI);
+    obj->name = std::string(name);
+    obj->ctx = this;
+    layers.push_back(obj);
+
+    return obj;
+}
+
+UILayerObj* UIContextObj::get_layer(const char* name)
 {
     // just linear probe
-    for (UIContextLayer* layer : layers)
+    for (UILayerObj* layer : layers)
     {
-        if (layer->layerHash == layerHash)
+        if (layer->name == name)
             return layer;
     }
 
     return nullptr;
-}
-
-void UIContextObj::remove_layer(UIContextLayer* layer)
-{
-    if (!layer)
-        return;
-
-    // destroy all windows in layer
-    for (UIWindowObj* window : layer->windows)
-        heap_delete<UIWindowObj>(window);
-    layer->windows.clear();
-
-    heap_delete<UIContextLayer>(layer);
-}
-
-void UIContextObj::raise_window(UIWindowObj* window)
-{
-    UIContextLayer* layer = window->layer;
-    layer->windows.erase(std::remove(layer->windows.begin(), layer->windows.end(), window));
-    layer->windows.push_back(window);
 }
 
 void UIContextObj::invalidate_refs(UIWidgetObj* removed)
@@ -197,20 +201,20 @@ void UIContextObj::invalidate_refs(UIWidgetObj* removed)
         cursorWidget = nullptr;
 }
 
-void UIContext::input_mouse_position(const Vec2& pos)
+void UIContextObj::input_mouse_position(const Vec2& pos)
 {
     LD_PROFILE_SCOPE;
 
-    mObj->cursorPos = pos;
+    cursorPos = pos;
 
-    if (mObj->dragWidget)
+    if (dragWidget)
     {
-        UIWidgetObj* de = mObj->dragWidget;
-        de->cb.onDrag({de}, mObj->dragMouseButton, mObj->cursorPos, false);
+        UIWidgetObj* de = dragWidget;
+        de->cb.onDrag({de}, dragMouseButton, cursorPos, false);
     }
 
-    UIWidgetObj* prev = mObj->cursorWidget;
-    UIWidgetObj* next = mObj->get_widget(pos, WIDGET_FILTER_HOVER_BIT);
+    UIWidgetObj* prev = cursorWidget;
+    UIWidgetObj* next = get_widget(pos, WIDGET_FILTER_HOVER_BIT);
 
     if (next)
     {
@@ -220,19 +224,19 @@ void UIContext::input_mouse_position(const Vec2& pos)
         if (next != prev && next->cb.onHover)
             next->cb.onHover({next}, UI_MOUSE_ENTER);
 
-        mObj->cursorWidget = next;
+        cursorWidget = next;
         return;
     }
 
     if (prev && prev->cb.onHover)
         prev->cb.onHover({prev}, UI_MOUSE_LEAVE);
 
-    mObj->cursorWidget = nullptr;
+    cursorWidget = nullptr;
 }
 
-void UIContext::input_mouse_down(MouseButton btn)
+void UIContextObj::input_mouse_down(MouseButton btn)
 {
-    UIWidgetObj* widget = mObj->get_widget(mObj->cursorPos, WIDGET_FILTER_MOUSE_BIT | WIDGET_FILTER_DRAG_BIT);
+    UIWidgetObj* widget = get_widget(cursorPos, WIDGET_FILTER_MOUSE_BIT | WIDGET_FILTER_DRAG_BIT);
 
     if (!widget)
         return;
@@ -241,27 +245,27 @@ void UIContext::input_mouse_down(MouseButton btn)
 
     if (!blockInput && widget->cb.onDrag)
     {
-        mObj->dragStartPos = mObj->cursorPos;
-        mObj->dragWidget = widget;
-        mObj->dragMouseButton = btn;
+        dragStartPos = cursorPos;
+        dragWidget = widget;
+        dragMouseButton = btn;
 
-        widget->cb.onDrag({widget}, btn, mObj->cursorPos, true);
+        widget->cb.onDrag({widget}, btn, cursorPos, true);
     }
 
     if (!blockInput && widget->cb.onMouse)
     {
-        Vec2 localPos = mObj->cursorPos - widget->layout.rect.get_pos();
+        Vec2 localPos = cursorPos - widget->layout.rect.get_pos();
         widget->cb.onMouse({widget}, localPos, btn, UI_MOUSE_DOWN);
-        mObj->pressWidget = widget;
+        pressWidget = widget;
     }
 }
 
-void UIContext::input_mouse_up(MouseButton btn)
+void UIContextObj::input_mouse_up(MouseButton btn)
 {
-    mObj->dragWidget = nullptr;
-    mObj->pressWidget = nullptr;
+    dragWidget = nullptr;
+    pressWidget = nullptr;
 
-    UIWidgetObj* widget = mObj->get_widget(mObj->cursorPos, WIDGET_FILTER_MOUSE_BIT);
+    UIWidgetObj* widget = get_widget(cursorPos, WIDGET_FILTER_MOUSE_BIT);
 
     if (!widget)
         return;
@@ -270,14 +274,14 @@ void UIContext::input_mouse_up(MouseButton btn)
 
     if (!blockInput && widget->cb.onMouse)
     {
-        Vec2 localPos = mObj->cursorPos - widget->layout.rect.get_pos();
+        Vec2 localPos = cursorPos - widget->layout.rect.get_pos();
         widget->cb.onMouse({widget}, localPos, btn, UI_MOUSE_UP);
     }
 }
 
-void UIContext::input_key_down(KeyCode key)
+void UIContextObj::input_key_down(KeyCode key)
 {
-    UIWidgetObj* widget = mObj->get_widget(mObj->cursorPos, WIDGET_FILTER_KEY_BIT);
+    UIWidgetObj* widget = get_widget(cursorPos, WIDGET_FILTER_KEY_BIT);
 
     if (!widget)
         return;
@@ -288,9 +292,9 @@ void UIContext::input_key_down(KeyCode key)
         widget->cb.onKey({widget}, key, UI_KEY_DOWN);
 }
 
-void UIContext::input_key_up(KeyCode key)
+void UIContextObj::input_key_up(KeyCode key)
 {
-    UIWidgetObj* widget = mObj->get_widget(mObj->cursorPos, WIDGET_FILTER_KEY_BIT);
+    UIWidgetObj* widget = get_widget(cursorPos, WIDGET_FILTER_KEY_BIT);
 
     if (!widget)
         return;
@@ -301,9 +305,9 @@ void UIContext::input_key_up(KeyCode key)
         widget->cb.onKey({widget}, key, UI_KEY_UP);
 }
 
-void UIContext::input_scroll(const Vec2& offset)
+void UIContextObj::input_scroll(const Vec2& offset)
 {
-    UIWidgetObj* widget = mObj->get_widget(mObj->cursorPos, WIDGET_FILTER_SCROLL_BIT);
+    UIWidgetObj* widget = get_widget(cursorPos, WIDGET_FILTER_SCROLL_BIT);
 
     if (!widget)
         return;
@@ -314,110 +318,32 @@ void UIContext::input_scroll(const Vec2& offset)
         widget->cb.onScroll({widget}, offset);
 }
 
-void UIContext::layout()
-{
-    LD_PROFILE_SCOPE;
+//
+// Public API
+//
 
-    for (UIContextLayer* layer : mObj->layers)
-    {
-        for (UIWindowObj* window : layer->windows)
-        {
-            ui_layout(window);
-        }
-    }
+UILayer UIContext::create_layer(const char* layerName)
+{
+    return UILayer(mObj->get_or_create_layer(layerName));
 }
 
-void UIContext::add_layer(Hash32 layerHash)
+void UIContext::destroy_layer(UILayer layer)
 {
-    mObj->get_or_create_layer(layerHash);
-}
-
-void UIContext::remove_layer(Hash32 layerHash)
-{
-    UIContextLayer* layer = mObj->get_layer(layerHash);
     if (!layer)
         return;
 
-    mObj->remove_layer(layer);
-    mObj->layers.erase(std::remove(mObj->layers.begin(), mObj->layers.end(), layer));
+    mObj->deferredLayerDestruction.insert(layer.unwrap());
 }
 
-void UIContext::raise_layer(Hash32 layerHash)
+void UIContext::get_layers(Vector<UILayer>& layers)
 {
-    UIContextLayer* layer = mObj->get_layer(layerHash);
-    if (!layer)
-        return;
+    if (!mObj->deferredLayerDestruction.empty())
+        mObj->pre_update();
 
-    mObj->layers.erase(std::remove(mObj->layers.begin(), mObj->layers.end(), layer));
-    mObj->layers.push_back(layer);
-}
-
-bool UIContext::has_layer(Hash32 layerHash)
-{
-    return mObj->get_layer(layerHash) != nullptr;
-}
-
-void UIContext::get_layers(std::vector<Hash32>& layers)
-{
     layers.resize(mObj->layers.size());
 
     for (int i = 0; i < (int)mObj->layers.size(); i++)
-        layers[i] = mObj->layers[i]->layerHash;
-}
-
-UIWindow UIContext::add_window(const UILayoutInfo& layoutI, const UIWindowInfo& windowI, void* user)
-{
-    UIWindowObj* windowObj = heap_new<UIWindowObj>(MEMORY_USAGE_UI);
-    windowObj->layout.info = layoutI;
-    windowObj->user = user;
-    windowObj->ctx = mObj;
-    windowObj->type = UI_WIDGET_WINDOW;
-    windowObj->window = windowObj;
-    windowObj->node = {windowObj};
-    windowObj->flags = 0;
-    windowObj->theme = mObj->theme;
-    windowObj->layer = mObj->get_layer(windowI.layer);
-
-    LD_ASSERT(windowObj->layer); // layer must already exist
-
-    if (windowI.name)
-        windowObj->name = std::string(windowI.name);
-
-    if (windowI.hidden)
-        windowObj->flags |= UI_WIDGET_FLAG_HIDDEN_BIT;
-
-    if (windowI.drawWithScissor)
-        windowObj->flags |= UI_WIDGET_FLAG_DRAW_WITH_SCISSOR_BIT;
-
-    if (windowI.defaultMouseControls)
-        windowObj->cb.onDrag = UIWindowObj::on_drag;
-
-    windowObj->layer->windows.push_back(windowObj);
-
-    return UIWindow(windowObj);
-}
-
-void UIContext::remove_window(UIWindow window)
-{
-    UIWindowObj* obj = (UIWindowObj*)window.unwrap();
-
-    mObj->invalidate_refs((UIWidgetObj*)window.unwrap());
-
-    // window destruction is deferred so we don't modify
-    // window hierarchy while iterating it.
-    mObj->deferredWindowDestruction.insert(obj);
-}
-
-void UIContext::get_windows(Hash32 layerHash, std::vector<UIWindow>& windows)
-{
-    UIContextLayer* layer = mObj->get_layer(layerHash);
-    if (!layer)
-        return;
-
-    windows.resize(layer->windows.size());
-
-    for (size_t i = 0; i < layer->windows.size(); i++)
-        windows[i] = {layer->windows[i]};
+        layers[i] = UILayer(mObj->layers[i]);
 }
 
 UITheme UIContext::get_theme()
@@ -446,16 +372,18 @@ UIContext UIContext::create(const UIContextInfo& info)
     obj->widgetPA = PoolAllocator::create(paI);
     obj->theme = info.theme;
 
-    return {obj};
+    return UIContext(obj);
 }
 
 void UIContext::destroy(UIContext ctx)
 {
     UIContextObj* obj = ctx.unwrap();
 
-    for (UIContextLayer* layer : obj->layers)
-        obj->remove_layer(layer);
-    obj->layers.clear();
+    for (UILayerObj* layer : obj->layers)
+        obj->deferredLayerDestruction.insert(layer);
+
+    obj->pre_update();
+    LD_ASSERT(obj->layers.empty());
 
     PoolAllocator::destroy(obj->widgetPA);
     heap_delete<UIContextObj>(obj);
@@ -465,62 +393,38 @@ void UIContext::update(float delta)
 {
     LD_PROFILE_SCOPE;
 
-    mObj->pre_update(delta);
+    mObj->pre_update();
 
-    layout();
-
-    for (UIContextLayer* layer : mObj->layers)
+    for (UILayerObj* layer : mObj->layers)
     {
-        for (UIWindowObj* window : layer->windows)
-        {
-            if (window->cb.onUpdate)
-                window->cb.onUpdate({window}, delta);
-
-            // updates all widgets within window
-            window->update(delta);
-        }
+        layer->layout();
+        layer->update(delta);
     }
 }
 
-void UIContext::render_layer(Hash32 layerHash, ScreenRenderComponent& renderer)
-{
-    LD_PROFILE_SCOPE;
-
-    UIContextLayer* layer = mObj->get_layer(layerHash);
-    if (!layer)
-        return;
-
-    for (UIWindowObj* windowObj : layer->windows)
-    {
-        UIWindow window(windowObj);
-
-        window.draw(renderer);
-    }
-}
-
-bool UIContext::forward_event(const Event* event)
+bool UIContext::on_event(const Event* event)
 {
     switch (event->type)
     {
     case EVENT_TYPE_KEY_DOWN:
-        input_key_down(static_cast<const KeyDownEvent*>(event)->key);
+        mObj->input_key_down(static_cast<const KeyDownEvent*>(event)->key);
         break;
     case EVENT_TYPE_KEY_UP:
-        input_key_up(static_cast<const KeyUpEvent*>(event)->key);
+        mObj->input_key_up(static_cast<const KeyUpEvent*>(event)->key);
         break;
     case EVENT_TYPE_MOUSE_MOTION:
-        input_mouse_position(Vec2(static_cast<const MouseMotionEvent*>(event)->xpos,
-                                  static_cast<const MouseMotionEvent*>(event)->ypos));
+        mObj->input_mouse_position(Vec2(static_cast<const MouseMotionEvent*>(event)->xpos,
+                                        static_cast<const MouseMotionEvent*>(event)->ypos));
         break;
     case EVENT_TYPE_MOUSE_DOWN:
-        input_mouse_down(static_cast<const MouseDownEvent*>(event)->button);
+        mObj->input_mouse_down(static_cast<const MouseDownEvent*>(event)->button);
         break;
     case EVENT_TYPE_MOUSE_UP:
-        input_mouse_up(static_cast<const MouseUpEvent*>(event)->button);
+        mObj->input_mouse_up(static_cast<const MouseUpEvent*>(event)->button);
         break;
     case EVENT_TYPE_SCROLL:
-        input_scroll(Vec2(static_cast<const ScrollEvent*>(event)->xoffset,
-                          static_cast<const ScrollEvent*>(event)->yoffset));
+        mObj->input_scroll(Vec2(static_cast<const ScrollEvent*>(event)->xoffset,
+                                static_cast<const ScrollEvent*>(event)->yoffset));
         break;
     default: // does not trigger any input
         return false;

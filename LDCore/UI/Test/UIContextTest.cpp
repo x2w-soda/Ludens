@@ -3,49 +3,40 @@
 
 TEST_CASE("UIContext layers sanity check")
 {
-    UIContext ctx = UITest::create_test_context();
+    UIWorkspace space;
+    UIContext ctx = UITest::create_test_context(Vec2(100.0f, 100.0f), space);
+    ctx.create_layer("layer1");
 
-    const Hash32 testLayerHash((uint32_t)0);
-    CHECK(ctx.has_layer(testLayerHash)); // added during test context creation
-
-    constexpr Hash32 layer1Hash("SomeLayer1");
-    CHECK(!ctx.has_layer(layer1Hash));
-
-    ctx.add_layer(layer1Hash);
-    CHECK(ctx.has_layer(layer1Hash));
-
-    std::vector<Hash32> layers;
+    Vector<UILayer> layers;
     ctx.get_layers(layers);
     CHECK(layers.size() == 2);
-    CHECK(layers[0] == testLayerHash);
-    CHECK(layers[1] == layer1Hash);
 
-    ctx.raise_layer(testLayerHash);
+    UILayer l0 = layers[0];
+    UILayer l1 = layers[1];
+    l0.raise();
+
     ctx.get_layers(layers);
     CHECK(layers.size() == 2);
-    CHECK(layers[0] == layer1Hash);
-    CHECK(layers[1] == testLayerHash);
+    CHECK(layers[0].unwrap() == l1.unwrap());
+    CHECK(layers[1].unwrap() == l0.unwrap());
 
-    constexpr Hash32 layer2Hash("SomeLayer2");
-    ctx.add_layer(layer2Hash);
+    UILayer l2 = ctx.create_layer("layer2");
     ctx.get_layers(layers);
     CHECK(layers.size() == 3);
-    CHECK(layers[0] == layer1Hash);
-    CHECK(layers[1] == testLayerHash);
-    CHECK(layers[2] == layer2Hash);
+    CHECK(layers[0].unwrap() == l1.unwrap());
+    CHECK(layers[1].unwrap() == l0.unwrap());
+    CHECK(layers[2].unwrap() == l2.unwrap());
 
-    ctx.remove_layer(testLayerHash);
-    CHECK(!ctx.has_layer(testLayerHash));
+    ctx.destroy_layer(l0);
     ctx.get_layers(layers);
     CHECK(layers.size() == 2);
-    CHECK(layers[0] == layer1Hash);
-    CHECK(layers[1] == layer2Hash);
+    CHECK(layers[0].unwrap() == l1.unwrap());
+    CHECK(layers[1].unwrap() == l2.unwrap());
 
-    ctx.remove_layer(layer1Hash);
-    CHECK(!ctx.has_layer(layer1Hash));
+    ctx.destroy_layer(l1);
     ctx.get_layers(layers);
     CHECK(layers.size() == 1);
-    CHECK(layers[0] == layer2Hash);
+    CHECK(layers[0].unwrap() == l2.unwrap());
 
     UIContext::destroy(ctx);
     const MemoryProfile& profile = get_memory_profile(MEMORY_USAGE_UI);

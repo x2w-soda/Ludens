@@ -1,12 +1,12 @@
+#include <Ludens/DSA/Stack.h>
+#include <Ludens/DSA/Vector.h>
+#include <Ludens/DSA/HashMap.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Header/Impulse.h>
 #include <Ludens/Header/Types.h>
 #include <Ludens/System/Allocator.h>
 #include <Ludens/System/Memory.h>
 #include <Ludens/UI/UIImmediate.h>
-#include <stack>
-#include <unordered_map>
-#include <vector>
 
 #define LD_ASSERT_UI_FRAME_BEGIN LD_ASSERT(sImFrame.ctx && "ui_frame_begin not called")
 #define LD_ASSERT_UI_WINDOW LD_ASSERT(sImFrame.imWindow && "ui_push_window(_client) not called")
@@ -25,8 +25,8 @@ namespace LD {
 
 struct UIWidgetState
 {
-    UIWidget widget = {};                 // actual retained widget
-    std::vector<UIWidgetState*> children; // direct children, retained across frames
+    UIWidget widget = {};            // actual retained widget
+    Vector<UIWidgetState*> children; // direct children, retained across frames
     IMDrawCallback onDraw;
     Hash32 widgetHash; // hash that identifies this state uniquely in its window
     MouseButton mouseDownButton;
@@ -51,7 +51,7 @@ struct UIWindowState
     UIWindow window;
     PoolAllocator widgetStatePA;
     UIWidgetState* state; // widget state for the window itself
-    std::stack<UIWidgetState*> imWidgetStack;
+    Stack<UIWidgetState*> imWidgetStack;
     Hash32 windowHash;
 
     UIWindowState();
@@ -79,7 +79,7 @@ struct UIImmediateFrame
 };
 
 static UIImmediateFrame sImFrame;
-static std::unordered_map<Hash32, UIWindowState*> sImWindows;
+static HashMap<Hash32, UIWindowState*> sImWindows;
 
 static void on_mouse_handler(UIWidget widget, const Vec2& pos, MouseButton btn, UIEvent event)
 {
@@ -144,7 +144,7 @@ static Hash32 get_widget_state_hash(UIWidgetType type, int siblingIndex, Hash32 
 }
 
 // NOTE: has side effect of incrementing the childCounter of top widget
-static UIWidgetState* get_or_create_widget_state(std::stack<UIWidgetState*>& stack, PoolAllocator statePA, UIWidgetType type)
+static UIWidgetState* get_or_create_widget_state(Stack<UIWidgetState*>& stack, PoolAllocator statePA, UIWidgetType type)
 {
     LD_ASSERT(!stack.empty());
 
@@ -278,7 +278,7 @@ UIWidgetState* UIWindowState::get_or_create_text_edit()
     UITextEditWidgetInfo textWI{};
     textWI.fontSize = 16.0f; // TODO:
     textWI.placeHolder = nullptr;
-    
+
     UILayoutInfo layoutI{};
     layoutI.sizeX = UISize::fixed(100.0f); // TODO:
     layoutI.sizeY = UISize::fixed(textWI.fontSize * 1.2f);
@@ -679,12 +679,18 @@ void ui_push_image(RImage image, float width, float height, const Rect* portion)
     imWindow->imWidgetStack.push(imWidget);
 }
 
-void ui_push_panel()
+void ui_push_panel(const Color* color)
 {
     LD_ASSERT_UI_PUSH;
 
     UIWindowState* imWindow = sImFrame.imWindow;
     UIWidgetState* imWidget = imWindow->get_or_create_panel();
+
+    if (color)
+    {
+        UIPanelWidget panelW = (UIPanelWidget)imWidget->widget;
+        *panelW.panel_color() = *color;
+    }
 
     imWindow->imWidgetStack.push(imWidget);
 }
