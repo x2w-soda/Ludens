@@ -18,7 +18,8 @@ typedef uint32_t RUID;
 typedef void (*RenderServerEditorRenderCallback)(ScreenRenderComponent renderer, void* user);
 typedef void (*RenderServerEditorScenePickCallback)(SceneOverlayGizmoID gizmoID, RUID ruid, void* user);
 typedef Mat4 (*RenderServerTransformCallback)(RUID ruid, void* user);
-typedef ScreenLayer (*RenderServerScreenPassCallback)(void* user);
+typedef ScreenLayer (*RenderServerScreenPassLayerCallback)(void* user);
+typedef void (*RenderServerScreenPassCallback)(ScreenRenderComponent renderer, void* user);
 
 /// @brief Render server creation info
 struct RenderServerInfo
@@ -69,7 +70,8 @@ struct RenderServerScenePass
 /// @brief Info for the server to render in screen space on top of scene.
 struct RenderServerScreenPass
 {
-    RenderServerScreenPassCallback renderCallback;
+    RenderServerScreenPassLayerCallback layerCallback;
+    RenderServerScreenPassCallback callback;
     void* user; /// user of the scene screen pass
 };
 

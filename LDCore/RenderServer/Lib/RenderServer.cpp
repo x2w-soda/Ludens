@@ -1,3 +1,5 @@
+#include <Ludens/DSA/HashSet.h>
+#include <Ludens/DSA/Vector.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Log/Log.h>
 #include <Ludens/Profiler/Profiler.h>
@@ -15,18 +17,15 @@
 #include <Ludens/RenderServer/RenderServer.h>
 #include <Ludens/System/Memory.h>
 
-#include <unordered_set>
-#include <vector>
-
 namespace LD {
 
 static Log sLog("RServer");
 
 struct RMeshEntry
 {
-    RMesh mesh;                         /// mesh resources
-    RUID meshID;                        /// mesh identifier
-    std::unordered_set<RUID> drawCalls; /// draw calls using this mesh
+    RMesh mesh;              /// mesh resources
+    RUID meshID;             /// mesh identifier
+    HashSet<RUID> drawCalls; /// draw calls using this mesh
 };
 
 /// @brief Render server implementation.
@@ -73,13 +72,14 @@ private:
     RUID mRUIDCtr;
     RenderServerTransformCallback mTransformCallback = nullptr;
     void* mTransformCallbackUser = nullptr;
+    RenderServerScreenPassLayerCallback mScreenPassLayerCallback = nullptr;
     RenderServerScreenPassCallback mScreenPassCallback = nullptr;
     void* mScreenPassCallbackUser = nullptr;
     Vec2 mSceneExtent;
     Vec2 mScreenExtent;
-    std::vector<Frame> mFrames;
-    std::vector<RCommandPool> mCmdPools;
-    std::vector<RCommandList> mCmdLists;
+    Vector<Frame> mFrames;
+    Vector<RCommandPool> mCmdPools;
+    Vector<RCommandList> mCmdLists;
     std::unordered_map<RUID, RImage> mCubemaps;
     std::unordered_map<RUID, RMeshEntry*> mMeshes;  // TODO: optimize later
     std::unordered_map<RUID, RUID> mDrawCallToMesh; /// map draw call to mesh ID
@@ -338,7 +338,8 @@ void RenderServerObj::screen_pass(const RenderServerScreenPass& screenP)
 {
     LD_ASSERT(mHasRenderedScene);
 
-    mScreenPassCallback = screenP.renderCallback;
+    mScreenPassLayerCallback = screenP.layerCallback;
+    mScreenPassCallback = screenP.callback;
     mScreenPassCallbackUser = screenP.user;
 
     ScreenRenderComponentInfo screenRCI{};
@@ -388,7 +389,7 @@ void RenderServerObj::editor_pass(const RenderServerEditorPass& editorP)
     //       stalling the GPU just to acquire results in the same frame
     //       would be terrible for CPU-GPU concurrency.
     //       See ScreenPickComponent implementation.
-    std::vector<ScreenPickResult> pickResults;
+    Vector<ScreenPickResult> pickResults;
     screenPick.get_results(pickResults);
     if (pickResults.empty())
     {
@@ -505,19 +506,25 @@ void RenderServerObj::screen_rendering(ScreenRenderComponent renderer, void* use
     LD_PROFILE_SCOPE;
     RenderServerObj& self = *(RenderServerObj*)user;
 
-    if (!self.mScreenPassCallback)
-        return;
-
-    // ask server user for ScreenLayer to render
-    ScreenLayer layer = self.mScreenPassCallback(self.mScreenPassCallbackUser);
-    if (!layer)
-        return;
-
-    std::vector<ScreenLayerItem> drawList = layer.get_draw_list();
-
-    for (const ScreenLayerItem& item : drawList)
+    if (self.mScreenPassLayerCallback)
     {
-        renderer.draw(item.tl, item.tr, item.br, item.bl, item.image, item.color);
+        // ask server user for ScreenLayer to render
+        ScreenLayer layer = self.mScreenPassLayerCallback(self.mScreenPassCallbackUser);
+
+        if (layer)
+        {
+            Vector<ScreenLayerItem> drawList = layer.get_draw_list();
+
+            for (const ScreenLayerItem& item : drawList)
+            {
+                renderer.draw(item.tl, item.tr, item.br, item.bl, item.image, item.color);
+            }
+        }
+    }
+
+    if (self.mScreenPassCallback)
+    {
+        self.mScreenPassCallback(renderer, self.mScreenPassCallbackUser);
     }
 }
 
