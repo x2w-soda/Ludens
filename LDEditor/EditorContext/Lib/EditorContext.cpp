@@ -65,6 +65,12 @@ struct EditorContextObj
         AUID scriptAssetID; // script asset ID in project
     } addComponentScriptParams;
 
+    struct EditorActionSetComponentAssetParams
+    {
+        CUID compID;
+        AUID assetID;
+    } setComponentAssetParams;
+
     void notify_observers(const EditorContextEvent* event);
 
     void load_project(const FS::Path& projectSchemaPath);
@@ -79,6 +85,7 @@ static void editor_action_new_scene(EditStack stack, void* user);
 static void editor_action_open_scene(EditStack stack, void* user);
 static void editor_action_save_scene(EditStack stack, void* user);
 static void editor_action_add_component_script(EditStack stack, void* user);
+static void editor_action_set_component_asset(EditStack stack, void* user);
 
 static void editor_action_undo(EditStack stack, void* user)
 {
@@ -134,14 +141,25 @@ static void editor_action_add_component_script(EditStack stack, void* user)
     LD_PROFILE_SCOPE;
 
     EditorContextObj* obj = (EditorContextObj*)user;
-    EditorContext ctx(obj);
-
     const auto& params = obj->addComponentScriptParams;
 
     stack.execute(EditStack::new_command<AddComponentScriptCommand>(
         obj->scene,
         params.compID,
         params.scriptAssetID));
+}
+
+static void editor_action_set_component_asset(EditStack stack, void* user)
+{
+    LD_PROFILE_SCOPE;
+
+    auto* obj = (EditorContextObj*)user;
+    const auto& params = obj->setComponentAssetParams;
+
+    stack.execute(EditStack::new_command<SetComponentAssetCommand>(
+        obj->scene,
+        params.compID,
+        params.assetID));
 }
 
 void EditorContextObj::notify_observers(const EditorContextEvent* event)
@@ -300,6 +318,7 @@ EditorContext EditorContext::create(const EditorContextInfo& info)
         {EDITOR_ACTION_OPEN_SCENE,           &editor_action_open_scene,           "OpenScene"}, 
         {EDITOR_ACTION_SAVE_SCENE,           &editor_action_save_scene,           "SaveScene"},
         {EDITOR_ACTION_ADD_COMPONENT_SCRIPT, &editor_action_add_component_script, "AddComponentScript"},
+        {EDITOR_ACTION_SET_COMPONENT_ASSET,  &editor_action_set_component_asset,  "SetComponentAsset"},
     };
     // clang-format on
 
@@ -384,6 +403,13 @@ void EditorContext::action_add_component_script(CUID compID, AUID scriptAssetID)
     mObj->actionQueue.enqueue(EDITOR_ACTION_ADD_COMPONENT_SCRIPT);
     mObj->addComponentScriptParams.compID = compID;
     mObj->addComponentScriptParams.scriptAssetID = scriptAssetID;
+}
+
+void EditorContext::action_set_component_asset(CUID compID, AUID assetID)
+{
+    mObj->actionQueue.enqueue(EDITOR_ACTION_SET_COMPONENT_ASSET);
+    mObj->setComponentAssetParams.compID = compID;
+    mObj->setComponentAssetParams.assetID = assetID;
 }
 
 void EditorContext::poll_actions()
@@ -573,6 +599,20 @@ bool EditorContext::set_component_transform(CUID compID, const TransformEx& tran
 bool EditorContext::get_component_transform_mat4(CUID compID, Mat4& worldMat4)
 {
     return mObj->scene.get_component_transform_mat4(compID, worldMat4);
+}
+
+UILayoutInfo EditorContext::make_vbox_layout()
+{
+    EditorTheme theme = mObj->settings.get_theme();
+    float pad = theme.get_padding();
+
+    UILayoutInfo layoutI{};
+    layoutI.childGap = 5.0f;
+    layoutI.childPadding = {pad, pad, pad, pad};
+    layoutI.sizeX = UISize::fit();
+    layoutI.sizeY = UISize::fit();
+    layoutI.childAxis = UI_AXIS_Y;
+    return layoutI;
 }
 
 } // namespace LD

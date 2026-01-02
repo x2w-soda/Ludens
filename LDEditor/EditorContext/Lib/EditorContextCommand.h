@@ -24,4 +24,22 @@ private:
     AUID mPrevScriptAssetID;
 };
 
+class SetComponentAssetCommand : public EditCommand
+{
+public:
+    SetComponentAssetCommand(Scene scene, CUID compID, AUID assetID);
+    
+    virtual void redo() override;
+    virtual void undo() override;
+
+private:
+    void set_component_asset(CUID compID, AUID assetID);
+
+private:
+    Scene mScene;
+    CUID mCompID;
+    AUID mAssetID;
+    AUID mPrevAssetID;
+};
+
 } // namespace LD

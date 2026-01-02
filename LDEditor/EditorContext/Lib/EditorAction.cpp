@@ -1,12 +1,12 @@
+#include <Ludens/DSA/Queue.h>
 #include <LudensEditor/EditorContext/EditorAction.h>
-#include <queue>
 
 namespace LD {
 
 /// @brief Editor action queue implementation.
 struct EditorActionQueueObj
 {
-    std::queue<EditorActionType> actionQueue;
+    Queue<EditorActionType> actionQueue;
     EditStack editStack;
     void* user;
 };

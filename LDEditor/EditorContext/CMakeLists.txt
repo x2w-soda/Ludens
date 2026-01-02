@@ -16,8 +16,7 @@ set(MODULE_INCLUDE
 	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorContext/EditorContext.h
 	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorContext/EditorAction.h
 	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorContext/EditorSettings.h
-	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorContext/EditorWindowObj.h
-	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorContext/EditorCallback.h
+	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorContext/EditorWindow.h
 	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorContext/EditorIconAtlas.h
 	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorContext/EditStack.h
 )

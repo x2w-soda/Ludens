@@ -4,8 +4,8 @@
 #include <Ludens/RenderServer/RenderServer.h>
 #include <Ludens/Scene/Scene.h>
 #include <Ludens/System/FileSystem.h>
+#include <Ludens/UI/UILayout.h>
 #include <LudensEditor/EditorContext/EditorAction.h>
-#include <LudensEditor/EditorContext/EditorCallback.h>
 #include <LudensEditor/EditorContext/EditorContextEvent.h>
 #include <LudensEditor/EditorContext/EditorSettings.h>
 
@@ -56,6 +56,9 @@ struct EditorContext : Handle<struct EditorContextObj>
 
     /// @brief Add script to component.
     void action_add_component_script(CUID compID, AUID scriptAssetID);
+
+    // NOTE: temporary, needs refactoring once a component has multiple asset slots
+    void action_set_component_asset(CUID compID, AUID assetID);
 
     /// @brief Complete all editor actions in queue.
     void poll_actions();
@@ -147,6 +150,9 @@ struct EditorContext : Handle<struct EditorContextObj>
 
     /// @brief Get component world matrix.
     bool get_component_transform_mat4(CUID compID, Mat4& worldMat4);
+
+    /// @brief Default ui layout for vertical containers, taking editor theme into account.
+    UILayoutInfo make_vbox_layout();
 };
 
 } // namespace LD
