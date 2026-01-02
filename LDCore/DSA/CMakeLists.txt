@@ -13,6 +13,7 @@ set(MODULE_INCLUDE
 	${LUDENS_INCLUDE_DIR}/Ludens/DSA/Optional.h
 	${LUDENS_INCLUDE_DIR}/Ludens/DSA/HashSet.h
 	${LUDENS_INCLUDE_DIR}/Ludens/DSA/HashMap.h
+	${LUDENS_INCLUDE_DIR}/Ludens/DSA/RectSplit.h
 )
 
 set(MODULE_LIB
@@ -24,6 +25,7 @@ set(MODULE_TEST
 	Test/GapBufferTest.cpp
 	Test/VectorTest.h
 	Test/StringTest.h
+	Test/RectSplitTest.cpp
 	Test/DSATest.h
 	Test/DSATest.cpp
 )
