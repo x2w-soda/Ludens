@@ -11,6 +11,8 @@ namespace FS {
 
 using Path = std::filesystem::path;
 
+Path current_path();
+
 /// @brief Query the contents of a directory, non-recursively.
 /// @param directory Path to directory to query.
 /// @param contents Output contents of the directory.

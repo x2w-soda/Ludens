@@ -10,6 +10,11 @@ namespace FS {
 
 namespace fs = std::filesystem;
 
+Path current_path()
+{
+    return fs::current_path();
+}
+
 bool get_directory_content(const Path& directory, std::vector<Path>& contents, std::string& err)
 {
     if (!fs::exists(directory))
