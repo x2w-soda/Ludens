@@ -18,7 +18,8 @@ template <typename T>
 concept RectSplitNode = requires(T node)
 {
     { node.nodeID } -> std::convertible_to<uint32_t>;
-    { node.ratio } -> std::convertible_to<float>;
+    { node.splitRatio } -> std::convertible_to<float>;
+    { node.splitAxis } -> std::same_as<Axis&>;
     { node.isLeaf } -> std::convertible_to<bool>;
     { node.area } -> std::same_as<Rect&>;
     { node.parent } -> std::same_as<T*&>;
@@ -34,7 +35,8 @@ public:
     using ID = uint32_t;
 
     RectSplit() = delete;
-    RectSplit(const Rect& rootArea)
+    RectSplit(const Rect& rootArea, float gap)
+        : mSplitGap(gap)
     {
         mRoot = heap_new<TNode>(TMemoryUsage);
         mRoot->isLeaf = true;
@@ -59,33 +61,40 @@ public:
     RectSplit& operator=(const RectSplit&) = delete;
     RectSplit& operator=(RectSplit&&) = delete;
 
+    /// @brief Configure total root area, invalidates each node area recursively.
+    void set_root_area(const Rect& rootArea)
+    {
+        mRoot->area = rootArea;
+        invalidate(mRoot);
+    }
+
     ID get_root_id()
     {
         return mRoot->nodeID;
     }
 
     /// @brief Split a leaf node to make room for left area.
-    ID split_left(ID nodeID, float ratio, float gap)
+    ID split_left(ID nodeID, float ratio)
     {
-        return split(get_node(nodeID), AXIS_Y, false, ratio, gap);
+        return split(get_node(nodeID), AXIS_Y, false, ratio);
     }
 
     /// @brief Split a leaf node to make room for right area.
-    ID split_right(ID nodeID, float ratio, float gap)
+    ID split_right(ID nodeID, float ratio)
     {
-        return split(get_node(nodeID), AXIS_Y, true, ratio, gap);
+        return split(get_node(nodeID), AXIS_Y, true, ratio);
     }
 
     /// @brief Split a leaf node to make room for top area.
-    ID split_top(ID nodeID, float ratio, float gap)
+    ID split_top(ID nodeID, float ratio)
     {
-        return split(get_node(nodeID), AXIS_X, false, ratio, gap);
+        return split(get_node(nodeID), AXIS_X, false, ratio);
     }
 
     /// @brief Split a leaf node to make room for bottom area.
-    ID split_bottom(ID nodeID, float ratio, float gap)
+    ID split_bottom(ID nodeID, float ratio)
     {
-        return split(get_node(nodeID), AXIS_X, true, ratio, gap);
+        return split(get_node(nodeID), AXIS_X, true, ratio);
     }
 
     void visit(ID nodeID, const std::function<void(TNode*)>& onLeaf)
@@ -110,19 +119,19 @@ public:
     }
 
 private:
-    ID split(TNode* target, Axis splitAxis, bool rotateLeft, float ratio, float gap)
+    ID split(TNode* target, Axis splitAxis, bool rotateLeft, float splitRatio)
     {
         if (!target || !target->isLeaf)
             return 0;
 
-        ratio = std::clamp(ratio, 0.0f, 1.0f);
+        splitRatio = std::clamp(splitRatio, 0.0f, 1.0f);
         TNode* parent = target->parent;
         Rect tlArea, brArea, splitArea;
 
         if (splitAxis == AXIS_X)
-            Rect::split_h(ratio, gap, target->area, tlArea, brArea, splitArea);
+            Rect::split_h(splitRatio, mSplitGap, target->area, tlArea, brArea, splitArea);
         else
-            Rect::split_v(ratio, gap, target->area, tlArea, brArea, splitArea);
+            Rect::split_v(splitRatio, mSplitGap, target->area, tlArea, brArea, splitArea);
 
         TNode* split = heap_new<TNode>(TMemoryUsage);
         TNode* lch = nullptr;
@@ -148,7 +157,8 @@ private:
         split->nodeID = get_id();
         split->parent = parent;
         split->isLeaf = false;
-        split->ratio = ratio;
+        split->splitRatio = splitRatio;
+        split->splitAxis = splitAxis;
         split->area = splitArea;
         split->lch = lch;
         split->rch = rch;
@@ -198,10 +208,31 @@ private:
             onLeaf(node);
     }
 
+    /// @brief Invalidate subtree given root area.
+    void invalidate(TNode* root)
+    {
+        if (!root || (!root->lch && !root->rch))
+            return;
+
+        Rect tlArea, brArea, splitArea;
+
+        if (root->splitAxis == AXIS_X)
+            Rect::split_h(root->splitRatio, mSplitGap, root->area, tlArea, brArea, splitArea);
+        else
+            Rect::split_v(root->splitRatio, mSplitGap, root->area, tlArea, brArea, splitArea);
+
+        root->lch->area = tlArea;
+        root->rch->area = brArea;
+
+        invalidate(root->lch);
+        invalidate(root->rch);
+    }
+
 private:
     Vector<TNode*> mNodes;
     TNode* mRoot = nullptr;
     ID mIDCounter = 0;
+    float mSplitGap = 0.0f;
 };
 
 } // namespace LD
