@@ -1,18 +1,20 @@
+#include <Ludens/DataRegistry/DataComponent.h>
 #include <Ludens/System/Allocator.h>
 #include <Ludens/System/Timer.h>
+
 #include <cstdio>
 #include <random>
 #include <vector>
-#include <Ludens/DataRegistry/DataComponent.h>
 
 using namespace LD;
 using Scalar = uint32_t;
 
 constexpr size_t N = 1'000'000;
-static Scalar sA[N];
-static Scalar* sB[N];
-static TransformComponent tA[N];
-static TransformComponent* tB[N];
+static Scalar scalarArray[N];
+static Scalar* scalarPtrArray[N];
+static TransformComponent transformArray[N];
+static TransformComponent* transformPtrArray[N];
+static Sprite2DComponent sprite2DArray[N];
 
 int main(int argc, char** argv)
 {
@@ -21,19 +23,23 @@ int main(int argc, char** argv)
     paI.pageSize = 8192;
     paI.isMultiPage = true;
     PoolAllocator sC = PoolAllocator::create(paI);
+
     paI.blockSize = sizeof(TransformComponent);
-    paI.pageSize = 8192;
-    paI.isMultiPage = true;
-    PoolAllocator tC = PoolAllocator::create(paI);
+    PoolAllocator transformPA = PoolAllocator::create(paI);
+
+    paI.blockSize = sizeof(Sprite2DComponent);
+    PoolAllocator sprite2DPA = PoolAllocator::create(paI);
+
     std::vector<size_t> randI(N);
 
     for (size_t i = 0; i < N; i++)
     {
-        sA[i] = i;
-        sB[i] = new Scalar(i);
-        tB[i] = new TransformComponent();
+        scalarArray[i] = i;
+        scalarPtrArray[i] = new Scalar(i);
+        transformPtrArray[i] = new TransformComponent();
         *(Scalar*)sC.allocate() = i;
-        tC.allocate();
+        transformPA.allocate();
+        sprite2DPA.allocate();
         randI[i] = i;
     }
 
@@ -51,7 +57,7 @@ int main(int argc, char** argv)
 
         for (size_t i = 0; i < N; ++i)
         {
-            sA[i]++;
+            scalarArray[i]++;
         }
     }
     printf("Scalar Array %.3f ms\n", dur / 1000.0f);
@@ -61,7 +67,7 @@ int main(int argc, char** argv)
 
         for (size_t i = 0; i < N; ++i)
         {
-            (*sB[i])++;
+            (*scalarPtrArray[i])++;
         }
     }
     printf("Scalar Array of ptr %.3f ms\n", dur / 1000.0f);
@@ -85,9 +91,9 @@ int main(int argc, char** argv)
 
         for (size_t i = 0; i < N; ++i)
         {
-            tA[i].transform.position = Vec3(1);
-            tA[i].transform.rotationEuler = Vec3(2);
-            tA[i].transform.scale = Vec3(3);
+            transformArray[i].transform.position = Vec3(1);
+            transformArray[i].transform.rotationEuler = Vec3(2);
+            transformArray[i].transform.scale = Vec3(3);
         }
     }
     printf("TransformComponent Array %.3f ms\n", dur / 1000.0f);
@@ -98,9 +104,9 @@ int main(int argc, char** argv)
         for (size_t i = 0; i < N; ++i)
         {
             size_t idx = randI[i];
-            tA[idx].transform.position = Vec3(1);
-            tA[idx].transform.rotationEuler = Vec3(2);
-            tA[idx].transform.scale = Vec3(3);
+            transformArray[idx].transform.position = Vec3(1);
+            transformArray[idx].transform.rotationEuler = Vec3(2);
+            transformArray[idx].transform.scale = Vec3(3);
         }
     }
     printf("TransformComponent Array Random Access %.3f ms\n", dur / 1000.0f);
@@ -110,9 +116,9 @@ int main(int argc, char** argv)
 
         for (size_t i = 0; i < N; ++i)
         {
-            tB[i]->transform.position = Vec3(1);
-            tB[i]->transform.rotationEuler = Vec3(2);
-            tB[i]->transform.scale = Vec3(3);
+            transformPtrArray[i]->transform.position = Vec3(1);
+            transformPtrArray[i]->transform.rotationEuler = Vec3(2);
+            transformPtrArray[i]->transform.scale = Vec3(3);
         }
     }
     printf("TransformComponent Array of Ptr %.3f ms\n", dur / 1000.0f);
@@ -123,16 +129,16 @@ int main(int argc, char** argv)
         for (size_t i = 0; i < N; ++i)
         {
             size_t idx = randI[i];
-            tB[idx]->transform.position = Vec3(1);
-            tB[idx]->transform.rotationEuler = Vec3(2);
-            tB[idx]->transform.scale = Vec3(3);
+            transformPtrArray[idx]->transform.position = Vec3(1);
+            transformPtrArray[idx]->transform.rotationEuler = Vec3(2);
+            transformPtrArray[idx]->transform.scale = Vec3(3);
         }
     }
     printf("TransformComponent Array of Ptr Random Access %.3f ms\n", dur / 1000.0f);
 
     {
         ScopeTimer timer(&dur);
-        for (auto ite = tC.begin(); ite; ++ite)
+        for (auto ite = transformPA.begin(); ite; ++ite)
         {
             TransformComponent* t = (TransformComponent*)ite.data();
             t->transform.position = Vec3(1);
@@ -141,4 +147,28 @@ int main(int argc, char** argv)
         }
     }
     printf("TransformComponent PoolAllocator %.3f ms\n", dur / 1000.0f);
+
+    {
+        ScopeTimer timer(&dur);
+
+        for (size_t i = 0; i < N; ++i)
+        {
+            sprite2DArray[i].transform.position = Vec2(1);
+            sprite2DArray[i].transform.rotation = 2.0f;
+            sprite2DArray[i].transform.scale = Vec2(3.0f);
+        }
+    }
+    printf("Sprite2DComponent Array %.3f ms\n", dur / 1000.0f);
+
+    {
+        ScopeTimer timer(&dur);
+        for (auto ite = sprite2DPA.begin(); ite; ++ite)
+        {
+            Sprite2DComponent* t = (Sprite2DComponent*)ite.data();
+            t->transform.position = Vec2(1);
+            t->transform.rotation = 2.0f;
+            t->transform.scale = Vec2(3.0f);
+        }
+    }
+    printf("Sprite2DComponent PoolAllocator %.3f ms\n", dur / 1000.0f);
 }
