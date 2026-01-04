@@ -101,19 +101,17 @@ UINode& UIWidget::node()
     return mObj->node;
 }
 
-void UIWidget::hide()
+void UIWidget::set_visible(bool isVisible)
 {
-    mObj->flags |= UI_WIDGET_FLAG_HIDDEN_BIT;
+    if (isVisible)
+        mObj->flags &= ~UI_WIDGET_FLAG_HIDDEN_BIT;
+    else
+        mObj->flags |= UI_WIDGET_FLAG_HIDDEN_BIT;
 }
 
-void UIWidget::show()
+bool UIWidget::is_visible()
 {
-    mObj->flags &= ~UI_WIDGET_FLAG_HIDDEN_BIT;
-}
-
-bool UIWidget::is_hidden()
-{
-    return static_cast<bool>(mObj->flags & UI_WIDGET_FLAG_HIDDEN_BIT);
+    return !static_cast<bool>(mObj->flags & UI_WIDGET_FLAG_HIDDEN_BIT);
 }
 
 void UIWidget::block_input()

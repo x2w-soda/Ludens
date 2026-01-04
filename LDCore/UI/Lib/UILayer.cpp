@@ -82,6 +82,7 @@ UIWorkspace UILayer::create_workspace(const Rect& area)
 {
     UIWorkspaceObj* obj = heap_new<UIWorkspaceObj>(MEMORY_USAGE_UI, area);
     obj->layer = mObj;
+    obj->id = ++mObj->workspaceIDCounter;
 
     mObj->workspaces.push_back(obj);
 

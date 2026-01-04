@@ -1,7 +1,8 @@
+#include <Ludens/DSA/HashMap.h>
 #include <Ludens/DSA/Stack.h>
 #include <Ludens/DSA/Vector.h>
-#include <Ludens/DSA/HashMap.h>
 #include <Ludens/Header/Assert.h>
+#include <Ludens/Header/Hash.h>
 #include <Ludens/Header/Impulse.h>
 #include <Ludens/Header/Types.h>
 #include <Ludens/System/Allocator.h>
@@ -28,7 +29,7 @@ struct UIWidgetState
     UIWidget widget = {};            // actual retained widget
     Vector<UIWidgetState*> children; // direct children, retained across frames
     IMDrawCallback onDraw;
-    Hash32 widgetHash; // hash that identifies this state uniquely in its window
+    Hash64 widgetHash; // hash that identifies this state uniquely in its window
     MouseButton mouseDownButton;
     MouseButton mouseUpButton;
     KeyCode keyDown;
@@ -52,7 +53,7 @@ struct UIWindowState
     PoolAllocator widgetStatePA;
     UIWidgetState* state; // widget state for the window itself
     Stack<UIWidgetState*> imWidgetStack;
-    Hash32 windowHash;
+    Hash64 windowHash;
 
     UIWindowState();
     ~UIWindowState();
@@ -79,7 +80,7 @@ struct UIImmediateFrame
 };
 
 static UIImmediateFrame sImFrame;
-static HashMap<Hash32, UIWindowState*> sImWindows;
+static HashMap<Hash64, UIWindowState*> sImWindows;
 
 static void on_mouse_handler(UIWidget widget, const Vec2& pos, MouseButton btn, UIEvent event)
 {
@@ -133,14 +134,14 @@ static void destroy_widget_subtree(PoolAllocator statePA, UIWidgetState* widgetS
 
 // The state hash consists of the widget type, widget sibling index, and the parent state hash.
 // This should be enough to identify uniquely the widget in a tree hierarchy.
-static Hash32 get_widget_state_hash(UIWidgetType type, int siblingIndex, Hash32 parentStateHash)
+static Hash64 get_widget_state_hash(UIWidgetType type, int siblingIndex, Hash64 parentStateHash)
 {
     size_t hash64 = (size_t)parentStateHash;
 
     hash_combine(hash64, type);
     hash_combine(hash64, siblingIndex);
 
-    return (Hash32)hash64;
+    return (Hash64)hash64;
 }
 
 // NOTE: has side effect of incrementing the childCounter of top widget
@@ -149,7 +150,7 @@ static UIWidgetState* get_or_create_widget_state(Stack<UIWidgetState*>& stack, P
     LD_ASSERT(!stack.empty());
 
     UIWidgetState* parentS = stack.top();
-    Hash32 parentHash = parentS->widgetHash;
+    Hash64 parentHash = parentS->widgetHash;
     int siblingIndex = parentS->childCounter++;
 
     if (siblingIndex >= (int)parentS->children.size())
@@ -160,7 +161,7 @@ static UIWidgetState* get_or_create_widget_state(Stack<UIWidgetState*>& stack, P
             parentS->children[i] = nullptr;
     }
 
-    Hash32 widgetHash = get_widget_state_hash(type, siblingIndex, parentHash);
+    Hash64 widgetHash = get_widget_state_hash(type, siblingIndex, parentHash);
     UIWidgetState* widgetS = parentS->children[siblingIndex];
 
     if (widgetS)
@@ -195,7 +196,7 @@ static UIWidgetState* get_or_create_widget_state(Stack<UIWidgetState*>& stack, P
     return widgetS;
 }
 
-static UIWindowState* get_or_create_window_state(Hash32 windowHash)
+static UIWindowState* get_or_create_window_state(Hash64 windowHash)
 {
     if (sImWindows.contains(windowHash))
         return sImWindows[windowHash];
@@ -597,11 +598,11 @@ void ui_pop_window()
     sImFrame.imWindow = nullptr;
 }
 
-void ui_push_window(const char* name, UIWindow client)
+void ui_push_window(UIWindow client)
 {
     LD_ASSERT_UI_PUSH_WINDOW;
 
-    Hash32 windowHash(name);
+    Hash64 windowHash = client.get_hash();
 
     // If client is different from last time, invalidate window state.
     if (sImWindows.contains(windowHash))
@@ -633,7 +634,7 @@ bool ui_has_window_client(const char* name)
 {
     LD_ASSERT_UI_FRAME_BEGIN;
 
-    return sImWindows.contains(Hash32(name));
+    return sImWindows.contains(Hash64(name));
 }
 
 void ui_push_text(const char* text)
@@ -662,7 +663,7 @@ void ui_push_text_edit(const char* text)
     imWindow->imWidgetStack.push(imWidget);
 }
 
-void ui_push_image(RImage image, float width, float height, const Rect* portion)
+UIImageWidget ui_push_image(RImage image, float width, float height, const Rect* portion)
 {
     LD_ASSERT_UI_PUSH;
 
@@ -677,6 +678,8 @@ void ui_push_image(RImage image, float width, float height, const Rect* portion)
         imageW.set_image_rect(*portion);
 
     imWindow->imWidgetStack.push(imWidget);
+
+    return imageW;
 }
 
 void ui_push_panel(const Color* color)

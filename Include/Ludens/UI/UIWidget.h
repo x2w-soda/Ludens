@@ -42,14 +42,15 @@ struct UIWidget : Handle<struct UIWidgetObj>
     /// @brief Get node in widget hierarchy.
     UINode& node();
 
-    /// @brief Hide the widget and its widget subtree.
-    void hide();
+    /// @brief If hidden, skips rendering for all UIWidgets in this subtree.
+    /// @note Child widgets also have their own visbility mask, applied to their respective subtrees.
+    void set_visible(bool isVisible);
 
-    /// @brief Show the widget.
-    void show();
+    inline void hide() { set_visible(false); }
+    inline void show() { set_visible(true); }
 
-    /// @brief Check if widget subtree is hidden.
-    bool is_hidden();
+    /// @brief Check if widget subtree is visible.
+    bool is_visible();
 
     /// @brief This widget will silently block input events
     ///        without propagating to subtree.

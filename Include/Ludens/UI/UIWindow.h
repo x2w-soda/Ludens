@@ -52,9 +52,9 @@ struct UIWindow : UIWidget
     /// @brief get position and size in screen spcae
     Rect get_rect() const;
 
-    /// @brief get window name identifier
-    std::string get_name() const;
-  
+    /// @brief Get hash to uniquely identifiy window within its UI context.
+    Hash64 get_hash();
+
     /// @brief Set window resize callback, called when the owning workspace makes adjustments.
     void set_on_resize(void (*onResize)(UIWindow window, const Vec2& size));
 };

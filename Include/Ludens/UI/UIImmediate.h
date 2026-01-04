@@ -70,7 +70,7 @@ void ui_pop();
 void ui_pop_window();
 
 /// @brief Push existing UIWindow as client.
-void ui_push_window(const char* name, UIWindow client);
+void ui_push_window(UIWindow client);
 
 /// @brief Sets the current window to position and fixed size.
 void ui_set_window_rect(const Rect& rect);
@@ -85,7 +85,7 @@ void ui_push_text(const char* text);
 void ui_push_text_edit(const char* text);
 
 /// @brief Push UIImageWidget.
-void ui_push_image(RImage image, float width, float height, const Rect* portion = nullptr);
+UIImageWidget ui_push_image(RImage image, float width, float height, const Rect* portion = nullptr);
 
 /// @brief Push UIPanelWidget.
 void ui_push_panel(const Color* color = nullptr);

@@ -16,6 +16,14 @@ UIWindowObj::~UIWindowObj()
         ctx()->free_widget(widgets.front());
 }
 
+Hash64 UIWindowObj::get_hash() const
+{
+    uint64_t hash = space->get_hash();
+    hash_combine(hash, id);
+
+    return hash;
+}
+
 void UIWindowObj::update(float delta)
 {
     for (UIWidgetObj* widget : widgets)
@@ -158,10 +166,11 @@ Rect UIWindow::get_rect() const
     return mObj->layout.rect;
 }
 
-std::string UIWindow::get_name() const
+Hash64 UIWindow::get_hash()
 {
     UIWindowObj* obj = (UIWindowObj*)mObj;
-    return obj->name;
+
+    return obj->get_hash();
 }
 
 void UIWindow::set_on_resize(void (*onResize)(UIWindow window, const Vec2& size))

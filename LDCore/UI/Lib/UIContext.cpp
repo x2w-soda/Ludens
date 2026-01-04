@@ -117,7 +117,21 @@ UIWidgetObj* UIContextObj::get_widget(const Vec2& pos, int filter)
             if (!workspaceRect.contains(pos))
                 continue;
 
-            for (auto windowIte = space->windows.rbegin(); windowIte != space->windows.rend(); windowIte++)
+            // test floating windows in workspace before docked ones
+            for (auto windowIte = space->floatWindows.rbegin(); windowIte != space->floatWindows.rend(); windowIte++)
+            {
+                UIWindowObj* window = *windowIte;
+
+                if (!window->layout.rect.contains(pos) || (window->flags & UI_WIDGET_FLAG_HIDDEN_BIT))
+                    continue;
+
+                if (window->flags & UI_WIDGET_FLAG_BLOCK_INPUT_BIT)
+                    return nullptr;
+
+                return get_widget_at_pos((UIWidgetObj*)window, pos, filter);
+            }
+
+            for (auto windowIte = space->nodeWindows.rbegin(); windowIte != space->nodeWindows.rend(); windowIte++)
             {
                 UIWindowObj* window = *windowIte;
 

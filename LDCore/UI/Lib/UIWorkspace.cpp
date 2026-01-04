@@ -7,8 +7,47 @@ namespace LD {
 
 UIWorkspaceObj::~UIWorkspaceObj()
 {
-    for (UIWindowObj* window : windows)
+    for (UIWindowObj* window : nodeWindows)
         heap_delete<UIWindowObj>(window);
+
+    for (UIWindowObj* window : floatWindows)
+        heap_delete<UIWindowObj>(window);
+}
+
+UIWindowObj* UIWorkspaceObj::create_window(const UILayoutInfo& layoutI, const UIWindowInfo& windowI, void* user)
+{
+    UIWindowObj* windowObj = heap_new<UIWindowObj>(MEMORY_USAGE_UI);
+    windowObj->layout.info = layoutI;
+    windowObj->user = user;
+    windowObj->type = UI_WIDGET_WINDOW;
+    windowObj->window = windowObj;
+    windowObj->node = {windowObj};
+    windowObj->flags = 0;
+    windowObj->theme = layer->ctx->theme;
+    windowObj->space = this;
+    windowObj->id = ++windowIDCounter;
+
+    if (windowI.name)
+        windowObj->debugName = std::string(windowI.name);
+
+    if (windowI.hidden)
+        windowObj->flags |= UI_WIDGET_FLAG_HIDDEN_BIT;
+
+    if (windowI.drawWithScissor)
+        windowObj->flags |= UI_WIDGET_FLAG_DRAW_WITH_SCISSOR_BIT;
+
+    if (windowI.defaultMouseControls)
+        windowObj->cb.onDrag = UIWindowObj::on_drag;
+
+    return windowObj;
+}
+
+Hash64 UIWorkspaceObj::get_hash() const
+{
+    uint64_t hash = Hash64(layer->name.c_str());
+    hash_combine(hash, id); // unique within layer
+
+    return hash;
 }
 
 void UIWorkspaceObj::pre_update()
@@ -17,7 +56,11 @@ void UIWorkspaceObj::pre_update()
     {
         heap_delete<UIWindowObj>(window);
 
-        windows.erase(std::remove(windows.begin(), windows.end(), window));
+        auto ite = std::find(nodeWindows.begin(), nodeWindows.end(), window);
+        if (ite != nodeWindows.end())
+            nodeWindows.erase(ite);
+        else
+            floatWindows.erase(std::remove(floatWindows.begin(), floatWindows.end(), window));
     }
 
     deferredWindowDestruction.clear();
@@ -25,12 +68,20 @@ void UIWorkspaceObj::pre_update()
 
 void UIWorkspaceObj::update(float delta)
 {
-    for (UIWindowObj* window : windows)
+    for (UIWindowObj* window : nodeWindows)
     {
         if (window->cb.onUpdate)
             window->cb.onUpdate({window}, delta);
 
         // updates all widgets within window
+        window->update(delta);
+    }
+
+    for (UIWindowObj* window : floatWindows)
+    {
+        if (window->cb.onUpdate)
+            window->cb.onUpdate({window}, delta);
+
         window->update(delta);
     }
 }
@@ -39,7 +90,12 @@ void UIWorkspaceObj::layout()
 {
     LD_PROFILE_SCOPE;
 
-    for (UIWindowObj* window : windows)
+    for (UIWindowObj* window : nodeWindows)
+    {
+        ui_layout(window);
+    }
+
+    for (UIWindowObj* window : floatWindows)
     {
         ui_layout(window);
     }
@@ -53,7 +109,15 @@ void UIWorkspace::render(ScreenRenderComponent& renderer)
 {
     LD_PROFILE_SCOPE;
 
-    for (UIWindowObj* windowObj : mObj->windows)
+    if (mObj->isHidden)
+        return;
+
+    for (UIWindowObj* windowObj : mObj->nodeWindows)
+    {
+        UIWindow(windowObj).render(renderer);
+    }
+
+    for (UIWindowObj* windowObj : mObj->floatWindows)
     {
         UIWindow(windowObj).render(renderer);
     }
@@ -62,6 +126,24 @@ void UIWorkspace::render(ScreenRenderComponent& renderer)
 void UIWorkspace::raise()
 {
     mObj->layer->raise_workspace(mObj);
+}
+
+void UIWorkspace::set_visible(bool isVisible)
+{
+    mObj->isHidden = !isVisible;
+}
+
+void UIWorkspace::set_rect(const Rect& rect)
+{
+    mObj->partition.set_root_area(rect);
+
+    mObj->partition.visit(mObj->partition.get_root_id(), [](UIWorkspaceNode* node) {
+        node->window.set_rect(node->area);
+
+        auto* windowObj = (UIWindowObj*)node->window.unwrap();
+        if (windowObj->onResize)
+            windowObj->onResize(node->window, node->area.get_size());
+    });
 }
 
 UIWindow UIWorkspace::create_window(UIAreaID areaID, const UILayoutInfo& layoutI, const UIWindowInfo& windowI, void* user)
@@ -74,36 +156,25 @@ UIWindow UIWorkspace::create_window(UIAreaID areaID, const UILayoutInfo& layoutI
         destroy_window(node->window);
 
     UIContextObj* ctx = mObj->layer->ctx;
+    UIWindowObj* windowObj = mObj->create_window(layoutI, windowI, user);
 
-    UIWindowObj* windowObj = heap_new<UIWindowObj>(MEMORY_USAGE_UI);
-    windowObj->layout.info = layoutI;
-    windowObj->user = user;
-    windowObj->type = UI_WIDGET_WINDOW;
-    windowObj->window = windowObj;
-    windowObj->node = {windowObj};
-    windowObj->flags = 0;
-    windowObj->theme = ctx->theme;
-    windowObj->space = mObj;
-
-    if (windowI.name)
-        windowObj->name = std::string(windowI.name);
-
-    if (windowI.hidden)
-        windowObj->flags |= UI_WIDGET_FLAG_HIDDEN_BIT;
-
-    if (windowI.drawWithScissor)
-        windowObj->flags |= UI_WIDGET_FLAG_DRAW_WITH_SCISSOR_BIT;
-
-    if (windowI.defaultMouseControls)
-        windowObj->cb.onDrag = UIWindowObj::on_drag;
-
-    mObj->windows.push_back(windowObj);
+    mObj->nodeWindows.push_back(windowObj);
     node->window = UIWindow(windowObj);
 
+    // override window rect with docked area rect
     node->window.set_pos(node->area.get_pos());
     node->window.set_size(node->area.get_size());
 
     return node->window;
+}
+
+UIWindow UIWorkspace::create_window(const UILayoutInfo& layoutI, const UIWindowInfo& windowI, void* user)
+{
+    UIWindowObj* windowObj = mObj->create_window(layoutI, windowI, user);
+
+    mObj->floatWindows.push_back(windowObj);
+
+    return UIWindow(windowObj);
 }
 
 void UIWorkspace::destroy_window(UIWindow window)
@@ -119,12 +190,17 @@ void UIWorkspace::destroy_window(UIWindow window)
     mObj->deferredWindowDestruction.insert(obj);
 }
 
-void UIWorkspace::get_windows(Vector<UIWindow>& windows)
+void UIWorkspace::get_docked_windows(Vector<UIWindow>& windows)
 {
-    windows.resize(mObj->windows.size());
+    windows.resize(mObj->nodeWindows.size());
 
-    for (size_t i = 0; i < mObj->windows.size(); i++)
-        windows[i] = UIWindow(mObj->windows[i]);
+    for (size_t i = 0; i < mObj->nodeWindows.size(); i++)
+        windows[i] = UIWindow(mObj->nodeWindows[i]);
+}
+
+Hash64 UIWorkspace::get_hash()
+{
+    return mObj->get_hash();
 }
 
 UIAreaID UIWorkspace::get_root_id()
@@ -151,12 +227,12 @@ UIWindow UIWorkspace::get_area_window(UIAreaID areaID)
 
 UIAreaID UIWorkspace::split_right(UIAreaID areaID, float ratio)
 {
-    return mObj->partition.split_right(areaID, ratio, mObj->splitGap);
+    return mObj->partition.split_right(areaID, ratio);
 }
 
 UIAreaID UIWorkspace::split_bottom(UIAreaID areaID, float ratio)
 {
-    return mObj->partition.split_bottom(areaID, ratio, mObj->splitGap);
+    return mObj->partition.split_bottom(areaID, ratio);
 }
 
 } // namespace LD

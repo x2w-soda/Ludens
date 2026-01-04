@@ -20,6 +20,9 @@
 #include <string>
 #include <unordered_set>
 
+// TODO:
+#define UI_WORKSPACE_SPLIT_GAP 6.0f
+
 namespace LD {
 
 enum UIWidgetFlagBit
@@ -63,7 +66,8 @@ struct UICallback
 
 struct UIWorkspaceNode
 {
-    float ratio;
+    Axis splitAxis;
+    float splitRatio;
     bool isLeaf;
     UIAreaID nodeID;
     Rect area;
@@ -78,20 +82,26 @@ struct UIWorkspaceObj
 {
     UILayerObj* layer = nullptr;
     HashSet<UIWindowObj*> deferredWindowDestruction;
-    Vector<UIWindowObj*> windows;
+    Vector<UIWindowObj*> nodeWindows;  // windows docked in workspace nodes
+    Vector<UIWindowObj*> floatWindows; // floating windows
     RectSplit<UIWorkspaceNode> partition;
     const float splitGap = 6.0f; // TODO:
+    uint32_t windowIDCounter = 0;
+    uint32_t id = 0;       // workspace ID, unique within layer
+    bool isHidden = false; // workspace level visibility mask
 
     UIWorkspaceObj() = delete;
     UIWorkspaceObj(const UIWorkspaceObj&) = delete;
     UIWorkspaceObj(const Rect& area)
-        : partition(area)
+        : partition(area, UI_WORKSPACE_SPLIT_GAP)
     {
     }
     ~UIWorkspaceObj();
 
     UIWorkspaceObj& operator=(const UIWorkspaceObj&) = delete;
 
+    UIWindowObj* create_window(const UILayoutInfo& layoutI, const UIWindowInfo& windowI, void* user);
+    Hash64 get_hash() const;
     void pre_update();
     void update(float delta);
     void layout();
@@ -104,6 +114,7 @@ struct UILayerObj
     std::string name;
     HashSet<UIWorkspaceObj*> deferredWorkspaceDestruction;
     Vector<UIWorkspaceObj*> workspaces;
+    uint32_t workspaceIDCounter = 0;
 
     UILayerObj() = default;
     UILayerObj(const UILayerObj&) = delete;
@@ -333,10 +344,11 @@ struct UIWindowObj : UIWidgetObj
     UIWindowObj& operator=(const UIWindowObj&) = delete;
 
     UIWorkspaceObj* space = nullptr; /// owning workspace
-    std::string name;                /// window identifier
+    std::string debugName;           /// window debug name
     Vector<UIWidgetObj*> widgets;    /// all widgets within the window
     Optional<Color> colorMask;       /// optional mask to modify widget colors in window
     Color color = 0;                 /// window background color
+    uint32_t id;                     /// window ID, unique within workspace
     Vec2 dragOffset;
     Vec2 dragBeginPos;
     Vec2 dragBeginSize;
@@ -345,7 +357,7 @@ struct UIWindowObj : UIWidgetObj
 
     inline UIContextObj* ctx() const { return space->layer->ctx; }
     inline UILayerObj* layer() const { return space->layer; }
-
+    Hash64 get_hash() const;
     void update(float delta);
 
     static void draw_widget_subtree(UIWidgetObj* widget, ScreenRenderComponent renderer);
