@@ -26,6 +26,12 @@ public:
     /// @param delta Delta time in seconds.
     void update(float delta);
 
+    /// @brief Create table associated with a component.
+    void create_component_table(CUID compID);
+
+    /// @brief Destroy table associated with a component, all previous references are invalidated.
+    void destroy_component_table(CUID compID);
+
     /// @brief Creates lua script associated with component if slot is not null.
     bool create_lua_script(ComponentScriptSlot* scriptSlot);
 
@@ -50,12 +56,6 @@ const char* get_log_channel_name();
 
 /// @brief Create the 'ludens' lua module that contains the scripting interface.
 LuaModule create_ludens_module();
-
-/// @brief Create lua table for data component
-void create_component_table(LuaState L, CUID compID);
-
-/// @brief Destroy lua table associated with component
-void destroy_component_table(LuaState L, CUID compID);
 
 } // namespace LuaScript
 } // namespace LD

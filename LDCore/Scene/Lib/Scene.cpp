@@ -212,9 +212,12 @@ void SceneObj::startup_root(CUID root)
         sSceneComponents[(int)type].startup(this, rootC, comp);
 
     ComponentScriptSlot* script = registry.get_component_script(rootC->id);
-    bool success = luaContext.create_lua_script(script);
-    // TODO: abort startup at the first failure of creating lua script instance.
-    luaContext.attach_lua_script(script);
+    if (script)
+    {
+        luaContext.create_component_table(rootC->id);
+        bool success = luaContext.create_lua_script(script); // TODO: abort startup at the first failure of creating lua script instance.
+        luaContext.attach_lua_script(script);
+    }
 }
 
 void SceneObj::cleanup_root(CUID root)
@@ -240,6 +243,9 @@ void SceneObj::cleanup_root(CUID root)
     ComponentScriptSlot* script = registry.get_component_script(rootC->id);
     luaContext.detach_lua_script(script);
     luaContext.destroy_lua_script(script);
+
+    // component table may exist even if there is no script attached it
+    luaContext.destroy_component_table(rootC->id);
 }
 
 //

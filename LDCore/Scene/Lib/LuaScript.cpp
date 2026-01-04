@@ -377,31 +377,6 @@ LuaModule create_ludens_module()
     return LuaModule::create(modI); // caller destroys
 }
 
-void create_component_table(LuaState L, CUID compID)
-{
-    int oldSize = L.size();
-
-    push_component_ref(L, compID);
-    L.pop(1);
-
-    LD_ASSERT(L.size() == oldSize);
-}
-
-void destroy_component_table(LuaState L, CUID compID)
-{
-    int oldSize = L.size();
-
-    L.get_global("ludens");
-    L.get_field(-1, "components");
-    L.push_number((double)compID);
-    L.push_nil();
-    L.set_table(-3); // ludens.components[compID] = nil
-
-    // TODO: solve dangling references
-
-    L.resize(oldSize);
-}
-
 void Context::startup(Scene scene, DataRegistry registry, AssetManager assetManager)
 {
     LD_PROFILE_SCOPE;
@@ -579,6 +554,37 @@ void Context::update(float delta)
     mL.resize(oldSize1);
 }
 
+void Context::create_component_table(CUID compID)
+{
+    if (!compID)
+        return;
+
+    int oldSize = mL.size();
+
+    push_component_ref(mL, compID);
+    mL.pop(1);
+
+    LD_ASSERT(mL.size() == oldSize);
+}
+
+void Context::destroy_component_table(CUID compID)
+{
+    if (!compID)
+        return;
+
+    int oldSize = mL.size();
+
+    mL.get_global("ludens");
+    mL.get_field(-1, "components");
+    mL.push_number((double)compID);
+    mL.push_nil();
+    mL.set_table(-3); // ludens.components[compID] = nil
+
+    // TODO: solve dangling references
+
+    mL.resize(oldSize);
+}
+
 bool Context::create_lua_script(ComponentScriptSlot* scriptSlot)
 {
     if (!scriptSlot)
@@ -608,12 +614,6 @@ bool Context::create_lua_script(ComponentScriptSlot* scriptSlot)
 
     mL.set_table(-3); // store script instance as ludens.scripts[compID]
 
-    ComponentType type;
-    void* comp = mRegistry.get_component(compID, &type);
-
-    // create and store table for component type
-    LuaScript::create_component_table(mL, compID);
-
     mL.resize(oldSize);
     return true;
 }
@@ -627,13 +627,9 @@ void Context::destroy_lua_script(ComponentScriptSlot* scriptSlot)
     int oldSize = mL.size();
     mL.get_global("ludens");
     mL.get_field(-1, "scripts");
-
-    // destroy component lua table
-    LuaScript::destroy_component_table(mL, compID);
-
     mL.push_number((double)compID);
     mL.push_nil();
-    mL.set_table(-3);
+    mL.set_table(-3); // ludens.scripts[compID] = nil
 
     mL.resize(oldSize);
 }
