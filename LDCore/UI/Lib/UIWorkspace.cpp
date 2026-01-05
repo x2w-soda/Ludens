@@ -135,14 +135,23 @@ void UIWorkspace::set_visible(bool isVisible)
 
 void UIWorkspace::set_rect(const Rect& rect)
 {
-    mObj->partition.set_root_area(rect);
+    mObj->partition.set_root_rect(rect);
 
-    mObj->partition.visit(mObj->partition.get_root_id(), [](UIWorkspaceNode* node) {
-        node->window.set_rect(node->area);
+    mObj->partition.visit_leaves(mObj->partition.get_root_id(), [](UIWorkspaceNode* node) {
+        node->window.set_rect(node->rect);
 
         auto* windowObj = (UIWindowObj*)node->window.unwrap();
         if (windowObj->onResize)
-            windowObj->onResize(node->window, node->area.get_size());
+            windowObj->onResize(node->window, node->rect.get_size());
+    });
+}
+
+void UIWorkspace::set_pos(const Vec2& pos)
+{
+    mObj->partition.set_root_pos(pos);
+
+    mObj->partition.visit_leaves(mObj->partition.get_root_id(), [](UIWorkspaceNode* node) {
+        node->window.set_pos(node->rect.get_pos());
     });
 }
 
@@ -162,8 +171,8 @@ UIWindow UIWorkspace::create_window(UIAreaID areaID, const UILayoutInfo& layoutI
     node->window = UIWindow(windowObj);
 
     // override window rect with docked area rect
-    node->window.set_pos(node->area.get_pos());
-    node->window.set_size(node->area.get_size());
+    node->window.set_pos(node->rect.get_pos());
+    node->window.set_size(node->rect.get_size());
 
     return node->window;
 }
@@ -212,7 +221,7 @@ Rect UIWorkspace::get_root_rect()
 {
     UIWorkspaceNode* root = mObj->partition.get_node(mObj->partition.get_root_id());
 
-    return root->area;
+    return root->rect;
 }
 
 UIWindow UIWorkspace::get_area_window(UIAreaID areaID)

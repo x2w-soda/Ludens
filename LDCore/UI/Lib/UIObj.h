@@ -70,7 +70,8 @@ struct UIWorkspaceNode
     float splitRatio;
     bool isLeaf;
     UIAreaID nodeID;
-    Rect area;
+    Rect rect;
+    Rect splitRect;
     UIWorkspaceNode* parent = nullptr;
     UIWorkspaceNode* lch = nullptr;
     UIWorkspaceNode* rch = nullptr;
@@ -84,7 +85,7 @@ struct UIWorkspaceObj
     HashSet<UIWindowObj*> deferredWindowDestruction;
     Vector<UIWindowObj*> nodeWindows;  // windows docked in workspace nodes
     Vector<UIWindowObj*> floatWindows; // floating windows
-    RectSplit<UIWorkspaceNode> partition;
+    RectSplit<UIWorkspaceNode, MEMORY_USAGE_UI> partition;
     const float splitGap = 6.0f; // TODO:
     uint32_t windowIDCounter = 0;
     uint32_t id = 0;       // workspace ID, unique within layer

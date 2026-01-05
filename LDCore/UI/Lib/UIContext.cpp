@@ -114,7 +114,7 @@ UIWidgetObj* UIContextObj::get_widget(const Vec2& pos, int filter)
             UIWorkspaceObj* space = *spaceIt;
 
             Rect workspaceRect = UIWorkspace(space).get_root_rect();
-            if (!workspaceRect.contains(pos))
+            if (space->isHidden || !workspaceRect.contains(pos))
                 continue;
 
             // test floating windows in workspace before docked ones

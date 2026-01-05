@@ -32,14 +32,20 @@ struct UIWidgetState
     Hash64 widgetHash; // hash that identifies this state uniquely in its window
     MouseButton mouseDownButton;
     MouseButton mouseUpButton;
+    MouseButton dragButton;
     KeyCode keyDown;
     KeyCode keyUp;
+    Vec2 dragPos;
+    void* imUser;
+    int childCounter = 0; // number of children widget states in this frame
+    UIEvent hoverEvent;
+    Impulse hoverImpulse;
     Impulse mouseDownImpulse;
     Impulse mouseUpImpulse;
     Impulse keyDownImpulse;
     Impulse keyUpImpulse;
-    int childCounter = 0; // number of children widget states in this frame
-    void* imUser;
+    Impulse dragImpulse;
+    bool dragBegin;
     union
     {
         Impulse isTogglePressed;
@@ -81,6 +87,30 @@ struct UIImmediateFrame
 
 static UIImmediateFrame sImFrame;
 static HashMap<Hash64, UIWindowState*> sImWindows;
+
+static void on_drag_handler(UIWidget widget, MouseButton btn, const Vec2& dragPos, bool begin)
+{
+    UIWidgetState* widgetS = (UIWidgetState*)widget.get_user();
+
+    widgetS->dragImpulse.set(true);
+    widgetS->dragButton = btn;
+    widgetS->dragPos = dragPos;
+    widgetS->dragBegin = begin;
+}
+
+static void on_hover_handler(UIWidget widget, UIEvent event)
+{
+    UIWidgetState* widgetS = (UIWidgetState*)widget.get_user();
+
+    switch (event)
+    {
+    case UI_MOUSE_ENTER:
+    case UI_MOUSE_LEAVE:
+        widgetS->hoverImpulse.set(true);
+        widgetS->hoverEvent = event;
+        break;
+    }
+}
 
 static void on_mouse_handler(UIWidget widget, const Vec2& pos, MouseButton btn, UIEvent event)
 {
@@ -504,6 +534,41 @@ void ui_top_draw(const IMDrawCallback& imDrawCallback)
     });
 }
 
+bool ui_top_drag(MouseButton& dragBtn, Vec2& dragPos, bool& dragBegin)
+{
+    LD_ASSERT_UI_TOP_WIDGET;
+
+    UIWidgetState* widgetS = sImFrame.imWindow->imWidgetStack.top();
+    widgetS->widget.set_on_drag(&on_drag_handler);
+
+    bool hasDrag = widgetS->dragImpulse.read();
+
+    if (hasDrag)
+    {
+        dragBtn = widgetS->dragButton;
+        dragPos = widgetS->dragPos;
+        dragBegin = widgetS->dragBegin;
+    }
+
+    return hasDrag;
+}
+
+bool ui_top_hover(UIEvent& outHover)
+{
+    LD_ASSERT_UI_TOP_WIDGET;
+
+    UIWidgetState* widgetS = sImFrame.imWindow->imWidgetStack.top();
+    widgetS->widget.set_on_hover(&on_hover_handler);
+    bool hasEvent = widgetS->hoverImpulse.read();
+
+    if (hasEvent)
+    {
+        outHover = widgetS->hoverEvent;
+    }
+
+    return hasEvent;
+}
+
 bool ui_top_mouse_down(MouseButton& outButton)
 {
     LD_ASSERT_UI_TOP_WIDGET;
@@ -621,6 +686,11 @@ void ui_push_window(UIWindow client)
     windowS->state->widget = (UIWidget)client;
     windowS->imWidgetStack.push(windowS->state);
     windowS->window = client;
+
+    // the imgui layer becomes the user of all windows or widgets
+    void* ptr = client.get_user();
+    LD_ASSERT(!ptr || ptr == windowS->state);
+    client.set_user(windowS->state);
 }
 
 void ui_set_window_rect(const Rect& rect)
@@ -663,7 +733,7 @@ void ui_push_text_edit(const char* text)
     imWindow->imWidgetStack.push(imWidget);
 }
 
-UIImageWidget ui_push_image(RImage image, float width, float height, const Rect* portion)
+void ui_push_image(RImage image, float width, float height, Color tint, const Rect* portion)
 {
     LD_ASSERT_UI_PUSH;
 
@@ -673,13 +743,12 @@ UIImageWidget ui_push_image(RImage image, float width, float height, const Rect*
     LD_ASSERT(imageW.get_type() == UI_WIDGET_IMAGE);
 
     imageW.set_layout_size(UISize::fixed(width), UISize::fixed(height));
+    imageW.set_image_tint(tint);
 
     if (portion)
         imageW.set_image_rect(*portion);
 
     imWindow->imWidgetStack.push(imWidget);
-
-    return imageW;
 }
 
 void ui_push_panel(const Color* color)

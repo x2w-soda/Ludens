@@ -28,6 +28,9 @@ struct UIWorkspace : Handle<struct UIWorkspaceObj>
     /// @brief Set workspace rect, triggers resize callbacks for docked windows.
     void set_rect(const Rect& rect);
 
+    /// @brief Set workspace position, does not resize docked windows.
+    void set_pos(const Vec2& pos);
+
     /// @brief Create and add a window to the workspace, the window is docked in the desginated area.
     UIWindow create_window(UIAreaID areaID, const UILayoutInfo& layoutI, const UIWindowInfo& windowI, void* user);
 

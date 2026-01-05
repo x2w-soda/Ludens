@@ -43,6 +43,12 @@ void ui_top_user(void* user);
 /// @brief Set draw callback of widget on top of stack.
 void ui_top_draw(const IMDrawCallback& imDrawCallback);
 
+/// @brief Check if widget on top of stack has been dragged.
+bool ui_top_drag(MouseButton& dragBtn, Vec2& dragPos, bool& dragBegin);
+
+/// @brief Check if widget on top of stack has mouse enter or mouse leave events.
+bool ui_top_hover(UIEvent& hover);
+
 /// @brief Check if widget on top of stack has UI_MOUSE_DOWN event.
 /// @return True if event exists.
 /// @warning Overrides existing on_mouse callback on widget.
@@ -85,7 +91,7 @@ void ui_push_text(const char* text);
 void ui_push_text_edit(const char* text);
 
 /// @brief Push UIImageWidget.
-UIImageWidget ui_push_image(RImage image, float width, float height, const Rect* portion = nullptr);
+void ui_push_image(RImage image, float width, float height, Color tint = 0xFFFFFFFF, const Rect* portion = nullptr);
 
 /// @brief Push UIPanelWidget.
 void ui_push_panel(const Color* color = nullptr);

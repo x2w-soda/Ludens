@@ -155,7 +155,7 @@ void UISandbox::imgui()
 
     bool isPressed;
 
-    ui_push_window("Demo", mDemo);
+    ui_push_window(mDemo);
     ui_push_scroll({});
     ui_top_layout_child_gap(10.0f);
     {
