@@ -15,6 +15,7 @@ struct TestNode
     bool isLeaf;
     float splitRatio;
     Axis splitAxis;
+    Rect splitRect;
     Rect rect;
 };
 
