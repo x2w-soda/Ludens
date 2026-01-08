@@ -2,8 +2,8 @@
 
 #include <Extra/doctest/doctest.h>
 #include <Ludens/DSA/String.h>
-#include <Ludens/DSA/View.h>
 #include <Ludens/Header/Types.h>
+#include <Ludens/Header/View.h>
 
 using namespace LD;
 

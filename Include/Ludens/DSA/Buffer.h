@@ -1,8 +1,8 @@
 #pragma once
 
-#include <Ludens/DSA/View.h>
 #include <Ludens/Header/Hash.h>
 #include <Ludens/Header/Types.h>
+#include <Ludens/Header/View.h>
 #include <cstdlib>
 
 namespace LD {

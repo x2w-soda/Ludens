@@ -6,11 +6,11 @@
 
 namespace LD {
 
-/// @brief Const view into data.
+/// @brief View into sequential data.
 template <typename T>
 struct TView
 {
-    const T* data;
+    T* data;
     size_t size;
 
     /// @brief A view is 'truthy' if and only if it is non-null and non-zero size.
@@ -57,7 +57,7 @@ struct TView
 };
 
 /// @brief Const view of a byte sequence.
-using View = TView<char>;
+using View = TView<const char>;
 
 } // namespace LD
 

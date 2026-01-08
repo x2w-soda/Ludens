@@ -97,19 +97,27 @@ bool read_file_to_vector(const FS::Path& path, std::vector<byte>& v)
     return read_file(path, fileSize, v.data());
 }
 
-bool write_file(const Path& path, uint64_t size, const byte* buf)
+bool write_file(const Path& path, uint64_t size, const byte* buf, std::string& err)
 {
     LD_PROFILE_SCOPE;
 
     std::ofstream file(path, std::ios::binary);
 
     if (!file.is_open())
+    {
+        err = std::format("failed to open file [{}]", path.string());
         return false;
+    }
 
     file.write((const char*)buf, size);
     file.close();
 
     return true;
+}
+
+bool write_file(const Path& path, const View& view, std::string& err)
+{
+    return write_file(path, view.size, (const byte*)view.data, err);
 }
 
 bool write_file_and_swap_backup(const Path& path, uint64_t size, const byte* buf, std::string& err)
@@ -118,11 +126,8 @@ bool write_file_and_swap_backup(const Path& path, uint64_t size, const byte* buf
 
     if (!FS::exists(path))
     {
-        if (!FS::write_file(path, size, buf))
-        {
-            err = std::format("failed to write_file to [{}]", path.string());
+        if (!FS::write_file(path, size, buf, err))
             return false;
-        }
 
         return true;
     }
@@ -147,11 +152,8 @@ bool write_file_and_swap_backup(const Path& path, uint64_t size, const byte* buf
     FS::Path tmpExt = path.has_extension() ? FS::Path(".tmp" + path.extension().string()) : FS::Path(".tmp");
     tmpPath.replace_extension(tmpExt);
 
-    if (!FS::write_file(tmpPath, size, buf))
-    {
-        err = std::format("failed to write new contents to [{}]", tmpPath.string());
+    if (!FS::write_file(tmpPath, size, buf, err))
         return false;
-    }
 
     // 3. rename temporary file to destination save path
     try
@@ -165,6 +167,11 @@ bool write_file_and_swap_backup(const Path& path, uint64_t size, const byte* buf
     }
 
     return true;
+}
+
+bool write_file_and_swap_backup(const Path& path, const View& view, std::string& err)
+{
+    return write_file_and_swap_backup(path, view.size, (const byte*) view.data, err);
 }
 
 bool exists(const Path& path)

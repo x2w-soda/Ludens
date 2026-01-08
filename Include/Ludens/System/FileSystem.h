@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Ludens/Header/Types.h>
+#include <Ludens/Header/View.h>
 #include <cstdint>
 #include <filesystem>
 #include <string>
@@ -30,13 +31,17 @@ bool read_file(const Path& path, uint64_t& size, byte* buf);
 bool read_file_to_vector(const FS::Path& path, std::vector<byte>& v);
 
 /// @brief Write bytes to a file.
-bool write_file(const Path& path, uint64_t size, const byte* buf);
+bool write_file(const Path& path, uint64_t size, const byte* buf, std::string& err);
+
+bool write_file(const Path& path, const View& view, std::string& err);
 
 /// @brief A safer write_file protocol, behaves the same as write_file if the save file does not exist.
 ///        Otherwise, the existing file is renamed as backup, the new contents are written to a tmp file,
 ///        and finally the tmp file is renamed to the save file path.
 /// @return True if all steps of the protocol succeeded.
 bool write_file_and_swap_backup(const Path& path, uint64_t size, const byte* buf, std::string& err);
+
+bool write_file_and_swap_backup(const Path& path, const View& view, std::string& err);
 
 /// @brief Check if path exists in filesystem.
 bool exists(const Path& path);
