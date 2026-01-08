@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Ludens/Header/View.h>
 #include <Ludens/Project/Project.h>
 #include <Ludens/System/FileSystem.h>
 #include <string>
@@ -12,16 +13,13 @@ namespace LD {
 struct ProjectSchema
 {
     /// @brief Load a project from TOML schema source string.
-    static void load_project_from_source(Project project, const char* source, size_t len);
+    static bool load_project_from_source(Project project, const View& toml, std::string& err);
 
     /// @brief Load a project from TOML schema file on disk.
-    static void load_project_from_file(Project project, const FS::Path& tomlPath);
+    static bool load_project_from_file(Project project, const FS::Path& tomlPath, std::string& err);
 
     /// @brief Try saving project as TOML schema file on disk.
     static bool save_project(Project project, const FS::Path& savePath, std::string& err);
-
-    /// @brief Get default schema TOML text.
-    static std::string get_default_text(const std::string& projectName, const FS::Path& assetSchemaPath);
 };
 
 } // namespace LD

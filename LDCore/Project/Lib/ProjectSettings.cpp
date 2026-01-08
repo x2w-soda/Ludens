@@ -1,9 +1,15 @@
-#include "ProjectSettingsDefault.h"
+#include <Ludens/DSA/IDCounter.h>
+#include <Ludens/Header/Assert.h>
 #include <Ludens/Project/ProjectSettings.h>
 #include <Ludens/System/Memory.h>
 
+#include <algorithm>
+
+#include "ProjectSettingsDefault.h"
+
 namespace LD {
 
+/// @brief Project-wide source of truth for startup configuration.
 struct ProjectStartupSettingsObj
 {
     uint32_t windowWidth = DEFAULT_STARTUP_WINDOW_WIDTH;
@@ -12,11 +18,29 @@ struct ProjectStartupSettingsObj
     std::string defaultScenePath = DEFAULT_STARTUP_DEFAULT_SCENE_PATH;
 };
 
+/// @brief Project-wide source of truth for screen layers.
+struct ProjectScreenLayerSettingsObj
+{
+    struct ProjectScreenLayerObj
+    {
+        ProjectScreenLayerID id;
+        std::string name;
+    };
+
+    IDCounter<ProjectScreenLayerID> idCounter;
+    Vector<ProjectScreenLayerObj> order;
+};
+
 /// @brief Project settings implementation.
 struct ProjectSettingsObj
 {
     ProjectStartupSettingsObj startup;
+    ProjectScreenLayerSettingsObj screenLayer;
 };
+
+//
+// Startup Settings
+//
 
 uint32_t ProjectStartupSettings::get_window_width()
 {
@@ -58,6 +82,76 @@ void ProjectStartupSettings::set_default_scene_path(const std::string& scenePath
     mObj->startup.defaultScenePath = scenePath;
 }
 
+//
+// Screen Layer Settings
+//
+
+ProjectScreenLayerID ProjectScreenLayerSettings::create_layer(const char* name)
+{
+    ProjectScreenLayerID id = mObj->screenLayer.idCounter.get_id();
+    LD_ASSERT(id != 0);
+
+    mObj->screenLayer.order.push_back({.id = id, .name = name});
+
+    return id;
+}
+
+void ProjectScreenLayerSettings::destroy_layer(ProjectScreenLayerID id)
+{
+    std::erase_if(mObj->screenLayer.order, [&](const auto& obj) { return obj.id == id; });
+}
+
+void ProjectScreenLayerSettings::rename_layer(ProjectScreenLayerID id, const char* name)
+{
+    for (auto& obj : mObj->screenLayer.order)
+    {
+        if (obj.id == id)
+        {
+            obj.name = std::string(name);
+            return;
+        }
+    }
+}
+
+void ProjectScreenLayerSettings::rotate_layer(ProjectScreenLayerID id, int newIndex)
+{
+    int layerCount = (int)mObj->screenLayer.order.size();
+    int oldIndex;
+
+    for (oldIndex = 0; oldIndex < layerCount; oldIndex++)
+    {
+        if (mObj->screenLayer.order[oldIndex].id == id)
+            break;
+    }
+
+    if (oldIndex >= layerCount || oldIndex == newIndex)
+        return;
+
+    const auto it = mObj->screenLayer.order.begin();
+
+    if (newIndex < oldIndex)
+        std::rotate(it + newIndex, it + oldIndex, it + oldIndex + 1);
+    else
+        std::rotate(it + oldIndex, it + oldIndex + 1, it + newIndex + 1);
+}
+
+Vector<ProjectScreenLayer> ProjectScreenLayerSettings::get_layers()
+{
+    Vector<ProjectScreenLayer> layers(mObj->screenLayer.order.size());
+
+    for (size_t i = 0; i < layers.size(); i++)
+    {
+        layers[i].id = mObj->screenLayer.order[i].id;
+        layers[i].name = mObj->screenLayer.order[i].name;
+    }
+
+    return layers;
+}
+
+//
+// Public API
+//
+
 ProjectSettings ProjectSettings::create()
 {
     ProjectSettingsObj* obj = heap_new<ProjectSettingsObj>(MEMORY_USAGE_MISC);
@@ -75,6 +169,11 @@ void ProjectSettings::destroy(ProjectSettings settings)
 ProjectStartupSettings ProjectSettings::get_startup_settings()
 {
     return ProjectStartupSettings(mObj);
+}
+
+ProjectScreenLayerSettings ProjectSettings::get_screen_layer_settings()
+{
+    return ProjectScreenLayerSettings(mObj);
 }
 
 } // namespace LD

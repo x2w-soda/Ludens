@@ -9,10 +9,10 @@ using namespace LD;
 TEST_CASE("ProjectSchema")
 {
     const char schemaTOML[] = R"(
-[ludens_project]
-version_major = 0
-version_minor = 0
-version_patch = 0
+[ludensProject]
+versionMajor = 0
+versionMinor = 0
+versionPatch = 0
 name = "hello world"
 assets = "assets.toml"
 scenes = [
@@ -22,12 +22,14 @@ scenes = [
 ]
 
 [settings.startup]
-window_width = 1234
-window_height = 5678
-window_name = 'Foo'
+windowWidth = 1234
+windowHeight = 5678
+windowName = 'Foo'
 )";
     Project proj = Project::create(FS::Path("./directory"));
-    ProjectSchema::load_project_from_source(proj, schemaTOML, strlen(schemaTOML));
+    std::string err;
+    bool ok = ProjectSchema::load_project_from_source(proj, View(schemaTOML, sizeof(schemaTOML) - 1), err);
+    CHECK(ok);
 
     CHECK(proj.get_name() == "hello world");
 

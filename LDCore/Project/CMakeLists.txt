@@ -10,6 +10,7 @@ set(MODULE_INCLUDE
 
 set(MODULE_LIB
     Lib/Project.cpp
+    Lib/ProjectSchemaKeys.h
     Lib/ProjectSchema.cpp
     Lib/ProjectSettings.cpp
 )
