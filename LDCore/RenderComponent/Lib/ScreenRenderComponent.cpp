@@ -1,3 +1,5 @@
+#include <Ludens/DSA/Stack.h>
+#include <Ludens/DSA/Vector.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/RenderBackend/RStager.h>
@@ -6,9 +8,8 @@
 #include <Ludens/RenderComponent/Layout/VertexLayouts.h>
 #include <Ludens/RenderComponent/ScreenRenderComponent.h>
 #include <Ludens/System/Memory.h>
+
 #include <array>
-#include <stack>
-#include <vector>
 
 #define IMAGE_SLOT_COUNT 8
 
@@ -97,7 +98,7 @@ void main()
 )";
 // clang-format on
 
-constexpr uint32_t sMaxRectCount = 1024;
+constexpr uint32_t sMaxRectCount = 8192;
 constexpr uint32_t sMaxRectVertexCount = sMaxRectCount * 4;
 constexpr uint32_t sMaxRectIndexCount = sMaxRectCount * 6;
 
@@ -136,7 +137,7 @@ private: // instance members
 
     struct Frame
     {
-        std::vector<Batch> batches;
+        Vector<Batch> batches;
     };
 
     RBuffer mRectIBO;
@@ -151,9 +152,9 @@ private: // instance members
     uint32_t mScreenHeight;
     Color mColorMask = 0xFFFFFFFF;
     std::string mName;
-    std::vector<Frame> mFrames;
-    std::stack<Rect> mScissors;
-    std::stack<Color> mColorMasks;
+    Vector<Frame> mFrames;
+    Stack<Rect> mScissors;
+    Stack<Color> mColorMasks;
     void (*mOnDraw)(ScreenRenderComponent renderer, void* user);
     void* mUser;
     bool mHasSampledImage;
@@ -319,7 +320,7 @@ void ScreenRenderComponentObj::static_startup(RDevice device)
     sRectFS = device.create_shader({.type = RSHADER_TYPE_FRAGMENT, .glsl = sRectFSSource});
 
     std::array<RShader, 2> shaders{sRectVS, sRectFS};
-    std::vector<RVertexAttribute> attrs;
+    Vector<RVertexAttribute> attrs;
     RVertexBinding binding = {.inputRate = RBINDING_INPUT_RATE_VERTEX, .stride = sizeof(RectVertex)};
     get_rect_vertex_attributes(attrs);
 
@@ -645,10 +646,10 @@ void ScreenRenderComponent::draw_image(const Rect& rect, RImage image, Color col
     uint32_t tint = color * mObj->mColorMask;
 
     RectVertex* v = mObj->mRectBatch.write_rect();
-    v[0] = {x0, y0, 0.0f, 0.0f, tint, control};  // TL
-    v[1] = {x1, y0, 1.0f, 0.0f, tint, control};  // TR
-    v[2] = {x1, y1, 1.0f, 1.0f, tint, control};  // BR
-    v[3] = {x0, y1, 0.0f, 1.0f, tint, control};  // BL
+    v[0] = {x0, y0, 0.0f, 0.0f, tint, control}; // TL
+    v[1] = {x1, y0, 1.0f, 0.0f, tint, control}; // TR
+    v[2] = {x1, y1, 1.0f, 1.0f, tint, control}; // BR
+    v[3] = {x0, y1, 0.0f, 1.0f, tint, control}; // BL
 }
 
 void ScreenRenderComponent::draw_image_uv(const Rect& rect, RImage image, const Rect& uv, Color color)
