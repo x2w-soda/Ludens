@@ -167,10 +167,9 @@ public:
     inline byte* data() { return mBuffer.data(); }
 
     /// @brief Get read only view of the underlying buffer.
-    inline const byte* view(size_t& size) const
+    inline View view() const
     {
-        size = mBuffer.size();
-        return mBuffer.data();
+        return View((const char*)mBuffer.data(), mBuffer.size());
     }
 
 private:
@@ -188,6 +187,8 @@ public:
 
     /// @brief Create deserializer from data view.
     Deserializer(const void* data, size_t size);
+
+    Deserializer(const View& view);
 
     ~Deserializer() = default;
 

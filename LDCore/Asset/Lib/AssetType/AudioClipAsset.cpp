@@ -123,9 +123,9 @@ void AudioClipAssetImportJob::execute(void* user)
     serializer.write_u64(sampleByteSize);
     serializer.write((const byte*)data.get_samples(), sampleByteSize);
 
-    size_t binarySize;
-    const byte* binary = serializer.view(binarySize);
-    FS::write_file(self.savePath, binarySize, binary);
+    std::string err;
+    bool ok = FS::write_file(self.savePath, serializer.view(), err);
+    LD_ASSERT(ok); // TODO:
 }
 
 } // namespace LD

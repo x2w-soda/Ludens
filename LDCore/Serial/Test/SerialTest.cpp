@@ -75,9 +75,7 @@ TEST_CASE("integer serialization")
     serializer.write_u64(std::numeric_limits<uint64_t>::max());
     CHECK(serializer.size() == 60);
 
-    size_t dataSize;
-    const byte* data = serializer.view(dataSize);
-    Deserializer deserializer(data, dataSize);
+    Deserializer deserializer(serializer.view());
 
     int8_t i8min, i8max;
     int16_t i16min, i16max;
@@ -136,9 +134,7 @@ TEST_CASE("floating point serialization")
     serial.write_vec4(v4);
     CHECK(serial.size() == 48);
 
-    size_t dataSize;
-    const byte* data = serial.view(dataSize);
-    Deserializer deserializer(data, dataSize);
+    Deserializer deserializer(serial.view());
 
     float f32;
     double f64;
@@ -165,9 +161,7 @@ TEST_CASE("struct serialization")
     Serializer serial;
     serialize(serial, f);
 
-    size_t dataSize;
-    const byte* data = serial.view(dataSize);
-    Deserializer deserializer(data, dataSize);
+    Deserializer deserializer(serial.view());
 
     Foo f2;
     deserialize(deserializer, f2);
@@ -202,9 +196,7 @@ TEST_CASE("chunk serialization")
     std::string name;
     name.resize(4);
 
-    size_t dataSize;
-    const byte* data = serial.view(dataSize);
-    Deserializer deserializer(data, dataSize);
+    Deserializer deserializer(serial.view());
 
     deserializer.read_chunk(name.data(), chunkSize);
     CHECK(chunkSize == 62);

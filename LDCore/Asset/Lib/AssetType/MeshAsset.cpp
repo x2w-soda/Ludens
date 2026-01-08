@@ -89,9 +89,9 @@ void MeshAssetImportJob::execute(void* user)
 
     ModelBinary::serialize(serializer, *obj->modelBinary);
 
-    size_t binarySize;
-    const byte* binary = serializer.view(binarySize);
-    FS::write_file(self.info.savePath, binarySize, binary);
+    std::string err;
+    bool ok = FS::write_file(self.info.savePath, serializer.view(), err);
+    LD_ASSERT(ok); // TODO:
 }
 
 } // namespace LD

@@ -173,13 +173,14 @@ void Texture2DAssetImportJob::execute(void* user)
 
     serial.write_chunk_end();
 
-    size_t serialSize;
-    const byte* serialData = serial.view(serialSize);
+    std::string err;
+    View serialView = serial.view();
 
     // only retrieve address after serializer has completed all writes
-    obj->fileData = serialData + fileDataOffset;
+    obj->fileData = serialView.data + fileDataOffset;
 
-    FS::write_file(self.info.savePath, serialSize, serialData);
+    bool ok = FS::write_file(self.info.savePath, serialView, err);
+    LD_ASSERT(ok); // TODO:
 
     obj->bitmap = Bitmap::create_from_file_data(obj->fileSize, obj->fileData);
     LD_ASSERT(obj->bitmap);

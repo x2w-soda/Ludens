@@ -17,4 +17,9 @@ Deserializer::Deserializer(const void* data, size_t size)
 {
 }
 
+Deserializer::Deserializer(const View& view)
+    : mReadPos(0), mData((const byte*)view.data), mDataSize(view.size)
+{
+}
+
 } // namespace LD

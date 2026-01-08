@@ -25,7 +25,11 @@ void UITemplateAssetObj::load(void* user)
 
     Serializer serializer(fileSize);
     FS::read_file(job.loadPath, fileSize, serializer.data());
-    UITemplateSchema::load_ui_template_from_source(obj->tmpl, serializer.data(), serializer.size());
+    View fileView((const char*)serializer.data(), serializer.size());
+
+    std::string err;
+    bool ok = UITemplateSchema::load_ui_template_from_source(obj->tmpl, fileView, err);
+    LD_ASSERT(ok); // TODO: asset load failure
 }
 
 void UITemplateAssetObj::unload(AssetObj* base)

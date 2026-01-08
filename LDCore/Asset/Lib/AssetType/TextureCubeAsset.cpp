@@ -190,14 +190,15 @@ void TextureCubeAssetImportJob::execute(void* user)
         serial.write_chunk_end();
     }
 
-    size_t seiralSize;
-    const byte* serialData = serial.view(seiralSize);
+    View serialView = serial.view();
 
     // only retrieve address after serializer has completed all writes
     for (int i = 0; i < 6; i++)
-        obj->fileData[i] = serialData + fileDataOffsets[i];
+        obj->fileData[i] = serialView.data + fileDataOffsets[i];
 
-    FS::write_file(self.info.savePath, seiralSize, serialData);
+    std::string err;
+    bool ok = FS::write_file(self.info.savePath, serialView, err);
+    LD_ASSERT(ok); // TODO:
 
     obj->bitmap = Bitmap::create_cubemap_from_file_data(obj->fileSize, obj->fileData);
     LD_ASSERT(obj->bitmap);

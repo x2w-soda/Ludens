@@ -11,7 +11,7 @@ namespace LD {
 struct AssetSchema
 {
     /// @brief Load asset registry from TOML schema file on disk.
-    static void load_registry_from_file(AssetRegistry registry, const FS::Path& tomlPath);
+    static bool load_registry_from_file(AssetRegistry registry, const FS::Path& tomlPath, std::string& err);
 
     /// @brief Try saving scene as TOML schema file on disk.
     static bool save_registry(AssetRegistry registry, const FS::Path& savePath, std::string& err);

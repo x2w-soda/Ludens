@@ -24,9 +24,11 @@ set(MODULE_LIB
 	Lib/AssetRegistry.cpp
 	Lib/AssetWatcher.h
 	Lib/AssetWatcher.cpp
+	Lib/AssetSchemaKeys.h
 	Lib/AssetSchema.cpp
 	Lib/Template/UITemplate.cpp
 	Lib/Template/UITemplateObj.h
+	Lib/Template/UITemplateSchemaKeys.h
 	Lib/Template/UITemplateSchema.cpp
 	Lib/AssetType/BlobAssetObj.h
 	Lib/AssetType/BlobAsset.cpp

@@ -21,24 +21,19 @@ enum ValueType : uint16_t
     VALUE_TYPE_ENUM_COUNT,
 };
 
-/// @brief Tagged union of pointers.
-struct Value
+union Value
 {
-    ValueType type;
-    union
-    {
-        bool* b;
-        float* f32;
-        double* f64;
-        int8_t* i8;
-        int16_t* i16;
-        int32_t* i32;
-        int64_t* i64;
-        uint8_t* u8;
-        uint16_t* u16;
-        uint32_t* u32;
-        uint64_t* u64;
-    };
+    bool b;
+    float f32;
+    double f64;
+    int8_t i8;
+    int16_t i16;
+    int32_t i32;
+    int64_t i64;
+    uint8_t u8;
+    uint16_t u16;
+    uint32_t u32;
+    uint64_t u64;
 };
 
 /// @brief Get byte size of value type, or zero for varying length values.

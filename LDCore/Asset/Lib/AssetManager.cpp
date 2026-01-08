@@ -82,7 +82,9 @@ AssetManagerObj::AssetManagerObj(const AssetManagerInfo& info)
     }
 
     mRegistry = AssetRegistry::create();
-    AssetSchema::load_registry_from_file(mRegistry, info.assetSchemaPath);
+    std::string err;
+    bool ok = AssetSchema::load_registry_from_file(mRegistry, info.assetSchemaPath, err);
+    LD_ASSERT(ok); // TODO: loading registry should not happen in ctor, error control flow is messy
 
     PoolAllocatorInfo paI{};
     paI.blockSize = sizeof(AssetLoadJob);

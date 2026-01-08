@@ -104,9 +104,10 @@ void FontAssetImportJob::execute(void* user)
     serializer.write_u32(sourceDataSize);
     serializer.write(sourceData, sourceDataSize);
 
-    size_t binarySize;
-    const byte* binary = serializer.view(binarySize);
-    FS::write_file(self.info.savePath, binarySize, binary);
+    std::string err;
+    View serialView = serializer.view();
+    bool ok = FS::write_file(self.info.savePath, serialView, err);
+    LD_ASSERT(ok);
 }
 
 } // namespace LD

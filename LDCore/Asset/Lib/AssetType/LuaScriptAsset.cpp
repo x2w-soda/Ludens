@@ -147,9 +147,9 @@ void LuaScriptAssetImportJob::execute(void* user)
     serial.write_u32((uint32_t)obj->domain);
     serial.write_chunk_end();
 
-    size_t serialSize;
-    const byte* serialData = serial.view(serialSize);
-    FS::write_file(self.info.savePath, serialSize, serialData);
+    std::string err;
+    bool ok = FS::write_file(self.info.savePath, serial.view(), err);
+    LD_ASSERT(ok);
 }
 
 } // namespace LD

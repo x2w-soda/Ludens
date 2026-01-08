@@ -1,9 +1,11 @@
 #pragma once
 
+#include <Ludens/DSA/HashMap.h>
+#include <Ludens/DSA/Vector.h>
 #include <Ludens/System/Allocator.h>
+
 #include <cstdint>
 #include <unordered_map>
-#include <vector>
 
 namespace LD {
 
@@ -14,8 +16,8 @@ struct UITemplateObj
 {
     PoolAllocator entryPA;
     LinearAllocator LA;
-    std::vector<UITemplateEntry*> entries;
-    std::unordered_map<uint32_t, std::vector<uint32_t>> hierarchy;
+    Vector<UITemplateEntry*> entries;
+    HashMap<uint32_t, Vector<uint32_t>> hierarchy;
 
     void reset()
     {

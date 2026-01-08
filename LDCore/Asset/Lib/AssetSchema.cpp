@@ -4,60 +4,114 @@
 #include <Ludens/Media/Format/TOML.h>
 #include <Ludens/Profiler/Profiler.h>
 
+#include <format>
+
+#include "AssetSchemaKeys.h"
+
 namespace LD {
 
-static void load_registry_from_schema(AssetRegistry registry, TOMLDocument doc);
-static void load_registry_entries(AssetRegistry registry, TOMLDocument doc);
-static void save_registry_to_schema(AssetRegistry registry, TOMLDocument doc);
-static void save_registry_entries(AssetRegistry registry, TOMLDocument doc);
-
-static void load_registry_from_schema(AssetRegistry registry, TOMLDocument doc)
+/// @brief Loads AssetRegistry from TOML
+class AssetSchemaLoader
 {
-    if (!registry || !doc)
-        return;
+public:
+    AssetSchemaLoader() = default;
+    AssetSchemaLoader(const AssetSchemaLoader&) = delete;
+    ~AssetSchemaLoader();
 
-    TOMLValue registryTOML = doc.get("ludens_assets");
-    if (!registryTOML || registryTOML.get_type() != TOML_TYPE_TABLE)
-        return;
+    AssetSchemaLoader& operator=(const AssetSchemaLoader&) = delete;
+
+    bool load_registry(AssetRegistry reg, const View& toml, std::string& err);
+
+private:
+    bool load_asset_entries(std::string& err);
+
+private:
+    AssetRegistry mReg{};
+    TOMLDocument mDoc{};
+};
+
+/// @brief Saves AssetRegistry to TOML
+class AssetSchemaSaver
+{
+public:
+    AssetSchemaSaver() = default;
+    AssetSchemaSaver(const AssetSchemaSaver&) = delete;
+    ~AssetSchemaSaver();
+
+    AssetSchemaSaver& operator=(const AssetSchemaSaver&) = delete;
+
+    bool save_registry(AssetRegistry registry, std::string& toml, std::string& err);
+
+private:
+    bool save_asset_entries(std::string& err);
+
+private:
+    AssetRegistry mReg{};
+    TOMLWriter mWriter{};
+};
+
+AssetSchemaLoader::~AssetSchemaLoader()
+{
+    if (mDoc)
+        TOMLDocument::destroy(mDoc);
+}
+
+bool AssetSchemaLoader::load_registry(AssetRegistry reg, const View& toml, std::string& err)
+{
+    mDoc = TOMLDocument::create();
+    mReg = reg;
+
+    if (!TOMLParser::parse(mDoc, toml, err))
+        return false;
+
+    TOMLValue registryTOML = mDoc.get(ASSET_SCHEMA_TABLE_LUDENS_ASSETS);
+    if (!registryTOML || registryTOML.type() != TOML_TYPE_TABLE)
+        return false;
 
     int32_t version;
-    TOMLValue versionTOML = registryTOML["version_major"];
+    TOMLValue versionTOML = registryTOML[ASSET_SCHEMA_KEY_VERSION_MAJOR];
     if (!versionTOML || !versionTOML.get_i32(version) || version != LD_VERSION_MAJOR)
-        return;
+        return false;
 
-    versionTOML = registryTOML["version_minor"];
+    versionTOML = registryTOML[ASSET_SCHEMA_KEY_VERSION_MINOR];
     if (!versionTOML || !versionTOML.get_i32(version) || version != LD_VERSION_MINOR)
-        return;
+        return false;
 
-    versionTOML = registryTOML["version_patch"];
+    versionTOML = registryTOML[ASSET_SCHEMA_KEY_VERSION_PATCH];
     if (!versionTOML || !versionTOML.get_i32(version) || version != LD_VERSION_PATCH)
-        return;
+        return false;
 
     uint32_t auidCounter = 1;
-    TOMLValue counterTOML = registryTOML["auid_counter"];
+    TOMLValue counterTOML = registryTOML[ASSET_SCHEMA_KEY_AUID_COUNTER];
     if (counterTOML)
         counterTOML.get_u32(auidCounter);
 
-    registry.set_auid_counter(auidCounter);
+    mReg.set_auid_counter(auidCounter);
 
-    load_registry_entries(registry, doc);
+    if (!load_asset_entries(err))
+        return false;
+
+    TOMLDocument::destroy(mDoc);
+    mDoc = {};
+
+    return true;
 }
 
-static void load_registry_entries(AssetRegistry registry, TOMLDocument doc)
+bool AssetSchemaLoader::load_asset_entries(std::string& err)
 {
     for (int i = 0; i < (int)ASSET_TYPE_ENUM_COUNT; i++)
     {
         AssetType assetType = (AssetType)i;
         const char* typeCstr = get_asset_type_cstr(assetType);
-        TOMLValue entryArrayTOML = doc.get(typeCstr);
-        if (!entryArrayTOML || !entryArrayTOML.is_array_type())
+        TOMLValue entryArrayTOML = mDoc.get(typeCstr);
+        if (!entryArrayTOML || !entryArrayTOML.is_array())
             continue;
 
-        int arraySize = entryArrayTOML.get_size();
+        int arraySize = entryArrayTOML.size();
         for (int j = 0; j < arraySize; j++)
         {
             TOMLValue entryTOML = entryArrayTOML[j];
-            if (!entryTOML.is_table_type())
+            if (!entryTOML.is_table())
                 continue;
 
             AssetEntry entry = {.type = assetType};
@@ -69,72 +123,104 @@ static void load_registry_entries(AssetRegistry registry, TOMLDocument doc)
                 !auidTOML || !auidTOML.get_u32(entry.id))
                 continue;
 
-            bool ok = registry.register_asset_with_id(entry);
-            LD_ASSERT(ok); // TODO: invalid toml schema code path
+            if (!mReg.register_asset_with_id(entry))
+            {
+                err = std::format("Asset ID {} is already in use, invalid schema", entry.id);
+                return false;
+            }
         }
     }
+
+    return true;
 }
 
-static void save_registry_to_schema(AssetRegistry registry, TOMLDocument doc)
+AssetSchemaSaver::~AssetSchemaSaver()
 {
-    TOMLValue registryTOML = doc.set("ludens_assets", TOML_TYPE_TABLE);
-    registryTOML.set_key("version_major", TOML_TYPE_INT).set_i32(LD_VERSION_MAJOR);
-    registryTOML.set_key("version_minor", TOML_TYPE_INT).set_i32(LD_VERSION_MINOR);
-    registryTOML.set_key("version_patch", TOML_TYPE_INT).set_i32(LD_VERSION_PATCH);
-
-    save_registry_entries(registry, doc);
+    if (mWriter)
+        TOMLWriter::destroy(mWriter);
 }
 
-static void save_registry_entries(AssetRegistry registry, TOMLDocument doc)
+bool AssetSchemaSaver::save_registry(AssetRegistry registry, std::string& toml, std::string& err)
+{
+    mReg = registry;
+
+    mWriter = TOMLWriter::create();
+    mWriter.begin();
+
+    mWriter.begin_table(ASSET_SCHEMA_TABLE_LUDENS_ASSETS);
+    mWriter.key(ASSET_SCHEMA_KEY_VERSION_MAJOR).value_u32(LD_VERSION_MAJOR);
+    mWriter.key(ASSET_SCHEMA_KEY_VERSION_MINOR).value_u32(LD_VERSION_MINOR);
+    mWriter.key(ASSET_SCHEMA_KEY_VERSION_PATCH).value_u32(LD_VERSION_PATCH);
+    mWriter.end_table();
+
+    if (!save_asset_entries(err))
+        return false;
+
+    mWriter.end(toml);
+    TOMLWriter::destroy(mWriter);
+
+    return true;
+}
+
+bool AssetSchemaSaver::save_asset_entries(std::string& err)
 {
     for (int i = 0; i < (int)ASSET_TYPE_ENUM_COUNT; i++)
     {
         AssetType assetType = (AssetType)i;
         const char* typeCstr = get_asset_type_cstr(assetType);
-        TOMLValue entryArrayTOML = doc.set(typeCstr, TOML_TYPE_ARRAY);
 
-        std::vector<const AssetEntry*> entries;
-        registry.find_assets_by_type(assetType, entries);
+        Vector<const AssetEntry*> entries;
+        mReg.find_assets_by_type(assetType, entries);
+        if (entries.empty())
+            continue;
+
+        mWriter.begin_array_table(typeCstr);
 
         for (const AssetEntry* entry : entries)
         {
-            TOMLValue entryTOML = entryArrayTOML.append(TOML_TYPE_TABLE);
-            entryTOML.set_key("uri", TOML_TYPE_STRING).set_string(entry->uri);
-            entryTOML.set_key("name", TOML_TYPE_STRING).set_string(entry->name);
-            entryTOML.set_key("auid", TOML_TYPE_INT).set_u32(entry->id);
+            mWriter.begin_table();
+            mWriter.key("uri").value_string(entry->uri);
+            mWriter.key("name").value_string(entry->name);
+            mWriter.key("auid").value_u32(entry->id);
+            mWriter.end_table();
         }
+
+        mWriter.end_array_table();
     }
+
+    return true;
 }
 
 //
 // Public API
 //
 
-void AssetSchema::load_registry_from_file(AssetRegistry registry, const FS::Path& tomlPath)
+bool AssetSchema::load_registry_from_file(AssetRegistry registry, const FS::Path& tomlPath, std::string& err)
 {
     LD_PROFILE_SCOPE;
 
-    TOMLDocument doc = TOMLDocument::create_from_file(tomlPath);
-    load_registry_from_schema(registry, doc);
-    TOMLDocument::destroy(doc);
+    Vector<byte> toml;
+    if (!FS::read_file_to_vector(tomlPath, toml))
+        return false;
+
+    View tomlView((const char*)toml.data(), toml.size());
+    AssetSchemaLoader loader;
+    if (!loader.load_registry(registry, tomlView, err))
+        return false;
+
+    return true;
 }
 
 bool AssetSchema::save_registry(AssetRegistry registry, const FS::Path& savePath, std::string& err)
 {
     LD_PROFILE_SCOPE;
 
-    TOMLDocument doc = TOMLDocument::create();
-    save_registry_to_schema(registry, doc);
-
-    std::string str;
-    if (!doc.save_to_string(str))
-    {
-        TOMLDocument::destroy(doc);
+    std::string toml;
+    AssetSchemaSaver saver;
+    if (!saver.save_registry(registry, toml, err))
         return false;
-    }
 
-    TOMLDocument::destroy(doc);
-    return FS::write_file_and_swap_backup(savePath, str.size(), (const byte*)str.data(), err);
+    return FS::write_file_and_swap_backup(savePath, toml.size(), (const byte*)toml.data(), err);
 }
 
 } // namespace LD

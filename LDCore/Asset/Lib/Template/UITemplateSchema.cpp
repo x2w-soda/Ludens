@@ -5,6 +5,7 @@
 #include <Ludens/Profiler/Profiler.h>
 
 #include "UITemplateObj.h"
+#include "UITemplateSchemaKeys.h"
 
 namespace LD {
 
@@ -12,28 +13,38 @@ namespace LD {
 class UITemplateSchemaSaver
 {
 public:
-    /// @brief Save template as TOML schema.
-    void save_to_schema(UITemplateObj* obj, TOMLDocument doc);
+    UITemplateSchemaSaver() = default;
+    UITemplateSchemaSaver(const UITemplateSchemaSaver&) = delete;
+    ~UITemplateSchemaSaver();
 
-    static void save_ui_panel_toml(UITemplateSchemaSaver& saver, const UITemplateEntry& entry, TOMLValue widgetTOML);
-    static void save_ui_image_toml(UITemplateSchemaSaver& saver, const UITemplateEntry& entry, TOMLValue widgetTOML);
+    UITemplateSchemaSaver& operator=(const UITemplateSchemaSaver&) = delete;
+
+    /// @brief Save template as TOML schema.
+    bool save_template(UITemplateObj* obj, std::string& toml, std::string& err);
+
+    static void save_ui_panel(UITemplateSchemaSaver& saver, const UITemplateEntry& entry);
+    static void save_ui_image(UITemplateSchemaSaver& saver, const UITemplateEntry& entry);
 
 private:
-    void save_widget_subtree_toml(uint32_t idx);
-    void save_widget_layout_toml(const UILayoutInfo& layout, TOMLValue widgetTOML);
+    void save_widget_subtree(uint32_t idx);
+    void save_widget_layout(const UILayoutInfo& layout);
 
 private:
     UITemplateObj* mTmpl = nullptr;
-    TOMLValue mWidgetArrayTOML;
-    TOMLValue mHierarchyTOML;
+    TOMLWriter mWriter{};
 };
 
 /// @brief Loads a UITemplate from TOML schema.
 class UITemplateSchemaLoader
 {
 public:
-    /// @brief Load template from TOML schema.
-    void load_from_schema(UITemplateObj* obj, TOMLDocument doc);
+    UITemplateSchemaLoader() = default;
+    UITemplateSchemaLoader(const UITemplateSchemaLoader&) = delete;
+    ~UITemplateSchemaLoader();
+
+    UITemplateSchemaLoader& operator=(const UITemplateSchemaLoader&) = delete;
+
+    bool load_template(UITemplateObj* obj, const View& toml, std::string& err);
 
     static void load_ui_panel_toml(UITemplateSchemaLoader& loader, UITemplateEntry& entry, TOMLValue widgetTOML);
     static void load_ui_image_toml(UITemplateSchemaLoader& loader, UITemplateEntry& entry, TOMLValue widgetTOML);
@@ -47,13 +58,14 @@ private:
 
 private:
     UITemplateObj* mTmpl = nullptr;
+    TOMLDocument mDoc{};
 };
 
 // clang-format off
 struct
 {
     UIWidgetType type;
-    void (*save_toml)(UITemplateSchemaSaver& saver, const UITemplateEntry& entry, TOMLValue widgetTOML);
+    void (*save_toml)(UITemplateSchemaSaver& saver, const UITemplateEntry& entry);
     void (*load_toml)(UITemplateSchemaLoader& loader, UITemplateEntry& entry, TOMLValue widgetTOML);
 } sUITemplateSchemaTable[] = {
     {UI_WIDGET_WINDOW,    nullptr,                                    nullptr},
@@ -61,152 +73,256 @@ struct
     {UI_WIDGET_BUTTON,    nullptr,                                    nullptr},
     {UI_WIDGET_SLIDER,    nullptr,                                    nullptr},
     {UI_WIDGET_TOGGLE,    nullptr,                                    nullptr},
-    {UI_WIDGET_PANEL,     &UITemplateSchemaSaver::save_ui_panel_toml, &UITemplateSchemaLoader::load_ui_panel_toml},
-    {UI_WIDGET_IMAGE,     &UITemplateSchemaSaver::save_ui_image_toml, &UITemplateSchemaLoader::load_ui_image_toml},
+    {UI_WIDGET_PANEL,     &UITemplateSchemaSaver::save_ui_panel, &UITemplateSchemaLoader::load_ui_panel_toml},
+    {UI_WIDGET_IMAGE,     &UITemplateSchemaSaver::save_ui_image, &UITemplateSchemaLoader::load_ui_image_toml},
     {UI_WIDGET_TEXT,      nullptr,                                    nullptr},
     {UI_WIDGET_TEXT_EDIT, nullptr,                                    nullptr},
 };
 // clang-format on
 
-void UITemplateSchemaSaver::save_widget_subtree_toml(uint32_t idx)
+void UITemplateSchemaSaver::save_widget_subtree(uint32_t idx)
 {
+    LD_ASSERT(mWriter.is_array_table_scope());
+
     const UITemplateEntry* entry = mTmpl->entries[idx];
 
-    TOMLValue widgetTOML = mWidgetArrayTOML.append(TOML_TYPE_TABLE);
+    mWriter.begin_table();
 
-    TOMLValue typeTOML = widgetTOML.set_key("type", TOML_TYPE_STRING);
     std::string typeStr(get_ui_widget_type_cstr(entry->type));
-    typeTOML.set_string(typeStr);
-
-    TOMLValue idxTOML = widgetTOML.set_key("index", TOML_TYPE_INT);
-    idxTOML.set_u32(idx);
+    mWriter.key("type").value_string(typeStr);
+    mWriter.key("index").value_u32(idx);
 
     // save root widget in a single entry
-    save_widget_layout_toml(entry->layout, widgetTOML);
-    sUITemplateSchemaTable[(int)entry->type].save_toml(*this, *entry, widgetTOML);
+    save_widget_layout(entry->layout);
+    sUITemplateSchemaTable[(int)entry->type].save_toml(*this, *entry);
 
-    std::string parentIdx = std::to_string(idx);
-    TOMLValue childrenTOML = mHierarchyTOML.set_key(parentIdx.c_str(), TOML_TYPE_ARRAY);
     for (uint32_t childIdx : mTmpl->hierarchy[idx])
     {
-        childrenTOML.append(TOML_TYPE_INT).set_u32(childIdx);
-
-        save_widget_subtree_toml(idx);
+        save_widget_subtree(childIdx);
     }
+
+    mWriter.end_table();
 }
 
-void UITemplateSchemaSaver::save_widget_layout_toml(const UILayoutInfo& layout, TOMLValue widgetTOML)
+void UITemplateSchemaSaver::save_widget_layout(const UILayoutInfo& layout)
 {
-    TOMLValue layoutTOML = widgetTOML.set_key("layout", TOML_TYPE_TABLE);
-    layoutTOML.format(TOML_FORMAT_TABLE_ONE_LINE);
+    mWriter.begin_inline_table("layout");
 
     switch (layout.sizeX.type)
     {
     case UI_SIZE_FIXED:
-        layoutTOML.set_key("size_x", TOML_TYPE_INT).set_i32((int32_t)layout.sizeX.extent);
+        mWriter.key("size_x").value_i32((int32_t)layout.sizeX.extent);
         break;
     case UI_SIZE_GROW:
-        layoutTOML.set_key("size_x", TOML_TYPE_STRING).set_string("grow");
+        mWriter.key("size_x").value_string("grow");
         break;
     case UI_SIZE_WRAP:
-        layoutTOML.set_key("size_x", TOML_TYPE_STRING).set_string("wrap");
+        mWriter.key("size_x").value_string("wrap");
         break;
     case UI_SIZE_FIT:
-        layoutTOML.set_key("size_x", TOML_TYPE_STRING).set_string("fit");
+        mWriter.key("size_x").value_string("fit");
         break;
     }
 
     switch (layout.sizeY.type)
     {
     case UI_SIZE_FIXED:
-        layoutTOML.set_key("size_y", TOML_TYPE_INT).set_i32((int32_t)layout.sizeY.extent);
+        mWriter.key("size_y").value_i32((int32_t)layout.sizeY.extent);
         break;
     case UI_SIZE_GROW:
-        layoutTOML.set_key("size_y", TOML_TYPE_STRING).set_string("grow");
+        mWriter.key("size_y").value_string("grow");
         break;
     case UI_SIZE_WRAP:
-        layoutTOML.set_key("size_y", TOML_TYPE_STRING).set_string("wrap");
+        mWriter.key("size_y").value_string("wrap");
         break;
     case UI_SIZE_FIT:
-        layoutTOML.set_key("size_y", TOML_TYPE_STRING).set_string("fit");
+        mWriter.key("size_y").value_string("fit");
         break;
     }
 
     switch (layout.childAlignX)
     {
     case UI_ALIGN_BEGIN:
-        layoutTOML.set_key("child_align_x", TOML_TYPE_STRING).set_string("begin");
+        mWriter.key("child_align_x").value_string("begin");
         break;
     case UI_ALIGN_CENTER:
-        layoutTOML.set_key("child_align_x", TOML_TYPE_STRING).set_string("center");
+        mWriter.key("child_align_x").value_string("center");
         break;
     case UI_ALIGN_END:
-        layoutTOML.set_key("child_align_x", TOML_TYPE_STRING).set_string("end");
+        mWriter.key("child_align_x").value_string("end");
         break;
     }
 
     switch (layout.childAlignY)
     {
     case UI_ALIGN_BEGIN:
-        layoutTOML.set_key("child_align_y", TOML_TYPE_STRING).set_string("begin");
+        mWriter.key("child_align_y").value_string("begin");
         break;
     case UI_ALIGN_CENTER:
-        layoutTOML.set_key("child_align_y", TOML_TYPE_STRING).set_string("center");
+        mWriter.key("child_align_y").value_string("center");
         break;
     case UI_ALIGN_END:
-        layoutTOML.set_key("child_align_y", TOML_TYPE_STRING).set_string("end");
+        mWriter.key("child_align_y").value_string("end");
         break;
     }
 
     switch (layout.childAxis)
     {
     case UI_AXIS_X:
-        layoutTOML.set_key("child_axis", TOML_TYPE_STRING).set_string("x");
+        mWriter.key("child_axis").value_string("x");
         break;
     case UI_AXIS_Y:
-        layoutTOML.set_key("child_axis", TOML_TYPE_STRING).set_string("y");
+        mWriter.key("child_axis").value_string("y");
         break;
     }
 
-    TOMLValue childPaddingTOML = layoutTOML.set_key("child_padding", TOML_TYPE_TABLE);
-    childPaddingTOML.format(TOML_FORMAT_TABLE_ONE_LINE);
-    childPaddingTOML.set_key("left", TOML_TYPE_FLOAT).set_f32(layout.childPadding.left);
-    childPaddingTOML.set_key("right", TOML_TYPE_FLOAT).set_f32(layout.childPadding.right);
-    childPaddingTOML.set_key("top", TOML_TYPE_FLOAT).set_f32(layout.childPadding.top);
-    childPaddingTOML.set_key("bottom", TOML_TYPE_FLOAT).set_f32(layout.childPadding.bottom);
+    mWriter.begin_inline_table("child_padding");
+    mWriter.key("left").value_f32(layout.childPadding.left);
+    mWriter.key("right").value_f32(layout.childPadding.right);
+    mWriter.key("top").value_f32(layout.childPadding.top);
+    mWriter.key("bottom").value_f32(layout.childPadding.bottom);
+    mWriter.key("child_gap").value_f32(layout.childGap);
 
-    layoutTOML.set_key("child_gap", TOML_TYPE_FLOAT).set_f32(layout.childGap);
+    mWriter.end_inline_table();
+    mWriter.end_inline_table();
 }
 
-void UITemplateSchemaSaver::save_to_schema(UITemplateObj* obj, TOMLDocument doc)
+UITemplateSchemaSaver::~UITemplateSchemaSaver()
+{
+    if (mWriter)
+        TOMLWriter::destroy(mWriter);
+}
+
+bool UITemplateSchemaSaver::save_template(UITemplateObj* obj, std::string& toml, std::string& err)
 {
     mTmpl = obj;
-    mWidgetArrayTOML = doc.set("widget", TOML_TYPE_ARRAY);
-    mHierarchyTOML = doc.set("hierarchy", TOML_TYPE_TABLE);
 
-    TOMLValue sceneTOML = doc.set("ludens_ui_template", TOML_TYPE_TABLE);
-    sceneTOML.set_key("version_major", TOML_TYPE_INT).set_i32(LD_VERSION_MAJOR);
-    sceneTOML.set_key("version_minor", TOML_TYPE_INT).set_i32(LD_VERSION_MINOR);
-    sceneTOML.set_key("version_patch", TOML_TYPE_INT).set_i32(LD_VERSION_PATCH);
+    mWriter = TOMLWriter::create();
+    mWriter.begin();
 
+    mWriter.begin_table("ludens_ui_template");
+    mWriter.key("versionMajor").value_u32(LD_VERSION_MAJOR);
+    mWriter.key("versionMinor").value_u32(LD_VERSION_MINOR);
+    mWriter.key("versionPatch").value_u32(LD_VERSION_PATCH);
+    mWriter.end_table();
+
+    mWriter.begin_array_table("widget");
     if (!mTmpl->entries.empty())
-        save_widget_subtree_toml(0);
+        save_widget_subtree(0);
+    mWriter.end_array_table();
+
+    mWriter.begin_table("hierarchy");
+    for (auto it : mTmpl->hierarchy)
+    {
+        uint32_t parentIdx = it.first;
+        mWriter.key(std::to_string(parentIdx)).begin_array();
+        for (uint32_t childIdx : it.second)
+            mWriter.value_u32(childIdx);
+        mWriter.end_array();
+    }
+    mWriter.end_table();
+
+    mWriter.end(toml);
+    TOMLWriter::destroy(mWriter);
+
+    return true;
 }
 
-void UITemplateSchemaSaver::save_ui_panel_toml(UITemplateSchemaSaver& saver, const UITemplateEntry& entry, TOMLValue widgetTOML)
+void UITemplateSchemaSaver::save_ui_panel(UITemplateSchemaSaver& saver, const UITemplateEntry& entry)
 {
+    LD_ASSERT(saver.mWriter && saver.mWriter.is_table_scope());
     LD_ASSERT(entry.type == UI_WIDGET_TEXT);
 
-    widgetTOML.set_key("color", TOML_TYPE_INT).set_u32((uint32_t)entry.panel.info.color);
+    TOMLWriter writer = saver.mWriter;
+    writer.key("color").value_u32((uint32_t)entry.panel.info.color);
 }
 
-void UITemplateSchemaSaver::save_ui_image_toml(UITemplateSchemaSaver& saver, const UITemplateEntry& entry, TOMLValue widgetTOML)
+void UITemplateSchemaSaver::save_ui_image(UITemplateSchemaSaver& saver, const UITemplateEntry& entry)
 {
+    LD_ASSERT(saver.mWriter && saver.mWriter.is_table_scope());
     LD_ASSERT(entry.type == UI_WIDGET_IMAGE);
 
-    widgetTOML.set_key("texture_2d", TOML_TYPE_INT).set_u32(entry.image.texture2DAUID);
-    TOMLValue rectTOML = widgetTOML.set_key("image_rect", TOML_TYPE_TABLE);
-    TOMLUtil::save_rect_table(entry.image.imageRect, rectTOML);
+    TOMLWriter writer = saver.mWriter;
+    writer.key("texture_2d").value_u32((uint32_t)entry.image.texture2DAUID);
+
+    writer.begin_inline_table("image_rect");
+    TOMLUtil::save_rect_table(entry.image.imageRect, writer);
+    writer.end_inline_table();
+}
+
+UITemplateSchemaLoader::~UITemplateSchemaLoader()
+{
+    if (mDoc)
+        TOMLDocument::destroy(mDoc);
+}
+
+bool UITemplateSchemaLoader::load_template(UITemplateObj* obj, const View& toml, std::string& err)
+{
+    mTmpl = obj;
+    mTmpl->reset();
+
+    mDoc = TOMLDocument::create();
+    if (!TOMLParser::parse(mDoc, toml, err))
+        return false;
+
+    TOMLValue sceneTOML = mDoc.get("ludens_ui_template");
+    if (!sceneTOML || sceneTOML.type() != TOML_TYPE_TABLE)
+        return false;
+
+    int32_t version;
+    TOMLValue versionTOML = sceneTOML["version_major"];
+    if (!versionTOML || !versionTOML.get_i32(version) || version != LD_VERSION_MAJOR)
+        return false;
+
+    versionTOML = sceneTOML["version_minor"];
+    if (!versionTOML || !versionTOML.get_i32(version) || version != LD_VERSION_MINOR)
+        return false;
+
+    versionTOML = sceneTOML["version_patch"];
+    if (!versionTOML || !versionTOML.get_i32(version) || version != LD_VERSION_PATCH)
+        return false;
+
+    TOMLValue hierarchyTOML = mDoc.get("hierarchy");
+    if (!hierarchyTOML || !hierarchyTOML.is_table())
+        return false;
+
+    std::vector<std::string> keys;
+    hierarchyTOML.get_keys(keys);
+    for (const std::string& key : keys)
+    {
+        uint32_t parentIdx = static_cast<uint32_t>(std::stoul(key));
+        TOMLValue childrenTOML = hierarchyTOML[key.c_str()];
+        if (!childrenTOML || !childrenTOML.is_array())
+            continue;
+
+        int count = childrenTOML.size();
+        for (int i = 0; i < count; i++)
+        {
+            uint32_t childIdx;
+            if (!childrenTOML[i].get_u32(childIdx))
+                continue;
+
+            mTmpl->hierarchy[parentIdx].push_back(childIdx);
+        }
+    }
+
+    TOMLValue widgetArrayTOML = mDoc.get("widget");
+    if (!widgetArrayTOML || widgetArrayTOML.type() != TOML_TYPE_ARRAY)
+        return false;
+
+    int widgetCount = widgetArrayTOML.size();
+    mTmpl->entries.resize((size_t)widgetCount);
+
+    for (int i = 0; i < widgetCount; i++)
+    {
+        TOMLValue widgetTOML = widgetArrayTOML[i];
+        if (!widgetTOML || !widgetTOML.is_table())
+            continue;
+
+        load_widget_toml(widgetTOML);
+    }
+
+    return true;
 }
 
 void UITemplateSchemaLoader::load_ui_panel_toml(UITemplateSchemaLoader& loader, UITemplateEntry& entry, TOMLValue widgetTOML)
@@ -279,16 +395,16 @@ bool UITemplateSchemaLoader::load_layout_toml(UILayoutInfo& layout, TOMLValue la
     if (!sizeTOML || !load_layout_size_toml(layout.sizeY, sizeTOML))
         return false;
 
-    TOMLValue childAlignTOML = layoutTOML.get_key("child_align_x", TOML_TYPE_STRING);
+    TOMLValue childAlignTOML = layoutTOML.get_key("child_align_x");
     if (!childAlignTOML || !load_layout_child_align_toml(layout.childAlignX, childAlignTOML))
         return false;
 
-    childAlignTOML = layoutTOML.get_key("child_align_y", TOML_TYPE_STRING);
+    childAlignTOML = layoutTOML.get_key("child_align_y");
     if (!childAlignTOML || !load_layout_child_align_toml(layout.childAlignY, childAlignTOML))
         return false;
 
     std::string str;
-    TOMLValue childAxisTOML = layoutTOML.get_key("child_axis", TOML_TYPE_STRING);
+    TOMLValue childAxisTOML = layoutTOML.get_key("child_axis");
     if (!childAxisTOML || !childAxisTOML.get_string(str))
         return false;
 
@@ -303,7 +419,9 @@ bool UITemplateSchemaLoader::load_layout_toml(UILayoutInfo& layout, TOMLValue la
     if (!childPaddingTOML || !load_layout_child_padding_toml(layout.childPadding, childPaddingTOML))
         return false;
 
-    layoutTOML.set_key("child_gap", TOML_TYPE_FLOAT).set_f32(layout.childGap);
+    TOMLValue childGapTOML = layoutTOML.get_key("child_gap", TOML_TYPE_FLOAT);
+    if (childGapTOML)
+        childGapTOML.get_f32(layout.childGap);
 
     return true;
 }
@@ -392,123 +510,44 @@ bool UITemplateSchemaLoader::load_layout_child_padding_toml(UIPadding& padding, 
     return true;
 }
 
-void UITemplateSchemaLoader::load_from_schema(UITemplateObj* obj, TOMLDocument doc)
-{
-    mTmpl = obj;
-    mTmpl->reset();
-
-    TOMLValue sceneTOML = doc.get("ludens_ui_template");
-    if (!sceneTOML || sceneTOML.get_type() != TOML_TYPE_TABLE)
-        return;
-
-    int32_t version;
-    TOMLValue versionTOML = sceneTOML["version_major"];
-    if (!versionTOML || !versionTOML.get_i32(version) || version != LD_VERSION_MAJOR)
-        return;
-
-    versionTOML = sceneTOML["version_minor"];
-    if (!versionTOML || !versionTOML.get_i32(version) || version != LD_VERSION_MINOR)
-        return;
-
-    versionTOML = sceneTOML["version_patch"];
-    if (!versionTOML || !versionTOML.get_i32(version) || version != LD_VERSION_PATCH)
-        return;
-
-    TOMLValue hierarchyTOML = doc.get("hierarchy");
-    if (!hierarchyTOML || !hierarchyTOML.is_table_type())
-        return;
-
-    std::vector<std::string> keys;
-    hierarchyTOML.get_keys(keys);
-    for (const std::string& key : keys)
-    {
-        uint32_t parentIdx = static_cast<uint32_t>(std::stoul(key));
-        TOMLValue childrenTOML = hierarchyTOML[key.c_str()];
-        if (!childrenTOML || !childrenTOML.is_array_type())
-            continue;
-
-        int count = childrenTOML.get_size();
-        for (int i = 0; i < count; i++)
-        {
-            uint32_t childIdx;
-            if (!childrenTOML[i].get_u32(childIdx))
-                continue;
-
-            mTmpl->hierarchy[parentIdx].push_back(childIdx);
-        }
-    }
-
-    TOMLValue widgetArrayTOML = doc.get("widget");
-    if (!widgetArrayTOML || widgetArrayTOML.get_type() != TOML_TYPE_ARRAY)
-        return;
-
-    int widgetCount = widgetArrayTOML.get_size();
-    mTmpl->entries.resize((size_t)widgetCount);
-
-    for (int i = 0; i < widgetCount; i++)
-    {
-        TOMLValue widgetTOML = widgetArrayTOML[i];
-        if (!widgetTOML || !widgetTOML.is_table_type())
-            continue;
-
-        load_widget_toml(widgetTOML);
-    }
-}
-
 //
 // Public API
 //
 
-void UITemplateSchema::load_ui_template_from_source(UITemplate tmpl, const void* source, size_t len)
+bool UITemplateSchema::load_ui_template_from_source(UITemplate tmpl, const View& toml, std::string& err)
 {
     LD_PROFILE_SCOPE;
 
-    TOMLDocument doc = TOMLDocument::create();
-
-    std::string err;
-    bool success = doc.parse((const char*)source, len, err);
-    if (!success)
-    {
-        TOMLDocument::destroy(doc);
-        return; // TODO: error handling path
-    }
-
     UITemplateSchemaLoader loader;
-    loader.load_from_schema(tmpl, doc);
+    if (!loader.load_template(tmpl.unwrap(), toml, err))
+        return false;
 
-    TOMLDocument::destroy(doc);
+    return true;
 }
 
-void UITemplateSchema::load_ui_template_from_file(UITemplate tmpl, const FS::Path& tomlPath)
+bool UITemplateSchema::load_ui_template_from_file(UITemplate tmpl, const FS::Path& tomlPath, std::string& err)
 {
     LD_PROFILE_SCOPE;
 
-    TOMLDocument doc = TOMLDocument::create_from_file(tomlPath);
+    Vector<byte> toml;
+    if (!FS::read_file_to_vector(tomlPath, toml))
+        return false;
 
-    UITemplateSchemaLoader loader;
-    loader.load_from_schema(tmpl, doc);
-
-    TOMLDocument::destroy(doc);
+    View tomlView((const char*)toml.data(), toml.size());
+    return load_ui_template_from_source(tmpl, tomlView, err);
 }
 
 bool UITemplateSchema::save_ui_template(UITemplate tmpl, const FS::Path& savePath, std::string& err)
 {
     LD_PROFILE_SCOPE;
 
-    TOMLDocument doc = TOMLDocument::create();
-
     UITemplateSchemaSaver saver;
-    saver.save_to_schema(tmpl, doc);
 
-    std::string str;
-    if (!doc.save_to_string(str))
-    {
-        TOMLDocument::destroy(doc);
+    std::string toml;
+    if (!saver.save_template(tmpl, toml, err))
         return false;
-    }
 
-    TOMLDocument::destroy(doc);
-    return FS::write_file_and_swap_backup(savePath, str.size(), (const byte*)str.data(), err);
+    return FS::write_file_and_swap_backup(savePath, toml.size(), (const byte*)toml.data(), err);
 }
 
 } // namespace LD

@@ -89,9 +89,10 @@ void BlobAssetImportJob::execute(void* user)
     serializer.write_u64(obj->dataSize);
     serializer.write((const byte*)obj->data, (size_t)obj->dataSize);
 
-    size_t binarySize;
-    const byte* binary = serializer.view(binarySize);
-    FS::write_file(self.info.savePath, binarySize, binary);
+    std::string err;
+    View serialView = serializer.view();
+    bool ok = FS::write_file(self.info.savePath, serialView, err);
+    LD_ASSERT(ok); // TODO: asset import error
 }
 
 } // namespace LD

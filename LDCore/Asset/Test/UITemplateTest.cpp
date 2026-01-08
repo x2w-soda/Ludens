@@ -50,16 +50,18 @@ TEST_CASE("UITemplate")
     UIThemeInfo themeI = UITheme::get_default_info();
     UIContext ctx = UIContext::create({.theme = UITheme(&themeI)});
     UITemplate tmpl = UITemplate::create();
-    UITemplateSchema::load_ui_template_from_source(tmpl, sUIToml, sizeof(sUIToml) - 1);
 
-    ctx.add_layer((uint32_t)0);
+    std::string err;
+    bool ok = UITemplateSchema::load_ui_template_from_source(tmpl, View(sUIToml, sizeof(sUIToml) - 1), err);
+    CHECK(ok);
+
+    UIWorkspace space = ctx.create_layer("test").create_workspace(Rect(0, 0, 100, 100));
     UILayoutInfo layoutI{};
     layoutI.sizeX = UISize::fit();
     layoutI.sizeY = UISize::fit();
     UIWindowInfo windowI{};
-    windowI.layer = 0;
     windowI.name = "test";
-    UIWindow window = ctx.add_window(layoutI, windowI, nullptr);
+    UIWindow window = space.create_window(space.get_root_id(), layoutI, windowI, nullptr);
 
     UITemplateTest test;
     UIWidget subtree = tmpl.load(window, &UITemplateTest::on_load, &test);
