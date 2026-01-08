@@ -3,10 +3,10 @@
 #include <Ludens/DSA/Buffer.h>
 #include <Ludens/DSA/Optional.h>
 #include <Ludens/DSA/Vector.h>
-#include <Ludens/DSA/View.h>
 #include <Ludens/Header/Math/Mat4.h>
 #include <Ludens/Header/Math/Transform.h>
 #include <Ludens/Header/Math/Vec3.h>
+#include <Ludens/Header/View.h>
 
 #include <cstddef>
 #include <cstdint>

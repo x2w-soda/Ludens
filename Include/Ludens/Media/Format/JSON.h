@@ -1,7 +1,7 @@
 #pragma once
 
-#include <Ludens/DSA/View.h>
 #include <Ludens/Header/Handle.h>
+#include <Ludens/Header/View.h>
 #include <Ludens/System/FileSystem.h>
 
 #include <cstdint>
@@ -21,10 +21,10 @@ enum JSONType
 };
 
 /// @brief A node in the DOM tree
-struct JSONNode : Handle<struct JSONNodeObj>
+struct JSONValue : Handle<struct JSONValueObj>
 {
     /// @brief get node data type
-    JSONType get_type() const;
+    JSONType type() const;
 
     /// @brief check if node is JSON false value
     bool is_false() const;
@@ -61,36 +61,43 @@ struct JSONNode : Handle<struct JSONNodeObj>
 
     /// @brief get number of elements in array or number of members in object
     /// @return the size of the array or object, or a negative value otherwise
-    int get_size();
+    int size();
 
     /// @brief get the member of an object
     /// @param member C string name of the member
     /// @return the member node, or null on error
-    JSONNode get_member(const char* member);
+    JSONValue get_member(const char* member);
 
     /// @brief get the element at index in an array
     /// @param idx index into the array
     /// @return the element node, or null on error
-    JSONNode get_index(int idx);
+    JSONValue get_index(int idx);
 
     /// @brief Shorthand for get_index method.
-    inline JSONNode operator[](int idx) { return get_index(idx); }
+    inline JSONValue operator[](int idx) { return get_index(idx); }
 };
 
 /// @brief JSON Document Object Model.
 struct JSONDocument : Handle<struct JSONDocumentObj>
 {
+    /// @brief Create empty json document.
     static JSONDocument create();
-    static JSONDocument create_from_file(const std::filesystem::path& path);
+
+    /// @brief Destroy json document, all values from this document becomes out of date.
     static void destroy(JSONDocument doc);
 
-    /// @brief parse json string and construct document
-    /// @param error output error on failure
-    /// @return true on success
-    /// @warning all nodes from previous document are invalidated
-    bool parse(const char* json, size_t size, std::string& error);
+    /// @brief Get root document value.
+    JSONValue get_root();
+};
 
-    JSONNode get_root();
+/// @brief JSON DOM parser.
+struct JSONParser
+{
+    /// @brief Try parsing JSON into document.
+    /// @param dst Destination document.
+    /// @param view JSON source string.
+    /// @param error Output error message upon failure.
+    static bool parse(JSONDocument dst, const View& view, std::string& error);
 };
 
 struct JSONEventCallback
@@ -114,6 +121,7 @@ struct JSONEventCallback
     bool (*onString)(const View& string, void* user);
 };
 
+/// @brief JSON event based parser, user provides callbacks.
 struct JSONEventParser
 {
     static bool parse(const void* fileData, size_t fileSize, std::string& error, const JSONEventCallback& callbacks, void* user);

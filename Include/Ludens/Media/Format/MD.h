@@ -1,7 +1,7 @@
 #pragma once
 
-#include <Ludens/DSA/View.h>
 #include <Ludens/Header/Handle.h>
+#include <Ludens/Header/View.h>
 
 #include <string>
 

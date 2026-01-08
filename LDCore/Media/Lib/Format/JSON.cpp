@@ -25,7 +25,7 @@ static_assert((int)JSON_TYPE_NUMBER == (int)rapidjson::kNumberType);
 
 static const char* get_error_code_cstr(rapidjson::ParseErrorCode code);
 
-struct JSONNodeObj
+struct JSONValueObj
 {
     rapidjson::Value value;
     JSONDocumentObj* doc;
@@ -35,7 +35,7 @@ struct JSONDocumentObj
 {
     rapidjson::Document doc;
     PoolAllocator nodePA;
-    JSONNode root;
+    JSONValue root;
     byte* fileBuffer;
 
     inline rapidjson::MemoryPoolAllocator<>& allocator()
@@ -50,7 +50,7 @@ struct JSONDocumentObj
 
         for (auto ite = nodePA.begin(); ite; ++ite)
         {
-            auto* node = static_cast<JSONNodeObj*>(ite.data());
+            auto* node = static_cast<JSONValueObj*>(ite.data());
             (&node->value)->~GenericValue();
         }
 
@@ -58,41 +58,41 @@ struct JSONDocumentObj
         nodePA = {};
     }
 
-    JSONNodeObj* alloc_node()
+    JSONValueObj* alloc_node()
     {
-        JSONNodeObj* node = (JSONNodeObj*)nodePA.allocate();
+        JSONValueObj* node = (JSONValueObj*)nodePA.allocate();
         node->doc = this;
         new (&node->value) rapidjson::Value();
         return node;
     }
 };
 
-JSONType JSONNode::get_type() const
+JSONType JSONValue::type() const
 {
     return static_cast<JSONType>(mObj->value.GetType());
 }
 
-bool JSONNode::is_false() const
+bool JSONValue::is_false() const
 {
     return mObj->value.GetType() == rapidjson::kFalseType;
 }
 
-bool JSONNode::is_true() const
+bool JSONValue::is_true() const
 {
     return mObj->value.GetType() == rapidjson::kTrueType;
 }
 
-bool JSONNode::is_object() const
+bool JSONValue::is_object() const
 {
     return mObj->value.GetType() == rapidjson::kObjectType;
 }
 
-bool JSONNode::is_array() const
+bool JSONValue::is_array() const
 {
     return mObj->value.GetType() == rapidjson::kArrayType;
 }
 
-bool JSONNode::is_string(std::string* str) const
+bool JSONValue::is_string(std::string* str) const
 {
     bool match = mObj->value.GetType() == rapidjson::kStringType;
 
@@ -106,12 +106,12 @@ bool JSONNode::is_string(std::string* str) const
     return match;
 }
 
-bool JSONNode::is_number() const
+bool JSONValue::is_number() const
 {
     return mObj->value.GetType() == rapidjson::kNumberType;
 }
 
-bool JSONNode::is_i32(int32_t* i32) const
+bool JSONValue::is_i32(int32_t* i32) const
 {
     bool match = mObj->value.IsInt();
 
@@ -121,7 +121,7 @@ bool JSONNode::is_i32(int32_t* i32) const
     return match;
 }
 
-bool JSONNode::is_i64(int64_t* i64) const
+bool JSONValue::is_i64(int64_t* i64) const
 {
     bool match = mObj->value.IsInt64();
 
@@ -131,7 +131,7 @@ bool JSONNode::is_i64(int64_t* i64) const
     return match;
 }
 
-bool JSONNode::is_u32(uint32_t* u32) const
+bool JSONValue::is_u32(uint32_t* u32) const
 {
     bool match = mObj->value.IsUint();
 
@@ -141,7 +141,7 @@ bool JSONNode::is_u32(uint32_t* u32) const
     return match;
 }
 
-bool JSONNode::is_u64(uint64_t* u64) const
+bool JSONValue::is_u64(uint64_t* u64) const
 {
     bool match = mObj->value.IsUint64();
 
@@ -151,7 +151,7 @@ bool JSONNode::is_u64(uint64_t* u64) const
     return match;
 }
 
-bool JSONNode::is_f32(float* f32) const
+bool JSONValue::is_f32(float* f32) const
 {
     bool match = mObj->value.IsFloat();
 
@@ -161,7 +161,7 @@ bool JSONNode::is_f32(float* f32) const
     return match;
 }
 
-int JSONNode::get_size()
+int JSONValue::size()
 {
     if (mObj->value.IsArray())
         return mObj->value.Size();
@@ -172,7 +172,7 @@ int JSONNode::get_size()
     return -1;
 }
 
-JSONNode JSONNode::get_member(const char* member)
+JSONValue JSONValue::get_member(const char* member)
 {
     if (!is_object())
         return {};
@@ -182,19 +182,19 @@ JSONNode JSONNode::get_member(const char* member)
         return {};
 
     JSONDocumentObj* doc = mObj->doc;
-    JSONNodeObj* node = doc->alloc_node();
+    JSONValueObj* node = doc->alloc_node();
     node->value = std::move(ite->value);
 
     return {node};
 }
 
-JSONNode JSONNode::get_index(int idx)
+JSONValue JSONValue::get_index(int idx)
 {
     if (!is_array() || idx < 0 || idx >= mObj->value.Size())
         return {};
 
     JSONDocumentObj* doc = mObj->doc;
-    JSONNodeObj* node = doc->alloc_node();
+    JSONValueObj* node = doc->alloc_node();
     node->value = std::move(mObj->value[idx]);
 
     return {node};
@@ -204,36 +204,6 @@ JSONDocument JSONDocument::create()
 {
     JSONDocumentObj* obj = heap_new<JSONDocumentObj>(MEMORY_USAGE_MEDIA);
     obj->fileBuffer = nullptr;
-
-    return {obj};
-}
-
-JSONDocument JSONDocument::create_from_file(const std::filesystem::path& path)
-{
-    if (!FS::exists(path))
-        return {};
-
-    JSONDocument doc = JSONDocument::create();
-    JSONDocumentObj* obj = doc;
-
-    uint64_t fileSize = FS::get_file_size(path);
-    obj->fileBuffer = (byte*)heap_malloc(fileSize, MEMORY_USAGE_MEDIA);
-    bool ok = FS::read_file(path, fileSize, obj->fileBuffer);
-
-    if (!ok)
-    {
-        JSONDocument::destroy(doc);
-        return {};
-    }
-
-    std::string error;
-    ok = doc.parse((const char*)obj->fileBuffer, fileSize, error);
-
-    if (!ok)
-    {
-        JSONDocument::destroy(doc);
-        return {};
-    }
 
     return {obj};
 }
@@ -250,14 +220,20 @@ void JSONDocument::destroy(JSONDocument doc)
     heap_delete<JSONDocumentObj>(obj);
 }
 
-bool JSONDocument::parse(const char* json, size_t size, std::string& error)
+JSONValue JSONDocument::get_root()
+{
+    return mObj->root;
+}
+
+bool JSONParser::parse(JSONDocument dst, const View& view, std::string& error)
 {
     LD_PROFILE_SCOPE;
 
-    mObj->free_nodes();
+    JSONDocumentObj* docObj = dst.unwrap();
+    docObj->free_nodes();
 
     error.clear();
-    rapidjson::ParseResult result = mObj->doc.Parse(json, size);
+    rapidjson::ParseResult result = docObj->doc.Parse(view.data, view.size);
 
     if (!result)
     {
@@ -269,20 +245,15 @@ bool JSONDocument::parse(const char* json, size_t size, std::string& error)
     PoolAllocatorInfo paI{};
     paI.usage = MEMORY_USAGE_MEDIA;
     paI.isMultiPage = true;
-    paI.blockSize = sizeof(JSONNodeObj);
+    paI.blockSize = sizeof(JSONValueObj);
     paI.pageSize = 64; // nodes per page
-    mObj->nodePA = PoolAllocator::create(paI);
+    docObj->nodePA = PoolAllocator::create(paI);
 
-    JSONNodeObj* rootNode = mObj->alloc_node();
-    rootNode->value.CopyFrom(mObj->doc, mObj->doc.GetAllocator());
-    mObj->root = {rootNode};
+    JSONValueObj* rootNode = docObj->alloc_node();
+    rootNode->value.CopyFrom(docObj->doc, docObj->doc.GetAllocator());
+    docObj->root = {rootNode};
 
     return true;
-}
-
-JSONNode JSONDocument::get_root()
-{
-    return mObj->root;
 }
 
 // clang-format off

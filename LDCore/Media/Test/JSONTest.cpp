@@ -11,19 +11,19 @@ TEST_CASE("JSON object")
     const char json[] = R"({"project":"rapidjson","stars":10})";
     JSONDocument doc = JSONDocument::create();
     std::string error;
-    bool success = doc.parse(json, sizeof(json) - 1, error);
+    bool success = JSONParser::parse(doc, View(json, sizeof(json) - 1), error);
     CHECK(success);
 
-    JSONNode root = doc.get_root();
+    JSONValue root = doc.get_root();
     CHECK(root.is_object());
 
     std::string projectName;
-    JSONNode project = root.get_member("project");
+    JSONValue project = root.get_member("project");
     CHECK(project);
     CHECK(project.is_string(&projectName));
     CHECK(projectName == "rapidjson");
 
-    JSONNode stars = root.get_member("stars");
+    JSONValue stars = root.get_member("stars");
     CHECK(stars);
     CHECK(stars.is_number());
 
@@ -42,15 +42,15 @@ TEST_CASE("JSON array")
     const char json[] = R"([123, false, true, [ "string" ]])";
     JSONDocument doc = JSONDocument::create();
     std::string error;
-    bool success = doc.parse(json, sizeof(json) - 1, error);
+    bool success = JSONParser::parse(doc, View(json, sizeof(json) - 1), error);
     CHECK(success);
 
-    JSONNode root = doc.get_root();
+    JSONValue root = doc.get_root();
     CHECK(root.is_array());
-    CHECK(root.get_size() == 4);
+    CHECK(root.size() == 4);
 
     int32_t i32;
-    JSONNode element = root.get_index(0);
+    JSONValue element = root.get_index(0);
     CHECK(element);
     CHECK(element.is_i32(&i32));
     CHECK(i32 == 123);
@@ -63,10 +63,10 @@ TEST_CASE("JSON array")
     CHECK(element);
     CHECK(element.is_true());
 
-    JSONNode array = root.get_index(3);
+    JSONValue array = root.get_index(3);
     CHECK(array);
     CHECK(array.is_array());
-    CHECK(array.get_size() == 1);
+    CHECK(array.size() == 1);
 
     CHECK_FALSE(root.get_index(4));
 
