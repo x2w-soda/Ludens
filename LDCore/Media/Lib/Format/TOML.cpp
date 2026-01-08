@@ -1,14 +1,17 @@
+#include <Ludens/DSA/Stack.h>
+#include <Ludens/DSA/Vector.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Header/Math/Rect.h>
 #include <Ludens/Media/Format/TOML.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/System/Allocator.h>
 #include <Ludens/System/Memory.h>
+
 #include <cstdint>
 #include <iostream>
 #include <string>
+
 #include <toml.hpp> // hide
-#include <vector>
 
 namespace LD {
 
@@ -34,63 +37,13 @@ static_assert(std::is_same_v<toml::value::config_type::floating_type, double>);
 // default to using C++ STL basic_string
 static_assert(std::is_same_v<toml::value::config_type::string_type, std::string>);
 
-static toml::value get_toml_value(TOMLType type)
-{
-    switch (type)
-    {
-    case TOML_TYPE_BOOL:
-        return toml::value(toml::type_config::boolean_type{});
-    case TOML_TYPE_INT:
-        return toml::value(toml::type_config::integer_type{});
-    case TOML_TYPE_FLOAT:
-        return toml::value(toml::type_config::floating_type{});
-    case TOML_TYPE_STRING:
-        return toml::value(toml::type_config::string_type{});
-    case TOML_TYPE_OFFSET_DATETIME:
-        return toml::value(toml::offset_datetime{});
-    case TOML_TYPE_LOCAL_DATETIME:
-        return toml::value(toml::local_datetime{});
-    case TOML_TYPE_LOCAL_DATE:
-        return toml::value(toml::local_date{});
-    case TOML_TYPE_LOCAL_TIME:
-        return toml::value(toml::local_time{});
-    case TOML_TYPE_ARRAY: // TODO: this is templated
-        return toml::array();
-    case TOML_TYPE_TABLE: // TODO: this is templated
-        return toml::table();
-    default:
-        LD_UNREACHABLE;
-    }
-
-    return toml::value();
-}
-
 struct TOMLValueObj
 {
     TOMLValueObj* child;
     TOMLValueObj* next;
     toml::value val;
     TOMLDocumentObj* doc;
-    const char* selfKey;
-    int selfIndex;
-
-    /// @brief Check for child with key.
-    TOMLValueObj* table_get_child(const std::string& key);
 };
-
-TOMLValueObj* TOMLValueObj::table_get_child(const std::string& key)
-{
-    LD_ASSERT(val.type() == toml::value_t::table);
-
-    for (TOMLValueObj* c = child; c; c = c->next)
-    {
-        LD_ASSERT(c->selfKey);
-        if (std::string(c->selfKey) == key)
-            return c;
-    }
-
-    return nullptr;
-}
 
 /// @brief Toml document implementation.
 struct TOMLDocumentObj
@@ -108,9 +61,6 @@ struct TOMLDocumentObj
         {
             auto* node = static_cast<TOMLValueObj*>(ite.data());
             (&node->val)->~basic_value();
-
-            if (node->selfKey)
-                heap_free((void*)node->selfKey);
         }
 
         PoolAllocator::destroy(valuePA);
@@ -121,42 +71,13 @@ struct TOMLDocumentObj
     {
         TOMLValueObj* obj = (TOMLValueObj*)valuePA.allocate();
         obj->doc = this;
-        obj->selfKey = nullptr;
-        obj->selfIndex = -1;
         obj->child = nullptr;
         obj->next = nullptr;
         new (&obj->val) toml::value();
         return obj;
     }
 
-    void consolidate(TOMLValueObj* root)
-    {
-        if (!root)
-            return;
-
-        if (root->val.is_table())
-        {
-            for (TOMLValueObj* child = root->child; child; child = child->next)
-            {
-                consolidate(child);
-                LD_ASSERT(child->selfKey);
-                root->val.as_table()[child->selfKey] = child->val;
-            }
-        }
-        else if (root->val.is_array())
-        {
-            int size = root->val.size();
-
-            for (TOMLValueObj* child = root->child; child; child = child->next)
-            {
-                consolidate(child);
-                LD_ASSERT(0 <= child->selfIndex && child->selfIndex < size);
-                root->val.as_array()[child->selfIndex] = child->val;
-            }
-        }
-    }
-
-    void initialize()
+    void reset()
     {
         if (valuePA)
             PoolAllocator::destroy(valuePA);
@@ -172,55 +93,35 @@ struct TOMLDocumentObj
         root.child = nullptr;
         root.next = nullptr;
         root.doc = this;
-        root.selfIndex = -1;
-        root.selfKey = nullptr;
     }
 };
 
-TOMLType TOMLValue::get_type() const
+TOMLType TOMLValue::type() const
 {
     return (TOMLType)mObj->val.type();
 }
 
 bool TOMLValue::get_bool(bool& boolean) const
 {
-    if (get_type() != TOML_TYPE_BOOL)
+    if (type() != TOML_TYPE_BOOL)
         return false;
 
     boolean = mObj->val.as_boolean();
     return true;
 }
 
-bool TOMLValue::set_bool(bool boolean)
-{
-    if (get_type() != TOML_TYPE_BOOL)
-        return false;
-
-    mObj->val.as_boolean() = boolean;
-    return true;
-}
-
 bool TOMLValue::get_i64(int64_t& i64) const
 {
-    if (get_type() != TOML_TYPE_INT)
+    if (type() != TOML_TYPE_INT)
         return false;
 
     i64 = (int64_t)mObj->val.as_integer();
     return true;
 }
 
-bool TOMLValue::set_i64(int64_t i64)
-{
-    if (get_type() != TOML_TYPE_INT)
-        return false;
-
-    mObj->val.as_integer() = i64;
-    return true;
-}
-
 bool TOMLValue::get_i32(int32_t& i32) const
 {
-    if (get_type() != TOML_TYPE_INT)
+    if (type() != TOML_TYPE_INT)
         return false;
 
     // safe downcast to 32-bit
@@ -228,19 +129,9 @@ bool TOMLValue::get_i32(int32_t& i32) const
     return true;
 }
 
-bool TOMLValue::set_i32(int32_t i32)
-{
-    if (get_type() != TOML_TYPE_INT)
-        return false;
-
-    // safe upcast to 64-bit signed.
-    mObj->val.as_integer() = (int64_t)i32;
-    return true;
-}
-
 bool TOMLValue::get_u32(uint32_t& u32) const
 {
-    if (get_type() != TOML_TYPE_INT)
+    if (type() != TOML_TYPE_INT)
         return false;
 
     // safe downcast to 32-bit unsigned.
@@ -248,24 +139,14 @@ bool TOMLValue::get_u32(uint32_t& u32) const
     return true;
 }
 
-bool TOMLValue::set_u32(uint32_t u32)
-{
-    if (get_type() != TOML_TYPE_INT)
-        return false;
-
-    // safe upcast to 64-bit signed.
-    mObj->val.as_integer() = (int64_t)u32;
-    return true;
-}
-
 bool TOMLValue::get_f64(double& f64) const
 {
-    if (get_type() == TOML_TYPE_FLOAT)
+    if (type() == TOML_TYPE_FLOAT)
     {
         f64 = (double)mObj->val.as_floating();
         return true;
     }
-    else if (get_type() == TOML_TYPE_INT)
+    else if (type() == TOML_TYPE_INT)
     {
         f64 = (double)mObj->val.as_integer();
         return true;
@@ -274,23 +155,14 @@ bool TOMLValue::get_f64(double& f64) const
     return false;
 }
 
-bool TOMLValue::set_f64(double f64)
-{
-    if (get_type() != TOML_TYPE_FLOAT)
-        return false;
-
-    mObj->val.as_floating() = f64;
-    return true;
-}
-
 bool TOMLValue::get_f32(float& f32) const
 {
-    if (get_type() == TOML_TYPE_FLOAT)
+    if (type() == TOML_TYPE_FLOAT)
     {
         f32 = (float)mObj->val.as_floating();
         return true;
     }
-    else if (get_type() == TOML_TYPE_INT)
+    else if (type() == TOML_TYPE_INT)
     {
         f32 = (float)mObj->val.as_integer();
         return true;
@@ -299,38 +171,18 @@ bool TOMLValue::get_f32(float& f32) const
     return false;
 }
 
-bool TOMLValue::set_f32(float f32)
-{
-    if (get_type() != TOML_TYPE_FLOAT)
-        return false;
-
-    mObj->val.as_floating() = (double)f32;
-    return true;
-}
-
 bool TOMLValue::get_string(std::string& string) const
 {
-    if (get_type() != TOML_TYPE_STRING)
+    if (type() != TOML_TYPE_STRING)
         return false;
 
     string = mObj->val.as_string();
     return true;
 }
 
-bool TOMLValue::set_string(const std::string& string)
+int TOMLValue::size()
 {
-    if (get_type() != TOML_TYPE_STRING)
-        return false;
-
-    mObj->val.as_string() = string;
-    return true;
-}
-
-int TOMLValue::get_size()
-{
-    TOMLType type = get_type();
-
-    if (type != TOML_TYPE_ARRAY && type != TOML_TYPE_TABLE)
+    if (!is_array() && !is_table())
         return -1;
 
     return (int)mObj->val.size();
@@ -338,11 +190,10 @@ int TOMLValue::get_size()
 
 TOMLValue TOMLValue::get_index(int idx)
 {
-    if (!is_array_type() || idx < 0 || idx >= get_size())
+    if (!is_array() || idx < 0 || idx >= size())
         return {};
 
     TOMLValueObj* obj = mObj->doc->alloc_value();
-    obj->selfIndex = idx;
     obj->val = mObj->val.at((size_t)idx);
     obj->next = mObj->child;
     mObj->child = obj;
@@ -350,27 +201,9 @@ TOMLValue TOMLValue::get_index(int idx)
     return TOMLValue(obj);
 }
 
-TOMLValue TOMLValue::append(const TOMLType type)
-{
-    if (!is_array_type())
-        return {};
-
-    TOMLValueObj* obj = mObj->doc->alloc_value();
-    obj->selfIndex = (int)mObj->val.size();
-    obj->val = get_toml_value(type);
-    obj->next = mObj->child;
-    mObj->child = obj;
-
-    // this will eventually be done during consolidate(),
-    // but we try to keep the DOM as syncrhonized as we can.
-    mObj->val.push_back(obj->val);
-
-    return TOMLValue(obj);
-}
-
 bool TOMLValue::has_key(const char* key, const TOMLType* typeMatch)
 {
-    if (!is_table_type())
+    if (!is_table())
         return false;
 
     auto& table = mObj->val.as_table();
@@ -383,49 +216,15 @@ bool TOMLValue::has_key(const char* key, const TOMLType* typeMatch)
     return true;
 }
 
-TOMLValue TOMLValue::set_key(const char* key, TOMLType type)
-{
-    if (!is_table_type())
-        return {};
-
-    auto& table = mObj->val.as_table();
-
-    TOMLValueObj* obj = mObj->table_get_child(key);
-    if (obj)
-    {
-        obj->val = get_toml_value(type);
-    }
-    else
-    {
-        obj = mObj->doc->alloc_value();
-        obj->val = get_toml_value(type);
-        obj->selfKey = heap_strdup(key, MEMORY_USAGE_MEDIA);
-        obj->next = mObj->child;
-        mObj->child = obj;
-    }
-
-    // this will eventually be done during consolidate(),
-    // but we try to keep the DOM as syncrhonized as we can.
-    table[key] = obj->val;
-
-    return TOMLValue(obj);
-}
-
 TOMLValue TOMLValue::get_key(const char* key)
 {
-    if (!is_table_type() || !mObj->val.contains(key))
+    if (!is_table() || !mObj->val.contains(key))
         return {};
 
-    TOMLValueObj* obj = mObj->table_get_child(key);
-
-    if (!obj)
-    {
-        obj = mObj->doc->alloc_value();
-        obj->selfKey = heap_strdup(key, MEMORY_USAGE_MEDIA);
-        obj->val = mObj->val.at(key);
-        obj->next = mObj->child;
-        mObj->child = obj;
-    }
+    TOMLValueObj* obj = mObj->doc->alloc_value();
+    obj->val = mObj->val.at(key);
+    obj->next = mObj->child; // TODO: remove?
+    mObj->child = obj;
 
     return TOMLValue(obj);
 }
@@ -434,18 +233,18 @@ TOMLValue TOMLValue::get_key(const char* key, TOMLType type)
 {
     TOMLValue val = get_key(key);
 
-    if (!val || val.get_type() != type)
+    if (!val || val.type() != type)
         return {};
 
     return val;
 }
 
-int TOMLValue::get_keys(std::vector<std::string>& keys)
+int TOMLValue::get_keys(Vector<std::string>& keys)
 {
-    if (!is_table_type())
+    if (!is_table())
         return 0;
 
-    keys.resize(get_size());
+    keys.resize(size());
     int i = 0;
 
     for (const auto& ite : mObj->val.as_table())
@@ -456,57 +255,12 @@ int TOMLValue::get_keys(std::vector<std::string>& keys)
     return (int)keys.size();
 }
 
-bool TOMLValue::format(TOMLFormat fmt)
-{
-    switch (fmt)
-    {
-    case TOML_FORMAT_TABLE_MULTI_LINE:
-        if (!mObj->val.is_table())
-            return false;
-        mObj->val.as_table_fmt().fmt = toml::table_format::multiline;
-        break;
-    case TOML_FORMAT_TABLE_ONE_LINE:
-        if (!mObj->val.is_table())
-            return false;
-        mObj->val.as_table_fmt().fmt = toml::table_format::oneline;
-        break;
-    default:
-        return false;
-    }
-
-    return true;
-}
-
 TOMLDocument TOMLDocument::create()
 {
     auto* obj = heap_new<TOMLDocumentObj>(MEMORY_USAGE_MEDIA);
     obj->root.val = toml::value();
 
     return TOMLDocument(obj);
-}
-
-TOMLDocument TOMLDocument::create_from_file(const std::filesystem::path& path)
-{
-    if (!FS::exists(path))
-        return {};
-
-    TOMLDocument doc = TOMLDocument::create();
-    TOMLDocumentObj* obj = doc.unwrap();
-
-    uint64_t fileSize = FS::get_file_size(path);
-    obj->fileBuffer = (byte*)heap_malloc(fileSize, MEMORY_USAGE_MEDIA);
-    bool ok = FS::read_file(path, fileSize, obj->fileBuffer);
-
-    if (!ok)
-    {
-        TOMLDocument::destroy(doc);
-        return {};
-    }
-
-    std::string error;
-    ok = doc.parse((const char*)obj->fileBuffer, fileSize, error);
-
-    return doc;
 }
 
 void TOMLDocument::destroy(TOMLDocument doc)
@@ -521,22 +275,40 @@ void TOMLDocument::destroy(TOMLDocument doc)
     heap_delete<TOMLDocumentObj>(obj);
 }
 
-bool TOMLDocument::parse(const char* toml, size_t len, std::string& error)
+TOMLValue TOMLDocument::get(const char* name)
 {
-    mObj->initialize();
+    if (!mObj->root.val.is_table() || !mObj->root.val.contains(name))
+        return {};
 
-    std::string source(toml, len);
+    TOMLValueObj* obj = mObj->alloc_value();
+    obj->val = toml::find(mObj->root.val, name);
+    obj->next = mObj->root.child; // TODO: do we need next?
+    mObj->root.child = obj;
+
+    return TOMLValue(obj);
+}
+
+bool TOMLParser::parse(TOMLDocument dst, const View& view, std::string& error)
+{
+    TOMLDocumentObj* docObj = dst.unwrap();
+
+    docObj->reset();
+
+    // TODO: does toml-11 really not have a parse-from-view API?
+    //       this is a redundant clone of the entire input string.
+    std::string source(view.data, view.size);
+
     const auto& result = toml::try_parse_str(source, toml::spec::default_version());
 
     error.clear();
 
     if (result.is_ok())
     {
-        mObj->root.val = result.unwrap();
+        docObj->root.val = result.unwrap();
     }
     else
     {
-        const std::vector<toml::error_info>& errors = result.unwrap_err();
+        const Vector<toml::error_info>& errors = result.unwrap_err();
         if (!errors.empty())
             error = toml::format_error(errors[0]);
     }
@@ -544,85 +316,419 @@ bool TOMLDocument::parse(const char* toml, size_t len, std::string& error)
     return result.is_ok();
 }
 
-void TOMLDocument::consolidate()
+static bool parse_from_file(TOMLDocument dst, const FS::Path& path, std::string& error)
 {
-    if (!mObj->root.val.is_table())
-        return;
-
-    mObj->consolidate(&mObj->root);
-}
-
-TOMLValue TOMLDocument::get(const char* name)
-{
-    if (!mObj->root.val.is_table() || !mObj->root.val.contains(name))
-        return {};
-
-    TOMLValueObj* obj = mObj->root.table_get_child(name);
-
-    if (!obj)
+    std::vector<byte> file;
+    if (!FS::read_file_to_vector(path, file))
     {
-        obj = mObj->alloc_value();
-        obj->val = toml::find(mObj->root.val, name);
-        obj->selfKey = heap_strdup(name, MEMORY_USAGE_MEDIA);
-        obj->next = mObj->root.child;
-        mObj->root.child = obj;
+        error = "failed to open file";
+        return false;
     }
 
-    return TOMLValue(obj);
+    return TOMLParser::parse(dst, View((const char*)file.data(), file.size()), error);
 }
 
-TOMLValue TOMLDocument::set(const char* key, TOMLType type)
+enum TOMLWriterScopeType
 {
-    if (mObj->root.val.is_empty())
-        mObj->initialize();
+    SCOPE_TABLE = 0,
+    SCOPE_ARRAY,
+    SCOPE_INLINE_TABLE,
+    SCOPE_ARRAY_TABLE,
+};
 
-    TOMLValue rootTOML(&mObj->root);
+struct TOMLWriterScope
+{
+    TOMLWriterScopeType type;
+    toml::value* value; // pointer to avoid copying nested hashmaps when stack resizes
+    std::string tableName;
+};
 
-    return rootTOML.set_key(key, type);
+/// @brief TOML writer implementation.
+struct TOMLWriterObj
+{
+    Stack<TOMLWriterScope> scope;
+    std::string key;
+
+    inline bool is_array_scope() const
+    {
+        return scope.size() > 0 && scope.top().type == SCOPE_ARRAY;
+    }
+
+    inline bool is_table_scope() const
+    {
+        return scope.size() > 0 && scope.top().type == SCOPE_TABLE;
+    }
+
+    inline bool is_inline_table_scope() const
+    {
+        return scope.size() > 0 && scope.top().type == SCOPE_INLINE_TABLE;
+    }
+
+    inline bool is_array_table_scope() const
+    {
+        return scope.size() > 0 && scope.top().type == SCOPE_ARRAY_TABLE;
+    }
+
+    inline bool is_expecting_value() const
+    {
+        return !key.empty() || is_array_scope();
+    }
+
+    inline bool may_begin_array() const
+    {
+        return is_expecting_value();
+    }
+
+    inline bool may_begin_inline_table() const
+    {
+        return is_expecting_value();
+    }
+
+    inline bool may_begin_array_table() const
+    {
+        return key.empty() && is_table_scope();
+    }
+
+    void push_array_scope()
+    {
+        TOMLWriterScope newScope;
+        newScope.type = SCOPE_ARRAY;
+        newScope.value = heap_new<toml::value>(MEMORY_USAGE_MEDIA);
+        *newScope.value = toml::array();
+
+        scope.push(newScope);
+    }
+
+    void push_table_scope()
+    {
+        TOMLWriterScope newScope{};
+        newScope.type = SCOPE_TABLE;
+        newScope.value = heap_new<toml::value>(MEMORY_USAGE_MEDIA);
+        *newScope.value = toml::table();
+
+        if (!key.empty())
+        {
+            newScope.tableName = key;
+            key.clear();
+        }
+
+        scope.push(newScope);
+    }
+
+    void push_inline_table_scope()
+    {
+        LD_ASSERT(scope.size() > 0 && scope.top().type == SCOPE_TABLE);
+        LD_ASSERT(!key.empty());
+
+        toml::value* parentTable = scope.top().value;
+
+        TOMLWriterScope newScope;
+        newScope.type = SCOPE_INLINE_TABLE;
+        newScope.value = heap_new<toml::value>(MEMORY_USAGE_MEDIA);
+        *newScope.value = toml::table();
+        newScope.value->as_table_fmt().fmt = toml::table_format::oneline;
+
+        parentTable->as_table()[key] = newScope.value;
+
+        scope.push(newScope);
+        key.clear();
+    }
+
+    void push_array_table_scope(const char* name)
+    {
+        TOMLWriterScope newScope{};
+        newScope.type = SCOPE_ARRAY_TABLE;
+        newScope.value = heap_new<toml::value>(MEMORY_USAGE_MEDIA);
+        *newScope.value = toml::array(); // an array of tables under the same name
+        newScope.value->as_array_fmt().fmt = toml::array_format::array_of_tables;
+        newScope.tableName = name;
+
+        scope.push(newScope);
+    }
+
+    void pop_scope()
+    {
+        std::string popTableName = scope.top().tableName;
+        toml::value* popValue = scope.top().value;
+
+        scope.pop();
+
+        if (scope.empty())
+        {
+            heap_delete<toml::value>(popValue);
+            return;
+        }
+
+        TOMLWriterScopeType type = scope.top().type;
+
+        if (type == SCOPE_TABLE)
+        {
+            toml::value* parentTable = scope.top().value;
+
+            if (!popTableName.empty())
+            {
+                parentTable->as_table()[popTableName] = std::move(*popValue);
+            }
+            else if (!key.empty())
+            {
+                parentTable->as_table()[key] = std::move(*popValue);
+                key.clear();
+            }
+        }
+        else if (type == SCOPE_ARRAY || type == SCOPE_ARRAY_TABLE)
+        {
+            toml::value* parentArray = scope.top().value;
+            parentArray->as_array().push_back(std::move(*popValue));
+        }
+
+        heap_delete<toml::value>(popValue);
+    }
+
+    template <typename TValue>
+    void value(TValue value)
+    {
+        TOMLWriterScopeType scopeType = scope.top().type;
+        toml::value* scopeVal = scope.top().value;
+
+        switch (scopeType)
+        {
+        case SCOPE_TABLE:
+        case SCOPE_INLINE_TABLE:
+            if (!key.empty())
+            {
+                scopeVal->as_table()[key] = toml::value(value);
+                key.clear();
+            }
+            break;
+        case SCOPE_ARRAY:
+            scopeVal->as_array().push_back(toml::value(value));
+            break;
+        }
+    }
+};
+
+TOMLWriter TOMLWriter::create()
+{
+    auto* obj = heap_new<TOMLWriterObj>(MEMORY_USAGE_MEDIA);
+
+    return TOMLWriter(obj);
 }
 
-bool TOMLDocument::save_to_string(std::string& str)
+void TOMLWriter::destroy(TOMLWriter writer)
 {
-    LD_PROFILE_SCOPE;
+    auto* obj = writer.unwrap();
 
-    if (!mObj->root.val.is_table())
-        return false;
-
-    mObj->consolidate(&mObj->root);
-    str = toml::format(mObj->root.val);
-
-    return true;
+    heap_delete<TOMLWriterObj>(obj);
 }
 
-bool TOMLDocument::save_to_disk(const FS::Path& path)
+bool TOMLWriter::is_array_scope()
 {
-    LD_PROFILE_SCOPE;
+    return mObj->is_array_scope();
+}
 
-    std::string str;
-    if (!save_to_string(str))
-        return false;
+bool TOMLWriter::is_table_scope()
+{
+    return mObj->is_table_scope();
+}
 
-    return FS::write_file(path, str.size(), (byte*)str.data());
+bool TOMLWriter::is_inline_table_scope()
+{
+    return mObj->is_inline_table_scope();
+}
+
+bool TOMLWriter::is_array_table_scope()
+{
+    return mObj->is_array_table_scope();
+}
+
+TOMLWriter TOMLWriter::begin()
+{
+    mObj->push_table_scope();
+
+    return TOMLWriter(mObj);
+}
+
+TOMLWriter TOMLWriter::end(std::string& outStr)
+{
+    LD_ASSERT(mObj->scope.size() == 1 && mObj->scope.top().type == SCOPE_TABLE); // root table scope
+
+    outStr = toml::format(*mObj->scope.top().value);
+
+    mObj->pop_scope();
+
+    return TOMLWriter(mObj);
+}
+
+TOMLWriter TOMLWriter::begin_table()
+{
+    mObj->push_table_scope();
+
+    return TOMLWriter(mObj);
+}
+
+TOMLWriter TOMLWriter::end_table()
+{
+    LD_ASSERT(is_table_scope());
+
+    mObj->pop_scope();
+
+    return TOMLWriter(mObj);
+}
+
+TOMLWriter TOMLWriter::begin_array()
+{
+    LD_ASSERT(mObj->may_begin_array());
+
+    mObj->push_array_scope();
+
+    return TOMLWriter(mObj);
+}
+
+TOMLWriter TOMLWriter::end_array()
+{
+    LD_ASSERT(mObj->is_array_scope());
+
+    mObj->pop_scope();
+
+    return TOMLWriter(mObj);
+}
+
+TOMLWriter TOMLWriter::begin_inline_table()
+{
+    LD_ASSERT(mObj->may_begin_inline_table());
+
+    mObj->push_inline_table_scope();
+
+    return TOMLWriter(mObj);
+}
+
+TOMLWriter TOMLWriter::end_inline_table()
+{
+    LD_ASSERT(is_inline_table_scope());
+
+    mObj->pop_scope();
+
+    return TOMLWriter(mObj);
+}
+
+TOMLWriter TOMLWriter::begin_array_table(const char* name)
+{
+    LD_ASSERT(mObj->may_begin_array_table());
+
+    mObj->push_array_table_scope(name);
+
+    return TOMLWriter(mObj);
+}
+
+TOMLWriter TOMLWriter::end_array_table()
+{
+    LD_ASSERT(is_array_table_scope());
+
+    mObj->pop_scope();
+
+    return TOMLWriter(mObj);
+}
+
+TOMLWriter TOMLWriter::key(const char* name)
+{
+    LD_ASSERT(is_table_scope());
+    LD_ASSERT(mObj->key.empty()); // repeated key()
+
+    mObj->key = name;
+
+    return TOMLWriter(mObj);
+}
+
+TOMLWriter TOMLWriter::key(const std::string& str)
+{
+    return key(str.c_str());
+}
+
+TOMLWriter TOMLWriter::value_bool(bool b)
+{
+    LD_ASSERT(mObj->is_expecting_value());
+
+    mObj->value(b);
+
+    return TOMLWriter(mObj);
+}
+
+TOMLWriter TOMLWriter::value_i32(int32_t i32)
+{
+    LD_ASSERT(mObj->is_expecting_value());
+
+    mObj->value(i32);
+
+    return TOMLWriter(mObj);
+}
+
+TOMLWriter TOMLWriter::value_i64(int64_t i64)
+{
+    LD_ASSERT(mObj->is_expecting_value());
+
+    mObj->value(i64);
+
+    return TOMLWriter(mObj);
+}
+
+TOMLWriter TOMLWriter::value_u32(uint32_t u32)
+{
+    LD_ASSERT(mObj->is_expecting_value());
+
+    mObj->value(u32);
+
+    return TOMLWriter(mObj);
+}
+
+TOMLWriter TOMLWriter::value_f32(float f32)
+{
+    LD_ASSERT(mObj->is_expecting_value());
+
+    mObj->value(f32);
+
+    return TOMLWriter(mObj);
+}
+
+TOMLWriter TOMLWriter::value_f64(double f64)
+{
+    LD_ASSERT(mObj->is_expecting_value());
+
+    mObj->value(f64);
+
+    return TOMLWriter(mObj);
+}
+
+TOMLWriter TOMLWriter::value_string(const char* cstr)
+{
+    LD_ASSERT(mObj->is_expecting_value());
+
+    mObj->value(cstr);
+
+    return TOMLWriter(mObj);
+}
+
+TOMLWriter TOMLWriter::value_string(const std::string& str)
+{
+    return value_string(str.c_str());
 }
 
 namespace TOMLUtil {
 
-bool save_rect_table(const Rect& rect, TOMLValue table)
+bool save_rect_table(const Rect& rect, TOMLWriter writer)
 {
-    if (!table || !table.is_table_type())
+    if (!writer || !writer.is_inline_table_scope())
         return false;
 
-    table.format(TOML_FORMAT_TABLE_ONE_LINE);
-    table.set_key("x", TOML_TYPE_FLOAT).set_f32(rect.x);
-    table.set_key("y", TOML_TYPE_FLOAT).set_f32(rect.y);
-    table.set_key("w", TOML_TYPE_FLOAT).set_f32(rect.w);
-    table.set_key("h", TOML_TYPE_FLOAT).set_f32(rect.h);
+    writer.key("x").value_f32(rect.x);
+    writer.key("y").value_f32(rect.y);
+    writer.key("w").value_f32(rect.w);
+    writer.key("h").value_f32(rect.h);
     return true;
 }
 
 bool load_rect_table(Rect& rect, TOMLValue table)
 {
-    if (!table || !table.is_table_type())
+    if (!table || !table.is_table())
         return false;
 
     TOMLValue x = table.get_key("x");

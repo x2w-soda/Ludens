@@ -1,11 +1,13 @@
 #pragma once
 
+#include <Ludens/DSA/Vector.h>
 #include <Ludens/Header/Handle.h>
 #include <Ludens/Header/Math/Rect.h>
+#include <Ludens/Header/View.h>
 #include <Ludens/System/FileSystem.h>
+
 #include <cstdint>
 #include <string>
-#include <vector>
 
 namespace LD {
 
@@ -24,85 +26,51 @@ enum TOMLType
     TOML_TYPE_TABLE,
 };
 
-enum TOMLFormat
-{
-    TOML_FORMAT_TABLE_MULTI_LINE = 0,
-    TOML_FORMAT_TABLE_ONE_LINE,
-};
-
 struct TOMLValue : Handle<struct TOMLValueObj>
 {
     /// @brief Get value data type.
-    TOMLType get_type() const;
+    TOMLType type() const;
 
-    inline bool is_bool_type() const { return get_type() == TOML_TYPE_BOOL; }
-    inline bool is_int_type() const { return get_type() == TOML_TYPE_INT; }
-    inline bool is_float_type() const { return get_type() == TOML_TYPE_FLOAT; }
-    inline bool is_string_type() const { return get_type() == TOML_TYPE_STRING; }
-    inline bool is_table_type() const { return get_type() == TOML_TYPE_TABLE; }
-    inline bool is_array_type() const { return get_type() == TOML_TYPE_ARRAY; }
+    inline bool is_bool() const { return type() == TOML_TYPE_BOOL; }
+    inline bool is_int() const { return type() == TOML_TYPE_INT; }
+    inline bool is_float() const { return type() == TOML_TYPE_FLOAT; }
+    inline bool is_string() const { return type() == TOML_TYPE_STRING; }
+    inline bool is_table() const { return type() == TOML_TYPE_TABLE; }
+    inline bool is_array() const { return type() == TOML_TYPE_ARRAY; }
 
     /// @brief Check if value is a TOML bool.
     /// @param boolean Output boolean upon success.
     bool get_bool(bool& boolean) const;
 
-    /// @brief Set TOML boolean value.
-    /// @return True on success.
-    bool set_bool(bool boolean);
-
     /// @brief Check if value is a TOML int that is castable to i64.
     /// @param i64 Output 64-bit signed integer upon success.
     bool get_i64(int64_t& i64) const;
-
-    /// @brief Set TOML 64-bit int value.
-    /// @return True on success.
-    bool set_i64(int64_t i64);
 
     /// @brief Check if value is a TOML int that is castable to i32.
     /// @param i32 Output 32-bit signed integer upon success.
     bool get_i32(int32_t& i32) const;
 
-    /// @brief Set TOML 32-bit int value.
-    /// @return True on success.
-    bool set_i32(int32_t i32);
-
     /// @brief Check if value is a TOML int that is castable to u32.
     /// @param u32 Output 32-bit unsigned integer upon success.
     bool get_u32(uint32_t& u32) const;
-
-    /// @brief Set TOML 32-bit unsigned int value.
-    /// @return True on success.
-    bool set_u32(uint32_t u32);
 
     /// @brief Check if value is a TOML floating point.
     /// @param f64 Output 64-bit floating point number on success.
     /// @note TOML integers will be implicitly casted to float.
     bool get_f64(double& f64) const;
 
-    /// @brief Set TOML 64-bit floating point value.
-    /// @return True on success.
-    bool set_f64(double f64);
-
     /// @brief Check if value is a TOML floating point.
     /// @param f32 Output 32-bit floating point number on success.
     /// @note TOML integers will be implicitly casted to float.
     bool get_f32(float& f32) const;
 
-    /// @brief Set TOML 32-bit floating point value.
-    /// @return True on success.
-    bool set_f32(float f32);
-
     /// @brief Check if value is a TOML string.
     /// @param string Output string upon success.
     bool get_string(std::string& string) const;
 
-    /// @brief Set TOML string value.
-    /// @return True on success.
-    bool set_string(const std::string& string);
-
     /// @brief Get array size or table size.
     /// @return Non-negative size, or negative value on failure.
-    int get_size();
+    int size();
 
     /// @brief Index into a TOML array.
     /// @param idx Array index.
@@ -114,17 +82,10 @@ struct TOMLValue : Handle<struct TOMLValueObj>
         return get_index(idx);
     }
 
-    /// @brief Appends a new TOML value at the end of an array.
-    TOMLValue append(const TOMLType type);
-
     /// @brief Check if table contains a key.
     /// @param typeMatch If not null, checks if the value matches the type.
     /// @return True if value is table type, contains the key, and satisfies optional type matching.
     bool has_key(const char* key, const TOMLType* typeMatch);
-
-    /// @brief Set key of TOML table. May override existing key.
-    /// @return The value associated with key on success.
-    TOMLValue set_key(const char* key, TOMLType type);
 
     /// @brief Lookup key in TOML table.
     TOMLValue get_key(const char* key);
@@ -139,11 +100,7 @@ struct TOMLValue : Handle<struct TOMLValueObj>
     }
 
     /// @brief Get all keys in a table.
-    int get_keys(std::vector<std::string>& keys);
-
-    /// @brief Hint format to use when saving, format is type specific.
-    /// @return True if format enum can be applied to underlying TOML type.
-    bool format(TOMLFormat format);
+    int get_keys(Vector<std::string>& keys);
 };
 
 /// @brief TOML document handle.
@@ -152,38 +109,65 @@ struct TOMLDocument : Handle<struct TOMLDocumentObj>
     /// @brief Create empty TOML document.
     static TOMLDocument create();
 
-    /// @brief Create TOML document from file on disk.
-    static TOMLDocument create_from_file(const FS::Path& path);
-
-    /// @brief Destroy TOML document.
+    /// @brief Destroy TOML document, all TOML values from this document becomes out of date.
     static void destroy(TOMLDocument doc);
-
-    /// @brief Load TOML document from string.
-    bool parse(const char* toml, size_t len, std::string& error);
-
-    /// @brief Consolidate all value modifications to TOML DOM.
-    void consolidate();
 
     /// @brief Get value under root TOML table.
     TOMLValue get(const char* name);
+};
 
-    /// @brief Set value of root TOML table. May override existing key.
-    /// @return The value associated with key on success.
-    TOMLValue set(const char* key, TOMLType type);
+/// @brief TOML DOM parser.
+struct TOMLParser
+{
+    static bool parse(TOMLDocument dst, const View& view, std::string& error);
 
-    /// @brief Save TOML document to string.
-    bool save_to_string(std::string& str);
+    static bool parse_from_file(TOMLDocument dst, const FS::Path& path, std::string& error);
+};
 
-    /// @brief Save TOML document to disk after consolidation.
-    /// @warning Directly overwrites existing file.
-    bool save_to_disk(const FS::Path& path);
+struct TOMLWriter : Handle<struct TOMLWriterObj>
+{
+    static TOMLWriter create();
+    static void destroy(TOMLWriter writer);
+
+    bool is_array_scope();
+    bool is_table_scope();
+    bool is_inline_table_scope();
+    bool is_array_table_scope();
+
+    TOMLWriter begin();
+    TOMLWriter end(std::string& outString);
+
+    TOMLWriter begin_array();
+    TOMLWriter end_array();
+
+    inline TOMLWriter begin_table(const char* name) { return key(name).begin_table(); }
+    TOMLWriter begin_table();
+    TOMLWriter end_table();
+
+    inline TOMLWriter begin_inline_table(const char* name) { return key(name).begin_inline_table(); }
+    TOMLWriter begin_inline_table();
+    TOMLWriter end_inline_table();
+
+    TOMLWriter begin_array_table(const char* name);
+    TOMLWriter end_array_table();
+
+    TOMLWriter key(const char* name);
+    TOMLWriter key(const std::string& str);
+    TOMLWriter value_bool(bool b);
+    TOMLWriter value_i32(int32_t i32);
+    TOMLWriter value_i64(int64_t i64);
+    TOMLWriter value_u32(uint32_t u32);
+    TOMLWriter value_f32(float f32);
+    TOMLWriter value_f64(double f64);
+    TOMLWriter value_string(const char* cstr);
+    TOMLWriter value_string(const std::string& str);
 };
 
 namespace TOMLUtil {
 
-/// @brief Save rect into toml table value.
+/// @brief Save rect as inline table.
 /// @return True on success.
-bool save_rect_table(const Rect& rect, TOMLValue table);
+bool save_rect_table(const Rect& rect, TOMLWriter writer);
 
 /// @brief Load rect from toml table value.
 /// @return True on success.
