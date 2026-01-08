@@ -75,10 +75,11 @@ bool MeshUtil::extract_mesh_vertex(const std::filesystem::path& path)
     }
     ss << "\n};\n";
 
+    std::string err;
     std::string cppString = ss.str();
     fs::path cppPath = path;
     cppPath += fs::path(".cpp");
-    bool success = FS::write_file(cppPath, cppString.size(), (const byte*)cppString.data());
+    bool success = FS::write_file(cppPath, cppString.size(), (const byte*)cppString.data(), err);
 
     if (!success)
     {

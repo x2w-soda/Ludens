@@ -89,9 +89,11 @@ int main(int argc, char** argv)
         return 0;
     }
 
+    std::string err;
     FS::Path projectRootPath = projectSchemaPath.parent_path();
     Project project = Project::create(projectRootPath);
-    ProjectSchema::load_project_from_file(project, projectSchemaPath);
+    bool ok = ProjectSchema::load_project_from_file(project, projectSchemaPath, err);
+    LD_ASSERT(ok); // TODO:
 
     {
         RuntimeApplication runtimeApp(project);

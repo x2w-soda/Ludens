@@ -121,7 +121,9 @@ RuntimeContext RuntimeContext::create(const RuntimeContextInfo& info)
     obj->scene = Scene::create(sceneI);
 
     // load default scene
-    SceneSchema::load_scene_from_file(obj->scene, defaultScenePath);
+    std::string err;
+    bool ok =SceneSchema::load_scene_from_file(obj->scene, defaultScenePath, err);
+    LD_ASSERT(ok); // TODO:
     obj->scene.load();
     obj->scene.startup();
 
