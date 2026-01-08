@@ -118,7 +118,7 @@ struct Sprite2DComponent
     Transform2D transform; /// sprite 2D transform
     Rect local;            /// sprite 2D local geometry, decides pivot.
     RImage image;          /// image handle
-    int32_t zDepth;        /// sprite z depth
+    uint32_t zDepth;       /// sprite z depth
     AUID auid;             /// texture asset handle
 };
 

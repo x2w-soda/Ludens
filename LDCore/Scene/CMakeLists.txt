@@ -9,6 +9,7 @@ set(MODULE_INCLUDE
 set(MODULE_LIB
     Lib/SceneObj.h
     Lib/Scene.cpp
+    Lib/SceneSchemaKeys.h
     Lib/SceneSchema.cpp
     Lib/AudioServerCache.h
     Lib/AudioServerCache.cpp

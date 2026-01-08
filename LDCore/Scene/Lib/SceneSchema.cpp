@@ -1,157 +1,99 @@
+#include <Ludens/DSA/HashMap.h>
+#include <Ludens/DSA/Vector.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Header/Version.h>
 #include <Ludens/Media/Format/TOML.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/Scene/SceneSchema.h>
 #include <Ludens/System/Memory.h>
+
 #include <cstdint>
 #include <format>
-#include <unordered_map>
+
+#include "SceneSchemaKeys.h"
 
 namespace LD {
 
-/// @brief Helper to retain some hierarchical context when saving a Scene.
-struct SceneSaver
+/// @brief Saves Scene to TOML schema.
+class SceneSchemaSaver
 {
-    Scene scene;
-    TOMLDocument doc;
-    std::vector<CUID> rootCUIDs;
-    std::unordered_map<CUID, std::vector<CUID>> childMap;
-    TOMLValue compArrayTOML{};
+public:
+    SceneSchemaSaver() = default;
+    SceneSchemaSaver(const SceneSchemaSaver&) = delete;
+    ~SceneSchemaSaver();
 
-    SceneSaver() = delete;
-    SceneSaver(Scene scene, TOMLDocument doc)
-        : scene(scene), doc(doc)
-    {
-        LD_ASSERT(scene && doc);
-        scene.get_root_components(rootCUIDs);
-        compArrayTOML = doc.set("component", TOML_TYPE_ARRAY);
-    }
+    SceneSchemaSaver& operator=(const SceneSchemaSaver&) = delete;
 
-    /// @brief Get a new table value in the [[component]] TOML array.
-    inline TOMLValue get_component_toml()
-    {
-        return compArrayTOML.append(TOML_TYPE_TABLE);
-    }
+    bool save_scene(Scene scene, std::string& toml, std::string& err);
+
+    static bool save_audio_source_component(SceneSchemaSaver& saver, CUID compID, const char* compName);
+    static bool save_camera_component(SceneSchemaSaver& saver, CUID compID, const char* compName);
+    static bool save_mesh_component(SceneSchemaSaver& saver, CUID compID, const char* compName);
+    static bool save_sprite_2d_component(SceneSchemaSaver& saver, CUID compID, const char* compName);
+
+private:
+    static void save_component(SceneSchemaSaver& saver, ComponentBase* rootC);
+
+private:
+    Scene mScene{};
+    HashMap<CUID, Vector<CUID>> mChildMap;
+    TOMLWriter mWriter{};
 };
 
-static void load_scene_from_schema(Scene scene, TOMLDocument doc);
-static CUID load_component(Scene scene, TOMLValue compTOML);
-static bool load_audio_source_component(Scene scene, TOMLValue compTOML, CUID compID, const char* compName);
-static bool load_camera_component(Scene scene, TOMLValue compTOML, CUID compID, const char* compName);
-static bool load_mesh_component(Scene scene, TOMLValue compTOML, CUID compID, const char* compName);
-static bool load_sprite_2d_component(Scene scene, TOMLValue compTOML, CUID compID, const char* compName);
+/// @brief Loads Scene from TOML schema.
+class SceneSchemaLoader
+{
+public:
+    SceneSchemaLoader() = default;
+    SceneSchemaLoader(const SceneSchemaLoader&) = delete;
+    ~SceneSchemaLoader();
+
+    SceneSchemaLoader& operator=(const SceneSchemaLoader&) = delete;
+
+    bool load_scene(Scene scene, const View& toml, std::string& err);
+
+    static bool load_audio_source_component(SceneSchemaLoader& loader, TOMLValue compTOML, CUID compID, const char* compName);
+    static bool load_camera_component(SceneSchemaLoader& loader, TOMLValue compTOML, CUID compID, const char* compName);
+    static bool load_mesh_component(SceneSchemaLoader& loader, TOMLValue compTOML, CUID compID, const char* compName);
+    static bool load_sprite_2d_component(SceneSchemaLoader& loader, TOMLValue compTOML, CUID compID, const char* compName);
+
+private:
+    static CUID load_component(SceneSchemaLoader& loader, TOMLValue compTOML);
+
+private:
+    Scene mScene{};
+    TOMLDocument mDoc{};
+};
+
 static bool load_rect(Rect& rect, TOMLValue rectTOML);
 static void load_transform(TransformEx& transform, TOMLValue transformTOML);
 static void load_transform_2d(Transform2D& transform, TOMLValue transformTOML);
 
-static void save_scene_to_schema(Scene scene, TOMLDocument doc);
-static void save_component(SceneSaver& saver, ComponentBase* rootC);
-static bool save_audio_source_component(Scene scene, TOMLValue compTOML, CUID compID, const char* compName);
-static bool save_camera_component(Scene scene, TOMLValue compTOML, CUID compID, const char* compName);
-static bool save_mesh_component(Scene scene, TOMLValue compTOML, CUID compID, const char* compName);
-static bool save_sprite_2d_component(Scene scene, TOMLValue compTOML, CUID compID, const char* compName);
-static bool save_rect(const Rect& rect, TOMLValue rectTOML);
-static void save_transform(const TransformEx& transform, TOMLValue transformTOML);
-static void save_transform_2d(const Transform2D& transform, TOMLValue transformTOML);
+static void save_transform(const TransformEx& transform, TOMLWriter writer, const char* key);
+static void save_transform_2d(const Transform2D& transform, TOMLWriter writer);
 
 // clang-format off
 struct
 {
     ComponentType type;
     const char* compTypeName;
-    bool (*load)(Scene scene, TOMLValue compTOML, CUID compID, const char* compName);
-    bool (*save)(Scene scene, TOMLValue compTOML, CUID compID, const char* compName);
+    bool (*load)(SceneSchemaLoader& loader, TOMLValue compTOML, CUID compID, const char* compName);
+    bool (*save)(SceneSchemaSaver& saver, CUID compID, const char* compName);
 } sSceneSchemaTable[] = {
-    {COMPONENT_TYPE_DATA,           "Data",        nullptr,                        nullptr},
-    {COMPONENT_TYPE_AUDIO_SOURCE,   "AudioSource", &load_audio_source_component,   &save_audio_source_component},
-    {COMPONENT_TYPE_TRANSFORM,      "Transform",   nullptr,                        nullptr},
-    {COMPONENT_TYPE_CAMERA,         "Camera",      &load_camera_component,         &save_camera_component},
-    {COMPONENT_TYPE_MESH,           "Mesh",        &load_mesh_component,           &save_mesh_component},
-    {COMPONENT_TYPE_SPRITE_2D,      "Sprite2D",    &load_sprite_2d_component,      &save_sprite_2d_component},
+    {COMPONENT_TYPE_DATA,           "Data",        nullptr,                                           nullptr},
+    {COMPONENT_TYPE_AUDIO_SOURCE,   "AudioSource", &SceneSchemaLoader::load_audio_source_component,   &SceneSchemaSaver::save_audio_source_component},
+    {COMPONENT_TYPE_TRANSFORM,      "Transform",   nullptr,                                           nullptr},
+    {COMPONENT_TYPE_CAMERA,         "Camera",      &SceneSchemaLoader::load_camera_component,         &SceneSchemaSaver::save_camera_component},
+    {COMPONENT_TYPE_MESH,           "Mesh",        &SceneSchemaLoader::load_mesh_component,           &SceneSchemaSaver::save_mesh_component},
+    {COMPONENT_TYPE_SPRITE_2D,      "Sprite2D",    &SceneSchemaLoader::load_sprite_2d_component,      &SceneSchemaSaver::save_sprite_2d_component},
 };
 // clang-format on
 
 static_assert(sizeof(sSceneSchemaTable) / sizeof(*sSceneSchemaTable) == COMPONENT_TYPE_ENUM_COUNT);
 
-static void load_scene_from_schema(Scene scene, TOMLDocument doc)
+CUID SceneSchemaLoader::load_component(SceneSchemaLoader& loader, TOMLValue compTOML)
 {
-    if (!scene || !doc)
-        return;
-
-    scene.reset();
-
-    TOMLValue sceneTOML = doc.get("ludens_scene");
-    if (!sceneTOML || sceneTOML.get_type() != TOML_TYPE_TABLE)
-        return;
-
-    int32_t version;
-    TOMLValue versionTOML = sceneTOML["version_major"];
-    if (!versionTOML || !versionTOML.get_i32(version) || version != LD_VERSION_MAJOR)
-        return;
-
-    versionTOML = sceneTOML["version_minor"];
-    if (!versionTOML || !versionTOML.get_i32(version) || version != LD_VERSION_MINOR)
-        return;
-
-    versionTOML = sceneTOML["version_patch"];
-    if (!versionTOML || !versionTOML.get_i32(version) || version != LD_VERSION_PATCH)
-        return;
-
-    // extract component tables
-    std::unordered_map<CUID, TOMLValue> compValues;
-    TOMLValue componentsTOML = doc.get("component");
-    if (componentsTOML && componentsTOML.is_array_type())
-    {
-        int count = componentsTOML.get_size();
-        for (int i = 0; i < count; i++)
-        {
-            TOMLValue compTOML = componentsTOML[i];
-            if (!compTOML.is_table_type())
-                continue;
-
-            CUID compID;
-            TOMLValue compIDTOML = compTOML["cuid"];
-            if (compIDTOML && compIDTOML.get_u32(compID))
-                compValues[compID] = compTOML;
-        }
-    }
-
-    for (auto ite : compValues)
-    {
-        TOMLValue compTOML = ite.second;
-        CUID compID = load_component(scene, compTOML);
-        LD_ASSERT(compID == ite.first); // TODO: error handling
-    }
-
-    TOMLValue hierarchyTOML = doc.get("hierarchy");
-    if (!hierarchyTOML || !hierarchyTOML.is_table_type())
-        return;
-
-    std::vector<std::string> keys;
-    hierarchyTOML.get_keys(keys);
-    for (const std::string& key : keys)
-    {
-        CUID parent = static_cast<CUID>(std::stoul(key));
-        TOMLValue childrenTOML = hierarchyTOML[key.c_str()];
-        if (!childrenTOML || !childrenTOML.is_array_type())
-            continue;
-
-        int count = childrenTOML.get_size();
-        for (int i = 0; i < count; i++)
-        {
-            CUID child;
-            if (!childrenTOML[i].get_u32(child))
-                continue;
-
-            scene.reparent(child, parent);
-        }
-    }
-}
-
-static CUID load_component(Scene scene, TOMLValue compTOML)
-{
-    if (!compTOML || !scene || !compTOML.is_table_type())
+    if (!loader.mScene || !compTOML || !compTOML.is_table())
         return 0;
 
     std::string type;
@@ -174,7 +116,7 @@ static CUID load_component(Scene scene, TOMLValue compTOML)
         if (type == sSceneSchemaTable[i].compTypeName)
         {
             LD_ASSERT(sSceneSchemaTable[i].load);
-            bool ok = sSceneSchemaTable[i].load(scene, compTOML, compID, name.c_str());
+            bool ok = sSceneSchemaTable[i].load(loader, compTOML, compID, name.c_str());
             LD_ASSERT(ok); // TODO: deserialization error handling.
         }
     }
@@ -184,15 +126,15 @@ static CUID load_component(Scene scene, TOMLValue compTOML)
     if (scriptIDTOML && scriptIDTOML.get_u32(scriptID))
     {
         // the actual script is instantiated later
-        scene.create_component_script_slot(compID, scriptID);
+        loader.mScene.create_component_script_slot(compID, scriptID);
     }
 
     return compID;
 }
 
-static bool load_audio_source_component(Scene scene, TOMLValue compTOML, CUID compID, const char* compName)
+bool SceneSchemaLoader::load_audio_source_component(SceneSchemaLoader& loader, TOMLValue compTOML, CUID compID, const char* compName)
 {
-    ComponentType type;
+    Scene scene = loader.mScene;
 
     compID = scene.create_component(COMPONENT_TYPE_AUDIO_SOURCE, compName, (CUID)0, compID);
     if (!compID)
@@ -218,8 +160,10 @@ static bool load_audio_source_component(Scene scene, TOMLValue compTOML, CUID co
     return true;
 }
 
-static bool load_camera_component(Scene scene, TOMLValue compTOML, CUID compID, const char* compName)
+bool SceneSchemaLoader::load_camera_component(SceneSchemaLoader& loader, TOMLValue compTOML, CUID compID, const char* compName)
 {
+    Scene scene = loader.mScene;
+
     compID = scene.create_component(COMPONENT_TYPE_CAMERA, compName, (CUID)0, compID);
     if (!compID)
         return false;
@@ -243,7 +187,7 @@ static bool load_camera_component(Scene scene, TOMLValue compTOML, CUID compID, 
     if (cameraC->isPerspective)
     {
         toml = compTOML["perspective"];
-        if (!toml || !toml.is_table_type())
+        if (!toml || !toml.is_table())
             return false; // missing perspective info
 
         float fovDegrees;
@@ -267,7 +211,7 @@ static bool load_camera_component(Scene scene, TOMLValue compTOML, CUID compID, 
     else
     {
         toml = compTOML["orthographic"];
-        if (!toml || !toml.is_table_type())
+        if (!toml || !toml.is_table())
             return false; // missing orthographic info
 
         floatTOML = toml["left"];
@@ -298,8 +242,10 @@ static bool load_camera_component(Scene scene, TOMLValue compTOML, CUID compID, 
     return true;
 }
 
-static bool load_mesh_component(Scene scene, TOMLValue compTOML, CUID compID, const char* compName)
+bool SceneSchemaLoader::load_mesh_component(SceneSchemaLoader& loader, TOMLValue compTOML, CUID compID, const char* compName)
 {
+    Scene scene = loader.mScene;
+
     compID = scene.create_component(COMPONENT_TYPE_MESH, compName, (CUID)0, compID);
     if (!compID)
         return false;
@@ -317,13 +263,15 @@ static bool load_mesh_component(Scene scene, TOMLValue compTOML, CUID compID, co
     return true;
 }
 
-static bool load_sprite_2d_component(Scene scene, TOMLValue compTOML, CUID compID, const char* compName)
+bool SceneSchemaLoader::load_sprite_2d_component(SceneSchemaLoader& loader, TOMLValue compTOML, CUID compID, const char* compName)
 {
+    Scene scene = loader.mScene;
+
     compID = scene.create_component(COMPONENT_TYPE_SPRITE_2D, compName, (CUID)0, compID);
     if (!compID)
         return false;
 
-    Sprite2DComponent* spriteC = (Sprite2DComponent*)scene.get_component(compID, COMPONENT_TYPE_SPRITE_2D);
+    auto* spriteC = (Sprite2DComponent*)scene.get_component(compID, COMPONENT_TYPE_SPRITE_2D);
     LD_ASSERT(spriteC);
 
     TOMLValue localTOML = compTOML.get_key("local", TOML_TYPE_TABLE);
@@ -334,32 +282,39 @@ static bool load_sprite_2d_component(Scene scene, TOMLValue compTOML, CUID compI
     load_transform_2d(spriteC->transform, transformTOML);
     scene.mark_component_transform_dirty(compID);
 
+    spriteC->auid = 0;
     TOMLValue auidTOML = compTOML["auid"];
-    auidTOML.get_u32(spriteC->auid);
+    if (auidTOML)
+        auidTOML.get_u32(spriteC->auid);
+
+    spriteC->zDepth = 0;
+    TOMLValue zDepthTOML = compTOML["zDepth"];
+    if (zDepthTOML)
+        zDepthTOML.get_u32(spriteC->zDepth);
 
     return true;
 }
 
 static bool load_rect(Rect& rect, TOMLValue rectTOML)
 {
-    LD_ASSERT(rectTOML && rectTOML.is_table_type());
+    LD_ASSERT(rectTOML && rectTOML.is_table());
 
     return TOMLUtil::load_rect_table(rect, rectTOML);
 }
 
 static void load_transform(TransformEx& transform, TOMLValue transformTOML)
 {
-    LD_ASSERT(transformTOML && transformTOML.is_table_type());
+    LD_ASSERT(transformTOML && transformTOML.is_table());
 
     TOMLValue positionTOML = transformTOML["position"];
-    LD_ASSERT(positionTOML && positionTOML.is_array_type() && positionTOML.get_size() == 3);
+    LD_ASSERT(positionTOML && positionTOML.is_array() && positionTOML.size() == 3);
 
     positionTOML[0].get_f32(transform.position.x);
     positionTOML[1].get_f32(transform.position.y);
     positionTOML[2].get_f32(transform.position.z);
 
     TOMLValue rotationTOML = transformTOML["rotation"];
-    LD_ASSERT(rotationTOML && rotationTOML.is_array_type() && rotationTOML.get_size() == 3);
+    LD_ASSERT(rotationTOML && rotationTOML.is_array() && rotationTOML.size() == 3);
 
     rotationTOML[0].get_f32(transform.rotation.x);
     rotationTOML[1].get_f32(transform.rotation.y);
@@ -367,7 +322,7 @@ static void load_transform(TransformEx& transform, TOMLValue transformTOML)
     transform.rotation = Quat::from_euler(transform.rotationEuler);
 
     TOMLValue scaleTOML = transformTOML["scale"];
-    LD_ASSERT(scaleTOML && scaleTOML.is_array_type() && scaleTOML.get_size() == 3);
+    LD_ASSERT(scaleTOML && scaleTOML.is_array() && scaleTOML.size() == 3);
 
     scaleTOML[0].get_f32(transform.scale.x);
     scaleTOML[1].get_f32(transform.scale.y);
@@ -376,282 +331,370 @@ static void load_transform(TransformEx& transform, TOMLValue transformTOML)
 
 static void load_transform_2d(Transform2D& transform, TOMLValue transformTOML)
 {
-    LD_ASSERT(transformTOML && transformTOML.is_table_type());
+    LD_ASSERT(transformTOML && transformTOML.is_table());
 
     TOMLValue positionTOML = transformTOML["position"];
-    LD_ASSERT(positionTOML && positionTOML.is_array_type() && positionTOML.get_size() == 2);
+    LD_ASSERT(positionTOML && positionTOML.is_array() && positionTOML.size() == 2);
     positionTOML[0].get_f32(transform.position.x);
     positionTOML[1].get_f32(transform.position.y);
 
     TOMLValue rotationTOML = transformTOML["rotation"];
-    LD_ASSERT(rotationTOML && rotationTOML.is_float_type());
+    LD_ASSERT(rotationTOML && rotationTOML.is_float());
     rotationTOML.get_f32(transform.rotation);
 
     TOMLValue scaleTOML = transformTOML["scale"];
-    LD_ASSERT(scaleTOML && scaleTOML.is_array_type() && scaleTOML.get_size() == 2);
+    LD_ASSERT(scaleTOML && scaleTOML.is_array() && scaleTOML.size() == 2);
     scaleTOML[0].get_f32(transform.scale.x);
     scaleTOML[1].get_f32(transform.scale.y);
 }
 
-static void save_scene_to_schema(Scene scene, TOMLDocument doc)
+SceneSchemaSaver::~SceneSchemaSaver()
 {
-    SceneSaver saver(scene, doc);
-
-    TOMLValue sceneTOML = doc.set("ludens_scene", TOML_TYPE_TABLE);
-    sceneTOML.set_key("version_major", TOML_TYPE_INT).set_i32(LD_VERSION_MAJOR);
-    sceneTOML.set_key("version_minor", TOML_TYPE_INT).set_i32(LD_VERSION_MINOR);
-    sceneTOML.set_key("version_patch", TOML_TYPE_INT).set_i32(LD_VERSION_PATCH);
-
-    for (CUID rootCUID : saver.rootCUIDs)
-    {
-        ComponentBase* rootC = scene.get_component_base(rootCUID);
-        save_component(saver, rootC);
-    }
-
-    TOMLValue hierarchyTOML = doc.set("hierarchy", TOML_TYPE_TABLE);
-    for (auto ite : saver.childMap)
-    {
-        std::string parentID = std::to_string(ite.first);
-
-        TOMLValue childrenTOML = hierarchyTOML.set_key(parentID.c_str(), TOML_TYPE_ARRAY);
-        for (CUID childrenID : ite.second)
-        {
-            childrenTOML.append(TOML_TYPE_INT).set_u32(childrenID);
-        }
-    }
+    if (mWriter)
+        TOMLWriter::destroy(mWriter);
 }
 
-static void save_component(SceneSaver& saver, ComponentBase* rootC)
+bool SceneSchemaSaver::save_scene(Scene scene, std::string& toml, std::string& err)
+{
+    mWriter = TOMLWriter::create();
+
+    mWriter.begin();
+
+    mWriter.begin_table(SCENE_SCHEMA_TABLE_LUDENS_SCENE);
+    mWriter.key(SCENE_SCHEMA_KEY_VERSION_MAJOR).value_i32(LD_VERSION_MAJOR);
+    mWriter.key(SCENE_SCHEMA_KEY_VERSION_MINOR).value_i32(LD_VERSION_MINOR);
+    mWriter.key(SCENE_SCHEMA_KEY_VERSION_PATCH).value_i32(LD_VERSION_PATCH);
+    mWriter.end_table();
+
+    mWriter.begin_array_table("component");
+
+    Vector<CUID> rootCUIDs;
+    mScene.get_root_components(rootCUIDs);
+    for (CUID rootCUID : rootCUIDs)
+    {
+        ComponentBase* rootC = mScene.get_component_base(rootCUID);
+        save_component(*this, rootC);
+    }
+
+    mWriter.end_array_table();
+
+    mWriter.begin_table("hierarchy");
+    for (auto ite : mChildMap)
+    {
+        std::string parentID = std::to_string(ite.first);
+        mWriter.key(parentID.c_str()).begin_array();
+
+        for (CUID childrenID : ite.second)
+            mWriter.value_u32(childrenID);
+
+        mWriter.end_array();
+    }
+    mWriter.end_table();
+    mWriter.end(toml);
+
+    TOMLWriter::destroy(mWriter);
+    mWriter = {};
+
+    return true;
+}
+
+bool SceneSchemaSaver::save_audio_source_component(SceneSchemaSaver& saver, CUID compID, const char* compName)
+{
+    LD_ASSERT(saver.mScene && saver.mWriter && compID && compName);
+
+    auto* sourceC = (AudioSourceComponent*)saver.mScene.get_component(compID, COMPONENT_TYPE_AUDIO_SOURCE);
+    if (!sourceC)
+        return false;
+
+    TOMLWriter writer = saver.mWriter;
+    writer.key("auid").value_u32(sourceC->clipAUID);
+    writer.key("pan").value_f32(sourceC->pan);
+    writer.key("volumeLinear").value_f32(sourceC->volumeLinear);
+
+    return true;
+}
+
+bool SceneSchemaSaver::save_camera_component(SceneSchemaSaver& saver, CUID compID, const char* compName)
+{
+    LD_ASSERT(saver.mScene && saver.mWriter && compID && compName);
+
+    auto* cameraC = (CameraComponent*)saver.mScene.get_component(compID, COMPONENT_TYPE_CAMERA);
+    if (!cameraC)
+        return false;
+
+    TOMLWriter writer = saver.mWriter;
+    save_transform(cameraC->transform, writer, "transform");
+
+    writer.key("isPerspective").value_bool(cameraC->isPerspective);
+    writer.key("isMainCamera").value_bool(cameraC->isMainCamera);
+
+    if (cameraC->isPerspective)
+    {
+        writer.begin_inline_table("perspective");
+
+        float fovDegrees = (float)LD_TO_DEGREES(cameraC->perspective.fov);
+        writer.key("fov").value_f32(fovDegrees);
+        writer.key("nearClip").value_f32(cameraC->perspective.nearClip);
+        writer.key("farClip").value_f32(cameraC->perspective.farClip);
+
+        writer.end_inline_table();
+    }
+    else
+    {
+        writer.begin_inline_table("orthographic");
+
+        writer.key("left").value_f32(cameraC->orthographic.left);
+        writer.key("right").value_f32(cameraC->orthographic.right);
+        writer.key("bottom").value_f32(cameraC->orthographic.bottom);
+        writer.key("top").value_f32(cameraC->orthographic.top);
+        writer.key("nearClip").value_f32(cameraC->orthographic.nearClip);
+        writer.key("farClip").value_f32(cameraC->orthographic.farClip);
+
+        writer.end_inline_table();
+    }
+
+    return true;
+}
+
+bool SceneSchemaSaver::save_mesh_component(SceneSchemaSaver& saver, CUID compID, const char* compName)
+{
+    LD_ASSERT(saver.mScene && saver.mWriter && compID && compName);
+
+    auto* meshC = (MeshComponent*)saver.mScene.get_component(compID, COMPONENT_TYPE_MESH);
+    if (!meshC)
+        return false;
+
+    TOMLWriter writer = saver.mWriter;
+    save_transform(meshC->transform, writer, "transform");
+    writer.key("auid").value_u32(meshC->auid);
+
+    return true;
+}
+
+bool SceneSchemaSaver::save_sprite_2d_component(SceneSchemaSaver& saver, CUID compID, const char* compName)
+{
+    LD_ASSERT(saver.mScene && saver.mWriter && compID && compName);
+
+    auto* spriteC = (Sprite2DComponent*)saver.mScene.get_component(compID, COMPONENT_TYPE_SPRITE_2D);
+    if (!spriteC)
+        return false;
+
+    TOMLWriter writer = saver.mWriter;
+    writer.begin_inline_table("local");
+    TOMLUtil::save_rect_table(spriteC->local, writer);
+    writer.end_inline_table();
+
+    save_transform_2d(spriteC->transform, writer);
+
+    writer.key("auid").value_u32(spriteC->auid);
+    writer.key("zDepth").value_u32(spriteC->zDepth);
+
+    return true;
+}
+
+void SceneSchemaSaver::save_component(SceneSchemaSaver& saver, ComponentBase* rootC)
 {
     // recursively save entire subtree
     for (ComponentBase* childC = rootC->child; childC; childC = childC->next)
     {
-        saver.childMap[rootC->id].push_back(childC->id);
+        saver.mChildMap[rootC->id].push_back(childC->id);
         save_component(saver, childC);
     }
 
-    TOMLValue compTOML = saver.get_component_toml();
+    TOMLWriter writer = saver.mWriter;
+
+    writer.begin_table();
+
     std::string compTypeName(sSceneSchemaTable[(int)rootC->type].compTypeName);
-    compTOML.set_key("type", TOML_TYPE_STRING).set_string(compTypeName);
-    compTOML.set_key("name", TOML_TYPE_STRING).set_string(rootC->name);
-    compTOML.set_key("cuid", TOML_TYPE_INT).set_u32(rootC->id);
+    writer.key("type").value_string(compTypeName);
+    writer.key("name").value_string(rootC->name);
+    writer.key("cuid").value_u32(rootC->id);
+
+    ComponentScriptSlot* scriptSlot = saver.mScene.get_component_script_slot(rootC->id);
+    if (scriptSlot)
+        writer.key("script").value_u32(scriptSlot->assetID);
 
     LD_ASSERT(sSceneSchemaTable[(int)rootC->type].save);
-    bool ok = sSceneSchemaTable[(int)rootC->type].save(saver.scene, compTOML, rootC->id, rootC->name);
+    bool ok = sSceneSchemaTable[(int)rootC->type].save(saver, rootC->id, rootC->name);
     LD_ASSERT(ok); // TODO: error handling path
 
-    ComponentScriptSlot* scriptSlot = saver.scene.get_component_script_slot(rootC->id);
-    if (scriptSlot)
+    writer.end_table();
+}
+
+static void save_transform(const TransformEx& transform, TOMLWriter writer, const char* key)
+{
+    LD_ASSERT(writer);
+
+    writer.key(key).begin_inline_table();
+
+    writer.key("position").begin_array();
+    writer.value_f32(transform.position.x);
+    writer.value_f32(transform.position.y);
+    writer.value_f32(transform.position.z);
+    writer.end_array();
+
+    writer.key("rotation").begin_array();
+    writer.value_f32(transform.rotationEuler.x);
+    writer.value_f32(transform.rotationEuler.y);
+    writer.value_f32(transform.rotationEuler.z);
+    writer.end_array();
+
+    writer.key("scale").begin_array();
+    writer.value_f32(transform.scale.x);
+    writer.value_f32(transform.scale.y);
+    writer.value_f32(transform.scale.z);
+    writer.end_array();
+
+    writer.end_inline_table();
+}
+
+static void save_transform_2d(const Transform2D& transform, TOMLWriter writer)
+{
+    LD_ASSERT(writer);
+
+    writer.key("transform").begin_inline_table();
+
+    writer.key("position").begin_array();
+    writer.value_f32(transform.position.x);
+    writer.value_f32(transform.position.y);
+    writer.end_array();
+
+    writer.key("rotation").value_f32(transform.rotation);
+
+    writer.key("scale").begin_array();
+    writer.value_f32(transform.scale.x);
+    writer.value_f32(transform.scale.y);
+    writer.end_array();
+
+    writer.end_inline_table();
+}
+
+SceneSchemaLoader::~SceneSchemaLoader()
+{
+    if (mDoc)
+        TOMLDocument::destroy(mDoc);
+}
+
+bool SceneSchemaLoader::load_scene(Scene scene, const View& toml, std::string& err)
+{
+    mDoc = TOMLDocument::create();
+    mScene = scene;
+
+    if (!TOMLParser::parse(mDoc, toml, err))
+        return false;
+
+    scene.reset();
+
+    TOMLValue sceneTOML = mDoc.get(SCENE_SCHEMA_TABLE_LUDENS_SCENE);
+    if (!sceneTOML || sceneTOML.type() != TOML_TYPE_TABLE)
+        return false;
+
+    int32_t version;
+    TOMLValue versionTOML = sceneTOML[SCENE_SCHEMA_KEY_VERSION_MAJOR];
+    if (!versionTOML || !versionTOML.get_i32(version) || version != LD_VERSION_MAJOR)
+        return false;
+
+    versionTOML = sceneTOML[SCENE_SCHEMA_KEY_VERSION_MINOR];
+    if (!versionTOML || !versionTOML.get_i32(version) || version != LD_VERSION_MINOR)
+        return false;
+
+    versionTOML = sceneTOML[SCENE_SCHEMA_KEY_VERSION_PATCH];
+    if (!versionTOML || !versionTOML.get_i32(version) || version != LD_VERSION_PATCH)
+        return false;
+
+    // extract component tables
+    HashMap<CUID, TOMLValue> compValues;
+    TOMLValue componentsTOML = mDoc.get("component");
+    if (componentsTOML && componentsTOML.is_array())
     {
-        compTOML.set_key("script", TOML_TYPE_INT).set_u32(scriptSlot->assetID);
+        int count = componentsTOML.size();
+        for (int i = 0; i < count; i++)
+        {
+            TOMLValue compTOML = componentsTOML[i];
+            if (!compTOML.is_table())
+                continue;
+
+            CUID compID;
+            TOMLValue compIDTOML = compTOML["cuid"];
+            if (compIDTOML && compIDTOML.get_u32(compID))
+                compValues[compID] = compTOML;
+        }
     }
-}
 
-static bool save_audio_source_component(Scene scene, TOMLValue compTOML, CUID compID, const char* compName)
-{
-    LD_ASSERT(scene && compTOML && compID && compName);
-
-    auto* sourceC = (AudioSourceComponent*)scene.get_component(compID, COMPONENT_TYPE_AUDIO_SOURCE);
-    if (!sourceC)
-        return false;
-
-    TOMLValue auidTOML = compTOML.set_key("auid", TOML_TYPE_INT);
-    auidTOML.set_u32(sourceC->clipAUID);
-
-    TOMLValue panTOML = compTOML.set_key("pan", TOML_TYPE_FLOAT);
-    if (panTOML)
-        panTOML.set_f32(sourceC->pan);
-
-    TOMLValue volumeTOML = compTOML.set_key("volume_linear", TOML_TYPE_FLOAT);
-    if (volumeTOML)
-        volumeTOML.set_f32(sourceC->volumeLinear);
-
-    return true;
-}
-
-static bool save_camera_component(Scene scene, TOMLValue compTOML, CUID compID, const char* compName)
-{
-    LD_ASSERT(scene && compTOML && compID && compName);
-
-    auto* cameraC = (CameraComponent*)scene.get_component(compID, COMPONENT_TYPE_CAMERA);
-    if (!cameraC)
-        return false;
-
-    TOMLValue floatTOML{};
-    TOMLValue transformTOML = compTOML.set_key("transform", TOML_TYPE_TABLE);
-    save_transform(cameraC->transform, transformTOML);
-
-    compTOML.set_key("isPerspective", TOML_TYPE_BOOL).set_bool(cameraC->isPerspective);
-    compTOML.set_key("isMainCamera", TOML_TYPE_BOOL).set_bool(cameraC->isMainCamera);
-
-    if (cameraC->isPerspective)
+    for (auto ite : compValues)
     {
-        TOMLValue perspectiveTOML = compTOML.set_key("perspective", TOML_TYPE_TABLE);
-        perspectiveTOML.format(TOML_FORMAT_TABLE_ONE_LINE);
-
-        float fovDegrees = (float)LD_TO_DEGREES(cameraC->perspective.fov);
-        perspectiveTOML.set_key("fov", TOML_TYPE_FLOAT).set_f32(fovDegrees);
-        perspectiveTOML.set_key("nearClip", TOML_TYPE_FLOAT).set_f32(cameraC->perspective.nearClip);
-        perspectiveTOML.set_key("farClip", TOML_TYPE_FLOAT).set_f32(cameraC->perspective.farClip);
+        TOMLValue compTOML = ite.second;
+        CUID compID = load_component(*this, compTOML);
+        LD_ASSERT(compID == ite.first); // TODO: error handling
     }
-    else
+
+    TOMLValue hierarchyTOML = mDoc.get("hierarchy");
+    if (hierarchyTOML && hierarchyTOML.is_table())
     {
-        TOMLValue orthoTOML = compTOML.set_key("orthographic", TOML_TYPE_TABLE);
-        orthoTOML.format(TOML_FORMAT_TABLE_ONE_LINE);
+        Vector<std::string> keys;
+        hierarchyTOML.get_keys(keys);
+        for (const std::string& key : keys)
+        {
+            CUID parent = static_cast<CUID>(std::stoul(key));
+            TOMLValue childrenTOML = hierarchyTOML[key.c_str()];
+            if (!childrenTOML || !childrenTOML.is_array())
+                continue;
 
-        orthoTOML.set_key("left", TOML_TYPE_FLOAT).set_f32(cameraC->orthographic.left);
-        orthoTOML.set_key("right", TOML_TYPE_FLOAT).set_f32(cameraC->orthographic.right);
-        orthoTOML.set_key("bottom", TOML_TYPE_FLOAT).set_f32(cameraC->orthographic.bottom);
-        orthoTOML.set_key("top", TOML_TYPE_FLOAT).set_f32(cameraC->orthographic.top);
-        orthoTOML.set_key("nearClip", TOML_TYPE_FLOAT).set_f32(cameraC->orthographic.nearClip);
-        orthoTOML.set_key("farClip", TOML_TYPE_FLOAT).set_f32(cameraC->orthographic.farClip);
+            int count = childrenTOML.size();
+            for (int i = 0; i < count; i++)
+            {
+                CUID child;
+                if (!childrenTOML[i].get_u32(child))
+                    continue;
+
+                scene.reparent(child, parent);
+            }
+        }
     }
 
-    return true;
-}
-
-static bool save_mesh_component(Scene scene, TOMLValue compTOML, CUID compID, const char* compName)
-{
-    LD_ASSERT(scene && compTOML && compID && compName);
-
-    auto* meshC = (MeshComponent*)scene.get_component(compID, COMPONENT_TYPE_MESH);
-    if (!meshC)
-        return false;
-
-    TOMLValue transformTOML = compTOML.set_key("transform", TOML_TYPE_TABLE);
-    save_transform(meshC->transform, transformTOML);
-
-    TOMLValue auidTOML = compTOML.set_key("auid", TOML_TYPE_INT);
-    auidTOML.set_u32(meshC->auid);
+    TOMLDocument::destroy(mDoc);
+    mDoc = {};
 
     return true;
-}
-
-static bool save_sprite_2d_component(Scene scene, TOMLValue compTOML, CUID compID, const char* compName)
-{
-    LD_ASSERT(scene && compTOML && compID && compName);
-
-    auto* spriteC = (Sprite2DComponent*)scene.get_component(compID, COMPONENT_TYPE_SPRITE_2D);
-    if (!spriteC)
-        return false;
-
-    TOMLValue localTOML = compTOML.set_key("local", TOML_TYPE_TABLE);
-    save_rect(spriteC->local, localTOML);
-
-    TOMLValue transformTOML = compTOML.set_key("transform", TOML_TYPE_TABLE);
-    save_transform_2d(spriteC->transform, transformTOML);
-
-    TOMLValue auidTOML = compTOML.set_key("auid", TOML_TYPE_INT);
-    auidTOML.set_u32(spriteC->auid);
-
-    return true;
-}
-
-static bool save_rect(const Rect& rect, TOMLValue rectTOML)
-{
-    return TOMLUtil::save_rect_table(rect, rectTOML);
-}
-
-static void save_transform(const TransformEx& transform, TOMLValue transformTOML)
-{
-    LD_ASSERT(transformTOML && transformTOML.is_table_type());
-
-    transformTOML.format(TOML_FORMAT_TABLE_ONE_LINE);
-
-    TOMLValue positionTOML = transformTOML.set_key("position", TOML_TYPE_ARRAY);
-    positionTOML.append(TOML_TYPE_FLOAT).set_f32(transform.position.x);
-    positionTOML.append(TOML_TYPE_FLOAT).set_f32(transform.position.y);
-    positionTOML.append(TOML_TYPE_FLOAT).set_f32(transform.position.z);
-
-    TOMLValue rotationTOML = transformTOML.set_key("rotation", TOML_TYPE_ARRAY);
-    rotationTOML.append(TOML_TYPE_FLOAT).set_f32(transform.rotationEuler.x);
-    rotationTOML.append(TOML_TYPE_FLOAT).set_f32(transform.rotationEuler.y);
-    rotationTOML.append(TOML_TYPE_FLOAT).set_f32(transform.rotationEuler.z);
-
-    TOMLValue scaleTOML = transformTOML.set_key("scale", TOML_TYPE_ARRAY);
-    scaleTOML.append(TOML_TYPE_FLOAT).set_f32(transform.scale.x);
-    scaleTOML.append(TOML_TYPE_FLOAT).set_f32(transform.scale.y);
-    scaleTOML.append(TOML_TYPE_FLOAT).set_f32(transform.scale.z);
-}
-
-static void save_transform_2d(const Transform2D& transform, TOMLValue transformTOML)
-{
-    LD_ASSERT(transformTOML && transformTOML.is_table_type());
-
-    transformTOML.format(TOML_FORMAT_TABLE_ONE_LINE);
-
-    TOMLValue positionTOML = transformTOML.set_key("position", TOML_TYPE_ARRAY);
-    positionTOML.append(TOML_TYPE_FLOAT).set_f32(transform.position.x);
-    positionTOML.append(TOML_TYPE_FLOAT).set_f32(transform.position.y);
-
-    TOMLValue rotationTOML = transformTOML.set_key("rotation", TOML_TYPE_FLOAT);
-    rotationTOML.set_f32(transform.rotation);
-
-    TOMLValue scaleTOML = transformTOML.set_key("scale", TOML_TYPE_ARRAY);
-    scaleTOML.append(TOML_TYPE_FLOAT).set_f32(transform.scale.x);
-    scaleTOML.append(TOML_TYPE_FLOAT).set_f32(transform.scale.y);
 }
 
 //
 // Public API
 //
 
-void SceneSchema::load_scene_from_source(Scene scene, const char* source, size_t len)
+bool SceneSchema::load_scene_from_source(Scene scene, const View& toml, std::string& err)
 {
     LD_PROFILE_SCOPE;
 
-    TOMLDocument doc = TOMLDocument::create();
+    SceneSchemaLoader loader;
+    if (!loader.load_scene(scene, toml, err))
+        return false;
 
-    std::string err;
-    bool success = doc.parse(source, len, err);
-    if (!success)
-    {
-        TOMLDocument::destroy(doc);
-        return; // TODO: error handling path
-    }
-
-    load_scene_from_schema(scene, doc);
-    TOMLDocument::destroy(doc);
+    return true;
 }
 
-void SceneSchema::load_scene_from_file(Scene scene, const FS::Path& tomlPath)
+bool SceneSchema::load_scene_from_file(Scene scene, const FS::Path& tomlPath, std::string& err)
 {
     LD_PROFILE_SCOPE;
 
-    TOMLDocument doc = TOMLDocument::create_from_file(tomlPath);
-    load_scene_from_schema(scene, doc);
-    TOMLDocument::destroy(doc);
+    Vector<byte> toml;
+    if (!FS::read_file_to_vector(tomlPath, toml))
+        return false;
+
+    View tomlView((const char*)toml.data(), toml.size());
+    return load_scene_from_source(scene, tomlView, err);
 }
 
 bool SceneSchema::save_scene(Scene scene, const FS::Path& savePath, std::string& err)
 {
     LD_PROFILE_SCOPE;
 
-    TOMLDocument doc = TOMLDocument::create();
-    save_scene_to_schema(scene, doc);
-
-    std::string str;
-    if (!doc.save_to_string(str))
-    {
-        TOMLDocument::destroy(doc);
+    std::string toml;
+    SceneSchemaSaver saver;
+    if (!saver.save_scene(scene, toml, err))
         return false;
-    }
 
-    TOMLDocument::destroy(doc);
-    return FS::write_file_and_swap_backup(savePath, str.size(), (const byte*)str.data(), err);
-}
-
-std::string SceneSchema::get_default_text()
-{
-    return std::format(R"(
-[ludens_scene]
-version_major = {}
-version_minor = {}
-version_patch = {}
-)",
-                       LD_VERSION_MAJOR,
-                       LD_VERSION_MINOR,
-                       LD_VERSION_PATCH);
+    return FS::write_file_and_swap_backup(savePath, toml.size(), (const byte*)toml.data(), err);
 }
 
 } // namespace LD

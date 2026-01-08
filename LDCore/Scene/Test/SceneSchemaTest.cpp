@@ -8,10 +8,10 @@ using namespace LD;
 TEST_CASE("SceneSchema")
 {
     const char toml[] = R"(
-[ludens_scene]
-version_major = 0
-version_minor = 0
-version_patch = 0
+[ludensScene]
+versionMajor = 0
+versionMinor = 0
+versionPatch = 0
 
 [[component]]
 script = 6
@@ -32,7 +32,9 @@ cuid = 300
 
     Scene scene = Scene::create({});
     CHECK(scene);
-    SceneSchema::load_scene_from_source(scene, toml, strlen(toml));
+    std::string err;
+    bool ok = SceneSchema::load_scene_from_source(scene, View(toml, sizeof(toml) - 1), err);
+    CHECK(ok);
 
     std::vector<CUID> roots;
     scene.get_root_components(roots);

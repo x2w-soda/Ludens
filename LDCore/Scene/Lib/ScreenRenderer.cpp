@@ -28,7 +28,7 @@ void ScreenRenderer::render(DataRegistry registry)
     {
         Sprite2DComponent* spriteC = (Sprite2DComponent*)ite.data();
 
-        mLayer.add_image(spriteC->transform, spriteC->local, spriteC->image, 0);
+        mLayer.add_image(spriteC->transform, spriteC->local, spriteC->image, spriteC->zDepth);
     }
 
     mLayer.end();
