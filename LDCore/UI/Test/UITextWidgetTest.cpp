@@ -1,8 +1,10 @@
-#include "UITest.h"
 #include <Extra/doctest/doctest.h>
+#include <LDUtil/LudensLFS/Include/LudensLFS.h>
 #include <Ludens/System/Memory.h>
 
-TEST_CASE("UITextWidget in fit container" * doctest::skip(!UITest::found_lfs_directory()))
+#include "UITest.h"
+
+TEST_CASE("UITextWidget in fit container" * doctest::skip(!LudensLFS::get_directory_path()))
 {
     UIWorkspace space;
     UIContext ctx = UITest::create_test_context(Vec2(100.0f, 100.0f), space);

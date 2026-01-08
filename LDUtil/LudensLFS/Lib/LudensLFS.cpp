@@ -9,23 +9,9 @@ namespace LD {
 LudensLFS::LudensLFS()
     : isFound(false)
 {
-    const char* candidates[] = {
-        "../../../Extra/LudensLFS/README.md",
-        "../../../../Ludens/Extra/LudensLFS/README.md",
-        "../../../../../Ludens/Extra/LudensLFS/README.md",
-    };
+    isFound = LudensLFS::get_directory_path(&lfsPath);
 
-    for (const char* candidate : candidates)
-    {
-        if (fs::exists(candidate))
-        {
-            fs::path lfsDirectory(candidate);
-            lfsPath = lfsDirectory.parent_path();
-            break;
-        }
-    }
-
-    if (lfsPath.empty())
+    if (!isFound || lfsPath.empty())
     {
         std::cout << "Failed to locate LudensLFS git submodule" << std::endl;
         return;
@@ -54,6 +40,30 @@ LudensLFS::LudensLFS()
 
     std::cout << "LudensLFS git submodule located at: " << lfsPath << std::endl;
     isFound = true;
+}
+
+bool LudensLFS::get_directory_path(std::filesystem::path* path)
+{
+    const char* candidates[] = {
+        "../Extra/LudensLFS/README.md",
+        "../../Extra/LudensLFS/README.md",
+        "../../../Extra/LudensLFS/README.md",
+        "../../../../Ludens/Extra/LudensLFS/README.md",
+        "../../../../../Ludens/Extra/LudensLFS/README.md",
+    };
+
+    for (const char* candidate : candidates)
+    {
+        if (fs::exists(candidate))
+        {
+            fs::path lfsDirectory(candidate);
+            if (path)
+                *path = lfsDirectory.parent_path();
+            return true;
+        }
+    }
+
+    return false;
 }
 
 /// @brief Locates the LudensLFS submodule during CRT initialization.

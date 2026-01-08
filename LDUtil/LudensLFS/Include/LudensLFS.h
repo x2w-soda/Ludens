@@ -11,6 +11,10 @@ struct LudensLFS
     /// @brief Attempts to locate resources in Ludens LFS submodule.
     LudensLFS();
 
+    /// @brief Statically locate LFS directory path.
+    /// @note Mostly a static helper for doctest to skip test cases during CRT initialization.
+    static bool get_directory_path(std::filesystem::path* path = nullptr);
+
     bool isFound;
 
     std::filesystem::path lfsPath;

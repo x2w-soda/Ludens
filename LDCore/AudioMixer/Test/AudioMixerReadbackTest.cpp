@@ -1,17 +1,15 @@
-#include "AudioMixerTest.h"
 #include <Extra/doctest/doctest.h>
 #include <LDUtil/LudensLFS/Include/LudensLFS.h>
 #include <Ludens/AudioBackend/MiniAudio.h>
 #include <Ludens/AudioMixer/AudioMixer.h>
 #include <array>
 
+#include "AudioMixerTest.h"
+
 using namespace LD;
 
-TEST_CASE("AudioMixer read playback")
+TEST_CASE("AudioMixer read playback" * doctest::skip(!LudensLFS::get_directory_path()))
 {
-    if (!sLudensLFS.isFound)
-        doctest::skip();
-
     AudioMixerTest test;
     test.startup();
 
@@ -46,7 +44,7 @@ TEST_CASE("AudioMixer read playback")
     test.cleanup();
 }
 
-TEST_CASE("AudioMixer read filter effects")
+TEST_CASE("AudioMixer read filter effects" * doctest::skip(!LudensLFS::get_directory_path()))
 {
     if (!sLudensLFS.isFound)
         doctest::skip();

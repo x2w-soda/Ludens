@@ -1,7 +1,8 @@
 #include "UITest.h"
 #include <Extra/doctest/doctest.h>
+#include <LDUtil/LudensLFS/Include/LudensLFS.h>
 
-TEST_CASE("UIContext layers sanity check")
+TEST_CASE("UIContext layers sanity check" * doctest::skip(!LudensLFS::get_directory_path()))
 {
     UIWorkspace space;
     UIContext ctx = UITest::create_test_context(Vec2(100.0f, 100.0f), space);

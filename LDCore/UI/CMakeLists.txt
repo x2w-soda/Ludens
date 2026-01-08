@@ -75,6 +75,7 @@ target_include_directories(${MODULE_TEST_NAME} PRIVATE
 
 target_link_libraries(${MODULE_TEST_NAME} PRIVATE
     ${MODULE_NAME}
+    LDLudensLFS
 )
 
 add_executable(${MODULE_SANDBOX_NAME}

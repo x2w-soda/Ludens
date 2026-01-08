@@ -32,12 +32,6 @@ class UITest
 public:
     UITest();
 
-    static inline bool found_lfs_directory()
-    {
-        FS::Path lfsPath;
-        return get_lfs_directory(lfsPath);
-    }
-
     /// @brief Creates a context with a single layer with a single workspace.
     static inline UIContext create_test_context(const Vec2& workspaceExtent, UIWorkspace& outWorkspace)
     {
@@ -57,13 +51,10 @@ public:
 
 private:
     static UITest* sInstance;
-
-    FS::Path mLFSDirectoryPath;
-    UIThemeInfo mTheme;
-    Font mFont;
-    FontAtlas mFontAtlas;
-
     static UITest* get();
 
-    static bool get_lfs_directory(FS::Path& lfsDirectory);
+private:
+    UIThemeInfo mTheme;
+    Font mFont{};
+    FontAtlas mFontAtlas{};
 };
