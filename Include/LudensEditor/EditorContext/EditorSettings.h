@@ -5,6 +5,7 @@
 #include <Ludens/Header/Handle.h>
 #include <Ludens/Media/Format/JSON.h>
 #include <Ludens/UI/UITheme.h>
+#include <Ludens/UI/UILayout.h>
 
 namespace LD {
 
@@ -16,8 +17,12 @@ struct EditorTheme : Handle<struct EditorThemeObj>
     Color get_stop_button_color() const;
     float get_font_size() const;
     float get_padding() const;
+    void get_tab_background_color(Color& bg) const;
     void get_gizmo_colors(Color& axisX, Color& axisY, Color& axisZ) const;
     void get_gizmo_highlight_color(Color& hl) const;
+
+    UILayoutInfo make_vbox_layout() const;
+    UILayoutInfo make_hbox_layout() const;
 };
 
 /// @brief Global editor settings that apply to all projects

@@ -1,4 +1,4 @@
-#include <Ludens/System/Memory.h>
+#include <Ludens/Memory/Memory.h>
 #include <Ludens/UI/UITheme.h>
 #include <LudensEditor/EditorContext/EditorSettings.h>
 
@@ -10,6 +10,7 @@ struct EditorThemeObj
     UIThemeInfo uiTheme;
     float fontSize;
     float padding;
+    Color tabBGColor;
     Color gizmoColorAxisX;
     Color gizmoColorAxisY;
     Color gizmoColorAxisZ;
@@ -25,6 +26,7 @@ void EditorThemeObj::initialize_default()
     uiTheme = UITheme::get_default_info();
     fontSize = 16.0f;
     padding = 5.0f;
+    tabBGColor = 0x141516FF;
     gizmoColorAxisX = Vec4(0.9f, 0.1f, 0.1f, 0.8f);
     gizmoColorAxisY = Vec4(0.1f, 0.9f, 0.1f, 0.8f);
     gizmoColorAxisZ = Vec4(0.1f, 0.1f, 0.9f, 0.8f);
@@ -58,6 +60,11 @@ float EditorTheme::get_padding() const
     return mObj->padding;
 }
 
+void EditorTheme::get_tab_background_color(Color& bg) const
+{
+    bg = mObj->tabBGColor;
+}
+
 void EditorTheme::get_gizmo_colors(Color& axisX, Color& axisY, Color& axisZ) const
 {
     axisX = mObj->gizmoColorAxisX;
@@ -68,6 +75,32 @@ void EditorTheme::get_gizmo_colors(Color& axisX, Color& axisY, Color& axisZ) con
 void EditorTheme::get_gizmo_highlight_color(Color& hl) const
 {
     hl = mObj->gizmoHighlightColor;
+}
+
+UILayoutInfo EditorTheme::make_vbox_layout() const
+{
+    float pad = mObj->padding;
+
+    UILayoutInfo layoutI{};
+    layoutI.childGap = 5.0f;
+    layoutI.childPadding = {pad, pad, pad, pad};
+    layoutI.sizeX = UISize::fit();
+    layoutI.sizeY = UISize::fit();
+    layoutI.childAxis = UI_AXIS_Y;
+    return layoutI;
+}
+
+UILayoutInfo EditorTheme::make_hbox_layout() const
+{
+    float pad = mObj->padding;
+
+    UILayoutInfo layoutI{};
+    layoutI.childGap = 5.0f;
+    layoutI.childPadding = {pad, pad, pad, pad};
+    layoutI.sizeX = UISize::fit();
+    layoutI.sizeY = UISize::fit();
+    layoutI.childAxis = UI_AXIS_X;
+    return layoutI;
 }
 
 /// @brief Editor settings registry
