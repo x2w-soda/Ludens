@@ -1,10 +1,11 @@
 #include <Ludens/Header/GLSL/Common.h>
 #include <Ludens/Header/Math/Vec3.h>
+#include <Ludens/Memory/Memory.h>
 #include <Ludens/RenderBackend/RUtil.h>
 #include <Ludens/RenderComponent/Layout/SetLayouts.h>
 #include <Ludens/RenderComponent/Layout/VertexLayouts.h>
 #include <Ludens/RenderComponent/Pipeline/EquirectangularPipeline.h>
-#include <Ludens/System/Memory.h>
+
 #include <array>
 
 namespace LD {

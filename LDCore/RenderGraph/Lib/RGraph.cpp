@@ -1,9 +1,9 @@
 #include "RGraphObj.h"
 #include <Ludens/Header/Assert.h>
+#include <Ludens/Memory/Memory.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/RenderBackend/RUtil.h>
 #include <Ludens/RenderGraph/RGraph.h>
-#include <Ludens/System/Memory.h>
 #include <algorithm>
 #include <filesystem>
 #include <fstream>

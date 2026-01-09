@@ -2,8 +2,8 @@
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Log/Log.h>
 #include <Ludens/Media/Bitmap.h>
+#include <Ludens/Memory/Memory.h>
 #include <Ludens/Profiler/Profiler.h>
-#include <Ludens/System/Memory.h>
 #include <Ludens/Window/Window.h>
 
 #include <GLFW/glfw3.h>

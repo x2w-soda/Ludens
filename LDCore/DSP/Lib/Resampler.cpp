@@ -1,7 +1,8 @@
 #include <Ludens/DSP/Resampler.h>
 #include <Ludens/Header/Types.h>
+#include <Ludens/Memory/Memory.h>
 #include <Ludens/Profiler/Profiler.h>
-#include <Ludens/System/Memory.h>
+
 #include <samplerate.h> // hide
 #include <vector>
 

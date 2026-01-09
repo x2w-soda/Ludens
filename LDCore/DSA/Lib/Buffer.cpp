@@ -1,6 +1,6 @@
 #include <Ludens/DSA/Buffer.h>
 #include <Ludens/Header/Assert.h>
-#include <Ludens/System/Memory.h>
+#include <Ludens/Memory/Memory.h>
 
 #include <algorithm>
 #include <cstdio>

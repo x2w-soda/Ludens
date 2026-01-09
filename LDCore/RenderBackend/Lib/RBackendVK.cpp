@@ -2,9 +2,9 @@
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Header/Hash.h>
 #include <Ludens/Log/Log.h>
+#include <Ludens/Memory/Memory.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/RenderBackend/RBackend.h>
-#include <Ludens/System/Memory.h>
 
 #include <array>
 #include <cstring>

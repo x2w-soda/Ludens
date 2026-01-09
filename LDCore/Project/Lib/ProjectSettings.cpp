@@ -1,7 +1,7 @@
 #include <Ludens/DSA/IDCounter.h>
 #include <Ludens/Header/Assert.h>
+#include <Ludens/Memory/Memory.h>
 #include <Ludens/Project/ProjectSettings.h>
-#include <Ludens/System/Memory.h>
 
 #include <algorithm>
 

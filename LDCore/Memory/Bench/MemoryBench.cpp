@@ -1,5 +1,5 @@
 #include <Ludens/DataRegistry/DataComponent.h>
-#include <Ludens/System/Allocator.h>
+#include <Ludens/Memory/Allocator.h>
 #include <Ludens/System/Timer.h>
 
 #include <cstdio>

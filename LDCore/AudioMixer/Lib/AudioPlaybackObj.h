@@ -3,7 +3,7 @@
 #include <Ludens/AudioBackend/AudioBackend.h>
 #include <Ludens/AudioMixer/AudioBuffer.h>
 #include <Ludens/AudioMixer/AudioCommand.h>
-#include <Ludens/System/Allocator.h>
+#include <Ludens/Memory/Allocator.h>
 #include <atomic>
 #include <cstdint>
 

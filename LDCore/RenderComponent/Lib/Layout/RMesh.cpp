@@ -1,9 +1,9 @@
 #include <Ludens/Header/Assert.h>
+#include <Ludens/Memory/Memory.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/RenderBackend/RUtil.h>
 #include <Ludens/RenderComponent/Layout/RMesh.h>
 #include <Ludens/RenderComponent/Layout/SetLayouts.h>
-#include <Ludens/System/Memory.h>
 
 namespace LD {
 

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <Ludens/System/Memory.h>
+#include <Ludens/Memory/Memory.h>
 #include <cstring>
 #include <type_traits>
 

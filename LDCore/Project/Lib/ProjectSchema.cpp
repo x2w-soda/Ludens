@@ -1,10 +1,10 @@
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Header/Version.h>
 #include <Ludens/Media/Format/TOML.h>
+#include <Ludens/Memory/Memory.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/Project/ProjectSchema.h>
 #include <Ludens/System/FileSystem.h>
-#include <Ludens/System/Memory.h>
 
 #include <format>
 

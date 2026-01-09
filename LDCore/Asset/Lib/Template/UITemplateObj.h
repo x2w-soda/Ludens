@@ -2,7 +2,7 @@
 
 #include <Ludens/DSA/HashMap.h>
 #include <Ludens/DSA/Vector.h>
-#include <Ludens/System/Allocator.h>
+#include <Ludens/Memory/Allocator.h>
 
 #include <cstdint>
 #include <unordered_map>

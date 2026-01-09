@@ -1,7 +1,7 @@
 #pragma once
 
+#include <Ludens/Memory/Allocator.h>
 #include <Ludens/RenderBackend/RBackend.h>
-#include <Ludens/System/Allocator.h>
 #include <cstdint>
 #include <optional>
 #include <unordered_map>

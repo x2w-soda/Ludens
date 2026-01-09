@@ -1,7 +1,8 @@
 #include <Ludens/Header/Assert.h>
+#include <Ludens/Memory/Memory.h>
 #include <Ludens/RenderBackend/LDShaderCompiler.h>
 #include <Ludens/RenderBackend/LDShaderParser.h>
-#include <Ludens/System/Memory.h>
+
 #include <iostream>
 #include <string>
 

@@ -2,7 +2,7 @@
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Log/Log.h>
 #include <Ludens/Lua/LuaState.h>
-#include <Ludens/System/Memory.h>
+#include <Ludens/Memory/Memory.h>
 #include <cstring>
 
 // hide Lua headers from user

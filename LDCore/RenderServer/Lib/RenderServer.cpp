@@ -2,6 +2,7 @@
 #include <Ludens/DSA/Vector.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Log/Log.h>
+#include <Ludens/Memory/Memory.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/RenderBackend/RBackend.h>
 #include <Ludens/RenderBackend/RUtil.h>
@@ -15,7 +16,6 @@
 #include <Ludens/RenderComponent/ScreenRenderComponent.h>
 #include <Ludens/RenderGraph/RGraph.h>
 #include <Ludens/RenderServer/RenderServer.h>
-#include <Ludens/System/Memory.h>
 
 namespace LD {
 

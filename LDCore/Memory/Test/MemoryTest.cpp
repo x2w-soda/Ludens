@@ -1,9 +1,8 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include "Extra/doctest/doctest.h"
-#include <Ludens/System/Allocator.h>
-#include <Ludens/System/Memory.h>
-#include <unordered_set>
-#include <vector>
+#include <Ludens/DSA/HashSet.h>
+#include <Ludens/DSA/Vector.h>
+#include <Ludens/Memory/Allocator.h>
 
 using namespace LD;
 

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <Ludens/DSA/HeapStorage.h>
-#include <Ludens/System/Memory.h>
+#include <Ludens/Memory/Memory.h>
 #include <cstring>
 
 #define STRING_DEFAULT_LOCAL_STORAGE 12

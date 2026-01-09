@@ -2,10 +2,10 @@
 #include <Ludens/Header/Bitwise.h>
 #include <Ludens/Header/Types.h>
 #include <Ludens/Media/Bitmap.h>
+#include <Ludens/Memory/Memory.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/Serial/Compress.h>
 #include <Ludens/System/FileSystem.h>
-#include <Ludens/System/Memory.h>
 
 #include <cstring>
 #include <vector>

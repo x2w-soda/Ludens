@@ -1,11 +1,12 @@
-#include "Format/TinygltfLoader.h"
-#include "ModelObj.h"
 #include <Ludens/Header/Math/Mat3.h>
 #include <Ludens/Media/Model.h>
+#include <Ludens/Memory/Memory.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/Serial/Serial.h>
-#include <Ludens/System/Memory.h>
 #include <iostream>
+
+#include "Format/TinygltfLoader.h"
+#include "ModelObj.h"
 
 namespace LD {
 

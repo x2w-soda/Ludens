@@ -1,12 +1,11 @@
 #include <Ludens/Asset/Template/UITemplate.h>
+#include <Ludens/DSA/HashMap.h>
+#include <Ludens/DSA/Vector.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Header/Types.h>
 #include <Ludens/Profiler/Profiler.h>
-#include <Ludens/System/Memory.h>
 
 #include <cstdint>
-#include <unordered_map>
-#include <vector>
 
 #include "UITemplateObj.h"
 

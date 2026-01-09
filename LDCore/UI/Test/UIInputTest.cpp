@@ -1,6 +1,6 @@
 #include "UITest.h"
 #include <Extra/doctest/doctest.h>
-#include <Ludens/System/Memory.h>
+#include <Ludens/Memory/Memory.h>
 
 static int sLastKey;
 

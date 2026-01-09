@@ -1,8 +1,8 @@
 #include <Ludens/Header/Math/Mat3.h>
 #include <Ludens/Header/Math/Transform.h>
+#include <Ludens/Memory/Memory.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/RenderServer/ScreenLayer.h>
-#include <Ludens/System/Memory.h>
 
 #include <cstdint>
 #include <cstring>

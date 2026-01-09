@@ -2,7 +2,7 @@
 
 #include <Ludens/Lexer/Token.h>
 #include <Ludens/Lexer/Unicode.h>
-#include <Ludens/System/Allocator.h>
+#include <Ludens/Memory/Allocator.h>
 #include <cctype>
 #include <cstring>
 

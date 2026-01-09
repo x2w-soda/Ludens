@@ -3,8 +3,9 @@
 #include <Ludens/DSA/Buffer.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Header/Math/Vec4.h>
+#include <Ludens/Memory/Memory.h>
 #include <Ludens/Serial/Endianness.h>
-#include <Ludens/System/Memory.h>
+
 #include <cstdint>
 #include <cstring>
 #include <stack>
@@ -118,7 +119,7 @@ public:
 
     /// @brief Begin writing a chunk.
     /// @param name 4 byte chunk name.
-    /// @return Chunk data byte offset. 
+    /// @return Chunk data byte offset.
     inline size_t write_chunk_begin(const char* name)
     {
         mBuffer.write((const byte*)name, 4);

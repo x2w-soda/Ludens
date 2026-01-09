@@ -4,7 +4,7 @@
 #include <Ludens/AudioMixer/AudioCommand.h>
 #include <Ludens/AudioMixer/AudioEffectInfo.h>
 #include <Ludens/AudioMixer/AudioMixer.h>
-#include <Ludens/System/Allocator.h>
+#include <Ludens/Memory/Allocator.h>
 #include <cstdint>
 #include <vector>
 

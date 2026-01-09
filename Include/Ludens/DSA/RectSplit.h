@@ -4,7 +4,7 @@
 #include <Ludens/Header/Directional.h>
 #include <Ludens/Header/Hash.h>
 #include <Ludens/Header/Math/Rect.h>
-#include <Ludens/System/Memory.h>
+#include <Ludens/Memory/Memory.h>
 
 #include <algorithm>
 #include <cstdint>

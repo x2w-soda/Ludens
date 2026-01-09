@@ -1,6 +1,6 @@
 #include <Extra/doctest/doctest.h>
 #include <Ludens/Media/Format/JSON.h>
-#include <Ludens/System/Memory.h>
+#include <Ludens/Memory/Memory.h>
 #include <string>
 
 using namespace LD;

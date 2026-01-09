@@ -1,9 +1,9 @@
+#include <Ludens/Memory/Memory.h>
 #include <Ludens/RenderBackend/RUtil.h>
 #include <Ludens/RenderComponent/Layout/PipelineLayouts.h>
 #include <Ludens/RenderComponent/Layout/SetLayouts.h>
 #include <Ludens/RenderComponent/Layout/VertexLayouts.h>
 #include <Ludens/RenderComponent/Pipeline/LinePipeline.h>
-#include <Ludens/System/Memory.h>
 #include <array>
 #include <vector>
 

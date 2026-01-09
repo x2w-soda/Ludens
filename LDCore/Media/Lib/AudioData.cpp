@@ -1,8 +1,9 @@
-#include "AudioDataObj.h"
 #include <Ludens/Header/Types.h>
 #include <Ludens/Media/AudioData.h>
-#include <Ludens/System/Memory.h>
+#include <Ludens/Memory/Memory.h>
 #include <cstring>
+
+#include "AudioDataObj.h"
 
 // using the standalone decoder API.
 #include <miniaudio.h>

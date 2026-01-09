@@ -1,9 +1,10 @@
-#include "LuaTest.h"
 #include <Extra/doctest/doctest.h>
 #include <Ludens/Header/Math/Vec3.h>
 #include <Ludens/Lua/LuaConfig.h>
-#include <Ludens/System/Memory.h>
+#include <Ludens/Memory/Memory.h>
 #include <cstring>
+
+#include "LuaTest.h"
 
 using namespace LD;
 

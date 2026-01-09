@@ -3,7 +3,7 @@
 #include "LuaTest.h"
 #include <Extra/doctest/doctest.h>
 #include <Ludens/Lua/LuaModule.h>
-#include <Ludens/System/Memory.h>
+#include <Ludens/Memory/Memory.h>
 
 using namespace LD;
 

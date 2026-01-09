@@ -1,7 +1,7 @@
 #include <Extra/doctest/doctest.h>
+#include <Ludens/Memory/Memory.h>
 #include <Ludens/Scene/Scene.h>
 #include <Ludens/Scene/SceneSchema.h>
-#include <Ludens/System/Memory.h>
 
 using namespace LD;
 

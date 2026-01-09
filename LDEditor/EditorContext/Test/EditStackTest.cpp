@@ -1,7 +1,8 @@
-#include "EditorContextTest.h"
 #include <Extra/doctest/doctest.h>
-#include <Ludens/System/Memory.h>
+#include <Ludens/Memory/Memory.h>
 #include <LudensEditor/EditorContext/EditStack.h>
+
+#include "EditorContextTest.h"
 
 using namespace LD;
 

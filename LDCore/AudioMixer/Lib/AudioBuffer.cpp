@@ -4,8 +4,8 @@
 #include <Ludens/DSP/Resampler.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Media/Format/WAV.h>
+#include <Ludens/Memory/Memory.h>
 #include <Ludens/Profiler/Profiler.h>
-#include <Ludens/System/Memory.h>
 #include <cstring>
 
 namespace LD {

@@ -1,10 +1,9 @@
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Header/Bitwise.h>
 #include <Ludens/Header/Hash.h>
+#include <Ludens/Memory/Allocator.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/RenderBackend/LDShaderParser.h>
-#include <Ludens/System/Allocator.h>
-#include <Ludens/System/Memory.h>
 #include <cctype>
 #include <cstring>
 #include <unordered_set>

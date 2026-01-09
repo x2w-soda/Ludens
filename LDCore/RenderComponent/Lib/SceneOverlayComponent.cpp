@@ -1,5 +1,6 @@
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Media/Model.h>
+#include <Ludens/Memory/Memory.h>
 #include <Ludens/RenderBackend/RStager.h>
 #include <Ludens/RenderBackend/RUtil.h>
 #include <Ludens/RenderComponent/Embed/GizmoMesh.h>
@@ -8,7 +9,7 @@
 #include <Ludens/RenderComponent/Pipeline/OutlinePipeline.h>
 #include <Ludens/RenderComponent/Pipeline/RMeshPipeline.h>
 #include <Ludens/RenderComponent/SceneOverlayComponent.h>
-#include <Ludens/System/Memory.h>
+
 #include <string>
 #include <unordered_map>
 

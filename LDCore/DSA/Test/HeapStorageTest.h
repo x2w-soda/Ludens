@@ -2,8 +2,8 @@
 
 #include <Extra/doctest/doctest.h>
 #include <Ludens/DSA/HeapStorage.h>
-#include <Ludens/System/Memory.h>
-#include <optional>
+#include <Ludens/DSA/Optional.h>
+#include <Ludens/Memory/Memory.h>
 #include <type_traits>
 
 using namespace LD;

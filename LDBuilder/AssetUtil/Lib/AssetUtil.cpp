@@ -6,7 +6,7 @@
 #include <Ludens/Asset/AssetType/Texture2DAsset.h>
 #include <Ludens/Asset/AssetType/TextureCubeAsset.h>
 #include <Ludens/Log/Log.h>
-#include <Ludens/System/Memory.h>
+#include <Ludens/Memory/Memory.h>
 #include <LudensBuilder/AssetUtil/AssetUtil.h>
 
 #define LD_ASSET_EXT ".lda"

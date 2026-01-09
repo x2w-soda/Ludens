@@ -3,9 +3,8 @@
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Header/Math/Rect.h>
 #include <Ludens/Media/Format/TOML.h>
+#include <Ludens/Memory/Allocator.h>
 #include <Ludens/Profiler/Profiler.h>
-#include <Ludens/System/Allocator.h>
-#include <Ludens/System/Memory.h>
 
 #include <cstdint>
 #include <iostream>

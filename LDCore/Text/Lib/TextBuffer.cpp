@@ -2,7 +2,7 @@
 #include <Ludens/DSA/String.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Header/Types.h>
-#include <Ludens/System/Memory.h>
+#include <Ludens/Memory/Memory.h>
 #include <Ludens/Text/TextBuffer.h>
 #include <cstdint>
 
@@ -39,7 +39,7 @@ void TextBuffer<T>::set_string(const char* cstr)
     TextBufferObj<T>* obj = this->mObj;
 
     obj->gapBuffer.clear();
-    
+
     if (!cstr)
         return;
 

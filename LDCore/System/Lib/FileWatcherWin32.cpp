@@ -2,8 +2,8 @@
 #ifdef LD_PLATFORM_WIN32
 #include <Ludens/Header/Hash.h>
 #include <Ludens/Log/Log.h>
+#include <Ludens/Memory/Memory.h>
 #include <Ludens/System/FileWatcher.h>
-#include <Ludens/System/Memory.h>
 #include <Windows.h> // hide
 #include <algorithm>
 #include <array>

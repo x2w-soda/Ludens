@@ -1,7 +1,7 @@
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Lua/LuaModule.h>
+#include <Ludens/Memory/Memory.h>
 #include <Ludens/Profiler/Profiler.h>
-#include <Ludens/System/Memory.h>
 #include <string>
 #include <vector>
 

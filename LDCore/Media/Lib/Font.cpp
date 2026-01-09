@@ -1,12 +1,14 @@
-#include "GlyphTable.h"
+#include <Ludens/DSA/Vector.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Media/Bitmap.h>
 #include <Ludens/Media/Font.h>
+#include <Ludens/Memory/Memory.h>
 #include <Ludens/Profiler/Profiler.h>
-#include <Ludens/System/Memory.h>
+
 #include <algorithm>
 #include <msdf-atlas-gen/msdf-atlas-gen.h> // hide from user
-#include <vector>
+
+#include "GlyphTable.h"
 
 #define MAX_CORNER_ANGLE 3.0
 #define GENERATOR_THREAD_COUNT 4

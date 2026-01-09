@@ -3,9 +3,9 @@
 #include <Ludens/Header/Math/Math.h>
 #include <Ludens/Lua/LuaModule.h>
 #include <Ludens/Lua/LuaState.h>
+#include <Ludens/Memory/Memory.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/Scene/Scene.h>
-#include <Ludens/System/Memory.h>
 
 #include <iostream>
 #include <vector>

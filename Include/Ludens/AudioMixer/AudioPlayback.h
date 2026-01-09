@@ -2,7 +2,7 @@
 
 #include <Ludens/AudioBackend/AudioBackend.h>
 #include <Ludens/AudioMixer/AudioBuffer.h>
-#include <Ludens/System/Allocator.h>
+#include <Ludens/Memory/Allocator.h>
 #include <cstdint>
 
 namespace LD {

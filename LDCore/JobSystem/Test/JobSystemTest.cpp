@@ -1,7 +1,7 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <Extra/doctest/doctest.h>
 #include <Ludens/JobSystem/JobSystem.h>
-#include <Ludens/System/Memory.h>
+#include <Ludens/Memory/Memory.h>
 
 using namespace LD;
 

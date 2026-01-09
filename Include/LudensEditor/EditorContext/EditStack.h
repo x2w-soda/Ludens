@@ -1,7 +1,7 @@
 #pragma once
 
 #include <Ludens/Header/Handle.h>
-#include <Ludens/System/Memory.h>
+#include <Ludens/Memory/Memory.h>
 
 namespace LD {
 

@@ -1,9 +1,9 @@
 #include <Ludens/Header/Types.h>
 #include <Ludens/Media/Format/WAV.h>
+#include <Ludens/Memory/Memory.h>
 #include <Ludens/System/FileSystem.h>
-#include <Ludens/System/Memory.h>
-#include "../AudioDataObj.h"
 
+#include "../AudioDataObj.h"
 
 namespace LD {
 

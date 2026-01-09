@@ -1,9 +1,9 @@
 #include <Ludens/Header/Platform.h>
 #ifdef LD_PLATFORM_WIN32
 #include <Ludens/Header/Assert.h>
+#include <Ludens/Memory/Memory.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/System/DropManager.h>
-#include <Ludens/System/Memory.h>
 
 #include <vector>
 
@@ -111,7 +111,7 @@ HRESULT STDMETHODCALLTYPE DropTargetWin32::Drop(IDataObject* pDataObj, DWORD, PO
         {
             UINT fileCount = DragQueryFileW(hDrop, 0xFFFFFFFF, nullptr, 0);
             std::vector<FS::Path> files((size_t)fileCount);
-            
+
             for (UINT i = 0; i < fileCount; ++i)
             {
                 DragQueryFileW(hDrop, i, path, MAX_PATH);

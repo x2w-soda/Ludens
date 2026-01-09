@@ -4,7 +4,7 @@
 #include <Extra/doctest/doctest.h>
 #include <Ludens/DSA/Buffer.h>
 #include <Ludens/Lua/LuaState.h>
-#include <Ludens/System/Memory.h>
+#include <Ludens/Memory/Memory.h>
 #include <limits>
 
 using namespace LD;

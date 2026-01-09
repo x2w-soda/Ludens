@@ -1,10 +1,11 @@
 #include <Ludens/Header/GLSL/Common.h>
 #include <Ludens/Header/Math/Mat4.h>
+#include <Ludens/Memory/Memory.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/RenderBackend/RUtil.h>
 #include <Ludens/RenderComponent/Layout/SetLayouts.h>
 #include <Ludens/RenderComponent/Pipeline/SkyboxPipeline.h>
-#include <Ludens/System/Memory.h>
+
 #include <array>
 #include <vector>
 

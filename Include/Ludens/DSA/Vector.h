@@ -1,7 +1,6 @@
 #pragma once
 
 #include <Ludens/DSA/HeapStorage.h>
-#include <Ludens/System/Memory.h>
 
 #include <utility>
 #include <vector>

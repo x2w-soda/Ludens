@@ -8,8 +8,8 @@
 #include <Ludens/Header/Bitwise.h>
 #include <Ludens/Header/Math/Vec2.h>
 #include <Ludens/Media/Font.h>
+#include <Ludens/Memory/Allocator.h>
 #include <Ludens/RenderBackend/RBackend.h>
-#include <Ludens/System/Allocator.h>
 #include <Ludens/Text/TextBuffer.h>
 #include <Ludens/UI/UIAnimation.h>
 #include <Ludens/UI/UIContext.h>

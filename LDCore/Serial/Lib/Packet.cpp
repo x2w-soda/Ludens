@@ -1,9 +1,10 @@
+#include <Ludens/DSA/Vector.h>
 #include <Ludens/Header/Hash.h>
+#include <Ludens/Memory/Memory.h>
 #include <Ludens/Serial/Endianness.h>
 #include <Ludens/Serial/Packet.h>
-#include <Ludens/System/Memory.h>
+
 #include <format>
-#include <vector>
 
 namespace LD {
 

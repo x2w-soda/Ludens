@@ -1,11 +1,12 @@
 #pragma once
 
+#include <Ludens/DSA/Vector.h>
 #include <Ludens/DataRegistry/DataComponent.h>
 #include <Ludens/Header/Handle.h>
 #include <Ludens/Header/Hash.h>
-#include <Ludens/System/Allocator.h>
+#include <Ludens/Memory/Allocator.h>
+
 #include <cstdint>
-#include <vector>
 
 namespace LD {
 

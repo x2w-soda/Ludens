@@ -1,7 +1,7 @@
 #include <Extra/doctest/doctest.h>
 #include <Ludens/Header/Math/Math.h>
 #include <Ludens/Media/Format/TOML.h>
-#include <Ludens/System/Memory.h>
+#include <Ludens/Memory/Memory.h>
 #include <cstring>
 #include <iostream>
 #include <string>

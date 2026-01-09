@@ -2,7 +2,7 @@
 #include <Extra/doctest/doctest.h>
 #include <LDUtil/LudensLFS/Include/LudensLFS.h>
 #include <Ludens/Header/Assert.h>
-#include <Ludens/System/Memory.h>
+#include <Ludens/Memory/Memory.h>
 #include <Ludens/UI/UIContext.h>
 #include <Ludens/UI/UILayout.h>
 

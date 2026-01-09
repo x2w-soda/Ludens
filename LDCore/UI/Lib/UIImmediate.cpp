@@ -5,8 +5,7 @@
 #include <Ludens/Header/Hash.h>
 #include <Ludens/Header/Impulse.h>
 #include <Ludens/Header/Types.h>
-#include <Ludens/System/Allocator.h>
-#include <Ludens/System/Memory.h>
+#include <Ludens/Memory/Allocator.h>
 #include <Ludens/UI/UIImmediate.h>
 
 #define LD_ASSERT_UI_FRAME_BEGIN LD_ASSERT(sImFrame.ctx && "ui_frame_begin not called")

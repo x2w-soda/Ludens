@@ -1,10 +1,11 @@
-#include "CameraCommon.h"
 #include <Ludens/Camera/CameraController.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Header/Math/Math.h>
 #include <Ludens/Header/Math/Vec2.h>
-#include <Ludens/System/Memory.h>
+#include <Ludens/Memory/Memory.h>
 #include <algorithm>
+
+#include "CameraCommon.h"
 
 namespace LD {
 

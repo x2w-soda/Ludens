@@ -1,6 +1,7 @@
-#include "LuaAST.h"
+#include <Ludens/Memory/Memory.h>
 #include <Ludens/Profiler/Profiler.h>
-#include <Ludens/System/Memory.h>
+
+#include "LuaAST.h"
 
 namespace LD {
 
@@ -177,7 +178,7 @@ LuaNode* LuaParserObj::parse_expr_list(LuaToken* now)
 
     LuaNode* list = new_node(LUA_NODE_EXPR_LIST, nullptr);
     list->lch = dummy.next;
-    
+
     mNow = now;
     return list;
 }

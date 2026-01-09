@@ -1,7 +1,7 @@
 #include <Extra/doctest/doctest.h>
+#include <Ludens/Memory/Memory.h>
 #include <Ludens/Project/Project.h>
 #include <Ludens/Project/ProjectSchema.h>
-#include <Ludens/System/Memory.h>
 #include <cstring>
 
 using namespace LD;

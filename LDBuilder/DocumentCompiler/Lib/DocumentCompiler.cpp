@@ -1,10 +1,8 @@
+#include <Ludens/DSA/HashMap.h>
 #include <Ludens/Header/Hash.h>
 #include <Ludens/Media/Format/XML.h>
-#include <Ludens/System/Allocator.h>
-#include <Ludens/System/Memory.h>
+#include <Ludens/Memory/Allocator.h>
 #include <LudensBuilder/DocumentCompiler/DocumentCompiler.h>
-
-#include <unordered_map>
 
 namespace fs = std::filesystem;
 

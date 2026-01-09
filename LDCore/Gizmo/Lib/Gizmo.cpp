@@ -1,7 +1,8 @@
 #include <Ludens/Gizmo/Gizmo.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Header/Math/Geometry.h>
-#include <Ludens/System/Memory.h>
+#include <Ludens/Memory/Memory.h>
+
 #include <algorithm>
 #include <cmath>
 

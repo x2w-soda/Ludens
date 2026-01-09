@@ -1,6 +1,6 @@
-#include <Ludens/System/Memory.h>
+#include <Ludens/DSA/Vector.h>
+#include <Ludens/Memory/Memory.h>
 #include <LudensEditor/EditorContext/EditStack.h>
-#include <vector>
 
 namespace LD {
 

@@ -1,6 +1,6 @@
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Header/Types.h>
-#include <Ludens/System/Allocator.h>
+#include <Ludens/Memory/Allocator.h>
 
 namespace LD {
 
@@ -160,7 +160,7 @@ struct PoolAllocatorObj
 
                 block = (PoolAllocatorObj::Block*)((byte*)block + obj->blockSize);
             }
-            
+
             return nullptr;
         }
 
