@@ -27,7 +27,7 @@ Path current_path();
 bool get_directory_content(const Path& directory, Vector<Path>& contents, std::string& err);
 
 /// @brief Get file size in bytes.
-uint64_t get_file_size(const Path& path);
+bool get_file_size(const Path& path, uint64_t& size, std::string& err);
 
 /// @brief Read whole file into user provided view.
 /// @return Number of bytes read on success.

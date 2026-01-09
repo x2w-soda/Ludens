@@ -69,11 +69,11 @@ void Texture2DAssetObj::load(void* user)
     auto& job = *(AssetLoadJob*)user;
     Texture2DAssetObj* obj = (Texture2DAssetObj*)job.assetHandle.unwrap();
 
-    uint64_t serialSize = FS::get_file_size(job.loadPath);
-    if (serialSize == 0)
+    std::string err; // TODO:
+    uint64_t serialSize;
+    if (!FS::get_file_size(job.loadPath, serialSize, err) || serialSize == 0)
         return;
 
-    std::string err; // TODO:
     obj->serialData = heap_malloc(serialSize, MEMORY_USAGE_ASSET);
     if (!FS::read_file(job.loadPath, MutView((char*)obj->serialData, serialSize), err))
         return;
@@ -162,14 +162,15 @@ void Texture2DAssetImportJob::execute(void* user)
 
     serialize_samp(serial, obj->samplerHint);
 
+    std::string err; // TODO:
     const FS::Path& path = self.info.sourcePath;
-    uint64_t fileSize = FS::get_file_size(path);
+    uint64_t fileSize;
+    bool ok = FS::get_file_size(path, fileSize, err);
     obj->fileSize = fileSize;
 
     size_t fileDataOffset = serial.write_chunk_begin("FILE");
     byte* fileData = serial.advance(fileSize);
 
-    std::string err;
     if (!FS::read_file(path, MutView((char*)fileData, fileSize), err))
         return; // TODO: fix leaks
 
@@ -180,7 +181,7 @@ void Texture2DAssetImportJob::execute(void* user)
     // only retrieve address after serializer has completed all writes
     obj->fileData = serialView.data + fileDataOffset;
 
-    bool ok = FS::write_file(self.info.savePath, serialView, err);
+    ok = FS::write_file(self.info.savePath, serialView, err);
     LD_ASSERT(ok); // TODO:
 
     obj->bitmap = Bitmap::create_from_file_data(obj->fileSize, obj->fileData);

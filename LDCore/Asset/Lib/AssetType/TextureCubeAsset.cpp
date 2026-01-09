@@ -97,11 +97,11 @@ void TextureCubeAssetObj::load(void* user)
     auto& job = *(AssetLoadJob*)user;
     TextureCubeAssetObj* obj = (TextureCubeAssetObj*)job.assetHandle.unwrap();
 
-    uint64_t fileSize = FS::get_file_size(job.loadPath);
-    if (fileSize == 0)
+    std::string err; // TODO:
+    uint64_t fileSize;
+    if (!FS::get_file_size(job.loadPath, fileSize, err) || fileSize == 0)
         return;
 
-    std::string err; // TODO:
     obj->serialData = heap_malloc(fileSize, MEMORY_USAGE_ASSET);
     if (!FS::read_file(job.loadPath, MutView((char*)obj->serialData, fileSize), err))
         return;
@@ -180,7 +180,10 @@ void TextureCubeAssetImportJob::execute(void* user)
     for (int i = 0; i < 6; i++)
     {
         const FS::Path& path = self.info.sourcePaths[i];
-        uint64_t fileSize = FS::get_file_size(path);
+        uint64_t fileSize;
+        if (!FS::get_file_size(path, fileSize, err))
+            return;
+
         obj->fileSize[i] = fileSize;
 
         fileDataOffsets[i] = serial.write_chunk_begin(sFaceChunkNames[i]);

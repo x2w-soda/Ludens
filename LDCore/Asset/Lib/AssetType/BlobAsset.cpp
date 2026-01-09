@@ -13,11 +13,11 @@ void BlobAssetObj::load(void* assetLoadJob)
     auto& job = *(AssetLoadJob*)assetLoadJob;
     auto* obj = (BlobAssetObj*)job.assetHandle.unwrap();
 
-    uint64_t fileSize = FS::get_file_size(job.loadPath);
-    if (fileSize == 0)
+    std::string err; // TODO:
+    uint64_t fileSize;
+    if (!FS::get_file_size(job.loadPath, fileSize, err) || fileSize == 0)
         return;
 
-    std::string err; // TODO:
     obj->fileData = heap_malloc(fileSize, MEMORY_USAGE_ASSET);
     if (!FS::read_file(job.loadPath, MutView((char*)obj->data, fileSize), err))
         return;
@@ -79,10 +79,11 @@ void BlobAssetImportJob::execute(void* user)
     }
     else
     {
-        size_t fileSize = FS::get_file_size(self.info.sourcePath);
+        size_t fileSize;
+        bool ok = FS::get_file_size(self.info.sourcePath, fileSize, err);
         obj->dataSize = (uint64_t)fileSize;
         obj->data = heap_malloc(obj->dataSize, MEMORY_USAGE_ASSET);
-        bool ok = FS::read_file(self.info.sourcePath, MutView((char*)obj->data, obj->dataSize), err);
+        ok = FS::read_file(self.info.sourcePath, MutView((char*)obj->data, obj->dataSize), err);
     }
 
     // save asset to disk

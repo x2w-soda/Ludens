@@ -51,8 +51,8 @@ void LuaScriptAssetObj::load(void* user)
     }
 
     FS::Path sourcePath = job.loadPath.replace_extension(".lua");
-    uint64_t fileSize = FS::get_file_size(sourcePath);
-    if (fileSize == 0)
+    uint64_t fileSize;
+    if (!FS::get_file_size(sourcePath, fileSize, err) || fileSize == 0)
         return;
 
     obj->sourcePath = heap_strdup(sourcePath.string().c_str(), MEMORY_USAGE_ASSET);

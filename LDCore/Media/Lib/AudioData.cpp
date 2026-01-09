@@ -82,11 +82,11 @@ AudioData AudioData::create_from_path(const FS::Path& path)
     if (!path.has_extension() || !FS::exists(path))
         return {};
 
-    uint64_t fileSize = FS::get_file_size(path);
-    if (fileSize == 0)
+    std::string err; // TODO:
+    uint64_t fileSize;
+    if (!FS::get_file_size(path, fileSize, err) || fileSize == 0)
         return {};
 
-    std::string err;
     Vector<char> fileData(fileSize);
     std::string ext = path.extension().string();
     if (!FS::read_file(path, MutView(fileData.data(), fileSize), err))

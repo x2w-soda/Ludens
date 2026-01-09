@@ -52,12 +52,20 @@ bool get_directory_content(const Path& directory, Vector<Path>& contents, std::s
     return true;
 }
 
-uint64_t get_file_size(const Path& path)
+bool get_file_size(const Path& path, uint64_t& size, std::string& err)
 {
-    if (!fs::exists(path))
-        return 0;
+    err.clear();
 
-    return (uint64_t)fs::file_size(path);
+    try
+    {
+        size = (uint64_t)fs::file_size(path);
+    }
+    catch (fs::filesystem_error& e)
+    {
+        err = e.what();
+    }
+
+    return err.empty();
 }
 
 uint64_t read_file(const Path& path, const MutView& view, std::string& err)
@@ -120,16 +128,17 @@ bool read_file_to_vector(const FS::Path& path, Vector<byte>& v, std::string& err
 {
     LD_PROFILE_SCOPE;
 
-    uint64_t fileSize = get_file_size(path);
-    if (fileSize == 0)
-    {
-        err = std::format("failed to read file [{}]", path.string());
+    uint64_t fileSize;
+    if (!get_file_size(path, fileSize, err))
         return false;
-    }
 
+    // note that empty file of size 0 is not an error.
     v.resize(fileSize);
 
-    return read_file(path, MutView((char*)v.data(), fileSize), err) > 0;
+    if (fileSize > 0)
+        read_file(path, MutView((char*)v.data(), fileSize), err);
+
+    return err.empty();
 }
 
 bool write_file(const Path& path, const View& view, std::string& err)

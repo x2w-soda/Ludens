@@ -15,15 +15,15 @@ void UITemplateAssetObj::load(void* user)
 
     obj->tmpl = UITemplate::create();
 
-    uint64_t fileSize = FS::get_file_size(job.loadPath);
-    if (fileSize == 0)
+    std::string err; // TODO:
+    uint64_t fileSize;
+    if (!FS::get_file_size(job.loadPath, fileSize, err) || fileSize == 0)
     {
         UITemplate::destroy(obj->tmpl);
         obj->tmpl = {};
         return;
     }
 
-    std::string err; // TODO:
     Serializer serializer(fileSize);
     if (!FS::read_file(job.loadPath, MutView((char*)serializer.data(), fileSize), err))
         return;

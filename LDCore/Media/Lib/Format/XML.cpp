@@ -335,20 +335,22 @@ XMLDocument XMLDocument::create()
 
 XMLDocument XMLDocument::create_from_file(const std::filesystem::path& path)
 {
-    if (!FS::exists(path))
+    std::string err; // TODO:
+    uint64_t fileSize;
+    if (!FS::get_file_size(path, fileSize, err))
         return {};
 
     XMLDocument doc = XMLDocument::create();
     XMLDocumentObj* obj = doc;
 
-    std::string err; // TODO:
-    uint64_t fileSize = FS::get_file_size(path);
     obj->fileBuffer = (byte*)heap_malloc(fileSize, MEMORY_USAGE_MEDIA);
     bool ok = FS::read_file(path, MutView((char*)obj->fileBuffer, fileSize), err);
 
     if (!ok)
     {
         XMLDocument::destroy(doc);
+        heap_free(obj->fileBuffer);
+        obj->fileBuffer = nullptr;
         return {};
     }
 
