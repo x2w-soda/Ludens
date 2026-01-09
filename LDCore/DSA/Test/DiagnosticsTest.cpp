@@ -8,13 +8,13 @@ TEST_CASE("Diagnostics")
     Diagnostics diag;
     CHECK(diag.depth() == 0);
     {
-        DiagnosticScope s1(&diag, "scope1");
+        DiagnosticScope s1(diag, "scope1");
         CHECK(diag.depth() == 1);
         {
-            DiagnosticScope s2(&diag, "scope2");
+            DiagnosticScope s2(diag, "scope2");
             CHECK(diag.depth() == 2);
             {
-                DiagnosticScope s3(&diag, "scope3");
+                DiagnosticScope s3(diag, "scope3");
                 CHECK(diag.depth() == 3);
             }
             CHECK(diag.depth() == 2);
@@ -45,4 +45,33 @@ TEST_CASE("Diagnostics error at depth 0")
     CHECK(errScopes.empty());
     CHECK(errMsg == "failing at depth 0");
     CHECK(diag.depth() == 0);
+}
+
+static bool fn_depth(int depth, Diagnostics& diag)
+{
+    DiagnosticScope scope(diag, std::to_string(depth));
+
+    if (depth >= 3)
+    {
+        diag.mark_error("max depth reached");
+        return false;
+    }
+
+    return fn_depth(depth + 1, diag);
+}
+
+TEST_CASE("Diagnostics function return")
+{
+    Diagnostics diag;
+    bool ok = fn_depth(1, diag);
+    CHECK(!ok);
+
+    Vector<std::string> errScopes;
+    std::string errMsg;
+    CHECK(diag.get_error(errScopes, errMsg));
+    CHECK(errMsg == "max depth reached");
+    CHECK(errScopes.size() == 3);
+    CHECK(errScopes[0] == "1");
+    CHECK(errScopes[1] == "2");
+    CHECK(errScopes[2] == "3");
 }

@@ -104,7 +104,7 @@ uint64_t read_file(const Path& path, const MutView& view, std::string& err)
 uint64_t read_file(const Path& path, const MutView& view, Diagnostics& diag)
 {
     std::string err;
-    DiagnosticScope scope(&diag, __func__);
+    DiagnosticScope scope(diag, __func__);
     uint64_t readSize = read_file(path, view, err);
 
     if (readSize == 0)
@@ -159,7 +159,7 @@ bool write_file(const Path& path, const View& view, std::string& err)
 bool write_file(const Path& path, const View& view, Diagnostics& diag)
 {
     std::string err;
-    DiagnosticScope scope(&diag, __func__);
+    DiagnosticScope scope(diag, __func__);
 
     if (!write_file(path, view, err))
     {

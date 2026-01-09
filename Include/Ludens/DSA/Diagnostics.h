@@ -11,7 +11,8 @@ class DiagnosticScope
 {
 public:
     DiagnosticScope() = delete;
-    DiagnosticScope(Diagnostics* diag, const char* name);
+    DiagnosticScope(Diagnostics& diag, const char* name);
+    DiagnosticScope(Diagnostics& diag, const std::string& name);
     DiagnosticScope(const DiagnosticScope&) = delete;
     DiagnosticScope(DiagnosticScope&&) = delete;
     ~DiagnosticScope();

@@ -3,8 +3,14 @@
 
 namespace LD {
 
-DiagnosticScope::DiagnosticScope(Diagnostics* diag, const char* name)
-    : mDiag(diag), mName(name)
+DiagnosticScope::DiagnosticScope(Diagnostics& diag, const char* name)
+    : mDiag(&diag), mName(name)
+{
+    mDiag->push_scope(this);
+}
+
+DiagnosticScope::DiagnosticScope(Diagnostics& diag, const std::string& name)
+    : mDiag(&diag), mName(name)
 {
     mDiag->push_scope(this);
 }
