@@ -81,9 +81,9 @@ AudioBuffer AudioBuffer::create_from_wav(const FS::Path& path)
     if (!FS::exists(path))
         return {};
 
-    uint64_t fileSize = FS::get_file_size(path);
-    std::vector<byte> bytes(fileSize);
-    if (fileSize == 0 || !FS::read_file(path, fileSize, bytes.data()))
+    std::string err; // TODO:
+    std::vector<byte> bytes;
+    if (!FS::read_file_to_vector(path, bytes, err))
         return {};
 
     WAVData wav = WAVData::create(bytes.data(), bytes.size());

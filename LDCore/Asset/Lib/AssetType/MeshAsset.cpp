@@ -17,8 +17,9 @@ void MeshAssetObj::load(void* user)
 
     obj->modelBinary = heap_new<ModelBinary>(MEMORY_USAGE_ASSET);
 
+    std::string err; // TODO:
     std::vector<byte> tmp;
-    if (!FS::read_file_to_vector(job.loadPath, tmp) || tmp.empty())
+    if (!FS::read_file_to_vector(job.loadPath, tmp, err))
         return;
 
     Deserializer serial(tmp.data(), tmp.size());

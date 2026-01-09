@@ -1,3 +1,4 @@
+#include <Ludens/DSA/Vector.h>
 #include <Ludens/Header/Types.h>
 #include <Ludens/Media/AudioData.h>
 #include <Ludens/Memory/Memory.h>
@@ -85,9 +86,10 @@ AudioData AudioData::create_from_path(const FS::Path& path)
     if (fileSize == 0)
         return {};
 
-    std::vector<byte> fileData(fileSize);
+    std::string err;
+    Vector<char> fileData(fileSize);
     std::string ext = path.extension().string();
-    if (!FS::read_file(path, fileSize, fileData.data()))
+    if (!FS::read_file(path, MutView(fileData.data(), fileSize), err))
         return {};
 
     AudioDataFormat format{};

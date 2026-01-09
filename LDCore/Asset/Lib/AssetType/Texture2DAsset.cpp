@@ -73,8 +73,9 @@ void Texture2DAssetObj::load(void* user)
     if (serialSize == 0)
         return;
 
+    std::string err; // TODO:
     obj->serialData = heap_malloc(serialSize, MEMORY_USAGE_ASSET);
-    if (!FS::read_file(job.loadPath, serialSize, (byte*)obj->serialData))
+    if (!FS::read_file(job.loadPath, MutView((char*)obj->serialData, serialSize), err))
         return;
 
     Deserializer serial(obj->serialData, serialSize);
@@ -168,12 +169,12 @@ void Texture2DAssetImportJob::execute(void* user)
     size_t fileDataOffset = serial.write_chunk_begin("FILE");
     byte* fileData = serial.advance(fileSize);
 
-    if (!FS::read_file(path, fileSize, fileData) || fileSize == 0)
+    std::string err;
+    if (!FS::read_file(path, MutView((char*)fileData, fileSize), err))
         return; // TODO: fix leaks
 
     serial.write_chunk_end();
 
-    std::string err;
     View serialView = serial.view();
 
     // only retrieve address after serializer has completed all writes

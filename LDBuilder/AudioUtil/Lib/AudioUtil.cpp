@@ -52,16 +52,15 @@ bool AudioUtil::resample(const std::filesystem::path& srcFile, const std::filesy
         return false;
     }
 
-    uint64_t byteSize;
-    if (!FS::read_file(srcFile, byteSize, nullptr))
+    std::string err; // TODO:
+    Vector<byte> file;
+    if (!FS::read_file_to_vector(srcFile, file, err))
     {
-        sLog.warn("failed to open file [{}]", srcFile.string());
+        sLog.warn("{}", err);
         return false;
     }
 
-    std::vector<byte> fileData(byteSize);
-    FS::read_file(srcFile, byteSize, fileData.data());
-    WAVData wav = WAVData::create(fileData.data(), fileData.size());
+    WAVData wav = WAVData::create(file.data(), file.size());
 
     if (!wav)
     {
@@ -87,8 +86,7 @@ bool AudioUtil::resample(const std::filesystem::path& srcFile, const std::filesy
     uint32_t dstFrameCount = dstSampleCount / channels;
     uint32_t srcFrameCount = srcSampleCount / channels;
 
-    byteSize = (uint64_t)sample_format_byte_size(format, dstSampleCount);
-    std::vector<byte> dstSamples(byteSize);
+    std::vector<byte> dstSamples(sample_format_byte_size(format, dstSampleCount));
 
     ResamplerProcessInfo processI{};
     processI.srcSampleRate = (float)srcSampleRate;

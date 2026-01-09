@@ -101,8 +101,9 @@ void TextureCubeAssetObj::load(void* user)
     if (fileSize == 0)
         return;
 
+    std::string err; // TODO:
     obj->serialData = heap_malloc(fileSize, MEMORY_USAGE_ASSET);
-    if (!FS::read_file(job.loadPath, fileSize, (byte*)obj->serialData))
+    if (!FS::read_file(job.loadPath, MutView((char*)obj->serialData, fileSize), err))
         return;
 
     Deserializer serial(obj->serialData, fileSize);
@@ -173,6 +174,7 @@ void TextureCubeAssetImportJob::execute(void* user)
     asset_header_write(serial, ASSET_TYPE_TEXTURE_CUBE);
     serialize_samp(serial, obj->samplerHint);
 
+    std::string err; // TODO:
     size_t fileDataOffsets[6];
 
     for (int i = 0; i < 6; i++)
@@ -184,7 +186,7 @@ void TextureCubeAssetImportJob::execute(void* user)
         fileDataOffsets[i] = serial.write_chunk_begin(sFaceChunkNames[i]);
 
         byte* fileData = serial.advance(fileSize);
-        if (!FS::read_file(path, fileSize, fileData) || fileSize == 0)
+        if (!FS::read_file(path, MutView((char*)fileData, fileSize), err))
             return; // TODO: fix leaks
 
         serial.write_chunk_end();
@@ -196,7 +198,6 @@ void TextureCubeAssetImportJob::execute(void* user)
     for (int i = 0; i < 6; i++)
         obj->fileData[i] = serialView.data + fileDataOffsets[i];
 
-    std::string err;
     bool ok = FS::write_file(self.info.savePath, serialView, err);
     LD_ASSERT(ok); // TODO:
 

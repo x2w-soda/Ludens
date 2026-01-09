@@ -291,10 +291,9 @@ void AssetManagerObj::on_asset_modified(const FS::Path& path, AUID id, void* use
     {
         LuaScriptAsset scriptA(assetObj);
 
-        uint64_t fileSize = FS::get_file_size(path);
-        Buffer buf;
-        buf.resize(fileSize);
-        if (fileSize > 0 && FS::read_file(path, fileSize, buf.data()))
+        std::string err;
+        Vector<byte> buf;
+        if (FS::read_file_to_vector(path, buf, err))
         {
             scriptA.set_source((const char*)buf.data(), (size_t)buf.size());
         }

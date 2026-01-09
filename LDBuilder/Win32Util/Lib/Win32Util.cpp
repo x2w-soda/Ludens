@@ -31,8 +31,9 @@ bool Win32Util::patch_icon_resources(const FS::Path& path, const FS::Path& icoPa
 {
     std::string icoPathStr = path.string();
 
+    std::string err; // TODO:
     std::vector<byte> icoData;
-    if (!FS::read_file_to_vector(icoPath, icoData))
+    if (!FS::read_file_to_vector(icoPath, icoData, err))
     {
         sLog.error("failed to open {}", icoPathStr);
         return false;

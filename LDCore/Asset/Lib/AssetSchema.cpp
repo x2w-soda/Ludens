@@ -200,7 +200,7 @@ bool AssetSchema::load_registry_from_file(AssetRegistry registry, const FS::Path
     LD_PROFILE_SCOPE;
 
     Vector<byte> toml;
-    if (!FS::read_file_to_vector(tomlPath, toml))
+    if (!FS::read_file_to_vector(tomlPath, toml, err))
         return false;
 
     View tomlView((const char*)toml.data(), toml.size());
@@ -220,7 +220,7 @@ bool AssetSchema::save_registry(AssetRegistry registry, const FS::Path& savePath
     if (!saver.save_registry(registry, toml, err))
         return false;
 
-    return FS::write_file_and_swap_backup(savePath, toml.size(), (const byte*)toml.data(), err);
+    return FS::write_file_and_swap_backup(savePath, View(toml.data(), toml.size()), err);
 }
 
 } // namespace LD

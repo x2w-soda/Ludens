@@ -17,8 +17,9 @@ void BlobAssetObj::load(void* assetLoadJob)
     if (fileSize == 0)
         return;
 
+    std::string err; // TODO:
     obj->fileData = heap_malloc(fileSize, MEMORY_USAGE_ASSET);
-    if (!FS::read_file(job.loadPath, fileSize, (byte*)obj->data))
+    if (!FS::read_file(job.loadPath, MutView((char*)obj->data, fileSize), err))
         return;
 
     Deserializer serial(obj->fileData, fileSize);
@@ -68,6 +69,8 @@ void BlobAssetImportJob::execute(void* user)
     auto& self = *(BlobAssetImportJob*)user;
     auto* obj = (BlobAssetObj*)self.asset.unwrap();
 
+    std::string err; // TODO:
+
     if (self.info.sourceData)
     {
         obj->dataSize = self.info.sourceDataSize;
@@ -79,7 +82,7 @@ void BlobAssetImportJob::execute(void* user)
         size_t fileSize = FS::get_file_size(self.info.sourcePath);
         obj->dataSize = (uint64_t)fileSize;
         obj->data = heap_malloc(obj->dataSize, MEMORY_USAGE_ASSET);
-        bool ok = FS::read_file(self.info.sourcePath, obj->dataSize, (byte*)obj->data);
+        bool ok = FS::read_file(self.info.sourcePath, MutView((char*)obj->data, obj->dataSize), err);
     }
 
     // save asset to disk
@@ -89,7 +92,6 @@ void BlobAssetImportJob::execute(void* user)
     serializer.write_u64(obj->dataSize);
     serializer.write((const byte*)obj->data, (size_t)obj->dataSize);
 
-    std::string err;
     View serialView = serializer.view();
     bool ok = FS::write_file(self.info.savePath, serialView, err);
     LD_ASSERT(ok); // TODO: asset import error

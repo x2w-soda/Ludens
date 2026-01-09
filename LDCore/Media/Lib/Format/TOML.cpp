@@ -318,11 +318,8 @@ bool TOMLParser::parse(TOMLDocument dst, const View& view, std::string& error)
 static bool parse_from_file(TOMLDocument dst, const FS::Path& path, std::string& error)
 {
     std::vector<byte> file;
-    if (!FS::read_file_to_vector(path, file))
-    {
-        error = "failed to open file";
+    if (!FS::read_file_to_vector(path, file, error))
         return false;
-    }
 
     return TOMLParser::parse(dst, View((const char*)file.data(), file.size()), error);
 }

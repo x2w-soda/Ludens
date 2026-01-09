@@ -1,21 +1,23 @@
+#include <Ludens/DSA/Diagnostics.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/System/FileSystem.h>
+
 #include <algorithm>
 #include <cstring>
 #include <format>
 #include <fstream>
 
+namespace fs = std::filesystem;
+
 namespace LD {
 namespace FS {
-
-namespace fs = std::filesystem;
 
 Path current_path()
 {
     return fs::current_path();
 }
 
-bool get_directory_content(const Path& directory, std::vector<Path>& contents, std::string& err)
+bool get_directory_content(const Path& directory, Vector<Path>& contents, std::string& err)
 {
     if (!fs::exists(directory))
     {
@@ -58,48 +60,87 @@ uint64_t get_file_size(const Path& path)
     return (uint64_t)fs::file_size(path);
 }
 
-bool read_file(const Path& path, uint64_t& size, byte* buf)
+uint64_t read_file(const Path& path, const MutView& view, std::string& err)
 {
     LD_PROFILE_SCOPE;
 
+    if (!view.data)
+    {
+        err = "cant write to null view data";
+        return false;
+    }
+
+    if (!fs::exists(path))
+    {
+        err = std::format("file path [{}] does not exist", path.string());
+        return false;
+    }
+
     std::ifstream file(path, std::ios::binary);
 
-    if (!fs::exists(path) || !file.is_open())
+    if (!file.is_open())
+    {
+        err = std::format("failed to open file [{}]", path.string());
         return false;
+    }
 
     file.seekg(0, std::ios::end);
     std::streamsize fsize = file.tellg();
 
-    if (buf)
+    if (view.size < (uint64_t)fsize)
     {
-        file.seekg(0, std::ios::beg);
-        file.read((char*)buf, fsize);
+        err = std::format("cant write to view of size {}, file size is {}", view.size, fsize);
+        file.close();
+        return false;
     }
 
+    file.seekg(0, std::ios::beg);
+    file.read(view.data, fsize);
     file.close();
 
-    size = (uint64_t)fsize;
-    return true;
+    return (uint64_t)fsize;
 }
 
-bool read_file_to_vector(const FS::Path& path, std::vector<byte>& v)
+uint64_t read_file(const Path& path, const MutView& view, Diagnostics& diag)
+{
+    std::string err;
+    DiagnosticScope scope(&diag, __func__);
+    uint64_t readSize = read_file(path, view, err);
+
+    if (readSize == 0)
+    {
+        diag.mark_error(err);
+        return 0;
+    }
+
+    return readSize;
+}
+
+bool read_file_to_vector(const FS::Path& path, Vector<byte>& v, std::string& err)
 {
     LD_PROFILE_SCOPE;
 
-    uint64_t fileSize;
-    if (!read_file(path, fileSize, nullptr) || fileSize == 0)
+    uint64_t fileSize = get_file_size(path);
+    if (fileSize == 0)
     {
-        v.clear();
+        err = std::format("failed to read file [{}]", path.string());
         return false;
     }
 
     v.resize(fileSize);
-    return read_file(path, fileSize, v.data());
+
+    return read_file(path, MutView((char*)v.data(), fileSize), err) > 0;
 }
 
-bool write_file(const Path& path, uint64_t size, const byte* buf, std::string& err)
+bool write_file(const Path& path, const View& view, std::string& err)
 {
     LD_PROFILE_SCOPE;
+
+    if (!view.data || view.size == 0)
+    {
+        err = std::format("no data to write to [{}]", path.string());
+        return false;
+    }
 
     std::ofstream file(path, std::ios::binary);
 
@@ -109,28 +150,32 @@ bool write_file(const Path& path, uint64_t size, const byte* buf, std::string& e
         return false;
     }
 
-    file.write((const char*)buf, size);
+    file.write(view.data, view.size);
     file.close();
 
     return true;
 }
 
-bool write_file(const Path& path, const View& view, std::string& err)
+bool write_file(const Path& path, const View& view, Diagnostics& diag)
 {
-    return write_file(path, view.size, (const byte*)view.data, err);
+    std::string err;
+    DiagnosticScope scope(&diag, __func__);
+
+    if (!write_file(path, view, err))
+    {
+        diag.mark_error(err);
+        return false;
+    }
+
+    return true;
 }
 
-bool write_file_and_swap_backup(const Path& path, uint64_t size, const byte* buf, std::string& err)
+bool write_file_and_swap_backup(const Path& path, const View& view, std::string& err)
 {
     LD_PROFILE_SCOPE;
 
     if (!FS::exists(path))
-    {
-        if (!FS::write_file(path, size, buf, err))
-            return false;
-
-        return true;
-    }
+        return FS::write_file(path, view, err);
 
     // 1. rename existing file as backup
     FS::Path backupPath = path;
@@ -152,7 +197,7 @@ bool write_file_and_swap_backup(const Path& path, uint64_t size, const byte* buf
     FS::Path tmpExt = path.has_extension() ? FS::Path(".tmp" + path.extension().string()) : FS::Path(".tmp");
     tmpPath.replace_extension(tmpExt);
 
-    if (!FS::write_file(tmpPath, size, buf, err))
+    if (!FS::write_file(tmpPath, view, err))
         return false;
 
     // 3. rename temporary file to destination save path
@@ -169,11 +214,6 @@ bool write_file_and_swap_backup(const Path& path, uint64_t size, const byte* buf
     return true;
 }
 
-bool write_file_and_swap_backup(const Path& path, const View& view, std::string& err)
-{
-    return write_file_and_swap_backup(path, view.size, (const byte*) view.data, err);
-}
-
 bool exists(const Path& path)
 {
     return fs::exists(path);
@@ -184,7 +224,7 @@ bool is_directory(const Path& path)
     return fs::exists(path) && fs::is_directory(path);
 }
 
-void filter_files_by_extension(std::vector<FS::Path>& paths, const char* extension)
+void filter_files_by_extension(Vector<FS::Path>& paths, const char* extension)
 {
     if (!extension || strlen(extension) == 0)
         return;

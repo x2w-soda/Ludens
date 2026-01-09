@@ -108,8 +108,9 @@ void ICOData::create_bitmaps_from_file(const FS::Path& icoPath, std::vector<Bitm
 
     outBitmaps.clear();
 
+    std::string err;
     std::vector<byte> icoData;
-    if (!FS::read_file_to_vector(icoPath, icoData))
+    if (!FS::read_file_to_vector(icoPath, icoData, err))
         return;
 
     create_bitmaps_from_file_data(icoData.data(), icoData.size(), outBitmaps);

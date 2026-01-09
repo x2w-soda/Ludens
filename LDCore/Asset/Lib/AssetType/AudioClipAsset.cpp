@@ -1,4 +1,5 @@
 #include <Ludens/Asset/AssetType/AudioClipAsset.h>
+#include <Ludens/DSA/Vector.h>
 #include <Ludens/DSP/DSP.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Media/AudioData.h>
@@ -16,8 +17,9 @@ void AudioClipAssetObj::load(void* user)
     auto& job = *(AssetLoadJob*)user;
     AudioClipAssetObj* obj = (AudioClipAssetObj*)job.assetHandle.unwrap();
 
-    std::vector<byte> tmp;
-    if (!FS::read_file_to_vector(job.loadPath, tmp) || tmp.empty())
+    std::string err;
+    Vector<byte> tmp;
+    if (!FS::read_file_to_vector(job.loadPath, tmp, err))
         return;
 
     Deserializer serial(tmp.data(), tmp.size());

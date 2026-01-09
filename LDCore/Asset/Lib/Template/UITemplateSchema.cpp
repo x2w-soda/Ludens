@@ -530,7 +530,7 @@ bool UITemplateSchema::load_ui_template_from_file(UITemplate tmpl, const FS::Pat
     LD_PROFILE_SCOPE;
 
     Vector<byte> toml;
-    if (!FS::read_file_to_vector(tomlPath, toml))
+    if (!FS::read_file_to_vector(tomlPath, toml, err))
         return false;
 
     View tomlView((const char*)toml.data(), toml.size());
@@ -547,7 +547,8 @@ bool UITemplateSchema::save_ui_template(UITemplate tmpl, const FS::Path& savePat
     if (!saver.save_template(tmpl, toml, err))
         return false;
 
-    return FS::write_file_and_swap_backup(savePath, toml.size(), (const byte*)toml.data(), err);
+    View tomlView(toml.data(), toml.size());
+    return FS::write_file_and_swap_backup(savePath, tomlView, err);
 }
 
 } // namespace LD

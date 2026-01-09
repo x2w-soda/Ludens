@@ -79,11 +79,10 @@ bool MeshUtil::extract_mesh_vertex(const std::filesystem::path& path)
     std::string cppString = ss.str();
     fs::path cppPath = path;
     cppPath += fs::path(".cpp");
-    bool success = FS::write_file(cppPath, cppString.size(), (const byte*)cppString.data(), err);
 
-    if (!success)
+    if (!FS::write_file(cppPath, View(cppString.data(), cppString.size()), err))
     {
-        sLog.warn("failed to write extracted data to: {}", cppPath.string());
+        sLog.warn("{}", err);
         return false;
     }
 

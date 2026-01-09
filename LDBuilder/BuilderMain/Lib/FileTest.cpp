@@ -87,10 +87,11 @@ void FileTest::check_file(const FS::Path& filePath)
         return;
     }
 
+    std::string err;
     std::vector<byte> fileData;
-    if (!FS::read_file_to_vector(filePath, fileData))
+    if (!FS::read_file_to_vector(filePath, fileData, err))
     {
-        sLog.info("failed to open [{}]", filePath.string());
+        sLog.info("{}", err);
         return;
     }
 

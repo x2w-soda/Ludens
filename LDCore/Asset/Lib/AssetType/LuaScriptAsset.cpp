@@ -19,8 +19,9 @@ void LuaScriptAssetObj::load(void* user)
     auto& job = *(AssetLoadJob*)user;
     LuaScriptAssetObj* obj = (LuaScriptAssetObj*)job.assetHandle.unwrap();
 
+    std::string err; // TODO:
     std::vector<byte> file;
-    if (!FS::read_file_to_vector(job.loadPath, file) || file.empty())
+    if (!FS::read_file_to_vector(job.loadPath, file, err))
         return;
 
     Deserializer serial(file.data(), file.size());
@@ -56,7 +57,12 @@ void LuaScriptAssetObj::load(void* user)
 
     obj->sourcePath = heap_strdup(sourcePath.string().c_str(), MEMORY_USAGE_ASSET);
     obj->source = (char*)heap_malloc(fileSize + 1, MEMORY_USAGE_ASSET);
-    FS::read_file(sourcePath, fileSize, (byte*)obj->source);
+    if (!FS::read_file(sourcePath, MutView(obj->source, fileSize), err))
+    {
+        heap_free(obj->source);
+        obj->source = nullptr;
+        return;
+    }
     obj->source[fileSize] = '\0';
 }
 
@@ -135,7 +141,8 @@ void LuaScriptAssetImportJob::execute(void* user)
 
     // source path is used only during this import process
     std::vector<byte> file;
-    if (FS::read_file_to_vector(self.info.sourcePath, file) && !file.empty())
+    std::string err; // TODO:
+    if (FS::read_file_to_vector(self.info.sourcePath, file, err))
     {
         obj->source = heap_strdup((const char*)file.data(), MEMORY_USAGE_ASSET);
     }
@@ -147,7 +154,6 @@ void LuaScriptAssetImportJob::execute(void* user)
     serial.write_u32((uint32_t)obj->domain);
     serial.write_chunk_end();
 
-    std::string err;
     bool ok = FS::write_file(self.info.savePath, serial.view(), err);
     LD_ASSERT(ok);
 }

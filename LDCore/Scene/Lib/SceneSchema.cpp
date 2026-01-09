@@ -678,7 +678,7 @@ bool SceneSchema::load_scene_from_file(Scene scene, const FS::Path& tomlPath, st
     LD_PROFILE_SCOPE;
 
     Vector<byte> toml;
-    if (!FS::read_file_to_vector(tomlPath, toml))
+    if (!FS::read_file_to_vector(tomlPath, toml, err))
         return false;
 
     View tomlView((const char*)toml.data(), toml.size());
@@ -694,7 +694,8 @@ bool SceneSchema::save_scene(Scene scene, const FS::Path& savePath, std::string&
     if (!saver.save_scene(scene, toml, err))
         return false;
 
-    return FS::write_file_and_swap_backup(savePath, toml.size(), (const byte*)toml.data(), err);
+    View tomlView(toml.data(), toml.size());
+    return FS::write_file_and_swap_backup(savePath, tomlView, err);
 }
 
 } // namespace LD

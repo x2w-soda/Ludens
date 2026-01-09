@@ -13,8 +13,9 @@ void FontAssetObj::load(void* user)
     auto& job = *(AssetLoadJob*)user;
     auto* obj = (FontAssetObj*)job.assetHandle.unwrap();
 
+    std::string err; // TODO:
     std::vector<byte> tmp;
-    if (!FS::read_file_to_vector(job.loadPath, tmp) || tmp.empty())
+    if (!FS::read_file_to_vector(job.loadPath, tmp, err))
         return;
 
     Deserializer serial(tmp.data(), tmp.size());
@@ -76,6 +77,7 @@ void FontAssetImportJob::execute(void* user)
     auto& self = *(FontAssetImportJob*)user;
     auto* obj = (FontAssetObj*)self.asset.unwrap();
 
+    std::string err; // TODO:
     std::vector<byte> tmpSourceData;
     const byte* sourceData = nullptr;
     size_t sourceDataSize = 0;
@@ -87,7 +89,7 @@ void FontAssetImportJob::execute(void* user)
     }
     else
     {
-        bool ok = FS::read_file_to_vector(self.info.sourcePath, tmpSourceData);
+        bool ok = FS::read_file_to_vector(self.info.sourcePath, tmpSourceData, err);
         sourceData = tmpSourceData.data();
         sourceDataSize = tmpSourceData.size();
     }
@@ -104,7 +106,6 @@ void FontAssetImportJob::execute(void* user)
     serializer.write_u32(sourceDataSize);
     serializer.write(sourceData, sourceDataSize);
 
-    std::string err;
     View serialView = serializer.view();
     bool ok = FS::write_file(self.info.savePath, serialView, err);
     LD_ASSERT(ok);

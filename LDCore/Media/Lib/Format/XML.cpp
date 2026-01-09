@@ -1,6 +1,6 @@
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Media/Format/XML.h>
-#include <Ludens/System/Allocator.h>
+#include <Ludens/Memory/Allocator.h>
 #include <Ludens/System/FileSystem.h>
 #include <cctype>
 
@@ -341,9 +341,10 @@ XMLDocument XMLDocument::create_from_file(const std::filesystem::path& path)
     XMLDocument doc = XMLDocument::create();
     XMLDocumentObj* obj = doc;
 
+    std::string err; // TODO:
     uint64_t fileSize = FS::get_file_size(path);
     obj->fileBuffer = (byte*)heap_malloc(fileSize, MEMORY_USAGE_MEDIA);
-    bool ok = FS::read_file(path, fileSize, obj->fileBuffer);
+    bool ok = FS::read_file(path, MutView((char*)obj->fileBuffer, fileSize), err);
 
     if (!ok)
     {
@@ -352,7 +353,7 @@ XMLDocument XMLDocument::create_from_file(const std::filesystem::path& path)
     }
 
     doc.parse((const char*)obj->fileBuffer, fileSize);
-    
+
     return {obj};
 }
 

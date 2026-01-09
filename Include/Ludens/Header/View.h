@@ -59,6 +59,9 @@ struct TView
 /// @brief Const view of a byte sequence.
 using View = TView<const char>;
 
+/// @brief Mutable view of a byte sequence.
+using MutView = TView<char>;
+
 } // namespace LD
 
 template <>
