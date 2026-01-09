@@ -1,7 +1,7 @@
-#include <Ludens/AudioMixer/Effect/AudioEffectHighPassFilter.h>
 #include <Ludens/AudioMixer/AudioEffectInfo.h>
+#include <Ludens/AudioMixer/Effect/AudioEffectHighPassFilter.h>
 #include <Ludens/DSP/BiquadFilterCoeff.h>
-#include <Ludens/System/Memory.h>
+#include <Ludens/Memory/Memory.h>
 #include <atomic>
 
 namespace LD {

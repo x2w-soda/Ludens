@@ -1,12 +1,12 @@
+#include <Ludens/DSA/HashMap.h>
+#include <Ludens/DSA/HashSet.h>
+#include <Ludens/DSA/Vector.h>
 #include <Ludens/DataRegistry/DataComponent.h>
 #include <Ludens/DataRegistry/DataRegistry.h>
 #include <Ludens/Header/Types.h>
 #include <Ludens/Log/Log.h>
+#include <Ludens/Memory/Memory.h>
 #include <Ludens/Profiler/Profiler.h>
-#include <Ludens/System/Memory.h>
-#include <unordered_map>
-#include <unordered_set>
-#include <vector>
 
 namespace LD {
 
@@ -23,7 +23,8 @@ struct ComponentMeta
     const char* typeName;
     TransformEx* (*get_transform)(void* comp);   // TODO: redundant
     Transform2D* (*get_transform2d)(void* comp); // TODO: redundant
-    AUID (*get_auid)(void* comp);
+    AUID(*get_auid)
+    (void* comp);
 };
 
 // clang-format off

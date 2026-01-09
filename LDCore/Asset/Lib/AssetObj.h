@@ -8,20 +8,19 @@
 #include <Ludens/Asset/AssetType/Texture2DAsset.h>
 #include <Ludens/Asset/AssetType/TextureCubeAsset.h>
 #include <Ludens/Asset/Template/UITemplate.h>
+#include <Ludens/DSA/HashMap.h>
+#include <Ludens/DSA/Vector.h>
 #include <Ludens/DataRegistry/DataComponent.h>
 #include <Ludens/Header/Hash.h>
 #include <Ludens/Media/AudioData.h>
 #include <Ludens/Media/Bitmap.h>
 #include <Ludens/Media/Font.h>
 #include <Ludens/Media/Model.h>
-#include <Ludens/System/Allocator.h>
+#include <Ludens/Memory/Allocator.h>
 #include <Ludens/System/FileSystem.h>
 #include <Ludens/System/FileWatcher.h>
 
 #include <cstdint>
-#include <filesystem>
-#include <unordered_map>
-#include <vector>
 
 #include "AssetWatcher.h"
 
@@ -69,7 +68,7 @@ public:
     AUID get_id_from_name(const char* name, AssetType* outType);
     Asset get_asset(AUID auid);
 
-    inline void find_assets_by_type(AssetType type, std::vector<const AssetEntry*>& entries)
+    inline void find_assets_by_type(AssetType type, Vector<const AssetEntry*>& entries)
     {
         mRegistry.find_assets_by_type(type, entries);
     }
@@ -77,10 +76,10 @@ public:
     static void on_asset_modified(const FS::Path& path, AUID id, void* user);
 
 private:
-    std::unordered_map<AssetType, PoolAllocator> mAssetPA;
-    std::unordered_map<AUID, AssetObj*> mAssets;
-    std::unordered_map<Hash32, AUID> mNameToAsset;
-    std::vector<AssetLoadJob*> mLoadJobs;
+    HashMap<AssetType, PoolAllocator> mAssetPA;
+    HashMap<AUID, AssetObj*> mAssets;
+    HashMap<Hash32, AUID> mNameToAsset;
+    Vector<AssetLoadJob*> mLoadJobs;
     PoolAllocator mLoadJobPA;
     AssetWatcher mWatcher;     /// optional asset file watcher
     AssetRegistry mRegistry;   /// bookkeeping for all assets in project
