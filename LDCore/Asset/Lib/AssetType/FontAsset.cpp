@@ -66,7 +66,7 @@ void FontAssetImportJob::submit()
 {
     mHeader.type = 0;
     mHeader.user = this;
-    mHeader.fn = &FontAssetImportJob::execute;
+    mHeader.onExecute = &FontAssetImportJob::execute;
 
     JobSystem js = JobSystem::get();
     js.submit(&mHeader, JOB_DISPATCH_STANDARD);

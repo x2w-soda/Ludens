@@ -140,7 +140,7 @@ void Texture2DAssetImportJob::submit()
 {
     mHeader.user = this;
     mHeader.type = 0;
-    mHeader.fn = &Texture2DAssetImportJob::execute;
+    mHeader.onExecute = &Texture2DAssetImportJob::execute;
 
     JobSystem::get().submit(&mHeader, JOB_DISPATCH_STANDARD);
 }

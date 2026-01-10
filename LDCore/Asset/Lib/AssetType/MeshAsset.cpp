@@ -66,7 +66,7 @@ void MeshAssetImportJob::submit()
 {
     mHeader.type = 0;
     mHeader.user = this;
-    mHeader.fn = &MeshAssetImportJob::execute;
+    mHeader.onExecute = &MeshAssetImportJob::execute;
 
     JobSystem js = JobSystem::get();
     js.submit(&mHeader, JOB_DISPATCH_STANDARD);

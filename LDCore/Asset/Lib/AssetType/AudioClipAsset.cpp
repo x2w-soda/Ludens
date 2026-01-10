@@ -95,7 +95,7 @@ void AudioClipAssetImportJob::submit()
 {
     mHeader.user = this;
     mHeader.type = 0;
-    mHeader.fn = &AudioClipAssetImportJob::execute;
+    mHeader.onExecute = &AudioClipAssetImportJob::execute;
 
     JobSystem::get().submit(&mHeader, JOB_DISPATCH_STANDARD);
 }

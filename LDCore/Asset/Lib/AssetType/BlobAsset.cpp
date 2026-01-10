@@ -10,27 +10,24 @@ void BlobAssetObj::load(void* assetLoadJob)
 {
     LD_PROFILE_SCOPE;
 
-    auto& job = *(AssetLoadJob*)assetLoadJob;
-    auto* obj = (BlobAssetObj*)job.assetHandle.unwrap();
+    auto& loadJob = *(AssetLoadJob*)assetLoadJob;
+    auto* obj = (BlobAssetObj*)loadJob.assetHandle.unwrap();
+    obj->data = nullptr;
 
-    std::string err; // TODO:
+    DiagnosticScope scope(loadJob.diagnostics, "BlobAssetObj::load");
+
     uint64_t fileSize;
-    if (!FS::get_file_size(job.loadPath, fileSize, err) || fileSize == 0)
+    if (!FS::get_positive_file_size(loadJob.loadPath, fileSize, loadJob.diagnostics))
         return;
 
     obj->fileData = heap_malloc(fileSize, MEMORY_USAGE_ASSET);
-    if (!FS::read_file(job.loadPath, MutView((char*)obj->data, fileSize), err))
-        return;
+    if (!FS::read_file(loadJob.loadPath, MutView((char*)obj->fileData, fileSize), loadJob.diagnostics))
+        return; // TODO: fix leak
 
     Deserializer serial(obj->fileData, fileSize);
 
-    AssetType type;
-    uint16_t major, minor, patch;
-    if (!asset_header_read(serial, major, minor, patch, type))
-        return;
-
-    if (type != ASSET_TYPE_BLOB)
-        return;
+    if (!asset_header_read(serial, ASSET_TYPE_BLOB, loadJob.diagnostics))
+        return; // TODO: fix leak
 
     serial.read_u64(obj->dataSize);
     obj->data = (void*)serial.view_now();
@@ -58,7 +55,7 @@ void BlobAssetImportJob::submit()
 {
     mHeader.type = 0;
     mHeader.user = this;
-    mHeader.fn = &BlobAssetImportJob::execute;
+    mHeader.onExecute = &BlobAssetImportJob::execute;
 
     JobSystem js = JobSystem::get();
     js.submit(&mHeader, JOB_DISPATCH_STANDARD);

@@ -124,7 +124,7 @@ void LuaScriptAssetImportJob::submit()
 {
     mHeader.type = 0;
     mHeader.user = this;
-    mHeader.fn = &LuaScriptAssetImportJob::execute;
+    mHeader.onExecute = &LuaScriptAssetImportJob::execute;
 
     JobSystem js = JobSystem::get();
     js.submit(&mHeader, JOB_DISPATCH_STANDARD);

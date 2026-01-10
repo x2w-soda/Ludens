@@ -8,6 +8,7 @@
 #include <Ludens/Asset/AssetType/Texture2DAsset.h>
 #include <Ludens/Asset/AssetType/TextureCubeAsset.h>
 #include <Ludens/Asset/Template/UITemplate.h>
+#include <Ludens/DSA/Diagnostics.h>
 #include <Ludens/DSA/HashMap.h>
 #include <Ludens/DSA/Vector.h>
 #include <Ludens/DataRegistry/DataComponent.h>
@@ -20,6 +21,7 @@
 #include <Ludens/System/FileSystem.h>
 #include <Ludens/System/FileWatcher.h>
 
+#include <atomic>
 #include <cstdint>
 
 #include "AssetWatcher.h"
@@ -74,6 +76,7 @@ public:
     }
 
     static void on_asset_modified(const FS::Path& path, AUID id, void* user);
+    static void on_asset_load_complete(void*);
 
 private:
     HashMap<AssetType, PoolAllocator> mAssetPA;
@@ -92,9 +95,12 @@ private:
 ///          that means worker threads will be accessing this struct.
 struct AssetLoadJob
 {
-    FS::Path loadPath;   /// path to .lda file on disk
-    Asset assetHandle;   /// base class handle
-    JobHeader jobHeader; /// submitted to the job system
+    JobHeader jobHeader;            /// submitted to the job system
+    Asset assetHandle;              /// accessed by job thread, subject class handle
+    Diagnostics diagnostics;        /// accessed by job thread throughout load job
+    FS::Path loadPath;              /// path to .lda file on disk
+    std::atomic_bool jobInProgress; /// read by main thread
+    std::atomic<float> jobProgress; /// read by main thread, normalized job progress estimate
 };
 
 /// @brief Polymorphic unload/cleanup for each asset type.
@@ -110,11 +116,15 @@ void asset_header_write(Serializer& serial, AssetType type);
 
 /// @brief Attempts to read binary header from memory.
 /// @param serial Deserializer used to read header.
-/// @param outMajor Outputs the major framework version this asset is created with.
-/// @param outMinor Outputs the minor framework version this asset is created with.
-/// @param outPatch Outputs the patch framework version this asset is created with.
+/// @param outMajor Outputs the major engine version this asset is created with.
+/// @param outMinor Outputs the minor engine version this asset is created with.
+/// @param outPatch Outputs the patch engine version this asset is created with.
 /// @param outType Outputs the asset type enum if recognized.
-/// @return True if the header is recognized with this framework version, and the serializer cursor sits right after the header.
+/// @return True if the header is recognized, and the serializer cursor sits right after the header.
 bool asset_header_read(Deserializer& serial, uint16_t& outMajor, uint16_t& outMinor, uint16_t& outPatch, AssetType& outType);
+
+/// @brief Attempts to read binary header from memory.
+/// @return True if the asset type matches and the asset version matches engine version exactly.
+bool asset_header_read(Deserializer& serial, AssetType expectedType, Diagnostics& diag);
 
 } // namespace LD

@@ -153,7 +153,7 @@ void TextureCubeAssetImportJob::submit()
 {
     mHeader.user = this;
     mHeader.type = 0;
-    mHeader.fn = &TextureCubeAssetImportJob::execute;
+    mHeader.onExecute = &TextureCubeAssetImportJob::execute;
 
     JobSystem::get().submit(&mHeader, JOB_DISPATCH_STANDARD);
 }
