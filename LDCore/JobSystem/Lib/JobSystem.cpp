@@ -132,7 +132,10 @@ static void worker_thread_main(void* thread);
 
 static void execute_job(const JobHeader& job)
 {
-    job.fn(job.user);
+    job.onExecute(job.user);
+    
+    if (job.onComplete)
+        job.onComplete(job.user);
 
     if (sObj->jobCounter.fetch_sub(1, std::memory_order_acq_rel) == 1)
     {

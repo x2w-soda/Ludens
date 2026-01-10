@@ -91,14 +91,14 @@ void RenderUtil::from_equirectangular_to_faces(const fs::path& path, const fs::p
     // save 6 bitmaps to disk concurrently
     struct Job
     {
-        JobHeader header;
+        JobHeader header{};
         RBuffer faceBuffer;
         uint32_t faceSize = 0;
         fs::path savePath;
 
         Job()
         {
-            header.fn = &Job::job_main;
+            header.onExecute = &Job::job_main;
             header.user = this;
         }
 

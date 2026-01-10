@@ -50,7 +50,7 @@ public:
 private:
     static void execute(void*);
 
-    JobHeader mHeader;
+    JobHeader mHeader{};
 };
 
 } // namespace LD

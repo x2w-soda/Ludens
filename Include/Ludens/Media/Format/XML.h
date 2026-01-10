@@ -65,7 +65,7 @@ public:
 private:
     static void execute(void* user);
 
-    JobHeader mHeader;
+    JobHeader mHeader{};
     std::vector<std::filesystem::path> mPaths;
     std::vector<XMLDocument> mDocs;
 };

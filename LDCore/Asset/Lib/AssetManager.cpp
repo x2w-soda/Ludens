@@ -177,9 +177,12 @@ AssetLoadJob* AssetManagerObj::allocate_load_job(AssetType type, const FS::Path&
 
     job->loadPath = loadPath;
     job->assetHandle = {assetObj};
-    job->jobHeader.fn = sAssetTypeTable[(int)type].load;
+    job->jobHeader.onExecute = sAssetTypeTable[(int)type].load;
+    job->jobHeader.onComplete = &AssetManagerObj::on_asset_load_complete;
     job->jobHeader.type = (uint32_t)0; // TODO: job type for asset loading
     job->jobHeader.user = (void*)job;
+    job->jobInProgress.store(true); // NOTE: job is already considered in-progress before its submission
+    job->jobProgress.store(0.0f);
 
     return job;
 }
@@ -298,6 +301,14 @@ void AssetManagerObj::on_asset_modified(const FS::Path& path, AUID id, void* use
             scriptA.set_source((const char*)buf.data(), (size_t)buf.size());
         }
     }
+}
+
+void AssetManagerObj::on_asset_load_complete(void* user)
+{
+    auto* job = (AssetLoadJob*)user;
+
+    job->jobInProgress.store(false);
+    job->jobProgress.store(1.0f);
 }
 
 //
@@ -468,6 +479,34 @@ bool asset_header_read(Deserializer& serial, uint16_t& outMajor, uint16_t& outMi
 
     // unrecognized asset type
     return false;
+}
+
+bool asset_header_read(Deserializer& serial, AssetType expectedType, Diagnostics& diag)
+{
+    DiagnosticScope scope(diag, "asset_header_read");
+
+    AssetType type;
+    uint16_t major, minor, patch;
+    if (!asset_header_read(serial, major, minor, patch, type))
+    {
+        diag.mark_error("failed to recognize binary asset header");
+        return false;
+    }
+
+    if (type != expectedType)
+    {
+        diag.mark_error(std::format("expected asset type {}, found {}", get_asset_type_cstr(expectedType), get_asset_type_cstr(type)));
+        return false;
+    }
+
+    if (major != LD_VERSION_MAJOR || minor != LD_VERSION_MINOR || patch != LD_VERSION_PATCH)
+    {
+        diag.mark_error(std::format("expected asset version {}.{}.{}, found {}.{}.{}",
+                                    LD_VERSION_MAJOR, LD_VERSION_MINOR, LD_VERSION_PATCH, major, minor, patch));
+        return false;
+    }
+
+    return true;
 }
 
 } // namespace LD

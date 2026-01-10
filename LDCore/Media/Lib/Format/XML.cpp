@@ -401,7 +401,7 @@ void XMLParseJob::submit(const std::vector<std::filesystem::path>& paths)
 {
     mHeader.type = 0;
     mHeader.user = this;
-    mHeader.fn = &XMLParseJob::execute;
+    mHeader.onExecute = &XMLParseJob::execute;
     mPaths = paths;
 
     JobSystem js = JobSystem::get();

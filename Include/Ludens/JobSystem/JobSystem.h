@@ -17,8 +17,9 @@ typedef void (*JobFn)(void* user);
 struct JobHeader
 {
     uint32_t type;
-    JobFn fn;
-    void* user;
+    JobFn onExecute;  // job body, runs on worker thread
+    JobFn onComplete; // optional hook, runs on worker thread after job body
+    void* user;       // dependency injection during callbacks
 };
 
 struct JobSystemInfo

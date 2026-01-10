@@ -11,7 +11,7 @@ public:
     IncJob()
         : mValue(0)
     {
-        mHeader.fn = &IncJob::main;
+        mHeader.onExecute = &IncJob::main;
         mHeader.user = this;
     }
 
@@ -33,7 +33,7 @@ private:
     }
 
 private:
-    JobHeader mHeader;
+    JobHeader mHeader{};
     int mValue;
 };
 
@@ -44,7 +44,7 @@ public:
     FibJob()
         : mQuery(0), mResult(-1), mChild0(nullptr), mChild1(nullptr)
     {
-        mHeader.fn = &FibJob::main;
+        mHeader.onExecute = &FibJob::main;
         mHeader.user = this;
     }
 
@@ -102,7 +102,7 @@ private:
     }
 
 private:
-    JobHeader mHeader;
+    JobHeader mHeader{};
     FibJob* mChild0 = nullptr;
     FibJob* mChild1 = nullptr;
     int mQuery;
