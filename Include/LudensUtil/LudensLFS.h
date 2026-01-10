@@ -29,6 +29,12 @@ struct LudensLFS
         std::filesystem::path uiClick1Path;
         std::filesystem::path uiClick2Path;
     } audio;
+
+    struct Test
+    {
+        std::filesystem::path emptyFilePath;
+        std::filesystem::path nonExistentFilePath;
+    } test;
 };
 
 /// @brief If the LDLudensLFS library is linked, this attempts to

@@ -1,10 +1,10 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <Extra/doctest/doctest.h>
-#include <LDUtil/LudensLFS/Include/LudensLFS.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Memory/Memory.h>
 #include <Ludens/UI/UIContext.h>
 #include <Ludens/UI/UILayout.h>
+#include <LudensUtil/LudensLFS.h>
 
 #include "UITest.h"
 

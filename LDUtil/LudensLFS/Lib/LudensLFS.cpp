@@ -1,4 +1,4 @@
-#include <LDUtil/LudensLFS/Include/LudensLFS.h>
+#include <LudensUtil/LudensLFS.h>
 #include <cassert>
 #include <iostream>
 
@@ -37,6 +37,12 @@ LudensLFS::LudensLFS()
 
     audio.uiClick2Path = lfsPath / fs::path("Audio/SonnissGDC2024/RogueWaves/UIClick_Operating System UI Cursor_RogueWaves_KawaiiUI.wav");
     assert(fs::exists(audio.uiClick2Path));
+
+    test.emptyFilePath = lfsPath / fs::path("Test/empty.txt");
+    assert(fs::exists(test.emptyFilePath));
+
+    test.nonExistentFilePath = lfsPath / fs::path("Test/doesNotExist.txt");
+    assert(!fs::exists(test.nonExistentFilePath));
 
     std::cout << "LudensLFS git submodule located at: " << lfsPath << std::endl;
     isFound = true;

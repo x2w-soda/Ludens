@@ -351,10 +351,11 @@ add_subdirectory(LDCore/Project)
 add_library(LDCoreLibs INTERFACE)
 target_link_libraries(LDCoreLibs INTERFACE
   LDProfiler
+  LDMemory
+  LDDSA
   LDSystem
   LDJobSystem
   LDCommandLine
-  LDDSA
   LDDSP
   LDText
   LDSerial

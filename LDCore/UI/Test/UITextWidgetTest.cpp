@@ -1,6 +1,6 @@
 #include <Extra/doctest/doctest.h>
-#include <LDUtil/LudensLFS/Include/LudensLFS.h>
 #include <Ludens/Memory/Memory.h>
+#include <LudensUtil/LudensLFS.h>
 
 #include "UITest.h"
 

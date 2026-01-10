@@ -1,7 +1,7 @@
 set(MODULE_NAME LDLudensLFS)
 
 set(MODULE_INCLUDE
-	Include/LudensLFS.h
+	${LUDENS_INCLUDE_DIR}/LudensUtil/LudensLFS.h
 )
 
 set(MODULE_LIB

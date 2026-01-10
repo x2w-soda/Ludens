@@ -1,4 +1,3 @@
-#include <LDUtil/LudensLFS/Include/LudensLFS.h>
 #include <Ludens/JobSystem/JobSystem.h>
 #include <Ludens/Log/Log.h>
 #include <Ludens/Profiler/Profiler.h>
@@ -9,6 +8,7 @@
 #include <Ludens/Window/Input.h>
 #include <Ludens/Window/Window.h>
 #include <LudensEditor/EditorContext/EditorIconAtlas.h>
+#include <LudensUtil/LudensLFS.h>
 
 #include <array>
 #include <string>

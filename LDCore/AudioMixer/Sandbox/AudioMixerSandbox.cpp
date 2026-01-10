@@ -14,7 +14,7 @@
 #include <Ludens/Window/Window.h>
 
 // Using audio samples from the LFS repository.
-#include <LDUtil/LudensLFS/Include/LudensLFS.h>
+#include <LudensUtil/LudensLFS.h>
 
 namespace LD {
 
