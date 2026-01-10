@@ -68,6 +68,36 @@ bool get_file_size(const Path& path, uint64_t& size, std::string& err)
     return err.empty();
 }
 
+bool get_file_size(const Path& path, uint64_t& size, Diagnostics& diag)
+{
+    DiagnosticScope scope(diag, "get_file_size");
+
+    std::string err;
+    if (!get_file_size(path, size, err))
+    {
+        diag.mark_error(err);
+        return false;
+    }
+
+    return true;
+}
+
+bool get_positive_file_size(const Path& path, uint64_t& size, Diagnostics& diag)
+{
+    DiagnosticScope scope(diag, "get_positive_file_size");
+
+    if (!get_file_size(path, size, diag))
+        return false;
+
+    if (size == 0)
+    {
+        diag.mark_error(std::format("file [{}] is empty", path.string()));
+        return false;
+    }
+
+    return true;
+}
+
 uint64_t read_file(const Path& path, const MutView& view, std::string& err)
 {
     LD_PROFILE_SCOPE;
@@ -231,6 +261,21 @@ bool exists(const Path& path)
 bool is_directory(const Path& path)
 {
     return fs::exists(path) && fs::is_directory(path);
+}
+
+bool remove(const FS::Path& path, std::string& err)
+{
+    try
+    {
+        fs::remove(path);
+    }
+    catch (const std::filesystem::filesystem_error& e)
+    {
+        err = std::format("failed to remove [{}]\nfilesystem_error: {}", path.string(), e.what());
+        return false;
+    }
+
+    return true;
 }
 
 void filter_files_by_extension(Vector<FS::Path>& paths, const char* extension)

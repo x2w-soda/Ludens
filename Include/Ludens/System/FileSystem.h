@@ -29,6 +29,12 @@ bool get_directory_content(const Path& directory, Vector<Path>& contents, std::s
 /// @brief Get file size in bytes.
 bool get_file_size(const Path& path, uint64_t& size, std::string& err);
 
+/// @brief Get file size in bytes.
+bool get_file_size(const Path& path, uint64_t& size, Diagnostics& diag);
+
+/// @brief Wrapper of get_file_size where an empty file is considered an error.
+bool get_positive_file_size(const Path& path, uint64_t& size, Diagnostics& diag);
+
 /// @brief Read whole file into user provided view.
 /// @return Number of bytes read on success.
 uint64_t read_file(const Path& path, const MutView& view, std::string& err);
@@ -57,6 +63,9 @@ bool exists(const Path& path);
 
 /// @brief Check if path exists and is a directory.
 bool is_directory(const Path& path);
+
+/// @brief Try removing file or directory at path.
+bool remove(const FS::Path& path, std::string& err);
 
 /// @brief Filter files using extensions.
 /// @param paths Vector of paths, directories are not disturbed.
