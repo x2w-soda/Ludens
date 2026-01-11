@@ -1,12 +1,16 @@
+#include <Ludens/DSA/Vector.h>
 #include <Ludens/Log/Log.h>
-#include <Ludens/System/Memory.h>
+#include <Ludens/Memory/Memory.h>
+#include <Ludens/Profiler/Profiler.h>
 #include <Ludens/UI/UIImmediate.h>
 #include <LudensEditor/ConsoleWindow/ConsoleWindow.h>
-#include <LudensEditor/EditorContext/EditorWindowObj.h>
+#include <LudensEditor/EditorContext/EditorWindow.h>
+
+#include <string>
 
 namespace LD {
 
-static std::vector<std::string> sHistory;
+static Vector<std::string> sHistory;
 
 static void console_log_writeback(LogLevel level, const std::string& msg)
 {
@@ -14,23 +18,32 @@ static void console_log_writeback(LogLevel level, const std::string& msg)
 }
 
 /// @brief Editor console window implementation.
-struct EConsoleWindowObj : EditorWindowObj
+struct ConsoleWindowObj : EditorWindowObj
 {
-    virtual ~EConsoleWindowObj() = default;
+    EditorContext ctx;
+    UIWorkspace space;
+    UIWindow root;
 
-    virtual void on_imgui() override;
+    virtual EditorWindowType get_type() override { return EDITOR_WINDOW_CONSOLE; }
+    virtual void on_imgui(float delta) override;
 };
 
-void EConsoleWindowObj::on_imgui()
+void ConsoleWindowObj::on_imgui(float delta)
 {
-    EditorTheme edTheme = editorCtx.get_theme();
+    LD_PROFILE_SCOPE;
+
+    EditorTheme edTheme = ctx.get_theme();
     UITheme uiTheme = edTheme.get_ui_theme();
     Color color = uiTheme.get_surface_color();
     float pad = edTheme.get_padding();
 
-    ui_push_window("EConsoleWindow", root);
+    ui_push_window(root);
     ui_push_scroll(color);
-    ui_top_layout_child_padding({.left = pad, .right = pad});
+
+    UILayoutInfo layoutI = ctx.make_vbox_layout();
+    layoutI.sizeX = UISize::grow();
+    layoutI.sizeY = UISize::grow();
+    ui_top_layout(layoutI);
 
     for (const std::string& line : sHistory)
     {
@@ -42,30 +55,25 @@ void EConsoleWindowObj::on_imgui()
     ui_pop_window();
 }
 
-EConsoleWindow EConsoleWindow::create(const EConsoleWindowInfo& windowI)
+EditorWindow ConsoleWindow::create(const EditorWindowInfo& windowI)
 {
-    UIWindowManager wm = windowI.wm;
-    auto* obj = heap_new<EConsoleWindowObj>(MEMORY_USAGE_UI);
+    auto* obj = heap_new<ConsoleWindowObj>(MEMORY_USAGE_UI);
+    obj->ctx = windowI.ctx;
+    obj->space = windowI.space;
+    obj->root = obj->space.create_window(obj->space.get_root_id(), {}, {}, nullptr);
+    obj->root.show();
 
-    obj->root = wm.get_area_window(windowI.areaID);
-    obj->root.set_user(obj);
-    obj->editorCtx = windowI.ctx;
-
-    wm.set_window_title(windowI.areaID, "Console");
-    UIWindow consoleWindow = wm.get_area_window(windowI.areaID);
-    consoleWindow.set_user(obj);
-
-    return EConsoleWindow(obj);
+    return EditorWindow(obj);
 }
 
-void EConsoleWindow::destroy(EConsoleWindow window)
+void ConsoleWindow::destroy(EditorWindow window)
 {
-    auto* obj = window.unwrap();
+    auto* obj = static_cast<ConsoleWindowObj*>(window.unwrap());
 
-    heap_delete<EConsoleWindowObj>(obj);
+    heap_delete<ConsoleWindowObj>(obj);
 }
 
-void EConsoleWindow::observe_channel(const char* channelName)
+void ConsoleWindow::observe_channel(const char* channelName)
 {
     Log log(channelName);
     log.add_observer(&console_log_writeback);

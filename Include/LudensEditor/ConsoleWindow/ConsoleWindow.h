@@ -2,29 +2,22 @@
 
 #include <Ludens/Header/Handle.h>
 #include <Ludens/UI/UIWindow.h>
-#include <Ludens/UI/UIWindowManager.h>
-#include <LudensEditor/EditorContext/EditorCallback.h>
 #include <LudensEditor/EditorContext/EditorContext.h>
+#include <LudensEditor/EditorContext/EditorWindow.h>
 
 namespace LD {
 
-struct EConsoleWindowInfo
+/// @brief Editor console window.
+struct ConsoleWindow : Handle<struct ConsoleWindowObj>
 {
-    EditorContext ctx;              /// editor context handle
-    UIWindowManager wm;             /// window manager handle
-    UIWMAreaID areaID;              /// designated window area
-    void* user;                     /// used in callbacks
-};
+    ConsoleWindow() = default;
+    ConsoleWindow(const EditorWindowObj* obj) { mObj = (ConsoleWindowObj*)obj; }
 
-/// @brief Editor inspector window.
-///        Displays the properties of the selected object.
-struct EConsoleWindow : Handle<struct EConsoleWindowObj>
-{
     /// @brief Create console window.
-    static EConsoleWindow create(const EConsoleWindowInfo& windowInfo);
+    static EditorWindow create(const EditorWindowInfo& editorI);
 
     /// @brief Destroy console window.
-    static void destroy(EConsoleWindow window);
+    static void destroy(EditorWindow window);
 
     /// @brief Registers an observer to dump logs in editor console window.
     void observe_channel(const char* channelName);
