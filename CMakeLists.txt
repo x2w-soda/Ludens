@@ -424,6 +424,7 @@ add_subdirectory(LDEditor/EditorContext)
 add_subdirectory(LDEditor/EditorWidget)
 add_subdirectory(LDEditor/TabControlWindow)
 add_subdirectory(LDEditor/SelectionWindow)
+add_subdirectory(LDEditor/VersionWindow)
 add_subdirectory(LDEditor/ConsoleWindow)
 add_subdirectory(LDEditor/ViewportWindow)
 add_subdirectory(LDEditor/OutlinerWindow)
@@ -435,6 +436,7 @@ target_link_libraries(LDEditorLibs INTERFACE
   LDEditorWidget
   LDTabControlWindow
   LDSelectionWindow
+  LDVersionWindow
   LDConsoleWindow
   LDViewportWindow
   LDOutlinerWindow
