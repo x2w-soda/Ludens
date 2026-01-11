@@ -36,6 +36,7 @@ void EditorUI::startup(const EditorUIInfo& info)
     barI.screenSize = screenSize;
     mTopBar = EditorTopBar::create(barI);
 
+    // TODO: EditorGroundLayer
     EditorWorkspaceInfo workspaceI{};
     workspaceI.ctx = mCtx;
     workspaceI.layer = mUIGroundLayer;
@@ -54,6 +55,7 @@ void EditorUI::startup(const EditorUIInfo& info)
     mConsoleWindow = (ConsoleWindow)mSceneWorkspace.create_window(consoleArea, EDITOR_WINDOW_CONSOLE);
     mConsoleWindow.observe_channel(get_lua_script_log_channel_name());
 
+    // TODO: EditorFloatLayer
     workspaceI.layer = mUIFloatLayer;
     workspaceI.rootRect = Rect(10.0f, 10.0f, 400.0f, 200.0f);
     workspaceI.isVisible = false;
@@ -61,26 +63,25 @@ void EditorUI::startup(const EditorUIInfo& info)
     mFloatWorkspace = EditorWorkspace::create(workspaceI);
     mVersionWindow = (VersionWindow)mFloatWorkspace.create_window(mFloatWorkspace.get_root_id(), EDITOR_WINDOW_VERSION);
 
+    // TODO: EditorModalLayer
+    UILayoutInfo layoutI{};
+    layoutI.sizeX = UISize::fixed(info.screenWidth);
+    layoutI.sizeY = UISize::fixed(info.screenHeight);
+    UIWindowInfo windowI{};
+    windowI.hidden = true;
+    mModalBackdropWorkspace = mUIModalLayer.create_workspace(Rect(0.0f, 0.0f, info.screenWidth, info.screenHeight));
+    mModalBackdropWindow = mModalBackdropWorkspace.create_window(mModalBackdropWorkspace.get_root_id(), layoutI, windowI, nullptr);
+    mModalBackdropWindow.set_pos(Vec2(0.0f, 0.0f));
+    mModalBackdropWindow.set_on_draw([](UIWidget widget, ScreenRenderComponent renderer) {
+        renderer.draw_rect(widget.get_rect(), 0x101010C0);
+    });
+
     workspaceI.layer = mUIModalLayer;
     workspaceI.rootRect = Rect(10.0f, 10.0f, 600.0f, 300.0f);
     workspaceI.isVisible = false;
     workspaceI.isFloat = true;
     mModalWorkspace = EditorWorkspace::create(workspaceI);
     mSelectionWindow = (SelectionWindow)mModalWorkspace.create_window(mModalWorkspace.get_root_id(), EDITOR_WINDOW_SELECTION);
-    /*
-    UILayoutInfo layoutI{};
-    layoutI.sizeX = UISize::fixed(info.screenWidth);
-    layoutI.sizeY = UISize::fixed(info.screenHeight);
-    UIWindowInfo windowI{};
-    windowI.name = "backdrop";
-    windowI.hidden = true;
-    windowI.layer = sUIFloatLayerHash;
-    mBackdropWindow = uiCtx.add_window(layoutI, windowI, this);
-    mBackdropWindow.set_pos(Vec2(0.0f, 0.0f));
-    mBackdropWindow.set_on_draw([](UIWidget widget, ScreenRenderComponent renderer) {
-        renderer.draw_rect(widget.get_rect(), 0x101010C0);
-    });
-    */
 
     // force window layout
     mUI.update(0.0f);
@@ -131,6 +132,9 @@ void EditorUI::resize(const Vec2& screenSize)
     // recalculate workspace window areas
     Rect groundRect = Rect(0.0f, EDITOR_BAR_HEIGHT, screenSize.x, screenSize.y - EDITOR_BAR_HEIGHT);
     mSceneWorkspace.set_rect(groundRect);
+
+    Rect screenRect(0.0f, 0.0f, screenSize.x, screenSize.y);
+    mModalBackdropWorkspace.set_rect(screenRect);
 }
 
 void EditorUI::on_render(ScreenRenderComponent renderer, void* user)
@@ -205,13 +209,20 @@ void EditorUI::update_modal_workspace()
     FS::Path selectedPath;
 
     if (mModal == MODAL_NONE)
+    {
+        mModalBackdropWindow.hide();
         return;
+    }
 
     if (mSelectionWindow.has_canceled())
     {
         mModal = MODAL_NONE;
+        mModalWorkspace.set_visible(false);
         return;
     }
+
+    mModalWorkspace.set_visible(true);
+    mModalBackdropWindow.show();
 
     switch (mModal)
     {

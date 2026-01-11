@@ -23,7 +23,7 @@ LudensLFS::LudensLFS()
     fontPath = lfsPath / fs::path("Fonts/Inter_24pt-Regular.ttf");
     assert(fs::exists(fontPath));
 
-    skyboxFolderPath = lfsPath / fs::path("Tmp/skybox/blue_photo_studio");
+    skyboxFolderPath = lfsPath / fs::path("Tmp/skybox/learnopengl");
     assert(fs::exists(skyboxFolderPath));
 
     projectPath = lfsPath / fs::path("Tmp/projects/project1/project.toml");

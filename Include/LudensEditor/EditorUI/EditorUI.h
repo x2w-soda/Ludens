@@ -121,11 +121,6 @@ public:
     static void on_render_overlay(ScreenRenderComponent renderer, void* user);
     static void on_scene_pick(SceneOverlayGizmoID gizmoID, RUID ruid, void* user);
 
-    //static void select_asset(AssetType type, AUID currentID, void* user);
-
-    /// @brief Open dialog to add script to component.
-    //static void add_script_to_component(CUID compID, void* user);
-
 private:
     enum Modal
     {
@@ -146,6 +141,8 @@ private:
     UILayer mUIGroundLayer{};
     UILayer mUIFloatLayer{};
     UILayer mUIModalLayer{};
+    UIWorkspace mModalBackdropWorkspace{};
+    UIWindow mModalBackdropWindow{};
 
     CUID mSubjectCompID; // component requesting new asset or script
 
