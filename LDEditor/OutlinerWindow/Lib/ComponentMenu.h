@@ -2,9 +2,10 @@
 
 #include <Ludens/DataRegistry/DataComponent.h>
 #include <LudensEditor/EditorContext/EditorSettings.h>
-#include <LudensEditor/EditorWidget/UIDropdownWindow.h>
+#include <LudensEditor/EditorWidget/UIListMenuWidget.h>
 
 namespace LD {
+#if 0
 
 struct ComponentMenuInfo
 {
@@ -31,9 +32,10 @@ public:
 private:
     static bool on_option(int option, const Rect& optionRect, void* user);
 
-    UIDropdownWindow mDropdown;
+    //UIDropdownWindow mDropdown;
     ComponentMenuInfo mInfo;
     CUID mCUID;
 };
 
+#endif
 } // namespace LD

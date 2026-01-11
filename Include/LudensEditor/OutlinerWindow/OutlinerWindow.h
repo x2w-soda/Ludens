@@ -5,30 +5,22 @@
 #include <Ludens/Header/Handle.h>
 #include <Ludens/Scene/Scene.h>
 #include <Ludens/UI/UIWindow.h>
-#include <Ludens/UI/UIWindowManager.h>
 #include <LudensEditor/EditorContext/EditorContext.h>
+#include <LudensEditor/EditorContext/EditorWindow.h>
 
 namespace LD {
 
-struct EOutlinerWindowInfo
-{
-    EditorContext ctx;
-    UIWindowManager wm; /// window manager handle
-    UIWMAreaID areaID;  /// designated window area
-    void (*addScriptToComponent)(CUID compID, void* user);
-    void* user;
-};
-
 /// @brief Editor outliner window. Displays the scene hierarchy.
-struct EOutlinerWindow : Handle<struct EOutlinerWindowObj>
+struct OutlinerWindow : Handle<struct OutlinerWindowObj>
 {
+    OutlinerWindow() = default;
+    OutlinerWindow(const EditorWindowObj* obj) { mObj = (OutlinerWindowObj*)obj; }
+
     /// @brief Create editor outliner window.
-    /// @param windowInfo Outliner window creation info.
-    /// @return Editor outliner handle.
-    static EOutlinerWindow create(const EOutlinerWindowInfo& windowInfo);
+    static EditorWindow create(const EditorWindowInfo& windowI);
 
     /// @brief Destroy editor outliner window
-    static void destroy(EOutlinerWindow window);
+    static void destroy(EditorWindow window);
 };
 
 } // namespace LD

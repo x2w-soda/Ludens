@@ -6,6 +6,7 @@
 #define COMPONENT_OPTION_ADD_CHILD 1
 
 namespace LD {
+#if 0
 
 struct MenuOption
 {
@@ -78,4 +79,5 @@ bool ComponentMenu::on_option(int option, const Rect& optionRect, void* user)
     return true;
 }
 
+#endif
 } // namespace LD
