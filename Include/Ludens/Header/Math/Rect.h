@@ -147,6 +147,32 @@ struct TRect
         TRect splitArea; // zero area
         return TRect::split_h(ratio, (T)0, area, top, bottom, splitArea);
     }
+
+    /// @brief Scale rect width while preserving original center.
+    /// @param ratio Positive ratio to scale rect width. 
+    /// @return Scaled rect with new width, or the original rect if ratio is invalid.
+    static inline TRect scale_w(const TRect& area, float ratio)
+    {
+        if (ratio <= 0.0f)
+            return area;
+
+        const T oldW = area.w;
+        const T newW = area.w * (T)ratio;
+        return TRect(area.x - (newW - oldW) / (T)2, area.y, newW, area.h);
+    }
+
+    /// @brief Scale rect height while preserving original center.
+    /// @param ratio Positive ratio to scale rect height.
+    /// @return Scaled rect with new height, or the original rect if ratio is invalid.
+    static inline TRect scale_h(const TRect& area, float ratio)
+    {
+        if (ratio <= 0.0f)
+            return area;
+
+        const T oldH = area.h;
+        const T newH = area.h * (T)ratio;
+        return TRect(area.x, area.y - (newH - oldH) / (T)2, area.w, newH);
+    }
 };
 
 using Rect = TRect<float>;

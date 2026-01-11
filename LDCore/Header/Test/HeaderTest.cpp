@@ -558,7 +558,10 @@ TEST_CASE("Rect method")
     CHECK(is_equal_epsilon(top, 10.0f));
     CHECK(is_equal_epsilon(right, 50.0f));
     CHECK(is_equal_epsilon(bot, 70.0f));
+}
 
+TEST_CASE("Rect split")
+{
     Rect area(10.0f, 10.0f, 100.0f, 100.0f);
     Rect tl, br, splitArea;
     Rect::split_v(0.25f, area, tl, br);
@@ -578,6 +581,33 @@ TEST_CASE("Rect method")
     CHECK(tl == Rect(10, 10, 100, 20));
     CHECK(br == Rect(10, 40, 100, 70));
     CHECK(splitArea == Rect(10, 30, 100, 10));
+}
+
+TEST_CASE("Rect scale")
+{
+    Rect area(10.0f, 10.0f, 100.0f, 100.0f);
+
+    Rect scaled = Rect::scale_h(area, 0.0f);
+    CHECK(scaled == area);
+    scaled = Rect::scale_h(area, -0.1f);
+    CHECK(scaled == area);
+
+    scaled = Rect::scale_h(area, 0.5f);
+    CHECK(scaled == Rect(10.0f, 35.0f, 100.0f, 50.0f));
+
+    scaled = Rect::scale_h(area, 2.0f);
+    CHECK(scaled == Rect(10.0f, -40.0f, 100.0f, 200.0f));
+
+    scaled = Rect::scale_w(area, 0.0f);
+    CHECK(scaled == area);
+    scaled = Rect::scale_w(area, -0.1f);
+    CHECK(scaled == area);
+
+    scaled = Rect::scale_w(area, 0.5f);
+    CHECK(scaled == Rect(35.0f, 10.0f, 50.0f, 100.0f));
+
+    scaled = Rect::scale_w(area, 2.0f);
+    CHECK(scaled == Rect(-40.0f, 10.0f, 200.0f, 100.0f));
 }
 
 TEST_CASE("Mat3 ctor")
