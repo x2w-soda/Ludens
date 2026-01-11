@@ -423,6 +423,7 @@ set(LD_EDITOR_MODULE_FOLDER "LDEditor")
 add_subdirectory(LDEditor/EditorContext)
 add_subdirectory(LDEditor/EditorWidget)
 add_subdirectory(LDEditor/TabControlWindow)
+add_subdirectory(LDEditor/SelectionWindow)
 add_subdirectory(LDEditor/ConsoleWindow)
 add_subdirectory(LDEditor/ViewportWindow)
 add_subdirectory(LDEditor/OutlinerWindow)
@@ -433,6 +434,7 @@ target_link_libraries(LDEditorLibs INTERFACE
   LDEditorContext
   LDEditorWidget
   LDTabControlWindow
+  LDSelectionWindow
   LDConsoleWindow
   LDViewportWindow
   LDOutlinerWindow
