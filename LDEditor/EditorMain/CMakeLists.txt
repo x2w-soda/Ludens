@@ -1,13 +1,9 @@
 set(MODULE_NAME LDEditor)
 
 set(MODULE_LIB
+	Lib/EditorApplication.h
+	Lib/EditorApplication.cpp
 	Lib/EditorMain.cpp
-	Lib/EditorUI.h
-	Lib/EditorUI.cpp
-	Lib/EditorTopBar.h
-	Lib/EditorTopBar.cpp
-	Lib/EditorBottomBar.h
-	Lib/EditorBottomBar.cpp
 )
 
 add_executable(${MODULE_NAME}
