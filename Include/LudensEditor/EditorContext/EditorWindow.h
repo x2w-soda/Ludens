@@ -8,6 +8,7 @@ namespace LD {
 
 enum EditorWindowType
 {
+    EDITOR_WINDOW_TAB_CONTROL,
     EDITOR_WINDOW_SELECTION,
     EDITOR_WINDOW_VIEWPORT,
     EDITOR_WINDOW_OUTLINER,
@@ -27,7 +28,7 @@ struct EditorWindowObj
 
     /// @brief Derived class populates UIWindows with UIImmediate API,
     //         callers prepares ui_frame_begin / ui_frame_end scope.
-    virtual void on_imgui() = 0;
+    virtual void on_imgui(float delta) = 0;
 };
 
 struct EditorWindowInfo
@@ -40,7 +41,7 @@ struct EditorWindow : Handle<struct EditorWindowObj>
 {
     inline EditorWindowType get_type() { return mObj->get_type(); }
 
-    inline void on_imgui() { mObj->on_imgui(); }
+    inline void on_imgui(float delta) { mObj->on_imgui(delta); }
 };
 
 } // namespace LD

@@ -153,6 +153,9 @@ struct EditorContext : Handle<struct EditorContextObj>
 
     /// @brief Default ui layout for vertical containers, taking editor theme into account.
     UILayoutInfo make_vbox_layout();
+
+    /// @brief Default ui layout for horizontal containers, taking editor theme into account.
+    UILayoutInfo make_hbox_layout();
 };
 
 } // namespace LD

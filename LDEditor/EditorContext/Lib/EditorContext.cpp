@@ -4,6 +4,7 @@
 #include <Ludens/DataRegistry/DataComponent.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Log/Log.h>
+#include <Ludens/Memory/Memory.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/Project/Project.h>
 #include <Ludens/Project/ProjectSchema.h>
@@ -12,7 +13,6 @@
 #include <Ludens/Scene/Scene.h>
 #include <Ludens/Scene/SceneSchema.h>
 #include <Ludens/System/FileSystem.h>
-#include <Ludens/System/Memory.h>
 #include <Ludens/System/Timer.h>
 #include <LudensEditor/EditorContext/EditorAction.h>
 #include <LudensEditor/EditorContext/EditorContext.h>
@@ -176,8 +176,10 @@ void EditorContextObj::load_project(const FS::Path& projectSchemaPath)
 
     projectDirPath = projectSchemaPath.parent_path();
 
+    std::string err;
     project = Project::create(projectDirPath);
-    ProjectSchema::load_project_from_file(project, projectSchemaPath);
+    bool ok = ProjectSchema::load_project_from_file(project, projectSchemaPath, err);
+    LD_ASSERT(ok); // TODO:
 
     projectName = project.get_name();
 
@@ -248,7 +250,9 @@ void EditorContextObj::load_project_scene(const FS::Path& sceneSchemaPath)
     scene = Scene::create(sceneI);
 
     // load the scene
-    SceneSchema::load_scene_from_file(scene, sceneSchemaPath);
+    std::string err;
+    bool ok = SceneSchema::load_scene_from_file(scene, sceneSchemaPath, err);
+    LD_ASSERT(ok); // TODO:
     scene.load();
 
     EditorContextSceneLoadEvent event{};
@@ -265,14 +269,6 @@ void EditorContextObj::new_project_scene(const FS::Path& newSchemaPath)
     if (FS::exists(newSchemaPath))
     {
         sLog.warn("new_project_scene failure: scene already exists {}", newSchemaPath.string());
-        return;
-    }
-
-    std::string newSchemaText = SceneSchema::get_default_text();
-
-    if (!FS::write_file(newSchemaPath, (uint64_t)newSchemaText.size(), (const byte*)newSchemaText.data()))
-    {
-        sLog.warn("new_project_scene failure: failed to write to {}", newSchemaPath.string());
         return;
     }
 
@@ -364,6 +360,8 @@ Mat4 EditorContext::render_server_transform_callback(RUID ruid, void* user)
 
 ScreenLayer EditorContext::render_server_screen_pass_callback(void* user)
 {
+    LD_PROFILE_SCOPE;
+
     EditorContextObj& self = *(EditorContextObj*)user;
 
     // SPACE: In the editor maybe we can filter what screen layers to render?
@@ -603,16 +601,12 @@ bool EditorContext::get_component_transform_mat4(CUID compID, Mat4& worldMat4)
 
 UILayoutInfo EditorContext::make_vbox_layout()
 {
-    EditorTheme theme = mObj->settings.get_theme();
-    float pad = theme.get_padding();
+    return mObj->settings.get_theme().make_vbox_layout();
+}
 
-    UILayoutInfo layoutI{};
-    layoutI.childGap = 5.0f;
-    layoutI.childPadding = {pad, pad, pad, pad};
-    layoutI.sizeX = UISize::fit();
-    layoutI.sizeY = UISize::fit();
-    layoutI.childAxis = UI_AXIS_Y;
-    return layoutI;
+UILayoutInfo EditorContext::make_hbox_layout()
+{
+    return mObj->settings.get_theme().make_hbox_layout();
 }
 
 } // namespace LD
