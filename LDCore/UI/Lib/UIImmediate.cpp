@@ -521,6 +521,14 @@ void ui_top_user(void* imUser)
     widgetS->imUser = imUser;
 }
 
+void ui_top_rect(Rect& outRect)
+{
+    LD_ASSERT_UI_TOP_WIDGET;
+
+    UIWidgetState* widgetS = sImFrame.imWindow->imWidgetStack.top();
+    outRect = widgetS->widget.get_rect();
+}
+
 void ui_top_draw(const IMDrawCallback& imDrawCallback)
 {
     LD_ASSERT_UI_TOP_WIDGET;

@@ -40,6 +40,9 @@ void ui_top_layout_child_gap(float gap);
 /// @brief Set user of widget on top of stack.
 void ui_top_user(void* user);
 
+/// @brief Get rect of widget on top of stack.
+void ui_top_rect(Rect& outRect);
+
 /// @brief Set draw callback of widget on top of stack.
 void ui_top_draw(const IMDrawCallback& imDrawCallback);
 
