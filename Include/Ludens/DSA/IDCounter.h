@@ -3,6 +3,7 @@
 #include <Ludens/DSA/HashSet.h>
 
 #include <cstdint>
+#include <limits>
 #include <type_traits>
 
 namespace LD {

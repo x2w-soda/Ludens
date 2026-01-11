@@ -1,5 +1,5 @@
 #include <Ludens/Header/Assert.h>
-#include <Ludens/System/Memory.h>
+#include <Ludens/Memory/Memory.h>
 #include <Ludens/UI/UIImmediate.h>
 #include <LudensEditor/EditorWidget/UIAssetSlotWidget.h>
 #include <LudensEditor/EditorWidget/UIDraw.h>

@@ -1401,7 +1401,7 @@ Hash64 hash64_set_layout_info(const RSetLayoutInfo& layoutI)
 Hash64 hash64_pipeline_layout_info(const RPipelineLayoutInfo& layoutI)
 {
     if (layoutI.setLayoutCount == 0)
-        return Hash64(0ull);
+        return Hash64((uint64_t)0);
 
     // NOTE: if a pipeline layout only has a single set layout,
     //       the pipeline layout hash will be equivalent to
