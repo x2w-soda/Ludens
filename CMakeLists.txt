@@ -429,6 +429,7 @@ add_subdirectory(LDEditor/ConsoleWindow)
 add_subdirectory(LDEditor/ViewportWindow)
 add_subdirectory(LDEditor/OutlinerWindow)
 add_subdirectory(LDEditor/InspectorWindow)
+add_subdirectory(LDEditor/EditorUI)
 
 add_library(LDEditorLibs INTERFACE)
 target_link_libraries(LDEditorLibs INTERFACE
@@ -441,6 +442,7 @@ target_link_libraries(LDEditorLibs INTERFACE
   LDViewportWindow
   LDOutlinerWindow
   LDInspectorWindow
+  LDEditorUI
 )
 
 add_subdirectory(LDEditor/EditorMain)
