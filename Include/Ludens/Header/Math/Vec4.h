@@ -5,12 +5,30 @@
 #include <Ludens/Header/SIMD.h>
 
 #ifdef LD_SSE2
-#define TVEC4_ALIGNMENT std::conditional_t<std::is_same_v<T, double>, std::integral_constant<size_t, 32>, std::integral_constant<size_t, 16>>::value
+#define TVEC4_ALIGNMENT (alignof(T) > 16 ? alignof(T) : 16)
 #else
-#define TVEC4_ALIGNMENT std::integral_constant<size_t, alignof(T)>::value
+#define TVEC4_ALIGNMENT alignof(T)
 #endif
 
 namespace LD {
+
+template <typename T>
+struct TVec4SIMD
+{
+    T data[4];
+};
+
+template <>
+struct TVec4SIMD<float>
+{
+    __m128 data;
+};
+
+template <>
+struct TVec4SIMD<double>
+{
+    __m128d data[2];
+};
 
 template <typename T>
 struct alignas(TVEC4_ALIGNMENT) TVec4
@@ -26,7 +44,7 @@ struct alignas(TVEC4_ALIGNMENT) TVec4
 	        union { T w; T a; };
         };
 #ifdef LD_SSE2
-        std::conditional_t<std::is_same_v<T, double>, __m128d, __m128> data;
+        TVec4SIMD<T> simd;
 #endif
     };
 
@@ -36,10 +54,6 @@ struct alignas(TVEC4_ALIGNMENT) TVec4
     TVec4(const TVec2<T>& v1, const TVec2<T>& v2) : x(v1.x), y(v1.y), z(v2.x), w(v2.y) {}
 	TVec4(const TVec3<T>& v, T w) : x(v.x), y(v.y), z(v.z), w(w) {}
 	TVec4(T x, const TVec3<T>& v) : x(x), y(v.x), z(v.y), w(v.z) {}
-#ifdef LD_SSE2
-    TVec4(__m128 data) : data(data) {}
-    TVec4(__m128d data) : data(data) {}
-#endif
     // clang-format on
 
     inline T& operator[](int i) { return *(&x + i); }
@@ -105,9 +119,19 @@ inline bool operator==(const TVec4<T>& lhs, const TVec4<T>& rhs)
     inline TVec4<T> operator OP(const TVec4<T>& v, T s)              \
     {                                                                \
         if constexpr (std::is_same_v<T, float> && LD_SSE2)           \
-            return SSE2(v.data, _mm_set1_ps(s));                     \
+        {                                                            \
+            TVec4<T> result;                                         \
+            result.simd.data = SSE2(v.simd.data, _mm_set1_ps(s));    \
+            return result;                                           \
+        }                                                            \
         else if constexpr (std::is_same_v<T, double> && LD_SSE2)     \
-            return DSSE2(v.data, _mm_set1_pd(s));                    \
+        {                                                            \
+            TVec4<T> result;                                         \
+            __m128d data = _mm_set1_pd(s);                           \
+            result.simd.data[0] = DSSE2(v.simd.data[0], data);       \
+            result.simd.data[1] = DSSE2(v.simd.data[1], data);       \
+            return result;                                           \
+        }                                                            \
         else                                                         \
             return TVec4<T>(v.x OP s, v.y OP s, v.z OP s, v.w OP s); \
     }
@@ -117,9 +141,18 @@ inline bool operator==(const TVec4<T>& lhs, const TVec4<T>& rhs)
     inline TVec4<T> operator OP(const TVec4<T>& lhs, const TVec4<T>& rhs)                    \
     {                                                                                        \
         if constexpr (std::is_same_v<T, float> && LD_SSE2)                                   \
-            return SSE2(lhs.data, rhs.data);                                                 \
+        {                                                                                    \
+            TVec4<T> result;                                                                 \
+            result.simd.data = SSE2(lhs.simd.data, rhs.simd.data);                           \
+            return result;                                                                   \
+        }                                                                                    \
         else if constexpr (std::is_same_v<T, double> && LD_SSE2)                             \
-            return DSSE2(lhs.data, rhs.data);                                                \
+        {                                                                                    \
+            TVec4<T> result;                                                                 \
+            result.simd.data[0] = DSSE2(lhs.simd.data[0], rhs.simd.data[0]);                 \
+            result.simd.data[1] = DSSE2(lhs.simd.data[1], rhs.simd.data[1]);                 \
+            return result;                                                                   \
+        }                                                                                    \
         else                                                                                 \
             return TVec4<T>(lhs.x OP rhs.x, lhs.y OP rhs.y, lhs.z OP rhs.z, lhs.w OP rhs.w); \
     }                                                                                        \
