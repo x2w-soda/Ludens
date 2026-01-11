@@ -1,8 +1,8 @@
 #include <Ludens/Asset/AssetType/MeshAsset.h>
 #include <Ludens/DataRegistry/DataComponent.h>
 #include <Ludens/Header/Assert.h>
+#include <Ludens/Memory/Memory.h>
 #include <Ludens/Profiler/Profiler.h>
-#include <Ludens/System/Memory.h>
 #include <Ludens/UI/UIImmediate.h>
 #include <LudensEditor/InspectorWindow/InspectorWindow.h>
 
@@ -11,122 +11,74 @@
 
 namespace LD {
 
-void EInspectorWindowObj::inspect_component(CUID compID)
+void InspectorWindowObj::on_imgui(float delta)
 {
     LD_PROFILE_SCOPE;
 
-    subjectID = compID;
-    isSelectingNewAsset = false;
-}
-
-void EInspectorWindowObj::on_imgui()
-{
-    ui_push_window("EInspectorWindow", root);
+    root.set_color(root.get_theme().get_surface_color());
+    ui_push_window(root);
     ui_top_layout_child_gap(10.0f);
 
     ComponentType compType;
-    void* comp = editorCtx.get_component(subjectID, &compType);
+    void* comp = ctx.get_component(subjectID, &compType);
 
-    if (subjectID == (CUID)0)
-    {
-        ui_pop_window();
-        return;
-    }
-
-    eui_inspect_component(*this, compType, comp);
+    if (subjectID != (CUID)0)
+        eui_inspect_component(*this, compType, comp);
 
     ui_pop_window();
 }
 
-void EInspectorWindowObj::on_draw(UIWidget widget, ScreenRenderComponent renderer)
+void InspectorWindowObj::request_new_asset(AssetType type, AUID currentID)
 {
-    UITheme theme = widget.get_theme();
-    Rect windowRect = widget.get_rect();
-    Color color = theme.get_surface_color();
-    renderer.draw_rect(windowRect, color);
+    isRequestingNewAsset.set(true);
+    requestAssetType = type;
+    oldAssetID = currentID;
 }
 
-void EInspectorWindowObj::on_editor_context_event(const EditorContextEvent* event, void* user)
+void InspectorWindowObj::on_editor_context_event(const EditorContextEvent* event, void* user)
 {
-    auto& self = *(EInspectorWindowObj*)user;
+    auto& self = *(InspectorWindowObj*)user;
 
     if (event->type != EDITOR_CONTEXT_EVENT_COMPONENT_SELECTION)
         return;
 
     const auto* selectionEvent = static_cast<const EditorContextComponentSelectionEvent*>(event);
-    self.inspect_component(selectionEvent->component);
+    self.subjectID = selectionEvent->component;
 }
 
-EInspectorWindow EInspectorWindow::create(const EInspectorWindowInfo& windowI)
+//
+// Public API
+//
+
+EditorWindow InspectorWindow::create(const EditorWindowInfo& windowI)
 {
-    UIWindowManager wm = windowI.wm;
+    InspectorWindowObj* obj = heap_new<InspectorWindowObj>(MEMORY_USAGE_UI);
+    obj->ctx = windowI.ctx;
+    obj->ctx.add_observer(&InspectorWindowObj::on_editor_context_event, obj);
+    obj->space = windowI.space;
+    obj->root = obj->space.create_window(obj->space.get_root_id(), obj->ctx.make_vbox_layout(), {}, nullptr);
 
-    wm.set_window_title(windowI.areaID, "Inspector");
-    UIWindow window = wm.get_area_window(windowI.areaID);
-
-    EInspectorWindowObj* obj = heap_new<EInspectorWindowObj>(MEMORY_USAGE_UI);
-    obj->editorCtx = windowI.ctx;
-    obj->root = window;
-    obj->root.set_user(obj);
-    obj->root.set_on_draw(EInspectorWindowObj::on_draw);
-    obj->selectAssetFn = windowI.selectAssetFn;
-    obj->user = windowI.user;
-
-    EditorTheme theme = obj->editorCtx.get_settings().get_theme();
-    float pad = theme.get_padding();
-    UIWindow inspectorWindow = wm.get_area_window(windowI.areaID);
-    UIPadding padding{};
-    padding.left = pad;
-    padding.right = pad;
-    inspectorWindow.set_layout_child_padding(padding);
-
-    obj->editorCtx.add_observer(&EInspectorWindowObj::on_editor_context_event, obj);
-
-    return {obj};
+    return EditorWindow((EditorWindowObj*)obj);
 }
 
-void EInspectorWindow::destroy(EInspectorWindow window)
+void InspectorWindow::destroy(EditorWindow window)
 {
-    EInspectorWindowObj* obj = window;
+    LD_ASSERT(window && window.get_type() == EDITOR_WINDOW_INSPECTOR);
+    auto* obj = static_cast<InspectorWindowObj*>(window.unwrap());
 
-    heap_delete<EInspectorWindowObj>(obj);
+    heap_delete<InspectorWindowObj>(obj);
 }
 
-void EInspectorWindow::select_asset(AUID assetID)
+bool InspectorWindow::has_component_asset_request(CUID& compID, AUID& currentAssetID, AssetType& assetType)
 {
-    if (!mObj->isSelectingNewAsset || !mObj->subjectID)
-        return;
+    if (!mObj->isRequestingNewAsset.read())
+        return false;
 
-    ComponentType compType;
-    void* comp = mObj->editorCtx.get_component(mObj->subjectID, &compType);
+    compID = mObj->subjectID;
+    currentAssetID = mObj->oldAssetID;
+    assetType = mObj->requestAssetType;
 
-    if (!comp)
-        return;
-
-    Scene scene = mObj->editorCtx.get_scene();
-
-    switch (compType)
-    {
-    case COMPONENT_TYPE_AUDIO_SOURCE: {
-        Scene::IAudioSource source((AudioSourceComponent*)comp);
-        source.set_clip_asset(assetID);
-        break;
-    }
-    case COMPONENT_TYPE_MESH: {
-        Scene::IMesh mesh(mObj->subjectID);
-        mesh.set_mesh_asset(assetID);
-        break;
-    }
-    case COMPONENT_TYPE_SPRITE_2D: {
-        Scene::ISprite2D sprite((Sprite2DComponent*)comp);
-        sprite.set_texture_2d_asset(assetID);
-        break;
-    }
-    default:
-        break;
-    }
-
-    mObj->isSelectingNewAsset = false;
+    return true;
 }
 
 } // namespace LD

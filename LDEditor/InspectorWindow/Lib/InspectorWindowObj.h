@@ -1,27 +1,27 @@
 #pragma once
 
 #include <Ludens/DataRegistry/DataComponent.h>
-#include <LudensEditor/EditorContext/EditorCallback.h>
-#include <LudensEditor/EditorContext/EditorWindowObj.h>
+#include <Ludens/Header/Impulse.h>
+#include <LudensEditor/EditorContext/EditorWindow.h>
 
 namespace LD {
 
 /// @brief Editor inspector window implementation.
-struct EInspectorWindowObj : EditorWindowObj
+struct InspectorWindowObj : EditorWindowObj
 {
-    virtual ~EInspectorWindowObj() = default;
-
+    EditorContext ctx;
+    UIWorkspace space;
+    UIWindow root;
     CUID subjectID = 0; // subject component being inspected
-    ECBSelectAssetFn selectAssetFn;
-    void* user;
-    bool isSelectingNewAsset = false;
+    Impulse isRequestingNewAsset;
+    AssetType requestAssetType;
+    AUID oldAssetID;
 
-    void inspect_component(CUID compID);
-
-    virtual void on_imgui() override;
-
-    static void on_draw(UIWidget widget, ScreenRenderComponent renderer);
     static void on_editor_context_event(const EditorContextEvent* event, void* user);
+
+    virtual EditorWindowType get_type() override { return EDITOR_WINDOW_INSPECTOR; }
+    virtual void on_imgui(float delta) override;
+    void request_new_asset(AssetType type, AUID currentID);
 };
 
 } // namespace LD

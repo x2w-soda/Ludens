@@ -5,8 +5,8 @@
 
 namespace LD {
 
-struct EInspectorWindowObj;
+struct InspectorWindowObj;
 
-void eui_inspect_component(EInspectorWindowObj& self, ComponentType type, void* comp);
+void eui_inspect_component(InspectorWindowObj& self, ComponentType type, void* comp);
 
 } // namespace LD

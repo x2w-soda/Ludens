@@ -8,13 +8,13 @@
 
 namespace LD {
 
-static void eui_inspect_audio_source_component(EInspectorWindowObj& self, ComponentType type, void* comp);
-static void eui_inspect_transform_component(EInspectorWindowObj& self, ComponentType type, void* comp);
-static void eui_inspect_camera_component(EInspectorWindowObj& self, ComponentType type, void* comp);
-static void eui_inspect_mesh_component(EInspectorWindowObj& self, ComponentType type, void* comp);
-static void eui_inspect_sprite_2d_component(EInspectorWindowObj& self, ComponentType type, void* comp);
+static void eui_inspect_audio_source_component(InspectorWindowObj& self, ComponentType type, void* comp);
+static void eui_inspect_transform_component(InspectorWindowObj& self, ComponentType type, void* comp);
+static void eui_inspect_camera_component(InspectorWindowObj& self, ComponentType type, void* comp);
+static void eui_inspect_mesh_component(InspectorWindowObj& self, ComponentType type, void* comp);
+static void eui_inspect_sprite_2d_component(InspectorWindowObj& self, ComponentType type, void* comp);
 
-static void (*sEUIInspectFnTable[COMPONENT_TYPE_ENUM_COUNT])(EInspectorWindowObj& self, ComponentType type, void* comp) = {
+static void (*sEUIInspectFnTable[COMPONENT_TYPE_ENUM_COUNT])(InspectorWindowObj& self, ComponentType type, void* comp) = {
     nullptr,
     &eui_inspect_audio_source_component,
     &eui_inspect_transform_component,
@@ -25,22 +25,19 @@ static void (*sEUIInspectFnTable[COMPONENT_TYPE_ENUM_COUNT])(EInspectorWindowObj
 
 static_assert(sizeof(sEUIInspectFnTable) / sizeof(*sEUIInspectFnTable) == COMPONENT_TYPE_ENUM_COUNT);
 
-void eui_inspect_audio_source_component(EInspectorWindowObj& self, ComponentType type, void* comp)
+void eui_inspect_audio_source_component(InspectorWindowObj& self, ComponentType type, void* comp)
 {
     LD_ASSERT(type == COMPONENT_TYPE_AUDIO_SOURCE);
 
-    EditorTheme editorTheme = self.editorCtx.get_settings().get_theme();
-    AssetManager AM = self.editorCtx.get_asset_manager();
+    EditorTheme editorTheme = self.ctx.get_settings().get_theme();
+    AssetManager AM = self.ctx.get_asset_manager();
 
     AudioSourceComponent* sourceC = (AudioSourceComponent*)comp;
     AudioClipAsset clipA(AM.get_asset(sourceC->clipAUID).unwrap());
     LD_ASSERT(clipA);
 
-    if (eui_asset_slot(editorTheme, ASSET_TYPE_AUDIO_CLIP, sourceC->clipAUID, clipA.get_name()) && self.selectAssetFn)
-    {
-        self.isSelectingNewAsset = true;
-        self.selectAssetFn(ASSET_TYPE_AUDIO_CLIP, sourceC->clipAUID, self.user);
-    }
+    if (eui_asset_slot(editorTheme, ASSET_TYPE_AUDIO_CLIP, sourceC->clipAUID, clipA.get_name()))
+        self.request_new_asset(ASSET_TYPE_AUDIO_CLIP, sourceC->clipAUID);
 
     UILayoutInfo layoutI{};
     layoutI.childAxis = UI_AXIS_X;
@@ -76,21 +73,21 @@ void eui_inspect_audio_source_component(EInspectorWindowObj& self, ComponentType
     }
 }
 
-void eui_inspect_transform_component(EInspectorWindowObj& self, ComponentType type, void* comp)
+void eui_inspect_transform_component(InspectorWindowObj& self, ComponentType type, void* comp)
 {
     LD_ASSERT(type == COMPONENT_TYPE_TRANSFORM);
 
-    EditorTheme editorTheme = self.editorCtx.get_settings().get_theme();
+    EditorTheme editorTheme = self.ctx.get_settings().get_theme();
 
     TransformComponent* transformC = (TransformComponent*)comp;
     eui_transform_edit(editorTheme, &transformC->transform);
 }
 
-void eui_inspect_camera_component(EInspectorWindowObj& self, ComponentType type, void* comp)
+void eui_inspect_camera_component(InspectorWindowObj& self, ComponentType type, void* comp)
 {
     LD_ASSERT(type == COMPONENT_TYPE_CAMERA);
 
-    EditorTheme editorTheme = self.editorCtx.get_settings().get_theme();
+    EditorTheme editorTheme = self.ctx.get_settings().get_theme();
 
     CameraComponent* cameraC = (CameraComponent*)comp;
 
@@ -98,12 +95,12 @@ void eui_inspect_camera_component(EInspectorWindowObj& self, ComponentType type,
     // TODO:
 }
 
-static void eui_inspect_mesh_component(EInspectorWindowObj& self, ComponentType type, void* comp)
+static void eui_inspect_mesh_component(InspectorWindowObj& self, ComponentType type, void* comp)
 {
     LD_ASSERT(type == COMPONENT_TYPE_MESH);
 
-    EditorTheme editorTheme = self.editorCtx.get_theme();
-    AssetManager AM = self.editorCtx.get_asset_manager();
+    EditorTheme editorTheme = self.ctx.get_theme();
+    AssetManager AM = self.ctx.get_asset_manager();
 
     MeshComponent* meshC = (MeshComponent*)comp;
     eui_transform_edit(editorTheme, &meshC->transform);
@@ -111,35 +108,28 @@ static void eui_inspect_mesh_component(EInspectorWindowObj& self, ComponentType 
     MeshAsset asset = (MeshAsset)AM.get_asset(meshC->auid, ASSET_TYPE_MESH);
     LD_ASSERT(asset);
 
-    if (eui_asset_slot(editorTheme, ASSET_TYPE_MESH, meshC->auid, asset.get_name()) && self.selectAssetFn)
-    {
-        self.isSelectingNewAsset = true;
-        self.selectAssetFn(ASSET_TYPE_MESH, meshC->auid, self.user);
-    }
+    if (eui_asset_slot(editorTheme, ASSET_TYPE_MESH, meshC->auid, asset.get_name()))
+        self.request_new_asset(ASSET_TYPE_MESH, meshC->auid);
 }
 
-void eui_inspect_sprite_2d_component(EInspectorWindowObj& self, ComponentType type, void* comp)
+void eui_inspect_sprite_2d_component(InspectorWindowObj& self, ComponentType type, void* comp)
 {
     LD_ASSERT(type == COMPONENT_TYPE_SPRITE_2D);
 
-    EditorTheme editorTheme = self.editorCtx.get_theme();
-    AssetManager AM = self.editorCtx.get_asset_manager();
+    EditorTheme editorTheme = self.ctx.get_theme();
+    AssetManager AM = self.ctx.get_asset_manager();
 
-    // TODO:
     auto* spriteC = (Sprite2DComponent*)comp;
     eui_transform_2d_edit(editorTheme, &spriteC->transform);
 
     Texture2DAsset asset = (Texture2DAsset)AM.get_asset(spriteC->auid, ASSET_TYPE_TEXTURE_2D);
     LD_ASSERT(asset);
 
-    if (eui_asset_slot(editorTheme, ASSET_TYPE_TEXTURE_2D, spriteC->auid, asset.get_name()) && self.selectAssetFn)
-    {
-        self.isSelectingNewAsset = true;
-        self.selectAssetFn(ASSET_TYPE_TEXTURE_2D, spriteC->auid, self.user);
-    }
+    if (eui_asset_slot(editorTheme, ASSET_TYPE_TEXTURE_2D, spriteC->auid, asset.get_name()))
+        self.request_new_asset(ASSET_TYPE_TEXTURE_2D, spriteC->auid);
 }
 
-void eui_inspect_component(EInspectorWindowObj& self, ComponentType type, void* comp)
+void eui_inspect_component(InspectorWindowObj& self, ComponentType type, void* comp)
 {
     if (sEUIInspectFnTable[(int)type])
         sEUIInspectFnTable[(int)type](self, type, comp);
