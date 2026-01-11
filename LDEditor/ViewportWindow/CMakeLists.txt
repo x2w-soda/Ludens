@@ -6,8 +6,6 @@ set(MODULE_INCLUDE
 
 set(MODULE_LIB
 	Lib/ViewportWindow.cpp
-	Lib/ViewportToolbar.h
-	Lib/ViewportToolbar.cpp
 )
 
 add_library(${MODULE_NAME}

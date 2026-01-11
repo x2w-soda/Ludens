@@ -4,30 +4,24 @@
 #include <Ludens/Header/Handle.h>
 #include <Ludens/Header/Math/Transform.h>
 #include <Ludens/RenderServer/RenderServer.h>
-#include <Ludens/UI/UIWindow.h>
-#include <Ludens/UI/UIWindowManager.h>
+#include <Ludens/UI/UIWorkspace.h>
 #include <LudensEditor/EditorContext/EditorContext.h>
+#include <LudensEditor/EditorContext/EditorWindow.h>
 
 namespace LD {
 
-struct EViewportWindowInfo
-{
-    EditorContext ctx;
-    UIWindowManager wm; /// window manager handle
-    UIWMAreaID areaID;  /// designated window area
-};
-
 /// @brief Editor scene viewport window.
 ///        Displays the game scene.
-struct EViewportWindow : Handle<struct EViewportWindowObj>
+struct ViewportWindow : Handle<struct ViewportWindowObj>
 {
+    ViewportWindow() = default;
+    ViewportWindow(const EditorWindowObj* obj) { mObj = (ViewportWindowObj*)obj; }
+
     /// @brief Create a viewport window
-    /// @param windowInfo Viewport window creation info
-    /// @return Editor viewport window handle
-    static EViewportWindow create(const EViewportWindowInfo& windowInfo);
+    static EditorWindow create(const EditorWindowInfo& windowI);
 
     /// @brief Destroy viewport window.
-    static void destroy(EViewportWindow viewport);
+    static void destroy(EditorWindow viewport);
 
     /// @brief Get the camera for rendering the scene in the viewport window.
     Camera get_editor_camera();
