@@ -1,7 +1,7 @@
 #include <Ludens/Log/Log.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/System/FileSystem.h>
-#include <Ludens/Window/Window.h>
+#include <Ludens/WindowRegistry/WindowRegistry.h>
 
 #include "EditorApplication.h"
 
@@ -36,7 +36,8 @@ EditorApplication::EditorApplication()
     windowI.hintBorderColor = 0;
     windowI.hintTitleBarColor = 0x000000FF;
     windowI.hintTitleBarTextColor = 0xDFDFDFFF;
-    Window window = Window::create(windowI);
+    WindowRegistry reg = WindowRegistry::create(windowI);
+    const Vec2 screenExtent = reg.get_window_extent(reg.get_root_id());
 
     std::string fontPathString = sLudensLFS.fontPath.string();
     mFont = Font::create_from_path(fontPathString.c_str());
@@ -44,7 +45,6 @@ EditorApplication::EditorApplication()
 
     RDeviceInfo deviceI{};
     deviceI.backend = RDEVICE_BACKEND_VULKAN;
-    deviceI.window = window.get_glfw_window();
     deviceI.vsync = true; // TODO: config
     mRDevice = RDevice::create(deviceI);
 
@@ -86,8 +86,8 @@ EditorApplication::EditorApplication()
     uiI.ctx = mEditorCtx;
     uiI.fontAtlas = mFontAtlas;
     uiI.fontAtlasImage = mRenderServer.get_font_atlas_image();
-    uiI.screenWidth = window.width();
-    uiI.screenHeight = window.height();
+    uiI.screenWidth = (uint32_t)screenExtent.x;
+    uiI.screenHeight = (uint32_t)screenExtent.y;
     uiI.barHeight = 22;
     mEditorUI.startup(uiI);
 }
@@ -107,22 +107,24 @@ EditorApplication::~EditorApplication()
     RDevice::destroy(mRDevice);
     FontAtlas::destroy(mFontAtlas);
     Font::destroy(mFont);
-    Window::destroy(Window::get());
+    WindowRegistry::destroy();
     JobSystem::shutdown();
 }
 
 void EditorApplication::run()
 {
-    Window window = Window::get();
+    WindowRegistry reg = WindowRegistry::get();
+    WindowID rootID = reg.get_root_id();
 
-    while (window.is_open())
+    while (reg.is_window_open(rootID))
     {
-        window.poll_events();
+        reg.poll_events();
 
-        if (window.is_minimized())
+        if (reg.is_window_minimized(rootID))
             continue;
 
-        float delta = (float)window.get_delta_time();
+        float delta = (float)reg.get_delta_time();
+        const Vec2 screenExtent = reg.get_window_extent(rootID);
 
         // The current project or scene could change after this.
         mEditorCtx.poll_actions();
@@ -141,7 +143,7 @@ void EditorApplication::run()
         RenderServerFrameInfo frameI{};
         frameI.directionalLight = Vec3(0.0f, 1.0f, 0.0f);
         frameI.mainCamera = mainCamera;
-        frameI.screenExtent = window.extent();
+        frameI.screenExtent = screenExtent;
         frameI.sceneExtent = mEditorUI.get_viewport_scene_size();
         frameI.envCubemap = mEnvCubemap;
         mRenderServer.next_frame(frameI);

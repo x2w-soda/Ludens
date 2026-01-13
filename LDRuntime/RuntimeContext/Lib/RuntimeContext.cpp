@@ -9,7 +9,7 @@
 #include <Ludens/Scene/Scene.h>
 #include <Ludens/Scene/SceneSchema.h>
 #include <Ludens/System/FileSystem.h>
-#include <Ludens/Window/Window.h>
+#include <Ludens/WindowRegistry/WindowRegistry.h>
 #include <LudensRuntime/RuntimeContext/RuntimeContext.h>
 
 namespace LD {
@@ -92,7 +92,6 @@ RuntimeContext RuntimeContext::create(const RuntimeContextInfo& info)
         RDeviceInfo deviceI{};
         deviceI.backend = RDEVICE_BACKEND_VULKAN;
         deviceI.vsync = true; // TODO expose
-        deviceI.window = Window::get().get_glfw_window();
         obj->renderDevice = RDevice::create(deviceI);
     }
 
@@ -122,7 +121,7 @@ RuntimeContext RuntimeContext::create(const RuntimeContextInfo& info)
 
     // load default scene
     std::string err;
-    bool ok =SceneSchema::load_scene_from_file(obj->scene, defaultScenePath, err);
+    bool ok = SceneSchema::load_scene_from_file(obj->scene, defaultScenePath, err);
     LD_ASSERT(ok); // TODO:
     obj->scene.load();
     obj->scene.startup();
@@ -150,7 +149,8 @@ void RuntimeContext::update(float delta)
 {
     LD_PROFILE_SCOPE;
 
-    const Vec2 screenExtent = Window::get().extent();
+    WindowRegistry reg = WindowRegistry::get();
+    const Vec2 screenExtent = reg.get_window_extent(reg.get_root_id());
 
     mObj->scene.update(screenExtent, delta);
 

@@ -1,8 +1,8 @@
 #include <Ludens/DataRegistry/DataComponent.h>
 #include <Ludens/Log/Log.h>
 #include <Ludens/Profiler/Profiler.h>
-#include <Ludens/Window/Input.h>
-#include <Ludens/Window/Window.h>
+#include <Ludens/WindowRegistry/Input.h>
+#include <Ludens/WindowRegistry/WindowRegistry.h>
 
 #include <array>
 #include <cstring>
@@ -164,7 +164,8 @@ static int component_set_name(lua_State* l)
 /// @brief ludens.application.exit
 static int application_exit(lua_State* l)
 {
-    Window::get().exit();
+    WindowRegistry reg = WindowRegistry::get();
+    reg.close_window(reg.get_root_id());
 
     return 0;
 }

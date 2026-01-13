@@ -2,7 +2,7 @@
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/Scene/Scene.h>
 #include <Ludens/UI/UIImmediate.h>
-#include <Ludens/Window/Window.h>
+#include <Ludens/WindowRegistry/WindowRegistry.h>
 #include <LudensEditor/EditorContext/EditorIconAtlas.h>
 #include <LudensEditor/EditorContext/EditorWindow.h>
 #include <LudensEditor/EditorUI/EditorUI.h>

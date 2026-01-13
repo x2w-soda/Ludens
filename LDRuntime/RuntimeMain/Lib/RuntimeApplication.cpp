@@ -1,6 +1,8 @@
-#include "RuntimeApplication.h"
 #include <Ludens/JobSystem/JobSystem.h>
 #include <Ludens/Profiler/Profiler.h>
+#include <Ludens/WindowRegistry/WindowRegistry.h>
+
+#include "RuntimeApplication.h"
 
 namespace LD {
 
@@ -25,7 +27,7 @@ RuntimeApplication::RuntimeApplication(Project project)
     windowI.hintBorderColor = 0;
     windowI.hintTitleBarColor = 0;
     windowI.hintTitleBarTextColor = 0;
-    Window::create(windowI);
+    WindowRegistry::create(windowI);
 
     RuntimeContextInfo ctxI{};
     ctxI.project = project;
@@ -37,23 +39,23 @@ RuntimeApplication::~RuntimeApplication()
     LD_PROFILE_SCOPE;
 
     RuntimeContext::destroy(mRuntimeCtx);
-    Window::destroy(Window::get());
+    WindowRegistry::destroy();
     JobSystem::shutdown();
 }
 
 void RuntimeApplication::run()
 {
-    Window window = Window::get();
+    WindowRegistry reg = WindowRegistry::get();
+    WindowID rootID = reg.get_root_id();
 
-    while (window.is_open())
+    while (reg.is_window_open(rootID))
     {
-        window.poll_events();
+        reg.poll_events();
 
-        if (window.is_minimized())
+        if (reg.is_window_minimized(rootID))
             continue;
 
-        float delta = (float)window.get_delta_time();
-        const Vec2 screenExtent = window.extent();
+        float delta = (float)reg.get_delta_time();
 
         mRuntimeCtx.update(delta);
 

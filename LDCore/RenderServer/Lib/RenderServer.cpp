@@ -210,12 +210,15 @@ void RenderServerObj::next_frame(const RenderServerFrameInfo& frameI)
 {
     RSemaphore imageAcquired, presentReady;
     RFence frameComplete;
-    uint32_t swapIdx;
-    swapIdx = mDevice.next_frame(imageAcquired, presentReady, frameComplete);
+
+    mDevice.next_frame(mFrameIndex, frameComplete);
+
+    WindowRegistry reg = WindowRegistry::get();
+    RImage swapchainImage = mDevice.try_acquire_image(reg.get_root_id(), imageAcquired, presentReady);
+    LD_ASSERT(swapchainImage);
 
     mSceneExtent = frameI.sceneExtent;
     mScreenExtent = frameI.screenExtent;
-    mFrameIndex = mDevice.get_frame_index();
     mCmdPools[mFrameIndex].reset();
     RCommandList list = mCmdLists[mFrameIndex];
     Frame& frame = mFrames[mFrameIndex];
@@ -226,7 +229,7 @@ void RenderServerObj::next_frame(const RenderServerFrameInfo& frameI)
     graphI.presentReady = presentReady;
     graphI.imageAcquired = imageAcquired;
     graphI.frameComplete = frameComplete;
-    graphI.swapchainImage = mDevice.get_swapchain_color_attachment(swapIdx);
+    graphI.swapchainImage = swapchainImage;
     graphI.screenWidth = (uint32_t)mScreenExtent.x;
     graphI.screenHeight = (uint32_t)mScreenExtent.y;
     mGraph = RGraph::create(graphI);

@@ -1,5 +1,4 @@
 #include <Ludens/Memory/Memory.h>
-#include <Ludens/Window/Window.h>
 #include <iostream>
 
 #include "UISandbox.h"

@@ -2,7 +2,7 @@
 #include <Ludens/Header/Types.h>
 #include <Ludens/UI/UIWidget.h>
 #include <Ludens/UI/UIWindow.h>
-#include <Ludens/Window/Input.h>
+#include <Ludens/WindowRegistry/Input.h>
 #include <algorithm>
 
 #include "UIObj.h"

@@ -3,7 +3,7 @@
 #include <Ludens/Header/Impulse.h>
 #include <Ludens/Memory/Memory.h>
 #include <Ludens/UI/UIImmediate.h>
-#include <Ludens/Window/Input.h>
+#include <Ludens/WindowRegistry/Input.h>
 #include <LudensEditor/EditorContext/EditorIconAtlas.h>
 #include <LudensEditor/EditorContext/EditorWindow.h>
 #include <LudensEditor/ViewportWindow/ViewportWindow.h>

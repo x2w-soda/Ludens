@@ -2,7 +2,6 @@
 
 #include <Ludens/Event/Event.h>
 #include <Ludens/Project/Project.h>
-#include <Ludens/Window/Window.h>
 #include <LudensRuntime/RuntimeContext/RuntimeContext.h>
 
 namespace LD {

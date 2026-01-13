@@ -5,8 +5,8 @@
 #include <Ludens/RenderBackend/RUtil.h>
 #include <Ludens/System/FileSystem.h>
 #include <Ludens/UI/UIImmediate.h>
-#include <Ludens/Window/Input.h>
-#include <Ludens/Window/Window.h>
+#include <Ludens/WindowRegistry/Input.h>
+#include <Ludens/WindowRegistry/WindowRegistry.h>
 #include <LudensEditor/EditorContext/EditorIconAtlas.h>
 #include <LudensUtil/LudensLFS.h>
 
@@ -40,11 +40,11 @@ UISandbox::UISandbox()
     windowI.hintBorderColor = 0;
     windowI.hintTitleBarColor = 0x000000FF;
     windowI.hintTitleBarTextColor = 0xDFDFDFFF;
-    Window window = Window::create(windowI);
-    const Vec2 screenExtent = window.extent();
+    WindowRegistry reg = WindowRegistry::create(windowI);
+    const Vec2 screenExtent = reg.get_window_extent(reg.get_root_id());
 
     CameraPerspectiveInfo perspectiveI{};
-    perspectiveI.aspectRatio = window.aspect_ratio();
+    perspectiveI.aspectRatio = reg.get_window_aspect_ratio(reg.get_root_id());
     perspectiveI.nearClip = 0.1f;
     perspectiveI.farClip = 100.0f;
     perspectiveI.fov = LD_TO_RADIANS(45.0f);
@@ -56,7 +56,6 @@ UISandbox::UISandbox()
 
     RDeviceInfo deviceI{};
     deviceI.backend = RDEVICE_BACKEND_VULKAN;
-    deviceI.window = window.get_glfw_window();
     deviceI.vsync = true;
     mRDevice = RDevice::create(deviceI);
 
@@ -119,25 +118,27 @@ UISandbox::~UISandbox()
     RDevice::destroy(mRDevice);
     FontAtlas::destroy(mFontAtlas);
     Font::destroy(mFont);
+    WindowRegistry::destroy();
 
     JobSystem::shutdown();
 }
 
 void UISandbox::run()
 {
-    Window window = Window::get();
+    WindowRegistry reg = WindowRegistry::get();
+    WindowID rootID = reg.get_root_id();
 
-    while (window.is_open())
+    while (reg.is_window_open(rootID))
     {
-        window.poll_events();
+        reg.poll_events();
 
-        if (window.is_minimized())
+        if (reg.is_window_minimized(rootID))
             continue;
 
         imgui();
 
         // update and render
-        float delta = (float)window.get_delta_time();
+        float delta = (float)reg.get_delta_time();
         mCtx.update(delta);
         render();
 
@@ -145,8 +146,6 @@ void UISandbox::run()
     }
 
     ui_imgui_release(mCtx);
-
-    Window::destroy(window);
 }
 
 void UISandbox::imgui()
@@ -206,8 +205,8 @@ void UISandbox::imgui()
 
 void UISandbox::render()
 {
-    Window window = Window::get();
-    const Vec2 screenExtent = window.extent();
+    WindowRegistry reg = WindowRegistry::get();
+    const Vec2 screenExtent = reg.get_window_extent(reg.get_root_id());
 
     // begin rendering a frame
     RenderServerFrameInfo frameI{};

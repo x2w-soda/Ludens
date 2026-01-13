@@ -29,7 +29,6 @@ RenderUtil LD::RenderUtil::create()
 
     RDeviceInfo deviceI{};
     deviceI.backend = RDEVICE_BACKEND_VULKAN;
-    deviceI.window = nullptr;
 
     obj->device = RDevice::create(deviceI);
     obj->cmdPool = obj->device.create_command_pool({RQUEUE_TYPE_GRAPHICS, true});

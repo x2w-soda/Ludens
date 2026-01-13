@@ -10,8 +10,8 @@
 #include <Ludens/Media/Format/MP3.h>
 #include <Ludens/Media/Format/WAV.h>
 #include <Ludens/System/FileSystem.h>
-#include <Ludens/Window/Input.h>
-#include <Ludens/Window/Window.h>
+#include <Ludens/WindowRegistry/Input.h>
+#include <Ludens/WindowRegistry/WindowRegistry.h>
 
 // Using audio samples from the LFS repository.
 #include <LudensUtil/LudensLFS.h>
@@ -92,7 +92,7 @@ public:
         windowI.height = 600;
         windowI.name = "AudioMixerSandbox";
         windowI.onEvent = nullptr;
-        Window::create(windowI);
+        WindowRegistry::create(windowI);
     }
 
     ~AudioMixerSandbox()
@@ -121,7 +121,7 @@ public:
             AudioBuffer::destroy(mClickAB);
         }
 
-        Window::destroy(Window::get());
+        WindowRegistry::destroy();
         MiniAudio::destroy(mMA);
         AudioMixer::destroy(mMixer);
         PoolAllocator::destroy(mPlaybackPA);
@@ -129,11 +129,12 @@ public:
 
     void run()
     {
-        Window window = Window::get();
+        WindowRegistry reg = WindowRegistry::get();
+        WindowID rootID = reg.get_root_id();
 
-        while (window.is_open())
+        while (reg.is_window_open(rootID))
         {
-            window.poll_events();
+            reg.poll_events();
 
             AudioCommand cmd;
 

@@ -1165,8 +1165,8 @@ void RGraph::submit(bool save)
         RImage srcBlit = srcBlitState.handle;
         RImage dstBlit = mObj->info.swapchainImage;
         RDevice device = mObj->info.device;
-        uint32_t swapchainWidth, swapchainHeight;
-        device.get_swapchain_extent(&swapchainWidth, &swapchainHeight);
+        uint32_t swapchainWidth = mObj->info.screenWidth;
+        uint32_t swapchainHeight = mObj->info.screenHeight;
 
         // transition src image from final layout to transfer src
         RImageMemoryBarrier barrier = RUtil::make_image_memory_barrier(srcBlit, srcBlitState.lastLayout, RIMAGE_LAYOUT_TRANSFER_SRC, RACCESS_COLOR_ATTACHMENT_WRITE_BIT, RACCESS_TRANSFER_READ_BIT);
