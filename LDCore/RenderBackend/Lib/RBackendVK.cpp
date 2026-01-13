@@ -1,3 +1,5 @@
+#include <Ludens/DSA/HashMap.h>
+#include <Ludens/DSA/HashSet.h>
 #include <Ludens/DSA/Vector.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Header/Hash.h>
@@ -5,13 +7,12 @@
 #include <Ludens/Memory/Memory.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/RenderBackend/RBackend.h>
+#include <Ludens/System/FileSystem.h>
+#include <Ludens/WindowRegistry/WindowRegistry.h>
 
 #include <array>
 #include <cstring>
-#include <filesystem>
-#include <set>
 #include <string>
-#include <unordered_map>
 
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h> // hide from user
@@ -28,18 +29,18 @@
 // RBackendVK.cpp
 // - Vulkan 1.3 backend implementation
 
-#define VK_CHECK(CALL)                                                      \
-    do                                                                      \
-    {                                                                       \
-        VkResult result_ = CALL;                                            \
-        if (result_ != VK_SUCCESS)                                          \
-        {                                                                   \
-            sLog.error("{}:{} VK_CHECK failed with VkResult {}",            \
-                       std::filesystem::path(__FILE__).filename().string(), \
-                       __LINE__,                                            \
-                       RUtil::get_vk_result_cstr(result_));                 \
-            LD_DEBUG_BREAK;                                                 \
-        }                                                                   \
+#define VK_CHECK(CALL)                                           \
+    do                                                           \
+    {                                                            \
+        VkResult result_ = CALL;                                 \
+        if (result_ != VK_SUCCESS)                               \
+        {                                                        \
+            sLog.error("{}:{} VK_CHECK failed with VkResult {}", \
+                       FS::Path(__FILE__).filename().string(),   \
+                       __LINE__,                                 \
+                       RUtil::get_vk_result_cstr(result_));      \
+            LD_DEBUG_BREAK;                                      \
+        }                                                        \
     } while (0)
 
 // clang-format off
@@ -60,15 +61,29 @@ struct PhysicalDevice
     VkPhysicalDevice handle = VK_NULL_HANDLE;
     VkPhysicalDeviceProperties deviceProps;
     VkPhysicalDeviceFeatures deviceFeatures;
-    VkSurfaceCapabilitiesKHR surfaceCaps;
     VkSampleCountFlags msaaCount;
-    std::vector<VkSurfaceFormatKHR> surfaceFormats;
-    std::vector<VkFormat> depthStencilFormats; /// formats with VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT
-    std::vector<VkQueueFamilyProperties> familyProps;
-    std::vector<VkPresentModeKHR> presentModes;
+    Vector<VkFormat> depthStencilFormats; /// formats with VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT
+    Vector<VkQueueFamilyProperties> familyProps;
 };
 
-/// @brief information to create a Vulkan Swapchain
+/// @brief Vulkan semaphore object.
+struct RSemaphoreVKObj : RSemaphoreObj
+{
+    struct
+    {
+        VkSemaphore handle;
+    } vk;
+};
+
+/// @brief Vulkan fence object.
+struct RFenceVKObj : RFenceObj
+{
+    struct
+    {
+        VkFence handle;
+    } vk;
+};
+
 struct SwapchainInfo
 {
     VkFormat imageFormat;
@@ -77,15 +92,34 @@ struct SwapchainInfo
     bool vsyncHint;
 };
 
-/// @brief Vulkan Swapchain
 struct Swapchain
 {
-    VkSwapchainKHR handle;
+    VkSwapchainKHR handle = VK_NULL_HANDLE;
     SwapchainInfo info;
-    std::vector<VkImage> images; // external resource owned by VkSwapchainKHR
-    std::vector<RImage> colorAttachments;
-    uint32_t width;
-    uint32_t height;
+    Vector<VkImage> images; // external resource owned by VkSwapchainKHR
+    Vector<RImage> colorAttachments;
+    uint32_t width = 0;
+    uint32_t height = 0;
+    uint32_t imageIdx = UINT32_MAX; // last acquired swapchain image index
+    RSemaphoreVKObj imageAcquiredObj[FRAMES_IN_FLIGHT];
+    RSemaphoreVKObj presentReadyObj[FRAMES_IN_FLIGHT];
+};
+
+struct RDeviceVKObj;
+
+/// @brief Vulkan surface and swapchain tuple
+struct WindowSurface
+{
+    VkSurfaceKHR handle = VK_NULL_HANDLE;
+    GLFWwindow* glfw = nullptr;
+    Swapchain swapchain{};
+    VkSurfaceCapabilitiesKHR surfaceCaps;
+    Vector<VkSurfaceFormatKHR> surfaceFormats;
+    Vector<VkPresentModeKHR> presentModes;
+
+    void create_swapchain(RDeviceVKObj* obj);
+    void destroy_swapchain(RDeviceVKObj* obj);
+    void invalidate_swapchain(RDeviceVKObj* obj);
 };
 
 /// @brief Vulkan extension function pointers
@@ -160,6 +194,29 @@ VKAPI_ATTR VkBool32 VulkanDebugMessenger::callback(VkDebugUtilsMessageSeverityFl
 }
 
 VulkanDebugMessenger* sDebugMessenger = nullptr;
+
+static void vk_queue_wait_idle(RQueueObj* self);
+static void vk_queue_submit(RQueueObj* self, const RSubmitInfo& submitI, RFence fence);
+
+static const RQueueAPI sRQueueVKAPI = {
+    .wait_idle = &vk_queue_wait_idle,
+    .submit = &vk_queue_submit,
+};
+
+/// @brief Vulkan queue object.
+struct RQueueVKObj : RQueueObj
+{
+    RQueueVKObj()
+    {
+        api = &sRQueueVKAPI;
+    }
+
+    struct
+    {
+        uint32_t familyIdx;
+        VkQueue handle;
+    } vk;
+};
 
 static size_t vk_device_get_obj_size(RType objType);
 
@@ -236,14 +293,11 @@ static void vk_device_pipeline_variant_depth_test_enable(RDeviceObj* self, RPipe
 static void vk_device_update_set_images(RDeviceObj* self, uint32_t updateCount, const RSetImageUpdateInfo* updates);
 static void vk_device_update_set_buffers(RDeviceObj* self, uint32_t updateCount, const RSetBufferUpdateInfo* updates);
 
-static uint32_t vk_device_next_frame(RDeviceObj* self, RSemaphore& imageAcquired, RSemaphore& presentReady, RFence& frameComplete);
+static void vk_device_next_frame(RDeviceObj* self, RFence& frameComplete);
+static RImage vk_device_try_acquire_image(RDeviceObj* self, WindowID id, RSemaphore& imageAcquired, RSemaphore& presentReady);
 static void vk_device_present_frame(RDeviceObj* self);
 static void vk_device_get_depth_stencil_formats(RDeviceObj* self, RFormat* formats, uint32_t& count);
 static RSampleCountBit vk_device_get_max_sample_count(RDeviceObj* self);
-static RFormat vk_device_get_swapchain_color_format(RDeviceObj* self);
-static RImage vk_device_get_swapchain_color_attachment(RDeviceObj* self, uint32_t imageIdx);
-static uint32_t vk_device_get_swapchain_image_count(RDeviceObj* self);
-static void vk_device_get_swapchain_extent(RDeviceObj* self, uint32_t* width, uint32_t* height);
 static uint32_t vk_device_get_frames_in_flight_count(RDeviceObj* self);
 static RQueue vk_device_get_graphics_queue(RDeviceObj* self);
 static void vk_device_wait_idle(RDeviceObj* self);
@@ -309,13 +363,14 @@ static constexpr RDeviceAPI sRDeviceVKAPI = {
     .update_set_images = &vk_device_update_set_images,
     .update_set_buffers = &vk_device_update_set_buffers,
     .next_frame = &vk_device_next_frame,
+    .try_acquire_image = &vk_device_try_acquire_image,
     .present_frame = &vk_device_present_frame,
     .get_depth_stencil_formats = &vk_device_get_depth_stencil_formats,
     .get_max_sample_count = &vk_device_get_max_sample_count,
-    .get_swapchain_color_format = &vk_device_get_swapchain_color_format,
-    .get_swapchain_color_attachment = &vk_device_get_swapchain_color_attachment,
-    .get_swapchain_image_count = &vk_device_get_swapchain_image_count,
-    .get_swapchain_extent = &vk_device_get_swapchain_extent,
+    //.get_swapchain_color_format = &vk_device_get_swapchain_color_format,
+    //.get_swapchain_color_attachment = &vk_device_get_swapchain_color_attachment,
+    //.get_swapchain_image_count = &vk_device_get_swapchain_image_count,
+    //.get_swapchain_extent = &vk_device_get_swapchain_extent,
     .get_frames_in_flight_count = &vk_device_get_frames_in_flight_count,
     .get_graphics_queue = &vk_device_get_graphics_queue,
     .wait_idle = &vk_device_wait_idle,
@@ -334,11 +389,8 @@ struct RDeviceVKObj : RDeviceObj
     {
         VmaAllocator vma;
         VkInstance instance;
-        VkSurfaceKHR surface;
         PhysicalDevice pdevice;
-        Swapchain swapchain;
         VkDevice device;
-        uint32_t imageIdx;
         uint32_t familyIdxGraphics;
         uint32_t familyIdxTransfer;
         uint32_t familyIdxCompute;
@@ -347,7 +399,10 @@ struct RDeviceVKObj : RDeviceObj
         RQueue queueTransfer;
         RQueue queueCompute;
         RQueue queuePresent;
-        std::unordered_map<Hash64, VkSampler> samplerCache;
+        HashMap<Hash64, VkSampler> samplerCache;
+        HashMap<WindowID, WindowSurface*> windowCache;
+        HashSet<WindowSurface*> acquiredSurfaces;
+        RFenceVKObj frameCompleteObj[FRAMES_IN_FLIGHT];
     } vk;
 
     VkSampler get_or_create_sampler(const RSamplerInfo& samplerI)
@@ -606,11 +661,11 @@ struct RPipelineVKObj : RPipelineObj
 
     struct
     {
-        std::vector<VkPipelineShaderStageCreateInfo> shaderStageCI;
-        std::vector<VkVertexInputAttributeDescription> attributeD;
-        std::vector<VkVertexInputBindingDescription> bindingD;
-        std::vector<VkPipelineColorBlendAttachmentState> blendStates;
-        std::unordered_map<uint32_t, VkPipeline> handles;
+        Vector<VkPipelineShaderStageCreateInfo> shaderStageCI;
+        Vector<VkVertexInputAttributeDescription> attributeD;
+        Vector<VkVertexInputBindingDescription> bindingD;
+        Vector<VkPipelineColorBlendAttachmentState> blendStates;
+        HashMap<uint32_t, VkPipeline> handles;
         VkPipelineViewportStateCreateInfo viewportSCI;
         VkPipelineVertexInputStateCreateInfo vertexInputSCI;
         VkPipelineInputAssemblyStateCreateInfo inputAsmSCI;
@@ -622,66 +677,14 @@ struct RPipelineVKObj : RPipelineObj
     } vk;
 };
 
-static void vk_queue_wait_idle(RQueueObj* self);
-static void vk_queue_submit(RQueueObj* self, const RSubmitInfo& submitI, RFence fence);
+static void get_swapchain_info(WindowSurface* surface, SwapchainInfo* swapchainI);
+static void enumerate_instance_extensions(Vector<VkExtensionProperties>& supportedInstanceExts, HashSet<std::string>& supportedInstanceExtSet);
+static void enumerate_instance_layers(Vector<VkLayerProperties>& supportedInstanceLayers, HashSet<std::string>& supportedInstanceLayerSet);
 
-static const RQueueAPI sRQueueVKAPI = {
-    .wait_idle = &vk_queue_wait_idle,
-    .submit = &vk_queue_submit,
-};
-
-/// @brief Vulkan queue object.
-struct RQueueVKObj : RQueueObj
-{
-    RQueueVKObj()
-    {
-        api = &sRQueueVKAPI;
-    }
-
-    struct
-    {
-        uint32_t familyIdx;
-        VkQueue handle;
-    } vk;
-};
-
-/// @brief Vulkan semaphore object.
-struct RSemaphoreVKObj : RSemaphoreObj
-{
-    struct
-    {
-        VkSemaphore handle;
-    } vk;
-};
-
-/// @brief Vulkan fence object.
-struct RFenceVKObj : RFenceObj
-{
-    struct
-    {
-        VkFence handle;
-    } vk;
-};
-
-// @brief Vulkan frame boundary
-struct VulkanFrame
-{
-    RFence frameComplete;
-    RSemaphore imageAcquired;
-    RSemaphore presentReady;
-    RFenceVKObj frameCompleteObj;
-    RSemaphoreVKObj imageAcquiredObj;
-    RSemaphoreVKObj presentReadyObj;
-} sVulkanFrames[FRAMES_IN_FLIGHT];
-
-static VkResult acquire_next_image(RDeviceVKObj* obj, VkSemaphore imageAcquiredSemaphore);
+static VkResult acquire_next_image(RDeviceVKObj* obj, WindowSurface* surface, VkSemaphore imageAcquiredSemaphore);
 static void choose_physical_device(RDeviceVKObj* obj);
-static void configure_swapchain(RDeviceVKObj* obj, SwapchainInfo* swapchainI);
-static void create_swapchain(RDeviceVKObj* obj, const SwapchainInfo& swapchainI);
 static RImage create_swapchain_color_attachment(RDeviceVKObj* deviceObj, VkImage image, VkFormat colorFormat, uint32_t width, uint32_t height);
-static void destroy_swapchain(RDeviceVKObj* obj);
 static void destroy_swapchain_color_attachment(RDeviceVKObj* deviceObj, RImage attachment);
-static void invalidate_swapchain(RDeviceVKObj* obj);
 static void create_vma_allocator(RDeviceVKObj* obj);
 static void destroy_vma_allocator(RDeviceVKObj* obj);
 static RQueue create_queue(uint32_t queueFamilyIdx, VkQueue handle);
@@ -753,34 +756,28 @@ void vk_create_device(RDeviceObj* baseSelf, const RDeviceInfo& deviceI)
     LD_PROFILE_SCOPE;
 
     auto* self = (RDeviceVKObj*)baseSelf;
-    self->vk.surface = VK_NULL_HANDLE;
-    self->glfw = deviceI.window;
 
     // get supported instance extensions
-    uint32_t extCount;
-    vkEnumerateInstanceExtensionProperties(nullptr, &extCount, nullptr);
-    std::vector<VkExtensionProperties> supportedInstanceExts(extCount);
-    vkEnumerateInstanceExtensionProperties(nullptr, &extCount, supportedInstanceExts.data());
-    std::set<std::string> supportedInstanceExtSet;
-    for (const VkExtensionProperties& extProperty : supportedInstanceExts)
-        supportedInstanceExtSet.insert(std::string(extProperty.extensionName));
+    Vector<VkExtensionProperties> supportedInstanceExts;
+    HashSet<std::string> supportedInstanceExtSet;
+    enumerate_instance_extensions(supportedInstanceExts, supportedInstanceExtSet);
 
     // get supported instance layers
-    uint32_t layerCount;
-    vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
-    std::vector<VkLayerProperties> supportedInstanceLayers(layerCount);
-    vkEnumerateInstanceLayerProperties(&layerCount, supportedInstanceLayers.data());
-    std::set<std::string> supportedInstanceLayerSet;
-    for (const VkLayerProperties& layerProperty : supportedInstanceLayers)
-        supportedInstanceLayerSet.insert(std::string(layerProperty.layerName));
+    Vector<VkLayerProperties> supportedInstanceLayers;
+    HashSet<std::string> supportedInstanceLayerSet;
+    enumerate_instance_layers(supportedInstanceLayers, supportedInstanceLayerSet);
 
-    std::set<std::string> desiredInstanceExtSet = {
+    HashSet<std::string> desiredInstanceExtSet = {
 #if defined(VK_EXT_debug_utils) && !defined(NDEBUG)
         VK_EXT_DEBUG_UTILS_EXTENSION_NAME,
 #endif
     };
 
-    if (!self->isHeadless)
+    // If the WindowRegistry singleton has not been created by now,
+    // we will be doing some headless rendering.
+    WindowRegistry windowReg = WindowRegistry::get();
+
+    if (windowReg)
     {
         // NOTE: make sure glfwInit() is called before this
         LD_ASSERT(glfwVulkanSupported() == GLFW_TRUE);
@@ -795,47 +792,52 @@ void vk_create_device(RDeviceObj* baseSelf, const RDeviceInfo& deviceI)
     // SPACE: insert any other user-requested extensions into set
 
     // requested extensions = desired && supported extensions
-    std::vector<const char*> requestedInstanceExts;
+    Vector<const char*> requestedInstanceExts;
     for (const std::string& desiredExt : desiredInstanceExtSet)
     {
         if (supportedInstanceExtSet.contains(desiredExt))
             requestedInstanceExts.push_back(desiredExt.c_str());
     }
 
-    std::set<std::string> desiredInstanceLayerSet = {
+    HashSet<std::string> desiredInstanceLayerSet = {
         "VK_LAYER_KHRONOS_validation",
     };
 
     // requested layers = desired && supported layers
-    std::vector<const char*> requestedInstanceLayers;
+    Vector<const char*> requestedInstanceLayers;
     for (const std::string& desiredLayer : desiredInstanceLayerSet)
     {
         if (supportedInstanceLayerSet.contains(desiredLayer))
             requestedInstanceLayers.push_back(desiredLayer.c_str());
     }
 
-    VkApplicationInfo appI{
-        .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
-        .pNext = nullptr,
-        .pApplicationName = APPLICATION_NAME,
-        .applicationVersion = APPLICATION_VERSION,
-        .apiVersion = API_VERSION,
-    };
+    {
+        LD_PROFILE_SCOPE_NAME("vkCreateInstance");
 
-    VkInstanceCreateInfo instanceCI{
-        .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
-        .pApplicationInfo = &appI,
+        VkApplicationInfo appI{
+            .sType = VK_STRUCTURE_TYPE_APPLICATION_INFO,
+            .pNext = nullptr,
+            .pApplicationName = APPLICATION_NAME,
+            .applicationVersion = APPLICATION_VERSION,
+            .apiVersion = API_VERSION,
+        };
+
+        VkInstanceCreateInfo instanceCI{
+            .sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
+            .pApplicationInfo = &appI,
 #ifndef NDEBUG
-        .enabledLayerCount = (uint32_t)requestedInstanceLayers.size(),
+            .enabledLayerCount = (uint32_t)requestedInstanceLayers.size(),
 #else
-        .enabledLayerCount = 0,
+            .enabledLayerCount = 0,
 #endif
-        .ppEnabledLayerNames = requestedInstanceLayers.data(),
-        .enabledExtensionCount = (uint32_t)requestedInstanceExts.size(),
-        .ppEnabledExtensionNames = requestedInstanceExts.data(),
-    };
+            .ppEnabledLayerNames = requestedInstanceLayers.data(),
+            .enabledExtensionCount = (uint32_t)requestedInstanceExts.size(),
+            .ppEnabledExtensionNames = requestedInstanceExts.data(),
+        };
 
-    VK_CHECK(vkCreateInstance(&instanceCI, nullptr, &self->vk.instance));
+        VK_CHECK(vkCreateInstance(&instanceCI, nullptr, &self->vk.instance));
+    }
+
     sExt.vkCreateDebugUtilsMessengerEXT = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(self->vk.instance, "vkCreateDebugUtilsMessengerEXT");
     sExt.vkDestroyDebugUtilsMessengerEXT = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(self->vk.instance, "vkDestroyDebugUtilsMessengerEXT");
 
@@ -846,10 +848,14 @@ void vk_create_device(RDeviceObj* baseSelf, const RDeviceInfo& deviceI)
         heap_delete<VulkanDebugMessenger>(sDebugMessenger);
 #endif
 
-    if (!self->isHeadless)
+    WindowSurface* rootSurface = nullptr;
+
+    if (windowReg) // delegate VkSurface creation to GLFW
     {
-        // delegate surface creation to GLFW
-        VK_CHECK(glfwCreateWindowSurface(self->vk.instance, self->glfw, nullptr, &self->vk.surface));
+        WindowID rootID = windowReg.get_root_id();
+        rootSurface = self->vk.windowCache[rootID] = heap_new<WindowSurface>(MEMORY_USAGE_RENDER);
+        rootSurface->glfw = windowReg.get_window_glfw_handle(rootID);
+        VK_CHECK(glfwCreateWindowSurface(self->vk.instance, rootSurface->glfw, nullptr, &rootSurface->handle));
     }
 
     // choose a physical device, taking surface capabilities into account
@@ -862,7 +868,7 @@ void vk_create_device(RDeviceObj* baseSelf, const RDeviceInfo& deviceI)
     uint32_t familyIdxTransfer = familyCount;
     uint32_t familyIdxCompute = familyCount;
     uint32_t familyIdxPresent = familyCount;
-    std::vector<VkDeviceQueueCreateInfo> queueCI(familyCount);
+    Vector<VkDeviceQueueCreateInfo> queueCI(familyCount);
     float priority = 1.0f;
 
     PhysicalDevice& pdevice = self->vk.pdevice;
@@ -883,10 +889,12 @@ void vk_create_device(RDeviceObj* baseSelf, const RDeviceInfo& deviceI)
         if (familyIdxCompute == familyCount && (pdevice.familyProps[idx].queueFlags | VK_QUEUE_COMPUTE_BIT))
             familyIdxCompute = idx;
 
-        if (self->vk.surface != VK_NULL_HANDLE)
+        if (rootSurface && rootSurface->handle)
         {
+            LD_PROFILE_SCOPE_NAME("vkGetPhysicalDeviceSurfaceSupportKHR");
+
             VkBool32 supported;
-            vkGetPhysicalDeviceSurfaceSupportKHR(pdevice.handle, idx, self->vk.surface, &supported);
+            vkGetPhysicalDeviceSurfaceSupportKHR(pdevice.handle, idx, rootSurface->handle, &supported);
             if (familyIdxPresent == familyCount && supported)
                 familyIdxPresent = idx;
         }
@@ -895,7 +903,7 @@ void vk_create_device(RDeviceObj* baseSelf, const RDeviceInfo& deviceI)
     LD_ASSERT(familyIdxGraphics != familyCount && "graphics queue family not found");
     LD_ASSERT(familyIdxTransfer != familyCount && "transfer queue family not found");
     LD_ASSERT(familyIdxCompute != familyCount && "compute queue family not found");
-    LD_ASSERT(!(self->vk.surface && familyIdxPresent == familyCount) && "present queue family not found");
+    LD_ASSERT(!(rootSurface && rootSurface->handle && familyIdxPresent == familyCount) && "present queue family not found");
 
     std::string queueFlags;
     RUtil::print_vk_queue_flags(pdevice.familyProps[familyIdxGraphics].queueFlags, queueFlags);
@@ -912,22 +920,26 @@ void vk_create_device(RDeviceObj* baseSelf, const RDeviceInfo& deviceI)
     }
 
     // create a logical device and retrieve queue handles
-    std::vector<const char*> desiredDeviceExts;
+    Vector<const char*> desiredDeviceExts;
 
 #ifdef VK_KHR_swapchain
-    if (self->vk.surface)
+    if (rootSurface && rootSurface->handle)
         desiredDeviceExts.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
 #endif // VK_KHR_swapchain
 
-    VkDeviceCreateInfo deviceCI{
-        .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
-        .queueCreateInfoCount = (uint32_t)queueCI.size(),
-        .pQueueCreateInfos = queueCI.data(),
-        .enabledExtensionCount = (uint32_t)desiredDeviceExts.size(),
-        .ppEnabledExtensionNames = desiredDeviceExts.data(),
-        .pEnabledFeatures = &pdevice.deviceFeatures,
-    };
-    VK_CHECK(vkCreateDevice(self->vk.pdevice.handle, &deviceCI, nullptr, &self->vk.device));
+    {
+        LD_PROFILE_SCOPE_NAME("vkCreateDevice");
+
+        VkDeviceCreateInfo deviceCI{
+            .sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+            .queueCreateInfoCount = (uint32_t)queueCI.size(),
+            .pQueueCreateInfos = queueCI.data(),
+            .enabledExtensionCount = (uint32_t)desiredDeviceExts.size(),
+            .ppEnabledExtensionNames = desiredDeviceExts.data(),
+            .pEnabledFeatures = &pdevice.deviceFeatures,
+        };
+        VK_CHECK(vkCreateDevice(self->vk.pdevice.handle, &deviceCI, nullptr, &self->vk.device));
+    }
 
     self->vk.familyIdxGraphics = familyIdxGraphics;
     self->vk.familyIdxTransfer = familyIdxTransfer;
@@ -959,49 +971,52 @@ void vk_create_device(RDeviceObj* baseSelf, const RDeviceInfo& deviceI)
     // delegate memory management to VMA
     create_vma_allocator(self);
 
-    if (self->vk.surface != VK_NULL_HANDLE)
+    if (rootSurface && rootSurface->handle)
     {
         // create swapchain
-        SwapchainInfo swapchainI{.vsyncHint = deviceI.vsync};
-        configure_swapchain(self, &swapchainI);
-        create_swapchain(self, swapchainI);
+        rootSurface->swapchain.info.vsyncHint = deviceI.vsync;
+        get_swapchain_info(rootSurface, &rootSurface->swapchain.info);
+        rootSurface->create_swapchain(self);
 
         // frames in flight synchronization
         for (uint32_t i = 0; i < FRAMES_IN_FLIGHT; i++)
         {
-            VulkanFrame* frame = sVulkanFrames + i;
-
-            frame->presentReady = vk_device_create_semaphore(self, &frame->presentReadyObj);
-            frame->imageAcquired = vk_device_create_semaphore(self, &frame->imageAcquiredObj);
-            frame->frameComplete = vk_device_create_fence(self, true, &frame->frameCompleteObj);
-            frame->presentReadyObj.rid = RObjectID::get();
-            frame->imageAcquiredObj.rid = RObjectID::get();
-            frame->frameCompleteObj.rid = RObjectID::get();
+            vk_device_create_fence(self, true, self->vk.frameCompleteObj + i);
+            self->vk.frameCompleteObj[i].rid = RObjectID::get();
         }
     }
 }
 
 void vk_destroy_device(RDeviceObj* baseSelf)
 {
+    LD_PROFILE_SCOPE;
+
     auto* self = (RDeviceVKObj*)baseSelf;
-    vkDeviceWaitIdle(self->vk.device);
+
+    {
+        LD_PROFILE_SCOPE_NAME("vkDeviceWaitIdle");
+        vkDeviceWaitIdle(self->vk.device);
+    }
 
     for (const auto& it : self->vk.samplerCache)
+    {
         vkDestroySampler(self->vk.device, it.second, nullptr);
+    }
     self->vk.samplerCache.clear();
 
-    if (self->vk.surface != VK_NULL_HANDLE)
+    for (const auto& it : self->vk.windowCache)
     {
-        for (uint32_t i = 0; i < FRAMES_IN_FLIGHT; i++)
-        {
-            vk_device_destroy_fence(self, sVulkanFrames[i].frameComplete);
-            vk_device_destroy_semaphore(self, sVulkanFrames[i].imageAcquired);
-            vk_device_destroy_semaphore(self, sVulkanFrames[i].presentReady);
-        }
+        WindowSurface* surface = it.second;
+        surface->destroy_swapchain(self);
 
-        destroy_swapchain(self);
+        vkDestroySurfaceKHR(self->vk.instance, surface->handle, nullptr);
+        heap_delete<WindowSurface>(surface);
+    }
+    self->vk.windowCache.clear();
 
-        vkDestroySurfaceKHR(self->vk.instance, self->vk.surface, nullptr);
+    for (uint32_t i = 0; i < FRAMES_IN_FLIGHT; i++)
+    {
+        vk_device_destroy_fence(self, RFence(self->vk.frameCompleteObj + i));
     }
 
     // all VMA allocations should be freed by now
@@ -1014,12 +1029,18 @@ void vk_destroy_device(RDeviceObj* baseSelf)
     destroy_queue(self->vk.queueTransfer);
     destroy_queue(self->vk.queueGraphics);
 
-    vkDestroyDevice(self->vk.device, nullptr);
+    {
+        LD_PROFILE_SCOPE_NAME("vkDestroyDevice");
+        vkDestroyDevice(self->vk.device, nullptr);
+    }
 
     if (sDebugMessenger)
         heap_delete<VulkanDebugMessenger>(sDebugMessenger);
 
-    vkDestroyInstance(self->vk.instance, nullptr);
+    {
+        LD_PROFILE_SCOPE_NAME("vkDestroyInstance");
+        vkDestroyInstance(self->vk.instance, nullptr);
+    }
 }
 
 static size_t vk_device_get_obj_size(RType objType)
@@ -1270,9 +1291,9 @@ static void vk_device_create_pass(RDeviceObj* baseSelf, const RPassInfo& passI, 
     auto* self = (RDeviceVKObj*)baseSelf;
     auto* obj = (RPassVKObj*)basePassObj;
 
-    std::vector<VkAttachmentDescription> attachmentD(passI.colorAttachmentCount);
-    std::vector<VkAttachmentReference> colorAttachmentRefs(passI.colorAttachmentCount);
-    std::vector<VkAttachmentReference> colorResolveAttachmentRefs(passI.colorAttachmentCount);
+    Vector<VkAttachmentDescription> attachmentD(passI.colorAttachmentCount);
+    Vector<VkAttachmentReference> colorAttachmentRefs(passI.colorAttachmentCount);
+    Vector<VkAttachmentReference> colorResolveAttachmentRefs(passI.colorAttachmentCount);
     VkAttachmentReference depthStencilAttachmentRef;
 
     for (uint32_t i = 0; i < passI.colorAttachmentCount; i++)
@@ -1373,7 +1394,7 @@ static void vk_device_create_framebuffer(RDeviceObj* baseSelf, const RFramebuffe
     auto* self = (RDeviceVKObj*)baseSelf;
     auto* obj = (RFramebufferVKObj*)baseObj;
 
-    std::vector<VkImageView> attachments(fbI.colorAttachmentCount);
+    Vector<VkImageView> attachments(fbI.colorAttachmentCount);
     for (uint32_t i = 0; i < fbI.colorAttachmentCount; i++)
     {
         RImageVKObj* imageObj = static_cast<RImageVKObj*>(fbI.colorAttachments[i].unwrap());
@@ -1534,7 +1555,7 @@ static RSetPool vk_device_create_set_pool(RDeviceObj* baseSelf, const RSetPoolIn
     RSetPoolVKObj* poolObj = (RSetPoolVKObj*)basePoolObj;
     poolObj->vk.device = self->vk.device;
 
-    std::vector<VkDescriptorPoolSize> poolSizes(poolI.layout.bindingCount);
+    Vector<VkDescriptorPoolSize> poolSizes(poolI.layout.bindingCount);
 
     for (uint32_t i = 0; i < poolI.layout.bindingCount; i++)
     {
@@ -1599,7 +1620,7 @@ static void vk_device_create_set_layout(RDeviceObj* baseSelf, const RSetLayoutIn
     auto* self = (RDeviceVKObj*)baseSelf;
     auto* obj = (RSetLayoutVKObj*)baseObj;
 
-    std::vector<VkDescriptorSetLayoutBinding> bindings(layoutI.bindingCount);
+    Vector<VkDescriptorSetLayoutBinding> bindings(layoutI.bindingCount);
     for (uint32_t i = 0; i < layoutI.bindingCount; i++)
         RUtil::cast_set_layout_binding_vk(layoutI.bindings[i], bindings[i]);
 
@@ -1649,7 +1670,7 @@ static void vk_device_create_pipeline_layout(RDeviceObj* baseSelf, const RPipeli
         .size = 128,
     };
 
-    std::vector<VkDescriptorSetLayout> setLayoutHandles(layoutI.setLayoutCount);
+    Vector<VkDescriptorSetLayout> setLayoutHandles(layoutI.setLayoutCount);
     for (uint32_t i = 0; i < layoutObj->setCount; i++)
     {
         auto* setLayoutObj = static_cast<RSetLayoutVKObj*>(layoutObj->setLayoutObjs[i]);
@@ -1700,8 +1721,8 @@ static RPipeline vk_device_create_pipeline(RDeviceObj* baseSelf, const RPipeline
     //       the actual graphics pipeline is created when variant properties
     //       such as the render pass is known at a later stage.
 
-    uint32_t swpWidth = self->vk.swapchain.width;
-    uint32_t swpHeight = self->vk.swapchain.height;
+    const uint32_t swpWidth = 1600;
+    const uint32_t swpHeight = 900;
     VkViewport viewport = RUtil::make_viewport(swpWidth, swpHeight);
     VkRect2D scissor = RUtil::make_scissor(swpWidth, swpHeight);
 
@@ -1892,8 +1913,8 @@ static void vk_device_update_set_images(RDeviceObj* baseSelf, uint32_t updateCou
 {
     auto* self = (RDeviceVKObj*)baseSelf;
 
-    std::vector<VkDescriptorImageInfo> imageI;
-    std::vector<VkWriteDescriptorSet> writes(updateCount);
+    Vector<VkDescriptorImageInfo> imageI;
+    Vector<VkWriteDescriptorSet> writes(updateCount);
 
     for (uint32_t i = 0; i < updateCount; i++)
     {
@@ -1941,8 +1962,8 @@ static void vk_device_update_set_buffers(RDeviceObj* baseSelf, uint32_t updateCo
 {
     auto* self = (RDeviceVKObj*)baseSelf;
 
-    std::vector<VkDescriptorBufferInfo> bufferI;
-    std::vector<VkWriteDescriptorSet> writes(updateCount);
+    Vector<VkDescriptorBufferInfo> bufferI;
+    Vector<VkWriteDescriptorSet> writes(updateCount);
 
     for (uint32_t i = 0; i < updateCount; i++)
     {
@@ -1984,71 +2005,107 @@ static void vk_device_update_set_buffers(RDeviceObj* baseSelf, uint32_t updateCo
     vkUpdateDescriptorSets(self->vk.device, updateCount, writes.data(), 0, nullptr);
 }
 
-static uint32_t vk_device_next_frame(RDeviceObj* baseSelf, RSemaphore& imageAcquired, RSemaphore& presentReady, RFence& frameComplete)
+static void vk_device_next_frame(RDeviceObj* baseSelf, RFence& frameComplete)
 {
     auto* self = (RDeviceVKObj*)baseSelf;
-    VulkanFrame* frame = sVulkanFrames + self->frameIndex;
-    VkSemaphore imageAcquiredSemaphore = static_cast<RSemaphoreVKObj*>(frame->imageAcquired.unwrap())->vk.handle;
-    VkFence frameCompleteFence = static_cast<RFenceVKObj*>(frame->frameComplete.unwrap())->vk.handle;
+    RFenceVKObj* frameCompleteObj = self->vk.frameCompleteObj + self->frameIndex;
+    VkFence frameCompleteFence = frameCompleteObj->vk.handle;
+    frameComplete = RFence(frameCompleteObj);
 
     {
         LD_PROFILE_SCOPE_NAME("vkWaitForFences");
         VK_CHECK(vkWaitForFences(self->vk.device, 1, &frameCompleteFence, VK_TRUE, UINT64_MAX));
     }
 
-    VkResult acquireResult = acquire_next_image(self, imageAcquiredSemaphore);
+    // NOTE: even if no swapchain images are acquired by vk_device_try_acquire_image later,
+    //       user is still expected to signal the frame complete fence.
+    VK_CHECK(vkResetFences(self->vk.device, 1, &frameCompleteFence));
+
+    self->vk.acquiredSurfaces.clear();
+}
+
+static RImage vk_device_try_acquire_image(RDeviceObj* baseSelf, WindowID id, RSemaphore& imageAcquired, RSemaphore& presentReady)
+{
+    auto* self = (RDeviceVKObj*)baseSelf;
+
+    auto it = self->vk.windowCache.find(id);
+    if (it == self->vk.windowCache.end())
+        return {};
+
+    WindowSurface* surface = it->second;
+    RSemaphoreVKObj* imageAcquiredObj = surface->swapchain.imageAcquiredObj + self->frameIndex;
+    RSemaphoreVKObj* presentReadyObj = surface->swapchain.presentReadyObj + self->frameIndex;
+    imageAcquired = RSemaphore(imageAcquiredObj);
+    presentReady = RSemaphore(presentReadyObj);
+
+    LD_ASSERT(!self->vk.acquiredSurfaces.contains(surface)); // can only acquire one swapchain image per-window per-frame
+
+    VkResult acquireResult = acquire_next_image(self, surface, imageAcquiredObj->vk.handle);
+
+    if (acquireResult == VK_NOT_READY || acquireResult == VK_TIMEOUT)
+        return {};
 
     if (acquireResult == VK_ERROR_OUT_OF_DATE_KHR || acquireResult == VK_SUBOPTIMAL_KHR)
     {
-        invalidate_swapchain(self);
+        surface->invalidate_swapchain(self);
 
-        imageAcquiredSemaphore = static_cast<RSemaphoreVKObj*>(frame->imageAcquired.unwrap())->vk.handle;
-        frameCompleteFence = static_cast<RFenceVKObj*>(frame->frameComplete.unwrap())->vk.handle;
+        imageAcquiredObj = surface->swapchain.imageAcquiredObj + self->frameIndex;
+        presentReadyObj = surface->swapchain.presentReadyObj + self->frameIndex;
+        imageAcquired = RSemaphore(imageAcquiredObj);
+        presentReady = RSemaphore(presentReadyObj);
 
         // try again with the new swapchain and synchronization primitives
-        acquireResult = acquire_next_image(self, imageAcquiredSemaphore);
+        acquireResult = acquire_next_image(self, surface, imageAcquiredObj->vk.handle);
     }
 
     if (acquireResult != VK_SUCCESS)
     {
         sLog.error("vkAcquireNextImageKHR: unable to recover from VkResult {}", (int)acquireResult);
         LD_UNREACHABLE;
-        return -1;
+        return {};
     }
 
-    VK_CHECK(vkResetFences(self->vk.device, 1, &frameCompleteFence));
+    self->vk.acquiredSurfaces.insert(surface);
 
-    imageAcquired = frame->imageAcquired;
-    presentReady = frame->presentReady;
-    frameComplete = frame->frameComplete;
-
-    return self->vk.imageIdx;
+    return surface->swapchain.colorAttachments[surface->swapchain.imageIdx];
 }
 
 static void vk_device_present_frame(RDeviceObj* baseSelf)
 {
     auto* self = (RDeviceVKObj*)baseSelf;
     auto* queueObj = (RQueueVKObj*)self->vk.queuePresent.unwrap();
-    VulkanFrame* frame = sVulkanFrames + self->frameIndex;
-    VkSemaphore presentReadySemaphore = static_cast<RSemaphoreVKObj*>(frame->presentReady.unwrap())->vk.handle;
+
+    size_t presentIdx = 0;
+    size_t presentCount = self->vk.acquiredSurfaces.size();
+
+    if (presentCount == 0)
+        return;
+
+    Vector<VkSwapchainKHR> swapchains(presentCount);
+    Vector<VkSemaphore> waitSemaphores(presentCount);
+    Vector<uint32_t> imageIndices(presentCount);
+
+    for (WindowSurface* surface : self->vk.acquiredSurfaces)
+    {
+        swapchains[presentIdx] = surface->swapchain.handle;
+        imageIndices[presentIdx] = surface->swapchain.imageIdx;
+        waitSemaphores[presentIdx] = surface->swapchain.presentReadyObj[self->frameIndex].vk.handle;
+        presentIdx++;
+    }
 
     VkPresentInfoKHR presentI{
         .sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
-        .waitSemaphoreCount = 1,
-        .pWaitSemaphores = &presentReadySemaphore,
-        .swapchainCount = 1,
-        .pSwapchains = &self->vk.swapchain.handle,
-        .pImageIndices = &self->vk.imageIdx,
+        .waitSemaphoreCount = (uint32_t)presentCount,
+        .pWaitSemaphores = waitSemaphores.data(),
+        .swapchainCount = (uint32_t)presentCount,
+        .pSwapchains = swapchains.data(),
+        .pImageIndices = imageIndices.data(),
     };
-
-    VkQueue queueHandle = queueObj->vk.handle;
 
     // NOTE: this may or may not block, depending on the implementation and
     //       the selected swapchain present mode.
-    VkResult presentResult = vkQueuePresentKHR(queueHandle, &presentI);
+    VkResult presentResult = vkQueuePresentKHR(queueObj->vk.handle, &presentI);
 
-    // for suboptimal and out-of-date errors, we will invalidate the swapchain
-    // in the following call to vk_device_next_frame().
     if (presentResult == VK_SUBOPTIMAL_KHR || presentResult == VK_ERROR_OUT_OF_DATE_KHR)
         return;
 
@@ -2079,40 +2136,6 @@ static RSampleCountBit vk_device_get_max_sample_count(RDeviceObj* baseSelf)
     RUtil::cast_sample_count_from_vk(vkSampleCount, sampleCount);
 
     return sampleCount;
-}
-
-static RFormat vk_device_get_swapchain_color_format(RDeviceObj* baseSelf)
-{
-    auto* self = (RDeviceVKObj*)baseSelf;
-    RFormat format;
-    RUtil::cast_format_from_vk(self->vk.swapchain.info.imageFormat, format);
-
-    return format;
-}
-
-static RImage vk_device_get_swapchain_color_attachment(RDeviceObj* baseSelf, uint32_t imageIdx)
-{
-    auto* self = (RDeviceVKObj*)baseSelf;
-
-    return self->vk.swapchain.colorAttachments[imageIdx];
-}
-
-static uint32_t vk_device_get_swapchain_image_count(RDeviceObj* baseSelf)
-{
-    auto* self = (RDeviceVKObj*)baseSelf;
-
-    return (uint32_t)self->vk.swapchain.images.size();
-}
-
-static void vk_device_get_swapchain_extent(RDeviceObj* baseSelf, uint32_t* width, uint32_t* height)
-{
-    auto* self = (RDeviceVKObj*)baseSelf;
-
-    if (width)
-        *width = self->vk.swapchain.width;
-
-    if (height)
-        *height = self->vk.swapchain.height;
 }
 
 static uint32_t vk_device_get_frames_in_flight_count(RDeviceObj* self)
@@ -2203,7 +2226,7 @@ static void vk_command_list_cmd_begin_pass(RCommandListObj* baseSelf, const RPas
     renderArea.extent.width = passBI.width;
     renderArea.extent.height = passBI.height;
 
-    std::vector<VkClearValue> clearValues(passBI.colorAttachmentCount);
+    Vector<VkClearValue> clearValues(passBI.colorAttachmentCount);
     for (uint32_t i = 0; i < passBI.colorAttachmentCount; i++)
     {
         if (passBI.pass.colorAttachments[i].colorLoadOp == RATTACHMENT_LOAD_OP_CLEAR)
@@ -2267,7 +2290,7 @@ static void vk_command_list_cmd_bind_graphics_sets(RCommandListObj* baseSelf, RP
     auto* self = (RCommandListVKObj*)baseSelf;
     auto* layoutObj = (RPipelineLayoutVKObj*)baseLayoutObj;
 
-    std::vector<VkDescriptorSet> setHandles(setCount);
+    Vector<VkDescriptorSet> setHandles(setCount);
     for (uint32_t i = 0; i < setCount; i++)
     {
         auto* setObj = (RSetVKObj*)sets[i].unwrap();
@@ -2293,7 +2316,7 @@ static void vk_command_list_cmd_bind_compute_sets(RCommandListObj* baseSelf, RPi
     auto* self = (RCommandListVKObj*)baseSelf;
     auto* layoutObj = (RPipelineLayoutVKObj*)baseLayoutObj;
 
-    std::vector<VkDescriptorSet> setHandles(setCount);
+    Vector<VkDescriptorSet> setHandles(setCount);
     for (uint32_t i = 0; i < setCount; i++)
     {
         auto* setObj = (RSetVKObj*)sets[i].unwrap();
@@ -2306,8 +2329,8 @@ static void vk_command_list_cmd_bind_compute_sets(RCommandListObj* baseSelf, RPi
 static void vk_command_list_cmd_bind_vertex_buffers(RCommandListObj* baseSelf, uint32_t firstBinding, uint32_t bindingCount, RBuffer* buffers)
 {
     auto* self = (RCommandListVKObj*)baseSelf;
-    std::vector<VkBuffer> bufferHandles(bindingCount);
-    std::vector<VkDeviceSize> bufferOffsets(bindingCount);
+    Vector<VkBuffer> bufferHandles(bindingCount);
+    Vector<VkDeviceSize> bufferOffsets(bindingCount);
 
     for (uint32_t i = 0; i < bindingCount; i++)
     {
@@ -2463,7 +2486,7 @@ static void vk_command_list_cmd_copy_buffer(RCommandListObj* baseSelf, RBuffer s
     VkBuffer srcBufferHandle = static_cast<RBufferVKObj*>(srcBuffer.unwrap())->vk.handle;
     VkBuffer dstBufferHandle = static_cast<RBufferVKObj*>(dstBuffer.unwrap())->vk.handle;
 
-    std::vector<VkBufferCopy> copies(regionCount);
+    Vector<VkBufferCopy> copies(regionCount);
     for (uint32_t i = 0; i < regionCount; i++)
     {
         copies[i].srcOffset = regions[i].srcOffset;
@@ -2486,7 +2509,7 @@ static void vk_command_list_cmd_copy_buffer_to_image(RCommandListObj* baseSelf, 
     RUtil::cast_image_layout_vk(dstImageLayout, vkLayout);
     RUtil::cast_format_image_aspect_vk(dstImage.format(), vkAspects);
 
-    std::vector<VkBufferImageCopy> copies(regionCount);
+    Vector<VkBufferImageCopy> copies(regionCount);
     for (uint32_t i = 0; i < regionCount; i++)
     {
         copies[i].bufferOffset = regions[i].bufferOffset;
@@ -2516,7 +2539,7 @@ static void vk_command_list_cmd_copy_image_to_buffer(RCommandListObj* baseSelf, 
     RUtil::cast_image_layout_vk(srcImageLayout, vkLayout);
     RUtil::cast_format_image_aspect_vk(srcImage.format(), vkAspects);
 
-    std::vector<VkBufferImageCopy> copies(regionCount);
+    Vector<VkBufferImageCopy> copies(regionCount);
     for (uint32_t i = 0; i < regionCount; i++)
     {
         copies[i].bufferOffset = regions[i].bufferOffset;
@@ -2551,7 +2574,7 @@ static void vk_command_list_cmd_blit_image(RCommandListObj* baseSelf, RImage src
     RUtil::cast_format_image_aspect_vk(srcImage.format(), dstAspect);
     RUtil::cast_filter_vk(filter, vkFilter);
 
-    std::vector<VkImageBlit> blits(regionCount);
+    Vector<VkImageBlit> blits(regionCount);
     for (uint32_t i = 0; i < regionCount; i++)
     {
         blits[i].srcOffsets[0].x = regions[i].srcMinOffset.x;
@@ -2712,7 +2735,7 @@ static void vk_queue_submit(RQueueObj* baseSelf, const RSubmitInfo& submitI, RFe
     auto* self = (RQueueVKObj*)baseSelf;
     VkFence fenceHandle = fence ? static_cast<RFenceVKObj*>(fence.unwrap())->vk.handle : VK_NULL_HANDLE;
 
-    std::vector<VkSemaphore> semaphoreHandles(submitI.waitCount + submitI.signalCount);
+    Vector<VkSemaphore> semaphoreHandles(submitI.waitCount + submitI.signalCount);
 
     uint32_t i;
 
@@ -2722,12 +2745,12 @@ static void vk_queue_submit(RQueueObj* baseSelf, const RSubmitInfo& submitI, RFe
     for (i = 0; i < submitI.signalCount; i++)
         semaphoreHandles[submitI.waitCount + i] = static_cast<RSemaphoreVKObj*>(submitI.signals[i].unwrap())->vk.handle;
 
-    std::vector<VkCommandBuffer> commandHandles(submitI.listCount);
+    Vector<VkCommandBuffer> commandHandles(submitI.listCount);
 
     for (i = 0; i < submitI.listCount; i++)
         commandHandles[i] = static_cast<RCommandListVKObj*>(submitI.lists[i].unwrap())->vk.handle;
 
-    std::vector<VkPipelineStageFlags> waitStages(submitI.waitCount);
+    Vector<VkPipelineStageFlags> waitStages(submitI.waitCount);
     for (i = 0; i < submitI.waitCount; i++)
         RUtil::cast_pipeline_stage_flags_vk(submitI.waitStages[i], waitStages[i]);
 
@@ -2745,22 +2768,92 @@ static void vk_queue_submit(RQueueObj* baseSelf, const RSubmitInfo& submitI, RFe
     VK_CHECK(vkQueueSubmit(self->vk.handle, 1, &submit, fenceHandle));
 }
 
-static VkResult acquire_next_image(RDeviceVKObj* obj, VkSemaphore imageAcquiredSemaphore)
+static void get_swapchain_info(WindowSurface* surface, SwapchainInfo* swapchainI)
+{
+    LD_PROFILE_SCOPE;
+
+    // configure color format
+    LD_ASSERT(!surface->surfaceFormats.empty());
+    swapchainI->imageFormat = surface->surfaceFormats[0].format;
+    swapchainI->imageColorSpace = surface->surfaceFormats[0].colorSpace;
+
+    for (VkSurfaceFormatKHR& surfaceFmt : surface->surfaceFormats)
+    {
+        if (surfaceFmt.format == VK_FORMAT_B8G8R8A8_UNORM && surfaceFmt.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
+        {
+            swapchainI->imageFormat = surfaceFmt.format;
+            swapchainI->imageColorSpace = surfaceFmt.colorSpace;
+            break;
+        }
+    }
+
+    // configure present mode
+    swapchainI->presentMode = VK_PRESENT_MODE_FIFO_KHR; // guaranteed support; vsynced
+
+    for (VkPresentModeKHR& mode : surface->presentModes)
+    {
+        if (swapchainI->vsyncHint && mode == VK_PRESENT_MODE_MAILBOX_KHR) // preferred vsync mode
+        {
+            swapchainI->presentMode = mode;
+            break;
+        }
+
+        if (!swapchainI->vsyncHint && mode == VK_PRESENT_MODE_IMMEDIATE_KHR) // preferred non-vsync mode
+        {
+            swapchainI->presentMode = mode;
+            break;
+        }
+    }
+}
+
+static void enumerate_instance_extensions(Vector<VkExtensionProperties>& supportedInstanceExts, HashSet<std::string>& supportedInstanceExtSet)
+{
+    LD_PROFILE_SCOPE;
+
+    uint32_t extCount;
+    vkEnumerateInstanceExtensionProperties(nullptr, &extCount, nullptr);
+    supportedInstanceExts.resize(extCount);
+
+    vkEnumerateInstanceExtensionProperties(nullptr, &extCount, supportedInstanceExts.data());
+
+    supportedInstanceExtSet.clear();
+    for (const VkExtensionProperties& extProperty : supportedInstanceExts)
+        supportedInstanceExtSet.insert(std::string(extProperty.extensionName));
+}
+
+static void enumerate_instance_layers(Vector<VkLayerProperties>& supportedInstanceLayers, HashSet<std::string>& supportedInstanceLayerSet)
+{
+    LD_PROFILE_SCOPE;
+
+    uint32_t layerCount;
+    vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
+    supportedInstanceLayers.resize(layerCount);
+
+    vkEnumerateInstanceLayerProperties(&layerCount, supportedInstanceLayers.data());
+
+    supportedInstanceLayerSet.clear();
+    for (const VkLayerProperties& layerProperty : supportedInstanceLayers)
+        supportedInstanceLayerSet.insert(std::string(layerProperty.layerName));
+}
+
+static VkResult acquire_next_image(RDeviceVKObj* obj, WindowSurface* surface, VkSemaphore imageAcquiredSemaphore)
 {
     LD_PROFILE_SCOPE_NAME("vkAcquireNextImageKHR");
 
     return vkAcquireNextImageKHR(
         obj->vk.device,
-        obj->vk.swapchain.handle,
-        UINT64_MAX,
+        surface->swapchain.handle,
+        0,
         imageAcquiredSemaphore,
         VK_NULL_HANDLE,
-        &obj->vk.imageIdx);
+        &surface->swapchain.imageIdx);
 }
 
 static void choose_physical_device(RDeviceVKObj* obj)
 {
-    std::vector<VkPhysicalDevice> handles;
+    LD_PROFILE_SCOPE;
+
+    Vector<VkPhysicalDevice> handles;
 
     uint32_t handleCount;
     VK_CHECK(vkEnumeratePhysicalDevices(obj->vk.instance, &handleCount, nullptr));
@@ -2768,6 +2861,14 @@ static void choose_physical_device(RDeviceVKObj* obj)
     VK_CHECK(vkEnumeratePhysicalDevices(obj->vk.instance, &handleCount, handles.data()));
 
     PhysicalDevice& pdevice = obj->vk.pdevice;
+    WindowSurface* surface = nullptr;
+    WindowRegistry windowReg = WindowRegistry::get();
+
+    if (windowReg) // take root window surface into account
+    {
+        surface = obj->vk.windowCache[windowReg.get_root_id()];
+        LD_ASSERT(surface);
+    }
 
     for (VkPhysicalDevice& handle : handles)
     {
@@ -2803,15 +2904,15 @@ static void choose_physical_device(RDeviceVKObj* obj)
         pdevice.familyProps.resize(familyCount);
         vkGetPhysicalDeviceQueueFamilyProperties(handle, &familyCount, pdevice.familyProps.data());
 
-        if (obj->vk.surface != VK_NULL_HANDLE)
+        if (surface)
         {
-            VK_CHECK(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(handle, obj->vk.surface, &pdevice.surfaceCaps));
+            VK_CHECK(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(handle, surface->handle, &surface->surfaceCaps));
 
             // available surface formats on this physical device
             uint32_t formatCount;
-            VK_CHECK(vkGetPhysicalDeviceSurfaceFormatsKHR(handle, obj->vk.surface, &formatCount, nullptr));
-            pdevice.surfaceFormats.resize(formatCount);
-            VK_CHECK(vkGetPhysicalDeviceSurfaceFormatsKHR(handle, obj->vk.surface, &formatCount, pdevice.surfaceFormats.data()));
+            VK_CHECK(vkGetPhysicalDeviceSurfaceFormatsKHR(handle, surface->handle, &formatCount, nullptr));
+            surface->surfaceFormats.resize(formatCount);
+            VK_CHECK(vkGetPhysicalDeviceSurfaceFormatsKHR(handle, surface->handle, &formatCount, surface->surfaceFormats.data()));
         }
 
         // available depth stencil formats on this physical device
@@ -2828,12 +2929,12 @@ static void choose_physical_device(RDeviceVKObj* obj)
         }
 
         // present modes on this physical device
-        if (obj->vk.surface != VK_NULL_HANDLE)
+        if (surface)
         {
             uint32_t modeCount;
-            VK_CHECK(vkGetPhysicalDeviceSurfacePresentModesKHR(handle, obj->vk.surface, &modeCount, NULL));
-            pdevice.presentModes.resize(modeCount);
-            VK_CHECK(vkGetPhysicalDeviceSurfacePresentModesKHR(handle, obj->vk.surface, &modeCount, pdevice.presentModes.data()));
+            VK_CHECK(vkGetPhysicalDeviceSurfacePresentModesKHR(handle, surface->handle, &modeCount, NULL));
+            surface->presentModes.resize(modeCount);
+            VK_CHECK(vkGetPhysicalDeviceSurfacePresentModesKHR(handle, surface->handle, &modeCount, surface->presentModes.data()));
         }
 
         // physical limits
@@ -2848,135 +2949,6 @@ static void choose_physical_device(RDeviceVKObj* obj)
         if (chosen)
             break;
     }
-}
-
-static void configure_swapchain(RDeviceVKObj* obj, SwapchainInfo* swapchainI)
-{
-    PhysicalDevice& pdevice = obj->vk.pdevice;
-
-    // configure color format
-    LD_ASSERT(!pdevice.surfaceFormats.empty());
-    swapchainI->imageFormat = pdevice.surfaceFormats[0].format;
-    swapchainI->imageColorSpace = pdevice.surfaceFormats[0].colorSpace;
-
-    for (VkSurfaceFormatKHR& surfaceFmt : pdevice.surfaceFormats)
-    {
-        if (surfaceFmt.format == VK_FORMAT_B8G8R8A8_UNORM && surfaceFmt.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
-        {
-            swapchainI->imageFormat = surfaceFmt.format;
-            swapchainI->imageColorSpace = surfaceFmt.colorSpace;
-            break;
-        }
-    }
-
-    // configure present mode
-    swapchainI->presentMode = VK_PRESENT_MODE_FIFO_KHR; // guaranteed support; vsynced
-
-    for (VkPresentModeKHR& mode : pdevice.presentModes)
-    {
-        if (swapchainI->vsyncHint && mode == VK_PRESENT_MODE_MAILBOX_KHR) // preferred vsync mode
-        {
-            swapchainI->presentMode = mode;
-            break;
-        }
-
-        if (!swapchainI->vsyncHint && mode == VK_PRESENT_MODE_IMMEDIATE_KHR) // preferred non-vsync mode
-        {
-            swapchainI->presentMode = mode;
-            break;
-        }
-    }
-}
-
-static void create_swapchain(RDeviceVKObj* obj, const SwapchainInfo& swapchainI)
-{
-    LD_PROFILE_SCOPE;
-
-    PhysicalDevice& pdevice = obj->vk.pdevice;
-    Swapchain& swp = obj->vk.swapchain;
-
-    swp.info = swapchainI;
-
-    constexpr uint32_t swapchainImageHint = 3;
-
-    uint32_t surfaceMinImageCount = pdevice.surfaceCaps.minImageCount;
-    uint32_t surfaceMaxImageCount = pdevice.surfaceCaps.maxImageCount; // may be zero if there is no upper limit
-
-    // NOTE: we require a minimum of surfaceMinImageCount + 1 to prevent driver code from blocking.
-    //       i.e. if there are 3 swapchain images we can acquire 2 images without blocking.
-    uint32_t minImageCount = std::max<uint32_t>(surfaceMinImageCount + 1, swapchainImageHint);
-    if (surfaceMaxImageCount > 0 && minImageCount > surfaceMaxImageCount)
-        minImageCount = surfaceMaxImageCount; // clamp to upper limit
-
-    VkExtent2D imageExtent = pdevice.surfaceCaps.currentExtent;
-    if (imageExtent.width == UINT32_MAX || imageExtent.height == UINT32_MAX)
-    {
-        // if driver hasn't updated current surface extent, grab extent from glfw.
-        int fbWidth, fbHeight;
-        glfwGetFramebufferSize(obj->glfw, &fbWidth, &fbHeight);
-
-        imageExtent.width = (uint32_t)fbWidth;
-        imageExtent.height = (uint32_t)fbHeight;
-    }
-
-    VkSwapchainCreateInfoKHR swapchainCI{
-        .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
-        .surface = obj->vk.surface,
-        .minImageCount = minImageCount,
-        .imageFormat = swapchainI.imageFormat,
-        .imageColorSpace = swapchainI.imageColorSpace,
-        .imageExtent = imageExtent,
-        .imageArrayLayers = 1,
-        .imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, // TODO: transfer dst not guaranteed
-        .preTransform = pdevice.surfaceCaps.currentTransform,
-        .compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
-        .presentMode = swapchainI.presentMode,
-        .clipped = VK_TRUE,
-        .oldSwapchain = VK_NULL_HANDLE,
-    };
-
-    std::array<uint32_t, 2> familyIndices{obj->vk.familyIdxGraphics, obj->vk.familyIdxPresent};
-
-    if (obj->vk.familyIdxGraphics == obj->vk.familyIdxPresent)
-    {
-        swapchainCI.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
-        swapchainCI.queueFamilyIndexCount = 0;
-    }
-    else
-    {
-        swapchainCI.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
-        swapchainCI.queueFamilyIndexCount = (uint32_t)familyIndices.size();
-        swapchainCI.pQueueFamilyIndices = familyIndices.data();
-    }
-
-    VK_CHECK(vkCreateSwapchainKHR(obj->vk.device, &swapchainCI, nullptr, &swp.handle));
-
-    uint32_t imageCount;
-    VK_CHECK(vkGetSwapchainImagesKHR(obj->vk.device, swp.handle, &imageCount, nullptr));
-    swp.images.resize(imageCount);
-    VK_CHECK(vkGetSwapchainImagesKHR(obj->vk.device, swp.handle, &imageCount, swp.images.data()));
-
-    VkExtent2D swpExtent = swapchainCI.imageExtent;
-
-    // create RImage color attachments that can be used to create a swapchain framebuffer
-    swp.colorAttachments.resize(imageCount);
-    for (uint32_t i = 0; i < imageCount; i++)
-        swp.colorAttachments[i] = create_swapchain_color_attachment(obj, swp.images[i], swp.info.imageFormat, swpExtent.width, swpExtent.height);
-
-    swp.width = swpExtent.width;
-    swp.height = swpExtent.height;
-
-    std::string presentMode;
-    RUtil::print_vk_present_mode(swp.info.presentMode, presentMode);
-
-    sLog.info("Vulkan swapchain {}x{} with {} images (hint {}, min {}, max {}) {}",
-              (int)swp.width,
-              (int)swp.height,
-              (int)swp.images.size(),
-              (int)swapchainImageHint,
-              (int)surfaceMinImageCount,
-              (int)surfaceMaxImageCount,
-              presentMode);
 }
 
 static RImage create_swapchain_color_attachment(RDeviceVKObj* deviceObj, VkImage image, VkFormat colorFormat, uint32_t width, uint32_t height)
@@ -3016,14 +2988,6 @@ static RImage create_swapchain_color_attachment(RDeviceVKObj* deviceObj, VkImage
     return {obj};
 }
 
-static void destroy_swapchain(RDeviceVKObj* obj)
-{
-    for (RImage attachment : obj->vk.swapchain.colorAttachments)
-        destroy_swapchain_color_attachment(obj, attachment);
-
-    vkDestroySwapchainKHR(obj->vk.device, obj->vk.swapchain.handle, nullptr);
-}
-
 static void destroy_swapchain_color_attachment(RDeviceVKObj* deviceObj, RImage attachment)
 {
     auto* obj = (RImageVKObj*)attachment.unwrap();
@@ -3033,25 +2997,138 @@ static void destroy_swapchain_color_attachment(RDeviceVKObj* deviceObj, RImage a
     heap_delete<RImageVKObj>(obj);
 }
 
-static void invalidate_swapchain(RDeviceVKObj* obj)
+void WindowSurface::create_swapchain(RDeviceVKObj* obj)
 {
+    LD_PROFILE_SCOPE;
+
+    constexpr uint32_t swapchainImageHint = 3;
+
+    uint32_t surfaceMinImageCount = surfaceCaps.minImageCount;
+    uint32_t surfaceMaxImageCount = surfaceCaps.maxImageCount; // may be zero if there is no upper limit
+
+    // NOTE: we require a minimum of surfaceMinImageCount + 1 to prevent driver code from blocking.
+    //       i.e. if there are 3 swapchain images we can acquire 2 images without blocking.
+    uint32_t minImageCount = std::max<uint32_t>(surfaceMinImageCount + 1, swapchainImageHint);
+    if (surfaceMaxImageCount > 0 && minImageCount > surfaceMaxImageCount)
+        minImageCount = surfaceMaxImageCount; // clamp to upper limit
+
+    VkExtent2D imageExtent = surfaceCaps.currentExtent;
+    if (imageExtent.width == UINT32_MAX || imageExtent.height == UINT32_MAX)
+    {
+        // if driver hasn't updated current surface extent, grab extent from glfw.
+        int fbWidth, fbHeight;
+        glfwGetFramebufferSize(glfw, &fbWidth, &fbHeight);
+
+        imageExtent.width = (uint32_t)fbWidth;
+        imageExtent.height = (uint32_t)fbHeight;
+    }
+
+    VkSwapchainCreateInfoKHR swapchainCI{
+        .sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
+        .surface = handle,
+        .minImageCount = minImageCount,
+        .imageFormat = swapchain.info.imageFormat,
+        .imageColorSpace = swapchain.info.imageColorSpace,
+        .imageExtent = imageExtent,
+        .imageArrayLayers = 1,
+        .imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT, // TODO: transfer dst not guaranteed
+        .preTransform = surfaceCaps.currentTransform,
+        .compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR,
+        .presentMode = swapchain.info.presentMode,
+        .clipped = VK_TRUE,
+        .oldSwapchain = VK_NULL_HANDLE,
+    };
+
+    std::array<uint32_t, 2> familyIndices{obj->vk.familyIdxGraphics, obj->vk.familyIdxPresent};
+
+    if (obj->vk.familyIdxGraphics == obj->vk.familyIdxPresent)
+    {
+        swapchainCI.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
+        swapchainCI.queueFamilyIndexCount = 0;
+    }
+    else
+    {
+        swapchainCI.imageSharingMode = VK_SHARING_MODE_CONCURRENT;
+        swapchainCI.queueFamilyIndexCount = (uint32_t)familyIndices.size();
+        swapchainCI.pQueueFamilyIndices = familyIndices.data();
+    }
+
+    VK_CHECK(vkCreateSwapchainKHR(obj->vk.device, &swapchainCI, nullptr, &swapchain.handle));
+
+    uint32_t imageCount;
+    VK_CHECK(vkGetSwapchainImagesKHR(obj->vk.device, swapchain.handle, &imageCount, nullptr));
+    swapchain.images.resize(imageCount);
+    VK_CHECK(vkGetSwapchainImagesKHR(obj->vk.device, swapchain.handle, &imageCount, swapchain.images.data()));
+
+    VkExtent2D swpExtent = swapchainCI.imageExtent;
+
+    // create RImage color attachments that can be used to create a swapchain framebuffer
+    swapchain.colorAttachments.resize(imageCount);
+    for (uint32_t i = 0; i < imageCount; i++)
+        swapchain.colorAttachments[i] = create_swapchain_color_attachment(obj, swapchain.images[i], swapchain.info.imageFormat, swpExtent.width, swpExtent.height);
+
+    swapchain.width = swpExtent.width;
+    swapchain.height = swpExtent.height;
+
+    for (uint32_t i = 0; i < FRAMES_IN_FLIGHT; i++)
+    {
+        vk_device_create_semaphore(obj, swapchain.presentReadyObj + i);
+        vk_device_create_semaphore(obj, swapchain.imageAcquiredObj + i);
+        swapchain.presentReadyObj[i].rid = RObjectID::get();
+        swapchain.imageAcquiredObj[i].rid = RObjectID::get();
+    }
+
+    std::string presentMode;
+    RUtil::print_vk_present_mode(swapchain.info.presentMode, presentMode);
+
+    sLog.info("Vulkan swapchain {}x{} with {} images (hint {}, min {}, max {}) {}",
+              (int)swapchain.width,
+              (int)swapchain.height,
+              (int)swapchain.images.size(),
+              (int)swapchainImageHint,
+              (int)surfaceMinImageCount,
+              (int)surfaceMaxImageCount,
+              presentMode);
+}
+
+void WindowSurface::destroy_swapchain(RDeviceVKObj* obj)
+{
+    LD_PROFILE_SCOPE;
+
+    for (uint32_t i = 0; i < FRAMES_IN_FLIGHT; i++)
+    {
+        vk_device_destroy_semaphore(obj, RSemaphore(swapchain.presentReadyObj + i));
+        vk_device_destroy_semaphore(obj, RSemaphore(swapchain.imageAcquiredObj + i));
+    }
+
+    for (RImage attachment : swapchain.colorAttachments)
+        destroy_swapchain_color_attachment(obj, attachment);
+
+    vkDestroySwapchainKHR(obj->vk.device, swapchain.handle, nullptr);
+    swapchain.handle = VK_NULL_HANDLE;
+}
+
+void WindowSurface::invalidate_swapchain(RDeviceVKObj* obj)
+{
+    LD_PROFILE_SCOPE;
+
     // wait until all frames in flight complete.
     vkDeviceWaitIdle(obj->vk.device);
 
     // invalidate swapchain
-    SwapchainInfo swapchainI = obj->vk.swapchain.info;
-    PhysicalDevice& pdevice = obj->vk.pdevice;
-    size_t oldImageCount = obj->vk.swapchain.colorAttachments.size();
+    const SwapchainInfo& swapchainI = swapchain.info;
+    const PhysicalDevice& pdevice = obj->vk.pdevice;
+    size_t oldImageCount = swapchain.colorAttachments.size();
 
     destroy_swapchain(obj);
 
     // update surface capabilities, we should create a new swapchain using the latest
     // VkSurfaceCapabilitiesKHR::currentExtent as swapchain image extent
-    VK_CHECK(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(pdevice.handle, obj->vk.surface, &pdevice.surfaceCaps));
+    VK_CHECK(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(pdevice.handle, handle, &surfaceCaps));
 
-    create_swapchain(obj, swapchainI);
+    create_swapchain(obj);
 
-    size_t newImageCount = obj->vk.swapchain.colorAttachments.size();
+    size_t newImageCount = swapchain.colorAttachments.size();
 
     if (newImageCount != oldImageCount)
     {
@@ -3059,26 +3136,12 @@ static void invalidate_swapchain(RDeviceVKObj* obj)
         LD_UNREACHABLE;
         return;
     }
-
-    // invalidate frames in flight synchronization
-    for (uint32_t i = 0; i < FRAMES_IN_FLIGHT; i++)
-    {
-        VulkanFrame* frame = sVulkanFrames + i;
-
-        vk_device_destroy_semaphore(obj, frame->presentReady);
-        vk_device_destroy_semaphore(obj, frame->imageAcquired);
-        vk_device_destroy_fence(obj, frame->frameComplete);
-        frame->presentReady = vk_device_create_semaphore(obj, &frame->presentReadyObj);
-        frame->imageAcquired = vk_device_create_semaphore(obj, &frame->imageAcquiredObj);
-        frame->frameComplete = vk_device_create_fence(obj, true, &frame->frameCompleteObj);
-        frame->presentReadyObj.rid = RObjectID::get();
-        frame->imageAcquiredObj.rid = RObjectID::get();
-        frame->frameCompleteObj.rid = RObjectID::get();
-    }
 }
 
 static void create_vma_allocator(RDeviceVKObj* obj)
 {
+    LD_PROFILE_SCOPE;
+
     VmaVulkanFunctions vulkanFunctions{};
     vulkanFunctions.vkGetInstanceProcAddr = &vkGetInstanceProcAddr;
     vulkanFunctions.vkGetDeviceProcAddr = &vkGetDeviceProcAddr;
@@ -3096,6 +3159,8 @@ static void create_vma_allocator(RDeviceVKObj* obj)
 
 static void destroy_vma_allocator(RDeviceVKObj* obj)
 {
+    LD_PROFILE_SCOPE;
+
     vmaDestroyAllocator(obj->vk.vma);
 }
 

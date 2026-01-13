@@ -145,7 +145,6 @@ void RBackendPrimitiveTest::run_backend(RBackendPrimitiveTestInfo& info)
 
     RDeviceInfo deviceI{};
     deviceI.backend = info.backend;
-    deviceI.window = nullptr;
     RDevice device = RDevice::create(deviceI);
     CHECK(device);
 

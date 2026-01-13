@@ -354,15 +354,12 @@ struct RDeviceAPI
     void (*update_set_images)(RDeviceObj* self, uint32_t updateCount, const RSetImageUpdateInfo* updates);
     void (*update_set_buffers)(RDeviceObj* self, uint32_t updateCount, const RSetBufferUpdateInfo* updates);
 
-    uint32_t (*next_frame)(RDeviceObj* self, RSemaphore& imageAcquired, RSemaphore& presentReady, RFence& frameComplete);
+    void (*next_frame)(RDeviceObj* self, RFence& frameComplete);
+    RImage (*try_acquire_image)(RDeviceObj* self, WindowID id, RSemaphore& imageAcquired, RSemaphore& presentReady);
     void (*present_frame)(RDeviceObj* self);
 
     void (*get_depth_stencil_formats)(RDeviceObj* self, RFormat* format, uint32_t& count);
     RSampleCountBit (*get_max_sample_count)(RDeviceObj* self);
-    RFormat (*get_swapchain_color_format)(RDeviceObj* self);
-    RImage (*get_swapchain_color_attachment)(RDeviceObj* self, uint32_t frameIdx);
-    uint32_t (*get_swapchain_image_count)(RDeviceObj* self);
-    void (*get_swapchain_extent)(RDeviceObj* self, uint32_t* width, uint32_t* height);
     uint32_t (*get_frames_in_flight_count)(RDeviceObj* self);
     RQueue (*get_graphics_queue)(RDeviceObj* self);
     void (*wait_idle)(RDeviceObj* self);
@@ -376,8 +373,6 @@ struct RDeviceObj
     uint32_t frameIndex;
     RDeviceBackend backend;
     RDeviceLimits limits;
-    GLFWwindow* glfw = nullptr;
-    bool isHeadless;
 
     RPassObj* get_or_create_pass_obj(const RPassInfo& passI);
     RSetLayoutObj* get_or_create_set_layout_obj(const RSetLayoutInfo& layoutI);

@@ -3,9 +3,8 @@
 #include <Ludens/Header/Hash.h>
 #include <Ludens/Header/Math/Rect.h>
 #include <Ludens/RenderBackend/RBackendEnum.h>
+#include <Ludens/WindowRegistry/WindowRegistry.h>
 #include <cstdint>
-
-struct GLFWwindow;
 
 namespace LD {
 
@@ -574,11 +573,10 @@ struct RDeviceLimits
 struct RDeviceInfo
 {
     RDeviceBackend backend;
-    GLFWwindow* window;
     bool vsync;
 };
 
-/// @brief render device handle
+/// @brief Render device handle, main thread only.
 struct RDevice : RHandle<struct RDeviceObj>
 {
     static RDevice create(const RDeviceInfo& deviceI);
@@ -613,17 +611,20 @@ struct RDevice : RHandle<struct RDeviceObj>
 
     void update_set_buffers(uint32_t updateCount, const RSetBufferUpdateInfo* updates);
 
-    /// @brief The most important function of the render device, defines the
-    ///        GPU frame boundaries. Blocks until the frame-complete fence of
-    ///        the corresponding frame is signaled.
-    /// @return an index used to retrieve swapchain resources for this frame
-    /// @param imageAcquired user waits for this semaphore before rendering to the swapchain color attachment
-    /// @param presentReady user signals this semaphore to indicate that the swapchain color attachment is ready for presentation
-    /// @param frameComplete user signals this fence to indicate that the frame is complete, synchronizing CPU-GPU frame boundaries
-    /// @warning the returned indices each frame are not guaranteed to form a cyclic sequence.
-    uint32_t next_frame(RSemaphore& imageAcquired, RSemaphore& presentReady, RFence& frameComplete);
+    /// @brief Advance to next GPU frame. Blocks until the frameComplete fence of the corresponding frame index is signaled.
+    /// @param frameIndex Outputs the next GPU frame index, in the half open range of [0, FRAMES_IN_FLIGHT).
+    /// @param frameComplete Outputs the fence that divides GPU frame boundaries, also protects frames-in-flight resources.
+    /// @warning User is required to signal the frameComplete fence even if there are no acquired swapchain images to render to.
+    void next_frame(uint32_t& frameIndex, RFence& frameComplete);
 
-    /// @brief waits until presentReady semaphore is signaled and blocks until presentation is complete
+    /// @brief Try to acquire swapchain image from window for rendering.
+    /// @param id The window we are trying to acquire a swapchain image from.
+    /// @param imageAcquired User waits for this semaphore before rendering to the swapchain image.
+    /// @param presentReady User signals this semaphore to indicate that the swapchain image is ready for presentation.
+    /// @return The window swapchain image or a null handle.
+    RImage try_acquire_image(WindowID id, RSemaphore& imageAcquired, RSemaphore& presentReady);
+
+    /// @brief waits until all presentReady semaphores are signaled and blocks until presentation is complete
     void present_frame();
 
     void get_depth_stencil_formats(RFormat* formats, uint32_t& count);
@@ -632,14 +633,6 @@ struct RDevice : RHandle<struct RDeviceObj>
     ///        if RSAMPLE_COUNT_1_BIT is returned then MSAA is not supported.
     RSampleCountBit get_max_sample_count();
 
-    RFormat get_swapchain_color_format();
-
-    RImage get_swapchain_color_attachment(uint32_t imageIdx);
-
-    uint32_t get_swapchain_image_count();
-
-    void get_swapchain_extent(uint32_t* width, uint32_t* height);
-
     uint32_t get_frames_in_flight_count();
 
     /// @brief get a frame index in the half open range [0, frames_in_flight_count)
@@ -647,6 +640,7 @@ struct RDevice : RHandle<struct RDeviceObj>
 
     RQueue get_graphics_queue();
 
+    /// @brief Blocks thread for GPU to idle.
     void wait_idle();
 };
 

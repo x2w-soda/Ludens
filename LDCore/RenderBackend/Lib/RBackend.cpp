@@ -352,7 +352,6 @@ RDevice RDevice::create(const RDeviceInfo& info)
 
     obj->rid = RObjectID::get();
     obj->frameIndex = 0;
-    obj->isHeadless = info.window == nullptr;
 
     if (info.backend == RDEVICE_BACKEND_VULKAN)
     {
@@ -750,14 +749,21 @@ void RDevice::update_set_buffers(uint32_t updateCount, const RSetBufferUpdateInf
     mObj->api->update_set_buffers(mObj, updateCount, updates);
 }
 
-uint32_t RDevice::next_frame(RSemaphore& imageAcquired, RSemaphore& presentReady, RFence& frameComplete)
+void RDevice::next_frame(uint32_t& frameIndex, RFence& frameComplete)
 {
     LD_PROFILE_SCOPE;
 
     uint32_t framesInFlightCount = mObj->api->get_frames_in_flight_count(mObj);
-    mObj->frameIndex = (mObj->frameIndex + 1) % framesInFlightCount;
+    frameIndex = mObj->frameIndex = (mObj->frameIndex + 1) % framesInFlightCount;
 
-    return mObj->api->next_frame(mObj, imageAcquired, presentReady, frameComplete);
+    mObj->api->next_frame(mObj, frameComplete);
+}
+
+RImage RDevice::try_acquire_image(WindowID id, RSemaphore& imageAcquired, RSemaphore& presentReady)
+{
+    LD_PROFILE_SCOPE;
+
+    return mObj->api->try_acquire_image(mObj, id, imageAcquired, presentReady);
 }
 
 void RDevice::present_frame()
@@ -777,6 +783,7 @@ RSampleCountBit RDevice::get_max_sample_count()
     return mObj->api->get_max_sample_count(mObj);
 }
 
+/*
 RFormat RDevice::get_swapchain_color_format()
 {
     return mObj->api->get_swapchain_color_format(mObj);
@@ -796,6 +803,7 @@ void RDevice::get_swapchain_extent(uint32_t* width, uint32_t* height)
 {
     return mObj->api->get_swapchain_extent(mObj, width, height);
 }
+*/
 
 uint32_t RDevice::get_frames_in_flight_count()
 {

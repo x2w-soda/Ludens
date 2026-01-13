@@ -351,10 +351,6 @@ static constexpr RDeviceAPI sRDeviceGLAPI = {
     .present_frame = nullptr,
     .get_depth_stencil_formats = nullptr,
     .get_max_sample_count = nullptr,
-    .get_swapchain_color_format = nullptr,
-    .get_swapchain_color_attachment = nullptr,
-    .get_swapchain_image_count = nullptr,
-    .get_swapchain_extent = nullptr,
     .get_frames_in_flight_count = nullptr,
     .get_graphics_queue = &gl_device_get_graphics_queue,
     .wait_idle = &gl_device_wait_idle,
@@ -627,15 +623,17 @@ void gl_create_device(struct RDeviceObj* baseObj, const RDeviceInfo& info)
 {
     auto* obj = (RDeviceGLObj*)baseObj;
 
-    if (obj->isHeadless && !obj->glfw)
+    WindowRegistry reg = WindowRegistry::get();
+
+    if (!reg)
     {
         // we still need an OpenGL context, create an invisible window for headless mode.
         int result = glfwInit();
         LD_ASSERT(result == GLFW_TRUE);
 
         glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
-        obj->glfw = glfwCreateWindow(1, 1, "headless", nullptr, nullptr);
-        glfwMakeContextCurrent(obj->glfw);
+        GLFWwindow* glfw = glfwCreateWindow(1, 1, "headless", nullptr, nullptr);
+        glfwMakeContextCurrent(glfw);
     }
 
     // NOTE: glfwMakeContextCurrent() should already be called
@@ -666,13 +664,7 @@ void gl_create_device(struct RDeviceObj* baseObj, const RDeviceInfo& info)
 
 void gl_destroy_device(struct RDeviceObj* baseObj)
 {
-    auto* obj = (RDeviceGLObj*)baseObj;
-
-    if (obj->isHeadless && obj->glfw)
-    {
-        glfwDestroyWindow(obj->glfw);
-        glfwTerminate();
-    }
+    (void*)baseObj;
 }
 
 static size_t gl_device_get_obj_size(RType objType)
