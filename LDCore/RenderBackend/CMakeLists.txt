@@ -88,6 +88,7 @@ target_link_libraries(${MODULE_NAME} PUBLIC
   #ktx
   LDProfiler
   LDLog
+  LDWindowRegistry
 )
 
 add_executable(${MODULE_TEST_NAME}

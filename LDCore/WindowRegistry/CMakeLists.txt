@@ -1,15 +1,15 @@
-set(MODULE_NAME LDWindow)
+set(MODULE_NAME LDWindowRegistry)
 
 set(MODULE_INCLUDE
-	${LUDENS_INCLUDE_DIR}/Ludens/Window/Window.h
-	${LUDENS_INCLUDE_DIR}/Ludens/Window/Input.h
+	${LUDENS_INCLUDE_DIR}/Ludens/WindowRegistry/WindowRegistry.h
+	${LUDENS_INCLUDE_DIR}/Ludens/WindowRegistry/Input.h
 )
 
 set(MODULE_LIB
 	Lib/Input.cpp
-	Lib/InputInternal.h
-	Lib/WindowObj.h
+	Lib/Window.h
 	Lib/Window.cpp
+	Lib/WindowRegistry.cpp
 	Lib/WindowWin32.cpp
     Lib/WindowLinux.cpp
 )
