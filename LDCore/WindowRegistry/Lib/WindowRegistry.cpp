@@ -9,9 +9,9 @@
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/WindowRegistry/WindowRegistry.h>
 
-#include <GLFW/glfw3.h>
+#include "./Window.h"
 
-#include "Window.h"
+#include <GLFW/glfw3.h>
 
 namespace LD {
 
@@ -22,43 +22,6 @@ static_assert(CURSOR_TYPE_CROSSHAIR + GLFW_ARROW_CURSOR == GLFW_CROSSHAIR_CURSOR
 static_assert(CURSOR_TYPE_HAND + GLFW_ARROW_CURSOR == GLFW_HAND_CURSOR);
 static_assert(CURSOR_TYPE_HRESIZE + GLFW_ARROW_CURSOR == GLFW_HRESIZE_CURSOR);
 static_assert(CURSOR_TYPE_VRESIZE + GLFW_ARROW_CURSOR == GLFW_VRESIZE_CURSOR);
-
-class WindowRegistryObj
-{
-public:
-    WindowRegistryObj();
-    WindowRegistryObj(const WindowRegistryObj&) = delete;
-    WindowRegistryObj(WindowRegistryObj&&) = delete;
-    ~WindowRegistryObj();
-
-    WindowRegistryObj& operator=(const WindowRegistryObj&) = delete;
-    WindowRegistryObj& operator=(WindowRegistryObj&&) = delete;
-
-    WindowObj* create_window(const WindowInfo& windowI, WindowID parentID);
-    void destroy_window(WindowID id);
-
-    void frame_boundary();
-
-    inline WindowID get_root_id() const { return mRootID; }
-    inline double get_delta_time() const { return mTimeDelta; }
-
-    inline WindowObj* get_window(WindowID id) const
-    {
-        auto it = mWindows.find(id);
-        return it == mWindows.end() ? nullptr : it->second;
-    }
-
-    void hint_window_cursor_shape(WindowID id, CursorType cursor);
-
-private:
-    HashMap<WindowID, WindowObj*> mWindows;
-    IDCounter<WindowID> mIDCounter;
-    WindowID mRootID = 0;
-    GLFWcursor* mCursors[CURSOR_TYPE_ENUM_COUNT];
-    double mTimeDelta = 0.0;
-    double mTimePrevFrame = 0.0;
-    double mTimeThisFrame = 0.0;
-};
 
 static WindowRegistryObj* sWindowRegistry = nullptr;
 static Log sLog("WindowRegistry");
@@ -95,6 +58,8 @@ WindowRegistryObj::~WindowRegistryObj()
 
 WindowObj* WindowRegistryObj::create_window(const WindowInfo& windowI, WindowID parentID)
 {
+    LD_PROFILE_SCOPE;
+
     WindowID id = mIDCounter.get_id();
 
     if (parentID == 0)
@@ -103,17 +68,25 @@ WindowObj* WindowRegistryObj::create_window(const WindowInfo& windowI, WindowID 
         mRootID = id;
     }
 
-    WindowObj* obj = heap_new<WindowObj>(MEMORY_USAGE_MISC, windowI, id, parentID);
+    WindowObj* obj = heap_new<WindowObj>(MEMORY_USAGE_MISC, windowI, this, id, parentID);
 
     mWindows[id] = obj;
+
+    WindowCreateEvent event(id);
+    notify_observers(&event);
 
     return obj;
 }
 
 void WindowRegistryObj::destroy_window(WindowID id)
 {
+    LD_PROFILE_SCOPE;
+
     if (!mWindows.contains(id))
         return;
+
+    WindowDestroyEvent event(id);
+    notify_observers(&event);
 
     WindowObj* obj = mWindows[id];
     heap_delete<WindowObj>(obj);
@@ -164,6 +137,21 @@ void WindowRegistryObj::hint_window_cursor_shape(WindowID id, CursorType cursor)
     }
 
     glfwSetCursor(window, mCursors[cursorIdx]);
+}
+
+void WindowRegistryObj::add_observer(const WindowRegistryObserver& observer)
+{
+    LD_ASSERT(observer.first); // nullptr callback
+
+    mObservers.push_back(observer);
+}
+
+void WindowRegistryObj::notify_observers(const WindowEvent* event)
+{
+    for (const auto& observer : mObservers)
+    {
+        observer.first(event, observer.second);
+    }
 }
 
 //
@@ -236,6 +224,11 @@ void WindowRegistry::close_window(WindowID id)
         return;
 
     obj->close();
+}
+
+void WindowRegistry::add_observer(const WindowRegistryObserver& observer)
+{
+    mObj->add_observer(observer);
 }
 
 GLFWwindow* WindowRegistry::get_window_glfw_handle(WindowID id)

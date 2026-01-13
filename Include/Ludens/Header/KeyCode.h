@@ -1,8 +1,10 @@
 #pragma once
 
+#include <cstdint>
+
 namespace LD {
 
-enum MouseButton : int
+enum MouseButton : int32_t
 {
     MOUSE_BUTTON_LEFT = 0,
     MOUSE_BUTTON_RIGHT,
@@ -10,7 +12,7 @@ enum MouseButton : int
     MOUSE_BUTTON_ENUM_LAST,
 };
 
-enum KeyCode : int
+enum KeyCode : int32_t
 {
     KEY_CODE_SPACE = 32,
     KEY_CODE_APOSTROPHE = 39, /* ' */

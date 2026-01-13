@@ -1,75 +1,35 @@
 #pragma once
 
 #include <Ludens/Header/KeyCode.h>
+#include <cstdint>
 
 namespace LD {
 
-enum EventType
+enum EventType : uint16_t
 {
+    EVENT_TYPE_WINDOW_CREATE,
+    EVENT_TYPE_WINDOW_DESTROY,
     EVENT_TYPE_WINDOW_RESIZE,
-    EVENT_TYPE_KEY_DOWN,
-    EVENT_TYPE_KEY_UP,
-    EVENT_TYPE_MOUSE_MOTION,
-    EVENT_TYPE_MOUSE_DOWN,
-    EVENT_TYPE_MOUSE_UP,
-    EVENT_TYPE_SCROLL,
+    EVENT_TYPE_WINDOW_KEY_DOWN,
+    EVENT_TYPE_WINDOW_KEY_UP,
+    EVENT_TYPE_WINDOW_MOUSE_MOTION,
+    EVENT_TYPE_WINDOW_MOUSE_DOWN,
+    EVENT_TYPE_WINDOW_MOUSE_UP,
+    EVENT_TYPE_WINDOW_SCROLL,
+};
+
+enum EventCategory : uint16_t
+{
+    EVENT_CATEGORY_WINDOW,
 };
 
 struct Event
 {
     const EventType type;
+    const EventCategory category;
 
-    Event(EventType type) : type(type) {}
-};
-
-struct WindowResizeEvent : Event
-{
-    int width, height;
-
-    WindowResizeEvent(int width, int height) : Event(EVENT_TYPE_WINDOW_RESIZE), width(width), height(height) {}
-};
-
-struct KeyDownEvent : Event
-{
-    const KeyCode key;
-    bool repeat;
-
-    KeyDownEvent(KeyCode key, bool repeat) : Event(EVENT_TYPE_KEY_DOWN), key(key), repeat(repeat) {}
-};
-
-struct KeyUpEvent : Event
-{
-    const KeyCode key;
-
-    KeyUpEvent(KeyCode key) : Event(EVENT_TYPE_KEY_UP), key(key) {}
-};
-
-struct MouseMotionEvent : Event
-{
-    float xpos, ypos;
-
-    MouseMotionEvent(float x, float y) : Event(EVENT_TYPE_MOUSE_MOTION), xpos(x), ypos(y) {}
-};
-
-struct MouseDownEvent : Event
-{
-    const MouseButton button;
-
-    MouseDownEvent(MouseButton btn) : Event(EVENT_TYPE_MOUSE_DOWN), button(btn) {}
-};
-
-struct MouseUpEvent : Event
-{
-    const MouseButton button;
-
-    MouseUpEvent(MouseButton btn) : Event(EVENT_TYPE_MOUSE_UP), button(btn) {}
-};
-
-struct ScrollEvent : Event
-{
-    float xoffset, yoffset;
-
-    ScrollEvent(float xoffset, float yoffset) : Event(EVENT_TYPE_SCROLL), xoffset(xoffset), yoffset(yoffset) {}
+    Event(EventType type, EventCategory category)
+        : type(type), category(category) {}
 };
 
 } // namespace LD

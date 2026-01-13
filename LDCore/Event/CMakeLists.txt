@@ -2,6 +2,7 @@ set(MODULE_NAME LDEvent)
 
 set(MODULE_INCLUDE
 	${LUDENS_INCLUDE_DIR}/Ludens/Event/Event.h
+	${LUDENS_INCLUDE_DIR}/Ludens/Event/WindowEvent.h
 )
 
 set(MODULE_LIB

@@ -2,11 +2,11 @@
 #include <Ludens/Log/Log.h>
 #ifdef LD_PLATFORM_WIN32
 
+#include "./Window.h"
+
 #define GLFW_EXPOSE_NATIVE_WIN32
 #include <GLFW/glfw3.h>
 #include <GLFW/glfw3native.h>
-
-#include "Window.h"
 
 #include <dwmapi.h>
 

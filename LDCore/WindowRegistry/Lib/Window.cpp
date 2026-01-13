@@ -3,7 +3,7 @@
 #include <Ludens/Media/Bitmap.h>
 #include <Ludens/Profiler/Profiler.h>
 
-#include "Window.h"
+#include "./Window.h"
 
 #include <GLFW/glfw3.h>
 
@@ -19,8 +19,8 @@ static_assert(GLFW_MOUSE_BUTTON_LEFT == MOUSE_BUTTON_LEFT);
 static_assert(GLFW_MOUSE_BUTTON_RIGHT == MOUSE_BUTTON_RIGHT);
 static_assert(GLFW_MOUSE_BUTTON_MIDDLE == MOUSE_BUTTON_MIDDLE);
 
-WindowObj::WindowObj(const WindowInfo& windowI, WindowID ID, WindowID parentID)
-    : mHandle(nullptr), mID(ID), mParentID(parentID), mWidth(windowI.width), mHeight(windowI.height), mUser(windowI.user), mOnEvent(windowI.onEvent), mMouseCursorX(0.0f), mMouseCursorY(0.0f)
+WindowObj::WindowObj(const WindowInfo& windowI, WindowRegistryObj* reg, WindowID ID, WindowID parentID)
+    : mHandle(nullptr), mRegistry(reg), mID(ID), mParentID(parentID), mWidth(windowI.width), mHeight(windowI.height), mUser(windowI.user), mOnEvent(windowI.onEvent)
 {
     LD_PROFILE_SCOPE;
 
@@ -44,6 +44,8 @@ WindowObj::WindowObj(const WindowInfo& windowI, WindowID ID, WindowID parentID)
     if (windowI.hintTitleBarTextColor != 0)
         hint_title_bar_text_color(windowI.hintTitleBarTextColor);
 
+    mMouseCursorX = 0.0f;
+    mMouseCursorY = 0.0f;
     mMouseCursorDeltaX = 0.0f;
     mMouseCursorDeltaY = 0.0f;
 
@@ -67,7 +69,7 @@ void WindowObj::size_callback(GLFWwindow* window, int width, int height)
     obj->mWidth = width;
     obj->mHeight = height;
 
-    WindowResizeEvent event(width, height);
+    WindowResizeEvent event(obj->mID, width, height);
     obj->on_event(&event);
 }
 
@@ -82,14 +84,14 @@ void WindowObj::key_callback(GLFWwindow* window, int key, int scancode, int acti
         if (firstPress)
             obj->mKeyState[key] |= (PRESSED_BIT | PRESSED_THIS_FRAME_BIT);
 
-        KeyDownEvent event((KeyCode)key, !firstPress);
+        WindowKeyDownEvent event(obj->mID, (KeyCode)key, !firstPress);
         obj->on_event(&event);
     }
     else if (action == GLFW_RELEASE)
     {
         obj->mKeyState[key] = RELEASED_THIS_FRAME_BIT;
 
-        KeyUpEvent event((KeyCode)key);
+        WindowKeyUpEvent event(obj->mID, (KeyCode)key);
         obj->on_event(&event);
     }
 }
@@ -105,14 +107,14 @@ void WindowObj::mouse_button_callback(GLFWwindow* window, int button, int action
     {
         obj->mMouseState[button] |= (PRESSED_BIT | PRESSED_THIS_FRAME_BIT);
 
-        MouseDownEvent event((MouseButton)button);
+        WindowMouseDownEvent event(obj->mID, (MouseButton)button);
         obj->on_event(&event);
     }
     else if (action == GLFW_RELEASE)
     {
         obj->mMouseState[button] = RELEASED_THIS_FRAME_BIT;
 
-        MouseUpEvent event((MouseButton)button);
+        WindowMouseUpEvent event(obj->mID, (MouseButton)button);
         obj->on_event(&event);
     }
 }
@@ -120,20 +122,22 @@ void WindowObj::mouse_button_callback(GLFWwindow* window, int button, int action
 void WindowObj::cursor_pos_callback(GLFWwindow* window, double xpos, double ypos)
 {
     auto* obj = (WindowObj*)glfwGetWindowUserPointer(window);
-    MouseMotionEvent event((float)xpos, (float)ypos);
+    WindowMouseMotionEvent event(obj->mID, (float)xpos, (float)ypos);
     obj->on_event(&event);
 }
 
 void WindowObj::scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
 {
     auto* obj = (WindowObj*)glfwGetWindowUserPointer(window);
-    ScrollEvent event((float)xoffset, (float)yoffset);
+    WindowScrollEvent event(obj->mID, (float)xoffset, (float)yoffset);
     obj->on_event(&event);
 }
 
-void WindowObj::on_event(const Event* event)
+void WindowObj::on_event(const WindowEvent* event)
 {
     LD_PROFILE_SCOPE;
+
+    mRegistry->notify_observers(event);
 
     if (!mOnEvent)
         return;

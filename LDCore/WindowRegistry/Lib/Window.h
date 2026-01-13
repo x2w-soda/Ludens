@@ -1,5 +1,9 @@
 #pragma once
 
+#include <Ludens/DSA/HashMap.h>
+#include <Ludens/DSA/IDCounter.h>
+#include <Ludens/DSA/Vector.h>
+#include <Ludens/Event/Event.h>
 #include <Ludens/Header/Color.h>
 #include <Ludens/Header/KeyCode.h>
 #include <Ludens/WindowRegistry/WindowRegistry.h>
@@ -10,12 +14,55 @@ struct GLFWcursor;
 
 namespace LD {
 
+class WindowObj;
+
+/// @brief Window registry implementation.
+class WindowRegistryObj
+{
+public:
+    WindowRegistryObj();
+    WindowRegistryObj(const WindowRegistryObj&) = delete;
+    WindowRegistryObj(WindowRegistryObj&&) = delete;
+    ~WindowRegistryObj();
+
+    WindowRegistryObj& operator=(const WindowRegistryObj&) = delete;
+    WindowRegistryObj& operator=(WindowRegistryObj&&) = delete;
+
+    WindowObj* create_window(const WindowInfo& windowI, WindowID parentID);
+    void destroy_window(WindowID id);
+
+    void frame_boundary();
+
+    inline WindowID get_root_id() const { return mRootID; }
+    inline double get_delta_time() const { return mTimeDelta; }
+
+    inline WindowObj* get_window(WindowID id) const
+    {
+        auto it = mWindows.find(id);
+        return it == mWindows.end() ? nullptr : it->second;
+    }
+
+    void hint_window_cursor_shape(WindowID id, CursorType cursor);
+    void add_observer(const WindowRegistryObserver& observer);
+    void notify_observers(const WindowEvent* event);
+
+private:
+    HashMap<WindowID, WindowObj*> mWindows;
+    IDCounter<WindowID> mIDCounter;
+    Vector<WindowRegistryObserver> mObservers;
+    WindowID mRootID = 0;
+    GLFWcursor* mCursors[CURSOR_TYPE_ENUM_COUNT];
+    double mTimeDelta = 0.0;
+    double mTimePrevFrame = 0.0;
+    double mTimeThisFrame = 0.0;
+};
+
 /// @brief Window implementation, corresponds to a GLFWwindow.
 class WindowObj
 {
 public:
     WindowObj() = delete;
-    WindowObj(const WindowInfo& windowI, WindowID ID, WindowID parentID);
+    WindowObj(const WindowInfo& windowI, WindowRegistryObj* reg, WindowID ID, WindowID parentID);
     WindowObj(const WindowObj&) = delete;
     WindowObj(WindowObj&&) = delete;
     ~WindowObj();
@@ -34,7 +81,7 @@ public:
 
     void frame_boundary();
 
-    void on_event(const Event* event);
+    void on_event(const WindowEvent* event);
 
 public: // decorators and hints
     void set_cursor_mode_normal();
@@ -72,8 +119,9 @@ private:
     uint32_t mWidth = 0;
     uint32_t mHeight = 0;
     GLFWwindow* mHandle = nullptr;
+    WindowRegistryObj* mRegistry = nullptr;
+    WindowEventFn mOnEvent = nullptr;
     void* mUser = nullptr;
-    void (*mOnEvent)(const Event* event, void* user) = nullptr;
     bool mIsAlive = false;
     uint8_t mKeyState[KEY_CODE_ENUM_LAST];
     uint8_t mMouseState[MOUSE_BUTTON_ENUM_LAST];
