@@ -10,6 +10,7 @@ set(MODULE_INCLUDE
 	${LUDENS_INCLUDE_DIR}/Ludens/DSA/Queue.h
 	${LUDENS_INCLUDE_DIR}/Ludens/DSA/Vector.h
 	${LUDENS_INCLUDE_DIR}/Ludens/DSA/String.h
+	${LUDENS_INCLUDE_DIR}/Ludens/DSA/Observer.h
 	${LUDENS_INCLUDE_DIR}/Ludens/DSA/Optional.h
 	${LUDENS_INCLUDE_DIR}/Ludens/DSA/HashSet.h
 	${LUDENS_INCLUDE_DIR}/Ludens/DSA/HashMap.h
@@ -28,6 +29,7 @@ set(MODULE_TEST
 	Test/GapBufferTest.cpp
 	Test/VectorTest.h
 	Test/StringTest.h
+	Test/ObserverTest.cpp
 	Test/RectSplitTest.cpp
 	Test/DiagnosticsTest.cpp
 	Test/DSATest.h
