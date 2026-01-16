@@ -763,6 +763,9 @@ RImage RDevice::try_acquire_image(WindowID id, RSemaphore& imageAcquired, RSemap
 {
     LD_PROFILE_SCOPE;
 
+    if (id == 0)
+        return {};
+
     return mObj->api->try_acquire_image(mObj, id, imageAcquired, presentReady);
 }
 
@@ -782,28 +785,6 @@ RSampleCountBit RDevice::get_max_sample_count()
 {
     return mObj->api->get_max_sample_count(mObj);
 }
-
-/*
-RFormat RDevice::get_swapchain_color_format()
-{
-    return mObj->api->get_swapchain_color_format(mObj);
-}
-
-RImage RDevice::get_swapchain_color_attachment(uint32_t frameIdx)
-{
-    return mObj->api->get_swapchain_color_attachment(mObj, frameIdx);
-}
-
-uint32_t RDevice::get_swapchain_image_count()
-{
-    return mObj->api->get_swapchain_image_count(mObj);
-}
-
-void RDevice::get_swapchain_extent(uint32_t* width, uint32_t* height)
-{
-    return mObj->api->get_swapchain_extent(mObj, width, height);
-}
-*/
 
 uint32_t RDevice::get_frames_in_flight_count()
 {

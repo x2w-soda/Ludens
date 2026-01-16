@@ -89,7 +89,6 @@ struct SwapchainInfo
     VkFormat imageFormat;
     VkPresentModeKHR presentMode;
     VkColorSpaceKHR imageColorSpace;
-    bool vsyncHint;
 };
 
 struct Swapchain
@@ -117,6 +116,7 @@ struct WindowSurface
     Vector<VkSurfaceFormatKHR> surfaceFormats;
     Vector<VkPresentModeKHR> presentModes;
 
+    void configure(VkPhysicalDevice pdevice, bool vsyncHint);
     void create_swapchain(RDeviceVKObj* obj);
     void destroy_swapchain(RDeviceVKObj* obj);
     void invalidate_swapchain(RDeviceVKObj* obj);
@@ -367,10 +367,6 @@ static constexpr RDeviceAPI sRDeviceVKAPI = {
     .present_frame = &vk_device_present_frame,
     .get_depth_stencil_formats = &vk_device_get_depth_stencil_formats,
     .get_max_sample_count = &vk_device_get_max_sample_count,
-    //.get_swapchain_color_format = &vk_device_get_swapchain_color_format,
-    //.get_swapchain_color_attachment = &vk_device_get_swapchain_color_attachment,
-    //.get_swapchain_image_count = &vk_device_get_swapchain_image_count,
-    //.get_swapchain_extent = &vk_device_get_swapchain_extent,
     .get_frames_in_flight_count = &vk_device_get_frames_in_flight_count,
     .get_graphics_queue = &vk_device_get_graphics_queue,
     .wait_idle = &vk_device_wait_idle,
@@ -437,6 +433,11 @@ struct RDeviceVKObj : RDeviceObj
         vk.samplerCache[samplerHash] = vkSampler;
         return vkSampler;
     }
+
+    static void on_window_event(const WindowEvent* event, void* user);
+    void create_window_surface(WindowID id);
+    void destroy_window_surface(WindowID id);
+    void invalidate_window_swapchain(WindowID id);
 };
 
 static void vk_buffer_map(RBufferObj* self);
@@ -677,12 +678,11 @@ struct RPipelineVKObj : RPipelineObj
     } vk;
 };
 
-static void get_swapchain_info(WindowSurface* surface, SwapchainInfo* swapchainI);
 static void enumerate_instance_extensions(Vector<VkExtensionProperties>& supportedInstanceExts, HashSet<std::string>& supportedInstanceExtSet);
 static void enumerate_instance_layers(Vector<VkLayerProperties>& supportedInstanceLayers, HashSet<std::string>& supportedInstanceLayerSet);
 
 static VkResult acquire_next_image(RDeviceVKObj* obj, WindowSurface* surface, VkSemaphore imageAcquiredSemaphore);
-static void choose_physical_device(RDeviceVKObj* obj);
+static void choose_physical_device(RDeviceVKObj* obj, bool vsyncHint);
 static RImage create_swapchain_color_attachment(RDeviceVKObj* deviceObj, VkImage image, VkFormat colorFormat, uint32_t width, uint32_t height);
 static void destroy_swapchain_color_attachment(RDeviceVKObj* deviceObj, RImage attachment);
 static void create_vma_allocator(RDeviceVKObj* obj);
@@ -787,6 +787,8 @@ void vk_create_device(RDeviceObj* baseSelf, const RDeviceInfo& deviceI)
         const char** glfwExts = glfwGetRequiredInstanceExtensions(&glfwExtCount);
         for (uint32_t i = 0; i < glfwExtCount; i++)
             desiredInstanceExtSet.insert(glfwExts[i]);
+
+        windowReg.add_observer(&RDeviceVKObj::on_window_event, self);
     }
 
     // SPACE: insert any other user-requested extensions into set
@@ -859,7 +861,7 @@ void vk_create_device(RDeviceObj* baseSelf, const RDeviceInfo& deviceI)
     }
 
     // choose a physical device, taking surface capabilities into account
-    choose_physical_device(self);
+    choose_physical_device(self, deviceI.vsync);
     LD_ASSERT(self->vk.pdevice.handle != VK_NULL_HANDLE);
 
     // NOTE: here we are following the most basic use case of having one queue for each family
@@ -973,17 +975,14 @@ void vk_create_device(RDeviceObj* baseSelf, const RDeviceInfo& deviceI)
 
     if (rootSurface && rootSurface->handle)
     {
-        // create swapchain
-        rootSurface->swapchain.info.vsyncHint = deviceI.vsync;
-        get_swapchain_info(rootSurface, &rootSurface->swapchain.info);
         rootSurface->create_swapchain(self);
+    }
 
-        // frames in flight synchronization
-        for (uint32_t i = 0; i < FRAMES_IN_FLIGHT; i++)
-        {
-            vk_device_create_fence(self, true, self->vk.frameCompleteObj + i);
-            self->vk.frameCompleteObj[i].rid = RObjectID::get();
-        }
+    // frames in flight synchronization
+    for (uint32_t i = 0; i < FRAMES_IN_FLIGHT; i++)
+    {
+        vk_device_create_fence(self, true, self->vk.frameCompleteObj + i);
+        self->vk.frameCompleteObj[i].rid = RObjectID::get();
     }
 }
 
@@ -992,6 +991,12 @@ void vk_destroy_device(RDeviceObj* baseSelf)
     LD_PROFILE_SCOPE;
 
     auto* self = (RDeviceVKObj*)baseSelf;
+    WindowRegistry windowReg = WindowRegistry::get();
+
+    if (windowReg)
+    {
+        windowReg.remove_observer(&RDeviceVKObj::on_window_event, baseSelf);
+    }
 
     {
         LD_PROFILE_SCOPE_NAME("vkDeviceWaitIdle");
@@ -2157,6 +2162,86 @@ static void vk_device_wait_idle(RDeviceObj* baseSelf)
     VK_CHECK(vkDeviceWaitIdle(self->vk.device));
 }
 
+void RDeviceVKObj::on_window_event(const WindowEvent* event, void* user)
+{
+    auto* self = (RDeviceVKObj*)user;
+
+    WindowID windowID = event->window;
+    const WindowResizeEvent* resizeEvent = nullptr;
+
+    switch (event->type)
+    {
+    case EVENT_TYPE_WINDOW_CREATE:
+        self->create_window_surface(windowID);
+        break;
+    case EVENT_TYPE_WINDOW_DESTROY:
+        self->destroy_window_surface(windowID);
+        break;
+    case EVENT_TYPE_WINDOW_RESIZE:
+        resizeEvent = (const WindowResizeEvent*)event;
+        if (resizeEvent->width > 0 && resizeEvent->height > 0)
+            self->invalidate_window_swapchain(windowID);
+        break;
+    default:
+        break;
+    }
+}
+
+void RDeviceVKObj::create_window_surface(WindowID windowID)
+{
+    LD_PROFILE_SCOPE;
+
+    if (vk.windowCache.contains(windowID))
+    {
+        sLog.warn("redundant create_window_surface, surface for {} already created", windowID);
+        return;
+    }
+
+    WindowRegistry windowReg = WindowRegistry::get();
+    WindowSurface* surface = vk.windowCache[windowID] = heap_new<WindowSurface>(MEMORY_USAGE_RENDER);
+    surface->glfw = windowReg.get_window_glfw_handle(windowID);
+    VK_CHECK(glfwCreateWindowSurface(vk.instance, surface->glfw, nullptr, &surface->handle));
+
+    surface->configure(vk.pdevice.handle, /* TODO: */ true);
+    surface->create_swapchain(this);
+}
+
+void RDeviceVKObj::destroy_window_surface(WindowID windowID)
+{
+    LD_PROFILE_SCOPE;
+
+    vkDeviceWaitIdle(vk.device);
+
+    if (!vk.windowCache.contains(windowID))
+    {
+        sLog.warn("redundant destroy_window_surface, surface for {} already destroyed", windowID);
+        return;
+    }
+
+    WindowRegistry windowReg = WindowRegistry::get();
+    WindowSurface* surface = vk.windowCache[windowID];
+
+    surface->destroy_swapchain(this);
+    vkDestroySurfaceKHR(vk.instance, surface->handle, nullptr);
+
+    heap_delete<WindowSurface>(surface);
+    vk.windowCache.erase(windowID);
+}
+
+void RDeviceVKObj::invalidate_window_swapchain(WindowID windowID)
+{
+    LD_PROFILE_SCOPE;
+
+    if (!vk.windowCache.contains(windowID))
+    {
+        sLog.warn("redundant invalidate_window_swapchain, surface for {} does not exist", windowID);
+        return;
+    }
+
+    WindowSurface* surface = vk.windowCache[windowID];
+    surface->invalidate_swapchain(this);
+}
+
 static void vk_buffer_map(RBufferObj* baseSelf)
 {
     auto* self = (RBufferVKObj*)baseSelf;
@@ -2768,44 +2853,6 @@ static void vk_queue_submit(RQueueObj* baseSelf, const RSubmitInfo& submitI, RFe
     VK_CHECK(vkQueueSubmit(self->vk.handle, 1, &submit, fenceHandle));
 }
 
-static void get_swapchain_info(WindowSurface* surface, SwapchainInfo* swapchainI)
-{
-    LD_PROFILE_SCOPE;
-
-    // configure color format
-    LD_ASSERT(!surface->surfaceFormats.empty());
-    swapchainI->imageFormat = surface->surfaceFormats[0].format;
-    swapchainI->imageColorSpace = surface->surfaceFormats[0].colorSpace;
-
-    for (VkSurfaceFormatKHR& surfaceFmt : surface->surfaceFormats)
-    {
-        if (surfaceFmt.format == VK_FORMAT_B8G8R8A8_UNORM && surfaceFmt.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
-        {
-            swapchainI->imageFormat = surfaceFmt.format;
-            swapchainI->imageColorSpace = surfaceFmt.colorSpace;
-            break;
-        }
-    }
-
-    // configure present mode
-    swapchainI->presentMode = VK_PRESENT_MODE_FIFO_KHR; // guaranteed support; vsynced
-
-    for (VkPresentModeKHR& mode : surface->presentModes)
-    {
-        if (swapchainI->vsyncHint && mode == VK_PRESENT_MODE_MAILBOX_KHR) // preferred vsync mode
-        {
-            swapchainI->presentMode = mode;
-            break;
-        }
-
-        if (!swapchainI->vsyncHint && mode == VK_PRESENT_MODE_IMMEDIATE_KHR) // preferred non-vsync mode
-        {
-            swapchainI->presentMode = mode;
-            break;
-        }
-    }
-}
-
 static void enumerate_instance_extensions(Vector<VkExtensionProperties>& supportedInstanceExts, HashSet<std::string>& supportedInstanceExtSet)
 {
     LD_PROFILE_SCOPE;
@@ -2849,7 +2896,7 @@ static VkResult acquire_next_image(RDeviceVKObj* obj, WindowSurface* surface, Vk
         &surface->swapchain.imageIdx);
 }
 
-static void choose_physical_device(RDeviceVKObj* obj)
+static void choose_physical_device(RDeviceVKObj* obj, bool vsyncHint)
 {
     LD_PROFILE_SCOPE;
 
@@ -2864,17 +2911,18 @@ static void choose_physical_device(RDeviceVKObj* obj)
     WindowSurface* surface = nullptr;
     WindowRegistry windowReg = WindowRegistry::get();
 
-    if (windowReg) // take root window surface into account
-    {
-        surface = obj->vk.windowCache[windowReg.get_root_id()];
-        LD_ASSERT(surface);
-    }
-
-    for (VkPhysicalDevice& handle : handles)
+    for (VkPhysicalDevice handle : handles)
     {
         bool chosen = true; // TODO:
 
         obj->vk.pdevice.handle = handle;
+
+        if (windowReg) // take root window surface into account
+        {
+            surface = obj->vk.windowCache[windowReg.get_root_id()];
+            LD_ASSERT(surface);
+            surface->configure(handle, vsyncHint);
+        }
 
         vkGetPhysicalDeviceProperties(pdevice.handle, &pdevice.deviceProps);
         sLog.info("VkPhysicalDevice: {}", pdevice.deviceProps.deviceName);
@@ -2904,17 +2952,6 @@ static void choose_physical_device(RDeviceVKObj* obj)
         pdevice.familyProps.resize(familyCount);
         vkGetPhysicalDeviceQueueFamilyProperties(handle, &familyCount, pdevice.familyProps.data());
 
-        if (surface)
-        {
-            VK_CHECK(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(handle, surface->handle, &surface->surfaceCaps));
-
-            // available surface formats on this physical device
-            uint32_t formatCount;
-            VK_CHECK(vkGetPhysicalDeviceSurfaceFormatsKHR(handle, surface->handle, &formatCount, nullptr));
-            surface->surfaceFormats.resize(formatCount);
-            VK_CHECK(vkGetPhysicalDeviceSurfaceFormatsKHR(handle, surface->handle, &formatCount, surface->surfaceFormats.data()));
-        }
-
         // available depth stencil formats on this physical device
         VkFormatProperties formatProps;
         std::array<VkFormat, 2> depthStencilCandidates = {
@@ -2926,15 +2963,6 @@ static void choose_physical_device(RDeviceVKObj* obj)
             vkGetPhysicalDeviceFormatProperties(handle, candidate, &formatProps);
             if (formatProps.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)
                 pdevice.depthStencilFormats.push_back(candidate);
-        }
-
-        // present modes on this physical device
-        if (surface)
-        {
-            uint32_t modeCount;
-            VK_CHECK(vkGetPhysicalDeviceSurfacePresentModesKHR(handle, surface->handle, &modeCount, NULL));
-            surface->presentModes.resize(modeCount);
-            VK_CHECK(vkGetPhysicalDeviceSurfacePresentModesKHR(handle, surface->handle, &modeCount, surface->presentModes.data()));
         }
 
         // physical limits
@@ -2995,6 +3023,58 @@ static void destroy_swapchain_color_attachment(RDeviceVKObj* deviceObj, RImage a
     vkDestroyImageView(deviceObj->vk.device, obj->vk.viewHandle, nullptr);
 
     heap_delete<RImageVKObj>(obj);
+}
+
+void WindowSurface::configure(VkPhysicalDevice pdevice, bool vsyncHint)
+{
+    LD_PROFILE_SCOPE;
+
+    VK_CHECK(vkGetPhysicalDeviceSurfaceCapabilitiesKHR(pdevice, handle, &surfaceCaps));
+
+    // available surface formats on this physical device
+    uint32_t formatCount;
+    VK_CHECK(vkGetPhysicalDeviceSurfaceFormatsKHR(pdevice, handle, &formatCount, nullptr));
+    surfaceFormats.resize(formatCount);
+    VK_CHECK(vkGetPhysicalDeviceSurfaceFormatsKHR(pdevice, handle, &formatCount, surfaceFormats.data()));
+
+    // present modes on this physical device
+    uint32_t modeCount;
+    VK_CHECK(vkGetPhysicalDeviceSurfacePresentModesKHR(pdevice, handle, &modeCount, NULL));
+    presentModes.resize(modeCount);
+    VK_CHECK(vkGetPhysicalDeviceSurfacePresentModesKHR(pdevice, handle, &modeCount, presentModes.data()));
+
+    // configure color format
+    LD_ASSERT(!surfaceFormats.empty());
+    swapchain.info.imageFormat = surfaceFormats[0].format;
+    swapchain.info.imageColorSpace = surfaceFormats[0].colorSpace;
+
+    for (VkSurfaceFormatKHR& surfaceFmt : surfaceFormats)
+    {
+        if (surfaceFmt.format == VK_FORMAT_B8G8R8A8_UNORM && surfaceFmt.colorSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR)
+        {
+            swapchain.info.imageFormat = surfaceFmt.format;
+            swapchain.info.imageColorSpace = surfaceFmt.colorSpace;
+            break;
+        }
+    }
+
+    // configure present mode
+    swapchain.info.presentMode = VK_PRESENT_MODE_FIFO_KHR; // guaranteed support; vsynced
+
+    for (VkPresentModeKHR& mode : presentModes)
+    {
+        if (vsyncHint && mode == VK_PRESENT_MODE_MAILBOX_KHR) // preferred vsync mode
+        {
+            swapchain.info.presentMode = mode;
+            break;
+        }
+
+        if (!vsyncHint && mode == VK_PRESENT_MODE_IMMEDIATE_KHR) // preferred non-vsync mode
+        {
+            swapchain.info.presentMode = mode;
+            break;
+        }
+    }
 }
 
 void WindowSurface::create_swapchain(RDeviceVKObj* obj)
