@@ -19,10 +19,16 @@ static_assert(GLFW_MOUSE_BUTTON_LEFT == MOUSE_BUTTON_LEFT);
 static_assert(GLFW_MOUSE_BUTTON_RIGHT == MOUSE_BUTTON_RIGHT);
 static_assert(GLFW_MOUSE_BUTTON_MIDDLE == MOUSE_BUTTON_MIDDLE);
 
-WindowObj::WindowObj(const WindowInfo& windowI, WindowRegistryObj* reg, WindowID ID, WindowID parentID)
-    : mHandle(nullptr), mRegistry(reg), mID(ID), mParentID(parentID), mWidth(windowI.width), mHeight(windowI.height), mUser(windowI.user), mOnEvent(windowI.onEvent)
+WindowObj::WindowObj(const WindowInfo& windowI, WindowRegistryObj* reg, WindowID ID, WindowObj* parent)
+    : mHandle(nullptr), mRegistry(reg), mID(ID), mParentID(0), mWidth(windowI.width), mHeight(windowI.height), mUser(windowI.user), mOnEvent(windowI.onEvent)
 {
     LD_PROFILE_SCOPE;
+
+    if (parent)
+    {
+        mParentID = parent->get_id();
+        parent->mChildrenID.push_back(ID);
+    }
 
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API); // TODO: RDEVICE_BACKEND_OPENGL
     glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);

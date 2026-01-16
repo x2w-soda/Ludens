@@ -68,7 +68,8 @@ WindowObj* WindowRegistryObj::create_window(const WindowInfo& windowI, WindowID 
         mRootID = id;
     }
 
-    WindowObj* obj = heap_new<WindowObj>(MEMORY_USAGE_MISC, windowI, this, id, parentID);
+    WindowObj* parentObj = parentID == 0 ? nullptr : mWindows[parentID];
+    WindowObj* obj = heap_new<WindowObj>(MEMORY_USAGE_MISC, windowI, this, id, parentObj);
 
     mWindows[id] = obj;
 
@@ -85,13 +86,33 @@ void WindowRegistryObj::destroy_window(WindowID id)
     if (!mWindows.contains(id))
         return;
 
+    WindowID parentID = mWindows[id]->get_parent_id();
+
+    destroy_window_subtree(id);
+
+    if (parentID != 0)
+    {
+        LD_ASSERT(mWindows.contains(parentID));
+        mWindows[parentID]->erase_child_id(id);
+    }
+}
+
+void WindowRegistryObj::destroy_window_subtree(WindowID id)
+{
+    LD_ASSERT(mWindows.contains(id));
+
+    WindowObj* obj = mWindows[id];
+    const Vector<WindowID>& childrenID = obj->get_children_id();
+
+    for (WindowID childID : childrenID)
+    {
+        destroy_window_subtree(childID);
+    }
+
     WindowDestroyEvent event(id);
     notify_observers(&event);
 
-    WindowObj* obj = mWindows[id];
     heap_delete<WindowObj>(obj);
-
-    // TODO: recursive
     mWindows.erase(id);
 }
 
@@ -109,12 +130,20 @@ void WindowRegistryObj::frame_boundary()
     mTimeDelta = mTimeThisFrame - mTimePrevFrame;
     mTimePrevFrame = mTimeThisFrame;
 
+    Vector<WindowID> toDestroy;
+
     for (auto it : mWindows)
     {
         WindowObj* obj = it.second;
 
+        if (!obj->is_alive())
+            toDestroy.push_back(it.first);
+
         obj->frame_boundary();
     }
+
+    for (WindowID id : toDestroy)
+        destroy_window(id);
 }
 
 void WindowRegistryObj::hint_window_cursor_shape(WindowID id, CursorType cursor)
@@ -139,19 +168,21 @@ void WindowRegistryObj::hint_window_cursor_shape(WindowID id, CursorType cursor)
     glfwSetCursor(window, mCursors[cursorIdx]);
 }
 
-void WindowRegistryObj::add_observer(const WindowRegistryObserver& observer)
+void WindowRegistryObj::add_observer(WindowEventFn fn, void* user)
 {
-    LD_ASSERT(observer.first); // nullptr callback
+    LD_ASSERT(fn); // nullptr callback
 
-    mObservers.push_back(observer);
+    mObservers.add_observer(fn, user);
+}
+
+void WindowRegistryObj::remove_observer(WindowEventFn fn, void* user)
+{
+    mObservers.remove_observer(fn, user);
 }
 
 void WindowRegistryObj::notify_observers(const WindowEvent* event)
 {
-    for (const auto& observer : mObservers)
-    {
-        observer.first(event, observer.second);
-    }
+    mObservers.notify(event);
 }
 
 //
@@ -200,6 +231,8 @@ void WindowRegistry::poll_events()
     LD_PROFILE_SCOPE;
 
     // updates registry delta time
+    // destroys stale windows
+    // reset input polling
     mObj->frame_boundary();
 
     glfwPollEvents();
@@ -226,9 +259,14 @@ void WindowRegistry::close_window(WindowID id)
     obj->close();
 }
 
-void WindowRegistry::add_observer(const WindowRegistryObserver& observer)
+void WindowRegistry::add_observer(WindowEventFn fn, void* user)
 {
-    mObj->add_observer(observer);
+    mObj->add_observer(fn, user);
+}
+
+void WindowRegistry::remove_observer(WindowEventFn fn, void* user)
+{
+    mObj->remove_observer(fn, user);
 }
 
 GLFWwindow* WindowRegistry::get_window_glfw_handle(WindowID id)
@@ -246,7 +284,7 @@ bool WindowRegistry::is_window_open(WindowID id)
     if (!obj)
         return false;
 
-    return obj->is_alive();
+    return obj->is_alive() && !glfwWindowShouldClose(obj->get_glfw_handle());
 }
 
 bool WindowRegistry::is_window_minimized(WindowID id)

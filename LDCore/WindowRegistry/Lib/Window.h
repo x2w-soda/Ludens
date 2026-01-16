@@ -2,6 +2,7 @@
 
 #include <Ludens/DSA/HashMap.h>
 #include <Ludens/DSA/IDCounter.h>
+#include <Ludens/DSA/Observer.h>
 #include <Ludens/DSA/Vector.h>
 #include <Ludens/Event/Event.h>
 #include <Ludens/Header/Color.h>
@@ -30,6 +31,7 @@ public:
 
     WindowObj* create_window(const WindowInfo& windowI, WindowID parentID);
     void destroy_window(WindowID id);
+    void destroy_window_subtree(WindowID id);
 
     void frame_boundary();
 
@@ -43,13 +45,14 @@ public:
     }
 
     void hint_window_cursor_shape(WindowID id, CursorType cursor);
-    void add_observer(const WindowRegistryObserver& observer);
+    void add_observer(const WindowEventFn fn, void* user);
+    void remove_observer(WindowEventFn fn, void* user);
     void notify_observers(const WindowEvent* event);
 
 private:
     HashMap<WindowID, WindowObj*> mWindows;
     IDCounter<WindowID> mIDCounter;
-    Vector<WindowRegistryObserver> mObservers;
+    ObserverList<const WindowEvent*> mObservers;
     WindowID mRootID = 0;
     GLFWcursor* mCursors[CURSOR_TYPE_ENUM_COUNT];
     double mTimeDelta = 0.0;
@@ -62,7 +65,7 @@ class WindowObj
 {
 public:
     WindowObj() = delete;
-    WindowObj(const WindowInfo& windowI, WindowRegistryObj* reg, WindowID ID, WindowID parentID);
+    WindowObj(const WindowInfo& windowI, WindowRegistryObj* reg, WindowID ID, WindowObj* parent);
     WindowObj(const WindowObj&) = delete;
     WindowObj(WindowObj&&) = delete;
     ~WindowObj();
@@ -78,6 +81,9 @@ public:
     inline void close() { mIsAlive = false; }
     inline bool is_alive() const { return mIsAlive; }
     inline WindowID get_id() const { return mID; }
+    inline WindowID get_parent_id() const { return mParentID; }
+    inline const Vector<WindowID>& get_children_id() const { return mChildrenID; }
+    inline void erase_child_id(WindowID id) { std::erase(mChildrenID, id); }
 
     void frame_boundary();
 
@@ -118,6 +124,7 @@ private:
     WindowID mParentID = 0;
     uint32_t mWidth = 0;
     uint32_t mHeight = 0;
+    Vector<WindowID> mChildrenID;
     GLFWwindow* mHandle = nullptr;
     WindowRegistryObj* mRegistry = nullptr;
     WindowEventFn mOnEvent = nullptr;
