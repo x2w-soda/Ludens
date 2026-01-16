@@ -1,5 +1,6 @@
 #include <Ludens/DSA/HashMap.h>
 #include <Ludens/DSA/HashSet.h>
+#include <Ludens/DSA/Observer.h>
 #include <Ludens/Header/Hash.h>
 #include <Ludens/Log/Log.h>
 #include <Ludens/Memory/Memory.h>
@@ -23,7 +24,7 @@ struct LogObj
 
     const std::string name;
     std::mutex mtx;
-    std::unordered_set<LogObserver> observers;
+    ObserverList<LogLevel, const std::string&> observers;
 };
 
 class LogChannels
@@ -37,7 +38,7 @@ public:
 
 private:
     LogObj mDefault;
-    std::unordered_map<uint32_t, LogObj*> mChannels;
+    HashMap<uint32_t, LogObj*> mChannels;
     static LogChannels* sInstance;
 };
 
@@ -67,7 +68,7 @@ LogObj* LogChannels::get_log(const char* channelName)
     if (self->mChannels.contains(hash32))
         return self->mChannels[hash32];
 
-    // NOTE: heap_new from LDSystem tracks allocations and reports memory leaks,
+    // NOTE: heap_new from LDMemory tracks allocations and reports memory leaks,
     //       here we are using vanilla 'new' since per-channel logs live
     //       until the very end of application lifetime.
     LogObj* obj = new LogObj(channelName);
@@ -110,8 +111,8 @@ void log_message(LogObj* obj, LogLevel level, const std::string& msg)
     // Refactor later if this is an observable bottleneck in profiling.
     {
         std::unique_lock<std::mutex> lock(obj->mtx);
-        for (LogObserver observer : obj->observers)
-            observer(level, msg);
+
+        obj->observers.notify(level, msg);
     }
 
     std::cout << prefix << ' ' << msg << std::endl;
@@ -131,14 +132,14 @@ void Log::add_observer(LogObserver observer)
 {
     std::unique_lock<std::mutex> lock(mObj->mtx);
 
-    mObj->observers.insert(observer);
+    mObj->observers.add_observer(observer, nullptr);
 }
 
 void Log::remove_observer(LogObserver observer)
 {
     std::unique_lock<std::mutex> lock(mObj->mtx);
 
-    mObj->observers.erase(observer);
+    mObj->observers.remove_observer(observer, nullptr);
 }
 
 } // namespace LD

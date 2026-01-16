@@ -19,7 +19,7 @@ enum LogLevel
 struct LogObj;
 void log_message(LogObj* obj, LogLevel level, const std::string& msg);
 
-typedef void (*LogObserver)(LogLevel level, const std::string& msg);
+typedef void (*LogObserver)(LogLevel level, const std::string& msg, void* user);
 
 struct Log : Handle<LogObj>
 {

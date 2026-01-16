@@ -12,7 +12,7 @@ namespace LD {
 
 static Vector<std::string> sHistory;
 
-static void console_log_writeback(LogLevel level, const std::string& msg)
+static void console_log_writeback(LogLevel level, const std::string& msg, void* user)
 {
     sHistory.push_back(msg);
 }
