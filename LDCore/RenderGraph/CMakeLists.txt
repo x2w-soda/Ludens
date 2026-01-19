@@ -7,6 +7,8 @@ set(MODULE_INCLUDE
 set(MODULE_LIB
     Lib/RGraph.cpp
     Lib/RGraphObj.h
+    Lib/RComponent.h
+    Lib/RComponent.cpp
 )
 
 add_library(${MODULE_NAME}

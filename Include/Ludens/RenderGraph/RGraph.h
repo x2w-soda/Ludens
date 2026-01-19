@@ -5,6 +5,10 @@
 
 namespace LD {
 
+struct RGraphImage : Handle<struct RGraphImageObj>
+{
+};
+
 struct RGraphicsPassInfo
 {
     const char* name;                              /// unique identifer within a component
@@ -19,25 +23,25 @@ struct RGraphicsPass : RHandle<struct RGraphicsPassObj>
     Hash32 name() const;
 
     /// @brief declare to use an image as sampled
-    void use_image_sampled(Hash32 name);
+    void use_image_sampled(RGraphImage image);
 
     /// @brief declare to use an image as color attachment
     /// @param name name of the color attachment declared in component
     /// @param loadOp what to do with the color attachment when the pass begins
     /// @param clear the clear value used if loadOp is RATTACHMENT_LOAD_OP_CLEAR
-    void use_color_attachment(Hash32 name, RAttachmentLoadOp loadOp, const RClearColorValue* clear);
+    void use_color_attachment(RGraphImage image, RAttachmentLoadOp loadOp, const RClearColorValue* clear);
 
     /// @brief declare to use an image as depth stencil attachment
     /// @param name name of the depth stencil attachment declared in component
     /// @param loadOp what to do with the depth stencil attachment when the pass begins
     /// @param clear the clear value used if loadOp is RATTACHMENT_LOAD_OP_CLEAR
-    void use_depth_stencil_attachment(Hash32 name, RAttachmentLoadOp loadOp, const RClearDepthStencilValue* clear);
+    void use_depth_stencil_attachment(RGraphImage image, RAttachmentLoadOp loadOp, const RClearDepthStencilValue* clear);
 
     /// @brief get the actual image declared by use_image
     RImage get_image(Hash32 name, RImageLayout* layout = nullptr);
 };
 
-typedef void (*RGraphicsPassCallback)(RGraphicsPass pass, RCommandList list, void* userData);
+typedef void (*RGraphicsPassCallback)(RGraphicsPass pass, RCommandList list, void* user);
 
 struct RComputePassInfo
 {
@@ -49,15 +53,14 @@ struct RComputePass : RHandle<struct RComputePassObj>
     /// @brief get declared compute pass name
     Hash32 name() const;
 
-    /// @brief declare to use a storage image as read only
-    /// @param name name of the image declared in component
-    void use_image_storage_read_only(Hash32 name);
+    /// @brief Declare to use a storage image as read only
+    void use_image_storage_read_only(RGraphImage image);
 
     /// @brief get the actual image declared by use_image
     RImage get_image(Hash32 name);
 };
 
-typedef void (*RComputePassCallback)(RComputePass pass, RCommandList list, void* userData);
+typedef void (*RComputePassCallback)(RComputePass pass, RCommandList list, void* user);
 
 /// @brief render component handle
 ///        input resources are output resources of another component
@@ -67,17 +70,17 @@ struct RComponent : RHandle<struct RComponentObj>
     Hash32 name() const;
 
     /// @brief declare an image that can only be used within the component
-    void add_private_image(const char* name, RFormat format, uint32_t width, uint32_t height, RSamplerInfo* sampler = nullptr);
+    RGraphImage add_private_image(const char* name, RFormat format, uint32_t width, uint32_t height, RSamplerInfo* sampler = nullptr);
 
     /// @brief declare an image that can be used by another component as input
-    void add_output_image(const char* name, RFormat format, uint32_t width, uint32_t height, RSamplerInfo* sampler = nullptr);
+    RGraphImage add_output_image(const char* name, RFormat format, uint32_t width, uint32_t height, RSamplerInfo* sampler = nullptr);
 
     /// @brief declare an image that references some output image of another component
-    void add_input_image(const char* name, RFormat format, uint32_t width, uint32_t height);
+    RGraphImage add_input_image(const char* name, RFormat format, uint32_t width, uint32_t height);
 
     /// @brief declare an image that references some output image of another component,
     ///        and can be used by another component as input.
-    void add_io_image(const char* name, RFormat format, uint32_t width, uint32_t height);
+    RGraphImage add_io_image(const char* name, RFormat format, uint32_t width, uint32_t height);
 
     /// @brief declare a graphics pass in this component for this frame
     RGraphicsPass add_graphics_pass(const RGraphicsPassInfo& gpI, void* userData, RGraphicsPassCallback callback);
@@ -94,7 +97,7 @@ struct RGraphSwapchainInfo
     RSemaphore presentReady;
 };
 
-/// @brief render graph creation info
+/// @brief Render graph creation info, each frame specifies the destination swapchain images.
 struct RGraphInfo
 {
     RDevice device;
@@ -112,7 +115,10 @@ struct RGraph : RHandle<struct RGraphObj>
     typedef void (*OnReleaseCallback)(void* user);
     typedef void (*OnDestroyCallback)(void* user);
 
+    /// @brief Create render graph for this frame.
     static RGraph create(const RGraphInfo& graphI);
+
+    /// @brief Destroy render graph for this frame.
     static void destroy(RGraph graph);
 
     /// @brief destroy all resources used by render graph across frames
@@ -133,12 +139,12 @@ struct RGraph : RHandle<struct RGraphObj>
     /// @brief declare a component for this frame
     RComponent add_component(const char* name);
 
-    /// @brief connects an output image of a Component to some input image of another Component
-    void connect_image(const char* srcComp, const char* srcOutImage, const char* dstComp, const char* dstInImage);
+    /// @brief Connects an output image of a Component to some input image of another Component.
+    void connect_image(RGraphImage srcImage, RGraphImage dstImage);
 
     /// @brief connects an output image of a Component to the swapchain image of this frame.
     ///        In practice, this is equivalent to a framebuffer blit.
-    void connect_swapchain_image(WindowID window, const char* srcComp, const char* srcOutImage);
+    void connect_swapchain_image(RGraphImage srcImage, WindowID dstWindow);
 
     void submit(bool save = false);
 };

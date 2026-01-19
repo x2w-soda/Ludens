@@ -15,6 +15,7 @@
 #include <sstream>
 #include <utility>
 
+#include "RComponent.h"
 #include "RGraphObj.h"
 
 namespace LD {
@@ -47,8 +48,8 @@ struct RComponentStorage
 ///        Component has its own storage.
 static HashMap<Hash32, RComponentStorage> sStorages;
 
-static std::stack<std::pair<void*, RGraph::OnReleaseCallback>> sReleaseCallbacks;
-static std::stack<std::pair<void*, RGraph::OnReleaseCallback>> sDestroyCallbacks;
+static Stack<std::pair<void*, RGraph::OnReleaseCallback>> sReleaseCallbacks;
+static Stack<std::pair<void*, RGraph::OnReleaseCallback>> sDestroyCallbacks;
 
 /// @brief returns true if srcUsage and dstUsage might cause pipeline hazards, and needs a happens-before access separation.
 static bool has_image_dependency(RGraphImageUsage srcUsage, RGraphImageUsage dstUsage)
@@ -71,20 +72,29 @@ static bool has_pass_dependency(RComponentPassObj* srcObj, RComponentPassObj* ds
     return true;
 }
 
-/// @brief returns false upon invalid input
-static inline bool check_pass_image(RComponentPassObj* passObj, Hash32 name)
+static inline bool pass_image_first_use(RComponentPassObj* passObj, RGraphImageObj* image)
 {
-    RComponentObj* compObj = passObj->component.unwrap();
+    RComponentObj* comp = passObj->compObj;
+    Hash32 imageName = image->name;
 
-    if (!compObj->images.contains(name))
+    if (comp != image->compObj)
     {
-        printf("image not found in component\n");
+        printf("image does not belong to component\n");
+        LD_DEBUG_BREAK;
         return false;
     }
 
-    if (passObj->imageUsages.contains(name))
+    if (!comp->images.contains(imageName))
+    {
+        printf("image not found in component\n");
+        LD_DEBUG_BREAK;
+        return false;
+    }
+
+    if (passObj->imageUsages.contains(imageName))
     {
         printf("image already used in pass\n");
+        LD_DEBUG_BREAK;
         return false;
     }
 
@@ -109,23 +119,22 @@ static inline bool check_loadop_clear_value(RAttachmentLoadOp loadOp, const void
     return true;
 }
 
-static GraphImage& dereference_image(RComponentObj** compObj, Hash32* name)
+static RGraphImageObj* dereference_image(RComponentObj** comp, Hash32* name)
 {
-    LD_ASSERT(compObj && name);
+    LD_ASSERT(comp && name);
 
-    if ((*compObj)->imageRefs.contains(*name))
+    RGraphImageObj* image = nullptr;
+
+    if ((*comp)->imageRefs.contains(*name))
     {
-        RComponentObj* srcCompObj = (*compObj)->imageRefs[*name].srcComponent;
-        Hash32 srcOutName = (*compObj)->imageRefs[*name].srcOutputName;
-
-        *compObj = srcCompObj;
-        *name = srcOutName;
-
-        return srcCompObj->images[srcOutName];
+        image = (*comp)->imageRefs[*name];
+        *comp = image->compObj;
+        *name = image->name;
+        return dereference_image(comp, name);
     }
 
-    LD_ASSERT((*compObj)->images.contains(*name));
-    return (*compObj)->images[*name];
+    LD_ASSERT((*comp)->images.contains(*name));
+    return (*comp)->images[*name];
 }
 
 /// @brief map render graph image usage to render backend bit flags
@@ -163,22 +172,21 @@ static Hash32 get_image_hash(const RImageInfo& imageI, Hash32 name)
 }
 
 /// @brief get or create a single sampled image
-static RImage get_or_create_image(RGraphObj* graphObj, RComponentObj* compObj, Hash32 name)
+static RImage get_or_create_image(RDevice device, RComponentObj* compObj, Hash32 name)
 {
     LD_PROFILE_SCOPE;
 
-    RDevice device = graphObj->device;
-    GraphImage& graphImage = dereference_image(&compObj, &name);
+    RGraphImageObj* graphImage = dereference_image(&compObj, &name);
 
     RImageInfo imageI{};
     imageI.type = RIMAGE_TYPE_2D;
     imageI.samples = RSAMPLE_COUNT_1_BIT;
-    imageI.usage = graphImage.usage;
-    imageI.format = graphImage.format;
+    imageI.usage = graphImage->usage;
+    imageI.format = graphImage->format;
     imageI.layers = 1;
-    imageI.width = graphImage.width;
-    imageI.height = graphImage.height;
-    imageI.sampler = graphImage.sampler;
+    imageI.width = graphImage->width;
+    imageI.height = graphImage->height;
+    imageI.sampler = graphImage->sampler;
     imageI.depth = 1;
 
     RComponentStorage& storage = sStorages[compObj->name];
@@ -191,7 +199,7 @@ static RImage get_or_create_image(RGraphObj* graphObj, RComponentObj* compObj, H
     Hash32 imageHash = get_image_hash(imageI, name);
 
     // create or invalidate image
-    if (!storage.images[name].handle || storage.images[name].hash != imageHash)
+    if (!state.handle || state.hash != imageHash)
     {
         LD_PROFILE_SCOPE_NAME("get_or_create_image invalidate");
 
@@ -219,15 +227,15 @@ static RImage get_or_create_image(RGraphObj* graphObj, RComponentObj* compObj, H
 }
 
 /// @brief get or create multi-sampled image
-static RImage get_or_create_ms_image(RGraphObj* graphObj, RComponentObj* compObj, Hash32 name, RFormat format, uint32_t width, uint32_t height)
+static RImage get_or_create_ms_image(RDevice device, RComponentObj* comp, Hash32 name, RFormat format, uint32_t width, uint32_t height)
 {
     LD_PROFILE_SCOPE;
 
-    LD_ASSERT(compObj->samples != RSAMPLE_COUNT_1_BIT);
+    LD_ASSERT(comp->samples != RSAMPLE_COUNT_1_BIT);
 
-    RDevice device = graphObj->device;
-    GraphImage& graphImage = dereference_image(&compObj, &name);
-    RComponentStorage& storage = sStorages[compObj->name];
+    const RGraphImageObj* image = dereference_image(&comp, &name);
+
+    RComponentStorage& storage = sStorages[comp->name];
 
     LD_ASSERT(storage.msImages.contains(name));
     ImageState& multiSampledState = storage.msImages[name];
@@ -239,12 +247,12 @@ static RImage get_or_create_ms_image(RGraphObj* graphObj, RComponentObj* compObj
     imageI.format = format;
     imageI.depth = 1;
     imageI.layers = 1;
-    imageI.samples = compObj->samples;
+    imageI.samples = comp->samples;
 
     // limit multi-sampled image usage to one of the following:
     // 1. RIMAGE_USAGE_TRANSIENT_BIT | RIMAGE_USAGE_COLOR_ATTACHMENT_BIT
     // 2. RIMAGE_USAGE_TRANSIENT_BIT | RIMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT
-    imageI.usage = graphImage.usage;
+    imageI.usage = image->usage;
     imageI.usage &= (RIMAGE_USAGE_COLOR_ATTACHMENT_BIT | RIMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
     imageI.usage |= RIMAGE_USAGE_TRANSIENT_BIT;
 
@@ -276,11 +284,6 @@ static RImage get_or_create_ms_image(RGraphObj* graphObj, RComponentObj* compObj
 
     LD_ASSERT(multiSampledState.handle);
     return multiSampledState.handle;
-}
-
-static bool is_physical_image(const GraphImage& image)
-{
-    return image.type == NODE_TYPE_OUTPUT;
 }
 
 static void topological_visit(HashSet<uint32_t>& visited, Vector<RComponentPassObj*>& order, RComponentPassObj* passObj)
@@ -358,19 +361,19 @@ static void record_graphics_pass(RGraphObj* graphObj, RGraphicsPassObj* passObj,
 
         Hash32 srcOutputName = attachment->name;
         RComponentObj* srcCompObj = compObj;
-        const GraphImage& graphImage = dereference_image(&srcCompObj, &srcOutputName);
+        const RGraphImageObj* image = dereference_image(&srcCompObj, &srcOutputName);
         RComponentStorage& compStorage = sStorages[srcCompObj->name];
 
         LD_ASSERT(compStorage.images.contains(srcOutputName));
         ImageState* imageState = &compStorage.images[srcOutputName];
-        RImage imageHandle = get_or_create_image(graphObj, srcCompObj, srcOutputName);
+        RImage imageHandle = get_or_create_image(graphObj->device, srcCompObj, srcOutputName);
 
         if (hasMultiSampleResolve)
         {
             // get or create multi-sampled image to use as color attachment,
             // using the same dimensions as the resolve attachment except the sample count.
             LD_ASSERT(compStorage.msImages.contains(srcOutputName));
-            RImage msImageHandle = get_or_create_ms_image(graphObj, srcCompObj, srcOutputName, imageHandle.format(), imageHandle.width(), imageHandle.height());
+            RImage msImageHandle = get_or_create_ms_image(graphObj->device, srcCompObj, srcOutputName, imageHandle.format(), imageHandle.width(), imageHandle.height());
             ImageState* msImageState = &compStorage.msImages[srcOutputName];
             resolveHandles[colorIdx] = imageHandle; // single sample resolve attachment
             colorHandles[colorIdx] = msImageHandle; // multi-sampled color attachment
@@ -423,13 +426,15 @@ static void record_graphics_pass(RGraphObj* graphObj, RGraphicsPassObj* passObj,
 
         Hash32 srcOutputName = passObj->depthStencilAttachment.name;
         RComponentObj* srcCompObj = compObj;
-        const GraphImage& depthStencilDecl = dereference_image(&srcCompObj, &srcOutputName);
+        const RGraphImageObj* depthStencilDecl = dereference_image(&srcCompObj, &srcOutputName);
+        srcCompObj = depthStencilDecl->compObj;
+        srcOutputName = depthStencilDecl->name;
         RComponentStorage& compStorage = sStorages[srcCompObj->name];
         RImage imageHandle = {};
 
         if (hasMultiSampleResolve)
         {
-            imageHandle = get_or_create_ms_image(graphObj, srcCompObj, srcOutputName, depthStencilDecl.format, depthStencilDecl.width, depthStencilDecl.height);
+            imageHandle = get_or_create_ms_image(graphObj->device, srcCompObj, srcOutputName, depthStencilDecl->format, depthStencilDecl->width, depthStencilDecl->height);
             ImageState& msImageState = compStorage.msImages[srcOutputName];
 
             passObj->depthStencilAttachmentInfo.initialLayout = msImageState.lastLayout;
@@ -438,7 +443,7 @@ static void record_graphics_pass(RGraphObj* graphObj, RGraphicsPassObj* passObj,
         }
         else
         {
-            imageHandle = get_or_create_image(graphObj, srcCompObj, srcOutputName);
+            imageHandle = get_or_create_image(graphObj->device, srcCompObj, srcOutputName);
             ImageState& imageState = compStorage.images[srcOutputName];
 
             passObj->depthStencilAttachmentInfo.initialLayout = imageState.lastLayout;
@@ -565,75 +570,76 @@ Hash32 RGraphicsPass::name() const
     return mObj->name;
 }
 
-void RGraphicsPass::use_image_sampled(Hash32 name)
+void RGraphicsPass::use_image_sampled(RGraphImage imageH)
 {
     LD_PROFILE_SCOPE;
 
-    if (!check_pass_image(mObj, name))
+    RGraphImageObj* image = imageH.unwrap();
+    RComponentObj* comp = image->compObj;
+    Hash32 imageName = image->name;
+
+    if (!pass_image_first_use(mObj, image))
         return;
 
-    RComponentObj* compObj = mObj->component.unwrap();
-    GraphImage& graphImage = compObj->images[name];
-
-    mObj->sampledImages.insert(name);
+    mObj->sampledImages.insert(imageName);
 
     // how the pass uses the image
-    mObj->imageUsages[name] = RGRAPH_IMAGE_USAGE_SAMPLED;
+    mObj->imageUsages[imageName] = RGRAPH_IMAGE_USAGE_SAMPLED;
 
     // how the component uses the image
-    compObj->images[name].usage |= get_native_image_usage(RGRAPH_IMAGE_USAGE_SAMPLED);
+    comp->images[imageName]->usage |= get_native_image_usage(RGRAPH_IMAGE_USAGE_SAMPLED);
 
     // if existing passes in the component also use this image, check for dependencies
-    for (RComponentPassObj* srcPassObj : compObj->passOrder)
+    for (RComponentPassObj* srcPassObj : comp->passOrder)
     {
         Hash32 srcPassName = srcPassObj->name;
 
         if (mObj->name == srcPassName)
             break;
 
-        if (srcPassObj->imageUsages.contains(name) && has_image_dependency(srcPassObj->imageUsages[name], mObj->imageUsages[name]))
+        if (srcPassObj->imageUsages.contains(imageName) && has_image_dependency(srcPassObj->imageUsages[imageName], mObj->imageUsages[imageName]))
             srcPassObj->edges.insert((RComponentPassObj*)mObj);
     }
 }
 
-void RGraphicsPass::use_color_attachment(Hash32 name, RAttachmentLoadOp loadOp, const RClearColorValue* clear)
+void RGraphicsPass::use_color_attachment(RGraphImage imageH, RAttachmentLoadOp loadOp, const RClearColorValue* clear)
 {
     LD_PROFILE_SCOPE;
 
-    if (!check_pass_image(mObj, name))
+    RGraphImageObj* image = imageH.unwrap();
+    RComponentObj* comp = image->compObj;
+    Hash32 imageName = image->name;
+
+    if (!pass_image_first_use(mObj, image))
         return;
 
     if (!check_loadop_clear_value(loadOp, clear))
         return;
 
-    RComponentObj* compObj = mObj->component.unwrap();
-
-    const GraphImage& image = compObj->images[name];
-
     // how the pass uses the image
-    mObj->imageUsages[name] = RGRAPH_IMAGE_USAGE_COLOR_ATTACHMENT;
+    mObj->imageUsages[imageName] = RGRAPH_IMAGE_USAGE_COLOR_ATTACHMENT;
 
     // how the component uses the image
-    compObj->images[name].usage |= RIMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    comp->images[imageName]->usage |= RIMAGE_USAGE_COLOR_ATTACHMENT_BIT;
 
-    if (mObj->samples != RSAMPLE_COUNT_1_BIT && !sStorages[compObj->name].msImages.contains(name))
+    if (mObj->samples != RSAMPLE_COUNT_1_BIT && !sStorages[comp->name].msImages.contains(imageName))
     {
         // prepare to create ms attachment
-        sStorages[compObj->name].msImages[name] = {
+        sStorages[comp->name].msImages[imageName] = {
             .lastLayout = RIMAGE_LAYOUT_UNDEFINED,
-            .width = image.width,
-            .height = image.height,
+            .width = image->width,
+            .height = image->height,
             .depth = 1,
         };
     }
 
     RGraphicsPassColorAttachment attachment{};
-    attachment.name = name;
+    attachment.name = imageName;
     if (clear)
         attachment.clearValue = *clear;
 
     RPassColorAttachment attachmentInfo{};
-    attachmentInfo.colorFormat = image.format;
+    attachmentInfo.colorFormat = image->format;
     attachmentInfo.colorLoadOp = loadOp;
     attachmentInfo.colorStoreOp = RATTACHMENT_STORE_OP_STORE;   // resolved by render graph
     attachmentInfo.initialLayout = RIMAGE_LAYOUT_UNDEFINED;     // resolved by render graph
@@ -646,30 +652,31 @@ void RGraphicsPass::use_color_attachment(Hash32 name, RAttachmentLoadOp loadOp, 
     mObj->stageFlags |= RPIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
 
     // if existing passes in the component also use this image, check for dependencies
-    for (RComponentPassObj* srcPassObj : compObj->passOrder)
+    for (RComponentPassObj* srcPassObj : comp->passOrder)
     {
         Hash32 srcPassName = srcPassObj->name;
 
         if (mObj->name == srcPassName)
             break;
 
-        if (srcPassObj->imageUsages.contains(name) && has_image_dependency(srcPassObj->imageUsages[name], mObj->imageUsages[name]))
+        if (srcPassObj->imageUsages.contains(imageName) && has_image_dependency(srcPassObj->imageUsages[imageName], mObj->imageUsages[imageName]))
             srcPassObj->edges.insert((RComponentPassObj*)mObj);
     }
 }
 
-void RGraphicsPass::use_depth_stencil_attachment(Hash32 name, RAttachmentLoadOp loadOp, const RClearDepthStencilValue* clear)
+void RGraphicsPass::use_depth_stencil_attachment(RGraphImage imageH, RAttachmentLoadOp loadOp, const RClearDepthStencilValue* clear)
 {
     LD_PROFILE_SCOPE;
 
-    if (!check_pass_image(mObj, name))
+    RGraphImageObj* image = imageH.unwrap();
+    RComponentObj* comp = image->compObj;
+    Hash32 imageName = image->name;
+
+    if (!pass_image_first_use(mObj, image))
         return;
 
     if (!check_loadop_clear_value(loadOp, clear))
         return;
-
-    RComponentObj* compObj = mObj->component.unwrap();
-    const GraphImage& image = compObj->images[name];
 
     if (mObj->hasDepthStencil)
     {
@@ -680,16 +687,16 @@ void RGraphicsPass::use_depth_stencil_attachment(Hash32 name, RAttachmentLoadOp 
     mObj->hasDepthStencil = true;
 
     // how the pass uses the image
-    mObj->imageUsages[name] = RGRAPH_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT;
+    mObj->imageUsages[imageName] = RGRAPH_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT;
 
     // how the component uses the image
-    compObj->images[name].usage |= RIMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+    comp->images[imageName]->usage |= RIMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
 
-    mObj->depthStencilAttachment.name = name;
+    mObj->depthStencilAttachment.name = imageName;
     if (clear)
         mObj->depthStencilAttachment.clearValue = *clear;
 
-    mObj->depthStencilAttachmentInfo.depthStencilFormat = image.format;
+    mObj->depthStencilAttachmentInfo.depthStencilFormat = image->format;
     mObj->depthStencilAttachmentInfo.depthLoadOp = loadOp;
     mObj->depthStencilAttachmentInfo.depthStoreOp = RATTACHMENT_STORE_OP_STORE;           // resolved by render graph
     mObj->depthStencilAttachmentInfo.initialLayout = RIMAGE_LAYOUT_UNDEFINED;             // resolved by render graph
@@ -700,13 +707,13 @@ void RGraphicsPass::use_depth_stencil_attachment(Hash32 name, RAttachmentLoadOp 
     mObj->accessFlags |= RACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT;
     mObj->stageFlags |= RPIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | RPIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT;
 
-    if (mObj->samples != RSAMPLE_COUNT_1_BIT && !sStorages[compObj->name].msImages.contains(name))
+    if (mObj->samples != RSAMPLE_COUNT_1_BIT && !sStorages[comp->name].msImages.contains(imageName))
     {
         // prepare to create ms attachment
-        sStorages[compObj->name].msImages[name] = {
+        sStorages[comp->name].msImages[imageName] = {
             .lastLayout = RIMAGE_LAYOUT_UNDEFINED,
-            .width = image.width,
-            .height = image.height,
+            .width = image->width,
+            .height = image->height,
             .depth = 1,
         };
     }
@@ -720,7 +727,7 @@ RImage RGraphicsPass::get_image(Hash32 name, RImageLayout* layout)
         return {};
     }
 
-    RComponentObj* compObj = mObj->component.unwrap();
+    RComponentObj* compObj = mObj->compObj;
     dereference_image(&compObj, &name);
     RComponentStorage& storage = sStorages[compObj->name];
 
@@ -737,22 +744,26 @@ Hash32 RComputePass::name() const
     return mObj->name;
 }
 
-void RComputePass::use_image_storage_read_only(Hash32 name)
+void RComputePass::use_image_storage_read_only(RGraphImage imageH)
 {
     LD_PROFILE_SCOPE;
 
-    if (!check_pass_image(mObj, name))
+    RGraphImageObj* image = imageH.unwrap();
+    RComponentObj* comp = image->compObj;
+    Hash32 imageName = image->name;
+
+    if (!pass_image_first_use(mObj, image))
         return;
 
-    RComponentObj* compObj = mObj->component.unwrap();
+    RComponentObj* compObj = mObj->compObj;
 
-    mObj->storageImages.insert(name);
+    mObj->storageImages.insert(imageName);
 
     // how the pass uses the image
-    mObj->imageUsages[name] = RGRAPH_IMAGE_USAGE_STORAGE_READ_ONLY;
+    mObj->imageUsages[imageName] = RGRAPH_IMAGE_USAGE_STORAGE_READ_ONLY;
 
     // how the component uses the image
-    compObj->images[name].usage |= RIMAGE_USAGE_STORAGE_BIT;
+    comp->images[imageName]->usage |= RIMAGE_USAGE_STORAGE_BIT;
 
     mObj->accessFlags |= RACCESS_SHADER_READ_BIT;
     mObj->stageFlags |= RPIPELINE_STAGE_COMPUTE_SHADER_BIT;
@@ -766,7 +777,7 @@ RImage RComputePass::get_image(Hash32 name)
         return {};
     }
 
-    RComponentObj* compObj = mObj->component.unwrap();
+    RComponentObj* compObj = mObj->compObj;
     dereference_image(&compObj, &name);
     RComponentStorage& storage = sStorages[compObj->name];
 
@@ -780,112 +791,54 @@ Hash32 RComponent::name() const
     return mObj->name;
 }
 
-void RComponent::add_private_image(const char* nameStr, RFormat format, uint32_t width, uint32_t height, RSamplerInfo* sampler)
+RGraphImage RComponent::add_private_image(const char* nameStr, RFormat format, uint32_t width, uint32_t height, RSamplerInfo* sampler)
 {
-    Hash32 name(nameStr);
-
-    if (mObj->images.contains(name))
-    {
-        printf("image already declared in component\n");
-        return;
-    }
-
-    mObj->images[name] = {
-        .type = NODE_TYPE_PRIVATE,
-        .name = name,
-        .debugName = nameStr,
-        .format = format,
-        .width = width,
-        .height = height,
-    };
-
-    if (sampler)
-        mObj->images[name].sampler = *sampler;
+    RGraphImageObj* image = mObj->create_image(NODE_TYPE_PRIVATE, nameStr, format, width, height, sampler);
+    Hash32 imageName = image->name;
 
     // first time this private image is declared in this component
-    if (!sStorages[mObj->name].images.contains(name))
+    if (!sStorages[mObj->name].images.contains(imageName))
     {
-        ImageState& state = sStorages[mObj->name].images[name];
+        ImageState& state = sStorages[mObj->name].images[imageName];
         state.lastLayout = RIMAGE_LAYOUT_UNDEFINED;
         state.width = width;
         state.height = height;
         state.depth = 1;
     }
+
+    return RGraphImage(image);
 }
 
-void RComponent::add_output_image(const char* nameStr, RFormat format, uint32_t width, uint32_t height, RSamplerInfo* sampler)
+RGraphImage RComponent::add_output_image(const char* nameStr, RFormat format, uint32_t width, uint32_t height, RSamplerInfo* sampler)
 {
-    Hash32 name(nameStr);
-
-    if (mObj->images.contains(name))
-    {
-        printf("image already declared in component\n");
-        return;
-    }
-
-    mObj->images[name] = {
-        .type = NODE_TYPE_OUTPUT,
-        .name = name,
-        .debugName = nameStr,
-        .format = format,
-        .width = width,
-        .height = height,
-    };
-
-    if (sampler)
-        mObj->images[name].sampler = *sampler;
+    RGraphImageObj* image = mObj->create_image(NODE_TYPE_OUTPUT, nameStr, format, width, height, sampler);
+    Hash32 imageName = image->name;
 
     // first time this output image is declared in this component
-    if (!sStorages[mObj->name].images.contains(name))
+    if (!sStorages[mObj->name].images.contains(imageName))
     {
-        ImageState& state = sStorages[mObj->name].images[name];
+        ImageState& state = sStorages[mObj->name].images[imageName];
         state.lastLayout = RIMAGE_LAYOUT_UNDEFINED;
         state.width = width;
         state.height = height;
         state.depth = 1;
     }
+
+    return RGraphImage(image);
 }
 
-void RComponent::add_input_image(const char* nameStr, RFormat format, uint32_t width, uint32_t height)
+RGraphImage RComponent::add_input_image(const char* nameStr, RFormat format, uint32_t width, uint32_t height)
 {
-    Hash32 name(nameStr);
+    RGraphImageObj* image = mObj->create_image(NODE_TYPE_INPUT, nameStr, format, width, height, nullptr);
 
-    if (mObj->images.contains(name))
-    {
-        printf("image already declared in component\n");
-        return;
-    }
-
-    mObj->images[name] = {
-        .type = NODE_TYPE_INPUT,
-        .name = name,
-        .debugName = nameStr,
-        .sampler = {},
-        .format = format,
-        .width = width,
-        .height = height,
-    };
+    return RGraphImage(image);
 }
 
-void RComponent::add_io_image(const char* nameStr, RFormat format, uint32_t width, uint32_t height)
+RGraphImage RComponent::add_io_image(const char* nameStr, RFormat format, uint32_t width, uint32_t height)
 {
-    Hash32 name(nameStr);
+    RGraphImageObj* obj = mObj->create_image(NODE_TYPE_IO, nameStr, format, width, height, nullptr);
 
-    if (mObj->images.contains(name))
-    {
-        printf("image already declared in component\n");
-        return;
-    }
-
-    mObj->images[name] = {
-        .type = NODE_TYPE_IO,
-        .name = name,
-        .debugName = nameStr,
-        .sampler = {},
-        .format = format,
-        .width = width,
-        .height = height,
-    };
+    return RGraphImage(obj);
 }
 
 RGraphicsPass RComponent::add_graphics_pass(const RGraphicsPassInfo& gpI, void* userData, RGraphicsPassCallback callback)
@@ -900,7 +853,7 @@ RGraphicsPass RComponent::add_graphics_pass(const RGraphicsPassInfo& gpI, void* 
     obj->height = gpI.height;
     obj->userData = userData;
     obj->callback = callback;
-    obj->component = *this;
+    obj->compObj = mObj;
     obj->isCallbackScope = false;
     obj->isComputePass = false;
     obj->hasDepthStencil = false;
@@ -927,7 +880,7 @@ RComputePass RComponent::add_compute_pass(const RComputePassInfo& cpI, void* use
     obj->debugName = cpI.name;
     obj->userData = userData;
     obj->callback = callback;
-    obj->component = *this;
+    obj->compObj = mObj;
     obj->isCallbackScope = false;
     obj->isComputePass = true;
     obj->accessFlags = 0;
@@ -957,8 +910,7 @@ RGraph RGraph::create(const RGraphInfo& graphI)
     {
         const WindowID windowID = graphI.swapchains[i].window;
         obj->swapchains[windowID].info = graphI.swapchains[i];
-        obj->swapchains[windowID].blitCompObj = nullptr;
-        obj->swapchains[windowID].blitOutputName = 0;
+        obj->swapchains[windowID].blitSrc = nullptr;
     }
 
     return {obj};
@@ -982,21 +934,28 @@ void RGraph::destroy(RGraph graph)
     // TODO: linear allocator + placement free instead of
     //       individual heap_create/heap_delete.
 
-    for (auto& compIte : graphObj->components)
+    for (auto& compIt : graphObj->components)
     {
         LD_PROFILE_SCOPE_NAME("delete component");
-        RComponentObj* compObj = compIte.second.unwrap();
-        for (auto& passIte : compObj->passes)
+        RComponentObj* comp = compIt.second.unwrap();
+
+        for (auto& imageIt : comp->images)
+        {
+            heap_delete<RGraphImageObj>(imageIt.second);
+        }
+        comp->images.clear();
+
+        for (auto& passIt : comp->passes)
         {
             LD_PROFILE_SCOPE_NAME("delete pass");
-            RComponentPassObj* passObj = passIte.second;
+            RComponentPassObj* pass = passIt.second;
 
-            if (passObj->isComputePass)
-                heap_delete<RComputePassObj>((RComputePassObj*)passObj);
+            if (pass->isComputePass)
+                heap_delete<RComputePassObj>((RComputePassObj*)pass);
             else
-                heap_delete<RGraphicsPassObj>((RGraphicsPassObj*)passObj);
+                heap_delete<RGraphicsPassObj>((RGraphicsPassObj*)pass);
         }
-        heap_delete(compObj);
+        heap_delete(comp);
     }
     heap_delete(graphObj);
 }
@@ -1056,33 +1015,26 @@ RComponent RGraph::add_component(const char* nameStr)
     return {comp};
 }
 
-void RGraph::connect_image(const char* srcCompStr, const char* srcOutImageStr, const char* dstCompStr, const char* dstInImageStr)
+void RGraph::connect_image(RGraphImage src, RGraphImage dst)
 {
     LD_PROFILE_SCOPE;
 
-    Hash32 srcComp(srcCompStr);
-    Hash32 dstComp(dstCompStr);
-    Hash32 srcOutImage(srcOutImageStr);
-    Hash32 dstInImage(dstInImageStr);
+    RGraphImageObj* srcImageObj = src.unwrap();
+    RGraphImageObj* dstImageObj = dst.unwrap();
+    LD_ASSERT(srcImageObj && dstImageObj);
+    Hash32 srcOutImage = srcImageObj->name;
+    Hash32 dstInImage = dstImageObj->name;
 
-    if (!mObj->components.contains(srcComp))
-    {
-        printf("source component does no exist");
-        return;
-    }
-
-    if (!mObj->components.contains(dstComp))
-    {
-        printf("destination component does no exist");
-        return;
-    }
+    RComponentObj* srcCompObj = srcImageObj->compObj;
+    RComponentObj* dstCompObj = dstImageObj->compObj;
+    LD_ASSERT(srcCompObj && dstCompObj);
+    Hash32 srcComp = srcCompObj->name;
+    Hash32 dstComp = dstCompObj->name;
 
     // Alias for an output image from one component to be the input image of another component.
     // Let set A be the set containing all GraphicsPass in srcComp that accesses srcOutImage.
     // Let set B be the set containing all GraphicsPass in dstComp that accesses dstInImage.
     // Add dependency edge for each tuple in the cartesian product A x B that has a dependency.
-    RComponentObj* srcCompObj = mObj->components[srcComp].unwrap();
-    RComponentObj* dstCompObj = mObj->components[dstComp].unwrap();
     RImageUsageFlags dstUsages = 0;
     for (auto& srcPassIte : srcCompObj->passes)
     {
@@ -1102,36 +1054,32 @@ void RGraph::connect_image(const char* srcCompStr, const char* srcOutImageStr, c
     // image usage inheritance:
     //   since the dstInImage is a reference to the srcOutImage,
     //   srcComp image usage inherits all dstComp image usages
-    GraphImage& srcGraphImage = dereference_image(&srcCompObj, &srcOutImage);
-    GraphImage& dstGraphImage = dstCompObj->images[dstInImage];
+    RGraphImageObj* srcGraphImage = dereference_image(&srcCompObj, &srcOutImage);
+    RGraphImageObj* dstGraphImage = dstCompObj->images[dstInImage];
+    srcGraphImage->usage |= dstUsages;
 
-    srcGraphImage.usage |= dstUsages;
+    dstGraphImage->format = srcGraphImage->format;
+    dstGraphImage->sampler = srcGraphImage->sampler;
+    dstGraphImage->width = srcGraphImage->width;
+    dstGraphImage->height = srcGraphImage->height;
 
-    dstGraphImage.format = srcGraphImage.format;
-    dstGraphImage.sampler = srcGraphImage.sampler;
-    dstGraphImage.width = srcGraphImage.width;
-    dstGraphImage.height = srcGraphImage.height;
-
-    // establish reference link, find the component-name pair of the physical resource
-    GraphImageRef& dstGraphImageRef = dstCompObj->imageRefs[dstInImage];
-    dstGraphImageRef.srcComponent = srcCompObj;
-    dstGraphImageRef.srcOutputName = srcOutImage;
+    // establish reference link
+    dstCompObj->imageRefs[dstInImage] = srcImageObj;
 }
 
-void RGraph::connect_swapchain_image(WindowID window, const char* srcCompStr, const char* srcOutImageStr)
+void RGraph::connect_swapchain_image(RGraphImage src, WindowID dstWindow)
 {
-    LD_ASSERT(mObj->swapchains.contains(window));
+    LD_ASSERT(mObj->swapchains.contains(dstWindow));
 
-    Hash32 srcComp(srcCompStr);
-    Hash32 srcOutImage(srcOutImageStr);
-    RGraphSwapchain& swp = mObj->swapchains[window];
-    RComponentObj* srcCompObj = mObj->components[srcComp].unwrap();
+    RGraphImageObj* srcImage = src.unwrap();
+    Hash32 srcOutImage = srcImage->name;
+    RGraphSwapchain& swp = mObj->swapchains[dstWindow];
+    RComponentObj* srcCompObj = srcImage->compObj;
 
-    GraphImage& srcGraphImage = dereference_image(&srcCompObj, &srcOutImage);
-    srcGraphImage.usage |= RIMAGE_USAGE_TRANSFER_SRC_BIT;
+    srcImage = dereference_image(&srcCompObj, &srcOutImage);
+    srcImage->usage |= RIMAGE_USAGE_TRANSFER_SRC_BIT;
 
-    swp.blitCompObj = srcCompObj;
-    swp.blitOutputName = srcOutImage;
+    swp.blitSrc = srcImage;
 }
 
 void RGraph::submit(bool save)
@@ -1157,14 +1105,14 @@ void RGraph::submit(bool save)
         if (mObj->passOrder[passIdx]->isComputePass)
         {
             RComputePassObj* passObj = (RComputePassObj*)mObj->passOrder[passIdx];
-            RComponentObj* compObj = passObj->component.unwrap();
+            RComponentObj* compObj = passObj->compObj;
 
             record_compute_pass(mObj, passObj, compObj, list, passIdx);
             continue;
         }
 
         RGraphicsPassObj* passObj = (RGraphicsPassObj*)mObj->passOrder[passIdx];
-        RComponentObj* compObj = passObj->component.unwrap();
+        RComponentObj* compObj = passObj->compObj;
 
         record_graphics_pass(mObj, passObj, compObj, list, passIdx);
     }
@@ -1180,8 +1128,10 @@ void RGraph::submit(bool save)
         LD_PROFILE_SCOPE_NAME("record swapchain blit");
 
         const RGraphSwapchain& swp = it.second;
+        Hash32 blitCompName = swp.blitSrc->compObj->name;
+        Hash32 blitImageName = swp.blitSrc->name;
 
-        ImageState& srcBlitState = sStorages[swp.blitCompObj->name].images[swp.blitOutputName];
+        ImageState& srcBlitState = sStorages[blitCompName].images[blitImageName];
         RImage srcBlit = srcBlitState.handle;
         RDevice device = mObj->device;
 
