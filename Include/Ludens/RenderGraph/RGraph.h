@@ -86,15 +86,22 @@ struct RComponent : RHandle<struct RComponentObj>
     RComputePass add_compute_pass(const RComputePassInfo& cpI, void* userData, RComputePassCallback callback);
 };
 
+struct RGraphSwapchainInfo
+{
+    WindowID window;
+    RImage image;
+    RSemaphore imageAcquired;
+    RSemaphore presentReady;
+};
+
 /// @brief render graph creation info
 struct RGraphInfo
 {
     RDevice device;
     RCommandList list;
-    RImage swapchainImage;
     RFence frameComplete;
-    RSemaphore imageAcquired;
-    RSemaphore presentReady;
+    RGraphSwapchainInfo* swapchains;
+    uint32_t swapchainCount;
     uint32_t screenWidth;
     uint32_t screenHeight;
 };
@@ -123,9 +130,6 @@ struct RGraph : RHandle<struct RGraphObj>
     /// @brief get screen size extent
     void get_screen_extent(uint32_t& width, uint32_t& height);
 
-    /// @brief get the swapchain image handle for this frame
-    RImage get_swapchain_image();
-
     /// @brief declare a component for this frame
     RComponent add_component(const char* name);
 
@@ -134,7 +138,7 @@ struct RGraph : RHandle<struct RGraphObj>
 
     /// @brief connects an output image of a Component to the swapchain image of this frame.
     ///        In practice, this is equivalent to a framebuffer blit.
-    void connect_swapchain_image(const char* srcComp, const char* srcOutImage);
+    void connect_swapchain_image(WindowID window, const char* srcComp, const char* srcOutImage);
 
     void submit(bool save = false);
 };

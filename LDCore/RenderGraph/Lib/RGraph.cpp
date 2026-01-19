@@ -1,16 +1,21 @@
-#include "RGraphObj.h"
+#include <Ludens/DSA/HashMap.h>
+#include <Ludens/DSA/HashSet.h>
+#include <Ludens/DSA/Stack.h>
+#include <Ludens/DSA/Vector.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Memory/Memory.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/RenderBackend/RUtil.h>
 #include <Ludens/RenderGraph/RGraph.h>
+#include <Ludens/System/FileSystem.h>
+
 #include <algorithm>
-#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <sstream>
-#include <stack>
 #include <utility>
+
+#include "RGraphObj.h"
 
 namespace LD {
 
@@ -30,17 +35,17 @@ struct RComponentStorage
 {
     /// @brief Associates a user-declared name to a physical resource.
     ///        The image state is tracked between frames.
-    std::unordered_map<Hash32, ImageState> images;
+    HashMap<Hash32, ImageState> images;
 
     /// @brief For components that contains multi-sampled graphics passes,
     ///        the multi-sampled color attachments live here.
-    std::unordered_map<Hash32, ImageState> msImages;
+    HashMap<Hash32, ImageState> msImages;
 };
 
 /// @brief While the render graph is an immediate mode API describing virtual resources,
 ///        the physical resources should not be recreated every frame. Currently each
 ///        Component has its own storage.
-static std::unordered_map<Hash32, RComponentStorage> sStorages;
+static HashMap<Hash32, RComponentStorage> sStorages;
 
 static std::stack<std::pair<void*, RGraph::OnReleaseCallback>> sReleaseCallbacks;
 static std::stack<std::pair<void*, RGraph::OnReleaseCallback>> sDestroyCallbacks;
@@ -162,7 +167,7 @@ static RImage get_or_create_image(RGraphObj* graphObj, RComponentObj* compObj, H
 {
     LD_PROFILE_SCOPE;
 
-    RDevice device = graphObj->info.device;
+    RDevice device = graphObj->device;
     GraphImage& graphImage = dereference_image(&compObj, &name);
 
     RImageInfo imageI{};
@@ -220,7 +225,7 @@ static RImage get_or_create_ms_image(RGraphObj* graphObj, RComponentObj* compObj
 
     LD_ASSERT(compObj->samples != RSAMPLE_COUNT_1_BIT);
 
-    RDevice device = graphObj->info.device;
+    RDevice device = graphObj->device;
     GraphImage& graphImage = dereference_image(&compObj, &name);
     RComponentStorage& storage = sStorages[compObj->name];
 
@@ -278,7 +283,7 @@ static bool is_physical_image(const GraphImage& image)
     return image.type == NODE_TYPE_OUTPUT;
 }
 
-static void topological_visit(std::unordered_set<uint32_t>& visited, std::vector<RComponentPassObj*>& order, RComponentPassObj* passObj)
+static void topological_visit(HashSet<uint32_t>& visited, Vector<RComponentPassObj*>& order, RComponentPassObj* passObj)
 {
     if (visited.contains(passObj->name))
         return;
@@ -297,11 +302,11 @@ static void topological_visit(std::unordered_set<uint32_t>& visited, std::vector
 }
 
 /// @brief sort all graphics passes in dependency order
-static void topological_sort(const std::unordered_map<Hash32, RComponent>& components, std::vector<RComponentPassObj*>& order)
+static void topological_sort(const HashMap<Hash32, RComponent>& components, Vector<RComponentPassObj*>& order)
 {
     LD_PROFILE_SCOPE;
 
-    std::unordered_set<uint32_t> visited;
+    HashSet<uint32_t> visited;
 
     for (auto& compIte : components)
     {
@@ -322,8 +327,8 @@ static void topological_sort(const std::unordered_map<Hash32, RComponent>& compo
 static void record_graphics_pass(RGraphObj* graphObj, RGraphicsPassObj* passObj, RComponentObj* compObj, RCommandList list, uint32_t passIdx)
 {
     uint32_t colorAttachmentCount = (uint32_t)passObj->colorAttachments.size();
-    std::vector<RImage> colorHandles(colorAttachmentCount);
-    std::vector<RImage> resolveHandles(colorAttachmentCount);
+    Vector<RImage> colorHandles(colorAttachmentCount);
+    Vector<RImage> resolveHandles(colorAttachmentCount);
     RImage depthStencilHandle = {};
 
     // build render pass info
@@ -406,7 +411,7 @@ static void record_graphics_pass(RGraphObj* graphObj, RGraphicsPassObj* passObj,
     }
 
     // clear colors
-    std::vector<RClearColorValue> clearColors(colorAttachmentCount);
+    Vector<RClearColorValue> clearColors(colorAttachmentCount);
     for (size_t i = 0; i < clearColors.size(); i++)
         clearColors[i] = passObj->colorAttachments[i].clearValue.value_or(RClearColorValue{});
 
@@ -938,13 +943,23 @@ RGraph RGraph::create(const RGraphInfo& graphI)
 {
     LD_PROFILE_SCOPE;
 
-    LD_ASSERT(graphI.screenWidth > 0 && graphI.screenHeight > 0);
-
     RGraphObj* obj = heap_new<RGraphObj>(MEMORY_USAGE_RENDER);
-    obj->info = graphI;
-    obj->blitCompObj = nullptr;
+    obj->device = graphI.device;
+    obj->list = graphI.list;
+    obj->frameComplete = graphI.frameComplete;
+    obj->swapchains.clear();
     obj->screenWidth = graphI.screenWidth;
     obj->screenHeight = graphI.screenHeight;
+
+    WindowRegistry windowReg = WindowRegistry::get();
+
+    for (uint32_t i = 0; i < graphI.swapchainCount; i++)
+    {
+        const WindowID windowID = graphI.swapchains[i].window;
+        obj->swapchains[windowID].info = graphI.swapchains[i];
+        obj->swapchains[windowID].blitCompObj = nullptr;
+        obj->swapchains[windowID].blitOutputName = 0;
+    }
 
     return {obj};
 }
@@ -1017,18 +1032,13 @@ void RGraph::release(RDevice device)
 
 RDevice RGraph::get_device()
 {
-    return mObj->info.device;
+    return mObj->device;
 }
 
 void RGraph::get_screen_extent(uint32_t& width, uint32_t& height)
 {
     width = mObj->screenWidth;
     height = mObj->screenHeight;
-}
-
-RImage RGraph::get_swapchain_image()
-{
-    return mObj->info.swapchainImage;
 }
 
 RComponent RGraph::add_component(const char* nameStr)
@@ -1108,18 +1118,20 @@ void RGraph::connect_image(const char* srcCompStr, const char* srcOutImageStr, c
     dstGraphImageRef.srcOutputName = srcOutImage;
 }
 
-void RGraph::connect_swapchain_image(const char* srcCompStr, const char* srcOutImageStr)
+void RGraph::connect_swapchain_image(WindowID window, const char* srcCompStr, const char* srcOutImageStr)
 {
+    LD_ASSERT(mObj->swapchains.contains(window));
+
     Hash32 srcComp(srcCompStr);
     Hash32 srcOutImage(srcOutImageStr);
-
+    RGraphSwapchain& swp = mObj->swapchains[window];
     RComponentObj* srcCompObj = mObj->components[srcComp].unwrap();
 
     GraphImage& srcGraphImage = dereference_image(&srcCompObj, &srcOutImage);
     srcGraphImage.usage |= RIMAGE_USAGE_TRANSFER_SRC_BIT;
 
-    mObj->blitCompObj = srcCompObj;
-    mObj->blitOutputName = srcOutImage;
+    swp.blitCompObj = srcCompObj;
+    swp.blitOutputName = srcOutImage;
 }
 
 void RGraph::submit(bool save)
@@ -1136,7 +1148,7 @@ void RGraph::submit(bool save)
     }
 
     // recording
-    RCommandList list = mObj->info.list;
+    RCommandList list = mObj->list;
     list.begin();
     for (uint32_t passIdx = 0; passIdx < (uint32_t)mObj->passOrder.size(); passIdx++)
     {
@@ -1157,21 +1169,33 @@ void RGraph::submit(bool save)
         record_graphics_pass(mObj, passObj, compObj, list, passIdx);
     }
 
-    if (mObj->blitCompObj)
+    size_t i = 0;
+    size_t swapchainCount = mObj->swapchains.size();
+    Vector<RPipelineStageFlags> waitStages(swapchainCount);
+    Vector<RSemaphore> waitSemaphores(swapchainCount);
+    Vector<RSemaphore> signalSemaphores(swapchainCount);
+
+    for (const auto& it : mObj->swapchains)
     {
         LD_PROFILE_SCOPE_NAME("record swapchain blit");
 
-        ImageState& srcBlitState = sStorages[mObj->blitCompObj->name].images[mObj->blitOutputName];
+        const RGraphSwapchain& swp = it.second;
+
+        ImageState& srcBlitState = sStorages[swp.blitCompObj->name].images[swp.blitOutputName];
         RImage srcBlit = srcBlitState.handle;
-        RImage dstBlit = mObj->info.swapchainImage;
-        RDevice device = mObj->info.device;
-        uint32_t swapchainWidth = mObj->info.screenWidth;
-        uint32_t swapchainHeight = mObj->info.screenHeight;
+        RDevice device = mObj->device;
 
         // transition src image from final layout to transfer src
         RImageMemoryBarrier barrier = RUtil::make_image_memory_barrier(srcBlit, srcBlitState.lastLayout, RIMAGE_LAYOUT_TRANSFER_SRC, RACCESS_COLOR_ATTACHMENT_WRITE_BIT, RACCESS_TRANSFER_READ_BIT);
         list.cmd_image_memory_barrier(RPIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, RPIPELINE_STAGE_TRANSFER_BIT, barrier);
         srcBlitState.lastLayout = RIMAGE_LAYOUT_TRANSFER_SRC;
+
+        waitStages[i] = RPIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+        waitSemaphores[i] = swp.info.imageAcquired;
+        signalSemaphores[i] = swp.info.presentReady;
+        RImage dstBlit = swp.info.image;
+        uint32_t swapchainWidth = dstBlit.width();
+        uint32_t swapchainHeight = dstBlit.height();
 
         // transition swapchain image to transfer dst
         barrier = RUtil::make_image_memory_barrier(dstBlit, RIMAGE_LAYOUT_UNDEFINED, RIMAGE_LAYOUT_TRANSFER_DST, 0, RACCESS_TRANSFER_WRITE_BIT);
@@ -1190,24 +1214,25 @@ void RGraph::submit(bool save)
         // transition swapchain image to present src optimal
         barrier = RUtil::make_image_memory_barrier(dstBlit, RIMAGE_LAYOUT_TRANSFER_DST, RIMAGE_LAYOUT_PRESENT_SRC, RACCESS_TRANSFER_WRITE_BIT, 0);
         list.cmd_image_memory_barrier(RPIPELINE_STAGE_TRANSFER_BIT, RPIPELINE_STAGE_BOTTOM_OF_PIPE_BIT, barrier);
+
+        i++;
     }
 
     list.end();
 
     // submission
     // TODO: multi queue submission to saturate GPU, need to expand RenderBackend API first
-    RQueue queue = mObj->info.device.get_graphics_queue();
-    RPipelineStageFlags waitStages = RPIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    RQueue queue = mObj->device.get_graphics_queue();
     RSubmitInfo submitI{
-        .waitCount = 1,
-        .waitStages = &waitStages,
-        .waits = &mObj->info.imageAcquired,
+        .waitCount = (uint32_t)swapchainCount,
+        .waitStages = waitStages.data(),
+        .waits = waitSemaphores.data(),
         .listCount = 1,
         .lists = &list,
-        .signalCount = 1,
-        .signals = &mObj->info.presentReady,
+        .signalCount = (uint32_t)swapchainCount,
+        .signals = signalSemaphores.data(),
     };
-    queue.submit(submitI, mObj->info.frameComplete);
+    queue.submit(submitI, mObj->frameComplete);
 }
 
 void RGraph::add_release_callback(void* user, OnReleaseCallback onRelease)

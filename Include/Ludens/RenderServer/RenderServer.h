@@ -15,6 +15,7 @@ namespace LD {
 /// @brief Unique identifier distributed by the render server, zero is invalid ID
 typedef uint32_t RUID;
 
+typedef void (*ScreenRenderCallback)(ScreenRenderComponent renderer, void* user);
 typedef void (*RenderServerEditorRenderCallback)(ScreenRenderComponent renderer, void* user);
 typedef void (*RenderServerEditorScenePickCallback)(SceneOverlayGizmoID gizmoID, RUID ruid, void* user);
 typedef Mat4 (*RenderServerTransformCallback)(RUID ruid, void* user);
@@ -36,6 +37,7 @@ struct RenderServerFrameInfo
     Vec2 sceneExtent;      /// game scene extent
     Vec3 directionalLight; /// directional light vector
     RUID envCubemap;       /// optional environment cubemap to draw in scene
+    WindowID dialogWindowID = 0;
 };
 
 struct RenderServerSceneGizmoColor
@@ -93,6 +95,14 @@ struct RenderServerEditorOverlayPass
     void* user;                                      /// user of the editor overlay render pass
 };
 
+/// @brief Info for the server to render a dialog Window in screen space.
+struct RenderServerEditorDialogPass
+{
+    ScreenRenderCallback renderCallback;
+    WindowID dialogWindow;
+    void* user;
+};
+
 /// @brief Render server handle. This is the top-level graphics abstraction,
 ///        Renderer resources are managed internally and are identified via a RUID.
 struct RenderServer : Handle<struct RenderServerObj>
@@ -125,6 +135,8 @@ struct RenderServer : Handle<struct RenderServerObj>
     /// @brief Dependency injection for the Editor to render more stuff on top of the editor pass.
     ///        Not used in game Runtime.
     void editor_overlay_pass(const RenderServerEditorOverlayPass& editorPass);
+
+    void editor_dialog_pass(const RenderServerEditorDialogPass& dialogPass);
 
     /// @brief Get the underlying render device.
     RDevice get_device();

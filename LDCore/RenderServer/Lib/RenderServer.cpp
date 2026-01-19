@@ -1,4 +1,5 @@
 #include <Ludens/DSA/HashSet.h>
+#include <Ludens/DSA/IDCounter.h>
 #include <Ludens/DSA/Vector.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Log/Log.h>
@@ -44,8 +45,9 @@ public:
     void screen_pass(const RenderServerScreenPass& screenP);
     void editor_pass(const RenderServerEditorPass& editorP);
     void editor_overlay_pass(const RenderServerEditorOverlayPass& editorOP);
+    void editor_dialog_pass(const RenderServerEditorDialogPass& dialogPass);
 
-    RUID get_ruid();
+    inline RUID get_ruid() { return mRUIDCtr.get_id(); }
 
 private:
     struct Frame
@@ -69,7 +71,7 @@ private:
     RImage mWhiteCubemap;
     Camera mMainCamera;
     RMeshBlinnPhongPipeline mMeshPipeline;
-    RUID mRUIDCtr;
+    IDCounter<RUID> mRUIDCtr;
     RenderServerTransformCallback mTransformCallback = nullptr;
     void* mTransformCallbackUser = nullptr;
     RenderServerScreenPassLayerCallback mScreenPassLayerCallback = nullptr;
@@ -98,7 +100,7 @@ private:
 };
 
 RenderServerObj::RenderServerObj(const RenderServerInfo& serverI)
-    : mDevice(serverI.device), mColorFormat(RFORMAT_RGBA8), mFontAtlas(serverI.fontAtlas), mRUIDCtr(1)
+    : mDevice(serverI.device), mColorFormat(RFORMAT_RGBA8), mFontAtlas(serverI.fontAtlas)
 {
     RSampleCountBit supportedMSCount = mDevice.get_max_sample_count();
     mMSAA = supportedMSCount >= RSAMPLE_COUNT_4_BIT ? RSAMPLE_COUNT_4_BIT : supportedMSCount;
@@ -208,14 +210,14 @@ RenderServerObj::~RenderServerObj()
 
 void RenderServerObj::next_frame(const RenderServerFrameInfo& frameI)
 {
-    RSemaphore imageAcquired, presentReady;
     RFence frameComplete;
-
     mDevice.next_frame(mFrameIndex, frameComplete);
 
+    RGraphSwapchainInfo swapchain{};
     WindowRegistry reg = WindowRegistry::get();
-    RImage swapchainImage = mDevice.try_acquire_image(reg.get_root_id(), imageAcquired, presentReady);
-    LD_ASSERT(swapchainImage);
+    swapchain.image = mDevice.try_acquire_image(reg.get_root_id(), swapchain.imageAcquired, swapchain.presentReady);
+    swapchain.window = reg.get_root_id();
+    LD_ASSERT(swapchain.image); // TODO: skip frame
 
     mSceneExtent = frameI.sceneExtent;
     mScreenExtent = frameI.screenExtent;
@@ -226,10 +228,9 @@ void RenderServerObj::next_frame(const RenderServerFrameInfo& frameI)
     RGraphInfo graphI{};
     graphI.device = mDevice;
     graphI.list = list;
-    graphI.presentReady = presentReady;
-    graphI.imageAcquired = imageAcquired;
     graphI.frameComplete = frameComplete;
-    graphI.swapchainImage = swapchainImage;
+    graphI.swapchainCount = 1;
+    graphI.swapchains = &swapchain;
     graphI.screenWidth = (uint32_t)mScreenExtent.x;
     graphI.screenHeight = (uint32_t)mScreenExtent.y;
     mGraph = RGraph::create(graphI);
@@ -272,8 +273,10 @@ void RenderServerObj::next_frame(const RenderServerFrameInfo& frameI)
 
 void RenderServerObj::submit_frame()
 {
-    // blit to swapchain image and submit
-    mGraph.connect_swapchain_image(mLastColorComponent, mLastColorAttachment);
+    WindowID rootID = WindowRegistry::get().get_root_id();
+
+    // blit to swapchain images and submit
+    mGraph.connect_swapchain_image(rootID, mLastColorComponent, mLastColorAttachment);
     mGraph.submit();
     RGraph::destroy(mGraph);
 
@@ -440,9 +443,17 @@ void RenderServerObj::editor_overlay_pass(const RenderServerEditorOverlayPass& e
     mLastColorAttachment = editorSRC.io_name();
 }
 
-RUID RenderServerObj::get_ruid()
+void RenderServerObj::editor_dialog_pass(const RenderServerEditorDialogPass& editorDP)
 {
-    return mRUIDCtr++;
+    ScreenRenderComponentInfo screenRCI{};
+    screenRCI.format = mColorFormat;
+    screenRCI.onDrawCallback = editorDP.renderCallback;
+    screenRCI.user = editorDP.user;
+    screenRCI.hasInputImage = false;
+    screenRCI.hasSampledImage = false;
+    screenRCI.name = "editor_dialog";
+    ScreenRenderComponent editorSRC = ScreenRenderComponent::add(mGraph, screenRCI);
+    mGraph.connect_swapchain_image(editorDP.dialogWindow, editorSRC.component_name(), editorSRC.io_name());
 }
 
 // NOTE: This is super early placeholder scene renderer implementation.
@@ -597,6 +608,11 @@ void RenderServer::editor_pass(const RenderServerEditorPass& editorRP)
 void RenderServer::editor_overlay_pass(const RenderServerEditorOverlayPass& editorOP)
 {
     mObj->editor_overlay_pass(editorOP);
+}
+
+void RenderServer::editor_dialog_pass(const RenderServerEditorDialogPass& dialogPass)
+{
+    mObj->editor_dialog_pass(dialogPass);
 }
 
 RDevice RenderServer::get_device()

@@ -1,10 +1,10 @@
 #pragma once
 
+#include <Ludens/DSA/HashMap.h>
+#include <Ludens/DSA/HashSet.h>
+#include <Ludens/DSA/Optional.h>
 #include <Ludens/Header/Hash.h>
 #include <Ludens/RenderGraph/RGraph.h>
-#include <optional>
-#include <unordered_map>
-#include <unordered_set>
 
 namespace LD {
 
@@ -46,27 +46,27 @@ struct GraphImageRef
 struct RGraphicsPassColorAttachment
 {
     Hash32 name;
-    std::optional<RClearColorValue> clearValue;
+    Optional<RClearColorValue> clearValue;
 };
 
 struct RGraphicsPassDepthStencilAttachment
 {
     Hash32 name;
-    std::optional<RClearDepthStencilValue> clearValue;
+    Optional<RClearDepthStencilValue> clearValue;
 };
 
 struct RComponentPassObj
 {
-    Hash32 name;                                              /// hash of user declared name
-    std::string debugName;                                    /// name for debugging
-    RComponent component;                                     /// owning component
-    RPipelineStageFlags stageFlags;                           /// compute pass stages
-    RAccessFlags accessFlags;                                 /// compute pass access
-    void* userData;                                           /// arbitrary user data
-    bool isCallbackScope;                                     /// whether the component is within the RCommandList recording scope
-    bool isComputePass;                                       /// distinguishes between a GraphicsPass and ComputePass
-    std::unordered_map<Hash32, RGraphImageUsage> imageUsages; /// track usages of images in this component
-    std::unordered_set<RComponentPassObj*> edges;             /// dependency passes
+    Hash32 name;                                   /// hash of user declared name
+    std::string debugName;                         /// name for debugging
+    RComponent component;                          /// owning component
+    RPipelineStageFlags stageFlags;                /// compute pass stages
+    RAccessFlags accessFlags;                      /// compute pass access
+    void* userData;                                /// arbitrary user data
+    bool isCallbackScope;                          /// whether the component is within the RCommandList recording scope
+    bool isComputePass;                            /// distinguishes between a GraphicsPass and ComputePass
+    HashMap<Hash32, RGraphImageUsage> imageUsages; /// track usages of images in this component
+    HashSet<RComponentPassObj*> edges;             /// dependency passes
 };
 
 struct RGraphicsPassObj : RComponentPassObj
@@ -75,10 +75,10 @@ struct RGraphicsPassObj : RComponentPassObj
     uint32_t height;
     RPassDependency passDep;
     RGraphicsPassCallback callback;                             /// command recording callback for the graphics pass
-    std::vector<RGraphicsPassColorAttachment> colorAttachments; /// graphics pass color attachment description
-    std::vector<RPassColorAttachment> colorAttachmentInfos;     /// consumed by the render backend API
-    std::vector<RPassResolveAttachment> resolveAttachmentInfos; /// consumed by the render backend API
-    std::unordered_set<Hash32> sampledImages;                   /// all images sampled in this pass
+    Vector<RGraphicsPassColorAttachment> colorAttachments;      /// graphics pass color attachment description
+    Vector<RPassColorAttachment> colorAttachmentInfos;          /// consumed by the render backend API
+    Vector<RPassResolveAttachment> resolveAttachmentInfos;      /// consumed by the render backend API
+    HashSet<Hash32> sampledImages;                              /// all images sampled in this pass
     RGraphicsPassDepthStencilAttachment depthStencilAttachment; /// graphics pass depth stencil attachment description
     RPassDepthStencilAttachment depthStencilAttachmentInfo;     /// consumed by the render backend API
     RSampleCountBit samples;                                    /// if multi-sampled, color attachments are resolved in this pass
@@ -90,8 +90,8 @@ struct RGraphicsPassObj : RComponentPassObj
 
 struct RComputePassObj : RComponentPassObj
 {
-    RComputePassCallback callback;            /// user callback for compute operations
-    std::unordered_set<Hash32> storageImages; /// all storage images in this pass
+    RComputePassCallback callback; /// user callback for compute operations
+    HashSet<Hash32> storageImages; /// all storage images in this pass
 
     inline bool operator==(const RGraphicsPassObj& other) const { return name == other.name; }
     inline bool operator!=(const RGraphicsPassObj& other) const { return !operator==(other); }
@@ -102,23 +102,30 @@ struct RComponentObj
     Hash32 name;
     RSampleCountBit samples;
     std::string debugName;
-    std::vector<RComponentPassObj*> passOrder;
-    std::unordered_map<Hash32, RComponentPassObj*> passes; /// all passes declared this frame
-    std::unordered_map<Hash32, GraphImage> images;         /// name to images declared in this frame
-    std::unordered_map<Hash32, GraphImageRef> imageRefs;
+    Vector<RComponentPassObj*> passOrder;
+    HashMap<Hash32, RComponentPassObj*> passes; /// all passes declared this frame
+    HashMap<Hash32, GraphImage> images;         /// name to images declared in this frame
+    HashMap<Hash32, GraphImageRef> imageRefs;
 
     inline bool operator==(const RComponentObj& other) const { return name == other.name; }
     inline bool operator!=(const RComponentObj& other) const { return !operator==(other); }
 };
 
+struct RGraphSwapchain
+{
+    RGraphSwapchainInfo info;
+    RComponentObj* blitCompObj = nullptr;
+    Hash32 blitOutputName;
+};
+
 struct RGraphObj
 {
-    RGraphInfo info;
+    RDevice device;
     RCommandList list;
-    std::unordered_map<Hash32, RComponent> components;
-    std::vector<RComponentPassObj*> passOrder;
-    RComponentObj* blitCompObj;
-    Hash32 blitOutputName;
+    RFence frameComplete;
+    HashMap<Hash32, RComponent> components;
+    Vector<RComponentPassObj*> passOrder;
+    HashMap<WindowID, RGraphSwapchain> swapchains;
     uint32_t screenWidth;
     uint32_t screenHeight;
 };
