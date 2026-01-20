@@ -89,14 +89,12 @@ private:
     RFormat mColorFormat;                           /// default color format
     RSampleCountBit mMSAA;                          /// number of samples during MSAA, if enabled
     RUID mSceneOutlineSubject;                      /// subject to be outlined in scene render pass
-    uint32_t mFramesInFlight;                       /// number of frames in flight
-    uint32_t mFrameIndex;                           /// [0, mFramesInFlight)
-    FontAtlas mFontAtlas;                           /// default font atlas for text rendering
-    const char* mLastColorComponent;                /// last component with scene color attachment
-    const char* mLastColorAttachment;               /// last scene color attachment output
-    const char* mLastIDFlagsComponent;              /// last component with scene ID flags color attachment
-    const char* mLastIDFlagsAttachment;             /// last scene ID flags attachment output
-    bool mHasRenderedScene;
+    uint32_t mFramesInFlight = 0;                   /// number of frames in flight
+    uint32_t mFrameIndex = 0;                       /// [0, mFramesInFlight)
+    FontAtlas mFontAtlas{};                         /// default font atlas for text rendering
+    RGraphImage mLastColorAttachment{};             /// last color attachment output
+    RGraphImage mLastIDFlagsAttachment{};           /// last scene ID flags attachment output
+    bool mHasRenderedScene = false;
 };
 
 RenderServerObj::RenderServerObj(const RenderServerInfo& serverI)
@@ -233,6 +231,12 @@ void RenderServerObj::next_frame(const RenderServerFrameInfo& frameI)
     graphI.swapchains = &swapchain;
     graphI.screenWidth = (uint32_t)mScreenExtent.x;
     graphI.screenHeight = (uint32_t)mScreenExtent.y;
+    graphI.prePassCB = [](RCommandList list, void* user) {
+        auto* obj = (RenderServerObj*)user;
+        Frame& frame = obj->mFrames[obj->mFrameIndex];
+        list.cmd_bind_graphics_sets(sRMeshPipelineLayout, 0, 1, &frame.frameSet);
+    };
+    graphI.user = this;
     mGraph = RGraph::create(graphI);
 
     //
@@ -264,10 +268,8 @@ void RenderServerObj::next_frame(const RenderServerFrameInfo& frameI)
     // initialization
     //
 
-    mLastColorComponent = nullptr;
-    mLastColorAttachment = nullptr;
-    mLastIDFlagsComponent = nullptr;
-    mLastIDFlagsAttachment = nullptr;
+    mLastColorAttachment = {};
+    mLastIDFlagsAttachment = {};
     mHasRenderedScene = false;
 }
 
@@ -276,7 +278,7 @@ void RenderServerObj::submit_frame()
     WindowID rootID = WindowRegistry::get().get_root_id();
 
     // blit to swapchain images and submit
-    mGraph.connect_swapchain_image(rootID, mLastColorComponent, mLastColorAttachment);
+    mGraph.connect_swapchain_image(mLastColorAttachment, rootID);
     mGraph.submit();
     RGraph::destroy(mGraph);
 
@@ -302,7 +304,7 @@ void RenderServerObj::scene_pass(const RenderServerScenePass& sceneP)
     forwardI.clearDepthStencil = clearDS;
     forwardI.samples = mMSAA;
     forwardI.hasSkybox = sceneP.hasSkybox;
-    ForwardRenderComponent sceneFR = ForwardRenderComponent::add(mGraph, forwardI, frame.frameSet, &RenderServerObj::forward_rendering, this);
+    ForwardRenderComponent sceneFR = ForwardRenderComponent::add(mGraph, forwardI, &RenderServerObj::forward_rendering, this);
 
     if (sceneP.overlay.enabled) // mesh outlining and gizmo rendering is provided by the SceneOverlayComponent
     {
@@ -322,19 +324,15 @@ void RenderServerObj::scene_pass(const RenderServerScenePass& sceneP)
         overlayI.gizmoColorXZ = sceneP.overlay.gizmoColor.planeXZ;
         overlayI.gizmoColorYZ = sceneP.overlay.gizmoColor.planeYZ;
         SceneOverlayComponent overlayC = SceneOverlayComponent::add(mGraph, overlayI);
-        mGraph.connect_image(sceneFR.component_name(), sceneFR.out_color_name(), overlayC.component_name(), overlayC.in_color_name());
-        mGraph.connect_image(sceneFR.component_name(), sceneFR.out_idflags_name(), overlayC.component_name(), overlayC.in_idflags_name());
-        mLastColorComponent = overlayC.component_name();
-        mLastColorAttachment = overlayC.out_color_name();
-        mLastIDFlagsComponent = overlayC.component_name();
-        mLastIDFlagsAttachment = overlayC.out_idflags_name();
+        mGraph.connect_image(sceneFR.out_color_attachment(), overlayC.in_color_attachment());
+        mGraph.connect_image(sceneFR.out_id_flags_attachment(), overlayC.in_id_flags_attachment());
+        mLastColorAttachment = overlayC.out_color_attachment();
+        mLastIDFlagsAttachment = overlayC.out_id_flags_attachment();
     }
     else
     {
-        mLastColorComponent = sceneFR.component_name();
-        mLastColorAttachment = sceneFR.out_color_name();
-        mLastIDFlagsComponent = sceneFR.component_name();
-        mLastIDFlagsAttachment = sceneFR.out_idflags_name();
+        mLastColorAttachment = sceneFR.out_color_attachment();
+        mLastIDFlagsAttachment = sceneFR.out_id_flags_attachment();
     }
 
     mHasRenderedScene = true;
@@ -357,15 +355,13 @@ void RenderServerObj::screen_pass(const RenderServerScreenPass& screenP)
     screenRCI.name = "scene_screen";
     screenRCI.screenExtent = &mSceneExtent; // scene extent is typically smaller than screen extent in editor
     ScreenRenderComponent screenRC = ScreenRenderComponent::add(mGraph, screenRCI);
-    mGraph.connect_image(mLastColorComponent, mLastColorAttachment, screenRC.component_name(), screenRC.io_name());
-
-    mLastColorComponent = screenRC.component_name();
-    mLastColorAttachment = screenRC.io_name();
+    mGraph.connect_image(mLastColorAttachment, screenRC.color_attachment());
+    mLastColorAttachment = screenRC.color_attachment();
 }
 
 void RenderServerObj::editor_pass(const RenderServerEditorPass& editorP)
 {
-    LD_ASSERT(mHasRenderedScene && mLastColorComponent && mLastColorAttachment && mLastIDFlagsComponent && mLastIDFlagsAttachment);
+    LD_ASSERT(mHasRenderedScene && mLastColorAttachment && mLastIDFlagsAttachment);
 
     ScreenRenderComponentInfo screenRCI{};
     screenRCI.format = mColorFormat;
@@ -376,7 +372,8 @@ void RenderServerObj::editor_pass(const RenderServerEditorPass& editorP)
     screenRCI.clearColor = 0x000000FF;
     screenRCI.name = "editor";
     ScreenRenderComponent editorSRC = ScreenRenderComponent::add(mGraph, screenRCI);
-    mGraph.connect_image(mLastColorComponent, mLastColorAttachment, editorSRC.component_name(), editorSRC.sampled_name());
+    mGraph.connect_image(mLastColorAttachment, editorSRC.sampled_attachment());
+    mLastColorAttachment = editorSRC.color_attachment();
 
     ScreenPickComponentInfo pickCI{};
     pickCI.pickQueryCount = 0;
@@ -386,10 +383,7 @@ void RenderServerObj::editor_pass(const RenderServerEditorPass& editorP)
         pickCI.pickPositions = editorP.sceneMousePickQuery;
     }
     ScreenPickComponent screenPick = ScreenPickComponent::add(mGraph, pickCI);
-    mGraph.connect_image(mLastIDFlagsComponent, mLastIDFlagsAttachment, screenPick.component_name(), screenPick.input_name());
-
-    mLastColorComponent = editorSRC.component_name();
-    mLastColorAttachment = editorSRC.io_name();
+    mGraph.connect_image(mLastIDFlagsAttachment, screenPick.attachment());
 
     // NOTE: The results are actually from mFramesInFlight frames ago,
     //       stalling the GPU just to acquire results in the same frame
@@ -436,11 +430,10 @@ void RenderServerObj::editor_overlay_pass(const RenderServerEditorOverlayPass& e
     screenRCI.hasSampledImage = false;
     screenRCI.name = "editor_overlay";
     ScreenRenderComponent editorSRC = ScreenRenderComponent::add(mGraph, screenRCI);
-    mGraph.connect_image(mLastColorComponent, mLastColorAttachment, editorSRC.component_name(), editorSRC.io_name());
+    mGraph.connect_image(mLastColorAttachment, editorSRC.color_attachment());
     // mGraph.connect_image(blurC.component_name(), blurC.output_name(), editorSRC.component_name(), editorSRC.sampled_name());
 
-    mLastColorComponent = editorSRC.component_name();
-    mLastColorAttachment = editorSRC.io_name();
+    mLastColorAttachment = editorSRC.color_attachment();
 }
 
 void RenderServerObj::editor_dialog_pass(const RenderServerEditorDialogPass& editorDP)
@@ -453,7 +446,7 @@ void RenderServerObj::editor_dialog_pass(const RenderServerEditorDialogPass& edi
     screenRCI.hasSampledImage = false;
     screenRCI.name = "editor_dialog";
     ScreenRenderComponent editorSRC = ScreenRenderComponent::add(mGraph, screenRCI);
-    mGraph.connect_swapchain_image(editorDP.dialogWindow, editorSRC.component_name(), editorSRC.io_name());
+    mGraph.connect_swapchain_image(editorSRC.color_attachment(), editorDP.dialogWindow);
 }
 
 // NOTE: This is super early placeholder scene renderer implementation.
