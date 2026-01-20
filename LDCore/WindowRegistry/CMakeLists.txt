@@ -26,6 +26,7 @@ target_link_libraries(${MODULE_NAME} PRIVATE
 	LDLog
 	LDProfiler
 	LDEvent
+	LDMedia
 )
 
 target_include_directories(${MODULE_NAME} PRIVATE
