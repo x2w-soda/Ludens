@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Ludens/DSA/Vector.h>
 #include <Ludens/Header/Hash.h>
 #include <Ludens/RenderBackend/RBackend.h>
 
@@ -17,11 +18,14 @@ struct RGraphicsPassInfo
     RSampleCountBit samples = RSAMPLE_COUNT_1_BIT; /// number of samples for MSAA if not 1
 };
 
-struct RGraphicsPass : RHandle<struct RGraphicsPassObj>
+struct RComponentPass : RHandle<struct RComponentPassObj>
 {
-    /// @brief get declared graphics pass name
+    /// @brief Get declared pass name
     Hash32 name() const;
+};
 
+struct RGraphicsPass : RComponentPass
+{
     /// @brief declare to use an image as sampled
     void use_image_sampled(RGraphImage image);
 
@@ -48,11 +52,8 @@ struct RComputePassInfo
     const char* name;
 };
 
-struct RComputePass : RHandle<struct RComputePassObj>
+struct RComputePass : RComponentPass
 {
-    /// @brief get declared compute pass name
-    Hash32 name() const;
-
     /// @brief Declare to use a storage image as read only
     void use_image_storage_read_only(RGraphImage image);
 
@@ -150,7 +151,10 @@ struct RGraph : RHandle<struct RGraphObj>
     ///        In practice, this is equivalent to a framebuffer blit.
     void connect_swapchain_image(RGraphImage srcImage, WindowID dstWindow);
 
-    void submit(bool save = false);
+    /// @brief Optional diagnostics before submission, retrieve sorted pass order.
+    void debug(Vector<RComponentPass>& outPassOrder, bool saveToDisk);
+
+    void submit();
 };
 
 } // namespace LD

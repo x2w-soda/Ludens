@@ -61,7 +61,7 @@ struct RGraphicsPassDepthStencilAttachment
 struct RComponentPassObj
 {
     Hash32 name;                                   /// hash of user declared name
-    std::string debugName;                         /// name for debugging
+    std::string debugName;                         /// name for debugging, globally unique
     RComponentObj* compObj;                        /// owning component
     RPipelineStageFlags stageFlags;                /// compute pass stages
     RAccessFlags accessFlags;                      /// compute pass access
@@ -105,7 +105,7 @@ struct RComponentObj
 {
     Hash32 name;
     RSampleCountBit samples;
-    std::string debugName;
+    std::string debugName; /// globally unique
     Vector<RComponentPassObj*> passOrder;
     HashMap<Hash32, RComponentPassObj*> passes; /// all passes declared in this component
     HashMap<Hash32, RGraphImageObj*> images;    /// all images declared in this component

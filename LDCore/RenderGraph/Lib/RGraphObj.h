@@ -17,6 +17,12 @@ struct RGraphSwapchain
     RGraphImageObj* blitSrc = nullptr;
 };
 
+enum RGraphState
+{
+    RGRAPH_STATE_CREATED = 0,
+    RGRAPH_STATE_SORTED,
+};
+
 /// @brief Per-frame render graph state.
 struct RGraphObj
 {
@@ -29,8 +35,10 @@ struct RGraphObj
     HashMap<WindowID, RGraphSwapchain> swapchains;
     uint32_t screenWidth;
     uint32_t screenHeight;
+    RGraphState state = RGRAPH_STATE_CREATED;
     void* user = nullptr;
 
+    void sort();
     void record_compute_pass(RComputePassObj* pass, RCommandList list, uint32_t passIdx);
     void record_graphics_pass(RGraphicsPassObj* pass, RCommandList list, uint32_t passIdx);
 };
