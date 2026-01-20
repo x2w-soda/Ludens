@@ -1,18 +1,19 @@
 #pragma once
 
-#include <Ludens/Event/Event.h>
 #include <Ludens/DSA/Vector.h>
 #include <Ludens/Header/Handle.h>
 #include <Ludens/Header/Hash.h>
 #include <Ludens/Header/KeyCode.h>
 #include <Ludens/Header/Math/Rect.h>
 #include <Ludens/Header/Math/Vec2.h>
-#include <Ludens/UI/UITheme.h>
 #include <Ludens/UI/UILayer.h>
+#include <Ludens/UI/UITheme.h>
 
 #include <cstdint>
 
 namespace LD {
+
+struct WindowEvent;
 
 struct UIContextInfo
 {
@@ -36,8 +37,9 @@ struct UIContext : Handle<struct UIContextObj>
     /// @param delta delta time in seconds
     void update(float delta);
 
-    /// @brief Pass an application event to the UI context.
-    bool on_event(const Event* event);
+    /// @brief Pass a Window event to the UI context, the WindowID is ignored and
+    ///        mouse positions are treated as screen space relative to UI context origin.
+    bool on_window_event(const WindowEvent* event);
 
     /// @brief Create and add a layer to context.
     UILayer create_layer(const char* layerName);

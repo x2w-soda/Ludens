@@ -1,3 +1,5 @@
+#include <Ludens/DSA/Vector.h>
+#include <Ludens/Event/WindowEvent.h>
 #include <Ludens/JobSystem/JobSystem.h>
 #include <Ludens/Log/Log.h>
 #include <Ludens/Profiler/Profiler.h>
@@ -12,13 +14,14 @@
 
 #include <array>
 #include <string>
-#include <vector>
 
 #include "UISandbox.h"
 
 namespace LD {
 
 static Log sLog("UISandbox");
+
+static WindowID sWindowID;
 
 UISandbox::UISandbox()
 {
@@ -41,10 +44,11 @@ UISandbox::UISandbox()
     windowI.hintTitleBarColor = 0x000000FF;
     windowI.hintTitleBarTextColor = 0xDFDFDFFF;
     WindowRegistry reg = WindowRegistry::create(windowI);
-    const Vec2 screenExtent = reg.get_window_extent(reg.get_root_id());
+    const WindowID rootID = reg.get_root_id();
+    const Vec2 screenExtent = reg.get_window_extent(rootID);
 
     CameraPerspectiveInfo perspectiveI{};
-    perspectiveI.aspectRatio = reg.get_window_aspect_ratio(reg.get_root_id());
+    perspectiveI.aspectRatio = reg.get_window_aspect_ratio(rootID);
     perspectiveI.nearClip = 0.1f;
     perspectiveI.farClip = 100.0f;
     perspectiveI.fov = LD_TO_RADIANS(45.0f);
@@ -58,6 +62,11 @@ UISandbox::UISandbox()
     deviceI.backend = RDEVICE_BACKEND_VULKAN;
     deviceI.vsync = true;
     mRDevice = RDevice::create(deviceI);
+
+    windowI.width = 512;
+    windowI.height = 512;
+    windowI.name = "secondary";
+    sWindowID = reg.create_window(windowI, rootID);
 
     RenderServerInfo serverI{};
     serverI.device = mRDevice;
@@ -207,6 +216,7 @@ void UISandbox::render()
 {
     WindowRegistry reg = WindowRegistry::get();
     const Vec2 screenExtent = reg.get_window_extent(reg.get_root_id());
+    const bool hasDialogWindow = reg.is_window_open(sWindowID);
 
     // begin rendering a frame
     RenderServerFrameInfo frameI{};
@@ -215,7 +225,17 @@ void UISandbox::render()
     frameI.screenExtent = screenExtent;
     frameI.sceneExtent = screenExtent;
     frameI.envCubemap = (RUID)0;
+    frameI.dialogWindowID = hasDialogWindow ? sWindowID : 0;
     mRenderServer.next_frame(frameI);
+
+    if (hasDialogWindow)
+    {
+        RenderServerEditorDialogPass editorDP{};
+        editorDP.dialogWindow = sWindowID;
+        editorDP.renderCallback = &UISandbox::on_dialog_render;
+        editorDP.user = this;
+        mRenderServer.editor_dialog_pass(editorDP);
+    }
 
     // render empty scene
     RenderServerScenePass sceneP{};
@@ -234,13 +254,13 @@ void UISandbox::render()
     mRenderServer.submit_frame();
 }
 
-void UISandbox::on_event(const Event* event, void* user)
+void UISandbox::on_event(const WindowEvent* event, void* user)
 {
     UISandbox& self = *(UISandbox*)user;
 
-    // pass events to UI
+    // pass window events to UI
     UIContext uiCtx = self.mCtx;
-    uiCtx.on_event(event);
+    uiCtx.on_window_event((const WindowEvent*)event);
 }
 
 void UISandbox::on_screen_render(ScreenRenderComponent renderer, void* user)
@@ -254,6 +274,13 @@ void UISandbox::on_screen_render(ScreenRenderComponent renderer, void* user)
 
     for (UILayer layer : layers)
         layer.render(renderer);
+}
+
+void UISandbox::on_dialog_render(ScreenRenderComponent renderer, void* user)
+{
+    UISandbox& self = *(UISandbox*)user;
+
+    renderer.draw_rect(Rect(0, 0, 128, 128), 0xFF0000FF);
 }
 
 } // namespace LD

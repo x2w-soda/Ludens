@@ -1,4 +1,5 @@
 #include <Ludens/DSA/Vector.h>
+#include <Ludens/Event/WindowEvent.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Header/Bitwise.h>
 #include <Ludens/Header/Math/Vec2.h>
@@ -418,29 +419,29 @@ void UIContext::update(float delta)
     }
 }
 
-bool UIContext::on_event(const Event* event)
+bool UIContext::on_window_event(const WindowEvent* event)
 {
     switch (event->type)
     {
-    case EVENT_TYPE_KEY_DOWN:
-        mObj->input_key_down(static_cast<const KeyDownEvent*>(event)->key);
+    case EVENT_TYPE_WINDOW_KEY_DOWN:
+        mObj->input_key_down(static_cast<const WindowKeyDownEvent*>(event)->key);
         break;
-    case EVENT_TYPE_KEY_UP:
-        mObj->input_key_up(static_cast<const KeyUpEvent*>(event)->key);
+    case EVENT_TYPE_WINDOW_KEY_UP:
+        mObj->input_key_up(static_cast<const WindowKeyUpEvent*>(event)->key);
         break;
-    case EVENT_TYPE_MOUSE_MOTION:
-        mObj->input_mouse_position(Vec2(static_cast<const MouseMotionEvent*>(event)->xpos,
-                                        static_cast<const MouseMotionEvent*>(event)->ypos));
+    case EVENT_TYPE_WINDOW_MOUSE_MOTION:
+        mObj->input_mouse_position(Vec2(static_cast<const WindowMouseMotionEvent*>(event)->xpos,
+                                        static_cast<const WindowMouseMotionEvent*>(event)->ypos));
         break;
-    case EVENT_TYPE_MOUSE_DOWN:
-        mObj->input_mouse_down(static_cast<const MouseDownEvent*>(event)->button);
+    case EVENT_TYPE_WINDOW_MOUSE_DOWN:
+        mObj->input_mouse_down(static_cast<const WindowMouseDownEvent*>(event)->button);
         break;
-    case EVENT_TYPE_MOUSE_UP:
-        mObj->input_mouse_up(static_cast<const MouseUpEvent*>(event)->button);
+    case EVENT_TYPE_WINDOW_MOUSE_UP:
+        mObj->input_mouse_up(static_cast<const WindowMouseUpEvent*>(event)->button);
         break;
-    case EVENT_TYPE_SCROLL:
-        mObj->input_scroll(Vec2(static_cast<const ScrollEvent*>(event)->xoffset,
-                                static_cast<const ScrollEvent*>(event)->yoffset));
+    case EVENT_TYPE_WINDOW_SCROLL:
+        mObj->input_scroll(Vec2(static_cast<const WindowScrollEvent*>(event)->xoffset,
+                                static_cast<const WindowScrollEvent*>(event)->yoffset));
         break;
     default: // does not trigger any input
         return false;

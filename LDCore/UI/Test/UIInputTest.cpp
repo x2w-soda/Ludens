@@ -1,6 +1,7 @@
-#include "UITest.h"
 #include <Extra/doctest/doctest.h>
 #include <Ludens/Memory/Memory.h>
+
+#include "UITest.h"
 
 static int sLastKey;
 
@@ -22,20 +23,20 @@ TEST_CASE("UIWidget BlockInput")
     window.layout();
 
     sLastKey = 0;
-    MouseMotionEvent mm(50, 50);
-    ctx.on_event(&mm);
-    KeyDownEvent kdA(KEY_CODE_A, false);
-    ctx.on_event(&kdA);
+    WindowMouseMotionEvent mm(0, 50, 50);
+    ctx.on_window_event(&mm);
+    WindowKeyDownEvent kdA(0, KEY_CODE_A, false);
+    ctx.on_window_event(&kdA);
     CHECK(sLastKey == KEY_CODE_A);
 
-    KeyDownEvent kdB(KEY_CODE_B, false);
+    WindowKeyDownEvent kdB(0, KEY_CODE_B, false);
     window.block_input();
-    ctx.on_event(&kdB);
+    ctx.on_window_event(&kdB);
     CHECK(sLastKey == KEY_CODE_A);
 
-    KeyDownEvent kdC(KEY_CODE_C, false);
+    WindowKeyDownEvent kdC(0, KEY_CODE_C, false);
     window.unblock_input();
-    ctx.on_event(&kdC);
+    ctx.on_window_event(&kdC);
     CHECK(sLastKey == KEY_CODE_C);
 
     UIContext::destroy(ctx);
