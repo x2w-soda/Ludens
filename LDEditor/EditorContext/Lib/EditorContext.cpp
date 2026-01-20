@@ -1,6 +1,7 @@
-#include "EditorContextCommand.h"
 #include <Ludens/Asset/AssetManager.h>
 #include <Ludens/Asset/AssetSchema.h>
+#include <Ludens/DSA/Observer.h>
+#include <Ludens/DSA/Vector.h>
 #include <Ludens/DataRegistry/DataComponent.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Log/Log.h>
@@ -18,6 +19,8 @@
 #include <LudensEditor/EditorContext/EditorContext.h>
 #include <utility>
 
+#include "EditorContextCommand.h"
+
 namespace LD {
 
 static Log sLog("EditorContext");
@@ -28,22 +31,22 @@ using EditorContextObserver = std::pair<EditorContextEventFn, void*>;
 ///        and active scene states.
 struct EditorContextObj
 {
-    RenderServer renderServer;        /// render server handle
-    AudioServer audioServer;          /// audio server handle
-    RImage iconAtlas;                 /// editor icon atlas handle
-    Project project;                  /// current project under edit
-    Scene scene;                      /// current scene under edit
-    AssetManager assetManager;        /// loads assets for the scene
-    EditorSettings settings;          /// editor global settings
-    EditorActionQueue actionQueue;    /// each action maps to one or more EditCommands.
-    EditStack editStack;              /// undo/redo stack of EditCommands
-    FS::Path iconAtlasPath;           /// path to editor icon atlas source file
-    FS::Path sceneSchemaPath;         /// path to current scene file
-    FS::Path assetSchemaPath;         /// path to project asset file
-    FS::Path projectDirPath;          /// path to project root directory
-    std::string projectName;          /// project identifier
-    std::vector<FS::Path> scenePaths; /// path to scene schema files in project
-    std::vector<EditorContextObserver> observers;
+    RenderServer renderServer;     /// render server handle
+    AudioServer audioServer;       /// audio server handle
+    RImage iconAtlas;              /// editor icon atlas handle
+    Project project;               /// current project under edit
+    Scene scene;                   /// current scene under edit
+    AssetManager assetManager;     /// loads assets for the scene
+    EditorSettings settings;       /// editor global settings
+    EditorActionQueue actionQueue; /// each action maps to one or more EditCommands.
+    EditStack editStack;           /// undo/redo stack of EditCommands
+    FS::Path iconAtlasPath;        /// path to editor icon atlas source file
+    FS::Path sceneSchemaPath;      /// path to current scene file
+    FS::Path assetSchemaPath;      /// path to project asset file
+    FS::Path projectDirPath;       /// path to project root directory
+    std::string projectName;       /// project identifier
+    Vector<FS::Path> scenePaths;   /// path to scene schema files in project
+    ObserverList<const EditorContextEvent*> observers;
     CUID selectedComponent;
     RUID selectedComponentRUID;
     bool isPlaying;
@@ -164,10 +167,7 @@ static void editor_action_set_component_asset(EditStack stack, void* user)
 
 void EditorContextObj::notify_observers(const EditorContextEvent* event)
 {
-    for (auto& observer : observers)
-    {
-        observer.first(event, observer.second);
-    }
+    observers.notify(event);
 }
 
 void EditorContextObj::load_project(const FS::Path& projectSchemaPath)
@@ -470,7 +470,7 @@ Camera EditorContext::get_scene_camera()
 
 void EditorContext::add_observer(EditorContextEventFn fn, void* user)
 {
-    mObj->observers.push_back(std::make_pair(fn, user));
+    mObj->observers.add_observer(fn, user);
 }
 
 void EditorContext::update(const Vec2& sceneExtent, float delta)
