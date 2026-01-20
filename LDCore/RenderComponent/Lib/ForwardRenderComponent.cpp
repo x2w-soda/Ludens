@@ -1,3 +1,4 @@
+#include <Ludens/DSA/Vector.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/RenderBackend/RUtil.h>
@@ -7,7 +8,6 @@
 #include <Ludens/RenderComponent/Layout/VertexLayouts.h>
 #include <Ludens/RenderComponent/Pipeline/LinePipeline.h>
 #include <Ludens/RenderComponent/Pipeline/SkyboxPipeline.h>
-#include <vector>
 
 namespace LD {
 
@@ -18,19 +18,21 @@ struct ForwardRenderComponentObj
     /// @brief for host mapped memory, we need duplicates per frame in flight
     struct Frame
     {
-        std::vector<RBuffer> pointVBOs;
+        Vector<RBuffer> pointVBOs;
     };
 
     RDevice device;
     RCommandList list;
-    RSet frameSet;
     RPipeline meshPipeline;
+    RGraphImage colorAttachment;
+    RGraphImage depthStencilAttachment;
+    RGraphImage idFlagsAttachment;
     LinePipeline linePipeline;
     SkyboxPipeline skyboxPipeline;
     PointVertexBatch<sMaxPointVertexCount> pointBatch;
     ForwardRenderComponent::RenderCallback callback;
     void* user;
-    std::vector<Frame> frames;
+    Vector<Frame> frames;
     uint32_t frameIdx;
     uint32_t batchIdx;
     bool hasInit;
@@ -45,6 +47,11 @@ struct ForwardRenderComponentObj
 
     static void on_release(void* user);
     static void on_graphics_pass(RGraphicsPass pass, RCommandList list, void* userData);
+
+    inline const char* component_name() const { return "forward"; }
+    inline const char* out_color_name() const { return "out_color"; }
+    inline const char* out_idflags_name() const { return "out_idflags"; }
+    inline const char* out_depth_stencil_name() const { return "out_depth_stencil"; }
 } sFRCompObj;
 
 void ForwardRenderComponentObj::init(RDevice device)
@@ -164,16 +171,14 @@ void ForwardRenderComponentObj::on_graphics_pass(RGraphicsPass pass, RCommandLis
 {
     ForwardRenderComponentObj* compObj = (ForwardRenderComponentObj*)userData;
 
-    list.cmd_bind_graphics_sets(sRMeshPipelineLayout, 0, 1, &compObj->frameSet);
-
     compObj->list = list;
     compObj->isDrawScope = true;
-    compObj->callback({compObj}, compObj->user);
+    compObj->callback(ForwardRenderComponent(compObj), compObj->user);
     compObj->flush_lines();
     compObj->isDrawScope = false;
 }
 
-ForwardRenderComponent ForwardRenderComponent::add(RGraph graph, const ForwardRenderComponentInfo& componentI, RSet frameSet, RenderCallback callback, void* user)
+ForwardRenderComponent ForwardRenderComponent::add(RGraph graph, const ForwardRenderComponentInfo& componentI, RenderCallback callback, void* user)
 {
     LD_PROFILE_SCOPE;
 
@@ -186,7 +191,6 @@ ForwardRenderComponent ForwardRenderComponent::add(RGraph graph, const ForwardRe
     compObj->batchIdx = 0;
     compObj->callback = callback;
     compObj->user = user;
-    compObj->frameSet = frameSet;
     compObj->meshPipeline = {};
     compObj->pointBatch.reset();
     compObj->hasSkybox = componentI.hasSkybox;
@@ -195,24 +199,34 @@ ForwardRenderComponent ForwardRenderComponent::add(RGraph graph, const ForwardRe
     RSamplerInfo idSampler = {RFILTER_NEAREST, RFILTER_NEAREST, RSAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE};
 
     ForwardRenderComponent forwardComp(compObj);
-    RComponent comp = graph.add_component(forwardComp.component_name());
-    comp.add_output_image(forwardComp.out_color_name(), componentI.colorFormat, sceneWidth, sceneHeight, &colorSampler);
-    comp.add_output_image(forwardComp.out_idflags_name(), RFORMAT_RGBA8U, sceneWidth, sceneHeight, &idSampler);
-    comp.add_output_image(forwardComp.out_depth_stencil_name(), componentI.depthStencilFormat, sceneWidth, sceneHeight);
+    RComponent comp = graph.add_component(compObj->component_name());
+    compObj->colorAttachment = comp.add_output_image(compObj->out_color_name(), componentI.colorFormat, sceneWidth, sceneHeight, &colorSampler);
+    compObj->idFlagsAttachment = comp.add_output_image(compObj->out_idflags_name(), RFORMAT_RGBA8U, sceneWidth, sceneHeight, &idSampler);
+    compObj->depthStencilAttachment = comp.add_output_image(compObj->out_depth_stencil_name(), componentI.depthStencilFormat, sceneWidth, sceneHeight);
 
     RGraphicsPassInfo gpI{};
-    gpI.name = forwardComp.component_name();
+    gpI.name = compObj->component_name();
     gpI.width = sceneWidth;
     gpI.height = sceneHeight;
     gpI.samples = componentI.samples;
 
     RClearColorValue idClearColor = RUtil::make_clear_color<uint32_t>(0, 0, 0, 0);
     RGraphicsPass pass = comp.add_graphics_pass(gpI, compObj, &ForwardRenderComponentObj::on_graphics_pass);
-    pass.use_color_attachment(forwardComp.out_color_name(), RATTACHMENT_LOAD_OP_CLEAR, &componentI.clearColor);
-    pass.use_color_attachment(forwardComp.out_idflags_name(), RATTACHMENT_LOAD_OP_CLEAR, &idClearColor);
-    pass.use_depth_stencil_attachment(forwardComp.out_depth_stencil_name(), RATTACHMENT_LOAD_OP_CLEAR, &componentI.clearDepthStencil);
+    pass.use_color_attachment(compObj->colorAttachment, RATTACHMENT_LOAD_OP_CLEAR, &componentI.clearColor);
+    pass.use_color_attachment(compObj->idFlagsAttachment, RATTACHMENT_LOAD_OP_CLEAR, &idClearColor);
+    pass.use_depth_stencil_attachment(compObj->depthStencilAttachment, RATTACHMENT_LOAD_OP_CLEAR, &componentI.clearDepthStencil);
 
     return forwardComp;
+}
+
+RGraphImage ForwardRenderComponent::out_color_attachment()
+{
+    return mObj->colorAttachment;
+}
+
+RGraphImage ForwardRenderComponent::out_id_flags_attachment()
+{
+    return mObj->idFlagsAttachment;
 }
 
 void ForwardRenderComponent::set_mesh_pipeline(RPipeline meshPipeline)

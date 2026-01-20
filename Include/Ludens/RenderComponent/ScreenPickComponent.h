@@ -24,13 +24,9 @@ struct ScreenPickComponent : Handle<struct ScreenPickComponentObj>
 {
     static ScreenPickComponent add(RGraph graph, const ScreenPickComponentInfo& componentI);
 
+    RGraphImage attachment();
+
     void get_results(std::vector<ScreenPickResult>& results);
-
-    /// @brief get the name of the component
-    inline const char* component_name() const { return "screen_pick"; }
-
-    /// @brief get the name of the input ID color attachment
-    inline const char* input_name() const { return "input"; }
 };
 
 } // namespace LD

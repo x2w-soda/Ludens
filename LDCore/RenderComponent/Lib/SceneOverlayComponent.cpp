@@ -1,3 +1,5 @@
+#include <Ludens/DSA/HashMap.h>
+#include <Ludens/DSA/Vector.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Media/Model.h>
 #include <Ludens/Memory/Memory.h>
@@ -11,7 +13,6 @@
 #include <Ludens/RenderComponent/SceneOverlayComponent.h>
 
 #include <string>
-#include <unordered_map>
 
 namespace LD {
 
@@ -76,7 +77,7 @@ struct CopyPipeline : Handle<CopyPipelineObj>
         RPipelineBlendState blendStates[2];
         blendStates[0].enabled = false;
         blendStates[1].enabled = false;
-        std::vector<RVertexAttribute> attrs{
+        Vector<RVertexAttribute> attrs{
             {GLSL_TYPE_VEC2, 0, 0},                 // aPos
             {GLSL_TYPE_VEC2, sizeof(float) * 2, 0}, // aUV
         };
@@ -126,7 +127,7 @@ struct CopyPipeline : Handle<CopyPipelineObj>
     }
 };
 
-static std::unordered_map<std::string, SceneOverlayComponentObj*> sComponents;
+static HashMap<std::string, SceneOverlayComponentObj*> sComponents;
 static CopyPipeline sCopyPipeline;
 static OutlinePipeline sOutlinePipeline;
 static RMeshAmbientPipeline sMeshPipeline;
@@ -157,6 +158,10 @@ struct SceneOverlayComponentObj
     RPipeline copyPipeline;
     RSetPool outlineSetPool;
     RSetPool gizmoSetPool;
+    RGraphImage inColorAttachment;
+    RGraphImage inIDFlagsAttachment;
+    RGraphImage outColorAttachment;
+    RGraphImage outIDFlagsAttachment;
     Vec3 gizmoCenter;
     Color gizmoColorX;
     Color gizmoColorY;
@@ -167,7 +172,7 @@ struct SceneOverlayComponentObj
     SceneOverlayGizmo gizmoType;
     float gizmoScale;
     std::string name;
-    std::vector<Frame> frames;
+    Vector<Frame> frames;
 
     SceneOverlayComponentObj(RDevice device);
     ~SceneOverlayComponentObj();
@@ -182,6 +187,11 @@ struct SceneOverlayComponentObj
     void draw_translation_gizmo(RGraphicsPass pass, RCommandList list);
     void draw_rotation_gizmo(RGraphicsPass pass, RCommandList list);
     void draw_scale_gizmo(RGraphicsPass pass, RCommandList list);
+
+    inline const char* in_color_name() const { return "in_color"; }
+    inline const char* in_id_flags_name() const { return "in_idflags"; }
+    inline const char* out_color_name() const { return "out_color"; }
+    inline const char* out_id_flags_name() const { return "out_idflags"; }
 };
 
 SceneOverlayComponentObj::SceneOverlayComponentObj(RDevice device)
@@ -342,7 +352,7 @@ void SceneOverlayComponentObj::on_outline_graphics_pass(RGraphicsPass pass, RCom
     SceneOverlayComponentObj::Frame& frame = obj->frames[obj->device.get_frame_index()];
 
     RImageLayout layout;
-    RImage image = pass.get_image(SceneOverlayComponent(obj).in_idflags_name(), &layout);
+    RImage image = pass.get_image(obj->in_id_flags_name(), &layout);
     RSetImageUpdateInfo updateI = RUtil::make_single_set_image_update_info(frame.outlineSet, 0, RBINDING_TYPE_COMBINED_IMAGE_SAMPLER, &layout, &image);
     obj->device.update_set_images(1, &updateI);
 
@@ -361,8 +371,8 @@ void SceneOverlayComponentObj::on_gizmo_graphics_pass(RGraphicsPass pass, RComma
 
     // inputColorImage should already have outlines drawn, we now render Gizmos on top with MSAA
     RImageLayout layout;
-    RImage inputColorImage = pass.get_image(SceneOverlayComponent(obj).in_color_name(), &layout);
-    RImage inputIDFlagsImage = pass.get_image(SceneOverlayComponent(obj).in_idflags_name(), &layout);
+    RImage inputColorImage = pass.get_image(obj->in_color_name(), &layout);
+    RImage inputIDFlagsImage = pass.get_image(obj->in_id_flags_name(), &layout);
     RSetImageUpdateInfo updates[2];
     updates[0] = RUtil::make_single_set_image_update_info(frame.gizmoSet, 0, RBINDING_TYPE_COMBINED_IMAGE_SAMPLER, &layout, &inputColorImage);
     updates[1] = RUtil::make_single_set_image_update_info(frame.gizmoSet, 1, RBINDING_TYPE_COMBINED_IMAGE_SAMPLER, &layout, &inputIDFlagsImage);
@@ -561,10 +571,10 @@ SceneOverlayComponent SceneOverlayComponent::add(RGraph& graph, const SceneOverl
     SceneOverlayComponent overlayComp(obj);
 
     RComponent comp = graph.add_component(name.c_str());
-    comp.add_input_image(overlayComp.in_color_name(), info.colorFormat, info.width, info.height);
-    comp.add_input_image(overlayComp.in_idflags_name(), RFORMAT_RGBA8U, info.width, info.height);
-    comp.add_output_image(overlayComp.out_color_name(), info.colorFormat, info.width, info.height);
-    comp.add_output_image(overlayComp.out_idflags_name(), RFORMAT_RGBA8U, info.width, info.height);
+    obj->inColorAttachment = comp.add_input_image(obj->in_color_name(), info.colorFormat, info.width, info.height);
+    obj->inIDFlagsAttachment = comp.add_input_image(obj->in_id_flags_name(), RFORMAT_RGBA8U, info.width, info.height);
+    obj->outColorAttachment = comp.add_output_image(obj->out_color_name(), info.colorFormat, info.width, info.height);
+    obj->outIDFlagsAttachment = comp.add_output_image(obj->out_id_flags_name(), RFORMAT_RGBA8U, info.width, info.height);
 
     // Draw outline on top of input scene color, the input ID-flags is sampled to determine
     // the silhouette of the screen-space outlining algorithm.
@@ -575,8 +585,8 @@ SceneOverlayComponent SceneOverlayComponent::add(RGraph& graph, const SceneOverl
     gpI.name = outlineGPName.c_str();
     gpI.samples = RSAMPLE_COUNT_1_BIT;
     RGraphicsPass outlineGP = comp.add_graphics_pass(gpI, obj, &SceneOverlayComponentObj::on_outline_graphics_pass);
-    outlineGP.use_color_attachment(overlayComp.in_color_name(), RATTACHMENT_LOAD_OP_LOAD, nullptr);
-    outlineGP.use_image_sampled(overlayComp.in_idflags_name());
+    outlineGP.use_color_attachment(obj->inColorAttachment, RATTACHMENT_LOAD_OP_LOAD, nullptr);
+    outlineGP.use_image_sampled(obj->inIDFlagsAttachment);
 
     // Draw anti-aliased Gizmos with MSAA. We first copy input scene color and ID-flags to multi-sampled
     // color attachments before drawing some Gizmos on top of outlines.
@@ -584,10 +594,10 @@ SceneOverlayComponent SceneOverlayComponent::add(RGraph& graph, const SceneOverl
     gpI.name = gizmoGPName.c_str();
     gpI.samples = info.gizmoMSAA;
     RGraphicsPass gizmoGP = comp.add_graphics_pass(gpI, obj, &SceneOverlayComponentObj::on_gizmo_graphics_pass);
-    gizmoGP.use_color_attachment(overlayComp.out_color_name(), RATTACHMENT_LOAD_OP_DONT_CARE, nullptr);
-    gizmoGP.use_color_attachment(overlayComp.out_idflags_name(), RATTACHMENT_LOAD_OP_DONT_CARE, nullptr);
-    gizmoGP.use_image_sampled(overlayComp.in_color_name());
-    gizmoGP.use_image_sampled(overlayComp.in_idflags_name());
+    gizmoGP.use_color_attachment(obj->outColorAttachment, RATTACHMENT_LOAD_OP_DONT_CARE, nullptr);
+    gizmoGP.use_color_attachment(obj->outIDFlagsAttachment, RATTACHMENT_LOAD_OP_DONT_CARE, nullptr);
+    gizmoGP.use_image_sampled(obj->inColorAttachment);
+    gizmoGP.use_image_sampled(obj->inIDFlagsAttachment);
 
     return overlayComp;
 }
@@ -595,6 +605,26 @@ SceneOverlayComponent SceneOverlayComponent::add(RGraph& graph, const SceneOverl
 const char* SceneOverlayComponent::component_name() const
 {
     return mObj->name.c_str();
+}
+
+RGraphImage SceneOverlayComponent::in_color_attachment()
+{
+    return mObj->inColorAttachment;
+}
+
+RGraphImage SceneOverlayComponent::in_id_flags_attachment()
+{
+    return mObj->inIDFlagsAttachment;
+}
+
+RGraphImage SceneOverlayComponent::out_color_attachment()
+{
+    return mObj->outColorAttachment;
+}
+
+RGraphImage SceneOverlayComponent::out_id_flags_attachment()
+{
+    return mObj->outIDFlagsAttachment;
 }
 
 } // namespace LD

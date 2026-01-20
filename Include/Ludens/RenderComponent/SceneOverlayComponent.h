@@ -61,17 +61,10 @@ struct SceneOverlayComponent : Handle<struct SceneOverlayComponentObj>
     /// @warning returned pointer is transient
     const char* component_name() const;
 
-    /// @brief get the name of the input scene color attachment
-    inline const char* in_color_name() const { return "in_color"; }
-
-    /// @brief get the name of the input scene id-flags color attachment
-    inline const char* in_idflags_name() const { return "in_idflags"; }
-
-    /// @brief get the name of the output scene with overlays
-    inline const char* out_color_name() const { return "out_color"; }
-
-    /// @brief get the name of the output scene id-flags after rendering gizmos
-    inline const char* out_idflags_name() const { return "out_idflags"; }
+    RGraphImage in_color_attachment();
+    RGraphImage in_id_flags_attachment();
+    RGraphImage out_color_attachment();
+    RGraphImage out_id_flags_attachment();
 };
 
 } // namespace LD

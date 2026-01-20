@@ -1,9 +1,10 @@
+#include <Ludens/DSA/Vector.h>
 #include <Ludens/RenderBackend/RUtil.h>
 #include <Ludens/RenderComponent/Layout/SetLayouts.h>
 #include <Ludens/RenderComponent/ScreenPickComponent.h>
+
 #include <array>
 #include <cstring>
-#include <vector>
 
 #define MAX_QUERY_COUNT 8
 
@@ -69,10 +70,13 @@ struct ScreenPickComponentObj
     RShader shader;
     RSetPool setPool;
     RPipelineLayoutInfo pipelineLI;
+    RGraphImage attachment{};
     uint32_t frameIdx;
-    std::vector<Frame> frames;
+    Vector<Frame> frames;
 
     void init(RDevice device);
+    inline const char* component_name() const { return "screen_pick"; }
+    inline const char* input_name() const { return "input"; }
 
     static void on_release(void* user);
     static void on_compute_pass(RComputePass pass, RCommandList list, void* userData);
@@ -148,7 +152,7 @@ void ScreenPickComponentObj::on_compute_pass(RComputePass pass, RCommandList lis
     ScreenPickComponentObj* obj = (ScreenPickComponentObj*)userData;
     Frame& frame = obj->frames[obj->frameIdx];
 
-    RImage input = pass.get_image(ScreenPickComponent(obj).input_name());
+    RImage input = pass.get_image(obj->input_name());
 
     RImageLayout layout = RIMAGE_LAYOUT_GENERAL;
     RSetImageUpdateInfo imageUI = RUtil::make_single_set_image_update_info(frame.querySet, 0, RBINDING_TYPE_STORAGE_IMAGE, &layout, &input);
@@ -197,18 +201,23 @@ ScreenPickComponent ScreenPickComponent::add(RGraph graph, const ScreenPickCompo
 
     ScreenPickComponent pickComp(&sCompObj);
 
-    RComponent comp = graph.add_component(pickComp.component_name());
-    comp.add_input_image(pickComp.input_name(), RFORMAT_RGBA8U, screenWidth, screenHeight);
+    RComponent comp = graph.add_component(sCompObj.component_name());
+    sCompObj.attachment = comp.add_input_image(sCompObj.input_name(), RFORMAT_RGBA8U, screenWidth, screenHeight);
 
     RComputePassInfo cpI{};
-    cpI.name = pickComp.component_name();
+    cpI.name = sCompObj.component_name();
     RComputePass pass = comp.add_compute_pass(cpI, &sCompObj, &ScreenPickComponentObj::on_compute_pass);
-    pass.use_image_storage_read_only(pickComp.input_name());
+    pass.use_image_storage_read_only(sCompObj.attachment);
 
     return pickComp;
 }
 
-void ScreenPickComponent::get_results(std::vector<ScreenPickResult>& results)
+RGraphImage ScreenPickComponent::attachment()
+{
+    return mObj->attachment;
+}
+
+void ScreenPickComponent::get_results(Vector<ScreenPickResult>& results)
 {
     ScreenPickComponentObj::Frame& frame = mObj->frames[mObj->frameIdx];
 

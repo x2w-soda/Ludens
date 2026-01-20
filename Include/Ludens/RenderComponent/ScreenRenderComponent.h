@@ -20,11 +20,8 @@ struct ScreenRenderComponent : Handle<struct ScreenRenderComponentObj>
     /// @brief get the name of this component instance
     const char* component_name() const;
 
-    /// @brief get the name of the single IO image
-    inline const char* io_name() const { return "io"; }
-
-    /// @brief get the name of the optional sampled image
-    inline const char* sampled_name() const { return "sampled"; }
+    RGraphImage color_attachment();
+    RGraphImage sampled_attachment();
 
     /// @brief if a sampled image is supplied when adding the component, retrieve its image handle during on_draw callback
     RImage get_sampled_image();

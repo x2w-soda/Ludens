@@ -1,11 +1,12 @@
+#include <Ludens/DSA/Vector.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Header/Math/Vec2.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/RenderBackend/RUtil.h>
 #include <Ludens/RenderComponent/DualKawaseComponent.h>
 #include <Ludens/RenderComponent/Layout/SetLayouts.h>
+
 #include <array>
-#include <vector>
 
 #define MIP_COUNT 3
 
@@ -106,7 +107,10 @@ struct DualKawaseComponentObj
     RPipelineLayoutInfo blurPipelineLayout;
     RPipeline downSamplePipeline;
     RPipeline upSamplePipeline;
-    std::vector<Frame> frames;
+    RGraphImage inColorAttachment{};
+    RGraphImage outColorAttachment{};
+    RGraphImage mipColorAttachment[MIP_COUNT];
+    Vector<Frame> frames;
     Vec4 mixColorPC;
     uint32_t mipLevel;
     uint32_t frameIdx;
@@ -117,6 +121,10 @@ struct DualKawaseComponentObj
     void init(RDevice device, RFormat format, uint32_t width, uint32_t height);
 
     void invalidate_image(Frame& frame, uint32_t idx, RImage handle);
+
+    inline const char* component_name() const { return "dual_kawase"; }
+    inline const char* input_name() const { return "input"; }
+    inline const char* output_name() const { return "output"; }
 
     static void on_release(void* user);
     static void on_down_sample(RGraphicsPass pass, RCommandList list, void* user);
@@ -244,7 +252,7 @@ void DualKawaseComponentObj::on_down_sample(RGraphicsPass pass, RCommandList lis
     if (mipLevel == 0) // sample from component input
     {
         blurSet = frame.blurSets[MIP_COUNT];
-        sampled = pass.get_image(DualKawaseComponent(obj).input_name());
+        sampled = pass.get_image(obj->input_name());
         obj->invalidate_image(frame, MIP_COUNT, sampled);
     }
     else // sample from lower mip level
@@ -310,9 +318,9 @@ DualKawaseComponent DualKawaseComponent::add(RGraph graph, const DualKawaseCompo
     DualKawaseComponent kawaseComp(&sDKCompObj);
     RSamplerInfo sampler = {RFILTER_LINEAR, RFILTER_LINEAR, RSAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE};
 
-    RComponent comp = graph.add_component(kawaseComp.component_name());
-    comp.add_input_image(kawaseComp.input_name(), info.format, screenWidth, screenHeight);
-    comp.add_output_image(kawaseComp.output_name(), info.format, screenWidth, screenHeight, &sampler);
+    RComponent comp = graph.add_component(sDKCompObj.component_name());
+    sDKCompObj.inColorAttachment = comp.add_input_image(sDKCompObj.input_name(), info.format, screenWidth, screenHeight);
+    sDKCompObj.outColorAttachment = comp.add_output_image(sDKCompObj.output_name(), info.format, screenWidth, screenHeight, &sampler);
 
     uint32_t mipWidth = screenWidth;
     uint32_t mipHeight = screenHeight;
@@ -327,7 +335,7 @@ DualKawaseComponent DualKawaseComponent::add(RGraph graph, const DualKawaseCompo
 
         passName.back() = '0' + i;
         mipName.back() = '0' + i;
-        comp.add_private_image(mipName.c_str(), info.format, mipWidth, mipHeight, &sampler);
+        sDKCompObj.mipColorAttachment[i] = comp.add_private_image(mipName.c_str(), info.format, mipWidth, mipHeight, &sampler);
 
         RGraphicsPassInfo gpI;
         gpI.width = mipWidth;
@@ -337,14 +345,13 @@ DualKawaseComponent DualKawaseComponent::add(RGraph graph, const DualKawaseCompo
 
         if (i == 0)
         {
-            downSamplePass.use_image_sampled(kawaseComp.input_name());
-            downSamplePass.use_color_attachment(mipName.c_str(), RATTACHMENT_LOAD_OP_DONT_CARE, nullptr);
+            downSamplePass.use_image_sampled(sDKCompObj.inColorAttachment);
+            downSamplePass.use_color_attachment(sDKCompObj.mipColorAttachment[0], RATTACHMENT_LOAD_OP_DONT_CARE, nullptr);
         }
         else
         {
-            downSamplePass.use_color_attachment(mipName.c_str(), RATTACHMENT_LOAD_OP_DONT_CARE, nullptr);
-            mipName.back()--;
-            downSamplePass.use_image_sampled(mipName.c_str());
+            downSamplePass.use_color_attachment(sDKCompObj.mipColorAttachment[i], RATTACHMENT_LOAD_OP_DONT_CARE, nullptr);
+            downSamplePass.use_image_sampled(sDKCompObj.mipColorAttachment[i - 1]);
         }
     }
 
@@ -366,18 +373,27 @@ DualKawaseComponent DualKawaseComponent::add(RGraph graph, const DualKawaseCompo
 
         if (i == 0)
         {
-            upSamplePass.use_image_sampled(mipName.c_str());
-            upSamplePass.use_color_attachment(kawaseComp.output_name(), RATTACHMENT_LOAD_OP_DONT_CARE, nullptr);
+            upSamplePass.use_image_sampled(sDKCompObj.mipColorAttachment[0]);
+            upSamplePass.use_color_attachment(sDKCompObj.outColorAttachment, RATTACHMENT_LOAD_OP_DONT_CARE, nullptr);
         }
         else
         {
-            upSamplePass.use_image_sampled(mipName.c_str());
-            mipName.back()--;
-            upSamplePass.use_color_attachment(mipName.c_str(), RATTACHMENT_LOAD_OP_DONT_CARE, nullptr);
+            upSamplePass.use_image_sampled(sDKCompObj.mipColorAttachment[i]);
+            upSamplePass.use_color_attachment(sDKCompObj.mipColorAttachment[i - 1], RATTACHMENT_LOAD_OP_DONT_CARE, nullptr);
         }
     }
 
     return kawaseComp;
+}
+
+RGraphImage DualKawaseComponent::in_color_attachment()
+{
+    return mObj->inColorAttachment;
+}
+
+RGraphImage DualKawaseComponent::out_color_attachment()
+{
+    return mObj->outColorAttachment;
 }
 
 } // namespace LD

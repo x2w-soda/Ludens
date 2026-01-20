@@ -145,6 +145,8 @@ private: // instance members
     RImage mImageSlots[IMAGE_SLOT_COUNT];
     RectVertexBatch<sMaxRectCount> mRectBatch;
     RGraphicsPass mGraphicsPass;
+    RGraphImage mColorAttachment{};
+    RGraphImage mSampledAttachment{};
     uint32_t mImageCounter;
     uint32_t mBatchIdx;
     uint32_t mFrameIdx;
@@ -163,6 +165,8 @@ private: // instance members
     void flush_rects();
 
     int get_image_index(RImage image);
+    inline const char* io_name() const { return "io"; }
+    inline const char* sampled_name() const { return "sampled"; }
 };
 
 ScreenRenderComponentObj::ScreenRenderComponentObj(RDevice device, const char* name)
@@ -443,9 +447,9 @@ ScreenRenderComponent ScreenRenderComponent::add(RGraph graph, const ScreenRende
     RComponent comp = graph.add_component(screenRC.component_name());
 
     if (obj->mHasInputImage)
-        comp.add_io_image(screenRC.io_name(), info.format, obj->mScreenWidth, obj->mScreenHeight);
+        obj->mColorAttachment = comp.add_io_image(obj->io_name(), info.format, obj->mScreenWidth, obj->mScreenHeight);
     else
-        comp.add_output_image(screenRC.io_name(), info.format, obj->mScreenWidth, obj->mScreenHeight);
+        obj->mColorAttachment = comp.add_output_image(obj->io_name(), info.format, obj->mScreenWidth, obj->mScreenHeight);
 
     RGraphicsPassInfo gpI{};
     gpI.name = screenRC.component_name();
@@ -456,20 +460,20 @@ ScreenRenderComponent ScreenRenderComponent::add(RGraph graph, const ScreenRende
     if (obj->mHasInputImage)
     {
         // draw in screen space on top of previous image content
-        pass.use_color_attachment(screenRC.io_name(), RATTACHMENT_LOAD_OP_LOAD, nullptr);
+        pass.use_color_attachment(obj->mColorAttachment, RATTACHMENT_LOAD_OP_LOAD, nullptr);
     }
     else
     {
         // use clear color to initialize new image content
         RClearColorValue tmpClearColor = RUtil::make_clear_color(info.clearColor);
-        pass.use_color_attachment(screenRC.io_name(), RATTACHMENT_LOAD_OP_CLEAR, &tmpClearColor);
+        pass.use_color_attachment(obj->mColorAttachment, RATTACHMENT_LOAD_OP_CLEAR, &tmpClearColor);
     }
 
     if (obj->mHasSampledImage)
     {
         // conditional input image with the same dimensions as color attachment
-        comp.add_input_image(screenRC.sampled_name(), info.format, obj->mScreenWidth, obj->mScreenHeight);
-        pass.use_image_sampled(screenRC.sampled_name());
+        obj->mSampledAttachment = comp.add_input_image(obj->sampled_name(), info.format, obj->mScreenWidth, obj->mScreenHeight);
+        pass.use_image_sampled(obj->mSampledAttachment);
     }
 
     return screenRC;
@@ -480,11 +484,21 @@ const char* ScreenRenderComponent::component_name() const
     return mObj->mName.c_str();
 }
 
+RGraphImage ScreenRenderComponent::color_attachment()
+{
+    return mObj->mColorAttachment;
+}
+
+RGraphImage ScreenRenderComponent::sampled_attachment()
+{
+    return mObj->mSampledAttachment;
+}
+
 RImage ScreenRenderComponent::get_sampled_image()
 {
     LD_ASSERT(mObj->mHasSampledImage && mObj->mGraphicsPass);
 
-    return mObj->mGraphicsPass.get_image(this->sampled_name());
+    return mObj->mGraphicsPass.get_image(mObj->sampled_name());
 }
 
 void ScreenRenderComponent::get_screen_extent(uint32_t& screenWidth, uint32_t& screenHeight)

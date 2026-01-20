@@ -26,19 +26,10 @@ struct ForwardRenderComponent : Handle<struct ForwardRenderComponentObj>
     typedef void (*RenderCallback)(ForwardRenderComponent renderer, void* user);
 
     /// @brief adds the component to render graph
-    static ForwardRenderComponent add(RGraph graph, const ForwardRenderComponentInfo& componentI, RSet frameSet, RenderCallback callback, void* user);
+    static ForwardRenderComponent add(RGraph graph, const ForwardRenderComponentInfo& componentI, RenderCallback callback, void* user);
 
-    /// @brief get the name of this component
-    inline const char* component_name() const { return "forward"; }
-
-    /// @brief get the name of the output color attachment
-    inline const char* out_color_name() const { return "out_color"; }
-
-    /// @brief get the name of the output ID-flags color attachment, with RFORMAT_RGBA8U
-    inline const char* out_idflags_name() const { return "out_idflags"; }
-
-    /// @brief get the name of the output depth stencil attachment
-    inline const char* out_depth_stencil_name() const { return "out_depth_stencil"; }
+    RGraphImage out_color_attachment();
+    RGraphImage out_id_flags_attachment();
 
     /// @brief set the pipeline used to draw RMesh
     /// @param meshPipeline mesh pipeline handle, must adhere to mesh pipeline layout and mesh vertex layout
