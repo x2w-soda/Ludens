@@ -41,6 +41,9 @@ struct RGraphImageObj
     RFormat format;
     uint32_t width;
     uint32_t height;
+
+    inline bool is_input_image() const { return type == NODE_TYPE_INPUT || type == NODE_TYPE_IO; }
+    inline bool is_output_image() const { return type == NODE_TYPE_OUTPUT || type == NODE_TYPE_IO; }
 };
 
 struct RGraphicsPassColorAttachment
@@ -62,7 +65,7 @@ struct RComponentPassObj
     RComponentObj* compObj;                        /// owning component
     RPipelineStageFlags stageFlags;                /// compute pass stages
     RAccessFlags accessFlags;                      /// compute pass access
-    void* userData;                                /// arbitrary user data
+    void* user;                                    /// arbitrary user data
     bool isCallbackScope;                          /// whether the component is within the RCommandList recording scope
     bool isComputePass;                            /// distinguishes between a GraphicsPass and ComputePass
     HashMap<Hash32, RGraphImageUsage> imageUsages; /// track usages of images in this component

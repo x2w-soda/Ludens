@@ -23,14 +23,16 @@ struct RGraphObj
     RDevice device;
     RCommandList list;
     RFence frameComplete;
+    RGraphPrePassCallback prePassCB = nullptr;
     HashMap<Hash32, RComponent> components;
     Vector<RComponentPassObj*> passOrder;
     HashMap<WindowID, RGraphSwapchain> swapchains;
     uint32_t screenWidth;
     uint32_t screenHeight;
+    void* user = nullptr;
 
-    RImage get_or_create_image(RComponentObj* comp, Hash32 name, RFormat format, uint32_t width, uint32_t height);
-    RImage get_or_create_ms_image(RComponentObj* comp, Hash32 name, RFormat format, uint32_t width, uint32_t height);
+    void record_compute_pass(RComputePassObj* pass, RCommandList list, uint32_t passIdx);
+    void record_graphics_pass(RGraphicsPassObj* pass, RCommandList list, uint32_t passIdx);
 };
 
 } // namespace LD

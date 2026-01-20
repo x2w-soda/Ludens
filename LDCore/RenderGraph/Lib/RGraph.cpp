@@ -286,7 +286,7 @@ static RImage get_or_create_ms_image(RDevice device, RComponentObj* comp, Hash32
     return multiSampledState.handle;
 }
 
-static void topological_visit(HashSet<uint32_t>& visited, Vector<RComponentPassObj*>& order, RComponentPassObj* passObj)
+static void topological_visit(HashSet<Hash32>& visited, Vector<RComponentPassObj*>& order, RComponentPassObj* passObj)
 {
     if (visited.contains(passObj->name))
         return;
@@ -309,7 +309,7 @@ static void topological_sort(const HashMap<Hash32, RComponent>& components, Vect
 {
     LD_PROFILE_SCOPE;
 
-    HashSet<uint32_t> visited;
+    HashSet<Hash32> visited;
 
     for (auto& compIte : components)
     {
@@ -327,25 +327,26 @@ static void topological_sort(const HashMap<Hash32, RComponent>& components, Vect
     std::reverse(order.begin(), order.end());
 }
 
-static void record_graphics_pass(RGraphObj* graphObj, RGraphicsPassObj* passObj, RComponentObj* compObj, RCommandList list, uint32_t passIdx)
+void RGraphObj::record_graphics_pass(RGraphicsPassObj* pass, RCommandList list, uint32_t passIdx)
 {
-    uint32_t colorAttachmentCount = (uint32_t)passObj->colorAttachments.size();
+    RComponentObj* comp = pass->compObj;
+    uint32_t colorAttachmentCount = (uint32_t)pass->colorAttachments.size();
     Vector<RImage> colorHandles(colorAttachmentCount);
     Vector<RImage> resolveHandles(colorAttachmentCount);
     RImage depthStencilHandle = {};
 
     // build render pass info
     RPassInfo passI = {};
-    passI.samples = passObj->samples;
+    passI.samples = pass->samples;
     passI.colorAttachmentCount = colorAttachmentCount;
-    passI.colorAttachments = passObj->colorAttachmentInfos.data();
+    passI.colorAttachments = pass->colorAttachmentInfos.data();
 
-    bool hasMultiSampleResolve = passObj->samples != RSAMPLE_COUNT_1_BIT;
+    bool hasMultiSampleResolve = pass->samples != RSAMPLE_COUNT_1_BIT;
 
     if (hasMultiSampleResolve)
     {
-        passObj->resolveAttachmentInfos.resize(colorAttachmentCount);
-        passI.colorResolveAttachments = passObj->resolveAttachmentInfos.data();
+        pass->resolveAttachmentInfos.resize(colorAttachmentCount);
+        passI.colorResolveAttachments = pass->resolveAttachmentInfos.data();
     }
 
     // retrieve color attachment handles
@@ -353,27 +354,27 @@ static void record_graphics_pass(RGraphObj* graphObj, RGraphicsPassObj* passObj,
     {
         LD_PROFILE_SCOPE_NAME("render pass color attachments");
 
-        RGraphicsPassColorAttachment* attachment = passObj->colorAttachments.data() + colorIdx;
-        RPassColorAttachment* colorAttachmentInfo = passObj->colorAttachmentInfos.data() + colorIdx;
+        RGraphicsPassColorAttachment* attachment = pass->colorAttachments.data() + colorIdx;
+        RPassColorAttachment* colorAttachmentInfo = pass->colorAttachmentInfos.data() + colorIdx;
 
         // pass layout should already be decided upon declaration
         LD_ASSERT(colorAttachmentInfo->passLayout != RIMAGE_LAYOUT_UNDEFINED);
 
         Hash32 srcOutputName = attachment->name;
-        RComponentObj* srcCompObj = compObj;
+        RComponentObj* srcCompObj = comp;
         const RGraphImageObj* image = dereference_image(&srcCompObj, &srcOutputName);
         RComponentStorage& compStorage = sStorages[srcCompObj->name];
 
         LD_ASSERT(compStorage.images.contains(srcOutputName));
         ImageState* imageState = &compStorage.images[srcOutputName];
-        RImage imageHandle = get_or_create_image(graphObj->device, srcCompObj, srcOutputName);
+        RImage imageHandle = get_or_create_image(device, srcCompObj, srcOutputName);
 
         if (hasMultiSampleResolve)
         {
             // get or create multi-sampled image to use as color attachment,
             // using the same dimensions as the resolve attachment except the sample count.
             LD_ASSERT(compStorage.msImages.contains(srcOutputName));
-            RImage msImageHandle = get_or_create_ms_image(graphObj->device, srcCompObj, srcOutputName, imageHandle.format(), imageHandle.width(), imageHandle.height());
+            RImage msImageHandle = get_or_create_ms_image(device, srcCompObj, srcOutputName, imageHandle.format(), imageHandle.width(), imageHandle.height());
             ImageState* msImageState = &compStorage.msImages[srcOutputName];
             resolveHandles[colorIdx] = imageHandle; // single sample resolve attachment
             colorHandles[colorIdx] = msImageHandle; // multi-sampled color attachment
@@ -384,7 +385,7 @@ static void record_graphics_pass(RGraphObj* graphObj, RGraphicsPassObj* passObj,
                 resolveAttachmentLoadOp = RATTACHMENT_LOAD_OP_DONT_CARE;
 
             // update single-sample resolve attachment state
-            RPassResolveAttachment* resolveAttachmentInfo = passObj->resolveAttachmentInfos.data() + colorIdx;
+            RPassResolveAttachment* resolveAttachmentInfo = pass->resolveAttachmentInfos.data() + colorIdx;
             resolveAttachmentInfo->initialLayout = imageState->lastLayout;
             resolveAttachmentInfo->passLayout = RIMAGE_LAYOUT_COLOR_ATTACHMENT;
             resolveAttachmentInfo->loadOp = resolveAttachmentLoadOp;
@@ -416,16 +417,16 @@ static void record_graphics_pass(RGraphObj* graphObj, RGraphicsPassObj* passObj,
     // clear colors
     Vector<RClearColorValue> clearColors(colorAttachmentCount);
     for (size_t i = 0; i < clearColors.size(); i++)
-        clearColors[i] = passObj->colorAttachments[i].clearValue.value_or(RClearColorValue{});
+        clearColors[i] = pass->colorAttachments[i].clearValue.value_or(RClearColorValue{});
 
     // retrieve depth stencil attachment handle
-    if (passObj->hasDepthStencil)
+    if (pass->hasDepthStencil)
     {
         // pass layout should already be decided upon declaration
-        LD_ASSERT(passObj->depthStencilAttachmentInfo.passLayout != RIMAGE_LAYOUT_UNDEFINED);
+        LD_ASSERT(pass->depthStencilAttachmentInfo.passLayout != RIMAGE_LAYOUT_UNDEFINED);
 
-        Hash32 srcOutputName = passObj->depthStencilAttachment.name;
-        RComponentObj* srcCompObj = compObj;
+        Hash32 srcOutputName = pass->depthStencilAttachment.name;
+        RComponentObj* srcCompObj = comp;
         const RGraphImageObj* depthStencilDecl = dereference_image(&srcCompObj, &srcOutputName);
         srcCompObj = depthStencilDecl->compObj;
         srcOutputName = depthStencilDecl->name;
@@ -434,45 +435,45 @@ static void record_graphics_pass(RGraphObj* graphObj, RGraphicsPassObj* passObj,
 
         if (hasMultiSampleResolve)
         {
-            imageHandle = get_or_create_ms_image(graphObj->device, srcCompObj, srcOutputName, depthStencilDecl->format, depthStencilDecl->width, depthStencilDecl->height);
+            imageHandle = get_or_create_ms_image(device, srcCompObj, srcOutputName, depthStencilDecl->format, depthStencilDecl->width, depthStencilDecl->height);
             ImageState& msImageState = compStorage.msImages[srcOutputName];
 
-            passObj->depthStencilAttachmentInfo.initialLayout = msImageState.lastLayout;
-            msImageState.lastLayout = passObj->depthStencilAttachmentInfo.passLayout;
+            pass->depthStencilAttachmentInfo.initialLayout = msImageState.lastLayout;
+            msImageState.lastLayout = pass->depthStencilAttachmentInfo.passLayout;
             msImageState.handle = imageHandle;
         }
         else
         {
-            imageHandle = get_or_create_image(graphObj->device, srcCompObj, srcOutputName);
+            imageHandle = get_or_create_image(device, srcCompObj, srcOutputName);
             ImageState& imageState = compStorage.images[srcOutputName];
 
-            passObj->depthStencilAttachmentInfo.initialLayout = imageState.lastLayout;
-            imageState.lastLayout = passObj->depthStencilAttachmentInfo.passLayout;
+            pass->depthStencilAttachmentInfo.initialLayout = imageState.lastLayout;
+            imageState.lastLayout = pass->depthStencilAttachmentInfo.passLayout;
             imageState.handle = imageHandle;
         }
 
-        passI.depthStencilAttachment = &passObj->depthStencilAttachmentInfo;
+        passI.depthStencilAttachment = &pass->depthStencilAttachmentInfo;
         depthStencilHandle = imageHandle;
     }
 
     // clear depth stencil
     RClearDepthStencilValue clearDepthStencil{};
-    if (passObj->hasDepthStencil && passObj->depthStencilAttachment.clearValue.has_value())
-        clearDepthStencil = passObj->depthStencilAttachment.clearValue.value();
+    if (pass->hasDepthStencil && pass->depthStencilAttachment.clearValue.has_value())
+        clearDepthStencil = pass->depthStencilAttachment.clearValue.value();
 
     // dependency on previous pass
-    if (passIdx > 0 && has_pass_dependency(graphObj->passOrder[passIdx - 1], graphObj->passOrder[passIdx], passObj->passDep))
-        passI.dependency = &passObj->passDep;
+    if (passIdx > 0 && has_pass_dependency(passOrder[passIdx - 1], passOrder[passIdx], pass->passDep))
+        passI.dependency = &pass->passDep;
 
     // perform image layout transitions for sampled images, right before render pass
-    for (Hash32 imageName : passObj->sampledImages)
+    for (Hash32 imageName : pass->sampledImages)
     {
         LD_PROFILE_SCOPE_NAME("render pass sampled images");
 
-        RGraphImageUsage passUsage = passObj->imageUsages[imageName];
+        RGraphImageUsage passUsage = pass->imageUsages[imageName];
         LD_ASSERT(passUsage == RGRAPH_IMAGE_USAGE_SAMPLED);
 
-        RComponentObj* srcCompObj = compObj;
+        RComponentObj* srcCompObj = comp;
         dereference_image(&srcCompObj, &imageName);
         RComponentStorage& storage = sStorages[srcCompObj->name];
         ImageState* state = &storage.images[imageName];
@@ -484,8 +485,8 @@ static void record_graphics_pass(RGraphObj* graphObj, RGraphicsPassObj* passObj,
     }
 
     RPassBeginInfo passBI{
-        .width = passObj->width,
-        .height = passObj->height,
+        .width = pass->width,
+        .height = pass->height,
         .depthStencilAttachment = depthStencilHandle,
         .colorAttachmentCount = (uint32_t)colorHandles.size(),
         .colorAttachments = colorHandles.data(),
@@ -496,26 +497,28 @@ static void record_graphics_pass(RGraphObj* graphObj, RGraphicsPassObj* passObj,
     };
 
     list.cmd_begin_pass(passBI);
-    passObj->isCallbackScope = true;
-    passObj->callback({passObj}, list, passObj->userData);
-    passObj->isCallbackScope = false;
+    pass->isCallbackScope = true;
+    pass->callback({pass}, list, pass->user);
+    pass->isCallbackScope = false;
     list.cmd_end_pass();
 }
 
-static void record_compute_pass(RGraphObj* graphObj, RComputePassObj* passObj, RComponentObj* compObj, RCommandList list, uint32_t passIdx)
+void RGraphObj::record_compute_pass(RComputePassObj* pass, RCommandList list, uint32_t passIdx)
 {
+    RComponentObj* comp = pass->compObj;
+
     // perform image layout transitions for storage images before dispatch,
     // storage images need to be in RIMAGE_LAYOUT_GENERAL
-    for (Hash32 imageName : passObj->storageImages)
+    for (Hash32 imageName : pass->storageImages)
     {
         LD_PROFILE_SCOPE_NAME("compute pass storage images");
 
-        RGraphImageUsage passUsage = passObj->imageUsages[imageName];
+        RGraphImageUsage passUsage = pass->imageUsages[imageName];
         LD_ASSERT(passUsage == RGRAPH_IMAGE_USAGE_STORAGE_READ_ONLY);
 
         RComponentObj* srcCompObj = nullptr;
-        dereference_image(&compObj, &imageName);
-        ImageState& state = sStorages[compObj->name].images[imageName];
+        dereference_image(&comp, &imageName);
+        ImageState& state = sStorages[comp->name].images[imageName];
 
         RImage image = state.handle;
         RImageMemoryBarrier barrier = RUtil::make_image_memory_barrier(image, state.lastLayout, RIMAGE_LAYOUT_GENERAL, 0, RACCESS_SHADER_READ_BIT);
@@ -523,15 +526,15 @@ static void record_compute_pass(RGraphObj* graphObj, RComputePassObj* passObj, R
         state.lastLayout = RIMAGE_LAYOUT_GENERAL;
     }
 
-    passObj->isCallbackScope = true;
-    passObj->callback({passObj}, list, passObj->userData);
-    passObj->isCallbackScope = false;
+    pass->isCallbackScope = true;
+    pass->callback({pass}, list, pass->user);
+    pass->isCallbackScope = false;
 }
 
 static void save_graph_to_dot(RGraphObj* graphObj, const char* path)
 {
     std::ostringstream os;
-    std::filesystem::path fsPath(path);
+    FS::Path fsPath(path);
     std::ofstream outFile(fsPath);
 
     os << "digraph RenderGraph {\n";
@@ -841,7 +844,7 @@ RGraphImage RComponent::add_io_image(const char* nameStr, RFormat format, uint32
     return RGraphImage(obj);
 }
 
-RGraphicsPass RComponent::add_graphics_pass(const RGraphicsPassInfo& gpI, void* userData, RGraphicsPassCallback callback)
+RGraphicsPass RComponent::add_graphics_pass(const RGraphicsPassInfo& gpI, void* user, RGraphicsPassCallback callback)
 {
     LD_PROFILE_SCOPE;
 
@@ -851,7 +854,7 @@ RGraphicsPass RComponent::add_graphics_pass(const RGraphicsPassInfo& gpI, void* 
     obj->debugName = gpI.name;
     obj->width = gpI.width;
     obj->height = gpI.height;
-    obj->userData = userData;
+    obj->user = user;
     obj->callback = callback;
     obj->compObj = mObj;
     obj->isCallbackScope = false;
@@ -871,14 +874,14 @@ RGraphicsPass RComponent::add_graphics_pass(const RGraphicsPassInfo& gpI, void* 
     return {obj};
 }
 
-RComputePass RComponent::add_compute_pass(const RComputePassInfo& cpI, void* userData, RComputePassCallback callback)
+RComputePass RComponent::add_compute_pass(const RComputePassInfo& cpI, void* user, RComputePassCallback callback)
 {
     LD_PROFILE_SCOPE;
 
     RComputePassObj* obj = heap_new<RComputePassObj>(MEMORY_USAGE_RENDER);
     obj->name = Hash32(cpI.name);
     obj->debugName = cpI.name;
-    obj->userData = userData;
+    obj->user = user;
     obj->callback = callback;
     obj->compObj = mObj;
     obj->isCallbackScope = false;
@@ -899,12 +902,12 @@ RGraph RGraph::create(const RGraphInfo& graphI)
     RGraphObj* obj = heap_new<RGraphObj>(MEMORY_USAGE_RENDER);
     obj->device = graphI.device;
     obj->list = graphI.list;
+    obj->prePassCB = graphI.prePassCB;
+    obj->user = graphI.user;
     obj->frameComplete = graphI.frameComplete;
     obj->swapchains.clear();
     obj->screenWidth = graphI.screenWidth;
     obj->screenHeight = graphI.screenHeight;
-
-    WindowRegistry windowReg = WindowRegistry::get();
 
     for (uint32_t i = 0; i < graphI.swapchainCount; i++)
     {
@@ -1025,6 +1028,9 @@ void RGraph::connect_image(RGraphImage src, RGraphImage dst)
     Hash32 srcOutImage = srcImageObj->name;
     Hash32 dstInImage = dstImageObj->name;
 
+    LD_ASSERT(srcImageObj->is_output_image());
+    LD_ASSERT(dstImageObj->is_input_image());
+
     RComponentObj* srcCompObj = srcImageObj->compObj;
     RComponentObj* dstCompObj = dstImageObj->compObj;
     LD_ASSERT(srcCompObj && dstCompObj);
@@ -1098,23 +1104,23 @@ void RGraph::submit(bool save)
     // recording
     RCommandList list = mObj->list;
     list.begin();
+
+    if (mObj->prePassCB)
+        mObj->prePassCB(list, mObj->user);
+
     for (uint32_t passIdx = 0; passIdx < (uint32_t)mObj->passOrder.size(); passIdx++)
     {
         LD_PROFILE_SCOPE_NAME("record pass");
 
         if (mObj->passOrder[passIdx]->isComputePass)
         {
-            RComputePassObj* passObj = (RComputePassObj*)mObj->passOrder[passIdx];
-            RComponentObj* compObj = passObj->compObj;
-
-            record_compute_pass(mObj, passObj, compObj, list, passIdx);
+            RComputePassObj* pass = (RComputePassObj*)mObj->passOrder[passIdx];
+            mObj->record_compute_pass(pass, list, passIdx);
             continue;
         }
 
-        RGraphicsPassObj* passObj = (RGraphicsPassObj*)mObj->passOrder[passIdx];
-        RComponentObj* compObj = passObj->compObj;
-
-        record_graphics_pass(mObj, passObj, compObj, list, passIdx);
+        RGraphicsPassObj* pass = (RGraphicsPassObj*)mObj->passOrder[passIdx];
+        mObj->record_graphics_pass(pass, list, passIdx);
     }
 
     size_t i = 0;
@@ -1170,8 +1176,10 @@ void RGraph::submit(bool save)
 
     list.end();
 
-    // submission
-    // TODO: multi queue submission to saturate GPU, need to expand RenderBackend API first
+    // TODO: Multi queue submission to saturate GPU, need to expand RenderBackend API first.
+    //       This is currently a very coarse one-shot submission.
+    //       1. monolithic command list
+    //       2. waits all swapchains to acquire images before work starts
     RQueue queue = mObj->device.get_graphics_queue();
     RSubmitInfo submitI{
         .waitCount = (uint32_t)swapchainCount,

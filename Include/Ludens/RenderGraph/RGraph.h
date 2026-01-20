@@ -83,11 +83,13 @@ struct RComponent : RHandle<struct RComponentObj>
     RGraphImage add_io_image(const char* name, RFormat format, uint32_t width, uint32_t height);
 
     /// @brief declare a graphics pass in this component for this frame
-    RGraphicsPass add_graphics_pass(const RGraphicsPassInfo& gpI, void* userData, RGraphicsPassCallback callback);
+    RGraphicsPass add_graphics_pass(const RGraphicsPassInfo& gpI, void* user, RGraphicsPassCallback callback);
 
     /// @brief declare a compute pass in this component for this frame
-    RComputePass add_compute_pass(const RComputePassInfo& cpI, void* userData, RComputePassCallback callback);
+    RComputePass add_compute_pass(const RComputePassInfo& cpI, void* user, RComputePassCallback callback);
 };
+
+typedef void (*RGraphPrePassCallback)(RCommandList list, void* user);
 
 struct RGraphSwapchainInfo
 {
@@ -104,6 +106,8 @@ struct RGraphInfo
     RCommandList list;
     RFence frameComplete;
     RGraphSwapchainInfo* swapchains;
+    RGraphPrePassCallback prePassCB;
+    void* user;
     uint32_t swapchainCount;
     uint32_t screenWidth;
     uint32_t screenHeight;
