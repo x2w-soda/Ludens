@@ -8,15 +8,10 @@ set(MODULE_LIB
     Lib/Gizmo.cpp
 )
 
-add_library(${MODULE_NAME}
-	${MODULE_INCLUDE}
-	${MODULE_LIB}
-)
-
-set_target_properties(${MODULE_NAME} PROPERTIES FOLDER ${LD_CORE_MODULE_FOLDER})
-
-target_include_directories(${MODULE_NAME} PRIVATE
-    ${LUDENS_INCLUDE_DIR}
+add_ludens_core_module(
+    NAME    ${MODULE_NAME}
+    INCLUDE ${MODULE_INCLUDE}
+    LIB     ${MODULE_LIB}
 )
 
 target_link_libraries(${MODULE_NAME} PUBLIC

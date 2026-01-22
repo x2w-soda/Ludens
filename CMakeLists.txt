@@ -52,6 +52,8 @@ include(CMake/FetchDependencies.cmake)
 # Find dependencies via CMake find_package
 include(CMake/FindDependencies.cmake)
 
+# Utilities to manage modules
+include(CMake/LudensModule.cmake)
 
 # build extra libs
 add_subdirectory(${LUDENS_EXTRA_DIR}/stb)
@@ -66,6 +68,7 @@ add_subdirectory(LDUtil/LudensLFS)
 # - user facing API in ${LUDENS_INCLUDE_DIR}
 
 set(LD_CORE_MODULE_FOLDER "LDCore")
+set(LD_CORE_MODULE_LIST "" CACHE STRING "" FORCE)
 add_subdirectory(LDCore/Header)
 add_subdirectory(LDCore/Profiler)
 add_subdirectory(LDCore/Memory)
@@ -99,35 +102,7 @@ add_subdirectory(LDCore/Project)
 
 add_library(LDCoreLibs INTERFACE)
 target_link_libraries(LDCoreLibs INTERFACE
-  LDProfiler
-  LDMemory
-  LDDSA
-  LDSystem
-  LDJobSystem
-  LDCommandLine
-  LDDSP
-  LDText
-  LDSerial
-  LDLexer
-  LDLog
-  LDEvent
-  LDLua
-  LDMedia
-  LDWindowRegistry
-  LDCamera
-  LDGizmo
-  LDRenderBackend
-  LDRenderGraph
-  LDRenderComponent
-  LDRenderServer
-  LDAudioBackend
-  LDAudioMixer
-  LDAudioServer
-  LDUI
-  LDAsset
-  LDDataRegistry
-  LDScene
-  LDProject
+    ${LD_CORE_MODULE_LIST}
 )
 
 # Ludens Runtime
@@ -153,12 +128,12 @@ add_subdirectory(LDBuilder/DocumentCompiler)
 
 add_library(LDBuilderLibs INTERFACE)
 target_link_libraries(LDBuilderLibs INTERFACE
-  LDRenderUtil
-  LDAudioUtil
-  LDAssetUtil
-  LDWin32Util
-  LDMeshUtil
-  LDDocumentCompiler
+    LDRenderUtil
+    LDAudioUtil
+    LDAssetUtil
+    LDWin32Util
+    LDMeshUtil
+    LDDocumentCompiler
 )
 
 add_subdirectory(LDBuilder/BuilderMain)
@@ -182,16 +157,16 @@ add_subdirectory(LDEditor/EditorUI)
 
 add_library(LDEditorLibs INTERFACE)
 target_link_libraries(LDEditorLibs INTERFACE
-  LDEditorContext
-  LDEditorWidget
-  LDTabControlWindow
-  LDSelectionWindow
-  LDVersionWindow
-  LDConsoleWindow
-  LDViewportWindow
-  LDOutlinerWindow
-  LDInspectorWindow
-  LDEditorUI
+    LDEditorContext
+    LDEditorWidget
+    LDTabControlWindow
+    LDSelectionWindow
+    LDVersionWindow
+    LDConsoleWindow
+    LDViewportWindow
+    LDOutlinerWindow
+    LDInspectorWindow
+    LDEditorUI
 )
 
 add_subdirectory(LDEditor/EditorMain)

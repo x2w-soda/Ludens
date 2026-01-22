@@ -52,11 +52,11 @@ set(MODULE_TEST
     Test/TOMLTest.cpp
 )
 
-add_library(${MODULE_NAME}
-    ${MODULE_LIB}
+add_ludens_core_module(
+    NAME    ${MODULE_NAME}
+    INCLUDE ${MODULE_INCLUDE}
+    LIB     ${MODULE_LIB}
 )
-
-set_target_properties(${MODULE_NAME} PROPERTIES FOLDER ${LD_CORE_MODULE_FOLDER})
 
 target_link_libraries(${MODULE_NAME} PUBLIC
     stb
@@ -72,31 +72,24 @@ target_link_libraries(${MODULE_NAME} PUBLIC
 )
 
 target_include_directories(${MODULE_NAME} PRIVATE
+    ${LUDENS_EXTRA_DIR}
     ${LUDENS_EXTRA_DIR}/rapidjson/include
     ${msdfgen_SOURCE_DIR}
     ${tinygltf_SOURCE_DIR}
     ${md4c_SOURCE_DIR}/src
     ${miniaudio_SOURCE_DIR}
     ${toml11_SOURCE_DIR}/include
-    ${LUDENS_INCLUDE_DIR}
-    ${LUDENS_EXTRA_DIR}
 )
 
 target_compile_definitions(${MODULE_NAME} PRIVATE
     RAPIDJSON_NOMEMBERITERATORCLASS
 )
 
-add_executable(${MODULE_TEST_NAME}
-    ${MODULE_TEST}
-)
-
-set_target_properties(${MODULE_TEST_NAME} PROPERTIES FOLDER ${LD_CORE_MODULE_FOLDER})
-
-target_include_directories(${MODULE_TEST_NAME} PRIVATE
-    ${LUDENS_INCLUDE_DIR}
-    ${LUDENS_SOURCE_DIR}
+add_ludens_core_module_test(
+    TEST_NAME ${MODULE_TEST_NAME}
+    TEST      ${MODULE_TEST}
 )
 
 target_link_libraries(${MODULE_TEST_NAME} PRIVATE
-    LDMedia
+    ${MODULE_NAME}
 )

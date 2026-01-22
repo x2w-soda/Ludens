@@ -4,12 +4,14 @@ set(MODULE_LIB
 	Lib/EditorUI.cpp
 	Lib/EditorTopBar.cpp
 	Lib/EditorWorkspace.cpp
+	Lib/EditorDialog.cpp
 )
 
 set(MODULE_INCLUDE
 	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorUI/EditorUI.h
 	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorUI/EditorTopBar.h
 	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorUI/EditorWorkspace.h
+	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorUI/EditorDialog.h
 )
 
 add_library(${MODULE_NAME}
