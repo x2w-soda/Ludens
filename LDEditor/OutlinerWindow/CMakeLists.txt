@@ -10,15 +10,13 @@ set(MODULE_LIB
 	Lib/ComponentMenu.cpp
 )
 
-add_library(${MODULE_NAME}
-	${MODULE_LIB}
-	${MODULE_INCLUDE}
+add_ludens_editor_module(
+    NAME    ${MODULE_NAME}
+    INCLUDE ${MODULE_INCLUDE}
+    LIB     ${MODULE_LIB}
 )
 
-set_target_properties(${MODULE_NAME} PROPERTIES FOLDER ${LD_EDITOR_MODULE_FOLDER})
-
 target_link_libraries(${MODULE_NAME} PRIVATE
-	LDCoreLibs
 	LDEditorContext
 )
 

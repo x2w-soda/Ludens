@@ -119,6 +119,7 @@ add_subdirectory(LDRuntime/RuntimeMain)
 # - links with LDCoreLibs
 
 set(LD_BUILDER_MODULE_FOLDER "LDBuilder")
+set(LD_BUILDER_MODULE_LIST "" CACHE STRING "" FORCE)
 add_subdirectory(LDBuilder/RenderUtil)
 add_subdirectory(LDBuilder/AudioUtil)
 add_subdirectory(LDBuilder/AssetUtil)
@@ -128,12 +129,7 @@ add_subdirectory(LDBuilder/DocumentCompiler)
 
 add_library(LDBuilderLibs INTERFACE)
 target_link_libraries(LDBuilderLibs INTERFACE
-    LDRenderUtil
-    LDAudioUtil
-    LDAssetUtil
-    LDWin32Util
-    LDMeshUtil
-    LDDocumentCompiler
+    ${LD_BUILDER_MODULE_LIST}
 )
 
 add_subdirectory(LDBuilder/BuilderMain)
@@ -144,6 +140,7 @@ add_subdirectory(LDBuilder/BuilderMain)
 # - links with LDCoreLibs and LDBuilderLibs
 
 set(LD_EDITOR_MODULE_FOLDER "LDEditor")
+set(LD_EDITOR_MODULE_LIST "" CACHE STRING "" FORCE)
 add_subdirectory(LDEditor/EditorContext)
 add_subdirectory(LDEditor/EditorWidget)
 add_subdirectory(LDEditor/TabControlWindow)
@@ -157,16 +154,7 @@ add_subdirectory(LDEditor/EditorUI)
 
 add_library(LDEditorLibs INTERFACE)
 target_link_libraries(LDEditorLibs INTERFACE
-    LDEditorContext
-    LDEditorWidget
-    LDTabControlWindow
-    LDSelectionWindow
-    LDVersionWindow
-    LDConsoleWindow
-    LDViewportWindow
-    LDOutlinerWindow
-    LDInspectorWindow
-    LDEditorUI
+    ${LD_EDITOR_MODULE_LIST}
 )
 
 add_subdirectory(LDEditor/EditorMain)
