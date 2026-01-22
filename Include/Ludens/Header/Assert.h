@@ -23,7 +23,7 @@
         }                                                                      \
     while (0)
 #else
-#define LD_ASSERT
+#define LD_ASSERT(EXPR) ((void)0)
 #endif
 
 #ifndef LD_UNREACHABLE

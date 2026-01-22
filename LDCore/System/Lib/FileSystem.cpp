@@ -158,7 +158,7 @@ bool read_file_to_vector(const FS::Path& path, Vector<byte>& v, std::string& err
 {
     LD_PROFILE_SCOPE;
 
-    uint64_t fileSize;
+    uint64_t fileSize = 0;
     if (!get_file_size(path, fileSize, err))
         return false;
 

@@ -235,9 +235,9 @@ bool TinygltfLoader::load_mesh(tinygltf::Mesh& tinyMesh, MeshNode* node)
         const float* posBuffer = nullptr;
         const float* normalBuffer = nullptr;
         const float* uv0Buffer = nullptr;
-        uint32_t posStride;
-        uint32_t normalStride;
-        uint32_t uv0Stride;
+        uint32_t posStride = 0;
+        uint32_t normalStride = 0;
+        uint32_t uv0Stride = 0;
 
         if (tinyPrim.attributes.contains("POSITION"))
         {
@@ -266,6 +266,10 @@ bool TinygltfLoader::load_mesh(tinygltf::Mesh& tinyMesh, MeshNode* node)
 
         for (uint32_t v = 0; v < vertexCount; v++)
         {
+            LD_ASSERT(posStride > 0);
+            LD_ASSERT(normalStride > 0);
+            LD_ASSERT(uv0Stride > 0);
+
             MeshVertex& vert = mObj->vertices[mVertexBase++];
             vert.pos = Vec3::from_data(posBuffer + v * posStride);
 

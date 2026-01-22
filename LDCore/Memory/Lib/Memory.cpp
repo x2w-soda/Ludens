@@ -89,7 +89,7 @@ int get_memory_leaks(MemoryProfile* leaks)
 {
     int count = 0;
 
-    for (int i = 0; i < MEMORY_USAGE_ENUM_LAST; i++)
+    for (int i = 0; i < (int)MEMORY_USAGE_ENUM_LAST; i++)
     {
         if (sTable[i].profile.current == 0)
             continue;

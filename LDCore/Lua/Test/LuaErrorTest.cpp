@@ -1,5 +1,3 @@
-#pragma once
-
 #include "LuaTest.h"
 #include <string>
 #include <Extra/doctest/doctest.h>

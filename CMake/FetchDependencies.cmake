@@ -150,7 +150,7 @@ set(MSDF_ATLAS_MSDFGEN_EXTERNAL   ON  CACHE BOOL "" FORCE)
 set(MSDF_ATLAS_NO_ARTERY_FONT     ON  CACHE BOOL "" FORCE)
 set(MSDF_ATLAS_DYNAMIC_RUNTIME    ON  CACHE BOOL "" FORCE)
 FetchContent_MakeAvailable(msdfatlasgen)
-message(STATUS "LUDENS msdf-atlas-gen SOURCE DIR: ${msdfgen_SOURCE_DIR}")
+message(STATUS "LUDENS msdf-atlas-gen SOURCE DIR: ${msdfatlasgen_SOURCE_DIR}")
 
 ## Fetch Vulkan Memory Allocator
 

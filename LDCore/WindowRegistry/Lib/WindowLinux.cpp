@@ -1,6 +1,6 @@
 #include <Ludens/Header/Platform.h>
 #ifdef LD_PLATFORM_LINUX
-#include "WindowObj.h"
+#include "Window.h"
 
 namespace LD {
 

@@ -71,10 +71,11 @@ target_link_libraries(${MODULE_NAME} PUBLIC
     LDSerial
 )
 
-target_include_directories(${MODULE_NAME} PRIVATE
+target_include_directories(${MODULE_NAME} SYSTEM PRIVATE
     ${LUDENS_EXTRA_DIR}
     ${LUDENS_EXTRA_DIR}/rapidjson/include
     ${msdfgen_SOURCE_DIR}
+    ${msdfatlasgen_SOURCE_DIR}
     ${tinygltf_SOURCE_DIR}
     ${md4c_SOURCE_DIR}/src
     ${miniaudio_SOURCE_DIR}

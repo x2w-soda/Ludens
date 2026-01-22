@@ -42,6 +42,7 @@ void lz4_decompress(void* dst, size_t dstCapacity, const void* src, size_t compr
     LD_PROFILE_SCOPE;
 
     int result = ::LZ4_decompress_safe((const char*)src, (char*)dst, (int)compressedSize, (int)dstCapacity);
+    (void)result;
     // TODO: validate
 }
 

@@ -125,6 +125,8 @@ bool ReadFileTask::has_completed(bool& success, size_t& bytesRead) const
     case TASK_STATUS_IN_PROGRESS:
         bytesRead = mBytesRead.load();
         break;
+    default:
+        break;
     }
 
     return status == TASK_STATUS_SUCCESS || status == TASK_STATUS_FAILURE;
@@ -203,6 +205,8 @@ bool WriteFileTask::has_completed(bool& success, size_t& bytesWritten) const
         [[fallthrough]];
     case TASK_STATUS_IN_PROGRESS:
         bytesWritten = mBytesWritten.load();
+        break;
+    default:
         break;
     }
 

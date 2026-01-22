@@ -14,13 +14,13 @@ Buffer::Buffer()
 }
 
 Buffer::Buffer(const char* cstr)
-    : mSize(0), mCap(0), mData(nullptr)
+    : mSize(strlen(cstr)), mCap(0), mData(nullptr)
 {
     if (!cstr)
         return;
 
-    resize(strlen(cstr));
-    strncpy((char*)mData, cstr, mSize);
+    resize(mSize);
+    memcpy((char*)mData, cstr, mSize);
 }
 
 Buffer::Buffer(const Buffer& other)

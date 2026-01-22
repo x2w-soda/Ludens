@@ -55,6 +55,8 @@ static inline bool get_native_block_detail(MDBlockType inType, void* inDetail, M
     case MD_BLOCK_TYPE_H:
         outDetail.h.level = static_cast<MD_BLOCK_H_DETAIL*>(inDetail)->level;
         return true;
+    default:
+        break;
     }
 
     return false;
@@ -116,12 +118,14 @@ private:
     static int on_enter_span(MD_SPANTYPE type, void* detail, void* user)
     {
         MD4CParser& self = *(MD4CParser*)user;
+        (void)self;
         return 0;
     }
 
     static int on_leave_span(MD_SPANTYPE type, void* detail, void* user)
     {
         MD4CParser& self = *(MD4CParser*)user;
+        (void)self;
         return 0;
     }
 

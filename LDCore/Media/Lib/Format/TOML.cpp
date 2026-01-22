@@ -315,7 +315,7 @@ bool TOMLParser::parse(TOMLDocument dst, const View& view, std::string& error)
     return result.is_ok();
 }
 
-static bool parse_from_file(TOMLDocument dst, const FS::Path& path, std::string& error)
+bool TOMLParser::parse_from_file(TOMLDocument dst, const FS::Path& path, std::string& error)
 {
     std::vector<byte> file;
     if (!FS::read_file_to_vector(path, file, error))
@@ -498,6 +498,9 @@ struct TOMLWriterObj
             break;
         case SCOPE_ARRAY:
             scopeVal->as_array().push_back(toml::value(value));
+            break;
+        default:
+            LD_UNREACHABLE;
             break;
         }
     }

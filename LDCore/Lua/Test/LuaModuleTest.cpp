@@ -1,5 +1,3 @@
-#pragma once
-
 #include "LuaTest.h"
 #include <Extra/doctest/doctest.h>
 #include <Ludens/Lua/LuaModule.h>

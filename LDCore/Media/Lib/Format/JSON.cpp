@@ -189,7 +189,7 @@ JSONValue JSONValue::get_member(const char* member)
 
 JSONValue JSONValue::get_index(int idx)
 {
-    if (!is_array() || idx < 0 || idx >= mObj->value.Size())
+    if (!is_array() || idx < 0 || idx >= (int)mObj->value.Size())
         return {};
 
     JSONDocumentObj* doc = mObj->doc;
@@ -280,6 +280,7 @@ const char* get_error_code_cstr(rapidjson::ParseErrorCode code)
         KASE(kParseErrorNumberMissFraction);
         KASE(kParseErrorNumberMissExponent);
         KASE(kParseErrorTermination);
+        KASE(kParseErrorUnspecificSyntaxError);
     }
 
     return "unknown";

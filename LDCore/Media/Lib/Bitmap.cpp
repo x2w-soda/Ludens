@@ -1,3 +1,4 @@
+#include <Ludens/DSA/Vector.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Header/Bitwise.h>
 #include <Ludens/Header/Types.h>
@@ -8,7 +9,6 @@
 #include <Ludens/System/FileSystem.h>
 
 #include <cstring>
-#include <vector>
 
 #include <stb/stb_image.h>
 #include <stb/stb_image_write.h>
@@ -159,7 +159,7 @@ Bitmap Bitmap::create_cubemap_from_paths(const char** paths)
             layerSize = size * size * 4;
             dst = obj->data = (byte*)heap_malloc(6 * layerSize, MEMORY_USAGE_MEDIA);
         }
-        else if (x != size || y != size)
+        else if (x != (int)size || y != (int)size)
         {
             printf("cubemap faces vary in size, expected %dx%d for face %d, found %dx%d\n", (int)size, (int)size, i, x, y);
             goto failure;
@@ -229,7 +229,7 @@ Bitmap Bitmap::create_cubemap_from_file_data(uint32_t fileSizes[6], const void* 
     for (int i = 1; i < 6; i++)
     {
         faceData[i] = stbi_load_from_memory((const stbi_uc*)fileData[i], (int)fileSizes[i], &width, &height, &ch, STBI_rgb_alpha);
-        if (width != faceSize || height != faceSize)
+        if (width != (int)faceSize || height != (int)faceSize)
             return {}; // TODO: fix leak
     }
 
@@ -271,8 +271,7 @@ bool Bitmap::serialize(Serializer& serial, const Bitmap& bitmap)
 
     size_t dataSize = obj->width * obj->height * pixelSize;
     size_t sizeBound = lz4_compress_bound(dataSize);
-    std::vector<byte> compressed(sizeBound);
-    size_t us;
+    Vector<byte> compressed(sizeBound);
     size_t cmpSize = lz4_compress(compressed.data(), compressed.size(), obj->data, dataSize);
     compressed.resize(cmpSize);
 
@@ -293,7 +292,6 @@ bool Bitmap::deserialize(Deserializer& serial, Bitmap& bitmap)
     serial.read_u32(compressionU32);
 
     const BitmapFormat format = (BitmapFormat)formatU32;
-    const BitmapCompression compression = (BitmapCompression)compressionU32;
     const uint32_t pixelSize = get_pixel_size_from_format(format);
 
     LD_ASSERT(compression == BITMAP_COMPRESSION_LZ4);
@@ -305,7 +303,7 @@ bool Bitmap::deserialize(Deserializer& serial, Bitmap& bitmap)
     serial.advance(lz4BlockSize);
 
     size_t dataSize = width * height * pixelSize;
-    std::vector<byte> pixels(dataSize);
+    Vector<byte> pixels(dataSize);
     lz4_decompress(pixels.data(), pixels.size(), lz4BlockData, lz4BlockSize);
 
     bitmap = Bitmap::create_from_data(width, height, format, pixels.data());

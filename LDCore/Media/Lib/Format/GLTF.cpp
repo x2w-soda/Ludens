@@ -13,7 +13,7 @@ class GLTFEventParserObj
 {
 public:
     GLTFEventParserObj(const GLTFEventCallback& callbacks, void* user)
-        : mCallbacks(callbacks), mUser(user), mState(STATE_ZERO), mStringSlot(nullptr)
+        : mState(STATE_ZERO), mUser(user), mCallbacks(callbacks)
     {
     }
 
@@ -157,10 +157,10 @@ private:
     };
 
     State mState;
-    void* mUser;
     uint32_t mEscapeDepth = 0;
     Buffer mPrimitiveAttributeKey;
-    Buffer* mStringSlot;
+    Buffer* mStringSlot = nullptr;;
+    void* mUser = nullptr;
     GLTFEventCallback mCallbacks;
     GLTFAssetProp mAssetProp{};
     GLTFSceneProp mSceneProp{};
