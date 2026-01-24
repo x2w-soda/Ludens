@@ -134,7 +134,6 @@ static void glslang_reflect_spirv(const std::vector<uint32_t>& spirv, RShaderRef
 
     if (!shaderResources.push_constant_buffers.empty())
     {
-        spirv_cross::ID id = shaderResources.push_constant_buffers.front().id;
         spirv_cross::TypeID baseTypeID = shaderResources.push_constant_buffers.front().base_type_id;
         spirv_cross::SPIRType blockType = compiler.get_type(baseTypeID);
         const std::string& instanceName = shaderResources.push_constant_buffers.front().name;

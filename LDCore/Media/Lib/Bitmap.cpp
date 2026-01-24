@@ -294,8 +294,6 @@ bool Bitmap::deserialize(Deserializer& serial, Bitmap& bitmap)
     const BitmapFormat format = (BitmapFormat)formatU32;
     const uint32_t pixelSize = get_pixel_size_from_format(format);
 
-    LD_ASSERT(compression == BITMAP_COMPRESSION_LZ4);
-
     uint64_t lz4BlockSize;
     serial.read_u64(lz4BlockSize);
 

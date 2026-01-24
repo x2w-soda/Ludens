@@ -70,6 +70,8 @@ static inline bool get_gizmo_axis(SceneOverlayGizmoID id, GizmoAxis& axis)
     case SCENE_OVERLAY_GIZMO_ID_AXIS_Z:
         axis = GIZMO_AXIS_Z;
         return true;
+    default:
+        break;
     }
 
     return false;
@@ -88,6 +90,8 @@ static inline bool get_gizmo_plane(SceneOverlayGizmoID id, GizmoPlane& plane)
     case SCENE_OVERLAY_GIZMO_ID_PLANE_YZ:
         plane = GIZMO_PLANE_YZ;
         return true;
+    default:
+        break;
     }
 
     return false;
@@ -139,6 +143,8 @@ void ViewportWindowObj::pick_gizmo(SceneOverlayGizmoID id)
     case SCENE_OVERLAY_GIZMO_SCALE:
         if (get_gizmo_axis(id, axis))
             gizmo.begin_axis_scale(axis, gizmoCenter, subjectWorldTransform.scale);
+        break;
+    default:
         break;
     }
 }
@@ -222,6 +228,8 @@ void ViewportWindowObj::on_imgui(float delta)
             break;
         case KEY_CODE_3:
             gizmoType = SCENE_OVERLAY_GIZMO_SCALE;
+            break;
+        default:
             break;
         }
     }
@@ -419,6 +427,8 @@ void ViewportWindowObj::on_drag(MouseButton btn, const Vec2& dragPos, bool begin
         break;
     case GIZMO_CONTROL_AXIS_SCALE:
         worldT.scale = gizmo.get_axis_scale();
+        break;
+    default:
         break;
     }
 

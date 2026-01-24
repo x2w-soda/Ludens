@@ -1721,6 +1721,7 @@ static RPipeline vk_device_create_pipeline(RDeviceObj* baseSelf, const RPipeline
 {
     auto* self = (RDeviceVKObj*)baseSelf;
     auto* pipelineObj = (RPipelineVKObj*)basePipelineObj;
+    (void)self;
 
     // NOTE: here we only initialize the base pipeline properties,
     //       the actual graphics pipeline is created when variant properties

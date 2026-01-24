@@ -560,22 +560,20 @@ static void gl_set_pool_reset(RSetPoolObj* baseSelf)
 
 static RCommandList gl_command_pool_allocate(RCommandPoolObj* self, RCommandListObj* listObj)
 {
-    // TODO:
     auto* obj = (RCommandListGLObj*)listObj;
+    (void)self; // TODO:
 
     return RCommandList(obj);
 }
 
 static void gl_command_pool_reset(RCommandPoolObj* self)
 {
-    // TODO:
+    (void)self; // TODO:
 }
 
 static void gl_queue_wait_idle(RQueueObj* baseSelf)
 {
-    // TODO: flush all submissions
-
-    (void)baseSelf;
+    (void)baseSelf; // TODO: flush all submissions
 }
 
 static void gl_queue_submit(RQueueObj* baseSelf, const RSubmitInfo& submitI, RFence fence)
@@ -583,6 +581,7 @@ static void gl_queue_submit(RQueueObj* baseSelf, const RSubmitInfo& submitI, RFe
     LD_PROFILE_SCOPE;
 
     auto* self = (RQueueGLObj*)baseSelf;
+    (void)self;
 
     // TODO: simulate semaphore synchronization
     LD_ASSERT(submitI.waitCount == 0);
@@ -639,6 +638,7 @@ void gl_create_device(struct RDeviceObj* baseObj, const RDeviceInfo& info)
     // NOTE: glfwMakeContextCurrent() should already be called
     //       so that there is a valid OpenGL context on main thread.
     int ret = gladLoadGLLoader((GLADloadproc)glfwGetProcAddress);
+    (void)ret; // TODO:
     LD_ASSERT(ret != 0);
 
     // extract limits
