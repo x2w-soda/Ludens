@@ -416,15 +416,17 @@ struct TOMLWriterObj
         LD_ASSERT(scope.size() > 0 && scope.top().type == SCOPE_TABLE);
         LD_ASSERT(!key.empty());
 
-        toml::value* parentTable = scope.top().value;
-
         TOMLWriterScope newScope;
         newScope.type = SCOPE_INLINE_TABLE;
         newScope.value = heap_new<toml::value>(MEMORY_USAGE_MEDIA);
         *newScope.value = toml::table();
         newScope.value->as_table_fmt().fmt = toml::table_format::oneline;
 
-        parentTable->as_table()[key] = newScope.value;
+        if (!key.empty())
+        {
+            newScope.tableName = key;
+            key.clear();
+        }
 
         scope.push(newScope);
         key.clear();
@@ -457,7 +459,7 @@ struct TOMLWriterObj
 
         TOMLWriterScopeType type = scope.top().type;
 
-        if (type == SCOPE_TABLE)
+        if (type == SCOPE_TABLE || type == SCOPE_INLINE_TABLE)
         {
             toml::value* parentTable = scope.top().value;
 
@@ -476,6 +478,8 @@ struct TOMLWriterObj
             toml::value* parentArray = scope.top().value;
             parentArray->as_array().push_back(std::move(*popValue));
         }
+        else
+            LD_UNREACHABLE;
 
         heap_delete<toml::value>(popValue);
     }
@@ -630,7 +634,7 @@ TOMLWriter TOMLWriter::end_array_table()
 
 TOMLWriter TOMLWriter::key(const char* name)
 {
-    LD_ASSERT(is_table_scope());
+    LD_ASSERT(is_table_scope() || is_inline_table_scope());
     LD_ASSERT(mObj->key.empty()); // repeated key()
 
     mObj->key = name;

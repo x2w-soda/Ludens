@@ -137,6 +137,7 @@ struct TOMLWriter : Handle<struct TOMLWriterObj>
     TOMLWriter begin();
     TOMLWriter end(std::string& outString);
 
+    inline TOMLWriter begin_array(const char* name) { return key(name).begin_array(); }
     TOMLWriter begin_array();
     TOMLWriter end_array();
 
