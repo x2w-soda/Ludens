@@ -165,8 +165,8 @@ private: // instance members
     void flush_rects();
 
     int get_image_index(RImage image);
-    inline const char* io_name() const { return "io"; }
-    inline const char* sampled_name() const { return "sampled"; }
+    inline const char* io_name() const { return "IO"; }
+    inline const char* sampled_name() const { return "Sampled"; }
 };
 
 ScreenRenderComponentObj::ScreenRenderComponentObj(RDevice device, const char* name)
@@ -178,7 +178,7 @@ ScreenRenderComponentObj::ScreenRenderComponentObj(RDevice device, const char* n
     mBatchIdx = 0;
     mImageCounter = 0;
     mList = {};
-    mName = "screen_render_";
+    mName = "SRC";
     mName += name;
 
     RBufferInfo bufferI = {
@@ -452,7 +452,7 @@ ScreenRenderComponent ScreenRenderComponent::add(RGraph graph, const ScreenRende
         obj->mColorAttachment = comp.add_output_image(obj->io_name(), info.format, obj->mScreenWidth, obj->mScreenHeight);
 
     RGraphicsPassInfo gpI{};
-    gpI.name = screenRC.component_name();
+    gpI.name = "GP";
     gpI.width = obj->mScreenWidth;
     gpI.height = obj->mScreenHeight;
 

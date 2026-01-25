@@ -545,7 +545,7 @@ SceneOverlayComponent SceneOverlayComponent::add(RGraph& graph, const SceneOverl
 
     LD_ASSERT(sComponentCtr == 0); // currently a singleton
 
-    std::string name = "sceneoverlay" + std::to_string(sComponentCtr++);
+    std::string name = "SceneOverlay" + std::to_string(sComponentCtr++);
     RGraph::add_destroy_callback(nullptr, &SceneOverlayComponentObj::on_destroy); // TODO: on_new_frame callback?
 
     if (sComponents.contains(name))
@@ -578,11 +578,10 @@ SceneOverlayComponent SceneOverlayComponent::add(RGraph& graph, const SceneOverl
 
     // Draw outline on top of input scene color, the input ID-flags is sampled to determine
     // the silhouette of the screen-space outlining algorithm.
-    std::string outlineGPName = name + "outline";
     RGraphicsPassInfo gpI{};
     gpI.width = info.width;
     gpI.height = info.height;
-    gpI.name = outlineGPName.c_str();
+    gpI.name = "Outline";
     gpI.samples = RSAMPLE_COUNT_1_BIT;
     RGraphicsPass outlineGP = comp.add_graphics_pass(gpI, obj, &SceneOverlayComponentObj::on_outline_graphics_pass);
     outlineGP.use_color_attachment(obj->inColorAttachment, RATTACHMENT_LOAD_OP_LOAD, nullptr);
@@ -590,8 +589,7 @@ SceneOverlayComponent SceneOverlayComponent::add(RGraph& graph, const SceneOverl
 
     // Draw anti-aliased Gizmos with MSAA. We first copy input scene color and ID-flags to multi-sampled
     // color attachments before drawing some Gizmos on top of outlines.
-    std::string gizmoGPName = name + "gizmo";
-    gpI.name = gizmoGPName.c_str();
+    gpI.name = "Gizmo";
     gpI.samples = info.gizmoMSAA;
     RGraphicsPass gizmoGP = comp.add_graphics_pass(gpI, obj, &SceneOverlayComponentObj::on_gizmo_graphics_pass);
     gizmoGP.use_color_attachment(obj->outColorAttachment, RATTACHMENT_LOAD_OP_DONT_CARE, nullptr);

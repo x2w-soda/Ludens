@@ -48,10 +48,10 @@ struct ForwardRenderComponentObj
     static void on_release(void* user);
     static void on_graphics_pass(RGraphicsPass pass, RCommandList list, void* userData);
 
-    inline const char* component_name() const { return "forward"; }
-    inline const char* out_color_name() const { return "out_color"; }
-    inline const char* out_idflags_name() const { return "out_idflags"; }
-    inline const char* out_depth_stencil_name() const { return "out_depth_stencil"; }
+    inline const char* component_name() const { return "Forward"; }
+    inline const char* out_color_name() const { return "OutColor"; }
+    inline const char* out_idflags_name() const { return "OutIDFlags"; }
+    inline const char* out_depth_stencil_name() const { return "OutDepthStencil"; }
 } sFRCompObj;
 
 void ForwardRenderComponentObj::init(RDevice device)
@@ -205,7 +205,7 @@ ForwardRenderComponent ForwardRenderComponent::add(RGraph graph, const ForwardRe
     compObj->depthStencilAttachment = comp.add_output_image(compObj->out_depth_stencil_name(), componentI.depthStencilFormat, sceneWidth, sceneHeight);
 
     RGraphicsPassInfo gpI{};
-    gpI.name = compObj->component_name();
+    gpI.name = "GP";
     gpI.width = sceneWidth;
     gpI.height = sceneHeight;
     gpI.samples = componentI.samples;

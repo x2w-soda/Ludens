@@ -227,8 +227,8 @@ void RenderServerObj::next_frame(const RenderServerFrameInfo& frameI)
     graphI.device = mDevice;
     graphI.list = list;
     graphI.frameComplete = frameComplete;
-    graphI.swapchainCount = 1;
-    graphI.swapchains = &swapchain;
+    graphI.swapchainCount = (uint32_t)swapchains.size();
+    graphI.swapchains = swapchains.data();
     graphI.screenWidth = (uint32_t)mScreenExtent.x;
     graphI.screenHeight = (uint32_t)mScreenExtent.y;
     graphI.prePassCB = [](RCommandList list, void* user) {
@@ -352,7 +352,7 @@ void RenderServerObj::screen_pass(const RenderServerScreenPass& screenP)
     screenRCI.user = this;
     screenRCI.hasInputImage = true; // draws on top of the scene_pass results
     screenRCI.hasSampledImage = false;
-    screenRCI.name = "scene_screen";
+    screenRCI.name = "SceneScreen";
     screenRCI.screenExtent = &mSceneExtent; // scene extent is typically smaller than screen extent in editor
     ScreenRenderComponent screenRC = ScreenRenderComponent::add(mGraph, screenRCI);
     mGraph.connect_image(mLastColorAttachment, screenRC.color_attachment());
@@ -370,7 +370,7 @@ void RenderServerObj::editor_pass(const RenderServerEditorPass& editorP)
     screenRCI.hasInputImage = false;
     screenRCI.hasSampledImage = true;
     screenRCI.clearColor = 0x000000FF;
-    screenRCI.name = "editor";
+    screenRCI.name = "Editor";
     ScreenRenderComponent editorSRC = ScreenRenderComponent::add(mGraph, screenRCI);
     mGraph.connect_image(mLastColorAttachment, editorSRC.sampled_attachment());
     mLastColorAttachment = editorSRC.color_attachment();
@@ -428,7 +428,7 @@ void RenderServerObj::editor_overlay_pass(const RenderServerEditorOverlayPass& e
     screenRCI.user = editorOP.user;
     screenRCI.hasInputImage = true;
     screenRCI.hasSampledImage = false;
-    screenRCI.name = "editor_overlay";
+    screenRCI.name = "EditorOverlay";
     ScreenRenderComponent editorSRC = ScreenRenderComponent::add(mGraph, screenRCI);
     mGraph.connect_image(mLastColorAttachment, editorSRC.color_attachment());
     // mGraph.connect_image(blurC.component_name(), blurC.output_name(), editorSRC.component_name(), editorSRC.sampled_name());
@@ -444,7 +444,7 @@ void RenderServerObj::editor_dialog_pass(const RenderServerEditorDialogPass& edi
     screenRCI.user = editorDP.user;
     screenRCI.hasInputImage = false;
     screenRCI.hasSampledImage = false;
-    screenRCI.name = "editor_dialog";
+    screenRCI.name = "EditorDialog";
     ScreenRenderComponent editorSRC = ScreenRenderComponent::add(mGraph, screenRCI);
     mGraph.connect_swapchain_image(editorSRC.color_attachment(), editorDP.dialogWindow);
 }

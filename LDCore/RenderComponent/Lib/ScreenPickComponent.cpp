@@ -75,7 +75,7 @@ struct ScreenPickComponentObj
     Vector<Frame> frames;
 
     void init(RDevice device);
-    inline const char* component_name() const { return "screen_pick"; }
+    inline const char* component_name() const { return "ScreenPick"; }
     inline const char* input_name() const { return "input"; }
 
     static void on_release(void* user);
@@ -205,7 +205,7 @@ ScreenPickComponent ScreenPickComponent::add(RGraph graph, const ScreenPickCompo
     sCompObj.attachment = comp.add_input_image(sCompObj.input_name(), RFORMAT_RGBA8U, screenWidth, screenHeight);
 
     RComputePassInfo cpI{};
-    cpI.name = sCompObj.component_name();
+    cpI.name = "CP";
     RComputePass pass = comp.add_compute_pass(cpI, &sCompObj, &ScreenPickComponentObj::on_compute_pass);
     pass.use_image_storage_read_only(sCompObj.attachment);
 
