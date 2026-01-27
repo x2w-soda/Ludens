@@ -17,7 +17,7 @@ void InspectorWindowObj::on_imgui(float delta)
 
     root.set_color(root.get_theme().get_surface_color());
     ui_push_window(root);
-    ui_top_layout_child_gap(10.0f);
+    ui_top_layout_child_gap(4.0f);
 
     ComponentType compType;
     void* comp = ctx.get_component(subjectID, &compType);

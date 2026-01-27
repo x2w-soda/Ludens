@@ -8,12 +8,15 @@
 
 namespace LD {
 
-static void eui_transform_edit_vec3(const char* label, const Vec3& v, float fontSize);
-static void eui_transform_2d_edit_vec2(const char* label, const Vec2& v, float fontSize);
-static void eui_transform_2d_edit_float(const char* label, float f32, float fontSize);
+static void eui_transform_edit_vec3(EditorTheme theme, const char* label, const Vec3& v);
+static void eui_transform_2d_edit_vec2(EditorTheme theme, const char* label, const Vec2& v);
+static void eui_transform_2d_edit_float(EditorTheme theme, const char* label, float f32);
 
-static void eui_transform_edit_vec3(const char* label, const Vec3& v, float fontSize)
+static void eui_transform_edit_vec3(EditorTheme theme, const char* label, const Vec3& v)
 {
+    const float textLabelWidth = theme.get_text_label_width();
+    const float textRowHeight = theme.get_text_row_height();
+
     UILayoutInfo layoutI{};
     layoutI.childAxis = UI_AXIS_X;
     layoutI.childPadding = {2.0f, 2.0f, 2.0f, 2.0f};
@@ -23,8 +26,8 @@ static void eui_transform_edit_vec3(const char* label, const Vec3& v, float font
     ui_push_panel();
     ui_top_layout(layoutI);
 
-    layoutI.sizeX = UISize::fixed(100);
-    layoutI.sizeY = UISize::fixed(fontSize * 1.2f);
+    layoutI.sizeX = UISize::fixed(textLabelWidth);
+    layoutI.sizeY = UISize::fixed(textRowHeight);
     ui_push_text(label);
     ui_top_layout(layoutI);
     ui_pop();
@@ -51,8 +54,11 @@ static void eui_transform_edit_vec3(const char* label, const Vec3& v, float font
     ui_pop();
 }
 
-static void eui_transform_2d_edit_vec2(const char* label, const Vec2& v, float fontSize)
+static void eui_transform_2d_edit_vec2(EditorTheme theme, const char* label, const Vec2& v)
 {
+    const float textLabelWidth = theme.get_text_label_width();
+    const float textRowHeight = theme.get_text_row_height();
+
     UILayoutInfo layoutI{};
     layoutI.childAxis = UI_AXIS_X;
     layoutI.childPadding = {2.0f, 2.0f, 2.0f, 2.0f};
@@ -62,8 +68,8 @@ static void eui_transform_2d_edit_vec2(const char* label, const Vec2& v, float f
     ui_push_panel();
     ui_top_layout(layoutI);
 
-    layoutI.sizeX = UISize::fixed(100);
-    layoutI.sizeY = UISize::fixed(fontSize * 1.2f);
+    layoutI.sizeX = UISize::fixed(textLabelWidth);
+    layoutI.sizeY = UISize::fixed(textRowHeight);
     ui_push_text(label);
     ui_top_layout(layoutI);
     ui_pop();
@@ -84,8 +90,11 @@ static void eui_transform_2d_edit_vec2(const char* label, const Vec2& v, float f
     ui_pop();
 }
 
-static void eui_transform_2d_edit_float(const char* label, float f32, float fontSize)
+static void eui_transform_2d_edit_float(EditorTheme theme, const char* label, float f32)
 {
+    const float textLabelWidth = theme.get_text_label_width();
+    const float textRowHeight = theme.get_text_row_height();
+
     UILayoutInfo layoutI{};
     layoutI.childAxis = UI_AXIS_X;
     layoutI.childPadding = {2.0f, 2.0f, 2.0f, 2.0f};
@@ -95,8 +104,8 @@ static void eui_transform_2d_edit_float(const char* label, float f32, float font
     ui_push_panel();
     ui_top_layout(layoutI);
 
-    layoutI.sizeX = UISize::fixed(100);
-    layoutI.sizeY = UISize::fixed(fontSize * 1.2f);
+    layoutI.sizeX = UISize::fixed(textLabelWidth);
+    layoutI.sizeY = UISize::fixed(textRowHeight);
     ui_push_text(label);
     ui_top_layout(layoutI);
     ui_pop();
@@ -111,7 +120,7 @@ static void eui_transform_2d_edit_float(const char* label, float f32, float font
     ui_pop();
 }
 
-void eui_transform_edit(EditorTheme editorTheme, TransformEx* transform)
+void eui_transform_edit(EditorTheme theme, TransformEx* transform)
 {
     UILayoutInfo layoutI{};
     layoutI.childAxis = UI_AXIS_Y;
@@ -120,15 +129,15 @@ void eui_transform_edit(EditorTheme editorTheme, TransformEx* transform)
     ui_push_panel();
     ui_top_layout(layoutI);
 
-    float fontSize = editorTheme.get_font_size();
-    eui_transform_edit_vec3("Position", transform->position, fontSize);
-    eui_transform_edit_vec3("Rotation", transform->rotationEuler, fontSize);
-    eui_transform_edit_vec3("Scale", transform->scale, fontSize);
+    float fontSize = theme.get_font_size();
+    eui_transform_edit_vec3(theme, "Position", transform->position);
+    eui_transform_edit_vec3(theme, "Rotation", transform->rotationEuler);
+    eui_transform_edit_vec3(theme, "Scale", transform->scale);
 
     ui_pop();
 }
 
-void eui_transform_2d_edit(EditorTheme editorTheme, Transform2D* transform2D)
+void eui_transform_2d_edit(EditorTheme theme, Transform2D* transform2D)
 {
     UILayoutInfo layoutI{};
     layoutI.childAxis = UI_AXIS_Y;
@@ -137,10 +146,9 @@ void eui_transform_2d_edit(EditorTheme editorTheme, Transform2D* transform2D)
     ui_push_panel();
     ui_top_layout(layoutI);
 
-    float fontSize = editorTheme.get_font_size();
-    eui_transform_2d_edit_vec2("Position", transform2D->position, fontSize);
-    eui_transform_2d_edit_vec2("Scale", transform2D->scale, fontSize);
-    eui_transform_2d_edit_float("Rotation", transform2D->rotation, fontSize);
+    eui_transform_2d_edit_vec2(theme, "Position", transform2D->position);
+    eui_transform_2d_edit_vec2(theme, "Scale", transform2D->scale);
+    eui_transform_2d_edit_float(theme, "Rotation", transform2D->rotation);
 
     ui_pop();
 }

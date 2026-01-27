@@ -102,11 +102,11 @@ static inline float get_plane_rotation(GizmoPlane plane, const Vec3& axisRotatio
     switch (plane)
     {
     case GIZMO_PLANE_XY:
-        return LD_TO_RADIANS(axisRotations.z);
+        return (float)LD_TO_RADIANS(axisRotations.z);
     case GIZMO_PLANE_XZ:
-        return LD_TO_RADIANS(axisRotations.y);
+        return (float)LD_TO_RADIANS(axisRotations.y);
     case GIZMO_PLANE_YZ:
-        return LD_TO_RADIANS(axisRotations.x);
+        return (float)LD_TO_RADIANS(axisRotations.x);
     }
 
     LD_UNREACHABLE;

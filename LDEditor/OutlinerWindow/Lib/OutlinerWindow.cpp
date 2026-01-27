@@ -10,7 +10,6 @@
 
 #include "ComponentMenu.h"
 
-#define OUTLINER_ROW_SIZE 20.0f
 #define OUTLINER_ROW_ODD_COLOR 0x272727FF
 #define OUTLINER_ROW_EVEN_COLOR 0x2B2C2FFF
 #define OUTLINER_ROW_LEFT_PADDING 10.0f
@@ -58,7 +57,7 @@ void OutlinerWindowObj::component_row(int rowIdx, int depth, CUID compID)
     layoutI.childGap = theme.get_padding();
     layoutI.childPadding.left = OUTLINER_ROW_LEFT_PADDING + depth * OUTLINER_ROW_LEFT_PADDING_PER_DEPTH;
     layoutI.sizeX = UISize::grow();
-    layoutI.sizeY = UISize::fixed(OUTLINER_ROW_SIZE);
+    layoutI.sizeY = UISize::fixed(theme.get_text_row_height());
 
     Color panelColor = (rowIdx % 2) ? OUTLINER_ROW_ODD_COLOR : OUTLINER_ROW_EVEN_COLOR;
     if (compID && compID == ctx.get_selected_component())
@@ -78,7 +77,7 @@ void OutlinerWindowObj::component_row(int rowIdx, int depth, CUID compID)
 
     if (ctx.get_component_script_slot(compID))
     {
-        float iconSize = OUTLINER_ROW_SIZE;
+        float iconSize = theme.get_text_row_height();
         Rect iconRect = EditorIconAtlas::get_icon_rect(EditorIcon::Code);
         ui_push_image(ctx.get_editor_icon_atlas(), iconSize, iconSize, 0xFFFFFFFF, &iconRect);
         ui_pop();

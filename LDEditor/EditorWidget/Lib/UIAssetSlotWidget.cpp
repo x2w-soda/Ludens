@@ -11,6 +11,7 @@ bool eui_asset_slot(EditorTheme theme, AssetType assetType, AUID assetID, const 
     MouseButton btn;
     UIEvent event;
     bool newAssetRequest = false;
+    const float textLabelWidth = theme.get_text_label_width();
 
     UILayoutInfo layoutI{};
     layoutI.childAxis = UI_AXIS_X;
@@ -21,6 +22,7 @@ bool eui_asset_slot(EditorTheme theme, AssetType assetType, AUID assetID, const 
     ui_top_layout(layoutI);
 
     ui_push_text(get_asset_type_cstr(assetType));
+    ui_top_layout_size(UISize::fixed(textLabelWidth), UISize::fixed(24.0f));
     ui_pop();
 
     LD_ASSERT(assetName);

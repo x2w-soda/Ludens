@@ -31,6 +31,8 @@ void eui_inspect_audio_source_component(InspectorWindowObj& self, ComponentType 
 
     EditorTheme editorTheme = self.ctx.get_settings().get_theme();
     AssetManager AM = self.ctx.get_asset_manager();
+    const float rowHeight = editorTheme.get_text_row_height();
+    const float propNameWidth = editorTheme.get_text_label_width();
 
     AudioSourceComponent* sourceC = (AudioSourceComponent*)comp;
     AudioClipAsset clipA(AM.get_asset(sourceC->clipAUID).unwrap());
@@ -48,6 +50,7 @@ void eui_inspect_audio_source_component(InspectorWindowObj& self, ComponentType 
     {
         ui_top_layout(layoutI);
         ui_push_text("Volume");
+        ui_top_layout_size(UISize::fixed(propNameWidth), UISize::fixed(rowHeight));
         ui_pop();
         ui_push_slider(0.0f, 1.0f, &sourceC->volumeLinear);
         ui_pop();
@@ -56,7 +59,8 @@ void eui_inspect_audio_source_component(InspectorWindowObj& self, ComponentType 
     ui_push_panel();
     {
         ui_top_layout(layoutI);
-        ui_push_text("Pan   ");
+        ui_push_text("Pan");
+        ui_top_layout_size(UISize::fixed(propNameWidth), UISize::fixed(rowHeight));
         ui_pop();
         ui_push_slider(0.0f, 1.0f, &sourceC->pan);
         ui_pop();
