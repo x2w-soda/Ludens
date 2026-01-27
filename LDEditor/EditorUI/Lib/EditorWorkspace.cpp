@@ -314,7 +314,7 @@ void EditorWorkspace::on_imgui(float delta)
         if (node)
         {
             float ratio = 0.0f;
-            if (node->splitAxis == UI_AXIS_X)
+            if ((int)node->splitAxis == (int)UI_AXIS_X)
                 ratio = (mousePos.y - node->rect.y) / node->rect.h;
             else
                 ratio = (mousePos.x - node->rect.x) / node->rect.w;

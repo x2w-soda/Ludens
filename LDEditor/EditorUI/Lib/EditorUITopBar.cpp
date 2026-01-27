@@ -3,7 +3,7 @@
 #include <Ludens/Memory/Memory.h>
 #include <Ludens/UI/UIContext.h>
 #include <Ludens/UI/UIImmediate.h>
-#include <LudensEditor/EditorUI/EditorTopBar.h>
+#include <LudensEditor/EditorUI/EditorUITopBar.h>
 #include <LudensEditor/EditorWidget/UIListMenuWidget.h>
 
 #include <array>
@@ -20,6 +20,26 @@ enum TopBarMenu
     TOP_BAR_MENU_ABOUT,
 };
 
+enum FileMenuOption
+{
+    FILE_MENU_NEW_SCENE = 0,
+    FILE_MENU_OPEN_SCENE,
+    FILE_MENU_SAVE_SCENE,
+    FILE_MENU_NEW_PROJECT,
+    FILE_MENU_OPEN_PROJECT,
+};
+
+enum EditMenuOption
+{
+    EDIT_MENU_UNDO = 0,
+    EDIT_MENU_REDO,
+};
+
+enum AboutMenuOption
+{
+    ABOUT_MENU_VERSION = 0,
+};
+
 struct EditorTopBarObj
 {
     EditorContext ctx;
@@ -30,9 +50,6 @@ struct EditorTopBarObj
     UIWindow menuW;
     TopBarMenu menuType = TOP_BAR_MENU_NONE;
     float barHeight = 0.0f;
-    int fileMenuOpt = -1;
-    int editMenuOpt = -1;
-    int aboutMenuOpt = -1;
 
     void on_imgui(float delta);
     void file_menu_window();
@@ -101,9 +118,27 @@ void EditorTopBarObj::file_menu_window()
 
     int opt = eui_list_menu(ctx.get_theme(), (int)options.size(), options.data());
     if (opt >= 0)
-    {
-        fileMenuOpt = opt;
         menuW.hide();
+
+    switch (opt)
+    {
+    case FILE_MENU_NEW_SCENE:
+        ctx.request_new_scene();
+        break;
+    case FILE_MENU_OPEN_SCENE:
+        ctx.request_open_scene();
+        break;
+    case FILE_MENU_SAVE_SCENE:
+        ctx.action_save_scene(); // just save the scene, no dialogs
+        break;
+    case FILE_MENU_NEW_PROJECT:
+        ctx.request_new_project();
+        break;
+    case FILE_MENU_OPEN_PROJECT:
+        ctx.request_open_project();
+        break;
+    default:
+        break;
     }
 
     ui_pop_window();
@@ -123,9 +158,18 @@ void EditorTopBarObj::edit_menu_window()
 
     int opt = eui_list_menu(ctx.get_theme(), (int)options.size(), options.data());
     if (opt >= 0)
-    {
-        editMenuOpt = opt;
         menuW.hide();
+
+    switch (opt)
+    {
+    case EDIT_MENU_UNDO:
+        ctx.action_undo();
+        break;
+    case EDIT_MENU_REDO:
+        ctx.action_redo();
+        break;
+    default:
+        break;
     }
 
     ui_pop_window();
@@ -144,9 +188,15 @@ void EditorTopBarObj::about_menu_window()
 
     int opt = eui_list_menu(ctx.get_theme(), (int)options.size(), options.data());
     if (opt >= 0)
-    {
-        aboutMenuOpt = opt;
         menuW.hide();
+
+    switch (opt)
+    {
+    case ABOUT_MENU_VERSION:
+        LD_UNREACHABLE; // TODO:
+        break;
+    default:
+        break;
     }
 
     ui_pop_window();
@@ -156,7 +206,7 @@ void EditorTopBarObj::about_menu_window()
 // Public API
 //
 
-EditorTopBar EditorTopBar::create(const EditorTopBarInfo& barI)
+EditorUITopBar EditorUITopBar::create(const EditorUITopBarInfo& barI)
 {
     UILayoutInfo layoutI{};
     layoutI.childAxis = UI_AXIS_X;
@@ -182,49 +232,19 @@ EditorTopBar EditorTopBar::create(const EditorTopBarInfo& barI)
     obj->menuW = obj->floatWS.create_window(layoutI, {}, nullptr);
     obj->menuW.hide();
 
-    return EditorTopBar(obj);
+    return EditorUITopBar(obj);
 }
 
-void EditorTopBar::destroy(EditorTopBar topBar)
+void EditorUITopBar::destroy(EditorUITopBar topBar)
 {
     auto* obj = topBar.unwrap();
 
     heap_delete<EditorTopBarObj>(obj);
 }
 
-void EditorTopBar::on_imgui(float delta)
+void EditorUITopBar::on_imgui(float delta)
 {
     mObj->on_imgui(delta);
-}
-
-bool EditorTopBar::file_menu_option(FileMenuOption& opt)
-{
-    if (mObj->fileMenuOpt < 0)
-        return false;
-
-    opt = (FileMenuOption)mObj->fileMenuOpt;
-    mObj->fileMenuOpt = -1;
-    return true;
-}
-
-bool EditorTopBar::edit_menu_option(EditMenuOption& opt)
-{
-    if (mObj->editMenuOpt < 0)
-        return false;
-
-    opt = (EditMenuOption)mObj->editMenuOpt;
-    mObj->editMenuOpt = -1;
-    return true;
-}
-
-bool EditorTopBar::about_menu_option(AboutMenuOption& opt)
-{
-    if (mObj->aboutMenuOpt < 0)
-        return false;
-
-    opt = (AboutMenuOption)mObj->aboutMenuOpt;
-    mObj->aboutMenuOpt = -1;
-    return true;
 }
 
 } // namespace LD

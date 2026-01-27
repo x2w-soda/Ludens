@@ -15,73 +15,55 @@ void EditorUI::startup(const EditorUIInfo& info)
 {
     LD_PROFILE_SCOPE;
 
+    LD_ASSERT(info.fontAtlas);
+    LD_ASSERT(info.fontAtlasImage);
+    LD_ASSERT(info.renderServer);
+    LD_ASSERT(info.envCubemap);
+
     mCtx = info.ctx;
+    mRenderServer = info.renderServer;
+    mEnvCubemap = info.envCubemap;
 
     UIContextInfo ctxI{};
-    ctxI.fontAtlas = info.fontAtlas;
-    ctxI.fontAtlasImage = info.fontAtlasImage;
+    ctxI.fontAtlas = mFontAtlas = info.fontAtlas;
+    ctxI.fontAtlasImage = mFontAtlasImage = info.fontAtlasImage;
     ctxI.theme = mCtx.get_theme().get_ui_theme();
     mUI = UIContext::create(ctxI);
     mUIGroundLayer = mUI.create_layer("ground");
     mUIFloatLayer = mUI.create_layer("float");
-    mUIModalLayer = mUI.create_layer("modal");
 
     const Vec2 screenSize((float)info.screenWidth, (float)info.screenHeight);
 
-    EditorTopBarInfo barI{};
+    EditorUITopBarInfo barI{};
     barI.barHeight = EDITOR_BAR_HEIGHT;
     barI.ctx = mCtx;
     barI.floatLayer = mUIFloatLayer;
     barI.groundLayer = mUIGroundLayer;
     barI.screenSize = screenSize;
-    mTopBar = EditorTopBar::create(barI);
+    mTopBar = EditorUITopBar::create(barI);
 
-    // TODO: EditorGroundLayer
-    EditorWorkspaceInfo workspaceI{};
-    workspaceI.ctx = mCtx;
-    workspaceI.layer = mUIGroundLayer;
-    workspaceI.rootRect = Rect(0.0f, EDITOR_BAR_HEIGHT, screenSize.x, screenSize.y);
-    workspaceI.isVisible = true;
-    workspaceI.isFloat = false;
-    mSceneWorkspace = EditorWorkspace::create(workspaceI);
-    EditorAreaID viewportArea = mSceneWorkspace.get_root_id();
-    EditorAreaID outlinerArea = mSceneWorkspace.split_right(viewportArea, 0.7f);
-    EditorAreaID inspectorArea = mSceneWorkspace.split_bottom(outlinerArea, 0.5f);
-    EditorAreaID consoleArea = mSceneWorkspace.split_bottom(viewportArea, 0.7f);
+    EditorUIMainInfo mainI{};
+    mainI.ctx = mCtx;
+    mainI.groundLayer = mUIGroundLayer;
+    mainI.screenSize = screenSize;
+    mainI.topBarHeight = EDITOR_BAR_HEIGHT;
+    mMain = EditorUIMain::create(mainI);
 
-    mViewportWindow = (ViewportWindow)mSceneWorkspace.create_window(viewportArea, EDITOR_WINDOW_VIEWPORT);
-    mOutlinerWindow = (OutlinerWindow)mSceneWorkspace.create_window(outlinerArea, EDITOR_WINDOW_OUTLINER);
-    mInspectorWindow = (InspectorWindow)mSceneWorkspace.create_window(inspectorArea, EDITOR_WINDOW_INSPECTOR);
-    mConsoleWindow = (ConsoleWindow)mSceneWorkspace.create_window(consoleArea, EDITOR_WINDOW_CONSOLE);
-    mConsoleWindow.observe_channel(get_lua_script_log_channel_name());
+    EditorUIDialogInfo dialogI{};
+    dialogI.ctx = mCtx;
+    dialogI.fontAtlas = mFontAtlas;
+    dialogI.fontAtlasImage = mFontAtlasImage;
+    mDialog = EditorUIDialog::create(dialogI);
 
     // TODO: EditorFloatLayer
+    /*
+    EditorWorkspaceInfo workspaceI{};
     workspaceI.layer = mUIFloatLayer;
     workspaceI.rootRect = Rect(10.0f, 10.0f, 400.0f, 200.0f);
     workspaceI.isVisible = false;
     workspaceI.isFloat = true;
     mFloatWorkspace = EditorWorkspace::create(workspaceI);
-    mVersionWindow = (VersionWindow)mFloatWorkspace.create_window(mFloatWorkspace.get_root_id(), EDITOR_WINDOW_VERSION);
-
-    // TODO: EditorModalLayer
-    UILayoutInfo layoutI{};
-    layoutI.sizeX = UISize::fixed(info.screenWidth);
-    layoutI.sizeY = UISize::fixed(info.screenHeight);
-    UIWindowInfo windowI{};
-    windowI.hidden = true;
-    mModalBackdropWorkspace = mUIModalLayer.create_workspace(Rect(0.0f, 0.0f, info.screenWidth, info.screenHeight));
-    mModalBackdropWindow = mModalBackdropWorkspace.create_window(mModalBackdropWorkspace.get_root_id(), layoutI, windowI, nullptr);
-    mModalBackdropWindow.set_pos(Vec2(0.0f, 0.0f));
-    mModalBackdropWindow.set_on_draw([](UIWidget widget, ScreenRenderComponent renderer) {
-        renderer.draw_rect(widget.get_rect(), 0x101010C0);
-    });
-
-    workspaceI.layer = mUIModalLayer;
-    workspaceI.rootRect = Rect(10.0f, 10.0f, 600.0f, 300.0f);
-    workspaceI.isVisible = false;
-    workspaceI.isFloat = true;
-    mModalWorkspace = EditorWorkspace::create(workspaceI);
-    mSelectionWindow = (SelectionWindow)mModalWorkspace.create_window(mModalWorkspace.get_root_id(), EDITOR_WINDOW_SELECTION);
+    */
 
     // force window layout
     mUI.update(0.0f);
@@ -89,18 +71,17 @@ void EditorUI::startup(const EditorUIInfo& info)
 
 void EditorUI::cleanup()
 {
+    LD_PROFILE_SCOPE;
+
     ui_imgui_release(mUI);
 
-    EditorWorkspace::destroy(mModalWorkspace);
-    mModalWorkspace = {};
+    EditorUIDialog::destroy(mDialog);
+    mDialog = {};
 
-    EditorWorkspace::destroy(mFloatWorkspace);
-    mFloatWorkspace = {};
+    EditorUIMain::destroy(mMain);
+    mMain = {};
 
-    EditorWorkspace::destroy(mSceneWorkspace);
-    mSceneWorkspace = {};
-
-    EditorTopBar::destroy(mTopBar);
+    EditorUITopBar::destroy(mTopBar);
     mTopBar = {};
 
     UIContext::destroy(mUI);
@@ -110,17 +91,99 @@ void EditorUI::update(float delta)
 {
     LD_PROFILE_SCOPE;
 
+    // imgui pass
     ui_frame_begin(mUI);
     mTopBar.on_imgui(delta);
-    mSceneWorkspace.on_imgui(delta);
-    mFloatWorkspace.on_imgui(delta);
-    mModalWorkspace.on_imgui(delta);
+    mMain.on_imgui(delta);
     ui_frame_end();
 
-    update_ground_workspace();
-    update_modal_workspace();
+    // post imgui update
+    mMain.update(delta);
+    mDialog.update(delta);
 
+    // Editor UIContext update
     mUI.update(delta);
+
+    // EditorContext update.
+    // If the Scene is playing in editor, this drives the Scene update as well
+    mCtx.update(mMain.get_viewport_scene_size(), delta);
+}
+
+void EditorUI::submit_frame()
+{
+    LD_PROFILE_SCOPE;
+
+    // If the Scene is playing, the main camera is from some camera component registered in scene.
+    // Otherwise it's just the viewport camera.
+    Camera mainCamera = get_main_camera();
+    LD_ASSERT(mainCamera);
+
+    WindowRegistry reg = WindowRegistry::get();
+    const WindowID dialogWindowID = mDialog.get_dialog_window_id();
+    const Vec2 screenExtent = reg.get_window_extent(reg.get_root_id());
+
+    // begin rendering a frame
+    RenderServerFrameInfo frameI{};
+    frameI.directionalLight = Vec3(0.0f, 1.0f, 0.0f);
+    frameI.mainCamera = mainCamera;
+    frameI.screenExtent = screenExtent;
+    frameI.sceneExtent = mMain.get_viewport_scene_size();
+    frameI.envCubemap = mEnvCubemap;
+    frameI.dialogWindowID = dialogWindowID;
+    mRenderServer.next_frame(frameI);
+
+    // render game scene with overlay, the editor context is responsible for supplying object transforms
+    RenderServerScenePass sceneP{};
+    sceneP.transformCallback = &EditorContext::render_server_transform_callback;
+    sceneP.user = mCtx.unwrap();
+    sceneP.overlay.enabled = !mCtx.is_playing();
+    sceneP.overlay.outlineRUID = mMain.get_viewport_outline_ruid();
+    sceneP.hasSkybox = (mEnvCubemap != 0);
+    mMain.get_viewport_gizmo_state(
+        sceneP.overlay.gizmoType,
+        sceneP.overlay.gizmoCenter,
+        sceneP.overlay.gizmoScale,
+        sceneP.overlay.gizmoColor);
+    mRenderServer.scene_pass(sceneP);
+
+    // render screen space items on top of game scene.
+    RenderServerScreenPass screenP{};
+    screenP.layerCallback = &EditorContext::render_server_screen_pass_callback;
+    screenP.user = mCtx.unwrap();
+    mRenderServer.screen_pass(screenP);
+
+    // render the editor UI
+    RenderServerEditorPass editorP{};
+    editorP.renderCallback = &EditorUI::on_render;
+    editorP.scenePickCallback = &EditorUI::on_scene_pick;
+    editorP.user = this;
+    editorP.sceneMousePickQuery = nullptr;
+    Vec2 queryPos;
+    if (mMain.get_viewport_mouse_pos(queryPos))
+        editorP.sceneMousePickQuery = &queryPos;
+    mRenderServer.editor_pass(editorP);
+
+    // render the editor overlay UI
+    /*
+    RenderServerEditorOverlayPass editorOP{};
+    editorOP.renderCallback = &EditorUI::on_render_overlay;
+    editorOP.blurMixColor = 0x101010FF;
+    editorOP.blurMixFactor = 0.1f;
+    editorOP.user = this;
+    mRenderServer.editor_overlay_pass(editorOP);
+    */
+
+    // render dialog window
+    if (dialogWindowID)
+    {
+        RenderServerEditorDialogPass editorDP{};
+        editorDP.dialogWindow = dialogWindowID;
+        editorDP.renderCallback = &EditorUI::on_render_dialog;
+        editorDP.user = this;
+        mRenderServer.editor_dialog_pass(editorDP);
+    }
+
+    mRenderServer.submit_frame();
 }
 
 void EditorUI::resize(const Vec2& screenSize)
@@ -130,11 +193,7 @@ void EditorUI::resize(const Vec2& screenSize)
         return;
 
     // recalculate workspace window areas
-    Rect groundRect = Rect(0.0f, EDITOR_BAR_HEIGHT, screenSize.x, screenSize.y - EDITOR_BAR_HEIGHT);
-    mSceneWorkspace.set_rect(groundRect);
-
-    Rect screenRect(0.0f, 0.0f, screenSize.x, screenSize.y);
-    mModalBackdropWorkspace.set_rect(screenRect);
+    mMain.resize(screenSize);
 }
 
 void EditorUI::on_render(ScreenRenderComponent renderer, void* user)
@@ -149,123 +208,33 @@ void EditorUI::on_render_overlay(ScreenRenderComponent renderer, void* user)
 {
     EditorUI& self = *(EditorUI*)user;
 
-    self.mUIModalLayer.render(renderer);
+    // TODO: self.mUIModalLayer.render(renderer);
+}
+
+void EditorUI::on_render_dialog(ScreenRenderComponent renderer, void* user)
+{
+    EditorUI& self = *(EditorUI*)user;
+
+    self.mDialog.render(renderer);
 }
 
 void EditorUI::on_scene_pick(SceneOverlayGizmoID gizmoID, RUID ruid, void* user)
 {
     EditorUI& self = *(EditorUI*)user;
 
-    self.mViewportWindow.hover_id(gizmoID, ruid);
+    self.mMain.set_viewport_hover_id(gizmoID, ruid);
 }
 
-void EditorUI::modal_open_scene()
+Camera EditorUI::get_main_camera()
 {
-    LD_ASSERT(mModal == MODAL_NONE);
-    mModal = MODAL_OPEN_SCENE;
+    Camera sceneCamera;
+    if (mCtx.is_playing() && (sceneCamera = mCtx.get_scene_camera()))
+        return sceneCamera;
 
-    mModalWorkspace.set_visible(true);
-    mSelectionWindow.show(mCtx.get_project_directory(), "toml");
+    return mMain.get_viewport_camera();
 }
 
-void EditorUI::modal_select_asset(AssetType type)
-{
-    LD_ASSERT(mModal == MODAL_NONE);
-    mModal = MODAL_SELECT_ASSET;
-
-    mModalWorkspace.set_visible(true);
-    mSelectionWindow.show(mCtx.get_project_directory(), "lda");
-}
-
-void EditorUI::modal_select_script()
-{
-    LD_ASSERT(mModal == MODAL_NONE);
-    mModal = MODAL_SELECT_SCRIPT;
-
-    mModalWorkspace.set_visible(true);
-    mSelectionWindow.show(mCtx.get_project_directory(), "lua");
-}
-
-void EditorUI::show_version_window()
-{
-    // TODO: centered
-    mFloatWorkspace.set_visible(true);
-    mVersionWindow.show();
-}
-
-void EditorUI::update_ground_workspace()
-{
-    AUID oldAssetID = 0;
-    AssetType type;
-
-    if (mInspectorWindow.has_component_asset_request(mSubjectCompID, oldAssetID, type))
-    {
-        modal_select_asset(type);
-    }
-}
-
-void EditorUI::update_modal_workspace()
-{
-    FS::Path selectedPath;
-
-    if (mModal == MODAL_NONE)
-    {
-        mModalBackdropWindow.hide();
-        return;
-    }
-
-    if (mSelectionWindow.has_canceled())
-    {
-        mModal = MODAL_NONE;
-        mModalWorkspace.set_visible(false);
-        return;
-    }
-
-    mModalWorkspace.set_visible(true);
-    mModalBackdropWindow.show();
-
-    switch (mModal)
-    {
-    case MODAL_OPEN_SCENE:
-        if (mSelectionWindow.has_selected(selectedPath))
-        {
-            mModal = MODAL_NONE;
-            mCtx.action_open_scene(selectedPath);
-        }
-        break;
-    case MODAL_SELECT_ASSET:
-        if (mSelectionWindow.has_selected(selectedPath))
-        {
-            mModal = MODAL_NONE;
-
-            std::string stem = selectedPath.stem().string();
-            AssetManager AM = mCtx.get_asset_manager();
-            AUID assetID = AM.get_id_from_name(stem.c_str(), nullptr);
-            mCtx.action_set_component_asset(mSubjectCompID, assetID);
-        }
-        break;
-    case MODAL_SELECT_SCRIPT:
-        if (mSelectionWindow.has_selected(selectedPath))
-        {
-            if (!mCtx.get_component_base(mSubjectCompID))
-                return; // component out of date
-
-            AssetType type;
-            AssetManager AM = mCtx.get_asset_manager();
-            std::string stem = selectedPath.stem().string();
-            AUID scriptAssetID = AM.get_id_from_name(stem.c_str(), &type);
-            if (scriptAssetID == 0 || type != ASSET_TYPE_LUA_SCRIPT)
-                return; // script asset out of date
-
-            mCtx.action_add_component_script(mSubjectCompID, scriptAssetID);
-        }
-        break;
-    default:
-        break;
-    }
-}
-
-void EditorUI::on_event(const Event* event, void* user)
+void EditorUI::on_event(const WindowEvent* event, void* user)
 {
     EditorUI& self = *(EditorUI*)user;
 
@@ -276,9 +245,10 @@ void EditorUI::on_event(const Event* event, void* user)
                          static_cast<const WindowResizeEvent*>(event)->height));
         break;
     default:
-        self.mUI.on_event(event);
         break;
     }
+
+    self.mUI.on_window_event((const WindowEvent*)event);
 }
 
 } // namespace LD
