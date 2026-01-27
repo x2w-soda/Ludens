@@ -30,6 +30,6 @@
 # ifdef LD_COMPILER_MSVC
 #  define LD_UNREACHABLE __assume(0)
 # else
-#  define LD_UNREACHABLE __builtin_unreachable
+#  define LD_UNREACHABLE __builtin_unreachable()
 # endif
 #endif

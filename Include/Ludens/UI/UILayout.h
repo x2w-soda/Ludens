@@ -43,19 +43,19 @@ struct UISize
     /// @brief determine size to fit children tightly
     static inline UISize fit()
     {
-        return {.type = UI_SIZE_FIT};
+        return {.extent = 0.0f, .type = UI_SIZE_FIT};
     }
 
     /// @brief expand to take up space in container
     static inline UISize grow()
     {
-        return {.type = UI_SIZE_GROW};
+        return {.extent = 0.0f, .type = UI_SIZE_GROW};
     }
 
     /// @brief wrap around and grow along the other axis
     static inline UISize wrap()
     {
-        return {.type = UI_SIZE_WRAP};
+        return {.extent = 0.0f, .type = UI_SIZE_WRAP};
     }
 
     /// @brief declare fixed size for this UI node
