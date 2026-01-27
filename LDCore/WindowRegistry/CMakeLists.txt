@@ -28,6 +28,6 @@ target_link_libraries(${MODULE_NAME} PRIVATE
 	LDMedia
 )
 
-target_include_directories(${MODULE_NAME} PRIVATE
+target_include_directories(${MODULE_NAME} SYSTEM PRIVATE
 	${glfw_SOURCE_DIR}/include
 )

@@ -356,6 +356,8 @@ SceneSchemaSaver::~SceneSchemaSaver()
 
 bool SceneSchemaSaver::save_scene(Scene scene, std::string& toml, std::string& err)
 {
+    mScene = scene;
+
     mWriter = TOMLWriter::create();
 
     mWriter.begin();

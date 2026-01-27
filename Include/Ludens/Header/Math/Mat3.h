@@ -129,8 +129,8 @@ struct TMat3
     /// @note For screen space with top-left origin, the rotation will appear clockwise.
     static inline TMat3 rotate_2d(float degrees)
     {
-        T c = LD_COS(LD_TO_RADIANS(degrees));
-        T s = LD_SIN(LD_TO_RADIANS(degrees));
+        T c = (T)LD_COS((T)LD_TO_RADIANS(degrees));
+        T s = (T)LD_SIN((T)LD_TO_RADIANS(degrees));
 
         return TMat3<T>(TVec3<T>(c, s, 0), TVec3<T>(-s, c, 0), TVec3<T>(0, 0, 1));
     }
@@ -167,25 +167,25 @@ inline bool decompose_mat3_rot(const TMat3<T>& m, TVec3<T>& rotation)
     if (sy * sy > (T)1)
         return false;
 
-    T cy = LD_SQRT((T)1 - sy * sy);
+    T cy = (T)LD_SQRT((T)1 - sy * sy);
     T x, y, z;
 
     if (is_zero_epsilon<T>(cy)) // gimbal lock
     {
-        x = LD_ATAN2(-m[1].z, m[1].y);
-        y = LD_ASIN(sy);
+        x = (T)LD_ATAN2(-m[1].z, m[1].y);
+        y = (T)LD_ASIN(sy);
         z = (T)0;
     }
     else
     {
-        x = LD_ATAN2(m[2].y, m[2].z);
-        y = LD_ASIN(sy);
-        z = LD_ATAN2(m[1].x, m[0].x);
+        x = (T)LD_ATAN2(m[2].y, m[2].z);
+        y = (T)LD_ASIN(sy);
+        z = (T)LD_ATAN2(m[1].x, m[0].x);
     }
 
-    x = -LD_TO_DEGREES(x);
-    y = -LD_TO_DEGREES(y);
-    z = -LD_TO_DEGREES(z);
+    x = -(T)LD_TO_DEGREES(x);
+    y = -(T)LD_TO_DEGREES(y);
+    z = -(T)LD_TO_DEGREES(z);
     rotation.x = x < 0 ? x + (T)360 : x;
     rotation.y = y < 0 ? y + (T)360 : y;
     rotation.z = z < 0 ? z + (T)360 : z;

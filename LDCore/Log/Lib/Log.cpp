@@ -64,7 +64,7 @@ LogObj* LogChannels::get_log(const char* channelName)
     if (!channelName)
         return &self->mDefault;
 
-    uint32_t hash32 = hash32_FNV_1a(channelName, strlen(channelName));
+    uint32_t hash32 = hash32_FNV_1a(channelName, (int)strlen(channelName));
     if (self->mChannels.contains(hash32))
         return self->mChannels[hash32];
 

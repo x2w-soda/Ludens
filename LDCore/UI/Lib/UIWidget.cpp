@@ -302,6 +302,7 @@ UIScrollWidget UINode::add_scroll(const UILayoutInfo& layoutI, const UIScrollWid
 void UIScrollWidgetObj::cleanup(UIWidgetObj* base)
 {
     // TODO:
+    (void)base;
 }
 
 void UIScrollWidgetObj::on_scroll(UIWidget widget, const Vec2& offset)
@@ -331,7 +332,7 @@ void UIScrollWidgetObj::on_scroll(UIWidget widget, const Vec2& offset)
     }
 }
 
-void UIScrollWidgetObj::on_mouse(UIWidget widget, const Vec2& pos, MouseButton btn, UIEvent event)
+void UIScrollWidgetObj::on_mouse(UIWidget, const Vec2&, MouseButton, UIEvent)
 {
     // TODO:
 }
@@ -491,6 +492,9 @@ UISliderWidget UINode::add_slider(const UILayoutInfo& layoutI, const UISliderWid
 void UISliderWidgetObj::on_drag(UIWidget widget, MouseButton btn, const Vec2& dragPos, bool begin)
 {
     UISliderWidgetObj& self = static_cast<UIWidgetObj*>(widget)->as.slider;
+
+    (void)btn;
+    (void)begin;
 
     Rect rect = widget.get_rect();
     self.ratio = std::clamp(((float)dragPos.x - rect.x) / rect.w, 0.0f, 1.0f);

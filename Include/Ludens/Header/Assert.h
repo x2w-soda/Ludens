@@ -27,5 +27,9 @@
 #endif
 
 #ifndef LD_UNREACHABLE
-#define LD_UNREACHABLE LD_ASSERT(0 && "Unreachable")
+# ifdef LD_COMPILER_MSVC
+#  define LD_UNREACHABLE __assume(0)
+# else
+#  define LD_UNREACHABLE __builtin_unreachable
+# endif
 #endif

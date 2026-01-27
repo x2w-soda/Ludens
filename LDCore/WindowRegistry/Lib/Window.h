@@ -98,7 +98,6 @@ public: // decorators and hints
     void hint_border_color(Color color);
     void hint_title_bar_color(Color color);
     void hint_title_bar_text_color(Color color);
-    void hint_cursor_shape(CursorType cursor);
 
 public: // key and mouse states
     bool get_key(KeyCode key);

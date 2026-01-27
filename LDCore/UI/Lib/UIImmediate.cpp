@@ -115,6 +115,8 @@ static void on_mouse_handler(UIWidget widget, const Vec2& pos, MouseButton btn, 
 {
     UIWidgetState* widgetS = (UIWidgetState*)widget.get_user();
 
+    (void)pos;
+
     switch (event)
     {
     case UI_MOUSE_DOWN:
@@ -422,7 +424,7 @@ UIWidgetState* UIWindowState::get_or_create_button(const char* text)
     UIButtonWidgetInfo buttonWI{};
     buttonWI.text = text;
     buttonWI.textColor = 0xFFFFFFFF;
-    buttonWI.on_press = [](UIButtonWidget w, MouseButton btn, void* user) {
+    buttonWI.on_press = [](UIButtonWidget, MouseButton btn, void* user) {
         auto* state = (UIWidgetState*)user;
         state->isButtonPressed.set(true);
     };

@@ -334,7 +334,7 @@ void Bitmap::flipy()
             memcpy(row1, tmp, bytesCopied);
             row0 += bytesCopied;
             row1 += bytesCopied;
-            bytesLeft -= bytesCopied;
+            bytesLeft -= (uint32_t)bytesCopied;
         }
     }
 }

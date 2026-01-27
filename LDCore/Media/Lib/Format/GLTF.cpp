@@ -605,6 +605,7 @@ bool GLTFEventParserObj::on_json_bool(bool b, void* obj)
 bool GLTFEventParserObj::on_json_i64(int64_t i64, void* obj)
 {
     auto& self = *(GLTFEventParserObj*)obj;
+    (void)i64;
 
     if (self.escape_json_value())
         return true;

@@ -125,6 +125,8 @@ void UIWindow::set_pos(const Vec2& pos)
 void UIWindow::set_size(const Vec2& size)
 {
     UIWindowObj* obj = (UIWindowObj*)mObj;
+    (void)obj;
+
     mObj->layout.info.sizeX = UISize::fixed(size.x);
     mObj->layout.info.sizeY = UISize::fixed(size.y);
 }
@@ -132,6 +134,8 @@ void UIWindow::set_size(const Vec2& size)
 void UIWindow::set_rect(const Rect& rect)
 {
     UIWindowObj* obj = (UIWindowObj*)mObj;
+    (void)obj;
+
     obj->layout.rect.x = rect.x;
     obj->layout.rect.y = rect.y;
     mObj->layout.info.sizeX = UISize::fixed(rect.w);

@@ -78,7 +78,7 @@ static float ui_layout_wrap_size(UIWidgetObj* obj, float limitW)
     Vec2 baseline(0.0f, metrics.ascent);
 
     if (!self.value)
-        return metrics.lineHeight;
+        return (float)metrics.lineHeight;
 
     size_t len = strlen(self.value);
 
@@ -89,7 +89,7 @@ static float ui_layout_wrap_size(UIWidgetObj* obj, float limitW)
         // TODO: text wrapping using whitespace as boundary
         if (c == '\n' || baseline.x >= limitW)
         {
-            baseline.y += metrics.lineHeight;
+            baseline.y += (float)metrics.lineHeight;
             baseline.x = 0.0f;
             continue;
         }
@@ -101,7 +101,7 @@ static float ui_layout_wrap_size(UIWidgetObj* obj, float limitW)
         baseline.x += advanceX;
     }
 
-    return baseline.y - metrics.descent;
+    return baseline.y - (float)metrics.descent;
 }
 
 static void ui_layout_pass_clear(UIWidgetObj* root)
@@ -435,6 +435,7 @@ static void ui_layout_pass_pos_align(UIWidgetObj* root)
 static void ui_layout_pass_scroll_offset(UIWidgetObj* root, Vec2 offset)
 {
     const UILayoutInfo& rootLayout = root->layout.info;
+    (void)rootLayout;
 
     offset += root->scrollOffset;
 

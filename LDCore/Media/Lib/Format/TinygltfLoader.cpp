@@ -171,6 +171,8 @@ bool TinygltfLoader::load_node(tinygltf::Node& tinyNode, uint32_t nodeIndex, Mes
     Vec3 scale = Vec3(1.0f);
     Quat rotation = {};
 
+    (void)nodeIndex;
+
     mObj->nodes.push_back(node);
 
     if (tinyNode.translation.size() == 3)
@@ -223,10 +225,10 @@ bool TinygltfLoader::load_mesh(tinygltf::Mesh& tinyMesh, MeshNode* node)
 {
     node->primitives.resize(tinyMesh.primitives.size());
 
-    for (size_t i = 0; i < node->primitives.size(); i++)
+    for (size_t primIdx = 0; primIdx < node->primitives.size(); primIdx++)
     {
-        tinygltf::Primitive& tinyPrim = tinyMesh.primitives[i];
-        MeshPrimitive& prim = node->primitives[i];
+        tinygltf::Primitive& tinyPrim = tinyMesh.primitives[primIdx];
+        MeshPrimitive& prim = node->primitives[primIdx];
 
         uint32_t vertexBase = mVertexBase;
         uint32_t indexBase = mIndexBase;
@@ -340,10 +342,10 @@ void TinygltfLoader::scan_node_primitives(tinygltf::Node& tinyNode)
         for (size_t i = 0; i < tinyMesh.primitives.size(); i++)
         {
             tinygltf::Primitive& tinyPrim = tinyMesh.primitives[i];
-            mVertexCount += mTinyModel.accessors[tinyPrim.attributes.find("POSITION")->second].count;
+            mVertexCount += (uint32_t)mTinyModel.accessors[tinyPrim.attributes.find("POSITION")->second].count;
 
             if (tinyPrim.indices >= 0)
-                mIndexCount += mTinyModel.accessors[tinyPrim.indices].count;
+                mIndexCount += (uint32_t)mTinyModel.accessors[tinyPrim.indices].count;
         }
     }
 }

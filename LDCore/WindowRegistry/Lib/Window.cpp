@@ -82,6 +82,8 @@ void WindowObj::size_callback(GLFWwindow* window, int width, int height)
 void WindowObj::key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
     auto* obj = (WindowObj*)glfwGetWindowUserPointer(window);
+    (void)mods;
+    (void)scancode;
 
     if (action == GLFW_PRESS || action == GLFW_REPEAT)
     {

@@ -89,12 +89,12 @@ public:
     }
 
     Hash32(const std::string& str)
-        : mHash(hash32_FNV_1a(str.data(), str.size()))
+        : mHash(hash32_FNV_1a(str.data(), (int)str.size()))
     {
     }
 
     Hash32(std::string&& str)
-        : mHash(hash32_FNV_1a(str.data(), str.size()))
+        : mHash(hash32_FNV_1a(str.data(), (int)str.size()))
     {
     }
 
@@ -136,12 +136,12 @@ public:
     }
 
     Hash64(const std::string& str)
-        : mHash(hash64_FNV_1a(str.data(), str.size()))
+        : mHash(hash64_FNV_1a(str.data(), (int)str.size()))
     {
     }
 
     Hash64(std::string&& str)
-        : mHash(hash64_FNV_1a(str.data(), str.size()))
+        : mHash(hash64_FNV_1a(str.data(), (int)str.size()))
     {
     }
 

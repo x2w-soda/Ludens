@@ -14,7 +14,7 @@ add_ludens_core_module(
     LIB     ${MODULE_LIB}
 )
 
-target_include_directories(${MODULE_NAME} PUBLIC
+target_include_directories(${MODULE_NAME} SYSTEM PUBLIC
   ${tracy_SOURCE_DIR}
 )
 

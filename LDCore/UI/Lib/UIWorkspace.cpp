@@ -164,7 +164,6 @@ UIWindow UIWorkspace::create_window(UIAreaID areaID, const UILayoutInfo& layoutI
     if (node->window)
         destroy_window(node->window);
 
-    UIContextObj* ctx = mObj->layer->ctx;
     UIWindowObj* windowObj = mObj->create_window(layoutI, windowI, user);
 
     mObj->nodeWindows.push_back(windowObj);

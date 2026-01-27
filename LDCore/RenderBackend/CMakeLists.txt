@@ -63,7 +63,7 @@ target_link_directories(${MODULE_NAME} PUBLIC
     ${LUDENS_VULKAN_LIB_DIR}
 )
 
-target_include_directories(${MODULE_NAME} PRIVATE
+target_include_directories(${MODULE_NAME} SYSTEM PRIVATE
     ${Vulkan_INCLUDE_DIR}
     ${glfw_SOURCE_DIR}/include
     ${vma_SOURCE_DIR}/include

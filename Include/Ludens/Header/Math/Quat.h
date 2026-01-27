@@ -66,7 +66,7 @@ struct TQuat
         T radY = LD_ASIN(std::clamp<T>((T)2 * (w * y - x * z), (T)-1, (T)1));
         T radZ = LD_ATAN2(2 * (w * z + x * y), w * w + x * x - y * y - z * z /*1 - 2*(y*y + z*z*/);
 
-        return TVec3<T>(LD_TO_DEGREES(radX), LD_TO_DEGREES(radY), LD_TO_DEGREES(radZ));
+        return TVec3<T>((T)LD_TO_DEGREES(radX), (T)LD_TO_DEGREES(radY), (T)LD_TO_DEGREES(radZ));
     }
 
     /// @brief Get rotation matrix as Mat3.
@@ -106,9 +106,9 @@ struct TQuat
 
     static TQuat from_euler(const TVec3<T>& eulerDeg)
     {
-        T roll = LD_TO_RADIANS(eulerDeg.x);
-        T pitch = LD_TO_RADIANS(eulerDeg.y);
-        T yaw = LD_TO_RADIANS(eulerDeg.z);
+        T roll = (T)LD_TO_RADIANS(eulerDeg.x);
+        T pitch = (T)LD_TO_RADIANS(eulerDeg.y);
+        T yaw = (T)LD_TO_RADIANS(eulerDeg.z);
 
         T cr = (T)LD_COS(roll * (T)0.5);
         T sr = (T)LD_SIN(roll * (T)0.5);
@@ -131,7 +131,7 @@ struct TQuat
 
         const T angleRad2 = angleRad / (T)2;
 
-        return TQuat(axis * LD_SIN(angleRad2), LD_COS(angleRad2));
+        return TQuat(axis * (T)LD_SIN(angleRad2), (T)LD_COS(angleRad2));
     }
 
     static TQuat from_mat3(const TMat3<T>& m)

@@ -66,22 +66,22 @@ HRESULT STDMETHODCALLTYPE DropTargetWin32::QueryInterface(REFIID riid, void** pp
 
 ULONG STDMETHODCALLTYPE DropTargetWin32::AddRef()
 {
-    return InterlockedIncrement(&mDragRefCount);
+    return (ULONG)InterlockedIncrement(&mDragRefCount);
 }
 
 ULONG STDMETHODCALLTYPE DropTargetWin32::Release()
 {
-    return InterlockedDecrement(&mDragRefCount);
+    return (ULONG)InterlockedDecrement(&mDragRefCount);
 }
 
-HRESULT STDMETHODCALLTYPE DropTargetWin32::DragEnter(IDataObject* pDataObj, DWORD, POINTL, DWORD* pdwEffect)
+HRESULT STDMETHODCALLTYPE DropTargetWin32::DragEnter(IDataObject*, DWORD, POINTL, DWORD* pdwEffect)
 {
     *pdwEffect = DROPEFFECT_COPY;
 
     return S_OK;
 }
 
-HRESULT STDMETHODCALLTYPE DropTargetWin32::DragOver(DWORD grfKeyState, POINTL pt, DWORD* pdwEffect)
+HRESULT STDMETHODCALLTYPE DropTargetWin32::DragOver(DWORD, POINTL, DWORD* pdwEffect)
 {
     *pdwEffect = DROPEFFECT_COPY;
 
@@ -93,7 +93,7 @@ HRESULT STDMETHODCALLTYPE DropTargetWin32::DragLeave()
     return S_OK;
 }
 
-HRESULT STDMETHODCALLTYPE DropTargetWin32::Drop(IDataObject* pDataObj, DWORD, POINTL, DWORD* pdwEffect)
+HRESULT STDMETHODCALLTYPE DropTargetWin32::Drop(IDataObject* pDataObj, DWORD, POINTL, DWORD*)
 {
     LD_PROFILE_SCOPE;
 
@@ -138,7 +138,8 @@ DropTarget DropTarget::create(GLFWwindow* handle, DropTargetFileCallback onDropF
 {
     if (!sHasOLEInit)
     {
-        OleInitialize(nullptr);
+        HRESULT result = OleInitialize(nullptr);
+        (void)result; // TODO:
         sHasOLEInit = true;
     }
 

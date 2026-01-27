@@ -1,8 +1,9 @@
 #pragma once
 
+#include <Ludens/DSA/Vector.h>
 #include <Ludens/Header/Math/Rect.h>
+
 #include <msdf-atlas-gen/msdf-atlas-gen.h> // hide from user
-#include <vector>
 
 namespace LD {
 
@@ -41,10 +42,10 @@ private:
         uint32_t codeEnd;
     };
 
-    uint32_t mAtlasWidth;
-    uint32_t mAtlasHeight;
-    std::vector<GlyphData> mGlyphs;
-    std::vector<Range> mRanges;
+    uint32_t mAtlasWidth = 0;
+    uint32_t mAtlasHeight = 0;
+    Vector<GlyphData> mGlyphs;
+    Vector<Range> mRanges;
 };
 
 } // namespace LD

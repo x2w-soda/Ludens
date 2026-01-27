@@ -327,7 +327,7 @@ static void topological_sort(const HashMap<Hash32, RComponent>& components, Vect
     std::reverse(order.begin(), order.end());
 }
 
-void RGraphObj::record_graphics_pass(RGraphicsPassObj* pass, RCommandList list, uint32_t passIdx)
+void RGraphObj::record_graphics_pass(RGraphicsPassObj* pass, uint32_t passIdx)
 {
     RComponentObj* comp = pass->compObj;
     uint32_t colorAttachmentCount = (uint32_t)pass->colorAttachments.size();
@@ -511,10 +511,10 @@ void RGraphObj::sort()
     // topological sort of all graphics passes, linearize passes
     topological_sort(components, passOrder);
 
-    state = RGRAPH_STATE_SORTED;
+    graphState = RGRAPH_STATE_SORTED;
 }
 
-void RGraphObj::record_compute_pass(RComputePassObj* pass, RCommandList list, uint32_t passIdx)
+void RGraphObj::record_compute_pass(RComputePassObj* pass, uint32_t passIdx)
 {
     RComponentObj* comp = pass->compObj;
 
@@ -1101,7 +1101,7 @@ void RGraph::connect_swapchain_image(RGraphImage src, WindowID dstWindow)
 
 void RGraph::debug(Vector<RComponentPass>& passOrder, bool saveToDisk)
 {
-    LD_ASSERT(mObj->state == RGRAPH_STATE_CREATED);
+    LD_ASSERT(mObj->graphState == RGRAPH_STATE_CREATED);
     
     mObj->sort();
 
@@ -1117,7 +1117,7 @@ void RGraph::submit()
 {
     LD_PROFILE_SCOPE;
 
-    if (mObj->state == RGRAPH_STATE_CREATED)
+    if (mObj->graphState == RGRAPH_STATE_CREATED)
         mObj->sort();
 
     // recording
@@ -1134,12 +1134,12 @@ void RGraph::submit()
         if (mObj->passOrder[passIdx]->isComputePass)
         {
             RComputePassObj* pass = (RComputePassObj*)mObj->passOrder[passIdx];
-            mObj->record_compute_pass(pass, list, passIdx);
+            mObj->record_compute_pass(pass, passIdx);
             continue;
         }
 
         RGraphicsPassObj* pass = (RGraphicsPassObj*)mObj->passOrder[passIdx];
-        mObj->record_graphics_pass(pass, list, passIdx);
+        mObj->record_graphics_pass(pass, passIdx);
     }
 
     size_t i = 0;

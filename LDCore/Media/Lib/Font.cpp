@@ -28,7 +28,7 @@ struct FontAtlasObj
     Font font;
     Bitmap atlas;
     GlyphTable table;
-    float fontSize;
+    float fontSize = 0;
 };
 
 struct FontAtlasConfig
@@ -58,7 +58,7 @@ static Bitmap generate_bitmap_atlas(FontObj* obj, std::vector<msdf_atlas::GlyphG
     packer.setMinimumScale(config.fontSize);
     packer.setPixelRange(config.pixelRange);
     packer.setMiterLimit(1.0);
-    packer.setSpacing(config.spacing);
+    packer.setSpacing((int)config.spacing);
     packer.pack(glyphs.data(), (int)glyphs.size());
 
     int atlasWidth, atlasHeight;
@@ -101,7 +101,7 @@ static Bitmap generate_sdf_atlas(FontObj* obj, std::vector<msdf_atlas::GlyphGeom
     packer.setMinimumScale(config.fontSize);
     packer.setPixelRange(config.pixelRange);
     packer.setMiterLimit(1.0);
-    packer.setSpacing(config.spacing);
+    packer.setSpacing((int)config.spacing);
     packer.pack(glyphs.data(), (int)glyphs.size());
 
     int atlasWidth, atlasHeight;

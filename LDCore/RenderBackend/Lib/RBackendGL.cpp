@@ -513,6 +513,8 @@ static void* gl_buffer_map_read(RBufferObj* baseSelf, uint64_t offset, uint64_t 
     auto* self = (RBufferGLObj*)baseSelf;
     char* src = (char*)self->hostMap + offset;
 
+    (void)size;
+
     return (void*)src;
 }
 
@@ -584,6 +586,7 @@ static void gl_queue_submit(RQueueObj* baseSelf, const RSubmitInfo& submitI, RFe
     (void)self;
 
     // TODO: simulate semaphore synchronization
+    (void)fence;
     LD_ASSERT(submitI.waitCount == 0);
     LD_ASSERT(submitI.signalCount == 0);
 
@@ -621,6 +624,7 @@ void gl_device_dtor(RDeviceObj* baseObj)
 void gl_create_device(struct RDeviceObj* baseObj, const RDeviceInfo& info)
 {
     auto* obj = (RDeviceGLObj*)baseObj;
+    (void)info;
 
     WindowRegistry reg = WindowRegistry::get();
 
@@ -693,7 +697,6 @@ static RBuffer gl_device_create_buffer(RDeviceObj* baseSelf, const RBufferInfo& 
     // TODO:
     glCreateBuffers(1, &obj->gl.handle);
     glNamedBufferStorage(obj->gl.handle, bufferI.size, nullptr, GL_MAP_READ_BIT | GL_MAP_WRITE_BIT);
-    GLenum error = glGetError();
 
     return RBuffer(obj);
 }
@@ -701,6 +704,7 @@ static RBuffer gl_device_create_buffer(RDeviceObj* baseSelf, const RBufferInfo& 
 static void gl_device_destroy_buffer(RDeviceObj* baseSelf, RBuffer buffer)
 {
     auto* obj = (RBufferGLObj*)buffer.unwrap();
+    (void)baseSelf;
 
     // TODO:
     glDeleteBuffers(1, &obj->gl.handle);
@@ -723,6 +727,7 @@ static void gl_device_image_dtor(RImageObj* baseObj)
 static RImage gl_device_create_image(RDeviceObj* baseSelf, const RImageInfo& imageI, RImageObj* baseObj)
 {
     auto* obj = (RImageGLObj*)baseObj;
+    (void)baseSelf;
 
     RUtil::cast_format_gl(imageI.format, obj->gl.internalFormat, obj->gl.dataFormat, obj->gl.dataType);
     RUtil::cast_image_type_gl(imageI.type, obj->gl.target);
@@ -761,6 +766,7 @@ static RImage gl_device_create_image(RDeviceObj* baseSelf, const RImageInfo& ima
 static void gl_device_destroy_image(RDeviceObj* baseSelf, RImage image)
 {
     auto* obj = (RImageGLObj*)image.unwrap();
+    (void)baseSelf;
 
     glDeleteTextures(1, &obj->gl.handle);
 }
@@ -779,14 +785,14 @@ static void gl_device_pass_dtor(RPassObj* baseObj)
     obj->~RPassGLObj();
 }
 
-static void gl_device_create_pass(RDeviceObj* baseSelf, const RPassInfo& passI, RPassObj* baseObj)
+static void gl_device_create_pass(RDeviceObj*, const RPassInfo&, RPassObj*)
 {
-    (void*)baseObj;
+    // TODO:
 }
 
-static void gl_device_destroy_pass(RDeviceObj* baseSelf, RPassObj* baseObj)
+static void gl_device_destroy_pass(RDeviceObj*, RPassObj*)
 {
-    (void*)baseObj;
+    // TODO:
 }
 
 static void gl_device_framebuffer_ctor(RFramebufferObj* baseObj)

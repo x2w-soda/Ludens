@@ -41,7 +41,7 @@ struct WindowInfo
 };
 
 /// @brief Window registry singleton. The root window is created and destroyed along the registry.
-struct WindowRegistry : Handle<struct WindowRegistryObj>
+struct WindowRegistry : Handle<class WindowRegistryObj>
 {
     /// @brief Create window registry singleton.
     static WindowRegistry create(const WindowInfo& rootWindowInfo);
