@@ -31,6 +31,12 @@ void ui_frame_end();
 /// @brief Set layout of widget on top of stack.
 void ui_top_layout(const UILayoutInfo& layoutI);
 
+/// @brief Set size of widget on top of stack.
+void ui_top_layout_size(const UISize& sizeX, const UISize& sizeY);
+
+/// @brief Set child axis of widget on top of stack.
+void ui_top_layout_child_axis(UIAxis childAxis);
+
 /// @brief Set child padding of widget on top of stack.
 void ui_top_layout_child_padding(const UIPadding& pad);
 

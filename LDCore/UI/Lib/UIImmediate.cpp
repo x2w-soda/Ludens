@@ -499,6 +499,22 @@ void ui_top_layout(const UILayoutInfo& layoutI)
     widgetS->widget.set_layout(layoutI);
 }
 
+void ui_top_layout_size(const UISize& sizeX, const UISize& sizeY)
+{
+    LD_ASSERT_UI_TOP_WIDGET;
+
+    UIWidgetState* widgetS = sImFrame.imWindow->imWidgetStack.top();
+    widgetS->widget.set_layout_size(sizeX, sizeY);
+}
+
+void ui_top_layout_child_axis(UIAxis childAxis)
+{
+    LD_ASSERT_UI_TOP_WIDGET;
+
+    UIWidgetState* widgetS = sImFrame.imWindow->imWidgetStack.top();
+    widgetS->widget.set_layout_child_axis(childAxis);
+}
+
 void ui_top_layout_child_padding(const UIPadding& pad)
 {
     LD_ASSERT_UI_TOP_WIDGET;

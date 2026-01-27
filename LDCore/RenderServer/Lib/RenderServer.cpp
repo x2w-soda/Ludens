@@ -211,11 +211,27 @@ void RenderServerObj::next_frame(const RenderServerFrameInfo& frameI)
     RFence frameComplete;
     mDevice.next_frame(mFrameIndex, frameComplete);
 
-    RGraphSwapchainInfo swapchain{};
     WindowRegistry reg = WindowRegistry::get();
-    swapchain.image = mDevice.try_acquire_image(reg.get_root_id(), swapchain.imageAcquired, swapchain.presentReady);
-    swapchain.window = reg.get_root_id();
-    LD_ASSERT(swapchain.image); // TODO: skip frame
+    WindowID rootWindowID = reg.get_root_id();
+    Vector<RGraphSwapchainInfo> swapchains;
+
+    {
+        RGraphSwapchainInfo rootWindowSwapchain{};
+        rootWindowSwapchain.image = mDevice.try_acquire_image(rootWindowID, rootWindowSwapchain.imageAcquired, rootWindowSwapchain.presentReady);
+        rootWindowSwapchain.window = rootWindowID;
+
+        if (rootWindowSwapchain.image)
+            swapchains.push_back(rootWindowSwapchain);
+    }
+
+    if (frameI.dialogWindowID)
+    {
+        RGraphSwapchainInfo dialogWindowSwapchain{};
+        dialogWindowSwapchain.image = mDevice.try_acquire_image(frameI.dialogWindowID, dialogWindowSwapchain.imageAcquired, dialogWindowSwapchain.presentReady);
+        dialogWindowSwapchain.window = frameI.dialogWindowID;
+        if (dialogWindowSwapchain.image)
+            swapchains.push_back(dialogWindowSwapchain);
+    }
 
     mSceneExtent = frameI.sceneExtent;
     mScreenExtent = frameI.screenExtent;
