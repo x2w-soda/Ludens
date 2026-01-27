@@ -86,6 +86,8 @@ EditorApplication::EditorApplication()
     uiI.ctx = mEditorCtx;
     uiI.fontAtlas = mFontAtlas;
     uiI.fontAtlasImage = mRenderServer.get_font_atlas_image();
+    uiI.renderServer = mRenderServer;
+    uiI.envCubemap = mEnvCubemap;
     uiI.screenWidth = (uint32_t)screenExtent.x;
     uiI.screenHeight = (uint32_t)screenExtent.y;
     uiI.barHeight = 22;
@@ -118,76 +120,20 @@ void EditorApplication::run()
 
     while (reg.is_window_open(rootID))
     {
+        // Flush window events.
         reg.poll_events();
 
         if (reg.is_window_minimized(rootID))
             continue;
 
         float delta = (float)reg.get_delta_time();
-        const Vec2 screenExtent = reg.get_window_extent(rootID);
 
+        // Flushes the editor action queue.
         // The current project or scene could change after this.
         mEditorCtx.poll_actions();
 
         mEditorUI.update(delta);
-
-        // If the Scene is playing in editor, this drives the scene update as well
-        mEditorCtx.update(mEditorUI.get_viewport_scene_size(), delta);
-
-        // If the Scene is playing, the main camera is from some camera component registered in scene.
-        // Otherwise it's just the viewport camera.
-        Camera mainCamera = mEditorUI.get_main_camera();
-        LD_ASSERT(mainCamera);
-
-        // begin rendering a frame
-        RenderServerFrameInfo frameI{};
-        frameI.directionalLight = Vec3(0.0f, 1.0f, 0.0f);
-        frameI.mainCamera = mainCamera;
-        frameI.screenExtent = screenExtent;
-        frameI.sceneExtent = mEditorUI.get_viewport_scene_size();
-        frameI.envCubemap = mEnvCubemap;
-        mRenderServer.next_frame(frameI);
-
-        // render game scene with overlay, the editor context is responsible for supplying object transforms
-        RenderServerScenePass sceneP{};
-        sceneP.transformCallback = &EditorContext::render_server_transform_callback;
-        sceneP.user = mEditorCtx.unwrap();
-        sceneP.overlay.enabled = !mEditorCtx.is_playing();
-        sceneP.overlay.outlineRUID = mEditorUI.get_viewport_outline_ruid();
-        sceneP.hasSkybox = (mEnvCubemap != 0);
-        mEditorUI.get_viewport_gizmo_state(
-            sceneP.overlay.gizmoType,
-            sceneP.overlay.gizmoCenter,
-            sceneP.overlay.gizmoScale,
-            sceneP.overlay.gizmoColor);
-        mRenderServer.scene_pass(sceneP);
-
-        // render screen space items on top of game scene.
-        RenderServerScreenPass screenP{};
-        screenP.layerCallback = &EditorContext::render_server_screen_pass_callback;
-        screenP.user = mEditorCtx.unwrap();
-        mRenderServer.screen_pass(screenP);
-
-        // render the editor UI
-        RenderServerEditorPass editorP{};
-        editorP.renderCallback = &EditorUI::on_render;
-        editorP.scenePickCallback = &EditorUI::on_scene_pick;
-        editorP.user = &mEditorUI;
-        editorP.sceneMousePickQuery = nullptr;
-        Vec2 queryPos;
-        if (mEditorUI.get_viewport_mouse_pos(queryPos))
-            editorP.sceneMousePickQuery = &queryPos;
-        mRenderServer.editor_pass(editorP);
-
-        // render the editor overlay UI
-        RenderServerEditorOverlayPass editorOP{};
-        editorOP.renderCallback = &EditorUI::on_render_overlay;
-        editorOP.blurMixColor = 0x101010FF;
-        editorOP.blurMixFactor = 0.1f;
-        editorOP.user = &mEditorUI;
-        mRenderServer.editor_overlay_pass(editorOP);
-
-        mRenderServer.submit_frame();
+        mEditorUI.submit_frame();
 
         LD_PROFILE_FRAME_MARK;
     }
