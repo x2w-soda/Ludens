@@ -17,6 +17,8 @@ struct EditorTheme : Handle<struct EditorThemeObj>
     Color get_stop_button_color() const;
     float get_font_size() const;
     float get_padding() const;
+    float get_text_row_height() const;
+    float get_text_label_width() const;
     void get_tab_background_color(Color& bg) const;
     void get_gizmo_colors(Color& axisX, Color& axisY, Color& axisZ) const;
     void get_gizmo_highlight_color(Color& hl) const;

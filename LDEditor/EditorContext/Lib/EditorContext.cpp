@@ -528,7 +528,7 @@ bool EditorContext::is_playing()
     return mObj->isPlaying;
 }
 
-void EditorContext::get_scene_roots(std::vector<CUID>& roots)
+void EditorContext::get_scene_roots(Vector<CUID>& roots)
 {
     mObj->scene.get_root_components(roots);
 }
@@ -550,6 +550,41 @@ const char* EditorContext::get_component_name(CUID comp)
 const ComponentScriptSlot* EditorContext::get_component_script_slot(CUID compID)
 {
     return mObj->scene.get_component_script_slot(compID);
+}
+
+void EditorContext::request_component_asset(CUID compID, AUID oldAssetID, AssetType type)
+{
+    EditorContextRequestComponentAssetEvent event(compID, oldAssetID, type);
+
+    mObj->notify_observers(&event);
+}
+
+void EditorContext::request_new_project()
+{
+    EditorContextRequestNewProjectEvent event{};
+
+    mObj->notify_observers(&event);
+}
+
+void EditorContext::request_open_project()
+{
+    EditorContextRequestOpenProjectEvent event{};
+
+    mObj->notify_observers(&event);
+}
+
+void EditorContext::request_new_scene()
+{
+    EditorContextRequestNewSceneEvent event{};
+
+    mObj->notify_observers(&event);
+}
+
+void EditorContext::request_open_scene()
+{
+    EditorContextRequestOpenSceneEvent event{};
+
+    mObj->notify_observers(&event);
 }
 
 void EditorContext::set_selected_component(CUID comp)

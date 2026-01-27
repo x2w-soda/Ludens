@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Ludens/AudioServer/AudioServer.h>
+#include <Ludens/DSA/Vector.h>
 #include <Ludens/RenderServer/RenderServer.h>
 #include <Ludens/Scene/Scene.h>
 #include <Ludens/System/FileSystem.h>
@@ -115,7 +116,7 @@ struct EditorContext : Handle<struct EditorContextObj>
     bool is_playing();
 
     /// @brief Get root data components in scene
-    void get_scene_roots(std::vector<CUID>& roots);
+    void get_scene_roots(Vector<CUID>& roots);
 
     /// @brief Get component base members.
     const ComponentBase* get_component_base(CUID comp);
@@ -125,6 +126,21 @@ struct EditorContext : Handle<struct EditorContextObj>
 
     /// @brief Get component script slot.
     const ComponentScriptSlot* get_component_script_slot(CUID compID);
+
+    /// @brief Notifies observers of an EDITOR_CONTEXT_EVENT_REQUEST_COMPONENT_ASSET.
+    void request_component_asset(CUID compID, AUID oldAssetID, AssetType type);
+
+    /// @brief Notifies observers of an EDITOR_CONTEXT_EVENT_REQUEST_NEW_PROJECT.
+    void request_new_project();
+
+    /// @brief Notifies observers of an EDITOR_CONTEXT_EVENT_REQUEST_NEW_PROJECT.
+    void request_open_project();
+
+    /// @brief Notifies observers of an EDITOR_CONTEXT_EVENT_REQUEST_NEW_SCENE.
+    void request_new_scene();
+
+    /// @brief Notifies observers of an EDITOR_CONTEXT_EVENT_REQUEST_OPEN_SCENE.
+    void request_open_scene();
 
     /// @brief Assign a component in scene to be selected.
     /// @note Triggers EDITOR_CONTEXT_EVENT_COMPONENT_SELECTION for observers.

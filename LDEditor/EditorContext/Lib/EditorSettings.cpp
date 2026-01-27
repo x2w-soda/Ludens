@@ -10,6 +10,8 @@ struct EditorThemeObj
     UIThemeInfo uiTheme;
     float fontSize;
     float padding;
+    float textRowHeight;
+    float textLabelWidth;
     Color tabBGColor;
     Color gizmoColorAxisX;
     Color gizmoColorAxisY;
@@ -26,6 +28,8 @@ void EditorThemeObj::initialize_default()
     uiTheme = UITheme::get_default_info();
     fontSize = 16.0f;
     padding = 5.0f;
+    textRowHeight = 20.0f;
+    textLabelWidth = 120.0f;
     tabBGColor = 0x141516FF;
     gizmoColorAxisX = Vec4(0.9f, 0.1f, 0.1f, 0.8f);
     gizmoColorAxisY = Vec4(0.1f, 0.9f, 0.1f, 0.8f);
@@ -58,6 +62,16 @@ float EditorTheme::get_font_size() const
 float EditorTheme::get_padding() const
 {
     return mObj->padding;
+}
+
+float EditorTheme::get_text_row_height() const
+{
+    return mObj->textRowHeight;
+}
+
+float EditorTheme::get_text_label_width() const
+{
+    return mObj->textLabelWidth;
 }
 
 void EditorTheme::get_tab_background_color(Color& bg) const
