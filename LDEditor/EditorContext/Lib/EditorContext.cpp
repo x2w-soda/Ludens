@@ -25,8 +25,6 @@ namespace LD {
 
 static Log sLog("EditorContext");
 
-using EditorContextObserver = std::pair<EditorContextEventFn, void*>;
-
 /// @brief Editor context implementation. Keeps track of the active project
 ///        and active scene states.
 struct EditorContextObj
@@ -46,7 +44,7 @@ struct EditorContextObj
     FS::Path projectDirPath;       /// path to project root directory
     std::string projectName;       /// project identifier
     Vector<FS::Path> scenePaths;   /// path to scene schema files in project
-    ObserverList<const EditorContextEvent*> observers;
+    ObserverList<const EditorEvent*> observers;
     CUID selectedComponent;
     RUID selectedComponentRUID;
     bool isPlaying;
@@ -74,7 +72,7 @@ struct EditorContextObj
         AUID assetID;
     } setComponentAssetParams;
 
-    void notify_observers(const EditorContextEvent* event);
+    void notify_observers(const EditorEvent* event);
 
     void load_project(const FS::Path& projectSchemaPath);
     void load_project_scene(const FS::Path& sceneSchemaPath);
@@ -165,7 +163,7 @@ static void editor_action_set_component_asset(EditStack stack, void* user)
         params.assetID));
 }
 
-void EditorContextObj::notify_observers(const EditorContextEvent* event)
+void EditorContextObj::notify_observers(const EditorEvent* event)
 {
     observers.notify(event);
 }
@@ -228,7 +226,7 @@ void EditorContextObj::load_project(const FS::Path& projectSchemaPath)
     if (!scenePaths.empty())
         load_project_scene(scenePaths.front());
 
-    EditorContextProjectLoadEvent event{};
+    EditorNotifyProjectLoadEvent event{};
     notify_observers(&event);
 }
 
@@ -255,7 +253,7 @@ void EditorContextObj::load_project_scene(const FS::Path& sceneSchemaPath)
     LD_ASSERT(ok); // TODO:
     scene.load();
 
-    EditorContextSceneLoadEvent event{};
+    EditorNotifySceneLoadEvent event{};
     notify_observers(&event);
 }
 
@@ -468,7 +466,7 @@ Camera EditorContext::get_scene_camera()
     return mObj->scene.get_camera();
 }
 
-void EditorContext::add_observer(EditorContextEventFn fn, void* user)
+void EditorContext::add_observer(EditorEventFn fn, void* user)
 {
     mObj->observers.add_observer(fn, user);
 }
@@ -552,39 +550,9 @@ const ComponentScriptSlot* EditorContext::get_component_script_slot(CUID compID)
     return mObj->scene.get_component_script_slot(compID);
 }
 
-void EditorContext::request_component_asset(CUID compID, AUID oldAssetID, AssetType type)
+void EditorContext::request_event(const EditorRequestEvent* event)
 {
-    EditorContextRequestComponentAssetEvent event(compID, oldAssetID, type);
-
-    mObj->notify_observers(&event);
-}
-
-void EditorContext::request_new_project()
-{
-    EditorContextRequestNewProjectEvent event{};
-
-    mObj->notify_observers(&event);
-}
-
-void EditorContext::request_open_project()
-{
-    EditorContextRequestOpenProjectEvent event{};
-
-    mObj->notify_observers(&event);
-}
-
-void EditorContext::request_new_scene()
-{
-    EditorContextRequestNewSceneEvent event{};
-
-    mObj->notify_observers(&event);
-}
-
-void EditorContext::request_open_scene()
-{
-    EditorContextRequestOpenSceneEvent event{};
-
-    mObj->notify_observers(&event);
+    mObj->notify_observers(event);
 }
 
 void EditorContext::set_selected_component(CUID comp)
@@ -593,7 +561,7 @@ void EditorContext::set_selected_component(CUID comp)
         return;
 
     // update state and notify observers
-    EditorContextComponentSelectionEvent event(comp);
+    EditorNotifyComponentSelectionEvent event(comp);
     mObj->selectedComponent = comp;
     mObj->selectedComponentRUID = mObj->scene.get_component_ruid(comp);
     mObj->notify_observers(&event);

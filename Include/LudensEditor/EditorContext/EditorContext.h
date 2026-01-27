@@ -7,7 +7,7 @@
 #include <Ludens/System/FileSystem.h>
 #include <Ludens/UI/UILayout.h>
 #include <LudensEditor/EditorContext/EditorAction.h>
-#include <LudensEditor/EditorContext/EditorContextEvent.h>
+#include <LudensEditor/EditorContext/EditorEvent.h>
 #include <LudensEditor/EditorContext/EditorSettings.h>
 
 namespace LD {
@@ -89,7 +89,7 @@ struct EditorContext : Handle<struct EditorContextObj>
     Camera get_scene_camera();
 
     /// @brief Add an observer of the editor context
-    void add_observer(EditorContextEventFn fn, void* user);
+    void add_observer(EditorEventFn fn, void* user);
 
     /// @brief Editor context frame update, if the scene is playing, this calls the scene update.
     /// @param sceneExtent Screen size containing the scene.
@@ -127,20 +127,8 @@ struct EditorContext : Handle<struct EditorContextObj>
     /// @brief Get component script slot.
     const ComponentScriptSlot* get_component_script_slot(CUID compID);
 
-    /// @brief Notifies observers of an EDITOR_CONTEXT_EVENT_REQUEST_COMPONENT_ASSET.
-    void request_component_asset(CUID compID, AUID oldAssetID, AssetType type);
-
-    /// @brief Notifies observers of an EDITOR_CONTEXT_EVENT_REQUEST_NEW_PROJECT.
-    void request_new_project();
-
-    /// @brief Notifies observers of an EDITOR_CONTEXT_EVENT_REQUEST_NEW_PROJECT.
-    void request_open_project();
-
-    /// @brief Notifies observers of an EDITOR_CONTEXT_EVENT_REQUEST_NEW_SCENE.
-    void request_new_scene();
-
-    /// @brief Notifies observers of an EDITOR_CONTEXT_EVENT_REQUEST_OPEN_SCENE.
-    void request_open_scene();
+    /// @brief Notify observers of a request event.
+    void request_event(const EditorRequestEvent* event);
 
     /// @brief Assign a component in scene to be selected.
     /// @note Triggers EDITOR_CONTEXT_EVENT_COMPONENT_SELECTION for observers.

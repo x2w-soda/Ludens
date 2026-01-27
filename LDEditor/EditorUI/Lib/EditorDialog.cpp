@@ -79,6 +79,9 @@ EditorDialog EditorDialog::create(const EditorDialogInfo& dialogI)
     windowI.onEvent = &EditorDialogObj::on_event;
     windowI.name = "DialogWindow";
     windowI.user = obj;
+    windowI.hintBorderColor = 0;
+    windowI.hintTitleBarColor = 0x000000FF;
+    windowI.hintTitleBarTextColor = 0xDFDFDFFF;
     obj->windowID = reg.create_window(windowI, reg.get_root_id());
 
     reg.add_observer(&EditorDialogObj::on_observer_event, obj);

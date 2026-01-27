@@ -38,7 +38,7 @@ public:
 private:
     void get_or_create_dialog(EditorWindowType type);
 
-    static void on_editor_context_event(const EditorContextEvent* event, void* user);
+    static void on_editor_event(const EditorEvent* event, void* user);
 
 private:
     EditorContext mCtx{};
@@ -52,7 +52,7 @@ private:
 EditorUIDialogObj::EditorUIDialogObj(const EditorUIDialogInfo& mainI)
     : mCtx(mainI.ctx), mFontAtlas(mainI.fontAtlas), mFontAtlasImage(mainI.fontAtlasImage)
 {
-    mCtx.add_observer(&EditorUIDialogObj::on_editor_context_event, this);
+    mCtx.add_observer(&EditorUIDialogObj::on_editor_event, this);
 }
 
 EditorUIDialogObj::~EditorUIDialogObj()
@@ -73,7 +73,7 @@ void EditorUIDialogObj::update(float delta)
         mDialogType = DIALOG_NONE;
         return;
     }
-    
+
     // updates the UIContext in the EditorDialog (a separate OS-level Window)
     mDialog.update(delta);
 
@@ -183,13 +183,13 @@ void EditorUIDialogObj::get_or_create_dialog(EditorWindowType type)
     mDialog = EditorDialog::create(dialogI);
 }
 
-void EditorUIDialogObj::on_editor_context_event(const EditorContextEvent* event, void* user)
+void EditorUIDialogObj::on_editor_event(const EditorEvent* event, void* user)
 {
     auto* obj = (EditorUIDialogObj*)user;
 
     switch (event->type)
     {
-    case EDITOR_CONTEXT_EVENT_REQUEST_COMPONENT_ASSET:
+    case EDITOR_EVENT_TYPE_REQUEST_COMPONENT_ASSET:
         obj->create_dialog(DIALOG_SELECT_ASSET);
         break;
     default:

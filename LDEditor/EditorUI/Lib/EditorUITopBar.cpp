@@ -123,20 +123,32 @@ void EditorTopBarObj::file_menu_window()
     switch (opt)
     {
     case FILE_MENU_NEW_SCENE:
-        ctx.request_new_scene();
+    {
+        EditorRequestNewSceneEvent event{};
+        ctx.request_event(&event);
         break;
+    }
     case FILE_MENU_OPEN_SCENE:
-        ctx.request_open_scene();
+    {
+        EditorRequestOpenSceneEvent event{};
+        ctx.request_event(&event);
         break;
+    }
     case FILE_MENU_SAVE_SCENE:
         ctx.action_save_scene(); // just save the scene, no dialogs
         break;
     case FILE_MENU_NEW_PROJECT:
-        ctx.request_new_project();
+    {
+        EditorRequestNewProjectEvent event{};
+        ctx.request_event(&event);
         break;
+    }
     case FILE_MENU_OPEN_PROJECT:
-        ctx.request_open_project();
+    {
+        EditorRequestOpenProjectEvent event{};
+        ctx.request_event(&event);
         break;
+    }
     default:
         break;
     }

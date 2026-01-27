@@ -12,7 +12,7 @@ set(MODULE_LIB
 )
 
 set(MODULE_INCLUDE
-	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorContext/EditorContextEvent.h
+	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorContext/EditorEvent.h
 	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorContext/EditorContext.h
 	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorContext/EditorAction.h
 	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorContext/EditorSettings.h

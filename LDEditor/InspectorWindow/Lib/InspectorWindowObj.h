@@ -17,7 +17,7 @@ struct InspectorWindowObj : EditorWindowObj
     AssetType requestAssetType;
     AUID oldAssetID;
 
-    static void on_editor_context_event(const EditorContextEvent* event, void* user);
+    static void on_editor_event(const EditorEvent* event, void* user);
 
     virtual EditorWindowType get_type() override { return EDITOR_WINDOW_INSPECTOR; }
     virtual void on_imgui(float delta) override;

@@ -87,7 +87,10 @@ void EditorUIMainObj::update(float delta)
 
     if (mInspectorWindow.has_component_asset_request(subjectCompID, oldAssetID, type))
     {
-        mCtx.request_component_asset(subjectCompID, oldAssetID, type);
+        // NOTE: will have to refactor, this assumes single asset slot for all component types
+        EditorRequestComponentAssetEvent event(subjectCompID, oldAssetID, type);
+
+        mCtx.request_event(&event);
     }
 }
 

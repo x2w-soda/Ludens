@@ -54,7 +54,7 @@ struct ViewportWindowObj : EditorWindowObj
     void toolbar();
     void on_drag(MouseButton btn, const Vec2& dragPos, bool begin);
 
-    static void on_editor_context_event(const EditorContextEvent* event, void* user);
+    static void on_editor_event(const EditorEvent* event, void* user);
 };
 
 static inline bool get_gizmo_axis(SceneOverlayGizmoID id, GizmoAxis& axis)
@@ -457,14 +457,14 @@ void ViewportWindowObj::on_drag(MouseButton btn, const Vec2& dragPos, bool begin
     get_component_world_pos(subjectComp, gizmoCenter, worldMat4);
 }
 
-void ViewportWindowObj::on_editor_context_event(const EditorContextEvent* event, void* user)
+void ViewportWindowObj::on_editor_event(const EditorEvent* event, void* user)
 {
     auto& self = *(ViewportWindowObj*)user;
 
-    if (event->type != EDITOR_CONTEXT_EVENT_COMPONENT_SELECTION)
+    if (event->type != EDITOR_EVENT_TYPE_NOTIFY_COMPONENT_SELECTION)
         return;
 
-    const auto* selectionEvent = static_cast<const EditorContextComponentSelectionEvent*>(event);
+    const auto* selectionEvent = static_cast<const EditorNotifyComponentSelectionEvent*>(event);
 
     TransformEx localTransform;
     if (!selectionEvent->component || !self.ctx.get_selected_component_transform(localTransform))
@@ -508,7 +508,7 @@ EditorWindow ViewportWindow::create(const EditorWindowInfo& windowI)
     obj->gizmoType = SCENE_OVERLAY_GIZMO_TRANSLATION;
     obj->isGizmoVisible = false;
 
-    obj->ctx.add_observer(&ViewportWindowObj::on_editor_context_event, obj);
+    obj->ctx.add_observer(&ViewportWindowObj::on_editor_event, obj);
 
     return {obj};
 }

@@ -35,14 +35,14 @@ void InspectorWindowObj::request_new_asset(AssetType type, AUID currentID)
     oldAssetID = currentID;
 }
 
-void InspectorWindowObj::on_editor_context_event(const EditorContextEvent* event, void* user)
+void InspectorWindowObj::on_editor_event(const EditorEvent* event, void* user)
 {
     auto& self = *(InspectorWindowObj*)user;
 
-    if (event->type != EDITOR_CONTEXT_EVENT_COMPONENT_SELECTION)
+    if (event->type != EDITOR_EVENT_TYPE_NOTIFY_COMPONENT_SELECTION)
         return;
 
-    const auto* selectionEvent = static_cast<const EditorContextComponentSelectionEvent*>(event);
+    const auto* selectionEvent = static_cast<const EditorNotifyComponentSelectionEvent*>(event);
     self.subjectID = selectionEvent->component;
 }
 
@@ -54,7 +54,7 @@ EditorWindow InspectorWindow::create(const EditorWindowInfo& windowI)
 {
     InspectorWindowObj* obj = heap_new<InspectorWindowObj>(MEMORY_USAGE_UI);
     obj->ctx = windowI.ctx;
-    obj->ctx.add_observer(&InspectorWindowObj::on_editor_context_event, obj);
+    obj->ctx.add_observer(&InspectorWindowObj::on_editor_event, obj);
     obj->space = windowI.space;
     obj->root = obj->space.create_window(obj->space.get_root_id(), obj->ctx.make_vbox_layout(), {}, nullptr);
 

@@ -29,7 +29,7 @@ AttributeMacros:
 BinPackArguments: true
 BinPackParameters: true
 BraceWrapping:
-  AfterCaseLabel:  false
+  AfterCaseLabel:  true #false
   AfterClass:      true #false
   AfterControlStatement: Always #Never
   AfterEnum:       true #false
