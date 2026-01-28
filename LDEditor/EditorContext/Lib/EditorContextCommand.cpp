@@ -1,7 +1,29 @@
-#include "EditorContextCommand.h"
 #include <Ludens/Header/Assert.h>
 
+#include "EditorContextCommand.h"
+
 namespace LD {
+
+AddComponentCommand::AddComponentCommand(Scene scene, CUID parentID, ComponentType compType)
+    : mScene(scene), mParentID(parentID), mCompID(0), mCompType(compType)
+{
+    LD_ASSERT(mScene && mParentID);
+}
+
+void AddComponentCommand::redo()
+{
+    // TODO: resolve name collisions
+    const char* name = get_component_type_name(mCompType);
+
+    mCompID = mScene.create_component(mCompType, name, mParentID, 0);
+}
+
+void AddComponentCommand::undo()
+{
+    LD_UNREACHABLE;
+    mScene.destroy_component(mCompID);
+    mCompID = 0;
+}
 
 AddComponentScriptCommand::AddComponentScriptCommand(Scene scene, CUID compID, AUID scriptAssetID)
     : mScene(scene), mCompID(compID), mScriptAssetID(scriptAssetID), mPrevScriptAssetID(0)
@@ -62,17 +84,20 @@ void SetComponentAssetCommand::set_component_asset(CUID compID, AUID assetID)
 
     switch (compType)
     {
-    case COMPONENT_TYPE_AUDIO_SOURCE: {
+    case COMPONENT_TYPE_AUDIO_SOURCE:
+    {
         Scene::IAudioSource source((AudioSourceComponent*)comp);
         source.set_clip_asset(assetID);
         break;
     }
-    case COMPONENT_TYPE_MESH: {
+    case COMPONENT_TYPE_MESH:
+    {
         Scene::IMesh mesh(compID);
         mesh.set_mesh_asset(assetID);
         break;
     }
-    case COMPONENT_TYPE_SPRITE_2D: {
+    case COMPONENT_TYPE_SPRITE_2D:
+    {
         Scene::ISprite2D sprite((Sprite2DComponent*)comp);
         sprite.set_texture_2d_asset(assetID);
         break;

@@ -55,6 +55,9 @@ struct EditorContext : Handle<struct EditorContextObj>
     /// @brief Save the current scene schema to disk.
     void action_save_scene();
 
+    /// @brief Add a new component under parent.
+    void action_add_component(CUID parentID, ComponentType type);
+
     /// @brief Add script to component.
     void action_add_component_script(CUID compID, AUID scriptAssetID);
 

@@ -8,7 +8,7 @@ namespace LD {
 ///        EditCommands for undo and redo.
 struct EditStackObj
 {
-    std::vector<EditCommand*> commands;
+    Vector<EditCommand*> commands;
     size_t index = 0;
 };
 

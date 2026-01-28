@@ -10,6 +10,7 @@ enum EditorWindowType
 {
     EDITOR_WINDOW_TAB_CONTROL,
     EDITOR_WINDOW_SELECTION,
+    EDITOR_WINDOW_CREATE_COMPONENT,
     EDITOR_WINDOW_VIEWPORT,
     EDITOR_WINDOW_OUTLINER,
     EDITOR_WINDOW_INSPECTOR,
@@ -19,8 +20,9 @@ enum EditorWindowType
 };
 
 /// @brief Base class for editor window implementations.
-struct EditorWindowObj
+class EditorWindowObj
 {
+public:
     virtual ~EditorWindowObj() = default;
 
     /// @brief Type reflection for handle down-casting.
@@ -29,6 +31,11 @@ struct EditorWindowObj
     /// @brief Derived class populates UIWindows with UIImmediate API,
     //         callers prepares ui_frame_begin / ui_frame_end scope.
     virtual void on_imgui(float delta) = 0;
+
+    inline bool should_close() const { return mShouldClose; };
+
+protected:
+    bool mShouldClose = false;
 };
 
 struct EditorWindowInfo
@@ -37,11 +44,14 @@ struct EditorWindowInfo
     UIWorkspace space;
 };
 
-struct EditorWindow : Handle<struct EditorWindowObj>
+struct EditorWindow : Handle<class EditorWindowObj>
 {
     inline EditorWindowType get_type() { return mObj->get_type(); }
 
     inline void on_imgui(float delta) { mObj->on_imgui(delta); }
+
+    /// @brief Hint at the EditorWorkspace that this window should be destroyed.
+    inline bool should_close() const { return mObj->should_close(); };
 };
 
 } // namespace LD

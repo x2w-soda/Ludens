@@ -7,6 +7,21 @@
 
 namespace LD {
 
+class AddComponentCommand : public EditCommand
+{
+public:
+    AddComponentCommand(Scene scene, CUID parentID, ComponentType compType);
+
+    virtual void redo() override;
+    virtual void undo() override;
+
+private:
+    Scene mScene;
+    CUID mParentID;
+    CUID mCompID;
+    ComponentType mCompType;
+};
+
 /// @brief Command to set associate a Script with a Component in scene.
 class AddComponentScriptCommand : public EditCommand
 {
@@ -14,7 +29,6 @@ public:
     AddComponentScriptCommand(Scene scene, CUID compID, AUID scriptAssetID);
 
     virtual void redo() override;
-
     virtual void undo() override;
 
 private:
@@ -28,7 +42,7 @@ class SetComponentAssetCommand : public EditCommand
 {
 public:
     SetComponentAssetCommand(Scene scene, CUID compID, AUID assetID);
-    
+
     virtual void redo() override;
     virtual void undo() override;
 

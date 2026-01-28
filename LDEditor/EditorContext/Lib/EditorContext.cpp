@@ -17,6 +17,7 @@
 #include <Ludens/System/Timer.h>
 #include <LudensEditor/EditorContext/EditorAction.h>
 #include <LudensEditor/EditorContext/EditorContext.h>
+
 #include <utility>
 
 #include "EditorContextCommand.h"
@@ -59,6 +60,12 @@ struct EditorContextObj
     {
         FS::Path schemaPath; // path to scene schema
     } openSceneParams;
+
+    struct EditorActionAddComponentParams
+    {
+        CUID parentID;
+        ComponentType compType;
+    } addComponentParams;
 
     struct EditorActionAddComponentScriptParams
     {
@@ -135,6 +142,17 @@ static void editor_action_save_scene(EditStack stack, void* user)
     // Saving Scene writes the current schema to disk and
     // should not effect the EditStack.
     obj->save_project_scene();
+}
+
+static void editor_action_add_component(EditStack stack, void* user)
+{
+    EditorContextObj* obj = (EditorContextObj*)user;
+    const auto& params = obj->addComponentParams;
+
+    stack.execute(EditStack::new_command<AddComponentCommand>(
+        obj->scene,
+        params.parentID,
+        params.compType));
 }
 
 static void editor_action_add_component_script(EditStack stack, void* user)
@@ -294,6 +312,8 @@ void EditorContextObj::save_project_scene()
 
 EditorContext EditorContext::create(const EditorContextInfo& info)
 {
+    LD_PROFILE_SCOPE;
+
     EditorContextObj* obj = heap_new<EditorContextObj>(MEMORY_USAGE_MISC);
     obj->renderServer = info.renderServer;
     obj->audioServer = info.audioServer;
@@ -311,6 +331,7 @@ EditorContext EditorContext::create(const EditorContextInfo& info)
         {EDITOR_ACTION_NEW_SCENE,            &editor_action_new_scene,            "NewScene"}, 
         {EDITOR_ACTION_OPEN_SCENE,           &editor_action_open_scene,           "OpenScene"}, 
         {EDITOR_ACTION_SAVE_SCENE,           &editor_action_save_scene,           "SaveScene"},
+        {EDITOR_ACTION_ADD_COMPONENT,        &editor_action_add_component,        "AddComponent"},
         {EDITOR_ACTION_ADD_COMPONENT_SCRIPT, &editor_action_add_component_script, "AddComponentScript"},
         {EDITOR_ACTION_SET_COMPONENT_ASSET,  &editor_action_set_component_asset,  "SetComponentAsset"},
     };
@@ -324,6 +345,8 @@ EditorContext EditorContext::create(const EditorContextInfo& info)
 
 void EditorContext::destroy(EditorContext ctx)
 {
+    LD_PROFILE_SCOPE;
+
     EditorContextObj* obj = ctx;
 
     if (obj->iconAtlas)
@@ -392,6 +415,13 @@ void EditorContext::action_open_scene(const FS::Path& sceneSchemaPath)
 void EditorContext::action_save_scene()
 {
     mObj->actionQueue.enqueue(EDITOR_ACTION_SAVE_SCENE);
+}
+
+void EditorContext::action_add_component(CUID parentID, ComponentType type)
+{
+    mObj->actionQueue.enqueue(EDITOR_ACTION_ADD_COMPONENT);
+    mObj->addComponentParams.parentID = parentID;
+    mObj->addComponentParams.compType = type;
 }
 
 void EditorContext::action_add_component_script(CUID compID, AUID scriptAssetID)
