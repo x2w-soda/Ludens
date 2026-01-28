@@ -138,12 +138,13 @@ struct UIContextObj
     UITheme theme;
     Vector<UILayerObj*> layers;
     HashSet<UILayerObj*> deferredLayerDestruction;
-    UIWidgetObj* dragWidget = nullptr;   /// the widget begin dragged
-    UIWidgetObj* pressWidget = nullptr;  /// the widget pressed and not yet released
-    UIWidgetObj* cursorWidget = nullptr; /// the widget under mouse cursor
-    Vec2 cursorPos;                      /// mouse cursor global position
-    Vec2 dragStartPos;                   /// mouse cursor drag start global position
-    MouseButton dragMouseButton;         /// mouse button used for dragging
+    UIWidgetObj* dragWidget = nullptr;  /// the widget begin dragged
+    UIWidgetObj* pressWidget = nullptr; /// the widget pressed and not yet released
+    UIWidgetObj* focusWidget = nullptr; /// the widget receiving key events
+    UIWidgetObj* hoverWidget = nullptr; /// the widget under mouse cursor
+    Vec2 cursorPos;                     /// mouse cursor global position
+    Vec2 dragStartPos;                  /// mouse cursor drag start global position
+    MouseButton dragMouseButton;        /// mouse button used for dragging
 
     UIWidgetObj* alloc_widget(UIWidgetType type, const UILayoutInfo& layoutI, UIWidgetObj* parent, void* user);
     void free_widget(UIWidgetObj* widget);
@@ -251,6 +252,8 @@ struct UITextEditWidgetObj
 
     static void cleanup(UIWidgetObj* base);
     static void on_key(UIWidget widget, KeyCode key, UIEvent event);
+    static void on_mouse(UIWidget, const Vec2&, MouseButton, UIEvent) {}
+    static void on_hover(UIWidget, UIEvent) {}
 };
 
 struct UIPanelWidgetObj

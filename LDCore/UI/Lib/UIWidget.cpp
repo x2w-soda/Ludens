@@ -79,6 +79,9 @@ void UIWidgetObj::draw(ScreenRenderComponent renderer)
     case UI_WIDGET_TEXT:
         UITextWidget::on_draw(UIWidget(this), renderer);
         break;
+    case UI_WIDGET_TEXT_EDIT:
+        UITextEditWidget::on_draw(UIWidget(this), renderer);
+        break;
     default:
         LD_UNREACHABLE;
     }
@@ -87,7 +90,13 @@ void UIWidgetObj::draw(ScreenRenderComponent renderer)
 bool UIWidget::is_hovered()
 {
     UIContextObj* ctx = mObj->ctx();
-    return ctx->cursorWidget == mObj;
+    return ctx->hoverWidget == mObj;
+}
+
+bool UIWidget::is_focused()
+{
+    UIContextObj* ctx = mObj->ctx();
+    return ctx->focusWidget == mObj;
 }
 
 bool UIWidget::is_pressed()
@@ -653,6 +662,8 @@ UITextEditWidget UINode::add_text_edit(const UILayoutInfo& layoutI, const UIText
     UIWidgetObj* obj = mObj->ctx()->alloc_widget(UI_WIDGET_TEXT_EDIT, layoutI, mObj, user);
     obj->as.textEdit.fontSize = widgetI.fontSize;
     obj->as.textEdit.buf = TextBuffer<char>::create();
+    obj->cb.onMouse = &UITextEditWidgetObj::on_mouse;
+    obj->cb.onHover = &UITextEditWidgetObj::on_hover;
     obj->cb.onKey = &UITextEditWidgetObj::on_key;
     obj->cb.onDraw = &UITextEditWidget::on_draw;
 
@@ -714,8 +725,10 @@ void UITextEditWidget::on_draw(UIWidget widget, ScreenRenderComponent renderer)
     Rect rect = widget.get_rect();
     renderer.draw_rect(rect, theme.get_field_color());
 
-    if (widget.is_hovered())
+    if (widget.is_focused())
         renderer.draw_rect_outline(rect, 1, theme.get_primary_color());
+    else if (widget.is_hovered())
+        renderer.draw_rect_outline(rect, 1, theme.get_surface_color());
 
     if (!self.buf.empty())
     {

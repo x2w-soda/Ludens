@@ -215,8 +215,11 @@ void UIContextObj::invalidate_refs(UIWidgetObj* removed)
     if (removed == pressWidget)
         pressWidget = nullptr;
 
-    if (removed == cursorWidget)
-        cursorWidget = nullptr;
+    if (removed == focusWidget)
+        focusWidget = nullptr;
+
+    if (removed == hoverWidget)
+        hoverWidget = nullptr;
 }
 
 void UIContextObj::input_mouse_position(const Vec2& pos)
@@ -231,7 +234,7 @@ void UIContextObj::input_mouse_position(const Vec2& pos)
         de->cb.onDrag({de}, dragMouseButton, cursorPos, false);
     }
 
-    UIWidgetObj* prev = cursorWidget;
+    UIWidgetObj* prev = hoverWidget;
     UIWidgetObj* next = get_widget(pos, WIDGET_FILTER_HOVER_BIT);
 
     if (next)
@@ -242,14 +245,14 @@ void UIContextObj::input_mouse_position(const Vec2& pos)
         if (next != prev && next->cb.onHover)
             next->cb.onHover({next}, UI_MOUSE_ENTER);
 
-        cursorWidget = next;
+        hoverWidget = next;
         return;
     }
 
     if (prev && prev->cb.onHover)
         prev->cb.onHover({prev}, UI_MOUSE_LEAVE);
 
-    cursorWidget = nullptr;
+    hoverWidget = nullptr;
 }
 
 void UIContextObj::input_mouse_down(MouseButton btn)
@@ -276,6 +279,17 @@ void UIContextObj::input_mouse_down(MouseButton btn)
         widget->cb.onMouse({widget}, localPos, btn, UI_MOUSE_DOWN);
         pressWidget = widget;
     }
+
+    focusWidget = nullptr;
+
+    switch (widget->type)
+    {
+    case UI_WIDGET_TEXT_EDIT:
+        focusWidget = widget;
+        break;
+    default:
+        break;
+    }
 }
 
 void UIContextObj::input_mouse_up(MouseButton btn)
@@ -299,28 +313,24 @@ void UIContextObj::input_mouse_up(MouseButton btn)
 
 void UIContextObj::input_key_down(KeyCode key)
 {
-    UIWidgetObj* widget = get_widget(cursorPos, WIDGET_FILTER_KEY_BIT);
-
-    if (!widget)
+    if (!focusWidget)
         return;
 
-    bool blockInput = (widget->flags & UI_WIDGET_FLAG_BLOCK_INPUT_BIT);
+    bool blockInput = (focusWidget->flags & UI_WIDGET_FLAG_BLOCK_INPUT_BIT);
 
-    if (!blockInput && widget->cb.onKey)
-        widget->cb.onKey({widget}, key, UI_KEY_DOWN);
+    if (!blockInput && focusWidget->cb.onKey)
+        focusWidget->cb.onKey({focusWidget}, key, UI_KEY_DOWN);
 }
 
 void UIContextObj::input_key_up(KeyCode key)
 {
-    UIWidgetObj* widget = get_widget(cursorPos, WIDGET_FILTER_KEY_BIT);
-
-    if (!widget)
+    if (!focusWidget)
         return;
 
-    bool blockInput = (widget->flags & UI_WIDGET_FLAG_BLOCK_INPUT_BIT);
+    bool blockInput = (focusWidget->flags & UI_WIDGET_FLAG_BLOCK_INPUT_BIT);
 
-    if (!blockInput && widget->cb.onKey)
-        widget->cb.onKey({widget}, key, UI_KEY_UP);
+    if (!blockInput && focusWidget->cb.onKey)
+        focusWidget->cb.onKey({focusWidget}, key, UI_KEY_UP);
 }
 
 void UIContextObj::input_scroll(const Vec2& offset)

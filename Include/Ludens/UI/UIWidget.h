@@ -82,6 +82,9 @@ struct UIWidget : Handle<struct UIWidgetObj>
     /// @brief whether the widget is under the mouse cursor
     bool is_hovered();
 
+    /// @brief Whether the widget is the global focused widget in context.
+    bool is_focused();
+
     /// @brief whether the widget is being pressed and not yet released
     bool is_pressed();
 
@@ -279,6 +282,7 @@ struct UITextEditWidget : UIWidget
 {
     /// @brief Default text edit widget rendering.
     static void on_draw(UIWidget widget, ScreenRenderComponent renderer);
+    static void on_mouse();
 };
 
 struct UITextEditWidgetInfo
