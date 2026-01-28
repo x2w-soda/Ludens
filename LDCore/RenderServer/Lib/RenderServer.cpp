@@ -91,6 +91,7 @@ private:
     RUID mSceneOutlineSubject;                      /// subject to be outlined in scene render pass
     uint32_t mFramesInFlight = 0;                   /// number of frames in flight
     uint32_t mFrameIndex = 0;                       /// [0, mFramesInFlight)
+    uint32_t mSwapchainCount = 0;
     FontAtlas mFontAtlas{};                         /// default font atlas for text rendering
     RGraphImage mLastColorAttachment{};             /// last color attachment output
     RGraphImage mLastIDFlagsAttachment{};           /// last scene ID flags attachment output
@@ -259,6 +260,7 @@ void RenderServerObj::next_frame(const RenderServerFrameInfo& frameI)
     // Update Frame Set
     //
 
+    mSwapchainCount = (uint32_t)swapchains.size();
     mMainCamera = frameI.mainCamera;
 
     FrameUBO uboData;
@@ -293,8 +295,12 @@ void RenderServerObj::submit_frame()
 {
     WindowID rootID = WindowRegistry::get().get_root_id();
 
-    // blit to swapchain images and submit
-    mGraph.connect_swapchain_image(mLastColorAttachment, rootID);
+    if (mSwapchainCount > 0)
+    {
+        // blit to root window swapchain image and submit
+        mGraph.connect_swapchain_image(mLastColorAttachment, rootID);
+    }
+
     mGraph.submit();
     RGraph::destroy(mGraph);
 
@@ -303,6 +309,9 @@ void RenderServerObj::submit_frame()
 
 void RenderServerObj::scene_pass(const RenderServerScenePass& sceneP)
 {
+    if (mSwapchainCount == 0)
+        return;
+
     Frame& frame = mFrames[mFrameIndex];
     RClearColorValue clearColor = RUtil::make_clear_color(0.1f, 0.1f, 0.1f, 1.0f);
     RClearDepthStencilValue clearDS = {.depth = 1.0f, .stencil = 0};
@@ -356,6 +365,9 @@ void RenderServerObj::scene_pass(const RenderServerScenePass& sceneP)
 
 void RenderServerObj::screen_pass(const RenderServerScreenPass& screenP)
 {
+    if (mSwapchainCount == 0)
+        return;
+
     LD_ASSERT(mHasRenderedScene);
 
     mScreenPassLayerCallback = screenP.layerCallback;
@@ -377,6 +389,9 @@ void RenderServerObj::screen_pass(const RenderServerScreenPass& screenP)
 
 void RenderServerObj::editor_pass(const RenderServerEditorPass& editorP)
 {
+    if (mSwapchainCount == 0)
+        return;
+
     LD_ASSERT(mHasRenderedScene && mLastColorAttachment && mLastIDFlagsAttachment);
 
     ScreenRenderComponentInfo screenRCI{};
@@ -429,6 +444,9 @@ void RenderServerObj::editor_pass(const RenderServerEditorPass& editorP)
 
 void RenderServerObj::editor_overlay_pass(const RenderServerEditorOverlayPass& editorOP)
 {
+    if (mSwapchainCount == 0)
+        return;
+
     /*
     DualKawaseComponentInfo blurCI{};
     blurCI.format = mColorFormat;
@@ -454,6 +472,9 @@ void RenderServerObj::editor_overlay_pass(const RenderServerEditorOverlayPass& e
 
 void RenderServerObj::editor_dialog_pass(const RenderServerEditorDialogPass& editorDP)
 {
+    if (mSwapchainCount == 0)
+        return;
+
     ScreenRenderComponentInfo screenRCI{};
     screenRCI.format = mColorFormat;
     screenRCI.onDrawCallback = editorDP.renderCallback;
@@ -474,6 +495,9 @@ void RenderServerObj::forward_rendering(ForwardRenderComponent renderer, void* u
 
     RenderServerObj& self = *(RenderServerObj*)user;
     RPipeline meshPipeline = self.mMeshPipeline.handle();
+
+    if (self.mSwapchainCount == 0)
+        return;
 
     renderer.set_mesh_pipeline(meshPipeline);
 
@@ -528,6 +552,9 @@ void RenderServerObj::screen_rendering(ScreenRenderComponent renderer, void* use
 {
     LD_PROFILE_SCOPE;
     RenderServerObj& self = *(RenderServerObj*)user;
+
+    if (self.mSwapchainCount == 0)
+        return;
 
     if (self.mScreenPassLayerCallback)
     {

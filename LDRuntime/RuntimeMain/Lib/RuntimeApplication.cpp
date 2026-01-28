@@ -22,7 +22,7 @@ RuntimeApplication::RuntimeApplication(Project project)
     windowI.width = startupS.get_window_width();
     windowI.height = startupS.get_window_height();
     windowI.name = windowName.c_str();
-    windowI.onEvent = &RuntimeApplication::on_event;
+    windowI.onEvent = nullptr;
     windowI.user = this;
     windowI.hintBorderColor = 0;
     windowI.hintTitleBarColor = 0;
