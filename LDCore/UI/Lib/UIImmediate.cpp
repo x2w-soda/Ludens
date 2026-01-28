@@ -8,12 +8,12 @@
 #include <Ludens/Memory/Allocator.h>
 #include <Ludens/UI/UIImmediate.h>
 
-#define LD_ASSERT_UI_FRAME_BEGIN LD_ASSERT(sImFrame.ctx && "ui_frame_begin not called")
-#define LD_ASSERT_UI_WINDOW LD_ASSERT(sImFrame.imWindow && "ui_push_window(_client) not called")
+#define LD_ASSERT_UI_FRAME_BEGIN LD_ASSERT(sImFrame && "ui_frame_begin not called")
+#define LD_ASSERT_UI_WINDOW LD_ASSERT(sImFrame->imWindow && "ui_push_window(_client) not called")
 
 #define LD_ASSERT_UI_PUSH_WINDOW \
     LD_ASSERT_UI_FRAME_BEGIN;    \
-    LD_ASSERT(!sImFrame.imWindow && "ui_window_begin already called");
+    LD_ASSERT(!sImFrame->imWindow && "ui_window_begin already called");
 
 #define LD_ASSERT_UI_PUSH LD_ASSERT_UI_WINDOW;
 
@@ -78,14 +78,30 @@ struct UIWindowState
     UIWidgetState* get_or_create_slider();
 };
 
+/// @brief Imgui resources for a single UIContext.
 struct UIImmediateFrame
 {
-    UIContext ctx;           // connected external context
-    UIWindowState* imWindow; // current window
+    UIContext ctx;                             // connected external context
+    UIWindowState* imWindow = nullptr;         // current window
+    HashMap<Hash64, UIWindowState*> imWindows; // all window states
 };
 
-static UIImmediateFrame sImFrame;
-static HashMap<Hash64, UIWindowState*> sImWindows;
+static UIImmediateFrame* sImFrame = nullptr;                // current imgui frame context
+static HashMap<UIContextObj*, UIImmediateFrame*> sImFrames; // all imgui frame contexts
+
+static UIImmediateFrame* get_or_create_immediate_frame(UIContext ctx)
+{
+    // based on address stability, this is enough for hash key.
+    UIContextObj* obj = ctx.unwrap();
+
+    if (sImFrames.contains(obj))
+        return sImFrames[obj];
+
+    UIImmediateFrame* imFrame = sImFrames[obj] = heap_new<UIImmediateFrame>(MEMORY_USAGE_UI);
+    imFrame->ctx = ctx;
+
+    return imFrame;
+}
 
 static void on_drag_handler(UIWidget widget, MouseButton btn, const Vec2& dragPos, bool begin)
 {
@@ -229,8 +245,8 @@ static UIWidgetState* get_or_create_widget_state(Stack<UIWidgetState*>& stack, P
 
 static UIWindowState* get_or_create_window_state(Hash64 windowHash)
 {
-    if (sImWindows.contains(windowHash))
-        return sImWindows[windowHash];
+    if (sImFrame->imWindows.contains(windowHash))
+        return sImFrame->imWindows[windowHash];
 
     UIWindowState* windowS = heap_new<UIWindowState>(MEMORY_USAGE_UI);
     windowS->windowHash = windowHash;
@@ -242,7 +258,7 @@ static UIWindowState* get_or_create_window_state(Hash64 windowHash)
     widgetS->widget = {};
     widgetS->widgetHash = windowS->windowHash;
 
-    sImWindows[windowHash] = windowS;
+    sImFrame->imWindows[windowHash] = windowS;
 
     return windowS;
 }
@@ -250,12 +266,12 @@ static UIWindowState* get_or_create_window_state(Hash64 windowHash)
 // NOTE: modifies sImWindows, caller should not iterate upon
 static void destroy_window_state(UIWindowState* state)
 {
-    LD_ASSERT(sImFrame.ctx && state->window);
+    LD_ASSERT(sImFrame && state->window);
 
-    if (!sImWindows.contains(state->windowHash))
+    if (!sImFrame->imWindows.contains(state->windowHash))
         return;
 
-    sImWindows.erase(state->windowHash);
+    sImFrame->imWindows.erase(state->windowHash);
     heap_delete<UIWindowState>(state);
 }
 
@@ -463,39 +479,44 @@ UIWidgetState* UIWindowState::get_or_create_slider()
 
 void ui_imgui_release(UIContext ctx)
 {
-    LD_ASSERT(!sImFrame.ctx && "ui_frame_end not called");
+    if (!sImFrames.contains(ctx.unwrap()))
+        return;
 
-    sImFrame.ctx = ctx;
+    LD_ASSERT(!sImFrame && "ui_frame_end not called");
+    sImFrame = sImFrames[ctx.unwrap()];
 
-    while (!sImWindows.empty())
+    while (!sImFrame->imWindows.empty())
     {
-        UIWindowState* windowS = sImWindows.begin()->second;
+        UIWindowState* windowS = sImFrame->imWindows.begin()->second;
         destroy_window_state(windowS);
     }
 
-    sImFrame.ctx = {};
+    heap_delete<UIImmediateFrame>(sImFrame);
+    sImFrame = nullptr;
+
+    sImFrames.erase(ctx.unwrap());
 }
 
 void ui_frame_begin(UIContext ctx)
 {
-    LD_ASSERT(!sImFrame.ctx && "ui_frame_end not called");
+    LD_ASSERT(!sImFrame && "ui_frame_end not called");
 
-    sImFrame.ctx = ctx;
+    sImFrame = get_or_create_immediate_frame(ctx);
 }
 
 void ui_frame_end()
 {
-    LD_ASSERT(sImFrame.ctx && "ui_frame_begin not called");
+    LD_ASSERT(sImFrame && "ui_frame_begin not called");
+    LD_ASSERT(!sImFrame->imWindow && "ui_pop_window not called");
 
-    sImFrame.ctx = {};
-    sImFrame.imWindow = nullptr;
+    sImFrame = nullptr;
 }
 
 void ui_top_layout(const UILayoutInfo& layoutI)
 {
     LD_ASSERT_UI_TOP_WIDGET;
 
-    UIWidgetState* widgetS = sImFrame.imWindow->imWidgetStack.top();
+    UIWidgetState* widgetS = sImFrame->imWindow->imWidgetStack.top();
     widgetS->widget.set_layout(layoutI);
 }
 
@@ -503,7 +524,7 @@ void ui_top_layout_size(const UISize& sizeX, const UISize& sizeY)
 {
     LD_ASSERT_UI_TOP_WIDGET;
 
-    UIWidgetState* widgetS = sImFrame.imWindow->imWidgetStack.top();
+    UIWidgetState* widgetS = sImFrame->imWindow->imWidgetStack.top();
     widgetS->widget.set_layout_size(sizeX, sizeY);
 }
 
@@ -511,7 +532,7 @@ void ui_top_layout_child_axis(UIAxis childAxis)
 {
     LD_ASSERT_UI_TOP_WIDGET;
 
-    UIWidgetState* widgetS = sImFrame.imWindow->imWidgetStack.top();
+    UIWidgetState* widgetS = sImFrame->imWindow->imWidgetStack.top();
     widgetS->widget.set_layout_child_axis(childAxis);
 }
 
@@ -519,7 +540,7 @@ void ui_top_layout_child_padding(const UIPadding& pad)
 {
     LD_ASSERT_UI_TOP_WIDGET;
 
-    UIWidgetState* widgetS = sImFrame.imWindow->imWidgetStack.top();
+    UIWidgetState* widgetS = sImFrame->imWindow->imWidgetStack.top();
     widgetS->widget.set_layout_child_padding(pad);
 }
 
@@ -527,7 +548,7 @@ void ui_top_layout_child_gap(float gap)
 {
     LD_ASSERT_UI_TOP_WIDGET;
 
-    UIWidgetState* widgetS = sImFrame.imWindow->imWidgetStack.top();
+    UIWidgetState* widgetS = sImFrame->imWindow->imWidgetStack.top();
     widgetS->widget.set_layout_child_gap(gap);
 }
 
@@ -535,7 +556,7 @@ void ui_top_user(void* imUser)
 {
     LD_ASSERT_UI_TOP_WIDGET;
 
-    UIWidgetState* widgetS = sImFrame.imWindow->imWidgetStack.top();
+    UIWidgetState* widgetS = sImFrame->imWindow->imWidgetStack.top();
     widgetS->imUser = imUser;
 }
 
@@ -543,7 +564,7 @@ void ui_top_rect(Rect& outRect)
 {
     LD_ASSERT_UI_TOP_WIDGET;
 
-    UIWidgetState* widgetS = sImFrame.imWindow->imWidgetStack.top();
+    UIWidgetState* widgetS = sImFrame->imWindow->imWidgetStack.top();
     outRect = widgetS->widget.get_rect();
 }
 
@@ -551,7 +572,7 @@ void ui_top_draw(const IMDrawCallback& imDrawCallback)
 {
     LD_ASSERT_UI_TOP_WIDGET;
 
-    UIWidgetState* widgetS = sImFrame.imWindow->imWidgetStack.top();
+    UIWidgetState* widgetS = sImFrame->imWindow->imWidgetStack.top();
     widgetS->onDraw = imDrawCallback;
     widgetS->widget.set_on_draw([](UIWidget widget, ScreenRenderComponent renderer) {
         UIWidgetState* widgetS = (UIWidgetState*)widget.get_user();
@@ -563,7 +584,7 @@ bool ui_top_drag(MouseButton& dragBtn, Vec2& dragPos, bool& dragBegin)
 {
     LD_ASSERT_UI_TOP_WIDGET;
 
-    UIWidgetState* widgetS = sImFrame.imWindow->imWidgetStack.top();
+    UIWidgetState* widgetS = sImFrame->imWindow->imWidgetStack.top();
     widgetS->widget.set_on_drag(&on_drag_handler);
 
     bool hasDrag = widgetS->dragImpulse.read();
@@ -582,7 +603,7 @@ bool ui_top_hover(UIEvent& outHover)
 {
     LD_ASSERT_UI_TOP_WIDGET;
 
-    UIWidgetState* widgetS = sImFrame.imWindow->imWidgetStack.top();
+    UIWidgetState* widgetS = sImFrame->imWindow->imWidgetStack.top();
     widgetS->widget.set_on_hover(&on_hover_handler);
     bool hasEvent = widgetS->hoverImpulse.read();
 
@@ -598,7 +619,7 @@ bool ui_top_mouse_down(MouseButton& outButton)
 {
     LD_ASSERT_UI_TOP_WIDGET;
 
-    UIWidgetState* widgetS = sImFrame.imWindow->imWidgetStack.top();
+    UIWidgetState* widgetS = sImFrame->imWindow->imWidgetStack.top();
     widgetS->widget.set_on_mouse(&on_mouse_handler);
     bool hasEvent = widgetS->mouseDownImpulse.read();
 
@@ -614,7 +635,7 @@ bool ui_top_mouse_up(MouseButton& outButton)
 {
     LD_ASSERT_UI_TOP_WIDGET;
 
-    UIWidgetState* widgetS = sImFrame.imWindow->imWidgetStack.top();
+    UIWidgetState* widgetS = sImFrame->imWindow->imWidgetStack.top();
     widgetS->widget.set_on_mouse(&on_mouse_handler);
     bool hasEvent = widgetS->mouseUpImpulse.read();
 
@@ -630,7 +651,7 @@ bool ui_top_key_down(KeyCode& outKey)
 {
     LD_ASSERT_UI_TOP_WIDGET;
 
-    UIWidgetState* widgetS = sImFrame.imWindow->imWidgetStack.top();
+    UIWidgetState* widgetS = sImFrame->imWindow->imWidgetStack.top();
     widgetS->widget.set_on_key(&on_key_handler);
     bool hasEvent = widgetS->keyDownImpulse.read();
 
@@ -646,7 +667,7 @@ bool ui_top_key_up(KeyCode& outKey)
 {
     LD_ASSERT_UI_TOP_WIDGET;
 
-    UIWidgetState* widgetS = sImFrame.imWindow->imWidgetStack.top();
+    UIWidgetState* widgetS = sImFrame->imWindow->imWidgetStack.top();
     widgetS->widget.set_on_key(&on_key_handler);
     bool hasEvent = widgetS->keyUpImpulse.read();
 
@@ -660,10 +681,10 @@ bool ui_top_key_up(KeyCode& outKey)
 
 void ui_pop()
 {
-    LD_ASSERT(sImFrame.imWindow && "missing window");
-    LD_ASSERT(!sImFrame.imWindow->imWidgetStack.empty() && "widget stack empty");
+    LD_ASSERT(sImFrame->imWindow && "missing window");
+    LD_ASSERT(!sImFrame->imWindow->imWidgetStack.empty() && "widget stack empty");
 
-    UIWindowState* windowS = sImFrame.imWindow;
+    UIWindowState* windowS = sImFrame->imWindow;
     UIWidgetState* parentS = windowS->imWidgetStack.top();
 
     for (int i = parentS->childCounter; i < (int)parentS->children.size(); i++)
@@ -674,18 +695,18 @@ void ui_pop()
     }
     parentS->children.resize(parentS->childCounter);
 
-    sImFrame.imWindow->imWidgetStack.pop();
+    sImFrame->imWindow->imWidgetStack.pop();
 }
 
 void ui_pop_window()
 {
-    LD_ASSERT(sImFrame.imWindow && "missing window");
-    LD_ASSERT(sImFrame.imWindow->imWidgetStack.size() == 1 && "some widget pushed but not popped");
+    LD_ASSERT(sImFrame->imWindow && "missing window");
+    LD_ASSERT(sImFrame->imWindow->imWidgetStack.size() == 1 && "some widget pushed but not popped");
 
     // last widget state on stack is the window
     ui_pop();
 
-    sImFrame.imWindow = nullptr;
+    sImFrame->imWindow = nullptr;
 }
 
 void ui_push_window(UIWindow client)
@@ -695,17 +716,17 @@ void ui_push_window(UIWindow client)
     Hash64 windowHash = client.get_hash();
 
     // If client is different from last time, invalidate window state.
-    if (sImWindows.contains(windowHash))
+    if (sImFrame->imWindows.contains(windowHash))
     {
-        UIWindowState* windowS = sImWindows[windowHash];
+        UIWindowState* windowS = sImFrame->imWindows[windowHash];
         if (windowS->window.unwrap() != client.unwrap())
         {
             destroy_window_state(windowS);
-            sImWindows.erase(windowHash);
+            sImFrame->imWindows.erase(windowHash);
         }
     }
 
-    UIWindowState* windowS = sImFrame.imWindow = get_or_create_window_state(windowHash);
+    UIWindowState* windowS = sImFrame->imWindow = get_or_create_window_state(windowHash);
 
     windowS->state->childCounter = 0;
     windowS->state->widget = (UIWidget)client;
@@ -722,21 +743,21 @@ void ui_set_window_rect(const Rect& rect)
 {
     LD_ASSERT_UI_WINDOW;
 
-    sImFrame.imWindow->window.set_rect(rect);
+    sImFrame->imWindow->window.set_rect(rect);
 }
 
 bool ui_has_window_client(const char* name)
 {
     LD_ASSERT_UI_FRAME_BEGIN;
 
-    return sImWindows.contains(Hash64(name));
+    return sImFrame->imWindows.contains(Hash64(name));
 }
 
 void ui_push_text(const char* text)
 {
     LD_ASSERT_UI_PUSH;
 
-    UIWindowState* imWindow = sImFrame.imWindow;
+    UIWindowState* imWindow = sImFrame->imWindow;
     UIWidgetState* imWidget = imWindow->get_or_create_text();
     UITextWidget textW = (UITextWidget)imWidget->widget;
     LD_ASSERT(textW.get_type() == UI_WIDGET_TEXT);
@@ -750,7 +771,7 @@ void ui_push_text_edit(const char* text)
 {
     LD_ASSERT_UI_PUSH;
 
-    UIWindowState* imWindow = sImFrame.imWindow;
+    UIWindowState* imWindow = sImFrame->imWindow;
     UIWidgetState* imWidget = imWindow->get_or_create_text_edit();
     UITextEditWidget textW = (UITextEditWidget)imWidget->widget;
     LD_ASSERT(textW.get_type() == UI_WIDGET_TEXT_EDIT);
@@ -762,7 +783,7 @@ void ui_push_image(RImage image, float width, float height, Color tint, const Re
 {
     LD_ASSERT_UI_PUSH;
 
-    UIWindowState* imWindow = sImFrame.imWindow;
+    UIWindowState* imWindow = sImFrame->imWindow;
     UIWidgetState* imWidget = imWindow->get_or_create_image(image);
     UIImageWidget imageW = (UIImageWidget)imWidget->widget;
     LD_ASSERT(imageW.get_type() == UI_WIDGET_IMAGE);
@@ -780,7 +801,7 @@ void ui_push_panel(const Color* color)
 {
     LD_ASSERT_UI_PUSH;
 
-    UIWindowState* imWindow = sImFrame.imWindow;
+    UIWindowState* imWindow = sImFrame->imWindow;
     UIWidgetState* imWidget = imWindow->get_or_create_panel();
 
     if (color)
@@ -796,7 +817,7 @@ void ui_push_toggle(bool& isPressed, bool& state)
 {
     LD_ASSERT_UI_PUSH;
 
-    UIWindowState* imWindow = sImFrame.imWindow;
+    UIWindowState* imWindow = sImFrame->imWindow;
     UIWidgetState* imWidget = imWindow->get_or_create_toggle();
     UIToggleWidget toggleW = (UIToggleWidget)imWidget->widget;
     LD_ASSERT(toggleW.get_type() == UI_WIDGET_TOGGLE);
@@ -811,7 +832,7 @@ void ui_push_scroll(Color bgColor)
 {
     LD_ASSERT_UI_PUSH;
 
-    UIWindowState* imWindow = sImFrame.imWindow;
+    UIWindowState* imWindow = sImFrame->imWindow;
     UIWidgetState* imWidget = imWindow->get_or_create_scroll(bgColor);
 
     imWindow->imWidgetStack.push(imWidget);
@@ -821,7 +842,7 @@ void ui_push_button(const char* text, bool& isPressed)
 {
     LD_ASSERT_UI_PUSH;
 
-    UIWindowState* imWindow = sImFrame.imWindow;
+    UIWindowState* imWindow = sImFrame->imWindow;
     UIWidgetState* imWidget = imWindow->get_or_create_button(text);
 
     isPressed = imWidget->isButtonPressed.read();
@@ -833,7 +854,7 @@ void ui_push_slider(float minValue, float maxValue, float* value)
 {
     LD_ASSERT_UI_PUSH;
 
-    UIWindowState* imWindow = sImFrame.imWindow;
+    UIWindowState* imWindow = sImFrame->imWindow;
     UIWidgetState* imWidget = imWindow->get_or_create_slider();
     UISliderWidget sliderW = (UISliderWidget)imWidget->widget;
     LD_ASSERT(sliderW.get_type() == UI_WIDGET_SLIDER);

@@ -7,6 +7,7 @@
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/RenderComponent/ScreenRenderComponent.h>
 #include <Ludens/UI/UIContext.h>
+#include <Ludens/UI/UIImmediate.h>
 
 #include <algorithm>
 #include <cstdint>
@@ -395,6 +396,9 @@ UIContext UIContext::create(const UIContextInfo& info)
 void UIContext::destroy(UIContext ctx)
 {
     UIContextObj* obj = ctx.unwrap();
+
+    // safety net in case ctx user forgets.
+    ui_imgui_release(ctx);
 
     for (UILayerObj* layer : obj->layers)
         obj->deferredLayerDestruction.insert(layer);
