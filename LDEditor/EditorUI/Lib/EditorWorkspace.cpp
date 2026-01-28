@@ -4,6 +4,7 @@
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/UI/UIImmediate.h>
 #include <LudensEditor/ConsoleWindow/ConsoleWindow.h>
+#include <LudensEditor/CreateComponentWindow/CreateComponentWindow.h>
 #include <LudensEditor/EditorUI/EditorWorkspace.h>
 #include <LudensEditor/InspectorWindow/InspectorWindow.h>
 #include <LudensEditor/OutlinerWindow/OutlinerWindow.h>
@@ -62,6 +63,7 @@ struct EditorWorkspaceObj
     EditorWorkspaceControl control{};
     bool isVisible = true;
     bool isFloat = false;
+    bool shouldClose = false;
 
     EditorWorkspaceObj() = delete;
     EditorWorkspaceObj(const EditorWorkspaceObj&) = delete;
@@ -87,6 +89,7 @@ struct EditorWorkspaceObj
     void set_split_ratio(EditorAreaID areaID, float ratio);
     void set_rect(const Rect& rect);
     void set_pos(const Vec2& pos);
+    void pre_imgui();
 };
 
 struct EditorWindowMeta
@@ -99,13 +102,14 @@ struct EditorWindowMeta
 
 // clang-format off
 static EditorWindowMeta sEditorWindowTable[] = {
-    { EDITOR_WINDOW_TAB_CONTROL, &TabControlWindow::create, &TabControlWindow::destroy, nullptr },
-    { EDITOR_WINDOW_SELECTION,   &SelectionWindow::create,  &SelectionWindow::destroy, "Selection" },
-    { EDITOR_WINDOW_VIEWPORT,    &ViewportWindow::create,   &ViewportWindow::destroy,  "Viewport" },
-    { EDITOR_WINDOW_OUTLINER,    &OutlinerWindow::create,   &OutlinerWindow::destroy,  "Outliner" },
-    { EDITOR_WINDOW_INSPECTOR,   &InspectorWindow::create,  &InspectorWindow::destroy, "Inspector" },
-    { EDITOR_WINDOW_CONSOLE,     &ConsoleWindow::create,    &ConsoleWindow::destroy,   "Console" },
-    { EDITOR_WINDOW_VERSION,     &VersionWindow::create,    &VersionWindow::destroy,   "Version" },
+    { EDITOR_WINDOW_TAB_CONTROL,      &TabControlWindow::create,      &TabControlWindow::destroy,      nullptr },
+    { EDITOR_WINDOW_SELECTION,        &SelectionWindow::create,       &SelectionWindow::destroy,       "Selection" },
+    { EDITOR_WINDOW_CREATE_COMPONENT, &CreateComponentWindow::create, &CreateComponentWindow::destroy, "CreateComponent" },
+    { EDITOR_WINDOW_VIEWPORT,         &ViewportWindow::create,        &ViewportWindow::destroy,        "Viewport" },
+    { EDITOR_WINDOW_OUTLINER,         &OutlinerWindow::create,        &OutlinerWindow::destroy,        "Outliner" },
+    { EDITOR_WINDOW_INSPECTOR,        &InspectorWindow::create,       &InspectorWindow::destroy,       "Inspector" },
+    { EDITOR_WINDOW_CONSOLE,          &ConsoleWindow::create,         &ConsoleWindow::destroy,         "Console" },
+    { EDITOR_WINDOW_VERSION,          &VersionWindow::create,         &VersionWindow::destroy,         "Version" },
 };
 // clang-format on
 
@@ -157,6 +161,26 @@ void EditorWorkspaceObj::set_pos(const Vec2& pos)
     });
 }
 
+void EditorWorkspaceObj::pre_imgui()
+{
+    if (shouldClose)
+        return;
+
+    Vector<EditorAreaID> toClose;
+    EditorAreaID rootID = partition.get_root_id();
+
+    partition.visit_leaves(rootID, [&](EditorWorkspaceNode* node) {
+        if (node->window.should_close())
+            toClose.push_back(node->nodeID);
+    });
+
+    if (!toClose.empty())
+    {
+        LD_ASSERT(toClose.size() == 1 && toClose[0] == rootID);
+        shouldClose = true;
+    }
+}
+
 //
 // Public API
 //
@@ -188,6 +212,11 @@ void EditorWorkspace::destroy(EditorWorkspace space)
     obj->layer.destroy_workspace(obj->rootWS);
 
     heap_delete<EditorWorkspaceObj>(obj);
+}
+
+bool EditorWorkspace::should_close()
+{
+    return mObj->shouldClose;
 }
 
 void EditorWorkspace::set_visible(bool isVisible)
@@ -242,6 +271,11 @@ void EditorWorkspace::destroy_window(EditorWindow window)
 void EditorWorkspace::on_imgui(float delta)
 {
     LD_PROFILE_SCOPE;
+
+    mObj->pre_imgui();
+
+    if (mObj->shouldClose)
+        return;
 
     Optional<Vec2> newWorkspacePos;
 

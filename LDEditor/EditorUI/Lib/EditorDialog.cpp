@@ -17,9 +17,34 @@ struct EditorDialogObj
     UILayer uiLayer;
     WindowID windowID = 0;
 
+    void destroy();
+
     static void on_observer_event(const WindowEvent* event, void* user);
     static void on_event(const WindowEvent* event, void* user);
 };
+
+void EditorDialogObj::destroy()
+{
+    LD_PROFILE_SCOPE;
+
+    if (!uiCtx)
+        return;
+
+    LD_ASSERT(windowID && workspace);
+
+    WindowRegistry reg = WindowRegistry::get();
+    reg.remove_observer(&on_observer_event, this);
+    reg.close_window(windowID);
+    windowID = 0;
+
+    EditorWorkspace::destroy(workspace);
+    workspace = {};
+    window = {};
+
+    UIContext::destroy(uiCtx);
+    uiCtx = {};
+    uiLayer = {};
+}
 
 void EditorDialogObj::on_observer_event(const WindowEvent* event, void* user)
 {
@@ -30,10 +55,7 @@ void EditorDialogObj::on_observer_event(const WindowEvent* event, void* user)
 
     if (event->type == EVENT_TYPE_WINDOW_DESTROY)
     {
-        EditorWorkspace::destroy(obj->workspace);
-        obj->workspace = {};
-        obj->window = {};
-        obj->windowID = 0;
+        obj->destroy();
     }
 }
 
@@ -94,15 +116,7 @@ void EditorDialog::destroy(EditorDialog dialog)
     LD_PROFILE_SCOPE;
 
     auto* obj = dialog.unwrap();
-
-    WindowRegistry reg = WindowRegistry::get();
-    reg.close_window(obj->windowID);
-    obj->windowID = 0;
-
-    if (obj->workspace)
-        EditorWorkspace::destroy(obj->workspace);
-
-    UIContext::destroy(obj->uiCtx);
+    obj->destroy();
 
     heap_delete<EditorDialogObj>(obj);
 }
@@ -113,6 +127,12 @@ void EditorDialog::update(float delta)
 
     if (!mObj->workspace)
         return;
+
+    if (mObj->workspace.should_close())
+    {
+        mObj->destroy();
+        return;
+    }
 
     ui_frame_begin(mObj->uiCtx);
     mObj->workspace.on_imgui(delta);
@@ -126,9 +146,14 @@ void EditorDialog::render(ScreenRenderComponent renderer)
     mObj->uiLayer.render(renderer);
 }
 
+bool EditorDialog::should_close()
+{
+    return !mObj->uiCtx;
+}
+
 EditorWindow EditorDialog::get_editor_window(EditorWindowType typeCheck)
 {
-    if (!mObj->workspace || !mObj->window || mObj->window.get_type() != typeCheck)
+    if (!mObj->window || mObj->window.get_type() != typeCheck)
         return {};
 
     return mObj->window;

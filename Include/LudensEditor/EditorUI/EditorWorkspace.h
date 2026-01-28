@@ -29,6 +29,9 @@ struct EditorWorkspace : Handle<struct EditorWorkspaceObj>
     /// @brief Destroy editor workspace.
     static void destroy(EditorWorkspace space);
 
+    /// @brief Hint that the user should destroy the workspace.
+    bool should_close();
+
     /// @brief If hidden, skips all rendering for EditorWindows in this workspace.
     void set_visible(bool isVisible);
 

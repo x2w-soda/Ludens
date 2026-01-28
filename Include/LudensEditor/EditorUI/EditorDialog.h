@@ -25,6 +25,9 @@ struct EditorDialog : Handle<struct EditorDialogObj>
     void update(float delta);
     void render(ScreenRenderComponent renderer);
 
+    ///@brief Hint that user should destroy this dialog.
+    bool should_close();
+
     EditorWindow get_editor_window(EditorWindowType typeCheck);
     WindowID get_id();
 };

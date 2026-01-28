@@ -1,9 +1,10 @@
 #include <Ludens/Memory/Memory.h>
 #include <Ludens/Profiler/Profiler.h>
+#include <LudensEditor/CreateComponentWindow/CreateComponentWindow.h>
+#include <LudensEditor/SelectionWindow/SelectionWindow.h>
+
 #include <LudensEditor/EditorUI/EditorDialog.h>
 #include <LudensEditor/EditorUI/EditorUIDialog.h>
-#include <LudensEditor/SelectComponentWindow/SelectComponentWindow.h>
-#include <LudensEditor/SelectionWindow/SelectionWindow.h>
 
 namespace LD {
 
@@ -12,8 +13,8 @@ enum DialogType
     DIALOG_NONE = 0,
     DIALOG_OPEN_SCENE,
     DIALOG_SELECT_ASSET,
-    DIALOG_SELECT_COMPONENT,
     DIALOG_SELECT_SCRIPT,
+    DIALOG_CREATE_COMPONENT,
 };
 
 class EditorUIDialogObj
@@ -32,8 +33,12 @@ public:
     }
 
     void update(float delta);
-    void create_dialog(DialogType type);
     WindowID get_dialog_window_id();
+
+    void dialog_open_scene();
+    void dialog_select_asset(const EditorEvent* e);
+    void dialog_select_script();
+    void dialog_create_component(const EditorEvent* e);
 
 private:
     void get_or_create_dialog(EditorWindowType type);
@@ -65,14 +70,21 @@ void EditorUIDialogObj::update(float delta)
 {
     LD_PROFILE_SCOPE;
 
-    FS::Path selectedPath{};
-    SelectionWindow selectW{};
-
     if (!mDialog || !mDialog.get_id())
     {
         mDialogType = DIALOG_NONE;
         return;
     }
+
+    if (mDialog.should_close())
+    {
+        EditorDialog::destroy(mDialog);
+        mDialog = {};
+        return;
+    }
+
+    FS::Path selectedPath{};
+    SelectionWindow selectW{};
 
     // updates the UIContext in the EditorDialog (a separate OS-level Window)
     mDialog.update(delta);
@@ -122,44 +134,56 @@ void EditorUIDialogObj::update(float delta)
     }
 }
 
-void EditorUIDialogObj::create_dialog(DialogType type)
-{
-    LD_ASSERT(mDialogType == DIALOG_NONE);
-
-    mDialogType = type;
-
-    SelectionWindow selectionW{};
-    SelectComponentWindow selectCompW{};
-
-    switch (type)
-    {
-    case DIALOG_OPEN_SCENE:
-        get_or_create_dialog(EDITOR_WINDOW_SELECTION);
-        selectionW = (SelectionWindow)mDialog.get_editor_window(EDITOR_WINDOW_SELECTION);
-        selectionW.show(mCtx.get_project_directory(), "toml");
-        break;
-    case DIALOG_SELECT_ASSET:
-        get_or_create_dialog(EDITOR_WINDOW_SELECTION);
-        selectionW = (SelectionWindow)mDialog.get_editor_window(EDITOR_WINDOW_SELECTION);
-        selectionW.show(mCtx.get_project_directory(), "lda");
-        break;
-    case DIALOG_SELECT_COMPONENT:
-        get_or_create_dialog(EDITOR_WINDOW_SELECT_COMPONENT);
-        LD_UNREACHABLE;
-        break;
-    case DIALOG_SELECT_SCRIPT:
-        get_or_create_dialog(EDITOR_WINDOW_SELECTION);
-        selectionW = (SelectionWindow)mDialog.get_editor_window(EDITOR_WINDOW_SELECTION);
-        selectionW.show(mCtx.get_project_directory(), "lua");
-        break;
-    default:
-        LD_UNREACHABLE;
-    }
-}
-
 WindowID EditorUIDialogObj::get_dialog_window_id()
 {
     return mDialog ? mDialog.get_id() : 0;
+}
+
+void EditorUIDialogObj::dialog_open_scene()
+{
+    LD_ASSERT(mDialogType == DIALOG_NONE);
+    mDialogType = DIALOG_OPEN_SCENE;
+
+    get_or_create_dialog(EDITOR_WINDOW_SELECTION);
+    SelectionWindow selectionW = (SelectionWindow)mDialog.get_editor_window(EDITOR_WINDOW_SELECTION);
+    selectionW.show(mCtx.get_project_directory(), "toml");
+}
+
+void EditorUIDialogObj::dialog_select_asset(const EditorEvent* e)
+{
+    LD_ASSERT(e && e->type == EDITOR_EVENT_TYPE_REQUEST_COMPONENT_ASSET);
+    LD_ASSERT(mDialogType == DIALOG_NONE);
+    mDialogType = DIALOG_SELECT_ASSET;
+
+    const auto* event = (const EditorRequestComponentAssetEvent*)e;
+    mSubjectCompID = event->component;
+
+    get_or_create_dialog(EDITOR_WINDOW_SELECTION);
+    SelectionWindow selectionW = (SelectionWindow)mDialog.get_editor_window(EDITOR_WINDOW_SELECTION);
+    selectionW.show(mCtx.get_project_directory(), "lda");
+}
+
+void EditorUIDialogObj::dialog_select_script()
+{
+    LD_ASSERT(mDialogType == DIALOG_NONE);
+    mDialogType = DIALOG_SELECT_SCRIPT;
+
+    get_or_create_dialog(EDITOR_WINDOW_SELECTION);
+    SelectionWindow selectionW = (SelectionWindow)mDialog.get_editor_window(EDITOR_WINDOW_SELECTION);
+    selectionW.show(mCtx.get_project_directory(), "lua");
+}
+
+void EditorUIDialogObj::dialog_create_component(const EditorEvent* e)
+{
+    LD_ASSERT(e && e->type == EDITOR_EVENT_TYPE_REQUEST_CREATE_COMPONENT);
+    LD_ASSERT(mDialogType == DIALOG_NONE);
+    mDialogType = DIALOG_CREATE_COMPONENT;
+
+    get_or_create_dialog(EDITOR_WINDOW_CREATE_COMPONENT);
+    CreateComponentWindow createCompW = (CreateComponentWindow)mDialog.get_editor_window(EDITOR_WINDOW_CREATE_COMPONENT);
+
+    const auto* event = (const EditorRequestCreateComponentEvent*)e;
+    createCompW.set_parent_component(event->parent);
 }
 
 void EditorUIDialogObj::get_or_create_dialog(EditorWindowType type)
@@ -187,10 +211,16 @@ void EditorUIDialogObj::on_editor_event(const EditorEvent* event, void* user)
 {
     auto* obj = (EditorUIDialogObj*)user;
 
+    if (event->category != EDITOR_EVENT_CATEGORY_REQUEST)
+        return;
+
     switch (event->type)
     {
     case EDITOR_EVENT_TYPE_REQUEST_COMPONENT_ASSET:
-        obj->create_dialog(DIALOG_SELECT_ASSET);
+        obj->dialog_select_asset(event);
+        break;
+    case EDITOR_EVENT_TYPE_REQUEST_CREATE_COMPONENT:
+        obj->dialog_create_component(event);
         break;
     default:
         break;
