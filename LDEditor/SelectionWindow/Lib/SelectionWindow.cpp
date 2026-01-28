@@ -29,7 +29,6 @@ struct SelectionWindowObj : EditorWindowObj
     Vector<FS::Path> directoryContents;
     FS::Path directoryPath;
     FS::Path selectedPath;
-    Impulse hasCancelled;
     int selectedRowIndex = -1;
 
     virtual EditorWindowType get_type() override { return EDITOR_WINDOW_SELECTION; }
@@ -125,16 +124,12 @@ void SelectionWindowObj::bottom_bar()
 
     bool isCancelled;
     ui_push_button("cancel", isCancelled);
-    if (isCancelled)
-    {
-        hasCancelled.set(true);
-    }
     ui_pop();
 
     ui_pop();
 
     if (isSelected || isCancelled)
-        root.hide();
+        mShouldClose = true;
 }
 
 bool SelectionWindowObj::row(int idx)
@@ -226,11 +221,6 @@ bool SelectionWindow::has_selected(FS::Path& path)
     mObj->selectedPath.clear();
 
     return true;
-}
-
-bool SelectionWindow::has_canceled()
-{
-    return mObj->hasCancelled.read();
 }
 
 } // namespace LD

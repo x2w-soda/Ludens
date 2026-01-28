@@ -17,8 +17,6 @@
 
 namespace LD {
 
-struct OutlinerRow;
-
 /// @brief Editor outliner window implementation.
 struct OutlinerWindowObj : EditorWindowObj
 {
@@ -92,8 +90,10 @@ void OutlinerWindowObj::on_row_mouse_down(MouseButton& btn, CUID compID)
         ctx.set_selected_component(compID);
     else if (btn == MOUSE_BUTTON_RIGHT)
     {
-        // Vec2 screenPos = widget.get_pos() + pos;
-        // TODO: self.outlinerWindow->menu.show(screenPos, self.component);
+        // TODO: menu for create component, remove component, etc.
+        EditorRequestCreateComponentEvent event(compID);
+
+        ctx.request_event(&event);
     }
 }
 

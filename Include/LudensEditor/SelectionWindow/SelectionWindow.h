@@ -21,7 +21,6 @@ struct SelectionWindow : Handle<struct SelectionWindowObj>
 
     void show(const FS::Path& directoryPath, const char* extensionFilter);
     bool has_selected(FS::Path& path);
-    bool has_canceled();
 };
 
 } // namespace LD
