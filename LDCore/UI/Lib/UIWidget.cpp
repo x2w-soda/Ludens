@@ -743,6 +743,13 @@ void UITextEditWidgetObj::on_key(UIWidget widget, KeyCode keyCode, UIEvent event
         self.onSubmit((UITextEditWidget)widget, strView, obj->user);
 }
 
+void UITextEditWidget::set_text(View text)
+{
+    auto& self = mObj->as.textEdit;
+
+    self.buf.set_string(text);
+}
+
 void UITextEditWidget::on_draw(UIWidget widget, ScreenRenderComponent renderer)
 {
     UIWidgetObj* obj = widget.unwrap();

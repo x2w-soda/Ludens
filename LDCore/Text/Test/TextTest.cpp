@@ -11,5 +11,17 @@ TEST_CASE("TextBuffer")
     std::string str = buf.to_string();
     CHECK(str.empty());
 
+    buf.set_string(View{});
+    str = buf.to_string();
+    CHECK(str.empty());
+
+    buf.set_string((const char*)nullptr);
+    str = buf.to_string();
+    CHECK(str.empty());
+
+    buf.set_string("test string");
+    str = buf.to_string();
+    CHECK(str == "test string");
+
     TextBuffer<char>::destroy(buf);
 }

@@ -1,11 +1,13 @@
 #pragma once
 
+#include <Ludens/DSA/Vector.h>
 #include <Ludens/Header/Bitwise.h>
+#include <Ludens/Header/View.h>
+
 #include <algorithm>
 #include <cstddef>
 #include <cstring>
 #include <string>
-#include <vector>
 
 namespace LD {
 
@@ -85,19 +87,26 @@ public:
         mBuffer[mGapStart++] = c;
     }
 
-    /// @brief Inserts a C string at position.
+    /// @brief Inserts view content at position.
+    void insert(size_t pos, View view)
+    {
+        if (!view.data || view.size == 0)
+            return;
+
+        set_cursor(pos);
+        reserve(view.size);
+
+        for (size_t i = 0; i < view.size; i++)
+            mBuffer[mGapStart++] = static_cast<TChar>(view.data[i]);
+    }
+
+    /// @brief Inserts a C string at position, does not insert '\0'.
     void insert(size_t pos, const char* cstr)
     {
         if (!cstr)
             return;
 
-        size_t len = strlen(cstr);
-
-        set_cursor(pos);
-        reserve(len);
-
-        for (size_t i = 0; i < len; i++)
-            mBuffer[mGapStart++] = static_cast<TChar>(cstr[i]);
+        insert(pos, View(cstr, strlen(cstr)));
     }
 
     /// @brief Inserts a STL string at position.
@@ -152,7 +161,7 @@ private:
     }
 
 private:
-    std::vector<TChar> mBuffer;
+    Vector<TChar> mBuffer;
     size_t mGapStart = 0;
     size_t mGapEnd = 0;
 };

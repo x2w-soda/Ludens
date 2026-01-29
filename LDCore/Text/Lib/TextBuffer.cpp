@@ -34,6 +34,15 @@ void TextBuffer<T>::destroy(TextBuffer<T> buf)
 }
 
 template <typename T>
+void TextBuffer<T>::set_string(View view)
+{
+    TextBufferObj<T>* obj = this->mObj;
+
+    obj->gapBuffer.clear();
+    obj->gapBuffer.insert(0, view);
+}
+
+template <typename T>
 void TextBuffer<T>::set_string(const char* cstr)
 {
     TextBufferObj<T>* obj = this->mObj;

@@ -97,8 +97,8 @@ bool ui_has_window_client(const char* name);
 void ui_push_text(const char* text);
 
 /// @brief Push UITextEditWidget.
-void ui_push_text_edit(const char* text);
-
+void ui_push_text_edit();
+void ui_text_edit_set_text(View text);
 bool ui_text_edit_changed(std::string& text);
 bool ui_text_edit_submitted(std::string& text);
 

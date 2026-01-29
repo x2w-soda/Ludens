@@ -37,27 +37,27 @@ struct UITextEditState
 
 struct UIWidgetState
 {
-    UIWidget widget = {};            // actual retained widget
+    UIWidget widget{};               // actual retained widget
     Vector<UIWidgetState*> children; // direct children, retained across frames
-    IMDrawCallback onDraw;
-    Hash64 widgetHash; // hash that identifies this state uniquely in its window
-    MouseButton mouseDownButton;
-    MouseButton mouseUpButton;
-    MouseButton dragButton;
-    KeyCode keyDown;
-    KeyCode keyUp;
-    Vec2 dragPos;
-    void* imUser;
+    IMDrawCallback onDraw = nullptr;
+    Hash64 widgetHash{}; // hash that identifies this state uniquely in its window
+    MouseButton mouseDownButton{};
+    MouseButton mouseUpButton{};
+    MouseButton dragButton{};
+    KeyCode keyDown{};
+    KeyCode keyUp{};
+    Vec2 dragPos{};
+    void* imUser = nullptr;
     int childCounter = 0; // number of children widget states in this frame
     const UIWidgetType type;
-    UIEvent hoverEvent;
-    Impulse hoverImpulse;
-    Impulse mouseDownImpulse;
-    Impulse mouseUpImpulse;
-    Impulse keyDownImpulse;
-    Impulse keyUpImpulse;
-    Impulse dragImpulse;
-    bool dragBegin;
+    UIEvent hoverEvent{};
+    Impulse hoverImpulse{};
+    Impulse mouseDownImpulse{};
+    Impulse mouseUpImpulse{};
+    Impulse keyDownImpulse{};
+    Impulse keyUpImpulse{};
+    Impulse dragImpulse{};
+    bool dragBegin = false;
     union
     {
         Impulse isTogglePressed;
@@ -831,7 +831,7 @@ void ui_push_text(const char* text)
     imWindow->imWidgetStack.push(imWidget);
 }
 
-void ui_push_text_edit(const char* text)
+void ui_push_text_edit()
 {
     LD_ASSERT_UI_PUSH;
 
@@ -841,6 +841,16 @@ void ui_push_text_edit(const char* text)
     LD_ASSERT(textW.get_type() == UI_WIDGET_TEXT_EDIT);
 
     imWindow->imWidgetStack.push(imWidget);
+}
+
+void ui_text_edit_set_text(View text)
+{
+    LD_ASSERT_UI_TOP_WIDGET_TYPE(UI_WIDGET_TEXT_EDIT);
+
+    UIWidgetState* imWidget = sImFrame->imWindow->imWidgetStack.top();
+    UITextEditWidget editW = (UITextEditWidget)imWidget->widget;
+
+    editW.set_text(text);
 }
 
 bool ui_text_edit_changed(std::string& text)

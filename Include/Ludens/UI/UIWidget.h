@@ -281,6 +281,9 @@ struct UITextWidgetInfo
 
 struct UITextEditWidget : UIWidget
 {
+    /// @brief Set text edit field value, does not trigger on_change callbacks.
+    void set_text(View text);
+
     /// @brief Default text edit widget rendering.
     static void on_draw(UIWidget widget, ScreenRenderComponent renderer);
 };

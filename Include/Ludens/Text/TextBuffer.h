@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Ludens/Header/Handle.h>
+#include <Ludens/Header/View.h>
 #include <string>
 
 namespace LD {
@@ -17,6 +18,9 @@ struct TextBuffer : Handle<TextBufferObj<T>>
 
     /// @brief Destroy a text buffer
     static void destroy(TextBuffer buf);
+
+    /// @brief Set text buffer content to view content.
+    void set_string(View view);
 
     /// @brief Set text buffer content to C string.
     void set_string(const char* cstr);
