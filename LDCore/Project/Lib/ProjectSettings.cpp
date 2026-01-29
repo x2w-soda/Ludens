@@ -18,6 +18,11 @@ struct ProjectStartupSettingsObj
     std::string defaultScenePath = DEFAULT_STARTUP_DEFAULT_SCENE_PATH;
 };
 
+struct ProjectRenderingSettingsObj
+{
+    Vec4 clearColor = DEFAULT_RENDERING_CLEAR_COLOR;
+};
+
 /// @brief Project-wide source of truth for screen layers.
 struct ProjectScreenLayerSettingsObj
 {
@@ -35,6 +40,7 @@ struct ProjectScreenLayerSettingsObj
 struct ProjectSettingsObj
 {
     ProjectStartupSettingsObj startup;
+    ProjectRenderingSettingsObj rendering;
     ProjectScreenLayerSettingsObj screenLayer;
 };
 
@@ -80,6 +86,16 @@ std::string ProjectStartupSettings::get_default_scene_path()
 void ProjectStartupSettings::set_default_scene_path(const std::string& scenePath)
 {
     mObj->startup.defaultScenePath = scenePath;
+}
+
+Vec4 ProjectRenderingSettings::get_clear_color()
+{
+    return mObj->rendering.clearColor;
+}
+
+void ProjectRenderingSettings::set_clear_color(const Vec4& color)
+{
+    mObj->rendering.clearColor = color;
 }
 
 //
@@ -169,6 +185,11 @@ void ProjectSettings::destroy(ProjectSettings settings)
 ProjectStartupSettings ProjectSettings::get_startup_settings()
 {
     return ProjectStartupSettings(mObj);
+}
+
+ProjectRenderingSettings ProjectSettings::get_rendering_settings()
+{
+    return ProjectRenderingSettings(mObj);
 }
 
 ProjectScreenLayerSettings ProjectSettings::get_screen_layer_settings()

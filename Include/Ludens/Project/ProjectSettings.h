@@ -2,6 +2,7 @@
 
 #include <Ludens/DSA/Vector.h>
 #include <Ludens/Header/Handle.h>
+#include <Ludens/Header/Math/Vec4.h>
 
 #include <cstdint>
 #include <string>
@@ -22,6 +23,13 @@ struct ProjectStartupSettings : Handle<struct ProjectSettingsObj>
 
     std::string get_default_scene_path();
     void set_default_scene_path(const std::string& scenePath);
+};
+
+/// @brief Settings for default rendering options.
+struct ProjectRenderingSettings : Handle<struct ProjectSettingsObj>
+{
+    Vec4 get_clear_color();
+    void set_clear_color(const Vec4& color);
 };
 
 /// @brief Uniquely identifies a screen layer, invariant to rename operations.
@@ -63,6 +71,9 @@ struct ProjectSettings : Handle<struct ProjectSettingsObj>
 
     /// @brief Get interface for startup settings.
     ProjectStartupSettings get_startup_settings();
+
+    /// @brief Get interface for rendering settings.
+    ProjectRenderingSettings get_rendering_settings();
 
     /// @brief Get interface for screen layer settings.
     ProjectScreenLayerSettings get_screen_layer_settings();
