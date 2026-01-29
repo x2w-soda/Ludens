@@ -61,6 +61,11 @@ struct EditorContextObj
         FS::Path schemaPath; // path to scene schema
     } openSceneParams;
 
+    struct EditorActionOpenProjectParams
+    {
+        FS::Path schemaPath; // path to project schema
+    } openProjectParams;
+
     struct EditorActionAddComponentParams
     {
         CUID parentID;
@@ -92,6 +97,7 @@ static void editor_action_redo(EditStack stack, void* user);
 static void editor_action_new_scene(EditStack stack, void* user);
 static void editor_action_open_scene(EditStack stack, void* user);
 static void editor_action_save_scene(EditStack stack, void* user);
+static void editor_action_open_project(EditStack stack, void* user);
 static void editor_action_add_component_script(EditStack stack, void* user);
 static void editor_action_set_component_asset(EditStack stack, void* user);
 
@@ -142,6 +148,17 @@ static void editor_action_save_scene(EditStack stack, void* user)
     // Saving Scene writes the current schema to disk and
     // should not effect the EditStack.
     obj->save_project_scene();
+}
+
+static void editor_action_open_project(EditStack stack, void* user)
+{
+    LD_PROFILE_SCOPE;
+
+    EditorContextObj* obj = (EditorContextObj*)user;
+
+    // TODO: save scene and project dialog?
+    // TODO: how much to unwind? AssetManager for sure, EditorContext invalidation?
+    LD_UNREACHABLE;
 }
 
 static void editor_action_add_component(EditStack stack, void* user)
@@ -259,11 +276,18 @@ void EditorContextObj::load_project_scene(const FS::Path& sceneSchemaPath)
     selectedComponent = 0;
     selectedComponentRUID = 0;
 
-    SceneInfo sceneI{};
-    sceneI.assetManager = assetManager;
-    sceneI.renderServer = renderServer;
-    sceneI.audioServer = audioServer;
-    scene = Scene::create(sceneI);
+    if (scene)
+    {
+        scene.unload();
+    }
+    else
+    {
+        SceneInfo sceneI{};
+        sceneI.assetManager = assetManager;
+        sceneI.renderServer = renderServer;
+        sceneI.audioServer = audioServer;
+        scene = Scene::create(sceneI);
+    }
 
     // load the scene
     std::string err;
@@ -331,6 +355,7 @@ EditorContext EditorContext::create(const EditorContextInfo& info)
         {EDITOR_ACTION_NEW_SCENE,            &editor_action_new_scene,            "NewScene"}, 
         {EDITOR_ACTION_OPEN_SCENE,           &editor_action_open_scene,           "OpenScene"}, 
         {EDITOR_ACTION_SAVE_SCENE,           &editor_action_save_scene,           "SaveScene"},
+        {EDITOR_ACTION_OPEN_PROJECT,         &editor_action_open_project,         "OpenProject"},
         {EDITOR_ACTION_ADD_COMPONENT,        &editor_action_add_component,        "AddComponent"},
         {EDITOR_ACTION_ADD_COMPONENT_SCRIPT, &editor_action_add_component_script, "AddComponentScript"},
         {EDITOR_ACTION_SET_COMPONENT_ASSET,  &editor_action_set_component_asset,  "SetComponentAsset"},
@@ -410,6 +435,12 @@ void EditorContext::action_open_scene(const FS::Path& sceneSchemaPath)
 {
     mObj->actionQueue.enqueue(EDITOR_ACTION_OPEN_SCENE);
     mObj->openSceneParams.schemaPath = sceneSchemaPath;
+}
+
+void EditorContext::action_open_project(const FS::Path& projectSchemaPath)
+{
+    mObj->actionQueue.enqueue(EDITOR_ACTION_OPEN_PROJECT);
+    mObj->openProjectParams.schemaPath = projectSchemaPath;
 }
 
 void EditorContext::action_save_scene()

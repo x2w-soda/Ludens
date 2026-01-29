@@ -52,6 +52,9 @@ struct EditorContext : Handle<struct EditorContextObj>
     /// @brief Open existing scene.
     void action_open_scene(const FS::Path& sceneSchemaPath);
 
+    /// @brief Open existing project.
+    void action_open_project(const FS::Path& projectSchemaPath);
+
     /// @brief Save the current scene schema to disk.
     void action_save_scene();
 

@@ -12,6 +12,7 @@ enum DialogType
 {
     DIALOG_NONE = 0,
     DIALOG_OPEN_SCENE,
+    DIALOG_OPEN_PROJECT,
     DIALOG_SELECT_ASSET,
     DIALOG_SELECT_SCRIPT,
     DIALOG_CREATE_COMPONENT,
@@ -36,6 +37,7 @@ public:
     WindowID get_dialog_window_id();
 
     void dialog_open_scene();
+    void dialog_open_project();
     void dialog_select_asset(const EditorEvent* e);
     void dialog_select_script();
     void dialog_create_component(const EditorEvent* e);
@@ -100,6 +102,14 @@ void EditorUIDialogObj::update(float delta)
             mCtx.action_open_scene(selectedPath);
         }
         break;
+    case DIALOG_OPEN_PROJECT:
+        selectW = (SelectionWindow)mDialog.get_editor_window(EDITOR_WINDOW_SELECTION);
+        if (selectW && selectW.has_selected(selectedPath))
+        {
+            mDialogType = DIALOG_NONE;
+            mCtx.action_open_project(selectedPath);
+        }
+        break;
     case DIALOG_SELECT_ASSET:
         selectW = (SelectionWindow)mDialog.get_editor_window(EDITOR_WINDOW_SELECTION);
         if (selectW && selectW.has_selected(selectedPath))
@@ -143,6 +153,16 @@ void EditorUIDialogObj::dialog_open_scene()
 {
     LD_ASSERT(mDialogType == DIALOG_NONE);
     mDialogType = DIALOG_OPEN_SCENE;
+
+    get_or_create_dialog(EDITOR_WINDOW_SELECTION);
+    SelectionWindow selectionW = (SelectionWindow)mDialog.get_editor_window(EDITOR_WINDOW_SELECTION);
+    selectionW.show(mCtx.get_project_directory(), "toml");
+}
+
+void EditorUIDialogObj::dialog_open_project()
+{
+    LD_ASSERT(mDialogType == DIALOG_NONE);
+    mDialogType = DIALOG_OPEN_PROJECT;
 
     get_or_create_dialog(EDITOR_WINDOW_SELECTION);
     SelectionWindow selectionW = (SelectionWindow)mDialog.get_editor_window(EDITOR_WINDOW_SELECTION);
@@ -221,6 +241,12 @@ void EditorUIDialogObj::on_editor_event(const EditorEvent* event, void* user)
         break;
     case EDITOR_EVENT_TYPE_REQUEST_CREATE_COMPONENT:
         obj->dialog_create_component(event);
+        break;
+    case EDITOR_EVENT_TYPE_REQUEST_OPEN_SCENE:
+        obj->dialog_open_scene();
+        break;
+    case EDITOR_EVENT_TYPE_REQUEST_OPEN_PROJECT:
+        obj->dialog_open_project();
         break;
     default:
         break;
