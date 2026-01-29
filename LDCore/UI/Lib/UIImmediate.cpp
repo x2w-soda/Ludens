@@ -21,7 +21,19 @@
     LD_ASSERT_UI_FRAME_BEGIN;   \
     LD_ASSERT_UI_WINDOW;
 
+#define LD_ASSERT_UI_TOP_WIDGET_TYPE(TYPE) \
+    LD_ASSERT_UI_TOP_WIDGET                \
+    LD_ASSERT(sImFrame->imWindow->imWidgetStack.top()->type == (TYPE));
+
 namespace LD {
+
+struct UITextEditState
+{
+    std::string lastChange;
+    std::string lastSubmission;
+    Impulse isChanged;
+    Impulse isSubmitted;
+};
 
 struct UIWidgetState
 {
@@ -37,6 +49,7 @@ struct UIWidgetState
     Vec2 dragPos;
     void* imUser;
     int childCounter = 0; // number of children widget states in this frame
+    const UIWidgetType type;
     UIEvent hoverEvent;
     Impulse hoverImpulse;
     Impulse mouseDownImpulse;
@@ -49,8 +62,41 @@ struct UIWidgetState
     {
         Impulse isTogglePressed;
         Impulse isButtonPressed;
+        UITextEditState textEdit;
     };
+
+    UIWidgetState() = delete;
+    UIWidgetState(UIWidgetType type);
+    UIWidgetState(const UIWidgetState&) = delete;
+    ~UIWidgetState();
+
+    UIWidgetState& operator=(const UIWidgetState&) = delete;
 };
+
+UIWidgetState::UIWidgetState(UIWidgetType type)
+    : type(type)
+{
+    switch (type)
+    {
+    case UI_WIDGET_TEXT_EDIT:
+        new (&textEdit) UITextEditState();
+        break;
+    default:
+        break;
+    }
+}
+
+UIWidgetState::~UIWidgetState()
+{
+    switch (type)
+    {
+    case UI_WIDGET_TEXT_EDIT:
+        (&textEdit)->~UITextEditState();
+        break;
+    default:
+        break;
+    }
+}
 
 struct UIWindowState
 {
@@ -167,6 +213,22 @@ static void on_key_handler(UIWidget widget, KeyCode key, UIEvent event)
     }
 }
 
+static void on_text_change_handler(UITextEditWidget widget, View text, void* user)
+{
+    UIWidgetState* widgetS = (UIWidgetState*)user;
+
+    widgetS->textEdit.isChanged.set(true);
+    widgetS->textEdit.lastChange = std::string(text.data, text.size);
+}
+
+static void on_text_submit_handler(UITextEditWidget widget, View text, void* user)
+{
+    UIWidgetState* widgetS = (UIWidgetState*)user;
+
+    widgetS->textEdit.isSubmitted.set(true);
+    widgetS->textEdit.lastSubmission = std::string(text.data, text.size);
+}
+
 static void destroy_widget_subtree(PoolAllocator statePA, UIWidgetState* widgetS)
 {
     for (UIWidgetState* childS : widgetS->children)
@@ -234,7 +296,7 @@ static UIWidgetState* get_or_create_widget_state(Stack<UIWidgetState*>& stack, P
     if (!widgetS)
     {
         widgetS = parentS->children[siblingIndex] = (UIWidgetState*)statePA.allocate();
-        new (widgetS) UIWidgetState();
+        new (widgetS) UIWidgetState(type);
         widgetS->widget = {}; // caller creates
         widgetS->widgetHash = widgetHash;
         widgetS->childCounter = 0;
@@ -252,7 +314,7 @@ static UIWindowState* get_or_create_window_state(Hash64 windowHash)
     windowS->windowHash = windowHash;
     windowS->window = {};
     windowS->state = (UIWidgetState*)windowS->widgetStatePA.allocate();
-    new (windowS->state) UIWidgetState();
+    new (windowS->state) UIWidgetState(UI_WIDGET_WINDOW);
 
     UIWidgetState* widgetS = windowS->state;
     widgetS->widget = {};
@@ -326,6 +388,8 @@ UIWidgetState* UIWindowState::get_or_create_text_edit()
     UITextEditWidgetInfo textWI{};
     textWI.fontSize = 16.0f; // TODO:
     textWI.placeHolder = nullptr;
+    textWI.onSubmit = &on_text_submit_handler;
+    textWI.onChange = &on_text_change_handler;
 
     UILayoutInfo layoutI{};
     layoutI.sizeX = UISize::fixed(100.0f); // TODO:
@@ -777,6 +841,38 @@ void ui_push_text_edit(const char* text)
     LD_ASSERT(textW.get_type() == UI_WIDGET_TEXT_EDIT);
 
     imWindow->imWidgetStack.push(imWidget);
+}
+
+bool ui_text_edit_changed(std::string& text)
+{
+    LD_ASSERT_UI_TOP_WIDGET_TYPE(UI_WIDGET_TEXT_EDIT);
+
+    UIWidgetState* imWidget = sImFrame->imWindow->imWidgetStack.top();
+
+    if (imWidget->textEdit.isChanged.read())
+    {
+        text = imWidget->textEdit.lastChange;
+        imWidget->textEdit.lastChange.clear();
+        return true;
+    }
+
+    return false;
+}
+
+bool ui_text_edit_submitted(std::string& text)
+{
+    LD_ASSERT_UI_TOP_WIDGET_TYPE(UI_WIDGET_TEXT_EDIT);
+
+    UIWidgetState* imWidget = sImFrame->imWindow->imWidgetStack.top();
+
+    if (imWidget->textEdit.isSubmitted.read())
+    {
+        text = imWidget->textEdit.lastSubmission;
+        imWidget->textEdit.lastSubmission.clear();
+        return true;
+    }
+
+    return false;
 }
 
 void ui_push_image(RImage image, float width, float height, Color tint, const Rect* portion)

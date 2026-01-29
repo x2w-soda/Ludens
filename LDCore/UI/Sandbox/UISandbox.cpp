@@ -203,7 +203,12 @@ void UISandbox::imgui()
         }
         ui_pop();
 
+        std::string text;
         ui_push_text_edit("Text here");
+        if (ui_text_edit_changed(text))
+            sLog.info("Text Changed: [{}]", text);
+        if (ui_text_edit_submitted(text))
+            sLog.info("Text Submitted: [{}]", text);
         ui_pop();
     }
     ui_pop();

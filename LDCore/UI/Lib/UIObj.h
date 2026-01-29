@@ -248,6 +248,8 @@ struct UITextEditWidgetObj
     UIWidgetObj* base;
     TextBuffer<char> buf;
     const char* placeHolder;
+    void (*onChange)(UITextEditWidget widget, View text, void* user);
+    void (*onSubmit)(UITextEditWidget widget, View text, void* user);
     float fontSize;
 
     static void cleanup(UIWidgetObj* base);

@@ -2,6 +2,7 @@
 
 #include <Ludens/Header/Handle.h>
 #include <Ludens/Header/KeyCode.h>
+#include <Ludens/Header/View.h>
 #include <Ludens/Media/Font.h>
 #include <Ludens/RenderBackend/RBackend.h>
 #include <Ludens/RenderComponent/ScreenRenderComponent.h>
@@ -282,13 +283,14 @@ struct UITextEditWidget : UIWidget
 {
     /// @brief Default text edit widget rendering.
     static void on_draw(UIWidget widget, ScreenRenderComponent renderer);
-    static void on_mouse();
 };
 
 struct UITextEditWidgetInfo
 {
     float fontSize;          /// rendered size
     const char* placeHolder; /// default gray text to display when empty
+    void (*onChange)(UITextEditWidget widget, View text, void* user);
+    void (*onSubmit)(UITextEditWidget widget, View text, void* user);
 };
 
 /// @brief interface to manipulate widget tree hierarchy

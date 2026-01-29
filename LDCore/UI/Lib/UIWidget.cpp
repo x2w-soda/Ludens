@@ -662,6 +662,8 @@ UITextEditWidget UINode::add_text_edit(const UILayoutInfo& layoutI, const UIText
     UIWidgetObj* obj = mObj->ctx()->alloc_widget(UI_WIDGET_TEXT_EDIT, layoutI, mObj, user);
     obj->as.textEdit.fontSize = widgetI.fontSize;
     obj->as.textEdit.buf = TextBuffer<char>::create();
+    obj->as.textEdit.onChange = widgetI.onChange;
+    obj->as.textEdit.onSubmit = widgetI.onSubmit;
     obj->cb.onMouse = &UITextEditWidgetObj::on_mouse;
     obj->cb.onHover = &UITextEditWidgetObj::on_hover;
     obj->cb.onKey = &UITextEditWidgetObj::on_key;
@@ -695,6 +697,9 @@ void UITextEditWidgetObj::on_key(UIWidget widget, KeyCode keyCode, UIEvent event
     if (event != UI_KEY_DOWN)
         return;
 
+    bool hasChanged = false;
+    bool hasSubmitted = false;
+
     if (KEY_CODE_A <= keyCode && keyCode <= KEY_CODE_Z)
     {
         char key = (char)keyCode + 32;
@@ -703,15 +708,39 @@ void UITextEditWidgetObj::on_key(UIWidget widget, KeyCode keyCode, UIEvent event
             key -= 32;
 
         self.buf.push_back(key);
+        hasChanged = true;
+    }
+    else if (KEY_CODE_0 <= keyCode && keyCode <= KEY_CODE_9)
+    {
+        char key = (char)keyCode - (char)KEY_CODE_0 + '0';
+
+        self.buf.push_back(key);
+        hasChanged = true;
     }
     else if (keyCode == KEY_CODE_SPACE)
     {
         self.buf.push_back(' ');
+        hasChanged = true;
     }
-    else if (keyCode == KEY_CODE_BACKSPACE)
+    else if (keyCode == KEY_CODE_BACKSPACE && !self.buf.empty())
     {
         self.buf.pop_back();
+        hasChanged = true;
     }
+    else if (keyCode == KEY_CODE_ENTER)
+    {
+        // this allows submission of empty text.
+        hasSubmitted = true;
+    }
+
+    std::string str = self.buf.to_string();
+    View strView(str.data(), str.size());
+
+    if (hasChanged && self.onChange)
+        self.onChange((UITextEditWidget)widget, strView, obj->user);
+
+    if (hasSubmitted && self.onSubmit)
+        self.onSubmit((UITextEditWidget)widget, strView, obj->user);
 }
 
 void UITextEditWidget::on_draw(UIWidget widget, ScreenRenderComponent renderer)

@@ -99,6 +99,9 @@ void ui_push_text(const char* text);
 /// @brief Push UITextEditWidget.
 void ui_push_text_edit(const char* text);
 
+bool ui_text_edit_changed(std::string& text);
+bool ui_text_edit_submitted(std::string& text);
+
 /// @brief Push UIImageWidget.
 void ui_push_image(RImage image, float width, float height, Color tint = 0xFFFFFFFF, const Rect* portion = nullptr);
 
