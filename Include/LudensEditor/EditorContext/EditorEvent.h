@@ -15,6 +15,7 @@ enum EditorEventType
     EDITOR_EVENT_TYPE_NOTIFY_PROJECT_LOAD,
     EDITOR_EVENT_TYPE_NOTIFY_SCENE_LOAD,
     EDITOR_EVENT_TYPE_NOTIFY_COMPONENT_SELECTION,
+    EDITOR_EVENT_TYPE_REQUEST_PROJECT_SETTINGS,
     EDITOR_EVENT_TYPE_REQUEST_COMPONENT_ASSET,
     EDITOR_EVENT_TYPE_REQUEST_NEW_PROJECT,
     EDITOR_EVENT_TYPE_REQUEST_OPEN_PROJECT,
@@ -88,6 +89,15 @@ struct EditorNotifyComponentSelectionEvent : EditorNotifyEvent
 
     /// @brief The new component being selected, an ID of zero indicates that the selection is cleared.
     const CUID component;
+};
+
+/// @brief Event signaling a request to access project settings.
+struct EditorRequestProjectSettingsEvent : EditorRequestEvent
+{
+    EditorRequestProjectSettingsEvent()
+        : EditorRequestEvent(EDITOR_EVENT_TYPE_REQUEST_PROJECT_SETTINGS)
+    {
+    }
 };
 
 /// @brief Event signaling that a component in current scene requests an asset change.

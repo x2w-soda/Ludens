@@ -2,6 +2,7 @@
 
 #include <Ludens/AudioServer/AudioServer.h>
 #include <Ludens/DSA/Vector.h>
+#include <Ludens/Project/ProjectSettings.h>
 #include <Ludens/RenderServer/RenderServer.h>
 #include <Ludens/Scene/Scene.h>
 #include <Ludens/System/FileSystem.h>
@@ -78,6 +79,9 @@ struct EditorContext : Handle<struct EditorContextObj>
 
     /// @brief Get editor global settings
     EditorSettings get_settings();
+
+    /// @brief Get project settings for loaded project.
+    ProjectSettings get_project_settings();
 
     /// @brief Get asset manager handle.
     AssetManager get_asset_manager();

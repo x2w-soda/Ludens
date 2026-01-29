@@ -42,7 +42,7 @@ struct EditorContextObj
     FS::Path iconAtlasPath;        /// path to editor icon atlas source file
     FS::Path sceneSchemaPath;      /// path to current scene file
     FS::Path assetSchemaPath;      /// path to project asset file
-    FS::Path projectDirPath;       /// path to project root directory
+    FS::Path projectSchemaPath;    /// path to project file
     std::string projectName;       /// project identifier
     Vector<FS::Path> scenePaths;   /// path to scene schema files in project
     ObserverList<const EditorEvent*> observers;
@@ -89,7 +89,8 @@ struct EditorContextObj
     void load_project(const FS::Path& projectSchemaPath);
     void load_project_scene(const FS::Path& sceneSchemaPath);
     void new_project_scene(const FS::Path& sceneSchemaPath);
-    void save_project_scene();
+    void save_scene_schema();
+    void save_project_schema();
 };
 
 static void editor_action_undo(EditStack stack, void* user);
@@ -147,7 +148,7 @@ static void editor_action_save_scene(EditStack stack, void* user)
 
     // Saving Scene writes the current schema to disk and
     // should not effect the EditStack.
-    obj->save_project_scene();
+    obj->save_scene_schema();
 }
 
 static void editor_action_open_project(EditStack stack, void* user)
@@ -207,7 +208,8 @@ void EditorContextObj::load_project(const FS::Path& projectSchemaPath)
 {
     LD_PROFILE_SCOPE;
 
-    projectDirPath = projectSchemaPath.parent_path();
+    this->projectSchemaPath = projectSchemaPath;
+    const FS::Path projectDirPath = projectSchemaPath.parent_path();
 
     std::string err;
     project = Project::create(projectDirPath);
@@ -319,7 +321,7 @@ void EditorContextObj::new_project_scene(const FS::Path& newSchemaPath)
     // TODO: maybe notify observers?
 }
 
-void EditorContextObj::save_project_scene()
+void EditorContextObj::save_scene_schema()
 {
     if (!scene || sceneSchemaPath.empty())
         return;
@@ -332,6 +334,21 @@ void EditorContextObj::save_project_scene()
 
     size_t us = timer.stop();
     sLog.info("saved scene to {} ({} ms)", sceneSchemaPath.string(), us / 1000.0f);
+}
+
+void EditorContextObj::save_project_schema()
+{
+    if (!project || projectSchemaPath.empty())
+        return;
+
+    Timer timer;
+    timer.start();
+
+    std::string err;
+    ProjectSchema::save_project(project, projectSchemaPath, err);
+
+    size_t us = timer.stop();
+    sLog.info("saved project to {} ({} ms)", projectSchemaPath.string(), us / 1000.0f);
 }
 
 EditorContext EditorContext::create(const EditorContextInfo& info)
@@ -476,7 +493,7 @@ void EditorContext::poll_actions()
 
 FS::Path EditorContext::get_project_directory()
 {
-    return mObj->projectDirPath;
+    return mObj->projectSchemaPath.parent_path();
 }
 
 FS::Path EditorContext::get_scene_schema_path()
@@ -487,6 +504,14 @@ FS::Path EditorContext::get_scene_schema_path()
 EditorSettings EditorContext::get_settings()
 {
     return mObj->settings;
+}
+
+ProjectSettings EditorContext::get_project_settings()
+{
+    if (!mObj->project)
+        return {};
+
+    return mObj->project.get_settings();
 }
 
 AssetManager EditorContext::get_asset_manager()
