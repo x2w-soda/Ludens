@@ -38,6 +38,7 @@ struct RenderServerFrameInfo
     Vec3 directionalLight; /// directional light vector
     RUID envCubemap;       /// optional environment cubemap to draw in scene
     WindowID dialogWindowID = 0;
+    Vec4 clearColor;
 };
 
 struct RenderServerSceneGizmoColor

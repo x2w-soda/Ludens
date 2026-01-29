@@ -1,3 +1,4 @@
+#include <Ludens/DSA/HashMap.h>
 #include <Ludens/DSA/HashSet.h>
 #include <Ludens/DSA/IDCounter.h>
 #include <Ludens/DSA/Vector.h>
@@ -79,23 +80,23 @@ private:
     void* mScreenPassCallbackUser = nullptr;
     Vec2 mSceneExtent;
     Vec2 mScreenExtent;
+    Vec4 mClearColor;
     Vector<Frame> mFrames;
     Vector<RCommandPool> mCmdPools;
     Vector<RCommandList> mCmdLists;
-    std::unordered_map<RUID, RImage> mCubemaps;
-    std::unordered_map<RUID, RMeshEntry*> mMeshes;  // TODO: optimize later
-    std::unordered_map<RUID, RUID> mDrawCallToMesh; /// map draw call to mesh ID
-    RFormat mDepthStencilFormat;                    /// default depth stencil format
-    RFormat mColorFormat;                           /// default color format
-    RSampleCountBit mMSAA;                          /// number of samples during MSAA, if enabled
-    RUID mSceneOutlineSubject;                      /// subject to be outlined in scene render pass
-    uint32_t mFramesInFlight = 0;                   /// number of frames in flight
-    uint32_t mFrameIndex = 0;                       /// [0, mFramesInFlight)
+    HashMap<RUID, RImage> mCubemaps;
+    HashMap<RUID, RMeshEntry*> mMeshes;  // TODO: optimize later
+    HashMap<RUID, RUID> mDrawCallToMesh; /// map draw call to mesh ID
+    RFormat mDepthStencilFormat;         /// default depth stencil format
+    RFormat mColorFormat;                /// default color format
+    RSampleCountBit mMSAA;               /// number of samples during MSAA, if enabled
+    RUID mSceneOutlineSubject;           /// subject to be outlined in scene render pass
+    uint32_t mFramesInFlight = 0;        /// number of frames in flight
+    uint32_t mFrameIndex = 0;            /// [0, mFramesInFlight)
     uint32_t mSwapchainCount = 0;
-    FontAtlas mFontAtlas{};                         /// default font atlas for text rendering
-    RGraphImage mLastColorAttachment{};             /// last color attachment output
-    RGraphImage mLastIDFlagsAttachment{};           /// last scene ID flags attachment output
-    bool mHasRenderedScene = false;
+    FontAtlas mFontAtlas{};               /// default font atlas for text rendering
+    RGraphImage mLastColorAttachment{};   /// last color attachment output
+    RGraphImage mLastIDFlagsAttachment{}; /// last scene ID flags attachment output
 };
 
 RenderServerObj::RenderServerObj(const RenderServerInfo& serverI)
@@ -211,6 +212,7 @@ void RenderServerObj::next_frame(const RenderServerFrameInfo& frameI)
 {
     RFence frameComplete;
     mDevice.next_frame(mFrameIndex, frameComplete);
+    mClearColor = frameI.clearColor;
 
     WindowRegistry reg = WindowRegistry::get();
     WindowID rootWindowID = reg.get_root_id();
@@ -288,7 +290,6 @@ void RenderServerObj::next_frame(const RenderServerFrameInfo& frameI)
 
     mLastColorAttachment = {};
     mLastIDFlagsAttachment = {};
-    mHasRenderedScene = false;
 }
 
 void RenderServerObj::submit_frame()
@@ -313,7 +314,6 @@ void RenderServerObj::scene_pass(const RenderServerScenePass& sceneP)
         return;
 
     Frame& frame = mFrames[mFrameIndex];
-    RClearColorValue clearColor = RUtil::make_clear_color(0.1f, 0.1f, 0.1f, 1.0f);
     RClearDepthStencilValue clearDS = {.depth = 1.0f, .stencil = 0};
 
     mSceneOutlineSubject = sceneP.overlay.enabled ? sceneP.overlay.outlineRUID : 0;
@@ -324,7 +324,7 @@ void RenderServerObj::scene_pass(const RenderServerScenePass& sceneP)
     forwardI.width = (uint32_t)mSceneExtent.x;
     forwardI.height = (uint32_t)mSceneExtent.y;
     forwardI.colorFormat = mColorFormat;
-    forwardI.clearColor = clearColor;
+    forwardI.clearColor = RUtil::make_clear_color(mClearColor.r, mClearColor.g, mClearColor.b, mClearColor.a);
     forwardI.depthStencilFormat = mDepthStencilFormat;
     forwardI.clearDepthStencil = clearDS;
     forwardI.samples = mMSAA;
@@ -359,16 +359,12 @@ void RenderServerObj::scene_pass(const RenderServerScenePass& sceneP)
         mLastColorAttachment = sceneFR.out_color_attachment();
         mLastIDFlagsAttachment = sceneFR.out_id_flags_attachment();
     }
-
-    mHasRenderedScene = true;
 }
 
 void RenderServerObj::screen_pass(const RenderServerScreenPass& screenP)
 {
     if (mSwapchainCount == 0)
         return;
-
-    LD_ASSERT(mHasRenderedScene);
 
     mScreenPassLayerCallback = screenP.layerCallback;
     mScreenPassCallback = screenP.callback;
@@ -378,13 +374,24 @@ void RenderServerObj::screen_pass(const RenderServerScreenPass& screenP)
     screenRCI.format = mColorFormat;
     screenRCI.onDrawCallback = &RenderServerObj::screen_rendering;
     screenRCI.user = this;
-    screenRCI.hasInputImage = true; // draws on top of the scene_pass results
     screenRCI.hasSampledImage = false;
     screenRCI.name = "SceneScreen";
     screenRCI.screenExtent = &mSceneExtent; // scene extent is typically smaller than screen extent in editor
-    ScreenRenderComponent screenRC = ScreenRenderComponent::add(mGraph, screenRCI);
-    mGraph.connect_image(mLastColorAttachment, screenRC.color_attachment());
-    mLastColorAttachment = screenRC.color_attachment();
+
+    if (mLastColorAttachment)
+    {
+        screenRCI.hasInputImage = true; // draws on top of the scene_pass results
+        ScreenRenderComponent screenRC = ScreenRenderComponent::add(mGraph, screenRCI);
+        mGraph.connect_image(mLastColorAttachment, screenRC.color_attachment());
+        mLastColorAttachment = screenRC.color_attachment();
+    }
+    else
+    {
+        screenRCI.hasInputImage = false;
+        screenRCI.clearColor = Color(mClearColor); // NOTE: this drops precision from Vec4 to Color (u32)
+        ScreenRenderComponent screenRC = ScreenRenderComponent::add(mGraph, screenRCI);
+        mLastColorAttachment = screenRC.color_attachment();
+    }
 }
 
 void RenderServerObj::editor_pass(const RenderServerEditorPass& editorP)
@@ -392,7 +399,7 @@ void RenderServerObj::editor_pass(const RenderServerEditorPass& editorP)
     if (mSwapchainCount == 0)
         return;
 
-    LD_ASSERT(mHasRenderedScene && mLastColorAttachment && mLastIDFlagsAttachment);
+    LD_ASSERT(mLastColorAttachment);
 
     ScreenRenderComponentInfo screenRCI{};
     screenRCI.format = mColorFormat;
@@ -406,39 +413,42 @@ void RenderServerObj::editor_pass(const RenderServerEditorPass& editorP)
     mGraph.connect_image(mLastColorAttachment, editorSRC.sampled_attachment());
     mLastColorAttachment = editorSRC.color_attachment();
 
-    ScreenPickComponentInfo pickCI{};
-    pickCI.pickQueryCount = 0;
-    if (editorP.sceneMousePickQuery)
+    if (mLastIDFlagsAttachment) // mouse picking in editor
     {
-        pickCI.pickQueryCount = 1;
-        pickCI.pickPositions = editorP.sceneMousePickQuery;
-    }
-    ScreenPickComponent screenPick = ScreenPickComponent::add(mGraph, pickCI);
-    mGraph.connect_image(mLastIDFlagsAttachment, screenPick.attachment());
+        ScreenPickComponentInfo pickCI{};
+        pickCI.pickQueryCount = 0;
+        if (editorP.sceneMousePickQuery)
+        {
+            pickCI.pickQueryCount = 1;
+            pickCI.pickPositions = editorP.sceneMousePickQuery;
+        }
+        ScreenPickComponent screenPick = ScreenPickComponent::add(mGraph, pickCI);
+        mGraph.connect_image(mLastIDFlagsAttachment, screenPick.attachment());
 
-    // NOTE: The results are actually from mFramesInFlight frames ago,
-    //       stalling the GPU just to acquire results in the same frame
-    //       would be terrible for CPU-GPU concurrency.
-    //       See ScreenPickComponent implementation.
-    Vector<ScreenPickResult> pickResults;
-    screenPick.get_results(pickResults);
-    if (pickResults.empty())
-    {
-        if (editorP.scenePickCallback)
-            editorP.scenePickCallback((SceneOverlayGizmoID)0, (RUID)0, editorP.user);
-        return;
-    }
+        // NOTE: The results are actually from mFramesInFlight frames ago,
+        //       stalling the GPU just to acquire results in the same frame
+        //       would be terrible for CPU-GPU concurrency.
+        //       See ScreenPickComponent implementation.
+        Vector<ScreenPickResult> pickResults;
+        screenPick.get_results(pickResults);
+        if (pickResults.empty())
+        {
+            if (editorP.scenePickCallback)
+                editorP.scenePickCallback((SceneOverlayGizmoID)0, (RUID)0, editorP.user);
+            return;
+        }
 
-    const ScreenPickResult& pickResult = pickResults.front();
+        const ScreenPickResult& pickResult = pickResults.front();
 
-    if (editorP.scenePickCallback && pickid_is_gizmo(pickResult.id))
-    {
-        editorP.scenePickCallback((SceneOverlayGizmoID)pickResult.id, 0, editorP.user);
-    }
-    else if (editorP.scenePickCallback)
-    {
-        RUID resultRUID = pickid_to_ruid(pickResult.id);
-        editorP.scenePickCallback((SceneOverlayGizmoID)0, resultRUID, editorP.user);
+        if (editorP.scenePickCallback && pickid_is_gizmo(pickResult.id))
+        {
+            editorP.scenePickCallback((SceneOverlayGizmoID)pickResult.id, 0, editorP.user);
+        }
+        else if (editorP.scenePickCallback)
+        {
+            RUID resultRUID = pickid_to_ruid(pickResult.id);
+            editorP.scenePickCallback((SceneOverlayGizmoID)0, resultRUID, editorP.user);
+        }
     }
 }
 
@@ -472,7 +482,7 @@ void RenderServerObj::editor_overlay_pass(const RenderServerEditorOverlayPass& e
 
 void RenderServerObj::editor_dialog_pass(const RenderServerEditorDialogPass& editorDP)
 {
-    if (mSwapchainCount == 0)
+    if (editorDP.dialogWindow == 0)
         return;
 
     ScreenRenderComponentInfo screenRCI{};
@@ -482,6 +492,7 @@ void RenderServerObj::editor_dialog_pass(const RenderServerEditorDialogPass& edi
     screenRCI.hasInputImage = false;
     screenRCI.hasSampledImage = false;
     screenRCI.name = "EditorDialog";
+    screenRCI.screenExtent = nullptr; // TODO:
     ScreenRenderComponent editorSRC = ScreenRenderComponent::add(mGraph, screenRCI);
     mGraph.connect_swapchain_image(editorSRC.color_attachment(), editorDP.dialogWindow);
 }
