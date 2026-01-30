@@ -91,17 +91,22 @@ struct SwapchainInfo
     VkColorSpaceKHR imageColorSpace;
 };
 
+struct SwapchainImage
+{
+    VkImage handle; // external resource owned by VkSwapchainKHR
+    RImage colorAttachment;
+    RSemaphoreVKObj presentReadyObj;
+};
+
 struct Swapchain
 {
     VkSwapchainKHR handle = VK_NULL_HANDLE;
     SwapchainInfo info;
-    Vector<VkImage> images; // external resource owned by VkSwapchainKHR
-    Vector<RImage> colorAttachments;
+    Vector<SwapchainImage> images; // external resource owned by VkSwapchainKHR
+    RSemaphoreVKObj imageAcquiredObj[FRAMES_IN_FLIGHT];
     uint32_t width = 0;
     uint32_t height = 0;
     uint32_t imageIdx = UINT32_MAX; // last acquired swapchain image index
-    RSemaphoreVKObj imageAcquiredObj[FRAMES_IN_FLIGHT];
-    RSemaphoreVKObj presentReadyObj[FRAMES_IN_FLIGHT];
 };
 
 struct RDeviceVKObj;
@@ -2040,9 +2045,7 @@ static RImage vk_device_try_acquire_image(RDeviceObj* baseSelf, WindowID id, RSe
 
     WindowSurface* surface = it->second;
     RSemaphoreVKObj* imageAcquiredObj = surface->swapchain.imageAcquiredObj + self->frameIndex;
-    RSemaphoreVKObj* presentReadyObj = surface->swapchain.presentReadyObj + self->frameIndex;
     imageAcquired = RSemaphore(imageAcquiredObj);
-    presentReady = RSemaphore(presentReadyObj);
 
     LD_ASSERT(!self->vk.acquiredSurfaces.contains(surface)); // can only acquire one swapchain image per-window per-frame
 
@@ -2056,9 +2059,7 @@ static RImage vk_device_try_acquire_image(RDeviceObj* baseSelf, WindowID id, RSe
         surface->invalidate_swapchain(self);
 
         imageAcquiredObj = surface->swapchain.imageAcquiredObj + self->frameIndex;
-        presentReadyObj = surface->swapchain.presentReadyObj + self->frameIndex;
         imageAcquired = RSemaphore(imageAcquiredObj);
-        presentReady = RSemaphore(presentReadyObj);
 
         // try again with the new swapchain and synchronization primitives
         acquireResult = acquire_next_image(self, surface, imageAcquiredObj->vk.handle);
@@ -2073,7 +2074,17 @@ static RImage vk_device_try_acquire_image(RDeviceObj* baseSelf, WindowID id, RSe
 
     self->vk.acquiredSurfaces.insert(surface);
 
-    return surface->swapchain.colorAttachments[surface->swapchain.imageIdx];
+    // NOTE: The present-ready semaphore is not a frames-in-flight resource but rather a swapchain-image-count resource.
+    //       Vulkan spec does not guarantee queue submissions to synchronize present operations,
+    //       one solution is to simply have per-image semaphores for presentation.
+    //       See https://docs.vulkan.org/guide/latest/swapchain_semaphore_reuse.html
+    const uint32_t imageIdx = surface->swapchain.imageIdx;
+    RSemaphoreVKObj* presentReadyObj = &surface->swapchain.images[imageIdx].presentReadyObj;
+    presentReady = RSemaphore(presentReadyObj);
+
+    // sLog.debug("vkAcquireNextImageKHR image index {}", surface->swapchain.imageIdx);
+
+    return surface->swapchain.images[imageIdx].colorAttachment;
 }
 
 static void vk_device_present_frame(RDeviceObj* baseSelf)
@@ -2093,9 +2104,10 @@ static void vk_device_present_frame(RDeviceObj* baseSelf)
 
     for (WindowSurface* surface : self->vk.acquiredSurfaces)
     {
+        const uint32_t imageIdx = surface->swapchain.imageIdx;
         swapchains[presentIdx] = surface->swapchain.handle;
-        imageIndices[presentIdx] = surface->swapchain.imageIdx;
-        waitSemaphores[presentIdx] = surface->swapchain.presentReadyObj[self->frameIndex].vk.handle;
+        imageIndices[presentIdx] = imageIdx;
+        waitSemaphores[presentIdx] = surface->swapchain.images[imageIdx].presentReadyObj.vk.handle;
         presentIdx++;
     }
 
@@ -2111,6 +2123,12 @@ static void vk_device_present_frame(RDeviceObj* baseSelf)
     // NOTE: this may or may not block, depending on the implementation and
     //       the selected swapchain present mode.
     VkResult presentResult = vkQueuePresentKHR(queueObj->vk.handle, &presentI);
+
+    /*
+    sLog.debug("vkQueuePresentKHR present to {} swapchains", presentCount);
+    for (uint32_t i = 0; i < presentCount; i++)
+        sLog.debug("- image index {}", imageIndices[i]);
+    */
 
     if (presentResult == VK_SUBOPTIMAL_KHR || presentResult == VK_ERROR_OUT_OF_DATE_KHR)
         return;
@@ -2851,6 +2869,14 @@ static void vk_queue_submit(RQueueObj* baseSelf, const RSubmitInfo& submitI, RFe
         .pSignalSemaphores = semaphoreHandles.data() + submitI.waitCount,
     };
 
+    /*
+    sLog.debug("vkQueueSubmit wait {}, signal {}", submit.waitSemaphoreCount, submit.signalSemaphoreCount);
+    for (int i = 0; i < submit.waitSemaphoreCount; i++)
+        sLog.debug("- wait {:p}", (void*)submit.pWaitSemaphores[i]);
+    for (int i = 0; i < submit.signalSemaphoreCount; i++)
+        sLog.debug("- signal {:p}", (void*)submit.pSignalSemaphores[i]);
+    */
+
     VK_CHECK(vkQueueSubmit(self->vk.handle, 1, &submit, fenceHandle));
 }
 
@@ -3137,25 +3163,30 @@ void WindowSurface::create_swapchain(RDeviceVKObj* obj)
     VK_CHECK(vkCreateSwapchainKHR(obj->vk.device, &swapchainCI, nullptr, &swapchain.handle));
 
     uint32_t imageCount;
+    Vector<VkImage> imageHandles;
     VK_CHECK(vkGetSwapchainImagesKHR(obj->vk.device, swapchain.handle, &imageCount, nullptr));
-    swapchain.images.resize(imageCount);
-    VK_CHECK(vkGetSwapchainImagesKHR(obj->vk.device, swapchain.handle, &imageCount, swapchain.images.data()));
+    imageHandles.resize(imageCount);
+    VK_CHECK(vkGetSwapchainImagesKHR(obj->vk.device, swapchain.handle, &imageCount, imageHandles.data()));
 
-    VkExtent2D swpExtent = swapchainCI.imageExtent;
+    const VkExtent2D swpExtent = swapchainCI.imageExtent;
+
+    swapchain.images.resize(imageCount);
 
     // create RImage color attachments that can be used to create a swapchain framebuffer
-    swapchain.colorAttachments.resize(imageCount);
     for (uint32_t i = 0; i < imageCount; i++)
-        swapchain.colorAttachments[i] = create_swapchain_color_attachment(obj, swapchain.images[i], swapchain.info.imageFormat, swpExtent.width, swpExtent.height);
+    {
+        vk_device_create_semaphore(obj, &swapchain.images[i].presentReadyObj);
+        swapchain.images[i].handle = imageHandles[i];
+        swapchain.images[i].presentReadyObj.rid = RObjectID::get();
+        swapchain.images[i].colorAttachment = create_swapchain_color_attachment(obj, imageHandles[i], swapchain.info.imageFormat, swpExtent.width, swpExtent.height);
+    }
 
     swapchain.width = swpExtent.width;
     swapchain.height = swpExtent.height;
 
     for (uint32_t i = 0; i < FRAMES_IN_FLIGHT; i++)
     {
-        vk_device_create_semaphore(obj, swapchain.presentReadyObj + i);
         vk_device_create_semaphore(obj, swapchain.imageAcquiredObj + i);
-        swapchain.presentReadyObj[i].rid = RObjectID::get();
         swapchain.imageAcquiredObj[i].rid = RObjectID::get();
     }
 
@@ -3178,12 +3209,14 @@ void WindowSurface::destroy_swapchain(RDeviceVKObj* obj)
 
     for (uint32_t i = 0; i < FRAMES_IN_FLIGHT; i++)
     {
-        vk_device_destroy_semaphore(obj, RSemaphore(swapchain.presentReadyObj + i));
         vk_device_destroy_semaphore(obj, RSemaphore(swapchain.imageAcquiredObj + i));
     }
 
-    for (RImage attachment : swapchain.colorAttachments)
-        destroy_swapchain_color_attachment(obj, attachment);
+    for (SwapchainImage& swapchainImage : swapchain.images)
+    {
+        vk_device_destroy_semaphore(obj, RSemaphore(&swapchainImage.presentReadyObj));
+        destroy_swapchain_color_attachment(obj, swapchainImage.colorAttachment);
+    }
 
     vkDestroySwapchainKHR(obj->vk.device, swapchain.handle, nullptr);
     swapchain.handle = VK_NULL_HANDLE;
@@ -3199,7 +3232,7 @@ void WindowSurface::invalidate_swapchain(RDeviceVKObj* obj)
     // invalidate swapchain
     const SwapchainInfo& swapchainI = swapchain.info;
     const PhysicalDevice& pdevice = obj->vk.pdevice;
-    size_t oldImageCount = swapchain.colorAttachments.size();
+    size_t oldImageCount = swapchain.images.size();
 
     destroy_swapchain(obj);
 
@@ -3209,7 +3242,7 @@ void WindowSurface::invalidate_swapchain(RDeviceVKObj* obj)
 
     create_swapchain(obj);
 
-    size_t newImageCount = swapchain.colorAttachments.size();
+    size_t newImageCount = swapchain.images.size();
 
     if (newImageCount != oldImageCount)
     {
