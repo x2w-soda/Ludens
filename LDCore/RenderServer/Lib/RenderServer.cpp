@@ -93,10 +93,11 @@ private:
     RUID mSceneOutlineSubject;           /// subject to be outlined in scene render pass
     uint32_t mFramesInFlight = 0;        /// number of frames in flight
     uint32_t mFrameIndex = 0;            /// [0, mFramesInFlight)
-    uint32_t mSwapchainCount = 0;
     FontAtlas mFontAtlas{};               /// default font atlas for text rendering
     RGraphImage mLastColorAttachment{};   /// last color attachment output
     RGraphImage mLastIDFlagsAttachment{}; /// last scene ID flags attachment output
+    bool mHasAcquiredRootWindowImage = false;
+    bool mHasAcquiredDialogWindowImage = false;
 };
 
 RenderServerObj::RenderServerObj(const RenderServerInfo& serverI)
@@ -218,13 +219,19 @@ void RenderServerObj::next_frame(const RenderServerFrameInfo& frameI)
     WindowID rootWindowID = reg.get_root_id();
     Vector<RGraphSwapchainInfo> swapchains;
 
+    mHasAcquiredRootWindowImage = false;
+    mHasAcquiredDialogWindowImage = false;
+
     {
         RGraphSwapchainInfo rootWindowSwapchain{};
         rootWindowSwapchain.image = mDevice.try_acquire_image(rootWindowID, rootWindowSwapchain.imageAcquired, rootWindowSwapchain.presentReady);
         rootWindowSwapchain.window = rootWindowID;
 
         if (rootWindowSwapchain.image)
+        {
             swapchains.push_back(rootWindowSwapchain);
+            mHasAcquiredRootWindowImage = true;
+        }
     }
 
     if (frameI.dialogWindowID)
@@ -233,7 +240,10 @@ void RenderServerObj::next_frame(const RenderServerFrameInfo& frameI)
         dialogWindowSwapchain.image = mDevice.try_acquire_image(frameI.dialogWindowID, dialogWindowSwapchain.imageAcquired, dialogWindowSwapchain.presentReady);
         dialogWindowSwapchain.window = frameI.dialogWindowID;
         if (dialogWindowSwapchain.image)
+        {
             swapchains.push_back(dialogWindowSwapchain);
+            mHasAcquiredDialogWindowImage = true;
+        }
     }
 
     mSceneExtent = frameI.sceneExtent;
@@ -262,7 +272,6 @@ void RenderServerObj::next_frame(const RenderServerFrameInfo& frameI)
     // Update Frame Set
     //
 
-    mSwapchainCount = (uint32_t)swapchains.size();
     mMainCamera = frameI.mainCamera;
 
     FrameUBO uboData;
@@ -296,7 +305,7 @@ void RenderServerObj::submit_frame()
 {
     WindowID rootID = WindowRegistry::get().get_root_id();
 
-    if (mSwapchainCount > 0)
+    if (mHasAcquiredRootWindowImage)
     {
         // blit to root window swapchain image and submit
         mGraph.connect_swapchain_image(mLastColorAttachment, rootID);
@@ -310,10 +319,9 @@ void RenderServerObj::submit_frame()
 
 void RenderServerObj::scene_pass(const RenderServerScenePass& sceneP)
 {
-    if (mSwapchainCount == 0)
+    if (!mHasAcquiredRootWindowImage)
         return;
 
-    Frame& frame = mFrames[mFrameIndex];
     RClearDepthStencilValue clearDS = {.depth = 1.0f, .stencil = 0};
 
     mSceneOutlineSubject = sceneP.overlay.enabled ? sceneP.overlay.outlineRUID : 0;
@@ -363,7 +371,7 @@ void RenderServerObj::scene_pass(const RenderServerScenePass& sceneP)
 
 void RenderServerObj::screen_pass(const RenderServerScreenPass& screenP)
 {
-    if (mSwapchainCount == 0)
+    if (!mHasAcquiredRootWindowImage)
         return;
 
     mScreenPassLayerCallback = screenP.layerCallback;
@@ -396,7 +404,7 @@ void RenderServerObj::screen_pass(const RenderServerScreenPass& screenP)
 
 void RenderServerObj::editor_pass(const RenderServerEditorPass& editorP)
 {
-    if (mSwapchainCount == 0)
+    if (!mHasAcquiredRootWindowImage)
         return;
 
     LD_ASSERT(mLastColorAttachment);
@@ -454,7 +462,7 @@ void RenderServerObj::editor_pass(const RenderServerEditorPass& editorP)
 
 void RenderServerObj::editor_overlay_pass(const RenderServerEditorOverlayPass& editorOP)
 {
-    if (mSwapchainCount == 0)
+    if (!mHasAcquiredRootWindowImage)
         return;
 
     /*
@@ -482,7 +490,7 @@ void RenderServerObj::editor_overlay_pass(const RenderServerEditorOverlayPass& e
 
 void RenderServerObj::editor_dialog_pass(const RenderServerEditorDialogPass& editorDP)
 {
-    if (editorDP.dialogWindow == 0)
+    if (!mHasAcquiredDialogWindowImage)
         return;
 
     ScreenRenderComponentInfo screenRCI{};
@@ -507,7 +515,7 @@ void RenderServerObj::forward_rendering(ForwardRenderComponent renderer, void* u
     RenderServerObj& self = *(RenderServerObj*)user;
     RPipeline meshPipeline = self.mMeshPipeline.handle();
 
-    if (self.mSwapchainCount == 0)
+    if (!self.mHasAcquiredRootWindowImage)
         return;
 
     renderer.set_mesh_pipeline(meshPipeline);
@@ -564,7 +572,7 @@ void RenderServerObj::screen_rendering(ScreenRenderComponent renderer, void* use
     LD_PROFILE_SCOPE;
     RenderServerObj& self = *(RenderServerObj*)user;
 
-    if (self.mSwapchainCount == 0)
+    if (!self.mHasAcquiredRootWindowImage)
         return;
 
     if (self.mScreenPassLayerCallback)
