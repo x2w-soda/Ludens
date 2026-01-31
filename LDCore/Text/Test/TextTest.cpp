@@ -19,9 +19,17 @@ TEST_CASE("TextBuffer")
     str = buf.to_string();
     CHECK(str.empty());
 
+    buf.clear();
+    str = buf.to_string();
+    CHECK(str.empty());
+
     buf.set_string("test string");
     str = buf.to_string();
     CHECK(str == "test string");
+
+    buf.clear();
+    str = buf.to_string();
+    CHECK(str.empty());
 
     TextBuffer<char>::destroy(buf);
 }

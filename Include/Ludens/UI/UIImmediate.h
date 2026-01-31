@@ -99,6 +99,7 @@ void ui_push_text(const char* text);
 /// @brief Push UITextEditWidget.
 void ui_push_text_edit(UITextEditDomain domain = UI_TEXT_EDIT_DOMAIN_STRING);
 void ui_text_edit_set_text(View text);
+inline void ui_text_edit_set_text(const std::string& text) { ui_text_edit_set_text(View(text.data(), text.size())); }
 bool ui_text_edit_changed(std::string& text);
 bool ui_text_edit_submitted(std::string& text);
 

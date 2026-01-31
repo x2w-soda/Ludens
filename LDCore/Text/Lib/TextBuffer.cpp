@@ -64,6 +64,14 @@ std::basic_string<T> TextBuffer<T>::to_string()
 }
 
 template <typename T>
+void TextBuffer<T>::clear()
+{
+    TextBufferObj<T>* obj = this->mObj;
+
+    return obj->gapBuffer.clear();
+}
+
+template <typename T>
 bool TextBuffer<T>::empty()
 {
     TextBufferObj<T>* obj = this->mObj;

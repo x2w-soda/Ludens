@@ -28,6 +28,9 @@ struct TextBuffer : Handle<TextBufferObj<T>>
     /// @brief Cast to STL string.
     std::basic_string<T> to_string();
 
+    /// @brief Clears text buffer content.
+    void clear();
+
     /// @brief Check if text buffer is empty.
     bool empty();
 

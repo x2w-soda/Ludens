@@ -78,6 +78,12 @@ UIWidgetState::UIWidgetState(UIWidgetType type)
 {
     switch (type)
     {
+    case UI_WIDGET_BUTTON:
+        isButtonPressed.set(false);
+        break;
+    case UI_WIDGET_TOGGLE:
+        isTogglePressed.set(false);
+        break;
     case UI_WIDGET_TEXT_EDIT:
         new (&textEdit) UITextEditState();
         break;
