@@ -22,6 +22,10 @@ The engine will prioritize transparency in its technology. Subsystems and their 
 
 Early WIP, the editor is currently under development. The codebase is organized into individual modules, module dependency should be acyclic.
 
+### Building from Source
+
+See `BUILD.md` for build instructions on Windows and Linux.
+
 ### Core Modules
 
 The CMake target `LDCoreLibs` contains core modules that are used from editor to game runtime.
@@ -36,9 +40,17 @@ The header module is header-only. This is for templated classes and inline math.
 
 CPU-side frame profiling is done via the Tracy profiler. Use the CMake option `LD_COMPILE_WITH_PROFILER` to enable or disable profiling.
 
+- Memory
+
+Heap memory management and custom allocators.
+
+- DSA
+
+Data structure and algorithms.
+
 - System
 
-Heap memory management, filesystems, and I/O.
+Filesystems and I/O.
 
 - JobSystem
 
@@ -48,13 +60,13 @@ A thread-based job system is employed as our current solution for CPU-side concu
 
 Command line argument parsing.
 
-- DSA
-
-Data structure and algorithms.
-
 - DSP
 
 Digital signal processing.
+
+- Text
+
+Bare-minimum text manipulation required by runtime.
 
 - Serial
 
@@ -68,10 +80,6 @@ Console Logger.
 
 Event system. Will eventually be generalized to register custom event types at runtime.
 
-- Window
-
-OS specific Windows for Win32, X11, Wayland, etc. Generates input events and window events for the user to process.
-
 - Lua
 
 Lua state using LuaJIT. Note that this is a low-level module not concerned with scripting. This module mainly wraps the Lua state for a object-oriented API.
@@ -79,6 +87,10 @@ Lua state using LuaJIT. Note that this is a low-level module not concerned with 
 - Media
 
 Multimedia processing. Parsers for common markup formats such as XML and JSON.
+
+- WindowRegistry
+
+OS specific Windows for Win32, X11, Wayland, etc. Generates input events and window events for the user to process.
 
 - Camera
 
@@ -114,7 +126,7 @@ Defines audio playbacks and effects. This layer implements the mixing done on au
 
 - UI
 
-User interface solution. This is a retained-mode GUI library used for both the editor and the final in-game UI.
+User interface solution. This is a retained-mode GUI library for organizing a widget tree. The editor uses an additional imgui layer on top of the retained mode widgets, while the runtime would directly manipulate the widget hierarchy via scripts.
 
 - Asset
 
