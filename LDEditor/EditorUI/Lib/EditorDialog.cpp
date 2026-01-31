@@ -63,7 +63,18 @@ void EditorDialogObj::on_event(const WindowEvent* event, void* user)
 {
     auto* obj = (EditorDialogObj*)user;
 
-    obj->uiCtx.on_window_event(event);
+    switch (event->type)
+    {
+    case EVENT_TYPE_WINDOW_RESIZE:
+    {
+        const auto* e = (const WindowResizeEvent*)event;
+        obj->workspace.set_rect(Rect(0.0f, 0.0f, (float)e->width, (float)e->height));
+        break;
+    }
+    default:
+        obj->uiCtx.on_window_event(event);
+        break;
+    }
 }
 
 //

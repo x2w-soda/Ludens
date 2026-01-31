@@ -32,6 +32,7 @@ target_link_libraries(${MODULE_NAME} PRIVATE
     LDViewportWindow
     LDSelectionWindow
     LDCreateComponentWindow
+    LDProjectSettingsWindow
     LDTabControlWindow
     LDOutlinerWindow
     LDConsoleWindow

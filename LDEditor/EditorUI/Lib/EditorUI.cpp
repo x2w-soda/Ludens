@@ -130,6 +130,7 @@ void EditorUI::submit_frame()
     frameI.sceneExtent = mMain.get_viewport_scene_size();
     frameI.envCubemap = mEnvCubemap;
     frameI.dialogWindowID = dialogWindowID;
+    frameI.clearColor = mCtx.get_project_settings().get_rendering_settings().get_clear_color();
     mRenderServer.next_frame(frameI);
 
     // render game scene with overlay, the editor context is responsible for supplying object transforms

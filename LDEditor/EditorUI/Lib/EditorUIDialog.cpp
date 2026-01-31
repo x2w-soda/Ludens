@@ -11,6 +11,7 @@ namespace LD {
 enum DialogType
 {
     DIALOG_NONE = 0,
+    DIALOG_PROJECT_SETTINGS,
     DIALOG_OPEN_SCENE,
     DIALOG_OPEN_PROJECT,
     DIALOG_SELECT_ASSET,
@@ -36,6 +37,7 @@ public:
     void update(float delta);
     WindowID get_dialog_window_id();
 
+    void dialog_project_settings();
     void dialog_open_scene();
     void dialog_open_project();
     void dialog_select_asset(const EditorEvent* e);
@@ -43,7 +45,7 @@ public:
     void dialog_create_component(const EditorEvent* e);
 
 private:
-    void get_or_create_dialog(EditorWindowType type);
+    EditorWindow get_or_create_dialog(EditorWindowType type);
 
     static void on_editor_event(const EditorEvent* event, void* user);
 
@@ -149,13 +151,20 @@ WindowID EditorUIDialogObj::get_dialog_window_id()
     return mDialog ? mDialog.get_id() : 0;
 }
 
+void EditorUIDialogObj::dialog_project_settings()
+{
+    LD_ASSERT(mDialogType == DIALOG_NONE);
+    mDialogType = DIALOG_PROJECT_SETTINGS;
+
+    get_or_create_dialog(EDITOR_WINDOW_PROJECT_SETTINGS);
+}
+
 void EditorUIDialogObj::dialog_open_scene()
 {
     LD_ASSERT(mDialogType == DIALOG_NONE);
     mDialogType = DIALOG_OPEN_SCENE;
 
-    get_or_create_dialog(EDITOR_WINDOW_SELECTION);
-    SelectionWindow selectionW = (SelectionWindow)mDialog.get_editor_window(EDITOR_WINDOW_SELECTION);
+    SelectionWindow selectionW = (SelectionWindow)get_or_create_dialog(EDITOR_WINDOW_SELECTION);
     selectionW.show(mCtx.get_project_directory(), "toml");
 }
 
@@ -164,8 +173,7 @@ void EditorUIDialogObj::dialog_open_project()
     LD_ASSERT(mDialogType == DIALOG_NONE);
     mDialogType = DIALOG_OPEN_PROJECT;
 
-    get_or_create_dialog(EDITOR_WINDOW_SELECTION);
-    SelectionWindow selectionW = (SelectionWindow)mDialog.get_editor_window(EDITOR_WINDOW_SELECTION);
+    SelectionWindow selectionW = (SelectionWindow)get_or_create_dialog(EDITOR_WINDOW_SELECTION);
     selectionW.show(mCtx.get_project_directory(), "toml");
 }
 
@@ -178,8 +186,7 @@ void EditorUIDialogObj::dialog_select_asset(const EditorEvent* e)
     const auto* event = (const EditorRequestComponentAssetEvent*)e;
     mSubjectCompID = event->component;
 
-    get_or_create_dialog(EDITOR_WINDOW_SELECTION);
-    SelectionWindow selectionW = (SelectionWindow)mDialog.get_editor_window(EDITOR_WINDOW_SELECTION);
+    SelectionWindow selectionW = (SelectionWindow)get_or_create_dialog(EDITOR_WINDOW_SELECTION);
     selectionW.show(mCtx.get_project_directory(), "lda");
 }
 
@@ -188,8 +195,7 @@ void EditorUIDialogObj::dialog_select_script()
     LD_ASSERT(mDialogType == DIALOG_NONE);
     mDialogType = DIALOG_SELECT_SCRIPT;
 
-    get_or_create_dialog(EDITOR_WINDOW_SELECTION);
-    SelectionWindow selectionW = (SelectionWindow)mDialog.get_editor_window(EDITOR_WINDOW_SELECTION);
+    SelectionWindow selectionW = (SelectionWindow)get_or_create_dialog(EDITOR_WINDOW_SELECTION);
     selectionW.show(mCtx.get_project_directory(), "lua");
 }
 
@@ -198,20 +204,21 @@ void EditorUIDialogObj::dialog_create_component(const EditorEvent* e)
     LD_ASSERT(e && e->type == EDITOR_EVENT_TYPE_REQUEST_CREATE_COMPONENT);
     LD_ASSERT(mDialogType == DIALOG_NONE);
     mDialogType = DIALOG_CREATE_COMPONENT;
-
-    get_or_create_dialog(EDITOR_WINDOW_CREATE_COMPONENT);
-    CreateComponentWindow createCompW = (CreateComponentWindow)mDialog.get_editor_window(EDITOR_WINDOW_CREATE_COMPONENT);
+    
+    CreateComponentWindow createCompW = (CreateComponentWindow)get_or_create_dialog(EDITOR_WINDOW_CREATE_COMPONENT);
 
     const auto* event = (const EditorRequestCreateComponentEvent*)e;
     createCompW.set_parent_component(event->parent);
 }
 
-void EditorUIDialogObj::get_or_create_dialog(EditorWindowType type)
+EditorWindow EditorUIDialogObj::get_or_create_dialog(EditorWindowType type)
 {
+    EditorWindow editorW;
+
     if (mDialog)
     {
-        if (mDialog.get_editor_window(type))
-            return;
+        if ((editorW = mDialog.get_editor_window(type)))
+            return editorW;
 
         EditorDialog::destroy(mDialog);
         mDialogType = DIALOG_NONE;
@@ -225,6 +232,11 @@ void EditorUIDialogObj::get_or_create_dialog(EditorWindowType type)
     dialogI.fontAtlasImage = mFontAtlasImage;
     dialogI.type = type;
     mDialog = EditorDialog::create(dialogI);
+
+    editorW = mDialog.get_editor_window(type);
+    LD_ASSERT(editorW);
+
+    return editorW;
 }
 
 void EditorUIDialogObj::on_editor_event(const EditorEvent* event, void* user)
@@ -236,6 +248,9 @@ void EditorUIDialogObj::on_editor_event(const EditorEvent* event, void* user)
 
     switch (event->type)
     {
+    case EDITOR_EVENT_TYPE_REQUEST_PROJECT_SETTINGS:
+        obj->dialog_project_settings();
+        break;
     case EDITOR_EVENT_TYPE_REQUEST_COMPONENT_ASSET:
         obj->dialog_select_asset(event);
         break;

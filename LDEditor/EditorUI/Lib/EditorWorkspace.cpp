@@ -8,6 +8,7 @@
 #include <LudensEditor/EditorUI/EditorWorkspace.h>
 #include <LudensEditor/InspectorWindow/InspectorWindow.h>
 #include <LudensEditor/OutlinerWindow/OutlinerWindow.h>
+#include <LudensEditor/ProjectSettingsWindow/ProjectSettingsWindow.h>
 #include <LudensEditor/SelectionWindow/SelectionWindow.h>
 #include <LudensEditor/TabControlWindow/TabControlWindow.h>
 #include <LudensEditor/VersionWindow/VersionWindow.h>
@@ -105,6 +106,7 @@ static EditorWindowMeta sEditorWindowTable[] = {
     { EDITOR_WINDOW_TAB_CONTROL,      &TabControlWindow::create,      &TabControlWindow::destroy,      nullptr },
     { EDITOR_WINDOW_SELECTION,        &SelectionWindow::create,       &SelectionWindow::destroy,       "Selection" },
     { EDITOR_WINDOW_CREATE_COMPONENT, &CreateComponentWindow::create, &CreateComponentWindow::destroy, "CreateComponent" },
+    { EDITOR_WINDOW_PROJECT_SETTINGS, &ProjectSettingsWindow::create, &ProjectSettingsWindow::destroy, "ProjectSettings" },
     { EDITOR_WINDOW_VIEWPORT,         &ViewportWindow::create,        &ViewportWindow::destroy,        "Viewport" },
     { EDITOR_WINDOW_OUTLINER,         &OutlinerWindow::create,        &OutlinerWindow::destroy,        "Outliner" },
     { EDITOR_WINDOW_INSPECTOR,        &InspectorWindow::create,       &InspectorWindow::destroy,       "Inspector" },

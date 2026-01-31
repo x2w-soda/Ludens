@@ -33,6 +33,7 @@ enum EditMenuOption
 {
     EDIT_MENU_UNDO = 0,
     EDIT_MENU_REDO,
+    EDIT_MENU_PROJECT_SETTINGS,
 };
 
 enum AboutMenuOption
@@ -164,9 +165,10 @@ void EditorTopBarObj::edit_menu_window()
     menuW.set_color(0xFF);
     ui_push_window(menuW);
 
-    std::array<const char*, 2> options;
+    std::array<const char*, 3> options;
     options[EDIT_MENU_UNDO] = "Undo";
     options[EDIT_MENU_REDO] = "Redo";
+    options[EDIT_MENU_PROJECT_SETTINGS] = "Project Settings";
 
     int opt = eui_list_menu(ctx.get_theme(), (int)options.size(), options.data());
     if (opt >= 0)
@@ -180,6 +182,12 @@ void EditorTopBarObj::edit_menu_window()
     case EDIT_MENU_REDO:
         ctx.action_redo();
         break;
+    case EDIT_MENU_PROJECT_SETTINGS:
+    {
+        EditorRequestProjectSettingsEvent event{};
+        ctx.request_event(&event);
+        break;
+    }
     default:
         break;
     }

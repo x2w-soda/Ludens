@@ -42,6 +42,7 @@ void RuntimeContextObj::render_frame(const Vec2& screenExtent)
     frameI.screenExtent = screenExtent;
     frameI.sceneExtent = screenExtent;
     frameI.envCubemap = envCubemapID;
+    frameI.clearColor = project.get_settings().get_rendering_settings().get_clear_color();
     renderServer.next_frame(frameI);
 
     // render game scene without editor overlay
