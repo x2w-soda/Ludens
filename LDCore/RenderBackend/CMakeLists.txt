@@ -1,6 +1,7 @@
 set(MODULE_NAME LDRenderBackend)
 set(MODULE_TEST_NAME LDRenderBackendTest)
 
+if (MSVC)
 set(LUDENS_VULKAN_SDK_LIBS
     debug OSDependentd optimized OSDependent
     debug MachineIndependentd optimized MachineIndependent
@@ -14,6 +15,21 @@ set(LUDENS_VULKAN_SDK_LIBS
     debug spirv-cross-glsld optimized spirv-cross-glsl
     debug spirv-cross-reflectd optimized spirv-cross-reflect
 )
+else()
+set(LUDENS_VULKAN_SDK_LIBS
+    OSDependent
+    MachineIndependent
+    GenericCodeGen
+    glslang
+    SPIRV
+    SPIRV-Tools
+    SPIRV-Tools-opt
+    glslang-default-resource-limits
+    spirv-cross-core
+    spirv-cross-glsl
+    spirv-cross-reflect
+)
+endif()
 
 set(MODULE_INCLUDE
     ${LUDENS_INCLUDE_DIR}/Ludens/RenderBackend/RBackend.h
