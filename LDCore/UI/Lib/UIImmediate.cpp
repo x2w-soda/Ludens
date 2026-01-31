@@ -831,7 +831,7 @@ void ui_push_text(const char* text)
     imWindow->imWidgetStack.push(imWidget);
 }
 
-void ui_push_text_edit()
+void ui_push_text_edit(UITextEditDomain domain)
 {
     LD_ASSERT_UI_PUSH;
 
@@ -839,6 +839,8 @@ void ui_push_text_edit()
     UIWidgetState* imWidget = imWindow->get_or_create_text_edit();
     UITextEditWidget textW = (UITextEditWidget)imWidget->widget;
     LD_ASSERT(textW.get_type() == UI_WIDGET_TEXT_EDIT);
+
+    textW.set_domain(domain);
 
     imWindow->imWidgetStack.push(imWidget);
 }

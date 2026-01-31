@@ -662,6 +662,7 @@ UITextEditWidget UINode::add_text_edit(const UILayoutInfo& layoutI, const UIText
     UIWidgetObj* obj = mObj->ctx()->alloc_widget(UI_WIDGET_TEXT_EDIT, layoutI, mObj, user);
     obj->as.textEdit.fontSize = widgetI.fontSize;
     obj->as.textEdit.buf = TextBuffer<char>::create();
+    obj->as.textEdit.domain = widgetI.domain;
     obj->as.textEdit.onChange = widgetI.onChange;
     obj->as.textEdit.onSubmit = widgetI.onSubmit;
     obj->cb.onMouse = &UITextEditWidgetObj::on_mouse;
@@ -700,37 +701,14 @@ void UITextEditWidgetObj::on_key(UIWidget widget, KeyCode keyCode, UIEvent event
     bool hasChanged = false;
     bool hasSubmitted = false;
 
-    if (KEY_CODE_A <= keyCode && keyCode <= KEY_CODE_Z)
+    switch (self.domain)
     {
-        char key = (char)keyCode + 32;
-
-        if (Input::get_key(KEY_CODE_LEFT_SHIFT) || Input::get_key(KEY_CODE_RIGHT_SHIFT))
-            key -= 32;
-
-        self.buf.push_back(key);
-        hasChanged = true;
-    }
-    else if (KEY_CODE_0 <= keyCode && keyCode <= KEY_CODE_9)
-    {
-        char key = (char)keyCode - (char)KEY_CODE_0 + '0';
-
-        self.buf.push_back(key);
-        hasChanged = true;
-    }
-    else if (keyCode == KEY_CODE_SPACE)
-    {
-        self.buf.push_back(' ');
-        hasChanged = true;
-    }
-    else if (keyCode == KEY_CODE_BACKSPACE && !self.buf.empty())
-    {
-        self.buf.pop_back();
-        hasChanged = true;
-    }
-    else if (keyCode == KEY_CODE_ENTER)
-    {
-        // this allows submission of empty text.
-        hasSubmitted = true;
+    case UI_TEXT_EDIT_DOMAIN_STRING:
+        self.domain_string_on_key(keyCode, event, hasChanged, hasSubmitted);
+        break;
+    case UI_TEXT_EDIT_DOMAIN_UINT:
+        self.domain_uint_on_key(keyCode, event, hasChanged, hasSubmitted);
+        break;
     }
 
     std::string str = self.buf.to_string();
@@ -743,11 +721,82 @@ void UITextEditWidgetObj::on_key(UIWidget widget, KeyCode keyCode, UIEvent event
         self.onSubmit((UITextEditWidget)widget, strView, obj->user);
 }
 
+void UITextEditWidgetObj::domain_string_on_key(KeyCode keyCode, UIEvent event, bool& hasChanged, bool& hasSubmitted)
+{
+    LD_ASSERT(domain == UI_TEXT_EDIT_DOMAIN_STRING);
+
+    if (KEY_CODE_A <= keyCode && keyCode <= KEY_CODE_Z)
+    {
+        char key = (char)keyCode + 32;
+
+        if (Input::get_key(KEY_CODE_LEFT_SHIFT) || Input::get_key(KEY_CODE_RIGHT_SHIFT))
+            key -= 32;
+
+        buf.push_back(key);
+        hasChanged = true;
+    }
+    else if (KEY_CODE_0 <= keyCode && keyCode <= KEY_CODE_9)
+    {
+        char key = (char)keyCode - (char)KEY_CODE_0 + '0';
+
+        buf.push_back(key);
+        hasChanged = true;
+    }
+    else if (keyCode == KEY_CODE_SPACE)
+    {
+        buf.push_back(' ');
+        hasChanged = true;
+    }
+    else if (keyCode == KEY_CODE_BACKSPACE && !buf.empty())
+    {
+        buf.pop_back();
+        hasChanged = true;
+    }
+    else if (keyCode == KEY_CODE_ENTER)
+    {
+        // this allows submission of empty text.
+        hasSubmitted = true;
+    }
+}
+
+void UITextEditWidgetObj::domain_uint_on_key(KeyCode keyCode, UIEvent event, bool& hasChanged, bool& hasSubmitted)
+{
+    LD_ASSERT(domain == UI_TEXT_EDIT_DOMAIN_UINT);
+
+    if (KEY_CODE_0 <= keyCode && keyCode <= KEY_CODE_9)
+    {
+        char key = (char)keyCode - (char)KEY_CODE_0 + '0';
+
+        buf.push_back(key);
+        hasChanged = true;
+    }
+    else if (keyCode == KEY_CODE_BACKSPACE && !buf.empty())
+    {
+        buf.pop_back();
+        hasChanged = true;
+    }
+    else if (keyCode == KEY_CODE_ENTER && !buf.empty())
+    {
+        hasSubmitted = true;
+    }
+}
+
 void UITextEditWidget::set_text(View text)
 {
     auto& self = mObj->as.textEdit;
 
     self.buf.set_string(text);
+}
+
+void UITextEditWidget::set_domain(UITextEditDomain domain)
+{
+    auto& self = mObj->as.textEdit;
+
+    if (self.domain != domain)
+    {
+        self.buf.clear();
+        self.domain = domain;
+    }
 }
 
 void UITextEditWidget::on_draw(UIWidget widget, ScreenRenderComponent renderer)

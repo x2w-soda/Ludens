@@ -279,10 +279,20 @@ struct UITextWidgetInfo
     Color* bgColor;   /// if not null, the background color under text
 };
 
+enum UITextEditDomain
+{
+    UI_TEXT_EDIT_DOMAIN_STRING = 0,
+    UI_TEXT_EDIT_DOMAIN_UINT,
+};
+
 struct UITextEditWidget : UIWidget
 {
     /// @brief Set text edit field value, does not trigger on_change callbacks.
     void set_text(View text);
+
+    /// @brief Domain influences how key input is treated and may change the final text before submission.
+    /// @note Upon domain change, text value is reset.
+    void set_domain(UITextEditDomain domain);
 
     /// @brief Default text edit widget rendering.
     static void on_draw(UIWidget widget, ScreenRenderComponent renderer);
@@ -290,6 +300,7 @@ struct UITextEditWidget : UIWidget
 
 struct UITextEditWidgetInfo
 {
+    UITextEditDomain domain; /// input domain
     float fontSize;          /// rendered size
     const char* placeHolder; /// default gray text to display when empty
     void (*onChange)(UITextEditWidget widget, View text, void* user);

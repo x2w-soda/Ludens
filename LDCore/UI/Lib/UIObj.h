@@ -247,6 +247,7 @@ struct UITextEditWidgetObj
 {
     UIWidgetObj* base;
     TextBuffer<char> buf;
+    UITextEditDomain domain;
     const char* placeHolder;
     void (*onChange)(UITextEditWidget widget, View text, void* user);
     void (*onSubmit)(UITextEditWidget widget, View text, void* user);
@@ -256,6 +257,9 @@ struct UITextEditWidgetObj
     static void on_key(UIWidget widget, KeyCode key, UIEvent event);
     static void on_mouse(UIWidget, const Vec2&, MouseButton, UIEvent) {}
     static void on_hover(UIWidget, UIEvent) {}
+
+    void domain_string_on_key(KeyCode key, UIEvent event, bool& hasChanged, bool& hasSubmitted);
+    void domain_uint_on_key(KeyCode key, UIEvent event, bool& hasChanged, bool& hasSubmitted);
 };
 
 struct UIPanelWidgetObj
