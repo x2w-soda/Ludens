@@ -140,8 +140,8 @@ static void load_mesh_component(SceneObj* scene, ComponentBase* base, void* comp
 
     if (meshC->auid)
     {
-        RUID mesh = scene->renderServerCache.get_or_create_mesh(meshC->auid);
-        scene->renderServerCache.create_mesh_draw_call(mesh, base->id);
+        MeshDataID mesh = scene->renderServerCache.get_or_create_mesh(meshC->auid);
+        scene->renderServerCache.create_mesh_draw_id(mesh, base->id);
     }
 }
 
@@ -532,7 +532,7 @@ void* Scene::get_component(CUID compID, ComponentType expectedType)
 
 RUID Scene::get_component_ruid(CUID compID)
 {
-    return mObj->renderServerCache.get_component_ruid(compID);
+    return mObj->renderServerCache.get_component_draw_id(compID);
 }
 
 bool Scene::get_component_transform(CUID compID, TransformEx& transform)
@@ -633,7 +633,7 @@ void Scene::IMesh::set_mesh_asset(AUID meshAUID)
     LD_ASSERT(meshID != 0);
 
     mComp->auid = meshAUID;
-    sScene->renderServerCache.create_mesh_draw_call(meshID, mCUID);
+    sScene->renderServerCache.create_mesh_draw_id(meshID, mCUID);
 }
 
 Scene::ISprite2D::ISprite2D(Sprite2DComponent* comp)

@@ -14,6 +14,11 @@ namespace LD {
 
 /// @brief Unique identifier distributed by the render server, zero is invalid ID
 typedef uint32_t RUID;
+typedef RUID CubemapDataID;
+typedef RUID MeshDataID;
+typedef RUID MeshDrawID;
+typedef RUID SpriteDataID;
+typedef RUID SpriteDrawID;
 
 typedef void (*ScreenRenderCallback)(ScreenRenderComponent renderer, void* user);
 typedef void (*RenderServerEditorRenderCallback)(ScreenRenderComponent renderer, void* user);
@@ -145,23 +150,25 @@ struct RenderServer : Handle<struct RenderServerObj>
     /// @brief Get the image handle of the font atlas image (RIMAGE_LAYOUT_SHADER_READ_ONLY).
     RImage get_font_atlas_image();
 
-    /// @brief Check if mesh handle is valid.
-    bool mesh_exists(RUID mesh);
+    struct IMesh : Handle<struct RenderServerObj>
+    {
+        bool exists(MeshDataID dataID);
+        MeshDataID create_data_id(ModelBinary& binary);
+        MeshDrawID create_draw_id(MeshDataID dataID);
+        void destroy_draw(MeshDrawID drawID);
+    };
 
-    /// @brief Create a non-deforming mesh
-    RUID create_mesh(ModelBinary& modelBinary);
+    /// @brief Access render server mesh interface.
+    IMesh mesh();
 
-    /// @brief Create a draw call of a mesh.
-    RUID create_mesh_draw_call(RUID mesh);
+    struct ICubemap : Handle<struct RenderServerObj>
+    {
+        CubemapDataID create_data_id(Bitmap cubemapFaces);
+        void destroy_data_id(CubemapDataID dataID);
+    };
 
-    /// @brief Destroy a draw call.
-    void destroy_mesh_draw_call(RUID drawCall);
-
-    /// @brief Create a cubemap from bitmap.
-    RUID create_cubemap(Bitmap cubemapFaces);
-
-    /// @brief Destroy a cubemap.
-    void destroy_cubemap(RUID cubemap);
+    /// @brief Access render server cubemap interface.
+    ICubemap cubemap();
 };
 
 } // namespace LD

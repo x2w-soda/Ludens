@@ -23,11 +23,11 @@ namespace LD {
 
 static Log sLog("RServer");
 
-struct RMeshEntry
+struct MeshEntry
 {
-    RMesh mesh;              /// mesh resources
-    RUID meshID;             /// mesh identifier
-    HashSet<RUID> drawCalls; /// draw calls using this mesh
+    RMesh mesh;                 /// mesh resources
+    MeshDataID dataID;          /// mesh identifier
+    HashSet<MeshDrawID> drawID; /// draw ids using this mesh
 };
 
 /// @brief Render server implementation.
@@ -84,18 +84,18 @@ private:
     Vector<Frame> mFrames;
     Vector<RCommandPool> mCmdPools;
     Vector<RCommandList> mCmdLists;
-    HashMap<RUID, RImage> mCubemaps;
-    HashMap<RUID, RMeshEntry*> mMeshes;  // TODO: optimize later
-    HashMap<RUID, RUID> mDrawCallToMesh; /// map draw call to mesh ID
-    RFormat mDepthStencilFormat;         /// default depth stencil format
-    RFormat mColorFormat;                /// default color format
-    RSampleCountBit mMSAA;               /// number of samples during MSAA, if enabled
-    RUID mSceneOutlineSubject;           /// subject to be outlined in scene render pass
-    uint32_t mFramesInFlight = 0;        /// number of frames in flight
-    uint32_t mFrameIndex = 0;            /// [0, mFramesInFlight)
-    FontAtlas mFontAtlas{};               /// default font atlas for text rendering
-    RGraphImage mLastColorAttachment{};   /// last color attachment output
-    RGraphImage mLastIDFlagsAttachment{}; /// last scene ID flags attachment output
+    HashMap<CubemapDataID, RImage> mCubemaps;
+    HashMap<MeshDataID, MeshEntry*> mMeshes;         // TODO: optimize later
+    HashMap<MeshDrawID, MeshDataID> mDrawCallToMesh; /// map draw call to mesh ID
+    RFormat mDepthStencilFormat;                     /// default depth stencil format
+    RFormat mColorFormat;                            /// default color format
+    RSampleCountBit mMSAA;                           /// number of samples during MSAA, if enabled
+    RUID mSceneOutlineSubject;                       /// subject to be outlined in scene render pass
+    uint32_t mFramesInFlight = 0;                    /// number of frames in flight
+    uint32_t mFrameIndex = 0;                        /// [0, mFramesInFlight)
+    FontAtlas mFontAtlas{};                          /// default font atlas for text rendering
+    RGraphImage mLastColorAttachment{};              /// last color attachment output
+    RGraphImage mLastIDFlagsAttachment{};            /// last scene ID flags attachment output
     bool mHasAcquiredRootWindowImage = false;
     bool mHasAcquiredDialogWindowImage = false;
 };
@@ -180,9 +180,9 @@ RenderServerObj::~RenderServerObj()
 
     for (auto ite : mMeshes)
     {
-        RMeshEntry* entry = ite.second;
+        MeshEntry* entry = ite.second;
         entry->mesh.destroy();
-        heap_delete<RMeshEntry>(entry);
+        heap_delete<MeshEntry>(entry);
     }
     mMeshes.clear();
 
@@ -374,7 +374,7 @@ void RenderServerObj::screen_pass(const RenderServerScreenPass& screenP)
     if (!mHasAcquiredRootWindowImage)
         return;
 
-    mScreenPassLayerCallback = screenP.layerCallback;
+    // TODO: mScreenPassLayerCallback = screenP.layerCallback;
     mScreenPassCallback = screenP.callback;
     mScreenPassCallbackUser = screenP.user;
 
@@ -530,12 +530,12 @@ void RenderServerObj::forward_rendering(ForwardRenderComponent renderer, void* u
     // render static mesh
     for (auto ite : self.mMeshes)
     {
-        RMeshEntry* entry = ite.second;
+        MeshEntry* entry = ite.second;
 
-        for (RUID drawCall : entry->drawCalls)
+        for (MeshDrawID drawID : entry->drawID)
         {
-            pc.model = self.mTransformCallback(drawCall, self.mTransformCallbackUser);
-            pc.id = self.ruid_to_pickid(drawCall);
+            pc.model = self.mTransformCallback(drawID, self.mTransformCallbackUser);
+            pc.id = self.ruid_to_pickid(drawID);
             pc.flags = 0;
 
             renderer.set_push_constant(sRMeshPipelineLayout, 0, sizeof(pc), &pc);
@@ -544,19 +544,19 @@ void RenderServerObj::forward_rendering(ForwardRenderComponent renderer, void* u
     }
 
     // render flag hints for object outlining
-    RUID outlineDrawCall = self.mSceneOutlineSubject;
-    if (outlineDrawCall != 0 && self.mDrawCallToMesh.contains(outlineDrawCall))
+    RUID outlineDrawID = self.mSceneOutlineSubject;
+    if (outlineDrawID != 0 && self.mDrawCallToMesh.contains(outlineDrawID))
     {
-        RUID meshID = self.mDrawCallToMesh[outlineDrawCall];
-        LD_ASSERT(self.mMeshes.contains(meshID));
-        RMeshEntry* entry = self.mMeshes[meshID];
+        MeshDataID dataID = self.mDrawCallToMesh[outlineDrawID];
+        LD_ASSERT(self.mMeshes.contains(dataID));
+        MeshEntry* entry = self.mMeshes[dataID];
 
         // render to 16-bit flags only
         meshPipeline.set_color_write_mask(0, 0);
         meshPipeline.set_color_write_mask(1, RCOLOR_COMPONENT_B_BIT | RCOLOR_COMPONENT_A_BIT);
         meshPipeline.set_depth_test_enable(false);
 
-        pc.model = self.mTransformCallback(outlineDrawCall, self.mTransformCallbackUser);
+        pc.model = self.mTransformCallback(outlineDrawID, self.mTransformCallbackUser);
         pc.id = 0;    // not written to color attachment due to write masks
         pc.flags = 1; // currently any non-zero flag value indicates mesh that requires outlining
 
@@ -680,55 +680,60 @@ RImage RenderServer::get_font_atlas_image()
     return mObj->mFontAtlasImage;
 }
 
-bool RenderServer::mesh_exists(RUID mesh)
+bool RenderServer::IMesh::exists(MeshDataID dataID)
 {
-    return mObj->mMeshes.contains(mesh);
+    return mObj->mMeshes.contains(dataID);
 }
 
-RUID RenderServer::create_mesh(ModelBinary& modelBinary)
+MeshDataID RenderServer::IMesh::create_data_id(ModelBinary& binary)
 {
     RStager stager(mObj->mDevice, RQUEUE_TYPE_GRAPHICS);
 
-    RUID meshID = mObj->get_ruid();
-    RMeshEntry* entry = heap_new<RMeshEntry>(MEMORY_USAGE_RENDER);
-    mObj->mMeshes[meshID] = entry;
+    MeshDataID dataID = mObj->get_ruid();
+    MeshEntry* entry = heap_new<MeshEntry>(MEMORY_USAGE_RENDER);
+    mObj->mMeshes[dataID] = entry;
 
-    entry->mesh.create_from_binary(mObj->mDevice, stager, modelBinary);
-    entry->meshID = meshID;
+    entry->mesh.create_from_binary(mObj->mDevice, stager, binary);
+    entry->dataID = dataID;
     stager.submit(mObj->mDevice.get_graphics_queue());
 
-    return meshID;
+    return dataID;
 }
 
-RUID RenderServer::create_mesh_draw_call(RUID meshID)
+MeshDrawID RenderServer::IMesh::create_draw_id(MeshDataID dataID)
 {
-    auto ite = mObj->mMeshes.find(meshID);
+    auto ite = mObj->mMeshes.find(dataID);
 
     if (ite == mObj->mMeshes.end())
         return 0;
 
-    RMeshEntry* entry = mObj->mMeshes[meshID];
-    RUID drawCall = mObj->get_ruid();
-    entry->drawCalls.insert(drawCall);
-    mObj->mDrawCallToMesh[drawCall] = meshID;
+    MeshEntry* entry = mObj->mMeshes[dataID];
+    MeshDrawID drawID = mObj->get_ruid();
+    entry->drawID.insert(drawID);
+    mObj->mDrawCallToMesh[drawID] = dataID;
 
-    return drawCall;
+    return drawID;
 }
 
-void RenderServer::destroy_mesh_draw_call(RUID drawCall)
+void RenderServer::IMesh::destroy_draw(MeshDrawID drawID)
 {
-    auto ite = mObj->mDrawCallToMesh.find(drawCall);
+    auto ite = mObj->mDrawCallToMesh.find(drawID);
 
     if (ite == mObj->mDrawCallToMesh.end())
         return;
 
-    RUID meshID = mObj->mDrawCallToMesh[drawCall];
-    RMeshEntry* entry = mObj->mMeshes[meshID];
+    RUID meshID = mObj->mDrawCallToMesh[drawID];
+    MeshEntry* entry = mObj->mMeshes[meshID];
 
-    entry->drawCalls.erase(drawCall);
+    entry->drawID.erase(drawID);
 }
 
-RUID RenderServer::create_cubemap(Bitmap cubemapFaces)
+RenderServer::IMesh RenderServer::mesh()
+{
+    return RenderServer::IMesh(mObj);
+}
+
+CubemapDataID RenderServer::ICubemap::create_data_id(Bitmap cubemapFaces)
 {
     RSamplerInfo cubemapSamplerI{};
     cubemapSamplerI.filter = RFILTER_LINEAR;
@@ -742,15 +747,15 @@ RUID RenderServer::create_cubemap(Bitmap cubemapFaces)
     stager.add_image_data(cubemap, cubemapFaces.data(), RIMAGE_LAYOUT_SHADER_READ_ONLY);
     stager.submit(device.get_graphics_queue());
 
-    RUID cubemapID = mObj->get_ruid();
-    mObj->mCubemaps[cubemapID] = cubemap;
+    CubemapDataID dataID = mObj->get_ruid();
+    mObj->mCubemaps[dataID] = cubemap;
 
-    return cubemapID;
+    return dataID;
 }
 
-void RenderServer::destroy_cubemap(RUID cubemapID)
+void RenderServer::ICubemap::destroy_data_id(CubemapDataID dataID)
 {
-    auto ite = mObj->mCubemaps.find(cubemapID);
+    auto ite = mObj->mCubemaps.find(dataID);
 
     if (ite == mObj->mCubemaps.end())
         return;
@@ -760,6 +765,11 @@ void RenderServer::destroy_cubemap(RUID cubemapID)
 
     mObj->mDevice.wait_idle();
     mObj->mDevice.destroy_image(cubemap);
+}
+
+RenderServer::ICubemap RenderServer::cubemap()
+{
+    return RenderServer::ICubemap(mObj);
 }
 
 } // namespace LD

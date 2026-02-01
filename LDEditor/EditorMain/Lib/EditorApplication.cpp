@@ -69,7 +69,7 @@ EditorApplication::EditorApplication()
             facePathsCstr[i] = facePaths[i].c_str();
 
         Bitmap tmpCubemapFaces = Bitmap::create_cubemap_from_paths(facePathsCstr.data());
-        mEnvCubemap = mRenderServer.create_cubemap(tmpCubemapFaces);
+        mEnvCubemap = mRenderServer.cubemap().create_data_id(tmpCubemapFaces);
         Bitmap::destroy(tmpCubemapFaces);
     }
 
@@ -101,7 +101,7 @@ EditorApplication::~EditorApplication()
     mEditorUI.cleanup();
 
     mRDevice.wait_idle();
-    mRenderServer.destroy_cubemap(mEnvCubemap);
+    mRenderServer.cubemap().destroy_data_id(mEnvCubemap);
 
     EditorContext::destroy(mEditorCtx);
     AudioServer::destroy(mAudioServer);

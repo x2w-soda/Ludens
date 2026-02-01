@@ -30,24 +30,24 @@ void RenderServerCache::cleanup()
     mServer = {};
 }
 
-RUID RenderServerCache::get_or_create_mesh(AUID meshAUID)
+MeshDataID RenderServerCache::get_or_create_mesh(AUID meshAUID)
 {
     MeshAsset meshA = (MeshAsset)mAssetManager.get_asset(meshAUID, ASSET_TYPE_MESH);
     LD_ASSERT(meshA);
 
     if (!mAuidToRuid.contains(meshAUID))
-        mAuidToRuid[meshAUID] = mServer.create_mesh(*meshA.data());
+        mAuidToRuid[meshAUID] = mServer.mesh().create_data_id(*meshA.data());
 
     return mAuidToRuid[meshAUID];
 }
 
-RUID RenderServerCache::get_mesh(AUID meshAUID)
+MeshDataID RenderServerCache::get_mesh(AUID meshAUID)
 {
     if (!mAuidToRuid.contains(meshAUID))
         return 0;
 
     RUID meshID = mAuidToRuid[meshAUID];
-    if (!mServer.mesh_exists(meshID))
+    if (!mServer.mesh().exists(meshID))
         return 0;
 
     return meshID;
@@ -78,28 +78,30 @@ RImage RenderServerCache::get_or_create_image(AUID textureAUID)
     return mAuidToImage[textureAUID];
 }
 
-RUID RenderServerCache::create_mesh_draw_call(RUID meshID, CUID compID)
+MeshDrawID RenderServerCache::create_mesh_draw_id(MeshDataID dataID, CUID compID)
 {
-    if (!mServer.mesh_exists(meshID))
+    RenderServer::IMesh mesh = mServer.mesh();
+
+    if (!mesh.exists(dataID))
         return 0;
 
     auto ite = mCuidToRuid.find(compID);
     if (ite != mCuidToRuid.end())
     {
-        RUID oldDrawCall = ite->second;
-        mServer.destroy_mesh_draw_call(oldDrawCall);
-        mRuidToCuid.erase(oldDrawCall);
+        RUID oldDrawID = ite->second;
+        mesh.destroy_draw(oldDrawID);
+        mRuidToCuid.erase(oldDrawID);
         mCuidToRuid.erase(compID);
     }
 
-    RUID drawCall = mServer.create_mesh_draw_call(meshID);
-    mRuidToCuid[drawCall] = compID;
-    mCuidToRuid[compID] = drawCall;
+    RUID drawID = mesh.create_draw_id(dataID);
+    mRuidToCuid[drawID] = compID;
+    mCuidToRuid[compID] = drawID;
 
-    return drawCall;
+    return drawID;
 }
 
-RUID RenderServerCache::get_component_ruid(CUID compID)
+RUID RenderServerCache::get_component_draw_id(CUID compID)
 {
     auto ite = mCuidToRuid.find(compID);
 

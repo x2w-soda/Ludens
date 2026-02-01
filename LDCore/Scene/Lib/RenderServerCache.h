@@ -3,6 +3,7 @@
 #include <Ludens/Asset/AssetManager.h>
 #include <Ludens/Asset/AssetType/MeshAsset.h>
 #include <Ludens/Asset/AssetType/Texture2DAsset.h>
+#include <Ludens/DSA/HashMap.h>
 #include <Ludens/DataRegistry/DataComponent.h>
 #include <Ludens/RenderServer/RenderServer.h>
 
@@ -20,28 +21,28 @@ public:
     /// @brief In-place cleanup, destroys all resources from render server.
     void cleanup();
 
-    RUID get_or_create_mesh(AUID meshAUID);
+    MeshDataID get_or_create_mesh(AUID meshAUID);
 
-    RUID get_mesh(AUID meshAUID);
+    MeshDataID get_mesh(AUID meshAUID);
 
     RImage get_or_create_image(AUID textureAUID);
 
-    /// @brief Create mesh draw call for component.
-    RUID create_mesh_draw_call(RUID meshID, CUID compID);
+    /// @brief Create mesh draw id for component.
+    MeshDrawID create_mesh_draw_id(MeshDataID dataID, CUID compID);
 
-    /// @brief Get draw call associated with component.
-    RUID get_component_ruid(CUID compID);
+    /// @brief Get draw id associated with component.
+    MeshDrawID get_component_draw_id(CUID compID);
 
     /// @brief Get component associated with draw call.
-    CUID get_ruid_component(RUID drawI);
+    CUID get_ruid_component(RUID drawID);
 
 private:
     RenderServer mServer{};
     AssetManager mAssetManager{};
-    std::unordered_map<RUID, CUID> mRuidToCuid;    /// map draw call to corresponding component
-    std::unordered_map<CUID, RUID> mCuidToRuid;    /// map component to corresponding draw call
-    std::unordered_map<AUID, RUID> mAuidToRuid;    /// map asset to GPU resource
-    std::unordered_map<AUID, RImage> mAuidToImage; /// map asset to GPU image resource
+    HashMap<RUID, CUID> mRuidToCuid;    /// map draw call to corresponding component
+    HashMap<CUID, RUID> mCuidToRuid;    /// map component to corresponding draw call
+    HashMap<AUID, RUID> mAuidToRuid;    /// map asset to GPU resource
+    HashMap<AUID, RImage> mAuidToImage; /// map asset to GPU image resource
 };
 
 } // namespace LD

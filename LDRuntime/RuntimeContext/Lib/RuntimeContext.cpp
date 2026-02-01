@@ -112,7 +112,7 @@ RuntimeContext RuntimeContext::create(const RuntimeContextInfo& info)
     obj->renderServer = RenderServer::create(serverI);
     obj->audioServer = AudioServer::create();
 
-    obj->envCubemapID = obj->renderServer.create_cubemap(textureCubeAsset.get_bitmap());
+    obj->envCubemapID = obj->renderServer.cubemap().create_data_id(textureCubeAsset.get_bitmap());
 
     SceneInfo sceneI{};
     sceneI.assetManager = obj->AM;
