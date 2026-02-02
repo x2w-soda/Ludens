@@ -8,6 +8,8 @@ set(MODULE_INCLUDE
 set(MODULE_LIB
     Lib/RenderServer.cpp
     Lib/ScreenLayer.cpp
+    Lib/ScreenRenderer.h
+    Lib/ScreenRenderer.cpp
 )
 
 add_ludens_core_module(

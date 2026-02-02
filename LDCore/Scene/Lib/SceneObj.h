@@ -3,7 +3,6 @@
 #include "AudioServerCache.h"
 #include "LuaScript.h"
 #include "RenderServerCache.h"
-#include "ScreenRenderer.h"
 
 namespace LD {
 
@@ -22,10 +21,8 @@ struct SceneObj
     AssetManager assetManager{};
     AudioServer audioServer{};
     AudioServerCache audioServerCache;
-    RenderServer renderServer{};
     RenderServerCache renderServerCache;
     LuaScript::Context luaContext{};
-    ScreenRenderer screenRenderer;
     CameraComponent* mainCameraC;
     CUID mainCameraCUID;
     Vec2 screenExtent = {};

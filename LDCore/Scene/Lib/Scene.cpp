@@ -14,7 +14,6 @@
 #include "LuaScript.h"
 #include "RenderServerCache.h"
 #include "SceneObj.h"
-#include "ScreenRenderer.h"
 
 namespace LD {
 
@@ -140,8 +139,9 @@ static void load_mesh_component(SceneObj* scene, ComponentBase* base, void* comp
 
     if (meshC->auid)
     {
-        MeshDataID mesh = scene->renderServerCache.get_or_create_mesh(meshC->auid);
-        scene->renderServerCache.create_mesh_draw_id(mesh, base->id);
+        RenderServerCache::IMesh mesh = scene->renderServerCache.mesh(meshC, base->id);
+
+        mesh.set_mesh_asset(meshC->auid);
     }
 }
 
@@ -151,7 +151,9 @@ static void load_sprite_2d_component(SceneObj* scene, ComponentBase* base, void*
 
     if (spriteC->auid)
     {
-        spriteC->image = scene->renderServerCache.get_or_create_image(spriteC->auid);
+        RenderServerCache::ISprite2D sprite = scene->renderServerCache.sprite_2d(spriteC, base->id);
+
+        sprite.set_texture_2d_asset(spriteC->auid);
     }
 }
 
@@ -264,9 +266,7 @@ Scene Scene::create(const SceneInfo& sceneI)
     LD_ASSERT(sScene == nullptr);
     sScene = heap_new<SceneObj>(MEMORY_USAGE_SCENE);
     sScene->registry = DataRegistry::create();
-    sScene->screenRenderer.startup();
     sScene->assetManager = sceneI.assetManager;
-    sScene->renderServer = sceneI.renderServer;
     sScene->renderServerCache.startup(sceneI.renderServer, sceneI.assetManager);
     sScene->audioServer = sceneI.audioServer;
     sScene->audioServerCache.startup(sceneI.audioServer);
@@ -285,7 +285,6 @@ void Scene::destroy(Scene scene)
 
     sScene->audioServerCache.cleanup();
     sScene->renderServerCache.cleanup();
-    sScene->screenRenderer.cleanup();
     DataRegistry::destroy(sScene->registry);
 
     heap_delete<SceneObj>(sScene);
@@ -320,8 +319,9 @@ void Scene::reset()
     }
 
     mObj->mainCameraCUID = 0;
-    mObj->screenRenderer.cleanup();
-    mObj->screenRenderer.startup();
+
+    mObj->renderServerCache.destroy_all_draw_id();
+    
     mObj->registry = DataRegistry::create();
 }
 
@@ -454,9 +454,6 @@ void Scene::update(const Vec2& screenExtent, float delta)
         mainCamera.set_target(cameraC->transform.position + forward);
     }
 
-    // update screen layer information
-    mObj->screenRenderer.render(mObj->registry);
-
     // any heap allocations for audio is done on main thread.
     mObj->audioServer.update();
 }
@@ -467,11 +464,6 @@ Camera Scene::get_camera()
         return mObj->mainCameraC->camera;
 
     return {};
-}
-
-ScreenLayer Scene::get_screen_layer()
-{
-    return mObj->screenRenderer.get_layer();
 }
 
 CUID Scene::create_component(ComponentType type, const char* name, CUID parent, CUID hint)
@@ -562,7 +554,7 @@ void Scene::mark_component_transform_dirty(CUID compID)
 
 CUID Scene::get_ruid_component(RUID ruid)
 {
-    return mObj->renderServerCache.get_ruid_component(ruid);
+    return mObj->renderServerCache.get_draw_id_component(ruid);
 }
 
 Mat4 Scene::get_ruid_transform_mat4(RUID ruid)
@@ -624,28 +616,28 @@ Scene::IMesh::IMesh(CUID meshCUID)
     : mCUID(meshCUID)
 {
     mComp = (MeshComponent*)Scene(sScene).get_component(meshCUID, COMPONENT_TYPE_MESH);
-    LD_ASSERT(mComp);
+    LD_ASSERT(mCUID && mComp);
 }
 
 void Scene::IMesh::set_mesh_asset(AUID meshAUID)
 {
-    RUID meshID = sScene->renderServerCache.get_mesh(meshAUID);
-    LD_ASSERT(meshID != 0);
+    RenderServerCache::IMesh mesh = sScene->renderServerCache.mesh(mComp, mCUID);
 
-    mComp->auid = meshAUID;
-    sScene->renderServerCache.create_mesh_draw_id(meshID, mCUID);
+    mesh.set_mesh_asset(meshAUID);
 }
 
-Scene::ISprite2D::ISprite2D(Sprite2DComponent* comp)
-    : mComp(comp)
+Scene::ISprite2D::ISprite2D(CUID sprite2DCUID)
+    : mCUID(sprite2DCUID)
 {
-    LD_ASSERT(mComp);
+    mComp = (Sprite2DComponent*)Scene(sScene).get_component(sprite2DCUID, COMPONENT_TYPE_SPRITE_2D);
+    LD_ASSERT(mCUID && mComp);
 }
 
 void Scene::ISprite2D::set_texture_2d_asset(AUID textureAUID)
 {
-    mComp->auid = textureAUID;
-    mComp->image = sScene->renderServerCache.get_or_create_image(textureAUID);
+    RenderServerCache::ISprite2D sprite2D = sScene->renderServerCache.sprite_2d(mComp, mCUID);
+
+    sprite2D.set_texture_2d_asset(textureAUID);
 }
 
 } // namespace LD

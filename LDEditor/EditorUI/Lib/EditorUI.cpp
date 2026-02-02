@@ -149,7 +149,7 @@ void EditorUI::submit_frame()
 
     // render screen space items on top of game scene.
     RenderServerScreenPass screenP{};
-    screenP.layerCallback = &EditorContext::render_server_screen_pass_callback;
+    screenP.callback = nullptr;
     screenP.user = mCtx.unwrap();
     mRenderServer.screen_pass(screenP);
 

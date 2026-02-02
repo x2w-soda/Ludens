@@ -393,9 +393,8 @@ void EditorContext::destroy(EditorContext ctx)
 
     if (obj->iconAtlas)
     {
-        RDevice device = obj->renderServer.get_device();
-        device.wait_idle();
-        device.destroy_image(obj->iconAtlas);
+        obj->renderServer.destroy_image(obj->iconAtlas);
+        obj->iconAtlas = {};
     }
 
     Project::destroy(obj->project);
@@ -419,17 +418,6 @@ Mat4 EditorContext::render_server_transform_callback(RUID ruid, void* user)
     EditorContextObj& self = *(EditorContextObj*)user;
 
     return self.scene.get_ruid_transform_mat4(ruid);
-}
-
-ScreenLayer EditorContext::render_server_screen_pass_callback(void* user)
-{
-    LD_PROFILE_SCOPE;
-
-    EditorContextObj& self = *(EditorContextObj*)user;
-
-    // SPACE: In the editor maybe we can filter what screen layers to render?
-
-    return self.scene.get_screen_layer();
 }
 
 void EditorContext::action_redo()
@@ -521,21 +509,11 @@ AssetManager EditorContext::get_asset_manager()
 
 RImage EditorContext::get_editor_icon_atlas()
 {
-    RDevice device = mObj->renderServer.get_device();
-
     if (!mObj->iconAtlas)
     {
         std::string iconAtlasPath = mObj->iconAtlasPath.string();
         Bitmap tmpBitmap = Bitmap::create_from_path(iconAtlasPath.c_str(), false);
-        RImageInfo imageI = RUtil::make_2d_image_info(RIMAGE_USAGE_SAMPLED_BIT | RIMAGE_USAGE_TRANSFER_DST_BIT,
-                                                      RFORMAT_RGBA8, tmpBitmap.width(), tmpBitmap.height(),
-                                                      {.filter = RFILTER_LINEAR, .mipmapFilter = RFILTER_LINEAR, .addressMode = RSAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE});
-
-        mObj->iconAtlas = device.create_image(imageI);
-
-        RStager stager(device, RQUEUE_TYPE_GRAPHICS);
-        stager.add_image_data(mObj->iconAtlas, tmpBitmap.data(), RIMAGE_LAYOUT_SHADER_READ_ONLY);
-        stager.submit(device.get_graphics_queue());
+        mObj->iconAtlas = mObj->renderServer.create_image(tmpBitmap);
         Bitmap::destroy(tmpBitmap);
     }
 

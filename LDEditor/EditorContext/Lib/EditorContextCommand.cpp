@@ -98,7 +98,7 @@ void SetComponentAssetCommand::set_component_asset(CUID compID, AUID assetID)
     }
     case COMPONENT_TYPE_SPRITE_2D:
     {
-        Scene::ISprite2D sprite((Sprite2DComponent*)comp);
+        Scene::ISprite2D sprite(compID);
         sprite.set_texture_2d_asset(assetID);
         break;
     }

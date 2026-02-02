@@ -17,14 +17,13 @@ typedef uint32_t RUID;
 typedef RUID CubemapDataID;
 typedef RUID MeshDataID;
 typedef RUID MeshDrawID;
-typedef RUID SpriteDataID;
-typedef RUID SpriteDrawID;
+typedef RUID Sprite2DDataID;
+typedef RUID Sprite2DDrawID;
 
 typedef void (*ScreenRenderCallback)(ScreenRenderComponent renderer, void* user);
 typedef void (*RenderServerEditorRenderCallback)(ScreenRenderComponent renderer, void* user);
 typedef void (*RenderServerEditorScenePickCallback)(SceneOverlayGizmoID gizmoID, RUID ruid, void* user);
 typedef Mat4 (*RenderServerTransformCallback)(RUID ruid, void* user);
-typedef ScreenLayer (*RenderServerScreenPassLayerCallback)(void* user);
 typedef void (*RenderServerScreenPassCallback)(ScreenRenderComponent renderer, void* user);
 
 /// @brief Render server creation info
@@ -78,7 +77,6 @@ struct RenderServerScenePass
 /// @brief Info for the server to render in screen space on top of scene.
 struct RenderServerScreenPass
 {
-    RenderServerScreenPassLayerCallback layerCallback;
     RenderServerScreenPassCallback callback;
     void* user; /// user of the scene screen pass
 };
@@ -144,22 +142,45 @@ struct RenderServer : Handle<struct RenderServerObj>
 
     void editor_dialog_pass(const RenderServerEditorDialogPass& dialogPass);
 
-    /// @brief Get the underlying render device.
-    RDevice get_device();
+    /// @brief Create standalone image from bitmap.
+    RImage create_image(Bitmap bitmap);
+
+    /// @brief Destroy standalone image.
+    void destroy_image(RImage image);
 
     /// @brief Get the image handle of the font atlas image (RIMAGE_LAYOUT_SHADER_READ_ONLY).
     RImage get_font_atlas_image();
+
+    struct ISprite2D : Handle<struct RenderServerObj>
+    {
+        bool exists(Sprite2DDataID dataID);
+        Sprite2DDataID create_data_id(Bitmap bitmap);
+        Sprite2DDrawID create_draw_id(Sprite2DDataID dataID);
+        void destroy_draw_id(Sprite2DDrawID drawID);
+        void destroy_all_draw_id();
+    };
+
+    /// @brief Access render server Sprite2D interface.
+    ISprite2D sprite_2d()
+    {
+        return RenderServer::ISprite2D(mObj);
+    }
 
     struct IMesh : Handle<struct RenderServerObj>
     {
         bool exists(MeshDataID dataID);
         MeshDataID create_data_id(ModelBinary& binary);
         MeshDrawID create_draw_id(MeshDataID dataID);
-        void destroy_draw(MeshDrawID drawID);
+        void destroy_draw_id(MeshDrawID drawID);
+        void destroy_all_data_id();
+        void destroy_all_draw_id();
     };
 
     /// @brief Access render server mesh interface.
-    IMesh mesh();
+    IMesh mesh()
+    {
+        return RenderServer::IMesh(mObj);
+    }
 
     struct ICubemap : Handle<struct RenderServerObj>
     {
@@ -168,7 +189,10 @@ struct RenderServer : Handle<struct RenderServerObj>
     };
 
     /// @brief Access render server cubemap interface.
-    ICubemap cubemap();
+    inline ICubemap cubemap()
+    {
+        return RenderServer::ICubemap(mObj);
+    }
 };
 
 } // namespace LD

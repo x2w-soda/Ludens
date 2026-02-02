@@ -61,9 +61,6 @@ public:
     /// @brief Get camera to render the Scene with.
     Camera get_camera();
 
-    // NOTE: temporary
-    ScreenLayer get_screen_layer();
-
     /// @brief Create a component.
     /// @param type Component type.
     /// @param name Component identifier.
@@ -159,12 +156,13 @@ public:
     class ISprite2D
     {
     public:
-        ISprite2D(Sprite2DComponent* comp);
+        ISprite2D(CUID sprite2DCUID);
 
         void set_texture_2d_asset(AUID textureAUID);
 
     private:
         Sprite2DComponent* mComp;
+        CUID mCUID;
     };
 };
 

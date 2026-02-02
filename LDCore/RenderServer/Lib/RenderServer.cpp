@@ -4,6 +4,7 @@
 #include <Ludens/DSA/Vector.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Log/Log.h>
+#include <Ludens/Memory/Allocator.h>
 #include <Ludens/Memory/Memory.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/RenderBackend/RBackend.h>
@@ -23,18 +24,22 @@ namespace LD {
 
 static Log sLog("RServer");
 
-struct MeshEntry
+struct MeshData
 {
     RMesh mesh;                 /// mesh resources
     MeshDataID dataID;          /// mesh identifier
     HashSet<MeshDrawID> drawID; /// draw ids using this mesh
 };
 
+struct Sprite2DDraw
+{
+    RImage sprite;
+    Sprite2DDrawID drawID;
+};
+
 /// @brief Render server implementation.
 class RenderServerObj
 {
-    friend class RenderServer;
-
 public:
     RenderServerObj(const RenderServerInfo& serviceI);
     ~RenderServerObj();
@@ -48,7 +53,29 @@ public:
     void editor_overlay_pass(const RenderServerEditorOverlayPass& editorOP);
     void editor_dialog_pass(const RenderServerEditorDialogPass& dialogPass);
 
+    RImage create_2d_image(Bitmap bitmap);
+    void destroy_2d_image(RImage image);
+
+    MeshDataID create_mesh_data_id(ModelBinary& binary);
+    MeshDrawID create_mesh_draw_id(MeshDataID dataID);
+    void destroy_mesh_draw_id(MeshDrawID drawID);
+    void destroy_all_mesh_draw_id();
+    void destroy_all_mesh_data_id();
+    inline bool mesh_exists(MeshDataID dataID) { return mMeshData.contains(dataID); }
+
+    Sprite2DDataID create_sprite_2d_data_id(Bitmap bitmap);
+    Sprite2DDrawID create_sprite_2d_draw_id(Sprite2DDataID dataID);
+    void destroy_sprite_2d_draw_id(Sprite2DDrawID drawID);
+    void destroy_all_sprite_2d_draw_id();
+    void destroy_all_sprite_2d_data_id();
+    inline bool sprite_2d_exists(Sprite2DDataID dataID) { return mSpriteData.contains(dataID); }
+
+    CubemapDataID create_cubemap_data_id(Bitmap cubemapFaces);
+    void destroy_cubemap_data_id(CubemapDataID dataID);
+    void destroy_all_cubemap_data_id();
+
     inline RUID get_ruid() { return mRUIDCtr.get_id(); }
+    inline RImage get_font_atlas_image() { return mFontAtlasImage; }
 
 private:
     struct Frame
@@ -75,27 +102,29 @@ private:
     IDCounter<RUID> mRUIDCtr;
     RenderServerTransformCallback mTransformCallback = nullptr;
     void* mTransformCallbackUser = nullptr;
-    RenderServerScreenPassLayerCallback mScreenPassLayerCallback = nullptr;
     RenderServerScreenPassCallback mScreenPassCallback = nullptr;
     void* mScreenPassCallbackUser = nullptr;
     Vec2 mSceneExtent;
     Vec2 mScreenExtent;
     Vec4 mClearColor;
+    PoolAllocator mSprite2DDrawPA{};
     Vector<Frame> mFrames;
     Vector<RCommandPool> mCmdPools;
     Vector<RCommandList> mCmdLists;
-    HashMap<CubemapDataID, RImage> mCubemaps;
-    HashMap<MeshDataID, MeshEntry*> mMeshes;         // TODO: optimize later
-    HashMap<MeshDrawID, MeshDataID> mDrawCallToMesh; /// map draw call to mesh ID
-    RFormat mDepthStencilFormat;                     /// default depth stencil format
-    RFormat mColorFormat;                            /// default color format
-    RSampleCountBit mMSAA;                           /// number of samples during MSAA, if enabled
-    RUID mSceneOutlineSubject;                       /// subject to be outlined in scene render pass
-    uint32_t mFramesInFlight = 0;                    /// number of frames in flight
-    uint32_t mFrameIndex = 0;                        /// [0, mFramesInFlight)
-    FontAtlas mFontAtlas{};                          /// default font atlas for text rendering
-    RGraphImage mLastColorAttachment{};              /// last color attachment output
-    RGraphImage mLastIDFlagsAttachment{};            /// last scene ID flags attachment output
+    HashMap<Sprite2DDataID, RImage> mSpriteData;
+    HashMap<CubemapDataID, RImage> mCubemapData;
+    HashMap<MeshDataID, MeshData*> mMeshData;             // TODO: optimize later
+    HashMap<MeshDrawID, MeshDataID> mMeshDraw;            /// Mesh draw info
+    HashMap<Sprite2DDrawID, Sprite2DDraw*> mSprite2DDraw; /// Spirte2D draw info
+    RFormat mDepthStencilFormat;                          /// default depth stencil format
+    RFormat mColorFormat;                                 /// default color format
+    RSampleCountBit mMSAA;                                /// number of samples during MSAA, if enabled
+    RUID mSceneOutlineSubject;                            /// subject to be outlined in scene render pass
+    uint32_t mFramesInFlight = 0;                         /// number of frames in flight
+    uint32_t mFrameIndex = 0;                             /// [0, mFramesInFlight)
+    FontAtlas mFontAtlas{};                               /// default font atlas for text rendering
+    RGraphImage mLastColorAttachment{};                   /// last color attachment output
+    RGraphImage mLastIDFlagsAttachment{};                 /// last scene ID flags attachment output
     bool mHasAcquiredRootWindowImage = false;
     bool mHasAcquiredDialogWindowImage = false;
 };
@@ -103,6 +132,8 @@ private:
 RenderServerObj::RenderServerObj(const RenderServerInfo& serverI)
     : mDevice(serverI.device), mColorFormat(RFORMAT_RGBA8), mFontAtlas(serverI.fontAtlas)
 {
+    LD_PROFILE_SCOPE;
+
     RSampleCountBit supportedMSCount = mDevice.get_max_sample_count();
     mMSAA = supportedMSCount >= RSAMPLE_COUNT_4_BIT ? RSAMPLE_COUNT_4_BIT : supportedMSCount;
     sLog.info("msaa {} bits suported, using {} sample bits", (int)supportedMSCount, (int)mMSAA);
@@ -139,6 +170,13 @@ RenderServerObj::RenderServerObj(const RenderServerInfo& serverI)
 
     mMeshPipeline = RMeshBlinnPhongPipeline::create(mDevice);
 
+    PoolAllocatorInfo paI{};
+    paI.blockSize = sizeof(Sprite2DDraw);
+    paI.pageSize = 256;
+    paI.usage = MEMORY_USAGE_RENDER;
+    paI.isMultiPage = true;
+    mSprite2DDrawPA = PoolAllocator::create(paI);
+
     //
     // Frames In Flight Resources
     //
@@ -174,24 +212,19 @@ RenderServerObj::RenderServerObj(const RenderServerInfo& serverI)
 
 RenderServerObj::~RenderServerObj()
 {
+    LD_PROFILE_SCOPE;
+
     mDevice.wait_idle();
 
     RGraph::release(mDevice);
 
-    for (auto ite : mMeshes)
-    {
-        MeshEntry* entry = ite.second;
-        entry->mesh.destroy();
-        heap_delete<MeshEntry>(entry);
-    }
-    mMeshes.clear();
+    destroy_all_mesh_draw_id();
+    destroy_all_mesh_data_id();
+    destroy_all_sprite_2d_draw_id();
+    destroy_all_sprite_2d_data_id();
+    destroy_all_cubemap_data_id();
 
-    for (auto ite : mCubemaps)
-    {
-        RImage cubemap = ite.second;
-        mDevice.destroy_image(cubemap);
-    }
-    mCubemaps.clear();
+    PoolAllocator::destroy(mSprite2DDrawPA);
 
     for (uint32_t i = 0; i < mFramesInFlight; i++)
     {
@@ -285,9 +318,9 @@ void RenderServerObj::next_frame(const RenderServerFrameInfo& frameI)
     uboData.envPhase = 0; // TODO: expose
     frame.ubo.map_write(0, sizeof(uboData), &uboData);
 
-    if (mCubemaps.contains(frameI.envCubemap))
+    if (mCubemapData.contains(frameI.envCubemap))
     {
-        RImage envCubemap = mCubemaps[frameI.envCubemap];
+        RImage envCubemap = mCubemapData[frameI.envCubemap];
         RImageLayout layout = RIMAGE_LAYOUT_SHADER_READ_ONLY;
         RSetImageUpdateInfo imageUpdateI = RUtil::make_single_set_image_update_info(frame.frameSet, 1, RBINDING_TYPE_COMBINED_IMAGE_SAMPLER, &layout, &envCubemap);
         mDevice.update_set_images(1, &imageUpdateI);
@@ -303,6 +336,8 @@ void RenderServerObj::next_frame(const RenderServerFrameInfo& frameI)
 
 void RenderServerObj::submit_frame()
 {
+    LD_PROFILE_SCOPE;
+
     WindowID rootID = WindowRegistry::get().get_root_id();
 
     if (mHasAcquiredRootWindowImage)
@@ -319,6 +354,8 @@ void RenderServerObj::submit_frame()
 
 void RenderServerObj::scene_pass(const RenderServerScenePass& sceneP)
 {
+    LD_PROFILE_SCOPE;
+
     if (!mHasAcquiredRootWindowImage)
         return;
 
@@ -371,6 +408,8 @@ void RenderServerObj::scene_pass(const RenderServerScenePass& sceneP)
 
 void RenderServerObj::screen_pass(const RenderServerScreenPass& screenP)
 {
+    LD_PROFILE_SCOPE;
+
     if (!mHasAcquiredRootWindowImage)
         return;
 
@@ -404,6 +443,8 @@ void RenderServerObj::screen_pass(const RenderServerScreenPass& screenP)
 
 void RenderServerObj::editor_pass(const RenderServerEditorPass& editorP)
 {
+    LD_PROFILE_SCOPE;
+
     if (!mHasAcquiredRootWindowImage)
         return;
 
@@ -462,6 +503,8 @@ void RenderServerObj::editor_pass(const RenderServerEditorPass& editorP)
 
 void RenderServerObj::editor_overlay_pass(const RenderServerEditorOverlayPass& editorOP)
 {
+    LD_PROFILE_SCOPE;
+
     if (!mHasAcquiredRootWindowImage)
         return;
 
@@ -490,6 +533,8 @@ void RenderServerObj::editor_overlay_pass(const RenderServerEditorOverlayPass& e
 
 void RenderServerObj::editor_dialog_pass(const RenderServerEditorDialogPass& editorDP)
 {
+    LD_PROFILE_SCOPE;
+
     if (!mHasAcquiredDialogWindowImage)
         return;
 
@@ -503,6 +548,221 @@ void RenderServerObj::editor_dialog_pass(const RenderServerEditorDialogPass& edi
     screenRCI.screenExtent = nullptr; // TODO:
     ScreenRenderComponent editorSRC = ScreenRenderComponent::add(mGraph, screenRCI);
     mGraph.connect_swapchain_image(editorSRC.color_attachment(), editorDP.dialogWindow);
+}
+
+RImage RenderServerObj::create_2d_image(Bitmap bitmap)
+{
+    LD_PROFILE_SCOPE;
+
+    RImageInfo imageI = RUtil::make_2d_image_info(RIMAGE_USAGE_SAMPLED_BIT | RIMAGE_USAGE_TRANSFER_DST_BIT, RFORMAT_RGBA8, bitmap.width(), bitmap.height());
+    imageI.sampler = {RFILTER_LINEAR, RFILTER_LINEAR, RSAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE};
+    RImage image = mDevice.create_image(imageI);
+
+    RStager stager(mDevice, RQUEUE_TYPE_GRAPHICS);
+    stager.add_image_data(image, bitmap.data(), RIMAGE_LAYOUT_SHADER_READ_ONLY);
+    stager.submit(mDevice.get_graphics_queue());
+
+    return image;
+}
+
+void RenderServerObj::destroy_2d_image(RImage image)
+{
+    LD_PROFILE_SCOPE;
+
+    mDevice.wait_idle();
+
+    mDevice.destroy_image(image);
+}
+
+void RenderServerObj::destroy_all_mesh_draw_id()
+{
+    LD_PROFILE_SCOPE;
+
+    for (auto it : mMeshData)
+    {
+        MeshData* data = it.second;
+
+        for (MeshDrawID drawID : data->drawID)
+            mMeshDraw.erase(drawID);
+
+        data->drawID.clear();
+    }
+}
+
+void RenderServerObj::destroy_all_mesh_data_id()
+{
+    LD_PROFILE_SCOPE;
+
+    mDevice.wait_idle();
+
+    // all draws are out of date.
+    destroy_all_mesh_draw_id();
+
+    for (auto ite : mMeshData)
+    {
+        MeshData* data = ite.second;
+        data->mesh.destroy();
+        heap_delete<MeshData>(data);
+    }
+
+    mMeshData.clear();
+}
+
+MeshDataID RenderServerObj::create_mesh_data_id(ModelBinary& binary)
+{
+    RStager stager(mDevice, RQUEUE_TYPE_GRAPHICS);
+
+    MeshDataID dataID = get_ruid();
+    MeshData* entry = heap_new<MeshData>(MEMORY_USAGE_RENDER);
+    mMeshData[dataID] = entry;
+
+    entry->mesh.create_from_binary(mDevice, stager, binary);
+    entry->dataID = dataID;
+    stager.submit(mDevice.get_graphics_queue());
+
+    return dataID;
+}
+
+MeshDrawID RenderServerObj::create_mesh_draw_id(MeshDataID dataID)
+{
+    auto ite = mMeshData.find(dataID);
+
+    if (ite == mMeshData.end())
+        return 0;
+
+    MeshData* data = mMeshData[dataID];
+    MeshDrawID drawID = get_ruid();
+    data->drawID.insert(drawID);
+    mMeshDraw[drawID] = dataID;
+
+    return drawID;
+}
+
+void RenderServerObj::destroy_mesh_draw_id(MeshDrawID drawID)
+{
+    auto ite = mMeshDraw.find(drawID);
+
+    if (ite == mMeshDraw.end())
+        return;
+
+    RUID meshID = mMeshDraw[drawID];
+    mMeshDraw.erase(drawID);
+
+    MeshData* data = mMeshData[meshID];
+
+    data->drawID.erase(drawID);
+}
+
+Sprite2DDataID RenderServerObj::create_sprite_2d_data_id(Bitmap bitmap)
+{
+    RImage sprite = create_2d_image(bitmap);
+    Sprite2DDataID dataID = get_ruid();
+    mSpriteData[dataID] = sprite;
+
+    return dataID;
+}
+
+Sprite2DDrawID RenderServerObj::create_sprite_2d_draw_id(Sprite2DDataID dataID)
+{
+    auto ite = mSpriteData.find(dataID);
+
+    if (ite == mSpriteData.end())
+        return 0;
+
+    Sprite2DDraw* draw = (Sprite2DDraw*)mSprite2DDrawPA.allocate();
+    draw->sprite = ite->second;
+    draw->drawID = get_ruid();
+
+    mSprite2DDraw[draw->drawID] = draw;
+
+    return draw->drawID;
+}
+
+void RenderServerObj::destroy_sprite_2d_draw_id(Sprite2DDrawID drawID)
+{
+    auto it = mSprite2DDraw.find(drawID);
+
+    if (it == mSprite2DDraw.end())
+        return;
+
+    Sprite2DDraw* draw = it->second;
+
+    mSprite2DDraw.erase(it);
+    mSprite2DDrawPA.free(draw);
+}
+
+void RenderServerObj::destroy_all_sprite_2d_draw_id()
+{
+    LD_PROFILE_SCOPE;
+
+    // all draws are out of date.
+    destroy_all_sprite_2d_draw_id();
+
+    for (auto it : mSprite2DDraw)
+        mSprite2DDrawPA.free(it.second);
+
+    mSprite2DDraw.clear();
+}
+
+void RenderServerObj::destroy_all_sprite_2d_data_id()
+{
+    LD_PROFILE_SCOPE;
+
+    mDevice.wait_idle();
+
+    for (auto ite : mSpriteData)
+    {
+        RImage sprite = ite.second;
+        mDevice.destroy_image(sprite);
+    }
+
+    mSpriteData.clear();
+}
+
+CubemapDataID RenderServerObj::create_cubemap_data_id(Bitmap cubemapFaces)
+{
+    RSamplerInfo cubemapSamplerI{};
+    cubemapSamplerI.filter = RFILTER_LINEAR;
+    cubemapSamplerI.mipmapFilter = RFILTER_LINEAR;
+    cubemapSamplerI.addressMode = RSAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+
+    RImageInfo imageI = RUtil::make_cube_image_info(RIMAGE_USAGE_SAMPLED_BIT | RIMAGE_USAGE_TRANSFER_DST_BIT, RFORMAT_RGBA8, cubemapFaces.width(), cubemapSamplerI);
+    RImage cubemap = mDevice.create_image(imageI);
+    RStager stager(mDevice, RQUEUE_TYPE_GRAPHICS);
+    stager.add_image_data(cubemap, cubemapFaces.data(), RIMAGE_LAYOUT_SHADER_READ_ONLY);
+    stager.submit(mDevice.get_graphics_queue());
+
+    CubemapDataID dataID = get_ruid();
+    mCubemapData[dataID] = cubemap;
+
+    return dataID;
+}
+
+void RenderServerObj::destroy_cubemap_data_id(CubemapDataID dataID)
+{
+    auto ite = mCubemapData.find(dataID);
+
+    if (ite == mCubemapData.end())
+        return;
+
+    RImage cubemap = ite->second;
+    mCubemapData.erase(ite);
+
+    mDevice.wait_idle();
+    mDevice.destroy_image(cubemap);
+}
+
+void RenderServerObj::destroy_all_cubemap_data_id()
+{
+    LD_PROFILE_SCOPE;
+
+    for (auto ite : mCubemapData)
+    {
+        RImage cubemap = ite.second;
+        mDevice.destroy_image(cubemap);
+    }
+
+    mCubemapData.clear();
 }
 
 // NOTE: This is super early placeholder scene renderer implementation.
@@ -528,28 +788,29 @@ void RenderServerObj::forward_rendering(ForwardRenderComponent renderer, void* u
     RMeshBlinnPhongPipeline::PushConstant pc;
 
     // render static mesh
-    for (auto ite : self.mMeshes)
+    // TODO: iteration can be cache-efficient if MeshData* is allocated from a PoolAllocator
+    for (auto ite : self.mMeshData)
     {
-        MeshEntry* entry = ite.second;
+        MeshData* data = ite.second;
 
-        for (MeshDrawID drawID : entry->drawID)
+        for (MeshDrawID drawID : data->drawID)
         {
             pc.model = self.mTransformCallback(drawID, self.mTransformCallbackUser);
             pc.id = self.ruid_to_pickid(drawID);
             pc.flags = 0;
 
             renderer.set_push_constant(sRMeshPipelineLayout, 0, sizeof(pc), &pc);
-            renderer.draw_mesh(entry->mesh);
+            renderer.draw_mesh(data->mesh);
         }
     }
 
     // render flag hints for object outlining
     RUID outlineDrawID = self.mSceneOutlineSubject;
-    if (outlineDrawID != 0 && self.mDrawCallToMesh.contains(outlineDrawID))
+    if (outlineDrawID != 0 && self.mMeshDraw.contains(outlineDrawID))
     {
-        MeshDataID dataID = self.mDrawCallToMesh[outlineDrawID];
-        LD_ASSERT(self.mMeshes.contains(dataID));
-        MeshEntry* entry = self.mMeshes[dataID];
+        MeshDataID dataID = self.mMeshDraw[outlineDrawID];
+        LD_ASSERT(self.mMeshData.contains(dataID));
+        MeshData* data = self.mMeshData[dataID];
 
         // render to 16-bit flags only
         meshPipeline.set_color_write_mask(0, 0);
@@ -561,7 +822,7 @@ void RenderServerObj::forward_rendering(ForwardRenderComponent renderer, void* u
         pc.flags = 1; // currently any non-zero flag value indicates mesh that requires outlining
 
         renderer.set_push_constant(sRMeshPipelineLayout, 0, sizeof(pc), &pc);
-        renderer.draw_mesh(entry->mesh);
+        renderer.draw_mesh(data->mesh);
     }
 
     renderer.draw_skybox();
@@ -570,11 +831,13 @@ void RenderServerObj::forward_rendering(ForwardRenderComponent renderer, void* u
 void RenderServerObj::screen_rendering(ScreenRenderComponent renderer, void* user)
 {
     LD_PROFILE_SCOPE;
+
     RenderServerObj& self = *(RenderServerObj*)user;
 
     if (!self.mHasAcquiredRootWindowImage)
         return;
 
+    /*
     if (self.mScreenPassLayerCallback)
     {
         // ask server user for ScreenLayer to render
@@ -590,6 +853,7 @@ void RenderServerObj::screen_rendering(ScreenRenderComponent renderer, void* use
             }
         }
     }
+    */
 
     if (self.mScreenPassCallback)
     {
@@ -670,106 +934,118 @@ void RenderServer::editor_dialog_pass(const RenderServerEditorDialogPass& dialog
     mObj->editor_dialog_pass(dialogPass);
 }
 
-RDevice RenderServer::get_device()
+RImage RenderServer::create_image(Bitmap bitmap)
 {
-    return mObj->mDevice;
+    LD_ASSERT(bitmap);
+
+    return mObj->create_2d_image(bitmap);
+}
+
+void RenderServer::destroy_image(RImage image)
+{
+    LD_ASSERT(image);
+
+    mObj->destroy_2d_image(image);
 }
 
 RImage RenderServer::get_font_atlas_image()
 {
-    return mObj->mFontAtlasImage;
+    return mObj->get_font_atlas_image();
 }
+
+//
+// Sprite2D
+//
+
+bool RenderServer::ISprite2D::exists(Sprite2DDataID dataID)
+{
+    LD_ASSERT(dataID);
+
+    return mObj->sprite_2d_exists(dataID);
+}
+
+Sprite2DDataID RenderServer::ISprite2D::create_data_id(Bitmap bitmap)
+{
+    LD_ASSERT(bitmap && bitmap.format() == BITMAP_FORMAT_RGBA8U);
+
+    return mObj->create_sprite_2d_data_id(bitmap);
+}
+
+Sprite2DDataID RenderServer::ISprite2D::create_draw_id(Sprite2DDataID dataID)
+{
+    LD_ASSERT(dataID);
+
+    return mObj->create_sprite_2d_draw_id(dataID);
+}
+
+void RenderServer::ISprite2D::destroy_draw_id(Sprite2DDrawID drawID)
+{
+    LD_ASSERT(drawID);
+
+    mObj->destroy_sprite_2d_draw_id(drawID);
+}
+
+void RenderServer::ISprite2D::destroy_all_draw_id()
+{
+    mObj->destroy_all_sprite_2d_draw_id();
+}
+
+//
+// Mesh
+//
 
 bool RenderServer::IMesh::exists(MeshDataID dataID)
 {
-    return mObj->mMeshes.contains(dataID);
+    LD_ASSERT(dataID);
+
+    return mObj->mesh_exists(dataID);
 }
 
 MeshDataID RenderServer::IMesh::create_data_id(ModelBinary& binary)
 {
-    RStager stager(mObj->mDevice, RQUEUE_TYPE_GRAPHICS);
-
-    MeshDataID dataID = mObj->get_ruid();
-    MeshEntry* entry = heap_new<MeshEntry>(MEMORY_USAGE_RENDER);
-    mObj->mMeshes[dataID] = entry;
-
-    entry->mesh.create_from_binary(mObj->mDevice, stager, binary);
-    entry->dataID = dataID;
-    stager.submit(mObj->mDevice.get_graphics_queue());
-
-    return dataID;
+    return mObj->create_mesh_data_id(binary);
 }
 
 MeshDrawID RenderServer::IMesh::create_draw_id(MeshDataID dataID)
 {
-    auto ite = mObj->mMeshes.find(dataID);
+    LD_ASSERT(dataID);
 
-    if (ite == mObj->mMeshes.end())
-        return 0;
-
-    MeshEntry* entry = mObj->mMeshes[dataID];
-    MeshDrawID drawID = mObj->get_ruid();
-    entry->drawID.insert(drawID);
-    mObj->mDrawCallToMesh[drawID] = dataID;
-
-    return drawID;
+    return mObj->create_mesh_draw_id(dataID);
 }
 
-void RenderServer::IMesh::destroy_draw(MeshDrawID drawID)
+void RenderServer::IMesh::destroy_draw_id(MeshDrawID drawID)
 {
-    auto ite = mObj->mDrawCallToMesh.find(drawID);
+    LD_ASSERT(drawID);
 
-    if (ite == mObj->mDrawCallToMesh.end())
-        return;
-
-    RUID meshID = mObj->mDrawCallToMesh[drawID];
-    MeshEntry* entry = mObj->mMeshes[meshID];
-
-    entry->drawID.erase(drawID);
+    mObj->destroy_mesh_draw_id(drawID);
 }
 
-RenderServer::IMesh RenderServer::mesh()
+void RenderServer::IMesh::destroy_all_data_id()
 {
-    return RenderServer::IMesh(mObj);
+    mObj->destroy_all_mesh_data_id();
 }
+
+void RenderServer::IMesh::destroy_all_draw_id()
+{
+    mObj->destroy_all_mesh_draw_id();
+}
+
+//
+// Cubemap
+//
 
 CubemapDataID RenderServer::ICubemap::create_data_id(Bitmap cubemapFaces)
 {
-    RSamplerInfo cubemapSamplerI{};
-    cubemapSamplerI.filter = RFILTER_LINEAR;
-    cubemapSamplerI.mipmapFilter = RFILTER_LINEAR;
-    cubemapSamplerI.addressMode = RSAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    LD_ASSERT(cubemapFaces);
 
-    RDevice device = mObj->mDevice;
-    RImageInfo imageI = RUtil::make_cube_image_info(RIMAGE_USAGE_SAMPLED_BIT | RIMAGE_USAGE_TRANSFER_DST_BIT, RFORMAT_RGBA8, cubemapFaces.width(), cubemapSamplerI);
-    RImage cubemap = device.create_image(imageI);
-    RStager stager(device, RQUEUE_TYPE_GRAPHICS);
-    stager.add_image_data(cubemap, cubemapFaces.data(), RIMAGE_LAYOUT_SHADER_READ_ONLY);
-    stager.submit(device.get_graphics_queue());
-
-    CubemapDataID dataID = mObj->get_ruid();
-    mObj->mCubemaps[dataID] = cubemap;
-
-    return dataID;
+    return mObj->create_cubemap_data_id(cubemapFaces);
 }
 
 void RenderServer::ICubemap::destroy_data_id(CubemapDataID dataID)
 {
-    auto ite = mObj->mCubemaps.find(dataID);
+    LD_ASSERT(dataID);
 
-    if (ite == mObj->mCubemaps.end())
-        return;
-
-    RImage cubemap = ite->second;
-    mObj->mCubemaps.erase(ite);
-
-    mObj->mDevice.wait_idle();
-    mObj->mDevice.destroy_image(cubemap);
-}
-
-RenderServer::ICubemap RenderServer::cubemap()
-{
-    return RenderServer::ICubemap(mObj);
+    mObj->destroy_cubemap_data_id(dataID);
 }
 
 } // namespace LD
