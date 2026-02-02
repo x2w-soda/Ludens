@@ -29,21 +29,21 @@ void eui_inspect_audio_source_component(InspectorWindowObj& self, ComponentType 
 {
     LD_ASSERT(type == COMPONENT_TYPE_AUDIO_SOURCE);
 
-    EditorTheme editorTheme = self.ctx.get_settings().get_theme();
+    EditorTheme theme = self.ctx.get_settings().get_theme();
     AssetManager AM = self.ctx.get_asset_manager();
-    const float rowHeight = editorTheme.get_text_row_height();
-    const float propNameWidth = editorTheme.get_text_label_width();
+    const float rowHeight = theme.get_text_row_height();
+    const float propNameWidth = theme.get_text_label_width();
 
     AudioSourceComponent* sourceC = (AudioSourceComponent*)comp;
     AudioClipAsset clipA(AM.get_asset(sourceC->clipAUID).unwrap());
     LD_ASSERT(clipA);
 
-    if (eui_asset_slot(editorTheme, ASSET_TYPE_AUDIO_CLIP, sourceC->clipAUID, clipA.get_name()))
+    if (eui_asset_slot(theme, ASSET_TYPE_AUDIO_CLIP, sourceC->clipAUID, clipA.get_name()))
         self.request_new_asset(ASSET_TYPE_AUDIO_CLIP, sourceC->clipAUID);
 
     UILayoutInfo layoutI{};
     layoutI.childAxis = UI_AXIS_X;
-    layoutI.childGap = 6.0f;
+    layoutI.childGap = theme.get_padding();
     layoutI.sizeX = UISize::grow();
     layoutI.sizeY = UISize::fit();
     ui_push_panel();

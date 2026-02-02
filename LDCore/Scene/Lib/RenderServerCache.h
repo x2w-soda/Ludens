@@ -7,11 +7,9 @@
 #include <Ludens/DataRegistry/DataComponent.h>
 #include <Ludens/RenderServer/RenderServer.h>
 
-#include <unordered_map>
-
 namespace LD {
 
-/// @brief Cache of render server resources.
+/// @brief Cache of render server resources. This class connects Scene, AssetManager, and RenderServer.
 class RenderServerCache
 {
 public:
@@ -22,7 +20,7 @@ public:
     void cleanup();
 
     /// @brief Get draw id associated with component.
-    MeshDrawID get_component_draw_id(CUID compID);
+    RUID get_component_draw_id(CUID compID);
 
     /// @brief Get component associated with draw id.
     CUID get_draw_id_component(RUID drawID);
@@ -77,9 +75,9 @@ private:
 private:
     RenderServer mServer{};
     AssetManager mAssetManager{};
-    HashMap<RUID, CUID> mRuidToCuid; /// map draw call to corresponding component
-    HashMap<CUID, RUID> mCuidToRuid; /// map component to corresponding draw call
-    HashMap<AUID, RUID> mAuidToRuid; /// map asset to GPU resource
+    HashMap<RUID, CUID> mDrawToCuid; /// map RenderServer draw ID to component
+    HashMap<CUID, RUID> mCuidToDraw; /// map component to RenderServer draw ID
+    HashMap<AUID, RUID> mAuidToData; /// map asset to RenderServer data ID
 };
 
 } // namespace LD

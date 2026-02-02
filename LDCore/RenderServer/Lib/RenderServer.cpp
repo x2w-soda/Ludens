@@ -695,9 +695,6 @@ void RenderServerObj::destroy_all_sprite_2d_draw_id()
 {
     LD_PROFILE_SCOPE;
 
-    // all draws are out of date.
-    destroy_all_sprite_2d_draw_id();
-
     for (auto it : mSprite2DDraw)
         mSprite2DDrawPA.free(it.second);
 
@@ -709,6 +706,9 @@ void RenderServerObj::destroy_all_sprite_2d_data_id()
     LD_PROFILE_SCOPE;
 
     mDevice.wait_idle();
+
+    // all draws are out of date.
+    destroy_all_sprite_2d_draw_id();
 
     for (auto ite : mSpriteData)
     {

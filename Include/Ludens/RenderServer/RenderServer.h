@@ -161,10 +161,7 @@ struct RenderServer : Handle<struct RenderServerObj>
     };
 
     /// @brief Access render server Sprite2D interface.
-    ISprite2D sprite_2d()
-    {
-        return RenderServer::ISprite2D(mObj);
-    }
+    inline ISprite2D sprite_2d() { return RenderServer::ISprite2D(mObj); }
 
     struct IMesh : Handle<struct RenderServerObj>
     {
@@ -177,10 +174,7 @@ struct RenderServer : Handle<struct RenderServerObj>
     };
 
     /// @brief Access render server mesh interface.
-    IMesh mesh()
-    {
-        return RenderServer::IMesh(mObj);
-    }
+    inline IMesh mesh() { return RenderServer::IMesh(mObj); }
 
     struct ICubemap : Handle<struct RenderServerObj>
     {
@@ -189,10 +183,7 @@ struct RenderServer : Handle<struct RenderServerObj>
     };
 
     /// @brief Access render server cubemap interface.
-    inline ICubemap cubemap()
-    {
-        return RenderServer::ICubemap(mObj);
-    }
+    inline ICubemap cubemap() { return RenderServer::ICubemap(mObj); }
 };
 
 } // namespace LD

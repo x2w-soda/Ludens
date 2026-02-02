@@ -10,9 +10,9 @@ void RenderServerCache::startup(RenderServer server, AssetManager assetManager)
 {
     mServer = server;
     mAssetManager = assetManager;
-    mRuidToCuid.clear();
-    mCuidToRuid.clear();
-    mAuidToRuid.clear();
+    mDrawToCuid.clear();
+    mCuidToDraw.clear();
+    mAuidToData.clear();
 }
 
 void RenderServerCache::cleanup()
@@ -46,13 +46,15 @@ void RenderServerCache::ISprite2D::set_texture_2d_asset(AUID textureAUID)
 
 MeshDataID RenderServerCache::get_or_create_mesh_data(AUID meshAUID)
 {
+    RenderServer::IMesh mesh = mServer.mesh();
     MeshAsset meshA = (MeshAsset)mAssetManager.get_asset(meshAUID, ASSET_TYPE_MESH);
     LD_ASSERT(meshA);
 
-    if (!mAuidToRuid.contains(meshAUID))
-        mAuidToRuid[meshAUID] = mServer.mesh().create_data_id(*meshA.data());
+    if (!mAuidToData.contains(meshAUID))
+        mAuidToData[meshAUID] = mesh.create_data_id(*meshA.data());
 
-    return mAuidToRuid[meshAUID];
+    LD_ASSERT(mesh.exists(mAuidToData[meshAUID]));
+    return mAuidToData[meshAUID];
 }
 
 MeshDrawID RenderServerCache::invalidate_mesh_draw_id(MeshDataID dataID, CUID compID)
@@ -62,48 +64,58 @@ MeshDrawID RenderServerCache::invalidate_mesh_draw_id(MeshDataID dataID, CUID co
     if (!mesh.exists(dataID))
         return 0;
 
-    auto ite = mCuidToRuid.find(compID);
-    if (ite != mCuidToRuid.end())
+    auto ite = mCuidToDraw.find(compID);
+    if (ite != mCuidToDraw.end())
     {
         MeshDrawID oldDrawID = ite->second;
         mesh.destroy_draw_id(oldDrawID);
-        mRuidToCuid.erase(oldDrawID);
-        mCuidToRuid.erase(compID);
+        mDrawToCuid.erase(oldDrawID);
     }
 
     MeshDrawID drawID = mesh.create_draw_id(dataID);
-    mRuidToCuid[drawID] = compID;
-    mCuidToRuid[compID] = drawID;
+    mDrawToCuid[drawID] = compID;
+    mCuidToDraw[compID] = drawID;
 
     return drawID;
 }
 
 Sprite2DDataID RenderServerCache::get_or_create_sprite_data(AUID textureAUID)
 {
+    RenderServer::ISprite2D sprite2D = mServer.sprite_2d();
     Texture2DAsset textureA = (Texture2DAsset)mAssetManager.get_asset(textureAUID, ASSET_TYPE_TEXTURE_2D);
     LD_ASSERT(textureA);
 
-    if (!mAuidToRuid.contains(textureAUID))
-        mAuidToRuid[textureAUID] = mServer.sprite_2d().create_data_id(textureA.get_bitmap());
+    if (!mAuidToData.contains(textureAUID))
+        mAuidToData[textureAUID] = sprite2D.create_data_id(textureA.get_bitmap());
 
-    return mAuidToRuid[textureAUID];
+    LD_ASSERT(sprite2D.exists(mAuidToData[textureAUID]));
+    return mAuidToData[textureAUID];
 }
 
 Sprite2DDrawID RenderServerCache::invalidate_sprite_2d_draw_id(Sprite2DDataID dataID, CUID compID)
 {
     RenderServer::ISprite2D sprite2D = mServer.sprite_2d();
 
-    // TODO: destroy old draw_id
+    auto ite = mCuidToDraw.find(compID);
+    if (ite != mCuidToDraw.end())
+    {
+        Sprite2DDrawID oldDrawID = ite->second;
+        sprite2D.destroy_draw_id(oldDrawID);
+        mDrawToCuid.erase(oldDrawID);
+    }
+
     Sprite2DDrawID drawID = sprite2D.create_draw_id(dataID);
+    mDrawToCuid[drawID] = compID;
+    mCuidToDraw[compID] = drawID;
 
     return drawID;
 }
 
 RUID RenderServerCache::get_component_draw_id(CUID compID)
 {
-    auto ite = mCuidToRuid.find(compID);
+    auto ite = mCuidToDraw.find(compID);
 
-    if (ite == mCuidToRuid.end())
+    if (ite == mCuidToDraw.end())
         return 0;
 
     return ite->second;
@@ -111,9 +123,9 @@ RUID RenderServerCache::get_component_draw_id(CUID compID)
 
 CUID RenderServerCache::get_draw_id_component(RUID drawID)
 {
-    auto ite = mRuidToCuid.find(drawID);
+    auto ite = mDrawToCuid.find(drawID);
 
-    if (ite == mRuidToCuid.end())
+    if (ite == mDrawToCuid.end())
         return 0;
 
     return ite->second;
