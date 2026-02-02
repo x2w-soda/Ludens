@@ -19,7 +19,6 @@ struct SceneObj
     DataRegistry registry;
     DataRegistry registryBack;
     AssetManager assetManager{};
-    AudioServer audioServer{};
     AudioServerCache audioServerCache;
     RenderServerCache renderServerCache;
     LuaScript::Context luaContext{};

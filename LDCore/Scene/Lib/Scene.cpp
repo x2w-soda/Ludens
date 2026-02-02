@@ -1,4 +1,5 @@
 #include <Ludens/Camera/Camera.h>
+#include <Ludens/DSA/Vector.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Header/Math/Math.h>
 #include <Ludens/Lua/LuaModule.h>
@@ -8,7 +9,6 @@
 #include <Ludens/Scene/Scene.h>
 
 #include <iostream>
-#include <vector>
 
 #include "AudioServerCache.h"
 #include "LuaScript.h"
@@ -62,15 +62,13 @@ static void load_audio_source_component(SceneObj* scene, ComponentBase* base, vo
 
     if (sourceC->clipAUID)
     {
-        AudioClipAsset clipA = (AudioClipAsset)scene->assetManager.get_asset(sourceC->clipAUID, ASSET_TYPE_AUDIO_CLIP);
-
         // NOTE: Buffer not destroyed upon component unload.
         //       Other components may still be using it for playback.
-        AudioBuffer buffer = scene->audioServerCache.get_or_create_audio_buffer(clipA);
+        AudioBuffer buffer = scene->audioServerCache.get_or_create_audio_buffer(sourceC->clipAUID);
 
         if (buffer)
         {
-            sourceC->playback = scene->audioServer.create_playback(buffer, sourceC->pan, sourceC->volumeLinear);
+            sourceC->playback = scene->audioServerCache.create_playback(buffer, sourceC);
         }
     }
 }
@@ -81,7 +79,7 @@ static void unload_audio_source_component(SceneObj* scene, ComponentBase* base, 
 
     if (sourceC->playback)
     {
-        scene->audioServer.destroy_playback(sourceC->playback);
+        scene->audioServerCache.destroy_playback(sourceC->playback);
     }
 }
 
@@ -91,7 +89,7 @@ static void cleanup_audio_source_component(SceneObj* scene, ComponentBase* base,
 
     if (sourceC->playback)
     {
-        scene->audioServer.stop_playback(sourceC->playback);
+        scene->audioServerCache.stop_playback(sourceC->playback);
     }
 }
 
@@ -268,8 +266,7 @@ Scene Scene::create(const SceneInfo& sceneI)
     sScene->registry = DataRegistry::create();
     sScene->assetManager = sceneI.assetManager;
     sScene->renderServerCache.startup(sceneI.renderServer, sceneI.assetManager);
-    sScene->audioServer = sceneI.audioServer;
-    sScene->audioServerCache.startup(sceneI.audioServer);
+    sScene->audioServerCache.startup(sceneI.audioServer, sceneI.assetManager);
 
     return Scene(sScene);
 }
@@ -321,7 +318,7 @@ void Scene::reset()
     mObj->mainCameraCUID = 0;
 
     mObj->renderServerCache.destroy_all_draw_id();
-    
+
     mObj->registry = DataRegistry::create();
 }
 
@@ -455,7 +452,7 @@ void Scene::update(const Vec2& screenExtent, float delta)
     }
 
     // any heap allocations for audio is done on main thread.
-    mObj->audioServer.update();
+    mObj->audioServerCache.update();
 }
 
 Camera Scene::get_camera()
@@ -578,7 +575,7 @@ void Scene::IAudioSource::play()
     if (!mComp)
         return;
 
-    sScene->audioServer.start_playback(mComp->playback);
+    sScene->audioServerCache.start_playback(mComp->playback);
 }
 
 void Scene::IAudioSource::pause()
@@ -586,7 +583,7 @@ void Scene::IAudioSource::pause()
     if (!mComp)
         return;
 
-    sScene->audioServer.pause_playback(mComp->playback);
+    sScene->audioServerCache.pause_playback(mComp->playback);
 }
 
 void Scene::IAudioSource::resume()
@@ -594,7 +591,7 @@ void Scene::IAudioSource::resume()
     if (!mComp)
         return;
 
-    sScene->audioServer.resume_playback(mComp->playback);
+    sScene->audioServerCache.resume_playback(mComp->playback);
 }
 
 void Scene::IAudioSource::set_clip_asset(AUID clipAUID)
@@ -608,7 +605,7 @@ void Scene::IAudioSource::set_clip_asset(AUID clipAUID)
     if (buffer)
     {
         mComp->clipAUID = clipAUID;
-        sScene->audioServer.set_playback_buffer(mComp->playback, buffer);
+        sScene->audioServerCache.set_playback_buffer(mComp->playback, buffer);
     }
 }
 

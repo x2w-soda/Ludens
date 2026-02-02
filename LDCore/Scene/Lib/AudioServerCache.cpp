@@ -2,9 +2,10 @@
 
 namespace LD {
 
-void AudioServerCache::startup(AudioServer server)
+void AudioServerCache::startup(AudioServer server, AssetManager manager)
 {
     mServer = server;
+    mAssetManager = manager;
     mClipToBuffer.clear();
 }
 
@@ -23,12 +24,12 @@ void AudioServerCache::cleanup()
     mServer = {};
 }
 
-AudioBuffer AudioServerCache::get_or_create_audio_buffer(AudioClipAsset clipA)
+AudioBuffer AudioServerCache::get_or_create_audio_buffer(AUID clipAUID)
 {
+    AudioClipAsset clipA = (AudioClipAsset)mAssetManager.get_asset(clipAUID, ASSET_TYPE_AUDIO_CLIP);
+
     if (!clipA)
         return {};
-
-    AUID clipAUID = clipA.get_auid();
 
     if (mClipToBuffer.contains(clipAUID))
         return mClipToBuffer[clipAUID];
