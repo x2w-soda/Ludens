@@ -78,7 +78,7 @@ struct Transform2D
     /// @brief Get transform matrix for homogeneous 2D.
     inline Mat3 as_mat3() const
     {
-        return Mat3::translate_2d(position) * Mat3::rotate_2d(rotation) * Mat3::scale_2d(scale);
+        return Mat3::translate_2d(position) * Mat3::rotate_2d(LD_TO_RADIANS(rotation)) * Mat3::scale_2d(scale);
     }
 };
 

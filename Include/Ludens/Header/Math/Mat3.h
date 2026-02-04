@@ -127,10 +127,10 @@ struct TMat3
 
     /// @brief Create rotation matrix for homogeneous 2D.
     /// @note For screen space with top-left origin, the rotation will appear clockwise.
-    static inline TMat3 rotate_2d(float degrees)
+    static inline TMat3 rotate_2d(T radians)
     {
-        T c = (T)LD_COS((T)LD_TO_RADIANS(degrees));
-        T s = (T)LD_SIN((T)LD_TO_RADIANS(degrees));
+        T c = (T)LD_COS(radians);
+        T s = (T)LD_SIN(radians);
 
         return TMat3<T>(TVec3<T>(c, s, 0), TVec3<T>(-s, c, 0), TVec3<T>(0, 0, 1));
     }

@@ -51,6 +51,7 @@ struct alignas(TVEC4_ALIGNMENT) TVec4
     TVec4() = default;
     TVec4(T v) : x((T)v), y((T)v), z((T)v), w((T)v) {}
     TVec4(T x, T y, T z, T w) : x(x), y(y), z(z), w(w) {}
+    TVec4(const TVec2<T>& v, T z, T w) : x(v.x), y(v.y), z(z), w(w) {}
     TVec4(const TVec2<T>& v1, const TVec2<T>& v2) : x(v1.x), y(v1.y), z(v2.x), w(v2.y) {}
 	TVec4(const TVec3<T>& v, T w) : x(v.x), y(v.y), z(v.z), w(w) {}
 	TVec4(T x, const TVec3<T>& v) : x(x), y(v.x), z(v.y), w(v.z) {}

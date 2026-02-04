@@ -690,7 +690,7 @@ TEST_CASE("Mat3 method")
     CHECK(p2 == Vec3(-15.0f, 8.0f, 1.0f));
 
     p2 = Vec3(3.0f, 4.0f, 1.0f);
-    m3 = Mat3::rotate_2d(90.0f);
+    m3 = Mat3::rotate_2d(LD_TO_RADIANS(90.0f));
     p2 = m3 * p2;
     CHECK(p2 == Vec3(-4.0f, 3.0f, 1.0f));
 }
