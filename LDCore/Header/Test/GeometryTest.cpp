@@ -1,7 +1,6 @@
-#pragma once
-
 #include <Extra/doctest/doctest.h>
 #include <Ludens/Header/Math/Geometry.h>
+
 using namespace LD;
 
 TEST_CASE("Geometry Ray")

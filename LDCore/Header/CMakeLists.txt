@@ -6,6 +6,7 @@ set(MODULE_INCLUDE
     ${LUDENS_INCLUDE_DIR}/Ludens/Header/Bitwise.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Header/View.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Header/Handle.h
+    ${LUDENS_INCLUDE_DIR}/Ludens/Header/IDHandle.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Header/Platform.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Header/SIMD.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Header/Math/Math.h
@@ -23,9 +24,10 @@ set(MODULE_INCLUDE
 set(MODULE_TEST
     ${MODULE_INCLUDE}
     Test/HeaderTest.cpp
-    Test/TestHash.h
-    Test/TestGeometry.h
-    Test/TestColor.h
+    Test/HashTest.cpp
+    Test/GeometryTest.cpp
+    Test/ColorTest.cpp
+    Test/IDHandleTest.cpp
 )
 
 add_executable(${MODULE_TEST_NAME}

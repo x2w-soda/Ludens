@@ -8,10 +8,8 @@
 #include <Ludens/Header/Math/Vec2.h>
 #include <Ludens/Header/Math/Vec3.h>
 #include <Ludens/Header/Math/Vec4.h>
+
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
-#include "TestColor.h"
-#include "TestGeometry.h"
-#include "TestHash.h"
 #include <Extra/doctest/doctest.h>
 
 using namespace LD;

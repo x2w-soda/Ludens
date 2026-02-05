@@ -1,5 +1,3 @@
-#pragma once
-
 #include <Extra/doctest/doctest.h>
 #include <Ludens/Header/Color.h>
 
