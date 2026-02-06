@@ -13,7 +13,7 @@ namespace LD {
 class RenderServerCache
 {
 public:
-    /// @brief In-place startup, connect to audio server.
+    /// @brief In-place startup, connect to render server.
     void startup(RenderServer server, AssetManager assetManager);
 
     /// @brief In-place cleanup, destroys all resources from render server.
@@ -25,59 +25,28 @@ public:
     /// @brief Get component associated with draw id.
     CUID get_draw_id_component(RUID drawID);
 
-    /// @brief Destroys all draw ids across all types. Data ids are not affected.
-    void destroy_all_draw_id();
-
-    class IMesh
+    inline RUID create_screen_layer(const std::string& name)
     {
-    public:
-        IMesh(RenderServerCache* cache, MeshComponent* comp, CUID cuid)
-            : mCache(cache), mComp(comp), mCUID(cuid) {}
-
-        void set_mesh_asset(AUID meshAUID);
-
-    private:
-        RenderServerCache* mCache;
-        MeshComponent* mComp;
-        CUID mCUID;
-    };
-
-    inline IMesh mesh(MeshComponent* comp, CUID cuid)
-    {
-        return IMesh(this, comp, cuid);
+        return mServer.create_screen_layer(name);
     }
 
-    class ISprite2D
+    inline void destroy_screen_layer(RUID layerID)
     {
-    public:
-        ISprite2D(RenderServerCache* cache, Sprite2DComponent* comp, CUID cuid)
-            : mCache(cache), mComp(comp), mCUID(cuid) {}
-
-        void set_texture_2d_asset(AUID textureAUID);
-
-    private:
-        RenderServerCache* mCache;
-        Sprite2DComponent* mComp;
-        CUID mCUID;
-    };
-
-    inline ISprite2D sprite_2d(Sprite2DComponent* comp, CUID cuid)
-    {
-        return ISprite2D(this, comp, cuid);
+        mServer.destroy_screen_layer(layerID);
     }
 
-private:
-    MeshDataID get_or_create_mesh_data(AUID meshAUID);
-    MeshDrawID invalidate_mesh_draw_id(MeshDataID dataID, CUID compID);
-    Sprite2DDataID get_or_create_sprite_data(AUID textureAUID);
-    Sprite2DDrawID invalidate_sprite_2d_draw_id(Sprite2DDataID dataID, CUID compID);
+    MeshData get_or_create_mesh_data(AUID meshAUID);
+    MeshDraw create_mesh_draw(CUID compID, AUID meshAUID = 0);
+    Image2D get_or_create_image_2d(AUID textureAUID);
+    Sprite2DDraw create_sprite_draw(CUID compID, RUID layerID, AUID textureAUID = 0);
 
 private:
     RenderServer mServer{};
     AssetManager mAssetManager{};
     HashMap<RUID, CUID> mDrawToCuid; /// map RenderServer draw ID to component
     HashMap<CUID, RUID> mCuidToDraw; /// map component to RenderServer draw ID
-    HashMap<AUID, RUID> mAuidToData; /// map asset to RenderServer data ID
+    HashMap<AUID, MeshData> mMeshData;
+    HashMap<AUID, Image2D> mImage2D;
 };
 
 } // namespace LD

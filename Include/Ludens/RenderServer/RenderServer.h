@@ -8,22 +8,16 @@
 #include <Ludens/RenderBackend/RBackend.h>
 #include <Ludens/RenderComponent/SceneOverlayComponent.h>
 #include <Ludens/RenderComponent/ScreenRenderComponent.h>
-#include <Ludens/RenderServer/ScreenLayer.h>
+#include <Ludens/RenderServer/RenderServerObj.h>
+
+#include <string>
 
 namespace LD {
-
-/// @brief Unique identifier distributed by the render server, zero is invalid ID
-typedef uint32_t RUID;
-typedef RUID CubemapDataID;
-typedef RUID MeshDataID;
-typedef RUID MeshDrawID;
-typedef RUID Sprite2DDataID;
-typedef RUID Sprite2DDrawID;
 
 typedef void (*ScreenRenderCallback)(ScreenRenderComponent renderer, void* user);
 typedef void (*RenderServerEditorRenderCallback)(ScreenRenderComponent renderer, void* user);
 typedef void (*RenderServerEditorScenePickCallback)(SceneOverlayGizmoID gizmoID, RUID ruid, void* user);
-typedef Mat4 (*RenderServerTransformCallback)(RUID ruid, void* user);
+typedef Mat4 (*RenderServerMat4Callback)(RUID ruid, void* user);
 typedef void (*RenderServerScreenPassCallback)(ScreenRenderComponent renderer, void* user);
 
 /// @brief Render server creation info
@@ -58,9 +52,9 @@ struct RenderServerSceneGizmoColor
 /// @brief Info for the server to render the game scene
 struct RenderServerScenePass
 {
-    RenderServerTransformCallback transformCallback; /// callback for server to grab the transform of objects
-    void* user;                                      /// user of the scene render pass
-    bool hasSkybox;                                  /// whether to draw skybox with the environment cubemap
+    RenderServerMat4Callback mat4Callback; /// callback for server to grab the model matrix of 3D objects
+    void* user;                            /// user of the scene render pass
+    bool hasSkybox;                        /// whether to draw skybox with the environment cubemap
 
     // optional overlay rendering for gizmos and object outlining
     struct
@@ -77,8 +71,9 @@ struct RenderServerScenePass
 /// @brief Info for the server to render in screen space on top of scene.
 struct RenderServerScreenPass
 {
-    RenderServerScreenPassCallback callback;
-    void* user; /// user of the scene screen pass
+    RenderServerMat4Callback mat4Callback;   /// callback for server to grab the model matrix of 2D objects
+    RenderServerScreenPassCallback callback; /// optional hook to render on top of all ScreenLayers
+    void* user;                              /// user of the scene screen pass
 };
 
 /// @brief Info for the server to render the editor
@@ -109,7 +104,7 @@ struct RenderServerEditorDialogPass
 
 /// @brief Render server handle. This is the top-level graphics abstraction,
 ///        Renderer resources are managed internally and are identified via a RUID.
-struct RenderServer : Handle<struct RenderServerObj>
+struct RenderServer : Handle<class RenderServerObj>
 {
     /// @brief Create the render server
     static RenderServer create(const RenderServerInfo& serverI);
@@ -140,50 +135,30 @@ struct RenderServer : Handle<struct RenderServerObj>
     ///        Not used in game Runtime.
     void editor_overlay_pass(const RenderServerEditorOverlayPass& editorPass);
 
+    /// @brief Optional pass for the Editor to render a dialog window.
     void editor_dialog_pass(const RenderServerEditorDialogPass& dialogPass);
-
-    /// @brief Create standalone image from bitmap.
-    RImage create_image(Bitmap bitmap);
-
-    /// @brief Destroy standalone image.
-    void destroy_image(RImage image);
 
     /// @brief Get the image handle of the font atlas image (RIMAGE_LAYOUT_SHADER_READ_ONLY).
     RImage get_font_atlas_image();
 
-    struct ISprite2D : Handle<struct RenderServerObj>
-    {
-        bool exists(Sprite2DDataID dataID);
-        Sprite2DDataID create_data_id(Bitmap bitmap);
-        Sprite2DDrawID create_draw_id(Sprite2DDataID dataID);
-        void destroy_draw_id(Sprite2DDrawID drawID);
-        void destroy_all_draw_id();
-    };
+    Image2D create_image_2d(Bitmap bitmap);
+    void destroy_image_2d(Image2D image);
 
-    /// @brief Access render server Sprite2D interface.
-    inline ISprite2D sprite_2d() { return RenderServer::ISprite2D(mObj); }
+    ImageCube create_image_cube(Bitmap cubemapFaces);
+    void destroy_image_cube(ImageCube image);
 
-    struct IMesh : Handle<struct RenderServerObj>
-    {
-        bool exists(MeshDataID dataID);
-        MeshDataID create_data_id(ModelBinary& binary);
-        MeshDrawID create_draw_id(MeshDataID dataID);
-        void destroy_draw_id(MeshDrawID drawID);
-        void destroy_all_data_id();
-        void destroy_all_draw_id();
-    };
+    RUID create_screen_layer(const std::string& name);
+    void destroy_screen_layer(RUID layer);
 
-    /// @brief Access render server mesh interface.
-    inline IMesh mesh() { return RenderServer::IMesh(mObj); }
+    Sprite2DDraw create_sprite_2d_draw(Image2D image2D, RUID layer, const Rect& rect, uint32_t zDepth);
+    void destroy_sprite_2d_draw(Sprite2DDraw draw);
 
-    struct ICubemap : Handle<struct RenderServerObj>
-    {
-        CubemapDataID create_data_id(Bitmap cubemapFaces);
-        void destroy_data_id(CubemapDataID dataID);
-    };
+    MeshData create_mesh_data(ModelBinary& binary);
+    void destroy_mesh_data(MeshData data);
 
-    /// @brief Access render server cubemap interface.
-    inline ICubemap cubemap() { return RenderServer::ICubemap(mObj); }
+    MeshDraw create_mesh_draw();
+    MeshDraw create_mesh_draw(MeshData data);
+    void destroy_mesh_draw(MeshDraw draw);
 };
 
 } // namespace LD

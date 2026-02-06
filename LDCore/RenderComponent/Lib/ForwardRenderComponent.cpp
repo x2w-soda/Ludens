@@ -81,6 +81,8 @@ void ForwardRenderComponentObj::init(RDevice device)
 
 void ForwardRenderComponentObj::draw_mesh_ex(RCommandList list, RMesh& mesh)
 {
+    LD_PROFILE_SCOPE;
+
     list.cmd_bind_vertex_buffers(0, 1, &mesh.vbo);
     list.cmd_bind_index_buffer(mesh.ibo, RINDEX_TYPE_U32);
     list.cmd_bind_graphics_pipeline(meshPipeline);
