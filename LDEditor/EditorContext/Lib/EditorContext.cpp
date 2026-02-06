@@ -32,7 +32,7 @@ struct EditorContextObj
 {
     RenderServer renderServer;     /// render server handle
     AudioServer audioServer;       /// audio server handle
-    RImage iconAtlas;              /// editor icon atlas handle
+    Image2D iconAtlas;             /// editor icon atlas handle
     Project project;               /// current project under edit
     Scene scene;                   /// current scene under edit
     AssetManager assetManager;     /// loads assets for the scene
@@ -393,7 +393,7 @@ void EditorContext::destroy(EditorContext ctx)
 
     if (obj->iconAtlas)
     {
-        obj->renderServer.destroy_image(obj->iconAtlas);
+        obj->renderServer.destroy_image_2d(obj->iconAtlas);
         obj->iconAtlas = {};
     }
 
@@ -413,7 +413,7 @@ void EditorContext::destroy(EditorContext ctx)
     heap_delete<EditorContextObj>(obj);
 }
 
-Mat4 EditorContext::render_server_transform_callback(RUID ruid, void* user)
+Mat4 EditorContext::render_server_mat4_callback(RUID ruid, void* user)
 {
     EditorContextObj& self = *(EditorContextObj*)user;
 
@@ -513,11 +513,12 @@ RImage EditorContext::get_editor_icon_atlas()
     {
         std::string iconAtlasPath = mObj->iconAtlasPath.string();
         Bitmap tmpBitmap = Bitmap::create_from_path(iconAtlasPath.c_str(), false);
-        mObj->iconAtlas = mObj->renderServer.create_image(tmpBitmap);
+        mObj->iconAtlas = mObj->renderServer.create_image_2d(tmpBitmap);
         Bitmap::destroy(tmpBitmap);
     }
 
-    return mObj->iconAtlas;
+    LD_ASSERT(mObj->iconAtlas);
+    return RImage(mObj->iconAtlas.unwrap());
 }
 
 Scene EditorContext::get_scene()
@@ -661,9 +662,9 @@ bool EditorContext::set_component_transform(CUID compID, const TransformEx& tran
     return mObj->scene.set_component_transform(compID, transform);
 }
 
-bool EditorContext::get_component_transform_mat4(CUID compID, Mat4& worldMat4)
+bool EditorContext::get_component_world_mat4(CUID compID, Mat4& worldMat4)
 {
-    return mObj->scene.get_component_transform_mat4(compID, worldMat4);
+    return mObj->scene.get_component_world_mat4(compID, worldMat4);
 }
 
 UILayoutInfo EditorContext::make_vbox_layout()

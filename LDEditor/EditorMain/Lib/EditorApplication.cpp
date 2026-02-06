@@ -45,7 +45,7 @@ EditorApplication::EditorApplication()
 
     RDeviceInfo deviceI{};
     deviceI.backend = RDEVICE_BACKEND_VULKAN;
-    deviceI.vsync = true; // TODO: config
+    deviceI.vsync = false; // TODO: config
     mRDevice = RDevice::create(deviceI);
 
     RenderServerInfo serverI{};
@@ -69,7 +69,7 @@ EditorApplication::EditorApplication()
             facePathsCstr[i] = facePaths[i].c_str();
 
         Bitmap tmpCubemapFaces = Bitmap::create_cubemap_from_paths(facePathsCstr.data());
-        mEnvCubemap = mRenderServer.cubemap().create_data_id(tmpCubemapFaces);
+        mEnvCubemap = mRenderServer.create_image_cube(tmpCubemapFaces);
         Bitmap::destroy(tmpCubemapFaces);
     }
 
@@ -87,7 +87,7 @@ EditorApplication::EditorApplication()
     uiI.fontAtlas = mFontAtlas;
     uiI.fontAtlasImage = mRenderServer.get_font_atlas_image();
     uiI.renderServer = mRenderServer;
-    uiI.envCubemap = mEnvCubemap;
+    uiI.envCubemap = mEnvCubemap.get_id();
     uiI.screenWidth = (uint32_t)screenExtent.x;
     uiI.screenHeight = (uint32_t)screenExtent.y;
     uiI.barHeight = 22;
@@ -101,7 +101,8 @@ EditorApplication::~EditorApplication()
     mEditorUI.cleanup();
 
     mRDevice.wait_idle();
-    mRenderServer.cubemap().destroy_data_id(mEnvCubemap);
+    if (mEnvCubemap)
+        mRenderServer.destroy_image_cube(mEnvCubemap);
 
     EditorContext::destroy(mEditorCtx);
     AudioServer::destroy(mAudioServer);

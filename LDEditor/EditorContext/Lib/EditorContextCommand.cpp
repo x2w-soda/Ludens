@@ -86,19 +86,19 @@ void SetComponentAssetCommand::set_component_asset(CUID compID, AUID assetID)
     {
     case COMPONENT_TYPE_AUDIO_SOURCE:
     {
-        Scene::IAudioSource source((AudioSourceComponent*)comp);
+        Scene::AudioSource source((AudioSourceComponent*)comp);
         source.set_clip_asset(assetID);
         break;
     }
     case COMPONENT_TYPE_MESH:
     {
-        Scene::IMesh mesh(compID);
+        Scene::Mesh mesh((MeshComponent*)comp);
         mesh.set_mesh_asset(assetID);
         break;
     }
     case COMPONENT_TYPE_SPRITE_2D:
     {
-        Scene::ISprite2D sprite(compID);
+        Scene::Sprite2D sprite((Sprite2DComponent*)comp);
         sprite.set_texture_2d_asset(assetID);
         break;
     }

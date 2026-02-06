@@ -135,7 +135,7 @@ void EditorUI::submit_frame()
 
     // render game scene with overlay, the editor context is responsible for supplying object transforms
     RenderServerScenePass sceneP{};
-    sceneP.transformCallback = &EditorContext::render_server_transform_callback;
+    sceneP.mat4Callback = &EditorContext::render_server_mat4_callback;
     sceneP.user = mCtx.unwrap();
     sceneP.overlay.enabled = !mCtx.is_playing();
     sceneP.overlay.outlineRUID = mMain.get_viewport_outline_ruid();
@@ -149,6 +149,7 @@ void EditorUI::submit_frame()
 
     // render screen space items on top of game scene.
     RenderServerScreenPass screenP{};
+    screenP.mat4Callback = &EditorContext::render_server_mat4_callback;
     screenP.callback = nullptr;
     screenP.user = mCtx.unwrap();
     mRenderServer.screen_pass(screenP);

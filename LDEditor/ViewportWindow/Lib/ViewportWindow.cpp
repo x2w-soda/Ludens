@@ -160,7 +160,7 @@ bool ViewportWindowObj::get_component_world_pos(CUID compID, Vec3& worldPos, Mat
     if (!compID)
         return false;
 
-    if (!ctx.get_component_transform_mat4(compID, worldMat4))
+    if (!ctx.get_component_world_mat4(compID, worldMat4))
         return false;
 
     Vec3 localPos(0.0f);

@@ -30,7 +30,7 @@ private:
     Font mFont;
     FontAtlas mFontAtlas;
     RImage mFontAtlasImage;
-    CubemapDataID mEnvCubemap;
+    ImageCube mEnvCubemap;
 };
 
 } // namespace LD

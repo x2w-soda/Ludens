@@ -35,8 +35,8 @@ struct EditorContext : Handle<struct EditorContextObj>
     /// @brief Destroy the editor context.
     static void destroy(EditorContext ctx);
 
-    /// @brief Callback to inform the render server the transforms of RUIDs
-    static Mat4 render_server_transform_callback(RUID ruid, void* user);
+    /// @brief Callback to inform the render server the model matrix of RUIDs
+    static Mat4 render_server_mat4_callback(RUID ruid, void* user);
 
     /// @brief Redo most recent undo.
     void action_redo();
@@ -160,7 +160,7 @@ struct EditorContext : Handle<struct EditorContextObj>
     bool set_component_transform(CUID compID, const TransformEx& transform);
 
     /// @brief Get component world matrix.
-    bool get_component_transform_mat4(CUID compID, Mat4& worldMat4);
+    bool get_component_world_mat4(CUID compID, Mat4& worldMat4);
 
     /// @brief Default ui layout for vertical containers, taking editor theme into account.
     UILayoutInfo make_vbox_layout();
