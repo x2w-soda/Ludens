@@ -25,7 +25,7 @@ struct RuntimeContextObj
     AssetManager AM;
     Project project;
     Scene scene;
-    RUID envCubemapID = 0;
+    ImageCube envCubemap{};
 
     void render_frame(const Vec2& screenExtent);
 
@@ -41,16 +41,16 @@ void RuntimeContextObj::render_frame(const Vec2& screenExtent)
     frameI.mainCamera = scene.get_camera();
     frameI.screenExtent = screenExtent;
     frameI.sceneExtent = screenExtent;
-    frameI.envCubemap = envCubemapID;
+    frameI.envCubemap = envCubemap.get_id();
     frameI.clearColor = project.get_settings().get_rendering_settings().get_clear_color();
     renderServer.next_frame(frameI);
 
     // render game scene without editor overlay
     RenderServerScenePass sceneP{};
-    sceneP.transformCallback = &RuntimeContextObj::render_server_transform_callback;
+    sceneP.mat4Callback = &RuntimeContextObj::render_server_transform_callback;
     sceneP.user = this;
     sceneP.overlay.enabled = false;
-    sceneP.hasSkybox = envCubemapID != 0;
+    sceneP.hasSkybox = envCubemap.get_id() != 0;
     renderServer.scene_pass(sceneP);
 
     renderServer.submit_frame();
@@ -92,7 +92,7 @@ RuntimeContext RuntimeContext::create(const RuntimeContextInfo& info)
     {
         RDeviceInfo deviceI{};
         deviceI.backend = RDEVICE_BACKEND_VULKAN;
-        deviceI.vsync = true; // TODO expose
+        deviceI.vsync = false; // TODO expose
         obj->renderDevice = RDevice::create(deviceI);
     }
 
@@ -112,7 +112,7 @@ RuntimeContext RuntimeContext::create(const RuntimeContextInfo& info)
     obj->renderServer = RenderServer::create(serverI);
     obj->audioServer = AudioServer::create();
 
-    obj->envCubemapID = obj->renderServer.cubemap().create_data_id(textureCubeAsset.get_bitmap());
+    obj->envCubemap = obj->renderServer.create_image_cube(textureCubeAsset.get_bitmap());
 
     SceneInfo sceneI{};
     sceneI.assetManager = obj->AM;
@@ -135,7 +135,9 @@ void RuntimeContext::destroy(RuntimeContext ctx)
     LD_PROFILE_SCOPE;
 
     auto* obj = (RuntimeContextObj*)ctx.unwrap();
+    obj->renderDevice.wait_idle();
     obj->scene.cleanup();
+    obj->renderServer.destroy_image_cube(obj->envCubemap);
 
     Scene::destroy(obj->scene);
     AudioServer::destroy(obj->audioServer);
