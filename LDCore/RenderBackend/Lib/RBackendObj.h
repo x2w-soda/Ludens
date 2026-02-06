@@ -2,6 +2,7 @@
 
 #include <Ludens/Memory/Allocator.h>
 #include <Ludens/RenderBackend/RBackend.h>
+#include <Ludens/RenderBackend/RUID.h>
 #include <cstdint>
 #include <optional>
 #include <unordered_map>
@@ -48,15 +49,6 @@ enum RType
     RTYPE_ENUM_COUNT,
 };
 
-struct RObjectID
-{
-    // NOTE: not atomic, currently only main thread
-    //       may create and destroy objects
-    static uint64_t sCounter;
-
-    inline static uint64_t get() { return sCounter++; }
-};
-
 struct RBufferAPI
 {
     void (*map)(RBufferObj* self);
@@ -68,8 +60,8 @@ struct RBufferAPI
 /// @brief Base buffer object.
 struct RBufferObj
 {
+    RUID id;
     const RBufferAPI* api;
-    uint64_t rid;
     RDevice device;
     RBufferInfo info;
     void* hostMap;
@@ -78,7 +70,7 @@ struct RBufferObj
 /// @brief Base image object.
 struct RImageObj
 {
-    uint64_t rid;
+    RUID id;
     RDevice device;
     RImageInfo info;
     std::unordered_set<uint32_t> fboHashes;
@@ -87,7 +79,7 @@ struct RImageObj
 /// @brief Base render pass object.
 struct RPassObj
 {
-    uint64_t rid;
+    RUID id;
     Hash64 hash;
     uint32_t colorAttachmentCount;
     RSampleCountBit samples;
@@ -114,7 +106,7 @@ Hash64 hash64_framebuffer_info(const RFramebufferInfo& framebufferI);
 
 struct RFramebufferObj
 {
-    uint64_t rid;
+    RUID id;
     Hash64 hash;
     uint32_t width;
     uint32_t height;
@@ -152,8 +144,8 @@ struct RCommandListAPI
 /// @brief Base command list object.
 struct RCommandListObj
 {
+    RUID id;
     const RCommandListAPI* api;
-    uint64_t rid;
     RDeviceObj* deviceObj;
     RCommandPoolObj* poolObj; /// the command pool allocated from
     RPassInfoData currentPass;
@@ -170,8 +162,8 @@ struct RCommandPoolAPI
 /// @brief Base command pool object.
 struct RCommandPoolObj
 {
+    RUID id;
     const RCommandPoolAPI* api;
-    uint64_t rid;
     std::vector<RCommandList> lists;
     RDeviceObj* deviceObj;
     bool hintTransient;
@@ -181,7 +173,7 @@ struct RCommandPoolObj
 /// @brief Base shader object.
 struct RShaderObj
 {
-    uint64_t rid;
+    RUID id;
     RShaderType type;
     RShaderReflection reflection;
     std::vector<uint32_t> spirv;
@@ -190,7 +182,7 @@ struct RShaderObj
 /// @brief Base set layout object.
 struct RSetLayoutObj
 {
-    uint64_t rid;
+    RUID id;
     uint32_t hash;
     RDeviceObj* deviceObj;
     std::vector<RSetBindingInfo> bindings;
@@ -199,7 +191,7 @@ struct RSetLayoutObj
 /// @brief Base set object.
 struct RSetObj
 {
-    uint64_t rid; // TODO: unused
+    RUID id;
 };
 
 struct RSetPoolAPI
@@ -211,8 +203,8 @@ struct RSetPoolAPI
 /// @brief Base set pool object.
 struct RSetPoolObj
 {
+    RUID id;
     const RSetPoolAPI* api;
-    uint64_t rid;
     LinearAllocator setLA;
     RDeviceObj* deviceObj;
     RSetLayoutObj* layoutObj;
@@ -222,7 +214,7 @@ struct RSetPoolObj
 /// @brief Base pipeline layout object.
 struct RPipelineLayoutObj
 {
-    uint64_t rid;
+    RUID id;
     uint32_t hash;
     uint32_t setCount;
     RSetLayoutObj* setLayoutObjs[PIPELINE_LAYOUT_MAX_RESOURCE_SETS];
@@ -236,8 +228,8 @@ struct RPipelineAPI
 /// @brief Base pipeline object.
 struct RPipelineObj
 {
+    RUID id;
     const RPipelineAPI* api;
-    uint64_t rid;
     RDeviceObj* deviceObj;
     RPipelineLayoutObj* layoutObj;
     std::vector<RVertexBinding> vertexBindings;
@@ -261,19 +253,20 @@ struct RQueueAPI
 /// @brief Base queue object.
 struct RQueueObj
 {
+    RUID id;
     const RQueueAPI* api;
 };
 
 /// @brief Base semaphore object.
 struct RSemaphoreObj
 {
-    uint64_t rid;
+    RUID id;
 };
 
 /// @brief Base fence object.
 struct RFenceObj
 {
-    uint64_t rid;
+    RUID id;
 };
 
 struct RDeviceAPI
@@ -368,8 +361,8 @@ struct RDeviceAPI
 /// @brief Base render device object.
 struct RDeviceObj
 {
+    RUID id;
     const RDeviceAPI* api;
-    uint64_t rid;
     uint32_t frameIndex;
     RDeviceBackend backend;
     RDeviceLimits limits;

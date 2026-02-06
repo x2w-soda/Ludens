@@ -987,7 +987,7 @@ void vk_create_device(RDeviceObj* baseSelf, const RDeviceInfo& deviceI)
     for (uint32_t i = 0; i < FRAMES_IN_FLIGHT; i++)
     {
         vk_device_create_fence(self, true, self->vk.frameCompleteObj + i);
-        self->vk.frameCompleteObj[i].rid = RObjectID::get();
+        self->vk.frameCompleteObj[i].id = get_ruid();
     }
 }
 
@@ -2120,9 +2120,15 @@ static void vk_device_present_frame(RDeviceObj* baseSelf)
         .pImageIndices = imageIndices.data(),
     };
 
-    // NOTE: this may or may not block, depending on the implementation and
-    //       the selected swapchain present mode.
-    VkResult presentResult = vkQueuePresentKHR(queueObj->vk.handle, &presentI);
+    VkResult presentResult;
+
+    {
+        LD_PROFILE_SCOPE_NAME("vkQueuePresentKHR");
+
+        // NOTE: this may or may not block, depending on the implementation and
+        //       the selected swapchain present mode.
+        presentResult = vkQueuePresentKHR(queueObj->vk.handle, &presentI);
+    }
 
     /*
     sLog.debug("vkQueuePresentKHR present to {} swapchains", presentCount);
@@ -3009,7 +3015,7 @@ static void choose_physical_device(RDeviceVKObj* obj, bool vsyncHint)
 static RImage create_swapchain_color_attachment(RDeviceVKObj* deviceObj, VkImage image, VkFormat colorFormat, uint32_t width, uint32_t height)
 {
     auto* obj = (RImageVKObj*)heap_new<RImageVKObj>(MEMORY_USAGE_RENDER);
-    obj->rid = RObjectID::get();
+    obj->id = get_ruid();
     obj->vk.handle = image;
     obj->vk.vma = nullptr; // unrelated to VMA
 
@@ -3177,7 +3183,7 @@ void WindowSurface::create_swapchain(RDeviceVKObj* obj)
     {
         vk_device_create_semaphore(obj, &swapchain.images[i].presentReadyObj);
         swapchain.images[i].handle = imageHandles[i];
-        swapchain.images[i].presentReadyObj.rid = RObjectID::get();
+        swapchain.images[i].presentReadyObj.id = get_ruid();
         swapchain.images[i].colorAttachment = create_swapchain_color_attachment(obj, imageHandles[i], swapchain.info.imageFormat, swpExtent.width, swpExtent.height);
     }
 
@@ -3187,7 +3193,7 @@ void WindowSurface::create_swapchain(RDeviceVKObj* obj)
     for (uint32_t i = 0; i < FRAMES_IN_FLIGHT; i++)
     {
         vk_device_create_semaphore(obj, swapchain.imageAcquiredObj + i);
-        swapchain.imageAcquiredObj[i].rid = RObjectID::get();
+        swapchain.imageAcquiredObj[i].id = get_ruid();
     }
 
     std::string presentMode;

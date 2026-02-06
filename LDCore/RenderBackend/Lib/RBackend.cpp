@@ -26,8 +26,6 @@ static std::unordered_map<Hash64, RSetLayoutObj*> sSetLayouts;
 static std::unordered_map<Hash64, RPipelineLayoutObj*> sPipelineLayouts;
 static std::unordered_map<Hash64, RFramebufferObj*> sFramebuffers;
 
-uint64_t RObjectID::sCounter = 0;
-
 static std::string print_shader_binding(const RShaderBinding& shaderBinding);
 static std::string print_set_bindings(uint32_t setIndex, uint32_t bindingCount, const RSetBindingInfo* bindings);
 static std::string print_shader_reflection(const RShaderReflection& reflection);
@@ -350,7 +348,7 @@ RDevice RDevice::create(const RDeviceInfo& info)
         gl_device_ctor(obj);
     }
 
-    obj->rid = RObjectID::get();
+    obj->id = get_ruid();
     obj->frameIndex = 0;
 
     if (info.backend == RDEVICE_BACKEND_VULKAN)
@@ -442,7 +440,7 @@ RSemaphore RDevice::create_semaphore()
     RSemaphoreObj* semaphoreObj = (RSemaphoreObj*)heap_malloc(objSize, MEMORY_USAGE_RENDER);
     mObj->api->semaphore_ctor(semaphoreObj);
 
-    semaphoreObj->rid = RObjectID::get();
+    semaphoreObj->id = get_ruid();
 
     return mObj->api->create_semaphore(mObj, semaphoreObj);
 }
@@ -466,7 +464,7 @@ RFence RDevice::create_fence(bool createSignaled)
     RFenceObj* fenceObj = (RFenceObj*)heap_malloc(objSize, MEMORY_USAGE_RENDER);
     mObj->api->fence_ctor(fenceObj);
 
-    fenceObj->rid = RObjectID::get();
+    fenceObj->id = get_ruid();
 
     return mObj->api->create_fence(mObj, createSignaled, fenceObj);
 }
@@ -490,7 +488,7 @@ RBuffer RDevice::create_buffer(const RBufferInfo& bufferI)
     RBufferObj* bufferObj = (RBufferObj*)heap_malloc(objSize, MEMORY_USAGE_RENDER);
     mObj->api->buffer_ctor(bufferObj);
 
-    bufferObj->rid = RObjectID::get();
+    bufferObj->id = get_ruid();
     bufferObj->info = bufferI;
     bufferObj->device = *this;
     bufferObj->hostMap = nullptr;
@@ -521,7 +519,7 @@ RImage RDevice::create_image(const RImageInfo& imageI)
     RImageObj* imageObj = (RImageObj*)heap_malloc(objSize, MEMORY_USAGE_RENDER);
     mObj->api->image_ctor(imageObj);
 
-    imageObj->rid = RObjectID::get();
+    imageObj->id = get_ruid();
     imageObj->info = imageI;
     imageObj->device = *this;
 
@@ -568,7 +566,7 @@ RCommandPool RDevice::create_command_pool(const RCommandPoolInfo& poolI)
     auto* poolObj = (RCommandPoolObj*)heap_malloc(objSize, MEMORY_USAGE_RENDER);
     mObj->api->command_pool_ctor(poolObj);
 
-    poolObj->rid = RObjectID::get();
+    poolObj->id = get_ruid();
     poolObj->deviceObj = mObj;
     poolObj->hintTransient = poolI.hintTransient;
     poolObj->listResettable = poolI.listResettable;
@@ -617,7 +615,7 @@ RShader RDevice::create_shader(const RShaderInfo& shaderI)
         return {};
     }
 
-    shaderObj->rid = RObjectID::get();
+    shaderObj->id = get_ruid();
     shaderObj->type = shaderI.type;
 
     return mObj->api->create_shader(mObj, shaderI, shaderObj);
@@ -642,7 +640,7 @@ RSetPool RDevice::create_set_pool(const RSetPoolInfo& poolI)
     RSetPoolObj* poolObj = (RSetPoolObj*)heap_malloc(objSize, MEMORY_USAGE_RENDER);
     mObj->api->set_pool_ctor(poolObj);
 
-    poolObj->rid = RObjectID::get();
+    poolObj->id = get_ruid();
     poolObj->deviceObj = mObj;
     poolObj->layoutObj = mObj->get_or_create_set_layout_obj(poolI.layout);
 
@@ -679,7 +677,7 @@ RPipeline RDevice::create_pipeline(const RPipelineInfo& pipelineI)
     auto* pipelineObj = (RPipelineObj*)heap_malloc(objSize, MEMORY_USAGE_RENDER);
     mObj->api->pipeline_ctor(pipelineObj);
 
-    pipelineObj->rid = RObjectID::get();
+    pipelineObj->id = get_ruid();
     pipelineObj->variant.passObj = nullptr;
     pipelineObj->variant.depthTestEnabled = false;
     pipelineObj->deviceObj = mObj;
@@ -711,7 +709,7 @@ RPipeline RDevice::create_compute_pipeline(const RComputePipelineInfo& pipelineI
     auto* pipelineObj = (RPipelineObj*)heap_malloc(objSize, MEMORY_USAGE_RENDER);
     mObj->api->pipeline_ctor(pipelineObj);
 
-    pipelineObj->rid = RObjectID::get();
+    pipelineObj->id = get_ruid();
     pipelineObj->deviceObj = mObj;
     pipelineObj->layoutObj = mObj->get_or_create_pipeline_layout_obj(pipelineI.layout);
 
@@ -1414,14 +1412,14 @@ Hash64 hash64_framebuffer_info(const RFramebufferInfo& framebufferI)
     // invalidation by any referenced attachments
     for (uint32_t i = 0; i < framebufferI.colorAttachmentCount; i++)
     {
-        hash_combine(hash, framebufferI.colorAttachments[i].rid());
+        hash_combine(hash, framebufferI.colorAttachments[i].get_id());
 
         if (framebufferI.colorResolveAttachments)
-            hash_combine(hash, framebufferI.colorResolveAttachments[i].rid());
+            hash_combine(hash, framebufferI.colorResolveAttachments[i].get_id());
     }
 
     if (framebufferI.depthStencilAttachment)
-        hash_combine(hash, framebufferI.depthStencilAttachment.rid());
+        hash_combine(hash, framebufferI.depthStencilAttachment.get_id());
 
     return Hash64(hash);
 }
@@ -1482,7 +1480,7 @@ RPassObj* RDeviceObj::get_or_create_pass_obj(const RPassInfo& passI)
         RPassObj* passObj = (RPassObj*)heap_malloc(objSize, MEMORY_USAGE_RENDER);
         api->pass_ctor(passObj);
 
-        passObj->rid = RObjectID::get();
+        passObj->id = get_ruid();
         passObj->hash = passHash;
         passObj->colorAttachmentCount = passI.colorAttachmentCount;
         passObj->hasDepthStencilAttachment = passI.depthStencilAttachment != nullptr;
@@ -1504,7 +1502,7 @@ RSetLayoutObj* RDeviceObj::get_or_create_set_layout_obj(const RSetLayoutInfo& la
         RSetLayoutObj* layoutObj = (RSetLayoutObj*)heap_malloc(objSize, MEMORY_USAGE_RENDER);
         api->set_layout_ctor(layoutObj);
 
-        layoutObj->rid = RObjectID::get();
+        layoutObj->id = get_ruid();
         layoutObj->hash = layoutHash;
         layoutObj->deviceObj = this;
         layoutObj->bindings.resize(layoutI.bindingCount);
@@ -1529,7 +1527,7 @@ RPipelineLayoutObj* RDeviceObj::get_or_create_pipeline_layout_obj(const RPipelin
         RPipelineLayoutObj* layoutObj = (RPipelineLayoutObj*)heap_malloc(objSize, MEMORY_USAGE_RENDER);
         api->pipeline_layout_ctor(layoutObj);
 
-        layoutObj->rid = RObjectID::get();
+        layoutObj->id = get_ruid();
         layoutObj->hash = layoutHash;
         layoutObj->setCount = layoutI.setLayoutCount;
         for (uint32_t i = 0; i < layoutObj->setCount; i++)
@@ -1551,7 +1549,7 @@ RFramebufferObj* RDeviceObj::get_or_create_framebuffer_obj(const RFramebufferInf
         RFramebufferObj* framebufferObj = (RFramebufferObj*)heap_malloc(objSize, MEMORY_USAGE_RENDER);
         api->framebuffer_ctor(framebufferObj);
 
-        framebufferObj->rid = RObjectID::get();
+        framebufferObj->id = get_ruid();
         framebufferObj->hash = framebufferHash;
         framebufferObj->width = framebufferI.width;
         framebufferObj->height = framebufferI.height;

@@ -3,8 +3,8 @@
 #include <Ludens/Header/Hash.h>
 #include <Ludens/Header/Math/Rect.h>
 #include <Ludens/RenderBackend/RBackendEnum.h>
+#include <Ludens/RenderBackend/RUID.h>
 #include <Ludens/WindowRegistry/WindowRegistry.h>
-#include <cstdint>
 
 namespace LD {
 
@@ -17,14 +17,14 @@ public:
 
     /// @brief get an id unique to each RHandle
     /// @warning does not check for null handle before derefencing
-    inline uint64_t rid() const { return *(uint64_t*)mObj; }
+    inline RUID get_id() const { return *(RUID*)mObj; }
     inline TObject* unwrap() { return mObj; }
     inline const TObject* unwrap() const { return mObj; }
     inline operator bool() const { return mObj != nullptr; }
 
     /// @brief two handles are equal if they reference the same object
     /// @return true if both handles are not null and reference the same object.
-    bool operator==(const RHandle& other) const { return mObj && other.mObj && (*(uint64_t*)mObj == *(uint64_t*)other.mObj); }
+    bool operator==(const RHandle& other) const { return mObj && other.mObj && (*(RUID*)mObj == *(RUID*)other.mObj); }
     bool operator!=(const RHandle& other) const { return !operator==(other); }
 
 protected:

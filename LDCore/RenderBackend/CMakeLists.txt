@@ -32,6 +32,7 @@ set(LUDENS_VULKAN_SDK_LIBS
 endif()
 
 set(MODULE_INCLUDE
+    ${LUDENS_INCLUDE_DIR}/Ludens/RenderBackend/RUID.h
     ${LUDENS_INCLUDE_DIR}/Ludens/RenderBackend/RBackend.h
     ${LUDENS_INCLUDE_DIR}/Ludens/RenderBackend/RBackendEnum.h
     ${LUDENS_INCLUDE_DIR}/Ludens/RenderBackend/RUtil.h
@@ -42,6 +43,7 @@ set(MODULE_INCLUDE
 )
 
 set(MODULE_LIB
+    Lib/RUID.cpp
     Lib/RData.h
     Lib/RCommand.h
     Lib/RCommand.cpp
