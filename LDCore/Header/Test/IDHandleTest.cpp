@@ -9,15 +9,15 @@ namespace {
 
 struct Box
 {
-    int32_t value;
     uint32_t id;
+    int32_t value;
 };
 
 } // namespace
 
 TEST_CASE("IDHandle")
 {
-    Box b{1234, 3};
+    Box b{3, 1234};
     IDHandle<Box, uint32_t> h1(&b, 3);
 
     CHECK(h1);

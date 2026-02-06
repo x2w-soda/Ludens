@@ -17,7 +17,12 @@ public:
     ///          PoolAllocator since the block address is always "valid" until allocator is destroyed.
     inline operator bool() const noexcept
     {
-        return mObj && mObj->id == mID;
+        return mObj && *(TID*)mObj == mID;
+    }
+
+    inline TID get_id() noexcept
+    {
+        return mID;
     }
 
     inline TObject* unwrap() noexcept

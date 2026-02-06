@@ -80,6 +80,12 @@ struct Transform2D
     {
         return Mat3::translate_2d(position) * Mat3::rotate_2d(LD_TO_RADIANS(rotation)) * Mat3::scale_2d(scale);
     }
+
+    /// @brief Get transform matrix for homogeneous 3D.
+    inline Mat4 as_mat4() const
+    {
+        return Mat4::translate(Vec3(position, 0.0f)) * Mat4::rotate(LD_TO_RADIANS(rotation), Vec3(0.0f, 0.0f, 1.0f)) * Mat4::scale(Vec3(scale, 1.0f));
+    }
 };
 
 } // namespace LD
