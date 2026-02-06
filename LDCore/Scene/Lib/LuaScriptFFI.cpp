@@ -53,10 +53,10 @@ static_assert(offsetof(Transform2D, scale) == 8);
 static_assert(offsetof(Transform2D, rotation) == 16);
 
 static_assert(alignof(AudioSourceComponent) == 8);
-static_assert(offsetof(AudioSourceComponent, playback) == 0);
-static_assert(offsetof(AudioSourceComponent, clipAUID) == 8);
-static_assert(offsetof(AudioSourceComponent, pan) == 12);
-static_assert(offsetof(AudioSourceComponent, volumeLinear) == 16);
+static_assert(offsetof(AudioSourceComponent, playback) == 8);
+static_assert(offsetof(AudioSourceComponent, clipAUID) == 16);
+static_assert(offsetof(AudioSourceComponent, pan) == 20);
+static_assert(offsetof(AudioSourceComponent, volumeLinear) == 24);
 
 static const char sLuaFFICdef[] = R"(
 typedef struct __attribute__((aligned(4))) Vec2 {
@@ -108,10 +108,12 @@ uint32_t ffi_get_parent_id(uint32_t compID);
 uint32_t ffi_get_child_id_by_name(uint32_t compID, const char* name);
 
 typedef struct MeshComponent {
+    void* base;
     Transform transform;
 } MeshComponent;
 
 typedef struct __attribute__((aligned(8))) AudioSourceComponent {
+    void* base;
     void* __private_playback;
     uint32_t __private_clipAUID;
     float __private_pan;
@@ -124,7 +126,9 @@ void ffi_audio_source_component_resume(AudioSourceComponent* comp);
 void ffi_audio_source_component_set_pan(AudioSourceComponent* comp, float pan);
 void ffi_audio_source_component_set_volume_linear(AudioSourceComponent* comp, float volumeLinear);
 
+// TODO:
 typedef struct Sprite2DComponent {
+    void* base;
     Transform2D transform;
     Rect local;
     void* __private_image;
@@ -221,20 +225,30 @@ uint32_t ffi_get_child_id_by_name(uint32_t compID, const char* name)
 
 void ffi_audio_source_component_play(AudioSourceComponent* comp)
 {
-    Scene::IAudioSource source(comp);
-    source.play();
+    LD_ASSERT(comp && comp->base);
+
+    Scene::AudioSource source(comp);
+
+    if (source)
+        source.play();
 }
 
 void ffi_audio_source_component_pause(AudioSourceComponent* comp)
 {
-    Scene::IAudioSource source(comp);
-    source.pause();
+    LD_ASSERT(comp && comp->base);
+
+    Scene::AudioSource source(comp);
+
+    if (source)
+        source.pause();
 }
 
 void ffi_audio_source_component_resume(AudioSourceComponent* comp)
 {
-    Scene::IAudioSource source(comp);
-    source.resume();
+    Scene::AudioSource source(comp);
+
+    if (source)
+        source.resume();
 }
 
 void ffi_audio_source_component_set_pan(AudioSourceComponent* comp, float pan)
@@ -257,6 +271,14 @@ void ffi_audio_source_component_set_volume_linear(AudioSourceComponent* comp, fl
 
     AudioPlayback::Accessor accessor = comp->playback.access();
     accessor.set_volume_linear(volumeLinear);
+}
+
+void ffi_sprite_2d_component_set_z_depth(Sprite2DComponent* comp, uint32_t zDepth)
+{
+    Scene::Sprite2D sprite(comp);
+
+    if (sprite)
+        sprite.set_z_depth(zDepth);
 }
 
 } // extern "C"

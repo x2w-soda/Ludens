@@ -59,7 +59,7 @@ cuid = 300
     {
         CUID spriteCID = 300;
         Transform2D transform;
-        bool ok = scene.get_component_transform2d(spriteCID, transform);
+        bool ok = scene.get_component_transform_2d(spriteCID, transform);
         CHECK(ok);
         CHECK(transform.position == Vec2(3.0f, 4.0f));
         CHECK(transform.rotation == 345.0f);

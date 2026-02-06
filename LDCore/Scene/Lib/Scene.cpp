@@ -134,10 +134,11 @@ static void cleanup_camera_component(SceneObj* scene, ComponentBase* base, void*
 static void load_mesh_component(SceneObj* scene, ComponentBase* base, void* comp)
 {
     MeshComponent* meshC = (MeshComponent*)comp;
+    meshC->draw = scene->renderServerCache.create_mesh_draw(base->id, 0);
 
     if (meshC->auid)
     {
-        RenderServerCache::IMesh mesh = scene->renderServerCache.mesh(meshC, base->id);
+        Scene::Mesh mesh(meshC);
 
         mesh.set_mesh_asset(meshC->auid);
     }
@@ -146,10 +147,11 @@ static void load_mesh_component(SceneObj* scene, ComponentBase* base, void* comp
 static void load_sprite_2d_component(SceneObj* scene, ComponentBase* base, void* comp)
 {
     auto* spriteC = (Sprite2DComponent*)comp;
+    LD_UNREACHABLE; // create draw with valid screen layer
 
     if (spriteC->auid)
     {
-        RenderServerCache::ISprite2D sprite = scene->renderServerCache.sprite_2d(spriteC, base->id);
+        Scene::Sprite2D sprite(spriteC);
 
         sprite.set_texture_2d_asset(spriteC->auid);
     }
@@ -317,8 +319,6 @@ void Scene::reset()
 
     mObj->mainCameraCUID = 0;
 
-    mObj->renderServerCache.destroy_all_draw_id();
-
     mObj->registry = DataRegistry::create();
 }
 
@@ -442,9 +442,9 @@ void Scene::update(const Vec2& screenExtent, float delta)
     {
         const CameraComponent* cameraC = mObj->mainCameraC;
         Camera mainCamera = mObj->mainCameraC->camera;
-        Mat4 worldTransform;
-        mObj->registry.get_component_transform_mat4(mObj->mainCameraCUID, worldTransform);
-        Vec3 forward = worldTransform.as_mat3() * Vec3(0.0f, 0.0f, 1.0f);
+        Mat4 worldMat4;
+        mObj->registry.get_component_world_mat4(mObj->mainCameraCUID, worldMat4);
+        Vec3 forward = worldMat4.as_mat3() * Vec3(0.0f, 0.0f, 1.0f);
 
         mainCamera.set_aspect_ratio(screenExtent.x / screenExtent.y);
         mainCamera.set_pos(cameraC->transform.position);
@@ -534,14 +534,14 @@ bool Scene::set_component_transform(CUID compID, const TransformEx& transform)
     return mObj->registry.set_component_transform(compID, transform);
 }
 
-bool Scene::get_component_transform2d(CUID compID, Transform2D& transform)
+bool Scene::get_component_transform_2d(CUID compID, Transform2D& transform)
 {
-    return mObj->registry.get_component_transform2d(compID, transform);
+    return mObj->registry.get_component_transform_2d(compID, transform);
 }
 
-bool Scene::get_component_transform_mat4(CUID compID, Mat4& worldMat4)
+bool Scene::get_component_world_mat4(CUID compID, Mat4& worldMat4)
 {
-    return mObj->registry.get_component_transform_mat4(compID, worldMat4);
+    return mObj->registry.get_component_world_mat4(compID, worldMat4);
 }
 
 void Scene::mark_component_transform_dirty(CUID compID)
@@ -556,21 +556,24 @@ CUID Scene::get_ruid_component(RUID ruid)
 
 Mat4 Scene::get_ruid_transform_mat4(RUID ruid)
 {
+    LD_PROFILE_SCOPE;
+
     CUID compID = get_ruid_component(ruid);
 
     Mat4 worldMat4;
-    mObj->registry.get_component_transform_mat4(compID, worldMat4);
+    mObj->registry.get_component_world_mat4(compID, worldMat4);
 
     return worldMat4;
 }
 
-Scene::IAudioSource::IAudioSource(AudioSourceComponent* comp)
+Scene::AudioSource::AudioSource(AudioSourceComponent* comp)
     : mComp(comp)
 {
     LD_ASSERT(mComp);
+    mCUID = mComp->base->id;
 }
 
-void Scene::IAudioSource::play()
+void Scene::AudioSource::play()
 {
     if (!mComp)
         return;
@@ -578,27 +581,18 @@ void Scene::IAudioSource::play()
     sScene->audioServerCache.start_playback(mComp->playback);
 }
 
-void Scene::IAudioSource::pause()
+void Scene::AudioSource::pause()
 {
-    if (!mComp)
-        return;
-
     sScene->audioServerCache.pause_playback(mComp->playback);
 }
 
-void Scene::IAudioSource::resume()
+void Scene::AudioSource::resume()
 {
-    if (!mComp)
-        return;
-
     sScene->audioServerCache.resume_playback(mComp->playback);
 }
 
-void Scene::IAudioSource::set_clip_asset(AUID clipAUID)
+void Scene::AudioSource::set_clip_asset(AUID clipAUID)
 {
-    if (!mComp)
-        return;
-
     AudioClipAsset clipA(sScene->assetManager.get_asset(clipAUID).unwrap());
     AudioBuffer buffer = sScene->audioServerCache.get_or_create_audio_buffer(clipA);
 
@@ -609,32 +603,40 @@ void Scene::IAudioSource::set_clip_asset(AUID clipAUID)
     }
 }
 
-Scene::IMesh::IMesh(CUID meshCUID)
-    : mCUID(meshCUID)
+Scene::Mesh::Mesh(MeshComponent* comp)
+    : mComp(comp)
 {
-    mComp = (MeshComponent*)Scene(sScene).get_component(meshCUID, COMPONENT_TYPE_MESH);
-    LD_ASSERT(mCUID && mComp);
+    LD_ASSERT(mComp && mComp->base);
+    mCUID = mComp->base->id;
+
+    if (!mComp->draw)
+        mComp->draw = sScene->renderServerCache.create_mesh_draw(mCUID);
 }
 
-void Scene::IMesh::set_mesh_asset(AUID meshAUID)
+void Scene::Mesh::set_mesh_asset(AUID meshAUID)
 {
-    RenderServerCache::IMesh mesh = sScene->renderServerCache.mesh(mComp, mCUID);
+    MeshData meshData = sScene->renderServerCache.get_or_create_mesh_data(meshAUID);
 
-    mesh.set_mesh_asset(meshAUID);
+    if (mComp->draw)
+        mComp->draw.set_mesh_asset(meshData);
 }
 
-Scene::ISprite2D::ISprite2D(CUID sprite2DCUID)
-    : mCUID(sprite2DCUID)
+Scene::Sprite2D::Sprite2D(Sprite2DComponent* comp)
+    : mComp(comp)
 {
-    mComp = (Sprite2DComponent*)Scene(sScene).get_component(sprite2DCUID, COMPONENT_TYPE_SPRITE_2D);
-    LD_ASSERT(mCUID && mComp);
+    LD_ASSERT(mComp && mComp->base);
+    mCUID = mComp->base->id;
+
+    if (!mComp->draw)
+        mComp->draw = sScene->renderServerCache.create_sprite_draw(mCUID, 0, 0);
 }
 
-void Scene::ISprite2D::set_texture_2d_asset(AUID textureAUID)
+void Scene::Sprite2D::set_texture_2d_asset(AUID textureAUID)
 {
-    RenderServerCache::ISprite2D sprite2D = sScene->renderServerCache.sprite_2d(mComp, mCUID);
+    Image2D image = sScene->renderServerCache.get_or_create_image_2d(textureAUID);
 
-    sprite2D.set_texture_2d_asset(textureAUID);
+    if (mComp->draw)
+        mComp->draw.set_image(image);
 }
 
 } // namespace LD

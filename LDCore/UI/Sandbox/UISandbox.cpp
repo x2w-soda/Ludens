@@ -244,7 +244,7 @@ void UISandbox::render()
 
     // render empty scene
     RenderServerScenePass sceneP{};
-    sceneP.transformCallback = nullptr;
+    sceneP.mat4Callback = nullptr;
     sceneP.overlay.enabled = false;
     sceneP.hasSkybox = false;
     sceneP.user = this;

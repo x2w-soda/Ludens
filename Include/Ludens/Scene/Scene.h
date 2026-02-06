@@ -109,10 +109,10 @@ public:
     bool set_component_transform(CUID compID, const TransformEx& transform);
 
     /// @brief Get local 2D transform of a data component.
-    bool get_component_transform2d(CUID compID, Transform2D& transform);
+    bool get_component_transform_2d(CUID compID, Transform2D& transform);
 
     /// @brief Get component world matrix.
-    bool get_component_transform_mat4(CUID compID, Mat4& worldMat4);
+    bool get_component_world_mat4(CUID compID, Mat4& worldMat4);
 
     /// @brief Mark the transforms of a component subtree as dirty.
     void mark_component_transform_dirty(CUID compID);
@@ -120,14 +120,17 @@ public:
     /// @brief Lookup the data component from draw call ID
     CUID get_ruid_component(RUID ruid);
 
-    /// @brief Supplies the transform for a draw call
+    /// @brief Supplies the Mat4 model matrix for a draw call
     Mat4 get_ruid_transform_mat4(RUID ruid);
 
     /// @brief Public interface for audio source components.
-    class IAudioSource
+    class AudioSource
     {
     public:
-        IAudioSource(AudioSourceComponent* comp);
+        AudioSource() = delete;
+        AudioSource(AudioSourceComponent* comp);
+
+        inline operator bool() const noexcept { return mComp && mComp->playback; }
 
         void play();
         void pause();
@@ -137,13 +140,17 @@ public:
 
     private:
         AudioSourceComponent* mComp;
+        CUID mCUID;
     };
 
     /// @brief Public interface for mesh components.
-    class IMesh
+    class Mesh
     {
     public:
-        IMesh(CUID meshCUID);
+        Mesh() = delete;
+        Mesh(MeshComponent* comp);
+
+        inline operator bool() const noexcept { return mComp && mComp->draw; }
 
         void set_mesh_asset(AUID meshAUID);
 
@@ -153,12 +160,19 @@ public:
     };
 
     /// @brief Public interface for Sprite2D components.
-    class ISprite2D
+    class Sprite2D
     {
     public:
-        ISprite2D(CUID sprite2DCUID);
+        Sprite2D() = delete;
+        Sprite2D(Sprite2DComponent* comp);
+
+        inline operator bool() const noexcept { return mComp && mComp->draw; }
 
         void set_texture_2d_asset(AUID textureAUID);
+        inline uint32_t get_z_depth() { return mComp->draw.get_z_depth(); }
+        inline void set_z_depth(uint32_t zDepth) { mComp->draw.set_z_depth(zDepth); }
+        inline Rect get_rect() { return mComp->draw.get_rect(); }
+        inline void set_rect(const Rect& rect) { mComp->draw.set_rect(rect); }
 
     private:
         Sprite2DComponent* mComp;

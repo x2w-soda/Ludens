@@ -274,9 +274,15 @@ bool SceneSchemaLoader::load_sprite_2d_component(SceneSchemaLoader& loader, TOML
     auto* spriteC = (Sprite2DComponent*)scene.get_component(compID, COMPONENT_TYPE_SPRITE_2D);
     LD_ASSERT(spriteC);
 
+    Scene::Sprite2D sprite2D(spriteC);
+    LD_ASSERT(sprite2D);
+
+    Rect rect;
     TOMLValue localTOML = compTOML.get_key("local", TOML_TYPE_TABLE);
-    if (!load_rect(spriteC->local, localTOML))
+    if (!load_rect(rect, localTOML))
         return false;
+
+    sprite2D.set_rect(rect);
 
     TOMLValue transformTOML = compTOML["transform"];
     load_transform_2d(spriteC->transform, transformTOML);
@@ -287,10 +293,12 @@ bool SceneSchemaLoader::load_sprite_2d_component(SceneSchemaLoader& loader, TOML
     if (auidTOML)
         auidTOML.get_u32(spriteC->auid);
 
-    spriteC->zDepth = 0;
+    uint32_t zDepth = 0;
     TOMLValue zDepthTOML = compTOML["zDepth"];
     if (zDepthTOML)
-        zDepthTOML.get_u32(spriteC->zDepth);
+        zDepthTOML.get_u32(zDepth);
+
+    sprite2D.set_z_depth(zDepth);
 
     return true;
 }
@@ -481,15 +489,19 @@ bool SceneSchemaSaver::save_sprite_2d_component(SceneSchemaSaver& saver, CUID co
     if (!spriteC)
         return false;
 
+    Scene::Sprite2D sprite2D(spriteC);
+    LD_ASSERT(sprite2D);
+
+    Rect rect = sprite2D.get_rect();
     TOMLWriter writer = saver.mWriter;
     writer.begin_inline_table("local");
-    TOMLUtil::save_rect_table(spriteC->local, writer);
+    TOMLUtil::save_rect_table(rect, writer);
     writer.end_inline_table();
 
     save_transform_2d(spriteC->transform, writer);
 
     writer.key("auid").value_u32(spriteC->auid);
-    writer.key("zDepth").value_u32(spriteC->zDepth);
+    writer.key("zDepth").value_u32(sprite2D.get_z_depth());
 
     return true;
 }

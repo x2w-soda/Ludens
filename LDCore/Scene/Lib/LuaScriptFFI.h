@@ -14,6 +14,7 @@
 namespace LD {
 
 struct AudioSourceComponent;
+struct Sprite2DComponent;
 
 namespace LuaScript {
 
@@ -28,6 +29,7 @@ LD_FFI_EXPORT void ffi_audio_source_component_pause(AudioSourceComponent* comp);
 LD_FFI_EXPORT void ffi_audio_source_component_resume(AudioSourceComponent* comp);
 LD_FFI_EXPORT void ffi_audio_source_component_set_pan(AudioSourceComponent* comp, float pan);
 LD_FFI_EXPORT void ffi_audio_source_component_set_volume_linear(AudioSourceComponent* comp, float volumeLinear);
+LD_FFI_EXPORT void ffi_sprite_2d_component_set_z_depth(Sprite2DComponent* comp, uint32_t zDepth);
 } // extern "C"
 } // namespace LuaScript
 } // namespace LD
