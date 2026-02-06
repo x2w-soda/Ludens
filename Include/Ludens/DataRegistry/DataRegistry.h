@@ -72,23 +72,27 @@ struct DataRegistry : Handle<struct DataRegistryObj>
     /// @return True on success.
     bool get_component_transform(CUID compID, TransformEx& transform);
 
+    /// @brief Get the local transform of a data component.
+    /// @return True on success.
+    bool get_component_transform_2d(CUID compID, Transform2D& transform);
+
     /// @brief Set the local transform of a data component.
     /// @return True on success.
     bool set_component_transform(CUID compID, const TransformEx& transform);
 
-    /// @brief Get the local 2D transform of a data component.
+    /// @brief Set the local transform of a data component.
     /// @return True on success.
-    bool get_component_transform2d(CUID compID, Transform2D& transform);
+    bool set_component_transform_2d(CUID compID, const Transform2D& transform);
 
     /// @brief Mark the transforms of a component subtree as dirty.
     /// @return True on success.
     bool mark_component_transform_dirty(CUID compID);
 
-    /// @brief Get the model matrix of a data component.
+    /// @brief Get the Mat4 model matrix of a data component.
     /// @param compID Component ID to query.
     /// @param mat4 Output world space model matrix.
     /// @return True on success.
-    bool get_component_transform_mat4(CUID compID, Mat4& mat4);
+    bool get_component_world_mat4(CUID compID, Mat4& mat4);
 };
 
 } // namespace LD

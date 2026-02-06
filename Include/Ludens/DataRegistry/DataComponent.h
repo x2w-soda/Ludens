@@ -76,6 +76,7 @@ struct ComponentScriptSlot
 /// @brief A component that emits sound.
 struct AudioSourceComponent
 {
+    ComponentBase* base;
     AudioPlayback playback;
     AUID clipAUID;
     float pan;
@@ -85,6 +86,7 @@ struct AudioSourceComponent
 /// @brief A component with only transform data.
 struct TransformComponent
 {
+    ComponentBase* base;
     TransformEx transform;
 };
 
@@ -92,6 +94,7 @@ struct TransformComponent
 ///        providing the view matrix and projection matrix during rendering.
 struct CameraComponent
 {
+    ComponentBase* base;
     TransformEx transform;
     Camera camera;
     union
@@ -107,7 +110,9 @@ struct CameraComponent
 /// @warning Placeholder implementation, this is very immature
 struct MeshComponent
 {
+    ComponentBase* base;
     TransformEx transform; /// mesh transform
+    MeshDraw draw;         /// render server draw config
     AUID auid;             /// mesh asset handle
 };
 
@@ -115,10 +120,9 @@ struct MeshComponent
 /// @warning Placeholder implementation, this is very immature
 struct Sprite2DComponent
 {
+    ComponentBase* base;
     Transform2D transform; /// sprite 2D transform
-    Rect local;            /// sprite 2D local geometry, decides pivot.
-    RImage image;          /// image handle
-    uint32_t zDepth;       /// sprite z depth
+    Sprite2DDraw draw;     /// render server draw config
     AUID auid;             /// texture asset handle
 };
 
