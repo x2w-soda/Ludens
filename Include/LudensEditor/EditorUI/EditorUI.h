@@ -31,13 +31,13 @@ struct EditorUIInfo
     uint32_t barHeight;
     FontAtlas fontAtlas;
     RImage fontAtlasImage;
-    RenderServer renderServer;
+    RenderSystem renderSystem;
     RUID envCubemap;
 };
 
 /// @brief Editor user interface.
 ///        Owner of the UIContext for all editor UI.
-///        User of the RenderServer to render both game scene and editor.
+///        User of the RenderSystem to render both game scene and editor.
 class EditorUI
 {
 public:
@@ -75,7 +75,7 @@ private:
     UILayer mUIFloatLayer{};
     FontAtlas mFontAtlas{};
     RImage mFontAtlasImage{};
-    RenderServer mRenderServer{};
+    RenderSystem mRenderSystem{};
     RUID mEnvCubemap = 0;
 };
 

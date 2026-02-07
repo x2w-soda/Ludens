@@ -17,11 +17,11 @@ void EditorUI::startup(const EditorUIInfo& info)
 
     LD_ASSERT(info.fontAtlas);
     LD_ASSERT(info.fontAtlasImage);
-    LD_ASSERT(info.renderServer);
+    LD_ASSERT(info.renderSystem);
     LD_ASSERT(info.envCubemap);
 
     mCtx = info.ctx;
-    mRenderServer = info.renderServer;
+    mRenderSystem = info.renderSystem;
     mEnvCubemap = info.envCubemap;
 
     UIContextInfo ctxI{};
@@ -123,7 +123,7 @@ void EditorUI::submit_frame()
     const Vec2 screenExtent = reg.get_window_extent(reg.get_root_id());
 
     // begin rendering a frame
-    RenderServerFrameInfo frameI{};
+    RenderSystemFrameInfo frameI{};
     frameI.directionalLight = Vec3(0.0f, 1.0f, 0.0f);
     frameI.mainCamera = mainCamera;
     frameI.screenExtent = screenExtent;
@@ -131,11 +131,11 @@ void EditorUI::submit_frame()
     frameI.envCubemap = mEnvCubemap;
     frameI.dialogWindowID = dialogWindowID;
     frameI.clearColor = mCtx.get_project_settings().get_rendering_settings().get_clear_color();
-    mRenderServer.next_frame(frameI);
+    mRenderSystem.next_frame(frameI);
 
     // render game scene with overlay, the editor context is responsible for supplying object transforms
-    RenderServerScenePass sceneP{};
-    sceneP.mat4Callback = &EditorContext::render_server_mat4_callback;
+    RenderSystemScenePass sceneP{};
+    sceneP.mat4Callback = &EditorContext::render_system_mat4_callback;
     sceneP.user = mCtx.unwrap();
     sceneP.overlay.enabled = !mCtx.is_playing();
     sceneP.overlay.outlineRUID = mMain.get_viewport_outline_ruid();
@@ -145,17 +145,17 @@ void EditorUI::submit_frame()
         sceneP.overlay.gizmoCenter,
         sceneP.overlay.gizmoScale,
         sceneP.overlay.gizmoColor);
-    mRenderServer.scene_pass(sceneP);
+    mRenderSystem.scene_pass(sceneP);
 
     // render screen space items on top of game scene.
-    RenderServerScreenPass screenP{};
-    screenP.mat4Callback = &EditorContext::render_server_mat4_callback;
+    RenderSystemScreenPass screenP{};
+    screenP.mat4Callback = &EditorContext::render_system_mat4_callback;
     screenP.callback = nullptr;
     screenP.user = mCtx.unwrap();
-    mRenderServer.screen_pass(screenP);
+    mRenderSystem.screen_pass(screenP);
 
     // render the editor UI
-    RenderServerEditorPass editorP{};
+    RenderSystemEditorPass editorP{};
     editorP.renderCallback = &EditorUI::on_render;
     editorP.scenePickCallback = &EditorUI::on_scene_pick;
     editorP.user = this;
@@ -163,29 +163,29 @@ void EditorUI::submit_frame()
     Vec2 queryPos;
     if (mMain.get_viewport_mouse_pos(queryPos))
         editorP.sceneMousePickQuery = &queryPos;
-    mRenderServer.editor_pass(editorP);
+    mRenderSystem.editor_pass(editorP);
 
     // render the editor overlay UI
     /*
-    RenderServerEditorOverlayPass editorOP{};
+    RenderSystemEditorOverlayPass editorOP{};
     editorOP.renderCallback = &EditorUI::on_render_overlay;
     editorOP.blurMixColor = 0x101010FF;
     editorOP.blurMixFactor = 0.1f;
     editorOP.user = this;
-    mRenderServer.editor_overlay_pass(editorOP);
+    mRenderSystem.editor_overlay_pass(editorOP);
     */
 
     // render dialog window
     if (dialogWindowID)
     {
-        RenderServerEditorDialogPass editorDP{};
+        RenderSystemEditorDialogPass editorDP{};
         editorDP.dialogWindow = dialogWindowID;
         editorDP.renderCallback = &EditorUI::on_render_dialog;
         editorDP.user = this;
-        mRenderServer.editor_dialog_pass(editorDP);
+        mRenderSystem.editor_dialog_pass(editorDP);
     }
 
-    mRenderServer.submit_frame();
+    mRenderSystem.submit_frame();
 }
 
 void EditorUI::resize(const Vec2& screenSize)

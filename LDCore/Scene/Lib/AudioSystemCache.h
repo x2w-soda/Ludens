@@ -1,0 +1,40 @@
+#pragma once
+
+#include <Ludens/Asset/AssetManager.h>
+#include <Ludens/Asset/AssetType/AudioClipAsset.h>
+#include <Ludens/AudioSystem/AudioSystem.h>
+#include <Ludens/DSA/HashMap.h>
+#include <Ludens/DataRegistry/DataComponent.h>
+
+namespace LD {
+
+/// @brief Cache of audio system resources. This class connects Scene, AssetManager, and AudioSystem.
+class AudioSystemCache
+{
+public:
+    /// @brief In-place startup, connect to audio system.
+    void startup(AudioSystem system, AssetManager manager);
+
+    /// @brief In-place cleanup, destroys all resources from audio system.
+    /// @warning All playbacks should have already been destroyed, this destroys remaining audio buffers.
+    void cleanup();
+
+    /// @brief Get or create corresponding audio buffer from asset.
+    AudioBuffer get_or_create_audio_buffer(AUID clipAUID);
+
+    inline void update() { mSystem.update(); }
+    inline AudioPlayback create_playback(AudioBuffer buffer, AudioSourceComponent* comp) { return mSystem.create_playback(buffer, comp->pan, comp->volumeLinear); }
+    inline void destroy_playback(AudioPlayback playback) { mSystem.destroy_playback(playback); }
+    inline void stop_playback(AudioPlayback playback) { mSystem.stop_playback(playback); }
+    inline void start_playback(AudioPlayback playback) { mSystem.start_playback(playback); }
+    inline void pause_playback(AudioPlayback playback) { mSystem.pause_playback(playback); }
+    inline void resume_playback(AudioPlayback playback) { mSystem.resume_playback(playback); }
+    inline void set_playback_buffer(AudioPlayback playback, AudioBuffer buffer) { mSystem.set_playback_buffer(playback, buffer); }
+
+private:
+    AudioSystem mSystem{};
+    AssetManager mAssetManager{};
+    HashMap<AUID, AudioBuffer> mClipToBuffer; /// map audio clip to audio buffer
+};
+
+} // namespace LD

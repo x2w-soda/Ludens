@@ -1,8 +1,8 @@
 #pragma once
 
-#include <Ludens/AudioServer/AudioServer.h>
+#include <Ludens/AudioSystem/AudioSystem.h>
 #include <Ludens/Media/Font.h>
-#include <Ludens/RenderServer/RenderServer.h>
+#include <Ludens/RenderSystem/RenderSystem.h>
 #include <LudensEditor/EditorContext/EditorContext.h>
 #include <LudensEditor/EditorUI/EditorUI.h>
 
@@ -23,8 +23,8 @@ public:
 
 private:
     RDevice mRDevice;
-    RenderServer mRenderServer;
-    AudioServer mAudioServer;
+    RenderSystem mRenderSystem;
+    AudioSystem mAudioSystem;
     EditorContext mEditorCtx;
     EditorUI mEditorUI;
     Font mFont;

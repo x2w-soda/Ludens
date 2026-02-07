@@ -1,11 +1,11 @@
-set(MODULE_NAME LDAudioServer)
+set(MODULE_NAME LDAudioSystem)
 
 set(MODULE_INCLUDE
-	${LUDENS_INCLUDE_DIR}/Ludens/AudioServer/AudioServer.h
+	${LUDENS_INCLUDE_DIR}/Ludens/AudioSystem/AudioSystem.h
 )
 
 set(MODULE_LIB
-	Lib/AudioServer.cpp
+	Lib/AudioSystem.cpp
 )
 
 add_ludens_core_module(

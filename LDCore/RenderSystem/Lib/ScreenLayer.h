@@ -8,7 +8,7 @@
 #include <Ludens/Header/View.h>
 #include <Ludens/Memory/Allocator.h>
 #include <Ludens/RenderBackend/RBackend.h>
-#include <Ludens/RenderServer/RenderServer.h>
+#include <Ludens/RenderSystem/RenderSystem.h>
 
 #include <string>
 
@@ -35,7 +35,7 @@ public:
     ScreenLayerObj& operator=(const ScreenLayerObj&) = delete;
 
     /// @brief Force invalidate draw list. This sorts all 2D items by Z depth.
-    void invalidate(RenderServerMat4Callback mat4Callback, void* user);
+    void invalidate(RenderSystemMat4Callback mat4Callback, void* user);
 
     TView<ScreenLayerItem> get_draw_list();
     inline void set_name(const std::string& name) { mName = name; }

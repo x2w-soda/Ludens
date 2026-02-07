@@ -3,7 +3,7 @@
 #include <Ludens/Camera/Camera.h>
 #include <Ludens/Media/Font.h>
 #include <Ludens/RenderBackend/RBackend.h>
-#include <Ludens/RenderServer/RenderServer.h>
+#include <Ludens/RenderSystem/RenderSystem.h>
 #include <Ludens/UI/UIContext.h>
 
 namespace LD {
@@ -31,7 +31,7 @@ private:
     Font mFont;
     FontAtlas mFontAtlas;
     RDevice mRDevice;
-    RenderServer mRenderServer;
+    RenderSystem mRenderSystem;
     RImage mFontAtlasImage;
     RImage mIconAtlasImage;
     UIWindow mDemo;

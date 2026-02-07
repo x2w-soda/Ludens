@@ -40,7 +40,7 @@ ScreenLayerObj::~ScreenLayerObj()
     }
 }
 
-void ScreenLayerObj::invalidate(RenderServerMat4Callback mat4Callback, void* user)
+void ScreenLayerObj::invalidate(RenderSystemMat4Callback mat4Callback, void* user)
 {
     LD_PROFILE_SCOPE;
 

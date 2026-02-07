@@ -68,12 +68,12 @@ UISandbox::UISandbox()
     windowI.name = "secondary";
     sWindowID = reg.create_window(windowI, rootID);
 
-    RenderServerInfo serverI{};
+    RenderSystemInfo serverI{};
     serverI.device = mRDevice;
     serverI.fontAtlas = mFontAtlas;
-    mRenderServer = RenderServer::create(serverI);
+    mRenderSystem = RenderSystem::create(serverI);
 
-    mFontAtlasImage = mRenderServer.get_font_atlas_image();
+    mFontAtlasImage = mRenderSystem.get_font_atlas_image();
 
     {
         Bitmap tmpBitmap = Bitmap::create_from_path(sLudensLFS.materialIconsPath.string().c_str(), false);
@@ -123,7 +123,7 @@ UISandbox::~UISandbox()
 
     UIContext::destroy(mCtx);
     Camera::destroy(mCamera);
-    RenderServer::destroy(mRenderServer);
+    RenderSystem::destroy(mRenderSystem);
     RDevice::destroy(mRDevice);
     FontAtlas::destroy(mFontAtlas);
     Font::destroy(mFont);
@@ -224,39 +224,39 @@ void UISandbox::render()
     const bool hasDialogWindow = reg.is_window_open(sWindowID);
 
     // begin rendering a frame
-    RenderServerFrameInfo frameI{};
+    RenderSystemFrameInfo frameI{};
     frameI.directionalLight = Vec3(0.0f, 1.0f, 0.0f);
     frameI.mainCamera = mCamera;
     frameI.screenExtent = screenExtent;
     frameI.sceneExtent = screenExtent;
     frameI.envCubemap = (RUID)0;
     frameI.dialogWindowID = hasDialogWindow ? sWindowID : 0;
-    mRenderServer.next_frame(frameI);
+    mRenderSystem.next_frame(frameI);
 
     if (hasDialogWindow)
     {
-        RenderServerEditorDialogPass editorDP{};
+        RenderSystemEditorDialogPass editorDP{};
         editorDP.dialogWindow = sWindowID;
         editorDP.renderCallback = &UISandbox::on_dialog_render;
         editorDP.user = this;
-        mRenderServer.editor_dialog_pass(editorDP);
+        mRenderSystem.editor_dialog_pass(editorDP);
     }
 
     // render empty scene
-    RenderServerScenePass sceneP{};
+    RenderSystemScenePass sceneP{};
     sceneP.mat4Callback = nullptr;
     sceneP.overlay.enabled = false;
     sceneP.hasSkybox = false;
     sceneP.user = this;
-    mRenderServer.scene_pass(sceneP);
+    mRenderSystem.scene_pass(sceneP);
 
     // render UI in screen space
-    RenderServerScreenPass screenP{};
+    RenderSystemScreenPass screenP{};
     screenP.callback = &UISandbox::on_screen_render;
     screenP.user = this;
-    mRenderServer.screen_pass(screenP);
+    mRenderSystem.screen_pass(screenP);
 
-    mRenderServer.submit_frame();
+    mRenderSystem.submit_frame();
 }
 
 void UISandbox::on_event(const WindowEvent* event, void* user)

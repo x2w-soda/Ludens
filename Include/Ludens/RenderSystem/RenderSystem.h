@@ -8,27 +8,27 @@
 #include <Ludens/RenderBackend/RBackend.h>
 #include <Ludens/RenderComponent/SceneOverlayComponent.h>
 #include <Ludens/RenderComponent/ScreenRenderComponent.h>
-#include <Ludens/RenderServer/RenderServerObj.h>
+#include <Ludens/RenderSystem/RenderSystemObj.h>
 
 #include <string>
 
 namespace LD {
 
 typedef void (*ScreenRenderCallback)(ScreenRenderComponent renderer, void* user);
-typedef void (*RenderServerEditorRenderCallback)(ScreenRenderComponent renderer, void* user);
-typedef void (*RenderServerEditorScenePickCallback)(SceneOverlayGizmoID gizmoID, RUID ruid, void* user);
-typedef Mat4 (*RenderServerMat4Callback)(RUID ruid, void* user);
-typedef void (*RenderServerScreenPassCallback)(ScreenRenderComponent renderer, void* user);
+typedef void (*RenderSystemEditorRenderCallback)(ScreenRenderComponent renderer, void* user);
+typedef void (*RenderSystemEditorScenePickCallback)(SceneOverlayGizmoID gizmoID, RUID ruid, void* user);
+typedef Mat4 (*RenderSystemMat4Callback)(RUID ruid, void* user);
+typedef void (*RenderSystemScreenPassCallback)(ScreenRenderComponent renderer, void* user);
 
-/// @brief Render server creation info
-struct RenderServerInfo
+/// @brief Render system creation info
+struct RenderSystemInfo
 {
     RDevice device;      /// render device handle
     FontAtlas fontAtlas; /// default font atlas used for text rendering
 };
 
-/// @brief Info for the server to start a new frame
-struct RenderServerFrameInfo
+/// @brief Info for the system to start a new frame
+struct RenderSystemFrameInfo
 {
     Camera mainCamera;     /// main camera to view the scene from
     Vec2 screenExtent;     /// application screen extent
@@ -39,7 +39,7 @@ struct RenderServerFrameInfo
     Vec4 clearColor;
 };
 
-struct RenderServerSceneGizmoColor
+struct RenderSystemSceneGizmoColor
 {
     Color axisX;   /// color of X axis gizmo mesh
     Color axisY;   /// color of Y axis gizmo mesh
@@ -49,10 +49,10 @@ struct RenderServerSceneGizmoColor
     Color planeYZ; /// color of YZ plane gizmo mesh
 };
 
-/// @brief Info for the server to render the game scene
-struct RenderServerScenePass
+/// @brief Info for the system to render the game scene
+struct RenderSystemScenePass
 {
-    RenderServerMat4Callback mat4Callback; /// callback for server to grab the model matrix of 3D objects
+    RenderSystemMat4Callback mat4Callback; /// callback for system to grab the model matrix of 3D objects
     void* user;                            /// user of the scene render pass
     bool hasSkybox;                        /// whether to draw skybox with the environment cubemap
 
@@ -64,79 +64,79 @@ struct RenderServerScenePass
         SceneOverlayGizmo gizmoType;            /// gizmo to render
         Vec3 gizmoCenter;                       /// gizmo center position
         float gizmoScale;                       /// gizmo size scale, default world size is 1x1x1
-        RenderServerSceneGizmoColor gizmoColor; /// gizmo mesh color for this frame
+        RenderSystemSceneGizmoColor gizmoColor; /// gizmo mesh color for this frame
     } overlay;
 };
 
-/// @brief Info for the server to render in screen space on top of scene.
-struct RenderServerScreenPass
+/// @brief Info for the system to render in screen space on top of scene.
+struct RenderSystemScreenPass
 {
-    RenderServerMat4Callback mat4Callback;   /// callback for server to grab the model matrix of 2D objects
-    RenderServerScreenPassCallback callback; /// optional hook to render on top of all ScreenLayers
+    RenderSystemMat4Callback mat4Callback;   /// callback for system to grab the model matrix of 2D objects
+    RenderSystemScreenPassCallback callback; /// optional hook to render on top of all ScreenLayers
     void* user;                              /// user of the scene screen pass
 };
 
-/// @brief Info for the server to render the editor
-struct RenderServerEditorPass
+/// @brief Info for the system to render the editor
+struct RenderSystemEditorPass
 {
-    const Vec2* sceneMousePickQuery;                       /// if not null, a mouse picking query within RServerFrameInfo::sceneExtent
-    RenderServerEditorRenderCallback renderCallback;       /// for the Editor to render itself via a ScreenRenderComponent
-    RenderServerEditorScenePickCallback scenePickCallback; /// for the Editor to respond to scene mouse picking
+    const Vec2* sceneMousePickQuery;                       /// if not null, a mouse picking query within RSystemFrameInfo::sceneExtent
+    RenderSystemEditorRenderCallback renderCallback;       /// for the Editor to render itself via a ScreenRenderComponent
+    RenderSystemEditorScenePickCallback scenePickCallback; /// for the Editor to respond to scene mouse picking
     void* user;                                            /// user of the editor render pass
 };
 
-/// @brief Info for the server to render the editor overlay
-struct RenderServerEditorOverlayPass
+/// @brief Info for the system to render the editor overlay
+struct RenderSystemEditorOverlayPass
 {
-    RenderServerEditorRenderCallback renderCallback; /// for the Editor to render additional overlays after the base pass
+    RenderSystemEditorRenderCallback renderCallback; /// for the Editor to render additional overlays after the base pass
     Color blurMixColor;                              /// mix color RGB for the blurred editor background, keep alpha channel at 0xFF
     float blurMixFactor;                             /// lerp factor between blur color and mix color, 0 performs no blur
     void* user;                                      /// user of the editor overlay render pass
 };
 
-/// @brief Info for the server to render a dialog Window in screen space.
-struct RenderServerEditorDialogPass
+/// @brief Info for the system to render a dialog Window in screen space.
+struct RenderSystemEditorDialogPass
 {
     ScreenRenderCallback renderCallback;
     WindowID dialogWindow;
     void* user;
 };
 
-/// @brief Render server handle. This is the top-level graphics abstraction,
+/// @brief Render system handle. This is the top-level graphics abstraction,
 ///        Renderer resources are managed internally and are identified via a RUID.
-struct RenderServer : Handle<class RenderServerObj>
+struct RenderSystem : Handle<class RenderSystemObj>
 {
-    /// @brief Create the render server
-    static RenderServer create(const RenderServerInfo& serverI);
+    /// @brief Create the render system
+    static RenderSystem create(const RenderSystemInfo& systemI);
 
-    /// @brief Destroy the render server
-    static void destroy(RenderServer service);
+    /// @brief Destroy the render system
+    static void destroy(RenderSystem service);
 
     /// @brief Initiate the next GPU frame, this may block until the GPU has
     ///        finished processing the corresponding frame-in-flight. User must
     ///        also call submit() later.
     /// @param frameInfo parameters to use for this frame
-    void next_frame(const RenderServerFrameInfo& frameInfo);
+    void next_frame(const RenderSystemFrameInfo& frameInfo);
 
     /// @brief Submit the frame for the GPU to process.
     void submit_frame();
 
     /// @brief Base pass to render the game scene.
-    void scene_pass(const RenderServerScenePass& sceneRP);
+    void scene_pass(const RenderSystemScenePass& sceneRP);
 
     /// @brief Screen pass to render on top of game scene.
-    void screen_pass(const RenderServerScreenPass& screenP);
+    void screen_pass(const RenderSystemScreenPass& screenP);
 
     /// @brief Dependency injection for the Editor to render itself.
     ///        Not used in game Runtime.
-    void editor_pass(const RenderServerEditorPass& editorPass);
+    void editor_pass(const RenderSystemEditorPass& editorPass);
 
     /// @brief Dependency injection for the Editor to render more stuff on top of the editor pass.
     ///        Not used in game Runtime.
-    void editor_overlay_pass(const RenderServerEditorOverlayPass& editorPass);
+    void editor_overlay_pass(const RenderSystemEditorOverlayPass& editorPass);
 
     /// @brief Optional pass for the Editor to render a dialog window.
-    void editor_dialog_pass(const RenderServerEditorDialogPass& dialogPass);
+    void editor_dialog_pass(const RenderSystemEditorDialogPass& dialogPass);
 
     /// @brief Get the image handle of the font atlas image (RIMAGE_LAYOUT_SHADER_READ_ONLY).
     RImage get_font_atlas_image();

@@ -1,12 +1,12 @@
-set(MODULE_NAME LDRenderServer)
+set(MODULE_NAME LDRenderSystem)
 
 set(MODULE_INCLUDE
-    ${LUDENS_INCLUDE_DIR}/Ludens/RenderServer/RenderServer.h
-    ${LUDENS_INCLUDE_DIR}/Ludens/RenderServer/RenderServerObj.h
+    ${LUDENS_INCLUDE_DIR}/Ludens/RenderSystem/RenderSystem.h
+    ${LUDENS_INCLUDE_DIR}/Ludens/RenderSystem/RenderSystemObj.h
 )
 
 set(MODULE_LIB
-    Lib/RenderServer.cpp
+    Lib/RenderSystem.cpp
     Lib/ScreenLayer.h
     Lib/ScreenLayer.cpp
 )

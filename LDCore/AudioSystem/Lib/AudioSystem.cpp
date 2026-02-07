@@ -1,6 +1,6 @@
 #include <Ludens/AudioBackend/MiniAudio.h>
 #include <Ludens/AudioMixer/AudioMixer.h>
-#include <Ludens/AudioServer/AudioServer.h>
+#include <Ludens/AudioSystem/AudioSystem.h>
 #include <Ludens/DSA/HashSet.h>
 #include <Ludens/Memory/Allocator.h>
 #include <Ludens/Profiler/Profiler.h>
@@ -17,12 +17,12 @@ struct AudioThreadData
     AudioCommandQueue commandQueue;
 };
 
-/// @brief Audio server implementation.
-class AudioServerObj
+/// @brief Audio system implementation.
+class AudioSystemObj
 {
 public:
-    AudioServerObj();
-    ~AudioServerObj();
+    AudioSystemObj();
+    ~AudioSystemObj();
 
     void poll_deferred_destruction();
 
@@ -47,7 +47,7 @@ private:
     std::unordered_set<void*> mDeferredBufferDestruction;
 };
 
-AudioServerObj::AudioServerObj()
+AudioSystemObj::AudioSystemObj()
 {
     PoolAllocatorInfo paI{};
     paI.blockSize = AudioPlayback::byte_size();
@@ -63,17 +63,17 @@ AudioServerObj::AudioServerObj()
     mAudioThread.commandQueue = mAudioThread.mixer.get_command_queue();
 
     MiniAudioInfo maI{};
-    maI.dataCallback = &AudioServerObj::data_callback;
+    maI.dataCallback = &AudioSystemObj::data_callback;
     maI.userData = &mAudioThread;
     mMA = MiniAudio::create(maI);
 }
 
-AudioServerObj::~AudioServerObj()
+AudioSystemObj::~AudioSystemObj()
 {
     // NOTE: Technically this deadlocks if user does not call destroy_buffer
     //       on all handles returned by create_buffer. We could dummy-proof
     //       this by keeping track of all created handles... Currently we
-    //       assume the user of AudioServer to be responsible.
+    //       assume the user of AudioSystem to be responsible.
     while (!mDeferredBufferDestruction.empty())
     {
         poll_deferred_destruction();
@@ -87,7 +87,7 @@ AudioServerObj::~AudioServerObj()
     PoolAllocator::destroy(mPlaybackPA);
 }
 
-void AudioServerObj::poll_deferred_destruction()
+void AudioSystemObj::poll_deferred_destruction()
 {
     std::vector<void*> toErase;
 
@@ -107,7 +107,7 @@ void AudioServerObj::poll_deferred_destruction()
         mDeferredBufferDestruction.erase(ptr);
 }
 
-AudioBuffer AudioServerObj::create_buffer(const AudioBufferInfo& bufferI)
+AudioBuffer AudioSystemObj::create_buffer(const AudioBufferInfo& bufferI)
 {
     AudioBuffer buffer = AudioBuffer::create(bufferI);
     if (!buffer)
@@ -121,7 +121,7 @@ AudioBuffer AudioServerObj::create_buffer(const AudioBufferInfo& bufferI)
     return buffer;
 }
 
-void AudioServerObj::destroy_buffer(AudioBuffer buffer)
+void AudioSystemObj::destroy_buffer(AudioBuffer buffer)
 {
     AudioCommand cmd;
     cmd.type = AUDIO_COMMAND_DESTROY_BUFFER;
@@ -133,7 +133,7 @@ void AudioServerObj::destroy_buffer(AudioBuffer buffer)
     mDeferredBufferDestruction.insert(buffer.unwrap());
 }
 
-AudioPlayback AudioServerObj::create_playback(AudioBuffer buffer, float pan, float volumeLinear)
+AudioPlayback AudioSystemObj::create_playback(AudioBuffer buffer, float pan, float volumeLinear)
 {
     AudioPlaybackInfo playbackI{};
     playbackI.playbackPA = mPlaybackPA;
@@ -150,7 +150,7 @@ AudioPlayback AudioServerObj::create_playback(AudioBuffer buffer, float pan, flo
     return playback;
 }
 
-void AudioServerObj::destroy_playback(AudioPlayback playback)
+void AudioSystemObj::destroy_playback(AudioPlayback playback)
 {
     AudioCommand cmd;
     cmd.type = AUDIO_COMMAND_DESTROY_PLAYBACK;
@@ -158,7 +158,7 @@ void AudioServerObj::destroy_playback(AudioPlayback playback)
     mAudioThread.commandQueue.enqueue(cmd);
 }
 
-void AudioServerObj::start_playback(AudioPlayback playback)
+void AudioSystemObj::start_playback(AudioPlayback playback)
 {
     AudioCommand cmd;
     cmd.type = AUDIO_COMMAND_START_PLAYBACK;
@@ -166,7 +166,7 @@ void AudioServerObj::start_playback(AudioPlayback playback)
     mAudioThread.commandQueue.enqueue(cmd);
 }
 
-void AudioServerObj::stop_playback(AudioPlayback playback)
+void AudioSystemObj::stop_playback(AudioPlayback playback)
 {
     AudioCommand cmd;
     cmd.type = AUDIO_COMMAND_STOP_PLAYBACK;
@@ -174,7 +174,7 @@ void AudioServerObj::stop_playback(AudioPlayback playback)
     mAudioThread.commandQueue.enqueue(cmd);
 }
 
-void AudioServerObj::pause_playback(AudioPlayback playback)
+void AudioSystemObj::pause_playback(AudioPlayback playback)
 {
     AudioCommand cmd;
     cmd.type = AUDIO_COMMAND_PAUSE_PLAYBACK;
@@ -182,7 +182,7 @@ void AudioServerObj::pause_playback(AudioPlayback playback)
     mAudioThread.commandQueue.enqueue(cmd);
 }
 
-void AudioServerObj::resume_playback(AudioPlayback playback)
+void AudioSystemObj::resume_playback(AudioPlayback playback)
 {
     AudioCommand cmd;
     cmd.type = AUDIO_COMMAND_RESUME_PLAYBACK;
@@ -190,7 +190,7 @@ void AudioServerObj::resume_playback(AudioPlayback playback)
     mAudioThread.commandQueue.enqueue(cmd);
 }
 
-void AudioServerObj::set_playback_buffer(AudioPlayback playback, AudioBuffer buffer)
+void AudioSystemObj::set_playback_buffer(AudioPlayback playback, AudioBuffer buffer)
 {
     AudioCommand cmd;
     cmd.type = AUDIO_COMMAND_SET_PLAYBACK_BUFFER;
@@ -199,7 +199,7 @@ void AudioServerObj::set_playback_buffer(AudioPlayback playback, AudioBuffer buf
     mAudioThread.commandQueue.enqueue(cmd);
 }
 
-void AudioServerObj::data_callback(MiniAudioDevice device, void* outFrames, const void* inFrames, uint32_t frameCount)
+void AudioSystemObj::data_callback(MiniAudioDevice device, void* outFrames, const void* inFrames, uint32_t frameCount)
 {
     LD_PROFILE_SCOPE;
 
@@ -218,30 +218,30 @@ void AudioServerObj::data_callback(MiniAudioDevice device, void* outFrames, cons
 // Public API
 //
 
-AudioServer AudioServer::create()
+AudioSystem AudioSystem::create()
 {
     LD_PROFILE_SCOPE;
 
-    auto* obj = heap_new<AudioServerObj>(MEMORY_USAGE_AUDIO);
+    auto* obj = heap_new<AudioSystemObj>(MEMORY_USAGE_AUDIO);
 
-    return AudioServer(obj);
+    return AudioSystem(obj);
 }
 
-void AudioServer::destroy(AudioServer server)
+void AudioSystem::destroy(AudioSystem system)
 {
     LD_PROFILE_SCOPE;
 
-    auto* obj = server.unwrap();
+    auto* obj = system.unwrap();
 
-    heap_delete<AudioServerObj>(obj);
+    heap_delete<AudioSystemObj>(obj);
 }
 
-void AudioServer::update()
+void AudioSystem::update()
 {
     mObj->poll_deferred_destruction();
 }
 
-AudioBuffer AudioServer::create_buffer(const AudioBufferInfo& info)
+AudioBuffer AudioSystem::create_buffer(const AudioBufferInfo& info)
 {
     if (!info.samples)
         return {};
@@ -249,7 +249,7 @@ AudioBuffer AudioServer::create_buffer(const AudioBufferInfo& info)
     return mObj->create_buffer(info);
 }
 
-void AudioServer::destroy_buffer(AudioBuffer buffer)
+void AudioSystem::destroy_buffer(AudioBuffer buffer)
 {
     if (!buffer)
         return;
@@ -257,7 +257,7 @@ void AudioServer::destroy_buffer(AudioBuffer buffer)
     mObj->destroy_buffer(buffer);
 }
 
-AudioPlayback AudioServer::create_playback(AudioBuffer buffer, float pan, float volumeLinear)
+AudioPlayback AudioSystem::create_playback(AudioBuffer buffer, float pan, float volumeLinear)
 {
     if (!buffer)
         return {};
@@ -265,7 +265,7 @@ AudioPlayback AudioServer::create_playback(AudioBuffer buffer, float pan, float 
     return mObj->create_playback(buffer, pan, volumeLinear);
 }
 
-void AudioServer::destroy_playback(AudioPlayback playback)
+void AudioSystem::destroy_playback(AudioPlayback playback)
 {
     if (!playback)
         return;
@@ -273,7 +273,7 @@ void AudioServer::destroy_playback(AudioPlayback playback)
     mObj->destroy_playback(playback);
 }
 
-void AudioServer::start_playback(AudioPlayback playback)
+void AudioSystem::start_playback(AudioPlayback playback)
 {
     if (!playback)
         return;
@@ -281,7 +281,7 @@ void AudioServer::start_playback(AudioPlayback playback)
     mObj->start_playback(playback);
 }
 
-void AudioServer::stop_playback(AudioPlayback playback)
+void AudioSystem::stop_playback(AudioPlayback playback)
 {
     if (!playback)
         return;
@@ -289,7 +289,7 @@ void AudioServer::stop_playback(AudioPlayback playback)
     mObj->stop_playback(playback);
 }
 
-void AudioServer::pause_playback(AudioPlayback playback)
+void AudioSystem::pause_playback(AudioPlayback playback)
 {
     if (!playback)
         return;
@@ -297,7 +297,7 @@ void AudioServer::pause_playback(AudioPlayback playback)
     mObj->pause_playback(playback);
 }
 
-void AudioServer::resume_playback(AudioPlayback playback)
+void AudioSystem::resume_playback(AudioPlayback playback)
 {
     if (!playback)
         return;
@@ -305,7 +305,7 @@ void AudioServer::resume_playback(AudioPlayback playback)
     mObj->resume_playback(playback);
 }
 
-void AudioServer::set_playback_buffer(AudioPlayback playback, AudioBuffer buffer)
+void AudioSystem::set_playback_buffer(AudioPlayback playback, AudioBuffer buffer)
 {
     if (!playback || !buffer)
         return;

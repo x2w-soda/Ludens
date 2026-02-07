@@ -11,10 +11,10 @@ set(MODULE_LIB
     Lib/Scene.cpp
     Lib/SceneSchemaKeys.h
     Lib/SceneSchema.cpp
-    Lib/AudioServerCache.h
-    Lib/AudioServerCache.cpp
-    Lib/RenderServerCache.h
-    Lib/RenderServerCache.cpp
+    Lib/AudioSystemCache.h
+    Lib/AudioSystemCache.cpp
+    Lib/RenderSystemCache.h
+    Lib/RenderSystemCache.cpp
     Lib/LuaScript.h
     Lib/LuaScript.cpp
     Lib/LuaScriptFFI.h

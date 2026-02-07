@@ -5,18 +5,18 @@
 #include <Ludens/Asset/AssetType/Texture2DAsset.h>
 #include <Ludens/DSA/HashMap.h>
 #include <Ludens/DataRegistry/DataComponent.h>
-#include <Ludens/RenderServer/RenderServer.h>
+#include <Ludens/RenderSystem/RenderSystem.h>
 
 namespace LD {
 
-/// @brief Cache of render server resources. This class connects Scene, AssetManager, and RenderServer.
-class RenderServerCache
+/// @brief Cache of render system resources. This class connects Scene, AssetManager, and RenderSystem.
+class RenderSystemCache
 {
 public:
-    /// @brief In-place startup, connect to render server.
-    void startup(RenderServer server, AssetManager assetManager);
+    /// @brief In-place startup, connect to render system.
+    void startup(RenderSystem system, AssetManager assetManager);
 
-    /// @brief In-place cleanup, destroys all resources from render server.
+    /// @brief In-place cleanup, destroys all resources from render system.
     void cleanup();
 
     /// @brief Get draw id associated with component.
@@ -27,12 +27,12 @@ public:
 
     inline RUID create_screen_layer(const std::string& name)
     {
-        return mServer.create_screen_layer(name);
+        return mSystem.create_screen_layer(name);
     }
 
     inline void destroy_screen_layer(RUID layerID)
     {
-        mServer.destroy_screen_layer(layerID);
+        mSystem.destroy_screen_layer(layerID);
     }
 
     MeshData get_or_create_mesh_data(AUID meshAUID);
@@ -41,10 +41,10 @@ public:
     Sprite2DDraw create_sprite_draw(CUID compID, RUID layerID, AUID textureAUID = 0);
 
 private:
-    RenderServer mServer{};
+    RenderSystem mSystem{};
     AssetManager mAssetManager{};
-    HashMap<RUID, CUID> mDrawToCuid; /// map RenderServer draw ID to component
-    HashMap<CUID, RUID> mCuidToDraw; /// map component to RenderServer draw ID
+    HashMap<RUID, CUID> mDrawToCuid; /// map RenderSystem draw ID to component
+    HashMap<CUID, RUID> mCuidToDraw; /// map component to RenderSystem draw ID
     HashMap<AUID, MeshData> mMeshData;
     HashMap<AUID, Image2D> mImage2D;
 };

@@ -18,29 +18,29 @@
 #include <Ludens/RenderComponent/ScreenPickComponent.h>
 #include <Ludens/RenderComponent/ScreenRenderComponent.h>
 #include <Ludens/RenderGraph/RGraph.h>
-#include <Ludens/RenderServer/RenderServer.h>
+#include <Ludens/RenderSystem/RenderSystem.h>
 
 #include "ScreenLayer.h"
 
 namespace LD {
 
-static Log sLog("RenderServer");
+static Log sLog("RenderSystem");
 
-/// @brief Render server implementation.
-class RenderServerObj
+/// @brief Render system implementation.
+class RenderSystemObj
 {
 public:
-    RenderServerObj(const RenderServerInfo& serviceI);
-    ~RenderServerObj();
+    RenderSystemObj(const RenderSystemInfo& serviceI);
+    ~RenderSystemObj();
 
-    void next_frame(const RenderServerFrameInfo& frameI);
+    void next_frame(const RenderSystemFrameInfo& frameI);
     void submit_frame();
 
-    void scene_pass(const RenderServerScenePass& sceneP);
-    void screen_pass(const RenderServerScreenPass& screenP);
-    void editor_pass(const RenderServerEditorPass& editorP);
-    void editor_overlay_pass(const RenderServerEditorOverlayPass& editorOP);
-    void editor_dialog_pass(const RenderServerEditorDialogPass& dialogPass);
+    void scene_pass(const RenderSystemScenePass& sceneP);
+    void screen_pass(const RenderSystemScreenPass& screenP);
+    void editor_pass(const RenderSystemEditorPass& editorP);
+    void editor_overlay_pass(const RenderSystemEditorOverlayPass& editorOP);
+    void editor_dialog_pass(const RenderSystemEditorDialogPass& dialogPass);
 
     RUID create_screen_layer(const std::string& name);
     void destroy_screen_layer(RUID layerID);
@@ -85,10 +85,10 @@ private: // render passes and pipelines
     RImage mWhiteCubemap;
     Camera mMainCamera;
     RMeshBlinnPhongPipeline mMeshPipeline;
-    RenderServerMat4Callback mScenePassMat4Callback = nullptr;
+    RenderSystemMat4Callback mScenePassMat4Callback = nullptr;
     void* mScenePassUser = nullptr;
-    RenderServerMat4Callback mScreenPassMat4Callback = nullptr;
-    RenderServerScreenPassCallback mScreenPassCallback = nullptr;
+    RenderSystemMat4Callback mScreenPassMat4Callback = nullptr;
+    RenderSystemScreenPassCallback mScreenPassCallback = nullptr;
     void* mScreenPassUser = nullptr;
     Vec2 mSceneExtent;
     Vec2 mScreenExtent;
@@ -119,8 +119,8 @@ private:
     PoolAllocator mMeshDrawPA{};
 };
 
-RenderServerObj::RenderServerObj(const RenderServerInfo& serverI)
-    : mDevice(serverI.device), mColorFormat(RFORMAT_RGBA8), mFontAtlas(serverI.fontAtlas)
+RenderSystemObj::RenderSystemObj(const RenderSystemInfo& systemI)
+    : mDevice(systemI.device), mColorFormat(RFORMAT_RGBA8), mFontAtlas(systemI.fontAtlas)
 {
     LD_PROFILE_SCOPE;
 
@@ -134,7 +134,7 @@ RenderServerObj::RenderServerObj(const RenderServerInfo& serverI)
     mDepthStencilFormat = depthStencilFormats[0];
 
     //
-    // Render Server Resources
+    // Render System Resources
     //
 
     Bitmap atlasBitmap = mFontAtlas.get_bitmap();
@@ -208,7 +208,7 @@ RenderServerObj::RenderServerObj(const RenderServerInfo& serverI)
     mMeshDataPA = PoolAllocator::create(paI);
 }
 
-RenderServerObj::~RenderServerObj()
+RenderSystemObj::~RenderSystemObj()
 {
     LD_PROFILE_SCOPE;
 
@@ -251,7 +251,7 @@ RenderServerObj::~RenderServerObj()
     mDevice.destroy_image(mFontAtlasImage);
 }
 
-void RenderServerObj::next_frame(const RenderServerFrameInfo& frameI)
+void RenderSystemObj::next_frame(const RenderSystemFrameInfo& frameI)
 {
     RFence frameComplete;
     mDevice.next_frame(mFrameIndex, frameComplete);
@@ -303,7 +303,7 @@ void RenderServerObj::next_frame(const RenderServerFrameInfo& frameI)
     graphI.screenWidth = (uint32_t)mScreenExtent.x;
     graphI.screenHeight = (uint32_t)mScreenExtent.y;
     graphI.prePassCB = [](RCommandList list, void* user) {
-        auto* obj = (RenderServerObj*)user;
+        auto* obj = (RenderSystemObj*)user;
         Frame& frame = obj->mFrames[obj->mFrameIndex];
         list.cmd_bind_graphics_sets(sRMeshPipelineLayout, 0, 1, &frame.frameSet);
     };
@@ -343,7 +343,7 @@ void RenderServerObj::next_frame(const RenderServerFrameInfo& frameI)
     mLastIDFlagsAttachment = {};
 }
 
-void RenderServerObj::submit_frame()
+void RenderSystemObj::submit_frame()
 {
     LD_PROFILE_SCOPE;
 
@@ -361,7 +361,7 @@ void RenderServerObj::submit_frame()
     mDevice.present_frame();
 }
 
-void RenderServerObj::scene_pass(const RenderServerScenePass& sceneP)
+void RenderSystemObj::scene_pass(const RenderSystemScenePass& sceneP)
 {
     LD_PROFILE_SCOPE;
 
@@ -383,7 +383,7 @@ void RenderServerObj::scene_pass(const RenderServerScenePass& sceneP)
     forwardI.clearDepthStencil = clearDS;
     forwardI.samples = mMSAA;
     forwardI.hasSkybox = sceneP.hasSkybox;
-    ForwardRenderComponent sceneFR = ForwardRenderComponent::add(mGraph, forwardI, &RenderServerObj::forward_rendering, this);
+    ForwardRenderComponent sceneFR = ForwardRenderComponent::add(mGraph, forwardI, &RenderSystemObj::forward_rendering, this);
 
     if (sceneP.overlay.enabled) // mesh outlining and gizmo rendering is provided by the SceneOverlayComponent
     {
@@ -415,7 +415,7 @@ void RenderServerObj::scene_pass(const RenderServerScenePass& sceneP)
     }
 }
 
-void RenderServerObj::screen_pass(const RenderServerScreenPass& screenP)
+void RenderSystemObj::screen_pass(const RenderSystemScreenPass& screenP)
 {
     LD_PROFILE_SCOPE;
 
@@ -428,7 +428,7 @@ void RenderServerObj::screen_pass(const RenderServerScreenPass& screenP)
 
     ScreenRenderComponentInfo screenRCI{};
     screenRCI.format = mColorFormat;
-    screenRCI.onDrawCallback = &RenderServerObj::screen_rendering;
+    screenRCI.onDrawCallback = &RenderSystemObj::screen_rendering;
     screenRCI.user = this;
     screenRCI.hasSampledImage = false;
     screenRCI.name = "SceneScreen";
@@ -450,7 +450,7 @@ void RenderServerObj::screen_pass(const RenderServerScreenPass& screenP)
     }
 }
 
-void RenderServerObj::editor_pass(const RenderServerEditorPass& editorP)
+void RenderSystemObj::editor_pass(const RenderSystemEditorPass& editorP)
 {
     LD_PROFILE_SCOPE;
 
@@ -510,7 +510,7 @@ void RenderServerObj::editor_pass(const RenderServerEditorPass& editorP)
     }
 }
 
-void RenderServerObj::editor_overlay_pass(const RenderServerEditorOverlayPass& editorOP)
+void RenderSystemObj::editor_overlay_pass(const RenderSystemEditorOverlayPass& editorOP)
 {
     LD_PROFILE_SCOPE;
 
@@ -540,7 +540,7 @@ void RenderServerObj::editor_overlay_pass(const RenderServerEditorOverlayPass& e
     mLastColorAttachment = editorSRC.color_attachment();
 }
 
-void RenderServerObj::editor_dialog_pass(const RenderServerEditorDialogPass& editorDP)
+void RenderSystemObj::editor_dialog_pass(const RenderSystemEditorDialogPass& editorDP)
 {
     LD_PROFILE_SCOPE;
 
@@ -559,7 +559,7 @@ void RenderServerObj::editor_dialog_pass(const RenderServerEditorDialogPass& edi
     mGraph.connect_swapchain_image(editorSRC.color_attachment(), editorDP.dialogWindow);
 }
 
-RUID RenderServerObj::create_screen_layer(const std::string& name)
+RUID RenderSystemObj::create_screen_layer(const std::string& name)
 {
     RUID layerID = get_ruid();
 
@@ -568,7 +568,7 @@ RUID RenderServerObj::create_screen_layer(const std::string& name)
     return layerID;
 }
 
-void RenderServerObj::destroy_screen_layer(RUID layerID)
+void RenderSystemObj::destroy_screen_layer(RUID layerID)
 {
     if (!mLayers.contains(layerID))
         return;
@@ -578,7 +578,7 @@ void RenderServerObj::destroy_screen_layer(RUID layerID)
     mLayers.erase(layerID);
 }
 
-RImage RenderServerObj::create_image_2d(Bitmap bitmap)
+RImage RenderSystemObj::create_image_2d(Bitmap bitmap)
 {
     LD_PROFILE_SCOPE;
 
@@ -595,7 +595,7 @@ RImage RenderServerObj::create_image_2d(Bitmap bitmap)
     return image;
 }
 
-void RenderServerObj::destroy_image_2d(RImage image)
+void RenderSystemObj::destroy_image_2d(RImage image)
 {
     LD_PROFILE_SCOPE;
 
@@ -610,7 +610,7 @@ void RenderServerObj::destroy_image_2d(RImage image)
     mDevice.destroy_image(image);
 }
 
-RImage RenderServerObj::create_image_cube(Bitmap cubemapFaces)
+RImage RenderSystemObj::create_image_cube(Bitmap cubemapFaces)
 {
     RSamplerInfo cubemapSamplerI{};
     cubemapSamplerI.filter = RFILTER_LINEAR;
@@ -628,7 +628,7 @@ RImage RenderServerObj::create_image_cube(Bitmap cubemapFaces)
     return cubemap;
 }
 
-void RenderServerObj::destroy_image_cube(RImage image)
+void RenderSystemObj::destroy_image_cube(RImage image)
 {
     auto it = mImages.find(image.get_id());
 
@@ -641,7 +641,7 @@ void RenderServerObj::destroy_image_cube(RImage image)
     mDevice.destroy_image(image);
 }
 
-MeshDataObj* RenderServerObj::create_mesh_data(ModelBinary& binary)
+MeshDataObj* RenderSystemObj::create_mesh_data(ModelBinary& binary)
 {
     RStager stager(mDevice, RQUEUE_TYPE_GRAPHICS);
 
@@ -657,7 +657,7 @@ MeshDataObj* RenderServerObj::create_mesh_data(ModelBinary& binary)
     return dataObj;
 }
 
-void RenderServerObj::destroy_mesh_data(MeshDataObj* data)
+void RenderSystemObj::destroy_mesh_data(MeshDataObj* data)
 {
     if (!data || !mMeshData.contains(data->id))
         return;
@@ -672,7 +672,7 @@ void RenderServerObj::destroy_mesh_data(MeshDataObj* data)
     mMeshData.erase(dataID);
 }
 
-MeshDrawObj* RenderServerObj::create_mesh_draw(MeshDataObj* data)
+MeshDrawObj* RenderSystemObj::create_mesh_draw(MeshDataObj* data)
 {
     RUID drawID = get_ruid();
     MeshDrawObj* drawObj = (MeshDrawObj*)mMeshDrawPA.allocate();
@@ -691,7 +691,7 @@ MeshDrawObj* RenderServerObj::create_mesh_draw(MeshDataObj* data)
     return drawObj;
 }
 
-void RenderServerObj::destroy_mesh_draw(MeshDrawObj* draw)
+void RenderSystemObj::destroy_mesh_draw(MeshDrawObj* draw)
 {
     if (!draw || !mMeshDraw.contains(draw->id))
         return;
@@ -705,7 +705,7 @@ void RenderServerObj::destroy_mesh_draw(MeshDrawObj* draw)
     mMeshDraw.erase(drawID);
 }
 
-Sprite2DDrawObj* RenderServerObj::create_sprite_2d_draw(RImage image, RUID layerID, const Rect& rect, uint32_t zDepth)
+Sprite2DDrawObj* RenderSystemObj::create_sprite_2d_draw(RImage image, RUID layerID, const Rect& rect, uint32_t zDepth)
 {
     LD_ASSERT(image && mLayers.contains(layerID));
 
@@ -717,7 +717,7 @@ Sprite2DDrawObj* RenderServerObj::create_sprite_2d_draw(RImage image, RUID layer
     return draw;
 }
 
-void RenderServerObj::destroy_sprite_2d_draw(Sprite2DDrawObj* draw)
+void RenderSystemObj::destroy_sprite_2d_draw(Sprite2DDrawObj* draw)
 {
     LD_ASSERT(draw && draw->layer);
 
@@ -729,11 +729,11 @@ void RenderServerObj::destroy_sprite_2d_draw(Sprite2DDrawObj* draw)
 // NOTE: This is super early placeholder scene renderer implementation.
 //       Once other engine subsystems such as Assets and Scenes are resolved,
 //       we will come back and replace this silly procedure.
-void RenderServerObj::forward_rendering(ForwardRenderComponent renderer, void* user)
+void RenderSystemObj::forward_rendering(ForwardRenderComponent renderer, void* user)
 {
     LD_PROFILE_SCOPE;
 
-    RenderServerObj& self = *(RenderServerObj*)user;
+    RenderSystemObj& self = *(RenderSystemObj*)user;
     RPipeline meshPipeline = self.mMeshPipeline.handle();
 
     if (!self.mHasAcquiredRootWindowImage)
@@ -790,11 +790,11 @@ void RenderServerObj::forward_rendering(ForwardRenderComponent renderer, void* u
     renderer.draw_skybox();
 }
 
-void RenderServerObj::screen_rendering(ScreenRenderComponent renderer, void* user)
+void RenderSystemObj::screen_rendering(ScreenRenderComponent renderer, void* user)
 {
     LD_PROFILE_SCOPE;
 
-    RenderServerObj& self = *(RenderServerObj*)user;
+    RenderSystemObj& self = *(RenderSystemObj*)user;
 
     if (!self.mHasAcquiredRootWindowImage)
         return;
@@ -819,12 +819,12 @@ void RenderServerObj::screen_rendering(ScreenRenderComponent renderer, void* use
     }
 }
 
-bool RenderServerObj::pickid_is_gizmo(uint32_t pickID)
+bool RenderSystemObj::pickid_is_gizmo(uint32_t pickID)
 {
     return 1 <= pickID && pickID <= SCENE_OVERLAY_GIZMO_ID_LAST;
 }
 
-RUID RenderServerObj::pickid_to_ruid(uint32_t pickID)
+RUID RenderSystemObj::pickid_to_ruid(uint32_t pickID)
 {
     // reserved SceneOverlayGizmoID
     if (pickID <= SCENE_OVERLAY_GIZMO_ID_LAST)
@@ -833,28 +833,28 @@ RUID RenderServerObj::pickid_to_ruid(uint32_t pickID)
     return pickID - SCENE_OVERLAY_GIZMO_ID_LAST;
 }
 
-uint32_t RenderServerObj::ruid_to_pickid(RUID ruid)
+uint32_t RenderSystemObj::ruid_to_pickid(RUID ruid)
 {
     // NOTE: this should not cause an u32 overflow for counter-based RUID,
     //       but the possibility isn't zero either.
     return ruid + SCENE_OVERLAY_GIZMO_ID_LAST;
 }
 
-RenderServer RenderServer::create(const RenderServerInfo& serverI)
+RenderSystem RenderSystem::create(const RenderSystemInfo& systemI)
 {
-    RenderServerObj* obj = heap_new<RenderServerObj>(MEMORY_USAGE_RENDER, serverI);
+    RenderSystemObj* obj = heap_new<RenderSystemObj>(MEMORY_USAGE_RENDER, systemI);
 
     return {obj};
 }
 
-void RenderServer::destroy(RenderServer service)
+void RenderSystem::destroy(RenderSystem service)
 {
-    RenderServerObj* obj = service;
+    RenderSystemObj* obj = service;
 
-    heap_delete<RenderServerObj>(obj);
+    heap_delete<RenderSystemObj>(obj);
 }
 
-void RenderServer::next_frame(const RenderServerFrameInfo& frameI)
+void RenderSystem::next_frame(const RenderSystemFrameInfo& frameI)
 {
     LD_ASSERT(frameI.mainCamera);
     LD_ASSERT(frameI.screenExtent.x > 0 && frameI.screenExtent.y > 0);
@@ -862,42 +862,42 @@ void RenderServer::next_frame(const RenderServerFrameInfo& frameI)
     mObj->next_frame(frameI);
 }
 
-void RenderServer::submit_frame()
+void RenderSystem::submit_frame()
 {
     mObj->submit_frame();
 }
 
-void RenderServer::scene_pass(const RenderServerScenePass& sceneP)
+void RenderSystem::scene_pass(const RenderSystemScenePass& sceneP)
 {
     mObj->scene_pass(sceneP);
 }
 
-void RenderServer::screen_pass(const RenderServerScreenPass& screenP)
+void RenderSystem::screen_pass(const RenderSystemScreenPass& screenP)
 {
     mObj->screen_pass(screenP);
 }
 
-void RenderServer::editor_pass(const RenderServerEditorPass& editorRP)
+void RenderSystem::editor_pass(const RenderSystemEditorPass& editorRP)
 {
     mObj->editor_pass(editorRP);
 }
 
-void RenderServer::editor_overlay_pass(const RenderServerEditorOverlayPass& editorOP)
+void RenderSystem::editor_overlay_pass(const RenderSystemEditorOverlayPass& editorOP)
 {
     mObj->editor_overlay_pass(editorOP);
 }
 
-void RenderServer::editor_dialog_pass(const RenderServerEditorDialogPass& dialogPass)
+void RenderSystem::editor_dialog_pass(const RenderSystemEditorDialogPass& dialogPass)
 {
     mObj->editor_dialog_pass(dialogPass);
 }
 
-RImage RenderServer::get_font_atlas_image()
+RImage RenderSystem::get_font_atlas_image()
 {
     return mObj->get_font_atlas_image();
 }
 
-Image2D RenderServer::create_image_2d(Bitmap bitmap)
+Image2D RenderSystem::create_image_2d(Bitmap bitmap)
 {
     if (!bitmap)
         return {};
@@ -905,7 +905,7 @@ Image2D RenderServer::create_image_2d(Bitmap bitmap)
     RImage image = mObj->create_image_2d(bitmap);
     return Image2D(image.unwrap(), image.get_id());
 }
-void RenderServer::destroy_image_2d(Image2D image)
+void RenderSystem::destroy_image_2d(Image2D image)
 {
     if (!image)
         return;
@@ -913,7 +913,7 @@ void RenderServer::destroy_image_2d(Image2D image)
     mObj->destroy_image_2d(RImage(image.unwrap()));
 }
 
-ImageCube RenderServer::create_image_cube(Bitmap cubemapFaces)
+ImageCube RenderSystem::create_image_cube(Bitmap cubemapFaces)
 {
     if (!cubemapFaces)
         return {};
@@ -922,7 +922,7 @@ ImageCube RenderServer::create_image_cube(Bitmap cubemapFaces)
     return ImageCube(image.unwrap(), image.get_id());
 }
 
-void RenderServer::destroy_image_cube(ImageCube image)
+void RenderSystem::destroy_image_cube(ImageCube image)
 {
     if (!image)
         return;
@@ -930,14 +930,14 @@ void RenderServer::destroy_image_cube(ImageCube image)
     mObj->destroy_image_cube(RImage(image.unwrap()));
 }
 
-RUID RenderServer::create_screen_layer(const std::string& name)
+RUID RenderSystem::create_screen_layer(const std::string& name)
 {
     RUID layerID = mObj->create_screen_layer(name);
 
     return layerID;
 }
 
-void RenderServer::destroy_screen_layer(RUID layer)
+void RenderSystem::destroy_screen_layer(RUID layer)
 {
     if (!layer)
         return;
@@ -945,7 +945,7 @@ void RenderServer::destroy_screen_layer(RUID layer)
     mObj->destroy_screen_layer(layer);
 }
 
-Sprite2DDraw RenderServer::create_sprite_2d_draw(Image2D image2D, RUID layerID, const Rect& rect, uint32_t zDepth)
+Sprite2DDraw RenderSystem::create_sprite_2d_draw(Image2D image2D, RUID layerID, const Rect& rect, uint32_t zDepth)
 {
     LD_ASSERT(layerID);
 
@@ -955,7 +955,7 @@ Sprite2DDraw RenderServer::create_sprite_2d_draw(Image2D image2D, RUID layerID, 
     return Sprite2DDraw(obj, obj->id);
 }
 
-void RenderServer::destroy_sprite_2d_draw(Sprite2DDraw draw)
+void RenderSystem::destroy_sprite_2d_draw(Sprite2DDraw draw)
 {
     if (!draw)
         return;
@@ -963,14 +963,14 @@ void RenderServer::destroy_sprite_2d_draw(Sprite2DDraw draw)
     mObj->destroy_sprite_2d_draw(draw.unwrap());
 }
 
-MeshData RenderServer::create_mesh_data(ModelBinary& binary)
+MeshData RenderSystem::create_mesh_data(ModelBinary& binary)
 {
     MeshDataObj* obj = mObj->create_mesh_data(binary);
 
     return MeshData(obj, obj->id);
 }
 
-void RenderServer::destroy_mesh_data(MeshData data)
+void RenderSystem::destroy_mesh_data(MeshData data)
 {
     if (!data)
         return;
@@ -978,7 +978,7 @@ void RenderServer::destroy_mesh_data(MeshData data)
     mObj->destroy_mesh_data(data.unwrap());
 }
 
-MeshDraw RenderServer::create_mesh_draw()
+MeshDraw RenderSystem::create_mesh_draw()
 {
     MeshDrawObj* obj = mObj->create_mesh_draw(nullptr);
 
@@ -986,7 +986,7 @@ MeshDraw RenderServer::create_mesh_draw()
     return MeshDraw(obj, obj->id);
 }
 
-MeshDraw RenderServer::create_mesh_draw(MeshData data)
+MeshDraw RenderSystem::create_mesh_draw(MeshData data)
 {
     if (!data)
         return {};
@@ -997,7 +997,7 @@ MeshDraw RenderServer::create_mesh_draw(MeshData data)
     return MeshDraw(obj, obj->id);
 }
 
-void RenderServer::destroy_mesh_draw(MeshDraw draw)
+void RenderSystem::destroy_mesh_draw(MeshDraw draw)
 {
     if (!draw)
         return;

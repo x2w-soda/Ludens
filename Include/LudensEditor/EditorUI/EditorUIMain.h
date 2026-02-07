@@ -29,7 +29,7 @@ struct EditorUIMain : Handle<struct EditorUIMainObj>
     Vec2 get_viewport_scene_size();
     bool get_viewport_mouse_pos(Vec2& pickPos);
     RUID get_viewport_outline_ruid();
-    void get_viewport_gizmo_state(SceneOverlayGizmo& gizmoType, Vec3& gizmoCenter, float& gizmoScale, RenderServerSceneGizmoColor& gizmoColor);
+    void get_viewport_gizmo_state(SceneOverlayGizmo& gizmoType, Vec3& gizmoCenter, float& gizmoScale, RenderSystemSceneGizmoColor& gizmoColor);
 };
 
 } // namespace LD

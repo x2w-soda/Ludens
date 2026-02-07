@@ -1,11 +1,11 @@
 #pragma once
 
 #include <Ludens/Asset/AssetManager.h>
-#include <Ludens/AudioServer/AudioServer.h>
+#include <Ludens/AudioSystem/AudioSystem.h>
 #include <Ludens/Camera/Camera.h>
 #include <Ludens/DataRegistry/DataRegistry.h>
 #include <Ludens/Header/Handle.h>
-#include <Ludens/RenderServer/RenderServer.h>
+#include <Ludens/RenderSystem/RenderSystem.h>
 #include <vector>
 
 namespace LD {
@@ -17,8 +17,8 @@ const char* get_lua_script_log_channel_name();
 struct SceneInfo
 {
     AssetManager assetManager;
-    AudioServer audioServer;
-    RenderServer renderServer;
+    AudioSystem audioSystem;
+    RenderSystem renderSystem;
 };
 
 /// @brief The basic unit of game simulation.

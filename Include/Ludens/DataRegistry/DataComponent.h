@@ -12,10 +12,10 @@
 //       a lot of headers from different subsystems into the scope.
 
 #include <Ludens/Asset/Asset.h>
-#include <Ludens/AudioServer/AudioServer.h>
+#include <Ludens/AudioSystem/AudioSystem.h>
 #include <Ludens/Camera/Camera.h>
 #include <Ludens/RenderBackend/RBackend.h>
-#include <Ludens/RenderServer/RenderServer.h>
+#include <Ludens/RenderSystem/RenderSystem.h>
 #include <cstdint>
 
 namespace LD {

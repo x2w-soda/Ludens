@@ -5,17 +5,17 @@
 
 namespace LD {
 
-/// @brief Audio server handle. This is the top-level audio abstraction
+/// @brief Audio system handle. This is the top-level audio abstraction
 ///        accessed on the main thread.
-struct AudioServer : Handle<struct AudioServerObj>
+struct AudioSystem : Handle<struct AudioSystemObj>
 {
-    /// @brief Create the audio server.
+    /// @brief Create the audio system.
     /// @note This creates the audio thread.
-    static AudioServer create();
+    static AudioSystem create();
 
-    /// @brief Destroy the audio server.
+    /// @brief Destroy the audio system.
     /// @note This destroys the audio thread and audio resources on the heap.
-    static void destroy(AudioServer server);
+    static void destroy(AudioSystem system);
 
     /// @brief Called by main thread to free heap resources,
     ///        audio thread does not manage heap allocations.

@@ -1,30 +1,30 @@
-#include "AudioServerCache.h"
+#include "AudioSystemCache.h"
 
 namespace LD {
 
-void AudioServerCache::startup(AudioServer server, AssetManager manager)
+void AudioSystemCache::startup(AudioSystem server, AssetManager manager)
 {
-    mServer = server;
+    mSystem = server;
     mAssetManager = manager;
     mClipToBuffer.clear();
 }
 
-void AudioServerCache::cleanup()
+void AudioSystemCache::cleanup()
 {
-    if (!mServer)
+    if (!mSystem)
         return;
 
     for (auto ite : mClipToBuffer)
     {
         AudioBuffer buffer = ite.second;
-        mServer.destroy_buffer(buffer);
+        mSystem.destroy_buffer(buffer);
     }
     mClipToBuffer.clear();
 
-    mServer = {};
+    mSystem = {};
 }
 
-AudioBuffer AudioServerCache::get_or_create_audio_buffer(AUID clipAUID)
+AudioBuffer AudioSystemCache::get_or_create_audio_buffer(AUID clipAUID)
 {
     AudioClipAsset clipA = (AudioClipAsset)mAssetManager.get_asset(clipAUID, ASSET_TYPE_AUDIO_CLIP);
 
@@ -40,7 +40,7 @@ AudioBuffer AudioServerCache::get_or_create_audio_buffer(AUID clipAUID)
     bufferI.frameCount = clipA.get_frame_count();
     bufferI.sampleRate = clipA.get_sample_rate();
     bufferI.samples = clipA.get_frames(0);
-    AudioBuffer buffer = mServer.create_buffer(bufferI);
+    AudioBuffer buffer = mSystem.create_buffer(bufferI);
 
     if (buffer)
         mClipToBuffer[clipAUID] = buffer;

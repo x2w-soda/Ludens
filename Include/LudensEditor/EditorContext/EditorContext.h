@@ -1,9 +1,9 @@
 #pragma once
 
-#include <Ludens/AudioServer/AudioServer.h>
+#include <Ludens/AudioSystem/AudioSystem.h>
 #include <Ludens/DSA/Vector.h>
 #include <Ludens/Project/ProjectSettings.h>
-#include <Ludens/RenderServer/RenderServer.h>
+#include <Ludens/RenderSystem/RenderSystem.h>
 #include <Ludens/Scene/Scene.h>
 #include <Ludens/System/FileSystem.h>
 #include <Ludens/UI/UILayout.h>
@@ -19,8 +19,8 @@ struct TransformEx;
 
 struct EditorContextInfo
 {
-    AudioServer audioServer;   /// audio server handle
-    RenderServer renderServer; /// render server handle
+    AudioSystem audioSystem;   /// audio system handle
+    RenderSystem renderSystem; /// render system handle
     FS::Path iconAtlasPath;    /// path to icon atlas
 };
 
@@ -35,8 +35,8 @@ struct EditorContext : Handle<struct EditorContextObj>
     /// @brief Destroy the editor context.
     static void destroy(EditorContext ctx);
 
-    /// @brief Callback to inform the render server the model matrix of RUIDs
-    static Mat4 render_server_mat4_callback(RUID ruid, void* user);
+    /// @brief Callback to inform the render system the model matrix of RUIDs
+    static Mat4 render_system_mat4_callback(RUID ruid, void* user);
 
     /// @brief Redo most recent undo.
     void action_redo();

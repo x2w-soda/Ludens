@@ -2,7 +2,7 @@
 
 #include <Ludens/Asset/Asset.h>
 #include <Ludens/Project/Project.h>
-#include <Ludens/RenderServer/RenderServer.h>
+#include <Ludens/RenderSystem/RenderSystem.h>
 #include <Ludens/Scene/Scene.h>
 #include <Ludens/System/FileSystem.h>
 

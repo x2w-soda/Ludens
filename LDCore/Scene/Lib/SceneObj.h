@@ -1,8 +1,8 @@
 #pragma once
 
-#include "AudioServerCache.h"
+#include "AudioSystemCache.h"
 #include "LuaScript.h"
-#include "RenderServerCache.h"
+#include "RenderSystemCache.h"
 
 namespace LD {
 
@@ -19,8 +19,8 @@ struct SceneObj
     DataRegistry registry;
     DataRegistry registryBack;
     AssetManager assetManager{};
-    AudioServerCache audioServerCache;
-    RenderServerCache renderServerCache;
+    AudioSystemCache audioSystemCache;
+    RenderSystemCache renderSystemCache;
     LuaScript::Context luaContext{};
     CameraComponent* mainCameraC;
     CUID mainCameraCUID;

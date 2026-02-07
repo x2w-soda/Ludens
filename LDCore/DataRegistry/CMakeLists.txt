@@ -22,8 +22,8 @@ add_ludens_core_module(
 
 target_link_libraries(${MODULE_NAME} PUBLIC
     LDSystem
-    LDAudioServer
-    LDRenderServer
+    LDAudioSystem
+    LDRenderSystem
     LDAsset
 )
 

@@ -550,7 +550,7 @@ bool ViewportWindow::get_mouse_pos(Vec2& mousePos)
     return true;
 }
 
-void ViewportWindow::get_gizmo_state(SceneOverlayGizmo& gizmoType, Vec3& gizmoCenter, float& gizmoScale, RenderServerSceneGizmoColor& gizmoColor)
+void ViewportWindow::get_gizmo_state(SceneOverlayGizmo& gizmoType, Vec3& gizmoCenter, float& gizmoScale, RenderSystemSceneGizmoColor& gizmoColor)
 {
     if (!mObj->isGizmoVisible)
     {

@@ -48,12 +48,12 @@ EditorApplication::EditorApplication()
     deviceI.vsync = false; // TODO: config
     mRDevice = RDevice::create(deviceI);
 
-    RenderServerInfo serverI{};
+    RenderSystemInfo serverI{};
     serverI.device = mRDevice;
     serverI.fontAtlas = mFontAtlas;
-    mRenderServer = RenderServer::create(serverI);
+    mRenderSystem = RenderSystem::create(serverI);
 
-    mAudioServer = AudioServer::create();
+    mAudioSystem = AudioSystem::create();
 
     {
         FS::Path dirPath = sLudensLFS.skyboxFolderPath;
@@ -69,14 +69,14 @@ EditorApplication::EditorApplication()
             facePathsCstr[i] = facePaths[i].c_str();
 
         Bitmap tmpCubemapFaces = Bitmap::create_cubemap_from_paths(facePathsCstr.data());
-        mEnvCubemap = mRenderServer.create_image_cube(tmpCubemapFaces);
+        mEnvCubemap = mRenderSystem.create_image_cube(tmpCubemapFaces);
         Bitmap::destroy(tmpCubemapFaces);
     }
 
     // load scene into editor context
     EditorContextInfo contextI{};
-    contextI.audioServer = mAudioServer;
-    contextI.renderServer = mRenderServer;
+    contextI.audioSystem = mAudioSystem;
+    contextI.renderSystem = mRenderSystem;
     contextI.iconAtlasPath = sLudensLFS.materialIconsPath;
     mEditorCtx = EditorContext::create(contextI);
     mEditorCtx.load_project(sLudensLFS.projectPath);
@@ -85,8 +85,8 @@ EditorApplication::EditorApplication()
     EditorUIInfo uiI{};
     uiI.ctx = mEditorCtx;
     uiI.fontAtlas = mFontAtlas;
-    uiI.fontAtlasImage = mRenderServer.get_font_atlas_image();
-    uiI.renderServer = mRenderServer;
+    uiI.fontAtlasImage = mRenderSystem.get_font_atlas_image();
+    uiI.renderSystem = mRenderSystem;
     uiI.envCubemap = mEnvCubemap.get_id();
     uiI.screenWidth = (uint32_t)screenExtent.x;
     uiI.screenHeight = (uint32_t)screenExtent.y;
@@ -102,11 +102,11 @@ EditorApplication::~EditorApplication()
 
     mRDevice.wait_idle();
     if (mEnvCubemap)
-        mRenderServer.destroy_image_cube(mEnvCubemap);
+        mRenderSystem.destroy_image_cube(mEnvCubemap);
 
     EditorContext::destroy(mEditorCtx);
-    AudioServer::destroy(mAudioServer);
-    RenderServer::destroy(mRenderServer);
+    AudioSystem::destroy(mAudioSystem);
+    RenderSystem::destroy(mRenderSystem);
     RDevice::destroy(mRDevice);
     FontAtlas::destroy(mFontAtlas);
     Font::destroy(mFont);

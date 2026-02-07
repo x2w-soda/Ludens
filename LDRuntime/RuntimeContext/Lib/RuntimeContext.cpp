@@ -1,6 +1,6 @@
 #include <Ludens/Asset/AssetType/FontAsset.h>
 #include <Ludens/Asset/AssetType/TextureCubeAsset.h>
-#include <Ludens/AudioServer/AudioServer.h>
+#include <Ludens/AudioSystem/AudioSystem.h>
 #include <Ludens/Log/Log.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/Project/Project.h>
@@ -20,8 +20,8 @@ static Log sLog("RuntimeContext");
 struct RuntimeContextObj
 {
     RDevice renderDevice;
-    RenderServer renderServer;
-    AudioServer audioServer;
+    RenderSystem renderSystem;
+    AudioSystem audioSystem;
     AssetManager AM;
     Project project;
     Scene scene;
@@ -29,34 +29,34 @@ struct RuntimeContextObj
 
     void render_frame(const Vec2& screenExtent);
 
-    /// @brief Callback to inform the render server the transforms of RUIDs.
-    static Mat4 render_server_transform_callback(RUID ruid, void* user);
+    /// @brief Callback to inform the render system the transforms of RUIDs.
+    static Mat4 render_system_transform_callback(RUID ruid, void* user);
 };
 
 void RuntimeContextObj::render_frame(const Vec2& screenExtent)
 {
     // begin rendering a frame
-    RenderServerFrameInfo frameI{};
+    RenderSystemFrameInfo frameI{};
     frameI.directionalLight = Vec3(0.0f, 1.0f, 0.0f);
     frameI.mainCamera = scene.get_camera();
     frameI.screenExtent = screenExtent;
     frameI.sceneExtent = screenExtent;
     frameI.envCubemap = envCubemap.get_id();
     frameI.clearColor = project.get_settings().get_rendering_settings().get_clear_color();
-    renderServer.next_frame(frameI);
+    renderSystem.next_frame(frameI);
 
     // render game scene without editor overlay
-    RenderServerScenePass sceneP{};
-    sceneP.mat4Callback = &RuntimeContextObj::render_server_transform_callback;
+    RenderSystemScenePass sceneP{};
+    sceneP.mat4Callback = &RuntimeContextObj::render_system_transform_callback;
     sceneP.user = this;
     sceneP.overlay.enabled = false;
     sceneP.hasSkybox = envCubemap.get_id() != 0;
-    renderServer.scene_pass(sceneP);
+    renderSystem.scene_pass(sceneP);
 
-    renderServer.submit_frame();
+    renderSystem.submit_frame();
 }
 
-Mat4 RuntimeContextObj::render_server_transform_callback(RUID ruid, void* user)
+Mat4 RuntimeContextObj::render_system_transform_callback(RUID ruid, void* user)
 {
     RuntimeContextObj& self = *(RuntimeContextObj*)user;
 
@@ -106,18 +106,18 @@ RuntimeContext RuntimeContext::create(const RuntimeContextInfo& info)
     LD_ASSERT(textureCubeAsset);
 
     // initialize subsystems
-    RenderServerInfo serverI{};
-    serverI.device = obj->renderDevice;
-    serverI.fontAtlas = defaultFont.get_font_atlas();
-    obj->renderServer = RenderServer::create(serverI);
-    obj->audioServer = AudioServer::create();
+    RenderSystemInfo systemI{};
+    systemI.device = obj->renderDevice;
+    systemI.fontAtlas = defaultFont.get_font_atlas();
+    obj->renderSystem = RenderSystem::create(systemI);
+    obj->audioSystem = AudioSystem::create();
 
-    obj->envCubemap = obj->renderServer.create_image_cube(textureCubeAsset.get_bitmap());
+    obj->envCubemap = obj->renderSystem.create_image_cube(textureCubeAsset.get_bitmap());
 
     SceneInfo sceneI{};
     sceneI.assetManager = obj->AM;
-    sceneI.audioServer = obj->audioServer;
-    sceneI.renderServer = obj->renderServer;
+    sceneI.audioSystem = obj->audioSystem;
+    sceneI.renderSystem = obj->renderSystem;
     obj->scene = Scene::create(sceneI);
 
     // load default scene
@@ -137,11 +137,11 @@ void RuntimeContext::destroy(RuntimeContext ctx)
     auto* obj = (RuntimeContextObj*)ctx.unwrap();
     obj->renderDevice.wait_idle();
     obj->scene.cleanup();
-    obj->renderServer.destroy_image_cube(obj->envCubemap);
+    obj->renderSystem.destroy_image_cube(obj->envCubemap);
 
     Scene::destroy(obj->scene);
-    AudioServer::destroy(obj->audioServer);
-    RenderServer::destroy(obj->renderServer);
+    AudioSystem::destroy(obj->audioSystem);
+    RenderSystem::destroy(obj->renderSystem);
     RDevice::destroy(obj->renderDevice);
     AssetManager::destroy(obj->AM);
 

@@ -15,9 +15,9 @@ namespace LD {
 // - Any two objects are guaranteed to have distinct RUID.
 // The two invariants above allow us to use IDHandle and raw pointer access
 // User Responsibility:
-// - Objects are externally synchronized, the RenderServer user is responsible for syncrhonizing Object access.
+// - Objects are externally synchronized, the RenderSystem user is responsible for syncrhonizing Object access.
 
-class RenderServerObj;
+class RenderSystemObj;
 class ScreenLayerObj;
 struct Sprite2DDrawObj;
 struct MeshDataObj;

@@ -3,7 +3,7 @@
 #include <Ludens/Camera/Camera.h>
 #include <Ludens/Header/Handle.h>
 #include <Ludens/Header/Math/Transform.h>
-#include <Ludens/RenderServer/RenderServer.h>
+#include <Ludens/RenderSystem/RenderSystem.h>
 #include <Ludens/UI/UIWorkspace.h>
 #include <LudensEditor/EditorContext/EditorContext.h>
 #include <LudensEditor/EditorContext/EditorWindow.h>
@@ -39,7 +39,7 @@ struct ViewportWindow : Handle<struct ViewportWindowObj>
     bool get_mouse_pos(Vec2& pos);
 
     /// @brief Get the current gizmo control state.
-    void get_gizmo_state(SceneOverlayGizmo& gizmoType, Vec3& gizmoCenter, float& gizmoScale, RenderServerSceneGizmoColor& gizmoColor);
+    void get_gizmo_state(SceneOverlayGizmo& gizmoType, Vec3& gizmoCenter, float& gizmoScale, RenderSystemSceneGizmoColor& gizmoColor);
 
     /// @brief Notify the viewport what ID is under the mouse cursor
     /// @param gizmoID If not zero, the gizmo mesh under cursor

@@ -30,8 +30,8 @@ static Log sLog("EditorContext");
 ///        and active scene states.
 struct EditorContextObj
 {
-    RenderServer renderServer;     /// render server handle
-    AudioServer audioServer;       /// audio server handle
+    RenderSystem renderSystem;     /// render server handle
+    AudioSystem audioSystem;       /// audio server handle
     Image2D iconAtlas;             /// editor icon atlas handle
     Project project;               /// current project under edit
     Scene scene;                   /// current scene under edit
@@ -286,8 +286,8 @@ void EditorContextObj::load_project_scene(const FS::Path& sceneSchemaPath)
     {
         SceneInfo sceneI{};
         sceneI.assetManager = assetManager;
-        sceneI.renderServer = renderServer;
-        sceneI.audioServer = audioServer;
+        sceneI.renderSystem = renderSystem;
+        sceneI.audioSystem = audioSystem;
         scene = Scene::create(sceneI);
     }
 
@@ -356,8 +356,8 @@ EditorContext EditorContext::create(const EditorContextInfo& info)
     LD_PROFILE_SCOPE;
 
     EditorContextObj* obj = heap_new<EditorContextObj>(MEMORY_USAGE_MISC);
-    obj->renderServer = info.renderServer;
-    obj->audioServer = info.audioServer;
+    obj->renderSystem = info.renderSystem;
+    obj->audioSystem = info.audioSystem;
     obj->iconAtlasPath = info.iconAtlasPath;
     obj->settings = EditorSettings::create_default();
     obj->isPlaying = false;
@@ -393,7 +393,7 @@ void EditorContext::destroy(EditorContext ctx)
 
     if (obj->iconAtlas)
     {
-        obj->renderServer.destroy_image_2d(obj->iconAtlas);
+        obj->renderSystem.destroy_image_2d(obj->iconAtlas);
         obj->iconAtlas = {};
     }
 
@@ -413,7 +413,7 @@ void EditorContext::destroy(EditorContext ctx)
     heap_delete<EditorContextObj>(obj);
 }
 
-Mat4 EditorContext::render_server_mat4_callback(RUID ruid, void* user)
+Mat4 EditorContext::render_system_mat4_callback(RUID ruid, void* user)
 {
     EditorContextObj& self = *(EditorContextObj*)user;
 
@@ -513,7 +513,7 @@ RImage EditorContext::get_editor_icon_atlas()
     {
         std::string iconAtlasPath = mObj->iconAtlasPath.string();
         Bitmap tmpBitmap = Bitmap::create_from_path(iconAtlasPath.c_str(), false);
-        mObj->iconAtlas = mObj->renderServer.create_image_2d(tmpBitmap);
+        mObj->iconAtlas = mObj->renderSystem.create_image_2d(tmpBitmap);
         Bitmap::destroy(tmpBitmap);
     }
 

@@ -80,7 +80,7 @@ target_include_directories(${MODULE_SANDBOX_NAME} PRIVATE
 target_link_libraries(${MODULE_SANDBOX_NAME} PRIVATE
     ${MODULE_NAME}
     LDWindowRegistry
-    LDRenderServer
+    LDRenderSystem
     LDLudensLFS
     LDCamera
     LDEditorContext # for the EditorIconAtlas
