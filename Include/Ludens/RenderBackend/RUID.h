@@ -5,7 +5,7 @@
 namespace LD {
 
 /// @brief Unique identifier for render resources, zero is invalid ID.
-typedef uint32_t RUID;
+typedef uint64_t RUID;
 
 /// @brief Get a RUID, call on main thread only.
 RUID get_ruid();

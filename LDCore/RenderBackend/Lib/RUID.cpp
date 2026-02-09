@@ -8,10 +8,7 @@ static IDCounter<RUID> sRUIDCounter;
 
 RUID get_ruid()
 {
-    RUID id = sRUIDCounter.get_id();
-    LD_ASSERT(id); // how do you even exhaust u32 space simultaneously?
-
-    return id;
+    return sRUIDCounter.get_id();
 }
 
 } // namespace LD
