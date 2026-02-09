@@ -6,6 +6,6 @@
 
 namespace LD {
 
-bool eui_asset_slot(EditorTheme theme, AssetType type, AUID assetID, const char* assetName);
+bool eui_asset_slot(EditorTheme theme, AssetType type, AssetID assetID, const char* assetName);
 
 } // namespace LD

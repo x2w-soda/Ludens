@@ -22,7 +22,7 @@ struct ViewportWindowObj : EditorWindowObj
     UIWorkspace space;
     UIWindow root;
     TransformEx subjectWorldTransform;
-    CUID subjectComp;
+    SUID subjectSUID;
     Camera editorCamera;
     CameraController editorCameraController;
     CameraPerspectiveInfo editorCameraPerspective;
@@ -46,7 +46,7 @@ struct ViewportWindowObj : EditorWindowObj
     /// @brief Pick an object in the viewport
     void pick_ruid(RUID id);
 
-    bool get_component_world_pos(CUID compID, Vec3& worldPos, Mat4& worldMat4);
+    bool get_component_world_pos(Scene::Component comp, Vec3& worldPos, Mat4& worldMat4);
 
     virtual EditorWindowType get_type() override { return EDITOR_WINDOW_VIEWPORT; }
     virtual void on_imgui(float delta) override;
@@ -120,11 +120,12 @@ void ViewportWindowObj::pick_gizmo(SceneOverlayGizmoID id)
 
     // writes back to subject transform during mouse drag window events
     // an object should be selected before gizmo mesh can even be selected
-    LD_ASSERT(subjectComp);
+    Scene::Component subject = ctx.get_component(subjectSUID);
+    LD_ASSERT(subjectSUID && subject);
 
     // initialize subject world transform
     Mat4 worldMat4;
-    get_component_world_pos(subjectComp, gizmoCenter, worldMat4);
+    get_component_world_pos(subject, gizmoCenter, worldMat4);
     bool ok = decompose_mat4_to_transform(worldMat4, subjectWorldTransform);
     LD_ASSERT(ok);
 
@@ -151,16 +152,19 @@ void ViewportWindowObj::pick_gizmo(SceneOverlayGizmoID id)
 
 void ViewportWindowObj::pick_ruid(RUID id)
 {
-    subjectComp = ctx.get_ruid_component(id);
-    ctx.set_selected_component(subjectComp);
+    Scene::Component comp = ctx.get_component_by_ruid(id);
+    LD_ASSERT(comp);
+
+    if (comp)
+    {
+        subjectSUID = comp.suid();
+        ctx.set_selected_component(subjectSUID);
+    }
 }
 
-bool ViewportWindowObj::get_component_world_pos(CUID compID, Vec3& worldPos, Mat4& worldMat4)
+bool ViewportWindowObj::get_component_world_pos(Scene::Component comp, Vec3& worldPos, Mat4& worldMat4)
 {
-    if (!compID)
-        return false;
-
-    if (!ctx.get_component_world_mat4(compID, worldMat4))
+    if (!comp || !comp.get_world_mat4(worldMat4))
         return false;
 
     Vec3 localPos(0.0f);
@@ -395,7 +399,7 @@ void ViewportWindowObj::on_drag(MouseButton btn, const Vec2& dragPos, bool begin
     if (control == GIZMO_CONTROL_NONE)
         return;
 
-    LD_ASSERT(subjectComp);
+    LD_ASSERT(subjectSUID);
     TransformEx& worldT = subjectWorldTransform;
     const Vec2 scenePos(dragPos.x, dragPos.y - VIEWPORT_TOOLBAR_HEIGHT);
 
@@ -434,12 +438,14 @@ void ViewportWindowObj::on_drag(MouseButton btn, const Vec2& dragPos, bool begin
 
     // get inverse parent world matrix
     Mat4 parentInv(1.0f);
-    const ComponentBase* base = ctx.get_component_base(subjectComp);
-    if (base && base->parent)
+    Scene::Component subject = ctx.get_component(subjectSUID);
+    Scene::Component parent{};
+
+    if (subject && (parent = subject.get_parent()))
     {
         Vec3 parentWorldPos;
         Mat4 parentWorldMat4(1.0f);
-        get_component_world_pos(base->parent->id, parentWorldPos, parentWorldMat4);
+        get_component_world_pos(subject, parentWorldPos, parentWorldMat4);
         parentInv = Mat4::inverse(parentWorldMat4);
     }
 
@@ -451,10 +457,11 @@ void ViewportWindowObj::on_drag(MouseButton btn, const Vec2& dragPos, bool begin
     TransformEx localTransform;
     bool ok = decompose_mat4_to_transform(localMat4, localTransform);
     LD_ASSERT(ok);
-    ctx.set_component_transform(subjectComp, localTransform);
+
+    subject.set_transform(localTransform);
 
     // update gizmo center to new world space position
-    get_component_world_pos(subjectComp, gizmoCenter, worldMat4);
+    get_component_world_pos(subject, gizmoCenter, worldMat4);
 }
 
 void ViewportWindowObj::on_editor_event(const EditorEvent* event, void* user)
@@ -470,14 +477,15 @@ void ViewportWindowObj::on_editor_event(const EditorEvent* event, void* user)
     if (!selectionEvent->component || !self.ctx.get_selected_component_transform(localTransform))
     {
         self.isGizmoVisible = false;
-        self.subjectComp = 0;
+        self.subjectSUID = 0;
         return;
     }
 
+    Scene::Component subject = self.ctx.get_component(self.subjectSUID);
     Mat4 worldMat4;
-    self.subjectComp = selectionEvent->component;
+    self.subjectSUID = selectionEvent->component;
     self.isGizmoVisible = true;
-    self.get_component_world_pos(self.subjectComp, self.gizmoCenter, worldMat4);
+    self.get_component_world_pos(subject, self.gizmoCenter, worldMat4);
 }
 
 //

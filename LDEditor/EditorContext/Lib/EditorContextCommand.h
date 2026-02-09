@@ -10,15 +10,15 @@ namespace LD {
 class AddComponentCommand : public EditCommand
 {
 public:
-    AddComponentCommand(Scene scene, CUID parentID, ComponentType compType);
+    AddComponentCommand(Scene scene, SUID parentSUID, ComponentType compType);
 
     virtual void redo() override;
     virtual void undo() override;
 
 private:
     Scene mScene;
-    CUID mParentID;
-    CUID mCompID;
+    SUID mParentSUID = 0;
+    SUID mCompSUID = 0;
     ComponentType mCompType;
 };
 
@@ -26,34 +26,34 @@ private:
 class AddComponentScriptCommand : public EditCommand
 {
 public:
-    AddComponentScriptCommand(Scene scene, CUID compID, AUID scriptAssetID);
+    AddComponentScriptCommand(Scene scene, SUID compSUID, AssetID scriptAssetID);
 
     virtual void redo() override;
     virtual void undo() override;
 
 private:
     Scene mScene;
-    CUID mCompID;
-    AUID mScriptAssetID;
-    AUID mPrevScriptAssetID;
+    SUID mCompSUID = 0;
+    AssetID mScriptAssetID = 0;
+    AssetID mPrevScriptAssetID = 0;
 };
 
 class SetComponentAssetCommand : public EditCommand
 {
 public:
-    SetComponentAssetCommand(Scene scene, CUID compID, AUID assetID);
+    SetComponentAssetCommand(Scene scene, SUID compSUID, AssetID assetID);
 
     virtual void redo() override;
     virtual void undo() override;
 
 private:
-    void set_component_asset(CUID compID, AUID assetID);
+    void set_component_asset(SUID compID, AssetID assetID);
 
 private:
     Scene mScene;
-    CUID mCompID;
-    AUID mAssetID;
-    AUID mPrevAssetID;
+    SUID mCompSUID = 0;
+    AssetID mAssetID = 0;
+    AssetID mPrevAssetID = 0;
 };
 
 } // namespace LD

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <Ludens/Asset/Asset.h>
-#include <Ludens/DataRegistry/DataComponent.h>
+#include <Ludens/DataRegistry/DataRegistry.h>
 
 namespace LD {
 
@@ -82,13 +82,13 @@ struct EditorNotifySceneLoadEvent : EditorNotifyEvent
 /// @brief Event signaling that the current selected component has changed.
 struct EditorNotifyComponentSelectionEvent : EditorNotifyEvent
 {
-    EditorNotifyComponentSelectionEvent(CUID component)
+    EditorNotifyComponentSelectionEvent(SUID component)
         : EditorNotifyEvent(EDITOR_EVENT_TYPE_NOTIFY_COMPONENT_SELECTION), component(component)
     {
     }
 
     /// @brief The new component being selected, an ID of zero indicates that the selection is cleared.
-    const CUID component;
+    const SUID component;
 };
 
 /// @brief Event signaling a request to access project settings.
@@ -103,13 +103,13 @@ struct EditorRequestProjectSettingsEvent : EditorRequestEvent
 /// @brief Event signaling that a component in current scene requests an asset change.
 struct EditorRequestComponentAssetEvent : EditorRequestEvent
 {
-    EditorRequestComponentAssetEvent(CUID component, AUID oldAssetID, AssetType type)
+    EditorRequestComponentAssetEvent(SUID component, AssetID oldAssetID, AssetType type)
         : EditorRequestEvent(EDITOR_EVENT_TYPE_REQUEST_COMPONENT_ASSET), component(component), oldAssetID(oldAssetID), requestType(type)
     {
     }
 
-    const CUID component;
-    const AUID oldAssetID;
+    const SUID component;
+    const AssetID oldAssetID;
     const AssetType requestType;
 };
 
@@ -152,12 +152,12 @@ struct EditorRequestOpenSceneEvent : EditorRequestEvent
 /// @brief Event signaling the request for creating a component in current scene.
 struct EditorRequestCreateComponentEvent : EditorRequestEvent
 {
-    EditorRequestCreateComponentEvent(CUID parent)
+    EditorRequestCreateComponentEvent(SUID parent)
         : EditorRequestEvent(EDITOR_EVENT_TYPE_REQUEST_CREATE_COMPONENT), parent(parent)
     {
     }
 
-    const CUID parent;
+    const SUID parent;
 };
 
 } // namespace LD

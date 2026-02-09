@@ -1,6 +1,6 @@
 #pragma once
 
-#include <Ludens/DataRegistry/DataComponent.h>
+#include <Ludens/DataRegistry/DataRegistry.h>
 #include <Ludens/Header/Impulse.h>
 #include <LudensEditor/EditorContext/EditorWindow.h>
 
@@ -12,16 +12,16 @@ struct InspectorWindowObj : EditorWindowObj
     EditorContext ctx;
     UIWorkspace space;
     UIWindow root;
-    CUID subjectID = 0; // subject component being inspected
+    SUID subjectSUID = 0; // subject component being inspected
     Impulse isRequestingNewAsset;
     AssetType requestAssetType;
-    AUID oldAssetID;
+    AssetID oldAssetID;
 
     static void on_editor_event(const EditorEvent* event, void* user);
 
     virtual EditorWindowType get_type() override { return EDITOR_WINDOW_INSPECTOR; }
     virtual void on_imgui(float delta) override;
-    void request_new_asset(AssetType type, AUID currentID);
+    void request_new_asset(AssetType type, AssetID currentID);
 };
 
 } // namespace LD

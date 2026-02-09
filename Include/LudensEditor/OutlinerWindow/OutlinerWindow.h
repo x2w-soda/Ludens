@@ -1,7 +1,7 @@
 #pragma once
 #pragma once
 
-#include <Ludens/DataRegistry/DataComponent.h>
+#include <Ludens/DataRegistry/DataRegistry.h>
 #include <Ludens/Header/Handle.h>
 #include <Ludens/Scene/Scene.h>
 #include <Ludens/UI/UIWindow.h>

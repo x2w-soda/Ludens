@@ -2,7 +2,7 @@
 #include <Ludens/Asset/AssetSchema.h>
 #include <Ludens/DSA/Observer.h>
 #include <Ludens/DSA/Vector.h>
-#include <Ludens/DataRegistry/DataComponent.h>
+#include <Ludens/DataRegistry/DataRegistry.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Log/Log.h>
 #include <Ludens/Memory/Memory.h>
@@ -46,8 +46,8 @@ struct EditorContextObj
     std::string projectName;       /// project identifier
     Vector<FS::Path> scenePaths;   /// path to scene schema files in project
     ObserverList<const EditorEvent*> observers;
-    CUID selectedComponent;
-    RUID selectedComponentRUID;
+    SUID selectedComponentSUID = 0;
+    RUID selectedComponentRUID = 0;
     bool isPlaying;
 
     // TODO: union of all params? or can we accumulate params for multiple actions simultaneously?
@@ -68,20 +68,20 @@ struct EditorContextObj
 
     struct EditorActionAddComponentParams
     {
-        CUID parentID;
+        SUID parentSUID;
         ComponentType compType;
     } addComponentParams;
 
     struct EditorActionAddComponentScriptParams
     {
-        CUID compID;        // component ID in current scene
-        AUID scriptAssetID; // script asset ID in project
+        SUID compSUID;         // component ID in current scene
+        AssetID scriptAssetID; // script asset ID in project
     } addComponentScriptParams;
 
     struct EditorActionSetComponentAssetParams
     {
-        CUID compID;
-        AUID assetID;
+        SUID compSUID;
+        AssetID assetID;
     } setComponentAssetParams;
 
     void notify_observers(const EditorEvent* event);
@@ -169,7 +169,7 @@ static void editor_action_add_component(EditStack stack, void* user)
 
     stack.execute(EditStack::new_command<AddComponentCommand>(
         obj->scene,
-        params.parentID,
+        params.parentSUID,
         params.compType));
 }
 
@@ -182,7 +182,7 @@ static void editor_action_add_component_script(EditStack stack, void* user)
 
     stack.execute(EditStack::new_command<AddComponentScriptCommand>(
         obj->scene,
-        params.compID,
+        params.compSUID,
         params.scriptAssetID));
 }
 
@@ -195,7 +195,7 @@ static void editor_action_set_component_asset(EditStack stack, void* user)
 
     stack.execute(EditStack::new_command<SetComponentAssetCommand>(
         obj->scene,
-        params.compID,
+        params.compSUID,
         params.assetID));
 }
 
@@ -275,7 +275,7 @@ void EditorContextObj::load_project_scene(const FS::Path& sceneSchemaPath)
         return;
 
     this->sceneSchemaPath = sceneSchemaPath;
-    selectedComponent = 0;
+    selectedComponentSUID = 0;
     selectedComponentRUID = 0;
 
     if (scene)
@@ -453,24 +453,24 @@ void EditorContext::action_save_scene()
     mObj->actionQueue.enqueue(EDITOR_ACTION_SAVE_SCENE);
 }
 
-void EditorContext::action_add_component(CUID parentID, ComponentType type)
+void EditorContext::action_add_component(SUID parentSUID, ComponentType type)
 {
     mObj->actionQueue.enqueue(EDITOR_ACTION_ADD_COMPONENT);
-    mObj->addComponentParams.parentID = parentID;
+    mObj->addComponentParams.parentSUID = parentSUID;
     mObj->addComponentParams.compType = type;
 }
 
-void EditorContext::action_add_component_script(CUID compID, AUID scriptAssetID)
+void EditorContext::action_add_component_script(SUID compSUID, AssetID scriptAssetID)
 {
     mObj->actionQueue.enqueue(EDITOR_ACTION_ADD_COMPONENT_SCRIPT);
-    mObj->addComponentScriptParams.compID = compID;
+    mObj->addComponentScriptParams.compSUID = compSUID;
     mObj->addComponentScriptParams.scriptAssetID = scriptAssetID;
 }
 
-void EditorContext::action_set_component_asset(CUID compID, AUID assetID)
+void EditorContext::action_set_component_asset(SUID compSUID, AssetID assetID)
 {
     mObj->actionQueue.enqueue(EDITOR_ACTION_SET_COMPONENT_ASSET);
-    mObj->setComponentAssetParams.compID = compID;
+    mObj->setComponentAssetParams.compSUID = compSUID;
     mObj->setComponentAssetParams.assetID = assetID;
 }
 
@@ -591,28 +591,18 @@ bool EditorContext::is_playing()
     return mObj->isPlaying;
 }
 
-void EditorContext::get_scene_roots(Vector<CUID>& roots)
+void EditorContext::get_scene_roots(Vector<Scene::Component>& roots)
 {
-    mObj->scene.get_root_components(roots);
+    return mObj->scene.get_root_components(roots);
 }
 
-const ComponentBase* EditorContext::get_component_base(CUID comp)
+const char* EditorContext::get_component_name(SUID compSUID)
 {
-    return mObj->scene.get_component_base(comp);
-}
-
-const char* EditorContext::get_component_name(CUID comp)
-{
-    const ComponentBase* base = mObj->scene.get_component_base(comp);
-    if (!base)
+    Scene::Component comp = mObj->scene.get_component_by_suid(compSUID);
+    if (!comp)
         return nullptr;
 
-    return base->name;
-}
-
-const ComponentScriptSlot* EditorContext::get_component_script_slot(CUID compID)
-{
-    return mObj->scene.get_component_script_slot(compID);
+    return comp.get_name();
 }
 
 void EditorContext::request_event(const EditorRequestEvent* event)
@@ -620,29 +610,33 @@ void EditorContext::request_event(const EditorRequestEvent* event)
     mObj->notify_observers(event);
 }
 
-void EditorContext::set_selected_component(CUID comp)
+void EditorContext::set_selected_component(SUID compSUID)
 {
-    if (mObj->selectedComponent == comp)
+    if (mObj->selectedComponentSUID == compSUID)
+        return;
+
+    Scene::Component comp = mObj->scene.get_component_by_suid(compSUID);
+    if (!comp)
         return;
 
     // update state and notify observers
-    EditorNotifyComponentSelectionEvent event(comp);
-    mObj->selectedComponent = comp;
-    mObj->selectedComponentRUID = mObj->scene.get_component_ruid(comp);
+    EditorNotifyComponentSelectionEvent event(compSUID);
+    mObj->selectedComponentSUID = compSUID;
+    mObj->selectedComponentRUID = comp.ruid();
     mObj->notify_observers(&event);
 }
 
-CUID EditorContext::get_selected_component()
+SUID EditorContext::get_selected_component()
 {
-    return mObj->selectedComponent;
+    return mObj->selectedComponentSUID;
 }
 
-void* EditorContext::get_component(CUID compID, ComponentType* outType)
+Scene::Component EditorContext::get_component(SUID compSUID)
 {
-    return mObj->scene.get_component(compID, outType);
+    return mObj->scene.get_component_by_suid(compSUID);
 }
 
-CUID EditorContext::get_ruid_component(RUID ruid)
+Scene::Component EditorContext::get_component_by_ruid(RUID ruid)
 {
     return mObj->scene.get_ruid_component(ruid);
 }
@@ -654,17 +648,12 @@ RUID EditorContext::get_selected_component_ruid()
 
 bool EditorContext::get_selected_component_transform(TransformEx& transform)
 {
-    return mObj->scene.get_component_transform(mObj->selectedComponent, transform);
-}
+    Scene::Component comp = mObj->scene.get_component_by_suid(mObj->selectedComponentSUID);
 
-bool EditorContext::set_component_transform(CUID compID, const TransformEx& transform)
-{
-    return mObj->scene.set_component_transform(compID, transform);
-}
+    if (!comp)
+        return false;
 
-bool EditorContext::get_component_world_mat4(CUID compID, Mat4& worldMat4)
-{
-    return mObj->scene.get_component_world_mat4(compID, worldMat4);
+    return comp.get_transform(transform);
 }
 
 UILayoutInfo EditorContext::make_vbox_layout()

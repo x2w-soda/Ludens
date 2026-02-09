@@ -27,26 +27,29 @@ struct OutlinerWindowObj : EditorWindowObj
     virtual EditorWindowType get_type() override { return EDITOR_WINDOW_OUTLINER; }
     virtual void on_imgui(float delta) override;
 
-    void component_rows(const ComponentBase* base, int& rowIdx, int depth);
-    void component_row(int rowIdx, int depth, CUID compID);
-    void on_row_mouse_down(MouseButton& btn, CUID compID);
+    void component_rows(Scene::Component comp, int& rowIdx, int depth);
+    void component_row(int rowIdx, int depth, SUID compSUID);
+    void on_row_mouse_down(MouseButton& btn, SUID compSUID);
 };
 
-void OutlinerWindowObj::component_rows(const ComponentBase* base, int& rowIdx, int depth)
+void OutlinerWindowObj::component_rows(Scene::Component comp, int& rowIdx, int depth)
 {
-    LD_ASSERT(base);
+    LD_ASSERT(comp);
 
-    component_row(rowIdx++, depth, base->id);
+    component_row(rowIdx++, depth, comp.suid());
 
     depth++;
 
-    for (const ComponentBase* child = base->child; child; child = child->next)
+    Vector<Scene::Component> children;
+    comp.get_children(children);
+
+    for (Scene::Component child : children)
         component_rows(child, rowIdx, depth);
 
     depth--;
 }
 
-void OutlinerWindowObj::component_row(int rowIdx, int depth, CUID compID)
+void OutlinerWindowObj::component_row(int rowIdx, int depth, SUID compSUID)
 {
     EditorTheme theme = ctx.get_settings().get_theme();
 
@@ -58,7 +61,7 @@ void OutlinerWindowObj::component_row(int rowIdx, int depth, CUID compID)
     layoutI.sizeY = UISize::fixed(theme.get_text_row_height());
 
     Color panelColor = (rowIdx % 2) ? OUTLINER_ROW_ODD_COLOR : OUTLINER_ROW_EVEN_COLOR;
-    if (compID && compID == ctx.get_selected_component())
+    if (compSUID && compSUID == ctx.get_selected_component())
         panelColor = theme.get_ui_theme().get_selection_color();
 
     ui_push_panel(&panelColor);
@@ -66,14 +69,15 @@ void OutlinerWindowObj::component_row(int rowIdx, int depth, CUID compID)
 
     MouseButton btn;
     if (ui_top_mouse_down(btn))
-        on_row_mouse_down(btn, compID);
+        on_row_mouse_down(btn, compSUID);
 
-    ui_push_text(compID ? ctx.get_component_name(compID) : nullptr);
+    ui_push_text(compSUID ? ctx.get_component_name(compSUID) : nullptr);
     if (ui_top_mouse_down(btn))
-        on_row_mouse_down(btn, compID);
+        on_row_mouse_down(btn, compSUID);
     ui_pop();
 
-    if (ctx.get_component_script_slot(compID))
+    Scene::Component comp = ctx.get_component(compSUID);
+    if (comp && comp.get_script_asset_id())
     {
         float iconSize = theme.get_text_row_height();
         Rect iconRect = EditorIconAtlas::get_icon_rect(EditorIcon::Code);
@@ -84,14 +88,14 @@ void OutlinerWindowObj::component_row(int rowIdx, int depth, CUID compID)
     ui_pop();
 }
 
-void OutlinerWindowObj::on_row_mouse_down(MouseButton& btn, CUID compID)
+void OutlinerWindowObj::on_row_mouse_down(MouseButton& btn, SUID compSUID)
 {
     if (btn == MOUSE_BUTTON_LEFT)
-        ctx.set_selected_component(compID);
+        ctx.set_selected_component(compSUID);
     else if (btn == MOUSE_BUTTON_RIGHT)
     {
         // TODO: menu for create component, remove component, etc.
-        EditorRequestCreateComponentEvent event(compID);
+        EditorRequestCreateComponentEvent event(compSUID);
 
         ctx.request_event(&event);
     }
@@ -104,16 +108,15 @@ void OutlinerWindowObj::on_imgui(float delta)
     root.set_color(root.get_theme().get_surface_color());
     ui_push_window(root);
 
-    Vector<CUID> sceneRoots;
+    Vector<Scene::Component> sceneRoots;
     ctx.get_scene_roots(sceneRoots);
 
     int rowIdx = 0;
     int depth = 0;
 
-    for (CUID sceneRoot : sceneRoots)
+    for (Scene::Component sceneRoot : sceneRoots)
     {
-        const ComponentBase* base = ctx.get_component_base(sceneRoot);
-        component_rows(base, rowIdx, depth);
+        component_rows(sceneRoot, rowIdx, depth);
     }
 
     ui_pop_window();
@@ -148,7 +151,7 @@ EditorWindow OutlinerWindow::create(const EditorWindowInfo& windowI)
     */
 
     // create one OutlinerRow for each object in scene
-    //obj->invalidate();
+    // obj->invalidate();
 
     return EditorWindow(obj);
 }

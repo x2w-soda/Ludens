@@ -57,13 +57,13 @@ struct EditorContext : Handle<struct EditorContextObj>
     void action_save_scene();
 
     /// @brief Add a new component under parent.
-    void action_add_component(CUID parentID, ComponentType type);
+    void action_add_component(SUID compSUID, ComponentType type);
 
     /// @brief Add script to component.
-    void action_add_component_script(CUID compID, AUID scriptAssetID);
+    void action_add_component_script(SUID compSUID, AssetID scriptAssetID);
 
     // NOTE: temporary, needs refactoring once a component has multiple asset slots
-    void action_set_component_asset(CUID compID, AUID assetID);
+    void action_set_component_asset(SUID compSUID, AssetID assetID);
 
     /// @brief Complete all editor actions in queue.
     void poll_actions();
@@ -123,44 +123,32 @@ struct EditorContext : Handle<struct EditorContextObj>
     bool is_playing();
 
     /// @brief Get root data components in scene
-    void get_scene_roots(Vector<CUID>& roots);
-
-    /// @brief Get component base members.
-    const ComponentBase* get_component_base(CUID comp);
+    void get_scene_roots(Vector<Scene::Component>& roots);
 
     /// @brief Get the C string name of a component
-    const char* get_component_name(CUID comp);
-
-    /// @brief Get component script slot.
-    const ComponentScriptSlot* get_component_script_slot(CUID compID);
+    const char* get_component_name(SUID compSUID);
 
     /// @brief Notify observers of a request event.
     void request_event(const EditorRequestEvent* event);
 
     /// @brief Assign a component in scene to be selected.
     /// @note Triggers EDITOR_CONTEXT_EVENT_COMPONENT_SELECTION for observers.
-    void set_selected_component(CUID comp);
+    void set_selected_component(SUID compSUID);
 
     /// @brief Get the currently selected component in scene
-    CUID get_selected_component();
+    SUID get_selected_component();
 
-    /// @brief Get component in current Scene
-    void* get_component(CUID compID, ComponentType* outType);
+    /// @brief Get component interface.
+    Scene::Component get_component(SUID compSUID);
 
     /// @brief Get the data component associated with some RUID in scene
-    CUID get_ruid_component(RUID ruid);
+    Scene::Component get_component_by_ruid(RUID ruid);
 
     /// @brief get the RUID associated with the selected object in scene
     RUID get_selected_component_ruid();
 
     /// @brief Get the local transform associated with the selected object in scene.
     bool get_selected_component_transform(TransformEx& transform);
-
-    /// @brief Set local transform of a component.
-    bool set_component_transform(CUID compID, const TransformEx& transform);
-
-    /// @brief Get component world matrix.
-    bool get_component_world_mat4(CUID compID, Mat4& worldMat4);
 
     /// @brief Default ui layout for vertical containers, taking editor theme into account.
     UILayoutInfo make_vbox_layout();

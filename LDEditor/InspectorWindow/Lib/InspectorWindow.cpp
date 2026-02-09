@@ -1,5 +1,5 @@
 #include <Ludens/Asset/AssetType/MeshAsset.h>
-#include <Ludens/DataRegistry/DataComponent.h>
+#include <Ludens/DataRegistry/DataRegistry.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Memory/Memory.h>
 #include <Ludens/Profiler/Profiler.h>
@@ -19,16 +19,14 @@ void InspectorWindowObj::on_imgui(float delta)
     ui_push_window(root);
     ui_top_layout_child_gap(4.0f);
 
-    ComponentType compType;
-    void* comp = ctx.get_component(subjectID, &compType);
-
-    if (subjectID != (CUID)0)
-        eui_inspect_component(*this, compType, comp);
+    Scene::Component comp = ctx.get_component(subjectSUID);
+    if (comp)
+        eui_inspect_component(*this, comp);
 
     ui_pop_window();
 }
 
-void InspectorWindowObj::request_new_asset(AssetType type, AUID currentID)
+void InspectorWindowObj::request_new_asset(AssetType type, AssetID currentID)
 {
     isRequestingNewAsset.set(true);
     requestAssetType = type;
@@ -43,7 +41,7 @@ void InspectorWindowObj::on_editor_event(const EditorEvent* event, void* user)
         return;
 
     const auto* selectionEvent = static_cast<const EditorNotifyComponentSelectionEvent*>(event);
-    self.subjectID = selectionEvent->component;
+    self.subjectSUID = selectionEvent->component;
 }
 
 //
@@ -69,12 +67,12 @@ void InspectorWindow::destroy(EditorWindow window)
     heap_delete<InspectorWindowObj>(obj);
 }
 
-bool InspectorWindow::has_component_asset_request(CUID& compID, AUID& currentAssetID, AssetType& assetType)
+bool InspectorWindow::has_component_asset_request(SUID& compSUID, AssetID& currentAssetID, AssetType& assetType)
 {
     if (!mObj->isRequestingNewAsset.read())
         return false;
 
-    compID = mObj->subjectID;
+    compSUID = mObj->subjectSUID;
     currentAssetID = mObj->oldAssetID;
     assetType = mObj->requestAssetType;
 

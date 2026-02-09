@@ -81,14 +81,14 @@ void EditorUIMainObj::update(float delta)
 {
     LD_PROFILE_SCOPE;
 
-    CUID subjectCompID;
-    AUID oldAssetID = 0;
+    SUID subjectSUID;
+    AssetID oldAssetID = 0;
     AssetType type;
 
-    if (mInspectorWindow.has_component_asset_request(subjectCompID, oldAssetID, type))
+    if (mInspectorWindow.has_component_asset_request(subjectSUID, oldAssetID, type))
     {
         // NOTE: will have to refactor, this assumes single asset slot for all component types
-        EditorRequestComponentAssetEvent event(subjectCompID, oldAssetID, type);
+        EditorRequestComponentAssetEvent event(subjectSUID, oldAssetID, type);
 
         mCtx.request_event(&event);
     }

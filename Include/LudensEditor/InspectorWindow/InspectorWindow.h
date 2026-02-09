@@ -21,7 +21,7 @@ struct InspectorWindow : Handle<struct InspectorWindowObj>
     static void destroy(EditorWindow window);
 
     /// @brief Check if a component is requesting a new asset.
-    bool has_component_asset_request(CUID& compID, AUID& currentAssetID, AssetType& assetType);
+    bool has_component_asset_request(SUID& compSUID, AssetID& currentAssetID, AssetType& assetType);
 };
 
 } // namespace LD

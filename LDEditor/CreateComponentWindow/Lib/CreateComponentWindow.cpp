@@ -1,5 +1,5 @@
 #include <Ludens/DSA/Vector.h>
-#include <Ludens/DataRegistry/DataComponent.h>
+#include <Ludens/DataRegistry/DataRegistry.h>
 #include <Ludens/Header/Impulse.h>
 #include <Ludens/Memory/Memory.h>
 #include <Ludens/UI/UIImmediate.h>

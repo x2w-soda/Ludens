@@ -4,10 +4,10 @@
 
 namespace LD {
 
-AddComponentCommand::AddComponentCommand(Scene scene, CUID parentID, ComponentType compType)
-    : mScene(scene), mParentID(parentID), mCompID(0), mCompType(compType)
+AddComponentCommand::AddComponentCommand(Scene scene, SUID parentSUID, ComponentType compType)
+    : mScene(scene), mParentSUID(parentSUID), mCompType(compType)
 {
-    LD_ASSERT(mScene && mParentID);
+    LD_ASSERT(mScene && mParentSUID);
 }
 
 void AddComponentCommand::redo()
@@ -15,90 +15,93 @@ void AddComponentCommand::redo()
     // TODO: resolve name collisions
     const char* name = get_component_type_name(mCompType);
 
-    mCompID = mScene.create_component(mCompType, name, mParentID, 0);
+    Scene::Component comp = mScene.create_component_serial(mCompType, name, mParentSUID);
+    LD_ASSERT(comp); // TODO: recovery
+
+    mCompSUID = comp.suid();
 }
 
 void AddComponentCommand::undo()
 {
-    LD_UNREACHABLE;
-    mScene.destroy_component(mCompID);
-    mCompID = 0;
+    Scene::Component comp = mScene.get_component_by_suid(mCompSUID);
+    LD_ASSERT(comp); // TODO: recovery
+
+    mScene.destroy_component(comp.cuid());
+
+    mCompSUID = 0;
 }
 
-AddComponentScriptCommand::AddComponentScriptCommand(Scene scene, CUID compID, AUID scriptAssetID)
-    : mScene(scene), mCompID(compID), mScriptAssetID(scriptAssetID), mPrevScriptAssetID(0)
+AddComponentScriptCommand::AddComponentScriptCommand(Scene scene, SUID compSUID, AssetID scriptAssetID)
+    : mScene(scene), mCompSUID(compSUID), mScriptAssetID(scriptAssetID)
 {
-    LD_ASSERT(mScene && mCompID && mScriptAssetID);
+    LD_ASSERT(mScene && mCompSUID && mScriptAssetID);
 
-    ComponentScriptSlot* scriptSlot = mScene.get_component_script_slot(mCompID);
-    if (scriptSlot)
-        mPrevScriptAssetID = scriptSlot->assetID;
+    Scene::Component comp = mScene.get_component_by_suid(mCompSUID);
+
+    if (comp)
+        mPrevScriptAssetID = comp.get_script_asset_id();
 }
 
 void AddComponentScriptCommand::redo()
 {
-    mScene.create_component_script_slot(mCompID, mScriptAssetID);
+    Scene::Component comp = mScene.get_component_by_suid(mCompSUID);
+
+    if (comp)
+        comp.set_script_asset_id(mScriptAssetID);
 }
 
 void AddComponentScriptCommand::undo()
 {
-    // update Scene
-    if (mPrevScriptAssetID != 0)
-    {
-        ComponentScriptSlot* slot = mScene.get_component_script_slot(mCompID);
-        LD_ASSERT(slot);
-        slot->assetID = mPrevScriptAssetID;
-    }
-    else
-    {
-        mScene.destroy_component_script_slot(mCompID);
-    }
+    Scene::Component comp = mScene.get_component_by_suid(mCompSUID);
+
+    if (comp)
+        comp.set_script_asset_id(mPrevScriptAssetID);
 }
 
-SetComponentAssetCommand::SetComponentAssetCommand(Scene scene, CUID compID, AUID assetID)
-    : mScene(scene), mCompID(compID), mAssetID(assetID), mPrevAssetID(/* TODO: */ 0)
+SetComponentAssetCommand::SetComponentAssetCommand(Scene scene, SUID compSUID, AssetID assetID)
+    : mScene(scene), mCompSUID(compSUID), mAssetID(assetID), mPrevAssetID(/* TODO: */ 0)
 {
-    LD_ASSERT(mScene && mCompID && mAssetID);
+    LD_ASSERT(mScene && mCompSUID && mAssetID);
 }
 
 void SetComponentAssetCommand::redo()
 {
-    set_component_asset(mCompID, mAssetID);
+    set_component_asset(mCompSUID, mAssetID);
 }
 
 void SetComponentAssetCommand::undo()
 {
-    set_component_asset(mCompID, mPrevAssetID);
+    set_component_asset(mCompSUID, mPrevAssetID);
 }
 
-void SetComponentAssetCommand::set_component_asset(CUID compID, AUID assetID)
+void SetComponentAssetCommand::set_component_asset(SUID compSUID, AssetID assetID)
 {
-    if (!compID || !assetID)
+    if (!compSUID || !assetID)
         return;
 
-    ComponentType compType;
-    void* comp = mScene.get_component(compID, &compType);
-
+    Scene::Component comp = mScene.get_component_by_suid(compSUID);
     if (!comp)
         return;
 
-    switch (compType)
+    switch (comp.type())
     {
     case COMPONENT_TYPE_AUDIO_SOURCE:
     {
-        Scene::AudioSource source((AudioSourceComponent*)comp);
+        Scene::AudioSource source(comp);
+        LD_ASSERT(source);
         source.set_clip_asset(assetID);
         break;
     }
     case COMPONENT_TYPE_MESH:
     {
-        Scene::Mesh mesh((MeshComponent*)comp);
+        Scene::Mesh mesh(comp);
+        LD_ASSERT(mesh);
         mesh.set_mesh_asset(assetID);
         break;
     }
     case COMPONENT_TYPE_SPRITE_2D:
     {
-        Scene::Sprite2D sprite((Sprite2DComponent*)comp);
+        Scene::Sprite2D sprite((Sprite2DComponent*)comp.data());
         sprite.set_texture_2d_asset(assetID);
         break;
     }

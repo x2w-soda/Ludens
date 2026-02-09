@@ -1,6 +1,6 @@
 #pragma once
 
-#include <Ludens/DataRegistry/DataComponent.h>
+#include <Ludens/DataRegistry/DataRegistry.h>
 #include <LudensEditor/EditorContext/EditorSettings.h>
 #include <LudensEditor/EditorWidget/UIListMenuWidget.h>
 

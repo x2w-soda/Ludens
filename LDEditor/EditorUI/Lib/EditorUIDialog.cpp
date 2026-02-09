@@ -55,7 +55,7 @@ private:
     FontAtlas mFontAtlas{};
     RImage mFontAtlasImage{};
     DialogType mDialogType = DIALOG_NONE;
-    CUID mSubjectCompID = 0;
+    CUID mSubjectSUID = 0;
 };
 
 EditorUIDialogObj::EditorUIDialogObj(const EditorUIDialogInfo& mainI)
@@ -119,8 +119,8 @@ void EditorUIDialogObj::update(float delta)
             mDialogType = DIALOG_NONE;
             std::string stem = selectedPath.stem().string();
             AssetManager AM = mCtx.get_asset_manager();
-            AUID assetID = AM.get_id_from_name(stem.c_str(), nullptr);
-            mCtx.action_set_component_asset(mSubjectCompID, assetID);
+            AssetID assetID = AM.get_id_from_name(stem.c_str(), nullptr);
+            mCtx.action_set_component_asset(mSubjectSUID, assetID);
         }
         break;
     case DIALOG_SELECT_SCRIPT:
@@ -128,17 +128,17 @@ void EditorUIDialogObj::update(float delta)
         if (selectW && selectW.has_selected(selectedPath))
         {
             mDialogType = DIALOG_NONE;
-            if (!mCtx.get_component_base(mSubjectCompID))
+            if (!mCtx.get_component(mSubjectSUID))
                 return; // component out of date
 
             AssetType type;
             AssetManager AM = mCtx.get_asset_manager();
             std::string stem = selectedPath.stem().string();
-            AUID scriptAssetID = AM.get_id_from_name(stem.c_str(), &type);
+            AssetID scriptAssetID = AM.get_id_from_name(stem.c_str(), &type);
             if (scriptAssetID == 0 || type != ASSET_TYPE_LUA_SCRIPT)
                 return; // script asset out of date
 
-            mCtx.action_add_component_script(mSubjectCompID, scriptAssetID);
+            mCtx.action_add_component_script(mSubjectSUID, scriptAssetID);
         }
         break;
     default:
@@ -184,7 +184,7 @@ void EditorUIDialogObj::dialog_select_asset(const EditorEvent* e)
     mDialogType = DIALOG_SELECT_ASSET;
 
     const auto* event = (const EditorRequestComponentAssetEvent*)e;
-    mSubjectCompID = event->component;
+    mSubjectSUID = event->component;
 
     SelectionWindow selectionW = (SelectionWindow)get_or_create_dialog(EDITOR_WINDOW_SELECTION);
     selectionW.show(mCtx.get_project_directory(), "lda");

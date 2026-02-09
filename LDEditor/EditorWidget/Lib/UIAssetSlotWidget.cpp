@@ -6,7 +6,7 @@
 
 namespace LD {
 
-bool eui_asset_slot(EditorTheme theme, AssetType assetType, AUID assetID, const char* assetName)
+bool eui_asset_slot(EditorTheme theme, AssetType assetType, AssetID assetID, const char* assetName)
 {
     MouseButton btn;
     UIEvent event;
