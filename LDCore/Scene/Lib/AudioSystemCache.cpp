@@ -24,15 +24,15 @@ void AudioSystemCache::cleanup()
     mSystem = {};
 }
 
-AudioBuffer AudioSystemCache::get_or_create_audio_buffer(AUID clipAUID)
+AudioBuffer AudioSystemCache::get_or_create_audio_buffer(AssetID clipID)
 {
-    AudioClipAsset clipA = (AudioClipAsset)mAssetManager.get_asset(clipAUID, ASSET_TYPE_AUDIO_CLIP);
+    AudioClipAsset clipA = (AudioClipAsset)mAssetManager.get_asset(clipID, ASSET_TYPE_AUDIO_CLIP);
 
     if (!clipA)
         return {};
 
-    if (mClipToBuffer.contains(clipAUID))
-        return mClipToBuffer[clipAUID];
+    if (mClipToBuffer.contains(clipID))
+        return mClipToBuffer[clipID];
 
     AudioBufferInfo bufferI{};
     bufferI.channels = clipA.get_channel_count();
@@ -43,7 +43,7 @@ AudioBuffer AudioSystemCache::get_or_create_audio_buffer(AUID clipAUID)
     AudioBuffer buffer = mSystem.create_buffer(bufferI);
 
     if (buffer)
-        mClipToBuffer[clipAUID] = buffer;
+        mClipToBuffer[clipID] = buffer;
 
     return buffer;
 }

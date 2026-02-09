@@ -54,7 +54,7 @@ static_assert(offsetof(Transform2D, rotation) == 16);
 
 static_assert(alignof(AudioSourceComponent) == 8);
 static_assert(offsetof(AudioSourceComponent, playback) == 8);
-static_assert(offsetof(AudioSourceComponent, clipAUID) == 16);
+static_assert(offsetof(AudioSourceComponent, clipID) == 16);
 static_assert(offsetof(AudioSourceComponent, pan) == 20);
 static_assert(offsetof(AudioSourceComponent, volumeLinear) == 24);
 
@@ -204,7 +204,7 @@ uint32_t ffi_get_parent_id(uint32_t compID)
     ComponentBase* base = sScene->registry.get_component_base(compID);
     LD_ASSERT(base);
     ComponentBase* parent = base->parent;
-    return parent ? parent->id : 0;
+    return parent ? parent->cuid : 0;
 }
 
 uint32_t ffi_get_child_id_by_name(uint32_t compID, const char* name)
@@ -217,7 +217,7 @@ uint32_t ffi_get_child_id_by_name(uint32_t compID, const char* name)
         LD_ASSERT(child && child->name);
 
         if (!strcmp(child->name, name))
-            return child->id;
+            return child->cuid;
     }
 
     return 0;

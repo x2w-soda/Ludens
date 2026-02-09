@@ -112,21 +112,13 @@ static void push_component_ref(LuaState& L, CUID compID)
     LD_ASSERT(ok);
 }
 
-static inline void get_transform_cuid(LuaState L, int tIndex, CUID& compID)
-{
-    L.get_field(tIndex, "_cuid");
-    LD_ASSERT(L.get_type(-1) == LUA_TYPE_NUMBER);
-    compID = (CUID)L.to_number(-1);
-    L.pop(1);
-}
-
 /// @brief Component:get_id()
 int component_get_id(lua_State* l)
 {
     LuaState L(l);
 
     ComponentBase* base = get_component_base(L, nullptr);
-    L.push_number((double)base->id);
+    L.push_number((double)base->cuid);
 
     return 1;
 }
@@ -291,32 +283,6 @@ static int input_get_mouse(lua_State* l)
     return 1;
 }
 
-/// @brief ludens.C.get_component(compID)
-static int get_component(lua_State* l)
-{
-    LuaState L(l);
-
-    LD_ASSERT(L.get_type(-1) == LUA_TYPE_NUMBER);
-    CUID compID = (CUID)L.to_number(-1);
-
-    ComponentType type;
-    void* comp = sScene->registry.get_component(compID, &type);
-
-    if (!comp)
-    {
-        L.push_nil();
-        L.push_nil();
-        return 2;
-    }
-
-    std::string ffiType(get_component_type_name(type));
-    ffiType.push_back('*');
-
-    L.push_string(ffiType.c_str());
-    L.push_light_userdata(comp);
-    return 2;
-}
-
 //
 // PUBLIC API
 //
@@ -346,13 +312,9 @@ LuaModule create_ludens_module()
         {.type = LUA_TYPE_FN, .name = "get_mouse_up",   .fn = &LuaScript::input_get_mouse_up},
         {.type = LUA_TYPE_FN, .name = "get_mouse",      .fn = &LuaScript::input_get_mouse},
     };
-
-    const LuaModuleValue CVals[] = {
-        {.type = LUA_TYPE_FN, .name = "get_component", .fn = &LuaScript::get_component},
-    };
     // clang-format on
 
-    std::array<LuaModuleNamespace, 4> spaces;
+    std::array<LuaModuleNamespace, 3> spaces;
     spaces[0].name = "application";
     spaces[0].valueCount = sizeof(applicationVals) / sizeof(*applicationVals);
     spaces[0].values = applicationVals;
@@ -364,11 +326,6 @@ LuaModule create_ludens_module()
     spaces[2].name = "input";
     spaces[2].valueCount = sizeof(inputVals) / sizeof(*inputVals);
     spaces[2].values = inputVals;
-
-    // NOTE: these are bindings that use the Lua stack, there are also FFI bindings in LuaScriptFFI.cpp
-    spaces[3].name = "C";
-    spaces[3].valueCount = sizeof(CVals) / sizeof(CVals);
-    spaces[3].values = CVals;
 
     LuaModuleInfo modI;
     modI.name = LUDENS_LUA_MODULE_NAME;
@@ -508,6 +465,8 @@ void Context::update(float delta)
 
     // TODO: iterate scripts in Lua to avoid pcall overhead.
 
+    LD_UNREACHABLE;
+    /*
     for (auto ite = mRegistry.get_component_scripts(); ite; ++ite)
     {
         auto* script = (ComponentScriptSlot*)ite.data();
@@ -551,6 +510,7 @@ void Context::update(float delta)
 
         mL.resize(oldSize2);
     }
+    */
 
     mL.resize(oldSize1);
 }
@@ -586,20 +546,18 @@ void Context::destroy_component_table(CUID compID)
     mL.resize(oldSize);
 }
 
-bool Context::create_lua_script(ComponentScriptSlot* scriptSlot)
+bool Context::create_lua_script(CUID compID, AssetID scriptAssetID)
 {
-    if (!scriptSlot)
+    if (!compID || !scriptAssetID)
         return true; // not an error
 
     int oldSize = mL.size();
-    CUID compID = scriptSlot->componentID;
-    AUID assetID = scriptSlot->assetID;
 
     mL.get_global("ludens");
     mL.get_field(-1, "scripts");
     mL.push_number((double)compID);
 
-    LuaScriptAsset asset = (LuaScriptAsset)mAssetManager.get_asset(assetID, ASSET_TYPE_LUA_SCRIPT);
+    LuaScriptAsset asset = (LuaScriptAsset)mAssetManager.get_asset(scriptAssetID, ASSET_TYPE_LUA_SCRIPT);
     LD_ASSERT(asset);
 
     const char* luaSource = asset.get_source();
@@ -619,12 +577,11 @@ bool Context::create_lua_script(ComponentScriptSlot* scriptSlot)
     return true;
 }
 
-void Context::destroy_lua_script(ComponentScriptSlot* scriptSlot)
+void Context::destroy_lua_script(CUID compID)
 {
-    if (!scriptSlot)
+    if (!compID)
         return;
 
-    CUID compID = scriptSlot->componentID;
     int oldSize = mL.size();
     mL.get_global("ludens");
     mL.get_field(-1, "scripts");
@@ -635,13 +592,12 @@ void Context::destroy_lua_script(ComponentScriptSlot* scriptSlot)
     mL.resize(oldSize);
 }
 
-void Context::attach_lua_script(ComponentScriptSlot* scriptSlot)
+void Context::attach_lua_script(CUID compID)
 {
-    if (!scriptSlot)
+    if (!compID)
         return;
 
     LuaType type;
-    CUID compID = scriptSlot->componentID;
     int oldSize = mL.size();
     mL.get_global("ludens");
     mL.get_field(-1, "scripts");
@@ -672,13 +628,12 @@ void Context::attach_lua_script(ComponentScriptSlot* scriptSlot)
     mL.resize(oldSize);
 }
 
-void Context::detach_lua_script(ComponentScriptSlot* scriptSlot)
+void Context::detach_lua_script(CUID compID)
 {
-    if (!scriptSlot)
+    if (!compID)
         return;
 
     LuaType type;
-    CUID compID = scriptSlot->componentID;
     int oldSize = mL.size();
     mL.get_global("ludens");
     mL.get_field(-1, "scripts");

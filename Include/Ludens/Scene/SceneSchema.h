@@ -1,7 +1,7 @@
 #pragma once
 
 #include <Ludens/Asset/Asset.h>
-#include <Ludens/DataRegistry/DataComponent.h>
+#include <Ludens/DataRegistry/DataRegistry.h>
 #include <Ludens/Header/View.h>
 #include <Ludens/Scene/Scene.h>
 #include <cstdint>

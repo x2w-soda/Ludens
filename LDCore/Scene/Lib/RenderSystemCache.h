@@ -35,18 +35,18 @@ public:
         mSystem.destroy_screen_layer(layerID);
     }
 
-    MeshData get_or_create_mesh_data(AUID meshAUID);
-    MeshDraw create_mesh_draw(CUID compID, AUID meshAUID = 0);
-    Image2D get_or_create_image_2d(AUID textureAUID);
-    Sprite2DDraw create_sprite_draw(CUID compID, RUID layerID, AUID textureAUID = 0);
+    MeshData get_or_create_mesh_data(AssetID meshAUID);
+    MeshDraw create_mesh_draw(CUID compID, AssetID meshAUID = 0);
+    Image2D get_or_create_image_2d(AssetID textureAUID);
+    Sprite2DDraw create_sprite_draw(CUID compID, RUID layerID, AssetID textureAUID = 0);
 
 private:
     RenderSystem mSystem{};
     AssetManager mAssetManager{};
     HashMap<RUID, CUID> mDrawToCuid; /// map RenderSystem draw ID to component
     HashMap<CUID, RUID> mCuidToDraw; /// map component to RenderSystem draw ID
-    HashMap<AUID, MeshData> mMeshData;
-    HashMap<AUID, Image2D> mImage2D;
+    HashMap<AssetID, MeshData> mMeshData;
+    HashMap<AssetID, Image2D> mImage2D;
 };
 
 } // namespace LD

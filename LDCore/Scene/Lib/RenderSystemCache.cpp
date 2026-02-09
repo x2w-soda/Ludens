@@ -54,7 +54,7 @@ CUID RenderSystemCache::get_draw_id_component(RUID drawID)
     return ite->second;
 }
 
-MeshData RenderSystemCache::get_or_create_mesh_data(AUID meshAUID)
+MeshData RenderSystemCache::get_or_create_mesh_data(AssetID meshAUID)
 {
     MeshAsset meshA = (MeshAsset)mAssetManager.get_asset(meshAUID, ASSET_TYPE_MESH);
     LD_ASSERT(meshA);
@@ -66,7 +66,7 @@ MeshData RenderSystemCache::get_or_create_mesh_data(AUID meshAUID)
     return mMeshData[meshAUID];
 }
 
-MeshDraw RenderSystemCache::create_mesh_draw(CUID compID, AUID meshAUID)
+MeshDraw RenderSystemCache::create_mesh_draw(CUID compID, AssetID meshAUID)
 {
     auto it = mCuidToDraw.find(compID);
     if (it != mCuidToDraw.end())
@@ -92,7 +92,7 @@ MeshDraw RenderSystemCache::create_mesh_draw(CUID compID, AUID meshAUID)
     return draw;
 }
 
-Image2D RenderSystemCache::get_or_create_image_2d(AUID textureAUID)
+Image2D RenderSystemCache::get_or_create_image_2d(AssetID textureAUID)
 {
     Texture2DAsset textureA = (Texture2DAsset)mAssetManager.get_asset(textureAUID, ASSET_TYPE_TEXTURE_2D);
     LD_ASSERT(textureA);
@@ -104,7 +104,7 @@ Image2D RenderSystemCache::get_or_create_image_2d(AUID textureAUID)
     return mImage2D[textureAUID];
 }
 
-Sprite2DDraw RenderSystemCache::create_sprite_draw(CUID compID, RUID layerID, AUID textureAUID)
+Sprite2DDraw RenderSystemCache::create_sprite_draw(CUID compID, RUID layerID, AssetID textureAUID)
 {
     auto it = mCuidToDraw.find(compID);
     if (it != mCuidToDraw.end())

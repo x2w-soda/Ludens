@@ -42,12 +42,13 @@ struct Sprite2DDraw : IDHandle<Sprite2DDrawObj, RUID>
     Sprite2DDraw(Sprite2DDrawObj* obj, RUID id)
         : IDHandle(obj, id) {}
 
-    inline void set_image(Image2D image2D)
+    inline bool set_image(Image2D image2D)
     {
         if (!image2D)
-            return;
+            return false;
 
         mObj->image = RImage(image2D.unwrap());
+        return true;
     }
 
     inline uint32_t get_z_depth()
@@ -97,10 +98,10 @@ struct MeshDraw : IDHandle<MeshDrawObj, RUID>
     MeshDraw(MeshDrawObj* obj, RUID id)
         : IDHandle(obj, id) {}
 
-    inline void set_mesh_asset(MeshData data)
+    inline bool set_mesh_asset(MeshData data)
     {
         if (!data)
-            return;
+            return false;
 
         if (mObj->data)
             mObj->data.unwrap()->drawID.erase(mID);
@@ -109,6 +110,8 @@ struct MeshDraw : IDHandle<MeshDrawObj, RUID>
 
         MeshDataObj* dataObj = data.unwrap();
         dataObj->drawID.insert(mID);
+
+        return true;
     }
 };
 

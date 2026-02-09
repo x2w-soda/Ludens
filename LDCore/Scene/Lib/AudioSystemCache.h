@@ -20,7 +20,7 @@ public:
     void cleanup();
 
     /// @brief Get or create corresponding audio buffer from asset.
-    AudioBuffer get_or_create_audio_buffer(AUID clipAUID);
+    AudioBuffer get_or_create_audio_buffer(AssetID clipID);
 
     inline void update() { mSystem.update(); }
     inline AudioPlayback create_playback(AudioBuffer buffer, AudioSourceComponent* comp) { return mSystem.create_playback(buffer, comp->pan, comp->volumeLinear); }
@@ -34,7 +34,7 @@ public:
 private:
     AudioSystem mSystem{};
     AssetManager mAssetManager{};
-    HashMap<AUID, AudioBuffer> mClipToBuffer; /// map audio clip to audio buffer
+    HashMap<AssetID, AudioBuffer> mClipToBuffer; /// map audio clip to audio buffer
 };
 
 } // namespace LD

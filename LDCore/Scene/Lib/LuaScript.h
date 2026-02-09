@@ -1,6 +1,5 @@
 #pragma once
 
-#include <Ludens/DataRegistry/DataComponent.h>
 #include <Ludens/DataRegistry/DataRegistry.h>
 #include <Ludens/Lua/LuaModule.h>
 #include <Ludens/Lua/LuaState.h>
@@ -33,16 +32,16 @@ public:
     void destroy_component_table(CUID compID);
 
     /// @brief Creates lua script associated with component if slot is not null.
-    bool create_lua_script(ComponentScriptSlot* scriptSlot);
+    bool create_lua_script(CUID compID, AssetID scriptAssetID);
 
     /// @brief Destroy lua script associated with a component
-    void destroy_lua_script(ComponentScriptSlot* scriptSlot);
+    void destroy_lua_script(CUID compID);
 
     /// @brief Attach lua script to its data component.
-    void attach_lua_script(ComponentScriptSlot* scriptSlot);
+    void attach_lua_script(CUID compID);
 
     /// @brief Detach lua script from its data component.
-    void detach_lua_script(ComponentScriptSlot* scriptSlot);
+    void detach_lua_script(CUID compID);
 
 private:
     LuaState mL{};

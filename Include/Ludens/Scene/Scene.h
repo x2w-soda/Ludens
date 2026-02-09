@@ -3,12 +3,17 @@
 #include <Ludens/Asset/AssetManager.h>
 #include <Ludens/AudioSystem/AudioSystem.h>
 #include <Ludens/Camera/Camera.h>
+#include <Ludens/DSA/Vector.h>
 #include <Ludens/DataRegistry/DataRegistry.h>
 #include <Ludens/Header/Handle.h>
 #include <Ludens/RenderSystem/RenderSystem.h>
-#include <vector>
 
 namespace LD {
+
+struct AudioSourceComponent;
+struct MeshComponent;
+struct Sprite2DComponent;
+struct CameraComponent;
 
 /// @brief Get static C string of log channel used by lua scripts.
 const char* get_lua_script_log_channel_name();
@@ -61,122 +66,188 @@ public:
     /// @brief Get camera to render the Scene with.
     Camera get_camera();
 
-    /// @brief Create a component.
+    /// @brief Public interface for all components.
+    class Component
+    {
+    public:
+        Component() = default;
+        Component(ComponentBase** data)
+            : mData(data) {}
+
+        /// @brief Check for interface validity before calling any methods.
+        inline operator bool() const noexcept { return mData != nullptr; }
+
+        inline ComponentBase* base() { return *mData; }
+        inline ComponentBase** data() { return mData; }
+        ComponentType type();
+        CUID cuid();
+        SUID suid();
+        RUID ruid();
+
+        const char* get_name();
+        AssetID get_script_asset_id();
+        void set_script_asset_id(AssetID assetID);
+        void get_children(Vector<Component>& children);
+        Component get_parent();
+
+        bool get_transform(TransformEx& transform);
+        bool set_transform(const TransformEx& transform);
+        bool get_transform_2d(Transform2D& transform);
+        bool set_transform_2d(const Transform2D& transform);
+
+        bool get_world_mat4(Mat4& worldMat4);
+        void mark_transform_dirty(); // TODO: redundant?
+
+    protected:
+        ComponentBase** mData = nullptr;
+    };
+
+    /// @brief Try create a component.
     /// @param type Component type.
     /// @param name Component identifier.
-    /// @param parent Parent component, or zero if creating a root component.
-    /// @param hint If not zero, hint ID to create component with.
-    CUID create_component(ComponentType type, const char* name, CUID parent, CUID hint);
+    /// @param parentCUID Parent component ID, or zero if creating a root component.
+    /// @return Component interface of the newly created component on success.
+    Component create_component(ComponentType type, const char* name, CUID parentCUID);
+
+    /// @brief Try create a component with serial ID.
+    /// @param type Component type.
+    /// @param name Component identifier.
+    /// @param parentSUID Parent serial ID, or zero if creating a root component.
+    /// @param hintSUID Serial ID to create with, or zero if requesting a new serial ID.
+    /// @return Component interface of the newly created component on success.
+    Component create_component_serial(ComponentType type, const char* name, SUID parentSUID, SUID hintSUID = 0);
 
     /// @brief Destroy a component.
     void destroy_component(CUID compID);
 
-    /// @brief Create data component script slot.
-    /// @param compID Component ID.
-    /// @param assetID ScriptAsset ID.
-    /// @return Script slot for the component.
-    ComponentScriptSlot* create_component_script_slot(CUID compID, AUID assetID);
-
-    /// @brief Destroy data component script slot if it exists.
-    void destroy_component_script_slot(CUID compID);
-
     /// @brief Reparent a component
     void reparent(CUID compID, CUID parentID);
 
-    /// @brief Get root components in Scene
-    void get_root_components(std::vector<CUID>& roots);
+    /// @brief Get IDs for root component in Scene
+    void get_root_component_cuids(Vector<CUID>& roots);
 
-    /// @brief Get data component base members
-    ComponentBase* get_component_base(CUID compID);
-
-    /// @brief Get data component script slot, or null if not found.
-    ComponentScriptSlot* get_component_script_slot(CUID compID);
+    /// @brief Get interfaces for root components in Scene.
+    void get_root_components(Vector<Component>& roots);
 
     /// @brief Get data component from ID.
-    void* get_component(CUID compID, ComponentType* outType);
+    Component get_component(CUID compID);
 
     /// @brief Get data component from ID and expected type, fails upon type mismatch.
-    void* get_component(CUID compID, ComponentType expectedType);
+    inline Component get_component(CUID compID, ComponentType expectedType)
+    {
+        Component comp = get_component(compID);
+        if (!comp || comp.type() != expectedType)
+            return {};
 
-    /// @brief Lookup some render server ID for data component.
-    ///        Only graphical components such as Meshes are applicable.
-    RUID get_component_ruid(CUID compID);
+        return comp;
+    }
 
-    /// @brief Get local transform of a data component.
-    bool get_component_transform(CUID compID, TransformEx& transform);
+    /// @brief Get data component from serial ID.
+    Component get_component_by_suid(SUID compSUID);
 
-    /// @brief Get local transform of a data component.
-    bool set_component_transform(CUID compID, const TransformEx& transform);
+    /// @brief Get data component from serial ID and expected type, fails upon type mismatch.
+    inline Component get_component_by_suid(SUID compSUID, ComponentType expectedType)
+    {
+        Component comp = get_component_by_suid(compSUID);
+        if (!comp || comp.type() != expectedType)
+            return {};
 
-    /// @brief Get local 2D transform of a data component.
-    bool get_component_transform_2d(CUID compID, Transform2D& transform);
-
-    /// @brief Get component world matrix.
-    bool get_component_world_mat4(CUID compID, Mat4& worldMat4);
-
-    /// @brief Mark the transforms of a component subtree as dirty.
-    void mark_component_transform_dirty(CUID compID);
+        return comp;
+    }
 
     /// @brief Lookup the data component from draw call ID
-    CUID get_ruid_component(RUID ruid);
+    Component get_ruid_component(RUID ruid);
 
     /// @brief Supplies the Mat4 model matrix for a draw call
     Mat4 get_ruid_transform_mat4(RUID ruid);
 
     /// @brief Public interface for audio source components.
-    class AudioSource
+    class AudioSource : public Component
     {
     public:
         AudioSource() = delete;
+        AudioSource(Component comp);
         AudioSource(AudioSourceComponent* comp);
 
-        inline operator bool() const noexcept { return mComp && mComp->playback; }
+        operator bool() const noexcept;
+        operator Component() const noexcept { return Component((ComponentBase**)mAudioSource); }
 
         void play();
         void pause();
         void resume();
 
-        void set_clip_asset(AUID clipAUID);
+        bool set_clip_asset(AssetID clipID);
+        AssetID get_clip_asset();
+
+        float get_volume_linear();
+        bool set_volume_linear(float volume);
+        float get_pan();
+        bool set_pan(float pan);
 
     private:
-        AudioSourceComponent* mComp;
-        CUID mCUID;
+        AudioSourceComponent* mAudioSource = nullptr;
+    };
+
+    /// @brief Public interface for camera components.
+    class Camera : public Component
+    {
+    public:
+        Camera() = delete;
+        Camera(Component comp);
+        Camera(CameraComponent* comp);
+
+        operator bool() const noexcept;
+        operator Component() const noexcept { return Component((ComponentBase**)mCamera); }
+
+        bool is_main_camera();
+        bool is_perspective();
+        bool get_perspective_info(CameraPerspectiveInfo& outInfo);
+        bool get_orthographic_info(CameraOrthographicInfo& outInfo);
+        void set_perspective(const CameraPerspectiveInfo& info);
+        void set_orthographic(const CameraOrthographicInfo& info);
+
+    private:
+        CameraComponent* mCamera = nullptr;
     };
 
     /// @brief Public interface for mesh components.
-    class Mesh
+    class Mesh : public Component
     {
     public:
         Mesh() = delete;
+        Mesh(Component comp);
         Mesh(MeshComponent* comp);
 
-        inline operator bool() const noexcept { return mComp && mComp->draw; }
+        operator bool() const noexcept;
+        operator Component() const noexcept { return Component((ComponentBase**)mMesh); }
 
-        void set_mesh_asset(AUID meshAUID);
+        bool set_mesh_asset(AssetID meshID);
+        AssetID get_mesh_asset();
 
     private:
-        MeshComponent* mComp;
-        CUID mCUID;
+        MeshComponent* mMesh = nullptr;
     };
 
     /// @brief Public interface for Sprite2D components.
-    class Sprite2D
+    class Sprite2D : public Component
     {
     public:
         Sprite2D() = delete;
+        Sprite2D(Component comp);
         Sprite2D(Sprite2DComponent* comp);
 
-        inline operator bool() const noexcept { return mComp && mComp->draw; }
+        operator bool() const noexcept;
+        operator Component() const noexcept { return Component((ComponentBase**)mSprite); }
 
-        void set_texture_2d_asset(AUID textureAUID);
-        inline uint32_t get_z_depth() { return mComp->draw.get_z_depth(); }
-        inline void set_z_depth(uint32_t zDepth) { mComp->draw.set_z_depth(zDepth); }
-        inline Rect get_rect() { return mComp->draw.get_rect(); }
-        inline void set_rect(const Rect& rect) { mComp->draw.set_rect(rect); }
+        bool set_texture_2d_asset(AssetID textureID);
+        AssetID get_texture_2d_asset();
+        uint32_t get_z_depth();
+        void set_z_depth(uint32_t zDepth);
+        Rect get_rect();
+        void set_rect(const Rect& rect);
 
     private:
-        Sprite2DComponent* mComp;
-        CUID mCUID;
+        Sprite2DComponent* mSprite = nullptr;
     };
 };
 
