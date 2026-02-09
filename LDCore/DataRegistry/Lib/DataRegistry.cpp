@@ -1,5 +1,6 @@
 #include <Ludens/DSA/HashMap.h>
 #include <Ludens/DSA/HashSet.h>
+#include <Ludens/DSA/IDCounter.h>
 #include <Ludens/DSA/Vector.h>
 #include <Ludens/DataRegistry/DataComponent.h>
 #include <Ludens/DataRegistry/DataRegistry.h>
@@ -12,7 +13,7 @@ namespace LD {
 
 static Log sLog("DataRegistry");
 static bool duplicate_subtree(DataRegistry dup, DataRegistry orig, CUID origRoot);
-static AUID get_mesh_auid(void* comp);
+static SUID get_mesh_asset_id(void* comp);
 
 using ComponentTypeFlag = uint32_t;
 enum ComponentTypeFlagBit : uint32_t
@@ -27,7 +28,7 @@ struct ComponentMeta
     size_t byteSize;
     const char* typeName;
     const ComponentTypeFlag typeFlags;
-    AUID (*get_auid)(void* comp);
+    SUID (*get_asset_id)(void* compData);
 };
 
 // clang-format off
@@ -36,7 +37,7 @@ static ComponentMeta sComponentTable[] = {
     { COMPONENT_TYPE_AUDIO_SOURCE,   sizeof(AudioSourceComponent),   "AudioSourceComponent", 0, nullptr },
     { COMPONENT_TYPE_TRANSFORM,      sizeof(TransformComponent),     "TransformComponent",   COMPONENT_TYPE_FLAG_TRANSFORM_EX, nullptr },
     { COMPONENT_TYPE_CAMERA,         sizeof(CameraComponent),        "CameraComponent",      COMPONENT_TYPE_FLAG_TRANSFORM_EX, nullptr },
-    { COMPONENT_TYPE_MESH,           sizeof(MeshComponent),          "MeshComponent",        COMPONENT_TYPE_FLAG_TRANSFORM_EX, &get_mesh_auid },
+    { COMPONENT_TYPE_MESH,           sizeof(MeshComponent),          "MeshComponent",        COMPONENT_TYPE_FLAG_TRANSFORM_EX, &get_mesh_asset_id },
     { COMPONENT_TYPE_SPRITE_2D,      sizeof(Sprite2DComponent),      "Sprite2DComponent",    COMPONENT_TYPE_FLAG_TRANSFORM_2D, nullptr },
 };
 // clang-format on
@@ -45,10 +46,10 @@ static bool duplicate_subtree(DataRegistry dup, DataRegistry orig, CUID origRoot
 {
     const ComponentBase* origBase = orig.get_component_base(origRoot);
     const ComponentBase* origParentBase = origBase->parent;
-    CUID parentID = origParentBase ? origParentBase->id : 0;
-    CUID dupID = dup.create_component(origBase->type, origBase->name, parentID, origBase->id);
+    CUID parentID = origParentBase ? origParentBase->cuid : 0;
+    CUID dupID = dup.create_component(origBase->type, origBase->name, parentID, origBase->suid);
 
-    if (dupID != origBase->id)
+    if (dupID != origBase->suid)
     {
         sLog.error("failed to duplicate {}", origBase->name);
         return false;
@@ -62,32 +63,24 @@ static bool duplicate_subtree(DataRegistry dup, DataRegistry orig, CUID origRoot
 
     // duplicate type-sepcific fields
     ComponentType type;
-    void* dupComp = dup.get_component(dupID, &type);
-    void* origComp = orig.get_component(dupID, &type);
+    void* dupComp = dup.get_component_data(dupID, &type);
+    void* origComp = orig.get_component_data(dupID, &type);
     memcpy(dupComp, origComp, sComponentTable[(int)type].byteSize);
-
-    // duplicate script
-    const ComponentScriptSlot* origScriptSlot = orig.get_component_script(origRoot);
-    if (origScriptSlot)
-    {
-        ComponentScriptSlot* dupScriptSlot = dup.create_component_script_slot(dupID, origScriptSlot->assetID);
-        dupScriptSlot->isEnabled = origScriptSlot->isEnabled;
-    }
 
     bool success = true;
 
     for (const ComponentBase* child = origBase->child; child; child = child->next)
     {
         // TODO: this traversal reverses sibling order?
-        success = success && duplicate_subtree(dup, orig, child->id);
+        success = success && duplicate_subtree(dup, orig, child->suid);
     }
 
     return success;
 }
 
-static AUID get_mesh_auid(void* comp)
+static SUID get_mesh_asset_id(void* comp)
 {
-    return ((MeshComponent*)comp)->auid;
+    return ((MeshComponent*)comp)->assetID;
 }
 
 static_assert(sizeof(sComponentTable) / sizeof(*sComponentTable) == COMPONENT_TYPE_ENUM_COUNT);
@@ -107,37 +100,39 @@ const char* get_component_type_name(ComponentType type)
     return sComponentTable[(int)type].typeName;
 }
 
-struct ComponentEntry
-{
-    ComponentBase* base;
-    ComponentScriptSlot* script;
-    void* comp;
-};
-
-static_assert(LD::IsTrivial<ComponentEntry>);
-
 struct DataRegistryObj
 {
-    std::unordered_map<ComponentType, PoolAllocator> componentPAs;
-    std::unordered_map<CUID, ComponentEntry> components;
-    std::unordered_set<CUID> roots;
+    HashMap<ComponentType, PoolAllocator> componentPAs;
+    HashMap<CUID, ComponentBase**> cuidToCompData;
+    HashMap<SUID, ComponentBase**> suidToCompData;
+    HashSet<CUID> roots;
     PoolAllocator componentBasePA;
-    PoolAllocator scriptPA;
-    uint32_t idCounter = 0;
+    IDCounter<CUID> cuidCounter;
 
-    CUID get_id()
+    inline ComponentBase** get_data_from_cuid(CUID compCUID)
     {
-        do
-        {
-            idCounter++; // linear probing for next valid component ID
-        } while (idCounter == 0 || components.contains(idCounter));
+        auto it = cuidToCompData.find(compCUID);
 
-        return idCounter;
+        if (it != cuidToCompData.end())
+        {
+            LD_ASSERT(it->second && *it->second);
+            return (ComponentBase**)it->second;
+        }
+
+        return nullptr;
     }
 
-    inline bool is_id_used(CUID id)
+    inline ComponentBase** get_data_from_suid(SUID compSUID)
     {
-        return components.contains(id);
+        auto it = suidToCompData.find(compSUID);
+
+        if (it != suidToCompData.end())
+        {
+            LD_ASSERT(it->second && *it->second);
+            return (ComponentBase**)it->second;
+        }
+
+        return nullptr;
     }
 
     /// @brief Detach a component from its parent.
@@ -147,21 +142,27 @@ struct DataRegistryObj
     void add_child(ComponentBase* parent, ComponentBase* child);
 
     /// @brief Get component local transform.
-    inline TransformEx* get_component_transform(ComponentBase* base, void* comp)
+    inline TransformEx* get_component_transform(ComponentBase** data)
     {
+        LD_ASSERT(data);
+        ComponentBase* base = *data;
+
         if (!base || !(sComponentTable[base->type].typeFlags & COMPONENT_TYPE_FLAG_TRANSFORM_EX))
             return nullptr;
 
-        return (TransformEx*)((void**)comp + 1);
+        return (TransformEx*)(data + 1);
     }
 
     /// @brief Get component local 2D transform.
-    inline Transform2D* get_component_transform_2d(ComponentBase* base, void* comp)
+    inline Transform2D* get_component_transform_2d(ComponentBase** data)
     {
+        LD_ASSERT(data);
+        ComponentBase* base = *data;
+
         if (!base || !(sComponentTable[base->type].typeFlags & COMPONENT_TYPE_FLAG_TRANSFORM_2D))
             return nullptr;
 
-        return (Transform2D*)((void**)comp + 1);
+        return (Transform2D*)(data + 1);
     }
 
     /// @brief Mark the local transform of a component subtree as dirty.
@@ -184,13 +185,13 @@ void DataRegistryObj::detach(ComponentBase* base)
     LD_ASSERT(*pnext == base);
     *pnext = base->next;
     base->parent = nullptr;
-    roots.insert(base->id);
+    roots.insert(base->suid);
 }
 
 void DataRegistryObj::add_child(ComponentBase* parent, ComponentBase* child)
 {
     if (!child->parent && parent)
-        roots.erase(child->id);
+        roots.erase(child->suid);
 
     child->parent = parent;
 
@@ -227,12 +228,12 @@ bool DataRegistryObj::get_component_world_mat4(ComponentBase* base, Mat4& mat4)
 
         TransformEx transform;
         Transform2D transform2D;
-        if (DataRegistry(this).get_component_transform(base->id, transform))
+        if (DataRegistry(this).get_component_transform(base->cuid, transform))
         {
             transform.rotation = Quat::from_euler(transform.rotationEuler);
             base->localMat4 = transform.as_mat4();
         }
-        else if (DataRegistry(this).get_component_transform_2d(base->id, transform2D))
+        else if (DataRegistry(this).get_component_transform_2d(base->cuid, transform2D))
         {
             base->localMat4 = transform2D.as_mat4();
         }
@@ -253,16 +254,10 @@ DataRegistry DataRegistry::create()
 
     PoolAllocatorInfo paI{};
     paI.blockSize = sizeof(ComponentBase);
-    paI.pageSize = 1024;
+    paI.pageSize = 256;
     paI.isMultiPage = true;
     paI.usage = MEMORY_USAGE_MISC;
     obj->componentBasePA = PoolAllocator::create(paI);
-
-    paI.blockSize = sizeof(ComponentScriptSlot);
-    paI.pageSize = 128;
-    paI.isMultiPage = true;
-    paI.usage = MEMORY_USAGE_MISC;
-    obj->scriptPA = PoolAllocator::create(paI);
 
     return {obj};
 }
@@ -280,7 +275,6 @@ void DataRegistry::destroy(DataRegistry registry)
     }
 
     PoolAllocator::destroy(obj->componentBasePA);
-    PoolAllocator::destroy(obj->scriptPA);
 
     for (auto ite : obj->componentPAs)
     {
@@ -308,20 +302,20 @@ DataRegistry DataRegistry::duplicate() const
     return dup;
 }
 
-CUID DataRegistry::create_component(ComponentType type, const char* name, CUID parentID, CUID hintID)
+CUID DataRegistry::create_component(ComponentType type, const char* name, CUID parentID, SUID hintSUID)
 {
-    if (hintID && mObj->is_id_used(hintID))
+    if (hintSUID && !try_get_suid(hintSUID))
     {
-        sLog.warn("create_component hint ID {} is in use, failed to create component", hintID);
+        sLog.warn("create_component hint SUID {} is in use, failed to create component", hintSUID);
         return 0;
     }
 
-    size_t componentByteSize = get_component_byte_size(type);
+    size_t compDataByteSize = get_component_byte_size(type);
 
     if (!mObj->componentPAs.contains(type))
     {
         PoolAllocatorInfo paI{};
-        paI.blockSize = componentByteSize;
+        paI.blockSize = compDataByteSize;
         paI.pageSize = 1024;
         paI.isMultiPage = true;
         paI.usage = MEMORY_USAGE_MISC;
@@ -329,136 +323,125 @@ CUID DataRegistry::create_component(ComponentType type, const char* name, CUID p
     }
 
     // allocate base members
-    ComponentBase* base = (ComponentBase*)mObj->componentBasePA.allocate();
-    memset(base, 0, sizeof(ComponentBase));
+    ComponentBase* compBase = (ComponentBase*)mObj->componentBasePA.allocate();
+    memset(compBase, 0, sizeof(ComponentBase));
 
-    base->name = heap_strdup(name, MEMORY_USAGE_MISC);
-    base->type = type;
-    base->id = hintID ? hintID : mObj->get_id();
+    compBase->name = heap_strdup(name, MEMORY_USAGE_MISC);
+    compBase->type = type;
+    compBase->suid = hintSUID;                   // serial identity, may be zero for components created at runtime
+    compBase->cuid = mObj->cuidCounter.get_id(); // runtime identity
 
     if (parentID)
     {
-        ComponentBase* parent = mObj->components[parentID].base;
-        mObj->add_child(parent, base);
+        ComponentBase* parent = *(mObj->cuidToCompData[parentID]);
+        mObj->add_child(parent, compBase);
     }
     else
     {
-        mObj->roots.insert(base->id);
+        mObj->roots.insert(compBase->cuid);
     }
 
     // allocate component type
-    void* comp = mObj->componentPAs[type].allocate();
-    memset(comp, 0, componentByteSize);
-    *((ComponentBase**)comp) = base;
+    void* compData = mObj->componentPAs[type].allocate();
+    memset(compData, 0, compDataByteSize);
 
-    mObj->components[base->id].base = base;
-    mObj->components[base->id].comp = comp;
-    mObj->components[base->id].script = nullptr;
+    // first member of component data is backwards link to it's ComponentBase metadata
+    *(ComponentBase**)compData = compBase;
 
-    return base->id;
+    mObj->cuidToCompData[compBase->cuid] = (ComponentBase**)compData;
+    if (compBase->suid)
+        mObj->suidToCompData[compBase->suid] = (ComponentBase**)compData;
+
+    return compBase->cuid;
 }
 
-void DataRegistry::destroy_component(CUID comp)
+void DataRegistry::destroy_component(CUID compCUID)
 {
-    auto ite = mObj->components.find(comp);
+    auto it = mObj->cuidToCompData.find(compCUID);
 
-    if (ite == mObj->components.end())
+    if (it == mObj->cuidToCompData.end())
         return;
 
-    ComponentEntry& entry = ite->second;
-    LD_ASSERT(entry.base);
-    LD_ASSERT(mObj->componentPAs.contains(entry.base->type));
-    LD_ASSERT(!entry.script);
+    ComponentBase** compData = it->second;
+    LD_ASSERT(compData && *compData);
 
-    mObj->componentPAs[entry.base->type].free(entry.comp);
-    mObj->componentBasePA.free(entry.base);
-    mObj->components.erase(ite);
+    ComponentBase* compBase = *compData;
+    LD_ASSERT(mObj->componentPAs.contains(compBase->type));
+
+    SUID compSUID = compBase->suid;
+
+    mObj->componentPAs[compBase->type].free(compData);
+    mObj->componentBasePA.free(compBase);
+
+    mObj->cuidToCompData.erase(compCUID);
+    mObj->suidToCompData.erase(compSUID);
 }
 
 void DataRegistry::reparent(CUID compID, CUID parentID)
 {
-    auto ite = mObj->components.find(compID);
-    if (ite == mObj->components.end())
+    ComponentBase** childData = mObj->get_data_from_cuid(compID);
+    ComponentBase** parentData = mObj->get_data_from_cuid(parentID);
+    if (!childData || !parentData)
         return;
 
-    ComponentBase* child = ite->second.base;
+    ComponentBase* childBase = *childData;
+    ComponentBase* parentBase = *parentData;
 
-    ite = mObj->components.find(parentID);
-    ComponentBase* parent = ite == mObj->components.end() ? nullptr : ite->second.base;
-
-    mObj->detach(child);
-    mObj->add_child(parent, child);
-    mObj->mark_component_transform_dirty(child);
+    mObj->detach(childBase);
+    mObj->add_child(parentBase, childBase);
+    mObj->mark_component_transform_dirty(childBase);
 }
 
-ComponentScriptSlot* DataRegistry::create_component_script_slot(CUID compID, AUID assetID)
+ComponentBase* DataRegistry::get_component_base(CUID compCUID)
 {
-    auto ite = mObj->components.find(compID);
-    if (ite == mObj->components.end())
+    ComponentBase** data = mObj->get_data_from_cuid(compCUID);
+
+    return data ? *data : nullptr;
+}
+
+SUID DataRegistry::get_component_asset_id(CUID compID)
+{
+    auto it = mObj->cuidToCompData.find(compID);
+    if (it == mObj->cuidToCompData.end())
+        return (SUID)0;
+
+    ComponentBase** compData = it->second;
+    LD_ASSERT(compData);
+    ComponentBase* compBase = *compData;
+
+    if (!sComponentTable[compBase->type].get_asset_id)
+        return (SUID)0;
+
+    return sComponentTable[compBase->type].get_asset_id(compData);
+}
+
+ComponentBase** DataRegistry::get_component_data(CUID compID, ComponentType* outType)
+{
+    ComponentBase** compData = mObj->get_data_from_cuid(compID);
+    if (!compData)
         return nullptr;
 
-    LD_ASSERT(!ite->second.script); // script slot already exists
-
-    auto* script = (ComponentScriptSlot*)mObj->scriptPA.allocate();
-    script->assetID = assetID;
-    script->componentID = compID;
-    script->isEnabled = true;
-
-    ite->second.script = script;
-
-    return script;
-}
-
-void DataRegistry::destroy_component_script_slot(CUID compID)
-{
-    auto ite = mObj->components.find(compID);
-    if (ite == mObj->components.end())
-        return;
-
-    ComponentScriptSlot* script = ite->second.script;
-    LD_ASSERT(script); // script slot does not exist
-
-    mObj->scriptPA.free(script);
-
-    ite->second.script = nullptr;
-}
-
-ComponentBase* DataRegistry::get_component_base(CUID id)
-{
-    auto ite = mObj->components.find(id);
-    if (ite == mObj->components.end())
-        return nullptr;
-
-    return ite->second.base;
-}
-
-AUID DataRegistry::get_component_auid(CUID compID)
-{
-    auto ite = mObj->components.find(compID);
-    if (ite == mObj->components.end())
-        return (RUID)0;
-
-    ComponentType type = ite->second.base->type;
-
-    if (!sComponentTable[type].get_auid)
-        return (RUID)0;
-
-    return sComponentTable[type].get_auid(ite->second.comp);
-}
-
-void* DataRegistry::get_component(CUID compID, ComponentType* outType)
-{
-    auto ite = mObj->components.find(compID);
-    if (ite == mObj->components.end())
-        return nullptr;
-
+    ComponentBase* compBase = *compData;
     if (outType)
-        *outType = ite->second.base->type;
+        *outType = compBase->type;
 
-    return ite->second.comp;
+    return compData;
 }
 
-void DataRegistry::get_root_components(std::vector<CUID>& roots)
+ComponentBase** DataRegistry::get_component_data_by_suid(SUID compSUID, ComponentType* outType)
+{
+    ComponentBase** compData = mObj->get_data_from_suid(compSUID);
+    if (!compData)
+        return nullptr;
+
+    ComponentBase* compBase = *compData;
+    if (outType)
+        *outType = compBase->type;
+
+    return compData;
+}
+
+void DataRegistry::get_root_components(Vector<CUID>& roots)
 {
     roots.resize(mObj->roots.size());
 
@@ -477,91 +460,73 @@ PoolAllocator::Iterator DataRegistry::get_components(ComponentType type)
     return ite->second.begin();
 }
 
-ComponentScriptSlot* DataRegistry::get_component_script(CUID comp)
-{
-    auto ite = mObj->components.find(comp);
-
-    if (ite == mObj->components.end())
-        return nullptr;
-
-    return ite->second.script; // nullable
-}
-
-PoolAllocator::Iterator DataRegistry::get_component_scripts()
-{
-    return mObj->scriptPA.begin();
-}
-
 bool DataRegistry::get_component_transform(CUID compID, TransformEx& transform)
 {
-    auto ite = mObj->components.find(compID);
-    if (ite == mObj->components.end())
+    ComponentBase** data = mObj->get_data_from_cuid(compID);
+    if (!data)
         return false;
 
-    TransformEx* ptr = mObj->get_component_transform(ite->second.base, ite->second.comp);
-    if (!ptr)
+    TransformEx* srcTransform = mObj->get_component_transform(data);
+    if (!srcTransform)
         return false;
 
-    transform = *ptr;
+    transform = *srcTransform;
     return true;
 }
 
 bool DataRegistry::get_component_transform_2d(CUID compID, Transform2D& transform)
 {
-    auto ite = mObj->components.find(compID);
-    if (ite == mObj->components.end())
+    ComponentBase** data = mObj->get_data_from_cuid(compID);
+    if (!data)
         return false;
 
-    Transform2D* ptr = mObj->get_component_transform_2d(ite->second.base, ite->second.comp);
-    if (!ptr)
+    Transform2D* srcTransform = mObj->get_component_transform_2d(data);
+    if (!srcTransform)
         return false;
 
-    transform = *ptr;
+    transform = *srcTransform;
     return true;
 }
 
 bool DataRegistry::set_component_transform(CUID compID, const TransformEx& transform)
 {
-    auto ite = mObj->components.find(compID);
-    if (ite == mObj->components.end())
+    ComponentBase** data = mObj->get_data_from_cuid(compID);
+    if (!data)
         return false;
 
-    ComponentBase* base = ite->second.base;
-    TransformEx* ptr = mObj->get_component_transform(base, ite->second.comp);
-    if (!ptr)
+    TransformEx* dstTransform = mObj->get_component_transform(data);
+    if (!dstTransform)
         return false;
 
-    *ptr = transform;
-    mObj->mark_component_transform_dirty(base);
+    *dstTransform = transform;
+    mObj->mark_component_transform_dirty(*data);
 
     return true;
 }
 
 bool DataRegistry::set_component_transform_2d(CUID compID, const Transform2D& transform)
 {
-    auto ite = mObj->components.find(compID);
-    if (ite == mObj->components.end())
+    ComponentBase** data = mObj->get_data_from_cuid(compID);
+    if (!data)
         return false;
 
-    ComponentBase* base = ite->second.base;
-    Transform2D* ptr = mObj->get_component_transform_2d(base, ite->second.comp);
-    if (!ptr)
+    Transform2D* dstTransform = mObj->get_component_transform_2d(data);
+    if (!dstTransform)
         return false;
 
-    *ptr = transform;
-    mObj->mark_component_transform_dirty(base);
+    *dstTransform = transform;
+    mObj->mark_component_transform_dirty(*data);
 
     return true;
 }
 
 bool DataRegistry::mark_component_transform_dirty(CUID compID)
 {
-    auto ite = mObj->components.find(compID);
-    if (ite == mObj->components.end())
+    ComponentBase** data = mObj->get_data_from_cuid(compID);
+    if (!data)
         return false;
 
-    ComponentBase* base = ite->second.base;
-    mObj->mark_component_transform_dirty(base);
+    mObj->mark_component_transform_dirty(*data);
 
     return true;
 }
