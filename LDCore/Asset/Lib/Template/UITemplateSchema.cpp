@@ -243,7 +243,7 @@ void UITemplateSchemaSaver::save_ui_image(UITemplateSchemaSaver& saver, const UI
     LD_ASSERT(entry.type == UI_WIDGET_IMAGE);
 
     TOMLWriter writer = saver.mWriter;
-    writer.key("texture_2d").value_u32((uint32_t)entry.image.texture2DAUID);
+    writer.key("texture_2d").value_u32((uint32_t)entry.image.texture2DAssetID);
 
     writer.begin_inline_table("image_rect");
     TOMLUtil::save_rect_table(entry.image.imageRect, writer);
@@ -349,10 +349,10 @@ void UITemplateSchemaLoader::load_ui_image_toml(UITemplateSchemaLoader& loader, 
     TOMLValue rectTOML = widgetTOML.get_key("image_rect", TOML_TYPE_TABLE);
     TOMLUtil::load_rect_table(entry.image.imageRect, rectTOML);
 
-    entry.image.texture2DAUID = 0;
+    entry.image.texture2DAssetID = 0;
     TOMLValue texture2DTOML = widgetTOML.get_key("texture_2d", TOML_TYPE_INT);
     if (texture2DTOML)
-        texture2DTOML.get_u32(entry.image.texture2DAUID);
+        texture2DTOML.get_u32(entry.image.texture2DAssetID);
 }
 
 void UITemplateSchemaLoader::load_widget_toml(TOMLValue widgetTOML)

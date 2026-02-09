@@ -18,7 +18,7 @@ void AssetWatcher::cleanup()
     mUser = nullptr;
 }
 
-void AssetWatcher::add_watch(const FS::Path& path, AUID auid)
+void AssetWatcher::add_watch(const FS::Path& path, AssetID auid)
 {
     Hash32 hash(path.string().c_str());
 
@@ -36,7 +36,7 @@ void AssetWatcher::on_file_modify(const FS::Path& path, void* user)
 
     Hash32 hash(path.string().c_str());
     LD_ASSERT(self.mPathToID.contains(hash));
-    AUID assetID = self.mPathToID[hash];
+    AssetID assetID = self.mPathToID[hash];
 
     if (self.mUserCallback)
         self.mUserCallback(path, assetID, self.mUser);

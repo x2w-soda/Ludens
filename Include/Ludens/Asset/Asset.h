@@ -1,10 +1,14 @@
 #pragma once
 
 #include <Ludens/Header/Handle.h>
+#include <Ludens/Serial/SUID.h>
 #include <cstddef>
 #include <cstdint>
 
 namespace LD {
+
+/// @brief Asset ID uses the global serial ID space. Zero is invalid ID.
+typedef SUID AssetID;
 
 enum AssetType
 {
@@ -18,9 +22,6 @@ enum AssetType
     ASSET_TYPE_LUA_SCRIPT,
     ASSET_TYPE_ENUM_COUNT,
 };
-
-/// @brief Asset unique identifier.
-typedef uint32_t AUID;
 
 /// @brief Get byte size of an asset type.
 size_t get_asset_byte_size(AssetType type);
@@ -41,8 +42,8 @@ struct Asset : Handle<struct AssetObj>
     /// @brief Get asset name.
     const char* get_name();
 
-    /// @brief Get asset identifier.
-    AUID get_auid();
+    /// @brief Get asset serial ID.
+    AssetID get_id();
 };
 
 } // namespace LD

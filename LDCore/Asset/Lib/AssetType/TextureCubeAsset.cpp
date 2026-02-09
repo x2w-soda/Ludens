@@ -165,7 +165,7 @@ void TextureCubeAssetImportJob::execute(void* user)
     auto& self = *(TextureCubeAssetImportJob*)user;
     auto* obj = (TextureCubeAssetObj*)self.asset.unwrap();
 
-    obj->auid = 0;
+    obj->id = 0;
     obj->samplerHint = self.info.samplerHint;
     obj->serialData = nullptr;
 

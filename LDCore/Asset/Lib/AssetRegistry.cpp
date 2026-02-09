@@ -1,12 +1,11 @@
 #include <Ludens/Asset/AssetRegistry.h>
 #include <Ludens/DSA/HashMap.h>
-#include <Ludens/DSA/HashSet.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Memory/Allocator.h>
 
 namespace LD {
 
-static_assert(std::is_same_v<AUID, uint32_t>);
+static_assert(std::is_same_v<AssetID, uint32_t>);
 
 /// @brief Asset registry implementation.
 class AssetRegistryObj
@@ -18,23 +17,17 @@ public:
 
     AssetRegistryObj& operator=(const AssetRegistryObj&) = delete;
 
-    AUID get_auid();
-    AssetEntry* allocate_entry(AssetType type, AUID auid);
-    AssetEntry* get_entry(AUID auid);
+    AssetEntry* allocate_entry(AssetType type, SUID id);
+    AssetEntry* get_entry(SUID id);
     PoolAllocator get_pa(AssetType type);
     PoolAllocator get_or_create_pa(AssetType type);
     bool register_asset_with_id(const AssetEntry& entry);
-    AUID register_asset(AssetType type, const std::string& uri, const std::string& name);
-    void unregister_asset(AUID auid);
-
-    inline void set_auid_counter(uint32_t counter) { mAUIDCounter = counter; }
-    inline uint32_t get_auid_counter() { return mAUIDCounter; }
+    SUID register_asset(AssetType type, const std::string& uri, const std::string& name);
+    void unregister_asset(SUID id);
 
 private:
-    std::unordered_map<AssetType, PoolAllocator> mEntryPAs;
-    std::unordered_map<AUID, AssetEntry*> mEntries;
-    std::unordered_set<AUID> mAUIDInUse;
-    uint32_t mAUIDCounter = 1;
+    HashMap<AssetType, PoolAllocator> mEntryPAs;
+    HashMap<SUID, AssetEntry*> mEntries;
 };
 
 AssetRegistryObj::~AssetRegistryObj()
@@ -52,37 +45,21 @@ AssetRegistryObj::~AssetRegistryObj()
     }
 }
 
-// This is assumed to always return a valid ID,
-// it is unlikely that the 32-bit ID space is exhausted.
-AUID AssetRegistryObj::get_auid()
-{
-    if (mAUIDCounter == 0)
-        mAUIDCounter++;
-
-    while (mAUIDInUse.contains(mAUIDCounter))
-        mAUIDCounter++;
-
-    AUID auid = mAUIDCounter++;
-    mAUIDInUse.insert(auid);
-
-    return auid;
-}
-
-AssetEntry* AssetRegistryObj::allocate_entry(AssetType type, AUID auid)
+AssetEntry* AssetRegistryObj::allocate_entry(AssetType type, SUID id)
 {
     PoolAllocator pa = get_or_create_pa(type);
     AssetEntry* entry = (AssetEntry*)pa.allocate();
     new (entry) AssetEntry();
 
     entry->type = type;
-    entry->id = auid;
+    entry->id = id;
 
     return entry;
 }
 
-AssetEntry* AssetRegistryObj::get_entry(AUID auid)
+AssetEntry* AssetRegistryObj::get_entry(SUID id)
 {
-    auto ite = mEntries.find(auid);
+    auto ite = mEntries.find(id);
 
     if (ite == mEntries.end())
         return nullptr;
@@ -113,42 +90,42 @@ PoolAllocator AssetRegistryObj::get_or_create_pa(AssetType type)
 
 bool AssetRegistryObj::register_asset_with_id(const AssetEntry& entry)
 {
-    if (mAUIDInUse.contains(entry.id) || mEntries.contains(entry.id))
+    if (mEntries.contains(entry.id) || !try_get_suid(entry.id))
         return false;
 
     AssetEntry* pEntry = allocate_entry(entry.type, entry.id);
     pEntry->uri = entry.uri;
     pEntry->name = entry.name;
 
-    mAUIDInUse.insert(entry.id);
     mEntries[entry.id] = pEntry;
 
     return true;
 }
 
-AUID AssetRegistryObj::register_asset(AssetType type, const std::string& uri, const std::string& name)
+SUID AssetRegistryObj::register_asset(AssetType type, const std::string& uri, const std::string& name)
 {
-    AUID auid = get_auid();
-    AssetEntry* pEntry = allocate_entry(type, auid);
+    SUID id = get_suid();
+    AssetEntry* pEntry = allocate_entry(type, id);
     pEntry->uri = uri;
     pEntry->name = name;
 
-    mEntries[auid] = pEntry;
+    mEntries[id] = pEntry;
 
-    return auid;
+    return id;
 }
 
-void AssetRegistryObj::unregister_asset(AUID auid)
+void AssetRegistryObj::unregister_asset(SUID id)
 {
-    if (auid == 0 || !mAUIDInUse.contains(auid) || !mEntries.contains(auid))
+    if (id == 0 || !mEntries.contains(id))
         return;
 
-    AssetEntry* entry = mEntries[auid];
+    AssetEntry* entry = mEntries[id];
     PoolAllocator pa = get_or_create_pa(entry->type);
+    entry->id = 0;
     pa.free(entry);
 
-    mEntries.erase(auid);
-    mAUIDInUse.erase(auid);
+    mEntries.erase(id);
+    free_suid(id);
 }
 
 //
@@ -174,32 +151,22 @@ bool AssetRegistry::register_asset_with_id(const AssetEntry& entry)
     return mObj->register_asset_with_id(entry);
 }
 
-AUID AssetRegistry::register_asset(AssetType type, const std::string& uri, const std::string& name)
+SUID AssetRegistry::register_asset(AssetType type, const std::string& uri, const std::string& name)
 {
     return mObj->register_asset(type, uri, name);
 }
 
-void AssetRegistry::unregister_asset(AUID auid)
+void AssetRegistry::unregister_asset(SUID id)
 {
-    mObj->unregister_asset(auid);
+    mObj->unregister_asset(id);
 }
 
-void AssetRegistry::set_auid_counter(uint32_t auidCounter)
+const AssetEntry* AssetRegistry::find_asset(SUID id)
 {
-    mObj->set_auid_counter(auidCounter);
+    return mObj->get_entry(id);
 }
 
-uint32_t AssetRegistry::get_auid_counter()
-{
-    return mObj->get_auid_counter();
-}
-
-const AssetEntry* AssetRegistry::find_asset(AUID auid)
-{
-    return mObj->get_entry(auid);
-}
-
-void AssetRegistry::find_assets_by_type(AssetType type, std::vector<const AssetEntry*>& entries)
+void AssetRegistry::find_assets_by_type(AssetType type, Vector<const AssetEntry*>& entries)
 {
     entries.clear();
 

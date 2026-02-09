@@ -81,13 +81,6 @@ bool AssetSchemaLoader::load_registry(AssetRegistry reg, const View& toml, std::
     if (!versionTOML || !versionTOML.get_i32(version) || version != LD_VERSION_PATCH)
         return false;
 
-    uint32_t auidCounter = 1;
-    TOMLValue counterTOML = registryTOML[ASSET_SCHEMA_KEY_AUID_COUNTER];
-    if (counterTOML)
-        counterTOML.get_u32(auidCounter);
-
-    mReg.set_auid_counter(auidCounter);
-
     if (!load_asset_entries(err))
         return false;
 

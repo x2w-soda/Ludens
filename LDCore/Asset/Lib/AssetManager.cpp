@@ -124,7 +124,7 @@ AssetManagerObj::~AssetManagerObj()
         mWatcher.cleanup();
 }
 
-AssetObj* AssetManagerObj::allocate_asset(AssetType type, AUID auid, const std::string& name)
+AssetObj* AssetManagerObj::allocate_asset(AssetType type, SUID id, const std::string& name)
 {
     size_t assetByteSize = get_asset_byte_size(type);
 
@@ -143,15 +143,15 @@ AssetObj* AssetManagerObj::allocate_asset(AssetType type, AUID auid, const std::
 
     obj->manager = this;
     obj->name = heap_strdup(name.c_str(), MEMORY_USAGE_ASSET);
-    obj->auid = auid;
+    obj->id = id;
     obj->type = type;
 
-    LD_ASSERT(auid && !mAssets.contains(obj->auid));
-    mAssets[obj->auid] = obj;
+    LD_ASSERT(id && !mAssets.contains(obj->id));
+    mAssets[obj->id] = obj;
 
     Hash32 nameHash(name.c_str());
     LD_ASSERT(!mNameToAsset.contains(nameHash));
-    mNameToAsset[nameHash] = obj->auid;
+    mNameToAsset[nameHash] = obj->id;
 
     return obj;
 }
@@ -161,7 +161,7 @@ void AssetManagerObj::free_asset(AssetObj* obj)
     LD_ASSERT(obj && mAssetPA.contains(obj->type));
 
     mNameToAsset.erase(Hash32(obj->name));
-    mAssets.erase(obj->auid);
+    mAssets.erase(obj->id);
 
     if (obj->name)
         heap_free((void*)obj->name);
@@ -226,7 +226,7 @@ void AssetManagerObj::end_load_batch()
     free_load_jobs();
 }
 
-void AssetManagerObj::load_asset(AssetType type, AUID auid, const FS::Path& uri, const std::string& name)
+void AssetManagerObj::load_asset(AssetType type, SUID id, const FS::Path& uri, const std::string& name)
 {
     LD_ASSERT(mInLoadBatch);
 
@@ -236,10 +236,10 @@ void AssetManagerObj::load_asset(AssetType type, AUID auid, const FS::Path& uri,
     if (mWatcher && type == ASSET_TYPE_LUA_SCRIPT)
     {
         FS::Path luaPath = loadPath;
-        mWatcher.add_watch(luaPath.replace_extension(".lua"), auid);
+        mWatcher.add_watch(luaPath.replace_extension(".lua"), id);
     }
 
-    AssetObj* obj = allocate_asset(type, auid, name);
+    AssetObj* obj = allocate_asset(type, id, name);
     AssetLoadJob* job = allocate_load_job(type, loadPath, obj);
     mLoadJobs.push_back(job);
 
@@ -249,7 +249,7 @@ void AssetManagerObj::load_asset(AssetType type, AUID auid, const FS::Path& uri,
     JobSystem::get().submit(&job->jobHeader, JOB_DISPATCH_STANDARD);
 }
 
-AUID AssetManagerObj::get_id_from_name(const char* name, AssetType* outType)
+SUID AssetManagerObj::get_id_from_name(const char* name, AssetType* outType)
 {
     if (!name)
         return 0;
@@ -260,7 +260,7 @@ AUID AssetManagerObj::get_id_from_name(const char* name, AssetType* outType)
     if (ite == mNameToAsset.end())
         return 0;
 
-    AUID assetID = ite->second;
+    SUID assetID = ite->second;
     LD_ASSERT(mAssets.contains(assetID));
 
     if (outType)
@@ -269,9 +269,9 @@ AUID AssetManagerObj::get_id_from_name(const char* name, AssetType* outType)
     return ite->second;
 }
 
-Asset AssetManagerObj::get_asset(AUID auid)
+Asset AssetManagerObj::get_asset(SUID id)
 {
-    auto ite = mAssets.find(auid);
+    auto ite = mAssets.find(id);
 
     if (ite == mAssets.end())
         return {};
@@ -279,7 +279,7 @@ Asset AssetManagerObj::get_asset(AUID auid)
     return Asset(ite->second);
 }
 
-void AssetManagerObj::on_asset_modified(const FS::Path& path, AUID id, void* user)
+void AssetManagerObj::on_asset_modified(const FS::Path& path, SUID id, void* user)
 {
     AssetManagerObj& self = *(AssetManagerObj*)user;
 
@@ -325,9 +325,9 @@ const char* Asset::get_name()
     return mObj->name;
 }
 
-AUID Asset::get_auid()
+AssetID Asset::get_id()
 {
-    return mObj->auid;
+    return mObj->id;
 }
 
 AssetManager AssetManager::create(const AssetManagerInfo& info)
@@ -367,9 +367,9 @@ void AssetManager::load_all_assets()
     }
 }
 
-void AssetManager::load_asset(AssetType type, AUID auid, const FS::Path& path, const std::string& name)
+void AssetManager::load_asset(AssetType type, SUID id, const FS::Path& path, const std::string& name)
 {
-    mObj->load_asset(type, auid, path, name);
+    mObj->load_asset(type, id, path, name);
 }
 
 void AssetManager::begin_load_batch()
@@ -382,19 +382,19 @@ void AssetManager::end_load_batch()
     mObj->end_load_batch();
 }
 
-AUID AssetManager::get_id_from_name(const char* name, AssetType* outType)
+SUID AssetManager::get_id_from_name(const char* name, AssetType* outType)
 {
     return mObj->get_id_from_name(name, outType);
 }
 
-Asset AssetManager::get_asset(AUID auid)
+Asset AssetManager::get_asset(AssetID id)
 {
-    return mObj->get_asset(auid);
+    return mObj->get_asset(id);
 }
 
-Asset AssetManager::get_asset(AUID auid, AssetType type)
+Asset AssetManager::get_asset(AssetID id, AssetType type)
 {
-    Asset asset = mObj->get_asset(auid);
+    Asset asset = mObj->get_asset(id);
 
     if (!asset || asset.get_type() != type)
         return {};
@@ -405,7 +405,7 @@ Asset AssetManager::get_asset(AUID auid, AssetType type)
 Asset AssetManager::get_asset(const char* name, AssetType type)
 {
     AssetType assetType;
-    AUID assetID = mObj->get_id_from_name(name, &assetType);
+    SUID assetID = mObj->get_id_from_name(name, &assetType);
     Asset asset = mObj->get_asset(assetID);
 
     if (!asset || asset.get_type() != type)

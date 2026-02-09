@@ -36,14 +36,14 @@ struct UIPanelWidgetTemplate
 struct UIImageWidgetTemplate
 {
     UIImageWidgetInfo info;
-    Rect imageRect;     /// if size is not zero, the area in image to be rendered.
-    AUID texture2DAUID; /// the Texture2DAsset used by image widget.
+    Rect imageRect;           /// if size is not zero, the area in image to be rendered.
+    AssetID texture2DAssetID; /// the Texture2DAsset used by image widget.
 };
 
 struct UITextWidgetTemplate
 {
     UITextWidgetInfo info;
-    AUID fontAUID; /// the FontAsset used by text widget.
+    AssetID fontAssetID; /// the FontAsset used by text widget.
 };
 
 /// @brief Template information to instantiate a UIWidget.

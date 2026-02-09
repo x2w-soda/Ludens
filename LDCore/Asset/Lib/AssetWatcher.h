@@ -9,7 +9,7 @@ namespace LD {
 
 struct AssetWatcherInfo
 {
-    void (*onAssetModified)(const FS::Path& path, AUID id, void* user);
+    void (*onAssetModified)(const FS::Path& path, AssetID id, void* user);
     void* user;
 };
 
@@ -35,7 +35,7 @@ public:
     /// @brief Watch an asset path.
     /// @param path File path to asset on disk.
     /// @param auid Associated asset ID.
-    void add_watch(const FS::Path& path, AUID auid);
+    void add_watch(const FS::Path& path, AssetID auid);
 
     inline operator bool() const { return (bool)mWatcher; }
 
@@ -43,8 +43,8 @@ public:
 
 private:
     FileWatcher mWatcher = {};
-    std::unordered_map<Hash32, AUID> mPathToID;
-    void (*mUserCallback)(const FS::Path& path, AUID id, void* user);
+    std::unordered_map<Hash32, AssetID> mPathToID;
+    void (*mUserCallback)(const FS::Path& path, AssetID id, void* user);
     void* mUser;
 };
 

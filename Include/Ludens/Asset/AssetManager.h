@@ -34,7 +34,7 @@ struct AssetManager : Handle<struct AssetManagerObj>
     void load_all_assets();
 
     /// @brief Append a load job to current patch.
-    void load_asset(AssetType type, AUID auid, const FS::Path& path, const std::string& name);
+    void load_asset(AssetType type, SUID id, const FS::Path& path, const std::string& name);
 
     /// @brief Begin asset load batch.
     void begin_load_batch();
@@ -43,13 +43,13 @@ struct AssetManager : Handle<struct AssetManagerObj>
     void end_load_batch();
 
     /// @brief Get asset ID from name
-    AUID get_id_from_name(const char* name, AssetType* outType);
+    SUID get_id_from_name(const char* name, AssetType* outType);
 
     /// @brief Get asset from ID
-    Asset get_asset(AUID auid);
+    Asset get_asset(AssetID id);
 
     /// @brief Get asset from ID and expected type, fails upon type mismatch.
-    Asset get_asset(AUID auid, AssetType type);
+    Asset get_asset(AssetID id, AssetType type);
 
     /// @brief Get asset from name and expected type, fails upon type mismatch.
     Asset get_asset(const char* name, AssetType type);

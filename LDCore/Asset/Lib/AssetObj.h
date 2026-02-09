@@ -11,7 +11,7 @@
 #include <Ludens/DSA/Diagnostics.h>
 #include <Ludens/DSA/HashMap.h>
 #include <Ludens/DSA/Vector.h>
-#include <Ludens/DataRegistry/DataComponent.h>
+#include <Ludens/DataRegistry/DataRegistry.h>
 #include <Ludens/Header/Hash.h>
 #include <Ludens/Media/AudioData.h>
 #include <Ludens/Media/Bitmap.h>
@@ -40,7 +40,7 @@ struct AssetObj
 {
     const char* name;
     struct AssetManagerObj* manager;
-    AUID auid;
+    AssetID id;
     AssetType type;
 };
 
@@ -55,7 +55,7 @@ public:
 
     AssetManagerObj& operator=(const AssetManagerObj&) = delete;
 
-    AssetObj* allocate_asset(AssetType type, AUID auid, const std::string& name);
+    AssetObj* allocate_asset(AssetType type, SUID id, const std::string& name);
     void free_asset(AssetObj* obj);
 
     AssetLoadJob* allocate_load_job(AssetType type, const FS::Path& loadPath, AssetObj* assetObj);
@@ -65,23 +65,23 @@ public:
 
     void begin_load_batch();
     void end_load_batch();
-    void load_asset(AssetType type, AUID auid, const FS::Path& uri, const std::string& name);
+    void load_asset(AssetType type, SUID id, const FS::Path& uri, const std::string& name);
 
-    AUID get_id_from_name(const char* name, AssetType* outType);
-    Asset get_asset(AUID auid);
+    SUID get_id_from_name(const char* name, AssetType* outType);
+    Asset get_asset(SUID id);
 
     inline void find_assets_by_type(AssetType type, Vector<const AssetEntry*>& entries)
     {
         mRegistry.find_assets_by_type(type, entries);
     }
 
-    static void on_asset_modified(const FS::Path& path, AUID id, void* user);
+    static void on_asset_modified(const FS::Path& path, SUID id, void* user);
     static void on_asset_load_complete(void*);
 
 private:
     HashMap<AssetType, PoolAllocator> mAssetPA;
-    HashMap<AUID, AssetObj*> mAssets;
-    HashMap<Hash32, AUID> mNameToAsset;
+    HashMap<SUID, AssetObj*> mAssets;
+    HashMap<Hash32, SUID> mNameToAsset;
     Vector<AssetLoadJob*> mLoadJobs;
     PoolAllocator mLoadJobPA;
     AssetWatcher mWatcher;     /// optional asset file watcher

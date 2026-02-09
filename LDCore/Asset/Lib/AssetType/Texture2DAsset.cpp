@@ -152,7 +152,7 @@ void Texture2DAssetImportJob::execute(void* user)
     auto& self = *(Texture2DAssetImportJob*)user;
     auto* obj = (Texture2DAssetObj*)self.asset.unwrap();
 
-    obj->auid = 0;
+    obj->id = 0;
     obj->samplerHint = self.info.samplerHint;
     obj->serialData = nullptr;
 
