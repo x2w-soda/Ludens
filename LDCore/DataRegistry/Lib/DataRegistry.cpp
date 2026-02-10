@@ -12,7 +12,6 @@
 namespace LD {
 
 static Log sLog("DataRegistry");
-static bool duplicate_subtree(DataRegistry dup, DataRegistry orig, CUID origRoot);
 static SUID get_mesh_asset_id(void* comp);
 
 using ComponentTypeFlag = uint32_t;
@@ -42,40 +41,44 @@ static ComponentMeta sComponentTable[] = {
 };
 // clang-format on
 
-static bool duplicate_subtree(DataRegistry dup, DataRegistry orig, CUID origRoot)
+static bool duplicate_subtree(DataRegistry dst, CUID dstParentID, DataRegistry src, CUID srcID)
 {
-    const ComponentBase* origBase = orig.get_component_base(origRoot);
-    const ComponentBase* origParentBase = origBase->parent;
-    CUID parentID = origParentBase ? origParentBase->cuid : 0;
-    CUID dupID = dup.create_component(origBase->type, origBase->name, parentID, origBase->suid);
+    const ComponentBase* srcBase = src.get_component_base(srcID);
+    LD_ASSERT(srcBase);
 
-    if (dupID != origBase->suid)
+    CUID dstID = dst.create_component(srcBase->type, srcBase->name, dstParentID, srcBase->suid);
+
+    if (!dstID)
     {
-        sLog.error("failed to duplicate {}", origBase->name);
+        sLog.error("failed to duplicate {}", srcBase->name);
         return false;
     }
 
-    // duplicate fields
-    ComponentBase* dupBase = dup.get_component_base(dupID);
-    dupBase->flags = origBase->flags;
-    dupBase->localMat4 = origBase->localMat4;
-    dupBase->worldMat4 = origBase->worldMat4;
+    // copy base fields, flag status is copied by value.
+    ComponentBase* dstBase = dst.get_component_base(dstID);
+    dstBase->flags = srcBase->flags;
+    dstBase->scriptAssetID = srcBase->scriptAssetID;
+    dstBase->localMat4 = srcBase->localMat4;
+    dstBase->worldMat4 = srcBase->worldMat4;
 
-    // duplicate type-sepcific fields
+    // copy type-sepcific fields, subsystem IDHandle types are copied by value.
+    // first member is backwards pointer to metadata and should not be copied.
     ComponentType type;
-    void* dupComp = dup.get_component_data(dupID, &type);
-    void* origComp = orig.get_component_data(dupID, &type);
-    memcpy(dupComp, origComp, sComponentTable[(int)type].byteSize);
+    ComponentBase** dstData = dst.get_component_data(dstID, &type);
+    ComponentBase** srcData = src.get_component_data(srcID, &type);
+    size_t copySize = sComponentTable[(int)type].byteSize;
+    LD_ASSERT(copySize >= sizeof(ComponentBase*));
+    copySize -= sizeof(ComponentBase*);
+    memcpy(dstData + 1, srcData + 1, copySize);
 
-    bool success = true;
-
-    for (const ComponentBase* child = origBase->child; child; child = child->next)
+    for (const ComponentBase* srcChild = srcBase->child; srcChild; srcChild = srcChild->next)
     {
         // TODO: this traversal reverses sibling order?
-        success = success && duplicate_subtree(dup, orig, child->suid);
+        if (!duplicate_subtree(dst, dstID, src, srcChild->cuid))
+            return false;
     }
 
-    return success;
+    return true;
 }
 
 static SUID get_mesh_asset_id(void* comp)
@@ -185,13 +188,13 @@ void DataRegistryObj::detach(ComponentBase* base)
     LD_ASSERT(*pnext == base);
     *pnext = base->next;
     base->parent = nullptr;
-    roots.insert(base->suid);
+    roots.insert(base->cuid);
 }
 
 void DataRegistryObj::add_child(ComponentBase* parent, ComponentBase* child)
 {
     if (!child->parent && parent)
-        roots.erase(child->suid);
+        roots.erase(child->cuid);
 
     child->parent = parent;
 
@@ -288,18 +291,19 @@ DataRegistry DataRegistry::duplicate() const
 {
     LD_PROFILE_SCOPE;
 
-    DataRegistry dup = DataRegistry::create();
-    DataRegistry orig(mObj);
+    DataRegistry dst = DataRegistry::create();
+    DataRegistry src(mObj);
 
-    std::vector<CUID> roots;
-    orig.get_root_components(roots);
+    Vector<CUID> roots;
+    src.get_root_components(roots);
 
-    for (CUID origRoot : roots)
+    for (CUID srcRoot : roots)
     {
-        duplicate_subtree(dup, orig, origRoot);
+        bool ok = duplicate_subtree(dst, 0, src, srcRoot);
+        LD_ASSERT(ok);
     }
 
-    return dup;
+    return dst;
 }
 
 CUID DataRegistry::create_component(ComponentType type, const char* name, CUID parentID, SUID hintSUID)
@@ -333,8 +337,9 @@ CUID DataRegistry::create_component(ComponentType type, const char* name, CUID p
 
     if (parentID)
     {
-        ComponentBase* parent = *(mObj->cuidToCompData[parentID]);
-        mObj->add_child(parent, compBase);
+        LD_ASSERT(mObj->cuidToCompData.contains(parentID));
+        ComponentBase* parentBase = *(mObj->cuidToCompData[parentID]);
+        mObj->add_child(parentBase, compBase);
     }
     else
     {
@@ -342,15 +347,15 @@ CUID DataRegistry::create_component(ComponentType type, const char* name, CUID p
     }
 
     // allocate component type
-    void* compData = mObj->componentPAs[type].allocate();
+    ComponentBase** compData = (ComponentBase**)mObj->componentPAs[type].allocate();
     memset(compData, 0, compDataByteSize);
 
     // first member of component data is backwards link to it's ComponentBase metadata
-    *(ComponentBase**)compData = compBase;
+    *compData = compBase;
 
-    mObj->cuidToCompData[compBase->cuid] = (ComponentBase**)compData;
+    mObj->cuidToCompData[compBase->cuid] = compData;
     if (compBase->suid)
-        mObj->suidToCompData[compBase->suid] = (ComponentBase**)compData;
+        mObj->suidToCompData[compBase->suid] = compData;
 
     return compBase->cuid;
 }
@@ -370,7 +375,14 @@ void DataRegistry::destroy_component(CUID compCUID)
 
     SUID compSUID = compBase->suid;
 
+    *compData = nullptr;
     mObj->componentPAs[compBase->type].free(compData);
+
+    compBase->type = COMPONENT_TYPE_DATA;
+    compBase->cuid = 0;
+    compBase->suid = 0;
+    compBase->flags = 0;
+    compBase->scriptAssetID = 0;
     mObj->componentBasePA.free(compBase);
 
     mObj->cuidToCompData.erase(compCUID);

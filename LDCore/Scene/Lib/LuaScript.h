@@ -12,11 +12,11 @@ namespace LuaScript {
 class Context
 {
 public:
-    /// @brief In-place startup, initializes lua state.
-    void startup(Scene scene, DataRegistry registry, AssetManager assetManager);
+    /// @brief In-place creation, initializes lua state and loads FFI functions.
+    void create(Scene scene, DataRegistry registry, AssetManager assetManager);
 
-    /// @brief In-place cleanup, destroys all scripts and lua state.
-    void cleanup();
+    /// @brief In-place destruction, destroys all scripts and lua state.
+    void destroy();
 
     /// @brief Set the registry of components.
     void set_registry(DataRegistry registry);

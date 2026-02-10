@@ -8,6 +8,8 @@
 #include <Ludens/Header/Handle.h>
 #include <Ludens/RenderSystem/RenderSystem.h>
 
+#include <functional>
+
 namespace LD {
 
 struct AudioSourceComponent;
@@ -41,7 +43,7 @@ public:
     void reset();
 
     /// @brief Load the scene. Creates resources from assets and subsystems.
-    void load();
+    void load(const std::function<bool(Scene)>& loader);
 
     /// @brief Unload the scene. Destroys resouorces.
     void unload();
@@ -96,7 +98,6 @@ public:
         bool set_transform_2d(const Transform2D& transform);
 
         bool get_world_mat4(Mat4& worldMat4);
-        void mark_transform_dirty(); // TODO: redundant?
 
     protected:
         ComponentBase** mData = nullptr;
@@ -169,8 +170,7 @@ public:
         AudioSource(Component comp);
         AudioSource(AudioSourceComponent* comp);
 
-        operator bool() const noexcept;
-        operator Component() const noexcept { return Component((ComponentBase**)mAudioSource); }
+        bool load(AssetID clipAsset);
 
         void play();
         void pause();
@@ -196,8 +196,8 @@ public:
         Camera(Component comp);
         Camera(CameraComponent* comp);
 
-        operator bool() const noexcept;
-        operator Component() const noexcept { return Component((ComponentBase**)mCamera); }
+        bool load_perspective(const CameraPerspectiveInfo& info);
+        bool load_orthographic(const CameraOrthographicInfo& info);
 
         bool is_main_camera();
         bool is_perspective();
@@ -218,8 +218,7 @@ public:
         Mesh(Component comp);
         Mesh(MeshComponent* comp);
 
-        operator bool() const noexcept;
-        operator Component() const noexcept { return Component((ComponentBase**)mMesh); }
+        bool load();
 
         bool set_mesh_asset(AssetID meshID);
         AssetID get_mesh_asset();
@@ -236,8 +235,7 @@ public:
         Sprite2D(Component comp);
         Sprite2D(Sprite2DComponent* comp);
 
-        operator bool() const noexcept;
-        operator Component() const noexcept { return Component((ComponentBase**)mSprite); }
+        bool load(SUID screenLayerSUID);
 
         bool set_texture_2d_asset(AssetID textureID);
         AssetID get_texture_2d_asset();

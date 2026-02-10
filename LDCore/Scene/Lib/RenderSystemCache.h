@@ -13,11 +13,11 @@ namespace LD {
 class RenderSystemCache
 {
 public:
-    /// @brief In-place startup, connect to render system.
-    void startup(RenderSystem system, AssetManager assetManager);
+    /// @brief In-place cretaion, connect to render system.
+    void create(RenderSystem system, AssetManager assetManager);
 
-    /// @brief In-place cleanup, destroys all resources from render system.
-    void cleanup();
+    /// @brief In-place destruction, destroys all resources from render system.
+    void destroy();
 
     /// @brief Get draw id associated with component.
     RUID get_component_draw_id(CUID compID);
@@ -35,16 +35,23 @@ public:
         mSystem.destroy_screen_layer(layerID);
     }
 
+    RUID get_or_create_screen_layer(SUID screenLayerSUID);
     MeshData get_or_create_mesh_data(AssetID meshAUID);
     MeshDraw create_mesh_draw(CUID compID, AssetID meshAUID = 0);
+    void destroy_mesh_draw(MeshDraw draw);
     Image2D get_or_create_image_2d(AssetID textureAUID);
-    Sprite2DDraw create_sprite_draw(CUID compID, RUID layerID, AssetID textureAUID = 0);
+    Sprite2DDraw create_sprite_2d_draw(CUID compID, RUID layerID, AssetID textureAUID = 0);
+    void destroy_sprite_2d_draw(Sprite2DDraw draw);
+
+private:
+    void link_id(CUID compID, RUID drawID);
 
 private:
     RenderSystem mSystem{};
     AssetManager mAssetManager{};
-    HashMap<RUID, CUID> mDrawToCuid; /// map RenderSystem draw ID to component
-    HashMap<CUID, RUID> mCuidToDraw; /// map component to RenderSystem draw ID
+    HashMap<RUID, CUID> mDrawToCuid;        /// map RenderSystem draw ID to component
+    HashMap<CUID, RUID> mCuidToDraw;        /// map component to RenderSystem draw ID
+    HashMap<SUID, RUID> mSuidToScreenLayer; /// map serial ID to actual render system resource
     HashMap<AssetID, MeshData> mMeshData;
     HashMap<AssetID, Image2D> mImage2D;
 };

@@ -128,6 +128,8 @@ Scene::Component SceneSchemaLoader::load_component(SceneSchemaLoader& loader, TO
     if (scriptIDTOML)
         scriptIDTOML.get_u32(scriptID);
 
+    comp.set_script_asset_id(scriptID);
+
     return comp;
 }
 
@@ -143,7 +145,8 @@ Scene::Component SceneSchemaLoader::load_audio_source_component(SceneSchemaLoade
     TOMLValue auidTOML = compTOML["auid"];
     auidTOML.get_u32(clipID);
 
-    source.set_clip_asset(clipID);
+    if (!source.load(clipID))
+        return {};
 
     float pan = 0.5f;
     float volumeLinear = 1.0f;
@@ -160,7 +163,7 @@ Scene::Component SceneSchemaLoader::load_audio_source_component(SceneSchemaLoade
 
     source.set_volume_linear(volumeLinear);
 
-    return {};
+    return Scene::Component(source.data());
 }
 
 Scene::Component SceneSchemaLoader::load_camera_component(SceneSchemaLoader& loader, TOMLValue compTOML, SUID compSUID, const char* compName)
@@ -176,8 +179,6 @@ Scene::Component SceneSchemaLoader::load_camera_component(SceneSchemaLoader& loa
     TransformEx transform{};
     if (!load_transform(transform, toml))
         return {};
-
-    camera.mark_transform_dirty();
 
     bool isPerspective = false;
     bool isMainCamera = false;
@@ -215,7 +216,8 @@ Scene::Component SceneSchemaLoader::load_camera_component(SceneSchemaLoader& loa
         // overridden later when screen extent is known.
         perspective.aspectRatio = 1.0f;
 
-        camera.set_perspective(perspective);
+        if (!camera.load_perspective(perspective))
+            return {};
     }
     else
     {
@@ -249,29 +251,32 @@ Scene::Component SceneSchemaLoader::load_camera_component(SceneSchemaLoader& loa
         if (!floatTOML || !floatTOML.get_f32(ortho.farClip))
             return {};
 
-        camera.set_orthographic(ortho);
+        if (!camera.load_orthographic(ortho))
+            return {};
     }
 
-    return camera;
+    camera.set_transform(transform);
+
+    return Scene::Component(camera.data());
 }
 
 Scene::Component SceneSchemaLoader::load_mesh_component(SceneSchemaLoader& loader, TOMLValue compTOML, SUID compSUID, const char* compName)
 {
     Scene scene = loader.mScene;
 
-    Scene::Component comp = scene.create_component_serial(COMPONENT_TYPE_MESH, compName, (SUID)0, compSUID);
-    if (!comp)
+    Scene::Mesh mesh(scene.create_component_serial(COMPONENT_TYPE_MESH, compName, (SUID)0, compSUID));
+    if (!mesh)
         return {};
-
-    Scene::Mesh mesh(comp);
 
     TransformEx transform;
     TOMLValue transformTOML = compTOML["transform"];
     if (!load_transform(transform, transformTOML))
         return {};
 
+    if (!mesh.load())
+        return {};
+
     mesh.set_transform(transform);
-    mesh.mark_transform_dirty();
 
     TOMLValue auidTOML = compTOML["auid"];
     AssetID assetID = 0;
@@ -289,11 +294,18 @@ Scene::Component SceneSchemaLoader::load_sprite_2d_component(SceneSchemaLoader& 
     if (!sprite)
         return {};
 
+    SUID screenLayer = 0;
+    TOMLValue screenLayerTOML = compTOML["screen_layer"];
+    if (screenLayerTOML)
+        screenLayerTOML.get_u32(screenLayer);
+
+    if (!sprite.load(screenLayer))
+        return {};
+
     Rect rect;
     TOMLValue localTOML = compTOML.get_key("local", TOML_TYPE_TABLE);
     if (!load_rect(rect, localTOML))
         return {};
-
     sprite.set_rect(rect);
 
     Transform2D transform;
@@ -301,8 +313,7 @@ Scene::Component SceneSchemaLoader::load_sprite_2d_component(SceneSchemaLoader& 
     if (!load_transform_2d(transform, transformTOML))
         return {};
 
-    sprite.get_transform_2d(transform);
-    sprite.mark_transform_dirty();
+    sprite.set_transform_2d(transform);
 
     AssetID assetID = 0;
     TOMLValue auidTOML = compTOML["auid"];
@@ -318,7 +329,7 @@ Scene::Component SceneSchemaLoader::load_sprite_2d_component(SceneSchemaLoader& 
 
     sprite.set_z_depth(zDepth);
 
-    return sprite;
+    return Scene::Component(sprite.data());
 }
 
 static bool load_rect(Rect& rect, TOMLValue rectTOML)
@@ -345,9 +356,9 @@ static bool load_transform(TransformEx& transform, TOMLValue transformTOML)
     if (!rotationTOML || !rotationTOML.is_array() || rotationTOML.size() != 3)
         return false;
 
-    rotationTOML[0].get_f32(transform.rotation.x);
-    rotationTOML[1].get_f32(transform.rotation.y);
-    rotationTOML[2].get_f32(transform.rotation.z);
+    rotationTOML[0].get_f32(transform.rotationEuler.x);
+    rotationTOML[1].get_f32(transform.rotationEuler.y);
+    rotationTOML[2].get_f32(transform.rotationEuler.z);
     transform.rotation = Quat::from_euler(transform.rotationEuler);
 
     TOMLValue scaleTOML = transformTOML["scale"];
@@ -698,7 +709,7 @@ bool SceneSchemaLoader::load_scene(Scene scene, const View& toml, std::string& e
         hierarchyTOML.get_keys(keys);
         for (const std::string& key : keys)
         {
-            SUID parent = static_cast<SUID>(std::stoul(key));
+            SUID parentSUID = static_cast<SUID>(std::stoul(key));
             TOMLValue childrenTOML = hierarchyTOML[key.c_str()];
             if (!childrenTOML || !childrenTOML.is_array())
                 continue;
@@ -706,13 +717,15 @@ bool SceneSchemaLoader::load_scene(Scene scene, const View& toml, std::string& e
             int count = childrenTOML.size();
             for (int i = 0; i < count; i++)
             {
-                SUID child;
-                if (!childrenTOML[i].get_u32(child))
+                SUID childSUID;
+                if (!childrenTOML[i].get_u32(childSUID))
                     continue;
 
-                // TODO: reparent takes cuid
-                LD_UNREACHABLE;
-                scene.reparent(child, parent);
+                Scene::Component child = mScene.get_component_by_suid(childSUID);
+                Scene::Component parent = mScene.get_component_by_suid(parentSUID);
+
+                if (child && parent)
+                    scene.reparent(child.cuid(), parent.cuid());
             }
         }
     }

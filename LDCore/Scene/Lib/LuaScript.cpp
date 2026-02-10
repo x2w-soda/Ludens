@@ -283,6 +283,32 @@ static int input_get_mouse(lua_State* l)
     return 1;
 }
 
+/// @brief ludens.C.get_component(compID)
+static int get_component(lua_State* l)
+{
+    LuaState L(l);
+
+    LD_ASSERT(L.get_type(-1) == LUA_TYPE_NUMBER);
+    CUID compID = (CUID)L.to_number(-1);
+
+    ComponentType type;
+    void* comp = sScene->registry.get_component_data(compID, &type);
+
+    if (!comp)
+    {
+        L.push_nil();
+        L.push_nil();
+        return 2;
+    }
+
+    std::string ffiType(get_component_type_name(type));
+    ffiType.push_back('*');
+
+    L.push_string(ffiType.c_str());
+    L.push_light_userdata(comp);
+    return 2;
+}
+
 //
 // PUBLIC API
 //
@@ -312,9 +338,13 @@ LuaModule create_ludens_module()
         {.type = LUA_TYPE_FN, .name = "get_mouse_up",   .fn = &LuaScript::input_get_mouse_up},
         {.type = LUA_TYPE_FN, .name = "get_mouse",      .fn = &LuaScript::input_get_mouse},
     };
+
+    const LuaModuleValue CVals[] = {
+        {.type = LUA_TYPE_FN, .name = "get_component", .fn = &LuaScript::get_component},
+    };
     // clang-format on
 
-    std::array<LuaModuleNamespace, 3> spaces;
+    std::array<LuaModuleNamespace, 4> spaces;
     spaces[0].name = "application";
     spaces[0].valueCount = sizeof(applicationVals) / sizeof(*applicationVals);
     spaces[0].values = applicationVals;
@@ -327,6 +357,11 @@ LuaModule create_ludens_module()
     spaces[2].valueCount = sizeof(inputVals) / sizeof(*inputVals);
     spaces[2].values = inputVals;
 
+    // NOTE: these are bindings that use the Lua stack, there are also FFI bindings in LuaScriptFFI.cpp
+    spaces[3].name = "C";
+    spaces[3].valueCount = sizeof(CVals) / sizeof(CVals);
+    spaces[3].values = CVals;
+
     LuaModuleInfo modI;
     modI.name = LUDENS_LUA_MODULE_NAME;
     modI.spaceCount = (uint32_t)spaces.size();
@@ -335,7 +370,7 @@ LuaModule create_ludens_module()
     return LuaModule::create(modI); // caller destroys
 }
 
-void Context::startup(Scene scene, DataRegistry registry, AssetManager assetManager)
+void Context::create(Scene scene, DataRegistry registry, AssetManager assetManager)
 {
     LD_PROFILE_SCOPE;
 
@@ -439,7 +474,7 @@ end
     mL.clear();
 }
 
-void Context::cleanup()
+void Context::destroy()
 {
     LD_PROFILE_SCOPE;
 
@@ -641,6 +676,12 @@ void Context::detach_lua_script(CUID compID)
     // call 'detach' lua method on script
     mL.push_number((double)compID);
     mL.get_table(-2);
+    if ((type = mL.get_type(-1)) == LUA_TYPE_NIL)
+    {
+        mL.resize(oldSize);
+        return;
+    }
+
     mL.get_field(-1, "detach");
     LD_ASSERT((type = mL.get_type(-1)) == LUA_TYPE_FN); // script detach method
 

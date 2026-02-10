@@ -23,21 +23,17 @@ struct SceneObj
     RenderSystemCache renderSystemCache;
     LuaScript::Context luaContext{};
     CameraComponent* mainCameraC;
-    CUID mainCameraCUID;
     Vec2 screenExtent = {};
     SceneState state = SCENE_STATE_EMPTY;
 
-    /// @brief Load components recursively, creating resources from systems/servers.
-    void load(ComponentBase* comp);
-
     /// @brief Unload components recursively, destroying resources from systems/servers.
-    void unload(ComponentBase* comp);
+    void unload_subtree(ComponentBase** data);
 
     /// @brief Startup a component subtree recursively, attaching scripts to components
-    void startup_root(CUID compID);
+    void startup_subtree(CUID compID);
 
     /// @brief Cleanup a component subtree recursively, detaching scripts from components
-    void cleanup_root(CUID compID);
+    void cleanup_subtree(CUID compID);
 };
 
 extern SceneObj* sScene;

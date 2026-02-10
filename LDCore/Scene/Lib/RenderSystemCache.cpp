@@ -7,18 +7,23 @@
 
 namespace LD {
 
-void RenderSystemCache::startup(RenderSystem system, AssetManager assetManager)
+void RenderSystemCache::create(RenderSystem system, AssetManager assetManager)
 {
+    LD_PROFILE_SCOPE;
+
     mSystem = system;
     mAssetManager = assetManager;
     mDrawToCuid.clear();
     mCuidToDraw.clear();
     mMeshData.clear();
     mImage2D.clear();
+    mSuidToScreenLayer.clear();
 }
 
-void RenderSystemCache::cleanup()
+void RenderSystemCache::destroy()
 {
+    LD_PROFILE_SCOPE;
+
     if (!mSystem)
         return;
 
@@ -29,6 +34,10 @@ void RenderSystemCache::cleanup()
     for (const auto& it : mMeshData)
         mSystem.destroy_mesh_data(it.second);
     mMeshData.clear();
+
+    for (const auto& it : mSuidToScreenLayer)
+        mSystem.destroy_screen_layer(it.second);
+    mSuidToScreenLayer.clear();
 
     mAssetManager = {};
     mSystem = {};
@@ -54,28 +63,35 @@ CUID RenderSystemCache::get_draw_id_component(RUID drawID)
     return ite->second;
 }
 
+RUID RenderSystemCache::get_or_create_screen_layer(SUID layerSUID)
+{
+    if (mSuidToScreenLayer.contains(layerSUID))
+        return mSuidToScreenLayer[layerSUID];
+
+    RUID layerRUID = mSystem.create_screen_layer("layer"); // TODO:
+    if (!layerRUID)
+        return 0;
+
+    mSuidToScreenLayer[layerSUID] = layerRUID;
+    return layerRUID;
+}
+
 MeshData RenderSystemCache::get_or_create_mesh_data(AssetID meshAUID)
 {
+    if (mMeshData.contains(meshAUID))
+        return mMeshData[meshAUID];
+
     MeshAsset meshA = (MeshAsset)mAssetManager.get_asset(meshAUID, ASSET_TYPE_MESH);
-    LD_ASSERT(meshA);
+    if (!meshA)
+        return {};
 
-    if (!mMeshData.contains(meshAUID))
-        mMeshData[meshAUID] = mSystem.create_mesh_data(*meshA.data());
-
-    LD_ASSERT(mMeshData[meshAUID]);
-    return mMeshData[meshAUID];
+    return mMeshData[meshAUID] = mSystem.create_mesh_data(*meshA.data());
 }
 
 MeshDraw RenderSystemCache::create_mesh_draw(CUID compID, AssetID meshAUID)
 {
-    auto it = mCuidToDraw.find(compID);
-    if (it != mCuidToDraw.end())
-    {
-        RUID oldDrawID = it->second;
-        mDrawToCuid.erase(oldDrawID);
-    }
+    MeshDraw draw{};
 
-    MeshDraw draw;
     if (meshAUID)
     {
         MeshData data = get_or_create_mesh_data(meshAUID);
@@ -83,13 +99,24 @@ MeshDraw RenderSystemCache::create_mesh_draw(CUID compID, AssetID meshAUID)
     }
     else
         draw = mSystem.create_mesh_draw();
-    LD_ASSERT(draw);
 
-    RUID drawID = draw.get_id();
-    mDrawToCuid[drawID] = compID;
-    mCuidToDraw[compID] = drawID;
+    if (!draw)
+        return {};
 
+    link_id(compID, draw.get_id());
     return draw;
+}
+
+void RenderSystemCache::destroy_mesh_draw(MeshDraw draw)
+{
+    if (!draw || !mDrawToCuid.contains(draw.get_id()))
+        return;
+
+    CUID meshCUID = mDrawToCuid[draw.get_id()];
+    mDrawToCuid.erase(draw.get_id());
+    mCuidToDraw.erase(meshCUID);
+
+    mSystem.destroy_mesh_draw(draw);
 }
 
 Image2D RenderSystemCache::get_or_create_image_2d(AssetID textureAUID)
@@ -104,16 +131,10 @@ Image2D RenderSystemCache::get_or_create_image_2d(AssetID textureAUID)
     return mImage2D[textureAUID];
 }
 
-Sprite2DDraw RenderSystemCache::create_sprite_draw(CUID compID, RUID layerID, AssetID textureAUID)
+Sprite2DDraw RenderSystemCache::create_sprite_2d_draw(CUID compID, RUID layerID, AssetID textureAUID)
 {
-    auto it = mCuidToDraw.find(compID);
-    if (it != mCuidToDraw.end())
-    {
-        RUID oldDrawID = it->second;
-        mDrawToCuid.erase(oldDrawID);
-    }
-
     Sprite2DDraw draw{};
+
     if (textureAUID)
     {
         Image2D image2D = get_or_create_image_2d(textureAUID);
@@ -121,13 +142,38 @@ Sprite2DDraw RenderSystemCache::create_sprite_draw(CUID compID, RUID layerID, As
     }
     else
         draw = mSystem.create_sprite_2d_draw({}, layerID, {}, 0);
-    LD_ASSERT(draw);
 
-    RUID drawID = draw.unwrap()->id;
+    if (!draw)
+        return {};
+
+    link_id(compID, draw.get_id());
+    return draw;
+}
+
+void RenderSystemCache::destroy_sprite_2d_draw(Sprite2DDraw draw)
+{
+    if (!draw || !mDrawToCuid.contains(draw.get_id()))
+        return;
+
+    CUID compCUID = mDrawToCuid[draw.get_id()];
+    mDrawToCuid.erase(draw.get_id());
+    mCuidToDraw.erase(compCUID);
+
+    mSystem.destroy_sprite_2d_draw(draw);
+}
+
+void RenderSystemCache::link_id(CUID compID, RUID drawID)
+{
+    // invalidate old drawID associated with component
+    auto it = mCuidToDraw.find(compID);
+    if (it != mCuidToDraw.end())
+    {
+        RUID oldDrawID = it->second;
+        mDrawToCuid.erase(oldDrawID);
+    }
+
     mDrawToCuid[drawID] = compID;
     mCuidToDraw[compID] = drawID;
-
-    return draw;
 }
 
 } // namespace LD

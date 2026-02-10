@@ -30,6 +30,7 @@ using ComponentFlag = uint32_t;
 
 enum ComponentFlagBit : uint32_t
 {
+    COMPONENT_FLAG_LOADED_BIT = LD_BIT(1),
     COMPONENT_FLAG_TRANSFORM_DIRTY_BIT = LD_BIT(2),
 };
 
@@ -73,13 +74,7 @@ struct CameraComponent
     ComponentBase* base;
     TransformEx transform;
     Camera camera;
-    union // TODO: remove cached state
-    {
-        CameraPerspectiveInfo perspective;
-        CameraOrthographicInfo orthographic;
-    };
     bool isMainCamera;
-    bool isPerspective;
 };
 
 /// @brief Render data for meshes that do not deform.

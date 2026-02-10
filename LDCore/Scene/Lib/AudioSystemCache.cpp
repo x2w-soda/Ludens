@@ -2,14 +2,14 @@
 
 namespace LD {
 
-void AudioSystemCache::startup(AudioSystem server, AssetManager manager)
+void AudioSystemCache::create(AudioSystem server, AssetManager manager)
 {
     mSystem = server;
     mAssetManager = manager;
     mClipToBuffer.clear();
 }
 
-void AudioSystemCache::cleanup()
+void AudioSystemCache::destroy()
 {
     if (!mSystem)
         return;

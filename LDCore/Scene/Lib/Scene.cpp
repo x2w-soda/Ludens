@@ -19,7 +19,7 @@
 #include "SceneObj.h"
 
 // Scene user's responsibility to check handle before calling methods
-#define LD_ASSERT_COMPONENT_LOADED LD_ASSERT(static_cast<bool>(*this))
+#define LD_ASSERT_COMPONENT_LOADED(DATA) LD_ASSERT(DATA && *(DATA) && ((*(DATA))->flags & COMPONENT_FLAG_LOADED_BIT))
 
 namespace LD {
 
@@ -27,32 +27,40 @@ namespace LD {
 ///        the SceneObj address should be immutable.
 SceneObj* sScene = nullptr;
 
-static void load_audio_source_component(SceneObj* scene, ComponentBase* base, void* comp);
-static void unload_audio_source_component(SceneObj* scene, ComponentBase* base, void* comp);
-static void cleanup_audio_source_component(SceneObj* scene, ComponentBase* base, void* comp);
-static void startup_camera_component(SceneObj* scene, ComponentBase* base, void* comp);
-static void cleanup_camera_component(SceneObj* scene, ComponentBase* base, void* comp);
-static void load_mesh_component(SceneObj* scene, ComponentBase* base, void* comp);
-static void load_sprite_2d_component(SceneObj* scene, ComponentBase* base, void* comp);
+static bool load_audio_source_component(SceneObj* scene, AudioSourceComponent* source, AssetID clipID);
+static void unload_audio_source_component(SceneObj* scene, ComponentBase** source);
+static void cleanup_audio_source_component(SceneObj* scene, ComponentBase** source);
+static bool load_camera_component_perspective(SceneObj* scene, CameraComponent* camera, const CameraPerspectiveInfo& perspectiveI);
+static bool load_camera_component_orthographic(SceneObj* scene, CameraComponent* camera, const CameraOrthographicInfo& perspectiveI);
+static void unload_camera_component(SceneObj* scene, ComponentBase** camera);
+static void startup_camera_component(SceneObj* scene, ComponentBase** data);
+static void cleanup_camera_component(SceneObj* scene, ComponentBase** data);
+static bool load_mesh_component(SceneObj* scene, MeshComponent* mesh);
+static void unload_mesh_component(SceneObj* scene, ComponentBase** data);
+static bool load_sprite_2d_component(SceneObj* scene, Sprite2DComponent* sprite, SUID screenLayerID);
+static void unload_sprite_2d_component(SceneObj* scene, ComponentBase** data);
 
 /// @brief Component behavior and operations within a Scene.
+///        - loading a component creates subsystem resources
+///        - startup a component to prepare it for runtime
+///        - cleanup a component to release runtime resources
+///        - unloading a component destroys subsystem resources
 struct SceneComponent
 {
     ComponentType type;
-    void (*load)(SceneObj* scene, ComponentBase* base, void* comp);
-    void (*unload)(SceneObj* scene, ComponentBase* base, void* comp);
-    void (*startup)(SceneObj* scene, ComponentBase* base, void* comp);
-    void (*cleanup)(SceneObj* scene, ComponentBase* base, void* comp);
+    void (*unload)(SceneObj* scene, ComponentBase** data);
+    void (*startup)(SceneObj* scene, ComponentBase** data);
+    void (*cleanup)(SceneObj* scene, ComponentBase** data);
 };
 
 // clang-format off
 static SceneComponent sSceneComponents[] = {
-    {COMPONENT_TYPE_DATA,          nullptr,                      nullptr,                        nullptr,                    nullptr},
-    {COMPONENT_TYPE_AUDIO_SOURCE,  &load_audio_source_component, &unload_audio_source_component, nullptr,                    &cleanup_audio_source_component},
-    {COMPONENT_TYPE_TRANSFORM,     nullptr,                      nullptr,                        nullptr,                    nullptr},
-    {COMPONENT_TYPE_CAMERA,        nullptr,                      nullptr,                        &startup_camera_component,  &cleanup_camera_component},
-    {COMPONENT_TYPE_MESH,          &load_mesh_component,         nullptr,                        nullptr,                    nullptr},
-    {COMPONENT_TYPE_SPRITE_2D,     &load_sprite_2d_component,    nullptr,                        nullptr,                    nullptr},
+    {COMPONENT_TYPE_DATA,         nullptr,                        nullptr,                    nullptr},
+    {COMPONENT_TYPE_AUDIO_SOURCE, &unload_audio_source_component, nullptr,                    &cleanup_audio_source_component},
+    {COMPONENT_TYPE_TRANSFORM,    nullptr,                        nullptr,                    nullptr},
+    {COMPONENT_TYPE_CAMERA,       &unload_camera_component,       &startup_camera_component,  &cleanup_camera_component},
+    {COMPONENT_TYPE_MESH,         &unload_mesh_component,         nullptr,                    nullptr},
+    {COMPONENT_TYPE_SPRITE_2D,    &unload_sprite_2d_component,    nullptr,                    nullptr},
 };
 // clang-format on
 
@@ -62,172 +70,210 @@ static_assert(sizeof(sSceneComponents) / sizeof(*sSceneComponents) == COMPONENT_
 // IMPLEMENTATION
 //
 
-static void load_audio_source_component(SceneObj* scene, ComponentBase* base, void* comp)
+static bool load_audio_source_component(SceneObj* scene, AudioSourceComponent* source, AssetID clipID)
 {
-    AudioSourceComponent* sourceC = (AudioSourceComponent*)comp;
+    // NOTE: Buffer not destroyed upon component unload.
+    //       Other components may still be using it for playback.
+    AudioBuffer buffer = scene->audioSystemCache.get_or_create_audio_buffer(clipID);
+    if (!buffer)
+        return false;
 
-    if (sourceC->clipID)
+    source->playback = scene->audioSystemCache.create_playback(buffer, source);
+    if (!source->playback)
+        return false;
+
+    source->clipID = clipID;
+    source->base->flags |= COMPONENT_FLAG_LOADED_BIT;
+    return true;
+}
+
+static void unload_audio_source_component(SceneObj* scene, ComponentBase** sourceData)
+{
+    auto* source = (AudioSourceComponent*)sourceData;
+
+    if (source->playback)
     {
-        // NOTE: Buffer not destroyed upon component unload.
-        //       Other components may still be using it for playback.
-        AudioBuffer buffer = scene->audioSystemCache.get_or_create_audio_buffer(sourceC->clipID);
+        scene->audioSystemCache.destroy_playback(source->playback);
+        source->playback = {};
+    }
 
-        if (buffer)
-        {
-            sourceC->playback = scene->audioSystemCache.create_playback(buffer, sourceC);
-        }
+    // NOTE: audio buffer still exists in audio system cache
+    source->base->flags &= ~COMPONENT_FLAG_LOADED_BIT;
+}
+
+static void cleanup_audio_source_component(SceneObj* scene, ComponentBase** sourceData)
+{
+    auto* source = (AudioSourceComponent*)sourceData;
+
+    if (source->playback)
+    {
+        scene->audioSystemCache.stop_playback(source->playback);
+        source->playback = {};
     }
 }
 
-static void unload_audio_source_component(SceneObj* scene, ComponentBase* base, void* comp)
+static bool load_camera_component_perspective(SceneObj* scene, CameraComponent* camera, const CameraPerspectiveInfo& perspectiveI)
 {
-    AudioSourceComponent* sourceC = (AudioSourceComponent*)comp;
+    camera->camera = LD::Camera::create(perspectiveI, Vec3(0.0f));
 
-    if (sourceC->playback)
-    {
-        scene->audioSystemCache.destroy_playback(sourceC->playback);
-    }
+    if (!camera->camera)
+        return false;
+
+    camera->base->flags |= COMPONENT_FLAG_LOADED_BIT;
+    return true;
 }
 
-static void cleanup_audio_source_component(SceneObj* scene, ComponentBase* base, void* comp)
+static bool load_camera_component_orthographic(SceneObj* scene, CameraComponent* camera, const CameraOrthographicInfo& perspectiveI)
 {
-    AudioSourceComponent* sourceC = (AudioSourceComponent*)comp;
+    camera->camera = LD::Camera::create(perspectiveI, Vec3(0.0f));
 
-    if (sourceC->playback)
-    {
-        scene->audioSystemCache.stop_playback(sourceC->playback);
-    }
+    if (!camera->camera)
+        return false;
+
+    camera->base->flags |= COMPONENT_FLAG_LOADED_BIT;
+    return true;
 }
 
-static void startup_camera_component(SceneObj* scene, ComponentBase* base, void* comp)
+static void unload_camera_component(SceneObj* scene, ComponentBase** cameraData)
 {
-    CameraComponent* cameraC = (CameraComponent*)comp;
+    CameraComponent* camera = (CameraComponent*)cameraData;
+
+    if (camera->camera)
+    {
+        LD::Camera::destroy(camera->camera);
+        camera->camera = {};
+    }
+
+    camera->base->flags &= ~COMPONENT_FLAG_LOADED_BIT;
+}
+
+static void startup_camera_component(SceneObj* scene, ComponentBase** cameraData)
+{
+    ComponentBase* base = *cameraData;
+    auto* camera = (CameraComponent*)cameraData;
 
     if (scene->mainCameraC)
-    {
-        LD_ASSERT(!cameraC->isMainCamera); // only one main camera allowed
         return;
-    }
 
-    scene->mainCameraC = cameraC;
-    scene->mainCameraCUID = base->cuid;
+    scene->mainCameraC = camera;
 
     const Vec3 mainCameraTarget(0.0f, 0.0f, 1.0f);
-
-    if (cameraC->isPerspective)
-    {
-        CameraPerspectiveInfo perspectiveI = cameraC->perspective;
-        perspectiveI.aspectRatio = 1.0f; // updated per frame
-
-        scene->mainCameraC->camera = Camera::create(perspectiveI, mainCameraTarget);
-    }
-    else
-    {
-        scene->mainCameraC->camera = Camera::create(cameraC->orthographic, mainCameraTarget);
-    }
 }
 
-static void cleanup_camera_component(SceneObj* scene, ComponentBase* base, void* comp)
+static void cleanup_camera_component(SceneObj* scene, ComponentBase** cameraData)
 {
-    if (scene->mainCameraC && scene->mainCameraCUID == base->cuid)
-    {
-        Camera::destroy(scene->mainCameraC->camera);
+    if (scene->mainCameraC == (CameraComponent*)cameraData)
         scene->mainCameraC = nullptr;
-        scene->mainCameraCUID = 0;
-    }
 }
 
-static void load_mesh_component(SceneObj* scene, ComponentBase* base, void* comp)
+static bool load_mesh_component(SceneObj* scene, MeshComponent* mesh)
 {
-    MeshComponent* meshC = (MeshComponent*)comp;
-    meshC->draw = scene->renderSystemCache.create_mesh_draw(base->cuid, 0);
+    ComponentBase* base = mesh->base;
 
-    if (meshC->assetID)
-    {
-        Scene::Mesh mesh(meshC);
+    mesh->draw = scene->renderSystemCache.create_mesh_draw(base->cuid, 0);
 
-        mesh.set_mesh_asset(meshC->assetID);
-    }
+    if (!mesh->draw)
+        return false;
+
+    base->flags |= COMPONENT_FLAG_LOADED_BIT;
+    return true;
 }
 
-static void load_sprite_2d_component(SceneObj* scene, ComponentBase* base, void* comp)
+void unload_mesh_component(SceneObj* scene, ComponentBase** data)
 {
-    auto* spriteC = (Sprite2DComponent*)comp;
-    LD_UNREACHABLE; // create draw with valid screen layer
+    MeshComponent* mesh = (MeshComponent*)data;
+    ComponentBase* base = mesh->base;
 
-    if (spriteC->assetID)
+    if (mesh->draw)
     {
-        Scene::Sprite2D sprite(spriteC);
-
-        sprite.set_texture_2d_asset(spriteC->assetID);
+        scene->renderSystemCache.destroy_mesh_draw(mesh->draw);
+        mesh->draw = {};
     }
+
+    base->flags &= ~COMPONENT_FLAG_LOADED_BIT;
 }
 
-void SceneObj::load(ComponentBase* base)
+static bool load_sprite_2d_component(SceneObj* scene, Sprite2DComponent* sprite, SUID screenLayerID)
+{
+    ComponentBase* base = sprite->base;
+
+    RUID layerRUID = scene->renderSystemCache.get_or_create_screen_layer(screenLayerID);
+    if (!layerRUID)
+        return false;
+
+    sprite->draw = scene->renderSystemCache.create_sprite_2d_draw(base->cuid, layerRUID, 0);
+    if (!sprite->draw)
+        return false;
+
+    base->flags |= COMPONENT_FLAG_LOADED_BIT;
+    return true;
+}
+
+static void unload_sprite_2d_component(SceneObj* scene, ComponentBase** data)
+{
+    Sprite2DComponent* sprite = (Sprite2DComponent*)data;
+    ComponentBase* base = sprite->base;
+
+    if (sprite->draw)
+    {
+        scene->renderSystemCache.destroy_sprite_2d_draw(sprite->draw);
+        sprite->draw = {};
+    }
+
+    base->flags &= ~COMPONENT_FLAG_LOADED_BIT;
+}
+
+void SceneObj::unload_subtree(ComponentBase** data)
 {
     LD_PROFILE_SCOPE;
 
-    // polymorphic loading
-    ComponentType type;
-    void* compData = registry.get_component_data(base->cuid, &type);
-    LD_ASSERT(type == base->type);
+    LD_ASSERT(data);
+    ComponentBase* base = (*data);
 
-    if (sSceneComponents[(int)type].load)
-        sSceneComponents[(int)type].load(this, base, compData);
+    if (sSceneComponents[(int)base->type].unload && (base->flags & COMPONENT_FLAG_LOADED_BIT))
+        sSceneComponents[(int)base->type].unload(this, data);
 
-    for (ComponentBase* child = base->child; child; child = child->next)
-    {
-        load(child);
-    }
-}
-
-void SceneObj::unload(ComponentBase* base)
-{
-    LD_PROFILE_SCOPE;
-
-    // polymorphic unloading
-    ComponentType type;
-    void* compData = registry.get_component_data(base->cuid, &type);
-    LD_ASSERT(type == base->type);
-
-    if (sSceneComponents[(int)type].unload)
-        sSceneComponents[(int)type].unload(this, base, compData);
+    // sanity check
+    LD_ASSERT((base->flags & COMPONENT_FLAG_LOADED_BIT) == 0);
 
     for (ComponentBase* child = base->child; child; child = child->next)
     {
-        unload(child);
+        ComponentBase** childData = registry.get_component_data(child->cuid, nullptr);
+        unload_subtree(childData);
     }
 }
 
-void SceneObj::startup_root(CUID rootID)
+void SceneObj::startup_subtree(CUID rootID)
 {
-    ComponentBase* rootC = registry.get_component_base(rootID);
+    ComponentBase* rootBase = registry.get_component_base(rootID);
+    LD_ASSERT(rootBase->flags & COMPONENT_FLAG_LOADED_BIT);
 
-    if (!rootC)
+    if (!rootBase)
         return;
 
-    for (ComponentBase* childC = rootC->child; childC; childC = childC->next)
+    for (ComponentBase* child = rootBase->child; child; child = child->next)
     {
-        startup_root(childC->cuid);
+        startup_subtree(child->cuid);
     }
 
     // post-order traversal, all child components of root already have their scripts attached
     ComponentType type;
-    void* compData = registry.get_component_data(rootC->cuid, &type);
-    LD_ASSERT(type == rootC->type);
+    ComponentBase** rootData = registry.get_component_data(rootBase->cuid, &type);
+    LD_ASSERT(type == rootBase->type);
 
     if (sSceneComponents[(int)type].startup)
-        sSceneComponents[(int)type].startup(this, rootC, compData);
+        sSceneComponents[(int)type].startup(this, rootData);
 
-    if (rootC->scriptAssetID)
+    if (rootBase->scriptAssetID)
     {
-        luaContext.create_component_table(rootC->cuid);
-        bool success = luaContext.create_lua_script(rootID, rootC->scriptAssetID); // TODO: abort startup at the first failure of creating lua script instance.
+        luaContext.create_component_table(rootBase->cuid);
+        bool success = luaContext.create_lua_script(rootID, rootBase->scriptAssetID); // TODO: abort startup at the first failure of creating lua script instance.
+        LD_ASSERT(success);
         luaContext.attach_lua_script(rootID);
     }
 }
 
-void SceneObj::cleanup_root(CUID rootID)
+void SceneObj::cleanup_subtree(CUID rootID)
 {
     ComponentBase* rootC = registry.get_component_base(rootID);
 
@@ -236,16 +282,16 @@ void SceneObj::cleanup_root(CUID rootID)
 
     for (ComponentBase* childC = rootC->child; childC; childC = childC->next)
     {
-        cleanup_root(childC->cuid);
+        cleanup_subtree(childC->cuid);
     }
 
     // post-order traversal, all child components of root already have their scripts detached
     ComponentType type;
-    void* compData = registry.get_component_data(rootC->cuid, &type);
+    ComponentBase** compData = registry.get_component_data(rootC->cuid, &type);
     LD_ASSERT(type == rootC->type);
 
     if (sSceneComponents[(int)type].cleanup)
-        sSceneComponents[(int)type].cleanup(this, rootC, compData);
+        sSceneComponents[(int)type].cleanup(this, compData);
 
     luaContext.detach_lua_script(rootID);
     luaContext.destroy_lua_script(rootID);
@@ -271,8 +317,9 @@ Scene Scene::create(const SceneInfo& sceneI)
     sScene = heap_new<SceneObj>(MEMORY_USAGE_SCENE);
     sScene->registry = DataRegistry::create();
     sScene->assetManager = sceneI.assetManager;
-    sScene->renderSystemCache.startup(sceneI.renderSystem, sceneI.assetManager);
-    sScene->audioSystemCache.startup(sceneI.audioSystem, sceneI.assetManager);
+    sScene->renderSystemCache.create(sceneI.renderSystem, sceneI.assetManager);
+    sScene->audioSystemCache.create(sceneI.audioSystem, sceneI.assetManager);
+    sScene->luaContext.create(Scene(sScene), sScene->registry, sceneI.assetManager);
 
     return Scene(sScene);
 }
@@ -286,8 +333,9 @@ void Scene::destroy(Scene scene)
     // destroy all components
     scene.reset();
 
-    sScene->audioSystemCache.cleanup();
-    sScene->renderSystemCache.cleanup();
+    sScene->luaContext.destroy();
+    sScene->audioSystemCache.destroy();
+    sScene->renderSystemCache.destroy();
     DataRegistry::destroy(sScene->registry);
 
     heap_delete<SceneObj>(sScene);
@@ -315,18 +363,11 @@ void Scene::reset()
         mObj->registry = {};
     }
 
-    if (mObj->mainCameraC)
-    {
-        LD::Camera::destroy(mObj->mainCameraC->camera);
-        mObj->mainCameraC = nullptr;
-    }
-
-    mObj->mainCameraCUID = 0;
-
+    mObj->mainCameraC = nullptr;
     mObj->registry = DataRegistry::create();
 }
 
-void Scene::load()
+void Scene::load(const std::function<bool(Scene)>& loader)
 {
     LD_PROFILE_SCOPE;
 
@@ -336,36 +377,44 @@ void Scene::load()
         return;
     }
 
-    mObj->state = SCENE_STATE_LOADED;
-    mObj->luaContext.startup(*this, mObj->registry, mObj->assetManager);
-
-    std::vector<CUID> roots;
-    mObj->registry.get_root_components(roots);
-
-    for (CUID rootID : roots)
+    bool success = loader(*this);
+    if (!success)
     {
-        ComponentBase* base = mObj->registry.get_component_base(rootID);
-        mObj->load(base);
+        // TODO: unwind
+        LD_UNREACHABLE;
+        return;
     }
+
+    /*
+    if (!validate())
+    {
+        // TODO: unwind
+        return;
+    }
+    */
+
+    mObj->state = SCENE_STATE_LOADED;
+
+    Vector<CUID> roots;
+    mObj->registry.get_root_components(roots);
 }
 
 void Scene::unload()
 {
     LD_PROFILE_SCOPE;
 
-    if (mObj->state != SCENE_STATE_LOADED)
+    if (mObj->state == SCENE_STATE_EMPTY)
         return;
 
-    std::vector<CUID> roots;
+    Vector<CUID> roots;
     mObj->registry.get_root_components(roots);
 
     for (CUID rootID : roots)
     {
-        ComponentBase* base = mObj->registry.get_component_base(rootID);
-        mObj->unload(base);
+        ComponentBase** rootData = mObj->registry.get_component_data(rootID, nullptr);
+        mObj->unload_subtree(rootData);
     }
 
-    mObj->luaContext.cleanup();
     mObj->state = SCENE_STATE_EMPTY;
 }
 
@@ -384,7 +433,7 @@ void Scene::startup()
 
     for (CUID root : roots)
     {
-        mObj->startup_root(root);
+        mObj->startup_subtree(root);
     }
 }
 
@@ -397,24 +446,22 @@ void Scene::cleanup()
 
     mObj->state = SCENE_STATE_LOADED;
 
-    std::vector<CUID> roots;
+    Vector<CUID> roots;
     mObj->registry.get_root_components(roots);
 
     for (CUID root : roots)
     {
-        mObj->cleanup_root(root);
+        mObj->cleanup_subtree(root);
     }
 
     mObj->mainCameraC = nullptr;
-    mObj->mainCameraCUID = (CUID)0;
 }
 
 void Scene::backup()
 {
     LD_PROFILE_SCOPE;
 
-    if (mObj->state != SCENE_STATE_LOADED)
-        return;
+    LD_ASSERT(mObj->state == SCENE_STATE_LOADED);
 
     if (mObj->registryBack)
         DataRegistry::destroy(mObj->registryBack);
@@ -424,8 +471,7 @@ void Scene::backup()
 
 void Scene::swap()
 {
-    if (mObj->state != SCENE_STATE_LOADED)
-        return;
+    LD_ASSERT(mObj->state == SCENE_STATE_LOADED);
 
     DataRegistry tmp = mObj->registry;
     mObj->registry = mObj->registryBack;
@@ -445,9 +491,12 @@ void Scene::update(const Vec2& screenExtent, float delta)
     if (mObj->mainCameraC)
     {
         const CameraComponent* cameraC = mObj->mainCameraC;
-        LD::Camera mainCamera = mObj->mainCameraC->camera;
+        const ComponentBase* base = cameraC->base;
+        LD::Camera mainCamera = cameraC->camera;
+        LD_ASSERT(base && mainCamera);
+
         Mat4 worldMat4;
-        mObj->registry.get_component_world_mat4(mObj->mainCameraCUID, worldMat4);
+        mObj->registry.get_component_world_mat4(base->cuid, worldMat4);
         Vec3 forward = worldMat4.as_mat3() * Vec3(0.0f, 0.0f, 1.0f);
 
         mainCamera.set_aspect_ratio(screenExtent.x / screenExtent.y);
@@ -580,7 +629,11 @@ void Scene::Component::get_children(Vector<Component>& children)
 
 Scene::Component Scene::Component::get_parent()
 {
-    return Scene::Component(sScene->registry.get_component_data((*mData)->cuid, nullptr));
+    ComponentBase* parentBase = (*mData)->parent;
+    if (!parentBase)
+        return {};
+
+    return Scene::Component(sScene->registry.get_component_data(parentBase->cuid, nullptr));
 }
 
 bool Scene::Component::get_transform(TransformEx& transform)
@@ -614,13 +667,6 @@ bool Scene::Component::get_world_mat4(Mat4& worldMat4)
     return sScene->registry.get_component_world_mat4(base->cuid, worldMat4);
 }
 
-void Scene::Component::mark_transform_dirty()
-{
-    ComponentBase* base = *mData;
-
-    sScene->registry.mark_component_transform_dirty(base->cuid);
-}
-
 Scene::Component Scene::get_ruid_component(RUID ruid)
 {
     CUID compCUID = mObj->renderSystemCache.get_draw_id_component(ruid);
@@ -632,10 +678,13 @@ Mat4 Scene::get_ruid_transform_mat4(RUID ruid)
 {
     LD_PROFILE_SCOPE;
 
-    CUID compID = get_ruid_component(ruid);
+    Scene::Component comp = get_ruid_component(ruid);
+    if (!comp)
+        return Mat4(1.0f);
 
     Mat4 worldMat4;
-    mObj->registry.get_component_world_mat4(compID, worldMat4);
+    if (!mObj->registry.get_component_world_mat4(comp.cuid(), worldMat4))
+        return Mat4(1.0f);
 
     return worldMat4;
 }
@@ -658,35 +707,35 @@ Scene::AudioSource::AudioSource(AudioSourceComponent* comp)
     }
 }
 
-Scene::AudioSource::operator bool() const noexcept
+bool Scene::AudioSource::load(AssetID clipAsset)
 {
-    return mAudioSource;
+    return load_audio_source_component(sScene, mAudioSource, clipAsset);
 }
 
 void Scene::AudioSource::play()
 {
-    LD_ASSERT_COMPONENT_LOADED;
+    LD_ASSERT_COMPONENT_LOADED(mData);
 
     sScene->audioSystemCache.start_playback(mAudioSource->playback);
 }
 
 void Scene::AudioSource::pause()
 {
-    LD_ASSERT_COMPONENT_LOADED;
+    LD_ASSERT_COMPONENT_LOADED(mData);
 
     sScene->audioSystemCache.pause_playback(mAudioSource->playback);
 }
 
 void Scene::AudioSource::resume()
 {
-    LD_ASSERT_COMPONENT_LOADED;
+    LD_ASSERT_COMPONENT_LOADED(mData);
 
     sScene->audioSystemCache.resume_playback(mAudioSource->playback);
 }
 
 bool Scene::AudioSource::set_clip_asset(AssetID clipID)
 {
-    LD_ASSERT_COMPONENT_LOADED;
+    LD_ASSERT_COMPONENT_LOADED(mData);
 
     AudioClipAsset clipA(sScene->assetManager.get_asset(clipID).unwrap());
     AudioBuffer buffer = sScene->audioSystemCache.get_or_create_audio_buffer(clipA);
@@ -702,21 +751,21 @@ bool Scene::AudioSource::set_clip_asset(AssetID clipID)
 
 AssetID Scene::AudioSource::get_clip_asset()
 {
-    LD_ASSERT_COMPONENT_LOADED;
+    LD_ASSERT_COMPONENT_LOADED(mData);
 
     return mAudioSource->clipID;
 }
 
 float Scene::AudioSource::get_volume_linear()
 {
-    LD_ASSERT_COMPONENT_LOADED;
+    LD_ASSERT_COMPONENT_LOADED(mData);
 
     return mAudioSource->volumeLinear;
 }
 
 bool Scene::AudioSource::set_volume_linear(float volume)
 {
-    LD_ASSERT_COMPONENT_LOADED;
+    LD_ASSERT_COMPONENT_LOADED(mData);
 
     AudioPlayback::Accessor accessor = mAudioSource->playback.access();
 
@@ -729,14 +778,14 @@ bool Scene::AudioSource::set_volume_linear(float volume)
 
 float Scene::AudioSource::get_pan()
 {
-    LD_ASSERT_COMPONENT_LOADED;
+    LD_ASSERT_COMPONENT_LOADED(mData);
 
     return mAudioSource->pan;
 }
 
 bool Scene::AudioSource::set_pan(float pan)
 {
-    LD_ASSERT_COMPONENT_LOADED;
+    LD_ASSERT_COMPONENT_LOADED(mData);
 
     AudioPlayback::Accessor accessor = mAudioSource->playback.access();
 
@@ -749,8 +798,6 @@ bool Scene::AudioSource::set_pan(float pan)
 
 Scene::Camera::Camera(Component comp)
 {
-    LD_ASSERT_COMPONENT_LOADED;
-
     if (comp && comp.type() == COMPONENT_TYPE_CAMERA)
     {
         mData = comp.data();
@@ -760,8 +807,6 @@ Scene::Camera::Camera(Component comp)
 
 Scene::Camera::Camera(CameraComponent* comp)
 {
-    LD_ASSERT_COMPONENT_LOADED;
-
     if (comp && comp->base && comp->base->cuid)
     {
         mData = (ComponentBase**)comp;
@@ -769,32 +814,37 @@ Scene::Camera::Camera(CameraComponent* comp)
     }
 }
 
-Scene::Camera::operator bool() const noexcept
+bool Scene::Camera::load_perspective(const CameraPerspectiveInfo& info)
 {
-    return mCamera && mCamera->camera;
+    return load_camera_component_perspective(sScene, mCamera, info);
+}
+
+bool Scene::Camera::load_orthographic(const CameraOrthographicInfo& info)
+{
+    return load_camera_component_orthographic(sScene, mCamera, info);
 }
 
 bool Scene::Camera::is_main_camera()
 {
-    LD_ASSERT_COMPONENT_LOADED;
+    LD_ASSERT_COMPONENT_LOADED(mData);
 
     return mCamera->isMainCamera;
 }
 
 bool Scene::Camera::is_perspective()
 {
-    LD_ASSERT_COMPONENT_LOADED;
+    LD_ASSERT_COMPONENT_LOADED(mData);
 
-    return mCamera->isPerspective;
+    return mCamera->camera.is_perspective();
 }
 
 bool Scene::Camera::get_perspective_info(CameraPerspectiveInfo& outInfo)
 {
-    LD_ASSERT_COMPONENT_LOADED;
+    LD_ASSERT_COMPONENT_LOADED(mData);
 
-    if (mCamera->isPerspective)
+    if (mCamera->camera.is_perspective())
     {
-        outInfo = mCamera->perspective;
+        outInfo = mCamera->camera.get_perspective();
         return true;
     }
 
@@ -803,11 +853,11 @@ bool Scene::Camera::get_perspective_info(CameraPerspectiveInfo& outInfo)
 
 bool Scene::Camera::get_orthographic_info(CameraOrthographicInfo& outInfo)
 {
-    LD_ASSERT_COMPONENT_LOADED;
+    LD_ASSERT_COMPONENT_LOADED(mData);
 
-    if (!mCamera->isPerspective)
+    if (!mCamera->camera.is_perspective())
     {
-        outInfo = mCamera->orthographic;
+        outInfo = mCamera->camera.get_orthographic();
         return true;
     }
 
@@ -816,19 +866,15 @@ bool Scene::Camera::get_orthographic_info(CameraOrthographicInfo& outInfo)
 
 void Scene::Camera::set_perspective(const CameraPerspectiveInfo& info)
 {
-    LD_ASSERT_COMPONENT_LOADED;
+    LD_ASSERT_COMPONENT_LOADED(mData);
 
-    mCamera->isPerspective = true;
-    mCamera->perspective = info;
     mCamera->camera.set_perspective(info);
 }
 
 void Scene::Camera::set_orthographic(const CameraOrthographicInfo& info)
 {
-    LD_ASSERT_COMPONENT_LOADED;
+    LD_ASSERT_COMPONENT_LOADED(mData);
 
-    mCamera->isPerspective = false;
-    mCamera->orthographic = info;
     mCamera->camera.set_orthographic(info);
 }
 
@@ -850,14 +896,14 @@ Scene::Mesh::Mesh(MeshComponent* comp)
     }
 }
 
-Scene::Mesh::Mesh::operator bool() const noexcept
+bool Scene::Mesh::load()
 {
-    return mMesh && mMesh->draw;
+    return load_mesh_component(sScene, mMesh);
 }
 
 bool Scene::Mesh::set_mesh_asset(AssetID meshID)
 {
-    LD_ASSERT_COMPONENT_LOADED;
+    LD_ASSERT_COMPONENT_LOADED(mData);
 
     MeshData meshData = sScene->renderSystemCache.get_or_create_mesh_data(meshID);
 
@@ -872,7 +918,7 @@ bool Scene::Mesh::set_mesh_asset(AssetID meshID)
 
 AssetID Scene::Mesh::get_mesh_asset()
 {
-    LD_ASSERT_COMPONENT_LOADED;
+    LD_ASSERT_COMPONENT_LOADED(mData);
 
     return mMesh->assetID;
 }
@@ -895,14 +941,14 @@ Scene::Sprite2D::Sprite2D(Sprite2DComponent* comp)
     }
 }
 
-Scene::Sprite2D::operator bool() const noexcept
+bool Scene::Sprite2D::load(SUID layerSUID)
 {
-    return mSprite && mSprite->draw;
+    return load_sprite_2d_component(sScene, mSprite, layerSUID);
 }
 
 bool Scene::Sprite2D::set_texture_2d_asset(AssetID textureID)
 {
-    LD_ASSERT_COMPONENT_LOADED;
+    LD_ASSERT_COMPONENT_LOADED(mData);
 
     Image2D image = sScene->renderSystemCache.get_or_create_image_2d(textureID);
 
@@ -917,35 +963,35 @@ bool Scene::Sprite2D::set_texture_2d_asset(AssetID textureID)
 
 AssetID Scene::Sprite2D::get_texture_2d_asset()
 {
-    LD_ASSERT_COMPONENT_LOADED;
+    LD_ASSERT_COMPONENT_LOADED(mData);
 
     return mSprite->assetID;
 }
 
 uint32_t Scene::Sprite2D::get_z_depth()
 {
-    LD_ASSERT_COMPONENT_LOADED;
+    LD_ASSERT_COMPONENT_LOADED(mData);
 
     return mSprite->draw.get_z_depth();
 }
 
 void Scene::Sprite2D::set_z_depth(uint32_t zDepth)
 {
-    LD_ASSERT_COMPONENT_LOADED;
+    LD_ASSERT_COMPONENT_LOADED(mData);
 
     mSprite->draw.set_z_depth(zDepth);
 }
 
 Rect Scene::Sprite2D::get_rect()
 {
-    LD_ASSERT_COMPONENT_LOADED;
+    LD_ASSERT_COMPONENT_LOADED(mData);
 
     return mSprite->draw.get_rect();
 }
 
 void Scene::Sprite2D::set_rect(const Rect& rect)
 {
-    LD_ASSERT_COMPONENT_LOADED;
+    LD_ASSERT_COMPONENT_LOADED(mData);
 
     mSprite->draw.set_rect(rect);
 }

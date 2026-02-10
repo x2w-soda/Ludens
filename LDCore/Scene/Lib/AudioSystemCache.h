@@ -12,12 +12,12 @@ namespace LD {
 class AudioSystemCache
 {
 public:
-    /// @brief In-place startup, connect to audio system.
-    void startup(AudioSystem system, AssetManager manager);
+    /// @brief In-place creation, connect to audio system.
+    void create(AudioSystem system, AssetManager manager);
 
-    /// @brief In-place cleanup, destroys all resources from audio system.
+    /// @brief In-place destruction, destroys all resources from audio system.
     /// @warning All playbacks should have already been destroyed, this destroys remaining audio buffers.
-    void cleanup();
+    void destroy();
 
     /// @brief Get or create corresponding audio buffer from asset.
     AudioBuffer get_or_create_audio_buffer(AssetID clipID);
