@@ -4,6 +4,7 @@
 #include <Ludens/Memory/Memory.h>
 #include <Ludens/Profiler/Profiler.h>
 
+#include "RenderSystemObj.h"
 #include "ScreenLayer.h"
 
 #include <cstdint>
@@ -50,10 +51,10 @@ void ScreenLayerObj::invalidate(RenderSystemMat4Callback mat4Callback, void* use
     {
         auto* draw = (Sprite2DDrawObj*)it.data();
 
-        if (!draw->image)
+        Mat4 modelMat;
+        if (!draw->image || !mat4Callback(draw->id, modelMat, user))
             continue;
 
-        Mat4 modelMat = mat4Callback(draw->id, user);
         Vec4 tl = modelMat * Vec4(draw->rect.get_pos(), 0.0f, 1.0f);
         Vec4 tr = modelMat * Vec4(draw->rect.get_pos_tr(), 0.0f, 1.0f);
         Vec4 br = modelMat * Vec4(draw->rect.get_pos_br(), 0.0f, 1.0f);

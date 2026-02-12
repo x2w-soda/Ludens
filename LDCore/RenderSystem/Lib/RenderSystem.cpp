@@ -20,11 +20,64 @@
 #include <Ludens/RenderGraph/RGraph.h>
 #include <Ludens/RenderSystem/RenderSystem.h>
 
+#include "RenderSystemObj.h"
 #include "ScreenLayer.h"
 
 namespace LD {
 
 static Log sLog("RenderSystem");
+
+bool Sprite2DDraw::set_image(Image2D image2D)
+{
+    if (!image2D)
+        return false;
+
+    mObj->image = RImage(image2D.unwrap());
+    return true;
+}
+
+uint32_t Sprite2DDraw::get_z_depth()
+{
+    return mObj->zDepth;
+}
+
+void Sprite2DDraw::set_z_depth(uint32_t zDepth)
+{
+    mObj->zDepth = zDepth;
+}
+
+Rect Sprite2DDraw::get_rect()
+{
+    return mObj->rect;
+}
+
+void Sprite2DDraw::set_rect(const Rect& rect)
+{
+    mObj->rect = rect;
+}
+
+RUID Sprite2DDraw::get_layer_id()
+{
+    LD_ASSERT(mObj && mObj->layer);
+
+    return mObj->layer->get_id();
+}
+
+bool MeshDraw::set_mesh_asset(MeshData data)
+{
+    if (!data)
+        return false;
+
+    if (mObj->data)
+        mObj->data.unwrap()->drawID.erase(mID);
+
+    mObj->data = data;
+
+    MeshDataObj* dataObj = data.unwrap();
+    dataObj->drawID.insert(mID);
+
+    return true;
+}
 
 /// @brief Render system implementation.
 class RenderSystemObj
@@ -112,9 +165,7 @@ private:
     IDCounter<RUID> mRUIDCtr;
     HashMap<RUID, ScreenLayerObj*> mLayers;
     HashMap<RUID, RImage> mImages;
-    HashMap<RUID, MeshDataObj*> mMeshData;
-    HashMap<RUID, MeshDrawObj*> mMeshDraw;         /// Mesh draw info
-    HashMap<RUID, Sprite2DDrawObj*> mSprite2DDraw; /// Spirte2D draw info
+    HashMap<RUID, MeshDrawObj*> mMeshDraw; /// Mesh draw info
     PoolAllocator mMeshDataPA{};
     PoolAllocator mMeshDrawPA{};
 };
@@ -648,38 +699,39 @@ MeshDataObj* RenderSystemObj::create_mesh_data(ModelBinary& binary)
     RUID dataID = get_ruid();
     MeshDataObj* dataObj = (MeshDataObj*)mMeshDataPA.allocate();
     new (dataObj) MeshDataObj();
-    mMeshData[dataID] = dataObj;
 
     dataObj->mesh.create_from_binary(mDevice, stager, binary);
     dataObj->id = dataID;
     stager.submit(mDevice.get_graphics_queue());
 
+    sLog.debug("MeshData {} {} created", (void*)dataObj, dataID);
     return dataObj;
 }
 
 void RenderSystemObj::destroy_mesh_data(MeshDataObj* data)
 {
-    if (!data || !mMeshData.contains(data->id))
+    if (!data)
         return;
 
     RUID dataID = data->id;
+    sLog.debug("MeshData {} {} destroyed", (void*)data, dataID);
 
     mDevice.wait_idle();
     data->mesh.destroy();
     data->~MeshDataObj();
     data->id = 0; // invalidates remaining MeshData handles
     mMeshDataPA.free(data);
-    mMeshData.erase(dataID);
 }
 
 MeshDrawObj* RenderSystemObj::create_mesh_draw(MeshDataObj* data)
 {
     RUID drawID = get_ruid();
     MeshDrawObj* drawObj = (MeshDrawObj*)mMeshDrawPA.allocate();
-    new (drawObj) MeshDataObj();
+    new (drawObj) MeshDrawObj();
     mMeshDraw[drawID] = drawObj;
 
     drawObj->id = drawID;
+    sLog.debug("MeshDraw {} {} created", (void*)drawObj, drawID);
 
     // NOTE: we allow creating an empty mesh draw without data.
     if (data)
@@ -693,12 +745,20 @@ MeshDrawObj* RenderSystemObj::create_mesh_draw(MeshDataObj* data)
 
 void RenderSystemObj::destroy_mesh_draw(MeshDrawObj* draw)
 {
-    if (!draw || !mMeshDraw.contains(draw->id))
+    if (!draw)
         return;
 
+    LD_ASSERT(mMeshDraw.contains(draw->id));
     RUID drawID = draw->id;
+    sLog.debug("MeshDraw {} {} destroyed", (void*)draw, drawID);
 
-    mDevice.wait_idle();
+    if (draw->data)
+    {
+        MeshDataObj* data = draw->data.unwrap();
+        LD_ASSERT(data && data->drawID.contains(drawID));
+        data->drawID.erase(drawID);
+    }
+
     draw->~MeshDrawObj();
     draw->id = 0; // invalidates remaining MeshDraw handles
     mMeshDrawPA.free(draw);
@@ -711,8 +771,7 @@ Sprite2DDrawObj* RenderSystemObj::create_sprite_2d_draw(RImage image, RUID layer
 
     ScreenLayerObj* layer = mLayers[layerID];
     Sprite2DDrawObj* draw = layer->create_sprite_2d(get_ruid(), rect, image, zDepth);
-
-    mSprite2DDraw[draw->id] = draw;
+    LD_ASSERT(draw);
 
     return draw;
 }
@@ -722,8 +781,6 @@ void RenderSystemObj::destroy_sprite_2d_draw(Sprite2DDrawObj* draw)
     LD_ASSERT(draw && draw->layer);
 
     draw->layer->destroy_sprite_2d(draw);
-
-    mSprite2DDraw.erase(draw->id);
 }
 
 // NOTE: This is super early placeholder scene renderer implementation.
@@ -749,14 +806,15 @@ void RenderSystemObj::forward_rendering(ForwardRenderComponent renderer, void* u
     RMeshBlinnPhongPipeline::PushConstant pc;
 
     // render static mesh
-    // TODO: iteration can be cache-efficient if MeshData* is allocated from a PoolAllocator
-    for (auto ite : self.mMeshData)
+    for (auto it = self.mMeshDataPA.begin(); it; ++it)
     {
-        MeshDataObj* data = ite.second;
+        MeshDataObj* data = (MeshDataObj*)it.data();
 
         for (RUID drawID : data->drawID)
         {
-            pc.model = self.mScenePassMat4Callback(drawID, self.mScenePassUser);
+            if (!self.mScenePassMat4Callback(drawID, pc.model, self.mScenePassUser))
+                continue;
+
             pc.id = self.ruid_to_pickid(drawID);
             pc.flags = 0;
 
@@ -773,18 +831,19 @@ void RenderSystemObj::forward_rendering(ForwardRenderComponent renderer, void* u
         LD_ASSERT(draw && draw->data);
 
         MeshDataObj* data = draw->data.unwrap();
-
-        // render to 16-bit flags only
-        meshPipeline.set_color_write_mask(0, 0);
-        meshPipeline.set_color_write_mask(1, RCOLOR_COMPONENT_B_BIT | RCOLOR_COMPONENT_A_BIT);
-        meshPipeline.set_depth_test_enable(false);
-
-        pc.model = self.mScenePassMat4Callback(outlineDrawID, self.mScenePassUser);
         pc.id = 0;    // not written to color attachment due to write masks
         pc.flags = 1; // currently any non-zero flag value indicates mesh that requires outlining
 
-        renderer.set_push_constant(sRMeshPipelineLayout, 0, sizeof(pc), &pc);
-        renderer.draw_mesh(data->mesh);
+        if (self.mScenePassMat4Callback(outlineDrawID, pc.model, self.mScenePassUser))
+        {
+            // render to 16-bit flags only
+            meshPipeline.set_color_write_mask(0, 0);
+            meshPipeline.set_color_write_mask(1, RCOLOR_COMPONENT_B_BIT | RCOLOR_COMPONENT_A_BIT);
+            meshPipeline.set_depth_test_enable(false);
+
+            renderer.set_push_constant(sRMeshPipelineLayout, 0, sizeof(pc), &pc);
+            renderer.draw_mesh(data->mesh);
+        }
     }
 
     renderer.draw_skybox();

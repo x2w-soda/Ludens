@@ -2,13 +2,13 @@
 
 #include <Ludens/Camera/Camera.h>
 #include <Ludens/Header/Handle.h>
+#include <Ludens/Header/IDHandle.h>
 #include <Ludens/Media/Bitmap.h>
 #include <Ludens/Media/Font.h>
 #include <Ludens/Media/Model.h>
 #include <Ludens/RenderBackend/RBackend.h>
 #include <Ludens/RenderComponent/SceneOverlayComponent.h>
 #include <Ludens/RenderComponent/ScreenRenderComponent.h>
-#include <Ludens/RenderSystem/RenderSystemObj.h>
 
 #include <string>
 
@@ -17,7 +17,7 @@ namespace LD {
 typedef void (*ScreenRenderCallback)(ScreenRenderComponent renderer, void* user);
 typedef void (*RenderSystemEditorRenderCallback)(ScreenRenderComponent renderer, void* user);
 typedef void (*RenderSystemEditorScenePickCallback)(SceneOverlayGizmoID gizmoID, RUID ruid, void* user);
-typedef Mat4 (*RenderSystemMat4Callback)(RUID ruid, void* user);
+typedef bool (*RenderSystemMat4Callback)(RUID ruid, Mat4& mat4, void* user);
 typedef void (*RenderSystemScreenPassCallback)(ScreenRenderComponent renderer, void* user);
 
 /// @brief Render system creation info
@@ -100,6 +100,46 @@ struct RenderSystemEditorDialogPass
     ScreenRenderCallback renderCallback;
     WindowID dialogWindow;
     void* user;
+};
+
+class RenderSystemObj;
+class ScreenLayerObj;
+struct Sprite2DDrawObj;
+struct MeshDataObj;
+struct MeshDrawObj;
+struct RImageObj;
+
+using Image2D = IDHandle<RImageObj, RUID>;
+using ImageCube = IDHandle<RImageObj, RUID>;
+
+struct Sprite2DDraw : IDHandle<Sprite2DDrawObj, RUID>
+{
+    Sprite2DDraw() = default;
+    Sprite2DDraw(Sprite2DDrawObj* obj, RUID id)
+        : IDHandle(obj, id) {}
+
+    bool set_image(Image2D image2D);
+    uint32_t get_z_depth();
+    void set_z_depth(uint32_t zDepth);
+    Rect get_rect();
+    void set_rect(const Rect& rect);
+    RUID get_layer_id();
+};
+
+struct MeshData : IDHandle<MeshDataObj, RUID>
+{
+    MeshData() = default;
+    MeshData(MeshDataObj* obj, RUID id)
+        : IDHandle(obj, id) {}
+};
+
+struct MeshDraw : IDHandle<MeshDrawObj, RUID>
+{
+    MeshDraw() = default;
+    MeshDraw(MeshDrawObj* obj, RUID id)
+        : IDHandle(obj, id) {}
+
+    bool set_mesh_asset(MeshData data);
 };
 
 /// @brief Render system handle. This is the top-level graphics abstraction,
