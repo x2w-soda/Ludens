@@ -36,8 +36,10 @@ struct DataRegistry : Handle<struct DataRegistryObj>
     /// @brief Destroy registry and all components within
     static void destroy(DataRegistry registry);
 
-    /// @brief Make a deep copy of the registry. This duplicates the entire component hierarchy
-    ///        using new allocators separate from the original. The copy must be destroyed later.
+    /// @brief Make a deep copy of the registry, mirroring the component hierarchy.
+    ///        The duplicated components are not loaded, they have distinct CUIDs from
+    ///        the original, but have the same SUIDs from the original.
+    ///        The duplicate registry must also be destroyed by caller.
     DataRegistry duplicate() const;
 
     /// @brief Creates a data component
@@ -71,7 +73,7 @@ struct DataRegistry : Handle<struct DataRegistryObj>
     ComponentBase** get_component_data_by_suid(SUID compSUID, ComponentType* outType);
 
     /// @brief Get all data components with no parents.
-    void get_root_components(Vector<CUID>& roots);
+    void get_root_component_data(Vector<ComponentBase**>& rootData);
 
     /// @brief Get an iterator to traverse all components of a specific type.
     PoolAllocator::Iterator get_components(ComponentType type);
