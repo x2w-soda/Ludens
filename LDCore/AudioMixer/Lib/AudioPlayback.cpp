@@ -70,6 +70,10 @@ void AudioPlayback::Accessor::set_pan(float pan)
 
 AudioPlayback::Accessor AudioPlayback::access()
 {
+    // TODO: it is sitll possible that main thread accesses the playback
+    //       before the audio thread has a chance to acquire playback.
+    LD_ASSERT(AudioPlayback(mObj).is_acquired());
+
     return Accessor((AudioPlaybackObj*)mObj);
 }
 

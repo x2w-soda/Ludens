@@ -23,7 +23,7 @@ public:
     AudioBuffer get_or_create_audio_buffer(AssetID clipID);
 
     inline void update() { mSystem.update(); }
-    inline AudioPlayback create_playback(AudioBuffer buffer, AudioSourceComponent* comp) { return mSystem.create_playback(buffer, comp->pan, comp->volumeLinear); }
+    inline AudioPlayback create_playback(AudioBuffer buffer, float pan, float volumeLinear) { return mSystem.create_playback(buffer, pan, volumeLinear); }
     inline void destroy_playback(AudioPlayback playback) { mSystem.destroy_playback(playback); }
     inline void stop_playback(AudioPlayback playback) { mSystem.stop_playback(playback); }
     inline void start_playback(AudioPlayback playback) { mSystem.start_playback(playback); }

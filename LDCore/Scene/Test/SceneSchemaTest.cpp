@@ -36,10 +36,6 @@ cuid = 300
     bool ok = SceneSchema::load_scene_from_source(scene, View(toml, sizeof(toml) - 1), err);
     CHECK(ok);
 
-    Vector<CUID> roots;
-    scene.get_root_component_cuids(roots);
-    CHECK(roots.size() == 2);
-
     // TODO: scene loading involves subsystem resource creation,
     //       need to support headless scene for testing first.
 

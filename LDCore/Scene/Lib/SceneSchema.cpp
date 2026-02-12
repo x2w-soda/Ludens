@@ -145,23 +145,18 @@ Scene::Component SceneSchemaLoader::load_audio_source_component(SceneSchemaLoade
     TOMLValue auidTOML = compTOML["auid"];
     auidTOML.get_u32(clipID);
 
-    if (!source.load(clipID))
-        return {};
-
     float pan = 0.5f;
-    float volumeLinear = 1.0f;
-
     TOMLValue panTOML = compTOML["pan"];
     if (panTOML)
         panTOML.get_f32(pan);
 
-    source.set_pan(pan);
-
+    float volumeLinear = 1.0f;
     TOMLValue volumeTOML = compTOML["volume_linear"];
     if (volumeTOML)
         volumeTOML.get_f32(volumeLinear);
 
-    source.set_volume_linear(volumeLinear);
+    if (!source.load(clipID, pan, volumeLinear))
+        return {};
 
     return Scene::Component(source.data());
 }

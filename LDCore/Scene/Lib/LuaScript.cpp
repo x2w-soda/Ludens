@@ -445,6 +445,8 @@ _G.ludens.ComponentRef = {
 }
 
 _G.ludens.create_component_ref = function (compID)
+    compID = tonumber(compID) -- TODO: handle uint64_t compID, this is a LuaJIT cdata, not native number
+
     if compID == 0 then
         return nil
     end
@@ -494,60 +496,29 @@ void Context::update(float delta)
 {
     LD_PROFILE_SCOPE;
 
-    int oldSize1 = mL.size();
+    int oldSize = mL.size();
+
     mL.get_global("ludens");
-    mL.get_field(-1, "scripts");
+    mL.push_number((double)delta);
+    mL.set_field(-2, "delta");
 
-    // TODO: iterate scripts in Lua to avoid pcall overhead.
+    bool ok = mL.do_string(R"(local ffi = require 'ffi'
+for compID, script in pairs(_G.ludens.scripts) do
+    script:update(_G.ludens.delta)
 
-    LD_UNREACHABLE;
-    /*
-    for (auto ite = mRegistry.get_component_scripts(); ite; ++ite)
+    -- TODO: This is not enough as soon as a Script is able to modify transforms of arbitrary components.
+    ffi.C.ffi_mark_transform_dirty(compID)
+end
+)");
+
+    if (!ok)
     {
-        auto* script = (ComponentScriptSlot*)ite.data();
-        if (!script->isEnabled)
-            continue;
-
-        CUID componentID = script->componentID;
-
-        int oldSize2 = mL.size();
-        mL.push_number((double)componentID);
-        mL.get_table(-2);
-
-        mL.get_field(-1, "update");
-        LD_ASSERT(mL.get_type(-1) == LUA_TYPE_FN);
-
-        // arg1 is the script instance (lua table)
-        mL.push_number((double)componentID);
-        mL.get_table(-4);
-        LD_ASSERT(mL.get_type(-1) == LUA_TYPE_TABLE);
-
-        // arg2 is the frame delta time
-        mL.push_number((double)delta);
-
-        {
-            LD_PROFILE_SCOPE_NAME("LuaScript pcall");
-
-            // Script:update(delta)
-            LuaError err = mL.pcall(2, 0, 0);
-
-            if (err != 0)
-            {
-                sLog.warn("script update error: {}", mL.to_string(-1));
-            }
-
-            LD_ASSERT(err == 0);
-        }
-
-        // NOTE: This is a pessimistic assumption that all script updates
-        //       write to component transform.
-        mRegistry.mark_component_transform_dirty(componentID);
-
-        mL.resize(oldSize2);
+        std::string err(mL.to_string(-1));
+        sLog.error("script update failed: {}", err);
+        LD_DEBUG_BREAK;
     }
-    */
 
-    mL.resize(oldSize1);
+    mL.resize(oldSize);
 }
 
 void Context::create_component_table(CUID compID)

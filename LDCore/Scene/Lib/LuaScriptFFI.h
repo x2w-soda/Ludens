@@ -22,8 +22,9 @@ const char* get_ffi_cdef();
 const char* get_ffi_mt();
 
 extern "C" {
-LD_FFI_EXPORT uint32_t ffi_get_parent_id(uint32_t compID);
-LD_FFI_EXPORT uint32_t ffi_get_child_id_by_name(uint32_t compID, const char* name);
+LD_FFI_EXPORT uint64_t ffi_get_parent_id(uint64_t cuid);
+LD_FFI_EXPORT uint64_t ffi_get_child_id_by_name(uint64_t cuid, const char* name);
+LD_FFI_EXPORT void ffi_mark_transform_dirty(uint64_t cuid);
 LD_FFI_EXPORT void ffi_audio_source_component_play(AudioSourceComponent* comp);
 LD_FFI_EXPORT void ffi_audio_source_component_pause(AudioSourceComponent* comp);
 LD_FFI_EXPORT void ffi_audio_source_component_resume(AudioSourceComponent* comp);

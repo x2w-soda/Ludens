@@ -48,17 +48,15 @@ public:
     /// @brief Unload the scene. Destroys resouorces.
     void unload();
 
+    /// @brief Backup the current loaded scene. The next Startup/Cleanup session does not mutate the backup scene.
+    ///        Intended for play-in-editor, runtime will skip this.
+    void backup();
+
     /// @brief Startup the scene for simulation. This attaches scripts to their components.
     void startup();
 
     /// @brief Cleanup the scene simulation. This detaches scripts from their components.
     void cleanup();
-
-    /// @brief Duplicate the current scene into the backup scene.
-    void backup();
-
-    /// @brief Swap current scene and backup scene.
-    void swap();
 
     /// @brief Update the scene with delta time.
     /// @param screenExtent Screen size this frame.
@@ -124,9 +122,6 @@ public:
     /// @brief Reparent a component
     void reparent(CUID compID, CUID parentID);
 
-    /// @brief Get IDs for root component in Scene
-    void get_root_component_cuids(Vector<CUID>& roots);
-
     /// @brief Get interfaces for root components in Scene.
     void get_root_components(Vector<Component>& roots);
 
@@ -160,7 +155,7 @@ public:
     Component get_ruid_component(RUID ruid);
 
     /// @brief Supplies the Mat4 model matrix for a draw call
-    Mat4 get_ruid_transform_mat4(RUID ruid);
+    bool get_ruid_world_mat4(RUID ruid, Mat4& mat4);
 
     /// @brief Public interface for audio source components.
     class AudioSource : public Component
@@ -170,7 +165,7 @@ public:
         AudioSource(Component comp);
         AudioSource(AudioSourceComponent* comp);
 
-        bool load(AssetID clipAsset);
+        bool load(AssetID clipAsset, float pan, float volumeLinear);
 
         void play();
         void pause();
@@ -243,6 +238,7 @@ public:
         void set_z_depth(uint32_t zDepth);
         Rect get_rect();
         void set_rect(const Rect& rect);
+        RUID get_screen_layer();
 
     private:
         Sprite2DComponent* mSprite = nullptr;

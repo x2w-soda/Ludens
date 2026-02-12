@@ -96,7 +96,7 @@ typedef struct __attribute__((aligned(4))) TransformEx {
     Vec3 scale;
     Quat __private_quat;
     Vec3 rotation;
-} Transform;
+} TransformEx;
 
 typedef struct __attribute__((aligned(4))) Transform2D {
     Vec2 position;
@@ -104,12 +104,13 @@ typedef struct __attribute__((aligned(4))) Transform2D {
     float rotation;
 } Transform2D;
 
-uint32_t ffi_get_parent_id(uint32_t compID);
-uint32_t ffi_get_child_id_by_name(uint32_t compID, const char* name);
+uint64_t ffi_get_parent_id(uint64_t compID);
+uint64_t ffi_get_child_id_by_name(uint64_t compID, const char* name);
+void ffi_mark_transform_dirty(uint64_t compID);
 
 typedef struct MeshComponent {
     void* base;
-    Transform transform;
+    TransformEx transform;
 } MeshComponent;
 
 typedef struct __attribute__((aligned(8))) AudioSourceComponent {
@@ -199,7 +200,7 @@ const char* get_ffi_mt()
 
 extern "C" {
 
-uint32_t ffi_get_parent_id(uint32_t compID)
+uint64_t ffi_get_parent_id(uint64_t compID)
 {
     ComponentBase* base = sScene->registry.get_component_base(compID);
     LD_ASSERT(base);
@@ -207,7 +208,7 @@ uint32_t ffi_get_parent_id(uint32_t compID)
     return parent ? parent->cuid : 0;
 }
 
-uint32_t ffi_get_child_id_by_name(uint32_t compID, const char* name)
+uint64_t ffi_get_child_id_by_name(uint64_t compID, const char* name)
 {
     ComponentBase* base = sScene->registry.get_component_base(compID);
     LD_ASSERT(base && base->name);
@@ -221,6 +222,11 @@ uint32_t ffi_get_child_id_by_name(uint32_t compID, const char* name)
     }
 
     return 0;
+}
+
+void ffi_mark_transform_dirty(uint64_t cuid)
+{
+    sScene->registry.mark_component_transform_dirty(cuid);
 }
 
 void ffi_audio_source_component_play(AudioSourceComponent* comp)
