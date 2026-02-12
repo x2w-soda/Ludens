@@ -18,6 +18,7 @@ void RenderSystemCache::create(RenderSystem system, AssetManager assetManager)
     mMeshData.clear();
     mImage2D.clear();
     mSuidToScreenLayer.clear();
+    mScreenLayerToSuid.clear();
 }
 
 void RenderSystemCache::destroy()
@@ -38,6 +39,7 @@ void RenderSystemCache::destroy()
     for (const auto& it : mSuidToScreenLayer)
         mSystem.destroy_screen_layer(it.second);
     mSuidToScreenLayer.clear();
+    mScreenLayerToSuid.clear();
 
     mAssetManager = {};
     mSystem = {};
@@ -72,8 +74,18 @@ RUID RenderSystemCache::get_or_create_screen_layer(SUID layerSUID)
     if (!layerRUID)
         return 0;
 
+    mScreenLayerToSuid[layerRUID] = layerSUID;
     mSuidToScreenLayer[layerSUID] = layerRUID;
+
     return layerRUID;
+}
+
+SUID RenderSystemCache::get_screen_layer_suid(RUID layerRUID)
+{
+    if (!mScreenLayerToSuid.contains(layerRUID))
+        return (SUID)0;
+
+    return mScreenLayerToSuid[layerRUID];
 }
 
 MeshData RenderSystemCache::get_or_create_mesh_data(AssetID meshAUID)

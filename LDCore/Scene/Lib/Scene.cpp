@@ -247,7 +247,6 @@ static bool clone_mesh_component(SceneObj* scene, ComponentBase** dstData, Compo
     Scene::Mesh srcMesh(srcData);
     LD_ASSERT(dstMesh && srcMesh);
 
-    // TODO: suppress srcData MeshDraw
     AssetID srcMeshAID = srcMesh.get_mesh_asset();
 
     return load_mesh_component(scene, (MeshComponent*)dstData, srcMeshAID);
@@ -299,8 +298,7 @@ static bool clone_sprite_2d_component(SceneObj* scene, ComponentBase** dstData, 
     Scene::Sprite2D srcSprite((Sprite2DComponent*)srcData);
     LD_ASSERT(srcSprite);
 
-    // TODO: suppress srcData Sprite2DDraw
-    RUID layerRUID = srcSprite.get_screen_layer();
+    RUID layerRUID = srcSprite.get_screen_layer_ruid();
 
     return load_sprite_2d_component_ruid(scene, (Sprite2DComponent*)dstData, layerRUID);
 }
@@ -1148,11 +1146,24 @@ void Scene::Sprite2D::set_rect(const Rect& rect)
     mSprite->draw.set_rect(rect);
 }
 
-RUID Scene::Sprite2D::get_screen_layer()
+RUID Scene::Sprite2D::get_screen_layer_ruid()
 {
     LD_ASSERT_COMPONENT_LOADED(mData);
 
     return mSprite->draw.get_layer_id();
+}
+
+SUID Scene::Sprite2D::get_screen_layer_suid()
+{
+    LD_ASSERT_COMPONENT_LOADED(mData);
+
+    RUID layerRUID = mSprite->draw.get_layer_id();
+    LD_ASSERT(layerRUID);
+    
+    SUID layerSUID = sScene->renderSystemCache.get_screen_layer_suid(layerRUID);
+    LD_ASSERT(layerSUID);
+
+    return layerSUID;
 }
 
 } // namespace LD

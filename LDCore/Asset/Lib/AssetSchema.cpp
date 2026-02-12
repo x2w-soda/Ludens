@@ -108,12 +108,12 @@ bool AssetSchemaLoader::load_asset_entries(std::string& err)
                 continue;
 
             AssetEntry entry = {.type = assetType};
-            TOMLValue uriTOML = entryTOML["uri"];
-            TOMLValue nameTOML = entryTOML["name"];
-            TOMLValue auidTOML = entryTOML["auid"];
+            TOMLValue idTOML = entryTOML[ASSET_SCHEMA_KEY_ENTRY_ID];
+            TOMLValue uriTOML = entryTOML[ASSET_SCHEMA_KEY_ENTRY_URI];
+            TOMLValue nameTOML = entryTOML[ASSET_SCHEMA_KEY_ENTRY_NAME];
             if (!uriTOML || !uriTOML.get_string(entry.uri) ||
                 !nameTOML || !nameTOML.get_string(entry.name) ||
-                !auidTOML || !auidTOML.get_u32(entry.id))
+                !idTOML || !idTOML.get_u32(entry.id))
                 continue;
 
             if (!mReg.register_asset_with_id(entry))
@@ -172,9 +172,9 @@ bool AssetSchemaSaver::save_asset_entries(std::string& err)
         for (const AssetEntry* entry : entries)
         {
             mWriter.begin_table();
-            mWriter.key("uri").value_string(entry->uri);
-            mWriter.key("name").value_string(entry->name);
-            mWriter.key("auid").value_u32(entry->id);
+            mWriter.key(ASSET_SCHEMA_KEY_ENTRY_ID).value_u32(entry->id);
+            mWriter.key(ASSET_SCHEMA_KEY_ENTRY_URI).value_string(entry->uri);
+            mWriter.key(ASSET_SCHEMA_KEY_ENTRY_NAME).value_string(entry->name);
             mWriter.end_table();
         }
 

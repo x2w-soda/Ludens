@@ -97,17 +97,17 @@ Scene::Component SceneSchemaLoader::load_component(SceneSchemaLoader& loader, TO
         return {};
 
     std::string type;
-    TOMLValue typeTOML = compTOML["type"];
+    TOMLValue typeTOML = compTOML[SCENE_SCHEMA_KEY_COMPONENT_TYPE];
     if (!typeTOML || !typeTOML.get_string(type))
         return {};
 
     std::string name;
-    TOMLValue nameTOML = compTOML["name"];
+    TOMLValue nameTOML = compTOML[SCENE_SCHEMA_KEY_COMPONENT_NAME];
     if (!nameTOML || !nameTOML.get_string(name))
         return {};
 
     SUID compSUID;
-    TOMLValue compIDTOML = compTOML["cuid"];
+    TOMLValue compIDTOML = compTOML[SCENE_SCHEMA_KEY_COMPONENT_ID];
     if (!compIDTOML || !compIDTOML.get_u32(compSUID))
         return {};
 
@@ -124,7 +124,7 @@ Scene::Component SceneSchemaLoader::load_component(SceneSchemaLoader& loader, TO
     }
 
     AssetID scriptID = 0;
-    TOMLValue scriptIDTOML = compTOML["script"];
+    TOMLValue scriptIDTOML = compTOML[SCENE_SCHEMA_KEY_COMPONENT_SCRIPT_ID];
     if (scriptIDTOML)
         scriptIDTOML.get_u32(scriptID);
 
@@ -142,16 +142,16 @@ Scene::Component SceneSchemaLoader::load_audio_source_component(SceneSchemaLoade
         return {};
 
     AssetID clipID = 0;
-    TOMLValue auidTOML = compTOML["auid"];
-    auidTOML.get_u32(clipID);
+    TOMLValue clipIDTOML = compTOML[SCENE_SCHEMA_KEY_AUDIO_SOURCE_CLIP_ID];
+    clipIDTOML.get_u32(clipID);
 
     float pan = 0.5f;
-    TOMLValue panTOML = compTOML["pan"];
+    TOMLValue panTOML = compTOML[SCENE_SCHEMA_KEY_AUDIO_SOURCE_PAN];
     if (panTOML)
         panTOML.get_f32(pan);
 
     float volumeLinear = 1.0f;
-    TOMLValue volumeTOML = compTOML["volume_linear"];
+    TOMLValue volumeTOML = compTOML[SCENE_SCHEMA_KEY_AUDIO_SOURCE_VOLUME_LINEAR];
     if (volumeTOML)
         volumeTOML.get_f32(volumeLinear);
 
@@ -170,7 +170,7 @@ Scene::Component SceneSchemaLoader::load_camera_component(SceneSchemaLoader& loa
         return {};
 
     TOMLValue floatTOML{};
-    TOMLValue toml = compTOML["transform"];
+    TOMLValue toml = compTOML[SCENE_SCHEMA_KEY_COMPONENT_TRANSFORM];
     TransformEx transform{};
     if (!load_transform(transform, toml))
         return {};
@@ -178,33 +178,33 @@ Scene::Component SceneSchemaLoader::load_camera_component(SceneSchemaLoader& loa
     bool isPerspective = false;
     bool isMainCamera = false;
 
-    toml = compTOML["isPerspective"];
+    toml = compTOML[SCENE_SCHEMA_KEY_CAMERA_IS_PERSPECTIVE];
     if (!toml || !toml.get_bool(isPerspective))
         return {};
 
-    toml = compTOML["isMainCamera"];
+    toml = compTOML[SCENE_SCHEMA_KEY_CAMERA_IS_MAIN];
     if (!toml || !toml.get_bool(isMainCamera))
         return {};
 
     if (isPerspective)
     {
-        toml = compTOML["perspective"];
+        toml = compTOML[SCENE_SCHEMA_TABLE_CAMERA_PERSPECTIVE];
         if (!toml || !toml.is_table())
             return {}; // missing perspective info
 
         float fovDegrees;
-        floatTOML = toml["fov"];
+        floatTOML = toml[SCENE_SCHEMA_KEY_CAMERA_PERSPECTIVE_FOV];
         if (!floatTOML || !floatTOML.get_f32(fovDegrees))
             return {};
 
         CameraPerspectiveInfo perspective{};
         perspective.fov = LD_TO_RADIANS(fovDegrees);
 
-        floatTOML = toml["nearClip"];
+        floatTOML = toml[SCENE_SCHEMA_KEY_CAMERA_PERSPECTIVE_NEAR_CLIP];
         if (!floatTOML || !floatTOML.get_f32(perspective.nearClip))
             return {};
 
-        floatTOML = toml["farClip"];
+        floatTOML = toml[SCENE_SCHEMA_KEY_CAMERA_PERSPECTIVE_FAR_CLIP];
         if (!floatTOML || !floatTOML.get_f32(perspective.farClip))
             return {};
 
@@ -216,33 +216,33 @@ Scene::Component SceneSchemaLoader::load_camera_component(SceneSchemaLoader& loa
     }
     else
     {
-        toml = compTOML["orthographic"];
+        toml = compTOML[SCENE_SCHEMA_TABLE_CAMERA_ORTHOGRAPHIC];
         if (!toml || !toml.is_table())
             return {}; // missing orthographic info
 
         CameraOrthographicInfo ortho{};
 
-        floatTOML = toml["left"];
+        floatTOML = toml[SCENE_SCHEMA_KEY_CAMERA_ORTHOGRAPHIC_LEFT];
         if (!floatTOML || !floatTOML.get_f32(ortho.left))
             return {};
 
-        floatTOML = toml["right"];
+        floatTOML = toml[SCENE_SCHEMA_KEY_CAMERA_ORTHOGRAPHIC_RIGHT];
         if (!floatTOML || !floatTOML.get_f32(ortho.right))
             return {};
 
-        floatTOML = toml["bottom"];
+        floatTOML = toml[SCENE_SCHEMA_KEY_CAMERA_ORTHOGRAPHIC_BOTTOM];
         if (!floatTOML || !floatTOML.get_f32(ortho.bottom))
             return {};
 
-        floatTOML = toml["top"];
+        floatTOML = toml[SCENE_SCHEMA_KEY_CAMERA_ORTHOGRAPHIC_TOP];
         if (!floatTOML || !floatTOML.get_f32(ortho.top))
             return {};
 
-        floatTOML = toml["nearClip"];
+        floatTOML = toml[SCENE_SCHEMA_KEY_CAMERA_ORTHOGRAPHIC_NEAR_CLIP];
         if (!floatTOML || !floatTOML.get_f32(ortho.nearClip))
             return {};
 
-        floatTOML = toml["farClip"];
+        floatTOML = toml[SCENE_SCHEMA_KEY_CAMERA_ORTHOGRAPHIC_FAR_CLIP];
         if (!floatTOML || !floatTOML.get_f32(ortho.farClip))
             return {};
 
@@ -264,7 +264,7 @@ Scene::Component SceneSchemaLoader::load_mesh_component(SceneSchemaLoader& loade
         return {};
 
     TransformEx transform;
-    TOMLValue transformTOML = compTOML["transform"];
+    TOMLValue transformTOML = compTOML[SCENE_SCHEMA_KEY_COMPONENT_TRANSFORM];
     if (!load_transform(transform, transformTOML))
         return {};
 
@@ -273,9 +273,9 @@ Scene::Component SceneSchemaLoader::load_mesh_component(SceneSchemaLoader& loade
 
     mesh.set_transform(transform);
 
-    TOMLValue auidTOML = compTOML["auid"];
+    TOMLValue meshIDTOML = compTOML[SCENE_SCHEMA_KEY_MESH_MESH_ID];
     AssetID assetID = 0;
-    auidTOML.get_u32(assetID);
+    meshIDTOML.get_u32(assetID);
     mesh.set_mesh_asset(assetID);
 
     return Scene::Component(mesh.data());
@@ -290,7 +290,7 @@ Scene::Component SceneSchemaLoader::load_sprite_2d_component(SceneSchemaLoader& 
         return {};
 
     SUID screenLayer = 0;
-    TOMLValue screenLayerTOML = compTOML["screen_layer"];
+    TOMLValue screenLayerTOML = compTOML[SCENE_SCHEMA_KEY_SPRITE_2D_SCREEN_LAYER_ID];
     if (screenLayerTOML)
         screenLayerTOML.get_u32(screenLayer);
 
@@ -304,21 +304,21 @@ Scene::Component SceneSchemaLoader::load_sprite_2d_component(SceneSchemaLoader& 
     sprite.set_rect(rect);
 
     Transform2D transform;
-    TOMLValue transformTOML = compTOML["transform"];
+    TOMLValue transformTOML = compTOML[SCENE_SCHEMA_KEY_COMPONENT_TRANSFORM];
     if (!load_transform_2d(transform, transformTOML))
         return {};
 
     sprite.set_transform_2d(transform);
 
     AssetID assetID = 0;
-    TOMLValue auidTOML = compTOML["auid"];
+    TOMLValue auidTOML = compTOML[SCENE_SCHEMA_KEY_SPRITE_2D_TEXTURE_2D_ID];
     if (auidTOML)
         auidTOML.get_u32(assetID);
 
     sprite.set_texture_2d_asset(assetID);
 
     uint32_t zDepth = 0;
-    TOMLValue zDepthTOML = compTOML["zDepth"];
+    TOMLValue zDepthTOML = compTOML[SCENE_SCHEMA_KEY_SPRITE_2D_Z_DEPTH];
     if (zDepthTOML)
         zDepthTOML.get_u32(zDepth);
 
@@ -415,7 +415,7 @@ bool SceneSchemaSaver::save_scene(Scene scene, std::string& toml, std::string& e
     mWriter.key(SCENE_SCHEMA_KEY_VERSION_PATCH).value_i32(LD_VERSION_PATCH);
     mWriter.end_table();
 
-    mWriter.begin_array_table("component");
+    mWriter.begin_array_table(SCENE_SCHEMA_TABLE_COMPONENT);
 
     Vector<Scene::Component> roots;
     mScene.get_root_components(roots);
@@ -426,7 +426,7 @@ bool SceneSchemaSaver::save_scene(Scene scene, std::string& toml, std::string& e
 
     mWriter.end_array_table();
 
-    mWriter.begin_table("hierarchy");
+    mWriter.begin_table(SCENE_SCHEMA_TABLE_HIERARCHY);
     for (auto ite : mChildMap)
     {
         std::string parentID = std::to_string(ite.first);
@@ -455,9 +455,9 @@ bool SceneSchemaSaver::save_audio_source_component(SceneSchemaSaver& saver, Scen
         return false;
 
     TOMLWriter writer = saver.mWriter;
-    writer.key("auid").value_u32(source.get_clip_asset());
-    writer.key("pan").value_f32(source.get_pan());
-    writer.key("volumeLinear").value_f32(source.get_volume_linear());
+    writer.key(SCENE_SCHEMA_KEY_AUDIO_SOURCE_CLIP_ID).value_u32(source.get_clip_asset());
+    writer.key(SCENE_SCHEMA_KEY_AUDIO_SOURCE_PAN).value_f32(source.get_pan());
+    writer.key(SCENE_SCHEMA_KEY_AUDIO_SOURCE_VOLUME_LINEAR).value_f32(source.get_volume_linear());
 
     return true;
 }
@@ -474,40 +474,40 @@ bool SceneSchemaSaver::save_camera_component(SceneSchemaSaver& saver, Scene::Com
     TOMLWriter writer = saver.mWriter;
     TransformEx transform;
     camera.get_transform(transform);
-    save_transform(transform, writer, "transform");
+    save_transform(transform, writer, SCENE_SCHEMA_KEY_COMPONENT_TRANSFORM);
 
-    writer.key("isPerspective").value_bool(camera.is_perspective());
-    writer.key("isMainCamera").value_bool(camera.is_main_camera());
+    writer.key(SCENE_SCHEMA_KEY_CAMERA_IS_PERSPECTIVE).value_bool(camera.is_perspective());
+    writer.key(SCENE_SCHEMA_KEY_CAMERA_IS_MAIN).value_bool(camera.is_main_camera());
 
     if (camera.is_perspective())
     {
-        writer.begin_inline_table("perspective");
+        writer.begin_inline_table(SCENE_SCHEMA_TABLE_CAMERA_PERSPECTIVE);
 
         CameraPerspectiveInfo perspective;
         ok = camera.get_perspective_info(perspective);
         LD_ASSERT(ok);
 
         float fovDegrees = (float)LD_TO_DEGREES(perspective.fov);
-        writer.key("fov").value_f32(fovDegrees);
-        writer.key("nearClip").value_f32(perspective.nearClip);
-        writer.key("farClip").value_f32(perspective.farClip);
+        writer.key(SCENE_SCHEMA_KEY_CAMERA_PERSPECTIVE_FOV).value_f32(fovDegrees);
+        writer.key(SCENE_SCHEMA_KEY_CAMERA_PERSPECTIVE_FAR_CLIP).value_f32(perspective.farClip);
+        writer.key(SCENE_SCHEMA_KEY_CAMERA_PERSPECTIVE_NEAR_CLIP).value_f32(perspective.nearClip);
 
         writer.end_inline_table();
     }
     else
     {
-        writer.begin_inline_table("orthographic");
+        writer.begin_inline_table(SCENE_SCHEMA_TABLE_CAMERA_ORTHOGRAPHIC);
 
         CameraOrthographicInfo ortho;
         ok = camera.get_orthographic_info(ortho);
         LD_ASSERT(ok);
 
-        writer.key("left").value_f32(ortho.left);
-        writer.key("right").value_f32(ortho.right);
-        writer.key("bottom").value_f32(ortho.bottom);
-        writer.key("top").value_f32(ortho.top);
-        writer.key("nearClip").value_f32(ortho.nearClip);
-        writer.key("farClip").value_f32(ortho.farClip);
+        writer.key(SCENE_SCHEMA_KEY_CAMERA_ORTHOGRAPHIC_LEFT).value_f32(ortho.left);
+        writer.key(SCENE_SCHEMA_KEY_CAMERA_ORTHOGRAPHIC_RIGHT).value_f32(ortho.right);
+        writer.key(SCENE_SCHEMA_KEY_CAMERA_ORTHOGRAPHIC_BOTTOM).value_f32(ortho.bottom);
+        writer.key(SCENE_SCHEMA_KEY_CAMERA_ORTHOGRAPHIC_TOP).value_f32(ortho.top);
+        writer.key(SCENE_SCHEMA_KEY_CAMERA_ORTHOGRAPHIC_NEAR_CLIP).value_f32(ortho.nearClip);
+        writer.key(SCENE_SCHEMA_KEY_CAMERA_ORTHOGRAPHIC_FAR_CLIP).value_f32(ortho.farClip);
 
         writer.end_inline_table();
     }
@@ -526,8 +526,8 @@ bool SceneSchemaSaver::save_mesh_component(SceneSchemaSaver& saver, Scene::Compo
     TOMLWriter writer = saver.mWriter;
     TransformEx transform;
     mesh.get_transform(transform);
-    save_transform(transform, writer, "transform");
-    writer.key("auid").value_u32(mesh.get_mesh_asset());
+    save_transform(transform, writer, SCENE_SCHEMA_KEY_COMPONENT_TRANSFORM);
+    writer.key(SCENE_SCHEMA_KEY_MESH_MESH_ID).value_u32(mesh.get_mesh_asset());
 
     return true;
 }
@@ -551,8 +551,9 @@ bool SceneSchemaSaver::save_sprite_2d_component(SceneSchemaSaver& saver, Scene::
         return false;
     save_transform_2d(transform, writer);
 
-    writer.key("auid").value_u32(sprite.get_texture_2d_asset());
-    writer.key("zDepth").value_u32(sprite.get_z_depth());
+    writer.key(SCENE_SCHEMA_KEY_SPRITE_2D_SCREEN_LAYER_ID).value_u32(sprite.get_screen_layer_suid());
+    writer.key(SCENE_SCHEMA_KEY_SPRITE_2D_TEXTURE_2D_ID).value_u32(sprite.get_texture_2d_asset());
+    writer.key(SCENE_SCHEMA_KEY_SPRITE_2D_Z_DEPTH).value_u32(sprite.get_z_depth());
 
     return true;
 }
@@ -567,10 +568,10 @@ void SceneSchemaSaver::save_component(SceneSchemaSaver& saver, Scene::Component 
 
     ComponentType type = root.type();
     std::string compTypeName(sSceneSchemaTable[(int)type].compTypeName);
-    writer.key("type").value_string(compTypeName);
-    writer.key("name").value_string(root.get_name());
-    writer.key("cuid").value_u32(root.suid());
-    writer.key("script").value_u32(root.get_script_asset_id());
+    writer.key(SCENE_SCHEMA_KEY_COMPONENT_ID).value_u32(root.suid());
+    writer.key(SCENE_SCHEMA_KEY_COMPONENT_TYPE).value_string(compTypeName);
+    writer.key(SCENE_SCHEMA_KEY_COMPONENT_NAME).value_string(root.get_name());
+    writer.key(SCENE_SCHEMA_KEY_COMPONENT_SCRIPT_ID).value_u32(root.get_script_asset_id());
 
     LD_ASSERT(sSceneSchemaTable[(int)type].save);
     bool ok = sSceneSchemaTable[(int)type].save(saver, root);
@@ -621,7 +622,7 @@ static void save_transform_2d(const Transform2D& transform, TOMLWriter writer)
 {
     LD_ASSERT(writer);
 
-    writer.key("transform").begin_inline_table();
+    writer.key(SCENE_SCHEMA_KEY_COMPONENT_TRANSFORM).begin_inline_table();
 
     writer.key("position").begin_array();
     writer.value_f32(transform.position.x);
@@ -673,7 +674,7 @@ bool SceneSchemaLoader::load_scene(Scene scene, const View& toml, std::string& e
 
     // extract component tables
     HashMap<SUID, TOMLValue> compValues;
-    TOMLValue componentsTOML = mDoc.get("component");
+    TOMLValue componentsTOML = mDoc.get(SCENE_SCHEMA_TABLE_COMPONENT);
     if (componentsTOML && componentsTOML.is_array())
     {
         int count = componentsTOML.size();
@@ -684,7 +685,7 @@ bool SceneSchemaLoader::load_scene(Scene scene, const View& toml, std::string& e
                 continue;
 
             SUID compSUID;
-            TOMLValue compIDTOML = compTOML["cuid"];
+            TOMLValue compIDTOML = compTOML[SCENE_SCHEMA_KEY_COMPONENT_ID];
             if (compIDTOML && compIDTOML.get_u32(compSUID))
                 compValues[compSUID] = compTOML;
         }
@@ -697,7 +698,7 @@ bool SceneSchemaLoader::load_scene(Scene scene, const View& toml, std::string& e
         LD_ASSERT(compCUID); // TODO: error handling
     }
 
-    TOMLValue hierarchyTOML = mDoc.get("hierarchy");
+    TOMLValue hierarchyTOML = mDoc.get(SCENE_SCHEMA_TABLE_HIERARCHY);
     if (hierarchyTOML && hierarchyTOML.is_table())
     {
         Vector<std::string> keys;

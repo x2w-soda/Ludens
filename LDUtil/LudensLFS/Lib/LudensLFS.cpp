@@ -17,16 +17,16 @@ LudensLFS::LudensLFS()
         return;
     }
 
-    materialIconsPath = lfsPath / fs::path("Tmp/google/material_icons.png");
+    materialIconsPath = lfsPath / fs::path("Texture/Google/material_icons.png");
     assert(fs::exists(materialIconsPath));
 
     fontPath = lfsPath / fs::path("Fonts/Inter_24pt-Regular.ttf");
     assert(fs::exists(fontPath));
 
-    skyboxFolderPath = lfsPath / fs::path("Tmp/skybox/learnopengl");
+    skyboxFolderPath = lfsPath / fs::path("Texture/Skybox/learnopengl");
     assert(fs::exists(skyboxFolderPath));
 
-    projectPath = lfsPath / fs::path("Tmp/projects/project1/project.toml");
+    projectPath = lfsPath / fs::path("Projects/Project3D/project.toml");
     assert(fs::exists(projectPath));
 
     audio.forestAmbiencePath = lfsPath / fs::path("Audio/SonnissGDC2024/InMotionAudio/AMBForst_Forest04_InMotionAudio_TheForestSamples.wav");

@@ -238,7 +238,8 @@ public:
         void set_z_depth(uint32_t zDepth);
         Rect get_rect();
         void set_rect(const Rect& rect);
-        RUID get_screen_layer();
+        RUID get_screen_layer_ruid();
+        SUID get_screen_layer_suid();
 
     private:
         Sprite2DComponent* mSprite = nullptr;

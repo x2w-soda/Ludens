@@ -25,17 +25,8 @@ public:
     /// @brief Get component associated with draw id.
     CUID get_draw_id_component(RUID drawID);
 
-    inline RUID create_screen_layer(const std::string& name)
-    {
-        return mSystem.create_screen_layer(name);
-    }
-
-    inline void destroy_screen_layer(RUID layerID)
-    {
-        mSystem.destroy_screen_layer(layerID);
-    }
-
     RUID get_or_create_screen_layer(SUID screenLayerSUID);
+    SUID get_screen_layer_suid(RUID screenLayerRUID);
     MeshData get_or_create_mesh_data(AssetID meshAUID);
     MeshDraw create_mesh_draw(CUID compID, AssetID meshAUID = 0);
     void destroy_mesh_draw(MeshDraw draw);
@@ -51,7 +42,8 @@ private:
     AssetManager mAssetManager{};
     HashMap<RUID, CUID> mDrawToCuid;        /// map RenderSystem draw ID to component
     HashMap<CUID, RUID> mCuidToDraw;        /// map component to RenderSystem draw ID
-    HashMap<SUID, RUID> mSuidToScreenLayer; /// map serial ID to actual render system resource
+    HashMap<SUID, RUID> mSuidToScreenLayer; /// map screen layer SUID to RUID
+    HashMap<RUID, SUID> mScreenLayerToSuid; /// map screen layer RUID to SUID
     HashMap<AssetID, MeshData> mMeshData;
     HashMap<AssetID, Image2D> mImage2D;
 };
