@@ -22,7 +22,6 @@ struct ViewportWindowObj : EditorWindowObj
     UIWorkspace space;
     UIWindow root;
     TransformEx subjectWorldTransform;
-    SUID subjectSUID;
     Camera editorCamera;
     CameraController editorCameraController;
     CameraPerspectiveInfo editorCameraPerspective;
@@ -35,7 +34,7 @@ struct ViewportWindowObj : EditorWindowObj
     Vec2 viewportExtent;              /// width and height of the entire viewport window
     Vec2 sceneExtent;                 /// width and height of the scene inside the viewport
     Vec2 sceneMousePos;               /// mouse position in sceneExtent
-    bool isGizmoVisible;              /// whether gizmo meshes should be visible
+    SUID gizmoSubjectSUID = 0;        /// component subject to gizmo controls
     bool enableCameraControls;
     Impulse isRequestingPlay;
     Impulse isRequestingStop;
@@ -45,8 +44,6 @@ struct ViewportWindowObj : EditorWindowObj
 
     /// @brief Pick an object in the viewport
     void pick_ruid(RUID id);
-
-    bool get_component_world_pos(Scene::Component comp, Vec3& worldPos, Mat4& worldMat4);
 
     virtual EditorWindowType get_type() override { return EDITOR_WINDOW_VIEWPORT; }
     virtual void on_imgui(float delta) override;
@@ -117,16 +114,20 @@ void ViewportWindowObj::pick_gizmo(SceneOverlayGizmoID id)
 {
     GizmoPlane plane;
     GizmoAxis axis;
+    bool ok;
 
     // writes back to subject transform during mouse drag window events
     // an object should be selected before gizmo mesh can even be selected
-    Scene::Component subject = ctx.get_component(subjectSUID);
-    LD_ASSERT(subjectSUID && subject);
+    Scene::Component subject = ctx.get_component(gizmoSubjectSUID);
+    LD_ASSERT(subject);
 
-    // initialize subject world transform
+    // initialize subject world transform and gizmo center.
     Mat4 worldMat4;
-    get_component_world_pos(subject, gizmoCenter, worldMat4);
-    bool ok = decompose_mat4_to_transform(worldMat4, subjectWorldTransform);
+    ok = subject.get_world_mat4(worldMat4);
+    LD_ASSERT(ok);
+
+    gizmoCenter = (worldMat4 * Vec4(0.0f, 0.0f, 0.0f, 1.0f)).as_vec3();
+    ok = decompose_mat4_to_transform(worldMat4, subjectWorldTransform);
     LD_ASSERT(ok);
 
     switch (gizmoType)
@@ -153,25 +154,10 @@ void ViewportWindowObj::pick_gizmo(SceneOverlayGizmoID id)
 void ViewportWindowObj::pick_ruid(RUID id)
 {
     Scene::Component comp = ctx.get_component_by_ruid(id);
-    LD_ASSERT(comp);
 
-    if (comp)
-    {
-        subjectSUID = comp.suid();
-        ctx.set_selected_component(subjectSUID);
-    }
-}
+    gizmoSubjectSUID = comp ? comp.suid() : 0;
 
-bool ViewportWindowObj::get_component_world_pos(Scene::Component comp, Vec3& worldPos, Mat4& worldMat4)
-{
-    if (!comp || !comp.get_world_mat4(worldMat4))
-        return false;
-
-    Vec3 localPos(0.0f);
-    Vec4 worldPosW = worldMat4 * Vec4(localPos, 1.0f);
-    worldPos = worldPosW.as_vec3() / worldPosW.w;
-
-    return true;
+    ctx.set_selected_component(gizmoSubjectSUID);
 }
 
 void ViewportWindowObj::on_imgui(float delta)
@@ -275,7 +261,7 @@ void ViewportWindowObj::update(float delta)
         ctx.stop_scene();
 
     // update gizmo scale from camera
-    if (isGizmoVisible)
+    if (gizmoSubjectSUID)
         gizmoScale = editorCamera.screen_to_world_size(gizmoCenter, sceneExtent.y, GIZMO_SCREEN_SIZE_Y);
 
     // update camera controls
@@ -399,7 +385,7 @@ void ViewportWindowObj::on_drag(MouseButton btn, const Vec2& dragPos, bool begin
     if (control == GIZMO_CONTROL_NONE)
         return;
 
-    LD_ASSERT(subjectSUID);
+    LD_ASSERT(gizmoSubjectSUID);
     TransformEx& worldT = subjectWorldTransform;
     const Vec2 scenePos(dragPos.x, dragPos.y - VIEWPORT_TOOLBAR_HEIGHT);
 
@@ -438,14 +424,15 @@ void ViewportWindowObj::on_drag(MouseButton btn, const Vec2& dragPos, bool begin
 
     // get inverse parent world matrix
     Mat4 parentInv(1.0f);
-    Scene::Component subject = ctx.get_component(subjectSUID);
+    Scene::Component subject = ctx.get_component(gizmoSubjectSUID);
     Scene::Component parent{};
+    bool ok;
 
     if (subject && (parent = subject.get_parent()))
     {
-        Vec3 parentWorldPos;
         Mat4 parentWorldMat4(1.0f);
-        get_component_world_pos(subject, parentWorldPos, parentWorldMat4);
+        ok = parent.get_world_mat4(parentWorldMat4);
+        LD_ASSERT(ok);
         parentInv = Mat4::inverse(parentWorldMat4);
     }
 
@@ -455,13 +442,13 @@ void ViewportWindowObj::on_drag(MouseButton btn, const Vec2& dragPos, bool begin
 
     // decompose local matrix to local transform
     TransformEx localTransform;
-    bool ok = decompose_mat4_to_transform(localMat4, localTransform);
+    ok = decompose_mat4_to_transform(localMat4, localTransform);
     LD_ASSERT(ok);
 
     subject.set_transform(localTransform);
 
     // update gizmo center to new world space position
-    get_component_world_pos(subject, gizmoCenter, worldMat4);
+    gizmoCenter = (worldMat4 * Vec4(0.0f, 0.0f, 0.0f, 1.0f)).as_vec3();
 }
 
 void ViewportWindowObj::on_editor_event(const EditorEvent* event, void* user)
@@ -473,19 +460,27 @@ void ViewportWindowObj::on_editor_event(const EditorEvent* event, void* user)
 
     const auto* selectionEvent = static_cast<const EditorNotifyComponentSelectionEvent*>(event);
 
-    TransformEx localTransform;
-    if (!selectionEvent->component || !self.ctx.get_selected_component_transform(localTransform))
+    // clear gizmo
+    if (selectionEvent->component == 0)
     {
-        self.isGizmoVisible = false;
-        self.subjectSUID = 0;
+        self.gizmoSubjectSUID = 0;
         return;
     }
 
-    Scene::Component subject = self.ctx.get_component(self.subjectSUID);
+    Scene::Component subject = self.ctx.get_component(selectionEvent->component);
+    LD_ASSERT(subject);
+
     Mat4 worldMat4;
-    self.subjectSUID = selectionEvent->component;
-    self.isGizmoVisible = true;
-    self.get_component_world_pos(subject, self.gizmoCenter, worldMat4);
+    if (subject.get_world_mat4(worldMat4))
+    {
+        self.gizmoSubjectSUID = selectionEvent->component;
+        self.gizmoCenter = (worldMat4 * Vec4(0.0f, 0.0f, 0.0f, 1.0f)).as_vec3();
+    }
+    else
+    {
+        // selected component type has no transforms for gizmo
+        self.gizmoSubjectSUID = 0;
+    }
 }
 
 //
@@ -514,7 +509,7 @@ EditorWindow ViewportWindow::create(const EditorWindowInfo& windowI)
     obj->editorCameraController = CameraController::create(obj->editorCamera, 3.0f, 0.22f);
 
     obj->gizmoType = SCENE_OVERLAY_GIZMO_TRANSLATION;
-    obj->isGizmoVisible = false;
+    obj->gizmoSubjectSUID = 0;
 
     obj->ctx.add_observer(&ViewportWindowObj::on_editor_event, obj);
 
@@ -560,7 +555,7 @@ bool ViewportWindow::get_mouse_pos(Vec2& mousePos)
 
 void ViewportWindow::get_gizmo_state(SceneOverlayGizmo& gizmoType, Vec3& gizmoCenter, float& gizmoScale, RenderSystemSceneGizmoColor& gizmoColor)
 {
-    if (!mObj->isGizmoVisible)
+    if (!mObj->gizmoSubjectSUID)
     {
         gizmoType = SCENE_OVERLAY_GIZMO_NONE;
         return;

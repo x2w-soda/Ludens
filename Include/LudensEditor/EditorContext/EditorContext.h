@@ -36,7 +36,7 @@ struct EditorContext : Handle<struct EditorContextObj>
     static void destroy(EditorContext ctx);
 
     /// @brief Callback to inform the render system the model matrix of RUIDs
-    static Mat4 render_system_mat4_callback(RUID ruid, void* user);
+    static bool render_system_mat4_callback(RUID ruid, Mat4& mat4, void* user);
 
     /// @brief Redo most recent undo.
     void action_redo();

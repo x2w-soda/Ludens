@@ -83,7 +83,7 @@ void eui_inspect_transform_component(InspectorWindowObj& self, Scene::Component 
     TransformEx transform;
     comp.get_transform(transform);
     eui_transform_edit(editorTheme, &transform);
-    comp.set_transform(transform);
+    // comp.set_transform(transform);
 }
 
 void eui_inspect_camera_component(InspectorWindowObj& self, Scene::Component comp)
@@ -93,9 +93,10 @@ void eui_inspect_camera_component(InspectorWindowObj& self, Scene::Component com
     EditorTheme editorTheme = self.ctx.get_settings().get_theme();
 
     TransformEx transform;
-    comp.get_transform(transform);
+    bool ok = comp.get_transform(transform);
+    LD_ASSERT(ok);
     eui_transform_edit(editorTheme, &transform);
-    comp.set_transform(transform);
+    //comp.set_transform(transform);
 
     // TODO:
 }
@@ -109,10 +110,11 @@ static void eui_inspect_mesh_component(InspectorWindowObj& self, Scene::Componen
     Scene::Mesh mesh(comp);
     LD_ASSERT(mesh);
 
-    TransformEx transform;
-    mesh.get_transform(transform);
+    TransformEx transform{};
+    bool ok = mesh.get_transform(transform);
+    LD_ASSERT(ok);
     eui_transform_edit(editorTheme, &transform);
-    mesh.set_transform(transform);
+    // mesh.set_transform(transform);
 
     AssetID assetID = mesh.get_mesh_asset();
     MeshAsset asset = (MeshAsset)AM.get_asset(assetID, ASSET_TYPE_MESH);
@@ -131,10 +133,11 @@ void eui_inspect_sprite_2d_component(InspectorWindowObj& self, Scene::Component 
     Scene::Sprite2D sprite(comp);
     LD_ASSERT(sprite);
 
-    Transform2D transform;
-    sprite.get_transform_2d(transform);
+    Transform2D transform{};
+    bool ok = sprite.get_transform_2d(transform);
+    LD_ASSERT(ok);
     eui_transform_2d_edit(editorTheme, &transform);
-    sprite.set_transform_2d(transform);
+    // sprite.set_transform_2d(transform);
 
     AssetID assetID = sprite.get_texture_2d_asset();
     Texture2DAsset asset = (Texture2DAsset)AM.get_asset(assetID, ASSET_TYPE_TEXTURE_2D);

@@ -47,7 +47,6 @@ struct EditorContextObj
     Vector<FS::Path> scenePaths;   /// path to scene schema files in project
     ObserverList<const EditorEvent*> observers;
     SUID selectedComponentSUID = 0;
-    RUID selectedComponentRUID = 0;
     bool isPlaying;
 
     // TODO: union of all params? or can we accumulate params for multiple actions simultaneously?
@@ -276,7 +275,6 @@ void EditorContextObj::load_project_scene(const FS::Path& sceneSchemaPath)
 
     this->sceneSchemaPath = sceneSchemaPath;
     selectedComponentSUID = 0;
-    selectedComponentRUID = 0;
 
     if (scene)
     {
@@ -291,11 +289,13 @@ void EditorContextObj::load_project_scene(const FS::Path& sceneSchemaPath)
         scene = Scene::create(sceneI);
     }
 
-    // load the scene
-    std::string err;
-    bool ok = SceneSchema::load_scene_from_file(scene, sceneSchemaPath, err);
-    LD_ASSERT(ok); // TODO:
-    scene.load();
+    scene.load([&](Scene scene) -> bool {
+        // load the scene
+        std::string err;
+        return SceneSchema::load_scene_from_file(scene, sceneSchemaPath, err);
+    });
+
+    // TODO: check scene load success
 
     EditorNotifySceneLoadEvent event{};
     notify_observers(&event);
@@ -413,11 +413,11 @@ void EditorContext::destroy(EditorContext ctx)
     heap_delete<EditorContextObj>(obj);
 }
 
-Mat4 EditorContext::render_system_mat4_callback(RUID ruid, void* user)
+bool EditorContext::render_system_mat4_callback(RUID ruid, Mat4& mat4, void* user)
 {
     EditorContextObj& self = *(EditorContextObj*)user;
 
-    return self.scene.get_ruid_transform_mat4(ruid);
+    return self.scene.get_ruid_world_mat4(ruid, mat4);
 }
 
 void EditorContext::action_redo()
@@ -568,7 +568,6 @@ void EditorContext::play_scene()
 
     // play a duplicated scene
     mObj->scene.backup();
-    mObj->scene.swap();
     mObj->scene.startup();
 }
 
@@ -583,7 +582,6 @@ void EditorContext::stop_scene()
 
     // restore original scene
     mObj->scene.cleanup();
-    mObj->scene.swap();
 }
 
 bool EditorContext::is_playing()
@@ -616,14 +614,17 @@ void EditorContext::set_selected_component(SUID compSUID)
         return;
 
     Scene::Component comp = mObj->scene.get_component_by_suid(compSUID);
-    if (!comp)
-        return;
-
-    // update state and notify observers
-    EditorNotifyComponentSelectionEvent event(compSUID);
-    mObj->selectedComponentSUID = compSUID;
-    mObj->selectedComponentRUID = comp.ruid();
-    mObj->notify_observers(&event);
+    if (comp)
+    {
+        // update state and notify observers
+        EditorNotifyComponentSelectionEvent event(compSUID);
+        mObj->selectedComponentSUID = compSUID;
+        mObj->notify_observers(&event);
+    }
+    else
+    {
+        mObj->selectedComponentSUID = 0;
+    }
 }
 
 SUID EditorContext::get_selected_component()
@@ -643,7 +644,9 @@ Scene::Component EditorContext::get_component_by_ruid(RUID ruid)
 
 RUID EditorContext::get_selected_component_ruid()
 {
-    return mObj->selectedComponentRUID;
+    Scene::Component comp = mObj->scene.get_component_by_suid(mObj->selectedComponentSUID);
+
+    return comp ? comp.ruid() : 0;
 }
 
 bool EditorContext::get_selected_component_transform(TransformEx& transform)

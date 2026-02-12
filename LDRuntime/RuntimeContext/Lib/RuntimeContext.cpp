@@ -30,7 +30,7 @@ struct RuntimeContextObj
     void render_frame(const Vec2& screenExtent);
 
     /// @brief Callback to inform the render system the transforms of RUIDs.
-    static Mat4 render_system_transform_callback(RUID ruid, void* user);
+    static bool render_system_transform_callback(RUID ruid, Mat4& wolrdMat4, void* user);
 };
 
 void RuntimeContextObj::render_frame(const Vec2& screenExtent)
@@ -56,11 +56,11 @@ void RuntimeContextObj::render_frame(const Vec2& screenExtent)
     renderSystem.submit_frame();
 }
 
-Mat4 RuntimeContextObj::render_system_transform_callback(RUID ruid, void* user)
+bool RuntimeContextObj::render_system_transform_callback(RUID ruid, Mat4& worldMat4, void* user)
 {
     RuntimeContextObj& self = *(RuntimeContextObj*)user;
 
-    return self.scene.get_ruid_transform_mat4(ruid);
+    return self.scene.get_ruid_world_mat4(ruid, worldMat4);
 }
 
 //
@@ -120,11 +120,14 @@ RuntimeContext RuntimeContext::create(const RuntimeContextInfo& info)
     sceneI.renderSystem = obj->renderSystem;
     obj->scene = Scene::create(sceneI);
 
-    // load default scene
-    std::string err;
-    bool ok = SceneSchema::load_scene_from_file(obj->scene, defaultScenePath, err);
-    LD_ASSERT(ok); // TODO:
-    obj->scene.load();
+    obj->scene.load([&](Scene scene) -> bool {
+        // load default scene
+        std::string err;
+        return SceneSchema::load_scene_from_file(scene, defaultScenePath, err);
+    });
+
+    // TODO: check scene load success
+
     obj->scene.startup();
 
     return RuntimeContext(obj);
