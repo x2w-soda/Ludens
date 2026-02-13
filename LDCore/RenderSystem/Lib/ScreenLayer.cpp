@@ -12,13 +12,16 @@
 
 namespace LD {
 
+static_assert(LD::IsTrivial<Sprite2DDrawObj>);
+static_assert(LD::IsTrivial<ScreenLayerItem>);
+
 ScreenLayerObj::ScreenLayerObj(RUID id, const std::string& name)
     : mID(id), mName(name)
 {
     LD_ASSERT(mID && !mName.empty());
 
     PoolAllocatorInfo paI{};
-    paI.blockSize = sizeof(Sprite2DDraw);
+    paI.blockSize = sizeof(Sprite2DDrawObj);
     paI.pageSize = 256; // TODO: parameterize
     paI.usage = MEMORY_USAGE_RENDER;
     paI.isMultiPage = true;
@@ -41,33 +44,18 @@ ScreenLayerObj::~ScreenLayerObj()
     }
 }
 
-void ScreenLayerObj::invalidate(RenderSystemMat4Callback mat4Callback, void* user)
+void ScreenLayerObj::invalidate()
 {
     LD_PROFILE_SCOPE;
 
-    // TODO: This is still a lot of CPU overhead despite PoolAllocator providing cache-friendly iteration.
-    //       Maybe Model matrix could be uploaded as UBO for ScreenRenderComponent?
     for (auto it = mSprite2DDrawPA.begin(); it; ++it)
     {
         auto* draw = (Sprite2DDrawObj*)it.data();
 
-        Mat4 modelMat;
-        if (!draw->image || !mat4Callback(draw->id, modelMat, user))
-            continue;
-
-        Vec4 tl = modelMat * Vec4(draw->rect.get_pos(), 0.0f, 1.0f);
-        Vec4 tr = modelMat * Vec4(draw->rect.get_pos_tr(), 0.0f, 1.0f);
-        Vec4 br = modelMat * Vec4(draw->rect.get_pos_br(), 0.0f, 1.0f);
-        Vec4 bl = modelMat * Vec4(draw->rect.get_pos_bl(), 0.0f, 1.0f);
-
         ScreenLayerItem item;
-        item.image = draw->image;
-        item.color = Color(0xFFFFFFFF);
         item.zDepth = draw->zDepth;
-        item.tl = Vec2(tl.x / tl.w, tl.y / tl.w);
-        item.tr = Vec2(tr.x / tr.w, tr.y / tr.w);
-        item.br = Vec2(br.x / br.w, br.y / br.w);
-        item.bl = Vec2(bl.x / bl.w, bl.y / bl.w);
+        item.type = SCREEN_LAYER_ITEM_SPRITE_2D;
+        item.sprite2D = draw;
         mDrawList.push_back(item);
     }
 
@@ -79,14 +67,15 @@ TView<ScreenLayerItem> ScreenLayerObj::get_draw_list()
     return TView<ScreenLayerItem>(mDrawList.data(), mDrawList.size());
 }
 
-Sprite2DDrawObj* ScreenLayerObj::create_sprite_2d(RUID drawID, const Rect& rect, RImage image, uint32_t zDepth)
+Sprite2DDrawObj* ScreenLayerObj::create_sprite_2d(RUID drawID, RImage image)
 {
     auto* draw = (Sprite2DDrawObj*)mSprite2DDrawPA.allocate();
     draw->layer = this;
     draw->id = drawID;
-    draw->rect = rect;
+    draw->region = {};
     draw->image = image;
-    draw->zDepth = zDepth;
+    draw->zDepth = 0;
+    draw->pivot = {};
 
     return draw;
 }

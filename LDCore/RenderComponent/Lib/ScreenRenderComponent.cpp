@@ -565,12 +565,11 @@ void ScreenRenderComponent::pop_color_mask()
         mObj->mColorMask = mObj->mColorMasks.top();
 }
 
-void ScreenRenderComponent::draw(const Vec2& tl, const Vec2& tr, const Vec2& br, const Vec2& bl, RImage image, Color color)
+RectVertex* ScreenRenderComponent::draw(RImage image)
 {
     if (mObj->mRectBatch.is_full())
         mObj->flush_rects();
 
-    color = color * mObj->mColorMask;
     uint32_t control = 0;
 
     if (image)
@@ -580,11 +579,14 @@ void ScreenRenderComponent::draw(const Vec2& tl, const Vec2& tr, const Vec2& br,
         control = get_rect_vertex_control_bits(imageIdx, RECT_VERTEX_IMAGE_HINT_NONE, 0);
     }
 
+    // NOTE: this allows user to bypass mObj->mColorMask and write the final color directly
     RectVertex* v = mObj->mRectBatch.write_rect();
-    v[0] = {tl.x, tl.y, 0.0f, 0.0f, color, control}; // TL
-    v[1] = {tr.x, tr.y, 1.0f, 0.0f, color, control}; // TR
-    v[2] = {br.x, br.y, 1.0f, 1.0f, color, control}; // BR
-    v[3] = {bl.x, bl.y, 0.0f, 1.0f, color, control}; // BL
+    v[0].control = control;
+    v[1].control = control;
+    v[2].control = control;
+    v[3].control = control;
+
+    return v;
 }
 
 void ScreenRenderComponent::draw_rect(const Rect& rect, Color color)

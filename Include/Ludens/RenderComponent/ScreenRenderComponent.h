@@ -10,6 +10,7 @@
 namespace LD {
 
 struct ScreenRenderComponentInfo;
+struct RectVertex;
 
 /// @brief A component for batch rendering 2D primitives.
 struct ScreenRenderComponent : Handle<struct ScreenRenderComponentObj>
@@ -44,8 +45,8 @@ struct ScreenRenderComponent : Handle<struct ScreenRenderComponentObj>
     /// @brief Pop a color mask off the stack, the remaining top color mask takes effect.
     void pop_color_mask();
 
-    /// @brief Draw a 2D primitive.
-    void draw(const Vec2& tl, const Vec2& tr, const Vec2& br, const Vec2& bl, RImage image, Color color);
+    /// @brief Get address to write 4 rect vertices. RectVertex::control bits are already decided by image.
+    RectVertex* draw(RImage image);
 
     /// @brief draw a rect
     /// @param rect render area in screen space

@@ -13,6 +13,7 @@
 #include <Ludens/RenderComponent/ForwardRenderComponent.h>
 #include <Ludens/RenderComponent/Layout/PipelineLayouts.h>
 #include <Ludens/RenderComponent/Layout/SetLayouts.h>
+#include <Ludens/RenderComponent/Layout/VertexLayouts.h>
 #include <Ludens/RenderComponent/Pipeline/RMeshPipeline.h>
 #include <Ludens/RenderComponent/SceneOverlayComponent.h>
 #include <Ludens/RenderComponent/ScreenPickComponent.h>
@@ -36,6 +37,16 @@ bool Sprite2DDraw::set_image(Image2D image2D)
     return true;
 }
 
+Vec2 Sprite2DDraw::get_pivot()
+{
+    return mObj->pivot;
+}
+
+void Sprite2DDraw::set_pivot(const Vec2& pivot)
+{
+    mObj->pivot = pivot;
+}
+
 uint32_t Sprite2DDraw::get_z_depth()
 {
     return mObj->zDepth;
@@ -46,14 +57,14 @@ void Sprite2DDraw::set_z_depth(uint32_t zDepth)
     mObj->zDepth = zDepth;
 }
 
-Rect Sprite2DDraw::get_rect()
+Rect Sprite2DDraw::get_region()
 {
-    return mObj->rect;
+    return mObj->region;
 }
 
-void Sprite2DDraw::set_rect(const Rect& rect)
+void Sprite2DDraw::set_region(const Rect& region)
 {
-    mObj->rect = rect;
+    mObj->region = region;
 }
 
 RUID Sprite2DDraw::get_layer_id()
@@ -110,7 +121,7 @@ public:
     MeshDrawObj* create_mesh_draw(MeshDataObj* data);
     void destroy_mesh_draw(MeshDrawObj* draw);
 
-    Sprite2DDrawObj* create_sprite_2d_draw(RImage image, RUID layerID, const Rect& rect, uint32_t zDepth);
+    Sprite2DDrawObj* create_sprite_2d_draw(RImage image, RUID layerID);
     void destroy_sprite_2d_draw(Sprite2DDrawObj* draw);
 
     inline RUID get_id() { return mRUIDCtr.get_id(); }
@@ -765,12 +776,12 @@ void RenderSystemObj::destroy_mesh_draw(MeshDrawObj* draw)
     mMeshDraw.erase(drawID);
 }
 
-Sprite2DDrawObj* RenderSystemObj::create_sprite_2d_draw(RImage image, RUID layerID, const Rect& rect, uint32_t zDepth)
+Sprite2DDrawObj* RenderSystemObj::create_sprite_2d_draw(RImage image, RUID layerID)
 {
-    LD_ASSERT(image && mLayers.contains(layerID));
+    LD_ASSERT(mLayers.contains(layerID));
 
     ScreenLayerObj* layer = mLayers[layerID];
-    Sprite2DDrawObj* draw = layer->create_sprite_2d(get_ruid(), rect, image, zDepth);
+    Sprite2DDrawObj* draw = layer->create_sprite_2d(get_ruid(), image);
     LD_ASSERT(draw);
 
     return draw;
@@ -861,14 +872,62 @@ void RenderSystemObj::screen_rendering(ScreenRenderComponent renderer, void* use
     // TODO: layer draw order!
     for (auto it : self.mLayers)
     {
-        it.second->invalidate(self.mScreenPassMat4Callback, self.mScreenPassUser);
+        it.second->invalidate();
 
         TView<ScreenLayerItem> drawList = it.second->get_draw_list();
 
         for (size_t i = 0; i < drawList.size; i++)
         {
             const ScreenLayerItem& item = drawList.data[i];
-            renderer.draw(item.tl, item.tr, item.br, item.bl, item.image, item.color);
+            const Sprite2DDrawObj* draw = item.sprite2D;
+
+            LD_ASSERT(item.type == SCREEN_LAYER_ITEM_SPRITE_2D);
+            LD_ASSERT(draw && draw->image);
+
+            Mat4 worldMat4;
+            if (!self.mScreenPassMat4Callback(draw->id, worldMat4, self.mScreenPassUser))
+                continue;
+
+            const float imageW = (float)draw->image.width();
+            const float imageH = (float)draw->image.height();
+            const float spriteW = std::min(imageW, draw->region.w);
+            const float spriteH = std::min(imageH, draw->region.h);
+            const float u0 = draw->region.x / imageW;
+            const float u1 = (draw->region.x + draw->region.w) / imageW;
+            const float v0 = draw->region.y / imageH;
+            const float v1 = (draw->region.y + draw->region.h) / imageH;
+            Vec2 localTL = Vec2(0.0f, 0.0f) - draw->pivot;
+            Vec2 localTR = Vec2(spriteW, 0.0f) - draw->pivot;
+            Vec2 localBR = Vec2(spriteW, spriteH) - draw->pivot;
+            Vec2 localBL = Vec2(0.0f, spriteH) - draw->pivot;
+            Vec4 tl = worldMat4 * Vec4(localTL, 0.0f, 1.0f);
+            Vec4 tr = worldMat4 * Vec4(localTR, 0.0f, 1.0f);
+            Vec4 br = worldMat4 * Vec4(localBR, 0.0f, 1.0f);
+            Vec4 bl = worldMat4 * Vec4(localBL, 0.0f, 1.0f);
+            RectVertex* v = renderer.draw(item.sprite2D->image);
+            v[0].x = tl.x;
+            v[0].y = tl.y;
+            v[0].u = u0;
+            v[0].v = v0;
+            v[0].color = 0xFFFFFFFF;
+
+            v[1].x = tr.x;
+            v[1].y = tr.y;
+            v[1].u = u1;
+            v[1].v = v0;
+            v[1].color = 0xFFFFFFFF;
+
+            v[2].x = br.x;
+            v[2].y = br.y;
+            v[2].u = u1;
+            v[2].v = v1;
+            v[2].color = 0xFFFFFFFF;
+
+            v[3].x = bl.x;
+            v[3].y = bl.y;
+            v[3].u = u0;
+            v[3].v = v1;
+            v[3].color = 0xFFFFFFFF;
         }
     }
 
@@ -1004,11 +1063,11 @@ void RenderSystem::destroy_screen_layer(RUID layer)
     mObj->destroy_screen_layer(layer);
 }
 
-Sprite2DDraw RenderSystem::create_sprite_2d_draw(Image2D image2D, RUID layerID, const Rect& rect, uint32_t zDepth)
+Sprite2DDraw RenderSystem::create_sprite_2d_draw(Image2D image2D, RUID layerID)
 {
     LD_ASSERT(layerID);
 
-    Sprite2DDrawObj* obj = mObj->create_sprite_2d_draw(RImage(image2D.unwrap()), layerID, rect, zDepth);
+    Sprite2DDrawObj* obj = mObj->create_sprite_2d_draw(RImage(image2D.unwrap()), layerID);
 
     LD_ASSERT(obj);
     return Sprite2DDraw(obj, obj->id);

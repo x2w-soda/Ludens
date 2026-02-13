@@ -119,10 +119,12 @@ struct Sprite2DDraw : IDHandle<Sprite2DDrawObj, RUID>
         : IDHandle(obj, id) {}
 
     bool set_image(Image2D image2D);
+    Vec2 get_pivot();
+    void set_pivot(const Vec2& pivot);
     uint32_t get_z_depth();
     void set_z_depth(uint32_t zDepth);
-    Rect get_rect();
-    void set_rect(const Rect& rect);
+    Rect get_region();
+    void set_region(const Rect& region);
     RUID get_layer_id();
 };
 
@@ -190,7 +192,7 @@ struct RenderSystem : Handle<class RenderSystemObj>
     RUID create_screen_layer(const std::string& name);
     void destroy_screen_layer(RUID layer);
 
-    Sprite2DDraw create_sprite_2d_draw(Image2D image2D, RUID layer, const Rect& rect, uint32_t zDepth);
+    Sprite2DDraw create_sprite_2d_draw(Image2D image2D, RUID layer);
     void destroy_sprite_2d_draw(Sprite2DDraw draw);
 
     MeshData create_mesh_data(ModelBinary& binary);

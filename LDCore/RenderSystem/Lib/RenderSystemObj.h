@@ -11,15 +11,18 @@ namespace LD {
 
 class ScreenLayerObj;
 
+/// @brief High level intent to draw a sprite, iterated.
 struct Sprite2DDrawObj
 {
-    RUID id = 0;                     // draw identifier for this struct.
-    uint32_t zDepth = 0;             // depth within layer.
-    ScreenLayerObj* layer = nullptr; // link to current screen layer
-    RImage image{};                  // image to render.
-    Rect rect{};                     // sprite local geometry before transform is applied.
+    RUID id;               // draw identifier for this struct
+    ScreenLayerObj* layer; // link to current screen layer
+    RImage image;          // image to render
+    uint32_t zDepth;       // depth within layer
+    Rect region;           // rendererd region in pixel space
+    Vec2 pivot;            // pivot hint for scale and rotation
 };
 
+/// @brief High level intent to draw a mesh, iterated.
 struct MeshDataObj
 {
     RUID id = 0;

@@ -10,18 +10,26 @@
 #include <Ludens/RenderBackend/RBackend.h>
 #include <Ludens/RenderSystem/RenderSystem.h>
 
+#include <cstdint>
 #include <string>
 
 namespace LD {
 
 struct Transform2D;
 
+enum ScreenLayerItemType
+{
+    SCREEN_LAYER_ITEM_SPRITE_2D
+};
+
 struct ScreenLayerItem
 {
     uint32_t zDepth;
-    Color color;
-    RImage image;
-    Vec2 tl, tr, bl, br;
+    ScreenLayerItemType type;
+    union
+    {
+        Sprite2DDrawObj* sprite2D;
+    };
 };
 
 class ScreenLayerObj
@@ -35,7 +43,7 @@ public:
     ScreenLayerObj& operator=(const ScreenLayerObj&) = delete;
 
     /// @brief Force invalidate draw list. This sorts all 2D items by Z depth.
-    void invalidate(RenderSystemMat4Callback mat4Callback, void* user);
+    void invalidate();
 
     TView<ScreenLayerItem> get_draw_list();
     inline void set_name(const std::string& name) { mName = name; }
@@ -44,7 +52,7 @@ public:
 
     /// @brief Create sprite 2d in layer, subsequent modifications can be done through Sprite2DDrawObj directly,
     //         changes are reflected after the next invalidate().
-    Sprite2DDrawObj* create_sprite_2d(RUID drawID, const Rect& rect, RImage image, uint32_t zDepth);
+    Sprite2DDrawObj* create_sprite_2d(RUID drawID, RImage image);
 
     void destroy_sprite_2d(Sprite2DDrawObj* draw);
 
@@ -57,6 +65,5 @@ private:
     PoolAllocator mSprite2DDrawPA{};
     std::string mName;
 };
-
 
 } // namespace LD
