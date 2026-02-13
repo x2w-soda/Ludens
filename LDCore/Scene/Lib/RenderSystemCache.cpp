@@ -131,29 +131,29 @@ void RenderSystemCache::destroy_mesh_draw(MeshDraw draw)
     mSystem.destroy_mesh_draw(draw);
 }
 
-Image2D RenderSystemCache::get_or_create_image_2d(AssetID textureAUID)
+Image2D RenderSystemCache::get_or_create_image_2d(AssetID textureID)
 {
-    Texture2DAsset textureA = (Texture2DAsset)mAssetManager.get_asset(textureAUID, ASSET_TYPE_TEXTURE_2D);
+    Texture2DAsset textureA = (Texture2DAsset)mAssetManager.get_asset(textureID, ASSET_TYPE_TEXTURE_2D);
     LD_ASSERT(textureA);
 
-    if (!mImage2D.contains(textureAUID))
-        mImage2D[textureAUID] = mSystem.create_image_2d(textureA.get_bitmap());
+    if (!mImage2D.contains(textureID))
+        mImage2D[textureID] = mSystem.create_image_2d(textureA.get_bitmap());
 
-    LD_ASSERT(mImage2D[textureAUID]);
-    return mImage2D[textureAUID];
+    LD_ASSERT(mImage2D[textureID]);
+    return mImage2D[textureID];
 }
 
-Sprite2DDraw RenderSystemCache::create_sprite_2d_draw(CUID compID, RUID layerID, AssetID textureAUID)
+Sprite2DDraw RenderSystemCache::create_sprite_2d_draw(CUID compID, RUID layerID, AssetID textureID)
 {
     Sprite2DDraw draw{};
 
-    if (textureAUID)
+    if (textureID)
     {
-        Image2D image2D = get_or_create_image_2d(textureAUID);
-        draw = mSystem.create_sprite_2d_draw(image2D, layerID, {}, 0);
+        Image2D image2D = get_or_create_image_2d(textureID);
+        draw = mSystem.create_sprite_2d_draw(image2D, layerID);
     }
     else
-        draw = mSystem.create_sprite_2d_draw({}, layerID, {}, 0);
+        draw = mSystem.create_sprite_2d_draw({}, layerID);
 
     if (!draw)
         return {};

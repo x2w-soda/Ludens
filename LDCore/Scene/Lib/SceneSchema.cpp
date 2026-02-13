@@ -66,9 +66,12 @@ private:
 };
 
 static bool load_rect(Rect& rect, TOMLValue rectTOML);
+static bool load_vec2(Vec2& vec2, TOMLValue rectTOML);
 static bool load_transform(TransformEx& transform, TOMLValue transformTOML);
 static bool load_transform_2d(Transform2D& transform, TOMLValue transformTOML);
 
+static void save_rect(const Rect& rect, TOMLWriter writer, const char* key);
+static void save_vec2(const Vec2& vec2, TOMLWriter writer, const char* key);
 static void save_transform(const TransformEx& transform, TOMLWriter writer, const char* key);
 static void save_transform_2d(const Transform2D& transform, TOMLWriter writer);
 
@@ -294,14 +297,25 @@ Scene::Component SceneSchemaLoader::load_sprite_2d_component(SceneSchemaLoader& 
     if (screenLayerTOML)
         screenLayerTOML.get_u32(screenLayer);
 
-    if (!sprite.load(screenLayer))
+    AssetID textureID = 0;
+    TOMLValue textureIDTOML = compTOML[SCENE_SCHEMA_KEY_SPRITE_2D_TEXTURE_2D_ID];
+    if (textureIDTOML)
+        textureIDTOML.get_u32(textureID);
+
+    if (!sprite.load(screenLayer, textureID))
         return {};
 
-    Rect rect;
-    TOMLValue localTOML = compTOML.get_key("local", TOML_TYPE_TABLE);
-    if (!load_rect(rect, localTOML))
+    Rect region;
+    TOMLValue regionTOML = compTOML.get_key(SCENE_SCHEMA_KEY_SPRITE_2D_REGION, TOML_TYPE_TABLE);
+    if (!load_rect(region, regionTOML))
         return {};
-    sprite.set_rect(rect);
+    sprite.set_region(region);
+
+    Vec2 pivot;
+    TOMLValue pivotTOML = compTOML.get_key(SCENE_SCHEMA_KEY_SPRITE_2D_PIVOT, TOML_TYPE_TABLE);
+    if (!load_vec2(pivot, pivotTOML))
+        return {};
+    sprite.set_pivot(pivot);
 
     Transform2D transform;
     TOMLValue transformTOML = compTOML[SCENE_SCHEMA_KEY_COMPONENT_TRANSFORM];
@@ -309,13 +323,6 @@ Scene::Component SceneSchemaLoader::load_sprite_2d_component(SceneSchemaLoader& 
         return {};
 
     sprite.set_transform_2d(transform);
-
-    AssetID assetID = 0;
-    TOMLValue auidTOML = compTOML[SCENE_SCHEMA_KEY_SPRITE_2D_TEXTURE_2D_ID];
-    if (auidTOML)
-        auidTOML.get_u32(assetID);
-
-    sprite.set_texture_2d_asset(assetID);
 
     uint32_t zDepth = 0;
     TOMLValue zDepthTOML = compTOML[SCENE_SCHEMA_KEY_SPRITE_2D_Z_DEPTH];
@@ -332,6 +339,13 @@ static bool load_rect(Rect& rect, TOMLValue rectTOML)
     LD_ASSERT(rectTOML && rectTOML.is_table());
 
     return TOMLUtil::load_rect_table(rect, rectTOML);
+}
+
+static bool load_vec2(Vec2& vec2, TOMLValue rectTOML)
+{
+    LD_ASSERT(rectTOML && rectTOML.is_table());
+
+    return TOMLUtil::load_vec2_table(vec2, rectTOML);
 }
 
 static bool load_transform(TransformEx& transform, TOMLValue transformTOML)
@@ -540,11 +554,9 @@ bool SceneSchemaSaver::save_sprite_2d_component(SceneSchemaSaver& saver, Scene::
     if (!sprite)
         return false;
 
-    Rect rect = sprite.get_rect();
     TOMLWriter writer = saver.mWriter;
-    writer.begin_inline_table("local");
-    TOMLUtil::save_rect_table(rect, writer);
-    writer.end_inline_table();
+    save_rect(sprite.get_region(), writer, SCENE_SCHEMA_KEY_SPRITE_2D_REGION);
+    save_vec2(sprite.get_pivot(), writer, SCENE_SCHEMA_KEY_SPRITE_2D_PIVOT);
 
     Transform2D transform;
     if (!sprite.get_transform_2d(transform))
@@ -589,6 +601,28 @@ void SceneSchemaSaver::save_component(SceneSchemaSaver& saver, Scene::Component 
         saver.mChildMap[root.suid()].push_back(child.suid());
         save_component(saver, child);
     }
+}
+
+static void save_rect(const Rect& rect, TOMLWriter writer, const char* key)
+{
+    LD_ASSERT(writer);
+
+    writer.begin_inline_table(key);
+
+    TOMLUtil::save_rect_table(rect, writer);
+
+    writer.end_inline_table();
+}
+
+static void save_vec2(const Vec2& vec2, TOMLWriter writer, const char* key)
+{
+    LD_ASSERT(writer);
+
+    writer.begin_inline_table(key);
+
+    TOMLUtil::save_vec2_table(vec2, writer);
+
+    writer.end_inline_table();
 }
 
 static void save_transform(const TransformEx& transform, TOMLWriter writer, const char* key)

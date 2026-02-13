@@ -40,8 +40,8 @@ static void cleanup_camera_component(SceneObj* scene, ComponentBase** data);
 static bool load_mesh_component(SceneObj* scene, MeshComponent* mesh, AssetID meshAID);
 static bool clone_mesh_component(SceneObj* scene, ComponentBase** dstData, ComponentBase** srcData);
 static void unload_mesh_component(SceneObj* scene, ComponentBase** data);
-static bool load_sprite_2d_component_suid(SceneObj* scene, Sprite2DComponent* sprite, SUID layerSUID);
-static bool load_sprite_2d_component_ruid(SceneObj* scene, Sprite2DComponent* sprite, RUID layerRUID);
+static bool load_sprite_2d_component_suid(SceneObj* scene, Sprite2DComponent* sprite, SUID layerSUID, AssetID texture2D);
+static bool load_sprite_2d_component_ruid(SceneObj* scene, Sprite2DComponent* sprite, RUID layerRUID, AssetID texture2D);
 static bool clone_sprite_2d_component(SceneObj* scene, ComponentBase** dstData, ComponentBase** srcData);
 static void unload_sprite_2d_component(SceneObj* scene, ComponentBase** data);
 
@@ -264,7 +264,7 @@ static void unload_mesh_component(SceneObj* scene, ComponentBase** data)
     base->flags &= ~COMPONENT_FLAG_LOADED_BIT;
 }
 
-static bool load_sprite_2d_component_suid(SceneObj* scene, Sprite2DComponent* sprite, SUID layerSUID)
+static bool load_sprite_2d_component_suid(SceneObj* scene, Sprite2DComponent* sprite, SUID layerSUID, AssetID texture2D)
 {
     LD_PROFILE_SCOPE;
 
@@ -274,18 +274,20 @@ static bool load_sprite_2d_component_suid(SceneObj* scene, Sprite2DComponent* sp
     if (!layerRUID)
         return false;
 
-    return load_sprite_2d_component_ruid(scene, sprite, layerRUID);
+    return load_sprite_2d_component_ruid(scene, sprite, layerRUID, texture2D);
 }
 
-static bool load_sprite_2d_component_ruid(SceneObj* scene, Sprite2DComponent* sprite, RUID layerRUID)
+static bool load_sprite_2d_component_ruid(SceneObj* scene, Sprite2DComponent* sprite, RUID layerRUID, AssetID texture2D)
 {
     LD_PROFILE_SCOPE;
 
     ComponentBase* base = sprite->base;
 
-    sprite->draw = scene->renderSystemCache.create_sprite_2d_draw(base->cuid, layerRUID, 0);
+    sprite->draw = scene->renderSystemCache.create_sprite_2d_draw(base->cuid, layerRUID, texture2D);
     if (!sprite->draw)
         return false;
+
+    sprite->assetID = texture2D;
 
     base->flags |= COMPONENT_FLAG_LOADED_BIT;
     return true;
@@ -296,11 +298,20 @@ static bool clone_sprite_2d_component(SceneObj* scene, ComponentBase** dstData, 
     LD_PROFILE_SCOPE;
 
     Scene::Sprite2D srcSprite((Sprite2DComponent*)srcData);
-    LD_ASSERT(srcSprite);
+    Scene::Sprite2D dstSprite((Sprite2DComponent*)dstData);
+    LD_ASSERT(srcSprite && dstSprite);
 
     RUID layerRUID = srcSprite.get_screen_layer_ruid();
+    AssetID texture2D = srcSprite.get_texture_2d_asset();
 
-    return load_sprite_2d_component_ruid(scene, (Sprite2DComponent*)dstData, layerRUID);
+    if (!load_sprite_2d_component_ruid(scene, (Sprite2DComponent*)dstData, layerRUID, texture2D))
+        return false;
+
+    dstSprite.set_pivot(srcSprite.get_pivot());
+    dstSprite.set_region(srcSprite.get_region());
+    dstSprite.set_z_depth(srcSprite.get_z_depth());
+    
+    return true;
 }
 
 static void unload_sprite_2d_component(SceneObj* scene, ComponentBase** data)
@@ -1091,9 +1102,9 @@ Scene::Sprite2D::Sprite2D(Sprite2DComponent* comp)
     }
 }
 
-bool Scene::Sprite2D::load(SUID layerSUID)
+bool Scene::Sprite2D::load(SUID layerSUID, AssetID textureID)
 {
-    return load_sprite_2d_component_suid(sScene, mSprite, layerSUID);
+    return load_sprite_2d_component_suid(sScene, mSprite, layerSUID, textureID);
 }
 
 bool Scene::Sprite2D::set_texture_2d_asset(AssetID textureID)
@@ -1132,18 +1143,30 @@ void Scene::Sprite2D::set_z_depth(uint32_t zDepth)
     mSprite->draw.set_z_depth(zDepth);
 }
 
-Rect Scene::Sprite2D::get_rect()
+Vec2 Scene::Sprite2D::get_pivot()
 {
     LD_ASSERT_COMPONENT_LOADED(mData);
 
-    return mSprite->draw.get_rect();
+    return mSprite->draw.get_pivot();
 }
 
-void Scene::Sprite2D::set_rect(const Rect& rect)
+void Scene::Sprite2D::set_pivot(const Vec2& pivot)
+{
+    LD_ASSERT_COMPONENT_LOADED(mData);
+}
+
+Rect Scene::Sprite2D::get_region()
 {
     LD_ASSERT_COMPONENT_LOADED(mData);
 
-    mSprite->draw.set_rect(rect);
+    return mSprite->draw.get_region();
+}
+
+void Scene::Sprite2D::set_region(const Rect& rect)
+{
+    LD_ASSERT_COMPONENT_LOADED(mData);
+
+    mSprite->draw.set_region(rect);
 }
 
 RUID Scene::Sprite2D::get_screen_layer_ruid()
@@ -1159,7 +1182,7 @@ SUID Scene::Sprite2D::get_screen_layer_suid()
 
     RUID layerRUID = mSprite->draw.get_layer_id();
     LD_ASSERT(layerRUID);
-    
+
     SUID layerSUID = sScene->renderSystemCache.get_screen_layer_suid(layerRUID);
     LD_ASSERT(layerSUID);
 

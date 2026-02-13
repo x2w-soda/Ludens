@@ -28,10 +28,10 @@ public:
     RUID get_or_create_screen_layer(SUID screenLayerSUID);
     SUID get_screen_layer_suid(RUID screenLayerRUID);
     MeshData get_or_create_mesh_data(AssetID meshAUID);
-    MeshDraw create_mesh_draw(CUID compID, AssetID meshAUID = 0);
+    MeshDraw create_mesh_draw(CUID compID, AssetID meshID = 0);
     void destroy_mesh_draw(MeshDraw draw);
     Image2D get_or_create_image_2d(AssetID textureAUID);
-    Sprite2DDraw create_sprite_2d_draw(CUID compID, RUID layerID, AssetID textureAUID = 0);
+    Sprite2DDraw create_sprite_2d_draw(CUID compID, RUID layerID, AssetID textureID = 0);
     void destroy_sprite_2d_draw(Sprite2DDraw draw);
 
 private:

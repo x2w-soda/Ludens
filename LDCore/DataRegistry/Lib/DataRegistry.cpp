@@ -158,7 +158,7 @@ static bool duplicate_subtree(DataRegistry dst, CUID dstParentID, DataRegistry s
     // copy transform state
     if (sComponentTable[(int)srcBase->type].typeFlags & COMPONENT_TYPE_FLAG_TRANSFORM_2D)
     {
-        ComponentBase** srcData = dst.get_component_data(srcID, nullptr);
+        ComponentBase** srcData = src.get_component_data(srcID, nullptr);
         Transform2D* dstTransform = get_component_transform_2d(dstData);
         Transform2D* srcTransform = get_component_transform_2d(srcData);
         LD_ASSERT(srcTransform && dstTransform);

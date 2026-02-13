@@ -230,14 +230,16 @@ public:
         Sprite2D(Component comp);
         Sprite2D(Sprite2DComponent* comp);
 
-        bool load(SUID screenLayerSUID);
+        bool load(SUID screenLayerSUID, AssetID textureID);
 
         bool set_texture_2d_asset(AssetID textureID);
         AssetID get_texture_2d_asset();
         uint32_t get_z_depth();
         void set_z_depth(uint32_t zDepth);
-        Rect get_rect();
-        void set_rect(const Rect& rect);
+        Vec2 get_pivot();
+        void set_pivot(const Vec2& pivot);
+        Rect get_region();
+        void set_region(const Rect& region);
         RUID get_screen_layer_ruid();
         SUID get_screen_layer_suid();
 
