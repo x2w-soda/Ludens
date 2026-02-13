@@ -753,5 +753,31 @@ bool load_rect_table(Rect& rect, TOMLValue table)
     return true;
 }
 
+bool save_vec2_table(const Vec2& vec2, TOMLWriter writer)
+{
+    if (!writer || !writer.is_inline_table_scope())
+        return false;
+
+    writer.key("x").value_f32(vec2.x);
+    writer.key("y").value_f32(vec2.y);
+    return true;
+}
+
+bool load_vec2_table(Vec2& vec2, TOMLValue table)
+{
+    if (!table || !table.is_table())
+        return false;
+
+    TOMLValue x = table.get_key("x");
+    if (!x || !x.get_f32(vec2.x))
+        return false;
+
+    TOMLValue y = table.get_key("y");
+    if (!y || !y.get_f32(vec2.y))
+        return false;
+
+    return true;
+}
+
 } // namespace TOMLUtil
 } // namespace LD

@@ -174,5 +174,13 @@ bool save_rect_table(const Rect& rect, TOMLWriter writer);
 /// @return True on success.
 bool load_rect_table(Rect& rect, TOMLValue table);
 
+/// @brief Save Vec2 as inline table.
+/// @return True on success.
+bool save_vec2_table(const Vec2& vec2, TOMLWriter writer);
+
+/// @brief Load Vec2 from toml table.
+/// @return True on success.
+bool load_vec2_table(Vec2& vec2, TOMLValue table);
+
 } // namespace TOMLUtil
 } // namespace LD
