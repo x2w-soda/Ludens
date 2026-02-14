@@ -3,6 +3,7 @@
 #include <Ludens/DSA/Vector.h>
 #include <Ludens/Header/Handle.h>
 #include <Ludens/Header/Math/Rect.h>
+#include <Ludens/Header/Math/Vec4.h>
 #include <Ludens/Header/View.h>
 #include <Ludens/System/FileSystem.h>
 
@@ -11,118 +12,8 @@
 
 namespace LD {
 
-enum TOMLType
-{
-    TOML_TYPE_EMPTY = 0,
-    TOML_TYPE_BOOL,
-    TOML_TYPE_INT,
-    TOML_TYPE_FLOAT,
-    TOML_TYPE_STRING,
-    TOML_TYPE_OFFSET_DATETIME,
-    TOML_TYPE_LOCAL_DATETIME,
-    TOML_TYPE_LOCAL_DATE,
-    TOML_TYPE_LOCAL_TIME,
-    TOML_TYPE_ARRAY,
-    TOML_TYPE_TABLE,
-};
-
-struct TOMLValue : Handle<struct TOMLValueObj>
-{
-    /// @brief Get value data type.
-    TOMLType type() const;
-
-    inline bool is_bool() const { return type() == TOML_TYPE_BOOL; }
-    inline bool is_int() const { return type() == TOML_TYPE_INT; }
-    inline bool is_float() const { return type() == TOML_TYPE_FLOAT; }
-    inline bool is_string() const { return type() == TOML_TYPE_STRING; }
-    inline bool is_table() const { return type() == TOML_TYPE_TABLE; }
-    inline bool is_array() const { return type() == TOML_TYPE_ARRAY; }
-
-    /// @brief Check if value is a TOML bool.
-    /// @param boolean Output boolean upon success.
-    bool get_bool(bool& boolean) const;
-
-    /// @brief Check if value is a TOML int that is castable to i64.
-    /// @param i64 Output 64-bit signed integer upon success.
-    bool get_i64(int64_t& i64) const;
-
-    /// @brief Check if value is a TOML int that is castable to i32.
-    /// @param i32 Output 32-bit signed integer upon success.
-    bool get_i32(int32_t& i32) const;
-
-    /// @brief Check if value is a TOML int that is castable to u32.
-    /// @param u32 Output 32-bit unsigned integer upon success.
-    bool get_u32(uint32_t& u32) const;
-
-    /// @brief Check if value is a TOML floating point.
-    /// @param f64 Output 64-bit floating point number on success.
-    /// @note TOML integers will be implicitly casted to float.
-    bool get_f64(double& f64) const;
-
-    /// @brief Check if value is a TOML floating point.
-    /// @param f32 Output 32-bit floating point number on success.
-    /// @note TOML integers will be implicitly casted to float.
-    bool get_f32(float& f32) const;
-
-    /// @brief Check if value is a TOML string.
-    /// @param string Output string upon success.
-    bool get_string(std::string& string) const;
-
-    /// @brief Get array size or table size.
-    /// @return Non-negative size, or negative value on failure.
-    int size();
-
-    /// @brief Index into a TOML array.
-    /// @param idx Array index.
-    TOMLValue get_index(int idx);
-
-    /// @brief Shorthand for array get_index.
-    inline TOMLValue operator[](int idx)
-    {
-        return get_index(idx);
-    }
-
-    /// @brief Check if table contains a key.
-    /// @param typeMatch If not null, checks if the value matches the type.
-    /// @return True if value is table type, contains the key, and satisfies optional type matching.
-    bool has_key(const char* key, const TOMLType* typeMatch);
-
-    /// @brief Lookup key in TOML table.
-    TOMLValue get_key(const char* key);
-
-    /// @brief Lookup key in TOML table with expected type.
-    TOMLValue get_key(const char* key, TOMLType type);
-
-    /// @brief Shorthand for table get_key.
-    inline TOMLValue operator[](const char* key)
-    {
-        return get_key(key);
-    }
-
-    /// @brief Get all keys in a table.
-    int get_keys(Vector<std::string>& keys);
-};
-
-/// @brief TOML document handle.
-struct TOMLDocument : Handle<struct TOMLDocumentObj>
-{
-    /// @brief Create empty TOML document.
-    static TOMLDocument create();
-
-    /// @brief Destroy TOML document, all TOML values from this document becomes out of date.
-    static void destroy(TOMLDocument doc);
-
-    /// @brief Get value under root TOML table.
-    TOMLValue get(const char* name);
-};
-
-/// @brief TOML DOM parser.
-struct TOMLParser
-{
-    static bool parse(TOMLDocument dst, const View& view, std::string& error);
-
-    static bool parse_from_file(TOMLDocument dst, const FS::Path& path, std::string& error);
-};
+struct TransformEx;
+struct Transform2D;
 
 struct TOMLWriter : Handle<struct TOMLWriterObj>
 {
@@ -164,23 +55,61 @@ struct TOMLWriter : Handle<struct TOMLWriterObj>
     TOMLWriter value_string(const std::string& str);
 };
 
+struct TOMLReader : Handle<struct TOMLReaderObj>
+{
+    static TOMLReader create(View toml, std::string& err);
+    static void destroy(TOMLReader reader);
+
+    bool is_array_scope();
+    bool is_table_scope();
+
+    bool enter_array(const char* key, int& arraySize);
+    bool enter_table(const char* key);
+    bool enter_table(int index);
+    void exit();
+
+    void get_keys(Vector<std::string>& keys);
+
+    bool read_bool(const char* key, bool& b);
+    bool read_bool(int index, bool& b);
+    bool read_i32(const char* key, int32_t& i32);
+    bool read_i32(int index, int32_t& i32);
+    bool read_i64(const char* key, int64_t& i64);
+    bool read_i64(int index, int64_t& i64);
+    bool read_u32(const char* key, uint32_t& u32);
+    bool read_u32(int index, uint32_t& u32);
+    bool read_f32(const char* key, float& f32);
+    bool read_f32(int index, float& f32);
+    bool read_f64(const char* key, double& f64);
+    bool read_f64(int index, double& f64);
+    bool read_string(const char* key, std::string& str);
+    bool read_string(int index, std::string& str);
+};
+
 namespace TOMLUtil {
 
+bool write_transform(TOMLWriter writer, const char* key, const TransformEx& transform);
+bool read_transform(TOMLReader reader, const char* key, TransformEx& transform);
+bool write_transform_2d(TOMLWriter writer, const char* key, const Transform2D& transform);
+bool read_transform_2d(TOMLReader reader, const char* key, Transform2D& transform);
+
 /// @brief Save rect as inline table.
-/// @return True on success.
-bool save_rect_table(const Rect& rect, TOMLWriter writer);
+bool write_rect(TOMLWriter writer, const char* key, const Rect& rect);
 
 /// @brief Load rect from toml table value.
-/// @return True on success.
-bool load_rect_table(Rect& rect, TOMLValue table);
+bool read_rect(TOMLReader reader, const char* key, Rect& rect);
+
+/// @brief Save Vec3 as inline table.
+bool write_vec3(TOMLWriter writer, const char* key, const Vec3& vec3);
+
+/// @brief Load Vec3 from toml table.
+bool read_vec3(TOMLReader reader, const char* key, Vec3& vec3);
 
 /// @brief Save Vec2 as inline table.
-/// @return True on success.
-bool save_vec2_table(const Vec2& vec2, TOMLWriter writer);
+bool write_vec2(TOMLWriter writer, const char* key, const Vec2& vec2);
 
 /// @brief Load Vec2 from toml table.
-/// @return True on success.
-bool load_vec2_table(Vec2& vec2, TOMLValue table);
+bool read_vec2(TOMLReader reader, const char* key, Vec2& vec2);
 
 } // namespace TOMLUtil
 } // namespace LD
