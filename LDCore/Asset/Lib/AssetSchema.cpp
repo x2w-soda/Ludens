@@ -27,7 +27,7 @@ private:
 
 private:
     AssetRegistry mReg{};
-    TOMLDocument mDoc{};
+    TOMLReader mReader{};
 };
 
 /// @brief Saves AssetRegistry to TOML
@@ -52,40 +52,35 @@ private:
 
 AssetSchemaLoader::~AssetSchemaLoader()
 {
-    if (mDoc)
-        TOMLDocument::destroy(mDoc);
+    if (mReader)
+        TOMLReader::destroy(mReader);
 }
 
 bool AssetSchemaLoader::load_registry(AssetRegistry reg, const View& toml, std::string& err)
 {
-    mDoc = TOMLDocument::create();
     mReg = reg;
+    mReader = TOMLReader::create(toml, err);
 
-    if (!TOMLParser::parse(mDoc, toml, err))
-        return false;
-
-    TOMLValue registryTOML = mDoc.get(ASSET_SCHEMA_TABLE_LUDENS_ASSETS);
-    if (!registryTOML || registryTOML.type() != TOML_TYPE_TABLE)
+    if (!mReader || !mReader.enter_table(ASSET_SCHEMA_TABLE_LUDENS_ASSETS))
         return false;
 
     int32_t version;
-    TOMLValue versionTOML = registryTOML[ASSET_SCHEMA_KEY_VERSION_MAJOR];
-    if (!versionTOML || !versionTOML.get_i32(version) || version != LD_VERSION_MAJOR)
+    if (!mReader.read_i32(ASSET_SCHEMA_KEY_VERSION_MAJOR, version) || version != LD_VERSION_MAJOR)
         return false;
 
-    versionTOML = registryTOML[ASSET_SCHEMA_KEY_VERSION_MINOR];
-    if (!versionTOML || !versionTOML.get_i32(version) || version != LD_VERSION_MINOR)
+    if (!mReader.read_i32(ASSET_SCHEMA_KEY_VERSION_MINOR, version) || version != LD_VERSION_MINOR)
         return false;
 
-    versionTOML = registryTOML[ASSET_SCHEMA_KEY_VERSION_PATCH];
-    if (!versionTOML || !versionTOML.get_i32(version) || version != LD_VERSION_PATCH)
+    if (!mReader.read_i32(ASSET_SCHEMA_KEY_VERSION_PATCH, version) || version != LD_VERSION_PATCH)
         return false;
+
+    mReader.exit();
 
     if (!load_asset_entries(err))
         return false;
 
-    TOMLDocument::destroy(mDoc);
-    mDoc = {};
+    TOMLReader::destroy(mReader);
+    mReader = {};
 
     return true;
 }
@@ -96,24 +91,20 @@ bool AssetSchemaLoader::load_asset_entries(std::string& err)
     {
         AssetType assetType = (AssetType)i;
         const char* typeCstr = get_asset_type_cstr(assetType);
-        TOMLValue entryArrayTOML = mDoc.get(typeCstr);
-        if (!entryArrayTOML || !entryArrayTOML.is_array())
+        int count;
+
+        if (!mReader.enter_array(typeCstr, count))
             continue;
 
-        int arraySize = entryArrayTOML.size();
-        for (int j = 0; j < arraySize; j++)
+        for (int j = 0; j < count; j++)
         {
-            TOMLValue entryTOML = entryArrayTOML[j];
-            if (!entryTOML.is_table())
+            if (!mReader.enter_table(j))
                 continue;
 
             AssetEntry entry = {.type = assetType};
-            TOMLValue idTOML = entryTOML[ASSET_SCHEMA_KEY_ENTRY_ID];
-            TOMLValue uriTOML = entryTOML[ASSET_SCHEMA_KEY_ENTRY_URI];
-            TOMLValue nameTOML = entryTOML[ASSET_SCHEMA_KEY_ENTRY_NAME];
-            if (!uriTOML || !uriTOML.get_string(entry.uri) ||
-                !nameTOML || !nameTOML.get_string(entry.name) ||
-                !idTOML || !idTOML.get_u32(entry.id))
+            if (!mReader.read_string(ASSET_SCHEMA_KEY_ENTRY_URI, entry.uri) ||
+                !mReader.read_string(ASSET_SCHEMA_KEY_ENTRY_NAME, entry.name) ||
+                !mReader.read_u32(ASSET_SCHEMA_KEY_ENTRY_ID, entry.id))
                 continue;
 
             if (!mReg.register_asset_with_id(entry))
@@ -121,7 +112,11 @@ bool AssetSchemaLoader::load_asset_entries(std::string& err)
                 err = std::format("Asset ID {} is already in use, invalid schema", entry.id);
                 return false;
             }
+
+            mReader.exit();
         }
+
+        mReader.exit();
     }
 
     return true;

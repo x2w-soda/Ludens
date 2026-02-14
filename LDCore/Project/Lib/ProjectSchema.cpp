@@ -48,135 +48,113 @@ public:
     bool load_project(Project project, const View& toml, std::string& err);
 
 private:
-    void load_project_settings(ProjectSettings settings, TOMLValue settingsTOML);
-    void load_project_startup_settings(ProjectStartupSettings settings, TOMLValue startupTOML);
-    void load_project_screen_layer_settings(ProjectScreenLayerSettings settings, TOMLValue screenLayerTOML);
+    void load_project_settings(ProjectSettings settings);
+    void load_project_startup_settings(ProjectStartupSettings settings);
+    void load_project_screen_layer_settings(ProjectScreenLayerSettings settings);
 
 private:
     Project mProject{};
-    TOMLDocument mDoc{};
+    TOMLReader mReader{};
 };
 
 ProjectSchemaLoader::~ProjectSchemaLoader()
 {
-    if (mDoc)
-        TOMLDocument::destroy(mDoc);
+    if (mReader)
+        TOMLReader::destroy(mReader);
 }
 
 bool ProjectSchemaLoader::load_project(Project project, const View& toml, std::string& err)
 {
-    mDoc = TOMLDocument::create();
+    mReader = TOMLReader::create(toml, err);
 
-    if (!TOMLParser::parse(mDoc, toml, err))
+    if (!mReader || !mReader.enter_table(PROJECT_SCHEMA_KEY_LUDENS_PROJECT))
         return false;
 
-    TOMLValue projectTOML = mDoc.get(PROJECT_SCHEMA_KEY_LUDENS_PROJECT);
-    if (!projectTOML || !projectTOML.is_table())
+    uint32_t versionMajor;
+    if (!mReader.read_u32(PROJECT_SCHEMA_KEY_VERSION_MAJOR, versionMajor) || versionMajor != LD_VERSION_MAJOR)
         return false;
 
-    int32_t versionMajor;
-    TOMLValue versionMajorTOML = projectTOML[PROJECT_SCHEMA_KEY_VERSION_MAJOR];
-    if (!versionMajorTOML || !versionMajorTOML.get_i32(versionMajor) || versionMajor != LD_VERSION_MAJOR)
+    uint32_t versionMinor;
+    if (!mReader.read_u32(PROJECT_SCHEMA_KEY_VERSION_MINOR, versionMinor) || versionMinor != LD_VERSION_MINOR)
         return false;
 
-    int32_t versionMinor;
-    TOMLValue versionMinorTOML = projectTOML[PROJECT_SCHEMA_KEY_VERSION_MINOR];
-    if (!versionMinorTOML || !versionMinorTOML.get_i32(versionMinor) || versionMinor != LD_VERSION_MINOR)
-        return false;
-
-    int32_t versionPatch;
-    TOMLValue versionPatchTOML = projectTOML[PROJECT_SCHEMA_KEY_VERSION_PATCH];
-    if (!versionPatchTOML || !versionPatchTOML.get_i32(versionPatch) || versionPatch != LD_VERSION_PATCH)
+    uint32_t versionPatch;
+    if (!mReader.read_u32(PROJECT_SCHEMA_KEY_VERSION_PATCH, versionPatch) || versionPatch != LD_VERSION_PATCH)
         return false;
 
     std::string str;
-    TOMLValue nameTOML = projectTOML[PROJECT_SCHEMA_KEY_NAME];
-    if (!nameTOML || !nameTOML.get_string(str))
+    if (!mReader.read_string(PROJECT_SCHEMA_KEY_NAME, str))
         return false;
 
     project.set_name(str);
 
-    TOMLValue assetsTOML = projectTOML[PROJECT_SCHEMA_KEY_ASSETS];
-    if (!assetsTOML || !assetsTOML.get_string(str))
+    if (!mReader.read_string(PROJECT_SCHEMA_KEY_ASSETS, str))
         return false;
 
     project.set_assets_path(FS::Path(str));
 
-    TOMLValue scenesTOML = projectTOML[PROJECT_SCHEMA_KEY_SCENES];
-    if (!scenesTOML || !scenesTOML.is_array())
-        return false;
-
-    int sceneCount = scenesTOML.size();
-    for (int i = 0; i < sceneCount; i++)
+    int sceneCount = 0;
+    if (mReader.enter_array(PROJECT_SCHEMA_KEY_SCENES, sceneCount))
     {
-        TOMLValue sceneTOML = scenesTOML[i];
-        if (sceneTOML.get_string(str))
-            project.add_scene_path(FS::Path(str));
+        for (int i = 0; i < sceneCount; i++)
+        {
+            if (mReader.read_string(i, str))
+                project.add_scene_path(FS::Path(str));
+        }
+        mReader.exit();
     }
 
-    TOMLValue settingsTOML = mDoc.get(PROJECT_SCHEMA_TABLE_SETTINGS);
-    if (!settingsTOML || !settingsTOML.is_table())
-        return false;
+    if (mReader.enter_table(PROJECT_SCHEMA_TABLE_SETTINGS))
+    {
+        load_project_settings(project.get_settings());
+        mReader.exit();
+    }
 
-    load_project_settings(project.get_settings(), settingsTOML);
+    mReader.exit();
 
-    TOMLDocument::destroy(mDoc);
-    mDoc = {};
+    TOMLReader::destroy(mReader);
+    mReader = {};
 
     return true;
 }
 
-void ProjectSchemaLoader::load_project_settings(ProjectSettings settings, TOMLValue settingsTOML)
+void ProjectSchemaLoader::load_project_settings(ProjectSettings settings)
 {
-    TOMLValue startupTOML = settingsTOML[PROJECT_SCHEMA_TABLE_STARTUP];
-
-    if (startupTOML)
+    if (mReader.enter_table(PROJECT_SCHEMA_TABLE_STARTUP))
     {
         ProjectStartupSettings startup = settings.get_startup_settings();
-        load_project_startup_settings(startup, startupTOML);
+        load_project_startup_settings(startup);
+        mReader.exit();
     }
 
-    TOMLValue screenLayerTOML = settingsTOML[PROJECT_SCHEMA_TABLE_SCREEN_LAYER];
-
-    if (screenLayerTOML)
+    if (mReader.enter_table(PROJECT_SCHEMA_TABLE_SCREEN_LAYER))
     {
         ProjectScreenLayerSettings screenLayer = settings.get_screen_layer_settings();
-        load_project_screen_layer_settings(screenLayer, startupTOML);
+        load_project_screen_layer_settings(screenLayer);
+        mReader.exit();
     }
 }
 
-void ProjectSchemaLoader::load_project_startup_settings(ProjectStartupSettings settings, TOMLValue startupTOML)
+void ProjectSchemaLoader::load_project_startup_settings(ProjectStartupSettings settings)
 {
     uint32_t windowWidth = DEFAULT_STARTUP_WINDOW_WIDTH;
-    TOMLValue windowWidthTOML = startupTOML[PROJECT_SCHEMA_KEY_STARTUP_WINDOW_WIDTH];
-    if (windowWidthTOML)
-        windowWidthTOML.get_u32(windowWidth);
-
+    mReader.read_u32(PROJECT_SCHEMA_KEY_STARTUP_WINDOW_WIDTH, windowWidth);
     settings.set_window_width(windowWidth);
 
     uint32_t windowHeight = DEFAULT_STARTUP_WINDOW_HEIGHT;
-    TOMLValue windowHeightTOML = startupTOML[PROJECT_SCHEMA_KEY_STARTUP_WINDOW_HEIGHT];
-    if (windowHeightTOML)
-        windowHeightTOML.get_u32(windowHeight);
-
+    mReader.read_u32(PROJECT_SCHEMA_KEY_STARTUP_WINDOW_HEIGHT, windowHeight);
     settings.set_window_height(windowHeight);
 
     std::string windowName = DEFAULT_STARTUP_WINDOW_NAME;
-    TOMLValue windowNameTOML = startupTOML[PROJECT_SCHEMA_KEY_STARTUP_WINDOW_NAME];
-    if (windowNameTOML)
-        windowNameTOML.get_string(windowName);
-
+    mReader.read_string(PROJECT_SCHEMA_KEY_STARTUP_WINDOW_NAME, windowName);
     settings.set_window_name(windowName);
 
     std::string defaultScenePath = DEFAULT_STARTUP_DEFAULT_SCENE_PATH;
-    TOMLValue defaultScenePathTOML = startupTOML[PROJECT_SCHEMA_KEY_DEFAULT_SCENE_PATH];
-    if (defaultScenePathTOML)
-        defaultScenePathTOML.get_string(defaultScenePath);
-
+    mReader.read_string(PROJECT_SCHEMA_KEY_DEFAULT_SCENE_PATH, defaultScenePath);
     settings.set_default_scene_path(defaultScenePath);
 }
 
-void ProjectSchemaLoader::load_project_screen_layer_settings(ProjectScreenLayerSettings settings, TOMLValue screenLayerTOML)
+void ProjectSchemaLoader::load_project_screen_layer_settings(ProjectScreenLayerSettings settings)
 {
     // TODO:
 }
