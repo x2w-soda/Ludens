@@ -5,80 +5,62 @@
 
 using namespace LD;
 
-TEST_CASE("JSON object")
+TEST_CASE("JSONReader object")
 {
     // from the rapidjson example
-    const char json[] = R"({"project":"rapidjson","stars":10})";
-    JSONDocument doc = JSONDocument::create();
+    std::string json = R"({"project":"rapidjson","stars":10})";
     std::string error;
-    bool success = JSONParser::parse(doc, View(json, sizeof(json) - 1), error);
-    CHECK(success);
-
-    JSONValue root = doc.get_root();
-    CHECK(root.is_object());
+    JSONReader reader = JSONReader::create(View(json.data(), json.size()), error);
+    CHECK(reader);
+    CHECK(reader.enter_root_object());
+    CHECK(reader.is_object_scope());
 
     std::string projectName;
-    JSONValue project = root.get_member("project");
-    CHECK(project);
-    CHECK(project.is_string(&projectName));
+    CHECK(reader.read_string("project", projectName));
     CHECK(projectName == "rapidjson");
 
-    JSONValue stars = root.get_member("stars");
-    CHECK(stars);
-    CHECK(stars.is_number());
-
     int32_t i32;
-    CHECK(stars.is_i32(&i32));
+    CHECK(reader.read_i32("stars", i32));
     CHECK(i32 == 10);
 
-    JSONDocument::destroy(doc);
+    reader.exit();
+    JSONReader::destroy(reader);
 
-    MemoryProfile profile = get_memory_profile(MEMORY_USAGE_SERIAL);
-    CHECK(profile.current == 0);
+    int leaks = get_memory_leaks(nullptr);
+    CHECK(leaks == 0);
 }
 
-TEST_CASE("JSON array")
+TEST_CASE("JSONReader array")
 {
-    const char json[] = R"([123, false, true, [ "string" ]])";
-    JSONDocument doc = JSONDocument::create();
+    int size;
+    std::string json = R"([123, false, true, [ "string" ]])";
     std::string error;
-    bool success = JSONParser::parse(doc, View(json, sizeof(json) - 1), error);
-    CHECK(success);
-
-    JSONValue root = doc.get_root();
-    CHECK(root.is_array());
-    CHECK(root.size() == 4);
+    JSONReader reader = JSONReader::create(View(json.data(), json.size()), error);
+    CHECK(reader);
+    CHECK(reader.enter_root_array(size));
+    CHECK(reader.is_array_scope());
+    CHECK(size == 4);
 
     int32_t i32;
-    JSONValue element = root.get_index(0);
-    CHECK(element);
-    CHECK(element.is_i32(&i32));
+    CHECK(reader.read_i32(0, i32));
     CHECK(i32 == 123);
 
-    element = root.get_index(1);
-    CHECK(element);
-    CHECK(element.is_false());
-
-    element = root.get_index(2);
-    CHECK(element);
-    CHECK(element.is_true());
-
-    JSONValue array = root.get_index(3);
-    CHECK(array);
-    CHECK(array.is_array());
-    CHECK(array.size() == 1);
-
-    CHECK_FALSE(root.get_index(4));
+    bool b;
+    CHECK(reader.read_bool(1, b));
+    CHECK(b == false);
+    CHECK(reader.read_bool(2, b));
+    CHECK(b == true);
 
     std::string str;
-    element = array.get_index(0);
-    CHECK(element);
-    CHECK(element.is_string(&str));
+    CHECK(reader.enter_array(3, size));
+    CHECK(size == 1);
+    CHECK(reader.read_string(0, str));
     CHECK(str == "string");
-    CHECK_FALSE(array.get_index(1));
+    reader.exit();
 
-    JSONDocument::destroy(doc);
+    reader.exit();
+    JSONReader::destroy(reader);
 
-    MemoryProfile profile = get_memory_profile(MEMORY_USAGE_SERIAL);
-    CHECK(profile.current == 0);
+    int leaks = get_memory_leaks(nullptr);
+    CHECK(leaks == 0);
 }

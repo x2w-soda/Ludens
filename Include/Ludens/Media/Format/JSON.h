@@ -20,84 +20,36 @@ enum JSONType
     JSON_TYPE_NUMBER,
 };
 
-/// @brief A node in the DOM tree
-struct JSONValue : Handle<struct JSONValueObj>
+struct JSONReader : Handle<struct JSONReaderObj>
 {
-    /// @brief get node data type
-    JSONType type() const;
+    static JSONReader create(const View& json, std::string& err);
+    static void destroy(JSONReader reader);
 
-    /// @brief check if node is JSON false value
-    bool is_false() const;
+    bool is_object_scope();
+    bool is_array_scope();
 
-    /// @brief check if node is JSON true value
-    bool is_true() const;
+    bool enter_root_object();
+    bool enter_root_array(int& size);
+    bool enter_object(const char* key);
+    bool enter_object(int index);
+    bool enter_array(const char* key, int& size);
+    bool enter_array(int index, int& size);
+    void exit();
 
-    /// @brief check if node is a JSON object
-    bool is_object() const;
-
-    /// @brief check if node is a JSON array
-    bool is_array() const;
-
-    /// @brief check if node is a JSON string
-    bool is_string(std::string* str) const;
-
-    /// @brief check if node is a JSON number
-    bool is_number() const;
-
-    /// @brief check if node is a JSON 32-bit signed integer
-    bool is_i32(int32_t* i32) const;
-
-    /// @brief check if node is a JSON 64-bit signed integer
-    bool is_i64(int64_t* i64) const;
-
-    /// @brief check if node is a JSON 32-bit unsigned integer
-    bool is_u32(uint32_t* u32) const;
-
-    /// @brief check if node is a JSON 64-bit unsigned integer
-    bool is_u64(uint64_t* u64) const;
-
-    /// @brief check if node is a 32-bit floating point
-    bool is_f32(float* f32) const;
-
-    /// @brief get number of elements in array or number of members in object
-    /// @return the size of the array or object, or a negative value otherwise
-    int size();
-
-    /// @brief get the member of an object
-    /// @param member C string name of the member
-    /// @return the member node, or null on error
-    JSONValue get_member(const char* member);
-
-    /// @brief get the element at index in an array
-    /// @param idx index into the array
-    /// @return the element node, or null on error
-    JSONValue get_index(int idx);
-
-    /// @brief Shorthand for get_index method.
-    inline JSONValue operator[](int idx) { return get_index(idx); }
-};
-
-/// @brief JSON Document Object Model.
-struct JSONDocument : Handle<struct JSONDocumentObj>
-{
-    /// @brief Create empty json document.
-    static JSONDocument create();
-
-    /// @brief Destroy json document, all values from this document becomes out of date.
-    static void destroy(JSONDocument doc);
-
-    /// @brief Get root document value.
-    JSONValue get_root();
-};
-
-/// @brief JSON DOM parser.
-struct JSONParser
-{
-    /// @brief Try parsing JSON into document.
-    /// @param dst Destination document.
-    /// @param view JSON source string.
-    /// @param error Output error message upon failure.
-    static bool parse(JSONDocument dst, const View& view, std::string& error);
+    bool read_bool(const char* key, bool& b);
+    bool read_bool(int index, bool& b);
+    bool read_i32(const char* key, int32_t& i32);
+    bool read_i32(int index, int32_t& i32);
+    bool read_i64(const char* key, int64_t& i64);
+    bool read_i64(int index, int64_t& i64);
+    bool read_u32(const char* key, uint32_t& u32);
+    bool read_u32(int index, uint32_t& u32);
+    bool read_u64(const char* key, uint64_t& u64);
+    bool read_u64(int index, uint64_t& u64);
+    bool read_f32(const char* key, float& f32);
+    bool read_f32(int index, float& f32);
+    bool read_string(const char* key, std::string& str);
+    bool read_string(int index, std::string& str);
 };
 
 struct JSONEventCallback

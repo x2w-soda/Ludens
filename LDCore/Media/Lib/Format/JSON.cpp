@@ -1,3 +1,5 @@
+#include <Ludens/DSA/Stack.h>
+#include <Ludens/Header/Assert.h>
 #include <Ludens/Media/Format/JSON.h>
 #include <Ludens/Memory/Allocator.h>
 #include <Ludens/Profiler/Profiler.h>
@@ -13,6 +15,81 @@
 #include <rapidjson/rapidjson.h>
 
 namespace LD {
+
+/// @brief A node in the DOM tree
+struct JSONValue : Handle<struct JSONValueObj>
+{
+    /// @brief get node data type
+    JSONType type() const;
+
+    /// @brief check if node is JSON false value
+    bool is_false() const;
+
+    /// @brief check if node is JSON true value
+    bool is_true() const;
+
+    /// @brief check if node is a JSON object
+    bool is_object() const;
+
+    /// @brief check if node is a JSON array
+    bool is_array() const;
+
+    /// @brief check if node is a JSON number
+    bool is_number() const;
+
+    /// @brief check if node is a JSON 32-bit signed integer
+    bool get_bool(bool& b) const;
+
+    /// @brief check if node is a JSON 32-bit signed integer
+    bool get_i32(int32_t& i32) const;
+
+    /// @brief check if node is a JSON 64-bit signed integer
+    bool get_i64(int64_t& i64) const;
+
+    /// @brief check if node is a JSON 32-bit unsigned integer
+    bool get_u32(uint32_t& u32) const;
+
+    /// @brief check if node is a JSON 64-bit unsigned integer
+    bool get_u64(uint64_t& u64) const;
+
+    /// @brief check if node is a 32-bit floating point
+    bool get_f32(float& f32) const;
+
+    /// @brief check if node is a JSON string
+    bool get_string(std::string& str) const;
+
+    /// @brief get number of elements in array or number of members in object
+    /// @return the size of the array or object, or a negative value otherwise
+    int size();
+
+    /// @brief get the member of an object
+    /// @param member C string name of the member
+    /// @return the member node, or null on error
+    JSONValue get_member(const char* member);
+
+    /// @brief get the element at index in an array
+    /// @param idx index into the array
+    /// @return the element node, or null on error
+    JSONValue get_index(int idx);
+
+    /// @brief Shorthand for get_index method.
+    inline JSONValue operator[](int idx) { return get_index(idx); }
+};
+
+/// @brief JSON Document Object Model.
+struct JSONDocument : Handle<struct JSONDocumentObj>
+{
+    /// @brief Create empty json document.
+    static JSONDocument create();
+
+    /// @brief Destroy json document, all values from this document becomes out of date.
+    static void destroy(JSONDocument doc);
+
+    /// @brief Get root document value.
+    JSONValue get_root();
+};
+
+static bool parse_json(JSONDocument dst, const View& view, std::string& error);
 
 static_assert((int)JSON_TYPE_NULL == (int)rapidjson::kNullType);
 static_assert((int)JSON_TYPE_FALSE == (int)rapidjson::kFalseType);
@@ -91,73 +168,88 @@ bool JSONValue::is_array() const
     return mObj->value.GetType() == rapidjson::kArrayType;
 }
 
-bool JSONValue::is_string(std::string* str) const
-{
-    bool match = mObj->value.GetType() == rapidjson::kStringType;
-
-    if (match && str)
-    {
-        // NOTE: According to RFC 4627, JSON strings can contain Unicode U+0000,
-        //       this ensures all null bytes in JSON strings are loaded into std::string
-        *str = std::string(mObj->value.GetString(), mObj->value.GetStringLength());
-    }
-
-    return match;
-}
-
 bool JSONValue::is_number() const
 {
     return mObj->value.GetType() == rapidjson::kNumberType;
 }
 
-bool JSONValue::is_i32(int32_t* i32) const
+bool JSONValue::get_bool(bool& b) const
 {
-    bool match = mObj->value.IsInt();
+    if (mObj->value.IsBool())
+    {
+        b = mObj->value.GetBool();
+        return true;
+    }
 
-    if (match && i32)
-        *i32 = (int32_t)mObj->value.GetInt();
-
-    return match;
+    return false;
 }
 
-bool JSONValue::is_i64(int64_t* i64) const
+bool JSONValue::get_i32(int32_t& i32) const
 {
-    bool match = mObj->value.IsInt64();
+    if (mObj->value.IsInt())
+    {
+        i32 = (int32_t)mObj->value.GetInt();
+        return true;
+    }
 
-    if (match && i64)
-        *i64 = mObj->value.GetInt64();
-
-    return match;
+    return false;
 }
 
-bool JSONValue::is_u32(uint32_t* u32) const
+bool JSONValue::get_i64(int64_t& i64) const
 {
-    bool match = mObj->value.IsUint();
+    if (mObj->value.IsInt64())
+    {
+        i64 = mObj->value.GetInt64();
+        return true;
+    }
 
-    if (match && u32)
-        *u32 = (uint32_t)mObj->value.GetUint();
-
-    return match;
+    return false;
 }
 
-bool JSONValue::is_u64(uint64_t* u64) const
+bool JSONValue::get_u32(uint32_t& u32) const
 {
-    bool match = mObj->value.IsUint64();
+    if (mObj->value.IsUint())
+    {
+        u32 = (uint32_t)mObj->value.GetUint();
+        return true;
+    }
 
-    if (match && u64)
-        *u64 = mObj->value.GetUint64();
-
-    return match;
+    return false;
 }
 
-bool JSONValue::is_f32(float* f32) const
+bool JSONValue::get_u64(uint64_t& u64) const
 {
-    bool match = mObj->value.IsFloat();
+    if (mObj->value.IsUint64())
+    {
+        u64 = (uint32_t)mObj->value.GetUint64();
+        return true;
+    }
 
-    if (match && f32)
-        *f32 = mObj->value.GetFloat();
+    return false;
+}
 
-    return match;
+bool JSONValue::get_f32(float& f32) const
+{
+    if (mObj->value.IsFloat())
+    {
+        f32 = mObj->value.GetFloat();
+        return true;
+    }
+
+    return false;
+}
+
+bool JSONValue::get_string(std::string& str) const
+{
+    if (mObj->value.IsString())
+    {
+        // NOTE: According to RFC 4627, JSON strings can contain Unicode U+0000,
+        //       this ensures all null bytes in JSON strings are loaded into std::string
+        str = std::string(mObj->value.GetString(), mObj->value.GetStringLength());
+        return true;
+    }
+
+    return false;
 }
 
 int JSONValue::size()
@@ -224,7 +316,7 @@ JSONValue JSONDocument::get_root()
     return mObj->root;
 }
 
-bool JSONParser::parse(JSONDocument dst, const View& view, std::string& error)
+static bool parse_json(JSONDocument dst, const View& view, std::string& error)
 {
     LD_PROFILE_SCOPE;
 
@@ -253,6 +345,261 @@ bool JSONParser::parse(JSONDocument dst, const View& view, std::string& error)
     docObj->root = {rootNode};
 
     return true;
+}
+
+/// @brief JSON reader implementation
+struct JSONReaderObj
+{
+    JSONDocument doc{};
+    Stack<JSONValue> scope;
+
+    inline JSONValue get_member(const char* member)
+    {
+        JSONValue top = scope.top();
+        LD_ASSERT(top.is_object());
+
+        return top.get_member(member);
+    }
+
+    inline JSONValue get_index(int index)
+    {
+        JSONValue top = scope.top();
+        LD_ASSERT(top.is_array());
+
+        return top.get_index(index);
+    }
+};
+
+JSONReader JSONReader::create(const View& toml, std::string& err)
+{
+    JSONDocument doc = JSONDocument::create();
+
+    if (!parse_json(doc, toml, err))
+    {
+        JSONDocument::destroy(doc);
+        return {};
+    }
+
+    auto* obj = heap_new<JSONReaderObj>(MEMORY_USAGE_MEDIA);
+    obj->doc = doc;
+
+    return JSONReader(obj);
+}
+
+void JSONReader::destroy(JSONReader reader)
+{
+    auto* obj = reader.unwrap();
+
+    LD_ASSERT(obj->scope.empty());
+
+    if (obj->doc)
+    {
+        JSONDocument::destroy(obj->doc);
+        obj->doc = {};
+    }
+
+    heap_delete<JSONReaderObj>(obj);
+}
+
+bool JSONReader::is_array_scope()
+{
+    LD_ASSERT(!mObj->scope.empty());
+
+    return mObj->scope.top().is_array();
+}
+
+bool JSONReader::is_object_scope()
+{
+    LD_ASSERT(!mObj->scope.empty());
+
+    return mObj->scope.top().is_object();
+}
+
+bool JSONReader::enter_root_object()
+{
+    JSONValue root = mObj->doc.get_root();
+
+    if (!root || !root.is_object())
+        return false;
+
+    mObj->scope.push(root);
+    return true;
+}
+
+bool JSONReader::enter_root_array(int& size)
+{
+    JSONValue root = mObj->doc.get_root();
+
+    if (!root || !root.is_array())
+        return false;
+
+    size = root.size();
+    mObj->scope.push(root);
+
+    return true;
+}
+
+bool JSONReader::enter_object(const char* key)
+{
+    JSONValue top = mObj->scope.top();
+    LD_ASSERT(top.is_object());
+
+    JSONValue value = top.get_member(key);
+    if (!value || !value.is_object())
+        return false;
+
+    mObj->scope.push(value);
+
+    return true;
+}
+
+bool JSONReader::enter_object(int index)
+{
+    JSONValue top = mObj->scope.top();
+    LD_ASSERT(top.is_array());
+
+    JSONValue value = top.get_index(index);
+    if (!value || !value.is_object())
+        return false;
+
+    mObj->scope.push(value);
+
+    return true;
+}
+
+bool JSONReader::enter_array(const char* key, int& size)
+{
+    JSONValue top = mObj->scope.top();
+    LD_ASSERT(top.is_object());
+
+    JSONValue value = top.get_member(key);
+    if (!value || !value.is_array())
+        return false;
+
+    size = value.size();
+    mObj->scope.push(value);
+
+    return true;
+}
+
+bool JSONReader::enter_array(int index, int& size)
+{
+    JSONValue top = mObj->scope.top();
+    LD_ASSERT(top.is_array());
+
+    JSONValue value = top.get_index(index);
+    if (!value || !value.is_array())
+        return false;
+
+    size = value.size();
+    mObj->scope.push(value);
+
+    return true;
+}
+
+void JSONReader::exit()
+{
+    LD_ASSERT(!mObj->scope.empty());
+
+    mObj->scope.pop();
+}
+
+bool JSONReader::read_bool(const char* key, bool& b)
+{
+    JSONValue value = mObj->get_member(key);
+
+    return value && value.get_bool(b);
+}
+
+bool JSONReader::read_bool(int index, bool& b)
+{
+    JSONValue value = mObj->get_index(index);
+
+    return value && value.get_bool(b);
+}
+
+bool JSONReader::read_i32(const char* key, int32_t& i32)
+{
+    JSONValue value = mObj->get_member(key);
+
+    return value && value.get_i32(i32);
+}
+
+bool JSONReader::read_i32(int index, int32_t& i32)
+{
+    JSONValue value = mObj->get_index(index);
+
+    return value && value.get_i32(i32);
+}
+
+bool JSONReader::read_i64(const char* key, int64_t& i64)
+{
+    JSONValue value = mObj->get_member(key);
+
+    return value && value.get_i64(i64);
+}
+
+bool JSONReader::read_i64(int index, int64_t& i64)
+{
+    JSONValue value = mObj->get_index(index);
+
+    return value && value.get_i64(i64);
+}
+
+bool JSONReader::read_u32(const char* key, uint32_t& u32)
+{
+    JSONValue value = mObj->get_member(key);
+
+    return value && value.get_u32(u32);
+}
+
+bool JSONReader::read_u32(int index, uint32_t& u32)
+{
+    JSONValue value = mObj->get_index(index);
+
+    return value && value.get_u32(u32);
+}
+
+bool JSONReader::read_u64(const char* key, uint64_t& u64)
+{
+    JSONValue value = mObj->get_member(key);
+
+    return value && value.get_u64(u64);
+}
+
+bool JSONReader::read_u64(int index, uint64_t& u64)
+{
+    JSONValue value = mObj->get_index(index);
+
+    return value && value.get_u64(u64);
+}
+
+bool JSONReader::read_f32(const char* key, float& f32)
+{
+    JSONValue value = mObj->get_member(key);
+
+    return value && value.get_f32(f32);
+}
+
+bool JSONReader::read_f32(int index, float& f32)
+{
+    JSONValue value = mObj->get_index(index);
+
+    return value && value.get_f32(f32);
+}
+
+bool JSONReader::read_string(const char* key, std::string& str)
+{
+    JSONValue value = mObj->get_member(key);
+
+    return value && value.get_string(str);
+}
+
+bool JSONReader::read_string(int index, std::string& str)
+{
+    JSONValue value = mObj->get_index(index);
+
+    return value && value.get_string(str);
 }
 
 // clang-format off
