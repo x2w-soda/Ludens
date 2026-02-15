@@ -120,13 +120,8 @@ struct TOMLDocument : Handle<struct TOMLDocumentObj>
     TOMLValue get_root();
 };
 
-/// @brief TOML DOM parser.
-struct TOMLParser
-{
-    static bool parse(TOMLDocument dst, const View& view, std::string& error);
-
-    static bool parse_from_file(TOMLDocument dst, const FS::Path& path, std::string& error);
-};
+static bool parse_toml(TOMLDocument dst, const View& view, std::string& error);
+static bool parse_toml_from_file(TOMLDocument dst, const FS::Path& path, std::string& error);
 
 // static paranoia
 static_assert((int)TOML_TYPE_EMPTY == (int)toml::value_t::empty);
@@ -152,8 +147,6 @@ static_assert(std::is_same_v<toml::value::config_type::string_type, std::string>
 
 struct TOMLValueObj
 {
-    TOMLValueObj* child;
-    TOMLValueObj* next;
     toml::value val;
     TOMLDocumentObj* doc;
 };
@@ -184,8 +177,6 @@ struct TOMLDocumentObj
     {
         TOMLValueObj* obj = (TOMLValueObj*)valuePA.allocate();
         obj->doc = this;
-        obj->child = nullptr;
-        obj->next = nullptr;
         new (&obj->val) toml::value();
         return obj;
     }
@@ -203,8 +194,6 @@ struct TOMLDocumentObj
         valuePA = PoolAllocator::create(paI);
 
         root.val = toml::table();
-        root.child = nullptr;
-        root.next = nullptr;
         root.doc = this;
     }
 };
@@ -308,8 +297,6 @@ TOMLValue TOMLValue::get_index(int idx)
 
     TOMLValueObj* obj = mObj->doc->alloc_value();
     obj->val = mObj->val.at((size_t)idx);
-    obj->next = mObj->child;
-    mObj->child = obj;
 
     return TOMLValue(obj);
 }
@@ -336,8 +323,6 @@ TOMLValue TOMLValue::get_key(const char* key)
 
     TOMLValueObj* obj = mObj->doc->alloc_value();
     obj->val = mObj->val.at(key);
-    obj->next = mObj->child; // TODO: remove?
-    mObj->child = obj;
 
     return TOMLValue(obj);
 }
@@ -395,7 +380,7 @@ TOMLValue TOMLDocument::get_root()
     return TOMLValue(&mObj->root);
 }
 
-bool TOMLParser::parse(TOMLDocument dst, const View& view, std::string& error)
+bool parse_toml(TOMLDocument dst, const View& view, std::string& error)
 {
     TOMLDocumentObj* docObj = dst.unwrap();
 
@@ -423,13 +408,13 @@ bool TOMLParser::parse(TOMLDocument dst, const View& view, std::string& error)
     return result.is_ok();
 }
 
-bool TOMLParser::parse_from_file(TOMLDocument dst, const FS::Path& path, std::string& error)
+bool parse_toml_from_file(TOMLDocument dst, const FS::Path& path, std::string& error)
 {
     std::vector<byte> file;
     if (!FS::read_file_to_vector(path, file, error))
         return false;
 
-    return TOMLParser::parse(dst, View((const char*)file.data(), file.size()), error);
+    return parse_toml(dst, View((const char*)file.data(), file.size()), error);
 }
 
 enum TOMLScopeType
@@ -850,7 +835,7 @@ TOMLReader TOMLReader::create(View toml, std::string& err)
 {
     TOMLDocument doc = TOMLDocument::create();
 
-    if (!TOMLParser::parse(doc, toml, err))
+    if (!parse_toml(doc, toml, err))
     {
         TOMLDocument::destroy(doc);
         return {};
@@ -1154,7 +1139,7 @@ bool write_vec3(TOMLWriter writer, const char* key, const Vec3& vec3)
     writer.begin_inline_table(key);
     writer.key("x").value_f32(vec3.x);
     writer.key("y").value_f32(vec3.y);
-    writer.key("z").value_f32(vec3.y);
+    writer.key("z").value_f32(vec3.z);
     writer.end_inline_table();
 
     return true;
@@ -1176,6 +1161,9 @@ bool read_vec3(TOMLReader reader, const char* key, Vec3& vec3)
             reader.exit();
             return false;
         }
+
+        reader.exit();
+        return true;
     }
     else if (reader.enter_array(key, size))
     {
@@ -1187,10 +1175,12 @@ bool read_vec3(TOMLReader reader, const char* key, Vec3& vec3)
             reader.exit();
             return false;
         }
+
+        reader.exit();
+        return true;
     }
 
-    reader.exit();
-    return true;
+    return false;
 }
 
 bool write_vec2(TOMLWriter writer, const char* key, const Vec2& vec2)
@@ -1221,6 +1211,9 @@ bool read_vec2(TOMLReader reader, const char* key, Vec2& vec2)
             reader.exit();
             return false;
         }
+
+        reader.exit();
+        return true;
     }
     else if (reader.enter_array(key, size))
     {
@@ -1231,10 +1224,12 @@ bool read_vec2(TOMLReader reader, const char* key, Vec2& vec2)
             reader.exit();
             return false;
         }
+
+        reader.exit();
+        return true;
     }
 
-    reader.exit();
-    return true;
+    return false;
 }
 
 } // namespace TOMLUtil
