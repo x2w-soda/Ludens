@@ -164,7 +164,7 @@ struct GLTFMaterialProp
     Buffer alphaMode = "OPAQUE";                         // material.alphaMode
 };
 
-struct GLTFEventCallback
+struct GLTFCallback
 {
     /// @brief Top-level 'asset' property in the spec.
     bool (*onAsset)(const GLTFAssetProp& asset, void* user);
@@ -209,7 +209,7 @@ struct GLTFEventCallback
 
 struct GLTFEventParser
 {
-    static bool parse(const View& file, std::string& error, const GLTFEventCallback& callbacks, void* user);
+    static bool parse(const View& file, std::string& error, const GLTFCallback& callbacks, void* user);
 };
 
 bool print_gltf_data(const View& file, std::string& str, std::string& err);

@@ -3,9 +3,8 @@
 
 #include <Ludens/Header/Color.h>
 #include <Ludens/Header/Handle.h>
-#include <Ludens/Media/Format/JSON.h>
-#include <Ludens/UI/UITheme.h>
 #include <Ludens/UI/UILayout.h>
+#include <Ludens/UI/UITheme.h>
 
 namespace LD {
 
@@ -30,8 +29,7 @@ struct EditorTheme : Handle<struct EditorThemeObj>
 /// @brief Global editor settings that apply to all projects
 struct EditorSettings : Handle<struct EditorSettingsObj>
 {
-    static EditorSettings create_default();
-    static EditorSettings create(JSONDocument doc);
+    static EditorSettings create();
     static void destroy(EditorSettings settings);
 
     /// @brief Get current editor theme

@@ -130,20 +130,11 @@ void EditorSettingsObj::initialize_default()
     themeObj.initialize_default();
 }
 
-EditorSettings EditorSettings::create_default()
+EditorSettings EditorSettings::create()
 {
     auto* obj = (EditorSettingsObj*)heap_malloc(sizeof(EditorSettingsObj), MEMORY_USAGE_MISC);
 
     obj->initialize_default();
-
-    return {obj};
-}
-
-EditorSettings EditorSettings::create(JSONDocument doc)
-{
-    auto* obj = (EditorSettingsObj*)heap_malloc(sizeof(EditorSettingsObj), MEMORY_USAGE_MISC);
-
-    // SPACE: load json fields
 
     return {obj};
 }

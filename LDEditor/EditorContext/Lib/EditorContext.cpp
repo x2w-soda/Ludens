@@ -359,7 +359,7 @@ EditorContext EditorContext::create(const EditorContextInfo& info)
     obj->renderSystem = info.renderSystem;
     obj->audioSystem = info.audioSystem;
     obj->iconAtlasPath = info.iconAtlasPath;
-    obj->settings = EditorSettings::create_default();
+    obj->settings = EditorSettings::create();
     obj->isPlaying = false;
     obj->editStack = EditStack::create();
     obj->actionQueue = EditorActionQueue::create(obj->editStack, obj);

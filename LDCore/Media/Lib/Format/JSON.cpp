@@ -637,7 +637,7 @@ const char* get_error_code_cstr(rapidjson::ParseErrorCode code)
 
 struct RapidJSONEventHandler : public rapidjson::BaseReaderHandler<rapidjson::UTF8<>, RapidJSONEventHandler>
 {
-    JSONEventCallback callbacks;
+    JSONCallback callbacks;
     void* user;
 
     inline bool Null()
@@ -706,13 +706,13 @@ struct RapidJSONEventHandler : public rapidjson::BaseReaderHandler<rapidjson::UT
     }
 };
 
-bool JSONEventParser::parse(const void* fileData, size_t fileSize, std::string& error, const JSONEventCallback& callbacks, void* user)
+bool JSONParser::parse(const View& json, std::string& error, const JSONCallback& callbacks, void* user)
 {
     RapidJSONEventHandler eventHandler{};
     eventHandler.callbacks = callbacks;
     eventHandler.user = user;
 
-    rapidjson::MemoryStream memoryStream((const char*)fileData, fileSize);
+    rapidjson::MemoryStream memoryStream(json.data, json.size);
 
     rapidjson::Reader reader;
     rapidjson::ParseResult result = reader.Parse(memoryStream, eventHandler);

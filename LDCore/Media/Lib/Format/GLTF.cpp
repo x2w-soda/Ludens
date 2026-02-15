@@ -9,15 +9,15 @@ namespace LD {
 /// @brief GLTF event parsing implementation. Should be externally synchronized,
 ///        but for convenience each 'GLTFEventParser::parse' stack frame will allocate
 ///        its own object, so the event parsing API should pretty much be thread safe.
-class GLTFEventParserObj
+class GLTFParserObj
 {
 public:
-    GLTFEventParserObj(const GLTFEventCallback& callbacks, void* user)
+    GLTFParserObj(const GLTFCallback& callbacks, void* user)
         : mState(STATE_ZERO), mUser(user), mCallbacks(callbacks)
     {
     }
 
-    bool parse(const void* fileData, size_t fileSize, std::string& error);
+    bool parse(const View& file, std::string& error);
     static bool on_json_enter_object(void*);
     static bool on_json_leave_object(size_t memberCount, void*);
     static bool on_json_enter_array(void*);
@@ -161,7 +161,7 @@ private:
     Buffer mPrimitiveAttributeKey;
     Buffer* mStringSlot = nullptr;;
     void* mUser = nullptr;
-    GLTFEventCallback mCallbacks;
+    GLTFCallback mCallbacks;
     GLTFAssetProp mAssetProp{};
     GLTFSceneProp mSceneProp{};
     GLTFNodeProp mNodeProp{};
@@ -178,9 +178,9 @@ private:
     uint32_t mArrayCtr = 0;
 };
 
-bool GLTFEventParserObj::on_json_enter_object(void* obj)
+bool GLTFParserObj::on_json_enter_object(void* obj)
 {
-    auto& self = *(GLTFEventParserObj*)obj;
+    auto& self = *(GLTFParserObj*)obj;
 
     if (self.mEscapeDepth)
     {
@@ -272,9 +272,9 @@ bool GLTFEventParserObj::on_json_enter_object(void* obj)
     return false;
 }
 
-bool GLTFEventParserObj::on_json_leave_object(size_t memberCount, void* obj)
+bool GLTFParserObj::on_json_leave_object(size_t memberCount, void* obj)
 {
-    auto& self = *(GLTFEventParserObj*)obj;
+    auto& self = *(GLTFParserObj*)obj;
 
     if (self.mEscapeDepth)
     {
@@ -368,9 +368,9 @@ bool GLTFEventParserObj::on_json_leave_object(size_t memberCount, void* obj)
     return false;
 }
 
-bool GLTFEventParserObj::on_json_enter_array(void* obj)
+bool GLTFParserObj::on_json_enter_array(void* obj)
 {
-    auto& self = *(GLTFEventParserObj*)obj;
+    auto& self = *(GLTFParserObj*)obj;
 
     if (self.mEscapeDepth)
     {
@@ -432,9 +432,9 @@ bool GLTFEventParserObj::on_json_enter_array(void* obj)
     return false;
 }
 
-bool GLTFEventParserObj::on_json_leave_array(size_t elementCount, void* obj)
+bool GLTFParserObj::on_json_leave_array(size_t elementCount, void* obj)
 {
-    auto& self = *(GLTFEventParserObj*)obj;
+    auto& self = *(GLTFParserObj*)obj;
 
     if (self.mEscapeDepth)
     {
@@ -488,9 +488,9 @@ bool GLTFEventParserObj::on_json_leave_array(size_t elementCount, void* obj)
     return false;
 }
 
-bool GLTFEventParserObj::on_json_key(const View& key, void* obj)
+bool GLTFParserObj::on_json_key(const View& key, void* obj)
 {
-    auto& self = *(GLTFEventParserObj*)obj;
+    auto& self = *(GLTFParserObj*)obj;
 
     if (self.mEscapeDepth)
     {
@@ -548,9 +548,9 @@ bool GLTFEventParserObj::on_json_key(const View& key, void* obj)
     return false;
 }
 
-bool GLTFEventParserObj::on_json_string(const View& string, void* obj)
+bool GLTFParserObj::on_json_string(const View& string, void* obj)
 {
-    auto& self = *(GLTFEventParserObj*)obj;
+    auto& self = *(GLTFParserObj*)obj;
 
     if (self.escape_json_value())
         return true;
@@ -568,9 +568,9 @@ bool GLTFEventParserObj::on_json_string(const View& string, void* obj)
     return false;
 }
 
-bool GLTFEventParserObj::on_json_null(void* obj)
+bool GLTFParserObj::on_json_null(void* obj)
 {
-    auto& self = *(GLTFEventParserObj*)obj;
+    auto& self = *(GLTFParserObj*)obj;
 
     if (self.escape_json_value())
         return true;
@@ -578,9 +578,9 @@ bool GLTFEventParserObj::on_json_null(void* obj)
     return false; // not expecting boolean
 }
 
-bool GLTFEventParserObj::on_json_bool(bool b, void* obj)
+bool GLTFParserObj::on_json_bool(bool b, void* obj)
 {
-    auto& self = *(GLTFEventParserObj*)obj;
+    auto& self = *(GLTFParserObj*)obj;
 
     if (self.escape_json_value())
         return true;
@@ -602,9 +602,9 @@ bool GLTFEventParserObj::on_json_bool(bool b, void* obj)
     return false; // not expecting boolean
 }
 
-bool GLTFEventParserObj::on_json_i64(int64_t i64, void* obj)
+bool GLTFParserObj::on_json_i64(int64_t i64, void* obj)
 {
-    auto& self = *(GLTFEventParserObj*)obj;
+    auto& self = *(GLTFParserObj*)obj;
     (void)i64;
 
     if (self.escape_json_value())
@@ -613,9 +613,9 @@ bool GLTFEventParserObj::on_json_i64(int64_t i64, void* obj)
     return false; // not expecting signed integer
 }
 
-bool GLTFEventParserObj::on_json_u64(uint64_t u64, void* obj)
+bool GLTFParserObj::on_json_u64(uint64_t u64, void* obj)
 {
-    auto& self = *(GLTFEventParserObj*)obj;
+    auto& self = *(GLTFParserObj*)obj;
 
     if (self.escape_json_value() || self.on_json_u64_value(u64) || self.on_json_f64_value((double)u64))
         return true;
@@ -623,9 +623,9 @@ bool GLTFEventParserObj::on_json_u64(uint64_t u64, void* obj)
     return u64 <= UINT32_MAX && self.on_json_u32_value((uint32_t)u64);
 }
 
-bool GLTFEventParserObj::on_json_f64(double f64, void* obj)
+bool GLTFParserObj::on_json_f64(double f64, void* obj)
 {
-    auto& self = *(GLTFEventParserObj*)obj;
+    auto& self = *(GLTFParserObj*)obj;
 
     if (self.escape_json_value())
         return true;
@@ -633,7 +633,7 @@ bool GLTFEventParserObj::on_json_f64(double f64, void* obj)
     return self.on_json_f64_value(f64);
 }
 
-bool GLTFEventParserObj::escape_json_value()
+bool GLTFParserObj::escape_json_value()
 {
     if (mEscapeDepth)
     {
@@ -646,7 +646,7 @@ bool GLTFEventParserObj::escape_json_value()
     return false;
 }
 
-bool GLTFEventParserObj::on_json_f64_value(double f64)
+bool GLTFParserObj::on_json_f64_value(double f64)
 {
     switch (mState)
     {
@@ -718,7 +718,7 @@ bool GLTFEventParserObj::on_json_f64_value(double f64)
     return false; // not expecting floating point
 }
 
-bool GLTFEventParserObj::on_json_u64_value(uint64_t u64)
+bool GLTFParserObj::on_json_u64_value(uint64_t u64)
 {
     switch (mState)
     {
@@ -749,7 +749,7 @@ bool GLTFEventParserObj::on_json_u64_value(uint64_t u64)
     return false; // not expecting u64
 }
 
-bool GLTFEventParserObj::on_json_u32_value(uint32_t u32)
+bool GLTFParserObj::on_json_u32_value(uint32_t u32)
 {
     switch (mState)
     {
@@ -891,7 +891,7 @@ bool GLTFEventParserObj::on_json_u32_value(uint32_t u32)
     return false;
 }
 
-bool GLTFEventParserObj::on_json_root_key(const View& key)
+bool GLTFParserObj::on_json_root_key(const View& key)
 {
     if (key == "asset")
         mState = STATE_ROOT_ASSET_KEY;
@@ -923,7 +923,7 @@ bool GLTFEventParserObj::on_json_root_key(const View& key)
     return true;
 }
 
-bool GLTFEventParserObj::on_json_asset_key(const View& key)
+bool GLTFParserObj::on_json_asset_key(const View& key)
 {
     if (key == "version")
         mStringSlot = &mAssetProp.version;
@@ -937,7 +937,7 @@ bool GLTFEventParserObj::on_json_asset_key(const View& key)
     return true;
 }
 
-bool GLTFEventParserObj::on_json_scene_key(const View& key)
+bool GLTFParserObj::on_json_scene_key(const View& key)
 {
     if (key == "name")
         mStringSlot = &mSceneProp.name;
@@ -952,7 +952,7 @@ bool GLTFEventParserObj::on_json_scene_key(const View& key)
     return true;
 }
 
-bool GLTFEventParserObj::on_json_node_key(const View& key)
+bool GLTFParserObj::on_json_node_key(const View& key)
 {
     if (key == "name")
         mStringSlot = &mNodeProp.name;
@@ -977,7 +977,7 @@ bool GLTFEventParserObj::on_json_node_key(const View& key)
     return true;
 }
 
-bool GLTFEventParserObj::on_json_mesh_key(const View& key)
+bool GLTFParserObj::on_json_mesh_key(const View& key)
 {
     if (key == "name")
         mStringSlot = &mMeshProp.name;
@@ -989,7 +989,7 @@ bool GLTFEventParserObj::on_json_mesh_key(const View& key)
     return true;
 }
 
-bool GLTFEventParserObj::on_json_mesh_primitive_key(const View& key)
+bool GLTFParserObj::on_json_mesh_primitive_key(const View& key)
 {
     if (key == "indices")
         mState = STATE_MESH_PRIMITIVE_INDICES;
@@ -1005,7 +1005,7 @@ bool GLTFEventParserObj::on_json_mesh_primitive_key(const View& key)
     return true;
 }
 
-bool GLTFEventParserObj::on_json_mesh_primitive_attributes_key(const View& key)
+bool GLTFParserObj::on_json_mesh_primitive_attributes_key(const View& key)
 {
     // Attribute keys are UTF-8, hence the Buffer key instead of std::string key.
     // Common attribute keys are ascii "POSITION", "NORMAL", "TEXCOORD_*", but any key is valid.
@@ -1015,7 +1015,7 @@ bool GLTFEventParserObj::on_json_mesh_primitive_attributes_key(const View& key)
     return true;
 }
 
-bool GLTFEventParserObj::on_json_material_key(const View& key)
+bool GLTFParserObj::on_json_material_key(const View& key)
 {
     if (key == "name")
         mStringSlot = &mMaterialProp.name;
@@ -1041,7 +1041,7 @@ bool GLTFEventParserObj::on_json_material_key(const View& key)
     return true;
 }
 
-bool GLTFEventParserObj::on_json_material_emissive_texture_key(const View& key)
+bool GLTFParserObj::on_json_material_emissive_texture_key(const View& key)
 {
     if (key == "index")
         mState = STATE_MATERIAL_EMISSIVE_TEXTURE_INDEX;
@@ -1053,7 +1053,7 @@ bool GLTFEventParserObj::on_json_material_emissive_texture_key(const View& key)
     return true;
 }
 
-bool GLTFEventParserObj::on_json_material_normal_texture_key(const View& key)
+bool GLTFParserObj::on_json_material_normal_texture_key(const View& key)
 {
     if (key == "index")
         mState = STATE_MATERIAL_NORMAL_TEXTURE_INDEX;
@@ -1067,7 +1067,7 @@ bool GLTFEventParserObj::on_json_material_normal_texture_key(const View& key)
     return true;
 }
 
-bool GLTFEventParserObj::on_json_material_occlusion_texture_key(const View& key)
+bool GLTFParserObj::on_json_material_occlusion_texture_key(const View& key)
 {
     if (key == "index")
         mState = STATE_MATERIAL_OCCLUSION_TEXTURE_INDEX;
@@ -1081,7 +1081,7 @@ bool GLTFEventParserObj::on_json_material_occlusion_texture_key(const View& key)
     return true;
 }
 
-bool GLTFEventParserObj::on_json_material_pbr_key(const View& key)
+bool GLTFParserObj::on_json_material_pbr_key(const View& key)
 {
     if (key == "baseColorFactor")
         mState = STATE_MATERIAL_PBR_BASE_COLOR_FACTOR;
@@ -1099,7 +1099,7 @@ bool GLTFEventParserObj::on_json_material_pbr_key(const View& key)
     return true;
 }
 
-bool GLTFEventParserObj::on_json_material_pbr_base_color_texture_key(const View& key)
+bool GLTFParserObj::on_json_material_pbr_base_color_texture_key(const View& key)
 {
     if (key == "index")
         mState = STATE_MATERIAL_PBR_BASE_COLOR_TEXTURE_INDEX;
@@ -1111,7 +1111,7 @@ bool GLTFEventParserObj::on_json_material_pbr_base_color_texture_key(const View&
     return true;
 }
 
-bool GLTFEventParserObj::on_json_material_pbr_metallic_roughness_texture_key(const View& key)
+bool GLTFParserObj::on_json_material_pbr_metallic_roughness_texture_key(const View& key)
 {
     if (key == "index")
         mState = STATE_MATERIAL_PBR_METALLIC_ROUGHNESS_TEXTURE_INDEX;
@@ -1123,7 +1123,7 @@ bool GLTFEventParserObj::on_json_material_pbr_metallic_roughness_texture_key(con
     return true;
 }
 
-bool GLTFEventParserObj::on_json_texture_key(const View& key)
+bool GLTFParserObj::on_json_texture_key(const View& key)
 {
     if (key == "name")
         mStringSlot = &mTextureProp.name;
@@ -1137,7 +1137,7 @@ bool GLTFEventParserObj::on_json_texture_key(const View& key)
     return true;
 }
 
-bool GLTFEventParserObj::on_json_sampler_key(const View& key)
+bool GLTFParserObj::on_json_sampler_key(const View& key)
 {
     if (key == "name")
         mStringSlot = &mSamplerProp.name;
@@ -1155,7 +1155,7 @@ bool GLTFEventParserObj::on_json_sampler_key(const View& key)
     return true;
 }
 
-bool GLTFEventParserObj::on_json_image_key(const View& key)
+bool GLTFParserObj::on_json_image_key(const View& key)
 {
     if (key == "name")
         mStringSlot = &mImageProp.name;
@@ -1171,7 +1171,7 @@ bool GLTFEventParserObj::on_json_image_key(const View& key)
     return true;
 }
 
-bool GLTFEventParserObj::on_json_buffer_key(const View& key)
+bool GLTFParserObj::on_json_buffer_key(const View& key)
 {
     if (key == "name")
         mStringSlot = &mBufferProp.name;
@@ -1185,7 +1185,7 @@ bool GLTFEventParserObj::on_json_buffer_key(const View& key)
     return true;
 }
 
-bool GLTFEventParserObj::on_json_buffer_view_key(const View& key)
+bool GLTFParserObj::on_json_buffer_view_key(const View& key)
 {
     if (key == "name")
         mStringSlot = &mBufferViewProp.name;
@@ -1205,7 +1205,7 @@ bool GLTFEventParserObj::on_json_buffer_view_key(const View& key)
     return true;
 }
 
-bool GLTFEventParserObj::on_json_accessor_key(const View& key)
+bool GLTFParserObj::on_json_accessor_key(const View& key)
 {
     if (key == "name")
         mStringSlot = &mAccessorProp.name;
@@ -1231,24 +1231,24 @@ bool GLTFEventParserObj::on_json_accessor_key(const View& key)
     return true;
 }
 
-bool GLTFEventParserObj::parse(const void* fileData, size_t fileSize, std::string& error)
+bool GLTFParserObj::parse(const View& file, std::string& error)
 {
     mState = STATE_ZERO;
 
-    JSONEventCallback jsonEvents{};
-    jsonEvents.onEnterObject = &GLTFEventParserObj::on_json_enter_object;
-    jsonEvents.onLeaveObject = &GLTFEventParserObj::on_json_leave_object;
-    jsonEvents.onEnterArray = &GLTFEventParserObj::on_json_enter_array;
-    jsonEvents.onLeaveArray = &GLTFEventParserObj::on_json_leave_array;
-    jsonEvents.onKey = &GLTFEventParserObj::on_json_key;
-    jsonEvents.onString = &GLTFEventParserObj::on_json_string;
-    jsonEvents.onNull = &GLTFEventParserObj::on_json_null;
-    jsonEvents.onBool = &GLTFEventParserObj::on_json_bool;
-    jsonEvents.onI64 = &GLTFEventParserObj::on_json_i64;
-    jsonEvents.onU64 = &GLTFEventParserObj::on_json_u64;
-    jsonEvents.onF64 = &GLTFEventParserObj::on_json_f64;
+    JSONCallback jsonEvents{};
+    jsonEvents.onEnterObject = &GLTFParserObj::on_json_enter_object;
+    jsonEvents.onLeaveObject = &GLTFParserObj::on_json_leave_object;
+    jsonEvents.onEnterArray = &GLTFParserObj::on_json_enter_array;
+    jsonEvents.onLeaveArray = &GLTFParserObj::on_json_leave_array;
+    jsonEvents.onKey = &GLTFParserObj::on_json_key;
+    jsonEvents.onString = &GLTFParserObj::on_json_string;
+    jsonEvents.onNull = &GLTFParserObj::on_json_null;
+    jsonEvents.onBool = &GLTFParserObj::on_json_bool;
+    jsonEvents.onI64 = &GLTFParserObj::on_json_i64;
+    jsonEvents.onU64 = &GLTFParserObj::on_json_u64;
+    jsonEvents.onF64 = &GLTFParserObj::on_json_f64;
 
-    bool isJSONValid = JSONEventParser::parse(fileData, fileSize, error, jsonEvents, this);
+    bool isJSONValid = JSONParser::parse(file, error, jsonEvents, this);
     if (!isJSONValid)
         return false;
 
@@ -1323,7 +1323,7 @@ bool GLTFPrinter::print(std::string& outStr, std::string& outErr)
     mBufferViewsStr.clear();
     mAccessorsStr.clear();
 
-    GLTFEventCallback callbacks{};
+    GLTFCallback callbacks{};
     callbacks.onAsset = &GLTFPrinter::on_asset;
     callbacks.onScene = &GLTFPrinter::on_scene;
     callbacks.onNode = &GLTFPrinter::on_node;
@@ -1669,11 +1669,11 @@ bool GLTFPrinter::on_accessor(const GLTFAccessorProp& acc, void* user)
     return true;
 }
 
-bool GLTFEventParser::parse(const View& file, std::string& error, const GLTFEventCallback& callbacks, void* user)
+bool GLTFEventParser::parse(const View& file, std::string& error, const GLTFCallback& callbacks, void* user)
 {
-    GLTFEventParserObj obj(callbacks, user);
+    GLTFParserObj obj(callbacks, user);
 
-    return obj.parse(file.data, file.size, error);
+    return obj.parse(file, error);
 }
 
 bool print_gltf_data(const View& file, std::string& str, std::string& err)

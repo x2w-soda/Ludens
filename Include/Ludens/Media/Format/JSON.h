@@ -52,7 +52,7 @@ struct JSONReader : Handle<struct JSONReaderObj>
     bool read_string(int index, std::string& str);
 };
 
-struct JSONEventCallback
+struct JSONCallback
 {
     bool (*onEnterObject)(void* user);
     bool (*onLeaveObject)(size_t memberCount, void* user);
@@ -74,9 +74,9 @@ struct JSONEventCallback
 };
 
 /// @brief JSON event based parser, user provides callbacks.
-struct JSONEventParser
+struct JSONParser
 {
-    static bool parse(const void* fileData, size_t fileSize, std::string& error, const JSONEventCallback& callbacks, void* user);
+    static bool parse(const View& json, std::string& error, const JSONCallback& callbacks, void* user);
 };
 
 } // namespace LD
