@@ -1,6 +1,8 @@
 #pragma once
 
 #include <Ludens/Header/Handle.h>
+#include <Ludens/Header/Math/Rect.h>
+#include <Ludens/Header/Math/Vec4.h>
 #include <Ludens/Header/View.h>
 #include <Ludens/System/FileSystem.h>
 
@@ -8,6 +10,9 @@
 #include <string>
 
 namespace LD {
+
+struct Transform2D;
+struct TransformEx;
 
 enum JSONType
 {
@@ -18,6 +23,32 @@ enum JSONType
     JSON_TYPE_ARRAY,
     JSON_TYPE_STRING,
     JSON_TYPE_NUMBER,
+};
+
+struct JSONWriter : Handle<struct JSONWriterObj>
+{
+    static JSONWriter create();
+    static void destroy(JSONWriter writer);
+
+    bool begin();
+    bool end(std::string& outString);
+
+    bool begin_array();
+    bool end_array();
+
+    bool begin_object();
+    bool end_object();
+
+    bool key(const char* name);
+    bool key(const std::string& str);
+    bool write_bool(bool b);
+    bool write_i32(int32_t i32);
+    bool write_i64(int64_t i64);
+    bool write_u32(uint32_t u32);
+    bool write_f32(float f32);
+    bool write_f64(double f64);
+    bool write_string(const char* cstr);
+    bool write_string(const std::string& str);
 };
 
 struct JSONReader : Handle<struct JSONReaderObj>
@@ -79,4 +110,12 @@ struct JSONParser
     static bool parse(const View& json, std::string& error, const JSONCallback& callbacks, void* user);
 };
 
+namespace JSONUtil {
+
+bool write_vec3(JSONWriter writer, const char* key, const Vec3& vec3);
+bool read_vec3(JSONReader reader, const char* key, Vec3& vec3);
+bool write_vec2(JSONWriter writer, const char* key, const Vec2& vec2);
+bool read_vec2(JSONReader reader, const char* key, Vec2& vec2);
+
+} // namespace JSONUtil
 } // namespace LD

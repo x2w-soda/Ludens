@@ -1,7 +1,6 @@
 #include <Ludens/DSA/Stack.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Media/Format/JSON.h>
-#include <Ludens/Memory/Allocator.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/System/FileSystem.h>
 
@@ -13,11 +12,13 @@
 #include <rapidjson/document.h>
 #include <rapidjson/memorystream.h>
 #include <rapidjson/rapidjson.h>
+#include <rapidjson/stringbuffer.h>
+#include <rapidjson/writer.h>
 
 namespace LD {
 
 /// @brief A node in the DOM tree
-struct JSONValue : Handle<struct JSONValueObj>
+struct JSONValue : Handle<rapidjson::Value>
 {
     /// @brief get node data type
     JSONType type() const;
@@ -101,16 +102,10 @@ static_assert((int)JSON_TYPE_NUMBER == (int)rapidjson::kNumberType);
 
 static const char* get_error_code_cstr(rapidjson::ParseErrorCode code);
 
-struct JSONValueObj
-{
-    rapidjson::Value value;
-    JSONDocumentObj* doc;
-};
 
 struct JSONDocumentObj
 {
     rapidjson::Document doc;
-    PoolAllocator nodePA;
     JSONValue root;
     byte* fileBuffer;
 
@@ -118,66 +113,43 @@ struct JSONDocumentObj
     {
         return doc.GetAllocator();
     }
-
-    void free_nodes()
-    {
-        if (!nodePA)
-            return;
-
-        for (auto ite = nodePA.begin(); ite; ++ite)
-        {
-            auto* node = static_cast<JSONValueObj*>(ite.data());
-            (&node->value)->~GenericValue();
-        }
-
-        PoolAllocator::destroy(nodePA);
-        nodePA = {};
-    }
-
-    JSONValueObj* alloc_node()
-    {
-        JSONValueObj* node = (JSONValueObj*)nodePA.allocate();
-        node->doc = this;
-        new (&node->value) rapidjson::Value();
-        return node;
-    }
 };
 
 JSONType JSONValue::type() const
 {
-    return static_cast<JSONType>(mObj->value.GetType());
+    return static_cast<JSONType>(mObj->GetType());
 }
 
 bool JSONValue::is_false() const
 {
-    return mObj->value.GetType() == rapidjson::kFalseType;
+    return mObj->GetType() == rapidjson::kFalseType;
 }
 
 bool JSONValue::is_true() const
 {
-    return mObj->value.GetType() == rapidjson::kTrueType;
+    return mObj->GetType() == rapidjson::kTrueType;
 }
 
 bool JSONValue::is_object() const
 {
-    return mObj->value.GetType() == rapidjson::kObjectType;
+    return mObj->GetType() == rapidjson::kObjectType;
 }
 
 bool JSONValue::is_array() const
 {
-    return mObj->value.GetType() == rapidjson::kArrayType;
+    return mObj->GetType() == rapidjson::kArrayType;
 }
 
 bool JSONValue::is_number() const
 {
-    return mObj->value.GetType() == rapidjson::kNumberType;
+    return mObj->GetType() == rapidjson::kNumberType;
 }
 
 bool JSONValue::get_bool(bool& b) const
 {
-    if (mObj->value.IsBool())
+    if (mObj->IsBool())
     {
-        b = mObj->value.GetBool();
+        b = mObj->GetBool();
         return true;
     }
 
@@ -186,9 +158,9 @@ bool JSONValue::get_bool(bool& b) const
 
 bool JSONValue::get_i32(int32_t& i32) const
 {
-    if (mObj->value.IsInt())
+    if (mObj->IsInt())
     {
-        i32 = (int32_t)mObj->value.GetInt();
+        i32 = (int32_t)mObj->GetInt();
         return true;
     }
 
@@ -197,9 +169,9 @@ bool JSONValue::get_i32(int32_t& i32) const
 
 bool JSONValue::get_i64(int64_t& i64) const
 {
-    if (mObj->value.IsInt64())
+    if (mObj->IsInt64())
     {
-        i64 = mObj->value.GetInt64();
+        i64 = mObj->GetInt64();
         return true;
     }
 
@@ -208,9 +180,9 @@ bool JSONValue::get_i64(int64_t& i64) const
 
 bool JSONValue::get_u32(uint32_t& u32) const
 {
-    if (mObj->value.IsUint())
+    if (mObj->IsUint())
     {
-        u32 = (uint32_t)mObj->value.GetUint();
+        u32 = (uint32_t)mObj->GetUint();
         return true;
     }
 
@@ -219,9 +191,9 @@ bool JSONValue::get_u32(uint32_t& u32) const
 
 bool JSONValue::get_u64(uint64_t& u64) const
 {
-    if (mObj->value.IsUint64())
+    if (mObj->IsUint64())
     {
-        u64 = (uint32_t)mObj->value.GetUint64();
+        u64 = (uint32_t)mObj->GetUint64();
         return true;
     }
 
@@ -230,9 +202,19 @@ bool JSONValue::get_u64(uint64_t& u64) const
 
 bool JSONValue::get_f32(float& f32) const
 {
-    if (mObj->value.IsFloat())
+    if (mObj->IsFloat())
     {
-        f32 = mObj->value.GetFloat();
+        f32 = mObj->GetFloat();
+        return true;
+    }
+    else if (mObj->IsDouble())
+    {
+        f32 = (float)mObj->GetDouble();
+        return true;
+    }
+    else if (mObj->IsInt())
+    {
+        f32 = (float)mObj->GetInt();
         return true;
     }
 
@@ -241,11 +223,11 @@ bool JSONValue::get_f32(float& f32) const
 
 bool JSONValue::get_string(std::string& str) const
 {
-    if (mObj->value.IsString())
+    if (mObj->IsString())
     {
         // NOTE: According to RFC 4627, JSON strings can contain Unicode U+0000,
         //       this ensures all null bytes in JSON strings are loaded into std::string
-        str = std::string(mObj->value.GetString(), mObj->value.GetStringLength());
+        str = std::string(mObj->GetString(), mObj->GetStringLength());
         return true;
     }
 
@@ -254,11 +236,11 @@ bool JSONValue::get_string(std::string& str) const
 
 int JSONValue::size()
 {
-    if (mObj->value.IsArray())
-        return mObj->value.Size();
+    if (mObj->IsArray())
+        return mObj->Size();
 
-    if (mObj->value.IsObject())
-        return mObj->value.MemberCount();
+    if (mObj->IsObject())
+        return mObj->MemberCount();
 
     return -1;
 }
@@ -268,27 +250,19 @@ JSONValue JSONValue::get_member(const char* member)
     if (!is_object())
         return {};
 
-    rapidjson::Value::MemberIterator ite = mObj->value.FindMember(member);
-    if (ite == mObj->value.MemberEnd())
+    rapidjson::Value::MemberIterator it = mObj->FindMember(member);
+    if (it == mObj->MemberEnd())
         return {};
 
-    JSONDocumentObj* doc = mObj->doc;
-    JSONValueObj* node = doc->alloc_node();
-    node->value = std::move(ite->value);
-
-    return {node};
+    return JSONValue(&it->value);
 }
 
 JSONValue JSONValue::get_index(int idx)
 {
-    if (!is_array() || idx < 0 || idx >= (int)mObj->value.Size())
+    if (!is_array() || idx < 0 || idx >= (int)mObj->Size())
         return {};
 
-    JSONDocumentObj* doc = mObj->doc;
-    JSONValueObj* node = doc->alloc_node();
-    node->value = std::move(mObj->value[idx]);
-
-    return {node};
+    return JSONValue(&mObj->operator[](idx));
 }
 
 JSONDocument JSONDocument::create()
@@ -302,8 +276,6 @@ JSONDocument JSONDocument::create()
 void JSONDocument::destroy(JSONDocument doc)
 {
     JSONDocumentObj* obj = doc;
-
-    obj->free_nodes();
 
     if (obj->fileBuffer)
         heap_free(obj->fileBuffer);
@@ -321,7 +293,6 @@ static bool parse_json(JSONDocument dst, const View& view, std::string& error)
     LD_PROFILE_SCOPE;
 
     JSONDocumentObj* docObj = dst.unwrap();
-    docObj->free_nodes();
 
     error.clear();
     rapidjson::ParseResult result = docObj->doc.Parse(view.data, view.size);
@@ -333,18 +304,132 @@ static bool parse_json(JSONDocument dst, const View& view, std::string& error)
         return false;
     }
 
-    PoolAllocatorInfo paI{};
-    paI.usage = MEMORY_USAGE_MEDIA;
-    paI.isMultiPage = true;
-    paI.blockSize = sizeof(JSONValueObj);
-    paI.pageSize = 64; // nodes per page
-    docObj->nodePA = PoolAllocator::create(paI);
-
-    JSONValueObj* rootNode = docObj->alloc_node();
-    rootNode->value.CopyFrom(docObj->doc, docObj->doc.GetAllocator());
-    docObj->root = {rootNode};
+    docObj->root = JSONValue(&docObj->doc);
 
     return true;
+}
+
+/// @brief JSON writer implementation.
+struct JSONWriterObj
+{
+    rapidjson::StringBuffer buffer;
+    rapidjson::Writer<rapidjson::StringBuffer> writer;
+    bool isWriting = false;
+
+    JSONWriterObj()
+        : writer(buffer)
+    {
+    }
+};
+
+JSONWriter JSONWriter::create()
+{
+    auto* obj = heap_new<JSONWriterObj>(MEMORY_USAGE_MEDIA);
+
+    return JSONWriter(obj);
+}
+
+void JSONWriter::destroy(JSONWriter writer)
+{
+    auto* obj = writer.unwrap();
+
+    heap_delete<JSONWriterObj>(obj);
+}
+
+bool JSONWriter::begin()
+{
+    LD_ASSERT(!mObj->isWriting);
+
+    mObj->isWriting = true;
+    mObj->buffer = rapidjson::StringBuffer();
+    mObj->writer.Reset(mObj->buffer);
+
+    return true;
+}
+
+bool JSONWriter::end(std::string& outString)
+{
+    LD_ASSERT(mObj->isWriting);
+
+    mObj->isWriting = false;
+    outString.clear();
+
+    if (!mObj->writer.IsComplete())
+        return false;
+
+    outString = mObj->buffer.GetString();
+
+    return true;
+}
+
+bool JSONWriter::begin_array()
+{
+    return mObj->writer.StartArray();
+}
+
+bool JSONWriter::end_array()
+{
+    return mObj->writer.EndArray();
+}
+
+bool JSONWriter::begin_object()
+{
+    return mObj->writer.StartObject();
+}
+
+bool JSONWriter::end_object()
+{
+    return mObj->writer.EndObject();
+}
+
+bool JSONWriter::key(const char* name)
+{
+    return mObj->writer.Key(name);
+}
+
+bool JSONWriter::key(const std::string& str)
+{
+    return mObj->writer.Key(str.c_str());
+}
+
+bool JSONWriter::write_bool(bool b)
+{
+    return mObj->writer.Bool(b);
+}
+
+bool JSONWriter::write_i32(int32_t i32)
+{
+    return mObj->writer.Int((int)i32);
+}
+
+bool JSONWriter::write_i64(int64_t i64)
+{
+    return mObj->writer.Int64(i64);
+}
+
+bool JSONWriter::write_u32(uint32_t u32)
+{
+    return mObj->writer.Uint((unsigned int)u32);
+}
+
+bool JSONWriter::write_f32(float f32)
+{
+    return mObj->writer.Double((double)f32);
+}
+
+bool JSONWriter::write_f64(double f64)
+{
+    return mObj->writer.Double(f64);
+}
+
+bool JSONWriter::write_string(const char* cstr)
+{
+    return mObj->writer.String(cstr);
+}
+
+bool JSONWriter::write_string(const std::string& str)
+{
+    return mObj->writer.String(str.c_str());
 }
 
 /// @brief JSON reader implementation
@@ -727,4 +812,112 @@ bool JSONParser::parse(const View& json, std::string& error, const JSONCallback&
     return true;
 }
 
+namespace JSONUtil {
+
+bool write_vec3(JSONWriter writer, const char* key, const Vec3& vec3)
+{
+    if (!writer.key(key) || !writer.begin_array())
+        return false;
+
+    if (!writer.write_f32(vec3.x) ||
+        !writer.write_f32(vec3.y) ||
+        !writer.write_f32(vec3.z))
+    {
+        writer.end_array();
+        return false;
+    }
+
+    return writer.end_array();
+}
+
+bool read_vec3(JSONReader reader, const char* key, Vec3& vec3)
+{
+    if (!reader)
+        return false;
+
+    int size;
+
+    if (reader.enter_object(key))
+    {
+        if (!reader.read_f32("x", vec3.x) ||
+            !reader.read_f32("y", vec3.y) ||
+            !reader.read_f32("z", vec3.z))
+        {
+            reader.exit();
+            return false;
+        }
+
+        reader.exit();
+        return true;
+    }
+    else if (reader.enter_array(key, size))
+    {
+        if (size != 3 ||
+            !reader.read_f32(0, vec3.x) ||
+            !reader.read_f32(1, vec3.y) ||
+            !reader.read_f32(2, vec3.z))
+        {
+            reader.exit();
+            return false;
+        }
+
+        reader.exit();
+        return true;
+    }
+
+    return false;
+}
+
+bool write_vec2(JSONWriter writer, const char* key, const Vec2& vec2)
+{
+    if (!writer.key(key) || !writer.begin_array())
+        return false;
+
+    if (!writer.write_f32(vec2.x) ||
+        !writer.write_f32(vec2.y))
+    {
+        writer.end_array();
+        return false;
+    }
+
+    return writer.end_array();
+}
+
+bool read_vec2(JSONReader reader, const char* key, Vec2& vec2)
+{
+    if (!reader)
+        return false;
+
+    int size;
+
+    if (reader.enter_object(key))
+    {
+        if (!reader.read_f32("x", vec2.x) ||
+            !reader.read_f32("y", vec2.y))
+        {
+            reader.exit();
+            return false;
+        }
+
+        reader.exit();
+        return true;
+    }
+    else if (reader.enter_array(key, size))
+    {
+        if (size != 2 ||
+            !reader.read_f32(0, vec2.x) ||
+            !reader.read_f32(1, vec2.y))
+        {
+            reader.exit();
+            return false;
+        }
+
+        reader.exit();
+        return true;
+    }
+
+    return false;
+}
+
+} // namespace JSONUtil
 } // namespace LD
