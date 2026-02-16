@@ -57,7 +57,7 @@ struct TOMLWriter : Handle<struct TOMLWriterObj>
 
 struct TOMLReader : Handle<struct TOMLReaderObj>
 {
-    static TOMLReader create(View toml, std::string& err);
+    static TOMLReader create(const View& toml, std::string& err);
     static void destroy(TOMLReader reader);
 
     bool is_array_scope();

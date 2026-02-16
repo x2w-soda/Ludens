@@ -380,7 +380,7 @@ TOMLValue TOMLDocument::get_root()
     return TOMLValue(&mObj->root);
 }
 
-bool parse_toml(TOMLDocument dst, const View& view, std::string& error)
+static bool parse_toml(TOMLDocument dst, const View& view, std::string& error)
 {
     TOMLDocumentObj* docObj = dst.unwrap();
 
@@ -408,7 +408,7 @@ bool parse_toml(TOMLDocument dst, const View& view, std::string& error)
     return result.is_ok();
 }
 
-bool parse_toml_from_file(TOMLDocument dst, const FS::Path& path, std::string& error)
+static bool parse_toml_from_file(TOMLDocument dst, const FS::Path& path, std::string& error)
 {
     std::vector<byte> file;
     if (!FS::read_file_to_vector(path, file, error))
@@ -506,7 +506,7 @@ struct TOMLWriterObj
 
     void push_inline_table_scope()
     {
-        LD_ASSERT(scope.size() > 0 && scope.top().type == TOML_SCOPE_TABLE);
+        LD_ASSERT(scope.size() > 0 && (scope.top().type == TOML_SCOPE_TABLE) || (scope.top().type == TOML_SCOPE_INLINE_TABLE));
         LD_ASSERT(!key.empty());
 
         TOMLWriterScope newScope;
@@ -831,7 +831,7 @@ struct TOMLReaderObj
     }
 };
 
-TOMLReader TOMLReader::create(View toml, std::string& err)
+TOMLReader TOMLReader::create(const View& toml, std::string& err)
 {
     TOMLDocument doc = TOMLDocument::create();
 

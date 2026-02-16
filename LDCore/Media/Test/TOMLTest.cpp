@@ -1,7 +1,9 @@
 #include <Extra/doctest/doctest.h>
 #include <Ludens/Header/Math/Math.h>
+#include <Ludens/Header/Math/Transform.h>
 #include <Ludens/Media/Format/TOML.h>
 #include <Ludens/Memory/Memory.h>
+
 #include <cstring>
 #include <iostream>
 #include <string>
@@ -184,6 +186,132 @@ TEST_CASE("TOMLUtil Vec3")
     }
     TOMLReader::destroy(reader);
 
-    int leaks = get_memory_leaks(nullptr);
-    CHECK(leaks == 0);
+    CHECK_FALSE(get_memory_leaks(nullptr));
+}
+
+TEST_CASE("TOMLUtil Rect")
+{
+    TOMLWriter writer = TOMLWriter::create();
+    writer.begin();
+    {
+        Rect rect(0.0f, 1.0f, 2.0f, 3.0f);
+        bool ok = TOMLUtil::write_rect(writer, "r1", rect);
+        CHECK(ok);
+    }
+    std::string toml;
+    writer.end(toml);
+    TOMLWriter::destroy(writer);
+
+    toml += "r2 = {h = 9, y = 5, x = -4.0, w = 3.14}\n"; // valid
+    toml += "r3 = {}\n";                                 // invalid
+    toml += "r4 = {x = 1.0, y = 2.0}\n";                 // invalid
+
+    std::string error;
+    TOMLReader reader = TOMLReader::create(View(toml.data(), toml.size()), error);
+    {
+        CHECK(reader);
+        Rect rect;
+        CHECK(TOMLUtil::read_rect(reader, "r1", rect));
+        CHECK(is_equal_epsilon(rect.x, 0.0f));
+        CHECK(is_equal_epsilon(rect.y, 1.0f));
+        CHECK(is_equal_epsilon(rect.w, 2.0f));
+        CHECK(is_equal_epsilon(rect.h, 3.0f));
+
+        CHECK(TOMLUtil::read_rect(reader, "r2", rect));
+        CHECK(is_equal_epsilon(rect.x, -4.0f));
+        CHECK(is_equal_epsilon(rect.y, 5.0f));
+        CHECK(is_equal_epsilon(rect.w, 3.14f));
+        CHECK(is_equal_epsilon(rect.h, 9.0f));
+
+        CHECK_FALSE(TOMLUtil::read_rect(reader, "r3", rect));
+        CHECK_FALSE(TOMLUtil::read_rect(reader, "r4", rect));
+        CHECK_FALSE(TOMLUtil::read_rect(reader, "bruh", rect));
+    }
+    TOMLReader::destroy(reader);
+
+    CHECK_FALSE(get_memory_leaks(nullptr));
+}
+
+TEST_CASE("TOMLUtil Transform2D")
+{
+    TOMLWriter writer = TOMLWriter::create();
+    writer.begin();
+    {
+        Transform2D tr;
+        tr.position = Vec2(2.0f, 3.0f);
+        tr.rotation = 45.0f;
+        tr.scale = Vec2(1.0f, 4.0f);
+        bool ok = TOMLUtil::write_transform_2d(writer, "t1", tr);
+        CHECK(ok);
+    }
+    std::string toml;
+    writer.end(toml);
+    TOMLWriter::destroy(writer);
+
+    toml += "t2 = { scale = {x=3, y=4}, position = [-2, -3], rotation = -45}\n";
+    toml += "t3 = {}\n";
+
+    std::string error;
+    TOMLReader reader = TOMLReader::create(View(toml.data(), toml.size()), error);
+    {
+        CHECK(reader);
+        Transform2D tr;
+        CHECK(TOMLUtil::read_transform_2d(reader, "t1", tr));
+        CHECK(tr.position == Vec2(2.0f, 3.0f));
+        CHECK(tr.scale == Vec2(1.0f, 4.0f));
+        CHECK(is_equal_epsilon(tr.rotation, 45.0f));
+
+        CHECK(TOMLUtil::read_transform_2d(reader, "t2", tr));
+        CHECK(tr.position == Vec2(-2.0f, -3.0f));
+        CHECK(tr.scale == Vec2(3.0f, 4.0f));
+        CHECK(is_equal_epsilon(tr.rotation, -45.0f));
+
+        CHECK_FALSE(TOMLUtil::read_transform_2d(reader, "t3", tr));
+        CHECK_FALSE(TOMLUtil::read_transform_2d(reader, "bruh", tr));
+    }
+    TOMLReader::destroy(reader);
+
+    CHECK_FALSE(get_memory_leaks(nullptr));
+}
+
+TEST_CASE("TOMLUtil Transform")
+{
+    TOMLWriter writer = TOMLWriter::create();
+    writer.begin();
+    {
+        TransformEx tr;
+        tr.position = Vec3(2.0f, 3.0f, 0.0f);
+        tr.rotationEuler = Vec3(30.0f, 60.0f, 90.0f);
+        tr.scale = Vec3(1.0f, 4.0f, 2.0f);
+        bool ok = TOMLUtil::write_transform(writer, "t1", tr);
+        CHECK(ok);
+    }
+    std::string toml;
+    writer.end(toml);
+    TOMLWriter::destroy(writer);
+
+    toml += "t2 = { scale = {x=3, z=5, y=4}, position = [-2, -3, -4], rotation = [-30, -60.0, +90]}\n";
+    toml += "t3 = {}\n";
+
+    std::string error;
+    TOMLReader reader = TOMLReader::create(View(toml.data(), toml.size()), error);
+    {
+        CHECK(reader);
+        TransformEx tr;
+        CHECK(TOMLUtil::read_transform(reader, "t1", tr));
+        CHECK(tr.position == Vec3(2.0f, 3.0f, 0.0f));
+        CHECK(tr.rotationEuler == Vec3(30.0f, 60.0f, 90.0f));
+        CHECK(tr.scale == Vec3(1.0f, 4.0f, 2.0f));
+
+        CHECK(TOMLUtil::read_transform(reader, "t2", tr));
+        CHECK(tr.position == Vec3(-2.0f, -3.0f, -4.0f));
+        CHECK(tr.rotationEuler == Vec3(-30.0f, -60.0f, 90.0f));
+        CHECK(tr.scale == Vec3(3.0f, 4.0f, 5.0f));
+
+        CHECK_FALSE(TOMLUtil::read_transform(reader, "t3", tr));
+        CHECK_FALSE(TOMLUtil::read_transform(reader, "bruh", tr));
+    }
+    TOMLReader::destroy(reader);
+
+    CHECK_FALSE(get_memory_leaks(nullptr));
 }
