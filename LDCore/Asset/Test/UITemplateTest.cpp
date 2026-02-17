@@ -47,8 +47,7 @@ texture_2d = 1234
 
 TEST_CASE("UITemplate")
 {
-    UIThemeInfo themeI = UITheme::get_default_info();
-    UIContext ctx = UIContext::create({.theme = UITheme(&themeI)});
+    UIContext ctx = UIContext::create({.theme = UITheme::get_default_theme()});
     UITemplate tmpl = UITemplate::create();
 
     std::string err;

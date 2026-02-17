@@ -12,7 +12,7 @@ UITest* UITest::sInstance;
 
 UITest::UITest()
 {
-    mTheme = UITheme::get_default_info();
+    mTheme = UITheme::get_default_theme();
 
     if (sLudensLFS.isFound)
     {

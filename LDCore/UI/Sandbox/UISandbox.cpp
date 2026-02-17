@@ -89,12 +89,10 @@ UISandbox::UISandbox()
         Bitmap::destroy(tmpBitmap);
     }
 
-    static UIThemeInfo sUITheme = UITheme::get_default_info();
-
     UIContextInfo ctxI{};
     ctxI.fontAtlas = mFontAtlas;
     ctxI.fontAtlasImage = mFontAtlasImage;
-    ctxI.theme = UITheme(&sUITheme);
+    ctxI.theme = UITheme::get_default_theme();
     mCtx = UIContext::create(ctxI);
     UILayer groundLayer = mCtx.create_layer("ground");
     UILayer floatLayer = mCtx.create_layer("float");
