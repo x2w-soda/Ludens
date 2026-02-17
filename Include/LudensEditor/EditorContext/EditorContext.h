@@ -22,6 +22,8 @@ struct EditorContextInfo
     AudioSystem audioSystem;   /// audio system handle
     RenderSystem renderSystem; /// render system handle
     FS::Path iconAtlasPath;    /// path to icon atlas
+    FontAtlas fontAtlas;
+    RImage fontAtlasImage;
 };
 
 /// @brief Shared context among editor windows. Keeps track of

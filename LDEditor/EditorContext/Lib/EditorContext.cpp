@@ -33,6 +33,8 @@ struct EditorContextObj
     RenderSystem renderSystem;     /// render server handle
     AudioSystem audioSystem;       /// audio server handle
     Image2D iconAtlas;             /// editor icon atlas handle
+    FontAtlas fontAtlas;           ///
+    RImage fontAtlasImage;         ///
     Project project;               /// current project under edit
     Scene scene;                   /// current scene under edit
     AssetManager assetManager;     /// loads assets for the scene
@@ -286,6 +288,9 @@ void EditorContextObj::load_project_scene(const FS::Path& sceneSchemaPath)
         sceneI.assetManager = assetManager;
         sceneI.renderSystem = renderSystem;
         sceneI.audioSystem = audioSystem;
+        sceneI.fontAtlas = fontAtlas;
+        sceneI.fontAtlasImage = fontAtlasImage;
+        sceneI.uiTheme = settings.get_theme().get_ui_theme();
         scene = Scene::create(sceneI);
     }
 
@@ -359,6 +364,8 @@ EditorContext EditorContext::create(const EditorContextInfo& info)
     obj->renderSystem = info.renderSystem;
     obj->audioSystem = info.audioSystem;
     obj->iconAtlasPath = info.iconAtlasPath;
+    obj->fontAtlas = info.fontAtlas;
+    obj->fontAtlasImage = info.fontAtlasImage;
     obj->settings = EditorSettings::create();
     obj->isPlaying = false;
     obj->editStack = EditStack::create();

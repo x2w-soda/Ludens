@@ -11,6 +11,8 @@ set(MODULE_LIB
     Lib/Scene.cpp
     Lib/SceneSchemaKeys.h
     Lib/SceneSchema.cpp
+    Lib/ScreenUI.h
+    Lib/ScreenUI.cpp
     Lib/AudioSystemCache.h
     Lib/AudioSystemCache.cpp
     Lib/RenderSystemCache.h

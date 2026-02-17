@@ -30,6 +30,7 @@ public:
     static bool save_camera_component(SceneSchemaSaver& saver, Scene::Component comp);
     static bool save_mesh_component(SceneSchemaSaver& saver, Scene::Component comp);
     static bool save_sprite_2d_component(SceneSchemaSaver& saver, Scene::Component comp);
+    static bool save_screen_ui_component(SceneSchemaSaver& saver, Scene::Component comp);
 
 private:
     static void save_component(SceneSchemaSaver& saver, Scene::Component comp);
@@ -56,6 +57,7 @@ public:
     static Scene::Component load_camera_component(SceneSchemaLoader& loader, SUID compSUID, const char* compName);
     static Scene::Component load_mesh_component(SceneSchemaLoader& loader, SUID compSUID, const char* compName);
     static Scene::Component load_sprite_2d_component(SceneSchemaLoader& loader, SUID compSUID, const char* compName);
+    static Scene::Component load_screen_ui_component(SceneSchemaLoader& loader, SUID compSUID, const char* compName);
 
 private:
     static Scene::Component load_component(SceneSchemaLoader& loader);
@@ -79,6 +81,7 @@ struct
     {COMPONENT_TYPE_CAMERA,         "Camera",      &SceneSchemaLoader::load_camera_component,         &SceneSchemaSaver::save_camera_component},
     {COMPONENT_TYPE_MESH,           "Mesh",        &SceneSchemaLoader::load_mesh_component,           &SceneSchemaSaver::save_mesh_component},
     {COMPONENT_TYPE_SPRITE_2D,      "Sprite2D",    &SceneSchemaLoader::load_sprite_2d_component,      &SceneSchemaSaver::save_sprite_2d_component},
+    {COMPONENT_TYPE_SCREEN_UI,      "ScreenUI",    &SceneSchemaLoader::load_screen_ui_component,      &SceneSchemaSaver::save_screen_ui_component},
 };
 // clang-format on
 
@@ -292,6 +295,24 @@ Scene::Component SceneSchemaLoader::load_sprite_2d_component(SceneSchemaLoader& 
     return Scene::Component(sprite.data());
 }
 
+Scene::Component SceneSchemaLoader::load_screen_ui_component(SceneSchemaLoader& loader, SUID compSUID, const char* compName)
+{
+    Scene scene = loader.mScene;
+    TOMLReader reader = loader.mReader;
+
+    Scene::ScreenUI ui(scene.create_component_serial(COMPONENT_TYPE_SCREEN_UI, compName, (SUID)0, compSUID));
+    if (!ui)
+        return {};
+
+    AssetID uiTemplateID = 0;
+    reader.read_u32(SCENE_SCHEMA_KEY_SCREEN_UI_UI_TEMPLATE_ID, uiTemplateID);
+
+    if (!ui.load(uiTemplateID))
+        return {};
+
+    return Scene::Component(ui.data());
+}
+
 SceneSchemaSaver::~SceneSchemaSaver()
 {
     if (mWriter)
@@ -448,6 +469,20 @@ bool SceneSchemaSaver::save_sprite_2d_component(SceneSchemaSaver& saver, Scene::
     writer.key(SCENE_SCHEMA_KEY_SPRITE_2D_SCREEN_LAYER_ID).value_u32(sprite.get_screen_layer_suid());
     writer.key(SCENE_SCHEMA_KEY_SPRITE_2D_TEXTURE_2D_ID).value_u32(sprite.get_texture_2d_asset());
     writer.key(SCENE_SCHEMA_KEY_SPRITE_2D_Z_DEPTH).value_u32(sprite.get_z_depth());
+
+    return true;
+}
+
+bool SceneSchemaSaver::save_screen_ui_component(SceneSchemaSaver& saver, Scene::Component comp)
+{
+    LD_ASSERT(saver.mScene && saver.mWriter && comp);
+
+    Scene::ScreenUI ui(comp);
+    if (!ui)
+        return false;
+
+    TOMLWriter writer = saver.mWriter;
+    writer.key(SCENE_SCHEMA_KEY_SCREEN_UI_UI_TEMPLATE_ID).value_u32(ui.get_ui_template_asset());
 
     return true;
 }

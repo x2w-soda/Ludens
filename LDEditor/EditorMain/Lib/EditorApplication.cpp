@@ -78,6 +78,8 @@ EditorApplication::EditorApplication()
     contextI.audioSystem = mAudioSystem;
     contextI.renderSystem = mRenderSystem;
     contextI.iconAtlasPath = sLudensLFS.materialIconsPath;
+    contextI.fontAtlas = mFontAtlas;
+    contextI.fontAtlasImage = mRenderSystem.get_font_atlas_image();
     mEditorCtx = EditorContext::create(contextI);
     mEditorCtx.load_project(sLudensLFS.projectPath);
 

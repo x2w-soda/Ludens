@@ -118,6 +118,9 @@ RuntimeContext RuntimeContext::create(const RuntimeContextInfo& info)
     sceneI.assetManager = obj->AM;
     sceneI.audioSystem = obj->audioSystem;
     sceneI.renderSystem = obj->renderSystem;
+    sceneI.fontAtlas = defaultFont.get_font_atlas();
+    sceneI.fontAtlasImage = obj->renderSystem.get_font_atlas_image();
+    sceneI.uiTheme = UITheme::get_default_theme();
     obj->scene = Scene::create(sceneI);
 
     obj->scene.load([&](Scene scene) -> bool {

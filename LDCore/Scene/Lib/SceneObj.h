@@ -1,8 +1,11 @@
 #pragma once
 
+#include <Ludens/UI/UIContext.h>
+
 #include "AudioSystemCache.h"
 #include "LuaScript.h"
 #include "RenderSystemCache.h"
+#include "ScreenUI.h"
 
 namespace LD {
 
@@ -23,6 +26,8 @@ public:
     AudioSystemCache audioSystemCache;
     RenderSystemCache renderSystemCache;
     LuaScript::Context luaContext{};
+    LD::ScreenUI screenUI;
+    LD::ScreenUI screenUIBackup;
     CameraComponent* mainCameraC;
     Vec2 screenExtent = {};
     SceneState state = SCENE_STATE_EMPTY;
@@ -33,7 +38,6 @@ public:
     void cleanup_registry();
 
 private:
-
     bool load_subtree_from_backup(ComponentBase** dstData, ComponentBase** srcData);
 
     /// @brief Unload components recursively, destroying resources from systems/servers.

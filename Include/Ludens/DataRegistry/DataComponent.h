@@ -18,6 +18,7 @@
 #include <Ludens/Camera/Camera.h>
 #include <Ludens/RenderBackend/RBackend.h>
 #include <Ludens/RenderSystem/RenderSystem.h>
+#include <Ludens/UI/UIWindow.h>
 #include <cstdint>
 
 namespace LD {
@@ -95,6 +96,14 @@ struct Sprite2DComponent
     Transform2D transform; /// sprite 2D transform
     Sprite2DDraw draw;     /// render server draw config
     AssetID assetID;       /// texture asset handle
+};
+
+struct ScreenUIComponent
+{
+    ComponentBase* base;
+    AssetID uiTemplateID; // UITemplateAsset
+    class UIDriver* uiDriver;
+    UIWindow uiWindow;
 };
 
 } // namespace LD

@@ -7,6 +7,7 @@
 #include <Ludens/DataRegistry/DataRegistry.h>
 #include <Ludens/Header/Handle.h>
 #include <Ludens/RenderSystem/RenderSystem.h>
+#include <Ludens/UI/UITheme.h>
 
 #include <functional>
 
@@ -15,6 +16,7 @@ namespace LD {
 struct AudioSourceComponent;
 struct MeshComponent;
 struct Sprite2DComponent;
+struct ScreenUIComponent;
 struct CameraComponent;
 
 /// @brief Get static C string of log channel used by lua scripts.
@@ -26,6 +28,9 @@ struct SceneInfo
     AssetManager assetManager;
     AudioSystem audioSystem;
     RenderSystem renderSystem;
+    FontAtlas fontAtlas;
+    RImage fontAtlasImage;
+    UITheme uiTheme;
 };
 
 /// @brief The basic unit of game simulation.
@@ -245,6 +250,23 @@ public:
 
     private:
         Sprite2DComponent* mSprite = nullptr;
+    };
+
+    /// @brief Public interface for ScreenUI components.
+    class ScreenUI : public Component
+    {
+    public:
+        ScreenUI() = delete;
+        ScreenUI(Component comp);
+        ScreenUI(ScreenUIComponent* comp);
+
+        bool load(AssetID uiTemplateID);
+
+        bool set_ui_template_asset(AssetID uiTemplateID);
+        AssetID get_ui_template_asset();
+
+    private:
+        ScreenUIComponent* mUI = nullptr;
     };
 };
 

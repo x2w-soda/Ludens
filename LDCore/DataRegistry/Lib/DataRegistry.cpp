@@ -40,6 +40,7 @@ static ComponentMeta sComponentTable[] = {
     { COMPONENT_TYPE_CAMERA,         sizeof(CameraComponent),        "CameraComponent",      COMPONENT_TYPE_FLAG_TRANSFORM_EX, nullptr },
     { COMPONENT_TYPE_MESH,           sizeof(MeshComponent),          "MeshComponent",        COMPONENT_TYPE_FLAG_TRANSFORM_EX, &get_mesh_asset_id },
     { COMPONENT_TYPE_SPRITE_2D,      sizeof(Sprite2DComponent),      "Sprite2DComponent",    COMPONENT_TYPE_FLAG_TRANSFORM_2D, nullptr },
+    { COMPONENT_TYPE_SCREEN_UI,      sizeof(ScreenUIComponent),      "ScreenUIComponent",    0, nullptr },
 };
 // clang-format on
 
@@ -49,6 +50,7 @@ static_assert(LD::IsDataComponent<TransformComponent>);
 static_assert(LD::IsDataComponent<CameraComponent>);
 static_assert(LD::IsDataComponent<MeshComponent>);
 static_assert(LD::IsDataComponent<Sprite2DComponent>);
+static_assert(LD::IsDataComponent<ScreenUIComponent>);
 
 size_t get_component_byte_size(ComponentType type)
 {

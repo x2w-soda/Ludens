@@ -1,3 +1,4 @@
+#include <Ludens/Asset/AssetType/UITemplateAsset.h>
 #include <Ludens/Camera/Camera.h>
 #include <Ludens/DSA/Vector.h>
 #include <Ludens/Header/Assert.h>
@@ -44,6 +45,11 @@ static bool load_sprite_2d_component_suid(SceneObj* scene, Sprite2DComponent* sp
 static bool load_sprite_2d_component_ruid(SceneObj* scene, Sprite2DComponent* sprite, RUID layerRUID, AssetID texture2D);
 static bool clone_sprite_2d_component(SceneObj* scene, ComponentBase** dstData, ComponentBase** srcData);
 static void unload_sprite_2d_component(SceneObj* scene, ComponentBase** data);
+static bool load_screen_ui_component(SceneObj* scene, ScreenUIComponent* ui, AssetID uiTemplateID);
+static bool clone_screen_ui_component(SceneObj* scene, ComponentBase** dstData, ComponentBase** srcData);
+static void unload_screen_ui_component(SceneObj* scene, ComponentBase** data);
+static void startup_screen_ui_component(SceneObj* scene, ComponentBase** data);
+static void cleanup_screen_ui_component(SceneObj* scene, ComponentBase** data);
 
 /// @brief Component behavior and operations within a Scene.
 ///        - loading a component creates subsystem resources
@@ -62,12 +68,13 @@ struct SceneComponent
 
 // clang-format off
 static SceneComponent sSceneComponents[] = {
-    {COMPONENT_TYPE_DATA,         nullptr,                       nullptr,                        nullptr,                    nullptr},
-    {COMPONENT_TYPE_AUDIO_SOURCE, &clone_audio_source_component, &unload_audio_source_component, nullptr,                    &cleanup_audio_source_component},
-    {COMPONENT_TYPE_TRANSFORM,    nullptr,                       nullptr,                        nullptr,                    nullptr},
-    {COMPONENT_TYPE_CAMERA,       &clone_camera_component,       &unload_camera_component,       &startup_camera_component,  &cleanup_camera_component},
-    {COMPONENT_TYPE_MESH,         &clone_mesh_component,         &unload_mesh_component,         nullptr,                    nullptr},
-    {COMPONENT_TYPE_SPRITE_2D,    &clone_sprite_2d_component,    &unload_sprite_2d_component,    nullptr,                    nullptr},
+    {COMPONENT_TYPE_DATA,         nullptr,                       nullptr,                        nullptr,                      nullptr},
+    {COMPONENT_TYPE_AUDIO_SOURCE, &clone_audio_source_component, &unload_audio_source_component, nullptr,                      &cleanup_audio_source_component},
+    {COMPONENT_TYPE_TRANSFORM,    nullptr,                       nullptr,                        nullptr,                      nullptr},
+    {COMPONENT_TYPE_CAMERA,       &clone_camera_component,       &unload_camera_component,       &startup_camera_component,    &cleanup_camera_component},
+    {COMPONENT_TYPE_MESH,         &clone_mesh_component,         &unload_mesh_component,         nullptr,                      nullptr},
+    {COMPONENT_TYPE_SPRITE_2D,    &clone_sprite_2d_component,    &unload_sprite_2d_component,    nullptr,                      nullptr},
+    {COMPONENT_TYPE_SCREEN_UI,    &clone_screen_ui_component,    &unload_screen_ui_component,    &startup_screen_ui_component, &cleanup_screen_ui_component},
 };
 // clang-format on
 
@@ -310,7 +317,7 @@ static bool clone_sprite_2d_component(SceneObj* scene, ComponentBase** dstData, 
     dstSprite.set_pivot(srcSprite.get_pivot());
     dstSprite.set_region(srcSprite.get_region());
     dstSprite.set_z_depth(srcSprite.get_z_depth());
-    
+
     return true;
 }
 
@@ -326,6 +333,73 @@ static void unload_sprite_2d_component(SceneObj* scene, ComponentBase** data)
     }
 
     base->flags &= ~COMPONENT_FLAG_LOADED_BIT;
+}
+
+static bool load_screen_ui_component(SceneObj* scene, ScreenUIComponent* ui, AssetID uiTemplateID)
+{
+    LD_PROFILE_SCOPE;
+
+    ComponentBase* base = ui->base;
+
+    UITemplateAsset asset = (UITemplateAsset)scene->assetManager.get_asset(uiTemplateID);
+    if (!asset || asset.get_type() != ASSET_TYPE_UI_TEMPLATE)
+        return false;
+
+    UILayoutInfo layoutI{};
+    UIWindowInfo windowI{};
+    UIWorkspace space = scene->screenUI.workspace();
+    ui->uiWindow = space.create_window(layoutI, windowI, nullptr);
+
+    if (!ui->uiWindow || !asset.load_ui_subtree(ui->uiWindow, nullptr, nullptr))
+        return false;
+
+    ui->uiTemplateID = uiTemplateID;
+
+    base->flags |= COMPONENT_FLAG_LOADED_BIT;
+    return true;
+}
+
+static bool clone_screen_ui_component(SceneObj* scene, ComponentBase** dstData, ComponentBase** srcData)
+{
+    LD_PROFILE_SCOPE;
+
+    Scene::ScreenUI srcUI((ScreenUIComponent*)srcData);
+    Scene::ScreenUI dstUI((ScreenUIComponent*)dstData);
+    LD_ASSERT(srcUI && dstUI);
+
+    AssetID uiTemplateID = srcUI.get_ui_template_asset();
+
+    return load_screen_ui_component(scene, (ScreenUIComponent*)dstData, uiTemplateID);
+}
+
+static void unload_screen_ui_component(SceneObj* scene, ComponentBase** data)
+{
+    ScreenUIComponent* ui = (ScreenUIComponent*)data;
+
+    UIWorkspace space = scene->screenUI.workspace();
+    space.destroy_window(ui->uiWindow);
+    ui->uiWindow = {};
+
+    ComponentBase* base = *data;
+    base->flags &= ~COMPONENT_FLAG_LOADED_BIT;
+}
+
+static void startup_screen_ui_component(SceneObj* scene, ComponentBase** data)
+{
+    auto* ui = (ScreenUIComponent*)data;
+
+    UITemplateAsset asset = (UITemplateAsset)scene->assetManager.get_asset(ui->uiTemplateID);
+    LD_ASSERT(asset && asset.get_type() == ASSET_TYPE_UI_TEMPLATE);
+
+    // TODO: UIDriver attach
+}
+
+static void cleanup_screen_ui_component(SceneObj* scene, ComponentBase** data)
+{
+    auto* ui = (ScreenUIComponent*)data;
+    LD_ASSERT(ui);
+
+    // TODO: UIDriver detach
 }
 
 void SceneObj::load_registry_from_backup()
@@ -363,8 +437,6 @@ void SceneObj::unload_registry()
 void SceneObj::startup_registry()
 {
     LD_PROFILE_SCOPE;
-
-    luaContext.set_registry(registry);
 
     Vector<ComponentBase**> roots;
     registry.get_root_component_data(roots);
@@ -517,7 +589,19 @@ Scene Scene::create(const SceneInfo& sceneI)
     sScene->assetManager = sceneI.assetManager;
     sScene->renderSystemCache.create(sceneI.renderSystem, sceneI.assetManager);
     sScene->audioSystemCache.create(sceneI.audioSystem, sceneI.assetManager);
-    sScene->luaContext.create(Scene(sScene), sScene->registry, sceneI.assetManager);
+    sScene->luaContext.create(Scene(sScene), sceneI.assetManager);
+    sScene->screenExtent = {};
+
+    ScreenUIInfo info{};
+    info.extent = sScene->screenExtent;
+    info.fontAtlas = sceneI.fontAtlas;
+    info.fontAtlasImage = sceneI.fontAtlasImage;
+    info.theme = sceneI.uiTheme;
+    LD_ASSERT(info.fontAtlas);
+    LD_ASSERT(info.fontAtlasImage);
+    LD_ASSERT(info.theme);
+    sScene->screenUI = LD::ScreenUI::create(info);
+    sScene->screenUIBackup = {}; // TODO:
 
     return Scene(sScene);
 }
@@ -531,6 +615,7 @@ void Scene::destroy(Scene scene)
     // destroy all components
     scene.reset();
 
+    LD::ScreenUI::destroy(sScene->screenUI);
     sScene->luaContext.destroy();
     sScene->audioSystemCache.destroy();
     sScene->renderSystemCache.destroy();
@@ -607,6 +692,10 @@ void Scene::backup()
 
     LD_ASSERT(mObj->state == SCENE_STATE_LOADED);
     LD_ASSERT(!mObj->registryBackup);
+    LD_ASSERT(!mObj->screenUIBackup);
+
+    mObj->screenUIBackup = mObj->screenUI;
+    mObj->screenUI;
 
     // create and load a copy for play-in-editor session
     DataRegistry pie = mObj->registry.duplicate();
@@ -657,6 +746,9 @@ void Scene::update(const Vec2& screenExtent, float delta)
 
     // update all lua script instances
     mObj->luaContext.update(delta);
+
+    // update screen space UI
+    mObj->screenUI.update(delta);
 
     if (mObj->mainCameraC)
     {
@@ -1187,6 +1279,57 @@ SUID Scene::Sprite2D::get_screen_layer_suid()
     LD_ASSERT(layerSUID);
 
     return layerSUID;
+}
+
+Scene::ScreenUI::ScreenUI(Component comp)
+{
+    if (comp && comp.type() == COMPONENT_TYPE_SCREEN_UI)
+    {
+        mData = comp.data();
+        mUI = (ScreenUIComponent*)mData;
+    }
+}
+
+Scene::ScreenUI::ScreenUI(ScreenUIComponent* comp)
+{
+    if (comp && comp->base && comp->base->cuid)
+    {
+        mData = (ComponentBase**)comp;
+        mUI = comp;
+    }
+}
+
+bool Scene::ScreenUI::load(AssetID uiTemplateID)
+{
+    return load_screen_ui_component(sScene, mUI, uiTemplateID);
+}
+
+bool Scene::ScreenUI::set_ui_template_asset(AssetID uiTemplateID)
+{
+    LD_ASSERT_COMPONENT_LOADED(mData);
+
+    UITemplateAsset asset = (UITemplateAsset)sScene->assetManager.get_asset(uiTemplateID);
+    if (!asset || asset.get_type() != ASSET_TYPE_UI_TEMPLATE)
+        return false;
+
+    UILayoutInfo layoutI{};
+    UIWindowInfo windowI{};
+    UIWorkspace space = sScene->screenUI.workspace();
+    mUI->uiWindow = space.create_window(layoutI, windowI, nullptr);
+
+    if (!mUI->uiWindow || !asset.load_ui_subtree(mUI->uiWindow, nullptr, nullptr))
+        return false;
+
+    mUI->uiTemplateID = uiTemplateID;
+
+    return true;
+}
+
+AssetID Scene::ScreenUI::get_ui_template_asset()
+{
+    LD_ASSERT_COMPONENT_LOADED(mData);
+
+    return mUI->uiTemplateID;
 }
 
 } // namespace LD
