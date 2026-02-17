@@ -104,13 +104,13 @@ bool ProjectSchemaLoader::load_project(Project project, const View& toml, std::s
         mReader.exit();
     }
 
+    mReader.exit();
+
     if (mReader.enter_table(PROJECT_SCHEMA_TABLE_SETTINGS))
     {
         load_project_settings(project.get_settings());
         mReader.exit();
     }
-
-    mReader.exit();
 
     TOMLReader::destroy(mReader);
     mReader = {};

@@ -275,6 +275,8 @@ bool UITemplateSchemaLoader::load_template(UITemplateObj* obj, const View& toml,
     if (!mReader.read_u32(UI_TEMPLATE_SCHEMA_KEY_VERSION_PATCH, version) || version != LD_VERSION_PATCH)
         return false;
 
+    mReader.exit();
+
     if (mReader.enter_table(SCENE_SCHEMA_TABLE_HIERARCHY))
     {
         Vector<std::string> keys;
@@ -367,6 +369,8 @@ void UITemplateSchemaLoader::load_widget_toml()
         LD_ASSERT(ok); // TODO: invalid layout
         mReader.exit();
     }
+    else
+        entry->layout = {};
 
     if (!get_ui_widget_type_from_cstr(entry->type, typeStr.c_str()))
         return;

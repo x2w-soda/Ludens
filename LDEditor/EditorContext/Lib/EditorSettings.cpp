@@ -7,7 +7,7 @@ namespace LD {
 /// @brief Editor theme data, embeds an UI theme
 struct EditorThemeObj
 {
-    UIThemeInfo uiTheme;
+    UITheme uiTheme;
     float fontSize;
     float padding;
     float textRowHeight;
@@ -25,7 +25,7 @@ struct EditorThemeObj
 
 void EditorThemeObj::initialize_default()
 {
-    uiTheme = UITheme::get_default_info();
+    uiTheme = UITheme::get_default_theme();
     fontSize = 16.0f;
     padding = 5.0f;
     textRowHeight = 20.0f;
@@ -41,7 +41,7 @@ void EditorThemeObj::initialize_default()
 
 UITheme EditorTheme::get_ui_theme()
 {
-    return UITheme(&mObj->uiTheme);
+    return mObj->uiTheme;
 }
 
 Color EditorTheme::get_play_button_color() const

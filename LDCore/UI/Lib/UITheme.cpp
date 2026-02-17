@@ -2,7 +2,7 @@
 
 namespace LD {
 
-static const UIThemeInfo sDefaultThemeInfo = {
+static UIThemeInfo sDefaultThemeInfo = {
     .surfaceColor = 0x2B2C2FFF,
     .onSurfaceColor = 0xDFDFDFFF,
     .primaryColor = 0x4DD8E6FF,
@@ -11,9 +11,9 @@ static const UIThemeInfo sDefaultThemeInfo = {
     .selectionColor = 0x4D6490FF,
 };
 
-UIThemeInfo UITheme::get_default_info()
+UITheme UITheme::get_default_theme()
 {
-    return sDefaultThemeInfo;
+    return UITheme(&sDefaultThemeInfo);
 }
 
 } // namespace LD

@@ -13,13 +13,10 @@ class Context
 {
 public:
     /// @brief In-place creation, initializes lua state and loads FFI functions.
-    void create(Scene scene, DataRegistry registry, AssetManager assetManager);
+    void create(Scene scene, AssetManager assetManager);
 
     /// @brief In-place destruction, destroys all scripts and lua state.
     void destroy();
-
-    /// @brief Set the registry of components.
-    void set_registry(DataRegistry registry);
 
     /// @brief Call update on all scripts.
     /// @param delta Delta time in seconds.
@@ -46,7 +43,6 @@ public:
 private:
     LuaState mL{};
     Scene mScene{};
-    DataRegistry mRegistry{};
     AssetManager mAssetManager{};
 };
 

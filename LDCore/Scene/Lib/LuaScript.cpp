@@ -370,12 +370,11 @@ LuaModule create_ludens_module()
     return LuaModule::create(modI); // caller destroys
 }
 
-void Context::create(Scene scene, DataRegistry registry, AssetManager assetManager)
+void Context::create(Scene scene, AssetManager assetManager)
 {
     LD_PROFILE_SCOPE;
 
     mScene = scene;
-    mRegistry = registry;
     mAssetManager = assetManager;
 
     LuaStateInfo stateI{};
@@ -483,13 +482,7 @@ void Context::destroy()
     LuaState::destroy(mL);
     mL = {};
     mAssetManager = {};
-    mRegistry = {};
     mScene = {};
-}
-
-void Context::set_registry(DataRegistry registry)
-{
-    mRegistry = registry;
 }
 
 void Context::update(float delta)

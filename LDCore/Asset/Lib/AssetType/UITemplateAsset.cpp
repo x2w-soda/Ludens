@@ -13,22 +13,12 @@ void UITemplateAssetObj::load(void* user)
     auto& job = *(AssetLoadJob*)user;
     auto* obj = (UITemplateAssetObj*)job.assetHandle.unwrap();
 
+    std::string err;
+    Vector<byte> file;
+    FS::read_file_to_vector(job.loadPath, file, err);
+    View fileView((const char*)file.data(), file.size());
+
     obj->tmpl = UITemplate::create();
-
-    std::string err; // TODO:
-    uint64_t fileSize;
-    if (!FS::get_file_size(job.loadPath, fileSize, err) || fileSize == 0)
-    {
-        UITemplate::destroy(obj->tmpl);
-        obj->tmpl = {};
-        return;
-    }
-
-    Serializer serializer(fileSize);
-    if (!FS::read_file(job.loadPath, MutView((char*)serializer.data(), fileSize), err))
-        return;
-
-    View fileView((const char*)serializer.data(), serializer.size());
 
     bool ok = UITemplateSchema::load_ui_template_from_source(obj->tmpl, fileView, err);
     LD_ASSERT(ok); // TODO: asset load failure

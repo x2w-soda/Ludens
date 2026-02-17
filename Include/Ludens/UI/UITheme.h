@@ -22,7 +22,7 @@ struct UIThemeInfo
 struct UITheme : Handle<UIThemeInfo>
 {
     /// @brief Get default UI theme values.
-    static UIThemeInfo get_default_info();
+    static UITheme get_default_theme();
 
     inline Color get_surface_color() const { return mObj->surfaceColor; };
     inline Color get_on_surface_color() const { return mObj->onSurfaceColor; };
