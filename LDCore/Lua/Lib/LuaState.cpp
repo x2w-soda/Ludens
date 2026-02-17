@@ -226,6 +226,21 @@ LuaType LuaState::get_type(int index)
     return (LuaType)type;
 }
 
+int LuaState::get_registry_index()
+{
+    return LUA_REGISTRYINDEX;
+}
+
+int LuaState::ref(int tIndex)
+{
+    return luaL_ref(mL, tIndex);
+}
+
+void LuaState::unref(int tIndex, int ref)
+{
+    luaL_unref(mL, tIndex, ref);
+}
+
 int LuaState::size()
 {
     return lua_gettop(mL);

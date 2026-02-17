@@ -140,6 +140,18 @@ public:
     /// @index stack index of the value to query
     LuaType get_type(int index);
 
+    /// @brief Get LUA_REGISTRYINDEX
+    int get_registry_index();
+
+    /// @brief Creates and returns a reference in a table for the object at the top of the stack (and pops it).
+    /// @param tIndex the stack index of the table.
+    int ref(int tIndex);
+
+    /// @brief Releases reference ref from the table. The entry is removed from the table so that the referred object can be collected.
+    ///        The reference ref is also freed to be used again.
+    /// @param tIndex the stack index of the table.
+    void unref(int tIndex, int ref);
+
     /// @brief get the number of elements on the stack
     /// @return number of elements on the stack, zero if stack is empty
     int size();

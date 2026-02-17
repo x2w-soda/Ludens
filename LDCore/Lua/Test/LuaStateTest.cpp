@@ -52,8 +52,7 @@ TEST_CASE("LuaState primitives")
 
     LuaState::destroy(L);
 
-    int leaks = get_memory_leaks(nullptr);
-    CHECK(leaks == 0);
+    CHECK_FALSE(get_memory_leaks(nullptr));
 }
 
 TEST_CASE("LuaState types")
@@ -96,8 +95,7 @@ TEST_CASE("LuaState types")
     L.clear();
     LuaState::destroy(L);
 
-    int leaks = get_memory_leaks(nullptr);
-    CHECK(leaks == 0);
+    CHECK_FALSE(get_memory_leaks(nullptr));
 }
 
 TEST_CASE("LuaState size")
@@ -159,8 +157,7 @@ TEST_CASE("LuaState size")
 
     LuaState::destroy(L);
 
-    int leaks = get_memory_leaks(nullptr);
-    CHECK(leaks == 0);
+    CHECK_FALSE(get_memory_leaks(nullptr));
 }
 
 TEST_CASE("LuaState math")
@@ -181,8 +178,7 @@ TEST_CASE("LuaState math")
 
     LuaState::destroy(L);
 
-    int leaks = get_memory_leaks(nullptr);
-    CHECK(leaks == 0);
+    CHECK_FALSE(get_memory_leaks(nullptr));
 }
 
 TEST_CASE("LuaState functions")
@@ -226,8 +222,7 @@ TEST_CASE("LuaState functions")
 
     LuaState::destroy(L);
 
-    int leaks = get_memory_leaks(nullptr);
-    CHECK(leaks == 0);
+    CHECK_FALSE(get_memory_leaks(nullptr));
 }
 
 TEST_CASE("LuaState tables")
@@ -286,8 +281,7 @@ TEST_CASE("LuaState tables")
 
     LuaState::destroy(L);
 
-    int leaks = get_memory_leaks(nullptr);
-    CHECK(leaks == 0);
+    CHECK_FALSE(get_memory_leaks(nullptr));
 }
 
 TEST_CASE("LuaState do_string")
@@ -304,8 +298,7 @@ TEST_CASE("LuaState do_string")
 
     LuaState::destroy(L);
 
-    int leaks = get_memory_leaks(nullptr);
-    CHECK(leaks == 0);
+    CHECK_FALSE(get_memory_leaks(nullptr));
 }
 
 TEST_CASE("LuaState dump")
@@ -339,6 +332,34 @@ TEST_CASE("LuaState dump")
     delete buf;
 
     LuaState::destroy(L);
-    int leaks = get_memory_leaks(nullptr);
-    CHECK(leaks == 0);
+
+    CHECK_FALSE(get_memory_leaks(nullptr));
+}
+
+TEST_CASE("LuaState registry refs")
+{
+    LuaState L = LuaState::create(sTestStateInfo);
+
+    L.push_integer(12345);
+    int ref = L.ref(L.get_registry_index());
+    CHECK(L.empty()); // ref pops
+
+    L.push_integer(ref);
+    L.get_table(L.get_registry_index());
+    CHECK(L.size() == 1);
+    CHECK(L.get_type(-1) == LUA_TYPE_NUMBER);
+    int num = L.to_integer(-1);
+    CHECK(num == 12345);
+    L.pop(1);
+    CHECK(L.empty());
+
+    L.unref(L.get_registry_index(), ref);
+    L.push_integer(ref);
+    L.get_table(L.get_registry_index());
+    CHECK(L.size() == 1);
+    CHECK(L.get_type(-1) == LUA_TYPE_NIL);
+
+    LuaState::destroy(L);
+
+    CHECK_FALSE(get_memory_leaks(nullptr));
 }
