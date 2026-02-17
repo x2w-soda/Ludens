@@ -740,7 +740,7 @@ TOMLWriter TOMLWriter::key(const std::string& str)
     return key(str.c_str());
 }
 
-TOMLWriter TOMLWriter::value_bool(bool b)
+TOMLWriter TOMLWriter::write_bool(bool b)
 {
     LD_ASSERT(mObj->is_expecting_value());
 
@@ -749,7 +749,7 @@ TOMLWriter TOMLWriter::value_bool(bool b)
     return TOMLWriter(mObj);
 }
 
-TOMLWriter TOMLWriter::value_i32(int32_t i32)
+TOMLWriter TOMLWriter::write_i32(int32_t i32)
 {
     LD_ASSERT(mObj->is_expecting_value());
 
@@ -758,7 +758,7 @@ TOMLWriter TOMLWriter::value_i32(int32_t i32)
     return TOMLWriter(mObj);
 }
 
-TOMLWriter TOMLWriter::value_i64(int64_t i64)
+TOMLWriter TOMLWriter::write_i64(int64_t i64)
 {
     LD_ASSERT(mObj->is_expecting_value());
 
@@ -767,7 +767,7 @@ TOMLWriter TOMLWriter::value_i64(int64_t i64)
     return TOMLWriter(mObj);
 }
 
-TOMLWriter TOMLWriter::value_u32(uint32_t u32)
+TOMLWriter TOMLWriter::write_u32(uint32_t u32)
 {
     LD_ASSERT(mObj->is_expecting_value());
 
@@ -776,7 +776,7 @@ TOMLWriter TOMLWriter::value_u32(uint32_t u32)
     return TOMLWriter(mObj);
 }
 
-TOMLWriter TOMLWriter::value_f32(float f32)
+TOMLWriter TOMLWriter::write_f32(float f32)
 {
     LD_ASSERT(mObj->is_expecting_value());
 
@@ -785,7 +785,7 @@ TOMLWriter TOMLWriter::value_f32(float f32)
     return TOMLWriter(mObj);
 }
 
-TOMLWriter TOMLWriter::value_f64(double f64)
+TOMLWriter TOMLWriter::write_f64(double f64)
 {
     LD_ASSERT(mObj->is_expecting_value());
 
@@ -794,7 +794,7 @@ TOMLWriter TOMLWriter::value_f64(double f64)
     return TOMLWriter(mObj);
 }
 
-TOMLWriter TOMLWriter::value_string(const char* cstr)
+TOMLWriter TOMLWriter::write_string(const char* cstr)
 {
     LD_ASSERT(mObj->is_expecting_value());
 
@@ -803,9 +803,9 @@ TOMLWriter TOMLWriter::value_string(const char* cstr)
     return TOMLWriter(mObj);
 }
 
-TOMLWriter TOMLWriter::value_string(const std::string& str)
+TOMLWriter TOMLWriter::write_string(const std::string& str)
 {
-    return value_string(str.c_str());
+    return write_string(str.c_str());
 }
 
 /// @brief TOML reader implementation.
@@ -1075,7 +1075,7 @@ bool write_transform_2d(TOMLWriter writer, const char* key, const Transform2D& t
     writer.begin_inline_table(key);
     write_vec2(writer, "position", transform.position);
     write_vec2(writer, "scale", transform.scale);
-    writer.key("rotation").value_f32(transform.rotation);
+    writer.key("rotation").write_f32(transform.rotation);
     writer.end_inline_table();
 
     return true;
@@ -1104,10 +1104,10 @@ bool write_rect(TOMLWriter writer, const char* key, const Rect& rect)
         return false;
 
     writer.begin_inline_table(key);
-    writer.key("x").value_f32(rect.x);
-    writer.key("y").value_f32(rect.y);
-    writer.key("w").value_f32(rect.w);
-    writer.key("h").value_f32(rect.h);
+    writer.key("x").write_f32(rect.x);
+    writer.key("y").write_f32(rect.y);
+    writer.key("w").write_f32(rect.w);
+    writer.key("h").write_f32(rect.h);
     writer.end_inline_table();
 
     return true;
@@ -1137,9 +1137,9 @@ bool write_vec3(TOMLWriter writer, const char* key, const Vec3& vec3)
         return false;
 
     writer.begin_inline_table(key);
-    writer.key("x").value_f32(vec3.x);
-    writer.key("y").value_f32(vec3.y);
-    writer.key("z").value_f32(vec3.z);
+    writer.key("x").write_f32(vec3.x);
+    writer.key("y").write_f32(vec3.y);
+    writer.key("z").write_f32(vec3.z);
     writer.end_inline_table();
 
     return true;
@@ -1189,8 +1189,8 @@ bool write_vec2(TOMLWriter writer, const char* key, const Vec2& vec2)
         return false;
 
     writer.begin_inline_table(key);
-    writer.key("x").value_f32(vec2.x);
-    writer.key("y").value_f32(vec2.y);
+    writer.key("x").write_f32(vec2.x);
+    writer.key("y").write_f32(vec2.y);
     writer.end_inline_table();
 
     return true;

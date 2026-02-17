@@ -136,9 +136,9 @@ bool AssetSchemaSaver::save_registry(AssetRegistry registry, std::string& toml, 
     mWriter.begin();
 
     mWriter.begin_table(ASSET_SCHEMA_TABLE_LUDENS_ASSETS);
-    mWriter.key(ASSET_SCHEMA_KEY_VERSION_MAJOR).value_u32(LD_VERSION_MAJOR);
-    mWriter.key(ASSET_SCHEMA_KEY_VERSION_MINOR).value_u32(LD_VERSION_MINOR);
-    mWriter.key(ASSET_SCHEMA_KEY_VERSION_PATCH).value_u32(LD_VERSION_PATCH);
+    mWriter.key(ASSET_SCHEMA_KEY_VERSION_MAJOR).write_u32(LD_VERSION_MAJOR);
+    mWriter.key(ASSET_SCHEMA_KEY_VERSION_MINOR).write_u32(LD_VERSION_MINOR);
+    mWriter.key(ASSET_SCHEMA_KEY_VERSION_PATCH).write_u32(LD_VERSION_PATCH);
     mWriter.end_table();
 
     if (!save_asset_entries(err))
@@ -167,9 +167,9 @@ bool AssetSchemaSaver::save_asset_entries(std::string& err)
         for (const AssetEntry* entry : entries)
         {
             mWriter.begin_table();
-            mWriter.key(ASSET_SCHEMA_KEY_ENTRY_ID).value_u32(entry->id);
-            mWriter.key(ASSET_SCHEMA_KEY_ENTRY_URI).value_string(entry->uri);
-            mWriter.key(ASSET_SCHEMA_KEY_ENTRY_NAME).value_string(entry->name);
+            mWriter.key(ASSET_SCHEMA_KEY_ENTRY_ID).write_u32(entry->id);
+            mWriter.key(ASSET_SCHEMA_KEY_ENTRY_URI).write_string(entry->uri);
+            mWriter.key(ASSET_SCHEMA_KEY_ENTRY_NAME).write_string(entry->name);
             mWriter.end_table();
         }
 

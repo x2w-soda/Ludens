@@ -68,7 +68,7 @@ class MD4CParser
 public:
     MD4CParser() = delete;
 
-    MD4CParser(const MDEventCallback& callbacks, void* user)
+    MD4CParser(const MDCallback& callbacks, void* user)
         : mCallbacks(callbacks), mUser(user)
     {
         mMD4C.abi_version = 0;
@@ -143,11 +143,11 @@ private:
 
 private:
     MD_PARSER mMD4C;
-    MDEventCallback mCallbacks;
+    MDCallback mCallbacks;
     void* mUser;
 };
 
-bool MDEventParser::parse(const View& file, std::string& error, const MDEventCallback& callbacks, void* user)
+bool MDParser::parse(const View& file, std::string& error, const MDCallback& callbacks, void* user)
 {
     MD4CParser parser(callbacks, user);
 

@@ -328,9 +328,9 @@ bool SceneSchemaSaver::save_scene(Scene scene, std::string& toml, std::string& e
     mWriter.begin();
 
     mWriter.begin_table(SCENE_SCHEMA_TABLE_LUDENS_SCENE);
-    mWriter.key(SCENE_SCHEMA_KEY_VERSION_MAJOR).value_i32(LD_VERSION_MAJOR);
-    mWriter.key(SCENE_SCHEMA_KEY_VERSION_MINOR).value_i32(LD_VERSION_MINOR);
-    mWriter.key(SCENE_SCHEMA_KEY_VERSION_PATCH).value_i32(LD_VERSION_PATCH);
+    mWriter.key(SCENE_SCHEMA_KEY_VERSION_MAJOR).write_i32(LD_VERSION_MAJOR);
+    mWriter.key(SCENE_SCHEMA_KEY_VERSION_MINOR).write_i32(LD_VERSION_MINOR);
+    mWriter.key(SCENE_SCHEMA_KEY_VERSION_PATCH).write_i32(LD_VERSION_PATCH);
     mWriter.end_table();
 
     mWriter.begin_array_table(SCENE_SCHEMA_TABLE_COMPONENT);
@@ -351,7 +351,7 @@ bool SceneSchemaSaver::save_scene(Scene scene, std::string& toml, std::string& e
         mWriter.key(parentID.c_str()).begin_array();
 
         for (CUID childrenID : ite.second)
-            mWriter.value_u32(childrenID);
+            mWriter.write_u32(childrenID);
 
         mWriter.end_array();
     }
@@ -373,9 +373,9 @@ bool SceneSchemaSaver::save_audio_source_component(SceneSchemaSaver& saver, Scen
         return false;
 
     TOMLWriter writer = saver.mWriter;
-    writer.key(SCENE_SCHEMA_KEY_AUDIO_SOURCE_CLIP_ID).value_u32(source.get_clip_asset());
-    writer.key(SCENE_SCHEMA_KEY_AUDIO_SOURCE_PAN).value_f32(source.get_pan());
-    writer.key(SCENE_SCHEMA_KEY_AUDIO_SOURCE_VOLUME_LINEAR).value_f32(source.get_volume_linear());
+    writer.key(SCENE_SCHEMA_KEY_AUDIO_SOURCE_CLIP_ID).write_u32(source.get_clip_asset());
+    writer.key(SCENE_SCHEMA_KEY_AUDIO_SOURCE_PAN).write_f32(source.get_pan());
+    writer.key(SCENE_SCHEMA_KEY_AUDIO_SOURCE_VOLUME_LINEAR).write_f32(source.get_volume_linear());
 
     return true;
 }
@@ -394,8 +394,8 @@ bool SceneSchemaSaver::save_camera_component(SceneSchemaSaver& saver, Scene::Com
     camera.get_transform(transform);
     TOMLUtil::write_transform(writer, SCENE_SCHEMA_KEY_COMPONENT_TRANSFORM, transform);
 
-    writer.key(SCENE_SCHEMA_KEY_CAMERA_IS_PERSPECTIVE).value_bool(camera.is_perspective());
-    writer.key(SCENE_SCHEMA_KEY_CAMERA_IS_MAIN).value_bool(camera.is_main_camera());
+    writer.key(SCENE_SCHEMA_KEY_CAMERA_IS_PERSPECTIVE).write_bool(camera.is_perspective());
+    writer.key(SCENE_SCHEMA_KEY_CAMERA_IS_MAIN).write_bool(camera.is_main_camera());
 
     if (camera.is_perspective())
     {
@@ -406,9 +406,9 @@ bool SceneSchemaSaver::save_camera_component(SceneSchemaSaver& saver, Scene::Com
         LD_ASSERT(ok);
 
         float fovDegrees = (float)LD_TO_DEGREES(perspective.fov);
-        writer.key(SCENE_SCHEMA_KEY_CAMERA_PERSPECTIVE_FOV).value_f32(fovDegrees);
-        writer.key(SCENE_SCHEMA_KEY_CAMERA_PERSPECTIVE_FAR_CLIP).value_f32(perspective.farClip);
-        writer.key(SCENE_SCHEMA_KEY_CAMERA_PERSPECTIVE_NEAR_CLIP).value_f32(perspective.nearClip);
+        writer.key(SCENE_SCHEMA_KEY_CAMERA_PERSPECTIVE_FOV).write_f32(fovDegrees);
+        writer.key(SCENE_SCHEMA_KEY_CAMERA_PERSPECTIVE_FAR_CLIP).write_f32(perspective.farClip);
+        writer.key(SCENE_SCHEMA_KEY_CAMERA_PERSPECTIVE_NEAR_CLIP).write_f32(perspective.nearClip);
 
         writer.end_inline_table();
     }
@@ -420,12 +420,12 @@ bool SceneSchemaSaver::save_camera_component(SceneSchemaSaver& saver, Scene::Com
         ok = camera.get_orthographic_info(ortho);
         LD_ASSERT(ok);
 
-        writer.key(SCENE_SCHEMA_KEY_CAMERA_ORTHOGRAPHIC_LEFT).value_f32(ortho.left);
-        writer.key(SCENE_SCHEMA_KEY_CAMERA_ORTHOGRAPHIC_RIGHT).value_f32(ortho.right);
-        writer.key(SCENE_SCHEMA_KEY_CAMERA_ORTHOGRAPHIC_BOTTOM).value_f32(ortho.bottom);
-        writer.key(SCENE_SCHEMA_KEY_CAMERA_ORTHOGRAPHIC_TOP).value_f32(ortho.top);
-        writer.key(SCENE_SCHEMA_KEY_CAMERA_ORTHOGRAPHIC_NEAR_CLIP).value_f32(ortho.nearClip);
-        writer.key(SCENE_SCHEMA_KEY_CAMERA_ORTHOGRAPHIC_FAR_CLIP).value_f32(ortho.farClip);
+        writer.key(SCENE_SCHEMA_KEY_CAMERA_ORTHOGRAPHIC_LEFT).write_f32(ortho.left);
+        writer.key(SCENE_SCHEMA_KEY_CAMERA_ORTHOGRAPHIC_RIGHT).write_f32(ortho.right);
+        writer.key(SCENE_SCHEMA_KEY_CAMERA_ORTHOGRAPHIC_BOTTOM).write_f32(ortho.bottom);
+        writer.key(SCENE_SCHEMA_KEY_CAMERA_ORTHOGRAPHIC_TOP).write_f32(ortho.top);
+        writer.key(SCENE_SCHEMA_KEY_CAMERA_ORTHOGRAPHIC_NEAR_CLIP).write_f32(ortho.nearClip);
+        writer.key(SCENE_SCHEMA_KEY_CAMERA_ORTHOGRAPHIC_FAR_CLIP).write_f32(ortho.farClip);
 
         writer.end_inline_table();
     }
@@ -445,7 +445,7 @@ bool SceneSchemaSaver::save_mesh_component(SceneSchemaSaver& saver, Scene::Compo
     TransformEx transform;
     mesh.get_transform(transform);
     TOMLUtil::write_transform(writer, SCENE_SCHEMA_KEY_COMPONENT_TRANSFORM, transform);
-    writer.key(SCENE_SCHEMA_KEY_MESH_MESH_ID).value_u32(mesh.get_mesh_asset());
+    writer.key(SCENE_SCHEMA_KEY_MESH_MESH_ID).write_u32(mesh.get_mesh_asset());
 
     return true;
 }
@@ -466,9 +466,9 @@ bool SceneSchemaSaver::save_sprite_2d_component(SceneSchemaSaver& saver, Scene::
     sprite.get_transform_2d(transform);
     TOMLUtil::write_transform_2d(writer, SCENE_SCHEMA_KEY_COMPONENT_TRANSFORM, transform);
 
-    writer.key(SCENE_SCHEMA_KEY_SPRITE_2D_SCREEN_LAYER_ID).value_u32(sprite.get_screen_layer_suid());
-    writer.key(SCENE_SCHEMA_KEY_SPRITE_2D_TEXTURE_2D_ID).value_u32(sprite.get_texture_2d_asset());
-    writer.key(SCENE_SCHEMA_KEY_SPRITE_2D_Z_DEPTH).value_u32(sprite.get_z_depth());
+    writer.key(SCENE_SCHEMA_KEY_SPRITE_2D_SCREEN_LAYER_ID).write_u32(sprite.get_screen_layer_suid());
+    writer.key(SCENE_SCHEMA_KEY_SPRITE_2D_TEXTURE_2D_ID).write_u32(sprite.get_texture_2d_asset());
+    writer.key(SCENE_SCHEMA_KEY_SPRITE_2D_Z_DEPTH).write_u32(sprite.get_z_depth());
 
     return true;
 }
@@ -482,7 +482,7 @@ bool SceneSchemaSaver::save_screen_ui_component(SceneSchemaSaver& saver, Scene::
         return false;
 
     TOMLWriter writer = saver.mWriter;
-    writer.key(SCENE_SCHEMA_KEY_SCREEN_UI_UI_TEMPLATE_ID).value_u32(ui.get_ui_template_asset());
+    writer.key(SCENE_SCHEMA_KEY_SCREEN_UI_UI_TEMPLATE_ID).write_u32(ui.get_ui_template_asset());
 
     return true;
 }
@@ -497,10 +497,10 @@ void SceneSchemaSaver::save_component(SceneSchemaSaver& saver, Scene::Component 
 
     ComponentType type = root.type();
     std::string compTypeName(sSceneSchemaTable[(int)type].compTypeName);
-    writer.key(SCENE_SCHEMA_KEY_COMPONENT_ID).value_u32(root.suid());
-    writer.key(SCENE_SCHEMA_KEY_COMPONENT_TYPE).value_string(compTypeName);
-    writer.key(SCENE_SCHEMA_KEY_COMPONENT_NAME).value_string(root.get_name());
-    writer.key(SCENE_SCHEMA_KEY_COMPONENT_SCRIPT_ID).value_u32(root.get_script_asset_id());
+    writer.key(SCENE_SCHEMA_KEY_COMPONENT_ID).write_u32(root.suid());
+    writer.key(SCENE_SCHEMA_KEY_COMPONENT_TYPE).write_string(compTypeName);
+    writer.key(SCENE_SCHEMA_KEY_COMPONENT_NAME).write_string(root.get_name());
+    writer.key(SCENE_SCHEMA_KEY_COMPONENT_SCRIPT_ID).write_u32(root.get_script_asset_id());
 
     // TODO: Transform or Transform2D could be saved here?
 

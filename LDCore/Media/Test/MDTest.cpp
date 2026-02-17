@@ -76,10 +76,10 @@ TEST_CASE("MD blocks")
     };
 
     std::string err;
-    MDEventCallback cb;
+    MDCallback cb;
     cb.onEnterBlock = &MDValidator::on_enter_block;
     cb.onLeaveBlock = &MDValidator::on_leave_block;
     cb.onText = &MDValidator::on_text;
-    bool ok = MDEventParser::parse(View(md, sizeof(md) - 1), err, cb, &validator);
+    bool ok = MDParser::parse(View(md, sizeof(md) - 1), err, cb, &validator);
     CHECK(ok);
 }

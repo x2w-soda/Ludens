@@ -89,8 +89,8 @@ void UITemplateSchemaSaver::save_widget_subtree(uint32_t idx)
     mWriter.begin_table();
 
     std::string typeStr(get_ui_widget_type_cstr(entry->type));
-    mWriter.key("type").value_string(typeStr);
-    mWriter.key("index").value_u32(idx);
+    mWriter.key("type").write_string(typeStr);
+    mWriter.key("index").write_u32(idx);
 
     // save root widget in a single entry
     save_widget_layout(entry->layout);
@@ -111,77 +111,77 @@ void UITemplateSchemaSaver::save_widget_layout(const UILayoutInfo& layout)
     switch (layout.sizeX.type)
     {
     case UI_SIZE_FIXED:
-        mWriter.key("size_x").value_i32((int32_t)layout.sizeX.extent);
+        mWriter.key("size_x").write_i32((int32_t)layout.sizeX.extent);
         break;
     case UI_SIZE_GROW:
-        mWriter.key("size_x").value_string("grow");
+        mWriter.key("size_x").write_string("grow");
         break;
     case UI_SIZE_WRAP:
-        mWriter.key("size_x").value_string("wrap");
+        mWriter.key("size_x").write_string("wrap");
         break;
     case UI_SIZE_FIT:
-        mWriter.key("size_x").value_string("fit");
+        mWriter.key("size_x").write_string("fit");
         break;
     }
 
     switch (layout.sizeY.type)
     {
     case UI_SIZE_FIXED:
-        mWriter.key("size_y").value_i32((int32_t)layout.sizeY.extent);
+        mWriter.key("size_y").write_i32((int32_t)layout.sizeY.extent);
         break;
     case UI_SIZE_GROW:
-        mWriter.key("size_y").value_string("grow");
+        mWriter.key("size_y").write_string("grow");
         break;
     case UI_SIZE_WRAP:
-        mWriter.key("size_y").value_string("wrap");
+        mWriter.key("size_y").write_string("wrap");
         break;
     case UI_SIZE_FIT:
-        mWriter.key("size_y").value_string("fit");
+        mWriter.key("size_y").write_string("fit");
         break;
     }
 
     switch (layout.childAlignX)
     {
     case UI_ALIGN_BEGIN:
-        mWriter.key("child_align_x").value_string("begin");
+        mWriter.key("child_align_x").write_string("begin");
         break;
     case UI_ALIGN_CENTER:
-        mWriter.key("child_align_x").value_string("center");
+        mWriter.key("child_align_x").write_string("center");
         break;
     case UI_ALIGN_END:
-        mWriter.key("child_align_x").value_string("end");
+        mWriter.key("child_align_x").write_string("end");
         break;
     }
 
     switch (layout.childAlignY)
     {
     case UI_ALIGN_BEGIN:
-        mWriter.key("child_align_y").value_string("begin");
+        mWriter.key("child_align_y").write_string("begin");
         break;
     case UI_ALIGN_CENTER:
-        mWriter.key("child_align_y").value_string("center");
+        mWriter.key("child_align_y").write_string("center");
         break;
     case UI_ALIGN_END:
-        mWriter.key("child_align_y").value_string("end");
+        mWriter.key("child_align_y").write_string("end");
         break;
     }
 
     switch (layout.childAxis)
     {
     case UI_AXIS_X:
-        mWriter.key("child_axis").value_string("x");
+        mWriter.key("child_axis").write_string("x");
         break;
     case UI_AXIS_Y:
-        mWriter.key("child_axis").value_string("y");
+        mWriter.key("child_axis").write_string("y");
         break;
     }
 
     mWriter.begin_inline_table("child_padding");
-    mWriter.key("left").value_f32(layout.childPadding.left);
-    mWriter.key("right").value_f32(layout.childPadding.right);
-    mWriter.key("top").value_f32(layout.childPadding.top);
-    mWriter.key("bottom").value_f32(layout.childPadding.bottom);
-    mWriter.key("child_gap").value_f32(layout.childGap);
+    mWriter.key("left").write_f32(layout.childPadding.left);
+    mWriter.key("right").write_f32(layout.childPadding.right);
+    mWriter.key("top").write_f32(layout.childPadding.top);
+    mWriter.key("bottom").write_f32(layout.childPadding.bottom);
+    mWriter.key("child_gap").write_f32(layout.childGap);
 
     mWriter.end_inline_table();
     mWriter.end_inline_table();
@@ -201,9 +201,9 @@ bool UITemplateSchemaSaver::save_template(UITemplateObj* obj, std::string& toml,
     mWriter.begin();
 
     mWriter.begin_table(UI_TEMPLATE_SCHEMA_TABLE);
-    mWriter.key(UI_TEMPLATE_SCHEMA_KEY_VERSION_MAJOR).value_u32(LD_VERSION_MAJOR);
-    mWriter.key(UI_TEMPLATE_SCHEMA_KEY_VERSION_MINOR).value_u32(LD_VERSION_MINOR);
-    mWriter.key(UI_TEMPLATE_SCHEMA_KEY_VERSION_PATCH).value_u32(LD_VERSION_PATCH);
+    mWriter.key(UI_TEMPLATE_SCHEMA_KEY_VERSION_MAJOR).write_u32(LD_VERSION_MAJOR);
+    mWriter.key(UI_TEMPLATE_SCHEMA_KEY_VERSION_MINOR).write_u32(LD_VERSION_MINOR);
+    mWriter.key(UI_TEMPLATE_SCHEMA_KEY_VERSION_PATCH).write_u32(LD_VERSION_PATCH);
     mWriter.end_table();
 
     mWriter.begin_array_table(SCENE_SCHEMA_TABLE_WIDGET);
@@ -217,7 +217,7 @@ bool UITemplateSchemaSaver::save_template(UITemplateObj* obj, std::string& toml,
         uint32_t parentIdx = it.first;
         mWriter.key(std::to_string(parentIdx)).begin_array();
         for (uint32_t childIdx : it.second)
-            mWriter.value_u32(childIdx);
+            mWriter.write_u32(childIdx);
         mWriter.end_array();
     }
     mWriter.end_table();
@@ -234,7 +234,7 @@ void UITemplateSchemaSaver::save_ui_panel(UITemplateSchemaSaver& saver, const UI
     LD_ASSERT(entry.type == UI_WIDGET_TEXT);
 
     TOMLWriter writer = saver.mWriter;
-    writer.key("color").value_u32((uint32_t)entry.panel.info.color);
+    writer.key("color").write_u32((uint32_t)entry.panel.info.color);
 }
 
 void UITemplateSchemaSaver::save_ui_image(UITemplateSchemaSaver& saver, const UITemplateEntry& entry)
@@ -243,7 +243,7 @@ void UITemplateSchemaSaver::save_ui_image(UITemplateSchemaSaver& saver, const UI
     LD_ASSERT(entry.type == UI_WIDGET_IMAGE);
 
     TOMLWriter writer = saver.mWriter;
-    writer.key("texture_2d").value_u32((uint32_t)entry.image.texture2DAssetID);
+    writer.key("texture_2d").write_u32((uint32_t)entry.image.texture2DAssetID);
     TOMLUtil::write_rect(writer, "image_rect" , entry.image.imageRect);
 }
 

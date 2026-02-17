@@ -63,16 +63,16 @@ enum MDTextType
     MD_TEXT_TYPE_NORMAL = 0,
 };
 
-struct MDEventCallback
+struct MDCallback
 {
     int (*onEnterBlock)(MDBlockType type, const MDBlockDetail& detail, void* user);
     int (*onLeaveBlock)(MDBlockType type, const MDBlockDetail& detail, void* user);
     int (*onText)(MDTextType type, const MDString& text, void* user);
 };
 
-struct MDEventParser
+struct MDParser
 {
-    static bool parse(const View& file, std::string& error, const MDEventCallback& callbacks, void* user);
+    static bool parse(const View& file, std::string& error, const MDCallback& callbacks, void* user);
 };
 
 } // namespace LD

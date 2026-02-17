@@ -45,14 +45,14 @@ struct TOMLWriter : Handle<struct TOMLWriterObj>
 
     TOMLWriter key(const char* name);
     TOMLWriter key(const std::string& str);
-    TOMLWriter value_bool(bool b);
-    TOMLWriter value_i32(int32_t i32);
-    TOMLWriter value_i64(int64_t i64);
-    TOMLWriter value_u32(uint32_t u32);
-    TOMLWriter value_f32(float f32);
-    TOMLWriter value_f64(double f64);
-    TOMLWriter value_string(const char* cstr);
-    TOMLWriter value_string(const std::string& str);
+    TOMLWriter write_bool(bool b);
+    TOMLWriter write_i32(int32_t i32);
+    TOMLWriter write_i64(int64_t i64);
+    TOMLWriter write_u32(uint32_t u32);
+    TOMLWriter write_f32(float f32);
+    TOMLWriter write_f64(double f64);
+    TOMLWriter write_string(const char* cstr);
+    TOMLWriter write_string(const std::string& str);
 };
 
 struct TOMLReader : Handle<struct TOMLReaderObj>

@@ -171,9 +171,9 @@ bool ProjectSchemaSaver::save_project(Project project, std::string& toml, std::s
     mWriter.begin();
 
     mWriter.begin_table(PROJECT_SCHEMA_KEY_LUDENS_PROJECT);
-    mWriter.key(PROJECT_SCHEMA_KEY_VERSION_MAJOR).value_i32(LD_VERSION_MAJOR);
-    mWriter.key(PROJECT_SCHEMA_KEY_VERSION_MINOR).value_i32(LD_VERSION_MINOR);
-    mWriter.key(PROJECT_SCHEMA_KEY_VERSION_PATCH).value_i32(LD_VERSION_PATCH);
+    mWriter.key(PROJECT_SCHEMA_KEY_VERSION_MAJOR).write_i32(LD_VERSION_MAJOR);
+    mWriter.key(PROJECT_SCHEMA_KEY_VERSION_MINOR).write_i32(LD_VERSION_MINOR);
+    mWriter.key(PROJECT_SCHEMA_KEY_VERSION_PATCH).write_i32(LD_VERSION_PATCH);
     mWriter.end_table();
 
     save_project_settings(project.get_settings(), mWriter);
@@ -204,10 +204,10 @@ void ProjectSchemaSaver::save_project_settings(ProjectSettings settings, TOMLWri
 
 void ProjectSchemaSaver::save_project_startup_settings(ProjectStartupSettings settings, TOMLWriter writer)
 {
-    writer.key(PROJECT_SCHEMA_KEY_STARTUP_WINDOW_WIDTH).value_u32(settings.get_window_width());
-    writer.key(PROJECT_SCHEMA_KEY_STARTUP_WINDOW_HEIGHT).value_u32(settings.get_window_height());
-    writer.key(PROJECT_SCHEMA_KEY_STARTUP_WINDOW_NAME).value_string(settings.get_window_name());
-    writer.key(PROJECT_SCHEMA_KEY_DEFAULT_SCENE_PATH).value_string(settings.get_default_scene_path());
+    writer.key(PROJECT_SCHEMA_KEY_STARTUP_WINDOW_WIDTH).write_u32(settings.get_window_width());
+    writer.key(PROJECT_SCHEMA_KEY_STARTUP_WINDOW_HEIGHT).write_u32(settings.get_window_height());
+    writer.key(PROJECT_SCHEMA_KEY_STARTUP_WINDOW_NAME).write_string(settings.get_window_name());
+    writer.key(PROJECT_SCHEMA_KEY_DEFAULT_SCENE_PATH).write_string(settings.get_default_scene_path());
 }
 
 void ProjectSchemaSaver::save_project_screen_layer_settings(ProjectScreenLayerSettings settings, TOMLWriter writer)
