@@ -56,14 +56,16 @@ void LuaScriptAssetObj::load(void* user)
         return;
 
     obj->sourcePath = heap_strdup(sourcePath.string().c_str(), MEMORY_USAGE_ASSET);
-    obj->source = (char*)heap_malloc(fileSize + 1, MEMORY_USAGE_ASSET);
-    if (!FS::read_file(sourcePath, MutView(obj->source, fileSize), err))
+    obj->source = FS::read_file_to_cstr(sourcePath, err);
+
+    if (!obj->source)
     {
-        heap_free(obj->source);
-        obj->source = nullptr;
+        heap_free(obj->sourcePath);
+        obj->sourcePath = nullptr;
         return;
     }
-    obj->source[fileSize] = '\0';
+
+    // TODO:
 }
 
 void LuaScriptAssetObj::unload(AssetObj* base)

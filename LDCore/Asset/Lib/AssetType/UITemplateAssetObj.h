@@ -8,7 +8,7 @@ namespace LD {
 struct UITemplateAssetObj : AssetObj
 {
     UITemplate tmpl;
-    // TODO: AUID luaScriptAUID;
+    char* luaSource;
 
     static void load(void* assetLoadJob);
     static void unload(AssetObj* base);

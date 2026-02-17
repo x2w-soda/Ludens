@@ -171,6 +171,26 @@ bool read_file_to_vector(const FS::Path& path, Vector<byte>& v, std::string& err
     return err.empty();
 }
 
+char* read_file_to_cstr(const FS::Path& path, std::string err)
+{
+    LD_PROFILE_SCOPE;
+
+    uint64_t fileSize;
+    if (!FS::get_file_size(path, fileSize, err) || fileSize == 0)
+        return nullptr;
+
+    char* cstr = (char*)heap_malloc(fileSize + 1, MEMORY_USAGE_MISC);
+    if (!FS::read_file(path, MutView(cstr, fileSize), err))
+    {
+        heap_free(cstr);
+        return nullptr;
+    }
+
+    cstr[fileSize] = '\0';
+
+    return cstr;
+}
+
 bool write_file(const Path& path, const View& view, std::string& err)
 {
     LD_PROFILE_SCOPE;

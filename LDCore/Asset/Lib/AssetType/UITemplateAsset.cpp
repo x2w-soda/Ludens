@@ -22,11 +22,21 @@ void UITemplateAssetObj::load(void* user)
 
     bool ok = UITemplateSchema::load_ui_template_from_source(obj->tmpl, fileView, err);
     LD_ASSERT(ok); // TODO: asset load failure
+
+    FS::Path sourcePath = job.loadPath.replace_extension("lua");
+    obj->luaSource = FS::read_file_to_cstr(sourcePath, err);
+    LD_ASSERT(ok);
 }
 
 void UITemplateAssetObj::unload(AssetObj* base)
 {
     auto* obj = (UITemplateAssetObj*)base;
+
+    if (obj->luaSource)
+    {
+        heap_free(obj->luaSource);
+        obj->luaSource = nullptr;
+    }
 
     UITemplate::destroy(obj->tmpl);
     obj->tmpl = {};
@@ -41,6 +51,13 @@ UIWidget UITemplateAsset::load_ui_subtree(UIWidget parent, UITemplateOnLoadCallb
     auto* obj = (UITemplateAssetObj*)mObj;
 
     return obj->tmpl.load(parent, callback, user);
+}
+
+const char* UITemplateAsset::get_lua_source()
+{
+    auto* obj = (UITemplateAssetObj*)mObj;
+
+    return obj->luaSource;
 }
 
 } // namespace LD

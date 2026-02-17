@@ -46,6 +46,10 @@ uint64_t read_file(const Path& path, const MutView& view, Diagnostics& diag);
 /// @brief Read whole file into byte vector.
 bool read_file_to_vector(const FS::Path& path, Vector<byte>& v, std::string& err);
 
+/// @brief Read whole file into null terminated C string.
+/// @warning User needs to heap_free the returned allocation.
+char* read_file_to_cstr(const FS::Path& path, std::string err);
+
 /// @brief Write bytes to a file.
 bool write_file(const Path& path, const View& view, std::string& err);
 
