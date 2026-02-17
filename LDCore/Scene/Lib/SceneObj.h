@@ -7,6 +7,9 @@
 #include "RenderSystemCache.h"
 #include "ScreenUI.h"
 
+// Scene user's responsibility to check handle before calling methods
+#define LD_ASSERT_COMPONENT_LOADED(DATA) LD_ASSERT(DATA && *(DATA) && ((*(DATA))->flags & COMPONENT_FLAG_LOADED_BIT))
+
 namespace LD {
 
 enum SceneState

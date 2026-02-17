@@ -21,6 +21,16 @@ set(MODULE_LIB
     Lib/LuaScript.cpp
     Lib/LuaScriptFFI.h
     Lib/LuaScriptFFI.cpp
+    Lib/Component/MeshComponent.h
+    Lib/Component/MeshComponent.cpp
+    Lib/Component/CameraComponent.h
+    Lib/Component/CameraComponent.cpp
+    Lib/Component/AudioSourceComponent.h
+    Lib/Component/AudioSourceComponent.cpp
+    Lib/Component/Sprite2DComponent.h
+    Lib/Component/Sprite2DComponent.cpp
+    Lib/Component/ScreenUIComponent.h
+    Lib/Component/ScreenUIComponent.cpp
 )
 
 add_ludens_core_module(
