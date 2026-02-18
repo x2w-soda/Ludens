@@ -6,6 +6,8 @@
 #include <Ludens/UI/UIContext.h>
 #include <Ludens/UI/UIWidget.h>
 
+#include <string>
+
 namespace LD {
 
 struct UIScrollWidgetTemplate
@@ -51,6 +53,7 @@ struct UITemplateEntry
 {
     UIWidgetType type;
     UILayoutInfo layout;
+    std::string name;
 
     union
     {

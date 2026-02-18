@@ -19,8 +19,6 @@ static_assert(LD::IsTrivial<UIPanelWidgetTemplate>);
 static_assert(LD::IsTrivial<UIImageWidgetTemplate>);
 static_assert(LD::IsTrivial<UITextWidgetTemplate>);
 
-static_assert(LD::IsTrivial<UITemplateEntry>);
-
 class UITemplateSaver
 {
 public:
@@ -158,8 +156,10 @@ void UITemplateSaver::save(UITemplateObj* obj, UIWidget subtree, UITemplateOnSav
 uint32_t UITemplateSaver::save_widget_subtree(UIWidget root)
 {
     uint32_t entryIdx = (uint32_t)mTmpl->entries.size();
-    UITemplateEntry* entry = (UITemplateEntry*)mTmpl->entryPA.allocate();
+    UITemplateEntry* entry = mTmpl->allocate_entry();
+
     entry->type = root.get_type();
+    root.get_name(entry->name);
     root.get_layout(entry->layout);
 
     mTmpl->entries.push_back(entry);
@@ -201,6 +201,10 @@ UIWidget UITemplateLoader::load_widget_subtree(UIWidget parent, uint32_t id)
 
     // load root widget from a single entry
     UIWidget root = sUITemplateTable[(int)entry->type].load(*this, *entry, parent);
+    LD_ASSERT(root);
+
+    root.set_name(entry->name);
+
     if (mCallback)
         mCallback(root, *entry, mUser);
 
@@ -239,6 +243,8 @@ UITemplate UITemplate::create()
 void UITemplate::destroy(UITemplate tmpl)
 {
     auto* obj = tmpl.unwrap();
+
+    obj->reset();
 
     LinearAllocator::destroy(obj->LA);
     PoolAllocator::destroy(obj->entryPA);

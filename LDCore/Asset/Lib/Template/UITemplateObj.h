@@ -19,10 +19,22 @@ struct UITemplateObj
     Vector<UITemplateEntry*> entries;
     HashMap<uint32_t, Vector<uint32_t>> hierarchy;
 
+    UITemplateEntry* allocate_entry()
+    {
+        UITemplateEntry* entry = (UITemplateEntry*)entryPA.allocate();
+        new (entry) UITemplateEntry();
+
+        return entry;
+    }
+
     void reset()
     {
-        for (auto ite = entryPA.begin(); ite; ++ite)
-            entryPA.free(ite.data());
+        for (auto it = entryPA.begin(); it; ++it)
+        {
+            UITemplateEntry* entry = (UITemplateEntry*)it.data();
+            entry->~UITemplateEntry();
+            entryPA.free(entry);
+        }
 
         entries.clear();
         hierarchy.clear();

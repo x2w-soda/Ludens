@@ -90,6 +90,7 @@ void UITemplateSchemaSaver::save_widget_subtree(uint32_t idx)
 
     std::string typeStr(get_ui_widget_type_cstr(entry->type));
     mWriter.key("type").write_string(typeStr);
+    mWriter.key("name").write_string(entry->name);
     mWriter.key("index").write_u32(idx);
 
     // save root widget in a single entry
@@ -356,11 +357,14 @@ void UITemplateSchemaLoader::load_widget_toml()
     if (entryIdx >= mTmpl->entries.size())
         return;
 
-    UITemplateEntry* entry = (UITemplateEntry*)mTmpl->entryPA.allocate();
+    UITemplateEntry* entry = mTmpl->allocate_entry();
     mTmpl->entries[entryIdx] = entry;
 
     std::string typeStr;
     if (!mReader.read_string("type", typeStr))
+        return;
+
+    if (!mReader.read_string("name", entry->name))
         return;
 
     if (mReader.enter_table("layout"))
