@@ -1,6 +1,7 @@
 #include <Ludens/Asset/AssetType/UITemplateAsset.h>
 #include <Ludens/Profiler/Profiler.h>
 
+#include "../UIDriver.h"
 #include "ScreenUIComponent.h"
 
 namespace LD {
@@ -44,6 +45,8 @@ bool clone_screen_ui_component(SceneObj* scene, ComponentBase** dstData, Compone
 
 void unload_screen_ui_component(SceneObj* scene, ComponentBase** data)
 {
+    LD_PROFILE_SCOPE;
+
     ScreenUIComponent* ui = (ScreenUIComponent*)data;
 
     UIWorkspace space = scene->screenUI.workspace();
@@ -56,20 +59,40 @@ void unload_screen_ui_component(SceneObj* scene, ComponentBase** data)
 
 void startup_screen_ui_component(SceneObj* scene, ComponentBase** data)
 {
+    LD_PROFILE_SCOPE;
+
     auto* ui = (ScreenUIComponent*)data;
 
     UITemplateAsset asset = (UITemplateAsset)scene->assetManager.get_asset(ui->uiTemplateID);
     LD_ASSERT(asset && asset.get_type() == ASSET_TYPE_UI_TEMPLATE);
 
-    // TODO: UIDriver attach
+    LuaState luaState = scene->luaContext.get_lua_state();
+    ui->uiDriver = heap_new<UIDriver>(MEMORY_USAGE_SCENE);
+
+    std::string err;
+    bool ok = ui->uiDriver->connect(ui->uiWindow, luaState, asset.get_lua_source(), err);
+    LD_ASSERT(ok);
+
+    ok = ui->uiDriver->attach(err);
+    LD_ASSERT(ok);
 }
 
 void cleanup_screen_ui_component(SceneObj* scene, ComponentBase** data)
 {
+    LD_PROFILE_SCOPE;
+
     auto* ui = (ScreenUIComponent*)data;
     LD_ASSERT(ui);
 
-    // TODO: UIDriver detach
+    std::string err;
+    bool ok = ui->uiDriver->detach(err);
+    LD_ASSERT(ok);
+
+    ok = ui->uiDriver->disconnect();
+    LD_ASSERT(ok);
+
+    heap_delete<UIDriver>(ui->uiDriver);
+    ui->uiDriver = nullptr;
 }
 
 Scene::ScreenUI::ScreenUI(Component comp)

@@ -6,20 +6,6 @@
 
 namespace LD {
 
-/// @brief User of a UIWidget subtree, provides bindings and drives the subtree.
-class UIDriver
-{
-public:
-    UIDriver(const View& lua);
-    ~UIDriver();
-
-    bool attach();
-    bool detach();
-    bool update(float delta);
-
-private:
-};
-
 struct ScreenUIInfo
 {
     Vec2 extent;

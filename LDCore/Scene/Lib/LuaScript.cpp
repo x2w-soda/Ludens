@@ -12,6 +12,7 @@
 #include "LuaScript.h"
 #include "LuaScriptFFI.h"
 #include "SceneObj.h"
+#include "UIDriver.h"
 
 #define LUDENS_LUA_SCRIPT_LOG_CHANNEL "LuaScript"
 #define LUDENS_LUA_MODULE_NAME "ludens"
@@ -339,12 +340,16 @@ LuaModule create_ludens_module()
         {.type = LUA_TYPE_FN, .name = "get_mouse",      .fn = &LuaScript::input_get_mouse},
     };
 
+    const LuaModuleValue uiDriverVals[] = {
+        {.type = LUA_TYPE_FN, .name = "install_callback", .fn = &UIDriver::install_callback},
+    };
+
     const LuaModuleValue CVals[] = {
         {.type = LUA_TYPE_FN, .name = "get_component", .fn = &LuaScript::get_component},
     };
     // clang-format on
 
-    std::array<LuaModuleNamespace, 4> spaces;
+    std::array<LuaModuleNamespace, 5> spaces;
     spaces[0].name = "application";
     spaces[0].valueCount = sizeof(applicationVals) / sizeof(*applicationVals);
     spaces[0].values = applicationVals;
@@ -357,10 +362,14 @@ LuaModule create_ludens_module()
     spaces[2].valueCount = sizeof(inputVals) / sizeof(*inputVals);
     spaces[2].values = inputVals;
 
+    spaces[3].name = "ui_driver";
+    spaces[3].valueCount = sizeof(uiDriverVals) / sizeof(*uiDriverVals);
+    spaces[3].values = uiDriverVals;
+
     // NOTE: these are bindings that use the Lua stack, there are also FFI bindings in LuaScriptFFI.cpp
-    spaces[3].name = "C";
-    spaces[3].valueCount = sizeof(CVals) / sizeof(CVals);
-    spaces[3].values = CVals;
+    spaces[4].name = "C";
+    spaces[4].valueCount = sizeof(CVals) / sizeof(CVals);
+    spaces[4].values = CVals;
 
     LuaModuleInfo modI;
     modI.name = LUDENS_LUA_MODULE_NAME;

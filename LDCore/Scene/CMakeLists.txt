@@ -13,6 +13,8 @@ set(MODULE_LIB
     Lib/SceneSchema.cpp
     Lib/ScreenUI.h
     Lib/ScreenUI.cpp
+    Lib/UIDriver.h
+    Lib/UIDriver.cpp
     Lib/AudioSystemCache.h
     Lib/AudioSystemCache.cpp
     Lib/RenderSystemCache.h

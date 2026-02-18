@@ -22,6 +22,9 @@ public:
     /// @param delta Delta time in seconds.
     void update(float delta);
 
+    /// @brief Extract internal lua state.
+    inline LuaState get_lua_state() { return mL; }
+
     /// @brief Create table associated with a component.
     void create_component_table(CUID compID);
 
