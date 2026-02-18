@@ -38,8 +38,8 @@ struct ViewportWindow : Handle<struct ViewportWindowObj>
     /// @return true if mouse cursor is within viewport window
     bool get_mouse_pos(Vec2& pos);
 
-    /// @brief Get the current gizmo control state.
-    void get_gizmo_state(SceneOverlayGizmo& gizmoType, Vec3& gizmoCenter, float& gizmoScale, RenderSystemSceneGizmoColor& gizmoColor);
+    /// @brief Get the current 3D gizmo control state.
+    void get_gizmo_3d_state(SceneOverlayGizmo& gizmoType, Vec3& gizmoCenter, float& gizmoScale, RenderSystemSceneGizmoColor& gizmoColor);
 
     /// @brief Notify the viewport what ID is under the mouse cursor
     /// @param gizmoID If not zero, the gizmo mesh under cursor

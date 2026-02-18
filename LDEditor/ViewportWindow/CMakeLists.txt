@@ -5,7 +5,12 @@ set(MODULE_INCLUDE
 )
 
 set(MODULE_LIB
-	Lib/ViewportWindow.cpp
+    Lib/ViewportCommon.h
+    Lib/ViewportWindow.cpp
+    Lib/Viewport3D.h
+    Lib/Viewport3D.cpp
+    Lib/Viewport2D.h
+    Lib/Viewport2D.cpp
 )
 
 add_ludens_editor_module(

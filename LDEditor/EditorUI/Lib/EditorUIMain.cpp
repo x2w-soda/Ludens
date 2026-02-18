@@ -168,7 +168,7 @@ RUID EditorUIMain::get_viewport_outline_ruid()
 
 void EditorUIMain::get_viewport_gizmo_state(SceneOverlayGizmo& gizmoType, Vec3& gizmoCenter, float& gizmoScale, RenderSystemSceneGizmoColor& gizmoColor)
 {
-    mObj->mViewportWindow.get_gizmo_state(gizmoType, gizmoCenter, gizmoScale, gizmoColor);
+    mObj->mViewportWindow.get_gizmo_3d_state(gizmoType, gizmoCenter, gizmoScale, gizmoColor);
 }
 
 } // namespace LD

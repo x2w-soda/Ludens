@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Ludens/Gizmo/Gizmo.h>
 #include <Ludens/Header/Color.h>
 #include <Ludens/Header/Handle.h>
 #include <Ludens/Header/Math/Vec3.h>
@@ -66,5 +67,61 @@ struct SceneOverlayComponent : Handle<struct SceneOverlayComponentObj>
     RGraphImage out_color_attachment();
     RGraphImage out_id_flags_attachment();
 };
+
+inline bool get_gizmo_axis(SceneOverlayGizmoID id, GizmoAxis& axis)
+{
+    switch (id)
+    {
+    case SCENE_OVERLAY_GIZMO_ID_AXIS_X:
+        axis = GIZMO_AXIS_X;
+        return true;
+    case SCENE_OVERLAY_GIZMO_ID_AXIS_Y:
+        axis = GIZMO_AXIS_Y;
+        return true;
+    case SCENE_OVERLAY_GIZMO_ID_AXIS_Z:
+        axis = GIZMO_AXIS_Z;
+        return true;
+    default:
+        break;
+    }
+
+    return false;
+}
+
+inline bool get_gizmo_plane(SceneOverlayGizmoID id, GizmoPlane& plane)
+{
+    switch (id)
+    {
+    case SCENE_OVERLAY_GIZMO_ID_PLANE_XY:
+        plane = GIZMO_PLANE_XY;
+        return true;
+    case SCENE_OVERLAY_GIZMO_ID_PLANE_XZ:
+        plane = GIZMO_PLANE_XZ;
+        return true;
+    case SCENE_OVERLAY_GIZMO_ID_PLANE_YZ:
+        plane = GIZMO_PLANE_YZ;
+        return true;
+    default:
+        break;
+    }
+
+    return false;
+}
+
+inline float get_plane_rotation(GizmoPlane plane, const Vec3& axisRotations)
+{
+    switch (plane)
+    {
+    case GIZMO_PLANE_XY:
+        return (float)LD_TO_RADIANS(axisRotations.z);
+    case GIZMO_PLANE_XZ:
+        return (float)LD_TO_RADIANS(axisRotations.y);
+    case GIZMO_PLANE_YZ:
+        return (float)LD_TO_RADIANS(axisRotations.x);
+    }
+
+    LD_UNREACHABLE;
+    return 0.0f;
+}
 
 } // namespace LD
