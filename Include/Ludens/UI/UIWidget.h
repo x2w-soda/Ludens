@@ -95,6 +95,12 @@ struct UIWidget : Handle<struct UIWidgetObj>
     /// @brief set user data pointer
     void set_user(void* user);
 
+    void get_name(std::string& name);
+
+    void set_name(const std::string& name);
+
+    UIWidget get_child_by_name(const std::string& childName);
+
     /// @brief Get current widget layout.
     void get_layout(UILayoutInfo& layout);
 
@@ -183,13 +189,15 @@ struct UIButtonWidget : UIWidget
 {
     /// @brief Default button widget rendering.
     static void on_draw(UIWidget widget, ScreenRenderComponent renderer);
+
+    void set_on_click(void (*onClick)(UIButtonWidget w, MouseButton btn, void* user));
 };
 
 struct UIButtonWidgetInfo
 {
     const char* text;
     Color textColor;
-    void (*on_press)(UIButtonWidget w, MouseButton btn, void* user);
+    void (*onClick)(UIButtonWidget w, MouseButton btn, void* user);
     bool transparentBG;
 };
 

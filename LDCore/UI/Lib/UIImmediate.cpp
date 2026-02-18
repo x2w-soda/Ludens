@@ -510,7 +510,7 @@ UIWidgetState* UIWindowState::get_or_create_button(const char* text)
     UIButtonWidgetInfo buttonWI{};
     buttonWI.text = text;
     buttonWI.textColor = 0xFFFFFFFF;
-    buttonWI.on_press = [](UIButtonWidget, MouseButton btn, void* user) {
+    buttonWI.onClick = [](UIButtonWidget, MouseButton btn, void* user) {
         auto* state = (UIWidgetState*)user;
         state->isButtonPressed.set(true);
     };

@@ -199,7 +199,7 @@ struct UIButtonWidgetObj
 {
     UIWidgetObj* base;
     const char* text;
-    void (*user_on_press)(UIButtonWidget w, MouseButton btn, void* user);
+    void (*onClick)(UIButtonWidget w, MouseButton btn, void* user);
     Color textColor;
     bool transparentBG;
 
@@ -279,18 +279,19 @@ struct UIImageWidgetObj
 /// @brief UI Widget implementation
 struct UIWidgetObj
 {
-    UILayout layout;     /// must be first field for layout semantics
-    UICallback cb;       /// callback function pointer table; TODO: single table for each type, not each instance
-    UIWindowObj* window; /// owning window
-    UIWidgetObj* parent; /// parent widget
-    UIWidgetObj* child;  /// first child widget
-    UIWidgetObj* next;   /// sibling widget
-    UITheme theme;       /// theme handle
-    UINode node;         /// node in tree hierachy
-    Vec2 scrollOffset;   /// offset applied to children after layout
-    void* user;          /// arbitrary user data
-    UIWidgetType type;   /// type enum
-    uint32_t flags;      /// widget bit flags
+    UILayout layout;               /// must be first field for layout semantics
+    UICallback cb{};               /// callback function pointer table; TODO: single table for each type, not each instance
+    UIWindowObj* window = nullptr; /// owning window
+    UIWidgetObj* parent = nullptr; /// parent widget
+    UIWidgetObj* child = nullptr;  /// first child widget
+    UIWidgetObj* next = nullptr;   /// sibling widget
+    UITheme theme{};               /// theme handle
+    UINode node{};                 /// node in tree hierachy
+    Vec2 scrollOffset{};           /// offset applied to children after layout
+    std::string name;              /// widget debug name
+    void* user = nullptr;          /// arbitrary user data
+    UIWidgetType type;             /// type enum
+    uint32_t flags = 0;            /// widget bit flags
     union
     {
         UIScrollWidgetObj scroll;
@@ -302,6 +303,13 @@ struct UIWidgetObj
         UISliderWidgetObj slider;
         UIToggleWidgetObj toggle;
     } as;
+
+    UIWidgetObj() = delete;
+    UIWidgetObj(UIWidgetType type, const UILayoutInfo& layoutI, UIWidgetObj* parent, UIWindowObj* window, void* user);
+    UIWidgetObj(const UIWidgetObj&) = delete;
+    ~UIWidgetObj();
+
+    UIWidgetObj& operator=(const UIWidgetObj&) = delete;
 
     /// @brief appends new child at the end of link list
     inline void append_child(UIWidgetObj* newChild)
@@ -337,7 +345,18 @@ struct UIWidgetObj
         return count;
     }
 
-    inline UIContextObj* ctx() const;
+    inline UIWidgetObj* get_child_by_name(const std::string& name)
+    {
+        for (UIWidgetObj* c = child; c; c = c->next)
+        {
+            if (c->name == name)
+                return c;
+        }
+
+        return nullptr;
+    }
+
+    UIContextObj* ctx() const;
 
     /// @brief Draw the widget with default or custom render callback.
     void draw(ScreenRenderComponent renderer);
@@ -347,23 +366,23 @@ struct UIWidgetObj
 ///        is directly managed by the UIContext.
 struct UIWindowObj : UIWidgetObj
 {
-    UIWindowObj();
+    UIWindowObj() = delete;
+    UIWindowObj(const UILayoutInfo& layoutI);
     UIWindowObj(const UIWindowObj&) = delete;
     ~UIWindowObj();
 
     UIWindowObj& operator=(const UIWindowObj&) = delete;
 
     UIWorkspaceObj* space = nullptr; /// owning workspace
-    std::string debugName;           /// window debug name
     Vector<UIWidgetObj*> widgets;    /// all widgets within the window
-    Optional<Color> colorMask;       /// optional mask to modify widget colors in window
+    Optional<Color> colorMask{};     /// optional mask to modify widget colors in window
     Color color = 0;                 /// window background color
-    uint32_t id;                     /// window ID, unique within workspace
+    uint32_t id = 0;                 /// window ID, unique within workspace
     Vec2 dragOffset;
     Vec2 dragBeginPos;
     Vec2 dragBeginSize;
     void (*onResize)(UIWindow window, const Vec2& size) = nullptr;
-    bool dragResize; // resize or reposition
+    bool dragResize = false; // resize or reposition
 
     inline UIContextObj* ctx() const { return space->layer->ctx; }
     inline UILayerObj* layer() const { return space->layer; }

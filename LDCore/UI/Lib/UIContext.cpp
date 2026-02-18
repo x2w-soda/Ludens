@@ -68,19 +68,14 @@ static UIWidgetObj* get_widget_at_pos(UIWidgetObj* root, const Vec2& pos, int fi
 
 UIWidgetObj* UIContextObj::alloc_widget(UIWidgetType type, const UILayoutInfo& layoutI, UIWidgetObj* parent, void* user)
 {
-    UIWindowObj* window = parent->window;
+    LD_PROFILE_SCOPE;
 
+    LD_ASSERT(parent);
+    UIWindowObj* window = parent->window;
     UIWidgetObj* obj = (UIWidgetObj*)widgetPA.allocate();
-    memset(obj, 0, sizeof(UIWidgetObj));
-    obj->layout.info = layoutI;
-    obj->type = type;
-    obj->parent = parent;
-    obj->window = window;
-    obj->user = user;
-    obj->node = {obj};
+    new (obj) UIWidgetObj(type, layoutI, parent, window, user);
+    
     obj->theme = window->ctx()->theme;
-    obj->scrollOffset = Vec2(0.0f);
-    obj->flags = 0;
 
     window->widgets.push_back(obj);
     parent->append_child(obj);
@@ -90,6 +85,8 @@ UIWidgetObj* UIContextObj::alloc_widget(UIWidgetType type, const UILayoutInfo& l
 
 void UIContextObj::free_widget(UIWidgetObj* widget)
 {
+    LD_PROFILE_SCOPE;
+
     while (widget->child)
         free_widget(widget->child);
 
@@ -104,6 +101,7 @@ void UIContextObj::free_widget(UIWidgetObj* widget)
     invalidate_refs(widget); // remove all refs to out of scope widget
     ui_obj_cleanup(widget);  // polymorphic cleanup
 
+    widget->~UIWidgetObj();
     widgetPA.free(widget);
 }
 

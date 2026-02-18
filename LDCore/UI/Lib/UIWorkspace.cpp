@@ -16,19 +16,14 @@ UIWorkspaceObj::~UIWorkspaceObj()
 
 UIWindowObj* UIWorkspaceObj::create_window(const UILayoutInfo& layoutI, const UIWindowInfo& windowI, void* user)
 {
-    UIWindowObj* windowObj = heap_new<UIWindowObj>(MEMORY_USAGE_UI);
-    windowObj->layout.info = layoutI;
+    UIWindowObj* windowObj = heap_new<UIWindowObj>(MEMORY_USAGE_UI, layoutI);
     windowObj->user = user;
-    windowObj->type = UI_WIDGET_WINDOW;
-    windowObj->window = windowObj;
-    windowObj->node = {windowObj};
-    windowObj->flags = 0;
-    windowObj->theme = layer->ctx->theme;
     windowObj->space = this;
+    windowObj->theme = layer->ctx->theme;
     windowObj->id = ++windowIDCounter;
 
     if (windowI.name)
-        windowObj->debugName = std::string(windowI.name);
+        windowObj->name = std::string(windowI.name);
 
     if (windowI.hidden)
         windowObj->flags |= UI_WIDGET_FLAG_HIDDEN_BIT;

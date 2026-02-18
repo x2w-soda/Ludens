@@ -30,7 +30,6 @@ struct
 // clang-format on
 
 static_assert(sizeof(sWidgetTable) / sizeof(*sWidgetTable) == UI_WIDGET_TYPE_COUNT);
-static_assert(IsTrivial<UIWidgetObj>);
 static_assert(IsTrivial<UIScrollWidgetObj>);
 static_assert(IsTrivial<UITextWidgetObj>);
 static_assert(IsTrivial<UITextEditWidgetObj>);
@@ -40,8 +39,25 @@ static_assert(IsTrivial<UIToggleWidgetObj>);
 static_assert(IsTrivial<UISliderWidgetObj>);
 static_assert(IsTrivial<UIButtonWidgetObj>);
 
-inline UIContextObj* UIWidgetObj::ctx() const
+UIWidgetObj::UIWidgetObj(UIWidgetType type, const UILayoutInfo& layoutI, UIWidgetObj* parent, UIWindowObj* window, void* user)
+    : window(window), type(type), parent(parent), user(user)
 {
+    LD_ASSERT(window);
+
+    layout.info = layoutI;
+    node = UINode(this);
+
+    // TODO: placement new for widget type, allow non-trivial widget obj
+}
+
+UIWidgetObj::~UIWidgetObj()
+{
+    // TODO: placement delete for widget type
+}
+
+UIContextObj* UIWidgetObj::ctx() const
+{
+    // crazy pointer chasing
     return window->space->layer->ctx;
 }
 
@@ -187,6 +203,21 @@ void* UIWidget::get_user()
 void UIWidget::set_user(void* user)
 {
     mObj->user = user;
+}
+
+void UIWidget::get_name(std::string& name)
+{
+    name = mObj->name;
+}
+
+void UIWidget::set_name(const std::string& name)
+{
+    mObj->name = name;
+}
+
+UIWidget UIWidget::get_child_by_name(const std::string& childName)
+{
+    return UIWidget(mObj->get_child_by_name(childName));
 }
 
 void UIWidget::get_layout(UILayoutInfo& layout)
@@ -473,7 +504,7 @@ UIButtonWidget UINode::add_button(const UILayoutInfo& layoutI, const UIButtonWid
     obj->cb.onHover = UIButtonWidgetObj::on_hover;
     obj->as.button.base = obj;
     obj->as.button.text = widgetI.text ? heap_strdup(widgetI.text, MEMORY_USAGE_UI) : nullptr;
-    obj->as.button.user_on_press = widgetI.on_press;
+    obj->as.button.onClick = widgetI.onClick;
     obj->as.button.textColor = widgetI.textColor;
     obj->as.button.transparentBG = widgetI.transparentBG;
 
@@ -933,8 +964,9 @@ void UIButtonWidgetObj::on_mouse(UIWidget widget, const Vec2& pos, MouseButton b
     UIWidgetObj* obj = widget;
     UIButtonWidgetObj& self = obj->as.button;
 
-    if (event == UI_MOUSE_DOWN && self.user_on_press)
-        self.user_on_press((UIButtonWidget)widget, btn, obj->user);
+    // TODO: click semantics, usually when MOUSE_UP event is still within the button rect.
+    if (event == UI_MOUSE_DOWN && self.onClick)
+        self.onClick((UIButtonWidget)widget, btn, obj->user);
 }
 
 void UIButtonWidgetObj::on_hover(UIWidget widget, UIEvent event)
@@ -1003,6 +1035,11 @@ void UIButtonWidget::on_draw(UIWidget widget, ScreenRenderComponent renderer)
             baseline.x += advanceX;
         }
     }
+}
+
+void UIButtonWidget::set_on_click(void (*onClick)(UIButtonWidget w, MouseButton btn, void* user))
+{
+    mObj->as.button.onClick = onClick;
 }
 
 bool UIToggleWidget::get_state()
