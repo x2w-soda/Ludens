@@ -95,8 +95,22 @@ a2 = []
     TOMLReader::destroy(reader);
     reader = {};
 
-    int leaks = get_memory_leaks(nullptr);
-    CHECK(leaks == 0);
+    CHECK_FALSE(get_memory_leaks(nullptr));
+}
+
+TEST_CASE("TOMLWriter nullptr string")
+{
+    TOMLWriter writer = TOMLWriter::create();
+
+    std::string str;
+    writer.begin();
+    writer.key("str");
+    writer.write_string(nullptr); // should not crash
+    writer.end(str);
+
+    TOMLWriter::destroy(writer);
+
+    CHECK_FALSE(get_memory_leaks(nullptr));
 }
 
 TEST_CASE("TOMLUtil Vec2")

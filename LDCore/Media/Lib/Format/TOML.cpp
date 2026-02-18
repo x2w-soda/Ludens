@@ -798,6 +798,10 @@ TOMLWriter TOMLWriter::write_string(const char* cstr)
 {
     LD_ASSERT(mObj->is_expecting_value());
 
+    const char null = '\0';
+    if (!cstr)
+        cstr = &null;
+
     mObj->value(cstr);
 
     return TOMLWriter(mObj);
