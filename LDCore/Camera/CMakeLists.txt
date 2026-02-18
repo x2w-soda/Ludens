@@ -4,18 +4,21 @@ set(MODULE_TEST_NAME LDCameraTest)
 set(MODULE_INCLUDE
     ${LUDENS_INCLUDE_DIR}/Ludens/Camera/Camera.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Camera/CameraController.h
+    ${LUDENS_INCLUDE_DIR}/Ludens/Camera/Camera2D.h
 )
 
 set(MODULE_LIB
     Lib/Camera.cpp
+    Lib/Camera2D.cpp
     Lib/CameraController.cpp
     Lib/CameraCommon.h
 )
 
 set(MODULE_TEST
     Test/CameraTest.cpp
-    Test/TestPerspective.h
-    Test/TestOrthographic.h
+    Test/Camera2DTest.cpp
+    Test/PerspectiveTest.cpp
+    Test/OrthographicTest.cpp
 )
 
 add_ludens_core_module(

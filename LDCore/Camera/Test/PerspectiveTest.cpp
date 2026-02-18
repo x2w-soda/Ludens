@@ -1,5 +1,3 @@
-#pragma once
-
 #include <Extra/doctest/doctest.h>
 #include <Ludens/Camera/Camera.h>
 #include <Ludens/Header/Math/Math.h>
