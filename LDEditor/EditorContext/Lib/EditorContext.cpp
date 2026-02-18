@@ -291,6 +291,7 @@ void EditorContextObj::load_project_scene(const FS::Path& sceneSchemaPath)
         sceneI.fontAtlas = fontAtlas;
         sceneI.fontAtlasImage = fontAtlasImage;
         sceneI.uiTheme = settings.get_theme().get_ui_theme();
+        sceneI.extent = {}; // Scene extent is not known until EditorUI/ViewportWindow is created
         scene = Scene::create(sceneI);
     }
 
@@ -425,6 +426,13 @@ bool EditorContext::render_system_mat4_callback(RUID ruid, Mat4& mat4, void* use
     EditorContextObj& self = *(EditorContextObj*)user;
 
     return self.scene.get_ruid_world_mat4(ruid, mat4);
+}
+
+void EditorContext::render_system_screen_pass_callback(ScreenRenderComponent renderer, void* user)
+{
+    EditorContextObj& self = *(EditorContextObj*)user;
+
+    self.scene.render_screen_ui(renderer);
 }
 
 void EditorContext::action_redo()

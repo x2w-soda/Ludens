@@ -45,6 +45,7 @@ UIWidgetObj::UIWidgetObj(UIWidgetType type, const UILayoutInfo& layoutI, UIWidge
     LD_ASSERT(window);
 
     layout.info = layoutI;
+    layout.rect = {};
     node = UINode(this);
 
     // TODO: placement new for widget type, allow non-trivial widget obj

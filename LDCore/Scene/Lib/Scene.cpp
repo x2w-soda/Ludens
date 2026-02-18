@@ -252,7 +252,7 @@ Scene Scene::create(const SceneInfo& sceneI)
     sScene->renderSystemCache.create(sceneI.renderSystem, sceneI.assetManager);
     sScene->audioSystemCache.create(sceneI.audioSystem, sceneI.assetManager);
     sScene->luaContext.create(Scene(sScene), sceneI.assetManager);
-    sScene->screenExtent = {};
+    sScene->screenExtent = sceneI.extent;
 
     ScreenUIInfo info{};
     info.extent = sScene->screenExtent;
@@ -333,6 +333,9 @@ void Scene::load(const std::function<bool(Scene)>& loader)
     }
     */
 
+    // force initial UI layout
+    mObj->screenUI.update(0.0f);
+
     mObj->state = SCENE_STATE_LOADED;
 }
 
@@ -404,7 +407,11 @@ void Scene::update(const Vec2& screenExtent, float delta)
     LD_PROFILE_SCOPE;
     LD_ASSERT(screenExtent.x > 0.0f && screenExtent.y > 0.0f);
 
-    mObj->screenExtent = screenExtent;
+    if (mObj->screenExtent != screenExtent)
+    {
+        mObj->screenExtent = screenExtent;
+        mObj->screenUI.resize(screenExtent);
+    }
 
     // update all lua script instances
     mObj->luaContext.update(delta);
@@ -430,6 +437,20 @@ void Scene::update(const Vec2& screenExtent, float delta)
 
     // any heap allocations for audio is done on main thread.
     mObj->audioSystemCache.update();
+}
+
+void Scene::render_screen_ui(ScreenRenderComponent renderer)
+{
+    LD_PROFILE_SCOPE;
+
+    mObj->screenUI.render(renderer);
+}
+
+void Scene::input_screen_ui(const WindowEvent* event)
+{
+    LD_PROFILE_SCOPE;
+
+    mObj->screenUI.input(event);
 }
 
 Camera Scene::get_camera()

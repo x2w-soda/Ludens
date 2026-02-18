@@ -249,7 +249,7 @@ EditorUITopBar EditorUITopBar::create(const EditorUITopBarInfo& barI)
     layoutI.sizeY = UISize::fit();
     layoutI.childAxis = UI_AXIS_Y;
     obj->floatWS = obj->floatLayer.create_workspace(screenRect);
-    obj->menuW = obj->floatWS.create_window(layoutI, {}, nullptr);
+    obj->menuW = obj->floatWS.create_float_window(layoutI, {}, nullptr);
     obj->menuW.hide();
 
     return EditorUITopBar(obj);

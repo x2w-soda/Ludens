@@ -50,6 +50,8 @@ struct ViewportWindowObj : EditorWindowObj
     void update(float delta);
     void toolbar();
     void on_drag(MouseButton btn, const Vec2& dragPos, bool begin);
+    void viewport_editor_input();
+    void viewport_scene_input();
 
     static void on_editor_event(const EditorEvent* event, void* user);
 };
@@ -166,63 +168,13 @@ void ViewportWindowObj::on_imgui(float delta)
 
     EditorTheme theme = ctx.get_theme();
     UITheme uiTheme = theme.get_ui_theme();
-    KeyCode key;
-    MouseButton btn;
-    Vec2 pos;
-    bool begin;
 
     ui_push_window(root);
 
-    if (ui_top_mouse_down(btn))
-    {
-        Vec2 pos;
-
-        if (btn == MOUSE_BUTTON_RIGHT)
-            enableCameraControls = true;
-        else if (btn == MOUSE_BUTTON_LEFT && root.get_mouse_pos(pos))
-        {
-            pos = Vec2(pos.x, pos.y + VIEWPORT_TOOLBAR_HEIGHT);
-
-            // update camera ray required for gizmo controls
-            gizmo.update(editorCamera, pos, sceneExtent);
-
-            if (hoverGizmoID != 0)
-                pick_gizmo(hoverGizmoID);
-            else if (hoverRUID != 0)
-                pick_ruid(hoverRUID);
-            else
-                pick_ruid((RUID)0); // clear selection
-        }
-    }
-
-    if (ui_top_mouse_up(btn))
-    {
-        if (btn == MOUSE_BUTTON_LEFT)
-            gizmo.end();
-        else if (btn == MOUSE_BUTTON_RIGHT)
-            enableCameraControls = false;
-    }
-
-    if (ui_top_drag(btn, pos, begin))
-        on_drag(btn, pos, begin);
-
-    if (ui_top_key_down(key))
-    {
-        switch (key)
-        {
-        case KEY_CODE_1:
-            gizmoType = SCENE_OVERLAY_GIZMO_TRANSLATION;
-            break;
-        case KEY_CODE_2:
-            gizmoType = SCENE_OVERLAY_GIZMO_ROTATION;
-            break;
-        case KEY_CODE_3:
-            gizmoType = SCENE_OVERLAY_GIZMO_SCALE;
-            break;
-        default:
-            break;
-        }
-    }
+    if (ctx.is_playing())
+        viewport_scene_input();
+    else
+        viewport_editor_input();
 
     // toolbar widgets
     toolbar();
@@ -449,6 +401,83 @@ void ViewportWindowObj::on_drag(MouseButton btn, const Vec2& dragPos, bool begin
 
     // update gizmo center to new world space position
     gizmoCenter = (worldMat4 * Vec4(0.0f, 0.0f, 0.0f, 1.0f)).as_vec3();
+}
+
+void ViewportWindowObj::viewport_editor_input()
+{
+    MouseButton btn;
+    Vec2 pos;
+    KeyCode key;
+    bool begin;
+
+    if (ui_top_mouse_down(btn))
+    {
+        if (btn == MOUSE_BUTTON_RIGHT)
+            enableCameraControls = true;
+        else if (btn == MOUSE_BUTTON_LEFT && root.get_mouse_pos(pos))
+        {
+            pos = Vec2(pos.x, pos.y + VIEWPORT_TOOLBAR_HEIGHT);
+
+            // update camera ray required for gizmo controls
+            gizmo.update(editorCamera, pos, sceneExtent);
+
+            if (hoverGizmoID != 0)
+                pick_gizmo(hoverGizmoID);
+            else if (hoverRUID != 0)
+                pick_ruid(hoverRUID);
+            else
+                pick_ruid((RUID)0); // clear selection
+        }
+    }
+
+    if (ui_top_mouse_up(btn))
+    {
+        if (btn == MOUSE_BUTTON_LEFT)
+            gizmo.end();
+        else if (btn == MOUSE_BUTTON_RIGHT)
+            enableCameraControls = false;
+    }
+
+    if (ui_top_drag(btn, pos, begin))
+        on_drag(btn, pos, begin);
+
+    if (ui_top_key_down(key))
+    {
+        switch (key)
+        {
+        case KEY_CODE_1:
+            gizmoType = SCENE_OVERLAY_GIZMO_TRANSLATION;
+            break;
+        case KEY_CODE_2:
+            gizmoType = SCENE_OVERLAY_GIZMO_ROTATION;
+            break;
+        case KEY_CODE_3:
+            gizmoType = SCENE_OVERLAY_GIZMO_SCALE;
+            break;
+        default:
+            break;
+        }
+    }
+}
+
+void ViewportWindowObj::viewport_scene_input()
+{
+    MouseButton btn;
+    Vec2 pos;
+
+    if (!root.get_mouse_pos(pos))
+        return;
+
+    Scene scene = ctx.get_scene();
+    pos = Vec2(pos.x, pos.y - VIEWPORT_TOOLBAR_HEIGHT);
+    WindowMouseMotionEvent motionE(0, pos.x, pos.y);
+    scene.input_screen_ui(&motionE);
+
+    if (ui_top_mouse_down(btn))
+    {
+        WindowMouseDownEvent mouseDownE(0, btn);
+        scene.input_screen_ui(&mouseDownE);
+    }
 }
 
 void ViewportWindowObj::on_editor_event(const EditorEvent* event, void* user)

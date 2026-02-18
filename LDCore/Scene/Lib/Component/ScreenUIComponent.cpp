@@ -6,6 +6,18 @@
 
 namespace LD {
 
+static UIWindow create_window_container(SceneObj* scene)
+{
+    UILayoutInfo layoutI{};
+    layoutI.sizeX = UISize::fit();
+    layoutI.sizeY = UISize::fit();
+    UIWindowInfo windowI{};
+    UIWorkspace space = scene->screenUI.workspace();
+    UIWindow window = space.create_float_window(layoutI, windowI, nullptr);
+    window.set_pos(Vec2(0.0f, 0.0f));
+    return window;
+}
+
 bool load_screen_ui_component(SceneObj* scene, ScreenUIComponent* ui, AssetID uiTemplateID)
 {
     LD_PROFILE_SCOPE;
@@ -16,10 +28,7 @@ bool load_screen_ui_component(SceneObj* scene, ScreenUIComponent* ui, AssetID ui
     if (!asset || asset.get_type() != ASSET_TYPE_UI_TEMPLATE)
         return false;
 
-    UILayoutInfo layoutI{};
-    UIWindowInfo windowI{};
-    UIWorkspace space = scene->screenUI.workspace();
-    ui->uiWindow = space.create_window(layoutI, windowI, nullptr);
+    ui->uiWindow = create_window_container(scene);
 
     if (!ui->uiWindow || !asset.load_ui_subtree(ui->uiWindow, nullptr, nullptr))
         return false;
@@ -126,10 +135,7 @@ bool Scene::ScreenUI::set_ui_template_asset(AssetID uiTemplateID)
     if (!asset || asset.get_type() != ASSET_TYPE_UI_TEMPLATE)
         return false;
 
-    UILayoutInfo layoutI{};
-    UIWindowInfo windowI{};
-    UIWorkspace space = sScene->screenUI.workspace();
-    mUI->uiWindow = space.create_window(layoutI, windowI, nullptr);
+    mUI->uiWindow = create_window_container(sScene);
 
     if (!mUI->uiWindow || !asset.load_ui_subtree(mUI->uiWindow, nullptr, nullptr))
         return false;

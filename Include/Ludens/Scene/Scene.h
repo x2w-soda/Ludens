@@ -31,6 +31,7 @@ struct SceneInfo
     FontAtlas fontAtlas;
     RImage fontAtlasImage;
     UITheme uiTheme;
+    Vec2 extent;
 };
 
 /// @brief The basic unit of game simulation.
@@ -67,6 +68,12 @@ public:
     /// @param screenExtent Screen size this frame.
     /// @param delta Delta time in seconds.
     void update(const Vec2& screenExtent, float delta);
+
+    /// @brief Render screen UI contents.
+    void render_screen_ui(ScreenRenderComponent renderer);
+
+    /// @brief Pass input to screen UI.
+    void input_screen_ui(const WindowEvent* event);
 
     /// @brief Get camera to render the Scene with.
     Camera get_camera();

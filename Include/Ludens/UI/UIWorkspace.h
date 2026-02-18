@@ -35,7 +35,7 @@ struct UIWorkspace : Handle<struct UIWorkspaceObj>
     UIWindow create_window(UIAreaID areaID, const UILayoutInfo& layoutI, const UIWindowInfo& windowI, void* user);
 
     /// @brief Create and add a window to the workspace, the window is not docked.
-    UIWindow create_window(const UILayoutInfo& layoutI, const UIWindowInfo& windowI, void* user);
+    UIWindow create_float_window(const UILayoutInfo& layoutI, const UIWindowInfo& windowI, void* user);
 
     /// @brief Destroy a window in the workspace.
     /// @note Deferred destruction until next context update.

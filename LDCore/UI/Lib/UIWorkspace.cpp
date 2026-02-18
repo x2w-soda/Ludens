@@ -133,6 +133,9 @@ void UIWorkspace::set_rect(const Rect& rect)
     mObj->partition.set_root_rect(rect);
 
     mObj->partition.visit_leaves(mObj->partition.get_root_id(), [](UIWorkspaceNode* node) {
+        if (!node->window)
+            return;
+
         node->window.set_rect(node->rect);
 
         auto* windowObj = (UIWindowObj*)node->window.unwrap();
@@ -171,7 +174,7 @@ UIWindow UIWorkspace::create_window(UIAreaID areaID, const UILayoutInfo& layoutI
     return node->window;
 }
 
-UIWindow UIWorkspace::create_window(const UILayoutInfo& layoutI, const UIWindowInfo& windowI, void* user)
+UIWindow UIWorkspace::create_float_window(const UILayoutInfo& layoutI, const UIWindowInfo& windowI, void* user)
 {
     UIWindowObj* windowObj = mObj->create_window(layoutI, windowI, user);
 

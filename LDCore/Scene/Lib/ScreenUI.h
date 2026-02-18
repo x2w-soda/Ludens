@@ -22,6 +22,8 @@ struct ScreenUI : Handle<struct ScreenUIObj>
 
     void update(float delta);
     void resize(const Vec2& extent);
+    void render(ScreenRenderComponent renderer);
+    void input(const WindowEvent* event);
 
     UIWorkspace workspace();
 };

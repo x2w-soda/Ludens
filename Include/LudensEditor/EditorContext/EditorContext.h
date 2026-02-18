@@ -40,6 +40,9 @@ struct EditorContext : Handle<struct EditorContextObj>
     /// @brief Callback to inform the render system the model matrix of RUIDs
     static bool render_system_mat4_callback(RUID ruid, Mat4& mat4, void* user);
 
+    /// @brief Callback to render Scene screen space contents.
+    static void render_system_screen_pass_callback(ScreenRenderComponent renderer, void* user);
+
     /// @brief Redo most recent undo.
     void action_redo();
 
