@@ -22,6 +22,7 @@ public:
     /// @brief Save template as TOML schema.
     bool save_template(UITemplateObj* obj, std::string& toml, std::string& err);
 
+    static void save_ui_button(UITemplateSchemaSaver& saver, const UITemplateEntry& entry);
     static void save_ui_panel(UITemplateSchemaSaver& saver, const UITemplateEntry& entry);
     static void save_ui_image(UITemplateSchemaSaver& saver, const UITemplateEntry& entry);
 
@@ -46,6 +47,7 @@ public:
 
     bool load_template(UITemplateObj* obj, const View& toml, std::string& err);
 
+    static void load_ui_button(UITemplateSchemaLoader& loader, UITemplateEntry& entry);
     static void load_ui_panel_toml(UITemplateSchemaLoader& loader, UITemplateEntry& entry);
     static void load_ui_image_toml(UITemplateSchemaLoader& loader, UITemplateEntry& entry);
 
@@ -70,11 +72,11 @@ struct
 } sUITemplateSchemaTable[] = {
     {UI_WIDGET_WINDOW,    nullptr,                                    nullptr},
     {UI_WIDGET_SCROLL,    nullptr,                                    nullptr},
-    {UI_WIDGET_BUTTON,    nullptr,                                    nullptr},
+    {UI_WIDGET_BUTTON,    &UITemplateSchemaSaver::save_ui_button,     &UITemplateSchemaLoader::load_ui_button},
     {UI_WIDGET_SLIDER,    nullptr,                                    nullptr},
     {UI_WIDGET_TOGGLE,    nullptr,                                    nullptr},
-    {UI_WIDGET_PANEL,     &UITemplateSchemaSaver::save_ui_panel, &UITemplateSchemaLoader::load_ui_panel_toml},
-    {UI_WIDGET_IMAGE,     &UITemplateSchemaSaver::save_ui_image, &UITemplateSchemaLoader::load_ui_image_toml},
+    {UI_WIDGET_PANEL,     &UITemplateSchemaSaver::save_ui_panel,      &UITemplateSchemaLoader::load_ui_panel_toml},
+    {UI_WIDGET_IMAGE,     &UITemplateSchemaSaver::save_ui_image,      &UITemplateSchemaLoader::load_ui_image_toml},
     {UI_WIDGET_TEXT,      nullptr,                                    nullptr},
     {UI_WIDGET_TEXT_EDIT, nullptr,                                    nullptr},
 };
@@ -229,6 +231,15 @@ bool UITemplateSchemaSaver::save_template(UITemplateObj* obj, std::string& toml,
     return true;
 }
 
+void UITemplateSchemaSaver::save_ui_button(UITemplateSchemaSaver& saver, const UITemplateEntry& entry)
+{
+    LD_ASSERT(saver.mWriter && saver.mWriter.is_table_scope());
+    LD_ASSERT(entry.type == UI_WIDGET_BUTTON);
+
+    TOMLWriter writer = saver.mWriter;
+    writer.key("text").write_string(entry.button.info.text);
+}
+
 void UITemplateSchemaSaver::save_ui_panel(UITemplateSchemaSaver& saver, const UITemplateEntry& entry)
 {
     LD_ASSERT(saver.mWriter && saver.mWriter.is_table_scope());
@@ -245,7 +256,7 @@ void UITemplateSchemaSaver::save_ui_image(UITemplateSchemaSaver& saver, const UI
 
     TOMLWriter writer = saver.mWriter;
     writer.key("texture_2d").write_u32((uint32_t)entry.image.texture2DAssetID);
-    TOMLUtil::write_rect(writer, "image_rect" , entry.image.imageRect);
+    TOMLUtil::write_rect(writer, "image_rect", entry.image.imageRect);
 }
 
 UITemplateSchemaLoader::~UITemplateSchemaLoader()
@@ -322,6 +333,18 @@ bool UITemplateSchemaLoader::load_template(UITemplateObj* obj, const View& toml,
     return true;
 }
 
+void UITemplateSchemaLoader::load_ui_button(UITemplateSchemaLoader& loader, UITemplateEntry& entry)
+{
+    LD_ASSERT(entry.type == UI_WIDGET_BUTTON);
+
+    TOMLReader reader = loader.mReader;
+
+    reader.read_string("text", entry.button.text);
+
+    entry.button.info = {};
+    entry.button.info.text = entry.button.text.c_str();
+}
+
 void UITemplateSchemaLoader::load_ui_panel_toml(UITemplateSchemaLoader& loader, UITemplateEntry& entry)
 {
     LD_ASSERT(entry.type == UI_WIDGET_PANEL);
@@ -357,12 +380,13 @@ void UITemplateSchemaLoader::load_widget_toml()
     if (entryIdx >= mTmpl->entries.size())
         return;
 
-    UITemplateEntry* entry = mTmpl->allocate_entry();
-    mTmpl->entries[entryIdx] = entry;
-
+    UIWidgetType type;
     std::string typeStr;
-    if (!mReader.read_string("type", typeStr))
+    if (!mReader.read_string("type", typeStr) || !get_ui_widget_type_from_cstr(type, typeStr.c_str()))
         return;
+
+    UITemplateEntry* entry = mTmpl->allocate_entry(type);
+    mTmpl->entries[entryIdx] = entry;
 
     if (!mReader.read_string("name", entry->name))
         return;
@@ -375,9 +399,6 @@ void UITemplateSchemaLoader::load_widget_toml()
     }
     else
         entry->layout = {};
-
-    if (!get_ui_widget_type_from_cstr(entry->type, typeStr.c_str()))
-        return;
 
     sUITemplateSchemaTable[(int)entry->type].load_toml(*this, *entry);
 }

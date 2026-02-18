@@ -1038,6 +1038,24 @@ void UIButtonWidget::on_draw(UIWidget widget, ScreenRenderComponent renderer)
     }
 }
 
+const char* UIButtonWidget::get_button_text()
+{
+    return mObj->as.button.text;
+}
+
+void UIButtonWidget::set_button_text(const char* text)
+{
+    UIButtonWidgetObj& self = mObj->as.button;
+
+    if (self.text)
+    {
+        heap_free((void*)self.text);
+        self.text = nullptr;
+    }
+
+    self.text = heap_strdup(text, MEMORY_USAGE_UI);
+}
+
 void UIButtonWidget::set_on_click(void (*onClick)(UIButtonWidget w, MouseButton btn, void* user))
 {
     mObj->as.button.onClick = onClick;

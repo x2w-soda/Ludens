@@ -359,9 +359,6 @@ void Scene::backup()
     LD_ASSERT(!mObj->registryBackup);
     LD_ASSERT(!mObj->screenUIBackup);
 
-    mObj->screenUIBackup = mObj->screenUI;
-    mObj->screenUI;
-
     // create and load a copy for play-in-editor session
     DataRegistry pie = mObj->registry.duplicate();
     mObj->registryBackup = mObj->registry;

@@ -190,6 +190,8 @@ struct UIButtonWidget : UIWidget
     /// @brief Default button widget rendering.
     static void on_draw(UIWidget widget, ScreenRenderComponent renderer);
 
+    const char* get_button_text();
+    void set_button_text(const char* text);
     void set_on_click(void (*onClick)(UIButtonWidget w, MouseButton btn, void* user));
 };
 

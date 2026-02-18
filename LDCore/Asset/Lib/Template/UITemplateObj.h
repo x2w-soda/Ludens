@@ -5,7 +5,6 @@
 #include <Ludens/Memory/Allocator.h>
 
 #include <cstdint>
-#include <unordered_map>
 
 namespace LD {
 
@@ -19,27 +18,9 @@ struct UITemplateObj
     Vector<UITemplateEntry*> entries;
     HashMap<uint32_t, Vector<uint32_t>> hierarchy;
 
-    UITemplateEntry* allocate_entry()
-    {
-        UITemplateEntry* entry = (UITemplateEntry*)entryPA.allocate();
-        new (entry) UITemplateEntry();
+    UITemplateEntry* allocate_entry(UIWidgetType type);
 
-        return entry;
-    }
-
-    void reset()
-    {
-        for (auto it = entryPA.begin(); it; ++it)
-        {
-            UITemplateEntry* entry = (UITemplateEntry*)it.data();
-            entry->~UITemplateEntry();
-            entryPA.free(entry);
-        }
-
-        entries.clear();
-        hierarchy.clear();
-        LA.free();
-    }
+    void reset();
 };
 
 } // namespace LD

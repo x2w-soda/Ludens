@@ -17,6 +17,7 @@ struct UIScrollWidgetTemplate
 
 struct UIButtonWidgetTemplate
 {
+    std::string text;
     UIButtonWidgetInfo info;
 };
 
@@ -51,7 +52,7 @@ struct UITextWidgetTemplate
 /// @brief Template information to instantiate a UIWidget.
 struct UITemplateEntry
 {
-    UIWidgetType type;
+    const UIWidgetType type;
     UILayoutInfo layout;
     std::string name;
 
@@ -65,6 +66,13 @@ struct UITemplateEntry
         UIImageWidgetTemplate image;
         UITextWidgetTemplate text;
     };
+
+    UITemplateEntry() = delete;
+    UITemplateEntry(UIWidgetType type);
+    UITemplateEntry(const UITemplateEntry&) = delete;
+    ~UITemplateEntry();
+
+    UITemplateEntry& operator=(const UITemplateEntry&) = delete;
 };
 
 typedef bool (*UITemplateOnSaveCallback)(UIWidget widget, UITemplateEntry& tmpl, void* user);

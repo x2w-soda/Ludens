@@ -41,7 +41,7 @@ static void push_widget_proxy(LuaState L, UIDriver* driver, const char* pathCstr
     for (const auto& path : widgetPath)
     {
         UIWidget child = widget.get_child_by_name(path.string());
-        
+
         if (!child)
         {
             L.push_nil();
@@ -81,6 +81,8 @@ return proxy
 
 bool UIDriver::connect(UIWindow window, LuaState luaState, const char* luaSource, std::string& err)
 {
+    LD_PROFILE_SCOPE;
+
     mL = luaState;
     mWindow = window;
 
@@ -106,6 +108,8 @@ bool UIDriver::connect(UIWindow window, LuaState luaState, const char* luaSource
 
 bool UIDriver::disconnect()
 {
+    LD_PROFILE_SCOPE;
+
     // release the UI lua script table for GC.
     int luaReg = mL.get_registry_index();
     mL.unref(luaReg, mScriptRef);
@@ -144,12 +148,15 @@ bool UIDriver::attach(std::string& err)
 
     push_driver_table();
 
-    LuaError luaError = mL.pcall(2, 0, -1); // script:attach(ui)
-    if (luaError)
     {
-        err = mL.to_string(-1);
-        mL.resize(oldSize);
-        return false;
+        LD_PROFILE_SCOPE_NAME("pcall");
+        LuaError luaError = mL.pcall(2, 0, -1); // script:attach(ui)
+        if (luaError)
+        {
+            err = mL.to_string(-1);
+            mL.resize(oldSize);
+            return false;
+        }
     }
 
     mL.resize(oldSize);
@@ -199,6 +206,8 @@ bool UIDriver::detach(std::string& err)
 /// @brief _G.ludens.ui_driver.install_callback(widget, callbackStr, callbackFn)
 int UIDriver::install_callback(lua_State* l)
 {
+    LD_PROFILE_SCOPE;
+
     LuaState L(l);
 
     LD_ASSERT(L.size() == 3);
@@ -231,6 +240,8 @@ int UIDriver::install_callback(lua_State* l)
 
 void UIDriver::push_driver_table()
 {
+    LD_PROFILE_SCOPE;
+
     mL.push_table();
     mL.push_fn(&ui_driver_get_widget);
     mL.set_field(-2, "get_widget");
@@ -250,7 +261,7 @@ void UIDriver::ui_button_on_click(UIButtonWidget w, MouseButton btn, void* user)
     L.get_table(driver->mL.get_registry_index());
 
     LD_ASSERT(L.get_type(-1) == LUA_TYPE_FN);
-    L.pcall(1, 0, -1);
+    L.pcall(0, 0, -1);
 }
 
 } // namespace LD
