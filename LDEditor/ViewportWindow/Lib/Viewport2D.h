@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Ludens/Camera/Camera2D.h>
+#include <LudensEditor/EditorContext/EditorContext.h>
 
 #include "ViewportCommon.h"
 
@@ -16,7 +17,7 @@ public:
 
     Viewport2D& operator=(const Viewport2D&) = delete;
 
-    void create(const Vec2& sceneExtent);
+    void create(EditorContext ctx, const Vec2& sceneExtent);
     void destroy();
 
     void imgui(const ViewportState& state);
@@ -25,6 +26,7 @@ public:
     inline Camera2D get_camera_2d() { return mCamera; }
 
 private:
+    EditorContext mCtx;
     Camera2D mCamera;
 };
 

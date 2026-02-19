@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Ludens/Camera/Camera.h>
+#include <Ludens/Camera/Camera2D.h>
 #include <Ludens/Header/Handle.h>
 #include <Ludens/Header/Math/Transform.h>
 #include <Ludens/RenderSystem/RenderSystem.h>
@@ -25,6 +26,8 @@ struct ViewportWindow : Handle<struct ViewportWindowObj>
 
     /// @brief Get the camera for rendering the scene in the viewport window.
     Camera get_editor_camera();
+
+    Camera2D get_editor_camera_2d();
 
     /// @brief Get viewport window size. This includes toolbar space and
     ///        the scene itself.

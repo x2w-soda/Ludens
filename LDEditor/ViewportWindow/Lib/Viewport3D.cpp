@@ -15,7 +15,7 @@ Viewport3D::~Viewport3D()
 
 void Viewport3D::create(EditorContext ctx, const Vec2& sceneExtent)
 {
-    this->ctx = ctx;
+    mCtx = ctx;
 
     CameraPerspectiveInfo cameraPI{};
     cameraPI.aspectRatio = sceneExtent.x / sceneExtent.y;
@@ -56,7 +56,7 @@ void Viewport3D::imgui(ViewportState& state)
     bool begin;
 
     mCamera.set_aspect_ratio(state.sceneExtent.x / state.sceneExtent.y);
-    Scene::Component subject = ctx.get_component(state.gizmoSubjectSUID);
+    Scene::Component subject = mCtx.get_component(state.gizmoSubjectSUID);
 
     // update gizmo center and scale
     if (subject && subject.get_world_mat4(worldMat4))
@@ -132,11 +132,11 @@ void Viewport3D::imgui(ViewportState& state)
 
 void Viewport3D::pick_hover_ruid(ViewportState& state)
 {
-    Scene::Component comp = ctx.get_component_by_ruid(state.hoverRUID);
+    Scene::Component comp = mCtx.get_component_by_ruid(state.hoverRUID);
 
     state.gizmoSubjectSUID = comp ? comp.suid() : 0;
 
-    ctx.set_selected_component(state.gizmoSubjectSUID);
+    mCtx.set_selected_component(state.gizmoSubjectSUID);
 }
 
 void Viewport3D::pick_hover_gizmo_id(ViewportState& state)
@@ -147,7 +147,7 @@ void Viewport3D::pick_hover_gizmo_id(ViewportState& state)
 
     // writes back to subject transform during mouse drag window events
     // an object should be selected before gizmo mesh can even be selected
-    Scene::Component subject = ctx.get_component(state.gizmoSubjectSUID);
+    Scene::Component subject = mCtx.get_component(state.gizmoSubjectSUID);
     LD_ASSERT(subject);
 
     // initialize subject world transform and gizmo center.
@@ -156,7 +156,7 @@ void Viewport3D::pick_hover_gizmo_id(ViewportState& state)
     LD_ASSERT(ok);
 
     mGizmoCenter = (worldMat4 * Vec4(0.0f, 0.0f, 0.0f, 1.0f)).as_vec3();
-    ok = decompose_mat4_to_transform(worldMat4, subjectWorldTransform);
+    ok = decompose_mat4_to_transform(worldMat4, mSubjectWorldTransform);
     LD_ASSERT(ok);
 
     SceneOverlayGizmoID id = state.hoverGizmoID;
@@ -171,11 +171,11 @@ void Viewport3D::pick_hover_gizmo_id(ViewportState& state)
         break;
     case SCENE_OVERLAY_GIZMO_ROTATION:
         if (get_gizmo_plane(id, plane))
-            mGizmo.begin_plane_rotate(plane, mGizmoCenter, get_plane_rotation(plane, subjectWorldTransform.rotationEuler));
+            mGizmo.begin_plane_rotate(plane, mGizmoCenter, get_plane_rotation(plane, mSubjectWorldTransform.rotationEuler));
         break;
     case SCENE_OVERLAY_GIZMO_SCALE:
         if (get_gizmo_axis(id, axis))
-            mGizmo.begin_axis_scale(axis, mGizmoCenter, subjectWorldTransform.scale);
+            mGizmo.begin_axis_scale(axis, mGizmoCenter, mSubjectWorldTransform.scale);
         break;
     default:
         break;
@@ -195,7 +195,7 @@ void Viewport3D::drag(ViewportState& state, MouseButton btn, const Vec2& dragPos
         return;
 
     LD_ASSERT(state.gizmoSubjectSUID);
-    TransformEx& worldT = subjectWorldTransform;
+    TransformEx& worldT = mSubjectWorldTransform;
     const Vec2 scenePos(dragPos.x, dragPos.y - VIEWPORT_TOOLBAR_HEIGHT);
 
     // drag position is relative to window origin, i.e. already within sceneExtent range
@@ -233,7 +233,7 @@ void Viewport3D::drag(ViewportState& state, MouseButton btn, const Vec2& dragPos
 
     // get inverse parent world matrix
     Mat4 parentInv(1.0f);
-    Scene::Component subject = ctx.get_component(state.gizmoSubjectSUID);
+    Scene::Component subject = mCtx.get_component(state.gizmoSubjectSUID);
     Scene::Component parent{};
     bool ok;
 

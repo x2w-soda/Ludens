@@ -26,7 +26,7 @@ struct ViewportWindowObj : EditorWindowObj
     EditorContext ctx;
     UIWorkspace space;
     UIWindow root;
-    ViewportMode mode = VIEWPORT_MODE_3D;
+    ViewportMode mode = VIEWPORT_MODE_2D;
     Viewport2D viewport2D{};
     Viewport3D viewport3D{};
     ViewportState state{}; /// passed down to Viewport2D or Viewport3D each frame
@@ -279,6 +279,7 @@ EditorWindow ViewportWindow::create(const EditorWindowInfo& windowI)
     obj->state.sceneExtent = Vec2(obj->state.viewportExtent.x, obj->state.viewportExtent.y - VIEWPORT_TOOLBAR_HEIGHT);
     obj->state.gizmoType = SCENE_OVERLAY_GIZMO_TRANSLATION;
 
+    obj->viewport2D.create(obj->ctx, obj->state.sceneExtent);
     obj->viewport3D.create(obj->ctx, obj->state.sceneExtent);
 
     obj->ctx.add_observer(&ViewportWindowObj::on_editor_event, obj);
@@ -306,6 +307,14 @@ Camera ViewportWindow::get_editor_camera()
         return {};
 
     return mObj->viewport3D.get_camera();
+}
+
+Camera2D ViewportWindow::get_editor_camera_2d()
+{
+    if (mObj->mode != VIEWPORT_MODE_2D)
+        return {};
+
+    return mObj->viewport2D.get_camera_2d();
 }
 
 Vec2 ViewportWindow::get_size()

@@ -48,8 +48,8 @@ private:
     void drag(ViewportState& state, MouseButton btn, const Vec2& dragPos, bool begin);
 
 private:
-    EditorContext ctx;
-    TransformEx subjectWorldTransform;
+    EditorContext mCtx;
+    TransformEx mSubjectWorldTransform;
     CameraController mCameraController;
     CameraPerspectiveInfo mCameraPerspective;
     Gizmo mGizmo;
