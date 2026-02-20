@@ -47,6 +47,7 @@ struct UIWidgetState
     KeyCode keyDown{};
     KeyCode keyUp{};
     Vec2 dragPos{};
+    Vec2 scroll{};
     void* imUser = nullptr;
     int childCounter = 0; // number of children widget states in this frame
     const UIWidgetType type;
@@ -177,6 +178,13 @@ static void on_hover_handler(UIWidget widget, UIEvent event)
         widgetS->hoverEvent = event;
         break;
     }
+}
+
+static void on_scroll_handler(UIWidget widget, const Vec2& offset)
+{
+    UIWidgetState* widgetS = (UIWidgetState*)widget.get_user();
+
+    widgetS->scroll = offset;
 }
 
 static void on_mouse_handler(UIWidget widget, const Vec2& pos, MouseButton btn, UIEvent event)
@@ -683,6 +691,19 @@ bool ui_top_hover(UIEvent& outHover)
     }
 
     return hasEvent;
+}
+
+bool ui_top_scroll(Vec2& scroll)
+{
+    LD_ASSERT_UI_TOP_WIDGET;
+
+    UIWidgetState* widgetS = sImFrame->imWindow->imWidgetStack.top();
+    widgetS->widget.set_on_scroll(&on_scroll_handler);
+
+    scroll = widgetS->scroll;
+    widgetS->scroll = {};
+
+    return scroll.x != 0.0f || scroll.y != 0.0f;
 }
 
 bool ui_top_mouse_down(MouseButton& outButton)

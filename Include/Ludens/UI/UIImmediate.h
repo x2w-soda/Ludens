@@ -58,6 +58,9 @@ bool ui_top_drag(MouseButton& dragBtn, Vec2& dragPos, bool& dragBegin);
 /// @brief Check if widget on top of stack has mouse enter or mouse leave events.
 bool ui_top_hover(UIEvent& hover);
 
+/// @brief Check if widget on top of stack has scroll event. 
+bool ui_top_scroll(Vec2& scroll);
+
 /// @brief Check if widget on top of stack has UI_MOUSE_DOWN event.
 /// @return True if event exists.
 /// @warning Overrides existing on_mouse callback on widget.

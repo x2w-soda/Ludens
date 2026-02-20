@@ -6,14 +6,13 @@ using namespace LD;
 
 TEST_CASE("Camera2D")
 {
-    Camera2DInfo info = Camera2DInfo::extent(100.0f, 100.0f);
-    Camera2D camera = Camera2D::create(info);
+    Camera2D camera = Camera2D::create(Vec2(100.0f, 100.0f));
 
     Vec2 pos = camera.get_position();
-    CHECK(pos == Vec2(0.0f));
+    CHECK(pos == Vec2(50.0f, 50.0f));
 
-    float rot = camera.get_rotation();
-    CHECK(is_equal_epsilon(rot, 0.0f));
+    CHECK(camera.get_zoom() == 1.0f);
+    CHECK(camera.get_rotation() == 0.0f);
 
     Camera2D::destroy(camera);
 

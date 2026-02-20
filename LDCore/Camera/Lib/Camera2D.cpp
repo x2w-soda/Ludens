@@ -8,15 +8,22 @@ struct Camera2DObj
     Mat4 view;
     Mat4 proj;
     Vec2 pos{};
+    Vec2 halfExtent{};
+    float zoom = 1.0f;
     float rot = 0.0f;
     bool isViewDirty = true;
+    bool isProjDirty = true;
 };
 
-Camera2D Camera2D::create(const Camera2DInfo& info)
+Camera2D Camera2D::create(const Vec2& extent)
 {
     Camera2DObj* obj = (Camera2DObj*)heap_new<Camera2DObj>(MEMORY_USAGE_MISC);
-
-    obj->proj = Mat4::orthographic(info.left, info.right, info.bottom, info.top, info.nearClip, info.farClip);
+    obj->halfExtent = extent * 0.5f;
+    obj->zoom = 1.0f;
+    obj->rot = 0.0f;
+    obj->pos = obj->halfExtent;
+    obj->isViewDirty = true;
+    obj->isProjDirty = true;
 
     return Camera2D(obj);
 }
@@ -26,6 +33,11 @@ void Camera2D::destroy(Camera2D camera)
     Camera2DObj* obj = camera.unwrap();
 
     heap_delete<Camera2DObj>(obj);
+}
+
+Vec2 Camera2D::get_extent()
+{
+    return mObj->halfExtent * 2.0f;
 }
 
 void Camera2D::set_position(const Vec2& pos)
@@ -50,6 +62,19 @@ float Camera2D::get_rotation()
     return mObj->rot;
 }
 
+void Camera2D::set_zoom(float zoom)
+{
+    LD_ASSERT(zoom != 0.0f);
+
+    mObj->zoom = zoom;
+    mObj->isProjDirty = true;
+}
+
+float Camera2D::get_zoom()
+{
+    return mObj->zoom;
+}
+
 Mat4 Camera2D::get_view()
 {
     if (mObj->isViewDirty)
@@ -63,6 +88,14 @@ Mat4 Camera2D::get_view()
 
 Mat4 Camera2D::get_proj()
 {
+    if (mObj->isProjDirty)
+    {
+        mObj->isProjDirty = false;
+        float w = mObj->halfExtent.x / mObj->zoom;
+        float h = mObj->halfExtent.y / mObj->zoom;
+        mObj->proj = Mat4::orthographic(-w, w, h, -h, -1.0f, 1.0f);
+    }
+
     return mObj->proj;
 }
 

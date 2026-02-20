@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Ludens/Camera/Camera2D.h>
+#include <Ludens/Camera/Camera2DController.h>
 #include <LudensEditor/EditorContext/EditorContext.h>
 
 #include "ViewportCommon.h"
@@ -28,6 +29,7 @@ public:
 private:
     EditorContext mCtx;
     Camera2D mCamera;
+    Camera2DController mCameraController;
     Vec2 mDragPosPrevFrame;
     Vec2 mDragPosThisFrame;
     bool mIsPanning = false;

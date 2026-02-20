@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Camera.h"
+#include <Ludens/Camera/Camera.h>
 
 namespace LD {
 

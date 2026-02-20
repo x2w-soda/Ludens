@@ -5,12 +5,14 @@ set(MODULE_INCLUDE
     ${LUDENS_INCLUDE_DIR}/Ludens/Camera/Camera.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Camera/CameraController.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Camera/Camera2D.h
+    ${LUDENS_INCLUDE_DIR}/Ludens/Camera/Camera2DController.h
 )
 
 set(MODULE_LIB
     Lib/Camera.cpp
-    Lib/Camera2D.cpp
     Lib/CameraController.cpp
+    Lib/Camera2D.cpp
+    Lib/Camera2DController.cpp
     Lib/CameraCommon.h
 )
 
