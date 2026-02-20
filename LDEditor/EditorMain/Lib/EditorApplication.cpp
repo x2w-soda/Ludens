@@ -55,6 +55,7 @@ EditorApplication::EditorApplication()
 
     mAudioSystem = AudioSystem::create();
 
+#if 0
     {
         FS::Path dirPath = sLudensLFS.skyboxFolderPath;
         std::array<std::string, 6> facePaths;
@@ -72,6 +73,9 @@ EditorApplication::EditorApplication()
         mEnvCubemap = mRenderSystem.create_image_cube(tmpCubemapFaces);
         Bitmap::destroy(tmpCubemapFaces);
     }
+#else
+    mEnvCubemap = {};
+#endif
 
     // load scene into editor context
     EditorContextInfo contextI{};
@@ -89,7 +93,7 @@ EditorApplication::EditorApplication()
     uiI.fontAtlas = mFontAtlas;
     uiI.fontAtlasImage = mRenderSystem.get_font_atlas_image();
     uiI.renderSystem = mRenderSystem;
-    uiI.envCubemap = mEnvCubemap.get_id();
+    // uiI.envCubemap = mEnvCubemap.get_id();
     uiI.screenWidth = (uint32_t)screenExtent.x;
     uiI.screenHeight = (uint32_t)screenExtent.y;
     uiI.barHeight = 22;

@@ -28,6 +28,9 @@ public:
 private:
     EditorContext mCtx;
     Camera2D mCamera;
+    Vec2 mDragPosPrevFrame;
+    Vec2 mDragPosThisFrame;
+    bool mIsPanning = false;
 };
 
 } // namespace LD

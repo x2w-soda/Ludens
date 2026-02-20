@@ -18,11 +18,12 @@ void EditorUI::startup(const EditorUIInfo& info)
     LD_ASSERT(info.fontAtlas);
     LD_ASSERT(info.fontAtlasImage);
     LD_ASSERT(info.renderSystem);
-    LD_ASSERT(info.envCubemap);
+
+    const Vec2 screenSize((float)info.screenWidth, (float)info.screenHeight);
 
     mCtx = info.ctx;
     mRenderSystem = info.renderSystem;
-    mEnvCubemap = info.envCubemap;
+    mEnvCubemap = (RUID)0; // info.envCubemap
 
     UIContextInfo ctxI{};
     ctxI.fontAtlas = mFontAtlas = info.fontAtlas;
@@ -32,7 +33,6 @@ void EditorUI::startup(const EditorUIInfo& info)
     mUIGroundLayer = mUI.create_layer("ground");
     mUIFloatLayer = mUI.create_layer("float");
 
-    const Vec2 screenSize((float)info.screenWidth, (float)info.screenHeight);
 
     EditorUITopBarInfo barI{};
     barI.barHeight = EDITOR_BAR_HEIGHT;
@@ -115,42 +115,58 @@ void EditorUI::submit_frame()
 
     // If the Scene is playing, the main camera is from some camera component registered in scene.
     // Otherwise it's just the viewport camera.
-    Camera mainCamera = get_main_camera();
-    LD_ASSERT(mainCamera);
+    Camera2D mainCamera2D = get_main_camera_2d();
+    LD_ASSERT(mainCamera2D);
 
     WindowRegistry reg = WindowRegistry::get();
     const WindowID dialogWindowID = mDialog.get_dialog_window_id();
-    const Vec2 screenExtent = reg.get_window_extent(reg.get_root_id());
+    const Vec2 windowExtent = reg.get_window_extent(reg.get_root_id());
+    const Vec2 sceneExtent = mMain.get_viewport_scene_size();
+    const Viewport scene2DViewport = Viewport::from_extent(sceneExtent);
+    const Viewport window2DViewport = Viewport::from_extent(windowExtent);
+    const Viewport camera2DViewport = mainCamera2D.get_viewport();
 
     // begin rendering a frame
     RenderSystemFrameInfo frameI{};
     frameI.directionalLight = Vec3(0.0f, 1.0f, 0.0f);
-    frameI.mainCamera = mainCamera;
-    frameI.screenExtent = screenExtent;
-    frameI.sceneExtent = mMain.get_viewport_scene_size();
+    frameI.screenExtent = windowExtent;
+    frameI.sceneExtent = sceneExtent;
     frameI.envCubemap = mEnvCubemap;
     frameI.dialogWindowID = dialogWindowID;
     frameI.clearColor = mCtx.get_project_settings().get_rendering_settings().get_clear_color();
     mRenderSystem.next_frame(frameI);
 
     // render game scene with overlay, the editor context is responsible for supplying object transforms
-    RenderSystemScenePass sceneP{};
-    sceneP.mat4Callback = &EditorContext::render_system_mat4_callback;
-    sceneP.user = mCtx.unwrap();
-    sceneP.overlay.enabled = !mCtx.is_playing();
-    sceneP.overlay.outlineRUID = mMain.get_viewport_outline_ruid();
-    sceneP.hasSkybox = (mEnvCubemap != 0);
+    RenderSystemWorldPass worldP{};
+    worldP.mat4Callback = &EditorContext::render_system_mat4_callback;
+    worldP.user = mCtx.unwrap();
+    worldP.overlay.enabled = !mCtx.is_playing();
+    worldP.overlay.outlineRUID = mMain.get_viewport_outline_ruid();
+    worldP.hasSkybox = (mEnvCubemap != 0);
+    worldP.worldViewport = scene2DViewport; // TODO: world viewport from camera
     mMain.get_viewport_gizmo_state(
-        sceneP.overlay.gizmoType,
-        sceneP.overlay.gizmoCenter,
-        sceneP.overlay.gizmoScale,
-        sceneP.overlay.gizmoColor);
-    mRenderSystem.scene_pass(sceneP);
+        worldP.overlay.gizmoType,
+        worldP.overlay.gizmoCenter,
+        worldP.overlay.gizmoScale,
+        worldP.overlay.gizmoColor);
+    mRenderSystem.world_pass(worldP);
 
     // render screen space items on top of game scene.
+    /*
+    Vector<Viewport> regionViewports = mCtx.get_scene_screen_regions();
+    Vector<RenderSystemScreenPass::Region> regions(regionViewports.size());
+    for (size_t i = 0; i < regionViewports.size(); i++)
+        regions[i].viewport = regionViewports[i];
+    */
+    RenderSystemScreenPass::Region region{};
+    region.viewport = camera2DViewport;
+
     RenderSystemScreenPass screenP{};
     screenP.mat4Callback = &EditorContext::render_system_mat4_callback;
-    screenP.callback = &EditorContext::render_system_screen_pass_callback;
+    screenP.overlay.renderCallback = &EditorContext::render_system_screen_pass_callback;
+    screenP.overlay.viewport = scene2DViewport;
+    screenP.regionCount = 1;
+    screenP.regions = &region;
     screenP.user = mCtx.unwrap();
     mRenderSystem.screen_pass(screenP);
 
@@ -160,20 +176,11 @@ void EditorUI::submit_frame()
     editorP.scenePickCallback = &EditorUI::on_scene_pick;
     editorP.user = this;
     editorP.sceneMousePickQuery = nullptr;
+    editorP.viewport = window2DViewport;
     Vec2 queryPos;
     if (mMain.get_viewport_mouse_pos(queryPos))
         editorP.sceneMousePickQuery = &queryPos;
     mRenderSystem.editor_pass(editorP);
-
-    // render the editor overlay UI
-    /*
-    RenderSystemEditorOverlayPass editorOP{};
-    editorOP.renderCallback = &EditorUI::on_render_overlay;
-    editorOP.blurMixColor = 0x101010FF;
-    editorOP.blurMixFactor = 0.1f;
-    editorOP.user = this;
-    mRenderSystem.editor_overlay_pass(editorOP);
-    */
 
     // render dialog window
     if (dialogWindowID)
@@ -206,13 +213,6 @@ void EditorUI::on_render(ScreenRenderComponent renderer, void* user)
     self.mUIFloatLayer.render(renderer);
 }
 
-void EditorUI::on_render_overlay(ScreenRenderComponent renderer, void* user)
-{
-    EditorUI& self = *(EditorUI*)user;
-
-    // TODO: self.mUIModalLayer.render(renderer);
-}
-
 void EditorUI::on_render_dialog(ScreenRenderComponent renderer, void* user)
 {
     EditorUI& self = *(EditorUI*)user;
@@ -234,6 +234,15 @@ Camera EditorUI::get_main_camera()
         return sceneCamera;
 
     return mMain.get_viewport_camera();
+}
+
+Camera2D EditorUI::get_main_camera_2d()
+{
+    Camera2D sceneCamera;
+    if (mCtx.is_playing() && (sceneCamera = mCtx.get_scene_camera_2d()))
+        return sceneCamera;
+
+    return mMain.get_viewport_camera_2d();
 }
 
 void EditorUI::on_event(const WindowEvent* event, void* user)

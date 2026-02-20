@@ -146,6 +146,11 @@ Camera EditorUIMain::get_viewport_camera()
     return mObj->mViewportWindow.get_editor_camera();
 }
 
+Camera2D EditorUIMain::get_viewport_camera_2d()
+{
+    return mObj->mViewportWindow.get_editor_camera_2d();
+}
+
 Vec2 EditorUIMain::get_viewport_size()
 {
     return mObj->mViewportWindow.get_size();

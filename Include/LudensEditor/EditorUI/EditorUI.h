@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Ludens/Camera/Camera2D.h>
 #include <Ludens/DSA/Vector.h>
 #include <Ludens/Media/Font.h>
 #include <Ludens/RenderComponent/SceneOverlayComponent.h>
@@ -32,7 +33,7 @@ struct EditorUIInfo
     FontAtlas fontAtlas;
     RImage fontAtlasImage;
     RenderSystem renderSystem;
-    RUID envCubemap;
+    // RUID envCubemap;
 };
 
 /// @brief Editor user interface.
@@ -57,13 +58,13 @@ public:
 
     static void on_event(const WindowEvent* event, void* user);
     static void on_render(ScreenRenderComponent renderer, void* user);
-    static void on_render_overlay(ScreenRenderComponent renderer, void* user);
     static void on_render_dialog(ScreenRenderComponent renderer, void* user);
     static void on_scene_pick(SceneOverlayGizmoID gizmoID, RUID ruid, void* user);
 
 private:
     /// @brief Get the main camera used to render scene from.
     Camera get_main_camera();
+    Camera2D get_main_camera_2d();
 
 private:
     EditorContext mCtx;

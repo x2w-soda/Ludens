@@ -1,3 +1,6 @@
+#include <Ludens/UI/UIImmediate.h>
+#include <Ludens/WindowRegistry/Input.h>
+
 #include "Viewport2D.h"
 
 namespace LD {
@@ -26,7 +29,29 @@ void Viewport2D::destroy()
 
 void Viewport2D::imgui(const ViewportState& state)
 {
-    // TODO:
+    MouseButton btn;
+    if (ui_top_mouse_down(btn))
+    {
+        if (btn == MOUSE_BUTTON_MIDDLE)
+            mIsPanning = true;
+    }
+
+    mIsPanning = mIsPanning && Input::get_mouse(MOUSE_BUTTON_MIDDLE);
+
+    bool dragBegin;
+    Vec2 dragPos;
+    if (ui_top_drag(btn, dragPos, dragBegin))
+    {
+        if (dragBegin)
+            mDragPosPrevFrame = dragPos;
+
+        mDragPosThisFrame = dragPos;
+        Vec2 dragDelta = mDragPosThisFrame - mDragPosPrevFrame;
+        mDragPosPrevFrame = mDragPosThisFrame;
+
+        if (mIsPanning)
+            mCamera.set_position(mCamera.get_position() - dragDelta);
+    }
 }
 
 } // namespace LD

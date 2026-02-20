@@ -291,7 +291,6 @@ void EditorContextObj::load_project_scene(const FS::Path& sceneSchemaPath)
         sceneI.fontAtlas = fontAtlas;
         sceneI.fontAtlasImage = fontAtlasImage;
         sceneI.uiTheme = settings.get_theme().get_ui_theme();
-        sceneI.extent = {}; // Scene extent is not known until EditorUI/ViewportWindow is created
         scene = Scene::create(sceneI);
     }
 
@@ -539,11 +538,6 @@ RImage EditorContext::get_editor_icon_atlas()
 Scene EditorContext::get_scene()
 {
     return mObj->scene;
-}
-
-Camera EditorContext::get_scene_camera()
-{
-    return mObj->scene.get_camera();
 }
 
 void EditorContext::add_observer(EditorEventFn fn, void* user)

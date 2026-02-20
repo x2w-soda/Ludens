@@ -282,6 +282,7 @@ EditorWindow ViewportWindow::create(const EditorWindowInfo& windowI)
     obj->viewport2D.create(obj->ctx, obj->state.sceneExtent);
     obj->viewport3D.create(obj->ctx, obj->state.sceneExtent);
 
+    obj->ctx.resize_scene(obj->state.sceneExtent);
     obj->ctx.add_observer(&ViewportWindowObj::on_editor_event, obj);
 
     return {obj};

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Ludens/AudioSystem/AudioSystem.h>
+#include <Ludens/Camera/Camera2D.h>
 #include <Ludens/DSA/Vector.h>
 #include <Ludens/Project/ProjectSettings.h>
 #include <Ludens/RenderSystem/RenderSystem.h>
@@ -96,9 +97,10 @@ struct EditorContext : Handle<struct EditorContextObj>
 
     /// @brief Get scene handle.
     Scene get_scene();
-
-    /// @brief Get camera to render scene with.
-    Camera get_scene_camera();
+    inline Vector<Viewport> get_scene_screen_regions() { return get_scene().get_screen_regions(); }
+    inline Camera get_scene_camera() { return get_scene().get_camera(); }
+    inline Camera2D get_scene_camera_2d() { return get_scene().get_camera_2d(); };
+    inline void resize_scene(const Vec2& extent) { get_scene().resize(extent); }
 
     /// @brief Add an observer of the editor context
     void add_observer(EditorEventFn fn, void* user);

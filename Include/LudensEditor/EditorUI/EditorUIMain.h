@@ -25,6 +25,7 @@ struct EditorUIMain : Handle<struct EditorUIMainObj>
 
     void set_viewport_hover_id(SceneOverlayGizmoID gizmoID, RUID ruid);
     Camera get_viewport_camera();
+    Camera2D get_viewport_camera_2d();
     Vec2 get_viewport_size();
     Vec2 get_viewport_scene_size();
     bool get_viewport_mouse_pos(Vec2& pickPos);
