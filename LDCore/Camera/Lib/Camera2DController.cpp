@@ -38,15 +38,14 @@ void Camera2DController::update(float delta, const Vec2* inMousePos)
 
     const Vec2 centerPos = mObj->subject.get_extent() * 0.5f;
     const Vec2* mousePos = inMousePos ? inMousePos : &centerPos;
-    const Vec2 cameraWorldPos = mObj->subject.get_position();
-    Vec2 oldMouseWorldPos = cameraWorldPos + (*mousePos - centerPos) / mObj->subject.get_zoom();
+    Vec2 oldMouseWorldPos = mObj->subject.get_world_position(*mousePos);
 
     mObj->subject.set_zoom(std::pow(2.0f, mObj->zoomExpNow));
 
-    Vec2 newMouseWorldPos = cameraWorldPos + (*mousePos - centerPos) / mObj->subject.get_zoom();
+    Vec2 newMouseWorldPos = mObj->subject.get_world_position(*mousePos);
 
     // zoom to cursor
-    mObj->subject.set_position(cameraWorldPos + (oldMouseWorldPos - newMouseWorldPos));
+    mObj->subject.set_position(mObj->subject.get_position() + (oldMouseWorldPos - newMouseWorldPos));
 }
 
 void Camera2DController::accumulate_zoom_exp(float zoomExpDelta)

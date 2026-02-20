@@ -26,6 +26,9 @@ struct ScreenLayerItem
 {
     uint32_t zDepth;
     ScreenLayerItemType type;
+    float sphereX;
+    float sphereY;
+    float sphereR2;
     union
     {
         Sprite2DDrawObj* sprite2D;
@@ -43,9 +46,12 @@ public:
     ScreenLayerObj& operator=(const ScreenLayerObj&) = delete;
 
     /// @brief Force invalidate draw list. This sorts all 2D items by Z depth.
-    void invalidate();
+    void invalidate(RenderSystemMat4Callback mat4CB, void* user);
 
-    TView<ScreenLayerItem> get_draw_list();
+    /// @brief Pick the closest screen layer item from latest list.
+    RUID pick_item(const Vec2& worldPos, RenderSystemMat4Callback mat4CB, void* user);
+
+    TView<ScreenLayerItem> get_item_list();
     inline void set_name(const std::string& name) { mName = name; }
     inline std::string get_name() { return mName; }
     inline RUID get_id() { return mID; }
@@ -58,10 +64,11 @@ public:
 
 private:
     void sort_items();
+    void build_items(RenderSystemMat4Callback mat4CB, void* user);
 
 private:
     RUID mID = 0;
-    Vector<ScreenLayerItem> mDrawList;
+    Vector<ScreenLayerItem> mItemList;
     PoolAllocator mSprite2DDrawPA{};
     std::string mName;
 };

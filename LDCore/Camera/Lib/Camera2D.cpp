@@ -35,6 +35,11 @@ void Camera2D::destroy(Camera2D camera)
     heap_delete<Camera2DObj>(obj);
 }
 
+void Camera2D::set_extent(const Vec2& extent)
+{
+    mObj->halfExtent = extent * 0.5f;
+}
+
 Vec2 Camera2D::get_extent()
 {
     return mObj->halfExtent * 2.0f;
@@ -73,6 +78,11 @@ void Camera2D::set_zoom(float zoom)
 float Camera2D::get_zoom()
 {
     return mObj->zoom;
+}
+
+Vec2 Camera2D::get_world_position(const Vec2& screenPos)
+{
+    return mObj->pos + (screenPos - mObj->halfExtent) / mObj->zoom;
 }
 
 Mat4 Camera2D::get_view()

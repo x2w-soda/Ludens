@@ -196,6 +196,8 @@ struct RenderSystem : Handle<class RenderSystemObj>
     RUID create_screen_layer(const std::string& name);
     void destroy_screen_layer(RUID layer);
 
+    RUID get_screen_layer_item(const Vec2& worldPos, RenderSystemMat4Callback mat4CB, void* user);
+
     Sprite2DDraw create_sprite_2d_draw(Image2D image2D, RUID layer);
     void destroy_sprite_2d_draw(Sprite2DDraw draw);
 

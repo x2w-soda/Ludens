@@ -107,6 +107,8 @@ public:
     RUID create_screen_layer(const std::string& name);
     void destroy_screen_layer(RUID layerID);
 
+    RUID get_screen_layer_item(const Vec2& worldPos, RenderSystemMat4Callback mat4CB, void* user);
+
     RImage create_image_2d(Bitmap bitmap);
     void destroy_image_2d(RImage image);
 
@@ -732,6 +734,24 @@ void RenderSystemObj::destroy_screen_layer(RUID layerID)
     mLayers.erase(layerID);
 }
 
+RUID RenderSystemObj::get_screen_layer_item(const Vec2& worldPos, RenderSystemMat4Callback mat4CB, void* user)
+{
+    LD_PROFILE_SCOPE;
+
+    // TODO: screen layer order
+
+    for (auto& it : mLayers)
+    {
+        ScreenLayerObj* layer = it.second;
+        RUID id = layer->pick_item(worldPos, mat4CB, user);
+
+        if (id)
+            return id;
+    }
+
+    return 0;
+}
+
 RImage RenderSystemObj::create_image_2d(Bitmap bitmap)
 {
     LD_PROFILE_SCOPE;
@@ -975,13 +995,14 @@ void RenderSystemObj::ScreenPass::render(ScreenRenderComponent renderer, void* s
         // TODO: layer draw order!
         for (auto it : self.mLayers)
         {
-            it.second->invalidate();
+            it.second->invalidate(self.mScreenPass.mat4CB, self.mScreenPass.user);
 
-            TView<ScreenLayerItem> drawList = it.second->get_draw_list();
+            TView<ScreenLayerItem> itemList = it.second->get_item_list();
+            const int itemCount = (int)itemList.size;
 
-            for (size_t i = 0; i < drawList.size; i++)
+            for (int i = itemCount - 1; i >= 0; i--)
             {
-                const ScreenLayerItem& item = drawList.data[i];
+                const ScreenLayerItem& item = itemList.data[i];
                 const Sprite2DDrawObj* draw = item.sprite2D;
 
                 LD_ASSERT(item.type == SCREEN_LAYER_ITEM_SPRITE_2D);
@@ -991,45 +1012,35 @@ void RenderSystemObj::ScreenPass::render(ScreenRenderComponent renderer, void* s
                 if (!self.mScreenPass.mat4CB(draw->id, worldMat4, self.mScreenPass.user))
                     continue;
 
-                const float imageW = (float)draw->image.width();
-                const float imageH = (float)draw->image.height();
-                const float spriteW = std::min(imageW, draw->region.w);
-                const float spriteH = std::min(imageH, draw->region.h);
-                const float u0 = draw->region.x / imageW;
-                const float u1 = (draw->region.x + draw->region.w) / imageW;
-                const float v0 = draw->region.y / imageH;
-                const float v1 = (draw->region.y + draw->region.h) / imageH;
-                Vec2 localTL = Vec2(0.0f, 0.0f) - draw->pivot;
-                Vec2 localTR = Vec2(spriteW, 0.0f) - draw->pivot;
-                Vec2 localBR = Vec2(spriteW, spriteH) - draw->pivot;
-                Vec2 localBL = Vec2(0.0f, spriteH) - draw->pivot;
-                Vec4 tl = worldMat4 * Vec4(localTL, 0.0f, 1.0f);
-                Vec4 tr = worldMat4 * Vec4(localTR, 0.0f, 1.0f);
-                Vec4 br = worldMat4 * Vec4(localBR, 0.0f, 1.0f);
-                Vec4 bl = worldMat4 * Vec4(localBL, 0.0f, 1.0f);
+                Rect localPos, localUV;
+                draw->get_local(localPos, localUV);
+                Vec4 tl = worldMat4 * Vec4(localPos.get_pos(), 0.0f, 1.0f);
+                Vec4 tr = worldMat4 * Vec4(localPos.get_pos_tr(), 0.0f, 1.0f);
+                Vec4 br = worldMat4 * Vec4(localPos.get_pos_br(), 0.0f, 1.0f);
+                Vec4 bl = worldMat4 * Vec4(localPos.get_pos_bl(), 0.0f, 1.0f);
                 RectVertex* v = renderer.draw(item.sprite2D->image);
                 v[0].x = tl.x;
                 v[0].y = tl.y;
-                v[0].u = u0;
-                v[0].v = v0;
+                v[0].u = localUV.x;
+                v[0].v = localUV.y;
                 v[0].color = 0xFFFFFFFF;
 
                 v[1].x = tr.x;
                 v[1].y = tr.y;
-                v[1].u = u1;
-                v[1].v = v0;
+                v[1].u = localUV.x + localUV.w;
+                v[1].v = localUV.y;
                 v[1].color = 0xFFFFFFFF;
 
                 v[2].x = br.x;
                 v[2].y = br.y;
-                v[2].u = u1;
-                v[2].v = v1;
+                v[2].u = localUV.x + localUV.w;
+                v[2].v = localUV.y + localUV.h;
                 v[2].color = 0xFFFFFFFF;
 
                 v[3].x = bl.x;
                 v[3].y = bl.y;
-                v[3].u = u0;
-                v[3].v = v1;
+                v[3].u = localUV.x;
+                v[3].v = localUV.y + localUV.h;
                 v[3].color = 0xFFFFFFFF;
             }
         }
@@ -1189,6 +1200,13 @@ void RenderSystem::destroy_screen_layer(RUID layer)
         return;
 
     mObj->destroy_screen_layer(layer);
+}
+
+RUID RenderSystem::get_screen_layer_item(const Vec2& worldPos, RenderSystemMat4Callback mat4CB, void* user)
+{
+    LD_ASSERT(mat4CB);
+
+    return mObj->get_screen_layer_item(worldPos, mat4CB, user);
 }
 
 Sprite2DDraw RenderSystem::create_sprite_2d_draw(Image2D image2D, RUID layerID)

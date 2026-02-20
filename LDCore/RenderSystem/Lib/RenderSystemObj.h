@@ -21,6 +21,25 @@ struct Sprite2DDrawObj
     uint32_t zDepth;       // depth within layer
     Rect region;           // rendererd region in pixel space
     Vec2 pivot;            // pivot hint for scale and rotation
+
+    inline void get_local(Rect& pos, Rect& uv) const
+    {
+        const float imageW = (float)image.width();
+        const float imageH = (float)image.height();
+        const float spriteW = std::min(imageW, region.w);
+        const float spriteH = std::min(imageH, region.h);
+        pos = Rect(-pivot.x, -pivot.y, spriteW, spriteH);
+        uv = Rect(region.x / imageW, region.y / imageH, region.w / imageW, region.h / imageH);
+    }
+
+    inline Vec2 get_local_center()
+    {
+        const float imageW = (float)image.width();
+        const float imageH = (float)image.height();
+        const float spriteW = std::min(imageW, region.w);
+        const float spriteH = std::min(imageH, region.h);
+        return Vec2(-pivot.x + spriteW / 2.0f, -pivot.y + spriteH / 2.0f);
+    }
 };
 
 /// @brief High level intent to draw a mesh, iterated.
