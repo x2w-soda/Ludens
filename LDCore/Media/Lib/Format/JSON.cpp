@@ -1,5 +1,6 @@
 #include <Ludens/DSA/Stack.h>
 #include <Ludens/Header/Assert.h>
+#include <Ludens/Header/Math/Transform.h>
 #include <Ludens/Media/Format/JSON.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/System/FileSystem.h>
@@ -101,7 +102,6 @@ static_assert((int)JSON_TYPE_STRING == (int)rapidjson::kStringType);
 static_assert((int)JSON_TYPE_NUMBER == (int)rapidjson::kNumberType);
 
 static const char* get_error_code_cstr(rapidjson::ParseErrorCode code);
-
 
 struct JSONDocumentObj
 {
@@ -424,6 +424,10 @@ bool JSONWriter::write_f64(double f64)
 
 bool JSONWriter::write_string(const char* cstr)
 {
+    const char null = '\0';
+    if (!cstr)
+        cstr = &null;
+
     return mObj->writer.String(cstr);
 }
 
@@ -813,6 +817,109 @@ bool JSONParser::parse(const View& json, std::string& error, const JSONCallback&
 }
 
 namespace JSONUtil {
+
+bool write_transform(JSONWriter writer, const char* key, const TransformEx& transform)
+{
+    if (!writer.key(key) || !writer.begin_object())
+        return false;
+
+    if (!write_vec3(writer, "position", transform.position) ||
+        !write_vec3(writer, "rotation", transform.rotationEuler) ||
+        !write_vec3(writer, "scale", transform.scale))
+    {
+        writer.end_object();
+        return false;
+    }
+
+    return writer.end_object();
+}
+
+bool read_transform(JSONReader reader, const char* key, TransformEx& transform)
+{
+    if (!reader.enter_object(key))
+        return false;
+
+    if (!read_vec3(reader, "position", transform.position) ||
+        !read_vec3(reader, "scale", transform.scale) ||
+        !read_vec3(reader, "rotation", transform.rotationEuler))
+    {
+        reader.exit();
+        return false;
+    }
+
+    transform.rotation = Quat::from_euler(transform.rotationEuler);
+
+    reader.exit();
+    return true;
+}
+
+bool write_transform_2d(JSONWriter writer, const char* key, const Transform2D& transform)
+{
+    if (!writer.key(key) || !writer.begin_object())
+        return false;
+
+    if (!write_vec2(writer, "position", transform.position) ||
+        !writer.key("rotation") || !writer.write_f32(transform.rotation) ||
+        !write_vec2(writer, "scale", transform.scale))
+    {
+        writer.end_object();
+        return false;
+    }
+
+    return writer.end_object();
+}
+
+bool read_transform_2d(JSONReader reader, const char* key, Transform2D& transform)
+{
+    if (!reader.enter_object(key))
+        return false;
+
+    if (!read_vec2(reader, "position", transform.position) ||
+        !read_vec2(reader, "scale", transform.scale) ||
+        !reader.read_f32("rotation", transform.rotation))
+    {
+        reader.exit();
+        return false;
+    }
+
+    reader.exit();
+    return true;
+}
+
+bool write_rect(JSONWriter writer, const char* key, const Rect& rect)
+{
+    if (!writer.key(key) || !writer.begin_object())
+        return false;
+
+    if (!writer.key("x") || !writer.write_f32(rect.x) ||
+        !writer.key("y") || !writer.write_f32(rect.y) ||
+        !writer.key("w") || !writer.write_f32(rect.w) ||
+        !writer.key("h") || !writer.write_f32(rect.h))
+    {
+        writer.end_object();
+        return false;
+    }
+
+    return writer.end_object();
+}
+
+bool read_rect(JSONReader reader, const char* key, Rect& rect)
+{
+    if (!reader.enter_object(key))
+        return false;
+
+    if (!reader.read_f32("x", rect.x) ||
+        !reader.read_f32("y", rect.y) ||
+        !reader.read_f32("w", rect.w) ||
+        !reader.read_f32("h", rect.h))
+    {
+        reader.exit();
+        return false;
+    }
+
+    reader.exit();
+    return true;
+}
 
 bool write_vec3(JSONWriter writer, const char* key, const Vec3& vec3)
 {

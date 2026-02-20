@@ -112,6 +112,12 @@ struct JSONParser
 
 namespace JSONUtil {
 
+bool write_transform(JSONWriter writer, const char* key, const TransformEx& transform);
+bool read_transform(JSONReader reader, const char* key, TransformEx& transform);
+bool write_transform_2d(JSONWriter writer, const char* key, const Transform2D& transform);
+bool read_transform_2d(JSONReader reader, const char* key, Transform2D& transform);
+bool write_rect(JSONWriter writer, const char* key, const Rect& rect);
+bool read_rect(JSONReader reader, const char* key, Rect& rect);
 bool write_vec3(JSONWriter writer, const char* key, const Vec3& vec3);
 bool read_vec3(JSONReader reader, const char* key, Vec3& vec3);
 bool write_vec2(JSONWriter writer, const char* key, const Vec2& vec2);
