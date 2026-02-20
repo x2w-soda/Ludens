@@ -97,6 +97,9 @@ void main()
         case 2: // font SDF
             color = mix(vec4(0.0), tint, opacity);
             break;
+        case 3: // override image alpha with 1.0
+            color.a = 1.0;
+            break;
     }
 
     fColor = color;
@@ -663,7 +666,7 @@ void ScreenRenderComponent::draw_rect_outline(const Rect& rect, float border, Co
     barR[3] = {x1 - border, y1 - border, 0, 0, color, 0};
 }
 
-void ScreenRenderComponent::draw_image(const Rect& rect, RImage image, Color color)
+void ScreenRenderComponent::draw_image(const Rect& rect, RImage image, Color color, bool forceAlphaOne)
 {
     if (mObj->mRectBatch.is_full())
         mObj->flush_rects();
@@ -676,7 +679,8 @@ void ScreenRenderComponent::draw_image(const Rect& rect, RImage image, Color col
     float y0 = rect.y;
     float y1 = rect.y + rect.h;
 
-    uint32_t control = get_rect_vertex_control_bits(imageIdx, RECT_VERTEX_IMAGE_HINT_NONE, 0);
+    RectVertexImageHint imageHint = forceAlphaOne ? RECT_VERTEX_IMAGE_HINT_ALPHA_ONE : RECT_VERTEX_IMAGE_HINT_NONE;
+    uint32_t control = get_rect_vertex_control_bits(imageIdx, imageHint, 0);
     uint32_t tint = color * mObj->mColorMask;
 
     RectVertex* v = mObj->mRectBatch.write_rect();

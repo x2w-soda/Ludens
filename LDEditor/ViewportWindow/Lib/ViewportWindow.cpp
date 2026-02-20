@@ -92,7 +92,7 @@ void ViewportWindowObj::on_imgui(float delta)
         sceneRect.y += VIEWPORT_TOOLBAR_HEIGHT;
         sceneRect.h -= VIEWPORT_TOOLBAR_HEIGHT;
         RImage sceneImage = renderer.get_sampled_image();
-        renderer.draw_image(sceneRect, sceneImage, 0xFFFFFFFF);
+        renderer.draw_image(sceneRect, sceneImage, 0xFFFFFFFF, true);
     });
 
     ui_pop_window();

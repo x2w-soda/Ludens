@@ -462,7 +462,7 @@ void UIImageWidget::on_draw(UIWidget widget, ScreenRenderComponent renderer)
     float imageH = (float)self.imageHandle.height();
 
     if (self.imageRect.w <= 0.0f)
-        renderer.draw_image(rect, self.imageHandle, self.tint);
+        renderer.draw_image(rect, self.imageHandle, self.tint, false);
     else
     {
         Rect uv = self.imageRect;

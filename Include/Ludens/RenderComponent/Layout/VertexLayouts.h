@@ -46,9 +46,10 @@ static inline void get_rect_vertex_attributes(std::vector<RVertexAttribute>& att
 
 enum RectVertexImageHint
 {
-    RECT_VERTEX_IMAGE_HINT_NONE = 0,     /// regular bitmap image
-    RECT_VERTEX_IMAGE_HINT_FONT = 1,     /// single channel bitmap atlas
-    RECT_VERTEX_IMAGE_HINT_FONT_SDF = 2, /// single channel signed distanced field
+    RECT_VERTEX_IMAGE_HINT_NONE = 0,      /// regular bitmap image
+    RECT_VERTEX_IMAGE_HINT_FONT = 1,      /// single channel bitmap atlas
+    RECT_VERTEX_IMAGE_HINT_FONT_SDF = 2,  /// single channel signed distanced field
+    RECT_VERTEX_IMAGE_HINT_ALPHA_ONE = 3, /// use 1.0 for alpha instead of image alpha channel
 };
 
 /// @brief get rect vertex control bits. [0:3] imageIdx, [4:7] imageHint, [8:15] filter ratio

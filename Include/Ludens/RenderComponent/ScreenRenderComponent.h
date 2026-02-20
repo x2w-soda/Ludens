@@ -67,7 +67,8 @@ struct ScreenRenderComponent : Handle<struct ScreenRenderComponentObj>
     /// @param rect image position
     /// @param image a 2D image to be drawn
     /// @param color Tint color.
-    void draw_image(const Rect& rect, RImage image, Color color);
+    /// @param forceAlphaOne Whether to override image alpha channel with 1.
+    void draw_image(const Rect& rect, RImage image, Color color, bool forceAlphaOne);
 
     /// @brief draw a 2D image with custom uv range
     /// @param rect image position
