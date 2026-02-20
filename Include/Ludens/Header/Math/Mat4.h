@@ -149,6 +149,12 @@ struct alignas(TVEC4_ALIGNMENT) TMat4
         return proj;
     }
 
+    /// @brief create an orthographic projection matrix from screen extent
+    static inline TMat4<T> orthographic_extent(const TVec2<T>& extent)
+    {
+        return TMat4<T>::orthographic((T)0, extent.x, extent.y, (T)0, (T)-1, (T)1);
+    }
+
     /// @brief create an inverse matrix
     /// @warning does not check if matrix is reversible, crashes upon zero determinant
     static inline TMat4 inverse(const TMat4& m)

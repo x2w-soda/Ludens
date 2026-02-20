@@ -17,6 +17,7 @@ set(MODULE_INCLUDE
     ${LUDENS_INCLUDE_DIR}/Ludens/Header/Math/Mat3.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Header/Math/Mat4.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Header/Math/Rect.h
+    ${LUDENS_INCLUDE_DIR}/Ludens/Header/Math/Viewport.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Header/Math/Geometry.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Header/Math/Transform.h
 )
