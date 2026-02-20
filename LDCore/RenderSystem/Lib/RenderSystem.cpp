@@ -1,6 +1,5 @@
 #include <Ludens/DSA/HashMap.h>
 #include <Ludens/DSA/HashSet.h>
-#include <Ludens/DSA/IDCounter.h>
 #include <Ludens/DSA/Vector.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Log/Log.h>
@@ -100,10 +99,9 @@ public:
     void next_frame(const RenderSystemFrameInfo& frameI);
     void submit_frame();
 
-    void scene_pass(const RenderSystemScenePass& sceneP);
+    void world_pass(const RenderSystemWorldPass& worldP);
     void screen_pass(const RenderSystemScreenPass& screenP);
     void editor_pass(const RenderSystemEditorPass& editorP);
-    void editor_overlay_pass(const RenderSystemEditorOverlayPass& editorOP);
     void editor_dialog_pass(const RenderSystemEditorDialogPass& dialogPass);
 
     RUID create_screen_layer(const std::string& name);
@@ -124,36 +122,91 @@ public:
     Sprite2DDrawObj* create_sprite_2d_draw(RImage image, RUID layerID);
     void destroy_sprite_2d_draw(Sprite2DDrawObj* draw);
 
-    inline RUID get_id() { return mRUIDCtr.get_id(); }
     inline RImage get_font_atlas_image() { return mFontAtlasImage; }
+
+private: // passes
+    struct WorldPass
+    {
+        void* user;
+        RenderSystemMat4Callback mat4CB;
+        RUID outlineSubject;
+        Viewport worldViewport;
+        int worldVPIndex = -1;
+
+        void reset()
+        {
+            worldVPIndex = -1;
+        }
+
+        static void forward_rendering(ForwardRenderComponent renderer, void* system);
+    } mWorldPass{};
+
+    struct ScreenPass
+    {
+        void* user;
+        RenderSystemMat4Callback mat4CB;
+        ScreenRenderCallback overlayCB;
+        Vector<Viewport> regionViewports;
+        Vector<int> regionVPIndices;
+        int overlayVPIndex = -1;
+
+        void reset()
+        {
+            regionViewports.clear();
+            regionVPIndices.clear();
+            overlayVPIndex = -1;
+        }
+
+        static void render(ScreenRenderComponent renderer, void* system);
+    } mScreenPass{};
+
+    struct EditorPass
+    {
+        void* user;
+        ScreenRenderCallback renderCB;
+        int vpIndex = -1;
+
+        void reset()
+        {
+            vpIndex = -1;
+        }
+
+        static void render(ScreenRenderComponent renderer, void* system);
+    } mEditorPass{};
+
+    struct EditorDialogPass
+    {
+        void* user;
+        ScreenRenderCallback renderCB;
+        int vpIndex = -1;
+
+        void reset()
+        {
+            vpIndex = -1;
+        }
+
+        static void render(ScreenRenderComponent renderer, void* system);
+    } mEditorDialogPass{};
 
 private:
     struct Frame
     {
+        FrameUBOManager uboManager;
         RBuffer ubo;
         RSet frameSet;
     };
-
-    static void forward_rendering(ForwardRenderComponent renderer, void* user);
-    static void screen_rendering(ScreenRenderComponent renderer, void* user);
 
     bool pickid_is_gizmo(uint32_t pickID);
     RUID pickid_to_ruid(uint32_t pickID);
     uint32_t ruid_to_pickid(RUID ruid);
 
-private: // render passes and pipelines
+private: // resources, states and pipelines
     RDevice mDevice;
     RGraph mGraph;
     RSetPool mFrameSetPool;
     RImage mFontAtlasImage;
     RImage mWhiteCubemap;
-    Camera mMainCamera;
     RMeshBlinnPhongPipeline mMeshPipeline;
-    RenderSystemMat4Callback mScenePassMat4Callback = nullptr;
-    void* mScenePassUser = nullptr;
-    RenderSystemMat4Callback mScreenPassMat4Callback = nullptr;
-    RenderSystemScreenPassCallback mScreenPassCallback = nullptr;
-    void* mScreenPassUser = nullptr;
     Vec2 mSceneExtent;
     Vec2 mScreenExtent;
     Vec4 mClearColor;
@@ -168,12 +221,10 @@ private: // render passes and pipelines
     RFormat mDepthStencilFormat;          /// default depth stencil format
     RFormat mColorFormat;                 /// default color format
     RSampleCountBit mMSAA;                /// number of samples during MSAA, if enabled
-    RUID mSceneOutlineSubject;            /// subject to be outlined in scene render pass
     bool mHasAcquiredRootWindowImage = false;
     bool mHasAcquiredDialogWindowImage = false;
 
 private:
-    IDCounter<RUID> mRUIDCtr;
     HashMap<RUID, ScreenLayerObj*> mLayers;
     HashMap<RUID, RImage> mImages;
     HashMap<RUID, MeshDrawObj*> mMeshDraw; /// Mesh draw info
@@ -262,11 +313,11 @@ RenderSystemObj::RenderSystemObj(const RenderSystemInfo& systemI)
     paI.usage = MEMORY_USAGE_RENDER;
     paI.isMultiPage = true;
     paI.blockSize = sizeof(MeshDrawObj);
-    paI.pageSize = 128;
+    paI.pageSize = 32;
     mMeshDrawPA = PoolAllocator::create(paI);
 
     paI.blockSize = sizeof(MeshDataObj);
-    paI.pageSize = 256;
+    paI.pageSize = 16;
     mMeshDataPA = PoolAllocator::create(paI);
 }
 
@@ -369,6 +420,12 @@ void RenderSystemObj::next_frame(const RenderSystemFrameInfo& frameI)
         Frame& frame = obj->mFrames[obj->mFrameIndex];
         list.cmd_bind_graphics_sets(sRMeshPipelineLayout, 0, 1, &frame.frameSet);
     };
+    graphI.preSubmitCB = [](RCommandList list, void* user) {
+        // update host-mapped memory right before queue submission
+        auto* obj = (RenderSystemObj*)user;
+        Frame& frame = obj->mFrames[obj->mFrameIndex];
+        frame.ubo.map_write(0, sizeof(FrameUBO), frame.uboManager.get());
+    };
     graphI.user = this;
     mGraph = RGraph::create(graphI);
 
@@ -376,18 +433,7 @@ void RenderSystemObj::next_frame(const RenderSystemFrameInfo& frameI)
     // Update Frame Set
     //
 
-    mMainCamera = frameI.mainCamera;
-
-    FrameUBO uboData;
-    uboData.projMat = mMainCamera.get_proj();
-    uboData.viewMat = mMainCamera.get_view();
-    uboData.viewProjMat = uboData.projMat * uboData.viewMat;
-    uboData.viewPos = Vec4(mMainCamera.get_pos(), 0.0f);
-    uboData.dirLight = Vec4(0.0f, 1.0f, 0.0f, 0.0f); // TODO: RUID DirectionalLight
-    uboData.screenExtent = mScreenExtent;
-    uboData.sceneExtent = mSceneExtent;
-    uboData.envPhase = 0; // TODO: expose
-    frame.ubo.map_write(0, sizeof(uboData), &uboData);
+    frame.uboManager.reset(mScreenExtent, mSceneExtent);
 
     if (mImages.contains(frameI.envCubemap))
     {
@@ -423,7 +469,7 @@ void RenderSystemObj::submit_frame()
     mDevice.present_frame();
 }
 
-void RenderSystemObj::scene_pass(const RenderSystemScenePass& sceneP)
+void RenderSystemObj::world_pass(const RenderSystemWorldPass& worldP)
 {
     LD_PROFILE_SCOPE;
 
@@ -432,9 +478,15 @@ void RenderSystemObj::scene_pass(const RenderSystemScenePass& sceneP)
 
     RClearDepthStencilValue clearDS = {.depth = 1.0f, .stencil = 0};
 
-    mSceneOutlineSubject = sceneP.overlay.enabled ? sceneP.overlay.outlineRUID : 0;
-    mScenePassMat4Callback = sceneP.mat4Callback;
-    mScenePassUser = sceneP.user;
+    mWorldPass.reset();
+    mWorldPass.outlineSubject = worldP.overlay.enabled ? worldP.overlay.outlineRUID : 0;
+    mWorldPass.mat4CB = worldP.mat4Callback;
+    mWorldPass.user = worldP.user;
+
+    Frame& frame = mFrames[mFrameIndex];
+    ViewProjectionData vp = ViewProjectionData::from_viewport(worldP.worldViewport);
+    mWorldPass.worldViewport = worldP.worldViewport;
+    mWorldPass.worldVPIndex = frame.uboManager.register_vp(vp);
 
     ForwardRenderComponentInfo forwardI{};
     forwardI.width = (uint32_t)mSceneExtent.x;
@@ -444,10 +496,10 @@ void RenderSystemObj::scene_pass(const RenderSystemScenePass& sceneP)
     forwardI.depthStencilFormat = mDepthStencilFormat;
     forwardI.clearDepthStencil = clearDS;
     forwardI.samples = mMSAA;
-    forwardI.hasSkybox = sceneP.hasSkybox;
-    ForwardRenderComponent sceneFR = ForwardRenderComponent::add(mGraph, forwardI, &RenderSystemObj::forward_rendering, this);
+    forwardI.hasSkybox = worldP.hasSkybox;
+    ForwardRenderComponent sceneFR = ForwardRenderComponent::add(mGraph, forwardI, &WorldPass::forward_rendering, this);
 
-    if (sceneP.overlay.enabled) // mesh outlining and gizmo rendering is provided by the SceneOverlayComponent
+    if (worldP.overlay.enabled) // mesh outlining and gizmo rendering is provided by the SceneOverlayComponent
     {
         SceneOverlayComponentInfo overlayI{};
         overlayI.colorFormat = mColorFormat;
@@ -455,15 +507,15 @@ void RenderSystemObj::scene_pass(const RenderSystemScenePass& sceneP)
         overlayI.width = mSceneExtent.x;
         overlayI.height = mSceneExtent.y;
         overlayI.gizmoMSAA = mMSAA;
-        overlayI.gizmoType = sceneP.overlay.gizmoType;
-        overlayI.gizmoCenter = sceneP.overlay.gizmoCenter;
-        overlayI.gizmoScale = sceneP.overlay.gizmoScale;
-        overlayI.gizmoColorX = sceneP.overlay.gizmoColor.axisX;
-        overlayI.gizmoColorY = sceneP.overlay.gizmoColor.axisY;
-        overlayI.gizmoColorZ = sceneP.overlay.gizmoColor.axisZ;
-        overlayI.gizmoColorXY = sceneP.overlay.gizmoColor.planeXY;
-        overlayI.gizmoColorXZ = sceneP.overlay.gizmoColor.planeXZ;
-        overlayI.gizmoColorYZ = sceneP.overlay.gizmoColor.planeYZ;
+        overlayI.gizmoType = worldP.overlay.gizmoType;
+        overlayI.gizmoCenter = worldP.overlay.gizmoCenter;
+        overlayI.gizmoScale = worldP.overlay.gizmoScale;
+        overlayI.gizmoColorX = worldP.overlay.gizmoColor.axisX;
+        overlayI.gizmoColorY = worldP.overlay.gizmoColor.axisY;
+        overlayI.gizmoColorZ = worldP.overlay.gizmoColor.axisZ;
+        overlayI.gizmoColorXY = worldP.overlay.gizmoColor.planeXY;
+        overlayI.gizmoColorXZ = worldP.overlay.gizmoColor.planeXZ;
+        overlayI.gizmoColorYZ = worldP.overlay.gizmoColor.planeYZ;
         SceneOverlayComponent overlayC = SceneOverlayComponent::add(mGraph, overlayI);
         mGraph.connect_image(sceneFR.out_color_attachment(), overlayC.in_color_attachment());
         mGraph.connect_image(sceneFR.out_id_flags_attachment(), overlayC.in_id_flags_attachment());
@@ -484,16 +536,36 @@ void RenderSystemObj::screen_pass(const RenderSystemScreenPass& screenP)
     if (!mHasAcquiredRootWindowImage)
         return;
 
-    mScreenPassMat4Callback = screenP.mat4Callback;
-    mScreenPassCallback = screenP.callback;
-    mScreenPassUser = screenP.user;
+    mScreenPass.reset();
+    mScreenPass.user = screenP.user;
+    mScreenPass.mat4CB = screenP.mat4Callback;
+    mScreenPass.overlayCB = screenP.overlay.renderCallback;
+
+    Frame& frame = mFrames[mFrameIndex];
+
+    if (screenP.regionCount > 0)
+    {
+        mScreenPass.regionViewports.resize(screenP.regionCount);
+        mScreenPass.regionVPIndices.resize(screenP.regionCount);
+        LD_ASSERT(screenP.regionCount == 1); // TODO: multiple Camera2D for split-screen multiplayer
+
+        for (uint32_t i = 0; i < screenP.regionCount; i++)
+        {
+            ViewProjectionData vpData = ViewProjectionData::from_viewport(screenP.regions[i].viewport);
+            mScreenPass.regionViewports[i] = screenP.regions[i].viewport;
+            mScreenPass.regionVPIndices[i] = frame.uboManager.register_vp(vpData);
+        }
+    }
+
+    ViewProjectionData vpData = ViewProjectionData::from_viewport(screenP.overlay.viewport);
+    mScreenPass.overlayVPIndex = frame.uboManager.register_vp(vpData);
 
     ScreenRenderComponentInfo screenRCI{};
     screenRCI.format = mColorFormat;
-    screenRCI.onDrawCallback = &RenderSystemObj::screen_rendering;
+    screenRCI.onDrawCallback = &ScreenPass::render;
     screenRCI.user = this;
     screenRCI.hasSampledImage = false;
-    screenRCI.name = "SceneScreen";
+    screenRCI.name = "SceneScreenLayer";
     screenRCI.screenExtent = &mSceneExtent; // scene extent is typically smaller than screen extent in editor
 
     if (mLastColorAttachment)
@@ -521,10 +593,17 @@ void RenderSystemObj::editor_pass(const RenderSystemEditorPass& editorP)
 
     LD_ASSERT(mLastColorAttachment);
 
+    Frame& frame = mFrames[mFrameIndex];
+    ViewProjectionData vpData = ViewProjectionData::from_viewport(editorP.viewport);
+    mEditorPass.reset();
+    mEditorPass.user = editorP.user;
+    mEditorPass.renderCB = editorP.renderCallback;
+    mEditorPass.vpIndex = frame.uboManager.register_vp(vpData);
+
     ScreenRenderComponentInfo screenRCI{};
     screenRCI.format = mColorFormat;
-    screenRCI.onDrawCallback = editorP.renderCallback;
-    screenRCI.user = editorP.user;
+    screenRCI.onDrawCallback = &RenderSystemObj::EditorPass::render;
+    screenRCI.user = this;
     screenRCI.hasInputImage = false;
     screenRCI.hasSampledImage = true;
     screenRCI.clearColor = 0x000000FF;
@@ -572,6 +651,7 @@ void RenderSystemObj::editor_pass(const RenderSystemEditorPass& editorP)
     }
 }
 
+#if 0
 void RenderSystemObj::editor_overlay_pass(const RenderSystemEditorOverlayPass& editorOP)
 {
     LD_PROFILE_SCOPE;
@@ -601,6 +681,7 @@ void RenderSystemObj::editor_overlay_pass(const RenderSystemEditorOverlayPass& e
 
     mLastColorAttachment = editorSRC.color_attachment();
 }
+#endif
 
 void RenderSystemObj::editor_dialog_pass(const RenderSystemEditorDialogPass& editorDP)
 {
@@ -609,14 +690,25 @@ void RenderSystemObj::editor_dialog_pass(const RenderSystemEditorDialogPass& edi
     if (!mHasAcquiredDialogWindowImage)
         return;
 
+    WindowRegistry windowReg = WindowRegistry::get();
+    const Vec2 windowExtent = windowReg.get_window_extent(editorDP.dialogWindow);
+    const Viewport windowViewport = Viewport::from_extent(windowExtent);
+
+    Frame& frame = mFrames[mFrameIndex];
+    ViewProjectionData vpData = ViewProjectionData::from_viewport(windowViewport);
+    mEditorDialogPass.reset();
+    mEditorDialogPass.user = editorDP.user;
+    mEditorDialogPass.renderCB = editorDP.renderCallback;
+    mEditorDialogPass.vpIndex = frame.uboManager.register_vp(vpData);
+
     ScreenRenderComponentInfo screenRCI{};
     screenRCI.format = mColorFormat;
-    screenRCI.onDrawCallback = editorDP.renderCallback;
-    screenRCI.user = editorDP.user;
+    screenRCI.onDrawCallback = &RenderSystemObj::EditorDialogPass::render;
+    screenRCI.user = this;
     screenRCI.hasInputImage = false;
     screenRCI.hasSampledImage = false;
     screenRCI.name = "EditorDialog";
-    screenRCI.screenExtent = nullptr; // TODO:
+    screenRCI.screenExtent = &windowExtent;
     ScreenRenderComponent editorSRC = ScreenRenderComponent::add(mGraph, screenRCI);
     mGraph.connect_swapchain_image(editorSRC.color_attachment(), editorDP.dialogWindow);
 }
@@ -797,14 +889,14 @@ void RenderSystemObj::destroy_sprite_2d_draw(Sprite2DDrawObj* draw)
 // NOTE: This is super early placeholder scene renderer implementation.
 //       Once other engine subsystems such as Assets and Scenes are resolved,
 //       we will come back and replace this silly procedure.
-void RenderSystemObj::forward_rendering(ForwardRenderComponent renderer, void* user)
+void RenderSystemObj::WorldPass::forward_rendering(ForwardRenderComponent renderer, void* user)
 {
     LD_PROFILE_SCOPE;
 
     RenderSystemObj& self = *(RenderSystemObj*)user;
     RPipeline meshPipeline = self.mMeshPipeline.handle();
 
-    if (!self.mHasAcquiredRootWindowImage)
+    if (!self.mHasAcquiredRootWindowImage || self.mWorldPass.worldVPIndex < 0)
         return;
 
     renderer.set_mesh_pipeline(meshPipeline);
@@ -823,9 +915,10 @@ void RenderSystemObj::forward_rendering(ForwardRenderComponent renderer, void* u
 
         for (RUID drawID : data->drawID)
         {
-            if (!self.mScenePassMat4Callback(drawID, pc.model, self.mScenePassUser))
+            if (!self.mWorldPass.mat4CB(drawID, pc.model, self.mWorldPass.user))
                 continue;
 
+            pc.vpIndex = (uint32_t)self.mWorldPass.worldVPIndex;
             pc.id = self.ruid_to_pickid(drawID);
             pc.flags = 0;
 
@@ -835,17 +928,18 @@ void RenderSystemObj::forward_rendering(ForwardRenderComponent renderer, void* u
     }
 
     // render flag hints for object outlining
-    RUID outlineDrawID = self.mSceneOutlineSubject;
+    RUID outlineDrawID = self.mWorldPass.outlineSubject;
     if (outlineDrawID != 0 && self.mMeshDraw.contains(outlineDrawID))
     {
         MeshDrawObj* draw = self.mMeshDraw[outlineDrawID];
         LD_ASSERT(draw && draw->data);
 
         MeshDataObj* data = draw->data.unwrap();
+        pc.vpIndex = (uint32_t)self.mWorldPass.worldVPIndex;
         pc.id = 0;    // not written to color attachment due to write masks
         pc.flags = 1; // currently any non-zero flag value indicates mesh that requires outlining
 
-        if (self.mScenePassMat4Callback(outlineDrawID, pc.model, self.mScenePassUser))
+        if (self.mWorldPass.mat4CB(outlineDrawID, pc.model, self.mWorldPass.user))
         {
             // render to 16-bit flags only
             meshPipeline.set_color_write_mask(0, 0);
@@ -860,81 +954,121 @@ void RenderSystemObj::forward_rendering(ForwardRenderComponent renderer, void* u
     renderer.draw_skybox();
 }
 
-void RenderSystemObj::screen_rendering(ScreenRenderComponent renderer, void* user)
+void RenderSystemObj::ScreenPass::render(ScreenRenderComponent renderer, void* system)
 {
     LD_PROFILE_SCOPE;
 
-    RenderSystemObj& self = *(RenderSystemObj*)user;
+    RenderSystemObj& self = *(RenderSystemObj*)system;
 
     if (!self.mHasAcquiredRootWindowImage)
         return;
 
-    // TODO: layer draw order!
-    for (auto it : self.mLayers)
+    const size_t regionCount = self.mScreenPass.regionVPIndices.size();
+    for (size_t regionI = 0; regionI < regionCount; regionI++)
     {
-        it.second->invalidate();
+        int vpIndex = self.mScreenPass.regionVPIndices[regionI];
+        if (vpIndex < 0)
+            continue;
 
-        TView<ScreenLayerItem> drawList = it.second->get_draw_list();
+        renderer.set_view_projection_index(vpIndex);
 
-        for (size_t i = 0; i < drawList.size; i++)
+        // TODO: layer draw order!
+        for (auto it : self.mLayers)
         {
-            const ScreenLayerItem& item = drawList.data[i];
-            const Sprite2DDrawObj* draw = item.sprite2D;
+            it.second->invalidate();
 
-            LD_ASSERT(item.type == SCREEN_LAYER_ITEM_SPRITE_2D);
-            LD_ASSERT(draw && draw->image);
+            TView<ScreenLayerItem> drawList = it.second->get_draw_list();
 
-            Mat4 worldMat4;
-            if (!self.mScreenPassMat4Callback(draw->id, worldMat4, self.mScreenPassUser))
-                continue;
+            for (size_t i = 0; i < drawList.size; i++)
+            {
+                const ScreenLayerItem& item = drawList.data[i];
+                const Sprite2DDrawObj* draw = item.sprite2D;
 
-            const float imageW = (float)draw->image.width();
-            const float imageH = (float)draw->image.height();
-            const float spriteW = std::min(imageW, draw->region.w);
-            const float spriteH = std::min(imageH, draw->region.h);
-            const float u0 = draw->region.x / imageW;
-            const float u1 = (draw->region.x + draw->region.w) / imageW;
-            const float v0 = draw->region.y / imageH;
-            const float v1 = (draw->region.y + draw->region.h) / imageH;
-            Vec2 localTL = Vec2(0.0f, 0.0f) - draw->pivot;
-            Vec2 localTR = Vec2(spriteW, 0.0f) - draw->pivot;
-            Vec2 localBR = Vec2(spriteW, spriteH) - draw->pivot;
-            Vec2 localBL = Vec2(0.0f, spriteH) - draw->pivot;
-            Vec4 tl = worldMat4 * Vec4(localTL, 0.0f, 1.0f);
-            Vec4 tr = worldMat4 * Vec4(localTR, 0.0f, 1.0f);
-            Vec4 br = worldMat4 * Vec4(localBR, 0.0f, 1.0f);
-            Vec4 bl = worldMat4 * Vec4(localBL, 0.0f, 1.0f);
-            RectVertex* v = renderer.draw(item.sprite2D->image);
-            v[0].x = tl.x;
-            v[0].y = tl.y;
-            v[0].u = u0;
-            v[0].v = v0;
-            v[0].color = 0xFFFFFFFF;
+                LD_ASSERT(item.type == SCREEN_LAYER_ITEM_SPRITE_2D);
+                LD_ASSERT(draw && draw->image);
 
-            v[1].x = tr.x;
-            v[1].y = tr.y;
-            v[1].u = u1;
-            v[1].v = v0;
-            v[1].color = 0xFFFFFFFF;
+                Mat4 worldMat4;
+                if (!self.mScreenPass.mat4CB(draw->id, worldMat4, self.mScreenPass.user))
+                    continue;
 
-            v[2].x = br.x;
-            v[2].y = br.y;
-            v[2].u = u1;
-            v[2].v = v1;
-            v[2].color = 0xFFFFFFFF;
+                const float imageW = (float)draw->image.width();
+                const float imageH = (float)draw->image.height();
+                const float spriteW = std::min(imageW, draw->region.w);
+                const float spriteH = std::min(imageH, draw->region.h);
+                const float u0 = draw->region.x / imageW;
+                const float u1 = (draw->region.x + draw->region.w) / imageW;
+                const float v0 = draw->region.y / imageH;
+                const float v1 = (draw->region.y + draw->region.h) / imageH;
+                Vec2 localTL = Vec2(0.0f, 0.0f) - draw->pivot;
+                Vec2 localTR = Vec2(spriteW, 0.0f) - draw->pivot;
+                Vec2 localBR = Vec2(spriteW, spriteH) - draw->pivot;
+                Vec2 localBL = Vec2(0.0f, spriteH) - draw->pivot;
+                Vec4 tl = worldMat4 * Vec4(localTL, 0.0f, 1.0f);
+                Vec4 tr = worldMat4 * Vec4(localTR, 0.0f, 1.0f);
+                Vec4 br = worldMat4 * Vec4(localBR, 0.0f, 1.0f);
+                Vec4 bl = worldMat4 * Vec4(localBL, 0.0f, 1.0f);
+                RectVertex* v = renderer.draw(item.sprite2D->image);
+                v[0].x = tl.x;
+                v[0].y = tl.y;
+                v[0].u = u0;
+                v[0].v = v0;
+                v[0].color = 0xFFFFFFFF;
 
-            v[3].x = bl.x;
-            v[3].y = bl.y;
-            v[3].u = u0;
-            v[3].v = v1;
-            v[3].color = 0xFFFFFFFF;
+                v[1].x = tr.x;
+                v[1].y = tr.y;
+                v[1].u = u1;
+                v[1].v = v0;
+                v[1].color = 0xFFFFFFFF;
+
+                v[2].x = br.x;
+                v[2].y = br.y;
+                v[2].u = u1;
+                v[2].v = v1;
+                v[2].color = 0xFFFFFFFF;
+
+                v[3].x = bl.x;
+                v[3].y = bl.y;
+                v[3].u = u0;
+                v[3].v = v1;
+                v[3].color = 0xFFFFFFFF;
+            }
         }
     }
 
-    if (self.mScreenPassCallback)
+    if (self.mScreenPass.overlayCB && self.mScreenPass.overlayVPIndex >= 0)
     {
-        self.mScreenPassCallback(renderer, self.mScreenPassUser);
+        renderer.set_view_projection_index(self.mScreenPass.overlayVPIndex);
+
+        self.mScreenPass.overlayCB(renderer, self.mScreenPass.user);
     }
+}
+
+void RenderSystemObj::EditorPass::render(ScreenRenderComponent renderer, void* system)
+{
+    LD_PROFILE_SCOPE;
+
+    RenderSystemObj& self = *(RenderSystemObj*)system;
+
+    if (!self.mHasAcquiredRootWindowImage || self.mEditorPass.vpIndex < 0 || !self.mEditorPass.renderCB)
+        return;
+
+    renderer.set_view_projection_index(self.mEditorPass.vpIndex);
+
+    self.mEditorPass.renderCB(renderer, self.mEditorPass.user);
+}
+
+void RenderSystemObj::EditorDialogPass::render(ScreenRenderComponent renderer, void* system)
+{
+    LD_PROFILE_SCOPE;
+
+    RenderSystemObj& self = *(RenderSystemObj*)system;
+
+    if (!self.mHasAcquiredDialogWindowImage || self.mEditorDialogPass.vpIndex < 0 || !self.mEditorDialogPass.renderCB)
+        return;
+
+    renderer.set_view_projection_index(self.mEditorDialogPass.vpIndex);
+
+    self.mEditorDialogPass.renderCB(renderer, self.mEditorDialogPass.user);
 }
 
 bool RenderSystemObj::pickid_is_gizmo(uint32_t pickID)
@@ -974,7 +1108,6 @@ void RenderSystem::destroy(RenderSystem service)
 
 void RenderSystem::next_frame(const RenderSystemFrameInfo& frameI)
 {
-    LD_ASSERT(frameI.mainCamera);
     LD_ASSERT(frameI.screenExtent.x > 0 && frameI.screenExtent.y > 0);
 
     mObj->next_frame(frameI);
@@ -985,9 +1118,9 @@ void RenderSystem::submit_frame()
     mObj->submit_frame();
 }
 
-void RenderSystem::scene_pass(const RenderSystemScenePass& sceneP)
+void RenderSystem::world_pass(const RenderSystemWorldPass& worldP)
 {
-    mObj->scene_pass(sceneP);
+    mObj->world_pass(worldP);
 }
 
 void RenderSystem::screen_pass(const RenderSystemScreenPass& screenP)
@@ -998,11 +1131,6 @@ void RenderSystem::screen_pass(const RenderSystemScreenPass& screenP)
 void RenderSystem::editor_pass(const RenderSystemEditorPass& editorRP)
 {
     mObj->editor_pass(editorRP);
-}
-
-void RenderSystem::editor_overlay_pass(const RenderSystemEditorOverlayPass& editorOP)
-{
-    mObj->editor_overlay_pass(editorOP);
 }
 
 void RenderSystem::editor_dialog_pass(const RenderSystemEditorDialogPass& dialogPass)

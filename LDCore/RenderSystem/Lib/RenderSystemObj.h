@@ -5,6 +5,7 @@
 #include <Ludens/RenderBackend/RBackend.h>
 #include <Ludens/RenderBackend/RUID.h>
 #include <Ludens/RenderComponent/Layout/RMesh.h>
+#include <Ludens/RenderComponent/Layout/SetLayouts.h>
 #include <Ludens/RenderSystem/RenderSystem.h>
 
 namespace LD {

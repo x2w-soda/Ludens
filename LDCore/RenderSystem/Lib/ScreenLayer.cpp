@@ -48,6 +48,8 @@ void ScreenLayerObj::invalidate()
 {
     LD_PROFILE_SCOPE;
 
+    mDrawList.clear();
+
     for (auto it = mSprite2DDrawPA.begin(); it; ++it)
     {
         auto* draw = (Sprite2DDrawObj*)it.data();

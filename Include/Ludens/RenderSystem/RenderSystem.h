@@ -3,6 +3,7 @@
 #include <Ludens/Camera/Camera.h>
 #include <Ludens/Header/Handle.h>
 #include <Ludens/Header/IDHandle.h>
+#include <Ludens/Header/Math/Viewport.h>
 #include <Ludens/Media/Bitmap.h>
 #include <Ludens/Media/Font.h>
 #include <Ludens/Media/Model.h>
@@ -14,94 +15,6 @@
 
 namespace LD {
 
-typedef void (*ScreenRenderCallback)(ScreenRenderComponent renderer, void* user);
-typedef void (*RenderSystemEditorRenderCallback)(ScreenRenderComponent renderer, void* user);
-typedef void (*RenderSystemEditorScenePickCallback)(SceneOverlayGizmoID gizmoID, RUID ruid, void* user);
-typedef bool (*RenderSystemMat4Callback)(RUID ruid, Mat4& mat4, void* user);
-typedef void (*RenderSystemScreenPassCallback)(ScreenRenderComponent renderer, void* user);
-
-/// @brief Render system creation info
-struct RenderSystemInfo
-{
-    RDevice device;      /// render device handle
-    FontAtlas fontAtlas; /// default font atlas used for text rendering
-};
-
-/// @brief Info for the system to start a new frame
-struct RenderSystemFrameInfo
-{
-    Camera mainCamera;     /// main camera to view the scene from
-    Vec2 screenExtent;     /// application screen extent
-    Vec2 sceneExtent;      /// game scene extent
-    Vec3 directionalLight; /// directional light vector
-    RUID envCubemap;       /// optional environment cubemap to draw in scene
-    WindowID dialogWindowID = 0;
-    Vec4 clearColor;
-};
-
-struct RenderSystemSceneGizmoColor
-{
-    Color axisX;   /// color of X axis gizmo mesh
-    Color axisY;   /// color of Y axis gizmo mesh
-    Color axisZ;   /// color of Z axis gizmo mesh
-    Color planeXY; /// color of XY plane gizmo mesh
-    Color planeXZ; /// color of XZ plane gizmo mesh
-    Color planeYZ; /// color of YZ plane gizmo mesh
-};
-
-/// @brief Info for the system to render the game scene
-struct RenderSystemScenePass
-{
-    RenderSystemMat4Callback mat4Callback; /// callback for system to grab the model matrix of 3D objects
-    void* user;                            /// user of the scene render pass
-    bool hasSkybox;                        /// whether to draw skybox with the environment cubemap
-
-    // optional overlay rendering for gizmos and object outlining
-    struct
-    {
-        bool enabled;                           /// probably true in Editor, false in Runtime
-        RUID outlineRUID;                       /// mesh in scene to be outlined
-        SceneOverlayGizmo gizmoType;            /// gizmo to render
-        Vec3 gizmoCenter;                       /// gizmo center position
-        float gizmoScale;                       /// gizmo size scale, default world size is 1x1x1
-        RenderSystemSceneGizmoColor gizmoColor; /// gizmo mesh color for this frame
-    } overlay;
-};
-
-/// @brief Info for the system to render in screen space on top of scene.
-struct RenderSystemScreenPass
-{
-    RenderSystemMat4Callback mat4Callback;   /// callback for system to grab the model matrix of 2D objects
-    RenderSystemScreenPassCallback callback; /// optional hook to render on top of all ScreenLayers
-    void* user;                              /// user of the scene screen pass
-};
-
-/// @brief Info for the system to render the editor
-struct RenderSystemEditorPass
-{
-    const Vec2* sceneMousePickQuery;                       /// if not null, a mouse picking query within RSystemFrameInfo::sceneExtent
-    RenderSystemEditorRenderCallback renderCallback;       /// for the Editor to render itself via a ScreenRenderComponent
-    RenderSystemEditorScenePickCallback scenePickCallback; /// for the Editor to respond to scene mouse picking
-    void* user;                                            /// user of the editor render pass
-};
-
-/// @brief Info for the system to render the editor overlay
-struct RenderSystemEditorOverlayPass
-{
-    RenderSystemEditorRenderCallback renderCallback; /// for the Editor to render additional overlays after the base pass
-    Color blurMixColor;                              /// mix color RGB for the blurred editor background, keep alpha channel at 0xFF
-    float blurMixFactor;                             /// lerp factor between blur color and mix color, 0 performs no blur
-    void* user;                                      /// user of the editor overlay render pass
-};
-
-/// @brief Info for the system to render a dialog Window in screen space.
-struct RenderSystemEditorDialogPass
-{
-    ScreenRenderCallback renderCallback;
-    WindowID dialogWindow;
-    void* user;
-};
-
 class RenderSystemObj;
 class ScreenLayerObj;
 struct Sprite2DDrawObj;
@@ -111,6 +24,10 @@ struct RImageObj;
 
 using Image2D = IDHandle<RImageObj, RUID>;
 using ImageCube = IDHandle<RImageObj, RUID>;
+
+typedef void (*ScreenRenderCallback)(ScreenRenderComponent renderer, void* user);
+typedef void (*RenderSystemEditorScenePickCallback)(SceneOverlayGizmoID gizmoID, RUID ruid, void* user);
+typedef bool (*RenderSystemMat4Callback)(RUID ruid, Mat4& mat4, void* user);
 
 struct Sprite2DDraw : IDHandle<Sprite2DDrawObj, RUID>
 {
@@ -144,6 +61,95 @@ struct MeshDraw : IDHandle<MeshDrawObj, RUID>
     bool set_mesh_asset(MeshData data);
 };
 
+/// @brief Render system creation info
+struct RenderSystemInfo
+{
+    RDevice device;      /// render device handle
+    FontAtlas fontAtlas; /// default font atlas used for text rendering
+};
+
+/// @brief Info for the system to start a new frame
+struct RenderSystemFrameInfo
+{
+    Vec2 screenExtent;     /// application screen extent
+    Vec2 sceneExtent;      /// game scene extent
+    Vec3 directionalLight; /// directional light vector
+    RUID envCubemap;       /// optional environment cubemap to draw in scene
+    WindowID dialogWindowID = 0;
+    Vec4 clearColor;
+};
+
+struct RenderSystemSceneGizmoColor
+{
+    Color axisX;   /// color of X axis gizmo mesh
+    Color axisY;   /// color of Y axis gizmo mesh
+    Color axisZ;   /// color of Z axis gizmo mesh
+    Color planeXY; /// color of XY plane gizmo mesh
+    Color planeXZ; /// color of XZ plane gizmo mesh
+    Color planeYZ; /// color of YZ plane gizmo mesh
+};
+
+/// @brief Render pass to draw the 3D world in Scene.
+struct RenderSystemWorldPass
+{
+    RenderSystemMat4Callback mat4Callback; /// callback for system to grab the model matrix of 3D objects
+    void* user;                            /// user of the scene render pass
+    bool hasSkybox;                        /// whether to draw skybox with the environment cubemap
+    Viewport worldViewport;
+
+    // optional overlay rendering for gizmos and object outlining
+    struct Overlay
+    {
+        bool enabled;                           /// probably true in Editor, false in Runtime
+        RUID outlineRUID;                       /// mesh in scene to be outlined
+        SceneOverlayGizmo gizmoType;            /// gizmo to render
+        Vec3 gizmoCenter;                       /// gizmo center position
+        float gizmoScale;                       /// gizmo size scale, default world size is 1x1x1
+        RenderSystemSceneGizmoColor gizmoColor; /// gizmo mesh color for this frame
+    } overlay;
+};
+
+/// @brief Render pass to draw 2D elements in Scene.
+struct RenderSystemScreenPass
+{
+    RenderSystemMat4Callback mat4Callback; /// callback for system to grab the model matrix of 2D objects
+    void* user;                            /// user of the scene screen pass
+
+    struct Region
+    {
+        Viewport viewport;
+        // TODO: ScreenLayer mask per-region
+    };
+
+    uint32_t regionCount;
+    Region* regions;
+
+    /// optional overlay to render on top of all regions, in practice this would be the screen UI
+    struct Overlay
+    {
+        ScreenRenderCallback renderCallback;
+        Viewport viewport;
+    } overlay;
+};
+
+/// @brief Render pass to draw the Editor.
+struct RenderSystemEditorPass
+{
+    const Vec2* sceneMousePickQuery;                       /// if not null, a mouse picking query within RSystemFrameInfo::sceneExtent
+    ScreenRenderCallback renderCallback;                   /// for the Editor to render itself via a ScreenRenderComponent
+    RenderSystemEditorScenePickCallback scenePickCallback; /// for the Editor to respond to scene mouse picking
+    void* user;                                            /// user of the editor render pass
+    Viewport viewport;                                     /// viewport to draw editor, likely full screen
+};
+
+/// @brief Render pass to draw an additional OS-level editor dialog Window.
+struct RenderSystemEditorDialogPass
+{
+    ScreenRenderCallback renderCallback;
+    WindowID dialogWindow;
+    void* user;
+};
+
 /// @brief Render system handle. This is the top-level graphics abstraction,
 ///        Renderer resources are managed internally and are identified via a RUID.
 struct RenderSystem : Handle<class RenderSystemObj>
@@ -163,21 +169,19 @@ struct RenderSystem : Handle<class RenderSystemObj>
     /// @brief Submit the frame for the GPU to process.
     void submit_frame();
 
-    /// @brief Base pass to render the game scene.
-    void scene_pass(const RenderSystemScenePass& sceneRP);
+    /// @brief Register world pass for this frame.
+    void world_pass(const RenderSystemWorldPass& worldPass);
 
-    /// @brief Screen pass to render on top of game scene.
-    void screen_pass(const RenderSystemScreenPass& screenP);
+    /// @brief Register screen pass for this frame.
+    void screen_pass(const RenderSystemScreenPass& screenPass);
 
-    /// @brief Dependency injection for the Editor to render itself.
-    ///        Not used in game Runtime.
+    /// @brief Register editor pass for this frame. Not used in game Runtime.
     void editor_pass(const RenderSystemEditorPass& editorPass);
 
-    /// @brief Dependency injection for the Editor to render more stuff on top of the editor pass.
-    ///        Not used in game Runtime.
-    void editor_overlay_pass(const RenderSystemEditorOverlayPass& editorPass);
+    /// @brief Register editor overlay pass for this frame. Not used in game Runtime.
+    // void editor_overlay_pass(const RenderSystemEditorOverlayPass& editorPass);
 
-    /// @brief Optional pass for the Editor to render a dialog window.
+    /// @brief Register editor dialog pass for this frame. Not used in game Runtime.
     void editor_dialog_pass(const RenderSystemEditorDialogPass& dialogPass);
 
     /// @brief Get the image handle of the font atlas image (RIMAGE_LAYOUT_SHADER_READ_ONLY).
