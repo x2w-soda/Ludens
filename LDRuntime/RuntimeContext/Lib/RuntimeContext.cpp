@@ -24,34 +24,56 @@ struct RuntimeContextObj
     AudioSystem audioSystem;
     AssetManager AM;
     Project project;
-    Scene scene;
-    ImageCube envCubemap{};
+    Scene scene{};
 
-    void render_frame(const Vec2& screenExtent);
+    void render_frame(const Vec2& windowExtent);
 
     /// @brief Callback to inform the render system the transforms of RUIDs.
     static bool render_system_transform_callback(RUID ruid, Mat4& wolrdMat4, void* user);
+
+    static void on_window_event(const WindowEvent* event, void* user);
 };
 
-void RuntimeContextObj::render_frame(const Vec2& screenExtent)
+void RuntimeContextObj::render_frame(const Vec2& windowExtent)
 {
+    const Viewport windowViewport = Viewport::from_extent(windowExtent);
+
     // begin rendering a frame
     RenderSystemFrameInfo frameI{};
     frameI.directionalLight = Vec3(0.0f, 1.0f, 0.0f);
-    frameI.mainCamera = scene.get_camera();
-    frameI.screenExtent = screenExtent;
-    frameI.sceneExtent = screenExtent;
-    frameI.envCubemap = envCubemap.get_id();
+    frameI.screenExtent = windowExtent;
+    frameI.sceneExtent = windowExtent;
+    frameI.envCubemap = (RUID)0;
     frameI.clearColor = project.get_settings().get_rendering_settings().get_clear_color();
     renderSystem.next_frame(frameI);
 
+#if 0
     // render game scene without editor overlay
-    RenderSystemScenePass sceneP{};
-    sceneP.mat4Callback = &RuntimeContextObj::render_system_transform_callback;
-    sceneP.user = this;
-    sceneP.overlay.enabled = false;
-    sceneP.hasSkybox = envCubemap.get_id() != 0;
-    renderSystem.scene_pass(sceneP);
+    Camera camera = scene.get_camera();
+    LD_ASSERT(camera);
+    RenderSystemWorldPass worldP{};
+    worldP.mat4Callback = &RuntimeContextObj::render_system_transform_callback;
+    worldP.user = this;
+    worldP.overlay.enabled = false;
+    worldP.hasSkybox = envCubemap.get_id() != 0;
+    worldP.worldViewport = screenViewport;
+    renderSystem.world_pass(worldP);
+#endif
+
+    RenderSystemScreenPass::Region region{};
+    region.viewport = windowViewport;
+
+    RenderSystemScreenPass screenP{};
+    screenP.overlay.renderCallback = [](ScreenRenderComponent renderer, void* user) {
+        RuntimeContextObj& self = *(RuntimeContextObj*)user;
+        self.scene.render_screen_ui(renderer);
+    };
+    screenP.overlay.viewport = windowViewport;
+    screenP.regionCount = 1;
+    screenP.regions = &region;
+    screenP.mat4Callback = &RuntimeContextObj::render_system_transform_callback;
+    screenP.user = this;
+    renderSystem.screen_pass(screenP);
 
     renderSystem.submit_frame();
 }
@@ -61,6 +83,16 @@ bool RuntimeContextObj::render_system_transform_callback(RUID ruid, Mat4& worldM
     RuntimeContextObj& self = *(RuntimeContextObj*)user;
 
     return self.scene.get_ruid_world_mat4(ruid, worldMat4);
+}
+
+void RuntimeContextObj::on_window_event(const WindowEvent* event, void* user)
+{
+    LD_PROFILE_SCOPE;
+
+    RuntimeContextObj& self = *(RuntimeContextObj*)user;
+    LD_ASSERT(self.scene);
+
+    self.scene.input_screen_ui(event);
 }
 
 //
@@ -75,9 +107,21 @@ RuntimeContext RuntimeContext::create(const RuntimeContextInfo& info)
     obj->project = info.project;
 
     ProjectStartupSettings startupS = obj->project.get_settings().get_startup_settings();
+    const std::string windowName = startupS.get_window_name();
     const FS::Path rootPath = obj->project.get_root_path();
     const FS::Path defaultScenePath = rootPath / FS::Path(startupS.get_default_scene_path());
     const FS::Path assetSchemaPath = rootPath / obj->project.get_assets_path();
+
+    WindowInfo windowI{};
+    windowI.width = startupS.get_window_width();
+    windowI.height = startupS.get_window_height();
+    windowI.name = windowName.c_str();
+    windowI.onEvent = &RuntimeContextObj::on_window_event;
+    windowI.user = obj;
+    windowI.hintBorderColor = 0;
+    windowI.hintTitleBarColor = 0;
+    windowI.hintTitleBarTextColor = 0;
+    WindowRegistry::create(windowI);
 
     // load assets
     AssetManagerInfo amI{};
@@ -102,8 +146,6 @@ RuntimeContext RuntimeContext::create(const RuntimeContextInfo& info)
     // TODO: generalize
     FontAsset defaultFont = (FontAsset)obj->AM.get_asset("default_font", ASSET_TYPE_FONT);
     LD_ASSERT(defaultFont);
-    TextureCubeAsset textureCubeAsset = (TextureCubeAsset)obj->AM.get_asset("default_cubemap", ASSET_TYPE_TEXTURE_CUBE);
-    LD_ASSERT(textureCubeAsset);
 
     // initialize subsystems
     RenderSystemInfo systemI{};
@@ -111,8 +153,6 @@ RuntimeContext RuntimeContext::create(const RuntimeContextInfo& info)
     systemI.fontAtlas = defaultFont.get_font_atlas();
     obj->renderSystem = RenderSystem::create(systemI);
     obj->audioSystem = AudioSystem::create();
-
-    obj->envCubemap = obj->renderSystem.create_image_cube(textureCubeAsset.get_bitmap());
 
     SceneInfo sceneI{};
     sceneI.assetManager = obj->AM;
@@ -143,7 +183,6 @@ void RuntimeContext::destroy(RuntimeContext ctx)
     auto* obj = (RuntimeContextObj*)ctx.unwrap();
     obj->renderDevice.wait_idle();
     obj->scene.cleanup();
-    obj->renderSystem.destroy_image_cube(obj->envCubemap);
 
     Scene::destroy(obj->scene);
     AudioSystem::destroy(obj->audioSystem);
@@ -159,11 +198,11 @@ void RuntimeContext::update(float delta)
     LD_PROFILE_SCOPE;
 
     WindowRegistry reg = WindowRegistry::get();
-    const Vec2 screenExtent = reg.get_window_extent(reg.get_root_id());
+    const Vec2 windowExtent = reg.get_window_extent(reg.get_root_id());
 
-    mObj->scene.update(screenExtent, delta);
+    mObj->scene.update(windowExtent, delta);
 
-    mObj->render_frame(screenExtent);
+    mObj->render_frame(windowExtent);
 }
 
 } // namespace LD

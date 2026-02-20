@@ -10,24 +10,10 @@ RuntimeApplication::RuntimeApplication(Project project)
 {
     LD_PROFILE_SCOPE;
 
-    ProjectStartupSettings startupS = project.get_settings().get_startup_settings();
-    std::string windowName = startupS.get_window_name();
-
     JobSystemInfo jsI{};
     jsI.immediateQueueCapacity = 128;
     jsI.standardQueueCapacity = 128;
     JobSystem::init(jsI);
-
-    WindowInfo windowI{};
-    windowI.width = startupS.get_window_width();
-    windowI.height = startupS.get_window_height();
-    windowI.name = windowName.c_str();
-    windowI.onEvent = nullptr;
-    windowI.user = this;
-    windowI.hintBorderColor = 0;
-    windowI.hintTitleBarColor = 0;
-    windowI.hintTitleBarTextColor = 0;
-    WindowRegistry::create(windowI);
 
     RuntimeContextInfo ctxI{};
     ctxI.project = project;
