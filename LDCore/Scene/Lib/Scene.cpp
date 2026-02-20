@@ -630,6 +630,13 @@ bool Scene::Component::get_world_mat4(Mat4& worldMat4)
     return sScene->registry.get_component_world_mat4(base->cuid, worldMat4);
 }
 
+Scene::Component Scene::get_2d_component_by_position(const Vec2& worldPos)
+{
+    CUID compCUID = sScene->renderSystemCache.get_2d_component_by_position(worldPos, [](RUID ruid, Mat4& mat4, void*) -> bool { return Scene(sScene).get_ruid_world_mat4(ruid, mat4); }, nullptr);
+
+    return Scene::Component(sScene->registry.get_component_data(compCUID, nullptr));
+}
+
 Scene::Component Scene::get_ruid_component(RUID ruid)
 {
     CUID compCUID = mObj->renderSystemCache.get_draw_id_component(ruid);

@@ -171,6 +171,9 @@ public:
         return comp;
     }
 
+    /// @brief Pick a 2D component by 2D world coordinates.
+    Component get_2d_component_by_position(const Vec2& worldPos);
+
     /// @brief Lookup the data component from draw call ID
     Component get_ruid_component(RUID ruid);
 

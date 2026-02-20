@@ -36,12 +36,25 @@ void Viewport2D::destroy()
 
 void Viewport2D::imgui(const ViewportState& state)
 {
+    mCamera.set_extent(state.viewportExtent);
+
+    const Vec2* sceneMousePos = nullptr;
+    if (state.sceneMousePos.x > 0.0f && state.sceneMousePos.y > 0.0f)
+        sceneMousePos = &state.sceneMousePos;
+    mCameraController.update(state.delta, sceneMousePos);
+
     Vec2 scroll;
     MouseButton btn;
     if (ui_top_mouse_down(btn))
     {
         if (btn == MOUSE_BUTTON_MIDDLE)
             mIsPanning = true;
+        else if (btn == MOUSE_BUTTON_LEFT && sceneMousePos)
+        {
+            const Vec2 mouseWorldPos = mCamera.get_world_position(*sceneMousePos);
+            Scene::Component comp = mCtx.get_scene().get_2d_component_by_position(mouseWorldPos);
+            mCtx.set_selected_component(comp ? comp.suid() : 0);
+        }
     }
     if (ui_top_scroll(scroll))
     {
@@ -64,11 +77,6 @@ void Viewport2D::imgui(const ViewportState& state)
         if (mIsPanning)
             mCamera.set_position(mCamera.get_position() - dragDelta / mCamera.get_zoom());
     }
-
-    const Vec2* sceneMousePos = nullptr;
-    if (state.sceneMousePos.x > 0.0f && state.sceneMousePos.y > 0.0f)
-        sceneMousePos = &state.sceneMousePos;
-    mCameraController.update(state.delta, sceneMousePos);
 }
 
 } // namespace LD

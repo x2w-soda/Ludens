@@ -25,6 +25,9 @@ public:
     /// @brief Get component associated with draw id.
     CUID get_draw_id_component(RUID drawID);
 
+    /// @brief Get a 2D component from 2D world position.
+    CUID get_2d_component_by_position(const Vec2& worldPos, RenderSystemMat4Callback mat4CB, void* user);
+
     RUID get_or_create_screen_layer(SUID screenLayerSUID);
     SUID get_screen_layer_suid(RUID screenLayerRUID);
     MeshData get_or_create_mesh_data(AssetID meshAUID);

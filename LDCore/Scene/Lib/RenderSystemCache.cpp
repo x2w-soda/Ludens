@@ -65,6 +65,19 @@ CUID RenderSystemCache::get_draw_id_component(RUID drawID)
     return ite->second;
 }
 
+CUID RenderSystemCache::get_2d_component_by_position(const Vec2& worldPos, RenderSystemMat4Callback mat4CB, void* user)
+{
+    LD_PROFILE_SCOPE;
+
+    RUID ruid = mSystem.get_screen_layer_item(worldPos, mat4CB, user);
+    if (!ruid)
+        return 0;
+
+    LD_ASSERT(mDrawToCuid.contains(ruid));
+
+    return mDrawToCuid[ruid];
+}
+
 RUID RenderSystemCache::get_or_create_screen_layer(SUID layerSUID)
 {
     if (mSuidToScreenLayer.contains(layerSUID))
