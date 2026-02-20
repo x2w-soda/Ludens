@@ -90,7 +90,7 @@ struct RComponent : RHandle<struct RComponentObj>
     RComputePass add_compute_pass(const RComputePassInfo& cpI, void* user, RComputePassCallback callback);
 };
 
-typedef void (*RGraphPrePassCallback)(RCommandList list, void* user);
+typedef void (*RGraphCommandListCallback)(RCommandList list, void* user);
 
 struct RGraphSwapchainInfo
 {
@@ -107,7 +107,8 @@ struct RGraphInfo
     RCommandList list;
     RFence frameComplete;
     RGraphSwapchainInfo* swapchains;
-    RGraphPrePassCallback prePassCB;
+    RGraphCommandListCallback prePassCB;
+    RGraphCommandListCallback preSubmitCB;
     void* user;
     uint32_t swapchainCount;
     uint32_t screenWidth;

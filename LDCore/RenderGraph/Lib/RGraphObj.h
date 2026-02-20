@@ -29,7 +29,8 @@ struct RGraphObj
     RDevice device;
     RCommandList list;
     RFence frameComplete;
-    RGraphPrePassCallback prePassCB = nullptr;
+    RGraphCommandListCallback prePassCB = nullptr;
+    RGraphCommandListCallback preSubmitCB = nullptr;
     HashMap<Hash32, RComponent> components;
     Vector<RComponentPassObj*> passOrder;
     HashMap<WindowID, RGraphSwapchain> swapchains;

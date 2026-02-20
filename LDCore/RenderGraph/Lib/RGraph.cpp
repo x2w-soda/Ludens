@@ -913,6 +913,7 @@ RGraph RGraph::create(const RGraphInfo& graphI)
     obj->device = graphI.device;
     obj->list = graphI.list;
     obj->prePassCB = graphI.prePassCB;
+    obj->preSubmitCB = graphI.preSubmitCB;
     obj->user = graphI.user;
     obj->frameComplete = graphI.frameComplete;
     obj->swapchains.clear();
@@ -1102,7 +1103,7 @@ void RGraph::connect_swapchain_image(RGraphImage src, WindowID dstWindow)
 void RGraph::debug(Vector<RComponentPass>& passOrder, bool saveToDisk)
 {
     LD_ASSERT(mObj->graphState == RGRAPH_STATE_CREATED);
-    
+
     mObj->sort();
 
     passOrder.resize(mObj->passOrder.size());
@@ -1192,6 +1193,9 @@ void RGraph::submit()
 
         i++;
     }
+
+    if (mObj->preSubmitCB)
+        mObj->preSubmitCB(list, mObj->user);
 
     list.end();
 
