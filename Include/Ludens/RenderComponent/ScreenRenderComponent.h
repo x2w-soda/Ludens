@@ -30,6 +30,10 @@ struct ScreenRenderComponent : Handle<struct ScreenRenderComponentObj>
     /// @brief Get the screen extent of the component this frame
     void get_screen_extent(uint32_t& screenWidth, uint32_t& screenHeight);
 
+    /// @brief Set the index for retrieving view projection matrices.
+    /// @note This forces a flush of the current batch.
+    void set_view_projection_index(int vpIndex);
+
     /// @brief Push a scissor rect onto stack, only the top scissor takes effect.
     /// @note This forces a flush of the current batch since the scissor state changes.
     void push_scissor(const Rect& scissor);

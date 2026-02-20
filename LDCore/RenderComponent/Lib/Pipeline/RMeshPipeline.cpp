@@ -58,13 +58,14 @@ R"(
 
 layout (push_constant) uniform PC {
     mat4 model;
-    uint id;
+    uint vpIndex;
 } uPC;
 
 void main()
 {
+    ViewProjectionData vp = uFrame.vp[uPC.vpIndex];
     vec4 worldPos = uPC.model * vec4(aPos, 1.0);
-    gl_Position = uFrame.viewProjMat * worldPos;
+    gl_Position = vp.viewProjMat * worldPos;
     mat3 normalMat = transpose(inverse(mat3(uPC.model)));
 
     vPos = worldPos.xyz;
@@ -89,14 +90,16 @@ R"(
 
 layout (push_constant) uniform PC {
     mat4 model;
+    uint vpIndex;
     uint id;    // only lower 16 bits are used
     uint flags; // only lower 16 bits are used
 } uPC;
 
 void main()
 {
+    ViewProjectionData vp = uFrame.vp[uPC.vpIndex];
     vec3 lightDir = normalize(vec3(uFrame.dirLight));
-    vec3 viewDir = normalize(uFrame.viewPos.xyz - vPos);
+    vec3 viewDir = normalize(vp.viewPos.xyz - vPos);
     vec3 H = normalize(lightDir + viewDir);
     vec3 N = vNormal;
     vec4 mrSample = texture(uMatMetallicRoughness, vUV);
@@ -192,12 +195,14 @@ R"(
 
 layout (push_constant) uniform PC {
     mat4 model;
+    uint vpIndex;
 } uPC;
 
 void main()
 {
+    ViewProjectionData vp = uFrame.vp[uPC.vpIndex];
     vec4 worldPos = uPC.model * vec4(aPos, 1.0);
-    gl_Position = uFrame.viewProjMat * worldPos;
+    gl_Position = vp.viewProjMat * worldPos;
     mat3 normalMat = transpose(inverse(mat3(uPC.model)));
 
     vPos = worldPos.xyz;
@@ -215,6 +220,7 @@ layout (location = 1) out uvec4 fID;
 
 layout (push_constant) uniform PC {
     mat4 model;
+    uint vpIndex;
     uint id;      // only lower 16-bits are used
     uint flags;   // only lower 16 bits are used
     vec4 ambient; // flat ambient color

@@ -11,6 +11,11 @@ struct SkyboxPipeline : Handle<struct SkyboxPipelineObj>
     static SkyboxPipeline create(RDevice device);
     static void destroy(SkyboxPipeline pipeline);
 
+    struct PushConstant
+    {
+        uint32_t vpIndex;
+    };
+
     RPipeline handle();
 };
 

@@ -18,9 +18,14 @@ layout (location = 0) out flat uint vColor;
 LD_GLSL_FRAME_SET
 R"(
 
+layout (push_constant) uniform PC {
+    uint vpIndex;
+} uPC;
+
 void main()
 {
-    gl_Position = uFrame.viewProjMat * vec4(aPos, 1.0);
+    ViewProjectionData vp = uFrame.vp[uPC.vpIndex];
+    gl_Position = vp.viewProjMat * vec4(aPos, 1.0);
     vColor = aColor;
 }
 )";

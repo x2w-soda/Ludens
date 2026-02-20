@@ -64,14 +64,19 @@ const float aPos[108] = float[](
      1.0f, -1.0f,  1.0f
 );
 
+layout (push_constant) uniform PC {
+    uint vpIndex;
+} uPC;
+
 void main()
 {
     float x = aPos[3 * gl_VertexIndex + 0];
     float y = aPos[3 * gl_VertexIndex + 1];
     float z = aPos[3 * gl_VertexIndex + 2];
 
+    ViewProjectionData vp = uFrame.vp[uPC.vpIndex];
     mat3 rotMat = ld_rotate(uFrame.envPhase * 2.0 * M_PI, vec3(0.0, 1.0, 0.0));
-    mat4 viewMat = mat4(mat3(uFrame.viewMat));
+    mat4 viewMat = mat4(mat3(vp.viewMat));
 
     mat4 modelMat = mat4(
         vec4(rotMat[0], 0.0),
@@ -80,7 +85,7 @@ void main()
         vec4(0.0, 0.0, 0.0, 1.0)
     );
 
-    vec4 pos = uFrame.projMat * viewMat * modelMat * vec4(x, y, z, 1.0);
+    vec4 pos = vp.projMat * viewMat * modelMat * vec4(x, y, z, 1.0);
 
     gl_Position = pos.xyww;
     vDir = vec3(x, y, z);

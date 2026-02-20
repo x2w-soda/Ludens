@@ -1,14 +1,19 @@
 #pragma once
 
 #include <Ludens/Header/Math/Mat4.h>
+#include <Ludens/Header/Math/Viewport.h>
 #include <Ludens/RenderBackend/RBackend.h>
 
 #define LD_GLSL_FRAME_SET R"(
-layout (set = 0, binding = 0) uniform frame {
+struct ViewProjectionData
+{
     mat4 viewMat;
     mat4 projMat;
     mat4 viewProjMat;
     vec4 viewPos;
+};
+layout (set = 0, binding = 0) uniform frame {
+    ViewProjectionData vp[24];
     vec4 dirLight;
     vec2 screenExtent;
     vec2 sceneExtent;
@@ -32,16 +37,51 @@ extern RSetLayoutInfo sSingleSampleSetLayout;
 /// @brief a common layout with two sampled images at binding 0 and 1
 extern RSetLayoutInfo sDoubleSampleSetLayout;
 
+/// @brief GPU-side view and projection information.
+struct ViewProjectionData
+{
+    Mat4 viewMat;
+    Mat4 projMat;
+    Mat4 viewProjMat;
+    Vec4 viewPos;
+
+    ViewProjectionData() = default;
+    ViewProjectionData(const Mat4& view, const Mat4& proj, const Vec4& viewPos)
+        : viewMat(view), projMat(proj), viewPos(viewPos)
+    {
+        viewProjMat = proj * view;
+    }
+
+    static ViewProjectionData from_viewport(const Viewport& viewport)
+    {
+        return ViewProjectionData(viewport.viewMat, viewport.projMat, viewport.viewPos);
+    }
+};
+
 struct FrameUBO
 {
-    Mat4 viewMat;      /// main camera view matrix
-    Mat4 projMat;      /// main camera projection matrix
-    Mat4 viewProjMat;  /// main camera view-projection matrix product
-    Vec4 viewPos;      /// main camera view position
-    Vec4 dirLight;     /// directional light
-    Vec2 screenExtent; /// extent of the whole screen
-    Vec2 sceneExtent;  /// extent of the scene
-    float envPhase;    /// normalized environment map phase 0 to 1
+    ViewProjectionData vp[24]; /// arbitrary view projections
+    Vec4 dirLight;             /// directional light
+    Vec2 screenExtent;         /// extent of the whole screen
+    Vec2 sceneExtent;          /// extent of the scene
+    float envPhase;            /// normalized environment map phase 0 to 1
+};
+
+class FrameUBOManager
+{
+public:
+    void reset(const Vec2& screenExntent, const Vec2& sceneExtent);
+
+    /// @brief Get current frame UBO data.
+    inline const FrameUBO* get() { return &mUBO; }
+
+    /// @brief Register a view projection data.
+    /// @return Non-negative index into VP array on success.
+    int register_vp(const ViewProjectionData& vp);
+
+private:
+    FrameUBO mUBO;
+    int mVPIndex;
 };
 
 } // namespace LD

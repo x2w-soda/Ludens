@@ -29,11 +29,17 @@ layout (location = 2) out flat uint vControl;
 LD_GLSL_FRAME_SET
 R"(
 
+layout (push_constant) uniform PC {
+    uint vpIndex;
+} uPC;
+
 void main()
 {
-    float ndcx = (aPos.x / uFrame.screenExtent.x) * 2.0 - 1.0;
-    float ndcy = (aPos.y / uFrame.screenExtent.y) * 2.0 - 1.0;
-    gl_Position = vec4(ndcx, ndcy, 0.0, 1.0);
+    ViewProjectionData vp = uFrame.vp[uPC.vpIndex];
+    gl_Position = vp.viewProjMat * vec4(aPos, 0.0, 1.0);
+    //float ndcx = (aPos.x / uFrame.screenExtent.x) * 2.0 - 1.0;
+    //float ndcy = (aPos.y / uFrame.screenExtent.y) * 2.0 - 1.0;
+    //gl_Position = vec4(ndcx, ndcy, 0.0, 1.0);
     vUV = aUV;
     vColor = aColor;
     vControl = aControl;
@@ -505,6 +511,18 @@ void ScreenRenderComponent::get_screen_extent(uint32_t& screenWidth, uint32_t& s
 {
     screenWidth = mObj->mScreenWidth;
     screenHeight = mObj->mScreenHeight;
+}
+
+void ScreenRenderComponent::set_view_projection_index(int vpIndex)
+{
+    LD_ASSERT(mObj->mList);
+    LD_ASSERT(vpIndex >= 0); // caller's responsibility
+
+    // flush crrent batch before chaning view projection state
+    mObj->flush_rects();
+
+    uint32_t pc = (uint32_t)vpIndex;
+    mObj->mList.cmd_push_constant(sScreenPipelineLayout, 0, sizeof(pc), &pc);
 }
 
 void ScreenRenderComponent::push_scissor(const Rect& scissor)
