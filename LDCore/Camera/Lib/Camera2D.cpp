@@ -61,9 +61,19 @@ Mat4 Camera2D::get_view()
     return mObj->view;
 }
 
-Mat4 Camera2D::get_view_proj()
+Mat4 Camera2D::get_proj()
 {
-    return mObj->proj * get_view();
+    return mObj->proj;
+}
+
+Viewport Camera2D::get_viewport()
+{
+    Viewport viewport;
+    viewport.viewMat = get_view();
+    viewport.projMat = get_proj();
+    viewport.viewPos = Vec4(mObj->pos, 0.0f, 1.0f);
+    viewport.region = Rect(0.0f, 0.0f, 1.0f, 1.0f);
+    return viewport;
 }
 
 } // namespace LD

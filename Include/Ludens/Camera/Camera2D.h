@@ -3,6 +3,7 @@
 #include <Ludens/Header/Handle.h>
 #include <Ludens/Header/Math/Mat4.h>
 #include <Ludens/Header/Math/Vec2.h>
+#include <Ludens/Header/Math/Viewport.h>
 
 namespace LD {
 
@@ -40,7 +41,8 @@ struct Camera2D : Handle<struct Camera2DObj>
     float get_rotation();
 
     Mat4 get_view();
-    Mat4 get_view_proj();
+    Mat4 get_proj();
+    Viewport get_viewport();
 };
 
 } // namespace LD

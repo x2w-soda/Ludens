@@ -1,6 +1,5 @@
 #pragma once
 
-#include <Ludens/Camera/Camera.h>
 #include <Ludens/Media/Font.h>
 #include <Ludens/RenderBackend/RBackend.h>
 #include <Ludens/RenderSystem/RenderSystem.h>
@@ -36,7 +35,6 @@ private:
     RImage mIconAtlasImage;
     UIWindow mDemo;
     UIContext mCtx;
-    Camera mCamera;
 };
 
 } // namespace LD

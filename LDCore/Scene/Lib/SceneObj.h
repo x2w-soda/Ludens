@@ -32,13 +32,14 @@ public:
     LD::ScreenUI screenUI;
     LD::ScreenUI screenUIBackup;
     CameraComponent* mainCameraC;
-    Vec2 screenExtent = {};
+    Vec2 extent = {};
     SceneState state = SCENE_STATE_EMPTY;
 
     void load_registry_from_backup();
     void unload_registry();
     void startup_registry();
     void cleanup_registry();
+    void resize(const Vec2& extent);
 
 private:
     bool load_subtree_from_backup(ComponentBase** dstData, ComponentBase** srcData);

@@ -124,6 +124,15 @@ void SceneObj::cleanup_registry()
     mainCameraC = nullptr;
 }
 
+void SceneObj::resize(const Vec2& newExtent)
+{
+    if (extent == newExtent)
+        return;
+
+    extent = newExtent;
+    screenUI.resize(extent);
+}
+
 // This is basically the editor loading a copy of component subtree from backup data
 bool SceneObj::load_subtree_from_backup(ComponentBase** dstData, ComponentBase** srcData)
 {
@@ -252,10 +261,10 @@ Scene Scene::create(const SceneInfo& sceneI)
     sScene->renderSystemCache.create(sceneI.renderSystem, sceneI.assetManager);
     sScene->audioSystemCache.create(sceneI.audioSystem, sceneI.assetManager);
     sScene->luaContext.create(Scene(sScene), sceneI.assetManager);
-    sScene->screenExtent = sceneI.extent;
+    sScene->extent = {};
 
     ScreenUIInfo info{};
-    info.extent = sScene->screenExtent;
+    info.extent = {};
     info.fontAtlas = sceneI.fontAtlas;
     info.fontAtlasImage = sceneI.fontAtlasImage;
     info.theme = sceneI.uiTheme;
@@ -404,11 +413,7 @@ void Scene::update(const Vec2& screenExtent, float delta)
     LD_PROFILE_SCOPE;
     LD_ASSERT(screenExtent.x > 0.0f && screenExtent.y > 0.0f);
 
-    if (mObj->screenExtent != screenExtent)
-    {
-        mObj->screenExtent = screenExtent;
-        mObj->screenUI.resize(screenExtent);
-    }
+    mObj->resize(screenExtent);
 
     // update all lua script instances
     mObj->luaContext.update(delta);
@@ -436,6 +441,11 @@ void Scene::update(const Vec2& screenExtent, float delta)
     mObj->audioSystemCache.update();
 }
 
+void Scene::resize(const Vec2& extent)
+{
+    mObj->resize(extent);
+}
+
 void Scene::render_screen_ui(ScreenRenderComponent renderer)
 {
     LD_PROFILE_SCOPE;
@@ -456,6 +466,22 @@ Camera Scene::get_camera()
         return mObj->mainCameraC->camera;
 
     return {};
+}
+
+Camera2D Scene::get_camera_2d()
+{
+    // TODO: one main Camera2DComponent
+
+    return {};
+}
+
+Vector<Viewport> Scene::get_screen_regions()
+{
+    // TODO: one Viewport per Camera2DComponent, fallback to single fullscreen viewport?
+
+    Vector<Viewport> viewports;
+    viewports.push_back(Viewport::from_extent(mObj->extent));
+    return viewports;
 }
 
 Scene::Component Scene::create_component(ComponentType type, const char* name, CUID parentCUID)

@@ -47,13 +47,6 @@ UISandbox::UISandbox()
     const WindowID rootID = reg.get_root_id();
     const Vec2 screenExtent = reg.get_window_extent(rootID);
 
-    CameraPerspectiveInfo perspectiveI{};
-    perspectiveI.aspectRatio = reg.get_window_aspect_ratio(rootID);
-    perspectiveI.nearClip = 0.1f;
-    perspectiveI.farClip = 100.0f;
-    perspectiveI.fov = LD_TO_RADIANS(45.0f);
-    mCamera = Camera::create(perspectiveI, Vec3(0.0f));
-
     std::string fontPathString = sLudensLFS.fontPath.string();
     mFont = Font::create_from_path(fontPathString.c_str());
     mFontAtlas = FontAtlas::create_bitmap(mFont, 32.0f);
@@ -120,7 +113,6 @@ UISandbox::~UISandbox()
     mRDevice.destroy_image(mIconAtlasImage);
 
     UIContext::destroy(mCtx);
-    Camera::destroy(mCamera);
     RenderSystem::destroy(mRenderSystem);
     RDevice::destroy(mRDevice);
     FontAtlas::destroy(mFontAtlas);
@@ -219,12 +211,12 @@ void UISandbox::render()
 {
     WindowRegistry reg = WindowRegistry::get();
     const Vec2 screenExtent = reg.get_window_extent(reg.get_root_id());
+    const Viewport screenViewport = Viewport::from_extent(screenExtent);
     const bool hasDialogWindow = reg.is_window_open(sWindowID);
 
     // begin rendering a frame
     RenderSystemFrameInfo frameI{};
     frameI.directionalLight = Vec3(0.0f, 1.0f, 0.0f);
-    frameI.mainCamera = mCamera;
     frameI.screenExtent = screenExtent;
     frameI.sceneExtent = screenExtent;
     frameI.envCubemap = (RUID)0;
@@ -241,16 +233,17 @@ void UISandbox::render()
     }
 
     // render empty scene
-    RenderSystemScenePass sceneP{};
-    sceneP.mat4Callback = nullptr;
-    sceneP.overlay.enabled = false;
-    sceneP.hasSkybox = false;
-    sceneP.user = this;
-    mRenderSystem.scene_pass(sceneP);
+    RenderSystemWorldPass worldP{};
+    worldP.mat4Callback = nullptr;
+    worldP.overlay.enabled = false;
+    worldP.hasSkybox = false;
+    worldP.user = this;
+    mRenderSystem.world_pass(worldP);
 
     // render UI in screen space
     RenderSystemScreenPass screenP{};
-    screenP.callback = &UISandbox::on_screen_render;
+    screenP.overlay.viewport = screenViewport;
+    screenP.overlay.renderCallback = &UISandbox::on_screen_render;
     screenP.user = this;
     mRenderSystem.screen_pass(screenP);
 

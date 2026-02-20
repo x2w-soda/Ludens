@@ -251,6 +251,8 @@ void UIDriver::push_driver_table()
 
 void UIDriver::ui_button_on_click(UIButtonWidget w, MouseButton btn, void* user)
 {
+    LD_PROFILE_SCOPE;
+
     UIDriver* driver = (UIDriver*)user;
 
     auto it = driver->mCallbackRefs.find(w.unwrap());
@@ -261,7 +263,12 @@ void UIDriver::ui_button_on_click(UIButtonWidget w, MouseButton btn, void* user)
     L.get_table(driver->mL.get_registry_index());
 
     LD_ASSERT(L.get_type(-1) == LUA_TYPE_FN);
-    L.pcall(0, 0, -1);
+
+    {
+        LD_PROFILE_SCOPE_NAME("pcall");
+        L.pcall(0, 0, -1);
+        // TODO: error handling?
+    }
 }
 
 } // namespace LD

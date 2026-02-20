@@ -2,7 +2,7 @@
 
 #include <Ludens/Asset/AssetManager.h>
 #include <Ludens/AudioSystem/AudioSystem.h>
-#include <Ludens/Camera/Camera.h>
+#include <Ludens/Camera/Camera2D.h>
 #include <Ludens/DSA/Vector.h>
 #include <Ludens/DataRegistry/DataRegistry.h>
 #include <Ludens/Header/Handle.h>
@@ -31,7 +31,6 @@ struct SceneInfo
     FontAtlas fontAtlas;
     RImage fontAtlasImage;
     UITheme uiTheme;
-    Vec2 extent;
 };
 
 /// @brief The basic unit of game simulation.
@@ -65,9 +64,12 @@ public:
     void cleanup();
 
     /// @brief Update the scene with delta time.
-    /// @param screenExtent Screen size this frame.
+    /// @param extent Screen size this frame.
     /// @param delta Delta time in seconds.
-    void update(const Vec2& screenExtent, float delta);
+    void update(const Vec2& extent, float delta);
+
+    /// @brief Update the scene extent.
+    void resize(const Vec2& extent);
 
     /// @brief Render screen UI contents.
     void render_screen_ui(ScreenRenderComponent renderer);
@@ -75,8 +77,14 @@ public:
     /// @brief Pass input to screen UI.
     void input_screen_ui(const WindowEvent* event);
 
-    /// @brief Get camera to render the Scene with.
+    /// @brief Get 3D camera to render Scene world contents.
     Camera get_camera();
+
+    /// @brief Get 2D camera to render Scene screen contents.
+    Camera2D get_camera_2d();
+
+    /// @brief In practice each Camera2DComponent will have its own viewport region.
+    Vector<Viewport> get_screen_regions();
 
     /// @brief Public interface for all components.
     class Component
