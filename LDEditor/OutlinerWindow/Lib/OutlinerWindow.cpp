@@ -10,8 +10,6 @@
 
 #include "ComponentMenu.h"
 
-#define OUTLINER_ROW_ODD_COLOR 0x272727FF
-#define OUTLINER_ROW_EVEN_COLOR 0x2B2C2FFF
 #define OUTLINER_ROW_LEFT_PADDING 10.0f
 #define OUTLINER_ROW_LEFT_PADDING_PER_DEPTH 15.0f
 
@@ -52,6 +50,7 @@ void OutlinerWindowObj::component_rows(Scene::Component comp, int& rowIdx, int d
 void OutlinerWindowObj::component_row(int rowIdx, int depth, SUID compSUID)
 {
     EditorTheme theme = ctx.get_settings().get_theme();
+    UITheme uiTheme = theme.get_ui_theme();
 
     UILayoutInfo layoutI{};
     layoutI.childAxis = UI_AXIS_X;
@@ -60,7 +59,11 @@ void OutlinerWindowObj::component_row(int rowIdx, int depth, SUID compSUID)
     layoutI.sizeX = UISize::grow();
     layoutI.sizeY = UISize::fixed(theme.get_text_row_height());
 
-    Color panelColor = (rowIdx % 2) ? OUTLINER_ROW_ODD_COLOR : OUTLINER_ROW_EVEN_COLOR;
+    Color panelColor = uiTheme.get_surface_color();
+
+    if (rowIdx % 2)
+        panelColor = Color::lift(panelColor, 0.02f);
+
     if (compSUID && compSUID == ctx.get_selected_component())
         panelColor = theme.get_ui_theme().get_selection_color();
 

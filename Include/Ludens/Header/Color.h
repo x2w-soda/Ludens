@@ -84,6 +84,13 @@ public:
         return (mValue & 0xFF) / 255.0f;
     }
 
+    /// @brief Lerp towards white.
+    static Color lift(Color base, float factor)
+    {
+        Vec4 v = base.as_vec4();
+        return Color(v + (Vec4(1.0f) - v) * factor);
+    }
+
 private:
     uint32_t mValue;
 };

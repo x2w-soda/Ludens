@@ -19,6 +19,7 @@ struct EditorThemeObj
     Color gizmoHighlightColor;
     Color playButtonColor;
     Color stopButtonColor;
+    Color errorColor;
 
     void initialize_default();
 };
@@ -30,13 +31,14 @@ void EditorThemeObj::initialize_default()
     padding = 5.0f;
     textRowHeight = 20.0f;
     textLabelWidth = 120.0f;
-    tabBGColor = 0x141516FF;
+    tabBGColor = 0x202225FF;
     gizmoColorAxisX = Vec4(0.9f, 0.1f, 0.1f, 0.8f);
     gizmoColorAxisY = Vec4(0.1f, 0.9f, 0.1f, 0.8f);
     gizmoColorAxisZ = Vec4(0.1f, 0.1f, 0.9f, 0.8f);
     gizmoHighlightColor = 0xFFA000E0;
     playButtonColor = 0x89F336FF;
     stopButtonColor = 0xFF6347FF;
+    errorColor = 0xFF5374FF;
 }
 
 UITheme EditorTheme::get_ui_theme()
