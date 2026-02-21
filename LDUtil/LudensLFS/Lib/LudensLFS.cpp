@@ -26,7 +26,7 @@ LudensLFS::LudensLFS()
     skyboxFolderPath = lfsPath / fs::path("Texture/Skybox/learnopengl");
     assert(fs::exists(skyboxFolderPath));
 
-    projectPath = lfsPath / fs::path("Projects/Project3D/project.toml");
+    projectPath = lfsPath / fs::path("Projects/Project2D/project.toml");
     assert(fs::exists(projectPath));
 
     audio.forestAmbiencePath = lfsPath / fs::path("Audio/SonnissGDC2024/InMotionAudio/AMBForst_Forest04_InMotionAudio_TheForestSamples.wav");
