@@ -8,7 +8,12 @@ set(MODULE_INCLUDE
     ${LUDENS_INCLUDE_DIR}/Ludens/Header/Handle.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Header/IDHandle.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Header/Platform.h
+    ${LUDENS_INCLUDE_DIR}/Ludens/Header/Types.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Header/SIMD.h
+    ${LUDENS_INCLUDE_DIR}/Ludens/Header/Color.h
+    ${LUDENS_INCLUDE_DIR}/Ludens/Header/Version.h
+    ${LUDENS_INCLUDE_DIR}/Ludens/Header/KeyCode.h
+    ${LUDENS_INCLUDE_DIR}/Ludens/Header/KeyValue.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Header/Math/Math.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Header/Math/Vec2.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Header/Math/Vec3.h
@@ -29,6 +34,7 @@ set(MODULE_TEST
     Test/GeometryTest.cpp
     Test/ColorTest.cpp
     Test/IDHandleTest.cpp
+    Test/KeyCodeTest.cpp
 )
 
 add_executable(${MODULE_TEST_NAME}

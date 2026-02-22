@@ -60,6 +60,15 @@ public:
         return mValue;
     }
 
+    Vec3 as_vec3() const
+    {
+        Vec3 v;
+        v.r = ((mValue >> 24) & 0xFF) / 255.0f;
+        v.g = ((mValue >> 16) & 0xFF) / 255.0f;
+        v.b = ((mValue >> 8) & 0xFF) / 255.0f;
+        return v;
+    }
+
     Vec4 as_vec4() const
     {
         Vec4 v;
@@ -87,8 +96,18 @@ public:
     /// @brief Lerp towards white.
     static Color lift(Color base, float factor)
     {
-        Vec4 v = base.as_vec4();
-        return Color(v + (Vec4(1.0f) - v) * factor);
+        Vec4 old = base.as_vec4();
+        Vec3 oldRGB = old.as_vec3();
+        Vec3 newRGB = oldRGB + (Vec3(1.0f) - oldRGB) * factor;
+        return Color(Vec4(newRGB, old.a));
+    }
+
+    /// @brief Lerp towards black.
+    static Color darken(Color base, float factor)
+    {
+        Vec4 old = base.as_vec4();
+        Vec3 oldRGB = old.as_vec3();
+        return Color(Vec4(oldRGB * (1.0f - factor), old.a));
     }
 
 private:

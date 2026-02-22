@@ -4,7 +4,7 @@
 
 namespace LD {
 
-enum MouseButton : int32_t
+enum MouseButton : uint32_t
 {
     MOUSE_BUTTON_LEFT = 0,
     MOUSE_BUTTON_RIGHT,
@@ -12,7 +12,7 @@ enum MouseButton : int32_t
     MOUSE_BUTTON_ENUM_LAST,
 };
 
-enum KeyCode : int32_t
+enum KeyCode : uint32_t
 {
     KEY_CODE_SPACE = 32,
     KEY_CODE_APOSTROPHE = 39, /* ' */
@@ -136,6 +136,15 @@ enum KeyCode : int32_t
     KEY_CODE_RIGHT_SUPER = 347,
     KEY_CODE_MENU = 348,
     KEY_CODE_ENUM_LAST
+};
+
+using KeyMods = uint32_t;
+
+enum KeyModBit : uint32_t
+{
+    KEY_MOD_SHIFT_BIT = 1,
+    KEY_MOD_CONTROL_BIT = 2,
+    KEY_MOD_ALT_BIT = 4,
 };
 
 } // namespace LD
