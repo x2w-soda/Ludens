@@ -1,9 +1,7 @@
-#include "DSATest.h"
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
-#include "HeapStorageTest.h"
-#include "StringTest.h"
-#include "VectorTest.h"
 #include <Extra/doctest/doctest.h>
+
+#include "DSATest.h"
 
 int Foo::sCtor = 0;
 int Foo::sDtor = 0;

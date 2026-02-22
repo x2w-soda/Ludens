@@ -1,7 +1,5 @@
 #pragma once
 
-namespace {
-
 /// @brief A copyable, movable type for testing
 struct Foo
 {
@@ -74,5 +72,3 @@ struct Foo
         sMoveAssign = 0;
     }
 };
-
-} // namespace

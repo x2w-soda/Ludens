@@ -24,16 +24,16 @@ set(MODULE_LIB
 )
 
 set(MODULE_TEST
+	Test/DSATest.h
+	Test/DSATest.cpp
 	Test/IDCounterTest.cpp
-	Test/HeapStorageTest.h
+	Test/HeapStorageTest.cpp
 	Test/GapBufferTest.cpp
-	Test/VectorTest.h
-	Test/StringTest.h
+	Test/VectorTest.cpp
+	Test/StringTest.cpp
 	Test/ObserverTest.cpp
 	Test/RectSplitTest.cpp
 	Test/DiagnosticsTest.cpp
-	Test/DSATest.h
-	Test/DSATest.cpp
 )
 
 add_ludens_core_module(

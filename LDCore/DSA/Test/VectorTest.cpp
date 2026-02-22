@@ -1,8 +1,7 @@
-#pragma once
-
-#include "DSATest.h"
 #include <Extra/doctest/doctest.h>
 #include <Ludens/DSA/Vector.h>
+
+#include "DSATest.h"
 
 using namespace LD;
 

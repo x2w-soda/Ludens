@@ -1,10 +1,10 @@
-#pragma once
-
 #include <Extra/doctest/doctest.h>
 #include <Ludens/DSA/HeapStorage.h>
 #include <Ludens/DSA/Optional.h>
 #include <Ludens/Memory/Memory.h>
 #include <type_traits>
+
+#include "DSATest.h"
 
 using namespace LD;
 
