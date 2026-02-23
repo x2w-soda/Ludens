@@ -4,8 +4,10 @@
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Header/Hash.h>
 #include <Ludens/Header/Impulse.h>
+#include <Ludens/Header/KeyValue.h>
 #include <Ludens/Header/Types.h>
 #include <Ludens/Memory/Allocator.h>
+#include <Ludens/Profiler/Profiler.h>
 #include <Ludens/UI/UIImmediate.h>
 
 #define LD_ASSERT_UI_FRAME_BEGIN LD_ASSERT(sImFrame && "ui_frame_begin not called")
@@ -15,15 +17,15 @@
     LD_ASSERT_UI_FRAME_BEGIN;    \
     LD_ASSERT(!sImFrame->imWindow && "ui_window_begin already called");
 
-#define LD_ASSERT_UI_PUSH LD_ASSERT_UI_WINDOW;
+#define LD_ASSERT_UI_PUSH LD_ASSERT_UI_WINDOW
 
 #define LD_ASSERT_UI_TOP_WIDGET \
     LD_ASSERT_UI_FRAME_BEGIN;   \
-    LD_ASSERT_UI_WINDOW;
+    LD_ASSERT_UI_WINDOW
 
 #define LD_ASSERT_UI_TOP_WIDGET_TYPE(TYPE) \
-    LD_ASSERT_UI_TOP_WIDGET                \
-    LD_ASSERT(sImFrame->imWindow->imWidgetStack.top()->type == (TYPE));
+    LD_ASSERT_UI_TOP_WIDGET;               \
+    LD_ASSERT(sImFrame->imWindow->imWidgetStack.top()->type == (TYPE))
 
 namespace LD {
 
@@ -39,26 +41,12 @@ struct UIWidgetState
 {
     UIWidget widget{};               // actual retained widget
     Vector<UIWidgetState*> children; // direct children, retained across frames
-    IMDrawCallback onDraw = nullptr;
-    Hash64 widgetHash{}; // hash that identifies this state uniquely in its window
-    MouseButton mouseDownButton{};
-    MouseButton mouseUpButton{};
-    MouseButton dragButton{};
-    KeyCode keyDown{};
-    KeyCode keyUp{};
-    Vec2 dragPos{};
-    Vec2 scroll{};
-    void* imUser = nullptr;
-    int childCounter = 0; // number of children widget states in this frame
+    IMDrawCallback onDraw = nullptr; // imgui user draw callback
+    Hash64 widgetHash{};             // hash that identifies this state uniquely in its window
+    Vector<UIEvent> events;          // widget events in this frame
+    void* imUser = nullptr;          // imgui user
+    int childCounter = 0;            // number of children widget states in this frame
     const UIWidgetType type;
-    UIEvent hoverEvent{};
-    Impulse hoverImpulse{};
-    Impulse mouseDownImpulse{};
-    Impulse mouseUpImpulse{};
-    Impulse keyDownImpulse{};
-    Impulse keyUpImpulse{};
-    Impulse dragImpulse{};
-    bool dragBegin = false;
     union
     {
         Impulse isTogglePressed;
@@ -72,6 +60,8 @@ struct UIWidgetState
     ~UIWidgetState();
 
     UIWidgetState& operator=(const UIWidgetState&) = delete;
+
+    bool consume_event(UIEventType type, UIEvent& outEvent);
 };
 
 UIWidgetState::UIWidgetState(UIWidgetType type)
@@ -103,6 +93,27 @@ UIWidgetState::~UIWidgetState()
     default:
         break;
     }
+}
+
+bool UIWidgetState::consume_event(UIEventType type, UIEvent& outEvent)
+{
+    int consumeIdx = -1;
+
+    for (size_t i = 0; i < events.size(); i++)
+    {
+        if (events[i].type == type)
+        {
+            outEvent = events[i];
+            consumeIdx = (int)i;
+            break;
+        }
+    }
+
+    if (consumeIdx < 0)
+        return false;
+
+    events.erase(events.begin() + consumeIdx);
+    return true;
 }
 
 struct UIWindowState
@@ -156,75 +167,13 @@ static UIImmediateFrame* get_or_create_immediate_frame(UIContext ctx)
     return imFrame;
 }
 
-static void on_drag_handler(UIWidget widget, MouseButton btn, const Vec2& dragPos, bool begin)
+static void on_ui_context_event(UIWidget widget, const UIEvent& event, void* user)
 {
+    UIImmediateFrame* frame = (UIImmediateFrame*)user;
     UIWidgetState* widgetS = (UIWidgetState*)widget.get_user();
 
-    widgetS->dragImpulse.set(true);
-    widgetS->dragButton = btn;
-    widgetS->dragPos = dragPos;
-    widgetS->dragBegin = begin;
-}
-
-static void on_hover_handler(UIWidget widget, UIEvent event)
-{
-    UIWidgetState* widgetS = (UIWidgetState*)widget.get_user();
-
-    switch (event)
-    {
-    case UI_MOUSE_ENTER:
-    case UI_MOUSE_LEAVE:
-        widgetS->hoverImpulse.set(true);
-        widgetS->hoverEvent = event;
-        break;
-    }
-}
-
-static void on_scroll_handler(UIWidget widget, const Vec2& offset)
-{
-    UIWidgetState* widgetS = (UIWidgetState*)widget.get_user();
-
-    widgetS->scroll = offset;
-}
-
-static void on_mouse_handler(UIWidget widget, const Vec2& pos, MouseButton btn, UIEvent event)
-{
-    UIWidgetState* widgetS = (UIWidgetState*)widget.get_user();
-
-    (void)pos;
-
-    switch (event)
-    {
-    case UI_MOUSE_DOWN:
-        widgetS->mouseDownImpulse.set(true);
-        widgetS->mouseDownButton = btn;
-        break;
-    case UI_MOUSE_UP:
-        widgetS->mouseUpImpulse.set(true);
-        widgetS->mouseUpButton = btn;
-        break;
-    default:
-        break;
-    }
-}
-
-static void on_key_handler(UIWidget widget, KeyCode key, UIEvent event)
-{
-    UIWidgetState* widgetS = (UIWidgetState*)widget.get_user();
-
-    switch (event)
-    {
-    case UI_KEY_DOWN:
-        widgetS->keyDownImpulse.set(true);
-        widgetS->keyDown = key;
-        break;
-    case UI_KEY_UP:
-        widgetS->keyUpImpulse.set(true);
-        widgetS->keyUp = key;
-        break;
-    default:
-        break;
-    }
+    // cache events for this frame for imgui API.
+    widgetS->events.push_back(event);
 }
 
 static void on_text_change_handler(UITextEditWidget widget, View text, void* user)
@@ -383,7 +332,6 @@ UIWidgetState* UIWindowState::get_or_create_text()
     UITextWidgetInfo textWI{};
     textWI.cstr = nullptr;
     textWI.fontSize = 16.0f; // TODO:
-    textWI.hoverHL = false;
 
     UIWidget parent = get_parent_widget();
     UITextWidget textW = parent.node().add_text({}, textWI, widgetS);
@@ -580,6 +528,9 @@ void ui_frame_begin(UIContext ctx)
     LD_ASSERT(!sImFrame && "ui_frame_end not called");
 
     sImFrame = get_or_create_immediate_frame(ctx);
+
+    ctx.set_user(sImFrame);
+    ctx.set_on_event(&on_ui_context_event);
 }
 
 void ui_frame_end()
@@ -663,34 +614,63 @@ bool ui_top_drag(MouseButton& dragBtn, Vec2& dragPos, bool& dragBegin)
     LD_ASSERT_UI_TOP_WIDGET;
 
     UIWidgetState* widgetS = sImFrame->imWindow->imWidgetStack.top();
-    widgetS->widget.set_on_drag(&on_drag_handler);
 
-    bool hasDrag = widgetS->dragImpulse.read();
+    if (!widgetS->widget.has_on_event())
+        widgetS->widget.set_consume_mouse_event(true);
 
-    if (hasDrag)
+    UIEvent event;
+    if (widgetS->consume_event(UI_EVENT_MOUSE_DRAG, event))
     {
-        dragBtn = widgetS->dragButton;
-        dragPos = widgetS->dragPos;
-        dragBegin = widgetS->dragBegin;
+        dragBtn = event.drag.button;
+        dragPos = event.drag.position;
+        dragBegin = event.drag.begin;
+        return true;
     }
 
-    return hasDrag;
+    return false;
 }
 
-bool ui_top_hover(UIEvent& outHover)
+bool ui_top_is_dragged()
 {
     LD_ASSERT_UI_TOP_WIDGET;
 
     UIWidgetState* widgetS = sImFrame->imWindow->imWidgetStack.top();
-    widgetS->widget.set_on_hover(&on_hover_handler);
-    bool hasEvent = widgetS->hoverImpulse.read();
 
-    if (hasEvent)
+    return widgetS->widget.is_dragged();
+}
+
+bool ui_top_hover(UIEventType& outHover)
+{
+    LD_ASSERT_UI_TOP_WIDGET;
+
+    UIWidgetState* widgetS = sImFrame->imWindow->imWidgetStack.top();
+
+    if (!widgetS->widget.has_on_event())
+        widgetS->widget.set_consume_mouse_event(true);
+
+    UIEvent event;
+    if (widgetS->consume_event(UI_EVENT_MOUSE_ENTER, event))
     {
-        outHover = widgetS->hoverEvent;
+        outHover = event.type;
+        return true;
     }
 
-    return hasEvent;
+    if (widgetS->consume_event(UI_EVENT_MOUSE_LEAVE, event))
+    {
+        outHover = event.type;
+        return true;
+    }
+
+    return false;
+}
+
+bool ui_top_is_hovered()
+{
+    LD_ASSERT_UI_TOP_WIDGET;
+
+    UIWidgetState* widgetS = sImFrame->imWindow->imWidgetStack.top();
+
+    return widgetS->widget.is_hovered();
 }
 
 bool ui_top_scroll(Vec2& scroll)
@@ -698,12 +678,18 @@ bool ui_top_scroll(Vec2& scroll)
     LD_ASSERT_UI_TOP_WIDGET;
 
     UIWidgetState* widgetS = sImFrame->imWindow->imWidgetStack.top();
-    widgetS->widget.set_on_scroll(&on_scroll_handler);
 
-    scroll = widgetS->scroll;
-    widgetS->scroll = {};
+    if (!widgetS->widget.has_on_event())
+        widgetS->widget.set_consume_scroll_event(true);
 
-    return scroll.x != 0.0f || scroll.y != 0.0f;
+    UIEvent event;
+    if (widgetS->consume_event(UI_EVENT_SCROLL, event))
+    {
+        scroll = event.scroll.offset;
+        return true;
+    }
+
+    return false;
 }
 
 bool ui_top_mouse_down(MouseButton& outButton)
@@ -711,15 +697,18 @@ bool ui_top_mouse_down(MouseButton& outButton)
     LD_ASSERT_UI_TOP_WIDGET;
 
     UIWidgetState* widgetS = sImFrame->imWindow->imWidgetStack.top();
-    widgetS->widget.set_on_mouse(&on_mouse_handler);
-    bool hasEvent = widgetS->mouseDownImpulse.read();
 
-    if (hasEvent)
+    if (!widgetS->widget.has_on_event())
+        widgetS->widget.set_consume_mouse_event(true);
+
+    UIEvent event;
+    if (widgetS->consume_event(UI_EVENT_MOUSE_DOWN, event))
     {
-        outButton = widgetS->mouseDownButton;
+        outButton = event.mouse.button;
+        return true;
     }
 
-    return hasEvent;
+    return false;
 }
 
 bool ui_top_mouse_up(MouseButton& outButton)
@@ -727,56 +716,69 @@ bool ui_top_mouse_up(MouseButton& outButton)
     LD_ASSERT_UI_TOP_WIDGET;
 
     UIWidgetState* widgetS = sImFrame->imWindow->imWidgetStack.top();
-    widgetS->widget.set_on_mouse(&on_mouse_handler);
-    bool hasEvent = widgetS->mouseUpImpulse.read();
 
-    if (hasEvent)
+    if (!widgetS->widget.has_on_event())
+        widgetS->widget.set_consume_mouse_event(true);
+
+    UIEvent event;
+    if (widgetS->consume_event(UI_EVENT_MOUSE_UP, event))
     {
-        outButton = widgetS->mouseUpButton;
+        outButton = event.mouse.button;
+        return true;
     }
 
-    return hasEvent;
+    return false;
 }
 
-bool ui_top_key_down(KeyCode& outKey)
+bool ui_top_key_down(KeyValue& outKey)
 {
     LD_ASSERT_UI_TOP_WIDGET;
 
     UIWidgetState* widgetS = sImFrame->imWindow->imWidgetStack.top();
-    widgetS->widget.set_on_key(&on_key_handler);
-    bool hasEvent = widgetS->keyDownImpulse.read();
 
-    if (hasEvent)
+    if (!widgetS->widget.has_on_event())
+        widgetS->widget.set_consume_key_event(true);
+
+    UIEvent event;
+    if (widgetS->consume_event(UI_EVENT_KEY_DOWN, event))
     {
-        outKey = widgetS->keyDown;
+        outKey = KeyValue(event.key.code, event.key.mods);
+        return true;
     }
 
-    return hasEvent;
+    return false;
 }
 
-bool ui_top_key_up(KeyCode& outKey)
+bool ui_top_key_up(KeyValue& outKey)
 {
     LD_ASSERT_UI_TOP_WIDGET;
 
     UIWidgetState* widgetS = sImFrame->imWindow->imWidgetStack.top();
-    widgetS->widget.set_on_key(&on_key_handler);
-    bool hasEvent = widgetS->keyUpImpulse.read();
 
-    if (hasEvent)
+    if (!widgetS->widget.has_on_event())
+        widgetS->widget.set_consume_key_event(true);
+
+    UIEvent event;
+    if (widgetS->consume_event(UI_EVENT_KEY_UP, event))
     {
-        outKey = widgetS->keyUp;
+        outKey = KeyValue(event.key.code, event.key.mods);
+        return true;
     }
 
-    return hasEvent;
+    return false;
 }
 
 void ui_pop()
 {
+    LD_PROFILE_SCOPE;
     LD_ASSERT(sImFrame->imWindow && "missing window");
     LD_ASSERT(!sImFrame->imWindow->imWidgetStack.empty() && "widget stack empty");
 
     UIWindowState* windowS = sImFrame->imWindow;
     UIWidgetState* parentS = windowS->imWidgetStack.top();
+
+    // make sure events don't bleed into next frame
+    parentS->events.clear();
 
     for (int i = parentS->childCounter; i < (int)parentS->children.size(); i++)
     {
@@ -791,6 +793,7 @@ void ui_pop()
 
 void ui_pop_window()
 {
+    LD_PROFILE_SCOPE;
     LD_ASSERT(sImFrame->imWindow && "missing window");
     LD_ASSERT(sImFrame->imWindow->imWidgetStack.size() == 1 && "some widget pushed but not popped");
 
@@ -802,6 +805,7 @@ void ui_pop_window()
 
 void ui_push_window(UIWindow client)
 {
+    LD_PROFILE_SCOPE;
     LD_ASSERT_UI_PUSH_WINDOW;
 
     Hash64 windowHash = client.get_hash();
@@ -856,6 +860,16 @@ void ui_push_text(const char* text)
     textW.set_text(text);
 
     imWindow->imWidgetStack.push(imWidget);
+}
+
+void ui_text_style(Color color, FontAtlas fontAtlas, RImage fontImage)
+{
+    LD_ASSERT_UI_TOP_WIDGET_TYPE(UI_WIDGET_TEXT);
+
+    UIWidgetState* imWidget = sImFrame->imWindow->imWidgetStack.top();
+    UITextWidget textW = (UITextWidget)imWidget->widget;
+
+    textW.set_text_style(color, fontAtlas, fontImage);
 }
 
 void ui_push_text_edit(UITextEditDomain domain)
@@ -932,20 +946,24 @@ void ui_push_image(RImage image, float width, float height, Color tint, const Re
     imWindow->imWidgetStack.push(imWidget);
 }
 
-void ui_push_panel(const Color* color)
+void ui_push_panel()
 {
     LD_ASSERT_UI_PUSH;
 
     UIWindowState* imWindow = sImFrame->imWindow;
     UIWidgetState* imWidget = imWindow->get_or_create_panel();
 
-    if (color)
-    {
-        UIPanelWidget panelW = (UIPanelWidget)imWidget->widget;
-        *panelW.panel_color() = *color;
-    }
-
     imWindow->imWidgetStack.push(imWidget);
+}
+
+void ui_panel_color(Color color)
+{
+    LD_ASSERT_UI_TOP_WIDGET_TYPE(UI_WIDGET_PANEL);
+
+    UIWidgetState* imWidget = sImFrame->imWindow->imWidgetStack.top();
+    UIPanelWidget panel = (UIPanelWidget)imWidget->widget;
+
+    *panel.panel_color() = color;
 }
 
 void ui_push_toggle(bool& isPressed, bool& state)

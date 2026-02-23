@@ -3,7 +3,7 @@
 
 #include "UITest.h"
 
-static int sLastKey;
+static KeyCode sLastKey;
 
 TEST_CASE("UIWidget BlockInput")
 {
@@ -16,27 +16,27 @@ TEST_CASE("UIWidget BlockInput")
     layoutI.sizeY = UISize::fixed(100);
     UIWindowInfo windowI{};
     UIWindow window = space.create_window(space.get_root_id(), layoutI, windowI, nullptr);
-    window.set_on_key([](UIWidget widget, KeyCode key, UIEvent event) {
-        sLastKey = key;
+    window.set_on_event([](UIWidget widget, const UIEvent& event) -> bool {
+        if (event.type != UI_EVENT_KEY_DOWN)
+            return false;
+
+        sLastKey = event.key.code;
+        return true;
     });
 
     window.layout();
 
-    sLastKey = 0;
-    WindowMouseMotionEvent mm(0, 50, 50);
-    ctx.on_window_event(&mm);
-    WindowKeyDownEvent kdA(0, KEY_CODE_A, false);
-    ctx.on_window_event(&kdA);
+    sLastKey = KeyCode(0);
+    ctx.input_mouse_position(Vec2(50.0f, 50.0f));
+    ctx.input_key_down(KEY_CODE_A, 0);
     CHECK(sLastKey == KEY_CODE_A);
 
-    WindowKeyDownEvent kdB(0, KEY_CODE_B, false);
     window.block_input();
-    ctx.on_window_event(&kdB);
+    ctx.input_key_down(KEY_CODE_B, 0);
     CHECK(sLastKey == KEY_CODE_A);
 
-    WindowKeyDownEvent kdC(0, KEY_CODE_C, false);
     window.unblock_input();
-    ctx.on_window_event(&kdC);
+    ctx.input_key_down(KEY_CODE_C, 0);
     CHECK(sLastKey == KEY_CODE_C);
 
     UIContext::destroy(ctx);

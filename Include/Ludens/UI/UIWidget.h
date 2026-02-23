@@ -14,14 +14,52 @@ namespace LD {
 struct UINode;
 struct UIContextObj;
 
-enum UIEvent
+enum UIEventType
 {
-    UI_MOUSE_ENTER,
-    UI_MOUSE_LEAVE,
-    UI_MOUSE_DOWN,
-    UI_MOUSE_UP,
-    UI_KEY_DOWN,
-    UI_KEY_UP,
+    UI_EVENT_SCROLL,
+    UI_EVENT_KEY_DOWN,
+    UI_EVENT_KEY_UP,
+    UI_EVENT_MOUSE_POSITION,
+    UI_EVENT_MOUSE_DOWN,
+    UI_EVENT_MOUSE_UP,
+    UI_EVENT_MOUSE_DRAG,
+    UI_EVENT_MOUSE_ENTER,
+    UI_EVENT_MOUSE_LEAVE,
+    UI_EVENT_FOCUS_ENTER,
+    UI_EVENT_FOCUS_LEAVE,
+};
+
+struct UIEvent
+{
+    UIEventType type;
+
+    union
+    {
+        struct
+        {
+            KeyMods mods;
+            KeyCode code;
+        } key;
+
+        struct
+        {
+            KeyMods mods;
+            MouseButton button;
+            Vec2 position;
+        } mouse;
+
+        struct
+        {
+            Vec2 offset;
+        } scroll;
+
+        struct
+        {
+            MouseButton button;
+            Vec2 position;
+            bool begin;
+        } drag;
+    };
 };
 
 enum UIWidgetType
@@ -89,15 +127,32 @@ struct UIWidget : Handle<struct UIWidgetObj>
     /// @brief whether the widget is being pressed and not yet released
     bool is_pressed();
 
+    /// @brief whether the widget is being dragged and not yet released
+    bool is_dragged();
+
     /// @brief get user data pointer
     void* get_user();
 
     /// @brief set user data pointer
     void set_user(void* user);
 
+    /// @brief override widget update callback
+    void set_on_update(void (*onUpdate)(UIWidget widget, float delta));
+
+    /// @brief override widget draw callback
+    void set_on_draw(void (*onDraw)(UIWidget widget, ScreenRenderComponent renderer));
+
+    /// @brief override widget event handler callback
+    void set_on_event(bool (*onEvent)(UIWidget widget, const UIEvent& event));
+    bool has_on_event();
+
     void get_name(std::string& name);
 
     void set_name(const std::string& name);
+
+    void set_consume_mouse_event(bool consumes);
+    void set_consume_key_event(bool consumes);
+    void set_consume_scroll_event(bool consumes);
 
     UIWidget get_child_by_name(const std::string& childName);
 
@@ -124,27 +179,6 @@ struct UIWidget : Handle<struct UIWidgetObj>
 
     /// @brief Update widget child alignment along Y axis.
     void set_layout_child_align_y(UIAlign childAlignY);
-
-    /// @brief override key callback
-    void set_on_key(void (*onKey)(UIWidget widget, KeyCode key, UIEvent event));
-
-    /// @brief override mouse callback
-    void set_on_mouse(void (*onMouse)(UIWidget widget, const Vec2& pos, MouseButton btn, UIEvent event));
-
-    /// @brief override mouse hover callback
-    void set_on_hover(void (*onHover)(UIWidget widget, UIEvent event));
-
-    /// @brief override mouse drag callback
-    void set_on_drag(void (*onDrag)(UIWidget widget, MouseButton btn, const Vec2& dragPos, bool begin));
-
-    /// @brief Override scroll callback.
-    void set_on_scroll(void (*onScroll)(UIWidget widget, const Vec2& offset));
-
-    /// @brief override widget update callback
-    void set_on_update(void (*onUpdate)(UIWidget widget, float delta));
-
-    /// @brief override widget draw callback
-    void set_on_draw(void (*onDraw)(UIWidget widget, ScreenRenderComponent renderer));
 };
 
 struct UIScrollWidget : UIWidget
@@ -274,6 +308,8 @@ struct UITextWidget : UIWidget
     /// @brief Get text content. Treat return value as a transient pointer.
     const char* get_text();
 
+    void set_text_style(Color color, FontAtlas fontAtlas, RImage fontImage);
+
     /// @brief Access text font size.
     float* font_size();
 
@@ -285,7 +321,6 @@ struct UITextWidgetInfo
 {
     float fontSize;   /// rendered size
     const char* cstr; /// a null terminated c string
-    bool hoverHL;     /// whether to highlight the text when hovered
     Color* bgColor;   /// if not null, the background color under text
 };
 

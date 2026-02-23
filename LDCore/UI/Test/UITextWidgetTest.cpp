@@ -19,7 +19,6 @@ TEST_CASE("UITextWidget in fit container" * doctest::skip(!LudensLFS::get_direct
     UITextWidgetInfo textWI{};
     textWI.cstr = "foo";
     textWI.fontSize = 16;
-    textWI.hoverHL = false;
     UITextWidget textW1 = window.node().add_text({}, textWI, nullptr);
     textWI.cstr = "bar";
     UITextWidget textW2 = window.node().add_text({}, textWI, nullptr);

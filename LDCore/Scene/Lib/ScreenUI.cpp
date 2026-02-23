@@ -62,7 +62,7 @@ void ScreenUI::input(const WindowEvent* event)
 {
     LD_PROFILE_SCOPE;
 
-    mObj->ctx.on_window_event(event);
+    mObj->ctx.input_window_event(event);
 }
 
 UIWorkspace ScreenUI::workspace()

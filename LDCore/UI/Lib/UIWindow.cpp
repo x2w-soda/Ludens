@@ -61,15 +61,20 @@ void UIWindowObj::on_draw(UIWidget widget, ScreenRenderComponent renderer)
     renderer.draw_rect(rect, obj->color);
 }
 
-void UIWindowObj::on_drag(UIWidget widget, MouseButton btn, const Vec2& dragPos, bool begin)
+bool UIWindowObj::on_event(UIWidget widget, const UIEvent& signal)
 {
+    if (signal.type != UI_EVENT_MOUSE_DRAG)
+        return false;
+
     auto* obj = (UIWindowObj*)widget.unwrap();
     UIWindow window(obj);
     Rect rect = widget.get_rect();
 
-    if (begin)
+    const Vec2& dragPos = signal.drag.position;
+
+    if (signal.drag.begin)
     {
-        obj->dragResize = btn == MOUSE_BUTTON_RIGHT; // right button to resize, left button to reposition
+        obj->dragResize = signal.drag.button == MOUSE_BUTTON_RIGHT; // right button to resize, left button to reposition
         obj->dragOffset = dragPos - rect.get_pos();  // fixed drag offset
         obj->dragBeginPos = dragPos;
         obj->dragBeginSize = rect.get_size();
@@ -82,6 +87,8 @@ void UIWindowObj::on_drag(UIWidget widget, MouseButton btn, const Vec2& dragPos,
     }
     else
         window.set_pos(dragPos - obj->dragOffset);
+
+    return true;
 }
 
 //

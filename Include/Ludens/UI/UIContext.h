@@ -20,6 +20,8 @@ struct UIContextInfo
     FontAtlas fontAtlas;   /// default font atlas used to render text
     RImage fontAtlasImage; /// font atlas image handle
     UITheme theme;         /// the UI theme to use for widgets in this context
+    void (*onEvent)(UIWidget widget, const UIEvent& event, void* user);
+    void* user;
 };
 
 /// @brief A UI context is a host for UI elements to be placed on an imaginary 2D grid.
@@ -37,9 +39,16 @@ struct UIContext : Handle<struct UIContextObj>
     /// @param delta delta time in seconds
     void update(float delta);
 
-    /// @brief Pass a Window event to the UI context, the WindowID is ignored and
-    ///        mouse positions are treated as screen space relative to UI context origin.
-    bool on_window_event(const WindowEvent* event);
+    bool input_scroll(const Vec2& offset);
+    bool input_key_down(KeyCode code, KeyMods mods);
+    bool input_key_up(KeyCode code, KeyMods mods);
+    bool input_mouse_position(const Vec2& pos);
+    bool input_mouse_down(MouseButton btn, KeyMods mods, const Vec2& pos);
+    bool input_mouse_up(MouseButton btn, KeyMods mods, const Vec2& pos);
+
+    /// @brief Translate a Window event to input and pass it to the UI context,
+    ///        the WindowID is ignored and mouse positions are relative to UI context origin.
+    bool input_window_event(const WindowEvent* event);
 
     /// @brief Create and add a layer to context.
     UILayer create_layer(const char* layerName);
@@ -55,6 +64,9 @@ struct UIContext : Handle<struct UIContextObj>
 
     /// @brief Get mouse cursor position.
     Vec2 get_mouse_pos();
+
+    void set_user(void* user);
+    void set_on_event(void (*onEvent)(UIWidget widget, const UIEvent& event, void* user));
 };
 
 } // namespace LD

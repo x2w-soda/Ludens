@@ -256,7 +256,7 @@ void UISandbox::on_event(const WindowEvent* event, void* user)
 
     // pass window events to UI
     UIContext uiCtx = self.mCtx;
-    uiCtx.on_window_event((const WindowEvent*)event);
+    uiCtx.input_window_event((const WindowEvent*)event);
 }
 
 void UISandbox::on_screen_render(ScreenRenderComponent renderer, void* user)

@@ -18,7 +18,6 @@
 #include <Ludens/UI/UIWindow.h>
 
 #include <string>
-#include <unordered_set>
 
 // TODO:
 #define UI_WORKSPACE_SPLIT_GAP 6.0f
@@ -30,13 +29,23 @@ enum UIWidgetFlagBit
     /// @brief Widget subtree will not be drawn.
     UI_WIDGET_FLAG_HIDDEN_BIT = LD_BIT(0),
 
-    /// @brief Widget will not respond to mouse and key input,
-    ///        consuming the input event without propagating.
-    ///        This is usually set during short animations.
-    UI_WIDGET_FLAG_BLOCK_INPUT_BIT = LD_BIT(1),
+    /// @brief Widget handles the event on behalf of its subtree.
+    UI_WIDGET_FLAG_BLOCK_EVENT_BIT = LD_BIT(1),
 
     /// @brief Widget subtree will be drawn with scissor.
     UI_WIDGET_FLAG_DRAW_WITH_SCISSOR_BIT = LD_BIT(2),
+
+    /// @brief Widget can receive focus signals.
+    UI_WIDGET_FLAG_FOCUSABLE_BIT = LD_BIT(3),
+
+    /// @brief Widget 'handles' mouse events without an actual event handler function.
+    UI_WIDGET_FLAG_CONSUME_MOUSE_EVENT_BIT = LD_BIT(4),
+
+    /// @brief Widget 'handles' key events without an actual event handler function.
+    UI_WIDGET_FLAG_CONSUME_KEY_EVENT_BIT = LD_BIT(5),
+
+    /// @brief Widget 'handles' scroll events without an actual event handler function.
+    UI_WIDGET_FLAG_CONSUME_SCROLL_EVENT_BIT = LD_BIT(6),
 };
 
 struct UIWidgetObj;
@@ -55,13 +64,9 @@ struct UILayout
 
 struct UICallback
 {
+    bool (*onEvent)(UIWidget widget, const UIEvent& event);
     void (*onUpdate)(UIWidget widget, float delta);
     void (*onDraw)(UIWidget widget, ScreenRenderComponent renderer);
-    void (*onKey)(UIWidget widget, KeyCode key, UIEvent event);
-    void (*onMouse)(UIWidget widget, const Vec2& pos, MouseButton btn, UIEvent event);
-    void (*onDrag)(UIWidget widget, MouseButton btn, const Vec2& dragPos, bool begin);
-    void (*onHover)(UIWidget widget, UIEvent event);
-    void (*onScroll)(UIWidget widget, const Vec2& offset);
 };
 
 struct UIWorkspaceNode
@@ -138,18 +143,21 @@ struct UIContextObj
     UITheme theme;
     Vector<UILayerObj*> layers;
     HashSet<UILayerObj*> deferredLayerDestruction;
-    UIWidgetObj* dragWidget = nullptr;  /// the widget begin dragged
-    UIWidgetObj* pressWidget = nullptr; /// the widget pressed and not yet released
-    UIWidgetObj* focusWidget = nullptr; /// the widget receiving key events
-    UIWidgetObj* hoverWidget = nullptr; /// the widget under mouse cursor
-    Vec2 cursorPos;                     /// mouse cursor global position
-    Vec2 dragStartPos;                  /// mouse cursor drag start global position
-    MouseButton dragMouseButton;        /// mouse button used for dragging
+    UIWidgetObj* dragWidget = nullptr;      /// the widget begin dragged
+    UIWidgetObj* pressWidget = nullptr;     /// the widget pressed and not yet released
+    UIWidgetObj* focusWidget = nullptr;     /// the widget receiving key events
+    UIWidgetObj* hoverWidgetLeaf = nullptr; /// the leaf widget under mouse cursor accepting events
+    HashSet<UIWidgetObj*> hoverWidgets;     /// set of all widgets under cursor
+    void* user;
+    void (*onEvent)(UIWidget, const UIEvent&, void*);
+    Vec2 cursorPos;              /// mouse cursor global position
+    Vec2 dragStartPos;           /// mouse cursor drag start global position
+    MouseButton dragMouseButton; /// mouse button used for dragging
 
     UIWidgetObj* alloc_widget(UIWidgetType type, const UILayoutInfo& layoutI, UIWidgetObj* parent, void* user);
     void free_widget(UIWidgetObj* widget);
 
-    UIWidgetObj* get_widget(const Vec2& pos, int filter);
+    UIWidgetObj* get_widget(const Vec2& pos);
 
     void pre_update();
 
@@ -160,24 +168,17 @@ struct UIContextObj
     /// @brief When a widget is removed, reset all references to it.
     void invalidate_refs(UIWidgetObj* removed);
 
-    /// @brief update mouse cursor position in context
-    void input_mouse_position(const Vec2& pos);
+    /// @brief Assign global focus widget, nullptr clears focus state.
+    void focus_widget(UIWidgetObj* nextFocusWidget);
 
-    /// @brief notify that a mouse button has been pressed
-    void input_mouse_down(MouseButton btn);
+    /// @brief Assign next global hover widget leaf, updates the set of hovered widgets.
+    void hover_widget(UIWidgetObj* nextHoverLeafWidget);
 
-    /// @brief notify that a mouse button has been released
-    void input_mouse_up(MouseButton btn);
-
-    /// @brief Notify that a key has been pressed.
-    void input_key_down(KeyCode key);
-
-    /// @brief Notify that a key has been released.
-    void input_key_up(KeyCode key);
-
-    /// @brief Notify that the mouse wheel or touchpad has been scrolled.
-    /// @param offset A standard mouse wheel scroll provides offset along Y axis.
-    void input_scroll(const Vec2& offset);
+    bool input_mouse_position(const UIEvent& event);
+    bool input_mouse_down(const UIEvent& event);
+    bool input_mouse_up(const UIEvent& event);
+    bool input_key(const UIEvent& event);
+    bool input_scroll(const UIEvent& event);
 };
 
 struct UIScrollWidgetObj
@@ -191,8 +192,7 @@ struct UIScrollWidgetObj
     bool hasScrollBar;
 
     static void cleanup(UIWidgetObj* base);
-    static void on_mouse(UIWidget widget, const Vec2& pos, MouseButton btn, UIEvent event);
-    static void on_scroll(UIWidget widget, const Vec2& offset);
+    static bool on_event(UIWidget widget, const UIEvent& event);
 };
 
 struct UIButtonWidgetObj
@@ -204,8 +204,7 @@ struct UIButtonWidgetObj
     bool transparentBG;
 
     static void cleanup(UIWidgetObj* base);
-    static void on_mouse(UIWidget widget, const Vec2& pos, MouseButton btn, UIEvent event);
-    static void on_hover(UIWidget widget, UIEvent event);
+    static bool on_event(UIWidget widget, const UIEvent& event);
 };
 
 struct UISliderWidgetObj
@@ -217,7 +216,7 @@ struct UISliderWidgetObj
     float value;
     float ratio;
 
-    static void on_drag(UIWidget widget, MouseButton btn, const Vec2& dragPos, bool begin);
+    static bool on_event(UIWidget widget, const UIEvent& event);
 };
 
 struct UIToggleWidgetObj
@@ -227,7 +226,7 @@ struct UIToggleWidgetObj
     UIAnimation<QuadraticInterpolation> anim;
     bool state;
 
-    static void on_mouse(UIWidget widget, const Vec2& pos, MouseButton btn, UIEvent event);
+    static bool on_event(UIWidget widget, const UIEvent& event);
     static void on_update(UIWidget widget, float delta);
 };
 
@@ -236,9 +235,10 @@ struct UITextWidgetObj
     UIWidgetObj* base;
     const char* value;
     FontAtlas fontAtlas;
+    RImage fontImage;
+    Color fgColor;
     Color bgColor;
     float fontSize;
-    bool hoverHL;
 
     static void cleanup(UIWidgetObj* base);
 };
@@ -248,18 +248,16 @@ struct UITextEditWidgetObj
     UIWidgetObj* base;
     TextBuffer<char> buf;
     UITextEditDomain domain;
-    const char* placeHolder;
+    const char* placeHolder = nullptr;
     void (*onChange)(UITextEditWidget widget, View text, void* user);
     void (*onSubmit)(UITextEditWidget widget, View text, void* user);
     float fontSize;
 
     static void cleanup(UIWidgetObj* base);
-    static void on_key(UIWidget widget, KeyCode key, UIEvent event);
-    static void on_mouse(UIWidget, const Vec2&, MouseButton, UIEvent) {}
-    static void on_hover(UIWidget, UIEvent) {}
+    static bool on_event(UIWidget widget, const UIEvent& event);
 
-    void domain_string_on_key(KeyCode key, UIEvent event, bool& hasChanged, bool& hasSubmitted);
-    void domain_uint_on_key(KeyCode key, UIEvent event, bool& hasChanged, bool& hasSubmitted);
+    void domain_string_on_key(const UIEvent& event, bool& hasChanged, bool& hasSubmitted);
+    void domain_uint_on_key(const UIEvent& event, bool& hasChanged, bool& hasSubmitted);
 };
 
 struct UIPanelWidgetObj
@@ -290,7 +288,7 @@ struct UIWidgetObj
     Vec2 scrollOffset{};           /// offset applied to children after layout
     std::string name;              /// widget debug name
     void* user = nullptr;          /// arbitrary user data
-    UIWidgetType type;             /// type enum
+    const UIWidgetType type;       /// type enum
     uint32_t flags = 0;            /// widget bit flags
     union
     {
@@ -302,7 +300,7 @@ struct UIWidgetObj
         UIButtonWidgetObj button;
         UISliderWidgetObj slider;
         UIToggleWidgetObj toggle;
-    } as;
+    } as{};
 
     UIWidgetObj() = delete;
     UIWidgetObj(UIWidgetType type, const UILayoutInfo& layoutI, UIWidgetObj* parent, UIWindowObj* window, void* user);
@@ -391,7 +389,7 @@ struct UIWindowObj : UIWidgetObj
 
     static void draw_widget_subtree(UIWidgetObj* widget, ScreenRenderComponent renderer);
     static void on_draw(UIWidget widget, ScreenRenderComponent renderer);
-    static void on_drag(UIWidget widget, MouseButton btn, const Vec2& dragPos, bool begin);
+    static bool on_event(UIWidget widget, const UIEvent& event);
 };
 
 /// @brief Perform UI layout on a widget subtree.

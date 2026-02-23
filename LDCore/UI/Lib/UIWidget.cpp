@@ -32,7 +32,6 @@ struct
 static_assert(sizeof(sWidgetTable) / sizeof(*sWidgetTable) == UI_WIDGET_TYPE_COUNT);
 static_assert(IsTrivial<UIScrollWidgetObj>);
 static_assert(IsTrivial<UITextWidgetObj>);
-static_assert(IsTrivial<UITextEditWidgetObj>);
 static_assert(IsTrivial<UIPanelWidgetObj>);
 static_assert(IsTrivial<UIImageWidgetObj>);
 static_assert(IsTrivial<UIToggleWidgetObj>);
@@ -48,12 +47,22 @@ UIWidgetObj::UIWidgetObj(UIWidgetType type, const UILayoutInfo& layoutI, UIWidge
     layout.rect = {};
     node = UINode(this);
 
-    // TODO: placement new for widget type, allow non-trivial widget obj
+    switch (type)
+    {
+    case UI_WIDGET_TEXT_EDIT:
+        new (&as.textEdit) UITextEditWidgetObj();
+        break;
+    }
 }
 
 UIWidgetObj::~UIWidgetObj()
 {
-    // TODO: placement delete for widget type
+    switch (type)
+    {
+    case UI_WIDGET_TEXT_EDIT:
+        (&as.textEdit)->~UITextEditWidgetObj();
+        break;
+    }
 }
 
 UIContextObj* UIWidgetObj::ctx() const
@@ -107,7 +116,17 @@ void UIWidgetObj::draw(ScreenRenderComponent renderer)
 bool UIWidget::is_hovered()
 {
     UIContextObj* ctx = mObj->ctx();
-    return ctx->hoverWidget == mObj;
+    UIWidgetObj* hovered = ctx->hoverWidgetLeaf;
+
+    while (hovered)
+    {
+        if (hovered == mObj)
+            return true;
+
+        hovered = hovered->parent;
+    }
+
+    return false;
 }
 
 bool UIWidget::is_focused()
@@ -120,6 +139,12 @@ bool UIWidget::is_pressed()
 {
     UIContextObj* ctx = mObj->ctx();
     return ctx->pressWidget == mObj;
+}
+
+bool UIWidget::is_dragged()
+{
+    UIContextObj* ctx = mObj->ctx();
+    return ctx->dragWidget == mObj;
 }
 
 UINode& UIWidget::node()
@@ -142,18 +167,12 @@ bool UIWidget::is_visible()
 
 void UIWidget::block_input()
 {
-    mObj->flags |= UI_WIDGET_FLAG_BLOCK_INPUT_BIT;
-
-    UIContextObj* ctx = mObj->ctx();
-    ctx->input_mouse_position(ctx->cursorPos);
+    mObj->flags |= UI_WIDGET_FLAG_BLOCK_EVENT_BIT;
 }
 
 void UIWidget::unblock_input()
 {
-    mObj->flags &= ~UI_WIDGET_FLAG_BLOCK_INPUT_BIT;
-
-    UIContextObj* ctx = mObj->ctx();
-    ctx->input_mouse_position(ctx->cursorPos);
+    mObj->flags &= ~UI_WIDGET_FLAG_BLOCK_EVENT_BIT;
 }
 
 UIWidgetType UIWidget::get_type()
@@ -216,6 +235,30 @@ void UIWidget::set_name(const std::string& name)
     mObj->name = name;
 }
 
+void UIWidget::set_consume_mouse_event(bool consumes)
+{
+    if (consumes)
+        mObj->flags |= UI_WIDGET_FLAG_CONSUME_MOUSE_EVENT_BIT;
+    else
+        mObj->flags &= ~UI_WIDGET_FLAG_CONSUME_MOUSE_EVENT_BIT;
+}
+
+void UIWidget::set_consume_key_event(bool consumes)
+{
+    if (consumes)
+        mObj->flags |= UI_WIDGET_FLAG_CONSUME_KEY_EVENT_BIT;
+    else
+        mObj->flags &= ~UI_WIDGET_FLAG_CONSUME_KEY_EVENT_BIT;
+}
+
+void UIWidget::set_consume_scroll_event(bool consumes)
+{
+    if (consumes)
+        mObj->flags |= UI_WIDGET_FLAG_CONSUME_SCROLL_EVENT_BIT;
+    else
+        mObj->flags &= ~UI_WIDGET_FLAG_CONSUME_SCROLL_EVENT_BIT;
+}
+
 UIWidget UIWidget::get_child_by_name(const std::string& childName)
 {
     return UIWidget(mObj->get_child_by_name(childName));
@@ -262,31 +305,6 @@ void UIWidget::set_layout_child_align_y(UIAlign childAlignY)
     mObj->layout.info.childAlignY = childAlignY;
 }
 
-void UIWidget::set_on_key(void (*onKey)(UIWidget widget, KeyCode key, UIEvent event))
-{
-    mObj->cb.onKey = onKey;
-}
-
-void UIWidget::set_on_mouse(void (*onMouse)(UIWidget widget, const Vec2& pos, MouseButton btn, UIEvent event))
-{
-    mObj->cb.onMouse = onMouse;
-}
-
-void UIWidget::set_on_hover(void (*onHover)(UIWidget widget, UIEvent event))
-{
-    mObj->cb.onHover = onHover;
-}
-
-void UIWidget::set_on_drag(void (*onDrag)(UIWidget widget, MouseButton btn, const Vec2& dragPos, bool begin))
-{
-    mObj->cb.onDrag = onDrag;
-}
-
-void UIWidget::set_on_scroll(void (*onScroll)(UIWidget widget, const Vec2& offset))
-{
-    mObj->cb.onScroll = onScroll;
-}
-
 void UIWidget::set_on_update(void (*onUpdate)(UIWidget widget, float delta))
 {
     mObj->cb.onUpdate = onUpdate;
@@ -295,6 +313,16 @@ void UIWidget::set_on_update(void (*onUpdate)(UIWidget widget, float delta))
 void UIWidget::set_on_draw(void (*onDraw)(UIWidget widget, ScreenRenderComponent renderer))
 {
     mObj->cb.onDraw = onDraw;
+}
+
+void UIWidget::set_on_event(bool (*onEvent)(UIWidget widget, const UIEvent& event))
+{
+    mObj->cb.onEvent = onEvent;
+}
+
+bool UIWidget::has_on_event()
+{
+    return mObj->cb.onEvent != nullptr;
 }
 
 UIContextObj* UINode::get_context()
@@ -333,8 +361,7 @@ UIScrollWidget UINode::add_scroll(const UILayoutInfo& layoutI, const UIScrollWid
     obj->as.scroll.offsetYSpeed = 0.0f;
     obj->cb.onDraw = &UIScrollWidget::on_draw;
     obj->cb.onUpdate = &UIScrollWidget::on_update;
-    obj->cb.onMouse = &UIScrollWidgetObj::on_mouse;
-    obj->cb.onScroll = &UIScrollWidgetObj::on_scroll;
+    obj->cb.onEvent = &UIScrollWidgetObj::on_event;
     obj->flags |= UI_WIDGET_FLAG_DRAW_WITH_SCISSOR_BIT;
 
     return {obj};
@@ -346,13 +373,18 @@ void UIScrollWidgetObj::cleanup(UIWidgetObj* base)
     (void)base;
 }
 
-void UIScrollWidgetObj::on_scroll(UIWidget widget, const Vec2& offset)
+bool UIScrollWidgetObj::on_event(UIWidget widget, const UIEvent& event)
 {
     UIWidgetObj* base = (UIWidgetObj*)widget;
     UIScrollWidgetObj& self = base->as.scroll;
 
     const float sensitivity = 20.0f;
     const float animDuration = 0.14f;
+
+    if (event.type != UI_EVENT_SCROLL)
+        return false;
+
+    const Vec2& offset = event.scroll.offset;
 
     if (offset.x != 0.0f)
     {
@@ -371,11 +403,8 @@ void UIScrollWidgetObj::on_scroll(UIWidget widget, const Vec2& offset)
         if (self.offsetYDst > 0.0f)
             self.offsetYDst = 0.0f;
     }
-}
 
-void UIScrollWidgetObj::on_mouse(UIWidget, const Vec2&, MouseButton, UIEvent)
-{
-    // TODO:
+    return true;
 }
 
 void UIScrollWidget::set_scroll_offset_x(float offset)
@@ -501,8 +530,7 @@ void UIImageWidget::set_image_tint(Color color)
 UIButtonWidget UINode::add_button(const UILayoutInfo& layoutI, const UIButtonWidgetInfo& widgetI, void* user)
 {
     UIWidgetObj* obj = mObj->ctx()->alloc_widget(UI_WIDGET_BUTTON, layoutI, mObj, user);
-    obj->cb.onMouse = UIButtonWidgetObj::on_mouse;
-    obj->cb.onHover = UIButtonWidgetObj::on_hover;
+    obj->cb.onEvent = UIButtonWidgetObj::on_event;
     obj->as.button.base = obj;
     obj->as.button.text = widgetI.text ? heap_strdup(widgetI.text, MEMORY_USAGE_UI) : nullptr;
     obj->as.button.onClick = widgetI.onClick;
@@ -520,7 +548,7 @@ UIButtonWidget UINode::add_button(const UILayoutInfo& layoutI, const UIButtonWid
 UISliderWidget UINode::add_slider(const UILayoutInfo& layoutI, const UISliderWidgetInfo& widgetI, void* user)
 {
     UIWidgetObj* obj = mObj->ctx()->alloc_widget(UI_WIDGET_SLIDER, layoutI, mObj, user);
-    obj->cb.onDrag = &UISliderWidgetObj::on_drag;
+    obj->cb.onEvent = &UISliderWidgetObj::on_event;
     obj->as.slider.base = obj;
     obj->as.slider.min = widgetI.min;
     obj->as.slider.max = widgetI.max;
@@ -530,16 +558,21 @@ UISliderWidget UINode::add_slider(const UILayoutInfo& layoutI, const UISliderWid
     return {obj};
 }
 
-void UISliderWidgetObj::on_drag(UIWidget widget, MouseButton btn, const Vec2& dragPos, bool begin)
+bool UISliderWidgetObj::on_event(UIWidget widget, const UIEvent& event)
 {
     UISliderWidgetObj& self = static_cast<UIWidgetObj*>(widget)->as.slider;
 
-    (void)btn;
-    (void)begin;
+    if (event.type == UI_EVENT_MOUSE_DOWN)
+        return true;
+
+    if (event.type != UI_EVENT_MOUSE_DRAG)
+        return false;
 
     Rect rect = widget.get_rect();
-    self.ratio = std::clamp(((float)dragPos.x - rect.x) / rect.w, 0.0f, 1.0f);
+    self.ratio = std::clamp(((float)event.drag.position.x - rect.x) / rect.w, 0.0f, 1.0f);
     self.value = std::lerp(self.min, self.max, self.ratio);
+
+    return true;
 }
 
 void UISliderWidget::on_draw(UIWidget widget, ScreenRenderComponent renderer)
@@ -552,12 +585,11 @@ void UISliderWidget::on_draw(UIWidget widget, ScreenRenderComponent renderer)
     float sliderw = rect.w * 0.1f;
     renderer.draw_rect(rect, theme.get_background_color());
 
-    uint32_t color = theme.get_selection_color();
+    Color color = theme.get_selection_color();
+    if (widget.is_pressed())
+        color = Color::darken(color, 0.05f);
     if (widget.is_hovered())
-    {
-        color &= ~0xFF;
-        color |= 234;
-    }
+        color = Color::lift(color, 0.07f);
 
     rect.w = sliderw;
     rect.x += self.ratio * sliderw * 9.0f;
@@ -588,7 +620,7 @@ float UISliderWidget::get_ratio()
 UIToggleWidget UINode::add_toggle(const UILayoutInfo& layoutI, const UIToggleWidgetInfo& widgetI, void* user)
 {
     UIWidgetObj* obj = mObj->ctx()->alloc_widget(UI_WIDGET_TOGGLE, layoutI, mObj, user);
-    obj->cb.onMouse = &UIToggleWidgetObj::on_mouse;
+    obj->cb.onEvent = &UIToggleWidgetObj::on_event;
     obj->cb.onUpdate = &UIToggleWidgetObj::on_update;
     obj->as.toggle.base = obj;
     obj->as.toggle.state = widgetI.state;
@@ -616,11 +648,9 @@ UITextWidget UINode::add_text(const UILayoutInfo& layoutI, const UITextWidgetInf
     obj->as.text.fontSize = widgetI.fontSize;
     obj->as.text.value = widgetI.cstr ? heap_strdup(widgetI.cstr, MEMORY_USAGE_UI) : nullptr;
     obj->as.text.fontAtlas = ctx->fontAtlas;
-    obj->as.text.hoverHL = widgetI.hoverHL;
+    obj->as.text.fontImage = ctx->fontAtlasImage;
     obj->as.text.bgColor = 0;
-
-    if (widgetI.hoverHL)
-        obj->cb.onHover = [](UIWidget, UIEvent) {}; // widget is hoverable
+    obj->as.text.fgColor = ctx->theme.get_on_surface_color();
 
     if (widgetI.bgColor)
         obj->as.text.bgColor = *widgetI.bgColor;
@@ -656,15 +686,7 @@ void UITextWidget::on_draw(UIWidget widget, ScreenRenderComponent renderer)
     if (self.bgColor.get_alpha() > 0.0f)
         renderer.draw_rect(rect, self.bgColor);
 
-    if (self.hoverHL && widget.is_hovered())
-    {
-        renderer.draw_rect(rect, theme.get_on_surface_color());
-        renderer.draw_text(ctx.fontAtlas, ctx.fontAtlasImage, self.fontSize, rect.get_pos(), self.value, theme.get_surface_color(), wrapWidth);
-    }
-    else
-    {
-        renderer.draw_text(ctx.fontAtlas, ctx.fontAtlasImage, self.fontSize, rect.get_pos(), self.value, theme.get_on_surface_color(), wrapWidth);
-    }
+    renderer.draw_text(self.fontAtlas, self.fontImage, self.fontSize, rect.get_pos(), self.value, self.fgColor, wrapWidth);
 }
 
 void UITextWidget::set_text(const char* cstr)
@@ -678,6 +700,17 @@ void UITextWidget::set_text(const char* cstr)
 const char* UITextWidget::get_text()
 {
     return mObj->as.text.value;
+}
+
+void UITextWidget::set_text_style(Color color, FontAtlas fontAtlas, RImage fontImage)
+{
+    mObj->as.text.fgColor = color;
+
+    if (fontAtlas && fontImage)
+    {
+        mObj->as.text.fontAtlas = fontAtlas;
+        mObj->as.text.fontImage = fontImage;
+    }
 }
 
 float* UITextWidget::font_size()
@@ -697,9 +730,8 @@ UITextEditWidget UINode::add_text_edit(const UILayoutInfo& layoutI, const UIText
     obj->as.textEdit.domain = widgetI.domain;
     obj->as.textEdit.onChange = widgetI.onChange;
     obj->as.textEdit.onSubmit = widgetI.onSubmit;
-    obj->cb.onMouse = &UITextEditWidgetObj::on_mouse;
-    obj->cb.onHover = &UITextEditWidgetObj::on_hover;
-    obj->cb.onKey = &UITextEditWidgetObj::on_key;
+    obj->flags |= UI_WIDGET_FLAG_FOCUSABLE_BIT;
+    obj->cb.onEvent = &UITextEditWidgetObj::on_event;
     obj->cb.onDraw = &UITextEditWidget::on_draw;
 
     return {obj};
@@ -722,13 +754,16 @@ void UITextEditWidgetObj::cleanup(UIWidgetObj* base)
     }
 }
 
-void UITextEditWidgetObj::on_key(UIWidget widget, KeyCode keyCode, UIEvent event)
+bool UITextEditWidgetObj::on_event(UIWidget widget, const UIEvent& event)
 {
     UIWidgetObj* obj = widget.unwrap();
     auto& self = obj->as.textEdit;
 
-    if (event != UI_KEY_DOWN)
-        return;
+    if (event.type == UI_EVENT_MOUSE_DOWN)
+        return true; // consume event
+
+    if (event.type != UI_EVENT_KEY_DOWN)
+        return false;
 
     bool hasChanged = false;
     bool hasSubmitted = false;
@@ -736,10 +771,10 @@ void UITextEditWidgetObj::on_key(UIWidget widget, KeyCode keyCode, UIEvent event
     switch (self.domain)
     {
     case UI_TEXT_EDIT_DOMAIN_STRING:
-        self.domain_string_on_key(keyCode, event, hasChanged, hasSubmitted);
+        self.domain_string_on_key(event, hasChanged, hasSubmitted);
         break;
     case UI_TEXT_EDIT_DOMAIN_UINT:
-        self.domain_uint_on_key(keyCode, event, hasChanged, hasSubmitted);
+        self.domain_uint_on_key(event, hasChanged, hasSubmitted);
         break;
     }
 
@@ -751,63 +786,71 @@ void UITextEditWidgetObj::on_key(UIWidget widget, KeyCode keyCode, UIEvent event
 
     if (hasSubmitted && self.onSubmit)
         self.onSubmit((UITextEditWidget)widget, strView, obj->user);
+
+    return true;
 }
 
-void UITextEditWidgetObj::domain_string_on_key(KeyCode keyCode, UIEvent event, bool& hasChanged, bool& hasSubmitted)
+void UITextEditWidgetObj::domain_string_on_key(const UIEvent& event, bool& hasChanged, bool& hasSubmitted)
 {
     LD_ASSERT(domain == UI_TEXT_EDIT_DOMAIN_STRING);
 
-    if (KEY_CODE_A <= keyCode && keyCode <= KEY_CODE_Z)
-    {
-        char key = (char)keyCode + 32;
+    const KeyCode code = event.key.code;
+    const KeyMods mods = event.key.mods;
 
-        if (Input::get_key(KEY_CODE_LEFT_SHIFT) || Input::get_key(KEY_CODE_RIGHT_SHIFT))
+    if (KEY_CODE_A <= code && code <= KEY_CODE_Z)
+    {
+        char key = (char)code + 32;
+
+        if (mods & KEY_MOD_SHIFT_BIT)
             key -= 32;
 
         buf.push_back(key);
         hasChanged = true;
     }
-    else if (KEY_CODE_0 <= keyCode && keyCode <= KEY_CODE_9)
+    else if (KEY_CODE_0 <= code && code <= KEY_CODE_9)
     {
-        char key = (char)keyCode - (char)KEY_CODE_0 + '0';
+        char key = (char)code - (char)KEY_CODE_0 + '0';
 
         buf.push_back(key);
         hasChanged = true;
     }
-    else if (keyCode == KEY_CODE_SPACE)
+    else if (code == KEY_CODE_SPACE)
     {
         buf.push_back(' ');
         hasChanged = true;
     }
-    else if (keyCode == KEY_CODE_BACKSPACE && !buf.empty())
+    else if (code == KEY_CODE_BACKSPACE && !buf.empty())
     {
         buf.pop_back();
         hasChanged = true;
     }
-    else if (keyCode == KEY_CODE_ENTER)
+    else if (code == KEY_CODE_ENTER)
     {
         // this allows submission of empty text.
         hasSubmitted = true;
     }
 }
 
-void UITextEditWidgetObj::domain_uint_on_key(KeyCode keyCode, UIEvent event, bool& hasChanged, bool& hasSubmitted)
+void UITextEditWidgetObj::domain_uint_on_key(const UIEvent& event, bool& hasChanged, bool& hasSubmitted)
 {
     LD_ASSERT(domain == UI_TEXT_EDIT_DOMAIN_UINT);
 
-    if (KEY_CODE_0 <= keyCode && keyCode <= KEY_CODE_9)
+    const KeyCode code = event.key.code;
+    const KeyMods mods = event.key.mods;
+
+    if (KEY_CODE_0 <= code && code <= KEY_CODE_9)
     {
-        char key = (char)keyCode - (char)KEY_CODE_0 + '0';
+        char key = (char)code - (char)KEY_CODE_0 + '0';
 
         buf.push_back(key);
         hasChanged = true;
     }
-    else if (keyCode == KEY_CODE_BACKSPACE && !buf.empty())
+    else if (code == KEY_CODE_BACKSPACE && !buf.empty())
     {
         buf.pop_back();
         hasChanged = true;
     }
-    else if (keyCode == KEY_CODE_ENTER && !buf.empty())
+    else if (code == KEY_CODE_ENTER && !buf.empty())
     {
         hasSubmitted = true;
     }
@@ -889,19 +932,23 @@ void UIPanelWidget::on_draw(UIWidget widget, ScreenRenderComponent renderer)
 // UIToggleWidget
 //
 
-void UIToggleWidgetObj::on_mouse(UIWidget widget, const Vec2& pos, MouseButton btn, UIEvent event)
+bool UIToggleWidgetObj::on_event(UIWidget widget, const UIEvent& event)
 {
     UIWidgetObj* obj = (UIWidgetObj*)widget;
     UIToggleWidgetObj& self = obj->as.toggle;
 
-    if (event == UI_MOUSE_DOWN)
+    if (event.type == UI_EVENT_MOUSE_DOWN)
     {
         self.state = !self.state;
         self.anim.set(0.32f);
 
         if (self.user_on_toggle)
             self.user_on_toggle({obj}, self.state, obj->user);
+
+        return true;
     }
+
+    return false;
 }
 
 void UIToggleWidgetObj::on_update(UIWidget widget, float delta)
@@ -960,21 +1007,19 @@ void UIButtonWidgetObj::cleanup(UIWidgetObj* base)
     }
 }
 
-void UIButtonWidgetObj::on_mouse(UIWidget widget, const Vec2& pos, MouseButton btn, UIEvent event)
+bool UIButtonWidgetObj::on_event(UIWidget widget, const UIEvent& event)
 {
     UIWidgetObj* obj = widget;
     UIButtonWidgetObj& self = obj->as.button;
 
     // TODO: click semantics, usually when MOUSE_UP event is still within the button rect.
-    if (event == UI_MOUSE_DOWN && self.onClick)
-        self.onClick((UIButtonWidget)widget, btn, obj->user);
-}
+    if (event.type == UI_EVENT_MOUSE_DOWN && self.onClick)
+    {
+        self.onClick((UIButtonWidget)widget, event.mouse.button, obj->user);
+        return true;
+    }
 
-void UIButtonWidgetObj::on_hover(UIWidget widget, UIEvent event)
-{
-    UIWidgetObj* obj = widget;
-
-    // TODO:
+    return false;
 }
 
 void UIButtonWidget::on_draw(UIWidget widget, ScreenRenderComponent renderer)
@@ -984,18 +1029,12 @@ void UIButtonWidget::on_draw(UIWidget widget, ScreenRenderComponent renderer)
     UIButtonWidgetObj& self = obj->as.button;
     UITheme theme = widget.get_theme();
     Rect rect = widget.get_rect();
-    uint32_t color = theme.get_selection_color();
+    Color color = theme.get_selection_color();
 
     if (widget.is_pressed())
-    {
-        color &= ~0xFF;
-        color |= 200;
-    }
+        color = Color::darken(color, 0.05f);
     else if (widget.is_hovered())
-    {
-        color &= ~0xFF;
-        color |= 234;
-    }
+        color = Color::lift(color, 0.07f);
 
     if (!self.transparentBG)
         renderer.draw_rect(rect, color);

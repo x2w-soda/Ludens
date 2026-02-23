@@ -32,7 +32,7 @@ UIWindowObj* UIWorkspaceObj::create_window(const UILayoutInfo& layoutI, const UI
         windowObj->flags |= UI_WIDGET_FLAG_DRAW_WITH_SCISSOR_BIT;
 
     if (windowI.defaultMouseControls)
-        windowObj->cb.onDrag = UIWindowObj::on_drag;
+        windowObj->cb.onEvent = UIWindowObj::on_event;
 
     return windowObj;
 }

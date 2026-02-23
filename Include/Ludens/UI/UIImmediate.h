@@ -16,6 +16,8 @@
 
 namespace LD {
 
+struct KeyValue;
+
 typedef void (*IMDrawCallback)(UIWidget widget, ScreenRenderComponent renderer, void* user);
 
 /// @brief Release and free all resources allocated by immediate-mode API.
@@ -55,10 +57,16 @@ void ui_top_draw(const IMDrawCallback& imDrawCallback);
 /// @brief Check if widget on top of stack has been dragged.
 bool ui_top_drag(MouseButton& dragBtn, Vec2& dragPos, bool& dragBegin);
 
-/// @brief Check if widget on top of stack has mouse enter or mouse leave events.
-bool ui_top_hover(UIEvent& hover);
+/// @brief Returns true while the widget on top of stack is dragged and not released.
+bool ui_top_is_dragged();
 
-/// @brief Check if widget on top of stack has scroll event. 
+/// @brief Check if widget on top of stack has mouse enter or mouse leave events.
+bool ui_top_hover(UIEventType& hover);
+
+/// @brief Returns true while the widget on top of stack is under mouse cursor.
+bool ui_top_is_hovered();
+
+/// @brief Check if widget on top of stack has scroll event.
 bool ui_top_scroll(Vec2& scroll);
 
 /// @brief Check if widget on top of stack has UI_MOUSE_DOWN event.
@@ -74,12 +82,12 @@ bool ui_top_mouse_up(MouseButton& outButton);
 /// @brief Check if widget on top of stack has UI_KEY_DOWN event.
 /// @return True if event exists.
 /// @warning Overrides existing on_key callback on widget.
-bool ui_top_key_down(KeyCode& outKey);
+bool ui_top_key_down(KeyValue& outKey);
 
 /// @brief Check if widget on top of stack has UI_KEY_UP event.
 /// @return True if event exists.
 /// @warning Overrides existing on_key callback on widget.
-bool ui_top_key_up(KeyCode& outKey);
+bool ui_top_key_up(KeyValue& outKey);
 
 /// @brief Pop the most recent non-window widget.
 void ui_pop();
@@ -98,6 +106,7 @@ bool ui_has_window_client(const char* name);
 
 /// @brief Push UITextWidget.
 void ui_push_text(const char* text);
+void ui_text_style(Color color, FontAtlas fontAtlas, RImage fontImage);
 
 /// @brief Push UITextEditWidget.
 void ui_push_text_edit(UITextEditDomain domain = UI_TEXT_EDIT_DOMAIN_STRING);
@@ -110,7 +119,8 @@ bool ui_text_edit_submitted(std::string& text);
 void ui_push_image(RImage image, float width, float height, Color tint = 0xFFFFFFFF, const Rect* portion = nullptr);
 
 /// @brief Push UIPanelWidget.
-void ui_push_panel(const Color* color = nullptr);
+void ui_push_panel();
+void ui_panel_color(Color color);
 
 /// @brief Push UIToggleWidget.
 void ui_push_toggle(bool& isPressed, bool& state);

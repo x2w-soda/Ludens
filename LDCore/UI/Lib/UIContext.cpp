@@ -16,40 +16,37 @@
 
 namespace LD {
 
-enum UIWidgetFilterBit : int
+static_assert(LD::IsTrivial<UIEvent>);
+
+static UIEvent get_local_event(UIWidgetObj* widget, const UIEvent& event)
 {
-    WIDGET_FILTER_KEY_BIT = LD_BIT(0),
-    WIDGET_FILTER_MOUSE_BIT = LD_BIT(1),
-    WIDGET_FILTER_HOVER_BIT = LD_BIT(2),
-    WIDGET_FILTER_DRAG_BIT = LD_BIT(3),
-    WIDGET_FILTER_SCROLL_BIT = LD_BIT(4),
-};
+    UIEvent localEvent = event;
+
+    switch (event.type)
+    {
+    case UI_EVENT_MOUSE_DOWN:
+    case UI_EVENT_MOUSE_UP:
+    case UI_EVENT_MOUSE_POSITION:
+        localEvent.mouse.position -= widget->layout.rect.get_pos();
+        break;
+    default:
+        break;
+    }
+
+    return localEvent;
+}
 
 /// @brief Get the widget at given position in a subtree.
 /// @param root The root widget to search recursively.
 /// @param pos Screen position to query.
-/// @param filter Filter widgets with certain callbacks.
 /// @return The widget at position, or null if position is out of bounds.
-static UIWidgetObj* get_widget_at_pos(UIWidgetObj* root, const Vec2& pos, int filter)
+static UIWidgetObj* get_widget_at_pos(UIWidgetObj* root, const Vec2& pos)
 {
     if (!root->layout.rect.contains(pos))
         return nullptr;
 
-    if (root->flags & UI_WIDGET_FLAG_BLOCK_INPUT_BIT)
-        return nullptr; // prevent subtree from being scanned
-
-    bool isQualified = filter == 0;
-
-    if (filter & WIDGET_FILTER_KEY_BIT)
-        isQualified = isQualified || root->cb.onKey;
-    if (filter & WIDGET_FILTER_MOUSE_BIT)
-        isQualified = isQualified || root->cb.onMouse;
-    if (filter & WIDGET_FILTER_HOVER_BIT)
-        isQualified = isQualified || root->cb.onHover;
-    if (filter & WIDGET_FILTER_DRAG_BIT)
-        isQualified = isQualified || root->cb.onDrag;
-    if (filter & WIDGET_FILTER_SCROLL_BIT)
-        isQualified = isQualified || root->cb.onScroll;
+    if (root->flags & UI_WIDGET_FLAG_BLOCK_EVENT_BIT)
+        return root; // prevent subtree from being scanned
 
     for (UIWidgetObj* child = root->child; child; child = child->next)
     {
@@ -57,13 +54,51 @@ static UIWidgetObj* get_widget_at_pos(UIWidgetObj* root, const Vec2& pos, int fi
             continue;
 
         // return deepest widget in hierarhcy that qualifies
-        UIWidgetObj* result = get_widget_at_pos(child, pos, filter);
+        UIWidgetObj* result = get_widget_at_pos(child, pos);
 
         if (result)
             return result;
     }
 
-    return isQualified ? root : nullptr;
+    return root;
+}
+
+/// @brief Bubble up along widget hierarchy and find the first widget that handles the event.
+static UIWidgetObj* get_event_handler(UIWidgetObj* widget, const UIEvent& event)
+{
+    while (widget)
+    {
+        UIEvent localEvent = get_local_event(widget, event);
+
+        if (widget->cb.onEvent && widget->cb.onEvent(UIWidget(widget), localEvent))
+            return widget;
+
+        switch (event.type)
+        {
+        case UI_EVENT_MOUSE_POSITION:
+        case UI_EVENT_MOUSE_DOWN:
+        case UI_EVENT_MOUSE_UP:
+        case UI_EVENT_MOUSE_DRAG:
+            if (widget->flags & UI_WIDGET_FLAG_CONSUME_MOUSE_EVENT_BIT)
+                return widget;
+            break;
+        case UI_EVENT_KEY_DOWN:
+        case UI_EVENT_KEY_UP:
+            if (widget->flags & UI_WIDGET_FLAG_CONSUME_KEY_EVENT_BIT)
+                return widget;
+            break;
+        case UI_EVENT_SCROLL:
+            if (widget->flags & UI_WIDGET_FLAG_CONSUME_SCROLL_EVENT_BIT)
+                return widget;
+            break;
+        default:
+            break;
+        }
+
+        widget = widget->parent;
+    }
+
+    return nullptr;
 }
 
 UIWidgetObj* UIContextObj::alloc_widget(UIWidgetType type, const UILayoutInfo& layoutI, UIWidgetObj* parent, void* user)
@@ -105,7 +140,7 @@ void UIContextObj::free_widget(UIWidgetObj* widget)
     widgetPA.free(widget);
 }
 
-UIWidgetObj* UIContextObj::get_widget(const Vec2& pos, int filter)
+UIWidgetObj* UIContextObj::get_widget(const Vec2& pos)
 {
     for (auto layerIte = layers.rbegin(); layerIte != layers.rend(); layerIte++)
     {
@@ -120,30 +155,24 @@ UIWidgetObj* UIContextObj::get_widget(const Vec2& pos, int filter)
                 continue;
 
             // test floating windows in workspace before docked ones
-            for (auto windowIte = space->floatWindows.rbegin(); windowIte != space->floatWindows.rend(); windowIte++)
+            for (auto windowIt = space->floatWindows.rbegin(); windowIt != space->floatWindows.rend(); windowIt++)
             {
-                UIWindowObj* window = *windowIte;
+                UIWindowObj* window = *windowIt;
 
                 if (!window->layout.rect.contains(pos) || (window->flags & UI_WIDGET_FLAG_HIDDEN_BIT))
                     continue;
 
-                if (window->flags & UI_WIDGET_FLAG_BLOCK_INPUT_BIT)
-                    return nullptr;
-
-                return get_widget_at_pos((UIWidgetObj*)window, pos, filter);
+                return get_widget_at_pos((UIWidgetObj*)window, pos);
             }
 
-            for (auto windowIte = space->nodeWindows.rbegin(); windowIte != space->nodeWindows.rend(); windowIte++)
+            for (auto windowIt = space->nodeWindows.rbegin(); windowIt != space->nodeWindows.rend(); windowIt++)
             {
-                UIWindowObj* window = *windowIte;
+                UIWindowObj* window = *windowIt;
 
                 if (!window->layout.rect.contains(pos) || (window->flags & UI_WIDGET_FLAG_HIDDEN_BIT))
                     continue;
 
-                if (window->flags & UI_WIDGET_FLAG_BLOCK_INPUT_BIT)
-                    return nullptr;
-
-                return get_widget_at_pos((UIWidgetObj*)window, pos, filter);
+                return get_widget_at_pos((UIWidgetObj*)window, pos);
             }
         }
     }
@@ -216,132 +245,236 @@ void UIContextObj::invalidate_refs(UIWidgetObj* removed)
     if (removed == focusWidget)
         focusWidget = nullptr;
 
-    if (removed == hoverWidget)
-        hoverWidget = nullptr;
+    if (removed == hoverWidgetLeaf)
+        hoverWidgetLeaf = nullptr;
 }
 
-void UIContextObj::input_mouse_position(const Vec2& pos)
+void UIContextObj::hover_widget(UIWidgetObj* nextHoverLeafWidget)
 {
     LD_PROFILE_SCOPE;
 
-    cursorPos = pos;
+    HashSet<UIWidgetObj*> nextHoverWidgets;
+
+    for (UIWidgetObj* widget = nextHoverLeafWidget; widget; widget = widget->parent)
+        nextHoverWidgets.insert(widget);
+
+    for (UIWidgetObj* widget : hoverWidgets)
+    {
+        if (!nextHoverWidgets.contains(widget))
+        {
+            UIEvent event{};
+            event.type = UI_EVENT_MOUSE_LEAVE;
+            if (widget->cb.onEvent)
+                widget->cb.onEvent(UIWidget(widget), event);
+            if (onEvent)
+                onEvent(UIWidget(widget), event, user);
+        }
+    }
+
+    for (UIWidgetObj* widget : nextHoverWidgets)
+    {
+        if (!hoverWidgets.contains(widget))
+        {
+            UIEvent event{};
+            event.type = UI_EVENT_MOUSE_ENTER;
+            if (widget->cb.onEvent)
+                widget->cb.onEvent(UIWidget(widget), event);
+            if (onEvent)
+                onEvent(UIWidget(widget), event, user);
+        }
+    }
+
+    hoverWidgetLeaf = nextHoverLeafWidget;
+    hoverWidgets = std::move(nextHoverWidgets);
+}
+
+void UIContextObj::focus_widget(UIWidgetObj* nextFocusWidget)
+{
+    LD_PROFILE_SCOPE;
+
+    // leaving focus state
+    if (focusWidget && focusWidget != nextFocusWidget)
+    {
+        UIEvent event{};
+        event.type = UI_EVENT_FOCUS_LEAVE;
+
+        // signal widget user
+        if (focusWidget->cb.onEvent)
+            focusWidget->cb.onEvent(UIWidget(focusWidget), event);
+
+        // signal context user
+        if (onEvent)
+            onEvent(UIWidget(focusWidget), event, user);
+    }
+
+    focusWidget = nextFocusWidget;
+
+    // entering focus state
+    if (focusWidget)
+    {
+        UIEvent event{};
+        event.type = UI_EVENT_FOCUS_ENTER;
+
+        // signal widget user
+        if (focusWidget->cb.onEvent)
+            focusWidget->cb.onEvent(UIWidget(focusWidget), event);
+
+        // signal context user
+        if (onEvent)
+            onEvent(UIWidget(focusWidget), event, user);
+    }
+}
+
+bool UIContextObj::input_mouse_position(const UIEvent& event)
+{
+    LD_PROFILE_SCOPE;
+    LD_ASSERT(event.type == UI_EVENT_MOUSE_POSITION);
+
+    cursorPos = event.mouse.position;
 
     if (dragWidget)
     {
-        UIWidgetObj* de = dragWidget;
-        de->cb.onDrag({de}, dragMouseButton, cursorPos, false);
+        UIEvent dragEvent{};
+        dragEvent.type = UI_EVENT_MOUSE_DRAG;
+        dragEvent.drag.position = cursorPos;
+        dragEvent.drag.button = dragMouseButton;
+        dragEvent.drag.begin = false;
+
+        if (dragWidget->cb.onEvent)
+            dragWidget->cb.onEvent(UIWidget(dragWidget), dragEvent);
+
+        if (onEvent)
+            onEvent(UIWidget(dragWidget), dragEvent, user);
     }
 
-    UIWidgetObj* prev = hoverWidget;
-    UIWidgetObj* next = get_widget(pos, WIDGET_FILTER_HOVER_BIT);
+    UIWidgetObj* nextLeaf = get_widget(cursorPos);
+    hover_widget(nextLeaf);
 
-    if (next)
-    {
-        if (next != prev && prev && prev->cb.onHover)
-            prev->cb.onHover({prev}, UI_MOUSE_LEAVE);
-
-        if (next != prev && next->cb.onHover)
-            next->cb.onHover({next}, UI_MOUSE_ENTER);
-
-        hoverWidget = next;
-        return;
-    }
-
-    if (prev && prev->cb.onHover)
-        prev->cb.onHover({prev}, UI_MOUSE_LEAVE);
-
-    hoverWidget = nullptr;
+    return true;
 }
 
-void UIContextObj::input_mouse_down(MouseButton btn)
+bool UIContextObj::input_mouse_down(const UIEvent& event)
 {
-    UIWidgetObj* widget = get_widget(cursorPos, WIDGET_FILTER_MOUSE_BIT | WIDGET_FILTER_DRAG_BIT);
+    LD_PROFILE_SCOPE;
+    LD_ASSERT(event.type == UI_EVENT_MOUSE_DOWN);
 
+    UIWidgetObj* widget = get_widget(cursorPos);
     if (!widget)
-        return;
-
-    bool blockInput = (widget->flags & UI_WIDGET_FLAG_BLOCK_INPUT_BIT);
-
-    if (!blockInput && widget->cb.onDrag)
     {
-        dragStartPos = cursorPos;
-        dragWidget = widget;
-        dragMouseButton = btn;
-
-        widget->cb.onDrag({widget}, btn, cursorPos, true);
+        pressWidget = nullptr;
+        focus_widget(nullptr);
+        return false;
     }
 
-    if (!blockInput && widget->cb.onMouse)
+    // update pressed widget
     {
-        Vec2 localPos = cursorPos - widget->layout.rect.get_pos();
-        widget->cb.onMouse({widget}, localPos, btn, UI_MOUSE_DOWN);
-        pressWidget = widget;
+        pressWidget = get_event_handler(widget, event);
+
+        if (!pressWidget)
+        {
+            focus_widget(nullptr);
+            return false;
+        }
+
+        if (onEvent)
+            onEvent(UIWidget(pressWidget), get_local_event(pressWidget, event), user);
     }
 
-    focusWidget = nullptr;
-
-    switch (widget->type)
+    // begin drag widget
     {
-    case UI_WIDGET_TEXT_EDIT:
-        focusWidget = widget;
-        break;
-    default:
-        break;
+        UIEvent dragEvent{};
+        dragEvent.type = UI_EVENT_MOUSE_DRAG;
+        dragEvent.drag.position = dragStartPos = cursorPos;
+        dragEvent.drag.button = dragMouseButton = event.mouse.button;
+        dragEvent.drag.begin = true;
+        dragWidget = get_event_handler(widget, dragEvent);
+
+        if (dragWidget && onEvent)
+            onEvent(UIWidget(dragWidget), dragEvent, user);
     }
+
+    // update focused widget
+    {
+        UIWidgetObj* nextFocusWidget = nullptr;
+
+        while (widget)
+        {
+            if (widget->flags & UI_WIDGET_FLAG_FOCUSABLE_BIT)
+            {
+                nextFocusWidget = widget;
+                break;
+            }
+
+            widget = widget->parent;
+        }
+
+        focus_widget(nextFocusWidget);
+    }
+
+    return true;
 }
 
-void UIContextObj::input_mouse_up(MouseButton btn)
+bool UIContextObj::input_mouse_up(const UIEvent& event)
 {
+    LD_PROFILE_SCOPE;
+    LD_ASSERT(event.type == UI_EVENT_MOUSE_UP);
+
     dragWidget = nullptr;
-    pressWidget = nullptr;
+    pressWidget = nullptr; // TODO: signal pressWidget user mouse up?
 
-    UIWidgetObj* widget = get_widget(cursorPos, WIDGET_FILTER_MOUSE_BIT);
+    UIWidgetObj* widget = get_widget(cursorPos);
+    if (!widget)
+        return false;
+
+    widget = get_event_handler(widget, event);
+    if (!widget)
+        return false;
+
+    // signal context user
+    if (onEvent)
+        onEvent(UIWidget(widget), get_local_event(widget, event), user);
+
+    return true;
+}
+
+bool UIContextObj::input_key(const UIEvent& event)
+{
+    LD_PROFILE_SCOPE;
+    LD_ASSERT(event.type == UI_EVENT_KEY_DOWN || event.type == UI_EVENT_KEY_UP);
+
+    UIWidgetObj* widget = get_event_handler(focusWidget, event);
 
     if (!widget)
-        return;
-
-    bool blockInput = (widget->flags & UI_WIDGET_FLAG_BLOCK_INPUT_BIT);
-
-    if (!blockInput && widget->cb.onMouse)
-    {
-        Vec2 localPos = cursorPos - widget->layout.rect.get_pos();
-        widget->cb.onMouse({widget}, localPos, btn, UI_MOUSE_UP);
-    }
-}
-
-void UIContextObj::input_key_down(KeyCode key)
-{
-    if (!focusWidget)
-        return;
-
-    bool blockInput = (focusWidget->flags & UI_WIDGET_FLAG_BLOCK_INPUT_BIT);
-
-    if (!blockInput && focusWidget->cb.onKey)
-        focusWidget->cb.onKey({focusWidget}, key, UI_KEY_DOWN);
-}
-
-void UIContextObj::input_key_up(KeyCode key)
-{
-    if (!focusWidget)
-        return;
-
-    bool blockInput = (focusWidget->flags & UI_WIDGET_FLAG_BLOCK_INPUT_BIT);
-
-    if (!blockInput && focusWidget->cb.onKey)
-        focusWidget->cb.onKey({focusWidget}, key, UI_KEY_UP);
-}
-
-void UIContextObj::input_scroll(const Vec2& offset)
-{
-    UIWidgetObj* widget = get_widget(cursorPos, WIDGET_FILTER_SCROLL_BIT);
+        widget = get_event_handler(hoverWidgetLeaf, event);
 
     if (!widget)
-        return;
+        return false;
 
-    bool blockInput = (widget->flags & UI_WIDGET_FLAG_BLOCK_INPUT_BIT);
+    // signal context user
+    if (onEvent)
+        onEvent(UIWidget(widget), get_local_event(widget, event), user);
 
-    if (!blockInput && widget->cb.onScroll)
-        widget->cb.onScroll({widget}, offset);
+    return true;
+}
+
+bool UIContextObj::input_scroll(const UIEvent& event)
+{
+    LD_PROFILE_SCOPE;
+    LD_ASSERT(event.type == UI_EVENT_SCROLL);
+
+    UIWidgetObj* widget = get_widget(cursorPos);
+    if (!widget)
+        return false;
+
+    widget = get_event_handler(widget, event);
+    if (!widget)
+        return false;
+
+    // signal context user
+    if (onEvent)
+        onEvent(UIWidget(widget), get_local_event(widget, event), user);
+
+    return true;
 }
 
 //
@@ -431,35 +564,109 @@ void UIContext::update(float delta)
     }
 }
 
-bool UIContext::on_window_event(const WindowEvent* event)
+bool UIContext::input_key_down(KeyCode code, KeyMods mods)
 {
+    UIEvent event{};
+    event.type = UI_EVENT_KEY_DOWN;
+    event.key.code = code;
+    event.key.mods = mods;
+    return mObj->input_key(event);
+}
+
+bool UIContext::input_key_up(KeyCode code, KeyMods mods)
+{
+    UIEvent event{};
+    event.type = UI_EVENT_KEY_UP;
+    event.key.code = code;
+    event.key.mods = mods;
+    return mObj->input_key(event);
+}
+
+bool UIContext::input_mouse_position(const Vec2& pos)
+{
+    UIEvent event{};
+    event.type = UI_EVENT_MOUSE_POSITION;
+    event.mouse.position = pos;
+    return mObj->input_mouse_position(event);
+}
+
+bool UIContext::input_scroll(const Vec2& offset)
+{
+    UIEvent event{};
+    event.type = UI_EVENT_SCROLL;
+    event.scroll.offset = offset;
+    return mObj->input_scroll(event);
+}
+
+bool UIContext::input_mouse_down(MouseButton btn, KeyMods mods, const Vec2& pos)
+{
+    UIEvent event{};
+    event.type = UI_EVENT_MOUSE_DOWN;
+    event.mouse.button = btn;
+    event.mouse.mods = mods;
+    event.mouse.position = pos;
+    return mObj->input_mouse_down(event);
+}
+
+bool UIContext::input_mouse_up(MouseButton btn, KeyMods mods, const Vec2& pos)
+{
+    UIEvent event{};
+    event.type = UI_EVENT_MOUSE_UP;
+    event.mouse.button = btn;
+    event.mouse.mods = mods;
+    event.mouse.position = pos;
+    return mObj->input_mouse_up(event);
+}
+
+bool UIContext::input_window_event(const WindowEvent* event)
+{
+    bool isHandled = false;
+
     switch (event->type)
     {
     case EVENT_TYPE_WINDOW_KEY_DOWN:
-        mObj->input_key_down(static_cast<const WindowKeyDownEvent*>(event)->key);
+        isHandled = input_key_down(static_cast<const WindowKeyDownEvent*>(event)->code,
+                                   static_cast<const WindowKeyDownEvent*>(event)->mods);
         break;
     case EVENT_TYPE_WINDOW_KEY_UP:
-        mObj->input_key_up(static_cast<const WindowKeyUpEvent*>(event)->key);
-        break;
-    case EVENT_TYPE_WINDOW_MOUSE_MOTION:
-        mObj->input_mouse_position(Vec2(static_cast<const WindowMouseMotionEvent*>(event)->xpos,
-                                        static_cast<const WindowMouseMotionEvent*>(event)->ypos));
+        isHandled = input_key_up(static_cast<const WindowKeyUpEvent*>(event)->code,
+                                 static_cast<const WindowKeyUpEvent*>(event)->mods);
         break;
     case EVENT_TYPE_WINDOW_MOUSE_DOWN:
-        mObj->input_mouse_down(static_cast<const WindowMouseDownEvent*>(event)->button);
+        isHandled = input_mouse_down(
+            static_cast<const WindowMouseDownEvent*>(event)->button,
+            static_cast<const WindowMouseDownEvent*>(event)->mods,
+            mObj->cursorPos);
         break;
     case EVENT_TYPE_WINDOW_MOUSE_UP:
-        mObj->input_mouse_up(static_cast<const WindowMouseUpEvent*>(event)->button);
+        isHandled = input_mouse_up(
+            static_cast<const WindowMouseUpEvent*>(event)->button,
+            static_cast<const WindowMouseUpEvent*>(event)->mods,
+            mObj->cursorPos);
+        break;
+    case EVENT_TYPE_WINDOW_MOUSE_POSITION:
+        isHandled = input_mouse_position(Vec2(static_cast<const WindowMousePositionEvent*>(event)->xpos,
+                                              static_cast<const WindowMousePositionEvent*>(event)->ypos));
         break;
     case EVENT_TYPE_WINDOW_SCROLL:
-        mObj->input_scroll(Vec2(static_cast<const WindowScrollEvent*>(event)->xoffset,
-                                static_cast<const WindowScrollEvent*>(event)->yoffset));
+        isHandled = input_scroll(Vec2(static_cast<const WindowScrollEvent*>(event)->xoffset,
+                                      static_cast<const WindowScrollEvent*>(event)->yoffset));
         break;
-    default: // does not trigger any input
-        return false;
+    default:
+        break;
     }
 
-    return true;
+    return isHandled;
+}
+
+void UIContext::set_user(void* user)
+{
+    mObj->user = user;
+}
+
+void UIContext::set_on_event(void (*onEvent)(UIWidget widget, const UIEvent& event, void* user))
+{
+    mObj->onEvent = onEvent;
 }
 
 } // namespace LD
