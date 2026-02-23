@@ -172,7 +172,10 @@ RuntimeContext RuntimeContext::create(const RuntimeContextInfo& info)
 
     // TODO: check scene load success
 
-    obj->scene.startup();
+    if (!obj->scene.startup())
+    {
+        LD_UNREACHABLE;
+    }
 
     return RuntimeContext(obj);
 }
@@ -190,6 +193,7 @@ void RuntimeContext::destroy(RuntimeContext ctx)
     RenderSystem::destroy(obj->renderSystem);
     RDevice::destroy(obj->renderDevice);
     AssetManager::destroy(obj->AM);
+    WindowRegistry::destroy();
 
     heap_delete<RuntimeContextObj>(obj);
 }

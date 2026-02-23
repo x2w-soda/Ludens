@@ -25,7 +25,6 @@ RuntimeApplication::~RuntimeApplication()
     LD_PROFILE_SCOPE;
 
     RuntimeContext::destroy(mRuntimeCtx);
-    WindowRegistry::destroy();
     JobSystem::shutdown();
 }
 
@@ -47,13 +46,6 @@ void RuntimeApplication::run()
 
         LD_PROFILE_FRAME_MARK;
     }
-}
-
-void RuntimeApplication::on_event(const Event* event, void* user)
-{
-    auto& self = *(RuntimeApplication*)user;
-
-    // TODO:
 }
 
 } // namespace LD

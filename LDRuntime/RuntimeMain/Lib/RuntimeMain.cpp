@@ -77,12 +77,15 @@ RuntimeArgs::~RuntimeArgs()
 
 int main(int argc, char** argv)
 {
+    FS::Path projectSchemaPath{};
     FS::Path pwd = std::filesystem::current_path();
     sLog.info("PWD: {}", pwd.string());
 
-    RuntimeArgs args(argc, argv);
+    {
+        RuntimeArgs args(argc, argv);
+        projectSchemaPath = FS::Path(pwd / args.get_project_schema_path()).lexically_normal();
+    }
 
-    FS::Path projectSchemaPath = FS::Path(pwd / args.get_project_schema_path()).lexically_normal();
     if (!FS::exists(projectSchemaPath))
     {
         sLog.info("project schema path [{}] not found", projectSchemaPath.string());

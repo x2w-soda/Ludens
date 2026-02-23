@@ -19,8 +19,6 @@ public:
     void run();
 
 private:
-    static void on_event(const Event* event, void* user);
-
     RuntimeContext mRuntimeCtx;
 };
 
