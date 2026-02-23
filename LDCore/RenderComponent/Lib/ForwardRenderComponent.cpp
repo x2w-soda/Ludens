@@ -69,7 +69,7 @@ void ForwardRenderComponentObj::init(RDevice device)
     {
         RBufferInfo bufferI = {
             .usage = RBUFFER_USAGE_VERTEX_BIT,
-            .size = sizeof(RectVertex) * pointBatch.get_point_capacity(),
+            .size = sizeof(PointVertex) * pointBatch.get_point_capacity(),
             .hostVisible = true, // persistent mapping
         };
         frame.pointVBOs = {device.create_buffer(bufferI)};

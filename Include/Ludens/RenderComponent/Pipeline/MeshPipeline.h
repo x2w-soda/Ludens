@@ -8,7 +8,7 @@
 namespace LD {
 
 /// @brief pipeline for rendering MeshVertex with Blinn-Phong lighting
-struct RMeshBlinnPhongPipeline : Handle<struct RMeshBlinnPhongPipelineObj>
+struct MeshBlinnPhongPipeline : Handle<struct MeshBlinnPhongPipelineObj>
 {
     struct PushConstant
     {
@@ -18,14 +18,14 @@ struct RMeshBlinnPhongPipeline : Handle<struct RMeshBlinnPhongPipelineObj>
         uint32_t flags;   /// lower 16-bit written to the id-flag attachment
     };
 
-    static RMeshBlinnPhongPipeline create(RDevice device);
-    static void destroy(RMeshBlinnPhongPipeline pipeline);
+    static MeshBlinnPhongPipeline create(RDevice device);
+    static void destroy(MeshBlinnPhongPipeline pipeline);
 
     RPipeline handle();
 };
 
 /// @brief pipeline for rendering MeshVertex with flat ambient lighting
-struct RMeshAmbientPipeline : Handle<struct RMeshAmbientPipelineObj>
+struct MeshAmbientPipeline : Handle<struct MeshAmbientPipelineObj>
 {
     struct PushConstant
     {
@@ -37,8 +37,8 @@ struct RMeshAmbientPipeline : Handle<struct RMeshAmbientPipelineObj>
         Vec4 ambient;     /// flat ambient color of the mesh
     };
 
-    static RMeshAmbientPipeline create(RDevice device);
-    static void destroy(RMeshAmbientPipeline pipeline);
+    static MeshAmbientPipeline create(RDevice device);
+    static void destroy(MeshAmbientPipeline pipeline);
 
     RPipeline handle();
 };

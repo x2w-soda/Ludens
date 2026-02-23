@@ -9,7 +9,7 @@
 #include <Ludens/RenderComponent/Layout/PipelineLayouts.h>
 #include <Ludens/RenderComponent/Layout/SetLayouts.h>
 #include <Ludens/RenderComponent/Pipeline/OutlinePipeline.h>
-#include <Ludens/RenderComponent/Pipeline/RMeshPipeline.h>
+#include <Ludens/RenderComponent/Pipeline/MeshPipeline.h>
 #include <Ludens/RenderComponent/SceneOverlayComponent.h>
 
 #include <string>
@@ -130,7 +130,7 @@ struct CopyPipeline : Handle<CopyPipelineObj>
 static HashMap<std::string, SceneOverlayComponentObj*> sComponents;
 static CopyPipeline sCopyPipeline;
 static OutlinePipeline sOutlinePipeline;
-static RMeshAmbientPipeline sMeshPipeline;
+static MeshAmbientPipeline sMeshPipeline;
 static RDevice sDevice;
 static RBuffer sScreenVBO;
 static RBuffer sTranslationGizmoVBO;
@@ -212,7 +212,7 @@ SceneOverlayComponentObj::SceneOverlayComponentObj(RDevice device)
 
     if (!sMeshPipeline)
     {
-        sMeshPipeline = RMeshAmbientPipeline::create(device);
+        sMeshPipeline = MeshAmbientPipeline::create(device);
         meshPipeline = sMeshPipeline.handle();
     }
 
@@ -323,7 +323,7 @@ void SceneOverlayComponentObj::on_release(void* user)
         OutlinePipeline::destroy(sOutlinePipeline);
 
     if (sMeshPipeline)
-        RMeshAmbientPipeline::destroy(sMeshPipeline);
+        MeshAmbientPipeline::destroy(sMeshPipeline);
 
     if (sCopyPipeline)
         CopyPipeline::destroy(sCopyPipeline);
@@ -420,7 +420,7 @@ void SceneOverlayComponentObj::draw_translation_gizmo(RGraphicsPass pass, RComma
     Mat4 translation = Mat4::translate(gizmoCenter);
     Mat4 scale = Mat4::scale(Vec3(gizmoScale));
 
-    RMeshAmbientPipeline::PushConstant pc;
+    MeshAmbientPipeline::PushConstant pc;
     pc.flags = 0;
     pc.model = translation * scale;
     pc.id = SCENE_OVERLAY_GIZMO_ID_AXIS_X;
@@ -484,7 +484,7 @@ void SceneOverlayComponentObj::draw_rotation_gizmo(RGraphicsPass pass, RCommandL
     Mat4 translation = Mat4::translate(gizmoCenter);
     Mat4 scale = Mat4::scale(Vec3(gizmoScale));
 
-    RMeshAmbientPipeline::PushConstant pc;
+    MeshAmbientPipeline::PushConstant pc;
     pc.model = translation * scale;
     pc.id = SCENE_OVERLAY_GIZMO_ID_PLANE_XZ;
     pc.flags = 0;
@@ -516,7 +516,7 @@ void SceneOverlayComponentObj::draw_scale_gizmo(RGraphicsPass pass, RCommandList
     Mat4 translation = Mat4::translate(gizmoCenter);
     Mat4 scale = Mat4::scale(Vec3(gizmoScale));
 
-    RMeshAmbientPipeline::PushConstant pc;
+    MeshAmbientPipeline::PushConstant pc;
     pc.model = translation * scale;
     pc.id = SCENE_OVERLAY_GIZMO_ID_AXIS_X;
     pc.flags = 0;

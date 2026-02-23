@@ -2,6 +2,7 @@
 
 #include <Ludens/Media/Model.h>
 #include <Ludens/RenderBackend/RBackend.h>
+
 #include <algorithm>
 #include <cstdint>
 
@@ -17,7 +18,8 @@ static inline void get_mesh_vertex_attributes(std::vector<RVertexAttribute>& att
     static_assert(sizeof(MeshVertex) == 32);
 }
 
-struct RectVertex
+/// @brief Four quad vertices form a quad primitive, which is used to render images, font glyphs, rects, etc.
+struct QuadVertex
 {
     float x, y;
     float u, v;
@@ -25,23 +27,23 @@ struct RectVertex
     uint32_t control;
 };
 
-static inline void get_rect_vertex_attributes(std::vector<RVertexAttribute>& attr)
+static inline void get_quad_vertex_attributes(std::vector<RVertexAttribute>& attr)
 {
     attr.resize(4);
     attr[0].type = GLSL_TYPE_VEC2; // position
     attr[0].binding = 0;
-    attr[0].offset = offsetof(RectVertex, x);
+    attr[0].offset = offsetof(QuadVertex, x);
     attr[1].type = GLSL_TYPE_VEC2; // uv
     attr[1].binding = 0;
-    attr[1].offset = offsetof(RectVertex, u);
+    attr[1].offset = offsetof(QuadVertex, u);
     attr[2].type = GLSL_TYPE_UINT; // color
     attr[2].binding = 0;
-    attr[2].offset = offsetof(RectVertex, color);
+    attr[2].offset = offsetof(QuadVertex, color);
     attr[3].type = GLSL_TYPE_UINT; // control
     attr[3].binding = 0;
-    attr[3].offset = offsetof(RectVertex, control);
+    attr[3].offset = offsetof(QuadVertex, control);
 
-    static_assert(sizeof(RectVertex) == 24);
+    static_assert(sizeof(QuadVertex) == 24);
 }
 
 enum RectVertexImageHint
@@ -56,8 +58,8 @@ enum RectVertexImageHint
 /// @param imageIdx 4 bits to encode the image index in array
 /// @param imageHint 4 bits to hint how the image should be used
 /// @param filterRatio 8 bits to encode the filtering ratio used for SDF font rendering. A ratio from 0.0 to 32.0 can be represented at a step of 0.125
-/// @return control bits for a RectVertex
-static inline uint32_t get_rect_vertex_control_bits(int imageIdx, RectVertexImageHint imageHint, float filterRatio)
+/// @return control bits for a QuadVertex
+static inline uint32_t get_quad_vertex_control_bits(int imageIdx, RectVertexImageHint imageHint, float filterRatio)
 {
     uint32_t controlBits = 0;
     uint32_t imageHintBits = static_cast<uint32_t>(imageHint) & 15;
@@ -70,54 +72,54 @@ static inline uint32_t get_rect_vertex_control_bits(int imageIdx, RectVertexImag
     return controlBits;
 }
 
-/// @brief helper to accumulate RectVertex data on the CPU side
-template <uint32_t TMaxRectCount>
-class RectVertexBatch
+/// @brief Helper to accumulate QuadVertex data on the CPU side
+template <uint32_t TMaxQuadCount>
+class QuadVertexBatch
 {
 public:
-    /// @brief append a rect to the batch
-    /// @return A pointer to 4 RectVertices, describing a rect.
+    /// @brief append a quad to the batch
+    /// @return A pointer to 4 QuadVertices, describing a quad.
     /// @warning does not check if the batch is full
-    RectVertex* write_rect()
+    QuadVertex* write_quad()
     {
-        return (RectVertex*)mVertices + mRectCount++ * 4;
+        return (QuadVertex*)mVertices + mQuadCount++ * 4;
     }
 
     /// @brief get number of rects in the batch
-    uint32_t get_rect_count() const
+    uint32_t get_quad_count() const
     {
-        return mRectCount;
+        return mQuadCount;
     };
 
     /// @brief get maximum number of rects in the batch
     constexpr uint32_t get_max_rect_count() const
     {
-        return TMaxRectCount;
+        return TMaxQuadCount;
     }
 
     /// @brief get the rect vertices in the batch
-    RectVertex* get_vertices(uint32_t& vertexCount)
+    QuadVertex* get_vertices(uint32_t& vertexCount)
     {
-        vertexCount = mRectCount * 4;
+        vertexCount = mQuadCount * 4;
         return mVertices;
     }
 
     /// @brief reset the batch
     void reset()
     {
-        mRectCount = 0;
+        mQuadCount = 0;
     }
 
     /// @brief return whether the batch is full
     bool is_full() const
     {
-        return mRectCount >= TMaxRectCount;
+        return mQuadCount >= TMaxQuadCount;
     }
 
     // write index pattern for the full index buffer
     void write_indices(uint32_t* indices)
     {
-        for (uint32_t i = 0; i < TMaxRectCount; i++)
+        for (uint32_t i = 0; i < TMaxQuadCount; i++)
         {
             indices[6 * i + 0] = 4 * i + 0;
             indices[6 * i + 1] = 4 * i + 1;
@@ -129,8 +131,8 @@ public:
     }
 
 private:
-    uint32_t mRectCount = 0;
-    RectVertex mVertices[TMaxRectCount * 4];
+    uint32_t mQuadCount = 0;
+    QuadVertex mVertices[TMaxQuadCount * 4];
 };
 
 struct PointVertex

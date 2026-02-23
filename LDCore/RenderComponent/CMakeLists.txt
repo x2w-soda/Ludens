@@ -11,7 +11,8 @@ set(MODULE_INCLUDE
     ${LUDENS_INCLUDE_DIR}/Ludens/RenderComponent/Layout/PipelineLayouts.h
     ${LUDENS_INCLUDE_DIR}/Ludens/RenderComponent/Layout/RMaterial.h
     ${LUDENS_INCLUDE_DIR}/Ludens/RenderComponent/Layout/RMesh.h
-    ${LUDENS_INCLUDE_DIR}/Ludens/RenderComponent/Pipeline/RMeshPipeline.h
+    ${LUDENS_INCLUDE_DIR}/Ludens/RenderComponent/Pipeline/QuadPipeline.h
+    ${LUDENS_INCLUDE_DIR}/Ludens/RenderComponent/Pipeline/MeshPipeline.h
     ${LUDENS_INCLUDE_DIR}/Ludens/RenderComponent/Pipeline/LinePipeline.h
     ${LUDENS_INCLUDE_DIR}/Ludens/RenderComponent/Pipeline/SkyboxPipeline.h
     ${LUDENS_INCLUDE_DIR}/Ludens/RenderComponent/Pipeline/OutlinePipeline.h
@@ -29,7 +30,8 @@ set(MODULE_LIB
     Lib/Layout/VertexLayouts.cpp
     Lib/Layout/PipelineLayouts.cpp
     Lib/Layout/RMesh.cpp
-    Lib/Pipeline/RMeshPipeline.cpp
+    Lib/Pipeline/QuadPipeline.cpp
+    Lib/Pipeline/MeshPipeline.cpp
     Lib/Pipeline/LinePipeline.cpp
     Lib/Pipeline/SkyboxPipeline.cpp
     Lib/Pipeline/OutlinePipeline.cpp

@@ -13,7 +13,7 @@
 #include <Ludens/RenderComponent/Layout/PipelineLayouts.h>
 #include <Ludens/RenderComponent/Layout/SetLayouts.h>
 #include <Ludens/RenderComponent/Layout/VertexLayouts.h>
-#include <Ludens/RenderComponent/Pipeline/RMeshPipeline.h>
+#include <Ludens/RenderComponent/Pipeline/MeshPipeline.h>
 #include <Ludens/RenderComponent/SceneOverlayComponent.h>
 #include <Ludens/RenderComponent/ScreenPickComponent.h>
 #include <Ludens/RenderComponent/ScreenRenderComponent.h>
@@ -210,7 +210,7 @@ private: // resources, states and pipelines
     RImage mMonoFontAtlasImage{};
     RImage mFontAtlasImage;
     RImage mWhiteCubemap;
-    RMeshBlinnPhongPipeline mMeshPipeline;
+    MeshBlinnPhongPipeline mMeshPipeline;
     Vec2 mSceneExtent;
     Vec2 mScreenExtent;
     Vec4 mClearColor;
@@ -285,7 +285,7 @@ RenderSystemObj::RenderSystemObj(const RenderSystemInfo& systemI)
 
     stager.submit(mDevice.get_graphics_queue());
 
-    mMeshPipeline = RMeshBlinnPhongPipeline::create(mDevice);
+    mMeshPipeline = MeshBlinnPhongPipeline::create(mDevice);
 
     //
     // Frames In Flight Resources
@@ -372,7 +372,7 @@ RenderSystemObj::~RenderSystemObj()
 
     mDevice.destroy_set_pool(mFrameSetPool);
 
-    RMeshBlinnPhongPipeline::destroy(mMeshPipeline);
+    MeshBlinnPhongPipeline::destroy(mMeshPipeline);
 
     mDevice.destroy_image(mWhiteCubemap);
     mDevice.destroy_image(mFontAtlasImage);
@@ -941,7 +941,7 @@ void RenderSystemObj::WorldPass::forward_rendering(ForwardRenderComponent render
     meshPipeline.set_color_write_mask(1, RCOLOR_COMPONENT_R_BIT | RCOLOR_COMPONENT_G_BIT);
     meshPipeline.set_depth_test_enable(true);
 
-    RMeshBlinnPhongPipeline::PushConstant pc;
+    MeshBlinnPhongPipeline::PushConstant pc;
 
     // render static mesh
     for (auto it = self.mMeshDataPA.begin(); it; ++it)
@@ -1033,7 +1033,7 @@ void RenderSystemObj::ScreenPass::render(ScreenRenderComponent renderer, void* s
                 Vec4 tr = worldMat4 * Vec4(localPos.get_pos_tr(), 0.0f, 1.0f);
                 Vec4 br = worldMat4 * Vec4(localPos.get_pos_br(), 0.0f, 1.0f);
                 Vec4 bl = worldMat4 * Vec4(localPos.get_pos_bl(), 0.0f, 1.0f);
-                RectVertex* v = renderer.draw(item.sprite2D->image);
+                QuadVertex* v = renderer.draw(item.sprite2D->image);
                 v[0].x = tl.x;
                 v[0].y = tl.y;
                 v[0].u = localUV.x;

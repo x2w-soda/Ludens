@@ -1,3 +1,4 @@
+#include <Ludens/DSA/Vector.h>
 #include <Ludens/Header/GLSL/Common.h>
 #include <Ludens/Memory/Memory.h>
 #include <Ludens/RenderBackend/RUtil.h>
@@ -5,13 +6,13 @@
 #include <Ludens/RenderComponent/Layout/RMaterial.h>
 #include <Ludens/RenderComponent/Layout/SetLayouts.h>
 #include <Ludens/RenderComponent/Layout/VertexLayouts.h>
-#include <Ludens/RenderComponent/Pipeline/RMeshPipeline.h>
+#include <Ludens/RenderComponent/Pipeline/MeshPipeline.h>
+
 #include <array>
-#include <vector>
 
 namespace LD {
 
-static RPipelineInfo make_rmesh_pipeline_info(std::vector<RVertexAttribute>& attrs, RVertexBinding& binding, std::array<RShader, 2>& shaders, std::array<RPipelineBlendState, 2>& blendAttachments)
+static RPipelineInfo make_mesh_pipeline_info(Vector<RVertexAttribute>& attrs, RVertexBinding& binding, std::array<RShader, 2>& shaders, std::array<RPipelineBlendState, 2>& blendAttachments)
 {
     binding.inputRate = RBINDING_INPUT_RATE_VERTEX;
     binding.stride = sizeof(MeshVertex);
@@ -136,7 +137,7 @@ void main()
 )";
 // clang-format on
 
-struct RMeshBlinnPhongPipelineObj
+struct MeshBlinnPhongPipelineObj
 {
     RDevice device;         /// the device used to create this pipeline
     RPipeline handle;       /// graphics pipeline handle
@@ -144,9 +145,9 @@ struct RMeshBlinnPhongPipelineObj
     RShader fragmentShader; /// blinn phong fragment shader
 };
 
-RMeshBlinnPhongPipeline RMeshBlinnPhongPipeline::create(RDevice device)
+MeshBlinnPhongPipeline MeshBlinnPhongPipeline::create(RDevice device)
 {
-    RMeshBlinnPhongPipelineObj* obj = (RMeshBlinnPhongPipelineObj*)heap_malloc(sizeof(RMeshBlinnPhongPipelineObj), MEMORY_USAGE_RENDER);
+    MeshBlinnPhongPipelineObj* obj = (MeshBlinnPhongPipelineObj*)heap_malloc(sizeof(MeshBlinnPhongPipelineObj), MEMORY_USAGE_RENDER);
 
     obj->device = device;
     obj->vertexShader = device.create_shader({RSHADER_TYPE_VERTEX, sBlinnPhongVS});
@@ -154,18 +155,18 @@ RMeshBlinnPhongPipeline RMeshBlinnPhongPipeline::create(RDevice device)
 
     std::array<RPipelineBlendState, 2> blendAttachments;
     std::array<RShader, 2> shaders = {obj->vertexShader, obj->fragmentShader};
-    std::vector<RVertexAttribute> attrs;
+    Vector<RVertexAttribute> attrs;
     RVertexBinding binding;
-    RPipelineInfo pipelineI = make_rmesh_pipeline_info(attrs, binding, shaders, blendAttachments);
+    RPipelineInfo pipelineI = make_mesh_pipeline_info(attrs, binding, shaders, blendAttachments);
 
     obj->handle = device.create_pipeline(pipelineI);
 
     return {obj};
 }
 
-void RMeshBlinnPhongPipeline::destroy(RMeshBlinnPhongPipeline pipeline)
+void MeshBlinnPhongPipeline::destroy(MeshBlinnPhongPipeline pipeline)
 {
-    RMeshBlinnPhongPipelineObj* obj = pipeline;
+    MeshBlinnPhongPipelineObj* obj = pipeline;
     RDevice device = obj->device;
 
     device.destroy_pipeline(obj->handle);
@@ -175,7 +176,7 @@ void RMeshBlinnPhongPipeline::destroy(RMeshBlinnPhongPipeline pipeline)
     heap_free(obj);
 }
 
-RPipeline RMeshBlinnPhongPipeline::handle()
+RPipeline MeshBlinnPhongPipeline::handle()
 {
     return mObj->handle;
 }
@@ -234,7 +235,7 @@ void main()
 )";
 // clang-format on
 
-struct RMeshAmbientPipelineObj
+struct MeshAmbientPipelineObj
 {
     RDevice device;         /// the device used to create this pipeline
     RPipeline handle;       /// graphics pipeline handle
@@ -242,9 +243,9 @@ struct RMeshAmbientPipelineObj
     RShader fragmentShader; /// blinn phong fragment shader
 };
 
-RMeshAmbientPipeline RMeshAmbientPipeline::create(RDevice device)
+MeshAmbientPipeline MeshAmbientPipeline::create(RDevice device)
 {
-    RMeshAmbientPipelineObj* obj = (RMeshAmbientPipelineObj*)heap_malloc(sizeof(RMeshAmbientPipelineObj), MEMORY_USAGE_RENDER);
+    MeshAmbientPipelineObj* obj = (MeshAmbientPipelineObj*)heap_malloc(sizeof(MeshAmbientPipelineObj), MEMORY_USAGE_RENDER);
 
     obj->device = device;
     obj->vertexShader = device.create_shader({RSHADER_TYPE_VERTEX, sAmbientVS});
@@ -252,9 +253,9 @@ RMeshAmbientPipeline RMeshAmbientPipeline::create(RDevice device)
 
     std::array<RPipelineBlendState, 2> blendAttachments;
     std::array<RShader, 2> shaders = {obj->vertexShader, obj->fragmentShader};
-    std::vector<RVertexAttribute> attrs;
+    Vector<RVertexAttribute> attrs;
     RVertexBinding binding;
-    RPipelineInfo pipelineI = make_rmesh_pipeline_info(attrs, binding, shaders, blendAttachments);
+    RPipelineInfo pipelineI = make_mesh_pipeline_info(attrs, binding, shaders, blendAttachments);
     pipelineI.rasterization.cullMode = RCULL_MODE_NONE;
 
     obj->handle = device.create_pipeline(pipelineI);
@@ -262,9 +263,9 @@ RMeshAmbientPipeline RMeshAmbientPipeline::create(RDevice device)
     return {obj};
 }
 
-void RMeshAmbientPipeline::destroy(RMeshAmbientPipeline pipeline)
+void MeshAmbientPipeline::destroy(MeshAmbientPipeline pipeline)
 {
-    RMeshAmbientPipelineObj* obj = pipeline;
+    MeshAmbientPipelineObj* obj = pipeline;
 
     RDevice device = obj->device;
     device.destroy_pipeline(obj->handle);
@@ -274,7 +275,7 @@ void RMeshAmbientPipeline::destroy(RMeshAmbientPipeline pipeline)
     heap_free(obj);
 }
 
-RPipeline RMeshAmbientPipeline::handle()
+RPipeline MeshAmbientPipeline::handle()
 {
     return mObj->handle;
 }

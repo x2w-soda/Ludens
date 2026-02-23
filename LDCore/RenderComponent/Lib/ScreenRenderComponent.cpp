@@ -1,3 +1,4 @@
+#include <Ludens/DSA/HashMap.h>
 #include <Ludens/DSA/Stack.h>
 #include <Ludens/DSA/Vector.h>
 #include <Ludens/Header/Assert.h>
@@ -7,120 +8,21 @@
 #include <Ludens/RenderBackend/RUtil.h>
 #include <Ludens/RenderComponent/Layout/SetLayouts.h>
 #include <Ludens/RenderComponent/Layout/VertexLayouts.h>
+#include <Ludens/RenderComponent/Pipeline/QuadPipeline.h>
 #include <Ludens/RenderComponent/ScreenRenderComponent.h>
-
-#include <array>
-
-#define IMAGE_SLOT_COUNT 8
 
 namespace LD {
 
-// clang-format off
-static const char sRectVSSource[] = R"(
-layout (location = 0) in vec2 aPos;
-layout (location = 1) in vec2 aUV;
-layout (location = 2) in uint aColor;
-layout (location = 3) in uint aControl;
+static constexpr uint32_t sMaxQuadCount = 2048;
+static constexpr uint32_t sMaxQuadVertexCount = sMaxQuadCount * 4;
+static constexpr uint32_t sMaxQuadIndexCount = sMaxQuadCount * 6;
+static constexpr size_t sImageSlotCount = QuadPipeline::image_slots();
 
-layout (location = 0) out vec2 vUV;
-layout (location = 1) out flat uint vColor;
-layout (location = 2) out flat uint vControl;
-)"
-LD_GLSL_FRAME_SET
-R"(
-
-layout (push_constant) uniform PC {
-    uint vpIndex;
-} uPC;
-
-void main()
-{
-    ViewProjectionData vp = uFrame.vp[uPC.vpIndex];
-    gl_Position = vp.viewProjMat * vec4(aPos, 0.0, 1.0);
-    //float ndcx = (aPos.x / uFrame.screenExtent.x) * 2.0 - 1.0;
-    //float ndcy = (aPos.y / uFrame.screenExtent.y) * 2.0 - 1.0;
-    //gl_Position = vec4(ndcx, ndcy, 0.0, 1.0);
-    vUV = aUV;
-    vColor = aColor;
-    vControl = aControl;
-}
-)";
-
-static const char sRectFSSource[] = R"(
-layout (location = 0) in vec2 vUV;
-layout (location = 1) in flat uint vColor;
-layout (location = 2) in flat uint vControl;
-layout (location = 0) out vec4 fColor;
-
-layout (set = 1, binding = 0) uniform sampler2D uImages[8];
-
-void main()
-{
-    vec4 imageColor = vec4(1.0);
-
-    uint imageIdx = vControl & 15;
-    uint imageHintBits = (vControl >> 4) & 15;
-    uint filterRatioBits = (vControl >> 8) & 255;
-    float filterRatio = float(filterRatioBits) / 8.0f;
-
-    switch (imageIdx)
-    {
-        case 0: break;
-        case 1: imageColor = texture(uImages[0], vUV); break;
-        case 2: imageColor = texture(uImages[1], vUV); break;
-        case 3: imageColor = texture(uImages[2], vUV); break;
-        case 4: imageColor = texture(uImages[3], vUV); break;
-        case 5: imageColor = texture(uImages[4], vUV); break;
-        case 6: imageColor = texture(uImages[5], vUV); break;
-        case 7: imageColor = texture(uImages[6], vUV); break;
-        case 8: imageColor = texture(uImages[7], vUV); break;
-    }
-
-    float r = float((vColor >> 24) & 0xFF) / 255.0f;
-    float g = float((vColor >> 16) & 0xFF) / 255.0f;
-    float b = float((vColor >> 8) & 0xFF) / 255.0f;
-    float a = float(vColor & 0xFF) / 255.0f;
-    vec4 tint = vec4(r, g, b, a);
-
-    float screenPxRange = 2.0 * filterRatio;
-    float sd = imageColor.r;
-    float screenPxDistance = screenPxRange * (sd - 0.5);
-    float opacity = clamp(screenPxDistance + 0.5, 0.0, 1.0);
-
-    vec4 color = imageColor * tint;
-
-    switch (imageHintBits)
-    {
-        case 1: // single channel font bitmap
-            color = tint * vec4(imageColor.r);
-            break;
-        case 2: // font SDF
-            color = mix(vec4(0.0), tint, opacity);
-            break;
-        case 3: // override image alpha with 1.0
-            color.a = 1.0;
-            break;
-    }
-
-    fColor = color;
-}
-)";
-// clang-format on
-
-constexpr uint32_t sMaxRectCount = 8192;
-constexpr uint32_t sMaxRectVertexCount = sMaxRectCount * 4;
-constexpr uint32_t sMaxRectIndexCount = sMaxRectCount * 6;
-
-static RSetBindingInfo sScreenSetBinding = {0, RBINDING_TYPE_COMBINED_IMAGE_SAMPLER, IMAGE_SLOT_COUNT};
-static RSetLayoutInfo sScreenSetLayout = {.bindingCount = 1, .bindings = &sScreenSetBinding};
 static RDevice sDevice;
-static RShader sRectVS;
-static RShader sRectFS;
-static RPipeline sRectPipeline;
 static RImage sWhitePixel;
+static QuadPipeline sQuadPipeline;
 static bool sHasStaticStartup;
-static std::unordered_map<Hash32, ScreenRenderComponentObj*> sInstances;
-static RPipelineLayoutInfo sScreenPipelineLayout;
+static HashMap<Hash32, ScreenRenderComponentObj*> sInstances;
 
 /// @brief Screen render component instance.
 class ScreenRenderComponentObj
@@ -141,7 +43,7 @@ private: // instance members
     {
         RBuffer rectVBO;
         RSet screenSet;
-        RSetPool screenSetPool;
+        RSetPool imageSlotSetPool;
     };
 
     struct Frame
@@ -151,8 +53,8 @@ private: // instance members
 
     RBuffer mRectIBO;
     RCommandList mList;
-    RImage mImageSlots[IMAGE_SLOT_COUNT];
-    RectVertexBatch<sMaxRectCount> mRectBatch;
+    RImage mImageSlots[sImageSlotCount];
+    QuadVertexBatch<sMaxQuadCount> mRectBatch;
     RGraphicsPass mGraphicsPass;
     RGraphImage mColorAttachment{};
     RGraphImage mSampledAttachment{};
@@ -182,7 +84,7 @@ ScreenRenderComponentObj::ScreenRenderComponentObj(RDevice device, const char* n
 {
     ScreenRenderComponentObj::static_startup(device);
 
-    uint32_t* indices = (uint32_t*)heap_malloc(sizeof(uint32_t) * sMaxRectIndexCount, MEMORY_USAGE_RENDER);
+    uint32_t* indices = (uint32_t*)heap_malloc(sizeof(uint32_t) * sMaxQuadIndexCount, MEMORY_USAGE_RENDER);
     mRectBatch.write_indices(indices);
     mBatchIdx = 0;
     mImageCounter = 0;
@@ -192,7 +94,7 @@ ScreenRenderComponentObj::ScreenRenderComponentObj(RDevice device, const char* n
 
     RBufferInfo bufferI = {
         .usage = RBUFFER_USAGE_INDEX_BIT | RBUFFER_USAGE_TRANSFER_DST_BIT,
-        .size = sizeof(uint32_t) * sMaxRectIndexCount,
+        .size = sizeof(uint32_t) * sMaxQuadIndexCount,
         .hostVisible = false,
     };
     mRectIBO = device.create_buffer(bufferI);
@@ -208,18 +110,18 @@ ScreenRenderComponentObj::ScreenRenderComponentObj(RDevice device, const char* n
     {
         bufferI = {
             .usage = RBUFFER_USAGE_VERTEX_BIT,
-            .size = sizeof(RectVertex) * sMaxRectVertexCount,
+            .size = sizeof(QuadVertex) * sMaxQuadVertexCount,
             .hostVisible = true, // persistent mapping
         };
         frame.batches.resize(1);
         Batch& firstBatch = frame.batches.front();
         firstBatch.rectVBO = device.create_buffer(bufferI);
         firstBatch.rectVBO.map();
-        firstBatch.screenSetPool = device.create_set_pool({
-            .layout = sScreenSetLayout,
+        firstBatch.imageSlotSetPool = device.create_set_pool({
+            .layout = QuadPipeline::image_slot_set_layout(),
             .maxSets = 1,
         });
-        firstBatch.screenSet = firstBatch.screenSetPool.allocate();
+        firstBatch.screenSet = firstBatch.imageSlotSetPool.allocate();
     }
 }
 
@@ -233,7 +135,7 @@ ScreenRenderComponentObj::~ScreenRenderComponentObj()
         {
             batch.rectVBO.unmap();
             sDevice.destroy_buffer(batch.rectVBO);
-            sDevice.destroy_set_pool(batch.screenSetPool);
+            sDevice.destroy_set_pool(batch.imageSlotSetPool);
         }
         frame.batches.clear();
     }
@@ -246,32 +148,32 @@ void ScreenRenderComponentObj::flush_rects()
     Frame& frame = mFrames[mFrameIdx];
     Batch& batch = frame.batches[mBatchIdx];
 
-    uint32_t rectCount = mRectBatch.get_rect_count();
+    uint32_t rectCount = mRectBatch.get_quad_count();
     uint32_t vertexCount;
-    RectVertex* vertices = mRectBatch.get_vertices(vertexCount);
+    QuadVertex* vertices = mRectBatch.get_vertices(vertexCount);
 
     if (vertexCount == 0)
         return;
 
-    batch.rectVBO.map_write(0, sizeof(RectVertex) * vertexCount, vertices);
+    batch.rectVBO.map_write(0, sizeof(QuadVertex) * vertexCount, vertices);
 
     mRectBatch.reset();
 
-    RImageLayout layouts[IMAGE_SLOT_COUNT];
-    std::fill(layouts, layouts + IMAGE_SLOT_COUNT, RIMAGE_LAYOUT_SHADER_READ_ONLY);
+    RImageLayout layouts[sImageSlotCount];
+    std::fill(layouts, layouts + sImageSlotCount, RIMAGE_LAYOUT_SHADER_READ_ONLY);
 
     RSetImageUpdateInfo updateI{};
     updateI.set = batch.screenSet;
     updateI.dstBinding = 0;
     updateI.dstArrayIndex = 0;
-    updateI.imageCount = IMAGE_SLOT_COUNT;
+    updateI.imageCount = sImageSlotCount;
     updateI.imageLayouts = layouts;
     updateI.imageBindingType = RBINDING_TYPE_COMBINED_IMAGE_SAMPLER;
     updateI.images = mImageSlots;
     sDevice.update_set_images(1, &updateI);
 
     mList.cmd_bind_vertex_buffers(0, 1, &batch.rectVBO);
-    mList.cmd_bind_graphics_sets(sScreenPipelineLayout, 1, 1, &batch.screenSet);
+    mList.cmd_bind_graphics_sets(QuadPipeline::layout(), 1, 1, &batch.screenSet);
 
     RDrawIndexedInfo drawI = {
         .indexCount = rectCount * 6,
@@ -290,17 +192,17 @@ void ScreenRenderComponentObj::flush_rects()
 
     RBufferInfo bufferI = {
         .usage = RBUFFER_USAGE_VERTEX_BIT,
-        .size = sizeof(RectVertex) * sMaxRectVertexCount,
+        .size = sizeof(QuadVertex) * sMaxQuadVertexCount,
         .hostVisible = true, // persistent mapping
     };
 
     newBatch.rectVBO = sDevice.create_buffer(bufferI);
     newBatch.rectVBO.map();
-    newBatch.screenSetPool = sDevice.create_set_pool({
-        .layout = sScreenSetLayout,
+    newBatch.imageSlotSetPool = sDevice.create_set_pool({
+        .layout = QuadPipeline::image_slot_set_layout(),
         .maxSets = 1,
     });
-    newBatch.screenSet = newBatch.screenSetPool.allocate();
+    newBatch.screenSet = newBatch.imageSlotSetPool.allocate();
 }
 
 int ScreenRenderComponentObj::get_image_index(RImage image)
@@ -329,41 +231,7 @@ void ScreenRenderComponentObj::static_startup(RDevice device)
 
     RGraph::add_release_callback(nullptr, &ScreenRenderComponentObj::static_cleanup);
 
-    sRectVS = device.create_shader({.type = RSHADER_TYPE_VERTEX, .glsl = sRectVSSource});
-    sRectFS = device.create_shader({.type = RSHADER_TYPE_FRAGMENT, .glsl = sRectFSSource});
-
-    std::array<RShader, 2> shaders{sRectVS, sRectFS};
-    Vector<RVertexAttribute> attrs;
-    RVertexBinding binding = {.inputRate = RBINDING_INPUT_RATE_VERTEX, .stride = sizeof(RectVertex)};
-    get_rect_vertex_attributes(attrs);
-
-    static RSetLayoutInfo setLayouts[2];
-    setLayouts[0] = sFrameSetLayout;
-    setLayouts[1] = sScreenSetLayout;
-
-    sScreenPipelineLayout.setLayoutCount = 2;
-    sScreenPipelineLayout.setLayouts = setLayouts;
-
-    RPipelineBlendState blendState = RUtil::make_default_blend_state();
-
-    RPipelineInfo pipelineI{
-        .shaderCount = (uint32_t)shaders.size(),
-        .shaders = shaders.data(),
-        .vertexAttributeCount = (uint32_t)attrs.size(),
-        .vertexAttributes = attrs.data(),
-        .vertexBindingCount = 1,
-        .vertexBindings = &binding,
-        .layout = sScreenPipelineLayout,
-        .depthStencil = {
-            .depthTestEnabled = false,
-        },
-        .blend = {
-            .colorAttachmentCount = 1,
-            .colorAttachments = &blendState,
-        },
-    };
-
-    sRectPipeline = device.create_pipeline(pipelineI);
+    sQuadPipeline = QuadPipeline::create(device);
 
     RStager stager(device, RQUEUE_TYPE_GRAPHICS);
     RImageInfo imageI = RUtil::make_2d_image_info(RIMAGE_USAGE_SAMPLED_BIT | RIMAGE_USAGE_TRANSFER_DST_BIT, RFORMAT_RGBA8, 1, 1, {});
@@ -389,9 +257,8 @@ void ScreenRenderComponentObj::static_cleanup(void* user)
     sInstances.clear();
 
     sDevice.destroy_image(sWhitePixel);
-    sDevice.destroy_pipeline(sRectPipeline);
-    sDevice.destroy_shader(sRectVS);
-    sDevice.destroy_shader(sRectFS);
+    QuadPipeline::destroy(sQuadPipeline);
+    sQuadPipeline = {};
     sDevice = {};
 }
 
@@ -400,10 +267,10 @@ void ScreenRenderComponentObj::on_graphics_pass(RGraphicsPass pass, RCommandList
     auto* obj = (ScreenRenderComponentObj*)user;
     Frame& frame = obj->mFrames[obj->mFrameIdx];
 
-    list.cmd_bind_graphics_pipeline(sRectPipeline);
+    list.cmd_bind_graphics_pipeline(sQuadPipeline.handle());
     list.cmd_bind_index_buffer(obj->mRectIBO, RINDEX_TYPE_U32);
 
-    std::fill(obj->mImageSlots, obj->mImageSlots + IMAGE_SLOT_COUNT, sWhitePixel);
+    std::fill(obj->mImageSlots, obj->mImageSlots + sImageSlotCount, sWhitePixel);
 
     obj->mRectBatch.reset();
     obj->mBatchIdx = 0;
@@ -521,11 +388,12 @@ void ScreenRenderComponent::set_view_projection_index(int vpIndex)
     LD_ASSERT(mObj->mList);
     LD_ASSERT(vpIndex >= 0); // caller's responsibility
 
-    // flush crrent batch before chaning view projection state
+    // flush crrent batch before changing view projection state
     mObj->flush_rects();
 
-    uint32_t pc = (uint32_t)vpIndex;
-    mObj->mList.cmd_push_constant(sScreenPipelineLayout, 0, sizeof(pc), &pc);
+    QuadPipeline::PushConstant pc{};
+    pc.vpIndex = (uint32_t)vpIndex;
+    mObj->mList.cmd_push_constant(QuadPipeline::layout(), 0, sizeof(pc), &pc);
 }
 
 void ScreenRenderComponent::push_scissor(const Rect& scissor)
@@ -586,7 +454,7 @@ void ScreenRenderComponent::pop_color_mask()
         mObj->mColorMask = mObj->mColorMasks.top();
 }
 
-RectVertex* ScreenRenderComponent::draw(RImage image)
+QuadVertex* ScreenRenderComponent::draw(RImage image)
 {
     if (mObj->mRectBatch.is_full())
         mObj->flush_rects();
@@ -597,11 +465,11 @@ RectVertex* ScreenRenderComponent::draw(RImage image)
     {
         int imageIdx = mObj->get_image_index(image);
         LD_ASSERT(imageIdx >= 0);
-        control = get_rect_vertex_control_bits(imageIdx, RECT_VERTEX_IMAGE_HINT_NONE, 0);
+        control = get_quad_vertex_control_bits(imageIdx, RECT_VERTEX_IMAGE_HINT_NONE, 0);
     }
 
     // NOTE: this allows user to bypass mObj->mColorMask and write the final color directly
-    RectVertex* v = mObj->mRectBatch.write_rect();
+    QuadVertex* v = mObj->mRectBatch.write_quad();
     v[0].control = control;
     v[1].control = control;
     v[2].control = control;
@@ -622,7 +490,7 @@ void ScreenRenderComponent::draw_rect(const Rect& rect, Color color)
     float y0 = rect.y;
     float y1 = rect.y + rect.h;
 
-    RectVertex* v = mObj->mRectBatch.write_rect();
+    QuadVertex* v = mObj->mRectBatch.write_quad();
     v[0] = {x0, y0, 0, 0, color, 0}; // TL
     v[1] = {x1, y0, 0, 0, color, 0}; // TR
     v[2] = {x1, y1, 0, 0, color, 0}; // BR
@@ -631,7 +499,7 @@ void ScreenRenderComponent::draw_rect(const Rect& rect, Color color)
 
 void ScreenRenderComponent::draw_rect_outline(const Rect& rect, float border, Color color)
 {
-    if (mObj->mRectBatch.get_rect_count() + 4 > mObj->mRectBatch.get_max_rect_count())
+    if (mObj->mRectBatch.get_quad_count() + 4 > mObj->mRectBatch.get_max_rect_count())
         mObj->flush_rects();
 
     color = color * mObj->mColorMask;
@@ -641,25 +509,25 @@ void ScreenRenderComponent::draw_rect_outline(const Rect& rect, float border, Co
     float y0 = rect.y;
     float y1 = rect.y + rect.h;
 
-    RectVertex* barT = mObj->mRectBatch.write_rect();
+    QuadVertex* barT = mObj->mRectBatch.write_quad();
     barT[0] = {x0, y0, 0, 0, color, 0};
     barT[1] = {x1, y0, 0, 0, color, 0};
     barT[2] = {x1, y0 + border, 0, 0, color, 0};
     barT[3] = {x0, y0 + border, 0, 0, color, 0};
 
-    RectVertex* barB = mObj->mRectBatch.write_rect();
+    QuadVertex* barB = mObj->mRectBatch.write_quad();
     barB[0] = {x0, y1 - border, 0, 0, color, 0};
     barB[1] = {x1, y1 - border, 0, 0, color, 0};
     barB[2] = {x1, y1, 0, 0, color, 0};
     barB[3] = {x0, y1, 0, 0, color, 0};
 
-    RectVertex* barL = mObj->mRectBatch.write_rect();
+    QuadVertex* barL = mObj->mRectBatch.write_quad();
     barL[0] = {x0, y0 + border, 0, 0, color, 0};
     barL[1] = {x0 + border, y0 + border, 0, 0, color, 0};
     barL[2] = {x0 + border, y1 - border, 0, 0, color, 0};
     barL[3] = {x0, y1 - border, 0, 0, color, 0};
 
-    RectVertex* barR = mObj->mRectBatch.write_rect();
+    QuadVertex* barR = mObj->mRectBatch.write_quad();
     barR[0] = {x1 - border, y0 + border, 0, 0, color, 0};
     barR[1] = {x1, y0 + border, 0, 0, color, 0};
     barR[2] = {x1, y1 - border, 0, 0, color, 0};
@@ -680,10 +548,10 @@ void ScreenRenderComponent::draw_image(const Rect& rect, RImage image, Color col
     float y1 = rect.y + rect.h;
 
     RectVertexImageHint imageHint = forceAlphaOne ? RECT_VERTEX_IMAGE_HINT_ALPHA_ONE : RECT_VERTEX_IMAGE_HINT_NONE;
-    uint32_t control = get_rect_vertex_control_bits(imageIdx, imageHint, 0);
+    uint32_t control = get_quad_vertex_control_bits(imageIdx, imageHint, 0);
     uint32_t tint = color * mObj->mColorMask;
 
-    RectVertex* v = mObj->mRectBatch.write_rect();
+    QuadVertex* v = mObj->mRectBatch.write_quad();
     v[0] = {x0, y0, 0.0f, 0.0f, tint, control}; // TL
     v[1] = {x1, y0, 1.0f, 0.0f, tint, control}; // TR
     v[2] = {x1, y1, 1.0f, 1.0f, tint, control}; // BR
@@ -709,9 +577,9 @@ void ScreenRenderComponent::draw_image_uv(const Rect& rect, RImage image, const 
     float v0 = uv.y;
     float v1 = uv.y + uv.h;
 
-    uint32_t control = get_rect_vertex_control_bits(imageIdx, RECT_VERTEX_IMAGE_HINT_NONE, 0);
+    uint32_t control = get_quad_vertex_control_bits(imageIdx, RECT_VERTEX_IMAGE_HINT_NONE, 0);
 
-    RectVertex* v = mObj->mRectBatch.write_rect();
+    QuadVertex* v = mObj->mRectBatch.write_quad();
     v[0] = {x0, y0, u0, v0, color, control}; // TL
     v[1] = {x1, y0, u1, v0, color, control}; // TR
     v[2] = {x1, y1, u1, v1, color, control}; // BR
@@ -757,9 +625,9 @@ void ScreenRenderComponent::draw_glyph(FontAtlas atlas, RImage atlasImage, float
 
     color = color * mObj->mColorMask;
 
-    uint32_t control = get_rect_vertex_control_bits(imageIdx, hint, filterRatio);
+    uint32_t control = get_quad_vertex_control_bits(imageIdx, hint, filterRatio);
 
-    RectVertex* v = mObj->mRectBatch.write_rect();
+    QuadVertex* v = mObj->mRectBatch.write_quad();
     v[0] = {x0, y0, u0, v0, color, control}; // TL
     v[1] = {x1, y0, u1, v0, color, control}; // TR
     v[2] = {x1, y1, u1, v1, color, control}; // BR
