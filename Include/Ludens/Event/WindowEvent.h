@@ -37,43 +37,47 @@ struct WindowResizeEvent : WindowEvent
 
 struct WindowKeyDownEvent : WindowEvent
 {
-    const KeyCode key;
+    const KeyCode code;
+    const KeyMods mods;
     bool repeat;
 
-    WindowKeyDownEvent(WindowID window, KeyCode key, bool repeat)
-        : WindowEvent(EVENT_TYPE_WINDOW_KEY_DOWN, window), key(key), repeat(repeat) {}
+    WindowKeyDownEvent(WindowID window, KeyCode code, KeyMods mods = 0, bool repeat = false)
+        : WindowEvent(EVENT_TYPE_WINDOW_KEY_DOWN, window), code(code), mods(mods), repeat(repeat) {}
 };
 
 struct WindowKeyUpEvent : WindowEvent
 {
-    const KeyCode key;
+    const KeyCode code;
+    const KeyMods mods;
 
-    WindowKeyUpEvent(WindowID window, KeyCode key)
-        : WindowEvent(EVENT_TYPE_WINDOW_KEY_UP, window), key(key) {}
+    WindowKeyUpEvent(WindowID window, KeyCode code, KeyMods mods = 0)
+        : WindowEvent(EVENT_TYPE_WINDOW_KEY_UP, window), code(code), mods(mods) {}
 };
 
-struct WindowMouseMotionEvent : WindowEvent
+struct WindowMousePositionEvent : WindowEvent
 {
     float xpos, ypos;
 
-    WindowMouseMotionEvent(WindowID window, float x, float y)
-        : WindowEvent(EVENT_TYPE_WINDOW_MOUSE_MOTION, window), xpos(x), ypos(y) {}
+    WindowMousePositionEvent(WindowID window, float x, float y)
+        : WindowEvent(EVENT_TYPE_WINDOW_MOUSE_POSITION, window), xpos(x), ypos(y) {}
 };
 
 struct WindowMouseDownEvent : WindowEvent
 {
     const MouseButton button;
+    const KeyMods mods;
 
-    WindowMouseDownEvent(WindowID window, MouseButton btn)
-        : WindowEvent(EVENT_TYPE_WINDOW_MOUSE_DOWN, window), button(btn) {}
+    WindowMouseDownEvent(WindowID window, MouseButton btn, KeyMods mods = 0)
+        : WindowEvent(EVENT_TYPE_WINDOW_MOUSE_DOWN, window), button(btn), mods(mods) {}
 };
 
 struct WindowMouseUpEvent : WindowEvent
 {
     const MouseButton button;
+    const KeyMods mods;
 
-    WindowMouseUpEvent(WindowID window, MouseButton btn)
-        : WindowEvent(EVENT_TYPE_WINDOW_MOUSE_UP, window), button(btn) {}
+    WindowMouseUpEvent(WindowID window, MouseButton btn, KeyMods mods = 0)
+        : WindowEvent(EVENT_TYPE_WINDOW_MOUSE_UP, window), button(btn), mods(mods) {}
 };
 
 struct WindowScrollEvent : WindowEvent
