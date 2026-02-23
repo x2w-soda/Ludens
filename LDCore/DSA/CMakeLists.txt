@@ -8,6 +8,7 @@ set(MODULE_INCLUDE
 	${LUDENS_INCLUDE_DIR}/Ludens/DSA/HeapStorage.h
 	${LUDENS_INCLUDE_DIR}/Ludens/DSA/Stack.h
 	${LUDENS_INCLUDE_DIR}/Ludens/DSA/Queue.h
+	${LUDENS_INCLUDE_DIR}/Ludens/DSA/Array.h
 	${LUDENS_INCLUDE_DIR}/Ludens/DSA/Vector.h
 	${LUDENS_INCLUDE_DIR}/Ludens/DSA/String.h
 	${LUDENS_INCLUDE_DIR}/Ludens/DSA/Observer.h
