@@ -23,6 +23,9 @@ LudensLFS::LudensLFS()
     fontPath = lfsPath / fs::path("Fonts/Inter_24pt-Regular.ttf");
     assert(fs::exists(fontPath));
 
+    monospaceFontPath = lfsPath / fs::path("Fonts/JetBrainsMono-Regular.ttf");
+    assert(fs::exists(monospaceFontPath));
+
     skyboxFolderPath = lfsPath / fs::path("Texture/Skybox/learnopengl");
     assert(fs::exists(skyboxFolderPath));
 

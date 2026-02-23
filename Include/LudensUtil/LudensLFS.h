@@ -20,6 +20,7 @@ struct LudensLFS
     std::filesystem::path lfsPath;
     std::filesystem::path materialIconsPath;
     std::filesystem::path fontPath;
+    std::filesystem::path monospaceFontPath;
     std::filesystem::path skyboxFolderPath;
     std::filesystem::path projectPath;
 

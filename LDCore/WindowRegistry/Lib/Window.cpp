@@ -18,6 +18,9 @@ static_assert(GLFW_KEY_LAST < KEY_CODE_ENUM_LAST);
 static_assert(GLFW_MOUSE_BUTTON_LEFT == MOUSE_BUTTON_LEFT);
 static_assert(GLFW_MOUSE_BUTTON_RIGHT == MOUSE_BUTTON_RIGHT);
 static_assert(GLFW_MOUSE_BUTTON_MIDDLE == MOUSE_BUTTON_MIDDLE);
+static_assert(GLFW_MOD_SHIFT == KEY_MOD_SHIFT_BIT);
+static_assert(GLFW_MOD_CONTROL == KEY_MOD_CONTROL_BIT);
+static_assert(GLFW_MOD_ALT == KEY_MOD_ALT_BIT);
 
 WindowObj::WindowObj(const WindowInfo& windowI, WindowRegistryObj* reg, WindowID ID, WindowObj* parent)
     : mHandle(nullptr), mRegistry(reg), mID(ID), mParentID(0), mWidth(windowI.width), mHeight(windowI.height), mUser(windowI.user), mOnEvent(windowI.onEvent)
@@ -82,7 +85,6 @@ void WindowObj::size_callback(GLFWwindow* window, int width, int height)
 void WindowObj::key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
     auto* obj = (WindowObj*)glfwGetWindowUserPointer(window);
-    (void)mods;
     (void)scancode;
 
     if (action == GLFW_PRESS || action == GLFW_REPEAT)
@@ -92,14 +94,14 @@ void WindowObj::key_callback(GLFWwindow* window, int key, int scancode, int acti
         if (firstPress)
             obj->mKeyState[key] |= (PRESSED_BIT | PRESSED_THIS_FRAME_BIT);
 
-        WindowKeyDownEvent event(obj->mID, (KeyCode)key, !firstPress);
+        WindowKeyDownEvent event(obj->mID, (KeyCode)key, (KeyMods)mods, !firstPress);
         obj->on_event(&event);
     }
     else if (action == GLFW_RELEASE)
     {
         obj->mKeyState[key] = RELEASED_THIS_FRAME_BIT;
 
-        WindowKeyUpEvent event(obj->mID, (KeyCode)key);
+        WindowKeyUpEvent event(obj->mID, (KeyCode)key, (KeyMods)mods);
         obj->on_event(&event);
     }
 }
@@ -115,14 +117,14 @@ void WindowObj::mouse_button_callback(GLFWwindow* window, int button, int action
     {
         obj->mMouseState[button] |= (PRESSED_BIT | PRESSED_THIS_FRAME_BIT);
 
-        WindowMouseDownEvent event(obj->mID, (MouseButton)button);
+        WindowMouseDownEvent event(obj->mID, (MouseButton)button, (KeyMods)mods);
         obj->on_event(&event);
     }
     else if (action == GLFW_RELEASE)
     {
         obj->mMouseState[button] = RELEASED_THIS_FRAME_BIT;
 
-        WindowMouseUpEvent event(obj->mID, (MouseButton)button);
+        WindowMouseUpEvent event(obj->mID, (MouseButton)button, (KeyMods)mods);
         obj->on_event(&event);
     }
 }
@@ -130,7 +132,7 @@ void WindowObj::mouse_button_callback(GLFWwindow* window, int button, int action
 void WindowObj::cursor_pos_callback(GLFWwindow* window, double xpos, double ypos)
 {
     auto* obj = (WindowObj*)glfwGetWindowUserPointer(window);
-    WindowMouseMotionEvent event(obj->mID, (float)xpos, (float)ypos);
+    WindowMousePositionEvent event(obj->mID, (float)xpos, (float)ypos);
     obj->on_event(&event);
 }
 
