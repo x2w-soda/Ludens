@@ -23,8 +23,10 @@ struct EditorContextInfo
     AudioSystem audioSystem;   /// audio system handle
     RenderSystem renderSystem; /// render system handle
     FS::Path iconAtlasPath;    /// path to icon atlas
-    FontAtlas fontAtlas;
-    RImage fontAtlasImage;
+    FontAtlas defaultFontAtlas;
+    FontAtlas monoFontAtlas;
+    RImage defaultFontAtlasImage;
+    RImage monoFontAtlasImage;
 };
 
 /// @brief Shared context among editor windows. Keeps track of
@@ -91,6 +93,12 @@ struct EditorContext : Handle<struct EditorContextObj>
 
     /// @brief Get icon atlas for editor.
     RImage get_editor_icon_atlas();
+
+    /// @brief Get editor default font.
+    void get_default_font(FontAtlas& fontAtlas, RImage& fontAtlasImage);
+
+    /// @brief Get editor monospace font.
+    void get_mono_font(FontAtlas& fontAtlas, RImage& fontAtlasImage);
 
     /// @brief Get editor theme.
     inline EditorTheme get_theme() { return get_settings().get_theme(); }

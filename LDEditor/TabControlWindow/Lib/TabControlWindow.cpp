@@ -49,7 +49,8 @@ void TabControlWindowObj::on_imgui(float delta)
     layoutI.sizeX = UISize::fit();
     layoutI.childPadding.left = 6.0f;
     layoutI.childPadding.right = 6.0f;
-    ui_push_panel(&surfaceColor);
+    ui_push_panel();
+    ui_panel_color(surfaceColor);
     ui_top_layout(layoutI);
 
     ui_push_text(tabName.c_str());

@@ -56,7 +56,8 @@ void ProjectSettingsWindowObj::on_imgui(float delta)
     const UILayoutInfo vboxLayoutI = ctx.make_vbox_layout();
 
     Color bgColor = theme.get_ui_theme().get_field_color();
-    ui_push_panel(&bgColor);
+    ui_push_panel();
+    ui_panel_color(bgColor);
     ui_top_layout(vboxLayoutI);
     section_names();
     ui_pop();

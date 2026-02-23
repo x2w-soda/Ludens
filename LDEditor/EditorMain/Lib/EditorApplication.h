@@ -28,8 +28,11 @@ private:
     EditorContext mEditorCtx;
     EditorUI mEditorUI;
     Font mFont;
+    Font mMSFont;
     FontAtlas mFontAtlas;
+    FontAtlas mMSFontAtlas;
     RImage mFontAtlasImage;
+    RImage mMSFontAtlasImage;
     ImageCube mEnvCubemap;
 };
 

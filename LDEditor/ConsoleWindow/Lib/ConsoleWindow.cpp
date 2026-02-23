@@ -45,9 +45,14 @@ void ConsoleWindowObj::on_imgui(float delta)
     layoutI.sizeY = UISize::grow();
     ui_top_layout(layoutI);
 
+    FontAtlas fontAtlas;
+    RImage fontImage;
+    ctx.get_mono_font(fontAtlas, fontImage);
+
     for (const std::string& line : sHistory)
     {
         ui_push_text(line.c_str());
+        ui_text_style(uiTheme.get_on_surface_color(), fontAtlas, fontImage);
         ui_pop();
     }
 

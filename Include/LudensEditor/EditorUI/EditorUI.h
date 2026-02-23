@@ -30,8 +30,6 @@ struct EditorUIInfo
     uint32_t screenWidth;
     uint32_t screenHeight;
     uint32_t barHeight;
-    FontAtlas fontAtlas;
-    RImage fontAtlasImage;
     RenderSystem renderSystem;
     // RUID envCubemap;
 };
@@ -74,8 +72,8 @@ private:
     UIContext mUI{};
     UILayer mUIGroundLayer{};
     UILayer mUIFloatLayer{};
-    FontAtlas mFontAtlas{};
-    RImage mFontAtlasImage{};
+    FontAtlas mDefaultFontAtlas{};
+    RImage mDefaultFontAtlasImage{};
     RenderSystem mRenderSystem{};
     RUID mEnvCubemap = 0;
 };

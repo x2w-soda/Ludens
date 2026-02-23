@@ -78,7 +78,11 @@ struct EditorWorkspaceObj
 
     bool get_hover_split_rect(Rect& outRect, Axis& outSplitAxis)
     {
-        EditorWorkspaceNode* node = partition.get_node(control.hoverSplitID);
+        EditorWorkspaceNode* node = partition.get_node(control.dragSplitID);
+
+        if (!node)
+            node = partition.get_node(control.hoverSplitID);
+
         if (!node)
             return false;
 
@@ -310,11 +314,11 @@ void EditorWorkspace::on_imgui(float delta)
     ui_top_user(mObj);
 
     // find the node for splitting.
-    UIEvent event;
+    UIEventType type;
     Vec2 mousePos;
-    if (ui_top_hover(event))
+    if (ui_top_hover(type))
     {
-        if (event == UI_MOUSE_ENTER && rootW.get_mouse_pos(mousePos))
+        if (type == UI_EVENT_MOUSE_ENTER && rootW.get_mouse_pos(mousePos))
         {
             const Vec2 screenPos = mousePos + rootW.get_pos();
 
@@ -329,7 +333,7 @@ void EditorWorkspace::on_imgui(float delta)
                 }
             });
         }
-        else if (event == UI_MOUSE_LEAVE)
+        else if (type == UI_EVENT_MOUSE_LEAVE)
         {
             mObj->control.hoverSplitID = 0;
         }
@@ -359,6 +363,11 @@ void EditorWorkspace::on_imgui(float delta)
         }
     }
 
+    if (mObj->control.dragSplitID && !ui_top_is_dragged())
+    {
+        mObj->control.dragSplitID = 0;
+    }
+
     ui_top_draw([](UIWidget widget, ScreenRenderComponent renderer, void* user) {
         auto* obj = (EditorWorkspaceObj*)user;
         EditorTheme theme = obj->ctx.get_theme();
@@ -368,11 +377,18 @@ void EditorWorkspace::on_imgui(float delta)
         if (obj->get_hover_split_rect(splitRect, splitAxis))
         {
             if (splitAxis == AXIS_X)
-                splitRect = Rect::scale_w(splitRect, 0.5f);
-            else
+            {
+                splitRect = Rect::scale_w(splitRect, 0.8f);
                 splitRect = Rect::scale_h(splitRect, 0.5f);
+            }
+            else
+            {
+                splitRect = Rect::scale_h(splitRect, 0.8f);
+                splitRect = Rect::scale_w(splitRect, 0.5f);
+            }
 
-            renderer.draw_rect(splitRect, theme.get_ui_theme().get_field_color());
+            Color color = theme.get_ui_theme().get_background_color();
+            renderer.draw_rect(splitRect, Color::lift(color, 0.18f));
         }
     });
 

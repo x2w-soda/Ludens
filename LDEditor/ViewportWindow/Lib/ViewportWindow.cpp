@@ -1,4 +1,5 @@
 #include <Ludens/Header/Impulse.h>
+#include <Ludens/Header/KeyValue.h>
 #include <Ludens/Memory/Memory.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/UI/UIImmediate.h>
@@ -111,7 +112,8 @@ void ViewportWindowObj::toolbar()
     Color color = uiTheme.get_surface_color();
 
     // toolbar
-    ui_push_panel(&color);
+    ui_push_panel();
+    ui_panel_color(color);
     ui_top_layout(layoutI);
 
     // translate gizmo
@@ -180,12 +182,12 @@ void ViewportWindowObj::viewport_editor_imgui(ViewportState& state)
 {
     MouseButton btn;
     Vec2 pos;
-    KeyCode key;
+    KeyValue key;
     bool begin;
 
     if (ui_top_key_down(key))
     {
-        switch (key)
+        switch (key.code())
         {
         case KEY_CODE_1:
             state.gizmoType = SCENE_OVERLAY_GIZMO_TRANSLATION;
@@ -221,12 +223,12 @@ void ViewportWindowObj::viewport_scene_imgui()
 
     Scene scene = ctx.get_scene();
     pos = Vec2(pos.x, pos.y - VIEWPORT_TOOLBAR_HEIGHT);
-    WindowMouseMotionEvent motionE(0, pos.x, pos.y);
-    scene.input_screen_ui(&motionE);
+    WindowMousePositionEvent positionE(0, pos.x, pos.y);
+    scene.input_screen_ui(&positionE);
 
     if (ui_top_mouse_down(btn))
     {
-        WindowMouseDownEvent mouseDownE(0, btn);
+        WindowMouseDownEvent mouseDownE(0, btn, 0);
         scene.input_screen_ui(&mouseDownE);
     }
 }

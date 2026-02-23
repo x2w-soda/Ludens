@@ -15,24 +15,22 @@ void EditorUI::startup(const EditorUIInfo& info)
 {
     LD_PROFILE_SCOPE;
 
-    LD_ASSERT(info.fontAtlas);
-    LD_ASSERT(info.fontAtlasImage);
     LD_ASSERT(info.renderSystem);
 
     const Vec2 screenSize((float)info.screenWidth, (float)info.screenHeight);
 
     mCtx = info.ctx;
+    mCtx.get_default_font(mDefaultFontAtlas, mDefaultFontAtlasImage);
     mRenderSystem = info.renderSystem;
     mEnvCubemap = (RUID)0; // info.envCubemap
 
     UIContextInfo ctxI{};
-    ctxI.fontAtlas = mFontAtlas = info.fontAtlas;
-    ctxI.fontAtlasImage = mFontAtlasImage = info.fontAtlasImage;
+    ctxI.fontAtlas = mDefaultFontAtlas;
+    ctxI.fontAtlasImage = mDefaultFontAtlasImage;
     ctxI.theme = mCtx.get_theme().get_ui_theme();
     mUI = UIContext::create(ctxI);
     mUIGroundLayer = mUI.create_layer("ground");
     mUIFloatLayer = mUI.create_layer("float");
-
 
     EditorUITopBarInfo barI{};
     barI.barHeight = EDITOR_BAR_HEIGHT;
@@ -51,8 +49,8 @@ void EditorUI::startup(const EditorUIInfo& info)
 
     EditorUIDialogInfo dialogI{};
     dialogI.ctx = mCtx;
-    dialogI.fontAtlas = mFontAtlas;
-    dialogI.fontAtlasImage = mFontAtlasImage;
+    dialogI.fontAtlas = mDefaultFontAtlas;
+    dialogI.fontAtlasImage = mDefaultFontAtlasImage;
     mDialog = EditorUIDialog::create(dialogI);
 
     // TODO: EditorFloatLayer
@@ -259,7 +257,7 @@ void EditorUI::on_event(const WindowEvent* event, void* user)
         break;
     }
 
-    self.mUI.on_window_event((const WindowEvent*)event);
+    self.mUI.input_window_event((const WindowEvent*)event);
 }
 
 } // namespace LD

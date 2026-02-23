@@ -39,9 +39,16 @@ EditorApplication::EditorApplication()
     WindowRegistry reg = WindowRegistry::create(windowI);
     const Vec2 screenExtent = reg.get_window_extent(reg.get_root_id());
 
+    // TODO:
+    constexpr float editorFontSize = 32.0f;
+
     std::string fontPathString = sLudensLFS.fontPath.string();
     mFont = Font::create_from_path(fontPathString.c_str());
-    mFontAtlas = FontAtlas::create_bitmap(mFont, 32.0f);
+    mFontAtlas = FontAtlas::create_bitmap(mFont, editorFontSize);
+
+    fontPathString = sLudensLFS.monospaceFontPath.string();
+    mMSFont = Font::create_from_path(fontPathString.c_str());
+    mMSFontAtlas = FontAtlas::create_bitmap(mMSFont, editorFontSize);
 
     RDeviceInfo deviceI{};
     deviceI.backend = RDEVICE_BACKEND_VULKAN;
@@ -50,7 +57,8 @@ EditorApplication::EditorApplication()
 
     RenderSystemInfo serverI{};
     serverI.device = mRDevice;
-    serverI.fontAtlas = mFontAtlas;
+    serverI.defaultFontAtlas = mFontAtlas;
+    serverI.monoFontAtlas = mMSFontAtlas;
     mRenderSystem = RenderSystem::create(serverI);
 
     mAudioSystem = AudioSystem::create();
@@ -82,16 +90,16 @@ EditorApplication::EditorApplication()
     contextI.audioSystem = mAudioSystem;
     contextI.renderSystem = mRenderSystem;
     contextI.iconAtlasPath = sLudensLFS.materialIconsPath;
-    contextI.fontAtlas = mFontAtlas;
-    contextI.fontAtlasImage = mRenderSystem.get_font_atlas_image();
+    contextI.defaultFontAtlas = mFontAtlas;
+    contextI.defaultFontAtlasImage = mRenderSystem.get_font_atlas_image();
+    contextI.monoFontAtlas = mMSFontAtlas;
+    contextI.monoFontAtlasImage = mRenderSystem.get_mono_font_atlas_image();
     mEditorCtx = EditorContext::create(contextI);
     mEditorCtx.load_project(sLudensLFS.projectPath);
 
     // initalize editor UI
     EditorUIInfo uiI{};
     uiI.ctx = mEditorCtx;
-    uiI.fontAtlas = mFontAtlas;
-    uiI.fontAtlasImage = mRenderSystem.get_font_atlas_image();
     uiI.renderSystem = mRenderSystem;
     // uiI.envCubemap = mEnvCubemap.get_id();
     uiI.screenWidth = (uint32_t)screenExtent.x;
@@ -114,7 +122,9 @@ EditorApplication::~EditorApplication()
     AudioSystem::destroy(mAudioSystem);
     RenderSystem::destroy(mRenderSystem);
     RDevice::destroy(mRDevice);
+    FontAtlas::destroy(mMSFontAtlas);
     FontAtlas::destroy(mFontAtlas);
+    Font::destroy(mMSFont);
     Font::destroy(mFont);
     WindowRegistry::destroy();
     JobSystem::shutdown();

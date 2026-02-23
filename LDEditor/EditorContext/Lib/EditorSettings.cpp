@@ -93,12 +93,12 @@ void EditorTheme::get_gizmo_highlight_color(Color& hl) const
     hl = mObj->gizmoHighlightColor;
 }
 
-UILayoutInfo EditorTheme::make_vbox_layout() const
+UILayoutInfo EditorTheme::make_vbox_layout(float childGap) const
 {
     float pad = mObj->padding;
 
     UILayoutInfo layoutI{};
-    layoutI.childGap = 5.0f;
+    layoutI.childGap = childGap;
     layoutI.childPadding = {pad, pad, pad, pad};
     layoutI.sizeX = UISize::fit();
     layoutI.sizeY = UISize::fit();
@@ -106,12 +106,12 @@ UILayoutInfo EditorTheme::make_vbox_layout() const
     return layoutI;
 }
 
-UILayoutInfo EditorTheme::make_hbox_layout() const
+UILayoutInfo EditorTheme::make_hbox_layout(float childGap) const
 {
     float pad = mObj->padding;
 
     UILayoutInfo layoutI{};
-    layoutI.childGap = 5.0f;
+    layoutI.childGap = childGap;
     layoutI.childPadding = {pad, pad, pad, pad};
     layoutI.sizeX = UISize::fit();
     layoutI.sizeY = UISize::fit();

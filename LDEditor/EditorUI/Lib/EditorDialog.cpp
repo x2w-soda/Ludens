@@ -72,7 +72,7 @@ void EditorDialogObj::on_event(const WindowEvent* event, void* user)
         break;
     }
     default:
-        obj->uiCtx.on_window_event(event);
+        obj->uiCtx.input_window_event(event);
         break;
     }
 }

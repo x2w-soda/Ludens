@@ -22,8 +22,8 @@ struct EditorTheme : Handle<struct EditorThemeObj>
     void get_gizmo_colors(Color& axisX, Color& axisY, Color& axisZ) const;
     void get_gizmo_highlight_color(Color& hl) const;
 
-    UILayoutInfo make_vbox_layout() const;
-    UILayoutInfo make_hbox_layout() const;
+    UILayoutInfo make_vbox_layout(float childGap = 5.0f) const;
+    UILayoutInfo make_hbox_layout(float childGap = 5.0f) const;
 };
 
 /// @brief Global editor settings that apply to all projects

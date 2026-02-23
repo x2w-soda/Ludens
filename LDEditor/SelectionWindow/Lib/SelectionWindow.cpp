@@ -151,7 +151,8 @@ bool SelectionWindowObj::row(int idx)
     layoutI.sizeY = UISize::fixed(rowHeight);
     layoutI.sizeX = UISize::grow();
     layoutI.childAxis = UI_AXIS_X;
-    ui_push_panel(&panelColor);
+    ui_push_panel();
+    ui_panel_color(panelColor);
     ui_top_layout(layoutI);
 
     Rect iconRect = EditorIconAtlas::get_icon_rect(isDirectory ? EditorIcon::Folder : EditorIcon::Description);

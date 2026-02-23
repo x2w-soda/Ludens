@@ -59,15 +59,19 @@ void OutlinerWindowObj::component_row(int rowIdx, int depth, SUID compSUID)
     layoutI.sizeX = UISize::grow();
     layoutI.sizeY = UISize::fixed(theme.get_text_row_height());
 
-    Color panelColor = uiTheme.get_surface_color();
+    ui_push_panel();
 
+    Color panelColor = uiTheme.get_surface_color();
     if (rowIdx % 2)
         panelColor = Color::lift(panelColor, 0.02f);
+
+    if (ui_top_is_hovered())
+        panelColor = Color::lift(panelColor, 0.06f);
 
     if (compSUID && compSUID == ctx.get_selected_component())
         panelColor = theme.get_ui_theme().get_selection_color();
 
-    ui_push_panel(&panelColor);
+    ui_panel_color(panelColor);
     ui_top_layout(layoutI);
 
     MouseButton btn;

@@ -33,8 +33,10 @@ struct EditorContextObj
     RenderSystem renderSystem;     /// render server handle
     AudioSystem audioSystem;       /// audio server handle
     Image2D iconAtlas;             /// editor icon atlas handle
-    FontAtlas fontAtlas;           ///
-    RImage fontAtlasImage;         ///
+    FontAtlas defaultFontAtlas;    ///
+    FontAtlas monoFontAtlas;       ///
+    RImage defaultFontAtlasImage;  ///
+    RImage monoFontAtlasImage{};   ///
     Project project;               /// current project under edit
     Scene scene;                   /// current scene under edit
     AssetManager assetManager;     /// loads assets for the scene
@@ -288,8 +290,8 @@ void EditorContextObj::load_project_scene(const FS::Path& sceneSchemaPath)
         sceneI.assetManager = assetManager;
         sceneI.renderSystem = renderSystem;
         sceneI.audioSystem = audioSystem;
-        sceneI.fontAtlas = fontAtlas;
-        sceneI.fontAtlasImage = fontAtlasImage;
+        sceneI.fontAtlas = defaultFontAtlas;
+        sceneI.fontAtlasImage = defaultFontAtlasImage;
         sceneI.uiTheme = settings.get_theme().get_ui_theme();
         scene = Scene::create(sceneI);
     }
@@ -364,8 +366,10 @@ EditorContext EditorContext::create(const EditorContextInfo& info)
     obj->renderSystem = info.renderSystem;
     obj->audioSystem = info.audioSystem;
     obj->iconAtlasPath = info.iconAtlasPath;
-    obj->fontAtlas = info.fontAtlas;
-    obj->fontAtlasImage = info.fontAtlasImage;
+    obj->defaultFontAtlas = info.defaultFontAtlas;
+    obj->defaultFontAtlasImage = info.defaultFontAtlasImage;
+    obj->monoFontAtlas = info.monoFontAtlas;
+    obj->monoFontAtlasImage = info.monoFontAtlasImage;
     obj->settings = EditorSettings::create();
     obj->isPlaying = false;
     obj->editStack = EditStack::create();
@@ -533,6 +537,18 @@ RImage EditorContext::get_editor_icon_atlas()
 
     LD_ASSERT(mObj->iconAtlas);
     return RImage(mObj->iconAtlas.unwrap());
+}
+
+void EditorContext::get_default_font(FontAtlas& fontAtlas, RImage& fontAtlasImage)
+{
+    fontAtlas = mObj->defaultFontAtlas;
+    fontAtlasImage = mObj->defaultFontAtlasImage;
+}
+
+void EditorContext::get_mono_font(FontAtlas& fontAtlas, RImage& fontAtlasImage)
+{
+    fontAtlas = mObj->monoFontAtlas;
+    fontAtlasImage = mObj->monoFontAtlasImage;
 }
 
 Scene EditorContext::get_scene()

@@ -69,7 +69,8 @@ void CreateComponentWindowObj::component_row(ComponentType type, int rowIndex)
     if (rowIndex == selectedRowIndex)
         panelColor = theme.get_ui_theme().get_selection_color();
 
-    ui_push_panel(&panelColor);
+    ui_push_panel();
+    ui_panel_color(panelColor);
     ui_top_layout(layoutI);
     if (ui_top_mouse_down(btn))
         on_row_mouse_down(btn, type);
