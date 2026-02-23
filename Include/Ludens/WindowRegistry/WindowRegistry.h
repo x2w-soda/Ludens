@@ -58,6 +58,9 @@ struct WindowRegistry : Handle<class WindowRegistryObj>
     /// @brief Get delta time in seconds, uniform across all windows.
     double get_delta_time();
 
+    /// @brief Get time since registry creation in seconds.
+    double get_time();
+
     /// @brief Polls events for all windows.
     void poll_events();
 

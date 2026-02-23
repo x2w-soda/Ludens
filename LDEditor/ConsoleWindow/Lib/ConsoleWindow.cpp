@@ -3,18 +3,43 @@
 #include <Ludens/Memory/Memory.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/UI/UIImmediate.h>
+#include <Ludens/WindowRegistry/WindowRegistry.h>
 #include <LudensEditor/ConsoleWindow/ConsoleWindow.h>
 #include <LudensEditor/EditorContext/EditorWindow.h>
 
+#include <chrono>
+#include <format>
 #include <string>
 
 namespace LD {
 
-static Vector<std::string> sHistory;
-
-static void console_log_writeback(LogLevel level, const std::string& msg, void* user)
+struct ConsoleEntry
 {
-    sHistory.push_back(msg);
+    double sessionTime;
+    std::string channel;
+    std::string message;
+    LogLevel level;
+
+    std::string format() const
+    {
+        std::chrono::duration<double> duration(sessionTime);
+        std::chrono::milliseconds ms = std::chrono::duration_cast<std::chrono::milliseconds>(duration);
+
+        return std::format("[{:%T}][{}] {}", ms, channel, message);
+    }
+};
+
+static Vector<ConsoleEntry> sHistory;
+
+static void console_log_writeback(LogLevel level, const std::string& ch, const std::string& msg, void* user)
+{
+    ConsoleEntry entry{};
+    entry.sessionTime = WindowRegistry::get().get_time();
+    entry.channel = ch;
+    entry.message = msg;
+    entry.level = level;
+
+    sHistory.push_back(entry);
 }
 
 /// @brief Editor console window implementation.
@@ -49,10 +74,27 @@ void ConsoleWindowObj::on_imgui(float delta)
     RImage fontImage;
     ctx.get_mono_font(fontAtlas, fontImage);
 
-    for (const std::string& line : sHistory)
+    for (const ConsoleEntry& entry : sHistory)
     {
-        ui_push_text(line.c_str());
-        ui_text_style(uiTheme.get_on_surface_color(), fontAtlas, fontImage);
+        std::string text = entry.format();
+
+        Color color;
+
+        switch (entry.level)
+        {
+        case LOG_LEVEL_WARN:
+        case LOG_LEVEL_ERROR:
+            edTheme.get_error_color(color);
+            break;
+        case LOG_LEVEL_DEBUG:
+        case LOG_LEVEL_INFO:
+        default:
+            color = uiTheme.get_on_surface_color();
+            break;
+        }
+
+        ui_push_text(text.c_str());
+        ui_text_style(color, fontAtlas, fontImage);
         ui_pop();
     }
 

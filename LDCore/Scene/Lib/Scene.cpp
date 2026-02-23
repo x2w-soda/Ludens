@@ -2,11 +2,13 @@
 #include <Ludens/DSA/Vector.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Header/Math/Math.h>
+#include <Ludens/Log/Log.h>
 #include <Ludens/Lua/LuaModule.h>
 #include <Ludens/Lua/LuaState.h>
 #include <Ludens/Memory/Memory.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/Scene/Scene.h>
+#include <Ludens/System/Timer.h>
 
 // Scene implementation may know about DataRegistry memory layouts.
 #include <Ludens/DataRegistry/DataComponent.h>
@@ -22,10 +24,14 @@
 #include "Component/ScreenUIComponent.h"
 #include "Component/Sprite2DComponent.h"
 
+#define SCENE_LOG_CHANNEL_NAME "Scene"
+
 // Scene user's responsibility to check handle before calling methods
 #define LD_ASSERT_COMPONENT_LOADED(DATA) LD_ASSERT(DATA && *(DATA) && ((*(DATA))->flags & COMPONENT_FLAG_LOADED_BIT))
 
 namespace LD {
+
+static Log sSceneLog(SCENE_LOG_CHANNEL_NAME);
 
 /// @brief Scene Singleton, all scene operations including transition should be done in-place,
 ///        the SceneObj address should be immutable.
@@ -100,6 +106,9 @@ void SceneObj::startup_registry()
 {
     LD_PROFILE_SCOPE;
 
+    Timer timer;
+    timer.start();
+
     Vector<ComponentBase**> roots;
     registry.get_root_component_data(roots);
 
@@ -107,11 +116,17 @@ void SceneObj::startup_registry()
     {
         startup_subtree(rootData);
     }
+
+    size_t durationUS = timer.stop();
+    sSceneLog.info("startup complete in {} ms", durationUS / 1000.0f);
 }
 
 void SceneObj::cleanup_registry()
 {
     LD_PROFILE_SCOPE;
+
+    Timer timer;
+    timer.start();
 
     Vector<ComponentBase**> roots;
     registry.get_root_component_data(roots);
@@ -122,6 +137,9 @@ void SceneObj::cleanup_registry()
     }
 
     mainCameraC = nullptr;
+
+    size_t durationUS = timer.stop();
+    sSceneLog.info("cleanup complete in {} ms", durationUS / 1000.0f);
 }
 
 void SceneObj::resize(const Vec2& newExtent)
@@ -248,6 +266,11 @@ void SceneObj::cleanup_subtree(ComponentBase** rootData)
 const char* get_lua_script_log_channel_name()
 {
     return LuaScript::get_log_channel_name();
+}
+
+const char* get_scene_log_channel_name()
+{
+    return SCENE_LOG_CHANNEL_NAME;
 }
 
 Scene Scene::create(const SceneInfo& sceneI)

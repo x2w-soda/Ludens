@@ -226,6 +226,11 @@ double WindowRegistry::get_delta_time()
     return mObj->get_delta_time();
 }
 
+double WindowRegistry::get_time()
+{
+    return mObj->get_time();
+}
+
 void WindowRegistry::poll_events()
 {
     LD_PROFILE_SCOPE;

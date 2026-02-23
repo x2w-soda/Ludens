@@ -37,6 +37,7 @@ public:
 
     inline WindowID get_root_id() const { return mRootID; }
     inline double get_delta_time() const { return mTimeDelta; }
+    inline double get_time() const { return mTimeThisFrame; }
 
     inline WindowObj* get_window(WindowID id) const
     {

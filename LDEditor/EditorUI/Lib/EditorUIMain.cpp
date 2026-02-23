@@ -61,6 +61,7 @@ EditorUIMainObj::EditorUIMainObj(const EditorUIMainInfo& mainI)
     mInspectorWindow = (InspectorWindow)mSceneWorkspace.create_window(inspectorArea, EDITOR_WINDOW_INSPECTOR);
     mConsoleWindow = (ConsoleWindow)mSceneWorkspace.create_window(consoleArea, EDITOR_WINDOW_CONSOLE);
     mConsoleWindow.observe_channel(get_lua_script_log_channel_name());
+    mConsoleWindow.observe_channel(get_scene_log_channel_name());
 }
 
 EditorUIMainObj::~EditorUIMainObj()

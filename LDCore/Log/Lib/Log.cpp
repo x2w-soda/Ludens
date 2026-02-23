@@ -24,7 +24,7 @@ struct LogObj
 
     const std::string name;
     std::mutex mtx;
-    ObserverList<LogLevel, const std::string&> observers;
+    ObserverList<LogLevel, const std::string&, const std::string&> observers;
 };
 
 class LogChannels
@@ -112,7 +112,7 @@ void log_message(LogObj* obj, LogLevel level, const std::string& msg)
     {
         std::unique_lock<std::mutex> lock(obj->mtx);
 
-        obj->observers.notify(level, msg);
+        obj->observers.notify(level, obj->name, msg);
     }
 
     std::cout << prefix << ' ' << msg << std::endl;

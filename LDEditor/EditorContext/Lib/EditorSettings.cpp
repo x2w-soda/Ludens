@@ -93,6 +93,11 @@ void EditorTheme::get_gizmo_highlight_color(Color& hl) const
     hl = mObj->gizmoHighlightColor;
 }
 
+void EditorTheme::get_error_color(Color& err) const
+{
+    err = mObj->errorColor;
+}
+
 UILayoutInfo EditorTheme::make_vbox_layout(float childGap) const
 {
     float pad = mObj->padding;

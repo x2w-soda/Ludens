@@ -21,6 +21,7 @@ struct CameraComponent;
 
 /// @brief Get static C string of log channel used by lua scripts.
 const char* get_lua_script_log_channel_name();
+const char* get_scene_log_channel_name();
 
 /// @brief Scene creation info, connects to external asset manager and subsystems.
 struct SceneInfo
