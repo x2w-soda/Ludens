@@ -18,7 +18,7 @@ static UIWindow create_window_container(SceneObj* scene)
     return window;
 }
 
-bool load_screen_ui_component(SceneObj* scene, ScreenUIComponent* ui, AssetID uiTemplateID)
+bool load_screen_ui_component(SceneObj* scene, ScreenUIComponent* ui, AssetID uiTemplateID, std::string& err)
 {
     LD_PROFILE_SCOPE;
 
@@ -39,7 +39,7 @@ bool load_screen_ui_component(SceneObj* scene, ScreenUIComponent* ui, AssetID ui
     return true;
 }
 
-bool clone_screen_ui_component(SceneObj* scene, ComponentBase** dstData, ComponentBase** srcData)
+bool clone_screen_ui_component(SceneObj* scene, ComponentBase** dstData, ComponentBase** srcData, std::string& err)
 {
     LD_PROFILE_SCOPE;
 
@@ -49,10 +49,10 @@ bool clone_screen_ui_component(SceneObj* scene, ComponentBase** dstData, Compone
 
     AssetID uiTemplateID = srcUI.get_ui_template_asset();
 
-    return load_screen_ui_component(scene, (ScreenUIComponent*)dstData, uiTemplateID);
+    return load_screen_ui_component(scene, (ScreenUIComponent*)dstData, uiTemplateID, err);
 }
 
-void unload_screen_ui_component(SceneObj* scene, ComponentBase** data)
+bool unload_screen_ui_component(SceneObj* scene, ComponentBase** data, std::string& err)
 {
     LD_PROFILE_SCOPE;
 
@@ -64,9 +64,11 @@ void unload_screen_ui_component(SceneObj* scene, ComponentBase** data)
 
     ComponentBase* base = *data;
     base->flags &= ~COMPONENT_FLAG_LOADED_BIT;
+
+    return true;
 }
 
-void startup_screen_ui_component(SceneObj* scene, ComponentBase** data)
+bool startup_screen_ui_component(SceneObj* scene, ComponentBase** data, std::string& err)
 {
     LD_PROFILE_SCOPE;
 
@@ -78,30 +80,35 @@ void startup_screen_ui_component(SceneObj* scene, ComponentBase** data)
     LuaState luaState = scene->luaContext.get_lua_state();
     ui->uiDriver = heap_new<UIDriver>(MEMORY_USAGE_SCENE);
 
-    std::string err;
-    bool ok = ui->uiDriver->connect(ui->uiWindow, luaState, asset.get_lua_source(), err);
-    LD_ASSERT(ok);
+    if (!ui->uiDriver->connect(ui->uiWindow, luaState, asset.get_lua_source(), err))
+        return false;
 
-    ok = ui->uiDriver->attach(err);
-    LD_ASSERT(ok);
+    if (!ui->uiDriver->attach(err))
+        return false;
+
+    return true;
 }
 
-void cleanup_screen_ui_component(SceneObj* scene, ComponentBase** data)
+bool cleanup_screen_ui_component(SceneObj* scene, ComponentBase** data, std::string& err)
 {
     LD_PROFILE_SCOPE;
 
     auto* ui = (ScreenUIComponent*)data;
     LD_ASSERT(ui);
 
-    std::string err;
-    bool ok = ui->uiDriver->detach(err);
-    LD_ASSERT(ok);
+    if (!ui->uiDriver)
+        return true; // already clean
 
-    ok = ui->uiDriver->disconnect();
-    LD_ASSERT(ok);
+    if (!ui->uiDriver->detach(err))
+        return false;
+
+    if (!ui->uiDriver->disconnect())
+        return false;
 
     heap_delete<UIDriver>(ui->uiDriver);
     ui->uiDriver = nullptr;
+
+    return true;
 }
 
 Scene::ScreenUI::ScreenUI(Component comp)
@@ -124,7 +131,9 @@ Scene::ScreenUI::ScreenUI(ScreenUIComponent* comp)
 
 bool Scene::ScreenUI::load(AssetID uiTemplateID)
 {
-    return load_screen_ui_component(sScene, mUI, uiTemplateID);
+    std::string err;
+
+    return load_screen_ui_component(sScene, mUI, uiTemplateID, err);
 }
 
 bool Scene::ScreenUI::set_ui_template_asset(AssetID uiTemplateID)

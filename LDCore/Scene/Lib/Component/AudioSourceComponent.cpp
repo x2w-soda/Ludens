@@ -4,7 +4,7 @@
 
 namespace LD {
 
-bool load_audio_source_component(SceneObj* scene, AudioSourceComponent* source, AssetID clipID, float pan, float volumeLinear)
+bool load_audio_source_component(SceneObj* scene, AudioSourceComponent* source, AssetID clipID, float pan, float volumeLinear, std::string& err)
 {
     LD_PROFILE_SCOPE;
 
@@ -12,20 +12,26 @@ bool load_audio_source_component(SceneObj* scene, AudioSourceComponent* source, 
     //       Other components may still be using it for playback.
     AudioBuffer buffer = scene->audioSystemCache.get_or_create_audio_buffer(clipID);
     if (!buffer)
+    {
+        err = "failed to create AudioBuffer";
         return false;
+    }
 
     source->pan = pan;
     source->volumeLinear = volumeLinear;
     source->playback = scene->audioSystemCache.create_playback(buffer, pan, volumeLinear);
     if (!source->playback)
+    {
+        err = "failed to create AudioPlayback";
         return false;
+    }
 
     source->clipID = clipID;
     source->base->flags |= COMPONENT_FLAG_LOADED_BIT;
     return true;
 }
 
-bool clone_audio_source_component(SceneObj* scene, ComponentBase** dstData, ComponentBase** srcData)
+bool clone_audio_source_component(SceneObj* scene, ComponentBase** dstData, ComponentBase** srcData, std::string& err)
 {
     LD_PROFILE_SCOPE;
 
@@ -37,10 +43,10 @@ bool clone_audio_source_component(SceneObj* scene, ComponentBase** dstData, Comp
     float pan = srcSource.get_pan();
     float volume = srcSource.get_volume_linear();
 
-    return load_audio_source_component(scene, (AudioSourceComponent*)dstSource.data(), clipAID, pan, volume);
+    return load_audio_source_component(scene, (AudioSourceComponent*)dstSource.data(), clipAID, pan, volume, err);
 }
 
-void unload_audio_source_component(SceneObj* scene, ComponentBase** sourceData)
+bool unload_audio_source_component(SceneObj* scene, ComponentBase** sourceData, std::string& err)
 {
     auto* source = (AudioSourceComponent*)sourceData;
 
@@ -52,9 +58,11 @@ void unload_audio_source_component(SceneObj* scene, ComponentBase** sourceData)
 
     // NOTE: audio buffer still exists in audio system cache
     source->base->flags &= ~COMPONENT_FLAG_LOADED_BIT;
+
+    return true;
 }
 
-void cleanup_audio_source_component(SceneObj* scene, ComponentBase** sourceData)
+bool cleanup_audio_source_component(SceneObj* scene, ComponentBase** sourceData, std::string& err)
 {
     auto* source = (AudioSourceComponent*)sourceData;
 
@@ -63,6 +71,8 @@ void cleanup_audio_source_component(SceneObj* scene, ComponentBase** sourceData)
         scene->audioSystemCache.stop_playback(source->playback);
         source->playback = {};
     }
+
+    return true;
 }
 
 Scene::AudioSource::AudioSource(Component comp)
@@ -85,7 +95,9 @@ Scene::AudioSource::AudioSource(AudioSourceComponent* comp)
 
 bool Scene::AudioSource::load(AssetID clipAsset, float pan, float volumeLinear)
 {
-    return load_audio_source_component(sScene, mAudioSource, clipAsset, pan, volumeLinear);
+    std::string err;
+
+    return load_audio_source_component(sScene, mAudioSource, clipAsset, pan, volumeLinear, err);
 }
 
 void Scene::AudioSource::play()

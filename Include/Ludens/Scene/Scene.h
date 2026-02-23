@@ -59,7 +59,8 @@ public:
     void backup();
 
     /// @brief Startup the scene for simulation. This attaches scripts to their components.
-    void startup();
+    /// @return True if the Scene is running.
+    bool startup();
 
     /// @brief Cleanup the scene simulation. This detaches scripts from their components.
     void cleanup();

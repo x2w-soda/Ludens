@@ -46,10 +46,10 @@ SceneObj* sScene = nullptr;
 struct SceneComponent
 {
     ComponentType type;
-    bool (*clone)(SceneObj* scene, ComponentBase** dstData, ComponentBase** srcData);
-    void (*unload)(SceneObj* scene, ComponentBase** data);
-    void (*startup)(SceneObj* scene, ComponentBase** data);
-    void (*cleanup)(SceneObj* scene, ComponentBase** data);
+    bool (*clone)(SceneObj* scene, ComponentBase** dstData, ComponentBase** srcData, std::string& err);
+    bool (*unload)(SceneObj* scene, ComponentBase** data, std::string& err);
+    bool (*startup)(SceneObj* scene, ComponentBase** data, std::string& err);
+    bool (*cleanup)(SceneObj* scene, ComponentBase** data, std::string& err);
 };
 
 // clang-format off
@@ -70,7 +70,7 @@ static_assert(sizeof(sSceneComponents) / sizeof(*sSceneComponents) == COMPONENT_
 // IMPLEMENTATION
 //
 
-void SceneObj::load_registry_from_backup()
+bool SceneObj::load_registry_from_backup()
 {
     LD_PROFILE_SCOPE;
 
@@ -82,11 +82,18 @@ void SceneObj::load_registry_from_backup()
     registryBackup.get_root_component_data(srcRoots);
     LD_ASSERT(dstRoots.size() == srcRoots.size());
 
+    std::string err;
+
     for (size_t i = 0; i < dstRoots.size(); i++)
     {
-        bool ok = load_subtree_from_backup(dstRoots[i], srcRoots[i]);
-        LD_ASSERT(ok);
+        if (!load_subtree_from_backup(dstRoots[i], srcRoots[i], err))
+        {
+            sSceneLog.error("cleanup complete in {} ms", err);
+            return false;
+        }
     }
+
+    return true;
 }
 
 void SceneObj::unload_registry()
@@ -102,23 +109,45 @@ void SceneObj::unload_registry()
     }
 }
 
-void SceneObj::startup_registry()
+bool SceneObj::startup_registry()
 {
     LD_PROFILE_SCOPE;
 
     Timer timer;
     timer.start();
 
+    std::string err;
+    Vector<ComponentBase**> startupOrder;
     Vector<ComponentBase**> roots;
     registry.get_root_component_data(roots);
 
+    bool success = true;
+    std::string errComponentName;
+
     for (ComponentBase** rootData : roots)
     {
-        startup_subtree(rootData);
+        if (!startup_subtree(rootData, startupOrder, err))
+        {
+            errComponentName = std::string((*rootData)->name);
+            success = false;
+            break;
+        }
     }
 
+    std::string tmp;
     size_t durationUS = timer.stop();
-    sSceneLog.info("startup complete in {} ms", durationUS / 1000.0f);
+
+    if (success)
+        sSceneLog.info("startup complete in {} ms", durationUS / 1000.0f);
+    else
+    {
+        for (auto it = startupOrder.rbegin(); it != startupOrder.rend(); ++it)
+            (void)cleanup_component(*it, tmp);
+
+        sSceneLog.error("startup failed for component {}:\n{}", errComponentName, err);
+    }
+
+    return success;
 }
 
 void SceneObj::cleanup_registry()
@@ -128,17 +157,17 @@ void SceneObj::cleanup_registry()
     Timer timer;
     timer.start();
 
+    std::string err;
     Vector<ComponentBase**> roots;
     registry.get_root_component_data(roots);
 
     for (ComponentBase** rootData : roots)
-    {
         cleanup_subtree(rootData);
-    }
 
     mainCameraC = nullptr;
 
     size_t durationUS = timer.stop();
+
     sSceneLog.info("cleanup complete in {} ms", durationUS / 1000.0f);
 }
 
@@ -152,7 +181,7 @@ void SceneObj::resize(const Vec2& newExtent)
 }
 
 // This is basically the editor loading a copy of component subtree from backup data
-bool SceneObj::load_subtree_from_backup(ComponentBase** dstData, ComponentBase** srcData)
+bool SceneObj::load_subtree_from_backup(ComponentBase** dstData, ComponentBase** srcData, std::string& err)
 {
     LD_PROFILE_SCOPE;
 
@@ -167,7 +196,7 @@ bool SceneObj::load_subtree_from_backup(ComponentBase** dstData, ComponentBase**
     LD_ASSERT((srcBase->flags & COMPONENT_FLAG_LOADED_BIT) && ~(dstBase->flags & COMPONENT_FLAG_LOADED_BIT));
     LD_ASSERT((std::string(dstBase->name) == std::string(srcBase->name)));
 
-    bool ok = sSceneComponents[(int)dstBase->type].clone(sScene, dstData, srcData);
+    bool ok = sSceneComponents[(int)dstBase->type].clone(sScene, dstData, srcData, err);
     LD_ASSERT(ok);
     if (!ok)
         return false;
@@ -181,7 +210,7 @@ bool SceneObj::load_subtree_from_backup(ComponentBase** dstData, ComponentBase**
         ComponentBase** dstChildData = registry.get_component_data(dstChild->cuid, nullptr);
         ComponentBase** srcChildData = registryBackup.get_component_data(srcChild->cuid, nullptr);
 
-        if (!load_subtree_from_backup(dstChildData, srcChildData))
+        if (!load_subtree_from_backup(dstChildData, srcChildData, err))
             return false;
 
         dstChild = dstChild->next;
@@ -199,8 +228,13 @@ void SceneObj::unload_subtree(ComponentBase** data)
     ComponentBase* base = (*data);
     LD_ASSERT(base->flags & COMPONENT_FLAG_LOADED_BIT);
 
+    std::string err;
+
     if (sSceneComponents[(int)base->type].unload)
-        sSceneComponents[(int)base->type].unload(this, data);
+    {
+        if (!sSceneComponents[(int)base->type].unload(this, data, err))
+            sSceneLog.error("failed to unload component: {}", err);
+    }
 
     // sanity check
     LD_ASSERT((base->flags & COMPONENT_FLAG_LOADED_BIT) == 0);
@@ -212,7 +246,7 @@ void SceneObj::unload_subtree(ComponentBase** data)
     }
 }
 
-void SceneObj::startup_subtree(ComponentBase** rootData)
+bool SceneObj::startup_subtree(ComponentBase** rootData, Vector<ComponentBase**>& startupOrder, std::string& err)
 {
     LD_ASSERT(rootData);
     ComponentBase* rootBase = *rootData;
@@ -221,21 +255,56 @@ void SceneObj::startup_subtree(ComponentBase** rootData)
     for (ComponentBase* childBase = rootBase->child; childBase; childBase = childBase->next)
     {
         ComponentBase** childData = registry.get_component_data(childBase->cuid, nullptr);
-        startup_subtree(childData);
+        if (!startup_subtree(childData, startupOrder, err))
+            return false;
     }
 
     // post-order traversal, all child components of root already have their scripts attached
-    if (sSceneComponents[(int)rootBase->type].startup)
-        sSceneComponents[(int)rootBase->type].startup(this, rootData);
+    if (!startup_component(rootData, err))
+        return false;
 
-    if (rootBase->scriptAssetID)
+    startupOrder.push_back(rootData);
+
+    return true;
+}
+
+bool SceneObj::startup_component(ComponentBase** data, std::string& err)
+{
+    LD_ASSERT(data);
+    ComponentBase* base = *data;
+
+    if (sSceneComponents[(int)base->type].startup)
     {
-        const CUID rootCUID = rootBase->cuid;
-        luaContext.create_component_table(rootCUID);
-        bool success = luaContext.create_lua_script(rootCUID, rootBase->scriptAssetID); // TODO: abort startup at the first failure of creating lua script instance.
-        LD_ASSERT(success);
-        luaContext.attach_lua_script(rootCUID);
+        if (!sSceneComponents[(int)base->type].startup(this, data, err))
+            return false;
     }
+
+    std::string tmp;
+
+    if (base->scriptAssetID)
+    {
+        const CUID rootCUID = base->cuid;
+        luaContext.create_component_table(rootCUID);
+
+        if (!luaContext.create_lua_script(rootCUID, base->scriptAssetID, err))
+        {
+            if (sSceneComponents[(int)base->type].cleanup)
+                (void)sSceneComponents[(int)base->type].cleanup(this, data, tmp);
+
+            return false;
+        }
+
+        if (!luaContext.attach_lua_script(rootCUID, err))
+        {
+            luaContext.destroy_lua_script(rootCUID);
+            if (sSceneComponents[(int)base->type].cleanup)
+                (void)sSceneComponents[(int)base->type].cleanup(this, data, tmp);
+
+            return false;
+        }
+    }
+
+    return true;
 }
 
 void SceneObj::cleanup_subtree(ComponentBase** rootData)
@@ -250,13 +319,32 @@ void SceneObj::cleanup_subtree(ComponentBase** rootData)
     }
 
     // post-order traversal, all child components of root already have their scripts detached
-    if (sSceneComponents[(int)rootBase->type].cleanup)
-        sSceneComponents[(int)rootBase->type].cleanup(this, rootData);
+    std::string err;
+    if (!cleanup_component(rootData, err))
+        sSceneLog.error("failed to cleanup component: {}", err);
+}
 
-    const CUID rootCUID = rootBase->cuid;
-    luaContext.detach_lua_script(rootCUID);
-    luaContext.destroy_lua_script(rootCUID);
-    luaContext.destroy_component_table(rootCUID);
+bool SceneObj::cleanup_component(ComponentBase** data, std::string& err)
+{
+    LD_ASSERT(data);
+    ComponentBase* base = *data;
+
+    if (sSceneComponents[(int)base->type].cleanup)
+        sSceneComponents[(int)base->type].cleanup(this, data, err);
+
+    bool success = true;
+
+    if (base->scriptAssetID)
+    {
+        const CUID cuid = base->cuid;
+        if (!luaContext.detach_lua_script(cuid, err))
+            success = false;
+
+        luaContext.destroy_lua_script(cuid);
+        luaContext.destroy_component_table(cuid);
+    }
+
+    return success;
 }
 
 //
@@ -295,7 +383,6 @@ Scene Scene::create(const SceneInfo& sceneI)
     LD_ASSERT(info.fontAtlasImage);
     LD_ASSERT(info.theme);
     sScene->screenUI = LD::ScreenUI::create(info);
-    sScene->screenUIBackup = {}; // TODO:
 
     return Scene(sScene);
 }
@@ -335,6 +422,7 @@ void Scene::reset()
         mObj->registry = {};
     }
 
+    // initial empty state
     mObj->mainCameraC = nullptr;
     mObj->registry = DataRegistry::create();
 }
@@ -389,25 +477,37 @@ void Scene::backup()
 
     LD_ASSERT(mObj->state == SCENE_STATE_LOADED);
     LD_ASSERT(!mObj->registryBackup);
-    LD_ASSERT(!mObj->screenUIBackup);
 
     // create and load a copy for play-in-editor session
-    DataRegistry pie = mObj->registry.duplicate();
     mObj->registryBackup = mObj->registry;
-    mObj->registry = pie;
+    mObj->registry = mObj->registryBackup.duplicate();
     mObj->load_registry_from_backup();
 }
 
-void Scene::startup()
+bool Scene::startup()
 {
     LD_PROFILE_SCOPE;
 
     if (mObj->state == SCENE_STATE_RUNNING)
-        return;
+        return true;
 
-    mObj->state = SCENE_STATE_RUNNING;
+    if (mObj->startup_registry())
+    {
+        mObj->state = SCENE_STATE_RUNNING;
+        return true;
+    }
 
-    mObj->startup_registry();
+    // startup failed
+
+    if (mObj->registryBackup)
+    {
+        mObj->unload_registry();
+        DataRegistry::destroy(mObj->registry);
+        mObj->registry = mObj->registryBackup;
+        mObj->registryBackup = {};
+    }
+
+    return false;
 }
 
 void Scene::cleanup()

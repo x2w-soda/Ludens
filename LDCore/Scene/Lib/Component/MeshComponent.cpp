@@ -4,7 +4,7 @@
 
 namespace LD {
 
-bool load_mesh_component(SceneObj* scene, MeshComponent* mesh, AssetID meshAID)
+bool load_mesh_component(SceneObj* scene, MeshComponent* mesh, AssetID meshAID, std::string& err)
 {
     LD_PROFILE_SCOPE;
 
@@ -13,7 +13,10 @@ bool load_mesh_component(SceneObj* scene, MeshComponent* mesh, AssetID meshAID)
     mesh->draw = scene->renderSystemCache.create_mesh_draw(base->cuid, meshAID);
 
     if (!mesh->draw)
+    {
+        err = "RenderSystem failed to create MeshDraw";
         return false;
+    }
 
     mesh->assetID = meshAID;
 
@@ -21,7 +24,7 @@ bool load_mesh_component(SceneObj* scene, MeshComponent* mesh, AssetID meshAID)
     return true;
 }
 
-bool clone_mesh_component(SceneObj* scene, ComponentBase** dstData, ComponentBase** srcData)
+bool clone_mesh_component(SceneObj* scene, ComponentBase** dstData, ComponentBase** srcData, std::string& err)
 {
     LD_PROFILE_SCOPE;
 
@@ -31,10 +34,10 @@ bool clone_mesh_component(SceneObj* scene, ComponentBase** dstData, ComponentBas
 
     AssetID srcMeshAID = srcMesh.get_mesh_asset();
 
-    return load_mesh_component(scene, (MeshComponent*)dstData, srcMeshAID);
+    return load_mesh_component(scene, (MeshComponent*)dstData, srcMeshAID, err);
 }
 
-void unload_mesh_component(SceneObj* scene, ComponentBase** data)
+bool unload_mesh_component(SceneObj* scene, ComponentBase** data, std::string& err)
 {
     MeshComponent* mesh = (MeshComponent*)data;
     ComponentBase* base = mesh->base;
@@ -44,6 +47,8 @@ void unload_mesh_component(SceneObj* scene, ComponentBase** data)
     mesh->draw = {};
 
     base->flags &= ~COMPONENT_FLAG_LOADED_BIT;
+
+    return true;
 }
 
 Scene::Mesh::Mesh(Component comp)
@@ -66,7 +71,9 @@ Scene::Mesh::Mesh(MeshComponent* comp)
 
 bool Scene::Mesh::load()
 {
-    return load_mesh_component(sScene, mMesh, (AssetID)0);
+    std::string err;
+
+    return load_mesh_component(sScene, mMesh, (AssetID)0, err);
 }
 
 bool Scene::Mesh::set_mesh_asset(AssetID meshID)

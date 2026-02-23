@@ -589,11 +589,9 @@ void EditorContext::play_scene()
     if (mObj->isPlaying)
         return;
 
-    mObj->isPlaying = true;
-
     // play a duplicated scene
     mObj->scene.backup();
-    mObj->scene.startup();
+    mObj->isPlaying = mObj->scene.startup();
 }
 
 void EditorContext::stop_scene()

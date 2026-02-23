@@ -32,16 +32,16 @@ public:
     void destroy_component_table(CUID compID);
 
     /// @brief Creates lua script associated with component if slot is not null.
-    bool create_lua_script(CUID compID, AssetID scriptAssetID);
+    bool create_lua_script(CUID compID, AssetID scriptAssetID, std::string& err);
 
     /// @brief Destroy lua script associated with a component
     void destroy_lua_script(CUID compID);
 
     /// @brief Attach lua script to its data component.
-    void attach_lua_script(CUID compID);
+    bool attach_lua_script(CUID compID, std::string& err);
 
     /// @brief Detach lua script from its data component.
-    void detach_lua_script(CUID compID);
+    bool detach_lua_script(CUID compID, std::string& err);
 
 private:
     LuaState mL{};

@@ -4,7 +4,7 @@
 
 namespace LD {
 
-bool load_camera_component_perspective(SceneObj* scene, CameraComponent* camera, const CameraPerspectiveInfo& perspectiveI)
+bool load_camera_component_perspective(SceneObj* scene, CameraComponent* camera, const CameraPerspectiveInfo& perspectiveI, std::string& err)
 {
     LD_PROFILE_SCOPE;
 
@@ -17,7 +17,7 @@ bool load_camera_component_perspective(SceneObj* scene, CameraComponent* camera,
     return true;
 }
 
-bool load_camera_component_orthographic(SceneObj* scene, CameraComponent* camera, const CameraOrthographicInfo& perspectiveI)
+bool load_camera_component_orthographic(SceneObj* scene, CameraComponent* camera, const CameraOrthographicInfo& perspectiveI, std::string& err)
 {
     LD_PROFILE_SCOPE;
 
@@ -30,7 +30,7 @@ bool load_camera_component_orthographic(SceneObj* scene, CameraComponent* camera
     return true;
 }
 
-bool clone_camera_component(SceneObj* scene, ComponentBase** dstData, ComponentBase** srcData)
+bool clone_camera_component(SceneObj* scene, ComponentBase** dstData, ComponentBase** srcData, std::string& err)
 {
     LD_PROFILE_SCOPE;
 
@@ -41,12 +41,12 @@ bool clone_camera_component(SceneObj* scene, ComponentBase** dstData, ComponentB
     CameraOrthographicInfo orthoI;
     if (srcCamera.is_perspective())
     {
-        if (!srcCamera.get_perspective_info(perspectiveI) || !load_camera_component_perspective(scene, (CameraComponent*)dstData, perspectiveI))
+        if (!srcCamera.get_perspective_info(perspectiveI) || !load_camera_component_perspective(scene, (CameraComponent*)dstData, perspectiveI, err))
             return false;
     }
     else
     {
-        if (!srcCamera.get_orthographic_info(orthoI) || !load_camera_component_orthographic(scene, (CameraComponent*)dstData, orthoI))
+        if (!srcCamera.get_orthographic_info(orthoI) || !load_camera_component_orthographic(scene, (CameraComponent*)dstData, orthoI, err))
             return false;
     }
 
@@ -56,7 +56,7 @@ bool clone_camera_component(SceneObj* scene, ComponentBase** dstData, ComponentB
     return true;
 }
 
-void unload_camera_component(SceneObj* scene, ComponentBase** cameraData)
+bool unload_camera_component(SceneObj* scene, ComponentBase** cameraData, std::string& err)
 {
     CameraComponent* camera = (CameraComponent*)cameraData;
 
@@ -67,25 +67,29 @@ void unload_camera_component(SceneObj* scene, ComponentBase** cameraData)
     }
 
     camera->base->flags &= ~COMPONENT_FLAG_LOADED_BIT;
+
+    return true;
 }
 
-void startup_camera_component(SceneObj* scene, ComponentBase** cameraData)
+bool startup_camera_component(SceneObj* scene, ComponentBase** cameraData, std::string& err)
 {
     ComponentBase* base = *cameraData;
     auto* camera = (CameraComponent*)cameraData;
 
     if (scene->mainCameraC)
-        return;
+        return true; // not an error
 
     scene->mainCameraC = camera;
 
-    const Vec3 mainCameraTarget(0.0f, 0.0f, 1.0f);
+    return true;
 }
 
-void cleanup_camera_component(SceneObj* scene, ComponentBase** cameraData)
+bool cleanup_camera_component(SceneObj* scene, ComponentBase** cameraData, std::string& err)
 {
     if (scene->mainCameraC == (CameraComponent*)cameraData)
         scene->mainCameraC = nullptr;
+
+    return true;
 }
 
 Scene::Camera::Camera(Component comp)
@@ -108,12 +112,16 @@ Scene::Camera::Camera(CameraComponent* comp)
 
 bool Scene::Camera::load_perspective(const CameraPerspectiveInfo& info)
 {
-    return load_camera_component_perspective(sScene, mCamera, info);
+    std::string err;
+
+    return load_camera_component_perspective(sScene, mCamera, info, err);
 }
 
 bool Scene::Camera::load_orthographic(const CameraOrthographicInfo& info)
 {
-    return load_camera_component_orthographic(sScene, mCamera, info);
+    std::string err;
+
+    return load_camera_component_orthographic(sScene, mCamera, info, err);
 }
 
 bool Scene::Camera::is_main_camera()

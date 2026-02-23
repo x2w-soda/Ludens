@@ -554,7 +554,7 @@ void Context::destroy_component_table(CUID compID)
     mL.resize(oldSize);
 }
 
-bool Context::create_lua_script(CUID compID, AssetID scriptAssetID)
+bool Context::create_lua_script(CUID compID, AssetID scriptAssetID, std::string& err)
 {
     if (!compID || !scriptAssetID)
         return true; // not an error
@@ -571,10 +571,9 @@ bool Context::create_lua_script(CUID compID, AssetID scriptAssetID)
     const char* luaSource = asset.get_source();
 
     // this should push the script instance table onto stack
-    bool isScriptValid = mL.do_string(luaSource);
-    if (!isScriptValid)
+    if (!mL.do_string(luaSource))
     {
-        printf("Error: %s\n", mL.to_string(-1)); // TODO: error control flow
+        err = mL.to_string(-1);
         mL.resize(oldSize);
         return false;
     }
@@ -600,10 +599,9 @@ void Context::destroy_lua_script(CUID compID)
     mL.resize(oldSize);
 }
 
-void Context::attach_lua_script(CUID compID)
+bool Context::attach_lua_script(CUID compID, std::string& err)
 {
-    if (!compID)
-        return;
+    LD_ASSERT(compID);
 
     LuaType type;
     int oldSize = mL.size();
@@ -626,20 +624,20 @@ void Context::attach_lua_script(CUID compID)
     push_component_ref(mL, compID);
     LD_ASSERT((type = mL.get_type(-1)) == LUA_TYPE_TABLE);
 
-    LuaError err = mL.pcall(2, 0, 0);
-    if (err != 0)
+    LuaError luaError = mL.pcall(2, 0, 0);
+    if (luaError != 0)
     {
-        sLog.error("script attach failed: {}", mL.to_string(-1));
+        err = mL.to_string(-1);
+        return false;
     }
-    LD_ASSERT(err == 0);
 
     mL.resize(oldSize);
+    return true;
 }
 
-void Context::detach_lua_script(CUID compID)
+bool Context::detach_lua_script(CUID compID, std::string& err)
 {
-    if (!compID)
-        return;
+    LD_ASSERT(compID);
 
     LuaType type;
     int oldSize = mL.size();
@@ -649,11 +647,7 @@ void Context::detach_lua_script(CUID compID)
     // call 'detach' lua method on script
     mL.push_number((double)compID);
     mL.get_table(-2);
-    if ((type = mL.get_type(-1)) == LUA_TYPE_NIL)
-    {
-        mL.resize(oldSize);
-        return;
-    }
+    LD_ASSERT((type = mL.get_type(-1)) == LUA_TYPE_TABLE); // script instance
 
     mL.get_field(-1, "detach");
     LD_ASSERT((type = mL.get_type(-1)) == LUA_TYPE_FN); // script detach method
@@ -662,14 +656,15 @@ void Context::detach_lua_script(CUID compID)
     mL.push_value(-2);
     LD_ASSERT((type = mL.get_type(-1)) == LUA_TYPE_TABLE);
 
-    LuaError err = mL.pcall(1, 0, 0);
-    if (err != 0)
+    LuaError luaError = mL.pcall(1, 0, 0);
+    if (luaError != 0)
     {
-        sLog.error("script detach failed: {}", mL.to_string(-1));
+        err = mL.to_string(-1);
+        return false;
     }
-    LD_ASSERT(err == 0);
 
     mL.resize(oldSize);
+    return true;
 }
 
 } // namespace LuaScript

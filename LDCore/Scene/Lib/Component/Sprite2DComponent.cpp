@@ -4,7 +4,7 @@
 
 namespace LD {
 
-bool load_sprite_2d_component_suid(SceneObj* scene, Sprite2DComponent* sprite, SUID layerSUID, AssetID texture2D)
+bool load_sprite_2d_component_suid(SceneObj* scene, Sprite2DComponent* sprite, SUID layerSUID, AssetID texture2D, std::string& err)
 {
     LD_PROFILE_SCOPE;
 
@@ -12,12 +12,15 @@ bool load_sprite_2d_component_suid(SceneObj* scene, Sprite2DComponent* sprite, S
 
     RUID layerRUID = scene->renderSystemCache.get_or_create_screen_layer(layerSUID);
     if (!layerRUID)
+    {
+        err = "RenderSystem failed to locate screen layer for sprite";
         return false;
+    }
 
-    return load_sprite_2d_component_ruid(scene, sprite, layerRUID, texture2D);
+    return load_sprite_2d_component_ruid(scene, sprite, layerRUID, texture2D, err);
 }
 
-bool load_sprite_2d_component_ruid(SceneObj* scene, Sprite2DComponent* sprite, RUID layerRUID, AssetID texture2D)
+bool load_sprite_2d_component_ruid(SceneObj* scene, Sprite2DComponent* sprite, RUID layerRUID, AssetID texture2D, std::string& err)
 {
     LD_PROFILE_SCOPE;
 
@@ -25,7 +28,10 @@ bool load_sprite_2d_component_ruid(SceneObj* scene, Sprite2DComponent* sprite, R
 
     sprite->draw = scene->renderSystemCache.create_sprite_2d_draw(base->cuid, layerRUID, texture2D);
     if (!sprite->draw)
+    {
+        err = "RenderSystem failed to create Sprite2DDraw";
         return false;
+    }
 
     sprite->assetID = texture2D;
 
@@ -33,7 +39,7 @@ bool load_sprite_2d_component_ruid(SceneObj* scene, Sprite2DComponent* sprite, R
     return true;
 }
 
-bool clone_sprite_2d_component(SceneObj* scene, ComponentBase** dstData, ComponentBase** srcData)
+bool clone_sprite_2d_component(SceneObj* scene, ComponentBase** dstData, ComponentBase** srcData, std::string& err)
 {
     LD_PROFILE_SCOPE;
 
@@ -44,7 +50,7 @@ bool clone_sprite_2d_component(SceneObj* scene, ComponentBase** dstData, Compone
     RUID layerRUID = srcSprite.get_screen_layer_ruid();
     AssetID texture2D = srcSprite.get_texture_2d_asset();
 
-    if (!load_sprite_2d_component_ruid(scene, (Sprite2DComponent*)dstData, layerRUID, texture2D))
+    if (!load_sprite_2d_component_ruid(scene, (Sprite2DComponent*)dstData, layerRUID, texture2D, err))
         return false;
 
     dstSprite.set_pivot(srcSprite.get_pivot());
@@ -54,7 +60,7 @@ bool clone_sprite_2d_component(SceneObj* scene, ComponentBase** dstData, Compone
     return true;
 }
 
-void unload_sprite_2d_component(SceneObj* scene, ComponentBase** data)
+bool unload_sprite_2d_component(SceneObj* scene, ComponentBase** data, std::string& err)
 {
     Sprite2DComponent* sprite = (Sprite2DComponent*)data;
     ComponentBase* base = sprite->base;
@@ -66,6 +72,8 @@ void unload_sprite_2d_component(SceneObj* scene, ComponentBase** data)
     }
 
     base->flags &= ~COMPONENT_FLAG_LOADED_BIT;
+
+    return true;
 }
 
 Scene::Sprite2D::Sprite2D(Component comp)
@@ -88,7 +96,9 @@ Scene::Sprite2D::Sprite2D(Sprite2DComponent* comp)
 
 bool Scene::Sprite2D::load(SUID layerSUID, AssetID textureID)
 {
-    return load_sprite_2d_component_suid(sScene, mSprite, layerSUID, textureID);
+    std::string err;
+
+    return load_sprite_2d_component_suid(sScene, mSprite, layerSUID, textureID, err);
 }
 
 bool Scene::Sprite2D::set_texture_2d_asset(AssetID textureID)
@@ -137,6 +147,8 @@ Vec2 Scene::Sprite2D::get_pivot()
 void Scene::Sprite2D::set_pivot(const Vec2& pivot)
 {
     LD_ASSERT_COMPONENT_LOADED(mData);
+
+    mSprite->draw.set_pivot(pivot);
 }
 
 Rect Scene::Sprite2D::get_region()
