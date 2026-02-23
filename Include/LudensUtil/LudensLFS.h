@@ -18,7 +18,7 @@ struct LudensLFS
     bool isFound;
 
     std::filesystem::path lfsPath;
-    std::filesystem::path materialIconsPath;
+    std::filesystem::path editorIconAtlasPath;
     std::filesystem::path fontPath;
     std::filesystem::path monospaceFontPath;
     std::filesystem::path skyboxFolderPath;

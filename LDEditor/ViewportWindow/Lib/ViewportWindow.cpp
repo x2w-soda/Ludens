@@ -119,7 +119,7 @@ void ViewportWindowObj::toolbar()
     // translate gizmo
     float iconSize = VIEWPORT_TOOLBAR_HEIGHT;
     RImage iconAtlas = ctx.get_editor_icon_atlas();
-    Rect iconRect = EditorIconAtlas::get_icon_rect(EditorIcon::Transform);
+    Rect iconRect = EditorIconAtlas::get_icon_rect(EDITOR_ICON_OFFSET);
     ui_push_image(iconAtlas, iconSize, iconSize, 0xFFFFFFFF, &iconRect);
     ui_top_user(this);
     ui_top_draw([](UIWidget widget, ScreenRenderComponent renderer, void* user) {
@@ -133,7 +133,7 @@ void ViewportWindowObj::toolbar()
     ui_pop();
 
     // rotate gizmo
-    iconRect = EditorIconAtlas::get_icon_rect(EditorIcon::Refresh);
+    iconRect = EditorIconAtlas::get_icon_rect(EDITOR_ICON_ROTATE);
     ui_push_image(iconAtlas, iconSize, iconSize, 0xFFFFFFFF, &iconRect);
     ui_top_user(this);
     ui_top_draw([](UIWidget widget, ScreenRenderComponent renderer, void* user) {
@@ -147,7 +147,7 @@ void ViewportWindowObj::toolbar()
     ui_pop();
 
     // scale gizmo
-    iconRect = EditorIconAtlas::get_icon_rect(EditorIcon::LinearScale);
+    iconRect = EditorIconAtlas::get_icon_rect(EDITOR_ICON_SCALE);
     ui_push_image(iconAtlas, iconSize, iconSize, 0xFFFFFFFF, &iconRect);
     ui_top_user(this);
     ui_top_draw([](UIWidget widget, ScreenRenderComponent renderer, void* user) {
@@ -164,7 +164,7 @@ void ViewportWindowObj::toolbar()
     // play / pause button
     bool isPlaying = ctx.is_playing();
     color = isPlaying ? theme.get_stop_button_color() : theme.get_play_button_color();
-    iconRect = EditorIconAtlas::get_icon_rect(isPlaying ? EditorIcon::Close : EditorIcon::PlayArrow);
+    iconRect = EditorIconAtlas::get_icon_rect(isPlaying ? EDITOR_ICON_CLOSE : EDITOR_ICON_PLAY);
     ui_push_image(iconAtlas, iconSize, iconSize, color, &iconRect);
     if (ui_top_mouse_down(btn) && btn == MOUSE_BUTTON_LEFT)
     {

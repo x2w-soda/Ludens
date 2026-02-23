@@ -63,13 +63,13 @@ UISandbox::UISandbox()
 
     RenderSystemInfo serverI{};
     serverI.device = mRDevice;
-    serverI.fontAtlas = mFontAtlas;
+    serverI.defaultFontAtlas = mFontAtlas;
     mRenderSystem = RenderSystem::create(serverI);
 
     mFontAtlasImage = mRenderSystem.get_font_atlas_image();
 
     {
-        Bitmap tmpBitmap = Bitmap::create_from_path(sLudensLFS.materialIconsPath.string().c_str(), false);
+        Bitmap tmpBitmap = Bitmap::create_from_path(sLudensLFS.editorIconAtlasPath.string().c_str(), false);
         RImageInfo imageI = RUtil::make_2d_image_info(RIMAGE_USAGE_SAMPLED_BIT | RIMAGE_USAGE_TRANSFER_DST_BIT,
                                                       RFORMAT_RGBA8, tmpBitmap.width(), tmpBitmap.height(),
                                                       {.filter = RFILTER_LINEAR, .mipmapFilter = RFILTER_LINEAR, .addressMode = RSAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE});

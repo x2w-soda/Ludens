@@ -81,7 +81,7 @@ TEST_CASE("ReadFileTask vector" * doctest::skip(!LudensLFS::get_directory_path()
     Vector<byte> vec;
 
     uint64_t fileSize;
-    FS::Path path = sLudensLFS.materialIconsPath;
+    FS::Path path = sLudensLFS.editorIconAtlasPath;
     REQUIRE(FS::get_positive_file_size(path, fileSize, diag));
 
     std::thread worker(&worker_read_file_to_vector, &task, path, &vec, &diag);

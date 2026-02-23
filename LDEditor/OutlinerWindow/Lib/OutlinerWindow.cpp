@@ -11,7 +11,7 @@
 #include "ComponentMenu.h"
 
 #define OUTLINER_ROW_LEFT_PADDING 10.0f
-#define OUTLINER_ROW_LEFT_PADDING_PER_DEPTH 15.0f
+#define OUTLINER_ROW_LEFT_PADDING_PER_DEPTH 10.0f
 
 namespace LD {
 
@@ -21,6 +21,7 @@ struct OutlinerWindowObj : EditorWindowObj
     EditorContext ctx;
     UIWorkspace space;
     UIWindow root;
+    RImage editorIconAtlas;
 
     virtual EditorWindowType get_type() override { return EDITOR_WINDOW_OUTLINER; }
     virtual void on_imgui(float delta) override;
@@ -51,13 +52,14 @@ void OutlinerWindowObj::component_row(int rowIdx, int depth, SUID compSUID)
 {
     EditorTheme theme = ctx.get_settings().get_theme();
     UITheme uiTheme = theme.get_ui_theme();
+    const float rowHeight = theme.get_text_row_height();
 
     UILayoutInfo layoutI{};
     layoutI.childAxis = UI_AXIS_X;
     layoutI.childGap = theme.get_padding();
     layoutI.childPadding.left = OUTLINER_ROW_LEFT_PADDING + depth * OUTLINER_ROW_LEFT_PADDING_PER_DEPTH;
     layoutI.sizeX = UISize::grow();
-    layoutI.sizeY = UISize::fixed(theme.get_text_row_height());
+    layoutI.sizeY = UISize::fixed(rowHeight);
 
     ui_push_panel();
 
@@ -78,16 +80,31 @@ void OutlinerWindowObj::component_row(int rowIdx, int depth, SUID compSUID)
     if (ui_top_mouse_down(btn))
         on_row_mouse_down(btn, compSUID);
 
+    Scene::Component comp = ctx.get_component(compSUID);
+
+    // component type icon
+    if (comp)
+    {
+        EditorIcon icon = EditorIconAtlas::get_component_icon(comp.type());
+        if (icon != EDITOR_ICON_ENUM_LAST)
+        {
+            const Rect iconRect = EditorIconAtlas::get_icon_rect(icon);
+            ui_push_image(editorIconAtlas, rowHeight, rowHeight, 0xFFFFFFFF, &iconRect);
+            ui_pop();
+        }
+    }
+
+    // component name label
     ui_push_text(compSUID ? ctx.get_component_name(compSUID) : nullptr);
     if (ui_top_mouse_down(btn))
         on_row_mouse_down(btn, compSUID);
     ui_pop();
 
-    Scene::Component comp = ctx.get_component(compSUID);
+    // component script icon
     if (comp && comp.get_script_asset_id())
     {
         float iconSize = theme.get_text_row_height();
-        Rect iconRect = EditorIconAtlas::get_icon_rect(EditorIcon::Code);
+        const Rect iconRect = EditorIconAtlas::get_icon_rect(EDITOR_ICON_SCRIPT);
         ui_push_image(ctx.get_editor_icon_atlas(), iconSize, iconSize, 0xFFFFFFFF, &iconRect);
         ui_pop();
     }
@@ -146,19 +163,7 @@ EditorWindow OutlinerWindow::create(const EditorWindowInfo& windowI)
     obj->ctx = windowI.ctx;
     obj->space = windowI.space;
     obj->root = obj->space.create_window(obj->space.get_root_id(), layoutI, {}, nullptr);
-
-    /*
-    ComponentMenuInfo menuI{};
-    menuI.ctx = wm.get_context();
-    menuI.theme = obj->ctx.get_theme();
-    menuI.onOptionAddScript = windowI.addScriptToComponent;
-    menuI.user = windowI.user;
-    menuI.layer = wm.get_ground_layer_hash();
-    obj->menu.startup(menuI);
-    */
-
-    // create one OutlinerRow for each object in scene
-    // obj->invalidate();
+    obj->editorIconAtlas = obj->ctx.get_editor_icon_atlas();
 
     return EditorWindow(obj);
 }

@@ -82,7 +82,7 @@ void SelectionWindowObj::top_bar()
     ui_top_layout(layoutI);
 
     MouseButton btn;
-    Rect iconRect = EditorIconAtlas::get_icon_rect(EditorIcon::ArrowUpward);
+    Rect iconRect = EditorIconAtlas::get_icon_rect(EDITOR_ICON_ARROW_UP);
     ui_push_image(editorIconAtlas, fontSize * 1.2f, fontSize * 1.2f, 0xFFFFFFFF, &iconRect);
     if (ui_top_mouse_down(btn) && btn == MOUSE_BUTTON_LEFT)
     {
@@ -155,7 +155,7 @@ bool SelectionWindowObj::row(int idx)
     ui_panel_color(panelColor);
     ui_top_layout(layoutI);
 
-    Rect iconRect = EditorIconAtlas::get_icon_rect(isDirectory ? EditorIcon::Folder : EditorIcon::Description);
+    Rect iconRect = EditorIconAtlas::get_icon_rect(isDirectory ? EDITOR_ICON_FOLDER : EDITOR_ICON_FILE);
     ui_push_image(editorIconAtlas, rowHeight, rowHeight, 0xFFFFFFFF, &iconRect);
     ui_pop();
 

@@ -20,7 +20,7 @@ struct TabControlWindow : Handle<struct TabControlWindowObj>
     static void destroy(EditorWindow window);
 
     // TODO: API for multiple tabs...
-    void set_tab_name(const char* name);
+    void set_window_type(EditorWindowType type, const char* name, EditorIcon icon);
 
     /// @brief Check if tab control window is dragged.
     bool has_drag(MouseButton& dragBtn, Vec2& screenPos, bool& dragBegin);

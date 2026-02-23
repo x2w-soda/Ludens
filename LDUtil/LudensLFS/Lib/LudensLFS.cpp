@@ -17,8 +17,8 @@ LudensLFS::LudensLFS()
         return;
     }
 
-    materialIconsPath = lfsPath / fs::path("Texture/Google/material_icons.png");
-    assert(fs::exists(materialIconsPath));
+    editorIconAtlasPath = lfsPath / fs::path("Texture/EditorIconAtlas/EditorIconAtlas.png");
+    assert(fs::exists(editorIconAtlasPath));
 
     fontPath = lfsPath / fs::path("Fonts/Inter_24pt-Regular.ttf");
     assert(fs::exists(fontPath));

@@ -89,7 +89,7 @@ EditorApplication::EditorApplication()
     EditorContextInfo contextI{};
     contextI.audioSystem = mAudioSystem;
     contextI.renderSystem = mRenderSystem;
-    contextI.iconAtlasPath = sLudensLFS.materialIconsPath;
+    contextI.iconAtlasPath = sLudensLFS.editorIconAtlasPath;
     contextI.defaultFontAtlas = mFontAtlas;
     contextI.defaultFontAtlasImage = mRenderSystem.get_font_atlas_image();
     contextI.monoFontAtlas = mMSFontAtlas;

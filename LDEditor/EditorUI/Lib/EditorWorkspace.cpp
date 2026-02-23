@@ -5,6 +5,7 @@
 #include <Ludens/UI/UIImmediate.h>
 #include <LudensEditor/ConsoleWindow/ConsoleWindow.h>
 #include <LudensEditor/CreateComponentWindow/CreateComponentWindow.h>
+#include <LudensEditor/EditorContext/EditorIconAtlas.h>
 #include <LudensEditor/EditorUI/EditorWorkspace.h>
 #include <LudensEditor/InspectorWindow/InspectorWindow.h>
 #include <LudensEditor/OutlinerWindow/OutlinerWindow.h>
@@ -100,6 +101,7 @@ struct EditorWorkspaceObj
 struct EditorWindowMeta
 {
     EditorWindowType type;
+    EditorIcon icon;
     EditorWindow (*create)(const EditorWindowInfo&);
     void (*destroy)(EditorWindow);
     const char* defaultTabName;
@@ -107,15 +109,15 @@ struct EditorWindowMeta
 
 // clang-format off
 static EditorWindowMeta sEditorWindowTable[] = {
-    { EDITOR_WINDOW_TAB_CONTROL,      &TabControlWindow::create,      &TabControlWindow::destroy,      nullptr },
-    { EDITOR_WINDOW_SELECTION,        &SelectionWindow::create,       &SelectionWindow::destroy,       "Selection" },
-    { EDITOR_WINDOW_CREATE_COMPONENT, &CreateComponentWindow::create, &CreateComponentWindow::destroy, "CreateComponent" },
-    { EDITOR_WINDOW_PROJECT_SETTINGS, &ProjectSettingsWindow::create, &ProjectSettingsWindow::destroy, "ProjectSettings" },
-    { EDITOR_WINDOW_VIEWPORT,         &ViewportWindow::create,        &ViewportWindow::destroy,        "Viewport" },
-    { EDITOR_WINDOW_OUTLINER,         &OutlinerWindow::create,        &OutlinerWindow::destroy,        "Outliner" },
-    { EDITOR_WINDOW_INSPECTOR,        &InspectorWindow::create,       &InspectorWindow::destroy,       "Inspector" },
-    { EDITOR_WINDOW_CONSOLE,          &ConsoleWindow::create,         &ConsoleWindow::destroy,         "Console" },
-    { EDITOR_WINDOW_VERSION,          &VersionWindow::create,         &VersionWindow::destroy,         "Version" },
+    { EDITOR_WINDOW_TAB_CONTROL,      EDITOR_ICON_ENUM_LAST,       &TabControlWindow::create,      &TabControlWindow::destroy,      nullptr },
+    { EDITOR_WINDOW_SELECTION,        EDITOR_ICON_ENUM_LAST,       &SelectionWindow::create,       &SelectionWindow::destroy,       "Selection" },
+    { EDITOR_WINDOW_CREATE_COMPONENT, EDITOR_ICON_ENUM_LAST,       &CreateComponentWindow::create, &CreateComponentWindow::destroy, "CreateComponent" },
+    { EDITOR_WINDOW_PROJECT_SETTINGS, EDITOR_ICON_ENUM_LAST,       &ProjectSettingsWindow::create, &ProjectSettingsWindow::destroy, "ProjectSettings" },
+    { EDITOR_WINDOW_VIEWPORT,         EDITOR_ICON_VIEWPORT_WINDOW,  &ViewportWindow::create,        &ViewportWindow::destroy,        "Viewport" },
+    { EDITOR_WINDOW_OUTLINER,         EDITOR_ICON_OUTLINER_WINDOW,  &OutlinerWindow::create,        &OutlinerWindow::destroy,        "Outliner" },
+    { EDITOR_WINDOW_INSPECTOR,        EDITOR_ICON_INSPECTOR_WINDOW, &InspectorWindow::create,       &InspectorWindow::destroy,       "Inspector" },
+    { EDITOR_WINDOW_CONSOLE,          EDITOR_ICON_CONSOLE_WINDOW,   &ConsoleWindow::create,         &ConsoleWindow::destroy,         "Console" },
+    { EDITOR_WINDOW_VERSION,          EDITOR_ICON_ENUM_LAST,       &VersionWindow::create,         &VersionWindow::destroy,         "Version" },
 };
 // clang-format on
 
@@ -261,7 +263,10 @@ EditorWindow EditorWorkspace::create_window(EditorAreaID areaID, EditorWindowTyp
     windowI.ctx = mObj->ctx;
     windowI.space = node->tabControlWorkspace;
     node->tabControl = sEditorWindowTable[(int)EDITOR_WINDOW_TAB_CONTROL].create(windowI);
-    static_cast<TabControlWindow>(node->tabControl).set_tab_name(sEditorWindowTable[(int)type].defaultTabName);
+    TabControlWindow tabControl = (TabControlWindow)node->tabControl;
+    const char* tabName = sEditorWindowTable[(int)type].defaultTabName;
+    EditorIcon tabIcon = sEditorWindowTable[(int)type].icon;
+    tabControl.set_window_type(type, tabName, tabIcon);
 
     windowI.space = node->windowWorkspace;
     node->window = sEditorWindowTable[(int)type].create(windowI);
