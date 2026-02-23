@@ -125,6 +125,7 @@ public:
     void destroy_sprite_2d_draw(Sprite2DDrawObj* draw);
 
     inline RImage get_font_atlas_image() { return mFontAtlasImage; }
+    inline RImage get_mono_font_atlas_image() { return mMonoFontAtlasImage; }
 
 private: // passes
     struct WorldPass
@@ -206,6 +207,7 @@ private: // resources, states and pipelines
     RDevice mDevice;
     RGraph mGraph;
     RSetPool mFrameSetPool;
+    RImage mMonoFontAtlasImage{};
     RImage mFontAtlasImage;
     RImage mWhiteCubemap;
     RMeshBlinnPhongPipeline mMeshPipeline;
@@ -218,6 +220,7 @@ private: // resources, states and pipelines
     uint32_t mFramesInFlight = 0;         /// number of frames in flight
     uint32_t mFrameIndex = 0;             /// [0, mFramesInFlight)
     FontAtlas mFontAtlas{};               /// default font atlas for text rendering
+    FontAtlas mMonoFontAtlas{};           /// monospace font atlas for text rendering
     RGraphImage mLastColorAttachment{};   /// last color attachment output
     RGraphImage mLastIDFlagsAttachment{}; /// last scene ID flags attachment output
     RFormat mDepthStencilFormat;          /// default depth stencil format
@@ -235,7 +238,7 @@ private:
 };
 
 RenderSystemObj::RenderSystemObj(const RenderSystemInfo& systemI)
-    : mDevice(systemI.device), mColorFormat(RFORMAT_RGBA8), mFontAtlas(systemI.fontAtlas)
+    : mDevice(systemI.device), mColorFormat(RFORMAT_RGBA8), mFontAtlas(systemI.defaultFontAtlas), mMonoFontAtlas(systemI.monoFontAtlas)
 {
     LD_PROFILE_SCOPE;
 
@@ -263,6 +266,15 @@ RenderSystemObj::RenderSystemObj(const RenderSystemInfo& systemI)
 
     RStager stager(mDevice, RQUEUE_TYPE_GRAPHICS);
     stager.add_image_data(mFontAtlasImage, atlasBitmap.data(), RIMAGE_LAYOUT_SHADER_READ_ONLY);
+
+    if (mMonoFontAtlas)
+    {
+        Bitmap monoAtlasBitmap = mMonoFontAtlas.get_bitmap();
+        imageI = RUtil::make_2d_image_info(RIMAGE_USAGE_SAMPLED_BIT | RIMAGE_USAGE_TRANSFER_DST_BIT, RFORMAT_R8, monoAtlasBitmap.width(), monoAtlasBitmap.height());
+        imageI.sampler = {RFILTER_LINEAR, RFILTER_LINEAR, RSAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE};
+        mMonoFontAtlasImage = mDevice.create_image(imageI);
+        stager.add_image_data(mMonoFontAtlasImage, monoAtlasBitmap.data(), RIMAGE_LAYOUT_SHADER_READ_ONLY);
+    }
 
     const uint32_t whitePixel = 0xFFFFFFFF;
     const uint32_t* whiteFaces[6] = {&whitePixel, &whitePixel, &whitePixel, &whitePixel, &whitePixel, &whitePixel};
@@ -364,6 +376,9 @@ RenderSystemObj::~RenderSystemObj()
 
     mDevice.destroy_image(mWhiteCubemap);
     mDevice.destroy_image(mFontAtlasImage);
+
+    if (mMonoFontAtlasImage)
+        mDevice.destroy_image(mMonoFontAtlasImage);
 }
 
 void RenderSystemObj::next_frame(const RenderSystemFrameInfo& frameI)
@@ -1152,6 +1167,11 @@ void RenderSystem::editor_dialog_pass(const RenderSystemEditorDialogPass& dialog
 RImage RenderSystem::get_font_atlas_image()
 {
     return mObj->get_font_atlas_image();
+}
+
+RImage RenderSystem::get_mono_font_atlas_image()
+{
+    return mObj->get_mono_font_atlas_image();
 }
 
 Image2D RenderSystem::create_image_2d(Bitmap bitmap)

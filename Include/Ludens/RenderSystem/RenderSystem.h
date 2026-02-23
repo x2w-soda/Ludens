@@ -64,8 +64,9 @@ struct MeshDraw : IDHandle<MeshDrawObj, RUID>
 /// @brief Render system creation info
 struct RenderSystemInfo
 {
-    RDevice device;      /// render device handle
-    FontAtlas fontAtlas; /// default font atlas used for text rendering
+    RDevice device;             /// render device handle
+    FontAtlas defaultFontAtlas; /// default font atlas used for text rendering
+    FontAtlas monoFontAtlas;    /// monospace font atlas
 };
 
 /// @brief Info for the system to start a new frame
@@ -186,6 +187,7 @@ struct RenderSystem : Handle<class RenderSystemObj>
 
     /// @brief Get the image handle of the font atlas image (RIMAGE_LAYOUT_SHADER_READ_ONLY).
     RImage get_font_atlas_image();
+    RImage get_mono_font_atlas_image();
 
     Image2D create_image_2d(Bitmap bitmap);
     void destroy_image_2d(Image2D image);

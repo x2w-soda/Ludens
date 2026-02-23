@@ -150,7 +150,8 @@ RuntimeContext RuntimeContext::create(const RuntimeContextInfo& info)
     // initialize subsystems
     RenderSystemInfo systemI{};
     systemI.device = obj->renderDevice;
-    systemI.fontAtlas = defaultFont.get_font_atlas();
+    systemI.defaultFontAtlas = defaultFont.get_font_atlas();
+    systemI.monoFontAtlas = {};
     obj->renderSystem = RenderSystem::create(systemI);
     obj->audioSystem = AudioSystem::create();
 
