@@ -232,14 +232,6 @@ void UISandbox::render()
         mRenderSystem.editor_dialog_pass(editorDP);
     }
 
-    // render empty scene
-    RenderSystemWorldPass worldP{};
-    worldP.mat4Callback = nullptr;
-    worldP.overlay.enabled = false;
-    worldP.hasSkybox = false;
-    worldP.user = this;
-    mRenderSystem.world_pass(worldP);
-
     // render UI in screen space
     RenderSystemScreenPass screenP{};
     screenP.overlay.viewport = screenViewport;

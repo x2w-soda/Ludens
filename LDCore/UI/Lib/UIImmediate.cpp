@@ -15,7 +15,7 @@
 
 #define LD_ASSERT_UI_PUSH_WINDOW \
     LD_ASSERT_UI_FRAME_BEGIN;    \
-    LD_ASSERT(!sImFrame->imWindow && "ui_window_begin already called");
+    LD_ASSERT(!sImFrame->imWindow && "ui_push_window already called");
 
 #define LD_ASSERT_UI_PUSH LD_ASSERT_UI_WINDOW
 
@@ -29,6 +29,8 @@
 
 namespace LD {
 
+struct UIWindowState;
+
 struct UITextEditState
 {
     std::string lastChange;
@@ -41,6 +43,7 @@ struct UIWidgetState
 {
     UIWidget widget{};               // actual retained widget
     Vector<UIWidgetState*> children; // direct children, retained across frames
+    UIWindowState* window = nullptr; // owning window state
     IMDrawCallback onDraw = nullptr; // imgui user draw callback
     Hash64 widgetHash{};             // hash that identifies this state uniquely in its window
     Vector<UIEvent> events;          // widget events in this frame
@@ -132,6 +135,7 @@ struct UIWindowState
         return imWidgetStack.empty() ? (UIWidget)window : (UIWidget)imWidgetStack.top()->widget;
     }
 
+    UIWidgetState* get_or_create_widget_state(UIWidgetType type);
     UIWidgetState* get_or_create_text();
     UIWidgetState* get_or_create_text_edit();
     UIWidgetState* get_or_create_image(RImage image);
@@ -147,22 +151,71 @@ struct UIImmediateFrame
 {
     UIContext ctx;                             // connected external context
     UIWindowState* imWindow = nullptr;         // current window
+    UIWindowState* imPopup = nullptr;          // global popup window
     HashMap<Hash64, UIWindowState*> imWindows; // all window states
+    HashMap<std::string, UIWindow> imPopups;   // all popup windows, owned by imgui
+    UILayer popupLayer{};
+    UIWorkspace popupWorkspace{};
+
+    void clear_popup_window();
+    void set_window_state(UIWindowState* windowS);
+    UIWindow get_or_create_popup_window(const char* popupName);
 };
+
+void UIImmediateFrame::clear_popup_window()
+{
+    if (imPopup)
+    {
+        imPopup->window.hide();
+        imPopup = nullptr;
+    }
+}
+
+void UIImmediateFrame::set_window_state(UIWindowState* windowS)
+{
+    imWindow = windowS;
+    imWindow->state->childCounter = 0;
+    imWindow->imWidgetStack.push(imWindow->state);
+}
+
+UIWindow UIImmediateFrame::get_or_create_popup_window(const char* popupName)
+{
+    std::string key(popupName);
+    if (imPopups.contains(key))
+        return imPopups[key];
+
+    UILayoutInfo layoutI{};
+    layoutI.sizeX = UISize::fit();
+    layoutI.sizeY = UISize::fit();
+    UIWindowInfo windowI{};
+    windowI.name = popupName;
+    UIWindow popupW = popupWorkspace.create_float_window(layoutI, windowI, nullptr);
+    imPopups[key] = popupW;
+
+    return popupW;
+}
 
 static UIImmediateFrame* sImFrame = nullptr;                // current imgui frame context
 static HashMap<UIContextObj*, UIImmediateFrame*> sImFrames; // all imgui frame contexts
 
-static UIImmediateFrame* get_or_create_immediate_frame(UIContext ctx)
+static UIImmediateFrame* get_or_create_immediate_frame(UIContext ctx, const Vec2& screenExtent)
 {
     // based on address stability, this is enough for hash key.
     UIContextObj* obj = ctx.unwrap();
+    UIImmediateFrame* imFrame = nullptr;
+    const Rect screenRect(0.0f, 0.0f, screenExtent.x, screenExtent.y);
 
     if (sImFrames.contains(obj))
+    {
+        imFrame = sImFrames[obj];
+        imFrame->popupWorkspace.set_rect(screenRect);
         return sImFrames[obj];
+    }
 
-    UIImmediateFrame* imFrame = sImFrames[obj] = heap_new<UIImmediateFrame>(MEMORY_USAGE_UI);
+    imFrame = sImFrames[obj] = heap_new<UIImmediateFrame>(MEMORY_USAGE_UI);
     imFrame->ctx = ctx;
+    imFrame->popupLayer = ctx.create_layer("ImguiPopups");
+    imFrame->popupWorkspace = imFrame->popupLayer.create_workspace(screenRect);
 
     return imFrame;
 }
@@ -171,6 +224,11 @@ static void on_ui_context_event(UIWidget widget, const UIEvent& event, void* use
 {
     UIImmediateFrame* frame = (UIImmediateFrame*)user;
     UIWidgetState* widgetS = (UIWidgetState*)widget.get_user();
+
+    if (frame->imPopup && frame->imPopup != widgetS->window && event.type == UI_EVENT_MOUSE_DOWN)
+    {
+        frame->clear_popup_window();
+    }
 
     // cache events for this frame for imgui API.
     widgetS->events.push_back(event);
@@ -217,11 +275,11 @@ static Hash64 get_widget_state_hash(UIWidgetType type, int siblingIndex, Hash64 
 }
 
 // NOTE: has side effect of incrementing the childCounter of top widget
-static UIWidgetState* get_or_create_widget_state(Stack<UIWidgetState*>& stack, PoolAllocator statePA, UIWidgetType type)
+UIWidgetState* UIWindowState::get_or_create_widget_state(UIWidgetType type)
 {
-    LD_ASSERT(!stack.empty());
+    LD_ASSERT(!imWidgetStack.empty());
 
-    UIWidgetState* parentS = stack.top();
+    UIWidgetState* parentS = imWidgetStack.top();
     Hash64 parentHash = parentS->widgetHash;
     int siblingIndex = parentS->childCounter++;
 
@@ -248,7 +306,7 @@ static UIWidgetState* get_or_create_widget_state(Stack<UIWidgetState*>& stack, P
         else // destroy widget subtrees from siblingIndex onwards
         {
             for (int i = siblingIndex; i < (int)parentS->children.size(); i++)
-                destroy_widget_subtree(statePA, parentS->children[i]);
+                destroy_widget_subtree(widgetStatePA, parentS->children[i]);
 
             LD_ASSERT(parentS->childCounter == siblingIndex + 1);
             parentS->children.resize(parentS->childCounter);
@@ -258,32 +316,43 @@ static UIWidgetState* get_or_create_widget_state(Stack<UIWidgetState*>& stack, P
 
     if (!widgetS)
     {
-        widgetS = parentS->children[siblingIndex] = (UIWidgetState*)statePA.allocate();
+        widgetS = parentS->children[siblingIndex] = (UIWidgetState*)widgetStatePA.allocate();
         new (widgetS) UIWidgetState(type);
         widgetS->widget = {}; // caller creates
         widgetS->widgetHash = widgetHash;
         widgetS->childCounter = 0;
+        widgetS->window = this;
     }
 
     return widgetS;
 }
 
-static UIWindowState* get_or_create_window_state(Hash64 windowHash)
+static UIWindowState* get_or_create_window_state(UIWindow client)
 {
-    if (sImFrame->imWindows.contains(windowHash))
-        return sImFrame->imWindows[windowHash];
+    Hash64 windowHash = client.get_hash();
+    UIWindowState* windowS = nullptr;
 
-    UIWindowState* windowS = heap_new<UIWindowState>(MEMORY_USAGE_UI);
+    if (sImFrame->imWindows.contains(windowHash))
+    {
+        windowS = sImFrame->imWindows[windowHash];
+        LD_ASSERT(windowS->window.unwrap() == client.unwrap());
+        return windowS;
+    }
+
+    windowS = heap_new<UIWindowState>(MEMORY_USAGE_UI);
     windowS->windowHash = windowHash;
-    windowS->window = {};
+    windowS->window = client;
     windowS->state = (UIWidgetState*)windowS->widgetStatePA.allocate();
     new (windowS->state) UIWidgetState(UI_WIDGET_WINDOW);
-
-    UIWidgetState* widgetS = windowS->state;
-    widgetS->widget = {};
-    widgetS->widgetHash = windowS->windowHash;
+    windowS->state->widget = (UIWidget)client;
+    windowS->state->widgetHash = windowS->windowHash;
 
     sImFrame->imWindows[windowHash] = windowS;
+
+    // the imgui layer becomes the user of all windows or widgets
+    void* ptr = client.get_user();
+    LD_ASSERT(!ptr || ptr == windowS->state);
+    client.set_user(windowS->state);
 
     return windowS;
 }
@@ -324,7 +393,7 @@ UIWindowState::~UIWindowState()
 
 UIWidgetState* UIWindowState::get_or_create_text()
 {
-    UIWidgetState* widgetS = get_or_create_widget_state(imWidgetStack, widgetStatePA, UI_WIDGET_TEXT);
+    UIWidgetState* widgetS = get_or_create_widget_state(UI_WIDGET_TEXT);
 
     if (widgetS->widget && widgetS->widget.get_type() == UI_WIDGET_TEXT)
         return widgetS;
@@ -342,7 +411,7 @@ UIWidgetState* UIWindowState::get_or_create_text()
 
 UIWidgetState* UIWindowState::get_or_create_text_edit()
 {
-    UIWidgetState* widgetS = get_or_create_widget_state(imWidgetStack, widgetStatePA, UI_WIDGET_TEXT_EDIT);
+    UIWidgetState* widgetS = get_or_create_widget_state(UI_WIDGET_TEXT_EDIT);
 
     if (widgetS->widget && widgetS->widget.get_type() == UI_WIDGET_TEXT_EDIT)
         return widgetS;
@@ -366,7 +435,7 @@ UIWidgetState* UIWindowState::get_or_create_text_edit()
 
 UIWidgetState* UIWindowState::get_or_create_image(RImage image)
 {
-    UIWidgetState* widgetS = get_or_create_widget_state(imWidgetStack, widgetStatePA, UI_WIDGET_IMAGE);
+    UIWidgetState* widgetS = get_or_create_widget_state(UI_WIDGET_IMAGE);
 
     if (widgetS->widget && widgetS->widget.get_type() == UI_WIDGET_IMAGE)
         return widgetS;
@@ -386,7 +455,7 @@ UIWidgetState* UIWindowState::get_or_create_image(RImage image)
 
 UIWidgetState* UIWindowState::get_or_create_panel()
 {
-    UIWidgetState* widgetS = get_or_create_widget_state(imWidgetStack, widgetStatePA, UI_WIDGET_PANEL);
+    UIWidgetState* widgetS = get_or_create_widget_state(UI_WIDGET_PANEL);
 
     if (widgetS->widget && widgetS->widget.get_type() == UI_WIDGET_PANEL)
         return widgetS;
@@ -406,7 +475,7 @@ UIWidgetState* UIWindowState::get_or_create_panel()
 
 UIWidgetState* UIWindowState::get_or_create_toggle()
 {
-    UIWidgetState* widgetS = get_or_create_widget_state(imWidgetStack, widgetStatePA, UI_WIDGET_TOGGLE);
+    UIWidgetState* widgetS = get_or_create_widget_state(UI_WIDGET_TOGGLE);
 
     if (widgetS->widget && widgetS->widget.get_type() == UI_WIDGET_TOGGLE)
         return widgetS;
@@ -430,7 +499,7 @@ UIWidgetState* UIWindowState::get_or_create_toggle()
 
 UIWidgetState* UIWindowState::get_or_create_scroll(Color bgColor)
 {
-    UIWidgetState* widgetS = get_or_create_widget_state(imWidgetStack, widgetStatePA, UI_WIDGET_SCROLL);
+    UIWidgetState* widgetS = get_or_create_widget_state(UI_WIDGET_SCROLL);
 
     if (widgetS->widget && widgetS->widget.get_type() == UI_WIDGET_SCROLL)
     {
@@ -455,7 +524,7 @@ UIWidgetState* UIWindowState::get_or_create_scroll(Color bgColor)
 
 UIWidgetState* UIWindowState::get_or_create_button(const char* text)
 {
-    UIWidgetState* widgetS = get_or_create_widget_state(imWidgetStack, widgetStatePA, UI_WIDGET_BUTTON);
+    UIWidgetState* widgetS = get_or_create_widget_state(UI_WIDGET_BUTTON);
 
     if (widgetS->widget && widgetS->widget.get_type() == UI_WIDGET_BUTTON)
         return widgetS;
@@ -480,7 +549,7 @@ UIWidgetState* UIWindowState::get_or_create_button(const char* text)
 
 UIWidgetState* UIWindowState::get_or_create_slider()
 {
-    UIWidgetState* widgetS = get_or_create_widget_state(imWidgetStack, widgetStatePA, UI_WIDGET_SLIDER);
+    UIWidgetState* widgetS = get_or_create_widget_state(UI_WIDGET_SLIDER);
 
     if (widgetS->widget && widgetS->widget.get_type() == UI_WIDGET_SLIDER)
         return widgetS;
@@ -523,11 +592,12 @@ void ui_imgui_release(UIContext ctx)
     sImFrames.erase(ctx.unwrap());
 }
 
-void ui_frame_begin(UIContext ctx)
+void ui_frame_begin(UIContext ctx, const Vec2& screenExtent)
 {
     LD_ASSERT(!sImFrame && "ui_frame_end not called");
 
-    sImFrame = get_or_create_immediate_frame(ctx);
+    sImFrame = get_or_create_immediate_frame(ctx, screenExtent);
+    sImFrame->popupLayer.raise();
 
     ctx.set_user(sImFrame);
     ctx.set_on_event(&on_ui_context_event);
@@ -770,7 +840,6 @@ bool ui_top_key_up(KeyValue& outKey)
 
 void ui_pop()
 {
-    LD_PROFILE_SCOPE;
     LD_ASSERT(sImFrame->imWindow && "missing window");
     LD_ASSERT(!sImFrame->imWindow->imWidgetStack.empty() && "widget stack empty");
 
@@ -793,7 +862,6 @@ void ui_pop()
 
 void ui_pop_window()
 {
-    LD_PROFILE_SCOPE;
     LD_ASSERT(sImFrame->imWindow && "missing window");
     LD_ASSERT(sImFrame->imWindow->imWidgetStack.size() == 1 && "some widget pushed but not popped");
 
@@ -821,31 +889,69 @@ void ui_push_window(UIWindow client)
         }
     }
 
-    UIWindowState* windowS = sImFrame->imWindow = get_or_create_window_state(windowHash);
-
-    windowS->state->childCounter = 0;
-    windowS->state->widget = (UIWidget)client;
-    windowS->imWidgetStack.push(windowS->state);
-    windowS->window = client;
-
-    // the imgui layer becomes the user of all windows or widgets
-    void* ptr = client.get_user();
-    LD_ASSERT(!ptr || ptr == windowS->state);
-    client.set_user(windowS->state);
+    sImFrame->set_window_state(get_or_create_window_state(client));
 }
 
-void ui_set_window_rect(const Rect& rect)
+void ui_window_set_color(Color color)
+{
+    LD_ASSERT_UI_WINDOW;
+
+    sImFrame->imWindow->window.set_color(color);
+}
+
+void ui_window_set_rect(const Rect& rect)
 {
     LD_ASSERT_UI_WINDOW;
 
     sImFrame->imWindow->window.set_rect(rect);
 }
 
-bool ui_has_window_client(const char* name)
+bool ui_window_has_client(const char* name)
 {
     LD_ASSERT_UI_FRAME_BEGIN;
 
     return sImFrame->imWindows.contains(Hash64(name));
+}
+
+void ui_request_popup_window(const char* popupName, const Vec2& position)
+{
+    ui_clear_popup_window();
+
+    UIWindow popupW = sImFrame->get_or_create_popup_window(popupName);
+
+    sImFrame->imPopup = get_or_create_window_state(popupW);
+    sImFrame->imPopup->window.hide();
+    sImFrame->imPopup->window.set_pos(position);
+}
+
+void ui_clear_popup_window()
+{
+    LD_ASSERT_UI_FRAME_BEGIN;
+
+    sImFrame->clear_popup_window();
+}
+
+bool ui_push_popup_window(const char* popupName)
+{
+    LD_ASSERT_UI_FRAME_BEGIN;
+    LD_ASSERT_UI_PUSH_WINDOW;
+
+    Hash64 hash = hash64_FNV_1a(popupName, strlen(popupName));
+
+    if (!sImFrame->imPopup)
+        return false;
+
+    std::string currentPopupName;
+    UIWindow popupW = sImFrame->imPopup->window;
+    popupW.get_name(currentPopupName);
+    if (currentPopupName != popupName)
+        return false;
+
+    popupW.show();
+
+    sImFrame->set_window_state(sImFrame->imPopup);
+
+    return true;
 }
 
 void ui_push_text(const char* text)

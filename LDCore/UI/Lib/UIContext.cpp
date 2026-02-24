@@ -564,6 +564,14 @@ void UIContext::update(float delta)
     }
 }
 
+void UIContext::render(ScreenRenderComponent renderer)
+{
+    for (UILayerObj* layer : mObj->layers)
+    {
+        UILayer(layer).render(renderer);
+    }
+}
+
 bool UIContext::input_key_down(KeyCode code, KeyMods mods)
 {
     UIEvent event{};

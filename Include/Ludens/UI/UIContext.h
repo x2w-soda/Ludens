@@ -39,6 +39,9 @@ struct UIContext : Handle<struct UIContextObj>
     /// @param delta delta time in seconds
     void update(float delta);
 
+    /// @brief Render each UILayer in order.
+    void render(ScreenRenderComponent renderer);
+
     bool input_scroll(const Vec2& offset);
     bool input_key_down(KeyCode code, KeyMods mods);
     bool input_key_up(KeyCode code, KeyMods mods);

@@ -25,7 +25,8 @@ void ui_imgui_release(UIContext ctx);
 
 /// @brief Begin immediate mode frame.
 /// @param ctx The context to connect to.
-void ui_frame_begin(UIContext ctx);
+/// @param screenExtent The screen size for this frame.
+void ui_frame_begin(UIContext ctx, const Vec2& screenExtent);
 
 /// @brief End the immediate mode frame.
 void ui_frame_end();
@@ -98,11 +99,26 @@ void ui_pop_window();
 /// @brief Push existing UIWindow as client.
 void ui_push_window(UIWindow client);
 
+void ui_window_set_color(Color color);
+
 /// @brief Sets the current window to position and fixed size.
-void ui_set_window_rect(const Rect& rect);
+void ui_window_set_rect(const Rect& rect);
 
 /// @brief Check if an external UIWindow client has previously been pushed.
-bool ui_has_window_client(const char* name);
+bool ui_window_has_client(const char* name);
+
+/// @brief Request the global popup window.
+/// @param popupName Unique name
+/// @param position Moves popup window to position.
+void ui_request_popup_window(const char* popupName, const Vec2& position);
+
+/// @brief Clear the global popup window.
+void ui_clear_popup_window();
+
+/// @brief Try push the global popup window, only succeeds if true is returned,
+///        in which case the user must later call "ui_pop_window".
+/// @param popupName Unique name of the popup window.
+bool ui_push_popup_window(const char* popupName);
 
 /// @brief Push UITextWidget.
 void ui_push_text(const char* text);
