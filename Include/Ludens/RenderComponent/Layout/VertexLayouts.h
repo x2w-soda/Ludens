@@ -46,30 +46,37 @@ static inline void get_quad_vertex_attributes(std::vector<RVertexAttribute>& att
     static_assert(sizeof(QuadVertex) == 24);
 }
 
-enum RectVertexImageHint
+enum QuadMode
 {
-    RECT_VERTEX_IMAGE_HINT_NONE = 0,      /// regular bitmap image
-    RECT_VERTEX_IMAGE_HINT_FONT = 1,      /// single channel bitmap atlas
-    RECT_VERTEX_IMAGE_HINT_FONT_SDF = 2,  /// single channel signed distanced field
-    RECT_VERTEX_IMAGE_HINT_ALPHA_ONE = 3, /// use 1.0 for alpha instead of image alpha channel
+    QUAD_MODE_NONE = 0,            /// regular sampling
+    QUAD_MODE_FONT = 1,            /// sampling a single channel bitmap atlas
+    QUAD_MODE_FONT_SDF = 2,        /// sampling a single channel signed distanced field
+    QUAD_MODE_FORCE_ALPHA_ONE = 3, /// use 1.0 for alpha instead of sampled alpha channel
+    QUAD_MODE_ELLIPSE = 4,         /// uses local UV signed distance to determine ellipse area
 };
 
-/// @brief get rect vertex control bits. [0:3] imageIdx, [4:7] imageHint, [8:15] filter ratio
+/// @brief Get QuadVertex control bits. [0:1] localUV, [2:5] imageIdx, [6:9] imageHint, [10:17] filter ratio
 /// @param imageIdx 4 bits to encode the image index in array
-/// @param imageHint 4 bits to hint how the image should be used
+/// @param mode 4 bits to hint how the quad should be behave in shader
 /// @param filterRatio 8 bits to encode the filtering ratio used for SDF font rendering. A ratio from 0.0 to 32.0 can be represented at a step of 0.125
 /// @return control bits for a QuadVertex
-static inline uint32_t get_quad_vertex_control_bits(int imageIdx, RectVertexImageHint imageHint, float filterRatio)
+static inline UVec4 get_quad_vertex_control_bits(int imageIdx, QuadMode mode, float filterRatio)
 {
     uint32_t controlBits = 0;
-    uint32_t imageHintBits = static_cast<uint32_t>(imageHint) & 15;
+    uint32_t modeBits = static_cast<uint32_t>(mode) & 15;
     uint32_t filterRatioBits = std::clamp<uint32_t>(static_cast<uint32_t>(filterRatio * 8.0f + 0.5f), 0, 255);
 
-    controlBits |= (imageIdx & 15);
-    controlBits |= (imageHintBits << 4);
-    controlBits |= (filterRatioBits << 8);
+    controlBits |= ((imageIdx & 15) << 2);
+    controlBits |= (modeBits << 6);
+    controlBits |= (filterRatioBits << 10);
 
-    return controlBits;
+    UVec4 quadControls;
+    quadControls.x = controlBits;     // TL control, local UV (0, 0)
+    quadControls.y = controlBits | 1; // TR control, local UV (1, 0)
+    quadControls.z = controlBits | 3; // BR control, local UV (1, 1)
+    quadControls.w = controlBits | 2; // BL control, local UV (0, 1)
+
+    return quadControls;
 }
 
 /// @brief Helper to accumulate QuadVertex data on the CPU side

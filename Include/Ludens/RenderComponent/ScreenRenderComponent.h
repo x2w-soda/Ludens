@@ -59,9 +59,20 @@ struct ScreenRenderComponent : Handle<struct ScreenRenderComponentObj>
 
     /// @brief draw a rect outline
     /// @param rect render area in screen space
-    /// @param border outline thickness, grows inwards within render area
     /// @param color rect outline color
-    void draw_rect_outline(const Rect& rect, float border, Color color);
+    /// @param width outline thickness, grows inwards within render area
+    void draw_rect_outline(const Rect& rect, Color color, float width);
+
+    /// @brief Draw an ellipse bound in a rect.
+    /// @param rect Render area in screen space.
+    /// @param color Ellipse color.
+    void draw_ellipse(const Rect& rect, Color color);
+
+    /// @brief Draw an image in ellipse bound in a rect.
+    /// @param rect Render area in screen space.
+    /// @param color Ellipse tint color.
+    /// @param image The image to be drawn.
+    void draw_ellipse_image(const Rect& rect, Color color, RImage image);
 
     /// @brief draw a 2D image
     /// @param rect image position

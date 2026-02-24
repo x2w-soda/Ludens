@@ -188,6 +188,7 @@ LD_VEC4_UNARY(-)
 
 using Vec4 = TVec4<float>;
 using IVec4 = TVec4<int>;
+using UVec4 = TVec4<uint32_t>;
 using DVec4 = TVec4<double>;
 
 static_assert(LD::IsTrivial<Vec4>);
