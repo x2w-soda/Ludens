@@ -19,7 +19,7 @@ public:
     void run();
 
 private:
-    void imgui();
+    void imgui(const Vec2& windowExtent);
     void render();
 
     static void on_event(const WindowEvent* event, void* user);

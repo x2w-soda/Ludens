@@ -134,7 +134,9 @@ void UISandbox::run()
         if (reg.is_window_minimized(rootID))
             continue;
 
-        imgui();
+        Vec2 windowExtent = reg.get_window_extent(rootID);
+
+        imgui(windowExtent);
 
         // update and render
         float delta = (float)reg.get_delta_time();
@@ -147,9 +149,9 @@ void UISandbox::run()
     ui_imgui_release(mCtx);
 }
 
-void UISandbox::imgui()
+void UISandbox::imgui(const Vec2& windowExtent)
 {
-    ui_frame_begin(mCtx);
+    ui_frame_begin(mCtx, windowExtent);
 
     bool isPressed;
 

@@ -1,5 +1,6 @@
 #include <Extra/doctest/doctest.h>
 #include <Ludens/Header/KeyValue.h>
+#include <Ludens/Header/MouseValue.h>
 
 using namespace LD;
 
@@ -30,4 +31,29 @@ TEST_CASE("KeyValue")
     CHECK(v2 != v4);
 }
 
-// TODO: MouseValue
+TEST_CASE("MouseValue")
+{
+    MouseValue v1;
+    CHECK(v1.u32 == 0);
+
+    v1 = MouseValue(MOUSE_BUTTON_LEFT);
+    CHECK(v1.u32 == MOUSE_BUTTON_LEFT); // no mods
+    CHECK(v1.button() == MOUSE_BUTTON_LEFT);
+    CHECK(v1.mods() == 0);
+
+    MouseValue v2(MOUSE_BUTTON_LEFT, KEY_MOD_CONTROL_BIT);
+    CHECK(v2 == v2);
+    CHECK(v2.button() == MOUSE_BUTTON_LEFT);
+    CHECK(v2.mods() == KEY_MOD_CONTROL_BIT);
+    CHECK(v1 != v2);
+
+    MouseValue v3(MOUSE_BUTTON_LEFT, KEY_MOD_CONTROL_BIT | KEY_MOD_SHIFT_BIT);
+    CHECK(v3.button() == MOUSE_BUTTON_LEFT);
+    CHECK(v3.mods() == (KEY_MOD_CONTROL_BIT | KEY_MOD_SHIFT_BIT));
+    CHECK(v2 != v3);
+
+    MouseValue v4(MOUSE_BUTTON_RIGHT, KEY_MOD_CONTROL_BIT);
+    CHECK(v2.button() != v4.button());
+    CHECK(v2.mods() == v4.mods());
+    CHECK(v2 != v4);
+}

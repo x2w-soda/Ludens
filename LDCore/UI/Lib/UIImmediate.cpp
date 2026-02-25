@@ -5,6 +5,7 @@
 #include <Ludens/Header/Hash.h>
 #include <Ludens/Header/Impulse.h>
 #include <Ludens/Header/KeyValue.h>
+#include <Ludens/Header/MouseValue.h>
 #include <Ludens/Header/Types.h>
 #include <Ludens/Memory/Allocator.h>
 #include <Ludens/Profiler/Profiler.h>
@@ -190,6 +191,7 @@ UIWindow UIImmediateFrame::get_or_create_popup_window(const char* popupName)
     UIWindowInfo windowI{};
     windowI.name = popupName;
     UIWindow popupW = popupWorkspace.create_float_window(layoutI, windowI, nullptr);
+    popupW.set_color(0xE0);
     imPopups[key] = popupW;
 
     return popupW;
@@ -762,7 +764,7 @@ bool ui_top_scroll(Vec2& scroll)
     return false;
 }
 
-bool ui_top_mouse_down(MouseButton& outButton)
+bool ui_top_mouse_down(MouseValue& outMouse, Vec2& outMousePos)
 {
     LD_ASSERT_UI_TOP_WIDGET;
 
@@ -774,14 +776,15 @@ bool ui_top_mouse_down(MouseButton& outButton)
     UIEvent event;
     if (widgetS->consume_event(UI_EVENT_MOUSE_DOWN, event))
     {
-        outButton = event.mouse.button;
+        outMouse = MouseValue(event.mouse.button, event.mouse.mods);
+        outMousePos = event.mouse.position + widgetS->widget.get_pos();
         return true;
     }
 
     return false;
 }
 
-bool ui_top_mouse_up(MouseButton& outButton)
+bool ui_top_mouse_up(MouseValue& outMouse, Vec2& outMousePos)
 {
     LD_ASSERT_UI_TOP_WIDGET;
 
@@ -793,7 +796,8 @@ bool ui_top_mouse_up(MouseButton& outButton)
     UIEvent event;
     if (widgetS->consume_event(UI_EVENT_MOUSE_UP, event))
     {
-        outButton = event.mouse.button;
+        outMouse = MouseValue(event.mouse.button, event.mouse.mods);
+        outMousePos = event.mouse.position + widgetS->widget.get_pos();
         return true;
     }
 

@@ -17,6 +17,7 @@
 namespace LD {
 
 struct KeyValue;
+struct MouseValue;
 
 typedef void (*IMDrawCallback)(UIWidget widget, ScreenRenderComponent renderer, void* user);
 
@@ -71,23 +72,15 @@ bool ui_top_is_hovered();
 bool ui_top_scroll(Vec2& scroll);
 
 /// @brief Check if widget on top of stack has UI_MOUSE_DOWN event.
-/// @return True if event exists.
-/// @warning Overrides existing on_mouse callback on widget.
-bool ui_top_mouse_down(MouseButton& outButton);
+bool ui_top_mouse_down(MouseValue& outMouse, Vec2& outMousePos);
 
 /// @brief Check if widget on top of stack has UI_MOUSE_UP event.
-/// @return True if event exists.
-/// @warning Overrides existing on_mouse callback on widget.
-bool ui_top_mouse_up(MouseButton& outButton);
+bool ui_top_mouse_up(MouseValue& outMouse, Vec2& outMousePos);
 
 /// @brief Check if widget on top of stack has UI_KEY_DOWN event.
-/// @return True if event exists.
-/// @warning Overrides existing on_key callback on widget.
 bool ui_top_key_down(KeyValue& outKey);
 
 /// @brief Check if widget on top of stack has UI_KEY_UP event.
-/// @return True if event exists.
-/// @warning Overrides existing on_key callback on widget.
 bool ui_top_key_up(KeyValue& outKey);
 
 /// @brief Pop the most recent non-window widget.

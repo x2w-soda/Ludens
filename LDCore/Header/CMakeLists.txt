@@ -14,6 +14,7 @@ set(MODULE_INCLUDE
     ${LUDENS_INCLUDE_DIR}/Ludens/Header/Version.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Header/KeyCode.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Header/KeyValue.h
+    ${LUDENS_INCLUDE_DIR}/Ludens/Header/MouseValue.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Header/Math/Math.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Header/Math/Vec2.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Header/Math/Vec3.h
