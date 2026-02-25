@@ -16,10 +16,10 @@ TEST_CASE("EditorActionQueue basic")
     EditorActionInfo actionI{};
     actionI.name = "Undo";
     actionI.type = EDITOR_ACTION_UNDO;
-    actionI.action = [](EditStack stack, void* user) { sUndoCounter++; };
-    EditorAction::register_action(actionI);
+    actionI.action = [](EditStack stack, const EditorAction& action, void* user) { sUndoCounter++; };
+    register_editor_action(actionI);
 
-    queue.enqueue(EDITOR_ACTION_UNDO);
+    queue.enqueue({EDITOR_ACTION_UNDO});
 
     CHECK(sUndoCounter == 0);
     queue.poll_actions();

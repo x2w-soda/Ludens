@@ -53,40 +53,6 @@ struct EditorContextObj
     SUID selectedComponentSUID = 0;
     bool isPlaying;
 
-    // TODO: union of all params? or can we accumulate params for multiple actions simultaneously?
-    struct EditorActionNewSceneParams
-    {
-        FS::Path schemaPath; // path to save schema for new scene
-    } newSceneParams;
-
-    struct EditorActionOpenSceneParams
-    {
-        FS::Path schemaPath; // path to scene schema
-    } openSceneParams;
-
-    struct EditorActionOpenProjectParams
-    {
-        FS::Path schemaPath; // path to project schema
-    } openProjectParams;
-
-    struct EditorActionAddComponentParams
-    {
-        SUID parentSUID;
-        ComponentType compType;
-    } addComponentParams;
-
-    struct EditorActionAddComponentScriptParams
-    {
-        SUID compSUID;         // component ID in current scene
-        AssetID scriptAssetID; // script asset ID in project
-    } addComponentScriptParams;
-
-    struct EditorActionSetComponentAssetParams
-    {
-        SUID compSUID;
-        AssetID assetID;
-    } setComponentAssetParams;
-
     void notify_observers(const EditorEvent* event);
 
     void load_project(const FS::Path& projectSchemaPath);
@@ -96,30 +62,31 @@ struct EditorContextObj
     void save_project_schema();
 };
 
-static void editor_action_undo(EditStack stack, void* user);
-static void editor_action_redo(EditStack stack, void* user);
-static void editor_action_new_scene(EditStack stack, void* user);
-static void editor_action_open_scene(EditStack stack, void* user);
-static void editor_action_save_scene(EditStack stack, void* user);
-static void editor_action_open_project(EditStack stack, void* user);
-static void editor_action_add_component_script(EditStack stack, void* user);
-static void editor_action_set_component_asset(EditStack stack, void* user);
+static void editor_action_undo(EditStack stack, const EditorAction& action, void* user);
+static void editor_action_redo(EditStack stack, const EditorAction& action, void* user);
+static void editor_action_new_scene(EditStack stack, const EditorAction& action, void* user);
+static void editor_action_open_scene(EditStack stack, const EditorAction& action, void* user);
+static void editor_action_save_scene(EditStack stack, const EditorAction& action, void* user);
+static void editor_action_open_project(EditStack stack, const EditorAction& action, void* user);
+static void editor_action_add_component(EditStack stack, const EditorAction& action, void* user);
+static void editor_action_add_component_script(EditStack stack, const EditorAction& action, void* user);
+static void editor_action_set_component_asset(EditStack stack, const EditorAction& action, void* user);
 
-static void editor_action_undo(EditStack stack, void* user)
+static void editor_action_undo(EditStack stack, const EditorAction& action, void* user)
 {
     LD_PROFILE_SCOPE;
 
     stack.undo();
 }
 
-static void editor_action_redo(EditStack stack, void* user)
+static void editor_action_redo(EditStack stack, const EditorAction& action, void* user)
 {
     LD_PROFILE_SCOPE;
 
     stack.redo();
 }
 
-static void editor_action_new_scene(EditStack stack, void* user)
+static void editor_action_new_scene(EditStack stack, const EditorAction& action, void* user)
 {
     LD_PROFILE_SCOPE;
 
@@ -128,10 +95,10 @@ static void editor_action_new_scene(EditStack stack, void* user)
     // Creating new Scene would clear the EditStack
     stack.clear();
 
-    obj->new_project_scene(obj->newSceneParams.schemaPath);
+    obj->new_project_scene(action.newScene.schemaPath);
 }
 
-static void editor_action_open_scene(EditStack stack, void* user)
+static void editor_action_open_scene(EditStack stack, const EditorAction& action, void* user)
 {
     LD_PROFILE_SCOPE;
 
@@ -140,10 +107,10 @@ static void editor_action_open_scene(EditStack stack, void* user)
     // Opening Scene would clear the EditStack
     stack.clear();
 
-    obj->load_project_scene(obj->openSceneParams.schemaPath);
+    obj->load_project_scene(action.openScene.schemaPath);
 }
 
-static void editor_action_save_scene(EditStack stack, void* user)
+static void editor_action_save_scene(EditStack stack, const EditorAction& action, void* user)
 {
     LD_PROFILE_SCOPE;
 
@@ -154,7 +121,7 @@ static void editor_action_save_scene(EditStack stack, void* user)
     obj->save_scene_schema();
 }
 
-static void editor_action_open_project(EditStack stack, void* user)
+static void editor_action_open_project(EditStack stack, const EditorAction& action, void* user)
 {
     LD_PROFILE_SCOPE;
 
@@ -165,41 +132,38 @@ static void editor_action_open_project(EditStack stack, void* user)
     LD_UNREACHABLE;
 }
 
-static void editor_action_add_component(EditStack stack, void* user)
+static void editor_action_add_component(EditStack stack, const EditorAction& action, void* user)
 {
     EditorContextObj* obj = (EditorContextObj*)user;
-    const auto& params = obj->addComponentParams;
 
     stack.execute(EditStack::new_command<AddComponentCommand>(
         obj->scene,
-        params.parentSUID,
-        params.compType));
+        action.addComponent.parentSUID,
+        action.addComponent.compType));
 }
 
-static void editor_action_add_component_script(EditStack stack, void* user)
+static void editor_action_add_component_script(EditStack stack, const EditorAction& action, void* user)
 {
     LD_PROFILE_SCOPE;
 
     EditorContextObj* obj = (EditorContextObj*)user;
-    const auto& params = obj->addComponentScriptParams;
 
     stack.execute(EditStack::new_command<AddComponentScriptCommand>(
         obj->scene,
-        params.compSUID,
-        params.scriptAssetID));
+        action.addComponentScript.compSUID,
+        action.addComponentScript.assetID));
 }
 
-static void editor_action_set_component_asset(EditStack stack, void* user)
+static void editor_action_set_component_asset(EditStack stack, const EditorAction& action, void* user)
 {
     LD_PROFILE_SCOPE;
 
     auto* obj = (EditorContextObj*)user;
-    const auto& params = obj->setComponentAssetParams;
 
     stack.execute(EditStack::new_command<SetComponentAssetCommand>(
         obj->scene,
-        params.compSUID,
-        params.assetID));
+        action.setComponentAsset.compSUID,
+        action.setComponentAsset.assetID));
 }
 
 void EditorContextObj::notify_observers(const EditorEvent* event)
@@ -391,7 +355,7 @@ EditorContext EditorContext::create(const EditorContextInfo& info)
     // clang-format on
 
     for (size_t i = 0; i < sizeof(editorActions) / sizeof(*editorActions); i++)
-        EditorAction::register_action(editorActions[i]);
+        register_editor_action(editorActions[i]);
 
     return {obj};
 }
@@ -440,56 +404,62 @@ void EditorContext::render_system_screen_pass_callback(ScreenRenderComponent ren
 
 void EditorContext::action_redo()
 {
-    mObj->actionQueue.enqueue(EDITOR_ACTION_REDO);
+    (void)mObj->actionQueue.enqueue(EDITOR_ACTION_REDO);
 }
 
 void EditorContext::action_undo()
 {
-    mObj->actionQueue.enqueue(EDITOR_ACTION_UNDO);
+    (void)mObj->actionQueue.enqueue(EDITOR_ACTION_UNDO);
 }
 
 void EditorContext::action_new_scene(const FS::Path& sceneSchemaPath)
 {
-    mObj->actionQueue.enqueue(EDITOR_ACTION_NEW_SCENE);
-    mObj->newSceneParams.schemaPath = sceneSchemaPath;
+    EditorAction* action = mObj->actionQueue.enqueue(EDITOR_ACTION_NEW_SCENE);
+
+    action->newScene.schemaPath = sceneSchemaPath;
 }
 
 void EditorContext::action_open_scene(const FS::Path& sceneSchemaPath)
 {
-    mObj->actionQueue.enqueue(EDITOR_ACTION_OPEN_SCENE);
-    mObj->openSceneParams.schemaPath = sceneSchemaPath;
+    EditorAction* action = mObj->actionQueue.enqueue(EDITOR_ACTION_OPEN_SCENE);
+
+    action->openScene.schemaPath = sceneSchemaPath;
 }
 
 void EditorContext::action_open_project(const FS::Path& projectSchemaPath)
 {
-    mObj->actionQueue.enqueue(EDITOR_ACTION_OPEN_PROJECT);
-    mObj->openProjectParams.schemaPath = projectSchemaPath;
+    EditorAction* action = mObj->actionQueue.enqueue(EDITOR_ACTION_OPEN_PROJECT);
+
+    action->openProject.schemaPath = projectSchemaPath;
 }
 
 void EditorContext::action_save_scene()
 {
-    mObj->actionQueue.enqueue(EDITOR_ACTION_SAVE_SCENE);
+    (void)mObj->actionQueue.enqueue(EDITOR_ACTION_SAVE_SCENE);
 }
 
 void EditorContext::action_add_component(SUID parentSUID, ComponentType type)
 {
-    mObj->actionQueue.enqueue(EDITOR_ACTION_ADD_COMPONENT);
-    mObj->addComponentParams.parentSUID = parentSUID;
-    mObj->addComponentParams.compType = type;
+    EditorAction* action = mObj->actionQueue.enqueue(EDITOR_ACTION_ADD_COMPONENT);
+
+    action->addComponent.parentSUID = parentSUID;
+    action->addComponent.compType = type;
 }
 
 void EditorContext::action_add_component_script(SUID compSUID, AssetID scriptAssetID)
 {
-    mObj->actionQueue.enqueue(EDITOR_ACTION_ADD_COMPONENT_SCRIPT);
-    mObj->addComponentScriptParams.compSUID = compSUID;
-    mObj->addComponentScriptParams.scriptAssetID = scriptAssetID;
+    EditorAction* action = mObj->actionQueue.enqueue(EDITOR_ACTION_ADD_COMPONENT_SCRIPT);
+
+    action->addComponentScript.compSUID = compSUID;
+    action->addComponentScript.assetID = scriptAssetID;
 }
 
 void EditorContext::action_set_component_asset(SUID compSUID, AssetID assetID)
 {
-    mObj->actionQueue.enqueue(EDITOR_ACTION_SET_COMPONENT_ASSET);
-    mObj->setComponentAssetParams.compSUID = compSUID;
-    mObj->setComponentAssetParams.assetID = assetID;
+    EditorAction* action = mObj->actionQueue.enqueue(EDITOR_ACTION_SET_COMPONENT_ASSET);
+
+    action->setComponentAsset.compSUID = compSUID;
+    action->setComponentAsset.assetID = assetID;
 }
 
 void EditorContext::poll_actions()
