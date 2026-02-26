@@ -17,6 +17,8 @@
 
 #include "UISandbox.h"
 
+#define UI_CONTEXT_NAME "SANDBOX"
+
 namespace LD {
 
 static Log sLog("UISandbox");
@@ -81,28 +83,6 @@ UISandbox::UISandbox()
         stager.submit(mRDevice.get_graphics_queue());
         Bitmap::destroy(tmpBitmap);
     }
-
-    UIContextInfo ctxI{};
-    ctxI.fontAtlas = mFontAtlas;
-    ctxI.fontAtlasImage = mFontAtlasImage;
-    ctxI.theme = UITheme::get_default_theme();
-    mCtx = UIContext::create(ctxI);
-    UILayer groundLayer = mCtx.create_layer("ground");
-    UILayer floatLayer = mCtx.create_layer("float");
-    UIWorkspace space = floatLayer.create_workspace(Rect(100.0f, 50.0f, 250.0f, 400.0f));
-
-    // create floating client window
-    UILayoutInfo layoutI{};
-    layoutI.childAxis = UI_AXIS_Y;
-    UIWindowInfo uiWindowI{};
-    uiWindowI.name = "demo";
-    uiWindowI.defaultMouseControls = false;
-    uiWindowI.drawWithScissor = false;
-    mDemo = space.create_window(space.get_root_id(), layoutI, uiWindowI, nullptr);
-    mDemo.layout();
-    mDemo.set_on_draw([](UIWidget widget, ScreenRenderComponent renderer) {
-        renderer.draw_rect(widget.get_rect(), Color(0x303030FF));
-    });
 }
 
 UISandbox::~UISandbox()
@@ -112,7 +92,6 @@ UISandbox::~UISandbox()
     mRDevice.wait_idle();
     mRDevice.destroy_image(mIconAtlasImage);
 
-    UIContext::destroy(mCtx);
     RenderSystem::destroy(mRenderSystem);
     RDevice::destroy(mRDevice);
     FontAtlas::destroy(mFontAtlas);
@@ -127,6 +106,8 @@ void UISandbox::run()
     WindowRegistry reg = WindowRegistry::get();
     WindowID rootID = reg.get_root_id();
 
+    ui_imgui_init(mFontAtlas, mFontAtlasImage);
+
     while (reg.is_window_open(rootID))
     {
         reg.poll_events();
@@ -136,26 +117,29 @@ void UISandbox::run()
 
         Vec2 windowExtent = reg.get_window_extent(rootID);
 
-        imgui(windowExtent);
-
-        // update and render
-        float delta = (float)reg.get_delta_time();
-        mCtx.update(delta);
+        imgui(windowExtent, (float)reg.get_delta_time());
         render();
 
         LD_PROFILE_FRAME_MARK;
     }
 
-    ui_imgui_release(mCtx);
+    ui_imgui_shutdown();
 }
 
-void UISandbox::imgui(const Vec2& windowExtent)
+void UISandbox::imgui(const Vec2& windowExtent, float delta)
 {
-    ui_frame_begin(mCtx, windowExtent);
+    ui_context_begin(UI_CONTEXT_NAME, windowExtent);
+
+    ui_layer_begin("LAYER");
+    ui_workspace_begin("WORKSPACE", Rect(100.0f, 50.0f, 250.0f, 400.0f));
 
     bool isPressed;
 
-    ui_push_window(mDemo);
+    ui_push_window("WINDOW");
+    ui_top_draw([](UIWidget widget, ScreenRenderComponent renderer, void*) {
+        renderer.draw_rect(widget.get_rect(), Color(0x303030FF));
+    });
+
     ui_push_scroll({});
     ui_top_layout_child_gap(10.0f);
     {
@@ -206,7 +190,9 @@ void UISandbox::imgui(const Vec2& windowExtent)
     ui_pop();
     ui_pop_window();
 
-    ui_frame_end();
+    ui_workspace_end();
+    ui_layer_end();
+    ui_context_end(delta);
 }
 
 void UISandbox::render()
@@ -249,21 +235,14 @@ void UISandbox::on_event(const WindowEvent* event, void* user)
     UISandbox& self = *(UISandbox*)user;
 
     // pass window events to UI
-    UIContext uiCtx = self.mCtx;
-    uiCtx.input_window_event((const WindowEvent*)event);
+    ui_context_input(UI_CONTEXT_NAME, event);
 }
 
 void UISandbox::on_screen_render(ScreenRenderComponent renderer, void* user)
 {
     UISandbox& self = *(UISandbox*)user;
 
-    UIContext ctx = self.mCtx;
-
-    Vector<UILayer> layers;
-    ctx.get_layers(layers);
-
-    for (UILayer layer : layers)
-        layer.render(renderer);
+    ui_context_render(UI_CONTEXT_NAME, renderer);
 }
 
 void UISandbox::on_dialog_render(ScreenRenderComponent renderer, void* user)

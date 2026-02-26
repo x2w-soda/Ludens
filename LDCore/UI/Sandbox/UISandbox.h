@@ -19,7 +19,7 @@ public:
     void run();
 
 private:
-    void imgui(const Vec2& windowExtent);
+    void imgui(const Vec2& windowExtent, float delta);
     void render();
 
     static void on_event(const WindowEvent* event, void* user);
@@ -33,8 +33,6 @@ private:
     RenderSystem mRenderSystem;
     RImage mFontAtlasImage;
     RImage mIconAtlasImage;
-    UIWindow mDemo;
-    UIContext mCtx;
 };
 
 } // namespace LD

@@ -69,6 +69,7 @@ struct UICallback
     void (*onDraw)(UIWidget widget, ScreenRenderComponent renderer);
 };
 
+/// @brief Docked UIWindow inside a UIWorkspace
 struct UIWorkspaceNode
 {
     Axis splitAxis;

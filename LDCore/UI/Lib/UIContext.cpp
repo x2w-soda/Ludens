@@ -522,6 +522,8 @@ UIContext UIContext::create(const UIContextInfo& info)
     UIContextObj* obj = heap_new<UIContextObj>(MEMORY_USAGE_UI);
     obj->fontAtlas = info.fontAtlas;
     obj->fontAtlasImage = info.fontAtlasImage;
+    obj->user = info.user;
+    obj->onEvent = info.onEvent;
 
     PoolAllocatorInfo paI{};
     paI.blockSize = sizeof(UIWidgetObj);
@@ -537,9 +539,6 @@ UIContext UIContext::create(const UIContextInfo& info)
 void UIContext::destroy(UIContext ctx)
 {
     UIContextObj* obj = ctx.unwrap();
-
-    // safety net in case ctx user forgets.
-    ui_imgui_release(ctx);
 
     for (UILayerObj* layer : obj->layers)
         obj->deferredLayerDestruction.insert(layer);

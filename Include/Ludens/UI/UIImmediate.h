@@ -18,19 +18,40 @@ namespace LD {
 
 struct KeyValue;
 struct MouseValue;
+struct WindowEvent;
 
 typedef void (*IMDrawCallback)(UIWidget widget, ScreenRenderComponent renderer, void* user);
 
+void ui_imgui_init(FontAtlas fontAtlas, RImage fontAtlasImage);
+
 /// @brief Release and free all resources allocated by immediate-mode API.
-void ui_imgui_release(UIContext ctx);
+void ui_imgui_shutdown();
 
-/// @brief Begin immediate mode frame.
-/// @param ctx The context to connect to.
+bool ui_context_input(const char* ctxName, const WindowEvent* event);
+void ui_context_render(const char* ctxName, ScreenRenderComponent renderer);
+
+/// @brief Begin immediate mode context.
+/// @param ctx Unique context name.
 /// @param screenExtent The screen size for this frame.
-void ui_frame_begin(UIContext ctx, const Vec2& screenExtent);
+/// @param delta Delta time for this frame.
+void ui_context_begin(const char* ctxName, const Vec2& screenExtent);
 
-/// @brief End the immediate mode frame.
-void ui_frame_end();
+/// @brief End the immediate mode context.
+void ui_context_end(float delta);
+
+/// @brief Begin a UILayer scope.
+/// @param layerName Unique layer name within context.
+void ui_layer_begin(const char* layerName);
+
+/// @brief End the current layer scope.
+void ui_layer_end();
+
+/// @brief Begin a UIWorkspace scope.
+/// @param workspaceName  Unique workspace name within layer.
+void ui_workspace_begin(const char* workspaceName, const Rect& workspaceArea);
+
+/// @brief End the current workspace scope.
+void ui_workspace_end();
 
 /// @brief Set layout of widget on top of stack.
 void ui_top_layout(const UILayoutInfo& layoutI);
@@ -51,7 +72,11 @@ void ui_top_layout_child_gap(float gap);
 void ui_top_user(void* user);
 
 /// @brief Get rect of widget on top of stack.
-void ui_top_rect(Rect& outRect);
+void ui_top_get_rect(Rect& outRect);
+
+/// @brief Get relative mouse position of widget on top of stack,
+///        if the widget rect contains mouse position.
+bool ui_top_get_mouse_pos(Vec2& outMousePos);
 
 /// @brief Set draw callback of widget on top of stack.
 void ui_top_draw(const IMDrawCallback& imDrawCallback);
@@ -89,16 +114,14 @@ void ui_pop();
 /// @brief Pop current window.
 void ui_pop_window();
 
-/// @brief Push existing UIWindow as client.
-void ui_push_window(UIWindow client);
+/// @brief Push window to decorate.
+/// @param windowName Unique window name in workspace
+void ui_push_window(const char* windowName);
 
 void ui_window_set_color(Color color);
 
 /// @brief Sets the current window to position and fixed size.
 void ui_window_set_rect(const Rect& rect);
-
-/// @brief Check if an external UIWindow client has previously been pushed.
-bool ui_window_has_client(const char* name);
 
 /// @brief Request the global popup window.
 /// @param popupName Unique name
