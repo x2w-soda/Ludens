@@ -22,9 +22,25 @@ static_assert((int)LD::MD_BLOCK_TYPE_TH == (int)::MD_BLOCK_TH);
 static_assert((int)LD::MD_BLOCK_TYPE_TD == (int)::MD_BLOCK_TD);
 static_assert((int)LD::MD_TEXT_TYPE_NORMAL == (int)::MD_TEXT_NORMAL);
 
+static_assert((int)LD::MD_SPAN_TYPE_EM == (int)::MD_SPAN_EM);
+static_assert((int)LD::MD_SPAN_TYPE_STRONG == (int)::MD_SPAN_STRONG);
+static_assert((int)LD::MD_SPAN_TYPE_A == (int)::MD_SPAN_A);
+static_assert((int)LD::MD_SPAN_TYPE_IMG == (int)::MD_SPAN_IMG);
+static_assert((int)LD::MD_SPAN_TYPE_CODE == (int)::MD_SPAN_CODE);
+
+static inline View view_md_attribute(const MD_ATTRIBUTE& attr)
+{
+    return View((const char*)attr.text, (size_t)attr.size);
+}
+
 static inline MDBlockType get_native_block_type(MD_BLOCKTYPE inType)
 {
     return (MDBlockType)inType;
+}
+
+static inline MDSpanType get_native_span_type(MD_SPANTYPE inType)
+{
+    return (MDSpanType)inType;
 }
 
 static inline MDTextType get_native_text_type(MD_TEXTTYPE inType)
@@ -54,6 +70,25 @@ static inline bool get_native_block_detail(MDBlockType inType, void* inDetail, M
         return true;
     case MD_BLOCK_TYPE_H:
         outDetail.h.level = static_cast<MD_BLOCK_H_DETAIL*>(inDetail)->level;
+        return true;
+    default:
+        break;
+    }
+
+    return false;
+}
+
+static inline bool get_native_span_detail(MDSpanType inType, void* inDetail, MDSpanDetail& outDetail)
+{
+    switch (inType)
+    {
+    case MD_SPAN_TYPE_A:
+        outDetail.a.title = view_md_attribute(static_cast<MD_SPAN_A_DETAIL*>(inDetail)->title);
+        outDetail.a.href = view_md_attribute(static_cast<MD_SPAN_A_DETAIL*>(inDetail)->href);
+        return true;
+    case MD_SPAN_TYPE_IMG:
+        outDetail.img.title = view_md_attribute(static_cast<MD_SPAN_IMG_DETAIL*>(inDetail)->title);
+        outDetail.img.src = view_md_attribute(static_cast<MD_SPAN_IMG_DETAIL*>(inDetail)->src);
         return true;
     default:
         break;
@@ -118,14 +153,26 @@ private:
     static int on_enter_span(MD_SPANTYPE type, void* detail, void* user)
     {
         MD4CParser& self = *(MD4CParser*)user;
-        (void)self;
+        if (!self.mCallbacks.onEnterSpan)
+            return 0;
+
+        MDSpanDetail spanDetail;
+        MDSpanType spanType = get_native_span_type(type);
+        get_native_span_detail(spanType, detail, spanDetail);
+        self.mCallbacks.onEnterSpan(spanType, spanDetail, self.mUser);
         return 0;
     }
 
     static int on_leave_span(MD_SPANTYPE type, void* detail, void* user)
     {
         MD4CParser& self = *(MD4CParser*)user;
-        (void)self;
+        if (!self.mCallbacks.onLeaveSpan)
+            return 0;
+
+        MDSpanDetail spanDetail;
+        MDSpanType spanType = get_native_span_type(type);
+        get_native_span_detail(spanType, detail, spanDetail);
+        self.mCallbacks.onLeaveSpan(spanType, spanDetail, self.mUser);
         return 0;
     }
 
@@ -136,7 +183,7 @@ private:
             return 0;
 
         MDTextType txtType = get_native_text_type(type);
-        MDString txt((const char*)text, (size_t)size);
+        View txt((const char*)text, (size_t)size);
         self.mCallbacks.onText(txtType, txt, self.mUser);
         return 0;
     }

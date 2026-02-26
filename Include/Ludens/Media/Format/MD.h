@@ -7,8 +7,6 @@
 
 namespace LD {
 
-using MDString = View;
-
 enum MDBlockType
 {
     MD_BLOCK_TYPE_DOC = 0,
@@ -58,6 +56,30 @@ union MDBlockDetail
     } h;
 };
 
+enum MDSpanType
+{
+    MD_SPAN_TYPE_EM,
+    MD_SPAN_TYPE_STRONG,
+    MD_SPAN_TYPE_A,
+    MD_SPAN_TYPE_IMG,
+    MD_SPAN_TYPE_CODE,
+};
+
+union MDSpanDetail
+{
+    struct A
+    {
+        View title;
+        View href;
+    } a;
+
+    struct IMG
+    {
+        View title;
+        View src;
+    } img;
+};
+
 enum MDTextType
 {
     MD_TEXT_TYPE_NORMAL = 0,
@@ -67,7 +89,9 @@ struct MDCallback
 {
     int (*onEnterBlock)(MDBlockType type, const MDBlockDetail& detail, void* user);
     int (*onLeaveBlock)(MDBlockType type, const MDBlockDetail& detail, void* user);
-    int (*onText)(MDTextType type, const MDString& text, void* user);
+    int (*onEnterSpan)(MDSpanType type, const MDSpanDetail& detail, void* user);
+    int (*onLeaveSpan)(MDSpanType type, const MDSpanDetail& detail, void* user);
+    int (*onText)(MDTextType type, const View& text, void* user);
 };
 
 struct MDParser
