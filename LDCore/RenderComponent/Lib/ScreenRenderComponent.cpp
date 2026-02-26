@@ -74,6 +74,9 @@ private: // instance members
     bool mHasInputImage;
 
     void flush_rects();
+    void write_quad_image(const Rect& rect, Color color, int imageIndex, const Rect& uv, bool forceAlphaOne);
+    void write_quad_rounded(const Rect& rect, Color color, int imageIndex, const Rect& uv, float radius);
+    void write_quad_ellipse(const Rect& rect, Color color, int imageIndex, const Rect& uv);
 
     int get_image_index(RImage image);
     inline const char* io_name() const { return "IO"; }
@@ -203,6 +206,85 @@ void ScreenRenderComponentObj::flush_rects()
         .maxSets = 1,
     });
     newBatch.screenSet = newBatch.imageSlotSetPool.allocate();
+}
+
+void ScreenRenderComponentObj::write_quad_image(const Rect& rect, Color color, int imageIndex, const Rect& uv, bool forceAlphaOne)
+{
+    LD_ASSERT(!mRectBatch.is_full());
+
+    color = color * mColorMask;
+
+    float x0 = rect.x;
+    float x1 = rect.x + rect.w;
+    float y0 = rect.y;
+    float y1 = rect.y + rect.h;
+    float u0 = uv.x;
+    float u1 = uv.x + uv.w;
+    float v0 = uv.y;
+    float v1 = uv.y + uv.h;
+
+    QuadMode mode = forceAlphaOne ? QUAD_MODE_FORCE_ALPHA_ONE : QUAD_MODE_NONE;
+    UVec4 control = get_quad_vertex_control_bits(imageIndex, mode, 0.0f, 0.0f);
+
+    QuadVertex* v = mRectBatch.write_quad();
+    v[0] = {x0, y0, u0, v0, color, control[0]}; // TL
+    v[1] = {x1, y0, u1, v0, color, control[1]}; // TR
+    v[2] = {x1, y1, u1, v1, color, control[2]}; // BR
+    v[3] = {x0, y1, u0, v1, color, control[3]}; // BL
+}
+
+void ScreenRenderComponentObj::write_quad_rounded(const Rect& rect, Color color, int imageIndex, const Rect& uv, float radius)
+{
+    LD_ASSERT(!mRectBatch.is_full());
+
+    color = color * mColorMask;
+
+    float x0 = rect.x;
+    float x1 = rect.x + rect.w;
+    float y0 = rect.y;
+    float y1 = rect.y + rect.h;
+    float u0 = uv.x;
+    float u1 = uv.x + uv.w;
+    float v0 = uv.y;
+    float v1 = uv.y + uv.h;
+
+    // normalize a 0.1-10.0 aspect ratio
+    float aspect = 10.0f;
+    if (rect.h != 0)
+        aspect = std::clamp(rect.w / rect.h, 0.1f, 10.0f);
+    aspect = (aspect - 0.1f) / 9.9f;
+
+    UVec4 control = get_quad_vertex_control_bits(imageIndex, QUAD_MODE_RECT_ROUNDED, aspect, radius);
+
+    QuadVertex* v = mRectBatch.write_quad();
+    v[0] = {x0, y0, u0, v0, color, control[0]}; // TL
+    v[1] = {x1, y0, u1, v0, color, control[1]}; // TR
+    v[2] = {x1, y1, u1, v1, color, control[2]}; // BR
+    v[3] = {x0, y1, u0, v1, color, control[3]}; // BL
+}
+
+void ScreenRenderComponentObj::write_quad_ellipse(const Rect& rect, Color color, int imageIndex, const Rect& uv)
+{
+    LD_ASSERT(!mRectBatch.is_full());
+
+    color = color * mColorMask;
+
+    float x0 = rect.x;
+    float x1 = rect.x + rect.w;
+    float y0 = rect.y;
+    float y1 = rect.y + rect.h;
+    float u0 = uv.x;
+    float u1 = uv.x + uv.w;
+    float v0 = uv.y;
+    float v1 = uv.y + uv.h;
+
+    UVec4 control = get_quad_vertex_control_bits(imageIndex, QUAD_MODE_ELLIPSE, 0.0f, 0.0f);
+
+    QuadVertex* v = mRectBatch.write_quad();
+    v[0] = {x0, y0, u0, v0, color, control[0]}; // TL
+    v[1] = {x1, y0, u1, v0, color, control[1]}; // TR
+    v[2] = {x1, y1, u1, v1, color, control[2]}; // BR
+    v[3] = {x0, y1, u0, v1, color, control[3]}; // BL
 }
 
 int ScreenRenderComponentObj::get_image_index(RImage image)
@@ -465,7 +547,7 @@ QuadVertex* ScreenRenderComponent::draw(RImage image)
     {
         int imageIdx = mObj->get_image_index(image);
         LD_ASSERT(imageIdx >= 0);
-        control = get_quad_vertex_control_bits(imageIdx, QUAD_MODE_NONE, 0);
+        control = get_quad_vertex_control_bits(imageIdx, QUAD_MODE_NONE, 0.0f, 0.0f);
     }
 
     // NOTE: this allows user to bypass mObj->mColorMask and write the final color directly
@@ -534,6 +616,15 @@ void ScreenRenderComponent::draw_rect_outline(const Rect& rect, Color color, flo
     barR[3] = {x1 - width, y1 - width, 0, 0, color, 0};
 }
 
+void ScreenRenderComponent::draw_rect_rounded(const Rect& rect, Color color, float radius)
+{
+    if (mObj->mRectBatch.is_full())
+        mObj->flush_rects();
+
+    const Rect uv{0.0f, 0.0f, 1.0f, 1.0f};
+    mObj->write_quad_rounded(rect, color, 0, uv, radius);
+}
+
 void ScreenRenderComponent::draw_ellipse(const Rect& rect, Color color)
 {
     if (mObj->mRectBatch.is_full())
@@ -546,7 +637,7 @@ void ScreenRenderComponent::draw_ellipse(const Rect& rect, Color color)
     float y0 = rect.y;
     float y1 = rect.y + rect.h;
 
-    UVec4 control = get_quad_vertex_control_bits(0, QUAD_MODE_ELLIPSE, 0.0f);
+    UVec4 control = get_quad_vertex_control_bits(0, QUAD_MODE_ELLIPSE, 0.0f, 0.0f);
 
     QuadVertex* v = mObj->mRectBatch.write_quad();
     v[0] = {x0, y0, 0.0f, 0.0f, color, control[0]}; // TL
@@ -555,7 +646,7 @@ void ScreenRenderComponent::draw_ellipse(const Rect& rect, Color color)
     v[3] = {x0, y1, 0.0f, 0.0f, color, control[3]}; // BL
 }
 
-void ScreenRenderComponent::draw_ellipse_image(const Rect& rect, Color color, RImage image)
+void ScreenRenderComponent::draw_ellipse_image(const Rect& rect, Color color, RImage image, const Rect& uv)
 {
     if (mObj->mRectBatch.is_full())
         mObj->flush_rects();
@@ -563,23 +654,10 @@ void ScreenRenderComponent::draw_ellipse_image(const Rect& rect, Color color, RI
     int imageIdx = mObj->get_image_index(image);
     LD_ASSERT(imageIdx >= 0);
 
-    color = color * mObj->mColorMask;
-
-    float x0 = rect.x;
-    float x1 = rect.x + rect.w;
-    float y0 = rect.y;
-    float y1 = rect.y + rect.h;
-
-    UVec4 control = get_quad_vertex_control_bits(imageIdx, QUAD_MODE_ELLIPSE, 0.0f);
-
-    QuadVertex* v = mObj->mRectBatch.write_quad();
-    v[0] = {x0, y0, 0.0f, 0.0f, color, control[0]}; // TL
-    v[1] = {x1, y0, 1.0f, 0.0f, color, control[1]}; // TR
-    v[2] = {x1, y1, 1.0f, 1.0f, color, control[2]}; // BR
-    v[3] = {x0, y1, 0.0f, 1.0f, color, control[3]}; // BL
+    mObj->write_quad_ellipse(rect, color, imageIdx, uv);
 }
 
-void ScreenRenderComponent::draw_image(const Rect& rect, RImage image, Color color, bool forceAlphaOne)
+void ScreenRenderComponent::draw_image(const Rect& rect, Color color, RImage image, const Rect& uv, bool forceAlphaOne)
 {
     if (mObj->mRectBatch.is_full())
         mObj->flush_rects();
@@ -587,23 +665,10 @@ void ScreenRenderComponent::draw_image(const Rect& rect, RImage image, Color col
     int imageIdx = mObj->get_image_index(image);
     LD_ASSERT(imageIdx >= 0);
 
-    float x0 = rect.x;
-    float x1 = rect.x + rect.w;
-    float y0 = rect.y;
-    float y1 = rect.y + rect.h;
-
-    QuadMode mode = forceAlphaOne ? QUAD_MODE_FORCE_ALPHA_ONE : QUAD_MODE_NONE;
-    UVec4 control = get_quad_vertex_control_bits(imageIdx, mode, 0);
-    uint32_t tint = color * mObj->mColorMask;
-
-    QuadVertex* v = mObj->mRectBatch.write_quad();
-    v[0] = {x0, y0, 0.0f, 0.0f, tint, control[0]}; // TL
-    v[1] = {x1, y0, 1.0f, 0.0f, tint, control[1]}; // TR
-    v[2] = {x1, y1, 1.0f, 1.0f, tint, control[2]}; // BR
-    v[3] = {x0, y1, 0.0f, 1.0f, tint, control[3]}; // BL
+    mObj->write_quad_image(rect, color, imageIdx, uv, forceAlphaOne);
 }
 
-void ScreenRenderComponent::draw_image_uv(const Rect& rect, RImage image, const Rect& uv, Color color)
+void ScreenRenderComponent::draw_image_rounded(const Rect& rect, Color color, RImage image, const Rect& uv, float radius)
 {
     if (mObj->mRectBatch.is_full())
         mObj->flush_rects();
@@ -611,24 +676,7 @@ void ScreenRenderComponent::draw_image_uv(const Rect& rect, RImage image, const 
     int imageIdx = mObj->get_image_index(image);
     LD_ASSERT(imageIdx >= 0);
 
-    color = color * mObj->mColorMask;
-
-    float x0 = rect.x;
-    float x1 = rect.x + rect.w;
-    float y0 = rect.y;
-    float y1 = rect.y + rect.h;
-    float u0 = uv.x;
-    float u1 = uv.x + uv.w;
-    float v0 = uv.y;
-    float v1 = uv.y + uv.h;
-
-    UVec4 control = get_quad_vertex_control_bits(imageIdx, QUAD_MODE_NONE, 0);
-
-    QuadVertex* v = mObj->mRectBatch.write_quad();
-    v[0] = {x0, y0, u0, v0, color, control[0]}; // TL
-    v[1] = {x1, y0, u1, v0, color, control[1]}; // TR
-    v[2] = {x1, y1, u1, v1, color, control[2]}; // BR
-    v[3] = {x0, y1, u0, v1, color, control[3]}; // BL
+    mObj->write_quad_rounded(rect, color, imageIdx, uv, radius);
 }
 
 // NOTE: this function applies the color mask,
@@ -670,7 +718,7 @@ void ScreenRenderComponent::draw_glyph(FontAtlas atlas, RImage atlasImage, float
 
     color = color * mObj->mColorMask;
 
-    UVec4 control = get_quad_vertex_control_bits(imageIdx, mode, filterRatio);
+    UVec4 control = get_quad_vertex_control_bits(imageIdx, mode, filterRatio / 32.0f, 0.0f);
 
     QuadVertex* v = mObj->mRectBatch.write_quad();
     v[0] = {x0, y0, u0, v0, color, control[0]}; // TL

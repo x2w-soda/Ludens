@@ -74,9 +74,11 @@ void main()
     vec4 imageColor = vec4(1.0);
 
     uint imageIdx = vControl & 15;
-    uint modeBits = (vControl >> 4) & 15;
-    uint filterRatioBits = (vControl >> 8) & 255;
-    float filterRatio = float(filterRatioBits) / 8.0f;
+    uint mode = (vControl >> 4) & 15;
+    float r1 = float((vControl >> 8) & 1023) / 1023.0;
+    float r2 = float((vControl >> 18) & 1023) / 1023.0;
+    float filterRatio = r1 * 32.0;
+    float aspectRatio = mix(0.1, 10.0, r1);
 
     switch (imageIdx)
     {
@@ -95,10 +97,14 @@ void main()
     float sd = imageColor.r;
     float screenPxDistance = screenPxRange * (sd - 0.5);
     float opacity = clamp(screenPxDistance + 0.5, 0.0, 1.0);
-
+    
     vec4 color = imageColor * vColor;
+    vec2 centerOffset = vLocalUV - vec2(0.5);
+    float distSQ;
+    float dist;
+    float delta;
 
-    switch (modeBits)
+    switch (mode)
     {
     case 1: // single channel font bitmap
         color = vColor * vec4(imageColor.r);
@@ -110,9 +116,19 @@ void main()
         color.a = 1.0;
         break;
     case 4: // ellipse
-        float distSQ = dot(vLocalUV - vec2(0.5), vLocalUV - vec2(0.5));
-        float delta = fwidth(distSQ);
+        distSQ = dot(centerOffset, centerOffset);
+        delta = fwidth(distSQ);
         color.a = 1.0 - smoothstep(0.25 - delta, 0.25 + delta, distSQ);
+        break;
+    case 5: // rect border radius, find signed distance to arc
+        vec2 aspect = vec2(aspectRatio, 1.0);
+        vec2 p = centerOffset * aspect;
+        vec2 halfExtent = 0.5 * aspect;
+        float borderRadius = r2 * 0.5 * min(aspect.x, aspect.y);
+        vec2 q = abs(p) - halfExtent + vec2(borderRadius); // relative to inner rect
+        dist = length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - borderRadius;
+        delta = fwidth(dist);
+        color.a = 1.0 - smoothstep(-delta, delta, dist);
         break;
     }
 

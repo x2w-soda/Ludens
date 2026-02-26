@@ -53,22 +53,26 @@ enum QuadMode
     QUAD_MODE_FONT_SDF = 2,        /// sampling a single channel signed distanced field
     QUAD_MODE_FORCE_ALPHA_ONE = 3, /// use 1.0 for alpha instead of sampled alpha channel
     QUAD_MODE_ELLIPSE = 4,         /// uses local UV signed distance to determine ellipse area
+    QUAD_MODE_RECT_ROUNDED = 5,    /// ratio1 aspect ratio, r2 border ratio. draw with border radius
 };
 
-/// @brief Get QuadVertex control bits. [0:1] localUV, [2:5] imageIdx, [6:9] imageHint, [10:17] filter ratio
+/// @brief Get QuadVertex control bits. [0:1] localUV, [2:5] imageIdx, [6:9] quadMode, [10:19] ratio1 [20:29] ratio2
 /// @param imageIdx 4 bits to encode the image index in array
-/// @param mode 4 bits to hint how the quad should be behave in shader
-/// @param filterRatio 8 bits to encode the filtering ratio used for SDF font rendering. A ratio from 0.0 to 32.0 can be represented at a step of 0.125
-/// @return control bits for a QuadVertex
-static inline UVec4 get_quad_vertex_control_bits(int imageIdx, QuadMode mode, float filterRatio)
+/// @param mode 4 bits to hint how the quad should be behave in fragment shader
+/// @param ratio1 10 bits for a normalized ratio
+/// @param ratio2 10 bits for a normalized ratio
+/// @return control bits for the four quad vertices, they only differ in the first 2 bits.
+static inline UVec4 get_quad_vertex_control_bits(int imageIdx, QuadMode mode, float ratio1, float ratio2)
 {
     uint32_t controlBits = 0;
     uint32_t modeBits = static_cast<uint32_t>(mode) & 15;
-    uint32_t filterRatioBits = std::clamp<uint32_t>(static_cast<uint32_t>(filterRatio * 8.0f + 0.5f), 0, 255);
+    uint32_t ratio1Bits = static_cast<uint32_t>(ratio1 * 1023.0f);
+    uint32_t ratio2Bits = static_cast<uint32_t>(ratio2 * 1023.0f);
 
     controlBits |= ((imageIdx & 15) << 2);
     controlBits |= (modeBits << 6);
-    controlBits |= (filterRatioBits << 10);
+    controlBits |= ((ratio1Bits & 1023) << 10);
+    controlBits |= ((ratio2Bits & 1023) << 20);
 
     UVec4 quadControls;
     quadControls.x = controlBits;     // TL control, local UV (0, 0)

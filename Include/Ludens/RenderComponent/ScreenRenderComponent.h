@@ -63,30 +63,37 @@ struct ScreenRenderComponent : Handle<struct ScreenRenderComponentObj>
     /// @param width outline thickness, grows inwards within render area
     void draw_rect_outline(const Rect& rect, Color color, float width);
 
+    /// @brief Draw a rect with border radius.
+    /// @param rect Render area in screen space.
+    /// @param color Fill color.
+    /// @param radius Normalized border radius ratio.
+    void draw_rect_rounded(const Rect& rect, Color color, float radius);
+
     /// @brief Draw an ellipse bound in a rect.
     /// @param rect Render area in screen space.
     /// @param color Ellipse color.
     void draw_ellipse(const Rect& rect, Color color);
 
-    /// @brief Draw an image in ellipse bound in a rect.
+    /// @brief Draw an ellipse sampling from image.
     /// @param rect Render area in screen space.
     /// @param color Ellipse tint color.
     /// @param image The image to be drawn.
-    void draw_ellipse_image(const Rect& rect, Color color, RImage image);
+    void draw_ellipse_image(const Rect& rect, Color color, RImage image, const Rect& uv);
 
-    /// @brief draw a 2D image
+    /// @brief Draw a 2D image
     /// @param rect image position
-    /// @param image a 2D image to be drawn
     /// @param color Tint color.
-    /// @param forceAlphaOne Whether to override image alpha channel with 1.
-    void draw_image(const Rect& rect, RImage image, Color color, bool forceAlphaOne);
-
-    /// @brief draw a 2D image with custom uv range
-    /// @param rect image position
     /// @param image a 2D image to be drawn
-    /// @param uv custom texture uv coordinates
-    /// @param color image tint color
-    void draw_image_uv(const Rect& rect, RImage image, const Rect& uv, Color color);
+    /// @param forceAlphaOne Whether to override image alpha channel with 1.
+    void draw_image(const Rect& rect, Color color, RImage image, const Rect& uv, bool forceAlphaOne);
+
+    /// @brief Draw a 2D image with rounded border.
+    /// @param rect Render area in screen space.
+    /// @param image 2D image handle.
+    /// @param uv Image UV area.
+    /// @param color Image tint color.
+    /// @param radius Normalized border radius ratio.
+    void draw_image_rounded(const Rect& rect, Color color, RImage image, const Rect& uv, float radius);
 
     /// @brief draw a single font glyph using top-left corner origin
     /// @param atlas font atlas
