@@ -4,6 +4,17 @@
 
 namespace LD {
 
+static const CameraComponent sDefaultCamera = {
+    .transform = {},
+    .camera = {},
+    .isMainCamera = false,
+};
+
+void init_camera_component(ComponentBase** dstData)
+{
+    memcpy(dstData, &sDefaultCamera, sizeof(CameraComponent));
+}
+
 bool load_camera_component_perspective(SceneObj* scene, CameraComponent* camera, const CameraPerspectiveInfo& perspectiveI, std::string& err)
 {
     LD_PROFILE_SCOPE;
@@ -13,7 +24,6 @@ bool load_camera_component_perspective(SceneObj* scene, CameraComponent* camera,
     if (!camera->camera)
         return false;
 
-    camera->base->flags |= COMPONENT_FLAG_LOADED_BIT;
     return true;
 }
 
@@ -26,7 +36,6 @@ bool load_camera_component_orthographic(SceneObj* scene, CameraComponent* camera
     if (!camera->camera)
         return false;
 
-    camera->base->flags |= COMPONENT_FLAG_LOADED_BIT;
     return true;
 }
 
@@ -34,7 +43,7 @@ bool clone_camera_component(SceneObj* scene, ComponentBase** dstData, ComponentB
 {
     LD_PROFILE_SCOPE;
 
-    Scene::Camera srcCamera(srcData);
+    CameraView srcCamera(srcData);
     LD_ASSERT(srcCamera);
 
     CameraPerspectiveInfo perspectiveI;
@@ -66,8 +75,6 @@ bool unload_camera_component(SceneObj* scene, ComponentBase** cameraData, std::s
         camera->camera = {};
     }
 
-    camera->base->flags &= ~COMPONENT_FLAG_LOADED_BIT;
-
     return true;
 }
 
@@ -92,7 +99,7 @@ bool cleanup_camera_component(SceneObj* scene, ComponentBase** cameraData, std::
     return true;
 }
 
-Scene::Camera::Camera(Component comp)
+CameraView::CameraView(ComponentView comp)
 {
     if (comp && comp.type() == COMPONENT_TYPE_CAMERA)
     {
@@ -101,7 +108,7 @@ Scene::Camera::Camera(Component comp)
     }
 }
 
-Scene::Camera::Camera(CameraComponent* comp)
+CameraView::CameraView(CameraComponent* comp)
 {
     if (comp && comp->base && comp->base->cuid)
     {
@@ -110,37 +117,35 @@ Scene::Camera::Camera(CameraComponent* comp)
     }
 }
 
-bool Scene::Camera::load_perspective(const CameraPerspectiveInfo& info)
+bool CameraView::load_perspective(const CameraPerspectiveInfo& info)
 {
     std::string err;
 
     return load_camera_component_perspective(sScene, mCamera, info, err);
 }
 
-bool Scene::Camera::load_orthographic(const CameraOrthographicInfo& info)
+bool CameraView::load_orthographic(const CameraOrthographicInfo& info)
 {
     std::string err;
 
     return load_camera_component_orthographic(sScene, mCamera, info, err);
 }
 
-bool Scene::Camera::is_main_camera()
+bool CameraView::is_main_camera()
 {
-    LD_ASSERT_COMPONENT_LOADED(mData);
-
     return mCamera->isMainCamera;
 }
 
-bool Scene::Camera::is_perspective()
+bool CameraView::is_perspective()
 {
-    LD_ASSERT_COMPONENT_LOADED(mData);
+    LD_ASSERT(mCamera->camera);
 
     return mCamera->camera.is_perspective();
 }
 
-bool Scene::Camera::get_perspective_info(CameraPerspectiveInfo& outInfo)
+bool CameraView::get_perspective_info(CameraPerspectiveInfo& outInfo)
 {
-    LD_ASSERT_COMPONENT_LOADED(mData);
+    LD_ASSERT(mCamera->camera);
 
     if (mCamera->camera.is_perspective())
     {
@@ -151,9 +156,9 @@ bool Scene::Camera::get_perspective_info(CameraPerspectiveInfo& outInfo)
     return false;
 }
 
-bool Scene::Camera::get_orthographic_info(CameraOrthographicInfo& outInfo)
+bool CameraView::get_orthographic_info(CameraOrthographicInfo& outInfo)
 {
-    LD_ASSERT_COMPONENT_LOADED(mData);
+    LD_ASSERT(mCamera->camera);
 
     if (!mCamera->camera.is_perspective())
     {
@@ -164,16 +169,16 @@ bool Scene::Camera::get_orthographic_info(CameraOrthographicInfo& outInfo)
     return false;
 }
 
-void Scene::Camera::set_perspective(const CameraPerspectiveInfo& info)
+void CameraView::set_perspective(const CameraPerspectiveInfo& info)
 {
-    LD_ASSERT_COMPONENT_LOADED(mData);
+    LD_ASSERT(mCamera->camera);
 
     mCamera->camera.set_perspective(info);
 }
 
-void Scene::Camera::set_orthographic(const CameraOrthographicInfo& info)
+void CameraView::set_orthographic(const CameraOrthographicInfo& info)
 {
-    LD_ASSERT_COMPONENT_LOADED(mData);
+    LD_ASSERT(mCamera->camera);
 
     mCamera->camera.set_orthographic(info);
 }

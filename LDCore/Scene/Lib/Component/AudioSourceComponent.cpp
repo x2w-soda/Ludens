@@ -4,6 +4,18 @@
 
 namespace LD {
 
+static const AudioSourceComponent sDefaultAudioSource = {
+    .playback = {},
+    .clipID = 0,
+    .pan = 0.5f,
+    .volumeLinear = 1.0f,
+};
+
+void init_audio_source_component(ComponentBase** dstData)
+{
+    memcpy(dstData, &sDefaultAudioSource, sizeof(AudioSourceComponent));
+}
+
 bool load_audio_source_component(SceneObj* scene, AudioSourceComponent* source, AssetID clipID, float pan, float volumeLinear, std::string& err)
 {
     LD_PROFILE_SCOPE;
@@ -27,7 +39,6 @@ bool load_audio_source_component(SceneObj* scene, AudioSourceComponent* source, 
     }
 
     source->clipID = clipID;
-    source->base->flags |= COMPONENT_FLAG_LOADED_BIT;
     return true;
 }
 
@@ -35,8 +46,8 @@ bool clone_audio_source_component(SceneObj* scene, ComponentBase** dstData, Comp
 {
     LD_PROFILE_SCOPE;
 
-    Scene::AudioSource srcSource(srcData);
-    Scene::AudioSource dstSource(dstData);
+    AudioSourceView srcSource(srcData);
+    AudioSourceView dstSource(dstData);
     LD_ASSERT(srcSource && dstSource);
 
     AssetID clipAID = srcSource.get_clip_asset();
@@ -56,9 +67,6 @@ bool unload_audio_source_component(SceneObj* scene, ComponentBase** sourceData, 
         source->playback = {};
     }
 
-    // NOTE: audio buffer still exists in audio system cache
-    source->base->flags &= ~COMPONENT_FLAG_LOADED_BIT;
-
     return true;
 }
 
@@ -75,7 +83,7 @@ bool cleanup_audio_source_component(SceneObj* scene, ComponentBase** sourceData,
     return true;
 }
 
-Scene::AudioSource::AudioSource(Component comp)
+AudioSourceView::AudioSourceView(ComponentView comp)
 {
     if (comp && comp.type() == COMPONENT_TYPE_AUDIO_SOURCE)
     {
@@ -84,7 +92,7 @@ Scene::AudioSource::AudioSource(Component comp)
     }
 }
 
-Scene::AudioSource::AudioSource(AudioSourceComponent* comp)
+AudioSourceView::AudioSourceView(AudioSourceComponent* comp)
 {
     if (comp && comp->base && comp->base->type == COMPONENT_TYPE_AUDIO_SOURCE)
     {
@@ -93,67 +101,64 @@ Scene::AudioSource::AudioSource(AudioSourceComponent* comp)
     }
 }
 
-bool Scene::AudioSource::load(AssetID clipAsset, float pan, float volumeLinear)
+bool AudioSourceView::load(AssetID clipAsset, float pan, float volumeLinear)
 {
     std::string err;
 
     return load_audio_source_component(sScene, mAudioSource, clipAsset, pan, volumeLinear, err);
 }
 
-void Scene::AudioSource::play()
+void AudioSourceView::play()
 {
-    LD_ASSERT_COMPONENT_LOADED(mData);
+    LD_ASSERT(mAudioSource->playback);
 
     sScene->audioSystemCache.start_playback(mAudioSource->playback);
 }
 
-void Scene::AudioSource::pause()
+void AudioSourceView::pause()
 {
-    LD_ASSERT_COMPONENT_LOADED(mData);
+    LD_ASSERT(mAudioSource->playback);
 
     sScene->audioSystemCache.pause_playback(mAudioSource->playback);
 }
 
-void Scene::AudioSource::resume()
+void AudioSourceView::resume()
 {
-    LD_ASSERT_COMPONENT_LOADED(mData);
+    LD_ASSERT(mAudioSource->playback);
 
     sScene->audioSystemCache.resume_playback(mAudioSource->playback);
 }
 
-bool Scene::AudioSource::set_clip_asset(AssetID clipID)
+bool AudioSourceView::set_clip_asset(AssetID clipID)
 {
-    LD_ASSERT_COMPONENT_LOADED(mData);
+    LD_ASSERT(mAudioSource->playback);
 
     AudioClipAsset clipA(sScene->assetManager.get_asset(clipID).unwrap());
     AudioBuffer buffer = sScene->audioSystemCache.get_or_create_audio_buffer(clipA);
 
-    if (!buffer)
+    if (buffer)
     {
         mAudioSource->clipID = clipID;
         sScene->audioSystemCache.set_playback_buffer(mAudioSource->playback, buffer);
+        return true;
     }
 
     return false;
 }
 
-AssetID Scene::AudioSource::get_clip_asset()
+AssetID AudioSourceView::get_clip_asset()
 {
-    LD_ASSERT_COMPONENT_LOADED(mData);
-
     return mAudioSource->clipID;
 }
 
-float Scene::AudioSource::get_volume_linear()
+float AudioSourceView::get_volume_linear()
 {
-    LD_ASSERT_COMPONENT_LOADED(mData);
-
     return mAudioSource->volumeLinear;
 }
 
-bool Scene::AudioSource::set_volume_linear(float volume)
+bool AudioSourceView::set_volume_linear(float volume)
 {
-    LD_ASSERT_COMPONENT_LOADED(mData);
+    LD_ASSERT(mAudioSource->playback);
 
     AudioPlayback::Accessor accessor = mAudioSource->playback.access();
 
@@ -164,16 +169,14 @@ bool Scene::AudioSource::set_volume_linear(float volume)
     return true;
 }
 
-float Scene::AudioSource::get_pan()
+float AudioSourceView::get_pan()
 {
-    LD_ASSERT_COMPONENT_LOADED(mData);
-
     return mAudioSource->pan;
 }
 
-bool Scene::AudioSource::set_pan(float pan)
+bool AudioSourceView::set_pan(float pan)
 {
-    LD_ASSERT_COMPONENT_LOADED(mData);
+    LD_ASSERT(mAudioSource->playback);
 
     AudioPlayback::Accessor accessor = mAudioSource->playback.access();
 

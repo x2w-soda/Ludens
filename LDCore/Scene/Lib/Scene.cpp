@@ -38,14 +38,15 @@ static Log sSceneLog(SCENE_LOG_CHANNEL_NAME);
 SceneObj* sScene = nullptr;
 
 /// @brief Component behavior and operations within a Scene.
-///        - loading a component creates subsystem resources
-///        - cloning loads an empty component from some loaded component
-///        - startup a component to prepare it for runtime
-///        - cleanup a component to release runtime resources
-///        - unloading a component destroys subsystem resources
-struct SceneComponent
+///        - init: initialize default parameters for creating subsystem resources
+///        - clone: copies parameters from an existing component
+///        - startup: runtime subsystem resources must be instantiated, script is attached
+///        - cleanup: script is detached and strict runtime resources are destroyed
+///        - unload: all subsystem resources associated with component must be destroyed
+struct SceneComponentMeta
 {
     ComponentType type;
+    void (*init)(ComponentBase** dstData);
     bool (*clone)(SceneObj* scene, ComponentBase** dstData, ComponentBase** srcData, std::string& err);
     bool (*unload)(SceneObj* scene, ComponentBase** data, std::string& err);
     bool (*startup)(SceneObj* scene, ComponentBase** data, std::string& err);
@@ -53,14 +54,15 @@ struct SceneComponent
 };
 
 // clang-format off
-static SceneComponent sSceneComponents[] = {
-    {COMPONENT_TYPE_DATA,         nullptr,                       nullptr,                        nullptr,                      nullptr},
-    {COMPONENT_TYPE_AUDIO_SOURCE, &clone_audio_source_component, &unload_audio_source_component, nullptr,                      &cleanup_audio_source_component},
-    {COMPONENT_TYPE_TRANSFORM,    nullptr,                       nullptr,                        nullptr,                      nullptr},
-    {COMPONENT_TYPE_CAMERA,       &clone_camera_component,       &unload_camera_component,       &startup_camera_component,    &cleanup_camera_component},
-    {COMPONENT_TYPE_MESH,         &clone_mesh_component,         &unload_mesh_component,         nullptr,                      nullptr},
-    {COMPONENT_TYPE_SPRITE_2D,    &clone_sprite_2d_component,    &unload_sprite_2d_component,    nullptr,                      nullptr},
-    {COMPONENT_TYPE_SCREEN_UI,    &clone_screen_ui_component,    &unload_screen_ui_component,    &startup_screen_ui_component, &cleanup_screen_ui_component},
+static SceneComponentMeta sSceneComponents[] = {
+    {COMPONENT_TYPE_DATA,         nullptr,                      nullptr,                       nullptr,                        nullptr,                      nullptr},
+    {COMPONENT_TYPE_AUDIO_SOURCE, &init_audio_source_component, &clone_audio_source_component, &unload_audio_source_component, nullptr,                      &cleanup_audio_source_component},
+    {COMPONENT_TYPE_TRANSFORM,    nullptr,                      nullptr,                       nullptr,                        nullptr,                      nullptr},
+    {COMPONENT_TYPE_TRANSFORM_2D, nullptr,                      nullptr,                       nullptr,                        nullptr,                      nullptr},
+    {COMPONENT_TYPE_CAMERA,       &init_camera_component,       &clone_camera_component,       &unload_camera_component,       &startup_camera_component,    &cleanup_camera_component},
+    {COMPONENT_TYPE_MESH,         &init_mesh_component,         &clone_mesh_component,         &unload_mesh_component,         nullptr,                      nullptr},
+    {COMPONENT_TYPE_SPRITE_2D,    &init_sprite_2d_component,    &clone_sprite_2d_component,    &unload_sprite_2d_component,    nullptr,                      nullptr},
+    {COMPONENT_TYPE_SCREEN_UI,    &init_screen_ui_component,    &clone_screen_ui_component,    &unload_screen_ui_component,    &startup_screen_ui_component, &cleanup_screen_ui_component},
 };
 // clang-format on
 
@@ -193,7 +195,6 @@ bool SceneObj::load_subtree_from_backup(ComponentBase** dstData, ComponentBase**
     // sanity checks
     LD_ASSERT(srcBase->type == dstBase->type);
     LD_ASSERT(srcBase->suid == dstBase->suid);
-    LD_ASSERT((srcBase->flags & COMPONENT_FLAG_LOADED_BIT) && ~(dstBase->flags & COMPONENT_FLAG_LOADED_BIT));
     LD_ASSERT((std::string(dstBase->name) == std::string(srcBase->name)));
 
     bool ok = sSceneComponents[(int)dstBase->type].clone(sScene, dstData, srcData, err);
@@ -226,7 +227,6 @@ void SceneObj::unload_subtree(ComponentBase** data)
 
     LD_ASSERT(data);
     ComponentBase* base = (*data);
-    LD_ASSERT(base->flags & COMPONENT_FLAG_LOADED_BIT);
 
     std::string err;
 
@@ -235,9 +235,6 @@ void SceneObj::unload_subtree(ComponentBase** data)
         if (!sSceneComponents[(int)base->type].unload(this, data, err))
             sSceneLog.error("failed to unload component: {}", err);
     }
-
-    // sanity check
-    LD_ASSERT((base->flags & COMPONENT_FLAG_LOADED_BIT) == 0);
 
     for (ComponentBase* child = base->child; child; child = child->next)
     {
@@ -250,7 +247,6 @@ bool SceneObj::startup_subtree(ComponentBase** rootData, Vector<ComponentBase**>
 {
     LD_ASSERT(rootData);
     ComponentBase* rootBase = *rootData;
-    LD_ASSERT(rootBase->flags & COMPONENT_FLAG_LOADED_BIT);
 
     for (ComponentBase* childBase = rootBase->child; childBase; childBase = childBase->next)
     {
@@ -607,26 +603,44 @@ Vector<Viewport> Scene::get_screen_regions()
     return viewports;
 }
 
-Scene::Component Scene::create_component(ComponentType type, const char* name, CUID parentCUID)
+ComponentView Scene::create_component(ComponentType type, const char* name, CUID parentCUID)
 {
     CUID compCUID = mObj->registry.create_component(type, name, parentCUID, (SUID)0);
 
     // TODO: DataRegistry API without CUID -> Component Data chasing.
-    return Scene::Component(mObj->registry.get_component_data(compCUID, nullptr));
+    ComponentBase** data = mObj->registry.get_component_data(compCUID, nullptr);
+    ComponentBase* base = *data;
+    sSceneComponents[(int)type].init(data);
+    *data = base;
+
+    return ComponentView(data);
 }
 
-Scene::Component Scene::create_component_serial(ComponentType type, const char* name, SUID parentSUID, SUID hintSUID)
+ComponentView Scene::create_component_serial(ComponentType type, const char* name, SUID parentSUID, SUID hintSUID)
 {
     ComponentBase** parentData = mObj->registry.get_component_data_by_suid(parentSUID, nullptr);
 
     if (parentSUID && !parentData) // bad input, parent does not exist in serial domain
         return {};
 
+    SUID compSUID = hintSUID;
+
+    if (compSUID && !try_get_suid(compSUID)) // already registered
+        return {}; 
+
+    if (!compSUID)
+        compSUID = get_suid();
+
     CUID parentCUID = parentData ? (*parentData)->cuid : 0;
-    CUID compCUID = mObj->registry.create_component(type, name, parentCUID, hintSUID);
+    CUID compCUID = mObj->registry.create_component(type, name, parentCUID, compSUID);
 
     // TODO: DataRegistry API without CUID -> Component Data chasing.
-    return Scene::Component(mObj->registry.get_component_data(compCUID, nullptr));
+    ComponentBase** data = mObj->registry.get_component_data(compCUID, nullptr);
+    ComponentBase* base = *data;
+    sSceneComponents[(int)type].init(data);
+    *data = base;
+
+    return ComponentView(data);
 }
 
 void Scene::destroy_component(CUID compID)
@@ -639,7 +653,7 @@ void Scene::reparent(CUID compID, CUID parentID)
     mObj->registry.reparent(compID, parentID);
 }
 
-void Scene::get_root_components(Vector<Component>& roots)
+void Scene::get_root_components(Vector<ComponentView>& roots)
 {
     roots.clear();
 
@@ -649,129 +663,129 @@ void Scene::get_root_components(Vector<Component>& roots)
     // kinda slow for pointer chasing CUID > Component Data
     for (ComponentBase** root : rootData)
     {
-        Scene::Component comp(root);
+        ComponentView comp(root);
         LD_ASSERT(comp);
         roots.push_back(comp);
     }
 }
 
-Scene::Component Scene::get_component(CUID compID)
+ComponentView Scene::get_component(CUID compID)
 {
-    return Scene::Component(mObj->registry.get_component_data(compID, nullptr));
+    return ComponentView(mObj->registry.get_component_data(compID, nullptr));
 }
 
-Scene::Component Scene::get_component_by_suid(SUID compSUID)
+ComponentView Scene::get_component_by_suid(SUID compSUID)
 {
-    return Scene::Component(mObj->registry.get_component_data_by_suid(compSUID, nullptr));
+    return ComponentView(mObj->registry.get_component_data_by_suid(compSUID, nullptr));
 }
 
-ComponentType Scene::Component::type()
+ComponentType ComponentView::type()
 {
     return (*mData)->type;
 }
 
-CUID Scene::Component::cuid()
+CUID ComponentView::cuid()
 {
     return (*mData)->cuid;
 }
 
-SUID Scene::Component::suid()
+SUID ComponentView::suid()
 {
     return (*mData)->suid;
 }
 
-RUID Scene::Component::ruid()
+RUID ComponentView::ruid()
 {
     return sScene->renderSystemCache.get_component_draw_id((*mData)->cuid);
 }
 
-const char* Scene::Component::get_name()
+const char* ComponentView::get_name()
 {
     return (*mData)->name;
 }
 
-AssetID Scene::Component::get_script_asset_id()
+AssetID ComponentView::get_script_asset_id()
 {
     return (*mData)->scriptAssetID;
 }
 
-void Scene::Component::set_script_asset_id(AssetID assetID)
+void ComponentView::set_script_asset_id(AssetID assetID)
 {
     (*mData)->scriptAssetID = assetID;
 }
 
-void Scene::Component::get_children(Vector<Component>& children)
+void ComponentView::get_children(Vector<ComponentView>& children)
 {
     children.clear();
 
     // kinda slow with ID -> Data pointer chasing.
     for (ComponentBase* child = (*mData)->child; child; child = child->next)
     {
-        Scene::Component childC(sScene->registry.get_component_data(child->cuid, nullptr));
+        ComponentView childC(sScene->registry.get_component_data(child->cuid, nullptr));
         LD_ASSERT(childC);
         children.push_back(childC);
     }
 }
 
-Scene::Component Scene::Component::get_parent()
+ComponentView ComponentView::get_parent()
 {
     ComponentBase* parentBase = (*mData)->parent;
     if (!parentBase)
         return {};
 
-    return Scene::Component(sScene->registry.get_component_data(parentBase->cuid, nullptr));
+    return ComponentView(sScene->registry.get_component_data(parentBase->cuid, nullptr));
 }
 
-bool Scene::Component::get_transform(TransformEx& transform)
+bool ComponentView::get_transform(TransformEx& transform)
 {
     // TODO: DataRegistry API to take ComponentBase* directly
     return sScene->registry.get_component_transform((*mData)->cuid, transform);
 }
 
-bool Scene::Component::set_transform(const TransformEx& transform)
+bool ComponentView::set_transform(const TransformEx& transform)
 {
     // TODO: DataRegistry API to take ComponentBase* directly
     return sScene->registry.set_component_transform((*mData)->cuid, transform);
 }
 
-bool Scene::Component::get_transform_2d(Transform2D& transform)
+bool ComponentView::get_transform_2d(Transform2D& transform)
 {
     // TODO: DataRegistry API to take ComponentBase* directly
     return sScene->registry.get_component_transform_2d((*mData)->cuid, transform);
 }
 
-bool Scene::Component::set_transform_2d(const Transform2D& transform)
+bool ComponentView::set_transform_2d(const Transform2D& transform)
 {
     // TODO: DataRegistry API to take ComponentBase* directly
     return sScene->registry.set_component_transform_2d((*mData)->cuid, transform);
 }
 
-bool Scene::Component::get_world_mat4(Mat4& worldMat4)
+bool ComponentView::get_world_mat4(Mat4& worldMat4)
 {
     ComponentBase* base = *mData;
 
     return sScene->registry.get_component_world_mat4(base->cuid, worldMat4);
 }
 
-Scene::Component Scene::get_2d_component_by_position(const Vec2& worldPos)
+ComponentView Scene::get_2d_component_by_position(const Vec2& worldPos)
 {
     CUID compCUID = sScene->renderSystemCache.get_2d_component_by_position(worldPos, [](RUID ruid, Mat4& mat4, void*) -> bool { return Scene(sScene).get_ruid_world_mat4(ruid, mat4); }, nullptr);
 
-    return Scene::Component(sScene->registry.get_component_data(compCUID, nullptr));
+    return ComponentView(sScene->registry.get_component_data(compCUID, nullptr));
 }
 
-Scene::Component Scene::get_ruid_component(RUID ruid)
+ComponentView Scene::get_ruid_component(RUID ruid)
 {
     CUID compCUID = mObj->renderSystemCache.get_draw_id_component(ruid);
 
-    return Scene::Component(sScene->registry.get_component_data(compCUID, nullptr));
+    return ComponentView(sScene->registry.get_component_data(compCUID, nullptr));
 }
 
 bool Scene::get_ruid_world_mat4(RUID ruid, Mat4& worldMat4)
 {
     LD_PROFILE_SCOPE;
 
-    Scene::Component comp = get_ruid_component(ruid);
+    ComponentView comp = get_ruid_component(ruid);
     if (!comp || !mObj->registry.get_component_world_mat4(comp.cuid(), worldMat4))
         return false;
 

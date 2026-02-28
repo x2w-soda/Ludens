@@ -233,7 +233,7 @@ void ffi_audio_source_component_play(AudioSourceComponent* comp)
 {
     LD_ASSERT(comp && comp->base);
 
-    Scene::AudioSource source(comp);
+    AudioSourceView source(comp);
 
     if (source)
         source.play();
@@ -243,7 +243,7 @@ void ffi_audio_source_component_pause(AudioSourceComponent* comp)
 {
     LD_ASSERT(comp && comp->base);
 
-    Scene::AudioSource source(comp);
+    AudioSourceView source(comp);
 
     if (source)
         source.pause();
@@ -251,7 +251,7 @@ void ffi_audio_source_component_pause(AudioSourceComponent* comp)
 
 void ffi_audio_source_component_resume(AudioSourceComponent* comp)
 {
-    Scene::AudioSource source(comp);
+    AudioSourceView source(comp);
 
     if (source)
         source.resume();
@@ -281,7 +281,7 @@ void ffi_audio_source_component_set_volume_linear(AudioSourceComponent* comp, fl
 
 void ffi_sprite_2d_component_set_z_depth(Sprite2DComponent* comp, uint32_t zDepth)
 {
-    Scene::Sprite2D sprite(comp);
+    Sprite2DView sprite(comp);
 
     if (sprite)
         sprite.set_z_depth(zDepth);

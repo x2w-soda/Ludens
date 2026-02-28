@@ -23,6 +23,41 @@ struct CameraComponent;
 const char* get_lua_script_log_channel_name();
 const char* get_scene_log_channel_name();
 
+/// @brief Public interface for all components.
+class ComponentView
+{
+public:
+    ComponentView() = default;
+    ComponentView(ComponentBase** data)
+        : mData(data) {}
+
+    /// @brief Check for interface validity before calling any methods.
+    inline operator bool() const noexcept { return mData != nullptr; }
+
+    inline ComponentBase* base() { return *mData; }
+    inline ComponentBase** data() { return mData; }
+    ComponentType type();
+    CUID cuid();
+    SUID suid();
+    RUID ruid();
+
+    const char* get_name();
+    AssetID get_script_asset_id();
+    void set_script_asset_id(AssetID assetID);
+    void get_children(Vector<ComponentView>& children);
+    ComponentView get_parent();
+
+    bool get_transform(TransformEx& transform);
+    bool set_transform(const TransformEx& transform);
+    bool get_transform_2d(Transform2D& transform);
+    bool set_transform_2d(const Transform2D& transform);
+
+    bool get_world_mat4(Mat4& worldMat4);
+
+protected:
+    ComponentBase** mData = nullptr;
+};
+
 /// @brief Scene creation info, connects to external asset manager and subsystems.
 struct SceneInfo
 {
@@ -88,47 +123,12 @@ public:
     /// @brief In practice each Camera2DComponent will have its own viewport region.
     Vector<Viewport> get_screen_regions();
 
-    /// @brief Public interface for all components.
-    class Component
-    {
-    public:
-        Component() = default;
-        Component(ComponentBase** data)
-            : mData(data) {}
-
-        /// @brief Check for interface validity before calling any methods.
-        inline operator bool() const noexcept { return mData != nullptr; }
-
-        inline ComponentBase* base() { return *mData; }
-        inline ComponentBase** data() { return mData; }
-        ComponentType type();
-        CUID cuid();
-        SUID suid();
-        RUID ruid();
-
-        const char* get_name();
-        AssetID get_script_asset_id();
-        void set_script_asset_id(AssetID assetID);
-        void get_children(Vector<Component>& children);
-        Component get_parent();
-
-        bool get_transform(TransformEx& transform);
-        bool set_transform(const TransformEx& transform);
-        bool get_transform_2d(Transform2D& transform);
-        bool set_transform_2d(const Transform2D& transform);
-
-        bool get_world_mat4(Mat4& worldMat4);
-
-    protected:
-        ComponentBase** mData = nullptr;
-    };
-
     /// @brief Try create a component.
     /// @param type Component type.
     /// @param name Component identifier.
     /// @param parentCUID Parent component ID, or zero if creating a root component.
     /// @return Component interface of the newly created component on success.
-    Component create_component(ComponentType type, const char* name, CUID parentCUID);
+    ComponentView create_component(ComponentType type, const char* name, CUID parentCUID);
 
     /// @brief Try create a component with serial ID.
     /// @param type Component type.
@@ -136,7 +136,7 @@ public:
     /// @param parentSUID Parent serial ID, or zero if creating a root component.
     /// @param hintSUID Serial ID to create with, or zero if requesting a new serial ID.
     /// @return Component interface of the newly created component on success.
-    Component create_component_serial(ComponentType type, const char* name, SUID parentSUID, SUID hintSUID = 0);
+    ComponentView create_component_serial(ComponentType type, const char* name, SUID parentSUID, SUID hintSUID = 0);
 
     /// @brief Destroy a component.
     void destroy_component(CUID compID);
@@ -145,15 +145,15 @@ public:
     void reparent(CUID compID, CUID parentID);
 
     /// @brief Get interfaces for root components in Scene.
-    void get_root_components(Vector<Component>& roots);
+    void get_root_components(Vector<ComponentView>& roots);
 
     /// @brief Get data component from ID.
-    Component get_component(CUID compID);
+    ComponentView get_component(CUID compID);
 
     /// @brief Get data component from ID and expected type, fails upon type mismatch.
-    inline Component get_component(CUID compID, ComponentType expectedType)
+    inline ComponentView get_component(CUID compID, ComponentType expectedType)
     {
-        Component comp = get_component(compID);
+        ComponentView comp = get_component(compID);
         if (!comp || comp.type() != expectedType)
             return {};
 
@@ -161,12 +161,12 @@ public:
     }
 
     /// @brief Get data component from serial ID.
-    Component get_component_by_suid(SUID compSUID);
+    ComponentView get_component_by_suid(SUID compSUID);
 
     /// @brief Get data component from serial ID and expected type, fails upon type mismatch.
-    inline Component get_component_by_suid(SUID compSUID, ComponentType expectedType)
+    inline ComponentView get_component_by_suid(SUID compSUID, ComponentType expectedType)
     {
-        Component comp = get_component_by_suid(compSUID);
+        ComponentView comp = get_component_by_suid(compSUID);
         if (!comp || comp.type() != expectedType)
             return {};
 
@@ -174,120 +174,122 @@ public:
     }
 
     /// @brief Pick a 2D component by 2D world coordinates.
-    Component get_2d_component_by_position(const Vec2& worldPos);
+    ComponentView get_2d_component_by_position(const Vec2& worldPos);
 
     /// @brief Lookup the data component from draw call ID
-    Component get_ruid_component(RUID ruid);
+    ComponentView get_ruid_component(RUID ruid);
 
     /// @brief Supplies the Mat4 model matrix for a draw call
     bool get_ruid_world_mat4(RUID ruid, Mat4& mat4);
 
-    /// @brief Public interface for audio source components.
-    class AudioSource : public Component
-    {
-    public:
-        AudioSource() = delete;
-        AudioSource(Component comp);
-        AudioSource(AudioSourceComponent* comp);
+};
 
-        bool load(AssetID clipAsset, float pan, float volumeLinear);
 
-        void play();
-        void pause();
-        void resume();
+/// @brief Public interface for audio source components.
+class AudioSourceView : public ComponentView
+{
+public:
+    AudioSourceView() = delete;
+    AudioSourceView(ComponentView comp);
+    AudioSourceView(AudioSourceComponent* comp);
 
-        bool set_clip_asset(AssetID clipID);
-        AssetID get_clip_asset();
+    bool load(AssetID clipAsset, float pan, float volumeLinear);
 
-        float get_volume_linear();
-        bool set_volume_linear(float volume);
-        float get_pan();
-        bool set_pan(float pan);
+    void play();
+    void pause();
+    void resume();
 
-    private:
-        AudioSourceComponent* mAudioSource = nullptr;
-    };
+    bool set_clip_asset(AssetID clipID);
+    AssetID get_clip_asset();
 
-    /// @brief Public interface for camera components.
-    class Camera : public Component
-    {
-    public:
-        Camera() = delete;
-        Camera(Component comp);
-        Camera(CameraComponent* comp);
+    float get_volume_linear();
+    bool set_volume_linear(float volume);
+    float get_pan();
+    bool set_pan(float pan);
 
-        bool load_perspective(const CameraPerspectiveInfo& info);
-        bool load_orthographic(const CameraOrthographicInfo& info);
+private:
+    AudioSourceComponent* mAudioSource = nullptr;
+};
 
-        bool is_main_camera();
-        bool is_perspective();
-        bool get_perspective_info(CameraPerspectiveInfo& outInfo);
-        bool get_orthographic_info(CameraOrthographicInfo& outInfo);
-        void set_perspective(const CameraPerspectiveInfo& info);
-        void set_orthographic(const CameraOrthographicInfo& info);
+/// @brief Public interface for camera components.
+class CameraView : public ComponentView
+{
+public:
+    CameraView() = delete;
+    CameraView(ComponentView comp);
+    CameraView(CameraComponent* comp);
 
-    private:
-        CameraComponent* mCamera = nullptr;
-    };
+    bool load_perspective(const CameraPerspectiveInfo& info);
+    bool load_orthographic(const CameraOrthographicInfo& info);
 
-    /// @brief Public interface for mesh components.
-    class Mesh : public Component
-    {
-    public:
-        Mesh() = delete;
-        Mesh(Component comp);
-        Mesh(MeshComponent* comp);
+    bool is_main_camera();
+    bool is_perspective();
+    bool get_perspective_info(CameraPerspectiveInfo& outInfo);
+    bool get_orthographic_info(CameraOrthographicInfo& outInfo);
+    void set_perspective(const CameraPerspectiveInfo& info);
+    void set_orthographic(const CameraOrthographicInfo& info);
 
-        bool load();
+private:
+    CameraComponent* mCamera = nullptr;
+};
 
-        bool set_mesh_asset(AssetID meshID);
-        AssetID get_mesh_asset();
+/// @brief Public interface for mesh components.
+class MeshView : public ComponentView
+{
+public:
+    MeshView() = delete;
+    MeshView(ComponentView comp);
+    MeshView(MeshComponent* comp);
 
-    private:
-        MeshComponent* mMesh = nullptr;
-    };
+    bool load();
 
-    /// @brief Public interface for Sprite2D components.
-    class Sprite2D : public Component
-    {
-    public:
-        Sprite2D() = delete;
-        Sprite2D(Component comp);
-        Sprite2D(Sprite2DComponent* comp);
+    bool set_mesh_asset(AssetID meshID);
+    AssetID get_mesh_asset();
 
-        bool load(SUID screenLayerSUID, AssetID textureID);
+private:
+    MeshComponent* mMesh = nullptr;
+};
 
-        bool set_texture_2d_asset(AssetID textureID);
-        AssetID get_texture_2d_asset();
-        uint32_t get_z_depth();
-        void set_z_depth(uint32_t zDepth);
-        Vec2 get_pivot();
-        void set_pivot(const Vec2& pivot);
-        Rect get_region();
-        void set_region(const Rect& region);
-        RUID get_screen_layer_ruid();
-        SUID get_screen_layer_suid();
+/// @brief Public interface for Sprite2D components.
+class Sprite2DView : public ComponentView
+{
+public:
+    Sprite2DView() = delete;
+    Sprite2DView(ComponentView comp);
+    Sprite2DView(Sprite2DComponent* comp);
 
-    private:
-        Sprite2DComponent* mSprite = nullptr;
-    };
+    bool load(SUID screenLayerSUID, AssetID textureID);
 
-    /// @brief Public interface for ScreenUI components.
-    class ScreenUI : public Component
-    {
-    public:
-        ScreenUI() = delete;
-        ScreenUI(Component comp);
-        ScreenUI(ScreenUIComponent* comp);
+    bool set_texture_2d_asset(AssetID textureID);
+    AssetID get_texture_2d_asset();
+    uint32_t get_z_depth();
+    void set_z_depth(uint32_t zDepth);
+    Vec2 get_pivot();
+    void set_pivot(const Vec2& pivot);
+    Rect get_region();
+    void set_region(const Rect& region);
+    RUID get_screen_layer_ruid();
+    SUID get_screen_layer_suid();
 
-        bool load(AssetID uiTemplateID);
+private:
+    Sprite2DComponent* mSprite = nullptr;
+};
 
-        bool set_ui_template_asset(AssetID uiTemplateID);
-        AssetID get_ui_template_asset();
+/// @brief Public interface for ScreenUI components.
+class ScreenUIView : public ComponentView
+{
+public:
+    ScreenUIView() = delete;
+    ScreenUIView(ComponentView comp);
+    ScreenUIView(ScreenUIComponent* comp);
 
-    private:
-        ScreenUIComponent* mUI = nullptr;
-    };
+    bool load(AssetID uiTemplateID);
+
+    bool set_ui_template_asset(AssetID uiTemplateID);
+    AssetID get_ui_template_asset();
+
+private:
+    ScreenUIComponent* mUI = nullptr;
 };
 
 } // namespace LD

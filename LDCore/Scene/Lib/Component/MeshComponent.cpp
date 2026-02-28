@@ -4,6 +4,17 @@
 
 namespace LD {
 
+static const MeshComponent sDefaultMesh = {
+    .transform = {},
+    .draw = {},
+    .assetID = 0,
+};
+
+void init_mesh_component(ComponentBase** dstData)
+{
+    memcpy(dstData, &sDefaultMesh, sizeof(MeshComponent));
+}
+
 bool load_mesh_component(SceneObj* scene, MeshComponent* mesh, AssetID meshAID, std::string& err)
 {
     LD_PROFILE_SCOPE;
@@ -20,7 +31,6 @@ bool load_mesh_component(SceneObj* scene, MeshComponent* mesh, AssetID meshAID, 
 
     mesh->assetID = meshAID;
 
-    base->flags |= COMPONENT_FLAG_LOADED_BIT;
     return true;
 }
 
@@ -28,8 +38,8 @@ bool clone_mesh_component(SceneObj* scene, ComponentBase** dstData, ComponentBas
 {
     LD_PROFILE_SCOPE;
 
-    Scene::Mesh dstMesh(dstData);
-    Scene::Mesh srcMesh(srcData);
+    MeshView dstMesh(dstData);
+    MeshView srcMesh(srcData);
     LD_ASSERT(dstMesh && srcMesh);
 
     AssetID srcMeshAID = srcMesh.get_mesh_asset();
@@ -46,12 +56,10 @@ bool unload_mesh_component(SceneObj* scene, ComponentBase** data, std::string& e
     scene->renderSystemCache.destroy_mesh_draw(mesh->draw);
     mesh->draw = {};
 
-    base->flags &= ~COMPONENT_FLAG_LOADED_BIT;
-
     return true;
 }
 
-Scene::Mesh::Mesh(Component comp)
+MeshView::MeshView(ComponentView comp)
 {
     if (comp && comp.type() == COMPONENT_TYPE_MESH)
     {
@@ -60,7 +68,7 @@ Scene::Mesh::Mesh(Component comp)
     }
 }
 
-Scene::Mesh::Mesh(MeshComponent* comp)
+MeshView::MeshView(MeshComponent* comp)
 {
     if (comp && comp->base && comp->base->cuid)
     {
@@ -69,16 +77,16 @@ Scene::Mesh::Mesh(MeshComponent* comp)
     }
 }
 
-bool Scene::Mesh::load()
+bool MeshView::load()
 {
     std::string err;
 
     return load_mesh_component(sScene, mMesh, (AssetID)0, err);
 }
 
-bool Scene::Mesh::set_mesh_asset(AssetID meshID)
+bool MeshView::set_mesh_asset(AssetID meshID)
 {
-    LD_ASSERT_COMPONENT_LOADED(mData);
+    LD_ASSERT(mMesh->draw);
 
     MeshData meshData = sScene->renderSystemCache.get_or_create_mesh_data(meshID);
 
@@ -91,10 +99,8 @@ bool Scene::Mesh::set_mesh_asset(AssetID meshID)
     return false;
 }
 
-AssetID Scene::Mesh::get_mesh_asset()
+AssetID MeshView::get_mesh_asset()
 {
-    LD_ASSERT_COMPONENT_LOADED(mData);
-
     return mMesh->assetID;
 }
 

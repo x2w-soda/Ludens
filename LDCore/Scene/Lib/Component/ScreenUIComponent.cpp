@@ -6,6 +6,12 @@
 
 namespace LD {
 
+static const ScreenUIComponent sDefaultScreenUI = {
+    .uiTemplateID = 0,
+    .uiDriver = nullptr,
+    .uiWindow = {},
+};
+
 static UIWindow create_window_container(SceneObj* scene)
 {
     UILayoutInfo layoutI{};
@@ -16,6 +22,11 @@ static UIWindow create_window_container(SceneObj* scene)
     UIWindow window = space.create_float_window(layoutI, windowI, nullptr);
     window.set_pos(Vec2(0.0f, 0.0f));
     return window;
+}
+
+void init_screen_ui_component(ComponentBase** dstData)
+{
+    memcpy(dstData, &sDefaultScreenUI, sizeof(ScreenUIComponent));
 }
 
 bool load_screen_ui_component(SceneObj* scene, ScreenUIComponent* ui, AssetID uiTemplateID, std::string& err)
@@ -35,7 +46,6 @@ bool load_screen_ui_component(SceneObj* scene, ScreenUIComponent* ui, AssetID ui
 
     ui->uiTemplateID = uiTemplateID;
 
-    base->flags |= COMPONENT_FLAG_LOADED_BIT;
     return true;
 }
 
@@ -43,8 +53,8 @@ bool clone_screen_ui_component(SceneObj* scene, ComponentBase** dstData, Compone
 {
     LD_PROFILE_SCOPE;
 
-    Scene::ScreenUI srcUI((ScreenUIComponent*)srcData);
-    Scene::ScreenUI dstUI((ScreenUIComponent*)dstData);
+    ScreenUIView srcUI((ScreenUIComponent*)srcData);
+    ScreenUIView dstUI((ScreenUIComponent*)dstData);
     LD_ASSERT(srcUI && dstUI);
 
     AssetID uiTemplateID = srcUI.get_ui_template_asset();
@@ -63,7 +73,6 @@ bool unload_screen_ui_component(SceneObj* scene, ComponentBase** data, std::stri
     ui->uiWindow = {};
 
     ComponentBase* base = *data;
-    base->flags &= ~COMPONENT_FLAG_LOADED_BIT;
 
     return true;
 }
@@ -111,7 +120,7 @@ bool cleanup_screen_ui_component(SceneObj* scene, ComponentBase** data, std::str
     return true;
 }
 
-Scene::ScreenUI::ScreenUI(Component comp)
+ScreenUIView::ScreenUIView(ComponentView comp)
 {
     if (comp && comp.type() == COMPONENT_TYPE_SCREEN_UI)
     {
@@ -120,7 +129,7 @@ Scene::ScreenUI::ScreenUI(Component comp)
     }
 }
 
-Scene::ScreenUI::ScreenUI(ScreenUIComponent* comp)
+ScreenUIView::ScreenUIView(ScreenUIComponent* comp)
 {
     if (comp && comp->base && comp->base->cuid)
     {
@@ -129,16 +138,16 @@ Scene::ScreenUI::ScreenUI(ScreenUIComponent* comp)
     }
 }
 
-bool Scene::ScreenUI::load(AssetID uiTemplateID)
+bool ScreenUIView::load(AssetID uiTemplateID)
 {
     std::string err;
 
     return load_screen_ui_component(sScene, mUI, uiTemplateID, err);
 }
 
-bool Scene::ScreenUI::set_ui_template_asset(AssetID uiTemplateID)
+bool ScreenUIView::set_ui_template_asset(AssetID uiTemplateID)
 {
-    LD_ASSERT_COMPONENT_LOADED(mData);
+    LD_ASSERT(mUI->uiWindow);
 
     UITemplateAsset asset = (UITemplateAsset)sScene->assetManager.get_asset(uiTemplateID);
     if (!asset || asset.get_type() != ASSET_TYPE_UI_TEMPLATE)
@@ -154,10 +163,8 @@ bool Scene::ScreenUI::set_ui_template_asset(AssetID uiTemplateID)
     return true;
 }
 
-AssetID Scene::ScreenUI::get_ui_template_asset()
+AssetID ScreenUIView::get_ui_template_asset()
 {
-    LD_ASSERT_COMPONENT_LOADED(mData);
-
     return mUI->uiTemplateID;
 }
 
