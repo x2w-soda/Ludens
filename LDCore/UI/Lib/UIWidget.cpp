@@ -491,7 +491,9 @@ void UIImageWidget::on_draw(UIWidget widget, ScreenRenderComponent renderer)
     float imageH = (float)self.imageHandle.height();
 
     if (self.imageRect.w <= 0.0f)
-        renderer.draw_image(rect, self.imageHandle, self.tint, false);
+    {
+        renderer.draw_image(rect, self.tint, self.imageHandle, Rect(0.0f, 0.0f, 1.0f, 1.0f), false);
+    }
     else
     {
         Rect uv = self.imageRect;
@@ -499,7 +501,7 @@ void UIImageWidget::on_draw(UIWidget widget, ScreenRenderComponent renderer)
         uv.y /= imageH;
         uv.w /= imageW;
         uv.h /= imageH;
-        renderer.draw_image_uv(rect, self.imageHandle, uv, self.tint);
+        renderer.draw_image(rect, self.tint, self.imageHandle, uv, false);
     }
 }
 

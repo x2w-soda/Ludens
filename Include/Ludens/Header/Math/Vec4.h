@@ -4,6 +4,8 @@
 #include <Ludens/Header/Math/Vec3.h>
 #include <Ludens/Header/SIMD.h>
 
+#include <cstdint>
+
 #ifdef LD_SSE2
 #define TVEC4_ALIGNMENT (alignof(T) > 16 ? alignof(T) : 16)
 #else

@@ -21,6 +21,7 @@ enum ComponentType
     COMPONENT_TYPE_DATA = 0,
     COMPONENT_TYPE_AUDIO_SOURCE,
     COMPONENT_TYPE_TRANSFORM,
+    COMPONENT_TYPE_TRANSFORM_2D,
     COMPONENT_TYPE_CAMERA,
     COMPONENT_TYPE_MESH,
     COMPONENT_TYPE_SPRITE_2D,
@@ -47,9 +48,9 @@ struct DataRegistry : Handle<struct DataRegistryObj>
     /// @param type Component type
     /// @param name User defined name.
     /// @param parent Parent component, or 0 if creating a root component
-    /// @param hint If not zero, create with this serial ID. Will fail if the serial ID is alraedy used.
+    /// @param suid Serial ID of the component.
     /// @return Data component ID
-    CUID create_component(ComponentType type, const char* name, CUID parent, SUID hintSUID);
+    CUID create_component(ComponentType type, const char* name, CUID parent, SUID suid);
 
     /// @brief Destroy a data component subtree
     /// @param id Data component ID

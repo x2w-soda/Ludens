@@ -37,6 +37,7 @@ static ComponentMeta sComponentTable[] = {
     { COMPONENT_TYPE_DATA,           sizeof(ComponentBase),          "DataComponent",        0, nullptr },
     { COMPONENT_TYPE_AUDIO_SOURCE,   sizeof(AudioSourceComponent),   "AudioSourceComponent", 0, nullptr },
     { COMPONENT_TYPE_TRANSFORM,      sizeof(TransformComponent),     "TransformComponent",   COMPONENT_TYPE_FLAG_TRANSFORM_EX, nullptr },
+    { COMPONENT_TYPE_TRANSFORM_2D,   sizeof(Transform2DComponent),   "Transform2DComponent", COMPONENT_TYPE_FLAG_TRANSFORM_2D, nullptr },
     { COMPONENT_TYPE_CAMERA,         sizeof(CameraComponent),        "CameraComponent",      COMPONENT_TYPE_FLAG_TRANSFORM_EX, nullptr },
     { COMPONENT_TYPE_MESH,           sizeof(MeshComponent),          "MeshComponent",        COMPONENT_TYPE_FLAG_TRANSFORM_EX, &get_mesh_asset_id },
     { COMPONENT_TYPE_SPRITE_2D,      sizeof(Sprite2DComponent),      "Sprite2DComponent",    COMPONENT_TYPE_FLAG_TRANSFORM_2D, nullptr },
@@ -47,6 +48,7 @@ static ComponentMeta sComponentTable[] = {
 static_assert(sizeof(sComponentTable) / sizeof(*sComponentTable) == COMPONENT_TYPE_ENUM_COUNT);
 static_assert(LD::IsDataComponent<AudioSourceComponent>);
 static_assert(LD::IsDataComponent<TransformComponent>);
+static_assert(LD::IsDataComponent<Transform2DComponent>);
 static_assert(LD::IsDataComponent<CameraComponent>);
 static_assert(LD::IsDataComponent<MeshComponent>);
 static_assert(LD::IsDataComponent<Sprite2DComponent>);
@@ -326,14 +328,8 @@ DataRegistry DataRegistry::duplicate() const
     return dst;
 }
 
-CUID DataRegistry::create_component(ComponentType type, const char* name, CUID parentID, SUID hintSUID)
+CUID DataRegistry::create_component(ComponentType type, const char* name, CUID parentID, SUID suid)
 {
-    if (hintSUID && !try_get_suid(hintSUID))
-    {
-        sLog.warn("create_component hint SUID {} is in use, failed to create component", hintSUID);
-        return 0;
-    }
-
     size_t compDataByteSize = get_component_byte_size(type);
 
     if (!mObj->componentPAs.contains(type))
@@ -352,7 +348,7 @@ CUID DataRegistry::create_component(ComponentType type, const char* name, CUID p
 
     compBase->name = heap_strdup(name, MEMORY_USAGE_MISC);
     compBase->type = type;
-    compBase->suid = hintSUID;              // serial identity, may be zero for components created at runtime
+    compBase->suid = suid;                  // serial identity, may be zero for components created at runtime
     compBase->cuid = sCUIDCounter.get_id(); // runtime identity
 
     if (parentID)

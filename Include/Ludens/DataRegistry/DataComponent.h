@@ -31,8 +31,7 @@ using ComponentFlag = uint32_t;
 
 enum ComponentFlagBit : uint32_t
 {
-    COMPONENT_FLAG_LOADED_BIT = LD_BIT(1),
-    COMPONENT_FLAG_TRANSFORM_DIRTY_BIT = LD_BIT(2),
+    COMPONENT_FLAG_TRANSFORM_DIRTY_BIT = LD_BIT(0),
 };
 
 /// @brief Data component base members, hierarchy representation.
@@ -66,6 +65,13 @@ struct TransformComponent
 {
     ComponentBase* base;
     TransformEx transform;
+};
+
+/// @brief A component with only transform 2D data.
+struct Transform2DComponent
+{
+    ComponentBase* base;
+    Transform2D transform;
 };
 
 /// @brief A camera in world space. The camera is responsible for
