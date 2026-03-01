@@ -582,14 +582,14 @@ bool EditorContext::is_playing()
     return mObj->isPlaying;
 }
 
-void EditorContext::get_scene_roots(Vector<Scene::Component>& roots)
+void EditorContext::get_scene_roots(Vector<ComponentView>& roots)
 {
     return mObj->scene.get_root_components(roots);
 }
 
 const char* EditorContext::get_component_name(SUID compSUID)
 {
-    Scene::Component comp = mObj->scene.get_component_by_suid(compSUID);
+    ComponentView comp = mObj->scene.get_component_by_suid(compSUID);
     if (!comp)
         return nullptr;
 
@@ -606,7 +606,7 @@ void EditorContext::set_selected_component(SUID compSUID)
     if (mObj->selectedComponentSUID == compSUID)
         return;
 
-    Scene::Component comp = mObj->scene.get_component_by_suid(compSUID);
+    ComponentView comp = mObj->scene.get_component_by_suid(compSUID);
     if (comp)
     {
         // update state and notify observers
@@ -625,31 +625,40 @@ SUID EditorContext::get_selected_component()
     return mObj->selectedComponentSUID;
 }
 
-Scene::Component EditorContext::get_component(SUID compSUID)
+ComponentView EditorContext::get_component(SUID compSUID)
 {
     return mObj->scene.get_component_by_suid(compSUID);
 }
 
-Scene::Component EditorContext::get_component_by_ruid(RUID ruid)
+ComponentView EditorContext::get_component_by_ruid(RUID ruid)
 {
     return mObj->scene.get_ruid_component(ruid);
 }
 
 RUID EditorContext::get_selected_component_ruid()
 {
-    Scene::Component comp = mObj->scene.get_component_by_suid(mObj->selectedComponentSUID);
+    ComponentView comp = mObj->scene.get_component_by_suid(mObj->selectedComponentSUID);
 
     return comp ? comp.ruid() : 0;
 }
 
 bool EditorContext::get_selected_component_transform(TransformEx& transform)
 {
-    Scene::Component comp = mObj->scene.get_component_by_suid(mObj->selectedComponentSUID);
+    ComponentView comp = mObj->scene.get_component_by_suid(mObj->selectedComponentSUID);
 
     if (!comp)
         return false;
 
     return comp.get_transform(transform);
+}
+
+UILayoutInfo EditorContext::make_editor_window_layout(const Vec2& size)
+{
+    UILayoutInfo layoutI = mObj->settings.get_theme().make_vbox_layout();
+    layoutI.sizeX = UISize::fixed(size.x);
+    layoutI.sizeY = UISize::fixed(size.y);
+
+    return layoutI;
 }
 
 UILayoutInfo EditorContext::make_vbox_layout()

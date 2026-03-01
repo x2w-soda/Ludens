@@ -107,7 +107,6 @@ struct EditorContext : Handle<struct EditorContextObj>
     Scene get_scene();
     inline Vector<Viewport> get_scene_screen_regions() { return get_scene().get_screen_regions(); }
     inline Camera get_scene_camera() { return get_scene().get_camera(); }
-    inline Camera2D get_scene_camera_2d() { return get_scene().get_camera_2d(); };
     inline void resize_scene(const Vec2& extent) { get_scene().resize(extent); }
 
     /// @brief Add an observer of the editor context
@@ -138,7 +137,7 @@ struct EditorContext : Handle<struct EditorContextObj>
     bool is_playing();
 
     /// @brief Get root data components in scene
-    void get_scene_roots(Vector<Scene::Component>& roots);
+    void get_scene_roots(Vector<ComponentView>& roots);
 
     /// @brief Get the C string name of a component
     const char* get_component_name(SUID compSUID);
@@ -154,16 +153,19 @@ struct EditorContext : Handle<struct EditorContextObj>
     SUID get_selected_component();
 
     /// @brief Get component interface.
-    Scene::Component get_component(SUID compSUID);
+    ComponentView get_component(SUID compSUID);
 
     /// @brief Get the data component associated with some RUID in scene
-    Scene::Component get_component_by_ruid(RUID ruid);
+    ComponentView get_component_by_ruid(RUID ruid);
 
     /// @brief get the RUID associated with the selected object in scene
     RUID get_selected_component_ruid();
 
     /// @brief Get the local transform associated with the selected object in scene.
     bool get_selected_component_transform(TransformEx& transform);
+
+    /// @brief Default fixed size container layout for EditorWindow.
+    UILayoutInfo make_editor_window_layout(const Vec2& size);
 
     /// @brief Default ui layout for vertical containers, taking editor theme into account.
     UILayoutInfo make_vbox_layout();

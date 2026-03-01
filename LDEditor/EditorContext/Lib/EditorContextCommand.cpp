@@ -15,7 +15,7 @@ void AddComponentCommand::redo()
     // TODO: resolve name collisions
     const char* name = get_component_type_name(mCompType);
 
-    Scene::Component comp = mScene.create_component_serial(mCompType, name, mParentSUID);
+    ComponentView comp = mScene.create_component_serial(mCompType, name, mParentSUID, 0);
     LD_ASSERT(comp); // TODO: recovery
 
     mCompSUID = comp.suid();
@@ -23,7 +23,7 @@ void AddComponentCommand::redo()
 
 void AddComponentCommand::undo()
 {
-    Scene::Component comp = mScene.get_component_by_suid(mCompSUID);
+    ComponentView comp = mScene.get_component_by_suid(mCompSUID);
     LD_ASSERT(comp); // TODO: recovery
 
     mScene.destroy_component(comp.cuid());
@@ -36,7 +36,7 @@ AddComponentScriptCommand::AddComponentScriptCommand(Scene scene, SUID compSUID,
 {
     LD_ASSERT(mScene && mCompSUID && mScriptAssetID);
 
-    Scene::Component comp = mScene.get_component_by_suid(mCompSUID);
+    ComponentView comp = mScene.get_component_by_suid(mCompSUID);
 
     if (comp)
         mPrevScriptAssetID = comp.get_script_asset_id();
@@ -44,7 +44,7 @@ AddComponentScriptCommand::AddComponentScriptCommand(Scene scene, SUID compSUID,
 
 void AddComponentScriptCommand::redo()
 {
-    Scene::Component comp = mScene.get_component_by_suid(mCompSUID);
+    ComponentView comp = mScene.get_component_by_suid(mCompSUID);
 
     if (comp)
         comp.set_script_asset_id(mScriptAssetID);
@@ -52,7 +52,7 @@ void AddComponentScriptCommand::redo()
 
 void AddComponentScriptCommand::undo()
 {
-    Scene::Component comp = mScene.get_component_by_suid(mCompSUID);
+    ComponentView comp = mScene.get_component_by_suid(mCompSUID);
 
     if (comp)
         comp.set_script_asset_id(mPrevScriptAssetID);
@@ -79,7 +79,7 @@ void SetComponentAssetCommand::set_component_asset(SUID compSUID, AssetID assetI
     if (!compSUID || !assetID)
         return;
 
-    Scene::Component comp = mScene.get_component_by_suid(compSUID);
+    ComponentView comp = mScene.get_component_by_suid(compSUID);
     if (!comp)
         return;
 
@@ -87,21 +87,21 @@ void SetComponentAssetCommand::set_component_asset(SUID compSUID, AssetID assetI
     {
     case COMPONENT_TYPE_AUDIO_SOURCE:
     {
-        Scene::AudioSource source(comp);
+        AudioSourceView source(comp);
         LD_ASSERT(source);
         source.set_clip_asset(assetID);
         break;
     }
     case COMPONENT_TYPE_MESH:
     {
-        Scene::Mesh mesh(comp);
+        MeshView mesh(comp);
         LD_ASSERT(mesh);
         mesh.set_mesh_asset(assetID);
         break;
     }
     case COMPONENT_TYPE_SPRITE_2D:
     {
-        Scene::Sprite2D sprite((Sprite2DComponent*)comp.data());
+        Sprite2DView sprite((Sprite2DComponent*)comp.data());
         sprite.set_texture_2d_asset(assetID);
         break;
     }

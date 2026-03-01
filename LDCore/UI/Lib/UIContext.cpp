@@ -247,6 +247,8 @@ void UIContextObj::invalidate_refs(UIWidgetObj* removed)
 
     if (removed == hoverWidgetLeaf)
         hoverWidgetLeaf = nullptr;
+
+    hoverWidgets.erase(removed);
 }
 
 void UIContextObj::hover_widget(UIWidgetObj* nextHoverLeafWidget)
