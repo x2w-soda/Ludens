@@ -1,4 +1,5 @@
 #include <Ludens/Header/Assert.h>
+#include <Ludens/Header/MouseValue.h>
 #include <Ludens/Memory/Memory.h>
 #include <Ludens/UI/UIImmediate.h>
 #include <LudensEditor/EditorWidget/UIAssetSlotWidget.h>
@@ -8,7 +9,8 @@ namespace LD {
 
 bool eui_asset_slot(EditorTheme theme, AssetType assetType, AssetID assetID, const char* assetName)
 {
-    MouseButton btn;
+    Vec2 mousePos;
+    MouseValue mouseVal;
     UIEvent event;
     bool newAssetRequest = false;
     const float textLabelWidth = theme.get_text_label_width();
@@ -25,10 +27,12 @@ bool eui_asset_slot(EditorTheme theme, AssetType assetType, AssetID assetID, con
     ui_top_layout_size(UISize::fixed(textLabelWidth), UISize::fixed(24.0f));
     ui_pop();
 
-    LD_ASSERT(assetName);
+    if (!assetName)
+        assetName = "N/A";
+
     ui_push_text(assetName);
     ui_top_draw(&eui_draw_text_with_bg);
-    if (ui_top_mouse_down(btn) && btn == MOUSE_BUTTON_LEFT)
+    if (ui_top_mouse_down(mouseVal, mousePos) && mouseVal.button() == MOUSE_BUTTON_LEFT)
         newAssetRequest = true;
     ui_pop();
 

@@ -28,8 +28,6 @@ struct EditorWorkspaceNode
     EditorAreaID nodeID;
     EditorWindow window;
     EditorWindow tabControl;
-    UIWorkspace windowWorkspace;
-    UIWorkspace tabControlWorkspace;
     Rect splitRect;
     Axis splitAxis;
     float splitRatio;
@@ -59,8 +57,9 @@ struct EditorWorkspaceControl
 struct EditorWorkspaceObj
 {
     EditorContext ctx;
-    UILayer layer;
-    UIWorkspace rootWS;
+    std::string uiLayerName;
+    std::string uiWorkspaceName;
+    Rect rootRect; // spans the entire EditorWorkspace
     RectSplit<EditorWorkspaceNode, MEMORY_USAGE_UI> partition;
     EditorWorkspaceControl control{};
     bool isVisible = true;
@@ -75,7 +74,7 @@ struct EditorWorkspaceObj
     }
     ~EditorWorkspaceObj();
 
-    UIWorkspaceObj& operator=(const EditorWorkspaceObj&) = delete;
+    EditorWorkspaceObj& operator=(const EditorWorkspaceObj&) = delete;
 
     bool get_hover_split_rect(Rect& outRect, Axis& outSplitAxis)
     {
@@ -109,15 +108,15 @@ struct EditorWindowMeta
 
 // clang-format off
 static EditorWindowMeta sEditorWindowTable[] = {
-    { EDITOR_WINDOW_TAB_CONTROL,      EDITOR_ICON_ENUM_LAST,       &TabControlWindow::create,      &TabControlWindow::destroy,      nullptr },
-    { EDITOR_WINDOW_SELECTION,        EDITOR_ICON_ENUM_LAST,       &SelectionWindow::create,       &SelectionWindow::destroy,       "Selection" },
-    { EDITOR_WINDOW_CREATE_COMPONENT, EDITOR_ICON_ENUM_LAST,       &CreateComponentWindow::create, &CreateComponentWindow::destroy, "CreateComponent" },
-    { EDITOR_WINDOW_PROJECT_SETTINGS, EDITOR_ICON_ENUM_LAST,       &ProjectSettingsWindow::create, &ProjectSettingsWindow::destroy, "ProjectSettings" },
+    { EDITOR_WINDOW_TAB_CONTROL,      EDITOR_ICON_ENUM_LAST,        &TabControlWindow::create,      &TabControlWindow::destroy,      nullptr },
+    { EDITOR_WINDOW_SELECTION,        EDITOR_ICON_ENUM_LAST,        &SelectionWindow::create,       &SelectionWindow::destroy,       "Selection" },
+    { EDITOR_WINDOW_CREATE_COMPONENT, EDITOR_ICON_ENUM_LAST,        &CreateComponentWindow::create, &CreateComponentWindow::destroy, "CreateComponent" },
+    { EDITOR_WINDOW_PROJECT_SETTINGS, EDITOR_ICON_ENUM_LAST,        &ProjectSettingsWindow::create, &ProjectSettingsWindow::destroy, "ProjectSettings" },
     { EDITOR_WINDOW_VIEWPORT,         EDITOR_ICON_VIEWPORT_WINDOW,  &ViewportWindow::create,        &ViewportWindow::destroy,        "Viewport" },
     { EDITOR_WINDOW_OUTLINER,         EDITOR_ICON_OUTLINER_WINDOW,  &OutlinerWindow::create,        &OutlinerWindow::destroy,        "Outliner" },
     { EDITOR_WINDOW_INSPECTOR,        EDITOR_ICON_INSPECTOR_WINDOW, &InspectorWindow::create,       &InspectorWindow::destroy,       "Inspector" },
     { EDITOR_WINDOW_CONSOLE,          EDITOR_ICON_CONSOLE_WINDOW,   &ConsoleWindow::create,         &ConsoleWindow::destroy,         "Console" },
-    { EDITOR_WINDOW_VERSION,          EDITOR_ICON_ENUM_LAST,       &VersionWindow::create,         &VersionWindow::destroy,         "Version" },
+    { EDITOR_WINDOW_VERSION,          EDITOR_ICON_ENUM_LAST,        &VersionWindow::create,         &VersionWindow::destroy,         "Version" },
 };
 // clang-format on
 
@@ -138,34 +137,34 @@ void EditorWorkspaceObj::set_split_ratio(EditorAreaID areaID, float ratio)
     partition.visit_leaves(areaID, [](EditorWorkspaceNode* node) {
         Rect tabControlRect, windowRect;
         node->get_workspace_rects(tabControlRect, windowRect);
-        node->tabControlWorkspace.set_rect(tabControlRect);
-        node->windowWorkspace.set_rect(windowRect);
+        node->tabControl.set_rect(tabControlRect);
+        node->window.set_rect(windowRect);
     });
 }
 
 void EditorWorkspaceObj::set_rect(const Rect& rect)
 {
     partition.set_root_rect(rect);
-    rootWS.set_rect(rect);
+    rootRect = rect;
 
     partition.visit_leaves(partition.get_root_id(), [](EditorWorkspaceNode* node) {
         Rect tabControlRect, windowRect;
         node->get_workspace_rects(tabControlRect, windowRect);
-        node->tabControlWorkspace.set_rect(tabControlRect);
-        node->windowWorkspace.set_rect(windowRect);
+        node->tabControl.set_rect(tabControlRect);
+        node->window.set_rect(windowRect);
     });
 }
 
 void EditorWorkspaceObj::set_pos(const Vec2& pos)
 {
     partition.set_root_pos(pos);
-    rootWS.set_pos(pos);
+    rootRect.set_pos(pos.x, pos.y);
 
     partition.visit_leaves(partition.get_root_id(), [](EditorWorkspaceNode* node) {
         Rect tabControlRect, windowRect;
         node->get_workspace_rects(tabControlRect, windowRect);
-        node->tabControlWorkspace.set_pos(tabControlRect.get_pos());
-        node->windowWorkspace.set_pos(windowRect.get_pos());
+        node->tabControl.set_pos(tabControlRect.get_pos());
+        node->window.set_pos(windowRect.get_pos());
     });
 }
 
@@ -195,20 +194,17 @@ void EditorWorkspaceObj::pre_imgui()
 
 EditorWorkspace EditorWorkspace::create(const EditorWorkspaceInfo& spaceI)
 {
-    UILayoutInfo layoutI{};
-    layoutI.sizeX = UISize::fixed(spaceI.rootRect.x);
-    layoutI.sizeY = UISize::fixed(spaceI.rootRect.y);
-
     auto* obj = heap_new<EditorWorkspaceObj>(MEMORY_USAGE_UI, spaceI.rootRect);
     obj->ctx = spaceI.ctx;
-    obj->layer = spaceI.layer;
+    obj->uiLayerName = spaceI.uiLayerName;
+    obj->uiWorkspaceName = spaceI.uiWorkspaceName;
     obj->isFloat = spaceI.isFloat;
     obj->isVisible = spaceI.isVisible;
-    obj->rootWS = obj->layer.create_workspace(spaceI.rootRect);
-    obj->rootWS.create_window(obj->rootWS.get_root_id(), layoutI, {}, nullptr);
+    obj->rootRect = spaceI.rootRect;
 
+    LD_ASSERT(spaceI.isVisible);
     EditorWorkspace space = EditorWorkspace(obj);
-    space.set_visible(spaceI.isVisible);
+    // space.set_visible(spaceI.isVisible);
 
     return space;
 }
@@ -216,8 +212,6 @@ EditorWorkspace EditorWorkspace::create(const EditorWorkspaceInfo& spaceI)
 void EditorWorkspace::destroy(EditorWorkspace space)
 {
     auto* obj = space.unwrap();
-
-    obj->layer.destroy_workspace(obj->rootWS);
 
     heap_delete<EditorWorkspaceObj>(obj);
 }
@@ -229,15 +223,16 @@ bool EditorWorkspace::should_close()
 
 void EditorWorkspace::set_visible(bool isVisible)
 {
+    LD_UNREACHABLE;
+
     mObj->isVisible = isVisible;
-    mObj->rootWS.set_visible(isVisible);
 
     mObj->partition.visit_leaves(mObj->partition.get_root_id(), [&](EditorWorkspaceNode* node) {
-        if (node->tabControlWorkspace)
-            node->tabControlWorkspace.set_visible(isVisible);
+        if (node->tabControl)
+            ; // node->tabControl.set_visible(isVisible);
 
-        if (node->windowWorkspace)
-            node->windowWorkspace.set_visible(isVisible);
+        if (node->window)
+            ; // node->window.set_visible(isVisible);
     });
 }
 
@@ -248,30 +243,22 @@ EditorWindow EditorWorkspace::create_window(EditorAreaID areaID, EditorWindowTyp
     if (node->window)
     {
         destroy_window(node->window);
-        mObj->layer.destroy_workspace(node->windowWorkspace);
-        mObj->layer.destroy_workspace(node->tabControlWorkspace);
     }
 
-    Rect tabRect, windowRect;
-    node->get_workspace_rects(tabRect, windowRect);
-    node->tabControlWorkspace = mObj->layer.create_workspace(tabRect);
-    node->tabControlWorkspace.set_visible(mObj->isVisible);
-    node->windowWorkspace = mObj->layer.create_workspace(windowRect);
-    node->windowWorkspace.set_visible(mObj->isVisible);
-
-    EditorWindowInfo windowI{};
-    windowI.ctx = mObj->ctx;
-    windowI.space = node->tabControlWorkspace;
-    node->tabControl = sEditorWindowTable[(int)EDITOR_WINDOW_TAB_CONTROL].create(windowI);
-    TabControlWindow tabControl = (TabControlWindow)node->tabControl;
     const char* tabName = sEditorWindowTable[(int)type].defaultTabName;
     EditorIcon tabIcon = sEditorWindowTable[(int)type].icon;
+    std::string tabWorkspaceName(tabName);
+    tabWorkspaceName += "Tab";
+    EditorWindowInfo windowI{};
+    windowI.ctx = mObj->ctx;
+    windowI.uiWorkspaceName = tabWorkspaceName.c_str();
+    node->tabControl = sEditorWindowTable[(int)EDITOR_WINDOW_TAB_CONTROL].create(windowI);
+
+    TabControlWindow tabControl = (TabControlWindow)node->tabControl;
     tabControl.set_window_type(type, tabName, tabIcon);
 
-    windowI.space = node->windowWorkspace;
-    node->window = sEditorWindowTable[(int)type].create(windowI);
-
-    return node->window;
+    windowI.uiWorkspaceName = tabName;
+    return node->window = sEditorWindowTable[(int)type].create(windowI);
 }
 
 void EditorWorkspace::destroy_window(EditorWindow window)
@@ -288,34 +275,12 @@ void EditorWorkspace::on_imgui(float delta)
     if (mObj->shouldClose)
         return;
 
-    Optional<Vec2> newWorkspacePos;
+    // each EditorWindow contains a UIWorkspaces, but they all belong to the same UILayer.
+    ui_layer_begin(mObj->uiLayerName.c_str());
 
-    mObj->partition.visit_leaves(mObj->partition.get_root_id(), [&](EditorWorkspaceNode* node) {
-        node->tabControl.on_imgui(delta);
-        node->window.on_imgui(delta);
-
-        bool beginDrag;
-        Vec2 screenPos;
-        MouseButton btn;
-        TabControlWindow tabControlW = (TabControlWindow)node->tabControl;
-        if (mObj->isFloat && tabControlW.has_drag(btn, screenPos, beginDrag) && btn == MOUSE_BUTTON_LEFT)
-        {
-            if (beginDrag)
-                mObj->control.dragOffset = node->rect.get_pos() - screenPos;
-            else
-                newWorkspacePos = screenPos + mObj->control.dragOffset;
-        }
-    });
-
-    // reposition editor workspace
-    if (newWorkspacePos.has_value())
-    {
-        mObj->set_pos(newWorkspacePos.value());
-    }
-
-    // root window spans the entire editor workspace and detects resizing.
-    UIWindow rootW = mObj->rootWS.get_area_window(mObj->rootWS.get_root_id());
-    ui_push_window(rootW);
+    // EditorWorkspace root window detects resizing.
+    ui_workspace_begin(mObj->uiWorkspaceName.c_str(), mObj->rootRect);
+    ui_push_window("ROOT");
     ui_top_user(mObj);
 
     // find the node for splitting.
@@ -323,9 +288,11 @@ void EditorWorkspace::on_imgui(float delta)
     Vec2 mousePos;
     if (ui_top_hover(type))
     {
-        if (type == UI_EVENT_MOUSE_ENTER && rootW.get_mouse_pos(mousePos))
+        if (type == UI_EVENT_MOUSE_ENTER && ui_top_get_mouse_pos(mousePos))
         {
-            const Vec2 screenPos = mousePos + rootW.get_pos();
+            Rect rect;
+            ui_top_get_rect(rect);
+            const Vec2 screenPos = mousePos + rect.get_pos();
 
             mObj->partition.visit_nodes(mObj->partition.get_root_id(), [&](EditorWorkspaceNode* node) {
                 if (node->isLeaf)
@@ -398,6 +365,39 @@ void EditorWorkspace::on_imgui(float delta)
     });
 
     ui_pop_window();
+    ui_workspace_end();
+
+    Optional<Vec2> newWorkspacePos;
+
+    mObj->partition.visit_leaves(mObj->partition.get_root_id(), [&](EditorWorkspaceNode* node) {
+        Rect tabControlRect;
+        Rect windowRect;
+        node->get_workspace_rects(tabControlRect, windowRect);
+        node->tabControl.set_rect(tabControlRect);
+        node->tabControl.on_imgui(delta);
+        node->window.set_rect(windowRect);
+        node->window.on_imgui(delta);
+
+        bool beginDrag;
+        Vec2 screenPos;
+        MouseButton btn;
+        TabControlWindow tabControlW = (TabControlWindow)node->tabControl;
+        if (mObj->isFloat && tabControlW.has_drag(btn, screenPos, beginDrag) && btn == MOUSE_BUTTON_LEFT)
+        {
+            if (beginDrag)
+                mObj->control.dragOffset = node->rect.get_pos() - screenPos;
+            else
+                newWorkspacePos = screenPos + mObj->control.dragOffset;
+        }
+    });
+
+    // reposition editor workspace
+    if (newWorkspacePos.has_value())
+    {
+        mObj->set_pos(newWorkspacePos.value());
+    }
+
+    ui_layer_end();
 }
 
 void EditorWorkspace::set_rect(const Rect& rect)

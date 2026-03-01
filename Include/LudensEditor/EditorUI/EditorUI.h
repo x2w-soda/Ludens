@@ -62,20 +62,20 @@ public:
 private:
     /// @brief Get the main camera used to render scene from.
     Camera get_main_camera();
-    Camera2D get_main_camera_2d();
+
+    /// @brief Get region viewports to render screen contents.
+    Vector<Viewport> get_screen_regions();
 
 private:
     EditorContext mCtx;
     EditorUITopBar mTopBar;
     EditorUIDialog mDialog;
     EditorUIMain mMain;
-    UIContext mUI{};
-    UILayer mUIGroundLayer{};
-    UILayer mUIFloatLayer{};
     FontAtlas mDefaultFontAtlas{};
     RImage mDefaultFontAtlasImage{};
     RenderSystem mRenderSystem{};
     RUID mEnvCubemap = 0;
+    Vec2 mScreenSize;
 };
 
 } // namespace LD

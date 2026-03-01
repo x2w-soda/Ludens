@@ -5,16 +5,16 @@
 #include <LudensEditor/EditorUI/EditorWorkspace.h>
 #include <LudensEditor/SelectionWindow/SelectionWindow.h>
 
+#define EDITOR_DIALOG_NAME "EDITOR_DIALOG"
+
 namespace LD {
 
 /// @brief Editor dialog implementation.
 struct EditorDialogObj
 {
-    EditorContext ctx;
-    EditorWorkspace workspace;
-    EditorWindow window;
-    UIContext uiCtx;
-    UILayer uiLayer;
+    EditorContext ctx{};
+    EditorWorkspace workspace{};
+    EditorWindow window{};
     WindowID windowID = 0;
 
     void destroy();
@@ -27,23 +27,20 @@ void EditorDialogObj::destroy()
 {
     LD_PROFILE_SCOPE;
 
-    if (!uiCtx)
-        return;
+    if (windowID)
+    {
+        WindowRegistry reg = WindowRegistry::get();
+        reg.remove_observer(&on_observer_event, this);
+        reg.close_window(windowID);
+        windowID = 0;
+    }
 
-    LD_ASSERT(windowID && workspace);
-
-    WindowRegistry reg = WindowRegistry::get();
-    reg.remove_observer(&on_observer_event, this);
-    reg.close_window(windowID);
-    windowID = 0;
-
-    EditorWorkspace::destroy(workspace);
-    workspace = {};
-    window = {};
-
-    UIContext::destroy(uiCtx);
-    uiCtx = {};
-    uiLayer = {};
+    if (workspace)
+    {
+        EditorWorkspace::destroy(workspace);
+        workspace = {};
+        window = {};
+    }
 }
 
 void EditorDialogObj::on_observer_event(const WindowEvent* event, void* user)
@@ -68,11 +65,12 @@ void EditorDialogObj::on_event(const WindowEvent* event, void* user)
     case EVENT_TYPE_WINDOW_RESIZE:
     {
         const auto* e = (const WindowResizeEvent*)event;
-        obj->workspace.set_rect(Rect(0.0f, 0.0f, (float)e->width, (float)e->height));
+        if (obj->workspace)
+            obj->workspace.set_rect(Rect(0.0f, 0.0f, (float)e->width, (float)e->height));
         break;
     }
     default:
-        obj->uiCtx.input_window_event(event);
+        ui_context_input(EDITOR_DIALOG_NAME, event);
         break;
     }
 }
@@ -89,18 +87,12 @@ EditorDialog EditorDialog::create(const EditorDialogInfo& dialogI)
 
     obj->ctx = dialogI.ctx;
 
-    UIContextInfo uiCtxI{};
-    uiCtxI.fontAtlas = dialogI.fontAtlas;
-    uiCtxI.fontAtlasImage = dialogI.fontAtlasImage;
-    uiCtxI.theme = obj->ctx.get_theme().get_ui_theme();
-    obj->uiCtx = UIContext::create(uiCtxI);
-    obj->uiLayer = obj->uiCtx.create_layer("dialog");
-
     EditorWorkspaceInfo wsI{};
     wsI.ctx = obj->ctx;
     wsI.isFloat = false;
     wsI.isVisible = true;
-    wsI.layer = obj->uiLayer;
+    wsI.uiLayerName = EDITOR_DIALOG_NAME;     // unique within context
+    wsI.uiWorkspaceName = EDITOR_DIALOG_NAME; // unique within layer
     wsI.rootRect = Rect(0.0f, 0.0f, dialogI.extent.x, dialogI.extent.y);
     obj->workspace = EditorWorkspace::create(wsI);
     obj->window = obj->workspace.create_window(obj->workspace.get_root_id(), dialogI.type);
@@ -132,7 +124,7 @@ void EditorDialog::destroy(EditorDialog dialog)
     heap_delete<EditorDialogObj>(obj);
 }
 
-void EditorDialog::update(float delta)
+void EditorDialog::update(float delta, const Vec2& windowExtent)
 {
     LD_PROFILE_SCOPE;
 
@@ -145,21 +137,19 @@ void EditorDialog::update(float delta)
         return;
     }
 
-    ui_frame_begin(mObj->uiCtx);
+    ui_context_begin(EDITOR_DIALOG_NAME, windowExtent);
     mObj->workspace.on_imgui(delta);
-    ui_frame_end();
-
-    mObj->uiCtx.update(delta);
+    ui_context_end(delta);
 }
 
 void EditorDialog::render(ScreenRenderComponent renderer)
 {
-    mObj->uiLayer.render(renderer);
+    ui_context_render(EDITOR_DIALOG_NAME, renderer);
 }
 
 bool EditorDialog::should_close()
 {
-    return !mObj->uiCtx;
+    return !mObj->workspace || mObj->workspace.should_close() || mObj->windowID == 0;
 }
 
 EditorWindow EditorDialog::get_editor_window(EditorWindowType typeCheck)

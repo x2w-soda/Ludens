@@ -74,7 +74,7 @@ void EditorUIDialogObj::update(float delta)
 {
     LD_PROFILE_SCOPE;
 
-    if (!mDialog || !mDialog.get_id())
+    if (!mDialog)
     {
         mDialogType = DIALOG_NONE;
         return;
@@ -84,14 +84,17 @@ void EditorUIDialogObj::update(float delta)
     {
         EditorDialog::destroy(mDialog);
         mDialog = {};
+        mDialogType = DIALOG_NONE;
         return;
     }
+
+    Vec2 windowExtent = WindowRegistry::get().get_window_extent(mDialog.get_id());
 
     FS::Path selectedPath{};
     SelectionWindow selectW{};
 
     // updates the UIContext in the EditorDialog (a separate OS-level Window)
-    mDialog.update(delta);
+    mDialog.update(delta, windowExtent);
 
     // generate actions or events
     switch (mDialogType)

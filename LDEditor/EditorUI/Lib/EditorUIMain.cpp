@@ -35,17 +35,19 @@ private:
     OutlinerWindow mOutlinerWindow{};
     InspectorWindow mInspectorWindow{};
     ConsoleWindow mConsoleWindow{};
+    const char* mLayerName = nullptr;
     float mTopBarHeight = 0.0f;
 };
 
 EditorUIMainObj::EditorUIMainObj(const EditorUIMainInfo& mainI)
-    : mCtx(mainI.ctx), mTopBarHeight(mainI.topBarHeight)
+    : mCtx(mainI.ctx), mLayerName(mainI.groundLayerName), mTopBarHeight(mainI.topBarHeight)
 {
     LD_PROFILE_SCOPE;
 
     EditorWorkspaceInfo workspaceI{};
     workspaceI.ctx = mainI.ctx;
-    workspaceI.layer = mainI.groundLayer;
+    workspaceI.uiLayerName = mainI.groundLayerName;
+    workspaceI.uiWorkspaceName = "EDITOR_UI_MAIN";
     workspaceI.rootRect = Rect(0.0f, mTopBarHeight, mainI.screenSize.x, mainI.screenSize.y);
     workspaceI.isVisible = true;
     workspaceI.isFloat = false;

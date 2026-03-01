@@ -22,7 +22,7 @@ struct EditorDialog : Handle<struct EditorDialogObj>
     static EditorDialog create(const EditorDialogInfo& dialogI);
     static void destroy(EditorDialog dialog);
 
-    void update(float delta);
+    void update(float delta, const Vec2& windowExtent);
     void render(ScreenRenderComponent renderer);
 
     ///@brief Hint that user should destroy this dialog.

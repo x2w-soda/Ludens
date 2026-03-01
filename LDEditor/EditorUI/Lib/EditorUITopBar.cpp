@@ -1,24 +1,23 @@
+#include <Ludens/DSA/Array.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Header/Impulse.h>
+#include <Ludens/Header/MouseValue.h>
 #include <Ludens/Memory/Memory.h>
 #include <Ludens/UI/UIContext.h>
 #include <Ludens/UI/UIImmediate.h>
 #include <LudensEditor/EditorUI/EditorUITopBar.h>
 #include <LudensEditor/EditorWidget/UIListMenuWidget.h>
 
-#include <array>
 #include <cstddef>
 #include <cstdio>
 
-namespace LD {
+#define TOP_BAR_WORKSPACE_NAME "TOP_BAR_WORKSPACE"
+#define TOP_BAR_WINDOW_NAME "TOP_BAR_WINDOW"
+#define TOP_BAR_MENU_FILE_NAME "TOP_BAR_MENU_FILE"
+#define TOP_BAR_MENU_EDIT_NAME "TOP_BAR_MENU_EDIT"
+#define TOP_BAR_MENU_ABOUT_NAME "TOP_BAR_MENU_ABOUT"
 
-enum TopBarMenu
-{
-    TOP_BAR_MENU_NONE = 0,
-    TOP_BAR_MENU_FILE,
-    TOP_BAR_MENU_EDIT,
-    TOP_BAR_MENU_ABOUT,
-};
+namespace LD {
 
 enum FileMenuOption
 {
@@ -44,13 +43,9 @@ enum AboutMenuOption
 struct EditorTopBarObj
 {
     EditorContext ctx;
-    UILayer floatLayer;
-    UILayer groundLayer;
-    UIWorkspace rootWS;
-    UIWorkspace floatWS;
-    UIWindow menuW;
-    TopBarMenu menuType = TOP_BAR_MENU_NONE;
-    float barHeight = 0.0f;
+    const char* layerName;
+    Rect barRect;
+    Rect screenRect;
 
     void on_imgui(float delta);
     void file_menu_window();
@@ -60,41 +55,49 @@ struct EditorTopBarObj
 
 void EditorTopBarObj::on_imgui(float delta)
 {
-    MouseButton btn;
-    UIWindow rootW = rootWS.get_area_window(rootWS.get_root_id());
+    Vec2 mousePos;
+    MouseValue mouseVal;
     Rect rect;
 
-    ui_push_window(rootW);
+    ui_layer_begin(layerName);
+    ui_workspace_begin(TOP_BAR_WORKSPACE_NAME, barRect);
+
+    UILayoutInfo layoutI{};
+    layoutI.childAxis = UI_AXIS_X;
+    layoutI.childGap = 5.0f;
+    layoutI.sizeX = UISize::fixed(barRect.w);
+    layoutI.sizeY = UISize::fixed(barRect.h);
+
+    ui_push_window(TOP_BAR_WINDOW_NAME);
+    ui_top_layout(layoutI);
+
     ui_push_text("File");
-    if (ui_top_mouse_down(btn) && btn == MOUSE_BUTTON_LEFT)
+    if (ui_top_mouse_down(mouseVal, mousePos) && mouseVal.button() == MOUSE_BUTTON_LEFT)
     {
-        ui_top_rect(rect);
-        menuType = TOP_BAR_MENU_FILE;
-        menuW.set_pos(rect.get_pos_bl());
-        menuW.show();
+        ui_top_get_rect(rect);
+        ui_request_popup_window(TOP_BAR_MENU_FILE_NAME, rect.get_pos_bl());
     }
     ui_pop();
 
     ui_push_text("Edit");
-    if (ui_top_mouse_down(btn) && btn == MOUSE_BUTTON_LEFT)
+    if (ui_top_mouse_down(mouseVal, mousePos) && mouseVal.button() == MOUSE_BUTTON_LEFT)
     {
-        ui_top_rect(rect);
-        menuType = TOP_BAR_MENU_EDIT;
-        menuW.set_pos(rect.get_pos_bl());
-        menuW.show();
+        ui_top_get_rect(rect);
+        ui_request_popup_window(TOP_BAR_MENU_EDIT_NAME, rect.get_pos_bl());
     }
     ui_pop();
 
     ui_push_text("About");
-    if (ui_top_mouse_down(btn) && btn == MOUSE_BUTTON_LEFT)
+    if (ui_top_mouse_down(mouseVal, mousePos) && mouseVal.button() == MOUSE_BUTTON_LEFT)
     {
-        ui_top_rect(rect);
-        menuType = TOP_BAR_MENU_ABOUT;
-        menuW.set_pos(rect.get_pos_bl());
-        menuW.show();
+        ui_top_get_rect(rect);
+        ui_request_popup_window(TOP_BAR_MENU_ABOUT_NAME, rect.get_pos_bl());
     }
     ui_pop();
     ui_pop_window();
+
+    ui_workspace_end();
+    ui_layer_end();
 
     file_menu_window();
     edit_menu_window();
@@ -103,14 +106,10 @@ void EditorTopBarObj::on_imgui(float delta)
 
 void EditorTopBarObj::file_menu_window()
 {
-    if (menuType != TOP_BAR_MENU_FILE)
+    if (!ui_push_popup_window(TOP_BAR_MENU_FILE_NAME))
         return;
 
-    menuW.set_color(0xFF);
-    menuW.set_pos(Vec2(0.0f, barHeight));
-    ui_push_window(menuW);
-
-    std::array<const char*, 5> options;
+    Array<const char*, 5> options;
     options[FILE_MENU_NEW_SCENE] = "New Scene";
     options[FILE_MENU_OPEN_SCENE] = "Open Scene";
     options[FILE_MENU_SAVE_SCENE] = "Save Scene";
@@ -119,7 +118,7 @@ void EditorTopBarObj::file_menu_window()
 
     int opt = eui_list_menu(ctx.get_theme(), (int)options.size(), options.data());
     if (opt >= 0)
-        menuW.hide();
+        ui_clear_popup_window();
 
     switch (opt)
     {
@@ -159,20 +158,17 @@ void EditorTopBarObj::file_menu_window()
 
 void EditorTopBarObj::edit_menu_window()
 {
-    if (menuType != TOP_BAR_MENU_EDIT)
+    if (!ui_push_popup_window(TOP_BAR_MENU_EDIT_NAME))
         return;
 
-    menuW.set_color(0xFF);
-    ui_push_window(menuW);
-
-    std::array<const char*, 3> options;
+    Array<const char*, 3> options;
     options[EDIT_MENU_UNDO] = "Undo";
     options[EDIT_MENU_REDO] = "Redo";
     options[EDIT_MENU_PROJECT_SETTINGS] = "Project Settings";
 
     int opt = eui_list_menu(ctx.get_theme(), (int)options.size(), options.data());
     if (opt >= 0)
-        menuW.hide();
+        ui_clear_popup_window();
 
     switch (opt)
     {
@@ -197,23 +193,20 @@ void EditorTopBarObj::edit_menu_window()
 
 void EditorTopBarObj::about_menu_window()
 {
-    if (menuType != TOP_BAR_MENU_ABOUT)
+    if (!ui_push_popup_window(TOP_BAR_MENU_ABOUT_NAME))
         return;
 
-    menuW.set_color(0xFF);
-    ui_push_window(menuW);
-
-    std::array<const char*, 1> options;
+    Array<const char*, 1> options;
     options[ABOUT_MENU_VERSION] = "Version";
 
     int opt = eui_list_menu(ctx.get_theme(), (int)options.size(), options.data());
     if (opt >= 0)
-        menuW.hide();
+        ui_clear_popup_window();
 
     switch (opt)
     {
     case ABOUT_MENU_VERSION:
-        LD_UNREACHABLE; // TODO:
+        // TODO: LD_UNREACHABLE;
         break;
     default:
         break;
@@ -234,23 +227,11 @@ EditorUITopBar EditorUITopBar::create(const EditorUITopBarInfo& barI)
     layoutI.sizeX = UISize::grow();
     layoutI.sizeY = UISize::fixed(barI.barHeight);
 
-    Rect barRect(0.0f, 0.0f, barI.screenSize.x, barI.barHeight);
-    Rect screenRect(0.0f, 0.0f, barI.screenSize.x, barI.screenSize.y);
-
     auto* obj = heap_new<EditorTopBarObj>(MEMORY_USAGE_UI);
     obj->ctx = barI.ctx;
-    obj->barHeight = barI.barHeight;
-    obj->floatLayer = barI.floatLayer;
-    obj->groundLayer = barI.groundLayer;
-    obj->rootWS = obj->groundLayer.create_workspace(barRect);
-    obj->rootWS.create_window(obj->rootWS.get_root_id(), layoutI, {}, nullptr);
-
-    layoutI.sizeX = UISize::fit();
-    layoutI.sizeY = UISize::fit();
-    layoutI.childAxis = UI_AXIS_Y;
-    obj->floatWS = obj->floatLayer.create_workspace(screenRect);
-    obj->menuW = obj->floatWS.create_float_window(layoutI, {}, nullptr);
-    obj->menuW.hide();
+    obj->layerName = barI.groundLayerName;
+    obj->barRect = Rect(0.0f, 0.0f, barI.screenSize.x, barI.barHeight);
+    obj->screenRect = Rect(0.0f, 0.0f, barI.screenSize.x, barI.screenSize.y);
 
     return EditorUITopBar(obj);
 }

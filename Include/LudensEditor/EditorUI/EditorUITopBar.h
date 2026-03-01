@@ -9,9 +9,8 @@ namespace LD {
 struct EditorUITopBarInfo
 {
     EditorContext ctx;
-    UILayer groundLayer; // top bar live in the ground layer
-    UILayer floatLayer;  // list menus live in the float layer
-    float barHeight;     // top bar height
+    const char* groundLayerName; // top bar lives in the ground layer
+    float barHeight;             // top bar height
     Vec2 screenSize;
 };
 

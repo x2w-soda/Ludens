@@ -1,4 +1,5 @@
 #include <Ludens/Header/Assert.h>
+#include <Ludens/Header/MouseValue.h>
 #include <Ludens/UI/UIAnimation.h>
 #include <Ludens/UI/UIImmediate.h>
 #include <LudensEditor/EditorWidget/UIListMenuWidget.h>
@@ -11,7 +12,8 @@ int eui_list_menu(EditorTheme theme, int optionCount, const char** options)
     ui_push_panel();
     ui_top_layout(theme.make_vbox_layout(2.0f));
 
-    MouseButton btn;
+    Vec2 mousePos;
+    MouseValue mouseVal;
 
     UILayoutInfo optionPanelLayout{};
     optionPanelLayout.sizeX = UISize::fit();
@@ -30,7 +32,7 @@ int eui_list_menu(EditorTheme theme, int optionCount, const char** options)
         ui_panel_color(color);
 
         ui_push_text(options[i]);
-        if (ui_top_mouse_down(btn) && btn == MOUSE_BUTTON_LEFT)
+        if (ui_top_mouse_down(mouseVal, mousePos) && mouseVal.button() == MOUSE_BUTTON_LEFT)
             index = i;
         ui_pop();
 

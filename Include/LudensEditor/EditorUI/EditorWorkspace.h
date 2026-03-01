@@ -14,13 +14,14 @@ using EditorAreaID = uint32_t;
 struct EditorWorkspaceInfo
 {
     EditorContext ctx;
-    UILayer layer;         // the actual UI layer this editor workspace belongs to
-    Rect rootRect;         // total rect area for the editor workspace
-    bool isVisible = true; // initial visibility state after creation
+    const char* uiLayerName;     // the UILayer this editor workspace belongs to
+    const char* uiWorkspaceName; // unique UIWorkspace name in the layer
+    Rect rootRect;               // total rect area for the editor workspace
+    bool isVisible = true;       // initial visibility state after creation
     bool isFloat = false;
 };
 
-/// @brief A container for one or more EditorWindow, belongs to a UILayer.
+/// @brief Composes one or more EditorWindow, belongs to a UILayer.
 struct EditorWorkspace : Handle<struct EditorWorkspaceObj>
 {
     /// @brief Create editor workspace.
