@@ -1,37 +1,49 @@
+#include <Ludens/DSA/Array.h>
 #include <Ludens/DSA/Vector.h>
+#include <Ludens/Header/MouseValue.h>
 #include <Ludens/Memory/Memory.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/UI/UIImmediate.h>
 #include <LudensEditor/EditorContext/EditorIconAtlas.h>
 #include <LudensEditor/EditorContext/EditorWindow.h>
+#include <LudensEditor/EditorWidget/UIListMenuWidget.h>
 #include <LudensEditor/OutlinerWindow/OutlinerWindow.h>
-
-#include <iostream>
-
-#include "ComponentMenu.h"
 
 #define OUTLINER_ROW_LEFT_PADDING 10.0f
 #define OUTLINER_ROW_LEFT_PADDING_PER_DEPTH 10.0f
+#define OUTLINER_COMPONENT_MENU_POPUP "OUTLINER_COMPONENT_MENU"
+
+#define COMPONENT_MENU_OPTION_ADD_CHILD 0
 
 namespace LD {
+
+/// @brief Outliner frame state
+struct OutlinerState
+{
+    SUID compSUID;
+};
 
 /// @brief Editor outliner window implementation.
 struct OutlinerWindowObj : EditorWindowObj
 {
-    EditorContext ctx;
-    UIWorkspace space;
-    UIWindow root;
     RImage editorIconAtlas;
+    OutlinerState state{};
+
+    OutlinerWindowObj(const EditorWindowInfo& info)
+        : EditorWindowObj(info)
+    {
+        editorIconAtlas = mCtx.get_editor_icon_atlas();
+    }
 
     virtual EditorWindowType get_type() override { return EDITOR_WINDOW_OUTLINER; }
     virtual void on_imgui(float delta) override;
 
-    void component_rows(Scene::Component comp, int& rowIdx, int depth);
+    void component_rows(ComponentView comp, int& rowIdx, int depth);
     void component_row(int rowIdx, int depth, SUID compSUID);
-    void on_row_mouse_down(MouseButton& btn, SUID compSUID);
+    void on_row_mouse_down(MouseValue mouseVal, const Vec2& mousePos, SUID compSUID);
 };
 
-void OutlinerWindowObj::component_rows(Scene::Component comp, int& rowIdx, int depth)
+void OutlinerWindowObj::component_rows(ComponentView comp, int& rowIdx, int depth)
 {
     LD_ASSERT(comp);
 
@@ -39,10 +51,10 @@ void OutlinerWindowObj::component_rows(Scene::Component comp, int& rowIdx, int d
 
     depth++;
 
-    Vector<Scene::Component> children;
+    Vector<ComponentView> children;
     comp.get_children(children);
 
-    for (Scene::Component child : children)
+    for (ComponentView child : children)
         component_rows(child, rowIdx, depth);
 
     depth--;
@@ -50,7 +62,7 @@ void OutlinerWindowObj::component_rows(Scene::Component comp, int& rowIdx, int d
 
 void OutlinerWindowObj::component_row(int rowIdx, int depth, SUID compSUID)
 {
-    EditorTheme theme = ctx.get_settings().get_theme();
+    EditorTheme theme = mCtx.get_settings().get_theme();
     UITheme uiTheme = theme.get_ui_theme();
     const float rowHeight = theme.get_text_row_height();
 
@@ -60,8 +72,8 @@ void OutlinerWindowObj::component_row(int rowIdx, int depth, SUID compSUID)
     layoutI.childPadding.left = OUTLINER_ROW_LEFT_PADDING + depth * OUTLINER_ROW_LEFT_PADDING_PER_DEPTH;
     layoutI.sizeX = UISize::grow();
     layoutI.sizeY = UISize::fixed(rowHeight);
-
     ui_push_panel();
+    ui_top_layout(layoutI);
 
     Color panelColor = uiTheme.get_surface_color();
     if (rowIdx % 2)
@@ -70,17 +82,17 @@ void OutlinerWindowObj::component_row(int rowIdx, int depth, SUID compSUID)
     if (ui_top_is_hovered())
         panelColor = Color::lift(panelColor, 0.06f);
 
-    if (compSUID && compSUID == ctx.get_selected_component())
+    if (compSUID && compSUID == mCtx.get_selected_component())
         panelColor = theme.get_ui_theme().get_selection_color();
 
     ui_panel_color(panelColor);
-    ui_top_layout(layoutI);
 
-    MouseButton btn;
-    if (ui_top_mouse_down(btn))
-        on_row_mouse_down(btn, compSUID);
+    Vec2 mousePos;
+    MouseValue mouseVal;
+    if (ui_top_mouse_down(mouseVal, mousePos))
+        on_row_mouse_down(mouseVal, mousePos, compSUID);
 
-    Scene::Component comp = ctx.get_component(compSUID);
+    ComponentView comp = mCtx.get_component(compSUID);
 
     // component type icon
     if (comp)
@@ -95,9 +107,9 @@ void OutlinerWindowObj::component_row(int rowIdx, int depth, SUID compSUID)
     }
 
     // component name label
-    ui_push_text(compSUID ? ctx.get_component_name(compSUID) : nullptr);
-    if (ui_top_mouse_down(btn))
-        on_row_mouse_down(btn, compSUID);
+    ui_push_text(compSUID ? mCtx.get_component_name(compSUID) : nullptr);
+    if (ui_top_mouse_down(mouseVal, mousePos))
+        on_row_mouse_down(mouseVal, mousePos, compSUID);
     ui_pop();
 
     // component script icon
@@ -105,23 +117,21 @@ void OutlinerWindowObj::component_row(int rowIdx, int depth, SUID compSUID)
     {
         float iconSize = theme.get_text_row_height();
         const Rect iconRect = EditorIconAtlas::get_icon_rect(EDITOR_ICON_SCRIPT);
-        ui_push_image(ctx.get_editor_icon_atlas(), iconSize, iconSize, 0xFFFFFFFF, &iconRect);
+        ui_push_image(mCtx.get_editor_icon_atlas(), iconSize, iconSize, 0xFFFFFFFF, &iconRect);
         ui_pop();
     }
 
     ui_pop();
 }
 
-void OutlinerWindowObj::on_row_mouse_down(MouseButton& btn, SUID compSUID)
+void OutlinerWindowObj::on_row_mouse_down(MouseValue mouseVal, const Vec2& mousePos, SUID compSUID)
 {
-    if (btn == MOUSE_BUTTON_LEFT)
-        ctx.set_selected_component(compSUID);
-    else if (btn == MOUSE_BUTTON_RIGHT)
+    if (mouseVal.button() == MOUSE_BUTTON_LEFT)
+        mCtx.set_selected_component(compSUID);
+    else if (mouseVal.button() == MOUSE_BUTTON_RIGHT)
     {
-        // TODO: menu for create component, remove component, etc.
-        EditorRequestCreateComponentEvent event(compSUID);
-
-        ctx.request_event(&event);
+        ui_request_popup_window(OUTLINER_COMPONENT_MENU_POPUP, mousePos);
+        state.compSUID = compSUID;
     }
 }
 
@@ -129,21 +139,58 @@ void OutlinerWindowObj::on_imgui(float delta)
 {
     LD_PROFILE_SCOPE;
 
-    root.set_color(root.get_theme().get_surface_color());
-    ui_push_window(root);
+    EditorTheme theme = mCtx.get_theme();
+    UILayoutInfo layoutI{};
+    layoutI.sizeX = UISize::fixed(mRootRect.w);
+    layoutI.sizeY = UISize::fixed(mRootRect.h);
+    layoutI.childAxis = UI_AXIS_Y;
+    layoutI.childPadding.left = 0;
+    layoutI.childPadding.right = 0;
+    layoutI.childGap = 0;
 
-    Vector<Scene::Component> sceneRoots;
-    ctx.get_scene_roots(sceneRoots);
+    ui_workspace_begin();
+    ui_push_window("ROOT");
+    ui_top_layout(layoutI);
+    ui_window_set_color(theme.get_ui_theme().get_surface_color());
+
+    Vector<ComponentView> sceneRoots;
+    mCtx.get_scene_roots(sceneRoots);
 
     int rowIdx = 0;
     int depth = 0;
 
-    for (Scene::Component sceneRoot : sceneRoots)
+    for (ComponentView sceneRoot : sceneRoots)
     {
         component_rows(sceneRoot, rowIdx, depth);
     }
 
     ui_pop_window();
+
+    if (ui_push_popup_window(OUTLINER_COMPONENT_MENU_POPUP))
+    {
+        Array<const char*, 1> options;
+        options[COMPONENT_MENU_OPTION_ADD_CHILD] = "Add Child";
+
+        int opt = eui_list_menu(theme, options.size(), options.data());
+        if (opt >= 0)
+            ui_clear_popup_window();
+
+        switch (opt)
+        {
+        case COMPONENT_MENU_OPTION_ADD_CHILD:
+        {
+            EditorRequestCreateComponentEvent event(state.compSUID);
+            mCtx.request_event(&event);
+            break;
+        }
+        default:
+            break;
+        }
+
+        ui_pop_window();
+    }
+
+    ui_workspace_end();
 }
 
 //
@@ -152,18 +199,7 @@ void OutlinerWindowObj::on_imgui(float delta)
 
 EditorWindow OutlinerWindow::create(const EditorWindowInfo& windowI)
 {
-    EditorContext ctx = windowI.ctx;
-    UILayoutInfo layoutI = ctx.make_vbox_layout();
-    layoutI.childAxis = UI_AXIS_Y;
-    layoutI.childPadding.left = 0;
-    layoutI.childPadding.right = 0;
-    layoutI.childGap = 0;
-
-    OutlinerWindowObj* obj = heap_new<OutlinerWindowObj>(MEMORY_USAGE_UI);
-    obj->ctx = windowI.ctx;
-    obj->space = windowI.space;
-    obj->root = obj->space.create_window(obj->space.get_root_id(), layoutI, {}, nullptr);
-    obj->editorIconAtlas = obj->ctx.get_editor_icon_atlas();
+    OutlinerWindowObj* obj = heap_new<OutlinerWindowObj>(MEMORY_USAGE_UI, windowI);
 
     return EditorWindow(obj);
 }
@@ -173,8 +209,6 @@ void OutlinerWindow::destroy(EditorWindow window)
     LD_ASSERT(window && window.get_type() == EDITOR_WINDOW_OUTLINER);
 
     auto* obj = static_cast<OutlinerWindowObj*>(window.unwrap());
-
-    // TODO: obj->menu.cleanup();
 
     heap_delete<OutlinerWindowObj>(obj);
 }

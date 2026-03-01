@@ -6,8 +6,6 @@ set(MODULE_INCLUDE
 
 set(MODULE_LIB
 	Lib/OutlinerWindow.cpp
-	Lib/ComponentMenu.h
-	Lib/ComponentMenu.cpp
 )
 
 add_ludens_editor_module(
