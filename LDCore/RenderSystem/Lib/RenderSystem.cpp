@@ -1005,7 +1005,9 @@ void RenderSystemObj::ScreenPass::render(ScreenRenderComponent renderer, void* s
         if (vpIndex < 0)
             continue;
 
+        const Viewport& viewport = self.mScreenPass.regionViewports[regionI];
         renderer.set_view_projection_index(vpIndex);
+        renderer.push_viewport_normalized(viewport.region);
 
         // TODO: layer draw order!
         for (auto it : self.mLayers)
@@ -1059,6 +1061,8 @@ void RenderSystemObj::ScreenPass::render(ScreenRenderComponent renderer, void* s
                 v[3].color = 0xFFFFFFFF;
             }
         }
+
+        renderer.pop_viewport();
     }
 
     if (self.mScreenPass.overlayCB && self.mScreenPass.overlayVPIndex >= 0)

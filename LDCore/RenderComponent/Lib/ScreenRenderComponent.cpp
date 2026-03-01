@@ -67,6 +67,7 @@ private: // instance members
     std::string mName;
     Vector<Frame> mFrames;
     Stack<Rect> mScissors;
+    Stack<Rect> mViewports;
     Stack<Color> mColorMasks;
     void (*mOnDraw)(ScreenRenderComponent renderer, void* user);
     void* mUser;
@@ -476,6 +477,54 @@ void ScreenRenderComponent::set_view_projection_index(int vpIndex)
     QuadPipeline::PushConstant pc{};
     pc.vpIndex = (uint32_t)vpIndex;
     mObj->mList.cmd_push_constant(QuadPipeline::layout(), 0, sizeof(pc), &pc);
+}
+
+void ScreenRenderComponent::push_viewport(const Rect& viewport)
+{
+    LD_ASSERT(mObj->mList);
+
+    // flush current batch before changing viewport state
+    mObj->flush_rects();
+
+    mObj->mViewports.push(viewport);
+    mObj->mList.cmd_set_viewport(viewport);
+}
+
+void ScreenRenderComponent::push_viewport_normalized(const Rect& viewport)
+{
+    LD_ASSERT(mObj->mList);
+
+    Rect screenViewport;
+    screenViewport.x = viewport.x * (float)mObj->mScreenWidth;
+    screenViewport.y = viewport.y * (float)mObj->mScreenHeight;
+    screenViewport.w = viewport.w * (float)mObj->mScreenWidth;
+    screenViewport.h = viewport.h * (float)mObj->mScreenHeight;
+
+    push_viewport(screenViewport);
+}
+
+void ScreenRenderComponent::pop_viewport()
+{
+    LD_ASSERT(mObj->mList);
+
+    if (mObj->mViewports.empty())
+        return;
+
+    // flush current batch before changing viewport state
+    mObj->flush_rects();
+
+    mObj->mViewports.pop();
+
+    if (mObj->mViewports.empty())
+    {
+        Rect viewport(0.0f, 0.0f, (float)mObj->mScreenWidth, (float)mObj->mScreenHeight);
+        mObj->mList.cmd_set_viewport(viewport);
+    }
+    else
+    {
+        Rect topViewport = mObj->mViewports.top();
+        mObj->mList.cmd_set_viewport(topViewport);
+    }
 }
 
 void ScreenRenderComponent::push_scissor(const Rect& scissor)

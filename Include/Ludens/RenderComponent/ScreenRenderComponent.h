@@ -34,7 +34,19 @@ struct ScreenRenderComponent : Handle<struct ScreenRenderComponentObj>
     /// @note This forces a flush of the current batch.
     void set_view_projection_index(int vpIndex);
 
-    /// @brief Push a scissor rect onto stack, only the top scissor takes effect.
+    /// @brief Push a viewport screen rect onto stack, only the top viewport takes effect.
+    /// @note This forces a flush of the current batch since the viewport state changes.
+    void push_viewport(const Rect& viewport);
+
+    /// @brief Push a viewport normalized rect onto stack, only the top viewport takes effect.
+    /// @note This forces a flush of the current batch since the viewport state changes.
+    void push_viewport_normalized(const Rect& viewport);
+
+    /// @brief Pop a viewport rect off the stack, the remaining top viewport takes effect.
+    /// @note This forces a flush of the current batch since the viewport state changes.
+    void pop_viewport();
+
+    /// @brief Push a scissor screen rect onto stack, only the top scissor takes effect.
     /// @note This forces a flush of the current batch since the scissor state changes.
     void push_scissor(const Rect& scissor);
 

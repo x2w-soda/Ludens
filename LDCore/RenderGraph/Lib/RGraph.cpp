@@ -329,6 +329,8 @@ static void topological_sort(const HashMap<Hash32, RComponent>& components, Vect
 
 void RGraphObj::record_graphics_pass(RGraphicsPassObj* pass, uint32_t passIdx)
 {
+    LD_PROFILE_SCOPE;
+
     RComponentObj* comp = pass->compObj;
     uint32_t colorAttachmentCount = (uint32_t)pass->colorAttachments.size();
     Vector<RImage> colorHandles(colorAttachmentCount);
@@ -516,6 +518,8 @@ void RGraphObj::sort()
 
 void RGraphObj::record_compute_pass(RComputePassObj* pass, uint32_t passIdx)
 {
+    LD_PROFILE_SCOPE;
+
     RComponentObj* comp = pass->compObj;
 
     // perform image layout transitions for storage images before dispatch,
