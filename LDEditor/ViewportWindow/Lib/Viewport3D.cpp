@@ -1,3 +1,4 @@
+#include <Ludens/Header/MouseValue.h>
 #include <Ludens/Scene/Scene.h>
 #include <Ludens/UI/UIImmediate.h>
 #include <Ludens/WindowRegistry/Input.h>
@@ -13,12 +14,12 @@ Viewport3D::~Viewport3D()
     LD_ASSERT(!mCamera);
 }
 
-void Viewport3D::create(EditorContext ctx, const Vec2& sceneExtent)
+void Viewport3D::create(EditorContext ctx)
 {
     mCtx = ctx;
 
     CameraPerspectiveInfo cameraPI{};
-    cameraPI.aspectRatio = sceneExtent.x / sceneExtent.y;
+    cameraPI.aspectRatio = 1.0f; // updated each frame
     cameraPI.fov = 45.0f * LD_PI / 180.0f;
     cameraPI.nearClip = 0.1f;
     cameraPI.farClip = 100.0f;
@@ -52,11 +53,12 @@ void Viewport3D::destroy()
 void Viewport3D::imgui(ViewportState& state)
 {
     Mat4 worldMat4;
-    MouseButton btn;
+    MouseValue mouseVal;
+    Vec2 mousePos;
     bool begin;
 
     mCamera.set_aspect_ratio(state.sceneExtent.x / state.sceneExtent.y);
-    Scene::Component subject = mCtx.get_component(state.gizmoSubjectSUID);
+    ComponentView subject = mCtx.get_component(state.gizmoSubjectSUID);
 
     // update gizmo center and scale
     if (subject && subject.get_world_mat4(worldMat4))
@@ -96,11 +98,11 @@ void Viewport3D::imgui(ViewportState& state)
     }
 
     // mouse picking in 3D viewport
-    if (ui_top_mouse_down(btn))
+    if (ui_top_mouse_down(mouseVal, mousePos))
     {
-        if (btn == MOUSE_BUTTON_RIGHT)
+        if (mouseVal.button() == MOUSE_BUTTON_RIGHT)
             mEnableCameraControls = true;
-        else if (btn == MOUSE_BUTTON_LEFT && state.sceneMousePos.x > 0.0f && state.sceneMousePos.y > 0.0f)
+        else if (mouseVal.button() == MOUSE_BUTTON_LEFT && state.sceneMousePos.x > 0.0f && state.sceneMousePos.y > 0.0f)
         {
             // update camera ray required for gizmo controls
             mGizmo.update(mCamera, state.sceneMousePos, state.sceneExtent);
@@ -117,22 +119,22 @@ void Viewport3D::imgui(ViewportState& state)
         }
     }
 
-    if (ui_top_mouse_up(btn))
+    if (ui_top_mouse_up(mouseVal, mousePos))
     {
-        if (btn == MOUSE_BUTTON_LEFT)
+        if (mouseVal.button() == MOUSE_BUTTON_LEFT)
             mGizmo.end();
-        else if (btn == MOUSE_BUTTON_RIGHT)
+        else if (mouseVal.button() == MOUSE_BUTTON_RIGHT)
             mEnableCameraControls = false;
     }
 
-    Vec2 pos;
-    if (ui_top_drag(btn, pos, begin))
-        drag(state, btn, pos, begin);
+    MouseButton mouseBtn;
+    if (ui_top_drag(mouseBtn, mousePos, begin))
+        drag(state, mouseBtn, mousePos, begin);
 }
 
 void Viewport3D::pick_hover_ruid(ViewportState& state)
 {
-    Scene::Component comp = mCtx.get_component_by_ruid(state.hoverRUID);
+    ComponentView comp = mCtx.get_component_by_ruid(state.hoverRUID);
 
     state.gizmoSubjectSUID = comp ? comp.suid() : 0;
 
@@ -147,7 +149,7 @@ void Viewport3D::pick_hover_gizmo_id(ViewportState& state)
 
     // writes back to subject transform during mouse drag window events
     // an object should be selected before gizmo mesh can even be selected
-    Scene::Component subject = mCtx.get_component(state.gizmoSubjectSUID);
+    ComponentView subject = mCtx.get_component(state.gizmoSubjectSUID);
     LD_ASSERT(subject);
 
     // initialize subject world transform and gizmo center.
@@ -233,8 +235,8 @@ void Viewport3D::drag(ViewportState& state, MouseButton btn, const Vec2& dragPos
 
     // get inverse parent world matrix
     Mat4 parentInv(1.0f);
-    Scene::Component subject = mCtx.get_component(state.gizmoSubjectSUID);
-    Scene::Component parent{};
+    ComponentView subject = mCtx.get_component(state.gizmoSubjectSUID);
+    ComponentView parent{};
     bool ok;
 
     if (subject && (parent = subject.get_parent()))

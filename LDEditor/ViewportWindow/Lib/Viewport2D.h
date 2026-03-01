@@ -18,7 +18,7 @@ public:
 
     Viewport2D& operator=(const Viewport2D&) = delete;
 
-    void create(EditorContext ctx, const Vec2& sceneExtent);
+    void create(EditorContext ctx);
     void destroy();
 
     void imgui(const ViewportState& state);

@@ -1,5 +1,6 @@
 #include <Ludens/Header/Impulse.h>
 #include <Ludens/Header/KeyValue.h>
+#include <Ludens/Header/MouseValue.h>
 #include <Ludens/Memory/Memory.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/UI/UIImmediate.h>
@@ -24,17 +25,17 @@ enum ViewportMode
 ///        Uses the Gizmo module to edit the object transforms.
 struct ViewportWindowObj : EditorWindowObj
 {
-    EditorContext ctx;
-    UIWorkspace space;
-    UIWindow root;
     ViewportMode mode = VIEWPORT_MODE_2D;
     Viewport2D viewport2D{};
     Viewport3D viewport3D{};
     ViewportState state{}; /// passed down to Viewport2D or Viewport3D each frame
+    EditorContext ctx{};
     Impulse isRequestingPlay{};
     Impulse isRequestingStop{};
 
     ViewportWindowObj() = default;
+    ViewportWindowObj(const EditorWindowInfo& info)
+        : EditorWindowObj(info), ctx(info.ctx) {}
     ViewportWindowObj(const ViewportWindowObj&) = delete;
     ~ViewportWindowObj() = default;
 
@@ -43,7 +44,7 @@ struct ViewportWindowObj : EditorWindowObj
     virtual EditorWindowType get_type() override { return EDITOR_WINDOW_VIEWPORT; }
     virtual void on_imgui(float delta) override;
     void toolbar();
-    void viewport_editor_imgui(ViewportState& state);
+    void viewport_editor_imgui();
     void viewport_scene_imgui();
 
     static void on_editor_event(const EditorEvent* event, void* user);
@@ -51,18 +52,21 @@ struct ViewportWindowObj : EditorWindowObj
 
 void ViewportWindowObj::on_imgui(float delta)
 {
-    EditorTheme theme = ctx.get_theme();
+    EditorTheme theme = mCtx.get_theme();
     UITheme uiTheme = theme.get_ui_theme();
+
+    ui_workspace_begin();
+    ui_push_window("ROOT");
 
     // update state for this frame
     state.delta = delta;
-    state.viewportExtent = root.get_rect().get_size();
+    state.viewportExtent = mRootRect.get_size();
     state.sceneExtent = Vec2(state.viewportExtent.x, state.viewportExtent.y - VIEWPORT_TOOLBAR_HEIGHT);
 
     // active mouse picking if cursor is within viewport window
     state.sceneMousePos = Vec2(-1.0f);
 
-    if (root.get_mouse_pos(state.sceneMousePos))
+    if (ui_top_get_mouse_pos(state.sceneMousePos))
     {
         // adjust for toolbar height
         state.sceneMousePos.y -= VIEWPORT_TOOLBAR_HEIGHT;
@@ -70,18 +74,16 @@ void ViewportWindowObj::on_imgui(float delta)
 
     // TODO: this should come after toolbar?
     if (isRequestingPlay.read())
-        ctx.play_scene();
+        mCtx.play_scene();
     else if (isRequestingStop.read())
-        ctx.stop_scene();
-
-    ui_push_window(root);
+        mCtx.stop_scene();
 
     // Input routing will depend on whether the scene is playing
     // and whether we are in 2D or 3D editor mode.
-    if (ctx.is_playing())
+    if (mCtx.is_playing())
         viewport_scene_imgui();
     else
-        viewport_editor_imgui(state);
+        viewport_editor_imgui();
 
     // toolbar widgets
     toolbar();
@@ -93,17 +95,19 @@ void ViewportWindowObj::on_imgui(float delta)
         sceneRect.y += VIEWPORT_TOOLBAR_HEIGHT;
         sceneRect.h -= VIEWPORT_TOOLBAR_HEIGHT;
         RImage sceneImage = renderer.get_sampled_image();
-        renderer.draw_image(sceneRect, sceneImage, 0xFFFFFFFF, true);
+        renderer.draw_image(sceneRect, 0xFFFFFFFF, sceneImage, Rect(0.0f, 0.0f, 1.0f, 1.0f), true);
     });
 
     ui_pop_window();
+    ui_workspace_end();
 }
 
 void ViewportWindowObj::toolbar()
 {
-    EditorTheme theme = ctx.get_theme();
+    EditorTheme theme = mCtx.get_theme();
     UITheme uiTheme = theme.get_ui_theme();
-    MouseButton btn;
+    MouseValue mouseVal;
+    Vec2 mousePos;
 
     UILayoutInfo layoutI{};
     layoutI.sizeX = UISize::grow();
@@ -118,17 +122,17 @@ void ViewportWindowObj::toolbar()
 
     // translate gizmo
     float iconSize = VIEWPORT_TOOLBAR_HEIGHT;
-    RImage iconAtlas = ctx.get_editor_icon_atlas();
+    RImage iconAtlas = mCtx.get_editor_icon_atlas();
     Rect iconRect = EditorIconAtlas::get_icon_rect(EDITOR_ICON_OFFSET);
     ui_push_image(iconAtlas, iconSize, iconSize, 0xFFFFFFFF, &iconRect);
     ui_top_user(this);
     ui_top_draw([](UIWidget widget, ScreenRenderComponent renderer, void* user) {
         auto* obj = (ViewportWindowObj*)user;
         if (obj->state.gizmoType == SCENE_OVERLAY_GIZMO_TRANSLATION)
-            renderer.draw_rect(widget.get_rect(), obj->ctx.get_theme().get_ui_theme().get_selection_color());
+            renderer.draw_rect(widget.get_rect(), obj->mCtx.get_theme().get_ui_theme().get_selection_color());
         UIImageWidget::on_draw(widget, renderer);
     });
-    if (ui_top_mouse_down(btn) && btn == MOUSE_BUTTON_LEFT)
+    if (ui_top_mouse_down(mouseVal, mousePos) && mouseVal.button() == MOUSE_BUTTON_LEFT)
         state.gizmoType = SCENE_OVERLAY_GIZMO_TRANSLATION;
     ui_pop();
 
@@ -139,10 +143,10 @@ void ViewportWindowObj::toolbar()
     ui_top_draw([](UIWidget widget, ScreenRenderComponent renderer, void* user) {
         auto* obj = (ViewportWindowObj*)user;
         if (obj->state.gizmoType == SCENE_OVERLAY_GIZMO_ROTATION)
-            renderer.draw_rect(widget.get_rect(), obj->ctx.get_theme().get_ui_theme().get_selection_color());
+            renderer.draw_rect(widget.get_rect(), obj->mCtx.get_theme().get_ui_theme().get_selection_color());
         UIImageWidget::on_draw(widget, renderer);
     });
-    if (ui_top_mouse_down(btn) && btn == MOUSE_BUTTON_LEFT)
+    if (ui_top_mouse_down(mouseVal, mousePos) && mouseVal.button() == MOUSE_BUTTON_LEFT)
         state.gizmoType = SCENE_OVERLAY_GIZMO_ROTATION;
     ui_pop();
 
@@ -152,33 +156,33 @@ void ViewportWindowObj::toolbar()
     ui_top_user(this);
     ui_top_draw([](UIWidget widget, ScreenRenderComponent renderer, void* user) {
         auto* obj = (ViewportWindowObj*)user;
-        UITheme theme = obj->ctx.get_theme().get_ui_theme();
+        UITheme theme = obj->mCtx.get_theme().get_ui_theme();
         if (obj->state.gizmoType == SCENE_OVERLAY_GIZMO_SCALE)
             renderer.draw_rect(widget.get_rect(), theme.get_selection_color());
         UIImageWidget::on_draw(widget, renderer);
     });
-    if (ui_top_mouse_down(btn) && btn == MOUSE_BUTTON_LEFT)
+    if (ui_top_mouse_down(mouseVal, mousePos) && mouseVal.button() == MOUSE_BUTTON_LEFT)
         state.gizmoType = SCENE_OVERLAY_GIZMO_SCALE;
     ui_pop();
 
     // play / pause button
-    bool isPlaying = ctx.is_playing();
+    bool isPlaying = mCtx.is_playing();
     color = isPlaying ? theme.get_stop_button_color() : theme.get_play_button_color();
     iconRect = EditorIconAtlas::get_icon_rect(isPlaying ? EDITOR_ICON_CLOSE : EDITOR_ICON_PLAY);
     ui_push_image(iconAtlas, iconSize, iconSize, color, &iconRect);
-    if (ui_top_mouse_down(btn) && btn == MOUSE_BUTTON_LEFT)
+    if (ui_top_mouse_down(mouseVal, mousePos) && mouseVal.button() == MOUSE_BUTTON_LEFT)
     {
         if (isPlaying)
-            ctx.stop_scene();
+            mCtx.stop_scene();
         else
-            ctx.play_scene();
+            mCtx.play_scene();
     }
     ui_pop();
 
     ui_pop();
 }
 
-void ViewportWindowObj::viewport_editor_imgui(ViewportState& state)
+void ViewportWindowObj::viewport_editor_imgui()
 {
     MouseButton btn;
     Vec2 pos;
@@ -215,21 +219,27 @@ void ViewportWindowObj::viewport_editor_imgui(ViewportState& state)
 
 void ViewportWindowObj::viewport_scene_imgui()
 {
-    MouseButton btn;
-    Vec2 pos;
+    MouseValue mouseVal;
+    Vec2 pos = state.sceneMousePos;
+    Vec2 editorMousePos;
 
-    if (!root.get_mouse_pos(pos))
+    if (pos.x < 0.0f || pos.y < 0.0f)
         return;
 
-    Scene scene = ctx.get_scene();
-    pos = Vec2(pos.x, pos.y - VIEWPORT_TOOLBAR_HEIGHT);
+    // forward input to running Scene.
+    Scene scene = mCtx.get_scene();
     WindowMousePositionEvent positionE(0, pos.x, pos.y);
     scene.input_screen_ui(&positionE);
 
-    if (ui_top_mouse_down(btn))
+    if (ui_top_mouse_down(mouseVal, editorMousePos))
     {
-        WindowMouseDownEvent mouseDownE(0, btn, 0);
+        WindowMouseDownEvent mouseDownE(0, mouseVal.button(), mouseVal.mods());
         scene.input_screen_ui(&mouseDownE);
+    }
+    if (ui_top_mouse_up(mouseVal, editorMousePos))
+    {
+        WindowMouseUpEvent mouseUpE(0, mouseVal.button(), mouseVal.mods());
+        scene.input_screen_ui(&mouseUpE);
     }
 }
 
@@ -249,7 +259,7 @@ void ViewportWindowObj::on_editor_event(const EditorEvent* event, void* user)
         return;
     }
 
-    Scene::Component subject = self.ctx.get_component(selectionEvent->component);
+    ComponentView subject = self.mCtx.get_component(selectionEvent->component);
     LD_ASSERT(subject);
 
     Mat4 worldMat4;
@@ -272,19 +282,12 @@ EditorWindow ViewportWindow::create(const EditorWindowInfo& windowI)
 {
     LD_PROFILE_SCOPE;
 
-    ViewportWindowObj* obj = heap_new<ViewportWindowObj>(MEMORY_USAGE_UI);
-    obj->ctx = windowI.ctx;
-    obj->space = windowI.space;
-    obj->root = obj->space.create_window(obj->space.get_root_id(), {}, {}, nullptr);
-    obj->root.layout();
-    obj->state.viewportExtent = obj->root.get_size();
-    obj->state.sceneExtent = Vec2(obj->state.viewportExtent.x, obj->state.viewportExtent.y - VIEWPORT_TOOLBAR_HEIGHT);
+    ViewportWindowObj* obj = heap_new<ViewportWindowObj>(MEMORY_USAGE_UI, windowI);
     obj->state.gizmoType = SCENE_OVERLAY_GIZMO_TRANSLATION;
 
-    obj->viewport2D.create(obj->ctx, obj->state.sceneExtent);
-    obj->viewport3D.create(obj->ctx, obj->state.sceneExtent);
+    obj->viewport2D.create(obj->ctx);
+    obj->viewport3D.create(obj->ctx);
 
-    obj->ctx.resize_scene(obj->state.sceneExtent);
     obj->ctx.add_observer(&ViewportWindowObj::on_editor_event, obj);
 
     return {obj};
@@ -327,6 +330,8 @@ Vec2 ViewportWindow::get_size()
 
 Vec2 ViewportWindow::get_scene_size()
 {
+    LD_ASSERT(mObj->state.sceneExtent.x > 0.0f && mObj->state.sceneExtent.y > 0.0f);
+
     return mObj->state.sceneExtent;
 }
 
