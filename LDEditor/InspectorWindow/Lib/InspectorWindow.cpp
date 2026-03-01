@@ -15,15 +15,21 @@ void InspectorWindowObj::on_imgui(float delta)
 {
     LD_PROFILE_SCOPE;
 
-    root.set_color(root.get_theme().get_surface_color());
-    ui_push_window(root);
-    ui_top_layout_child_gap(4.0f);
+    EditorTheme theme = mCtx.get_theme();
+    UILayoutInfo layoutI = mCtx.make_editor_window_layout(mRootRect.get_size());
+    layoutI.childGap = 4.0f;
 
-    Scene::Component comp = ctx.get_component(subjectSUID);
+    ui_workspace_begin();
+    ui_push_window("ROOT");
+    ui_window_set_color(theme.get_ui_theme().get_surface_color());
+    ui_top_layout(layoutI);
+
+    ComponentView comp = mCtx.get_component(subjectSUID);
     if (comp)
         eui_inspect_component(*this, comp);
 
     ui_pop_window();
+    ui_workspace_end();
 }
 
 void InspectorWindowObj::request_new_asset(AssetType type, AssetID currentID)
@@ -50,11 +56,7 @@ void InspectorWindowObj::on_editor_event(const EditorEvent* event, void* user)
 
 EditorWindow InspectorWindow::create(const EditorWindowInfo& windowI)
 {
-    InspectorWindowObj* obj = heap_new<InspectorWindowObj>(MEMORY_USAGE_UI);
-    obj->ctx = windowI.ctx;
-    obj->ctx.add_observer(&InspectorWindowObj::on_editor_event, obj);
-    obj->space = windowI.space;
-    obj->root = obj->space.create_window(obj->space.get_root_id(), obj->ctx.make_vbox_layout(), {}, nullptr);
+    InspectorWindowObj* obj = heap_new<InspectorWindowObj>(MEMORY_USAGE_UI, windowI);
 
     return EditorWindow((EditorWindowObj*)obj);
 }

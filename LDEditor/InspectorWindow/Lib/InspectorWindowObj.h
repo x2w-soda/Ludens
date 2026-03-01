@@ -9,13 +9,17 @@ namespace LD {
 /// @brief Editor inspector window implementation.
 struct InspectorWindowObj : EditorWindowObj
 {
-    EditorContext ctx;
-    UIWorkspace space;
-    UIWindow root;
     SUID subjectSUID = 0; // subject component being inspected
-    Impulse isRequestingNewAsset;
-    AssetType requestAssetType;
-    AssetID oldAssetID;
+    Impulse isRequestingNewAsset{};
+    AssetType requestAssetType{};
+    AssetID oldAssetID = 0;
+    EditorContext ctx{};
+
+    InspectorWindowObj(const EditorWindowInfo& info)
+        : EditorWindowObj(info), ctx(info.ctx)
+    {
+        mCtx.add_observer(&InspectorWindowObj::on_editor_event, this);
+    }
 
     static void on_editor_event(const EditorEvent* event, void* user);
 

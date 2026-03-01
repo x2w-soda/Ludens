@@ -7,6 +7,6 @@ namespace LD {
 
 struct InspectorWindowObj;
 
-void eui_inspect_component(InspectorWindowObj& self, Scene::Component comp);
+void eui_inspect_component(InspectorWindowObj& self, ComponentView comp);
 
 } // namespace LD

@@ -8,24 +8,29 @@
 
 namespace LD {
 
-static void eui_inspect_audio_source_component(InspectorWindowObj& self, Scene::Component comp);
-static void eui_inspect_transform_component(InspectorWindowObj& self, Scene::Component comp);
-static void eui_inspect_camera_component(InspectorWindowObj& self, Scene::Component comp);
-static void eui_inspect_mesh_component(InspectorWindowObj& self, Scene::Component comp);
-static void eui_inspect_sprite_2d_component(InspectorWindowObj& self, Scene::Component comp);
+static void eui_inspect_audio_source_component(InspectorWindowObj& self, ComponentView comp);
+static void eui_inspect_transform_component(InspectorWindowObj& self, ComponentView comp);
+static void eui_inspect_transform_2d_component(InspectorWindowObj& self, ComponentView comp);
+static void eui_inspect_camera_component(InspectorWindowObj& self, ComponentView comp);
+static void eui_inspect_camera_2d_component(InspectorWindowObj& self, ComponentView comp);
+static void eui_inspect_mesh_component(InspectorWindowObj& self, ComponentView comp);
+static void eui_inspect_sprite_2d_component(InspectorWindowObj& self, ComponentView comp);
 
-static void (*sEUIInspectFnTable[COMPONENT_TYPE_ENUM_COUNT])(InspectorWindowObj& self, Scene::Component comp) = {
+static void (*sEUIInspectFnTable[])(InspectorWindowObj& self, ComponentView comp) = {
     nullptr,
     &eui_inspect_audio_source_component,
     &eui_inspect_transform_component,
+    &eui_inspect_transform_2d_component,
     &eui_inspect_camera_component,
+    &eui_inspect_camera_2d_component,
     &eui_inspect_mesh_component,
     &eui_inspect_sprite_2d_component,
+    nullptr,
 };
 
 static_assert(sizeof(sEUIInspectFnTable) / sizeof(*sEUIInspectFnTable) == COMPONENT_TYPE_ENUM_COUNT);
 
-void eui_inspect_audio_source_component(InspectorWindowObj& self, Scene::Component comp)
+void eui_inspect_audio_source_component(InspectorWindowObj& self, ComponentView comp)
 {
     LD_ASSERT(comp && comp.type() == COMPONENT_TYPE_AUDIO_SOURCE);
 
@@ -33,14 +38,14 @@ void eui_inspect_audio_source_component(InspectorWindowObj& self, Scene::Compone
     AssetManager AM = self.ctx.get_asset_manager();
     const float rowHeight = theme.get_text_row_height();
     const float propNameWidth = theme.get_text_label_width();
-    Scene::AudioSource source(comp);
+    AudioSourceView source(comp);
     LD_ASSERT(source);
     AssetID clipID = source.get_clip_asset();
 
     AudioClipAsset clipA(AM.get_asset(clipID).unwrap());
-    LD_ASSERT(clipA);
+    const char* name = clipA ? clipA.get_name() : nullptr;
 
-    if (eui_asset_slot(theme, ASSET_TYPE_AUDIO_CLIP, clipID, clipA.get_name()))
+    if (eui_asset_slot(theme, ASSET_TYPE_AUDIO_CLIP, clipID, name))
         self.request_new_asset(ASSET_TYPE_AUDIO_CLIP, clipID);
 
     UILayoutInfo layoutI{};
@@ -74,7 +79,7 @@ void eui_inspect_audio_source_component(InspectorWindowObj& self, Scene::Compone
     ui_pop();
 }
 
-void eui_inspect_transform_component(InspectorWindowObj& self, Scene::Component comp)
+void eui_inspect_transform_component(InspectorWindowObj& self, ComponentView comp)
 {
     LD_ASSERT(comp && comp.type() == COMPONENT_TYPE_TRANSFORM);
 
@@ -86,7 +91,18 @@ void eui_inspect_transform_component(InspectorWindowObj& self, Scene::Component 
     // comp.set_transform(transform);
 }
 
-void eui_inspect_camera_component(InspectorWindowObj& self, Scene::Component comp)
+void eui_inspect_transform_2d_component(InspectorWindowObj& self, ComponentView comp)
+{
+    LD_ASSERT(comp && comp.type() == COMPONENT_TYPE_TRANSFORM);
+
+    EditorTheme editorTheme = self.ctx.get_settings().get_theme();
+
+    Transform2D transform;
+    comp.get_transform_2d(transform);
+    eui_transform_2d_edit(editorTheme, &transform);
+}
+
+void eui_inspect_camera_component(InspectorWindowObj& self, ComponentView comp)
 {
     LD_ASSERT(comp && comp.type() == COMPONENT_TYPE_CAMERA);
 
@@ -96,18 +112,29 @@ void eui_inspect_camera_component(InspectorWindowObj& self, Scene::Component com
     bool ok = comp.get_transform(transform);
     LD_ASSERT(ok);
     eui_transform_edit(editorTheme, &transform);
-    //comp.set_transform(transform);
+    // comp.set_transform(transform);
 
     // TODO:
 }
 
-static void eui_inspect_mesh_component(InspectorWindowObj& self, Scene::Component comp)
+void eui_inspect_camera_2d_component(InspectorWindowObj& self, ComponentView comp)
+{
+    LD_ASSERT(comp && comp.type() == COMPONENT_TYPE_CAMERA_2D);
+
+    EditorTheme editorTheme = self.ctx.get_settings().get_theme();
+
+    Transform2D transform;
+    comp.get_transform_2d(transform);
+    eui_transform_2d_edit(editorTheme, &transform);
+}
+
+static void eui_inspect_mesh_component(InspectorWindowObj& self, ComponentView comp)
 {
     LD_ASSERT(comp && comp.type() == COMPONENT_TYPE_MESH);
 
     EditorTheme editorTheme = self.ctx.get_theme();
     AssetManager AM = self.ctx.get_asset_manager();
-    Scene::Mesh mesh(comp);
+    MeshView mesh(comp);
     LD_ASSERT(mesh);
 
     TransformEx transform{};
@@ -118,19 +145,19 @@ static void eui_inspect_mesh_component(InspectorWindowObj& self, Scene::Componen
 
     AssetID assetID = mesh.get_mesh_asset();
     MeshAsset asset = (MeshAsset)AM.get_asset(assetID, ASSET_TYPE_MESH);
-    LD_ASSERT(asset);
+    const char* name = asset ? asset.get_name() : nullptr;
 
-    if (eui_asset_slot(editorTheme, ASSET_TYPE_MESH, assetID, asset.get_name()))
+    if (eui_asset_slot(editorTheme, ASSET_TYPE_MESH, assetID, name))
         self.request_new_asset(ASSET_TYPE_MESH, assetID);
 }
 
-void eui_inspect_sprite_2d_component(InspectorWindowObj& self, Scene::Component comp)
+void eui_inspect_sprite_2d_component(InspectorWindowObj& self, ComponentView comp)
 {
     LD_ASSERT(comp && comp.type() == COMPONENT_TYPE_SPRITE_2D);
 
     EditorTheme editorTheme = self.ctx.get_theme();
     AssetManager AM = self.ctx.get_asset_manager();
-    Scene::Sprite2D sprite(comp);
+    Sprite2DView sprite(comp);
     LD_ASSERT(sprite);
 
     Transform2D transform{};
@@ -147,7 +174,7 @@ void eui_inspect_sprite_2d_component(InspectorWindowObj& self, Scene::Component 
         self.request_new_asset(ASSET_TYPE_TEXTURE_2D, assetID);
 }
 
-void eui_inspect_component(InspectorWindowObj& self, Scene::Component comp)
+void eui_inspect_component(InspectorWindowObj& self, ComponentView comp)
 {
     LD_ASSERT(comp);
 
