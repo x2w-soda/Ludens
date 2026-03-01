@@ -514,6 +514,7 @@ static void vk_command_list_cmd_bind_compute_sets(RCommandListObj* self, RPipeli
 static void vk_command_list_cmd_bind_vertex_buffers(RCommandListObj* self, uint32_t firstBinding, uint32_t bindingCount, RBuffer* buffers);
 static void vk_command_list_cmd_bind_index_buffer(RCommandListObj* self, RBuffer buffer, RIndexType indexType);
 static void vk_command_list_cmd_dispatch(RCommandListObj* self, uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ);
+static void vk_command_list_cmd_set_viewport(RCommandListObj* baseSelf, const Rect& viewport);
 static void vk_command_list_cmd_set_scissor(RCommandListObj* self, const Rect& scissor);
 static void vk_command_list_cmd_draw(RCommandListObj* self, const RDrawInfo& drawI);
 static void vk_command_list_cmd_draw_indexed(RCommandListObj* self, const RDrawIndexedInfo& drawI);
@@ -540,6 +541,7 @@ static const RCommandListAPI sRCommandListVKAPI = {
     .cmd_bind_vertex_buffers = &vk_command_list_cmd_bind_vertex_buffers,
     .cmd_bind_index_buffer = &vk_command_list_cmd_bind_index_buffer,
     .cmd_dispatch = &vk_command_list_cmd_dispatch,
+    .cmd_set_viewport = &vk_command_list_cmd_set_viewport,
     .cmd_set_scissor = &vk_command_list_cmd_set_scissor,
     .cmd_draw = &vk_command_list_cmd_draw,
     .cmd_draw_indexed = &vk_command_list_cmd_draw_indexed,
@@ -2362,7 +2364,10 @@ static void vk_command_list_cmd_begin_pass(RCommandListObj* baseSelf, const RPas
         .pClearValues = clearValues.data(),
     };
 
-    vkCmdBeginRenderPass(self->vk.handle, &vkBI, VK_SUBPASS_CONTENTS_INLINE);
+    {
+        LD_PROFILE_SCOPE_NAME("vkCmdBeginRenderPass");
+        vkCmdBeginRenderPass(self->vk.handle, &vkBI, VK_SUBPASS_CONTENTS_INLINE);
+    }
 
     // NOTE: By default all draw calls will apply to the full framebuffer extent
     //       unless specified otherwise, in which case the user is responsible for
@@ -2469,6 +2474,14 @@ static void vk_command_list_cmd_dispatch(RCommandListObj* baseSelf, uint32_t gro
     auto* self = (RCommandListVKObj*)baseSelf;
 
     vkCmdDispatch(self->vk.handle, groupCountX, groupCountY, groupCountZ);
+}
+
+static void vk_command_list_cmd_set_viewport(RCommandListObj* baseSelf, const Rect& viewport)
+{
+    auto* self = (RCommandListVKObj*)baseSelf;
+
+    VkViewport vkViewport = RUtil::make_viewport(viewport);
+    vkCmdSetViewport(self->vk.handle, 0, 1, &vkViewport);
 }
 
 static void vk_command_list_cmd_set_scissor(RCommandListObj* baseSelf, const Rect& scissor)
@@ -2883,7 +2896,10 @@ static void vk_queue_submit(RQueueObj* baseSelf, const RSubmitInfo& submitI, RFe
         sLog.debug("- signal {:p}", (void*)submit.pSignalSemaphores[i]);
     */
 
-    VK_CHECK(vkQueueSubmit(self->vk.handle, 1, &submit, fenceHandle));
+    {
+        LD_PROFILE_SCOPE_NAME("vkQueueSubmit");
+        VK_CHECK(vkQueueSubmit(self->vk.handle, 1, &submit, fenceHandle));
+    }
 }
 
 static void enumerate_instance_extensions(Vector<VkExtensionProperties>& supportedInstanceExts, HashSet<std::string>& supportedInstanceExtSet)

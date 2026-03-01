@@ -107,6 +107,7 @@ LD_VEC2_UNARY(-);
 
 using Vec2 = TVec2<float>;
 using IVec2 = TVec2<int>;
+using UVec2 = TVec2<uint32_t>;
 using DVec2 = TVec2<double>;
 
 static_assert(LD::IsTrivial<Vec2>);

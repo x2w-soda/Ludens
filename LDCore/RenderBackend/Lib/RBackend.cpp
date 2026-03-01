@@ -930,6 +930,10 @@ void RCommandList::reset()
 
 void RCommandList::cmd_begin_pass(const RPassBeginInfo& passBI)
 {
+    LD_PROFILE_SCOPE;
+
+    mObj->passExtent = UVec2(passBI.width, passBI.height);
+
     // save pass information for later, used to invalidate graphics pipelines in cmd_bind_graphics_pipeline
     RUtil::save_pass_info(passBI.pass, mObj->currentPass);
 
@@ -1083,6 +1087,19 @@ void RCommandList::cmd_dispatch(uint32_t groupCountX, uint32_t groupCountY, uint
 
     if (mObj->api)
         mObj->api->cmd_dispatch(mObj, groupCountX, groupCountY, groupCountZ);
+}
+
+void RCommandList::cmd_set_viewport(const Rect& viewport)
+{
+    if (mObj->captureLA)
+    {
+        auto* cmd = (RCommandSetViewport*)mObj->captureLA.allocate(sizeof(RCommandSetViewport));
+        new (cmd) RCommandSetViewport(viewport);
+        mObj->captures.push_back((const RCommandType*)cmd);
+    }
+
+    if (mObj->api)
+        mObj->api->cmd_set_viewport(mObj, viewport);
 }
 
 void RCommandList::cmd_set_scissor(const Rect& scissor)

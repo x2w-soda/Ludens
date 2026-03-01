@@ -408,6 +408,7 @@ static constexpr void (*sCommandTable[])(const RCommandType*, RCommandListGLObj*
     &gl_command_bind_compute_sets,
     &gl_command_bind_vertex_buffers,
     &gl_command_bind_index_buffer,
+    nullptr,
     &gl_command_set_scissor,
     &gl_command_draw,
     &gl_command_draw_indexed,

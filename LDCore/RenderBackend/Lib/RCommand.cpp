@@ -80,6 +80,11 @@ RCommandDispatch::RCommandDispatch(uint32_t groupCountX, uint32_t groupCountY, u
 {
 }
 
+RCommandSetViewport::RCommandSetViewport(const Rect& viewport)
+    : viewport(viewport)
+{
+}
+
 RCommandSetScissor::RCommandSetScissor(const Rect& scissor)
     : scissor(scissor)
 {

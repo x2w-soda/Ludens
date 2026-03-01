@@ -66,6 +66,8 @@ bool clone_sprite_2d_component(SceneObj* scene, ComponentBase** dstData, Compone
     dstSprite.set_pivot(srcSprite.get_pivot());
     dstSprite.set_region(srcSprite.get_region());
     dstSprite.set_z_depth(srcSprite.get_z_depth());
+    
+    ((Sprite2DComponent*)dstData)->transform = ((Sprite2DComponent*)srcData)->transform;
 
     return true;
 }

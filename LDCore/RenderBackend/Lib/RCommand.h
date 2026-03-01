@@ -21,6 +21,7 @@ enum RCommandType
     RCOMMAND_BIND_COMPUTE_SETS,
     RCOMMAND_BIND_VERTEX_BUFFERS,
     RCOMMAND_BIND_INDEX_BUFFER,
+    RCOMMAND_SET_VIEWPORT,
     RCOMMAND_SET_SCISSOR,
     RCOMMAND_DRAW,
     RCOMMAND_DRAW_INDEXED,
@@ -141,6 +142,16 @@ struct RCommandDispatch
 
     RCommandDispatch() = delete;
     RCommandDispatch(uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ);
+};
+
+/// @brief Capture of RCOMMAND_SET_VIEWPORT
+struct RCommandSetViewport
+{
+    const RCommandType type = RCOMMAND_SET_VIEWPORT;
+    Rect viewport;
+
+    RCommandSetViewport() = delete;
+    RCommandSetViewport(const Rect& viewport);
 };
 
 /// @brief Capture of RCOMMAND_SET_SCISSOR

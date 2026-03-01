@@ -462,6 +462,9 @@ struct RCommandList : RHandle<struct RCommandListObj>
     /// @brief dispatch compute workgroup
     void cmd_dispatch(uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ);
 
+    /// @brief Set viewport screen rect for subsequent draw calls
+    void cmd_set_viewport(const Rect& viewport);
+
     /// @brief set scissor rect for subsequent draw calls
     void cmd_set_scissor(const Rect& scissor);
 

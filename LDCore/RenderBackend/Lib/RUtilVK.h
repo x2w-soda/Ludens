@@ -13,6 +13,18 @@ struct RPassInfo;
 
 namespace RUtil {
 
+inline VkViewport make_viewport(const Rect& screenRect)
+{
+    return VkViewport{
+        .x = screenRect.x,
+        .y = screenRect.y,
+        .width = screenRect.w,
+        .height = screenRect.h,
+        .minDepth = 0.0f,
+        .maxDepth = 1.0f,
+    };
+}
+
 inline VkViewport make_viewport(uint32_t width, uint32_t height)
 {
     return VkViewport{
