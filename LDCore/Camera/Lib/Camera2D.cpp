@@ -15,6 +15,19 @@ struct Camera2DObj
     bool isProjDirty = true;
 };
 
+Camera2D Camera2D::create(const Camera2DInfo& info)
+{
+    Camera2DObj* obj = (Camera2DObj*)heap_new<Camera2DObj>(MEMORY_USAGE_MISC);
+    obj->halfExtent = info.extent * 0.5f;
+    obj->zoom = info.zoom;
+    obj->rot = info.rotation;
+    obj->pos = info.position;
+    obj->isViewDirty = true;
+    obj->isProjDirty = true;
+
+    return Camera2D(obj);
+}
+
 Camera2D Camera2D::create(const Vec2& extent)
 {
     Camera2DObj* obj = (Camera2DObj*)heap_new<Camera2DObj>(MEMORY_USAGE_MISC);

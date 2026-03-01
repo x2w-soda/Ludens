@@ -18,6 +18,7 @@ struct MeshComponent;
 struct Sprite2DComponent;
 struct ScreenUIComponent;
 struct CameraComponent;
+struct Camera2DComponent;
 
 /// @brief Get static C string of log channel used by lua scripts.
 const char* get_lua_script_log_channel_name();
@@ -116,9 +117,6 @@ public:
 
     /// @brief Get 3D camera to render Scene world contents.
     Camera get_camera();
-
-    /// @brief Get 2D camera to render Scene screen contents.
-    Camera2D get_camera_2d();
 
     /// @brief In practice each Camera2DComponent will have its own viewport region.
     Vector<Viewport> get_screen_regions();
@@ -231,6 +229,23 @@ public:
 
 private:
     CameraComponent* mCamera = nullptr;
+};
+
+/// @brief Public interface for camera 2D components.
+class Camera2DView : public ComponentView
+{
+public:
+    Camera2DView() = delete;
+    Camera2DView(ComponentView comp);
+    Camera2DView(Camera2DComponent* comp);
+
+    bool load(const Camera2DInfo& info, const Rect& viewport, std::string& err);
+
+    Camera2DInfo get_info();
+    Rect get_viewport();
+
+private:
+    Camera2DComponent* mCamera = nullptr;
 };
 
 /// @brief Public interface for mesh components.

@@ -7,8 +7,17 @@
 
 namespace LD {
 
+struct Camera2DInfo
+{
+    Vec2 position;
+    Vec2 extent;
+    float zoom = 1.0f;
+    float rotation = 0.0f; // degrees
+};
+
 struct Camera2D : Handle<struct Camera2DObj>
 {
+    static Camera2D create(const Camera2DInfo& info);
     static Camera2D create(const Vec2& extent);
     static void destroy(Camera2D camera);
 

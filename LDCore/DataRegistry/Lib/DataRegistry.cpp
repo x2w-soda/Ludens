@@ -39,6 +39,7 @@ static ComponentMeta sComponentTable[] = {
     { COMPONENT_TYPE_TRANSFORM,      sizeof(TransformComponent),     "TransformComponent",   COMPONENT_TYPE_FLAG_TRANSFORM_EX, nullptr },
     { COMPONENT_TYPE_TRANSFORM_2D,   sizeof(Transform2DComponent),   "Transform2DComponent", COMPONENT_TYPE_FLAG_TRANSFORM_2D, nullptr },
     { COMPONENT_TYPE_CAMERA,         sizeof(CameraComponent),        "CameraComponent",      COMPONENT_TYPE_FLAG_TRANSFORM_EX, nullptr },
+    { COMPONENT_TYPE_CAMERA_2D,      sizeof(Camera2DComponent),      "Camera2DComponent",    COMPONENT_TYPE_FLAG_TRANSFORM_2D, nullptr },
     { COMPONENT_TYPE_MESH,           sizeof(MeshComponent),          "MeshComponent",        COMPONENT_TYPE_FLAG_TRANSFORM_EX, &get_mesh_asset_id },
     { COMPONENT_TYPE_SPRITE_2D,      sizeof(Sprite2DComponent),      "Sprite2DComponent",    COMPONENT_TYPE_FLAG_TRANSFORM_2D, nullptr },
     { COMPONENT_TYPE_SCREEN_UI,      sizeof(ScreenUIComponent),      "ScreenUIComponent",    0, nullptr },
@@ -50,6 +51,7 @@ static_assert(LD::IsDataComponent<AudioSourceComponent>);
 static_assert(LD::IsDataComponent<TransformComponent>);
 static_assert(LD::IsDataComponent<Transform2DComponent>);
 static_assert(LD::IsDataComponent<CameraComponent>);
+static_assert(LD::IsDataComponent<Camera2DComponent>);
 static_assert(LD::IsDataComponent<MeshComponent>);
 static_assert(LD::IsDataComponent<Sprite2DComponent>);
 static_assert(LD::IsDataComponent<ScreenUIComponent>);
@@ -155,7 +157,6 @@ static bool duplicate_subtree(DataRegistry dst, CUID dstParentID, DataRegistry s
     ComponentBase* dstBase = *dstData;
     dstBase->suid = srcBase->suid;
     dstBase->scriptAssetID = srcBase->scriptAssetID;
-    dstBase->localMat4 = srcBase->localMat4;
     dstBase->worldMat4 = srcBase->worldMat4;
     dst.unwrap()->suidToCompData[dstBase->suid] = dstData;
 
@@ -256,19 +257,20 @@ bool DataRegistryObj::get_component_world_mat4(ComponentBase* base, Mat4& mat4)
 
         TransformEx transform;
         Transform2D transform2D;
+        Mat4 localMat4;
         if (DataRegistry(this).get_component_transform(base->cuid, transform))
         {
             transform.rotation = Quat::from_euler(transform.rotationEuler);
-            base->localMat4 = transform.as_mat4();
+            localMat4 = transform.as_mat4();
         }
         else if (DataRegistry(this).get_component_transform_2d(base->cuid, transform2D))
         {
-            base->localMat4 = transform2D.as_mat4();
+            localMat4 = transform2D.as_mat4();
         }
         else
             return false;
 
-        base->worldMat4 = parentWorldMat4 * base->localMat4;
+        base->worldMat4 = parentWorldMat4 * localMat4;
         base->flags &= ~COMPONENT_FLAG_TRANSFORM_DIRTY_BIT;
     }
 

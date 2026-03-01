@@ -16,6 +16,7 @@
 #include <Ludens/Asset/AssetRegistry.h>
 #include <Ludens/AudioSystem/AudioSystem.h>
 #include <Ludens/Camera/Camera.h>
+#include <Ludens/Camera/Camera2D.h>
 #include <Ludens/RenderBackend/RBackend.h>
 #include <Ludens/RenderSystem/RenderSystem.h>
 #include <Ludens/UI/UIWindow.h>
@@ -37,7 +38,6 @@ enum ComponentFlagBit : uint32_t
 /// @brief Data component base members, hierarchy representation.
 struct ComponentBase
 {
-    Mat4 localMat4;        /// transform matrix relative to parent
     Mat4 worldMat4;        /// world space model matrix
     char* name;            /// user defined name
     ComponentBase* next;   /// next sibling component
@@ -82,6 +82,14 @@ struct CameraComponent
     TransformEx transform;
     Camera camera;
     bool isMainCamera;
+};
+
+struct Camera2DComponent
+{
+    ComponentBase* base;
+    Transform2D transform;
+    Camera2D camera;
+    Rect viewport; // normalized render region
 };
 
 /// @brief Render data for meshes that do not deform.

@@ -28,6 +28,7 @@ public:
 
     static bool save_audio_source_component(SceneSchemaSaver& saver, ComponentView comp);
     static bool save_camera_component(SceneSchemaSaver& saver, ComponentView comp);
+    static bool save_camera_2d_component(SceneSchemaSaver& saver, ComponentView comp);
     static bool save_mesh_component(SceneSchemaSaver& saver, ComponentView comp);
     static bool save_sprite_2d_component(SceneSchemaSaver& saver, ComponentView comp);
     static bool save_screen_ui_component(SceneSchemaSaver& saver, ComponentView comp);
@@ -55,6 +56,7 @@ public:
 
     static ComponentView load_audio_source_component(SceneSchemaLoader& loader, SUID compSUID, const char* compName);
     static ComponentView load_camera_component(SceneSchemaLoader& loader, SUID compSUID, const char* compName);
+    static ComponentView load_camera_2d_component(SceneSchemaLoader& loader, SUID compSUID, const char* compName);
     static ComponentView load_mesh_component(SceneSchemaLoader& loader, SUID compSUID, const char* compName);
     static ComponentView load_sprite_2d_component(SceneSchemaLoader& loader, SUID compSUID, const char* compName);
     static ComponentView load_screen_ui_component(SceneSchemaLoader& loader, SUID compSUID, const char* compName);
@@ -80,6 +82,7 @@ struct
     {COMPONENT_TYPE_TRANSFORM,      "Transform",   nullptr,                                           nullptr},
     {COMPONENT_TYPE_TRANSFORM_2D,   "Transform2D", nullptr,                                           nullptr},
     {COMPONENT_TYPE_CAMERA,         "Camera",      &SceneSchemaLoader::load_camera_component,         &SceneSchemaSaver::save_camera_component},
+    {COMPONENT_TYPE_CAMERA_2D,      "Camera2D",    &SceneSchemaLoader::load_camera_2d_component,      &SceneSchemaSaver::save_camera_2d_component},
     {COMPONENT_TYPE_MESH,           "Mesh",        &SceneSchemaLoader::load_mesh_component,           &SceneSchemaSaver::save_mesh_component},
     {COMPONENT_TYPE_SPRITE_2D,      "Sprite2D",    &SceneSchemaLoader::load_sprite_2d_component,      &SceneSchemaSaver::save_sprite_2d_component},
     {COMPONENT_TYPE_SCREEN_UI,      "ScreenUI",    &SceneSchemaLoader::load_screen_ui_component,      &SceneSchemaSaver::save_screen_ui_component},
@@ -223,6 +226,43 @@ ComponentView SceneSchemaLoader::load_camera_component(SceneSchemaLoader& loader
     }
 
     camera.set_transform(transform);
+
+    return ComponentView(camera.data());
+}
+
+ComponentView SceneSchemaLoader::load_camera_2d_component(SceneSchemaLoader& loader, SUID compSUID, const char* compName)
+{
+    Scene scene = loader.mScene;
+    TOMLReader reader = loader.mReader;
+    LD_ASSERT(scene && reader);
+
+    Camera2DView camera(scene.create_component_serial(COMPONENT_TYPE_CAMERA_2D, compName, (SUID)0, compSUID));
+    if (!camera)
+        return {};
+
+    Camera2DInfo info{};
+    if (!TOMLUtil::read_vec2(reader, SCENE_SCHEMA_KEY_CAMERA_2D_EXTENT, info.extent))
+        return {};
+
+    if (!reader.read_f32(SCENE_SCHEMA_KEY_CAMERA_2D_ZOOM, info.zoom))
+        return {};
+
+    Transform2D transform{};
+    if (!TOMLUtil::read_transform_2d(reader, SCENE_SCHEMA_KEY_COMPONENT_TRANSFORM, transform))
+        return {};
+
+    info.position = transform.position;
+    info.rotation = transform.rotation;
+
+    Rect viewport;
+    if (!TOMLUtil::read_rect(reader, SCENE_SCHEMA_KEY_CAMERA_2D_VIEWPORT, viewport))
+        return {};
+
+    std::string err;
+    if (!camera.load(info, viewport, err))
+        return {};
+
+    camera.set_transform_2d(transform);
 
     return ComponentView(camera.data());
 }
@@ -430,6 +470,30 @@ bool SceneSchemaSaver::save_camera_component(SceneSchemaSaver& saver, ComponentV
 
         writer.end_inline_table();
     }
+
+    return true;
+}
+
+bool SceneSchemaSaver::save_camera_2d_component(SceneSchemaSaver& saver, ComponentView comp)
+{
+    LD_ASSERT(saver.mScene && saver.mWriter && comp);
+
+    Camera2DView camera(comp);
+    if (!camera)
+        return false;
+
+    Camera2DInfo info = camera.get_info();
+    TOMLWriter writer = saver.mWriter;
+    Transform2D transform;
+    transform.scale = Vec2(1.0f); // immutable
+    transform.rotation = info.rotation;
+    transform.position = info.position;
+
+    if (!TOMLUtil::write_transform_2d(writer, SCENE_SCHEMA_KEY_COMPONENT_TRANSFORM, transform) ||
+        !TOMLUtil::write_vec2(writer, SCENE_SCHEMA_KEY_CAMERA_2D_EXTENT, info.extent) ||
+        !TOMLUtil::write_rect(writer, SCENE_SCHEMA_KEY_CAMERA_2D_VIEWPORT, camera.get_viewport()) ||
+        !writer.key(SCENE_SCHEMA_KEY_CAMERA_2D_ZOOM).write_f32(info.zoom))
+        return false;
 
     return true;
 }

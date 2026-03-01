@@ -19,6 +19,7 @@
 #include "SceneObj.h"
 
 #include "Component/AudioSourceComponent.h"
+#include "Component/Camera2DComponent.h"
 #include "Component/CameraComponent.h"
 #include "Component/MeshComponent.h"
 #include "Component/ScreenUIComponent.h"
@@ -60,6 +61,7 @@ static SceneComponentMeta sSceneComponents[] = {
     {COMPONENT_TYPE_TRANSFORM,    nullptr,                      nullptr,                       nullptr,                        nullptr,                      nullptr},
     {COMPONENT_TYPE_TRANSFORM_2D, nullptr,                      nullptr,                       nullptr,                        nullptr,                      nullptr},
     {COMPONENT_TYPE_CAMERA,       &init_camera_component,       &clone_camera_component,       &unload_camera_component,       &startup_camera_component,    &cleanup_camera_component},
+    {COMPONENT_TYPE_CAMERA_2D,    &init_camera_2d_component,    &clone_camera_2d_component,    &unload_camera_2d_component,    &startup_camera_2d_component, &cleanup_camera_2d_component},
     {COMPONENT_TYPE_MESH,         &init_mesh_component,         &clone_mesh_component,         &unload_mesh_component,         nullptr,                      nullptr},
     {COMPONENT_TYPE_SPRITE_2D,    &init_sprite_2d_component,    &clone_sprite_2d_component,    &unload_sprite_2d_component,    nullptr,                      nullptr},
     {COMPONENT_TYPE_SCREEN_UI,    &init_screen_ui_component,    &clone_screen_ui_component,    &unload_screen_ui_component,    &startup_screen_ui_component, &cleanup_screen_ui_component},
@@ -196,6 +198,10 @@ bool SceneObj::load_subtree_from_backup(ComponentBase** dstData, ComponentBase**
     LD_ASSERT(srcBase->type == dstBase->type);
     LD_ASSERT(srcBase->suid == dstBase->suid);
     LD_ASSERT((std::string(dstBase->name) == std::string(srcBase->name)));
+
+    // TODO: init should not override Transform...
+    sSceneComponents[(int)dstBase->type].init(dstData);
+    *dstData = dstBase;
 
     bool ok = sSceneComponents[(int)dstBase->type].clone(sScene, dstData, srcData, err);
     LD_ASSERT(ok);
@@ -556,6 +562,22 @@ void Scene::update(const Vec2& screenExtent, float delta)
         mainCamera.set_target(cameraC->transform.position + forward);
     }
 
+    for (auto it = mObj->registry.get_components(COMPONENT_TYPE_CAMERA_2D); it; ++it)
+    {
+        auto* cameraC = (Camera2DComponent*)it.data();
+        const ComponentBase* base = cameraC->base;
+
+        Mat4 worldMat4;
+        bool ok = mObj->registry.get_component_world_mat4(base->cuid, worldMat4);
+        LD_ASSERT(ok);
+        Vec2 worldPos(worldMat4[3][0], worldMat4[3][1]);
+
+        float rotRadians = LD_ATAN2(worldMat4[0][1], worldMat4[0][0]);
+
+        cameraC->camera.set_position(worldPos);
+        cameraC->camera.set_rotation(LD_TO_DEGREES(rotRadians));
+    }
+
     // any heap allocations for audio is done on main thread.
     mObj->audioSystemCache.update();
 }
@@ -587,18 +609,23 @@ Camera Scene::get_camera()
     return {};
 }
 
-Camera2D Scene::get_camera_2d()
-{
-    // TODO: one main Camera2DComponent
-
-    return {};
-}
-
 Vector<Viewport> Scene::get_screen_regions()
 {
-    // TODO: one Viewport per Camera2DComponent, fallback to single fullscreen viewport?
-
     Vector<Viewport> viewports;
+
+    // one Viewport per Camera2DComponent.
+    for (auto it = mObj->registry.get_components(COMPONENT_TYPE_CAMERA_2D); it; ++it)
+    {
+        Camera2DComponent* comp = (Camera2DComponent*)it.data();
+        Viewport viewport = comp->camera.get_viewport();
+        viewport.region = comp->viewport;
+        viewports.push_back(viewport);
+    }
+
+    if (!viewports.empty())
+        return viewports;
+
+    // if no Camera2DComponents are present, fallback to single fullscreen viewport.
     viewports.push_back(Viewport::from_extent(mObj->extent));
     return viewports;
 }
@@ -626,7 +653,7 @@ ComponentView Scene::create_component_serial(ComponentType type, const char* nam
     SUID compSUID = hintSUID;
 
     if (compSUID && !try_get_suid(compSUID)) // already registered
-        return {}; 
+        return {};
 
     if (!compSUID)
         compSUID = get_suid();

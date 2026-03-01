@@ -27,6 +27,8 @@ set(MODULE_LIB
     Lib/Component/MeshComponent.cpp
     Lib/Component/CameraComponent.h
     Lib/Component/CameraComponent.cpp
+    Lib/Component/Camera2DComponent.h
+    Lib/Component/Camera2DComponent.cpp
     Lib/Component/AudioSourceComponent.h
     Lib/Component/AudioSourceComponent.cpp
     Lib/Component/Sprite2DComponent.h
