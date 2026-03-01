@@ -1,49 +1,56 @@
+#include <Ludens/DSA/Array.h>
 #include <Ludens/DSA/Vector.h>
 #include <Ludens/DataRegistry/DataRegistry.h>
 #include <Ludens/Header/Impulse.h>
+#include <Ludens/Header/MouseValue.h>
 #include <Ludens/Memory/Memory.h>
 #include <Ludens/UI/UIImmediate.h>
 #include <LudensEditor/CreateComponentWindow/CreateComponentWindow.h>
 #include <LudensEditor/EditorContext/EditorIconAtlas.h>
 
-#include <array>
-
 namespace LD {
 
 struct CreateComponentWindowObj : EditorWindowObj
 {
-    EditorContext ctx;
-    UIWorkspace space;
-    UIWindow root;
     EditorTheme theme;
     CUID parentID = 0;
     int selectedRowIndex = -1;
+
+    CreateComponentWindowObj() = delete;
+    CreateComponentWindowObj(const EditorWindowInfo& info)
+        : EditorWindowObj(info) {}
 
     virtual EditorWindowType get_type() override { return EDITOR_WINDOW_CREATE_COMPONENT; }
     virtual void on_imgui(float delta) override;
 
     void component_rows();
     void component_row(ComponentType type, int rowIndex);
-    void on_row_mouse_down(MouseButton& btn, ComponentType compType);
+    void on_row_mouse_down(MouseValue mouseVal, const Vec2& mousePos, ComponentType compType);
 };
 
 void CreateComponentWindowObj::on_imgui(float delta)
 {
-    theme = ctx.get_theme();
+    theme = mCtx.get_theme();
 
-    ui_push_window(root);
-    ui_top_layout_child_axis(UI_AXIS_Y);
+    ui_workspace_begin();
+    ui_push_window("ROOT");
+    ui_top_layout(mCtx.make_editor_window_layout(mRootRect.get_size()));
+    ui_window_set_color(theme.get_ui_theme().get_surface_color());
     {
         component_rows();
     }
     ui_pop_window();
+    ui_workspace_end();
 }
 
 void CreateComponentWindowObj::component_rows()
 {
-    std::array<ComponentType, 2> types = {
+    UITheme uiTheme = theme.get_ui_theme();
+
+    Array<ComponentType, 3> types = {
         COMPONENT_TYPE_AUDIO_SOURCE,
-        COMPONENT_TYPE_MESH,
+        COMPONENT_TYPE_TRANSFORM_2D,
+        COMPONENT_TYPE_SPRITE_2D,
     };
 
     for (int i = 0; i < (int)types.size(); i++)
@@ -54,43 +61,59 @@ void CreateComponentWindowObj::component_rows()
 
 void CreateComponentWindowObj::component_row(ComponentType type, int rowIndex)
 {
-    EditorTheme theme = ctx.get_settings().get_theme();
+    EditorTheme theme = mCtx.get_settings().get_theme();
     UITheme uiTheme = theme.get_ui_theme();
+    const float rowHeight = theme.get_text_row_height();
+    MouseValue mouseVal;
+    Vec2 mousePos;
 
     UILayoutInfo layoutI{};
     layoutI.childAxis = UI_AXIS_X;
     layoutI.childGap = theme.get_padding();
     layoutI.childPadding.left = 10.0f;
     layoutI.sizeX = UISize::grow();
-    layoutI.sizeY = UISize::fixed(theme.get_text_row_height());
+    layoutI.sizeY = UISize::fixed(rowHeight);
 
-    MouseButton btn;
+    ui_push_panel();
+    ui_top_layout(layoutI);
+
     Color panelColor = uiTheme.get_surface_color();
     if (rowIndex == selectedRowIndex)
         panelColor = theme.get_ui_theme().get_selection_color();
 
-    ui_push_panel();
-    ui_panel_color(panelColor);
-    ui_top_layout(layoutI);
-    if (ui_top_mouse_down(btn))
-        on_row_mouse_down(btn, type);
+    if (rowIndex % 2)
+        panelColor = Color::lift(panelColor, 0.02f);
 
-    // TODO: component icon
+    if (ui_top_is_hovered())
+        panelColor = Color::lift(panelColor, 0.06f);
+
+    ui_panel_color(panelColor);
+    if (ui_top_mouse_down(mouseVal, mousePos))
+        on_row_mouse_down(mouseVal, mousePos, type);
+
+    // component icon
+    EditorIcon icon = EditorIconAtlas::get_component_icon(type);
+    if (icon != EDITOR_ICON_ENUM_LAST)
+    {
+        const Rect iconRect = EditorIconAtlas::get_icon_rect(icon);
+        ui_push_image(mCtx.get_editor_icon_atlas(), rowHeight, rowHeight, 0xFFFFFFFF, &iconRect);
+        ui_pop();
+    }
 
     // component name
     ui_push_text(get_component_type_name(type));
-    if (ui_top_mouse_down(btn))
-        on_row_mouse_down(btn, type);
+    if (ui_top_mouse_down(mouseVal, mousePos))
+        on_row_mouse_down(mouseVal, mousePos, type);
     ui_pop();
 
     ui_pop();
 }
 
-void CreateComponentWindowObj::on_row_mouse_down(MouseButton& btn, ComponentType compType)
+void CreateComponentWindowObj::on_row_mouse_down(MouseValue mouseVal, const Vec2& mousePos, ComponentType compType)
 {
-    if (btn == MOUSE_BUTTON_RIGHT)
+    if (mouseVal.button() == MOUSE_BUTTON_RIGHT)
     {
-        ctx.action_add_component(parentID, compType);
+        mCtx.action_add_component(parentID, compType);
         mShouldClose = true;
     }
 }
@@ -101,12 +124,7 @@ void CreateComponentWindowObj::on_row_mouse_down(MouseButton& btn, ComponentType
 
 EditorWindow CreateComponentWindow::create(const EditorWindowInfo& windowI)
 {
-    auto* obj = heap_new<CreateComponentWindowObj>(MEMORY_USAGE_UI);
-    obj->ctx = windowI.ctx;
-    obj->space = windowI.space;
-    obj->root = obj->space.create_window(obj->space.get_root_id(), obj->ctx.make_vbox_layout(), {}, nullptr);
-    obj->root.set_color(obj->ctx.get_theme().get_ui_theme().get_surface_color());
-    // obj->editorIconAtlas = obj->ctx.get_editor_icon_atlas();
+    auto* obj = heap_new<CreateComponentWindowObj>(MEMORY_USAGE_UI, windowI);
 
     return EditorWindow(obj);
 }

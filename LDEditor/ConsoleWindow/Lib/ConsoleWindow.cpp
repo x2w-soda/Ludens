@@ -22,6 +22,8 @@ struct ConsoleEntry
 
     std::string format() const
     {
+        LD_PROFILE_SCOPE;
+
         std::chrono::duration<double> duration(sessionTime);
         std::chrono::milliseconds ms = std::chrono::duration_cast<std::chrono::milliseconds>(duration);
 
@@ -45,9 +47,8 @@ static void console_log_writeback(LogLevel level, const std::string& ch, const s
 /// @brief Editor console window implementation.
 struct ConsoleWindowObj : EditorWindowObj
 {
-    EditorContext ctx;
-    UIWorkspace space;
-    UIWindow root;
+    ConsoleWindowObj(const EditorWindowInfo& info)
+        : EditorWindowObj(info) {}
 
     virtual EditorWindowType get_type() override { return EDITOR_WINDOW_CONSOLE; }
     virtual void on_imgui(float delta) override;
@@ -57,22 +58,23 @@ void ConsoleWindowObj::on_imgui(float delta)
 {
     LD_PROFILE_SCOPE;
 
-    EditorTheme edTheme = ctx.get_theme();
+    EditorTheme edTheme = mCtx.get_theme();
     UITheme uiTheme = edTheme.get_ui_theme();
     Color color = uiTheme.get_surface_color();
     float pad = edTheme.get_padding();
 
-    ui_push_window(root);
+    ui_workspace_begin();
+    ui_push_window("ROOT");
     ui_push_scroll(color);
 
-    UILayoutInfo layoutI = ctx.make_vbox_layout();
+    UILayoutInfo layoutI = mCtx.make_vbox_layout();
     layoutI.sizeX = UISize::grow();
     layoutI.sizeY = UISize::grow();
     ui_top_layout(layoutI);
 
     FontAtlas fontAtlas;
     RImage fontImage;
-    ctx.get_mono_font(fontAtlas, fontImage);
+    mCtx.get_mono_font(fontAtlas, fontImage);
 
     for (const ConsoleEntry& entry : sHistory)
     {
@@ -100,15 +102,12 @@ void ConsoleWindowObj::on_imgui(float delta)
 
     ui_pop();
     ui_pop_window();
+    ui_workspace_end();
 }
 
 EditorWindow ConsoleWindow::create(const EditorWindowInfo& windowI)
 {
-    auto* obj = heap_new<ConsoleWindowObj>(MEMORY_USAGE_UI);
-    obj->ctx = windowI.ctx;
-    obj->space = windowI.space;
-    obj->root = obj->space.create_window(obj->space.get_root_id(), {}, {}, nullptr);
-    obj->root.show();
+    auto* obj = heap_new<ConsoleWindowObj>(MEMORY_USAGE_UI, windowI);
 
     return EditorWindow(obj);
 }

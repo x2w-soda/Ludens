@@ -1,5 +1,6 @@
 #include <Ludens/DSA/Vector.h>
 #include <Ludens/Header/Impulse.h>
+#include <Ludens/Header/MouseValue.h>
 #include <Ludens/Memory/Memory.h>
 #include <Ludens/UI/UIImmediate.h>
 #include <LudensEditor/EditorContext/EditorIconAtlas.h>
@@ -18,13 +19,13 @@ enum Section
 
 struct ProjectSettingsWindowObj : EditorWindowObj
 {
-    EditorContext ctx;
-    UIWorkspace space;
-    UIWindow root;
     RImage editorIconAtlas{};
-    EditorTheme theme;
+    EditorTheme theme{};
     Section section = SECTION_STARTUP;
     bool sectionDirty = false;
+
+    ProjectSettingsWindowObj(const EditorWindowInfo& info)
+        : EditorWindowObj(info) {}
 
     virtual EditorWindowType get_type() override { return EDITOR_WINDOW_PROJECT_SETTINGS; }
     virtual void on_imgui(float delta) override;
@@ -48,14 +49,15 @@ struct ProjectSettingsWindowObj : EditorWindowObj
 
 void ProjectSettingsWindowObj::on_imgui(float delta)
 {
-    theme = ctx.get_theme();
+    theme = mCtx.get_theme();
+    editorIconAtlas = mCtx.get_editor_icon_atlas();
+    const UILayoutInfo vboxLayoutI = mCtx.make_vbox_layout();
+    Color bgColor = theme.get_ui_theme().get_field_color();
 
-    ui_push_window(root);
+    ui_workspace_begin();
+    ui_push_window("ROOT");
     ui_top_layout_child_axis(UI_AXIS_X);
 
-    const UILayoutInfo vboxLayoutI = ctx.make_vbox_layout();
-
-    Color bgColor = theme.get_ui_theme().get_field_color();
     ui_push_panel();
     ui_panel_color(bgColor);
     ui_top_layout(vboxLayoutI);
@@ -80,14 +82,16 @@ void ProjectSettingsWindowObj::on_imgui(float delta)
     ui_pop();
 
     ui_pop_window();
+    ui_workspace_end();
 }
 
 void ProjectSettingsWindowObj::section_names()
 {
-    MouseButton btn;
+    MouseValue mouseVal;
+    Vec2 mousePos;
 
     ui_push_text("Startup");
-    if (ui_top_mouse_down(btn) && section != SECTION_STARTUP)
+    if (ui_top_mouse_down(mouseVal, mousePos) && section != SECTION_STARTUP)
     {
         section = SECTION_STARTUP;
         sectionDirty = true;
@@ -95,7 +99,7 @@ void ProjectSettingsWindowObj::section_names()
     ui_pop();
 
     ui_push_text("Rendering");
-    if (ui_top_mouse_down(btn) && section != SECTION_RENDERING)
+    if (ui_top_mouse_down(mouseVal, mousePos) && section != SECTION_RENDERING)
     {
         section = SECTION_RENDERING;
         sectionDirty = true;
@@ -103,7 +107,7 @@ void ProjectSettingsWindowObj::section_names()
     ui_pop();
 
     ui_push_text("Screen Layers");
-    if (ui_top_mouse_down(btn) && section != SECTION_SCREEN_LAYERS)
+    if (ui_top_mouse_down(mouseVal, mousePos) && section != SECTION_SCREEN_LAYERS)
     {
         section = SECTION_SCREEN_LAYERS;
         sectionDirty = true;
@@ -113,7 +117,7 @@ void ProjectSettingsWindowObj::section_names()
 
 void ProjectSettingsWindowObj::section_startup()
 {
-    ProjectStartupSettings startupS = ctx.get_project_settings().get_startup_settings();
+    ProjectStartupSettings startupS = mCtx.get_project_settings().get_startup_settings();
     const float rowHeight = theme.get_text_row_height();
     const float propNameWidth = theme.get_text_label_width();
     const UILayoutInfo layoutI = make_row_layout();
@@ -178,7 +182,7 @@ void ProjectSettingsWindowObj::section_startup()
 
 void ProjectSettingsWindowObj::section_rendering()
 {
-    ProjectRenderingSettings renderingS = ctx.get_project_settings().get_rendering_settings();
+    ProjectRenderingSettings renderingS = mCtx.get_project_settings().get_rendering_settings();
 
     ui_push_text("Rendering");
     // TODO: default clear color Vec4, color picker or maybe just text edit for now.
@@ -187,7 +191,7 @@ void ProjectSettingsWindowObj::section_rendering()
 
 void ProjectSettingsWindowObj::section_screen_layers()
 {
-    ProjectScreenLayerSettings screenLayerS = ctx.get_project_settings().get_screen_layer_settings();
+    ProjectScreenLayerSettings screenLayerS = mCtx.get_project_settings().get_screen_layer_settings();
     Vector<ProjectScreenLayer> layers = screenLayerS.get_layers();
 
     const UILayoutInfo layoutI = make_row_layout();
@@ -245,12 +249,7 @@ void ProjectSettingsWindowObj::section_screen_layers()
 
 EditorWindow ProjectSettingsWindow::create(const EditorWindowInfo& windowI)
 {
-    auto* obj = heap_new<ProjectSettingsWindowObj>(MEMORY_USAGE_UI);
-    obj->ctx = windowI.ctx;
-    obj->space = windowI.space;
-    obj->root = obj->space.create_window(obj->space.get_root_id(), obj->ctx.make_vbox_layout(), {}, nullptr);
-    obj->root.set_color(obj->ctx.get_theme().get_ui_theme().get_surface_color());
-    obj->editorIconAtlas = obj->ctx.get_editor_icon_atlas();
+    auto* obj = heap_new<ProjectSettingsWindowObj>(MEMORY_USAGE_UI, windowI);
 
     return EditorWindow(obj);
 }

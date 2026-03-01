@@ -10,9 +10,6 @@ namespace LD {
 
 struct TabControlWindowObj : EditorWindowObj
 {
-    EditorContext ctx;
-    UIWorkspace space;
-    UIWindow root;
     EditorWindowType type;
     std::string tabName;
     EditorIcon tabIcon = EDITOR_ICON_ENUM_LAST;
@@ -21,13 +18,16 @@ struct TabControlWindowObj : EditorWindowObj
     Vec2 dragPos;
     bool dragBegin;
 
+    TabControlWindowObj(const EditorWindowInfo& info)
+        : EditorWindowObj(info) {}
+
     virtual inline EditorWindowType get_type() override { return EDITOR_WINDOW_TAB_CONTROL; }
     virtual void on_imgui(float delta) override;
 };
 
 void TabControlWindowObj::on_imgui(float delta)
 {
-    EditorTheme edTheme = ctx.get_theme();
+    EditorTheme edTheme = mCtx.get_theme();
     UITheme uiTheme = edTheme.get_ui_theme();
     Color surfaceColor = uiTheme.get_surface_color();
     Color tabBGColor;
@@ -37,8 +37,10 @@ void TabControlWindowObj::on_imgui(float delta)
     Vec2 pos;
     bool begin;
 
-    root.set_color(tabBGColor);
-    ui_push_window(root);
+    ui_workspace_begin();
+    ui_push_window("ROOT");
+    ui_window_set_color(tabBGColor);
+    ui_top_layout_child_axis(UI_AXIS_X);
     if (ui_top_drag(btn, pos, begin))
     {
         dragImpulse.set(true);
@@ -61,7 +63,7 @@ void TabControlWindowObj::on_imgui(float delta)
     {
         MouseButton btn;
         Rect iconRect = EditorIconAtlas::get_icon_rect(tabIcon);
-        RImage image = ctx.get_editor_icon_atlas();
+        RImage image = mCtx.get_editor_icon_atlas();
         float iconSize = edTheme.get_font_size() * 1.2f;
         ui_push_image(image, iconSize, iconSize, 0xFFFFFFFF, &iconRect);
         ui_pop();
@@ -70,6 +72,7 @@ void TabControlWindowObj::on_imgui(float delta)
     ui_pop();
     ui_pop();
     ui_pop_window();
+    ui_workspace_end();
 }
 
 //
@@ -78,13 +81,7 @@ void TabControlWindowObj::on_imgui(float delta)
 
 EditorWindow TabControlWindow::create(const EditorWindowInfo& windowI)
 {
-    auto* obj = heap_new<TabControlWindowObj>(MEMORY_USAGE_UI);
-    obj->ctx = windowI.ctx;
-    obj->space = windowI.space;
-
-    UILayoutInfo layoutI{};
-    layoutI.childAxis = UI_AXIS_X;
-    obj->root = obj->space.create_window(obj->space.get_root_id(), layoutI, {}, nullptr);
+    auto* obj = heap_new<TabControlWindowObj>(MEMORY_USAGE_UI, windowI);
 
     return EditorWindow((EditorWindowObj*)obj);
 }
@@ -93,8 +90,6 @@ void TabControlWindow::destroy(EditorWindow window)
 {
     LD_ASSERT(window && window.get_type() == EDITOR_WINDOW_TAB_CONTROL);
     auto* obj = static_cast<TabControlWindowObj*>(window.unwrap());
-
-    obj->space.destroy_window(obj->root);
 
     heap_delete<TabControlWindowObj>(obj);
 }

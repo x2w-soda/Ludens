@@ -1,5 +1,6 @@
 #include <Ludens/DSA/Vector.h>
 #include <Ludens/Header/Impulse.h>
+#include <Ludens/Header/MouseValue.h>
 #include <Ludens/Memory/Memory.h>
 #include <Ludens/UI/UIImmediate.h>
 #include <LudensEditor/EditorContext/EditorIconAtlas.h>
@@ -20,9 +21,6 @@ static bool get_directory_contents_with_filter(const FS::Path& directory, Vector
 
 struct SelectionWindowObj : EditorWindowObj
 {
-    EditorContext ctx;
-    UIWorkspace space;
-    UIWindow root;
     RImage editorIconAtlas{};
     EditorTheme theme;
     std::string extensionFilter;
@@ -30,6 +28,12 @@ struct SelectionWindowObj : EditorWindowObj
     FS::Path directoryPath;
     FS::Path selectedPath;
     int selectedRowIndex = -1;
+
+    SelectionWindowObj(const EditorWindowInfo& info)
+        : EditorWindowObj(info)
+    {
+        editorIconAtlas = mCtx.get_editor_icon_atlas();
+    }
 
     virtual EditorWindowType get_type() override { return EDITOR_WINDOW_SELECTION; }
     virtual void on_imgui(float delta) override;
@@ -40,10 +44,13 @@ struct SelectionWindowObj : EditorWindowObj
 
 void SelectionWindowObj::on_imgui(float delta)
 {
-    theme = ctx.get_theme();
+    theme = mCtx.get_theme();
     selectedPath.clear();
 
-    ui_push_window(root);
+    ui_workspace_begin();
+    ui_push_window("ROOT");
+    ui_top_layout(mCtx.make_editor_window_layout(mRootRect.get_size()));
+    ui_window_set_color(theme.get_ui_theme().get_surface_color());
 
     top_bar();
 
@@ -68,6 +75,7 @@ void SelectionWindowObj::on_imgui(float delta)
 
     bottom_bar();
     ui_pop_window();
+    ui_workspace_end();
 }
 
 void SelectionWindowObj::top_bar()
@@ -81,10 +89,11 @@ void SelectionWindowObj::top_bar()
     ui_push_panel();
     ui_top_layout(layoutI);
 
-    MouseButton btn;
+    Vec2 mousePos;
+    MouseValue mouseVal;
     Rect iconRect = EditorIconAtlas::get_icon_rect(EDITOR_ICON_ARROW_UP);
     ui_push_image(editorIconAtlas, fontSize * 1.2f, fontSize * 1.2f, 0xFFFFFFFF, &iconRect);
-    if (ui_top_mouse_down(btn) && btn == MOUSE_BUTTON_LEFT)
+    if (ui_top_mouse_down(mouseVal, mousePos) && mouseVal.button() == MOUSE_BUTTON_LEFT)
     {
         directoryPath = directoryPath.parent_path();
         selectedRowIndex = -1;
@@ -138,8 +147,9 @@ bool SelectionWindowObj::row(int idx)
 
     LD_ASSERT(0 <= idx && idx < directoryContents.size());
 
-    MouseButton btn;
-    EditorTheme edTheme = ctx.get_theme();
+    Vec2 mousePos;
+    MouseValue mouseVal;
+    EditorTheme edTheme = mCtx.get_theme();
     UITheme uiTheme = edTheme.get_ui_theme();
     float fontSize = edTheme.get_font_size();
     const FS::Path& itemPath = directoryContents[idx];
@@ -161,7 +171,7 @@ bool SelectionWindowObj::row(int idx)
 
     std::string fileString = itemPath.filename().string();
     ui_push_text(fileString.c_str());
-    if (ui_top_mouse_down(btn) && btn == MOUSE_BUTTON_LEFT)
+    if (ui_top_mouse_down(mouseVal, mousePos) && mouseVal.button() == MOUSE_BUTTON_LEFT)
     {
         if (isDirectory)
         {
@@ -184,13 +194,7 @@ bool SelectionWindowObj::row(int idx)
 
 EditorWindow SelectionWindow::create(const EditorWindowInfo& windowI)
 {
-    auto* obj = heap_new<SelectionWindowObj>(MEMORY_USAGE_UI);
-    obj->ctx = windowI.ctx;
-    obj->space = windowI.space;
-    obj->root = obj->space.create_window(obj->space.get_root_id(), obj->ctx.make_vbox_layout(), {}, nullptr);
-    obj->root.set_color(obj->ctx.get_theme().get_ui_theme().get_surface_color());
-    obj->root.hide();
-    obj->editorIconAtlas = obj->ctx.get_editor_icon_atlas();
+    auto* obj = heap_new<SelectionWindowObj>(MEMORY_USAGE_UI, windowI);
 
     return EditorWindow(obj);
 }
@@ -209,8 +213,6 @@ void SelectionWindow::show(const FS::Path& directoryPath, const char* extensionF
     mObj->extensionFilter = std::string(extensionFilter);
     mObj->selectedPath.clear();
     mObj->selectedRowIndex = -1;
-
-    mObj->root.show();
 }
 
 bool SelectionWindow::has_selected(FS::Path& path)

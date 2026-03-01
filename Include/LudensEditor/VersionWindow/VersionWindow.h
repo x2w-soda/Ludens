@@ -17,8 +17,6 @@ struct VersionWindow : Handle<struct VersionWindowObj>
 
     /// @brief Destroy version info window.
     static void destroy(EditorWindow window);
-
-    void show();
 };
 
 } // namespace LD
