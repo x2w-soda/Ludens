@@ -293,7 +293,7 @@ static int get_component(lua_State* l)
     CUID compID = (CUID)L.to_number(-1);
 
     ComponentType type;
-    void* comp = sScene->registry.get_component_data(compID, &type);
+    void* comp = sScene->active->registry.get_component_data(compID, &type);
 
     if (!comp)
     {

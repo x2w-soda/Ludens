@@ -18,7 +18,7 @@ static UIWindow create_window_container(SceneObj* scene)
     layoutI.sizeX = UISize::fit();
     layoutI.sizeY = UISize::fit();
     UIWindowInfo windowI{};
-    UIWorkspace space = scene->screenUI.workspace();
+    UIWorkspace space = scene->active->screenUI.workspace();
     UIWindow window = space.create_float_window(layoutI, windowI, nullptr);
     window.set_pos(Vec2(0.0f, 0.0f));
     return window;
@@ -68,7 +68,7 @@ bool unload_screen_ui_component(SceneObj* scene, ComponentBase** data, std::stri
 
     ScreenUIComponent* ui = (ScreenUIComponent*)data;
 
-    UIWorkspace space = scene->screenUI.workspace();
+    UIWorkspace space = scene->active->screenUI.workspace();
     space.destroy_window(ui->uiWindow);
     ui->uiWindow = {};
 
@@ -86,7 +86,7 @@ bool startup_screen_ui_component(SceneObj* scene, ComponentBase** data, std::str
     UITemplateAsset asset = (UITemplateAsset)scene->assetManager.get_asset(ui->uiTemplateID);
     LD_ASSERT(asset && asset.get_type() == ASSET_TYPE_UI_TEMPLATE);
 
-    LuaState luaState = scene->luaContext.get_lua_state();
+    LuaState luaState = scene->active->lua.get_lua_state();
     ui->uiDriver = heap_new<UIDriver>(MEMORY_USAGE_SCENE);
 
     if (!ui->uiDriver->connect(ui->uiWindow, luaState, asset.get_lua_source(), err))

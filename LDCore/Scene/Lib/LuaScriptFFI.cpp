@@ -202,7 +202,7 @@ extern "C" {
 
 uint64_t ffi_get_parent_id(uint64_t compID)
 {
-    ComponentBase* base = sScene->registry.get_component_base(compID);
+    ComponentBase* base = sScene->active->registry.get_component_base(compID);
     LD_ASSERT(base);
     ComponentBase* parent = base->parent;
     return parent ? parent->cuid : 0;
@@ -210,7 +210,7 @@ uint64_t ffi_get_parent_id(uint64_t compID)
 
 uint64_t ffi_get_child_id_by_name(uint64_t compID, const char* name)
 {
-    ComponentBase* base = sScene->registry.get_component_base(compID);
+    ComponentBase* base = sScene->active->registry.get_component_base(compID);
     LD_ASSERT(base && base->name);
 
     for (ComponentBase* child = base->child; child; child = child->next)
@@ -226,7 +226,7 @@ uint64_t ffi_get_child_id_by_name(uint64_t compID, const char* name)
 
 void ffi_mark_transform_dirty(uint64_t cuid)
 {
-    sScene->registry.mark_component_transform_dirty(cuid);
+    sScene->active->registry.mark_component_transform_dirty(cuid);
 }
 
 void ffi_audio_source_component_play(AudioSourceComponent* comp)

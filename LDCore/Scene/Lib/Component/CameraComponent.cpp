@@ -83,18 +83,22 @@ bool startup_camera_component(SceneObj* scene, ComponentBase** cameraData, std::
     ComponentBase* base = *cameraData;
     auto* camera = (CameraComponent*)cameraData;
 
+    /*
     if (scene->mainCameraC)
         return true; // not an error
 
     scene->mainCameraC = camera;
+    */
 
     return true;
 }
 
 bool cleanup_camera_component(SceneObj* scene, ComponentBase** cameraData, std::string& err)
 {
+    /*
     if (scene->mainCameraC == (CameraComponent*)cameraData)
         scene->mainCameraC = nullptr;
+    */
 
     return true;
 }

@@ -70,8 +70,7 @@ struct SceneInfo
     UITheme uiTheme;
 };
 
-/// @brief The basic unit of game simulation.
-///        A scene is a hierarchy of components driven by scripts.
+/// @brief A game simulation. A scene is a hierarchy of components driven by scripts.
 struct Scene : Handle<struct SceneObj>
 {
 public:
@@ -105,9 +104,6 @@ public:
     /// @param extent Screen size this frame.
     /// @param delta Delta time in seconds.
     void update(const Vec2& extent, float delta);
-
-    /// @brief Update the scene extent.
-    void resize(const Vec2& extent);
 
     /// @brief Render screen UI contents.
     void render_screen_ui(ScreenRenderComponent renderer);

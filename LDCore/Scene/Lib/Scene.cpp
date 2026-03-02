@@ -74,46 +74,76 @@ static_assert(sizeof(sSceneComponents) / sizeof(*sSceneComponents) == COMPONENT_
 // IMPLEMENTATION
 //
 
-bool SceneObj::load_registry_from_backup()
+SceneContext::SceneContext(const SceneContextInfo& info)
 {
-    LD_PROFILE_SCOPE;
+    assetManager = info.assetManager;
+    registry = DataRegistry::create();
+    lua.create(Scene(sScene), assetManager);
 
-    LD_ASSERT(registry && registryBackup);
-
-    Vector<ComponentBase**> dstRoots;
-    Vector<ComponentBase**> srcRoots;
-    registry.get_root_component_data(dstRoots);
-    registryBackup.get_root_component_data(srcRoots);
-    LD_ASSERT(dstRoots.size() == srcRoots.size());
-
-    std::string err;
-
-    for (size_t i = 0; i < dstRoots.size(); i++)
-    {
-        if (!load_subtree_from_backup(dstRoots[i], srcRoots[i], err))
-        {
-            sSceneLog.error("cleanup complete in {} ms", err);
-            return false;
-        }
-    }
-
-    return true;
+    ScreenUIInfo uiI{};
+    uiI.extent = {};
+    uiI.fontAtlas = info.fontAtlas;
+    uiI.fontAtlasImage = info.fontAtlasImage;
+    uiI.theme = info.uiTheme;
+    LD_ASSERT(uiI.fontAtlas);
+    LD_ASSERT(uiI.fontAtlasImage);
+    LD_ASSERT(uiI.theme);
+    screenUI = LD::ScreenUI::create(uiI);
 }
 
-void SceneObj::unload_registry()
+SceneContext::~SceneContext()
 {
-    LD_PROFILE_SCOPE;
+    ScreenUI::destroy(screenUI);
+    lua.destroy();
+    DataRegistry::destroy(registry);
+    assetManager = {};
+}
 
-    Vector<ComponentBase**> roots;
-    registry.get_root_component_data(roots);
+void SceneContext::update(const Vec2& screenExtent, float delta)
+{
+    // update all lua script instances
+    lua.update(delta);
 
-    for (ComponentBase** rootData : roots)
+    // update screen space UI
+    screenUI.resize(screenExtent);
+    screenUI.update(delta);
+
+#if 0
+    if (mainCameraC) // CameraComponent to world Viewports
     {
-        unload_subtree(rootData);
+        const CameraComponent* cameraC = mainCameraC;
+        const ComponentBase* base = cameraC->base;
+        LD::Camera mainCamera = cameraC->camera;
+        LD_ASSERT(base && mainCamera);
+
+        Mat4 worldMat4;
+        registry.get_component_world_mat4(base->cuid, worldMat4);
+        Vec3 forward = worldMat4.as_mat3() * Vec3(0.0f, 0.0f, 1.0f);
+
+        mainCamera.set_aspect_ratio(screenExtent.x / screenExtent.y);
+        mainCamera.set_pos(cameraC->transform.position);
+        mainCamera.set_target(cameraC->transform.position + forward);
+    }
+#endif
+
+    for (auto it = registry.get_components(COMPONENT_TYPE_CAMERA_2D); it; ++it)
+    {
+        auto* cameraC = (Camera2DComponent*)it.data();
+        const ComponentBase* base = cameraC->base;
+
+        Mat4 worldMat4;
+        bool ok = registry.get_component_world_mat4(base->cuid, worldMat4);
+        LD_ASSERT(ok);
+        Vec2 worldPos(worldMat4[3][0], worldMat4[3][1]);
+
+        float rotRadians = LD_ATAN2(worldMat4[0][1], worldMat4[0][0]);
+
+        cameraC->camera.set_position(worldPos);
+        cameraC->camera.set_rotation(LD_TO_DEGREES(rotRadians));
     }
 }
 
-bool SceneObj::startup_registry()
+bool SceneContext::startup_registry()
 {
     LD_PROFILE_SCOPE;
 
@@ -154,7 +184,7 @@ bool SceneObj::startup_registry()
     return success;
 }
 
-void SceneObj::cleanup_registry()
+void SceneContext::cleanup_registry()
 {
     LD_PROFILE_SCOPE;
 
@@ -168,20 +198,170 @@ void SceneObj::cleanup_registry()
     for (ComponentBase** rootData : roots)
         cleanup_subtree(rootData);
 
-    mainCameraC = nullptr;
-
     size_t durationUS = timer.stop();
 
     sSceneLog.info("cleanup complete in {} ms", durationUS / 1000.0f);
 }
 
-void SceneObj::resize(const Vec2& newExtent)
+bool SceneContext::startup_subtree(ComponentBase** rootData, Vector<ComponentBase**>& startupOrder, std::string& err)
 {
-    if (extent == newExtent)
-        return;
+    LD_ASSERT(rootData);
+    ComponentBase* rootBase = *rootData;
 
-    extent = newExtent;
-    screenUI.resize(extent);
+    for (ComponentBase* childBase = rootBase->child; childBase; childBase = childBase->next)
+    {
+        ComponentBase** childData = registry.get_component_data(childBase->cuid, nullptr);
+        if (!startup_subtree(childData, startupOrder, err))
+            return false;
+    }
+
+    // post-order traversal, all child components of root already have their scripts attached
+    if (!startup_component(rootData, err))
+        return false;
+
+    startupOrder.push_back(rootData);
+
+    return true;
+}
+
+bool SceneContext::startup_component(ComponentBase** data, std::string& err)
+{
+    LD_ASSERT(data);
+    ComponentBase* base = *data;
+
+    if (sSceneComponents[(int)base->type].startup)
+    {
+        if (!sSceneComponents[(int)base->type].startup(sScene, data, err))
+            return false;
+    }
+
+    std::string tmp;
+
+    if (base->scriptAssetID)
+    {
+        const CUID rootCUID = base->cuid;
+        lua.create_component_table(rootCUID);
+
+        if (!lua.create_lua_script(rootCUID, base->scriptAssetID, err))
+        {
+            if (sSceneComponents[(int)base->type].cleanup)
+                (void)sSceneComponents[(int)base->type].cleanup(sScene, data, tmp);
+
+            return false;
+        }
+
+        if (!lua.attach_lua_script(rootCUID, err))
+        {
+            lua.destroy_lua_script(rootCUID);
+            if (sSceneComponents[(int)base->type].cleanup)
+                (void)sSceneComponents[(int)base->type].cleanup(sScene, data, tmp);
+
+            return false;
+        }
+    }
+
+    return true;
+}
+
+void SceneContext::cleanup_subtree(ComponentBase** rootData)
+{
+    LD_ASSERT(rootData);
+    ComponentBase* rootBase = *rootData;
+
+    for (ComponentBase* childBase = rootBase->child; childBase; childBase = childBase->next)
+    {
+        ComponentBase** childData = registry.get_component_data(childBase->cuid, nullptr);
+        cleanup_subtree(childData);
+    }
+
+    // post-order traversal, all child components of root already have their scripts detached
+    std::string err;
+    if (!cleanup_component(rootData, err))
+        sSceneLog.error("failed to cleanup component: {}", err);
+}
+
+bool SceneContext::cleanup_component(ComponentBase** data, std::string& err)
+{
+    LD_ASSERT(data);
+    ComponentBase* base = *data;
+
+    if (sSceneComponents[(int)base->type].cleanup)
+        sSceneComponents[(int)base->type].cleanup(sScene, data, err);
+
+    bool success = true;
+
+    if (base->scriptAssetID)
+    {
+        const CUID cuid = base->cuid;
+        if (!lua.detach_lua_script(cuid, err))
+            success = false;
+
+        lua.destroy_lua_script(cuid);
+        lua.destroy_component_table(cuid);
+    }
+
+    return success;
+}
+
+void SceneContext::unload_registry()
+{
+    LD_PROFILE_SCOPE;
+
+    Vector<ComponentBase**> roots;
+    registry.get_root_component_data(roots);
+
+    for (ComponentBase** rootData : roots)
+    {
+        unload_subtree(rootData);
+    }
+}
+
+void SceneContext::unload_subtree(ComponentBase** data)
+{
+    LD_PROFILE_SCOPE;
+
+    LD_ASSERT(data);
+    ComponentBase* base = (*data);
+
+    std::string err;
+
+    if (sSceneComponents[(int)base->type].unload)
+    {
+        if (!sSceneComponents[(int)base->type].unload(sScene, data, err))
+            sSceneLog.error("failed to unload component: {}", err);
+    }
+
+    for (ComponentBase* child = base->child; child; child = child->next)
+    {
+        ComponentBase** childData = registry.get_component_data(child->cuid, nullptr);
+        unload_subtree(childData);
+    }
+}
+
+bool SceneObj::load_registry_from_backup()
+{
+    LD_PROFILE_SCOPE;
+
+    LD_ASSERT(active && backup);
+
+    Vector<ComponentBase**> dstRoots;
+    Vector<ComponentBase**> srcRoots;
+    active->registry.get_root_component_data(dstRoots);
+    backup->registry.get_root_component_data(srcRoots);
+    LD_ASSERT(dstRoots.size() == srcRoots.size());
+
+    std::string err;
+
+    for (size_t i = 0; i < dstRoots.size(); i++)
+    {
+        if (!load_subtree_from_backup(dstRoots[i], srcRoots[i], err))
+        {
+            sSceneLog.error("cleanup complete in {} ms", err);
+            return false;
+        }
+    }
+
+    return true;
 }
 
 // This is basically the editor loading a copy of component subtree from backup data
@@ -214,8 +394,8 @@ bool SceneObj::load_subtree_from_backup(ComponentBase** dstData, ComponentBase**
     while (dstChild)
     {
         LD_ASSERT(dstChild && srcChild);
-        ComponentBase** dstChildData = registry.get_component_data(dstChild->cuid, nullptr);
-        ComponentBase** srcChildData = registryBackup.get_component_data(srcChild->cuid, nullptr);
+        ComponentBase** dstChildData = active->registry.get_component_data(dstChild->cuid, nullptr);
+        ComponentBase** srcChildData = backup->registry.get_component_data(srcChild->cuid, nullptr);
 
         if (!load_subtree_from_backup(dstChildData, srcChildData, err))
             return false;
@@ -225,128 +405,6 @@ bool SceneObj::load_subtree_from_backup(ComponentBase** dstData, ComponentBase**
     }
 
     return true;
-}
-
-void SceneObj::unload_subtree(ComponentBase** data)
-{
-    LD_PROFILE_SCOPE;
-
-    LD_ASSERT(data);
-    ComponentBase* base = (*data);
-
-    std::string err;
-
-    if (sSceneComponents[(int)base->type].unload)
-    {
-        if (!sSceneComponents[(int)base->type].unload(this, data, err))
-            sSceneLog.error("failed to unload component: {}", err);
-    }
-
-    for (ComponentBase* child = base->child; child; child = child->next)
-    {
-        ComponentBase** childData = registry.get_component_data(child->cuid, nullptr);
-        unload_subtree(childData);
-    }
-}
-
-bool SceneObj::startup_subtree(ComponentBase** rootData, Vector<ComponentBase**>& startupOrder, std::string& err)
-{
-    LD_ASSERT(rootData);
-    ComponentBase* rootBase = *rootData;
-
-    for (ComponentBase* childBase = rootBase->child; childBase; childBase = childBase->next)
-    {
-        ComponentBase** childData = registry.get_component_data(childBase->cuid, nullptr);
-        if (!startup_subtree(childData, startupOrder, err))
-            return false;
-    }
-
-    // post-order traversal, all child components of root already have their scripts attached
-    if (!startup_component(rootData, err))
-        return false;
-
-    startupOrder.push_back(rootData);
-
-    return true;
-}
-
-bool SceneObj::startup_component(ComponentBase** data, std::string& err)
-{
-    LD_ASSERT(data);
-    ComponentBase* base = *data;
-
-    if (sSceneComponents[(int)base->type].startup)
-    {
-        if (!sSceneComponents[(int)base->type].startup(this, data, err))
-            return false;
-    }
-
-    std::string tmp;
-
-    if (base->scriptAssetID)
-    {
-        const CUID rootCUID = base->cuid;
-        luaContext.create_component_table(rootCUID);
-
-        if (!luaContext.create_lua_script(rootCUID, base->scriptAssetID, err))
-        {
-            if (sSceneComponents[(int)base->type].cleanup)
-                (void)sSceneComponents[(int)base->type].cleanup(this, data, tmp);
-
-            return false;
-        }
-
-        if (!luaContext.attach_lua_script(rootCUID, err))
-        {
-            luaContext.destroy_lua_script(rootCUID);
-            if (sSceneComponents[(int)base->type].cleanup)
-                (void)sSceneComponents[(int)base->type].cleanup(this, data, tmp);
-
-            return false;
-        }
-    }
-
-    return true;
-}
-
-void SceneObj::cleanup_subtree(ComponentBase** rootData)
-{
-    LD_ASSERT(rootData);
-    ComponentBase* rootBase = *rootData;
-
-    for (ComponentBase* childBase = rootBase->child; childBase; childBase = childBase->next)
-    {
-        ComponentBase** childData = registry.get_component_data(childBase->cuid, nullptr);
-        cleanup_subtree(childData);
-    }
-
-    // post-order traversal, all child components of root already have their scripts detached
-    std::string err;
-    if (!cleanup_component(rootData, err))
-        sSceneLog.error("failed to cleanup component: {}", err);
-}
-
-bool SceneObj::cleanup_component(ComponentBase** data, std::string& err)
-{
-    LD_ASSERT(data);
-    ComponentBase* base = *data;
-
-    if (sSceneComponents[(int)base->type].cleanup)
-        sSceneComponents[(int)base->type].cleanup(this, data, err);
-
-    bool success = true;
-
-    if (base->scriptAssetID)
-    {
-        const CUID cuid = base->cuid;
-        if (!luaContext.detach_lua_script(cuid, err))
-            success = false;
-
-        luaContext.destroy_lua_script(cuid);
-        luaContext.destroy_component_table(cuid);
-    }
-
-    return success;
 }
 
 //
@@ -369,22 +427,15 @@ Scene Scene::create(const SceneInfo& sceneI)
 
     LD_ASSERT(sScene == nullptr);
     sScene = heap_new<SceneObj>(MEMORY_USAGE_SCENE);
-    sScene->registry = DataRegistry::create();
     sScene->assetManager = sceneI.assetManager;
     sScene->renderSystemCache.create(sceneI.renderSystem, sceneI.assetManager);
     sScene->audioSystemCache.create(sceneI.audioSystem, sceneI.assetManager);
-    sScene->luaContext.create(Scene(sScene), sceneI.assetManager);
-    sScene->extent = {};
 
-    ScreenUIInfo info{};
-    info.extent = {};
-    info.fontAtlas = sceneI.fontAtlas;
-    info.fontAtlasImage = sceneI.fontAtlasImage;
-    info.theme = sceneI.uiTheme;
-    LD_ASSERT(info.fontAtlas);
-    LD_ASSERT(info.fontAtlasImage);
-    LD_ASSERT(info.theme);
-    sScene->screenUI = LD::ScreenUI::create(info);
+    sScene->contextInfo.assetManager = sScene->assetManager;
+    sScene->contextInfo.fontAtlas = sceneI.fontAtlas;
+    sScene->contextInfo.fontAtlasImage = sceneI.fontAtlasImage;
+    sScene->contextInfo.uiTheme = sceneI.uiTheme;
+    sScene->active = nullptr;
 
     return Scene(sScene);
 }
@@ -394,15 +445,17 @@ void Scene::destroy(Scene scene)
     LD_PROFILE_SCOPE;
 
     LD_ASSERT(sScene && sScene == scene.unwrap());
+    LD_ASSERT(sScene->backup == nullptr);
+    LD_ASSERT(sScene->shadow == nullptr);
 
     // destroy all components
     scene.reset();
 
-    LD::ScreenUI::destroy(sScene->screenUI);
-    sScene->luaContext.destroy();
+    if (sScene->active)
+        heap_delete<SceneContext>(sScene->active);
+
     sScene->audioSystemCache.destroy();
     sScene->renderSystemCache.destroy();
-    DataRegistry::destroy(sScene->registry);
 
     heap_delete<SceneObj>(sScene);
     sScene = nullptr;
@@ -416,17 +469,7 @@ void Scene::reset()
         unload();
 
     LD_ASSERT(mObj->state == SCENE_STATE_EMPTY);
-    LD_ASSERT(!mObj->registryBackup);
-
-    if (mObj->registry)
-    {
-        DataRegistry::destroy(mObj->registry);
-        mObj->registry = {};
-    }
-
-    // initial empty state
-    mObj->mainCameraC = nullptr;
-    mObj->registry = DataRegistry::create();
+    LD_ASSERT(!mObj->backup);
 }
 
 void Scene::load(const std::function<bool(Scene)>& loader)
@@ -438,6 +481,9 @@ void Scene::load(const std::function<bool(Scene)>& loader)
         LD_UNREACHABLE;
         return;
     }
+
+    LD_ASSERT(!mObj->active);
+    mObj->active = heap_new<SceneContext>(MEMORY_USAGE_SCENE, mObj->contextInfo);
 
     bool success = loader(*this);
     if (!success)
@@ -456,7 +502,7 @@ void Scene::load(const std::function<bool(Scene)>& loader)
     */
 
     // force initial UI layout
-    mObj->screenUI.update(0.0f);
+    mObj->active->screenUI.update(0.0f);
 
     mObj->state = SCENE_STATE_LOADED;
 }
@@ -468,7 +514,9 @@ void Scene::unload()
     if (mObj->state == SCENE_STATE_EMPTY)
         return;
 
-    mObj->unload_registry();
+    mObj->active->unload_registry();
+    heap_delete<SceneContext>(mObj->active);
+    mObj->active = nullptr;
 
     mObj->state = SCENE_STATE_EMPTY;
 }
@@ -478,11 +526,14 @@ void Scene::backup()
     LD_PROFILE_SCOPE;
 
     LD_ASSERT(mObj->state == SCENE_STATE_LOADED);
-    LD_ASSERT(!mObj->registryBackup);
+    LD_ASSERT(!mObj->backup);
 
     // create and load a copy for play-in-editor session
-    mObj->registryBackup = mObj->registry;
-    mObj->registry = mObj->registryBackup.duplicate();
+    mObj->backup = mObj->active;
+    mObj->active = heap_new<SceneContext>(MEMORY_USAGE_SCENE, mObj->contextInfo);
+    if (mObj->active->registry)
+        DataRegistry::destroy(mObj->active->registry);
+    mObj->active->registry = mObj->backup->registry.duplicate();
     mObj->load_registry_from_backup();
 }
 
@@ -493,7 +544,7 @@ bool Scene::startup()
     if (mObj->state == SCENE_STATE_RUNNING)
         return true;
 
-    if (mObj->startup_registry())
+    if (mObj->active->startup_registry())
     {
         mObj->state = SCENE_STATE_RUNNING;
         return true;
@@ -501,12 +552,12 @@ bool Scene::startup()
 
     // startup failed
 
-    if (mObj->registryBackup)
+    if (mObj->backup)
     {
-        mObj->unload_registry();
-        DataRegistry::destroy(mObj->registry);
-        mObj->registry = mObj->registryBackup;
-        mObj->registryBackup = {};
+        mObj->active->unload_registry();
+        heap_delete<SceneContext>(mObj->active);
+        mObj->active = mObj->backup;
+        mObj->backup = nullptr;
     }
 
     return false;
@@ -521,15 +572,16 @@ void Scene::cleanup()
 
     mObj->state = SCENE_STATE_LOADED;
 
-    mObj->cleanup_registry();
+    mObj->active->cleanup_registry();
 
     // after play-in-editor session, restore the backup.
-    if (mObj->registryBackup)
+    if (mObj->backup)
     {
-        mObj->unload_registry();
-        DataRegistry::destroy(mObj->registry);
-        mObj->registry = mObj->registryBackup;
-        mObj->registryBackup = {};
+        mObj->active->unload_registry();
+        heap_delete<SceneContext>(mObj->active);
+
+        mObj->active = mObj->backup;
+        mObj->backup = nullptr;
     }
 }
 
@@ -538,74 +590,30 @@ void Scene::update(const Vec2& screenExtent, float delta)
     LD_PROFILE_SCOPE;
     LD_ASSERT(screenExtent.x > 0.0f && screenExtent.y > 0.0f);
 
-    mObj->resize(screenExtent);
+    mObj->extent = screenExtent;
 
-    // update all lua script instances
-    mObj->luaContext.update(delta);
-
-    // update screen space UI
-    mObj->screenUI.update(delta);
-
-    if (mObj->mainCameraC)
-    {
-        const CameraComponent* cameraC = mObj->mainCameraC;
-        const ComponentBase* base = cameraC->base;
-        LD::Camera mainCamera = cameraC->camera;
-        LD_ASSERT(base && mainCamera);
-
-        Mat4 worldMat4;
-        mObj->registry.get_component_world_mat4(base->cuid, worldMat4);
-        Vec3 forward = worldMat4.as_mat3() * Vec3(0.0f, 0.0f, 1.0f);
-
-        mainCamera.set_aspect_ratio(screenExtent.x / screenExtent.y);
-        mainCamera.set_pos(cameraC->transform.position);
-        mainCamera.set_target(cameraC->transform.position + forward);
-    }
-
-    for (auto it = mObj->registry.get_components(COMPONENT_TYPE_CAMERA_2D); it; ++it)
-    {
-        auto* cameraC = (Camera2DComponent*)it.data();
-        const ComponentBase* base = cameraC->base;
-
-        Mat4 worldMat4;
-        bool ok = mObj->registry.get_component_world_mat4(base->cuid, worldMat4);
-        LD_ASSERT(ok);
-        Vec2 worldPos(worldMat4[3][0], worldMat4[3][1]);
-
-        float rotRadians = LD_ATAN2(worldMat4[0][1], worldMat4[0][0]);
-
-        cameraC->camera.set_position(worldPos);
-        cameraC->camera.set_rotation(LD_TO_DEGREES(rotRadians));
-    }
+    mObj->active->update(screenExtent, delta);
 
     // any heap allocations for audio is done on main thread.
     mObj->audioSystemCache.update();
-}
-
-void Scene::resize(const Vec2& extent)
-{
-    mObj->resize(extent);
 }
 
 void Scene::render_screen_ui(ScreenRenderComponent renderer)
 {
     LD_PROFILE_SCOPE;
 
-    mObj->screenUI.render(renderer);
+    mObj->active->screenUI.render(renderer);
 }
 
 void Scene::input_screen_ui(const WindowEvent* event)
 {
     LD_PROFILE_SCOPE;
 
-    mObj->screenUI.input(event);
+    mObj->active->screenUI.input(event);
 }
 
 Camera Scene::get_camera()
 {
-    if (mObj->mainCameraC)
-        return mObj->mainCameraC->camera;
-
     return {};
 }
 
@@ -614,7 +622,7 @@ Vector<Viewport> Scene::get_screen_regions()
     Vector<Viewport> viewports;
 
     // one Viewport per Camera2DComponent.
-    for (auto it = mObj->registry.get_components(COMPONENT_TYPE_CAMERA_2D); it; ++it)
+    for (auto it = mObj->active->registry.get_components(COMPONENT_TYPE_CAMERA_2D); it; ++it)
     {
         Camera2DComponent* comp = (Camera2DComponent*)it.data();
         Viewport viewport = comp->camera.get_viewport();
@@ -632,10 +640,10 @@ Vector<Viewport> Scene::get_screen_regions()
 
 ComponentView Scene::create_component(ComponentType type, const char* name, CUID parentCUID)
 {
-    CUID compCUID = mObj->registry.create_component(type, name, parentCUID, (SUID)0);
+    CUID compCUID = mObj->active->registry.create_component(type, name, parentCUID, (SUID)0);
 
     // TODO: DataRegistry API without CUID -> Component Data chasing.
-    ComponentBase** data = mObj->registry.get_component_data(compCUID, nullptr);
+    ComponentBase** data = mObj->active->registry.get_component_data(compCUID, nullptr);
     ComponentBase* base = *data;
     sSceneComponents[(int)type].init(data);
     *data = base;
@@ -645,7 +653,7 @@ ComponentView Scene::create_component(ComponentType type, const char* name, CUID
 
 ComponentView Scene::create_component_serial(ComponentType type, const char* name, SUID parentSUID, SUID hintSUID)
 {
-    ComponentBase** parentData = mObj->registry.get_component_data_by_suid(parentSUID, nullptr);
+    ComponentBase** parentData = mObj->active->registry.get_component_data_by_suid(parentSUID, nullptr);
 
     if (parentSUID && !parentData) // bad input, parent does not exist in serial domain
         return {};
@@ -659,10 +667,10 @@ ComponentView Scene::create_component_serial(ComponentType type, const char* nam
         compSUID = get_suid();
 
     CUID parentCUID = parentData ? (*parentData)->cuid : 0;
-    CUID compCUID = mObj->registry.create_component(type, name, parentCUID, compSUID);
+    CUID compCUID = mObj->active->registry.create_component(type, name, parentCUID, compSUID);
 
     // TODO: DataRegistry API without CUID -> Component Data chasing.
-    ComponentBase** data = mObj->registry.get_component_data(compCUID, nullptr);
+    ComponentBase** data = mObj->active->registry.get_component_data(compCUID, nullptr);
     ComponentBase* base = *data;
     sSceneComponents[(int)type].init(data);
     *data = base;
@@ -672,12 +680,12 @@ ComponentView Scene::create_component_serial(ComponentType type, const char* nam
 
 void Scene::destroy_component(CUID compID)
 {
-    mObj->registry.destroy_component(compID);
+    mObj->active->registry.destroy_component(compID);
 }
 
 void Scene::reparent(CUID compID, CUID parentID)
 {
-    mObj->registry.reparent(compID, parentID);
+    mObj->active->registry.reparent(compID, parentID);
 }
 
 void Scene::get_root_components(Vector<ComponentView>& roots)
@@ -685,7 +693,7 @@ void Scene::get_root_components(Vector<ComponentView>& roots)
     roots.clear();
 
     Vector<ComponentBase**> rootData;
-    mObj->registry.get_root_component_data(rootData);
+    mObj->active->registry.get_root_component_data(rootData);
 
     // kinda slow for pointer chasing CUID > Component Data
     for (ComponentBase** root : rootData)
@@ -698,12 +706,12 @@ void Scene::get_root_components(Vector<ComponentView>& roots)
 
 ComponentView Scene::get_component(CUID compID)
 {
-    return ComponentView(mObj->registry.get_component_data(compID, nullptr));
+    return ComponentView(mObj->active->registry.get_component_data(compID, nullptr));
 }
 
 ComponentView Scene::get_component_by_suid(SUID compSUID)
 {
-    return ComponentView(mObj->registry.get_component_data_by_suid(compSUID, nullptr));
+    return ComponentView(mObj->active->registry.get_component_data_by_suid(compSUID, nullptr));
 }
 
 ComponentType ComponentView::type()
@@ -748,7 +756,7 @@ void ComponentView::get_children(Vector<ComponentView>& children)
     // kinda slow with ID -> Data pointer chasing.
     for (ComponentBase* child = (*mData)->child; child; child = child->next)
     {
-        ComponentView childC(sScene->registry.get_component_data(child->cuid, nullptr));
+        ComponentView childC(sScene->active->registry.get_component_data(child->cuid, nullptr));
         LD_ASSERT(childC);
         children.push_back(childC);
     }
@@ -760,52 +768,52 @@ ComponentView ComponentView::get_parent()
     if (!parentBase)
         return {};
 
-    return ComponentView(sScene->registry.get_component_data(parentBase->cuid, nullptr));
+    return ComponentView(sScene->active->registry.get_component_data(parentBase->cuid, nullptr));
 }
 
 bool ComponentView::get_transform(TransformEx& transform)
 {
     // TODO: DataRegistry API to take ComponentBase* directly
-    return sScene->registry.get_component_transform((*mData)->cuid, transform);
+    return sScene->active->registry.get_component_transform((*mData)->cuid, transform);
 }
 
 bool ComponentView::set_transform(const TransformEx& transform)
 {
     // TODO: DataRegistry API to take ComponentBase* directly
-    return sScene->registry.set_component_transform((*mData)->cuid, transform);
+    return sScene->active->registry.set_component_transform((*mData)->cuid, transform);
 }
 
 bool ComponentView::get_transform_2d(Transform2D& transform)
 {
     // TODO: DataRegistry API to take ComponentBase* directly
-    return sScene->registry.get_component_transform_2d((*mData)->cuid, transform);
+    return sScene->active->registry.get_component_transform_2d((*mData)->cuid, transform);
 }
 
 bool ComponentView::set_transform_2d(const Transform2D& transform)
 {
     // TODO: DataRegistry API to take ComponentBase* directly
-    return sScene->registry.set_component_transform_2d((*mData)->cuid, transform);
+    return sScene->active->registry.set_component_transform_2d((*mData)->cuid, transform);
 }
 
 bool ComponentView::get_world_mat4(Mat4& worldMat4)
 {
     ComponentBase* base = *mData;
 
-    return sScene->registry.get_component_world_mat4(base->cuid, worldMat4);
+    return sScene->active->registry.get_component_world_mat4(base->cuid, worldMat4);
 }
 
 ComponentView Scene::get_2d_component_by_position(const Vec2& worldPos)
 {
     CUID compCUID = sScene->renderSystemCache.get_2d_component_by_position(worldPos, [](RUID ruid, Mat4& mat4, void*) -> bool { return Scene(sScene).get_ruid_world_mat4(ruid, mat4); }, nullptr);
 
-    return ComponentView(sScene->registry.get_component_data(compCUID, nullptr));
+    return ComponentView(sScene->active->registry.get_component_data(compCUID, nullptr));
 }
 
 ComponentView Scene::get_ruid_component(RUID ruid)
 {
     CUID compCUID = mObj->renderSystemCache.get_draw_id_component(ruid);
 
-    return ComponentView(sScene->registry.get_component_data(compCUID, nullptr));
+    return ComponentView(sScene->active->registry.get_component_data(compCUID, nullptr));
 }
 
 bool Scene::get_ruid_world_mat4(RUID ruid, Mat4& worldMat4)
@@ -813,7 +821,7 @@ bool Scene::get_ruid_world_mat4(RUID ruid, Mat4& worldMat4)
     LD_PROFILE_SCOPE;
 
     ComponentView comp = get_ruid_component(ruid);
-    if (!comp || !mObj->registry.get_component_world_mat4(comp.cuid(), worldMat4))
+    if (!comp || !mObj->active->registry.get_component_world_mat4(comp.cuid(), worldMat4))
         return false;
 
     return true;

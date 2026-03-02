@@ -107,7 +107,6 @@ struct EditorContext : Handle<struct EditorContextObj>
     Scene get_scene();
     inline Vector<Viewport> get_scene_screen_regions() { return get_scene().get_screen_regions(); }
     inline Camera get_scene_camera() { return get_scene().get_camera(); }
-    inline void resize_scene(const Vec2& extent) { get_scene().resize(extent); }
 
     /// @brief Add an observer of the editor context
     void add_observer(EditorEventFn fn, void* user);
