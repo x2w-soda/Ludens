@@ -7,7 +7,7 @@
 #include <Ludens/System/Timer.h>
 #include <LudensBuilder/AssetUtil/AssetUtil.h>
 #include <LudensBuilder/AudioUtil/AudioUtil.h>
-#include <LudensBuilder/DocumentCompiler/DocumentCompiler.h>
+#include <LudensBuilder/Document/Document.h>
 #include <LudensBuilder/MeshUtil/MeshUtil.h>
 #include <LudensBuilder/RenderUtil/RenderUtil.h>
 #include <LudensBuilder/Win32Util/Win32Util.h>

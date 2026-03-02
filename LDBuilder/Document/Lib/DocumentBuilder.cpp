@@ -2,9 +2,9 @@
 #include <Ludens/Header/Hash.h>
 #include <Ludens/Media/Format/XML.h>
 #include <Ludens/Memory/Allocator.h>
-#include <LudensBuilder/DocumentCompiler/DocumentCompiler.h>
+#include <LudensBuilder/Document/DocumentBuilder.h>
 
-namespace fs = std::filesystem;
+#include <string>
 
 namespace LD {
 
@@ -49,26 +49,26 @@ static CppItemType get_item_type(const View& view)
     return CPP_ITEM_INVALID;
 }
 
-/// @brief Document compiler implementation. For C++ documentation we are
+/// @brief Document builder implementation. For C++ documentation we are
 ///        using the XML output of Doxygen.
-struct DocumentCompilerObj
+struct DocumentBuilderObj
 {
     XMLDocument indexXML;
     PoolAllocator cppCompoundPA;
     PoolAllocator cppMmeberPA;
-    std::unordered_map<Hash32, CppCompound*> cppClasses;
-    std::unordered_map<Hash32, CppCompound*> cppStructs;
-    std::unordered_map<Hash32, CppCompound*> cppVariables;
-    std::unordered_map<Hash32, CppCompound*> cppFunctions;
+    HashMap<std::string, CppCompound*> cppClasses;
+    HashMap<std::string, CppCompound*> cppStructs;
+    HashMap<std::string, CppCompound*> cppVariables;
+    HashMap<std::string, CppCompound*> cppFunctions;
 };
 
-DocumentCompiler DocumentCompiler::create(const DocumentCompilerInfo& compilerI)
+DocumentBuilder DocumentBuilder::create(const DocumentBuilderInfo& compilerI)
 {
-    DocumentCompilerObj* obj = heap_new<DocumentCompilerObj>(MEMORY_USAGE_MISC);
+    DocumentBuilderObj* obj = heap_new<DocumentBuilderObj>(MEMORY_USAGE_MISC);
 
     // using create_from_file ensures that all string views point to the file buffer,
     // which is valid until the xml document itself is destroyed.
-    obj->indexXML = XMLDocument::create_from_file(compilerI.pathToDoxygenXML);
+    obj->indexXML = XMLDocument::create_from_file(compilerI.doxygenXMLPath);
 
     PoolAllocatorInfo paI{};
     paI.blockSize = sizeof(CppCompound);
@@ -100,7 +100,7 @@ DocumentCompiler DocumentCompiler::create(const DocumentCompilerInfo& compilerI)
         if (compoundRefid.size == 0 || compoundType == CPP_ITEM_INVALID)
             continue; // TODO: warn ignored compound
 
-        Hash32 refidHash(compoundRefid.data, (int)compoundRefid.size);
+        std::string refidKey(compoundRefid.data, (int)compoundRefid.size);
         CppCompound* comp = (CppCompound*)obj->cppCompoundPA.allocate();
         comp->name = {};
         comp->refid = compoundRefid;
@@ -115,16 +115,16 @@ DocumentCompiler DocumentCompiler::create(const DocumentCompilerInfo& compilerI)
         switch (compoundType)
         {
         case CPP_ITEM_CLASS:
-            obj->cppClasses[refidHash] = comp;
+            obj->cppClasses[refidKey] = comp;
             break;
         case CPP_ITEM_STRUCT:
-            obj->cppStructs[refidHash] = comp;
+            obj->cppStructs[refidKey] = comp;
             break;
         case CPP_ITEM_VARIABLE:
-            obj->cppVariables[refidHash] = comp;
+            obj->cppVariables[refidKey] = comp;
             break;
         case CPP_ITEM_FUNCTION:
-            obj->cppFunctions[refidHash] = comp;
+            obj->cppFunctions[refidKey] = comp;
             break;
         default:
             break;
@@ -139,13 +139,13 @@ DocumentCompiler DocumentCompiler::create(const DocumentCompilerInfo& compilerI)
     return {obj};
 }
 
-void DocumentCompiler::destroy(DocumentCompiler compiler)
+void DocumentBuilder::destroy(DocumentBuilder compiler)
 {
-    DocumentCompilerObj* obj = compiler;
+    DocumentBuilderObj* obj = compiler;
 
     XMLDocument::destroy(obj->indexXML);
 
-    heap_delete<DocumentCompilerObj>(obj);
+    heap_delete<DocumentBuilderObj>(obj);
 }
 
 } // namespace LD
