@@ -76,6 +76,8 @@ static_assert(sizeof(sSceneComponents) / sizeof(*sSceneComponents) == COMPONENT_
 
 SceneContext::SceneContext(const SceneContextInfo& info)
 {
+    LD_PROFILE_SCOPE;
+
     assetManager = info.assetManager;
     registry = DataRegistry::create();
     lua.create(Scene(sScene), assetManager);
@@ -93,6 +95,8 @@ SceneContext::SceneContext(const SceneContextInfo& info)
 
 SceneContext::~SceneContext()
 {
+    LD_PROFILE_SCOPE;
+
     ScreenUI::destroy(screenUI);
     lua.destroy();
     DataRegistry::destroy(registry);
@@ -101,8 +105,16 @@ SceneContext::~SceneContext()
 
 void SceneContext::update(const Vec2& screenExtent, float delta)
 {
+    LD_PROFILE_SCOPE;
+
     // update all lua script instances
-    lua.update(delta);
+    std::string err;
+    bool success = lua.update(delta, err);
+    if (!success)
+        sSceneLog.error("script update failed: {}", err);
+
+    // after this, the transforms are thread-safe read-only for the rest of the frame
+    registry.invalidate_transforms();
 
     // update screen space UI
     screenUI.resize(screenExtent);
@@ -472,7 +484,7 @@ void Scene::reset()
     LD_ASSERT(!mObj->backup);
 }
 
-void Scene::load(const std::function<bool(Scene)>& loader)
+void Scene::load(const SceneLoadFn& loadFn)
 {
     LD_PROFILE_SCOPE;
 
@@ -485,7 +497,7 @@ void Scene::load(const std::function<bool(Scene)>& loader)
     LD_ASSERT(!mObj->active);
     mObj->active = heap_new<SceneContext>(MEMORY_USAGE_SCENE, mObj->contextInfo);
 
-    bool success = loader(*this);
+    bool success = loadFn(*this);
     if (!success)
     {
         // TODO: unwind
@@ -592,10 +604,66 @@ void Scene::update(const Vec2& screenExtent, float delta)
 
     mObj->extent = screenExtent;
 
+    if (mObj->transition.inProgress)
+    {
+        // NOTE: This is eventually where we do async I/O to load assets
+        //       for next Scene and populate the shadow SceneContext.
+        //       For now this is just a dumb synchronous call that blocks
+        //       until the full transition is complete.
+
+        mObj->shadow = heap_new<SceneContext>(MEMORY_USAGE_SCENE, mObj->contextInfo);
+
+        bool loadSuccess;
+
+        {
+            LD_PROFILE_SCOPE_NAME("Scene ShadowContext Load");
+
+            mObj->contextTarget = SCENE_CONTEXT_SHADOW;
+
+            loadSuccess = mObj->transition.loadFn(sScene);
+            mObj->contextTarget = SCENE_CONTEXT_ACTIVE;
+        }
+
+        if (loadSuccess)
+        {
+            if (mObj->shadow->startup_registry())
+            {
+                mObj->active->cleanup_registry();
+                heap_delete<SceneContext>(mObj->active);
+                mObj->active = mObj->shadow;
+            }
+            else
+            {
+                mObj->shadow->unload_registry();
+                heap_delete<SceneContext>(mObj->shadow);
+                sSceneLog.error("failed to transition to scene, startup failed");
+            }
+        }
+        else
+        {
+            heap_delete<SceneContext>(mObj->shadow);
+            sSceneLog.error("failed to transition to scene, load failed");
+        }
+
+        mObj->shadow = nullptr;
+        mObj->transition.inProgress = false;
+    }
+
     mObj->active->update(screenExtent, delta);
 
     // any heap allocations for audio is done on main thread.
     mObj->audioSystemCache.update();
+}
+
+bool Scene::request_transition(const SceneLoadFn& loadFn)
+{
+    if (mObj->transition.inProgress)
+        return false;
+
+    mObj->transition.loadFn = loadFn;
+    mObj->transition.inProgress = true;
+
+    return mObj->transition.inProgress;
 }
 
 void Scene::render_screen_ui(ScreenRenderComponent renderer)
@@ -640,10 +708,21 @@ Vector<Viewport> Scene::get_screen_regions()
 
 ComponentView Scene::create_component(ComponentType type, const char* name, CUID parentCUID)
 {
-    CUID compCUID = mObj->active->registry.create_component(type, name, parentCUID, (SUID)0);
+    DataRegistry reg{};
+    switch (mObj->contextTarget)
+    {
+    case SCENE_CONTEXT_ACTIVE:
+        reg = mObj->active->registry;
+        break;
+    case SCENE_CONTEXT_SHADOW:
+        reg = mObj->shadow->registry;
+        break;
+    }
+
+    CUID compCUID = reg.create_component(type, name, parentCUID, (SUID)0);
 
     // TODO: DataRegistry API without CUID -> Component Data chasing.
-    ComponentBase** data = mObj->active->registry.get_component_data(compCUID, nullptr);
+    ComponentBase** data = reg.get_component_data(compCUID, nullptr);
     ComponentBase* base = *data;
     sSceneComponents[(int)type].init(data);
     *data = base;
@@ -666,7 +745,7 @@ ComponentView Scene::create_component_serial(ComponentType type, const char* nam
     if (!compSUID)
         compSUID = get_suid();
 
-    CUID parentCUID = parentData ? (*parentData)->cuid : 0;
+    CUID parentCUID = parentData ? (*parentData)->cuid : (CUID)0;
     CUID compCUID = mObj->active->registry.create_component(type, name, parentCUID, compSUID);
 
     // TODO: DataRegistry API without CUID -> Component Data chasing.
@@ -825,6 +904,13 @@ bool Scene::get_ruid_world_mat4(RUID ruid, Mat4& worldMat4)
         return false;
 
     return true;
+}
+
+void Scene::invalidate_transforms()
+{
+    LD_PROFILE_SCOPE;
+
+    mObj->active->registry.invalidate_transforms();
 }
 
 } // namespace LD

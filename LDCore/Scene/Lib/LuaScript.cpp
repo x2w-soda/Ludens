@@ -83,8 +83,8 @@ static inline ComponentBase* get_component_base(LuaState& L, DataRegistry* outRe
     int oldSize = L.size();
 
     L.get_field(-1, "_cuid");
-    LD_ASSERT(L.get_type(-1) == LUA_TYPE_NUMBER);
-    CUID compID = (CUID)L.to_number(-1);
+    LD_ASSERT(L.get_type(-1) == LUA_TYPE_LIGHTUSERDATA);
+    CUID compID(reinterpret_cast<uint64_t>(L.to_userdata(-1)));
     L.pop(1);
 
     L.get_field(-1, "_reg");
@@ -104,13 +104,22 @@ static inline ComponentBase* get_component_base(LuaState& L, DataRegistry* outRe
 
 static void push_component_ref(LuaState& L, CUID compID)
 {
-    std::string str = std::format("return _G.ludens.create_component_ref({})", compID);
-    bool ok = L.do_string(str.c_str());
-    if (!ok)
+    int oldSize = L.size();
+
+    L.get_global("ludens");
+    L.get_field(-1, "create_component_ref");
+    L.push_light_userdata(reinterpret_cast<void*>((uint64_t)compID));
+
+    LuaError error = L.pcall(1, 1, 0);
+    if (error)
     {
         sLog.error("{}", L.to_string(-1));
     }
-    LD_ASSERT(ok);
+    LD_ASSERT(error == 0);
+
+    L.remove(-2);
+
+    LD_ASSERT(L.size() == oldSize + 1);
 }
 
 /// @brief Component:get_id()
@@ -119,7 +128,8 @@ int component_get_id(lua_State* l)
     LuaState L(l);
 
     ComponentBase* base = get_component_base(L, nullptr);
-    L.push_number((double)base->cuid);
+
+    L.push_light_userdata(reinterpret_cast<void*>((uint64_t)base->cuid));
 
     return 1;
 }
@@ -159,6 +169,31 @@ static int application_exit(lua_State* l)
 {
     WindowRegistry reg = WindowRegistry::get();
     reg.close_window(reg.get_root_id());
+
+    return 0;
+}
+
+/// @brief ludens.scene.transition
+static int scene_transition(lua_State* l)
+{
+    // TODO: some kind of SceneLoader that takes the Scene index or name.
+    auto loadFn = [](SceneObj* obj) -> bool {
+        Scene scene(obj);
+        ComponentView view = scene.create_component(COMPONENT_TYPE_CAMERA_2D, "dummy", 0);
+
+        std::string err;
+        Camera2DInfo info{};
+        info.extent = Vec2(500.0f);
+        info.position = Vec2(250.0f);
+        info.rotation = 0.0f;
+        info.zoom = 1.0f;
+        bool ok = ((Camera2DView)view).load(info, Rect(0.0f, 0.0f, 1.0f, 1.0f), err);
+
+        return ok;
+    };
+
+    Scene scene(sScene);
+    (void)scene.request_transition(loadFn);
 
     return 0;
 }
@@ -289,8 +324,8 @@ static int get_component(lua_State* l)
 {
     LuaState L(l);
 
-    LD_ASSERT(L.get_type(-1) == LUA_TYPE_NUMBER);
-    CUID compID = (CUID)L.to_number(-1);
+    LD_ASSERT(L.get_type(-1) == LUA_TYPE_LIGHTUSERDATA);
+    CUID compID(reinterpret_cast<uint64_t>(L.to_userdata(-1)));
 
     ComponentType type;
     void* comp = sScene->active->registry.get_component_data(compID, &type);
@@ -327,6 +362,10 @@ LuaModule create_ludens_module()
         {.type = LUA_TYPE_FN, .name = "exit", .fn = &LuaScript::application_exit},
     };
 
+    const LuaModuleValue sceneVals[] = {
+        {.type = LUA_TYPE_FN, .name = "transition", .fn = &LuaScript::scene_transition},
+    };
+
     const LuaModuleValue debugVals[] = {
         {.type = LUA_TYPE_FN, .name = "log", .fn = &LuaScript::debug_log},
     };
@@ -349,27 +388,31 @@ LuaModule create_ludens_module()
     };
     // clang-format on
 
-    std::array<LuaModuleNamespace, 5> spaces;
+    std::array<LuaModuleNamespace, 6> spaces;
     spaces[0].name = "application";
     spaces[0].valueCount = sizeof(applicationVals) / sizeof(*applicationVals);
     spaces[0].values = applicationVals;
 
-    spaces[1].name = "debug";
-    spaces[1].valueCount = sizeof(debugVals) / sizeof(*debugVals);
-    spaces[1].values = debugVals;
+    spaces[1].name = "scene";
+    spaces[1].valueCount = sizeof(sceneVals) / sizeof(*sceneVals);
+    spaces[1].values = sceneVals;
 
-    spaces[2].name = "input";
-    spaces[2].valueCount = sizeof(inputVals) / sizeof(*inputVals);
-    spaces[2].values = inputVals;
+    spaces[2].name = "debug";
+    spaces[2].valueCount = sizeof(debugVals) / sizeof(*debugVals);
+    spaces[2].values = debugVals;
 
-    spaces[3].name = "ui_driver";
-    spaces[3].valueCount = sizeof(uiDriverVals) / sizeof(*uiDriverVals);
-    spaces[3].values = uiDriverVals;
+    spaces[3].name = "input";
+    spaces[3].valueCount = sizeof(inputVals) / sizeof(*inputVals);
+    spaces[3].values = inputVals;
+
+    spaces[4].name = "ui_driver";
+    spaces[4].valueCount = sizeof(uiDriverVals) / sizeof(*uiDriverVals);
+    spaces[4].values = uiDriverVals;
 
     // NOTE: these are bindings that use the Lua stack, there are also FFI bindings in LuaScriptFFI.cpp
-    spaces[4].name = "C";
-    spaces[4].valueCount = sizeof(CVals) / sizeof(CVals);
-    spaces[4].values = CVals;
+    spaces[5].name = "C";
+    spaces[5].valueCount = sizeof(CVals) / sizeof(CVals);
+    spaces[5].values = CVals;
 
     LuaModuleInfo modI;
     modI.name = LUDENS_LUA_MODULE_NAME;
@@ -453,9 +496,7 @@ _G.ludens.ComponentRef = {
 }
 
 _G.ludens.create_component_ref = function (compID)
-    compID = tonumber(compID) -- TODO: handle uint64_t compID, this is a LuaJIT cdata, not native number
-
-    if compID == 0 then
+    if ffi.cast('void*', compID) == nil then
         return nil
     end
 
@@ -494,7 +535,7 @@ void Context::destroy()
     mScene = {};
 }
 
-void Context::update(float delta)
+bool Context::update(float delta, std::string& err)
 {
     LD_PROFILE_SCOPE;
 
@@ -504,23 +545,18 @@ void Context::update(float delta)
     mL.push_number((double)delta);
     mL.set_field(-2, "delta");
 
-    bool ok = mL.do_string(R"(local ffi = require 'ffi'
+    bool success = mL.do_string(R"(local ffi = require 'ffi'
 for compID, script in pairs(_G.ludens.scripts) do
     script:update(_G.ludens.delta)
-
-    -- TODO: This is not enough as soon as a Script is able to modify transforms of arbitrary components.
-    ffi.C.ffi_mark_transform_dirty(compID)
 end
 )");
 
-    if (!ok)
-    {
-        std::string err(mL.to_string(-1));
-        sLog.error("script update failed: {}", err);
-        LD_DEBUG_BREAK;
-    }
+    if (!success)
+        err = mL.to_string(-1);
 
     mL.resize(oldSize);
+
+    return success;
 }
 
 void Context::create_component_table(CUID compID)
@@ -545,7 +581,7 @@ void Context::destroy_component_table(CUID compID)
 
     mL.get_global("ludens");
     mL.get_field(-1, "components");
-    mL.push_number((double)compID);
+    mL.push_light_userdata(reinterpret_cast<void*>((uint64_t)compID));
     mL.push_nil();
     mL.set_table(-3); // ludens.components[compID] = nil
 
@@ -563,7 +599,7 @@ bool Context::create_lua_script(CUID compID, AssetID scriptAssetID, std::string&
 
     mL.get_global("ludens");
     mL.get_field(-1, "scripts");
-    mL.push_number((double)compID);
+    mL.push_light_userdata(reinterpret_cast<void*>((uint64_t)compID));
 
     LuaScriptAsset asset = (LuaScriptAsset)mAssetManager.get_asset(scriptAssetID, ASSET_TYPE_LUA_SCRIPT);
     LD_ASSERT(asset);
@@ -592,7 +628,7 @@ void Context::destroy_lua_script(CUID compID)
     int oldSize = mL.size();
     mL.get_global("ludens");
     mL.get_field(-1, "scripts");
-    mL.push_number((double)compID);
+    mL.push_light_userdata(reinterpret_cast<void*>((uint64_t)compID));
     mL.push_nil();
     mL.set_table(-3); // ludens.scripts[compID] = nil
 
@@ -609,7 +645,7 @@ bool Context::attach_lua_script(CUID compID, std::string& err)
     mL.get_field(-1, "scripts");
 
     // call 'attach' lua method on script
-    mL.push_number((double)compID);
+    mL.push_light_userdata(reinterpret_cast<void*>((uint64_t)compID));
     mL.get_table(-2);
     LD_ASSERT(mL.get_type(-1) == LUA_TYPE_TABLE); // script instance
 
@@ -645,7 +681,7 @@ bool Context::detach_lua_script(CUID compID, std::string& err)
     mL.get_field(-1, "scripts");
 
     // call 'detach' lua method on script
-    mL.push_number((double)compID);
+    mL.push_light_userdata(reinterpret_cast<void*>((uint64_t)compID));
     mL.get_table(-2);
     LD_ASSERT((type = mL.get_type(-1)) == LUA_TYPE_TABLE); // script instance
 

@@ -16,6 +16,13 @@ enum SceneState
     SCENE_STATE_RUNNING,
 };
 
+enum SceneContextType
+{
+    SCENE_CONTEXT_ACTIVE,
+    SCENE_CONTEXT_SHADOW,
+    SCENE_CONTEXT_BACKUP,
+};
+
 struct SceneContextInfo
 {
     AssetManager assetManager;
@@ -63,13 +70,21 @@ class SceneObj
 {
 public:
     SceneContext* active;
+    SceneContext* shadow;
     SceneContext* backup;
+    SceneContextType contextTarget = SCENE_CONTEXT_ACTIVE;
     SceneContextInfo contextInfo{};
     AssetManager assetManager{};
     AudioSystemCache audioSystemCache;
     RenderSystemCache renderSystemCache;
     SceneState state = SCENE_STATE_EMPTY;
     Vec2 extent{};
+
+    struct Transition
+    {
+        bool inProgress = false;
+        SceneLoadFn loadFn;
+    } transition;
 
     bool load_registry_from_backup();
 

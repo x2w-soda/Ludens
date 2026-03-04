@@ -391,7 +391,7 @@ bool SceneSchemaSaver::save_scene(Scene scene, std::string& toml, std::string& e
         std::string parentID = std::to_string(ite.first);
         mWriter.key(parentID.c_str()).begin_array();
 
-        for (CUID childrenID : ite.second)
+        for (SUID childrenID : ite.second)
             mWriter.write_u32(childrenID);
 
         mWriter.end_array();

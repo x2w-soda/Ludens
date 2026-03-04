@@ -59,6 +59,8 @@ protected:
     ComponentBase** mData = nullptr;
 };
 
+using SceneLoadFn = std::function<bool(struct SceneObj*)>;
+
 /// @brief Scene creation info, connects to external asset manager and subsystems.
 struct SceneInfo
 {
@@ -84,7 +86,7 @@ public:
     void reset();
 
     /// @brief Load the scene. Creates resources from assets and subsystems.
-    void load(const std::function<bool(Scene)>& loader);
+    void load(const SceneLoadFn& loadFn);
 
     /// @brief Unload the scene. Destroys resouorces.
     void unload();
@@ -104,6 +106,9 @@ public:
     /// @param extent Screen size this frame.
     /// @param delta Delta time in seconds.
     void update(const Vec2& extent, float delta);
+
+    /// @brief Non-blocking request to begin a transition to another scene.
+    bool request_transition(const SceneLoadFn& loadFn);
 
     /// @brief Render screen UI contents.
     void render_screen_ui(ScreenRenderComponent renderer);
@@ -176,6 +181,9 @@ public:
     /// @brief Supplies the Mat4 model matrix for a draw call
     bool get_ruid_world_mat4(RUID ruid, Mat4& mat4);
 
+    /// @brief Force invalidate all transforms.
+    ///        Intended for Editor to invalidate without updating the Scene.
+    void invalidate_transforms();
 };
 
 

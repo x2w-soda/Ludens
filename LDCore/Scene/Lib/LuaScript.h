@@ -20,7 +20,7 @@ public:
 
     /// @brief Call update on all scripts.
     /// @param delta Delta time in seconds.
-    void update(float delta);
+    bool update(float delta, std::string& err);
 
     /// @brief Extract internal lua state.
     inline LuaState get_lua_state() { return mL; }

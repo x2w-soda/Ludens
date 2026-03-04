@@ -11,15 +11,18 @@ static const Camera2DComponent sDefaultCamera = {
 
 void init_camera_2d_component(ComponentBase** dstData)
 {
-    memcpy(dstData, &sDefaultCamera, sizeof(Camera2DComponent));
+    ComponentBase* base = *dstData;
+    Camera2DComponent* dstCamera2D = (Camera2DComponent*)dstData;
+    memcpy(dstCamera2D, &sDefaultCamera, sizeof(Camera2DComponent));
+    dstCamera2D->base = base;
+    dstCamera2D->transform = base->transform2D;
+    LD_ASSERT(dstCamera2D->transform);
 }
 
 bool clone_camera_2d_component(SceneObj* scene, ComponentBase** dstData, ComponentBase** srcData, std::string& err)
 {
     Camera2DView srcCamera(srcData);
     LD_ASSERT(srcCamera);
-
-    ((Camera2DComponent*)dstData)->transform = ((Camera2DComponent*)srcData)->transform;
 
     Rect viewport = srcCamera.get_viewport();
     Camera2DInfo info = srcCamera.get_info();

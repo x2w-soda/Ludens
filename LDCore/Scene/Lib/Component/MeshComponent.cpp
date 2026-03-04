@@ -4,15 +4,11 @@
 
 namespace LD {
 
-static const MeshComponent sDefaultMesh = {
-    .transform = {},
-    .draw = {},
-    .assetID = 0,
-};
-
 void init_mesh_component(ComponentBase** dstData)
 {
-    memcpy(dstData, &sDefaultMesh, sizeof(MeshComponent));
+    MeshComponent* dstMesh = (MeshComponent*)dstData;
+    dstMesh->draw = {};
+    dstMesh->assetID = 0;
 }
 
 bool load_mesh_component(SceneObj* scene, MeshComponent* mesh, AssetID meshAID, std::string& err)

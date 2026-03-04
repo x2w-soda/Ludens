@@ -6,12 +6,6 @@
 
 namespace LD {
 
-static const ScreenUIComponent sDefaultScreenUI = {
-    .uiTemplateID = 0,
-    .uiDriver = nullptr,
-    .uiWindow = {},
-};
-
 static UIWindow create_window_container(SceneObj* scene)
 {
     UILayoutInfo layoutI{};
@@ -26,7 +20,10 @@ static UIWindow create_window_container(SceneObj* scene)
 
 void init_screen_ui_component(ComponentBase** dstData)
 {
-    memcpy(dstData, &sDefaultScreenUI, sizeof(ScreenUIComponent));
+    ScreenUIComponent* dstScreenUI = (ScreenUIComponent*)dstData;
+    dstScreenUI->uiDriver = nullptr;
+    dstScreenUI->uiTemplateID = 0;
+    dstScreenUI->uiWindow = {};
 }
 
 bool load_screen_ui_component(SceneObj* scene, ScreenUIComponent* ui, AssetID uiTemplateID, std::string& err)

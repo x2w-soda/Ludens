@@ -58,6 +58,16 @@ static_assert(offsetof(AudioSourceComponent, clipID) == 16);
 static_assert(offsetof(AudioSourceComponent, pan) == 20);
 static_assert(offsetof(AudioSourceComponent, volumeLinear) == 24);
 
+static_assert(alignof(Camera2DComponent) == 8);
+static_assert(offsetof(Camera2DComponent, transform) == 8);
+static_assert(offsetof(Camera2DComponent, camera) == 16);
+static_assert(offsetof(Camera2DComponent, viewport) == 24);
+
+static_assert(alignof(Sprite2DComponent) == 8);
+static_assert(offsetof(Sprite2DComponent, transform) == 8);
+static_assert(offsetof(Sprite2DComponent, draw) == 16);
+static_assert(offsetof(Sprite2DComponent, assetID) == 32);
+
 static const char sLuaFFICdef[] = R"(
 typedef struct __attribute__((aligned(4))) Vec2 {
     float x;
@@ -104,13 +114,12 @@ typedef struct __attribute__((aligned(4))) Transform2D {
     float rotation;
 } Transform2D;
 
-uint64_t ffi_get_parent_id(uint64_t compID);
-uint64_t ffi_get_child_id_by_name(uint64_t compID, const char* name);
-void ffi_mark_transform_dirty(uint64_t compID);
+void* ffi_get_parent_id(void* compID);
+void* ffi_get_child_id_by_name(void* compID, const char* name);
 
 typedef struct MeshComponent {
     void* base;
-    TransformEx transform;
+    TransformEx* transform;
 } MeshComponent;
 
 typedef struct __attribute__((aligned(8))) AudioSourceComponent {
@@ -127,13 +136,18 @@ void ffi_audio_source_component_resume(AudioSourceComponent* comp);
 void ffi_audio_source_component_set_pan(AudioSourceComponent* comp, float pan);
 void ffi_audio_source_component_set_volume_linear(AudioSourceComponent* comp, float volumeLinear);
 
-// TODO:
-typedef struct Sprite2DComponent {
+typedef struct __attribute__((aligned(8))) Camera2DComponent {
     void* base;
-    Transform2D transform;
-    Rect local;
-    void* __private_image;
-    int32_t zDepth;
+    Transform2D* transform;
+    void* __private_camera;
+    Rect viewport;
+} Camera2DComponent;
+
+typedef struct __attribute__((aligned(8))) Sprite2DComponent {
+    void* base;
+    Transform2D* transform;
+    void* __private_drawL;
+    void* __private_drawH;
     uint32_t __private_auid;
 } Sprite2DComponent;
 )";
@@ -200,17 +214,17 @@ const char* get_ffi_mt()
 
 extern "C" {
 
-uint64_t ffi_get_parent_id(uint64_t compID)
+void* ffi_get_parent_id(void* compID)
 {
-    ComponentBase* base = sScene->active->registry.get_component_base(compID);
+    ComponentBase* base = sScene->active->registry.get_component_base(reinterpret_cast<uint64_t>(compID));
     LD_ASSERT(base);
     ComponentBase* parent = base->parent;
-    return parent ? parent->cuid : 0;
+    return parent ? reinterpret_cast<void*>((uint64_t)parent->cuid) : (void*)0;
 }
 
-uint64_t ffi_get_child_id_by_name(uint64_t compID, const char* name)
+void* ffi_get_child_id_by_name(void* compID, const char* name)
 {
-    ComponentBase* base = sScene->active->registry.get_component_base(compID);
+    ComponentBase* base = sScene->active->registry.get_component_base(reinterpret_cast<uint64_t>(compID));
     LD_ASSERT(base && base->name);
 
     for (ComponentBase* child = base->child; child; child = child->next)
@@ -218,15 +232,10 @@ uint64_t ffi_get_child_id_by_name(uint64_t compID, const char* name)
         LD_ASSERT(child && child->name);
 
         if (!strcmp(child->name, name))
-            return child->cuid;
+            return reinterpret_cast<void*>((uint64_t)child->cuid);
     }
 
     return 0;
-}
-
-void ffi_mark_transform_dirty(uint64_t cuid)
-{
-    sScene->active->registry.mark_component_transform_dirty(cuid);
 }
 
 void ffi_audio_source_component_play(AudioSourceComponent* comp)

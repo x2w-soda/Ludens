@@ -4,6 +4,7 @@
 #include <Ludens/Asset/AssetType/MeshAsset.h>
 #include <Ludens/Asset/AssetType/Texture2DAsset.h>
 #include <Ludens/DSA/HashMap.h>
+#include <Ludens/DSA/Vector.h>
 #include <Ludens/DataRegistry/DataComponent.h>
 #include <Ludens/RenderSystem/RenderSystem.h>
 
@@ -39,12 +40,13 @@ public:
 
 private:
     void link_id(CUID compID, RUID drawID);
+    void reserve_sparse_index(CUID compID);
 
 private:
     RenderSystem mSystem{};
     AssetManager mAssetManager{};
+    Vector<RUID> mCuidToDraw;               /// map component to RenderSystem draw ID
     HashMap<RUID, CUID> mDrawToCuid;        /// map RenderSystem draw ID to component
-    HashMap<CUID, RUID> mCuidToDraw;        /// map component to RenderSystem draw ID
     HashMap<SUID, RUID> mSuidToScreenLayer; /// map screen layer SUID to RUID
     HashMap<RUID, SUID> mScreenLayerToSuid; /// map screen layer RUID to SUID
     HashMap<AssetID, MeshData> mMeshData;

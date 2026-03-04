@@ -47,12 +47,9 @@ void RenderSystemCache::destroy()
 
 RUID RenderSystemCache::get_component_draw_id(CUID compID)
 {
-    auto ite = mCuidToDraw.find(compID);
+    uint32_t compIndex = compID.index();
 
-    if (ite == mCuidToDraw.end())
-        return 0;
-
-    return ite->second;
+    return (compID && compIndex < mCuidToDraw.size()) ? mCuidToDraw[compIndex] : 0;
 }
 
 CUID RenderSystemCache::get_draw_id_component(RUID drawID)
@@ -115,6 +112,9 @@ MeshData RenderSystemCache::get_or_create_mesh_data(AssetID meshAUID)
 
 MeshDraw RenderSystemCache::create_mesh_draw(CUID compID, AssetID meshAUID)
 {
+    LD_ASSERT(compID);
+    reserve_sparse_index(compID);
+
     MeshDraw draw{};
 
     if (meshAUID)
@@ -139,7 +139,7 @@ void RenderSystemCache::destroy_mesh_draw(MeshDraw draw)
 
     CUID meshCUID = mDrawToCuid[draw.get_id()];
     mDrawToCuid.erase(draw.get_id());
-    mCuidToDraw.erase(meshCUID);
+    mCuidToDraw[meshCUID.index()] = 0;
 
     mSystem.destroy_mesh_draw(draw);
 }
@@ -158,6 +158,9 @@ Image2D RenderSystemCache::get_or_create_image_2d(AssetID textureID)
 
 Sprite2DDraw RenderSystemCache::create_sprite_2d_draw(CUID compID, RUID layerID, AssetID textureID)
 {
+    LD_ASSERT(compID);
+    reserve_sparse_index(compID);
+
     Sprite2DDraw draw{};
 
     if (textureID)
@@ -182,23 +185,34 @@ void RenderSystemCache::destroy_sprite_2d_draw(Sprite2DDraw draw)
 
     CUID compCUID = mDrawToCuid[draw.get_id()];
     mDrawToCuid.erase(draw.get_id());
-    mCuidToDraw.erase(compCUID);
+    mCuidToDraw[compCUID.index()] = 0;
 
     mSystem.destroy_sprite_2d_draw(draw);
 }
 
 void RenderSystemCache::link_id(CUID compID, RUID drawID)
 {
-    // invalidate old drawID associated with component
-    auto it = mCuidToDraw.find(compID);
-    if (it != mCuidToDraw.end())
-    {
-        RUID oldDrawID = it->second;
-        mDrawToCuid.erase(oldDrawID);
-    }
+    uint32_t compIndex = compID.index();
 
+    RUID oldDrawID = mCuidToDraw[compIndex];
+    mDrawToCuid[oldDrawID] = (CUID)0;
     mDrawToCuid[drawID] = compID;
-    mCuidToDraw[compID] = drawID;
+    mCuidToDraw[compIndex] = drawID;
+}
+
+void RenderSystemCache::reserve_sparse_index(CUID compID)
+{
+    if (!compID)
+        return;
+
+    uint32_t sparseIndex = compID.index();
+
+    if (sparseIndex >= mCuidToDraw.size())
+    {
+        mCuidToDraw.resize(sparseIndex + 1);
+        for (uint32_t i = sparseIndex; i < mCuidToDraw.size(); i++)
+            mCuidToDraw[i] = 0;
+    }
 }
 
 } // namespace LD

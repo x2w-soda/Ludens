@@ -4,15 +4,14 @@
 
 namespace LD {
 
-static const Sprite2DComponent sDefaultSprite2D = {
-    .transform = {},
-    .draw = {},
-    .assetID = 0,
-};
-
 void init_sprite_2d_component(ComponentBase** dstData)
 {
-    memcpy(dstData, &sDefaultSprite2D, sizeof(Sprite2DComponent));
+    ComponentBase* dstBase = *dstData;
+    Sprite2DComponent* dstSprite2D = (Sprite2DComponent*)dstData;
+    dstSprite2D->transform = dstBase->transform2D;
+    dstSprite2D->draw = {};
+    dstSprite2D->assetID = 0;
+    LD_ASSERT(dstSprite2D->transform);
 }
 
 bool load_sprite_2d_component_suid(SceneObj* scene, Sprite2DComponent* sprite, SUID layerSUID, AssetID texture2D, std::string& err)
@@ -66,8 +65,6 @@ bool clone_sprite_2d_component(SceneObj* scene, ComponentBase** dstData, Compone
     dstSprite.set_pivot(srcSprite.get_pivot());
     dstSprite.set_region(srcSprite.get_region());
     dstSprite.set_z_depth(srcSprite.get_z_depth());
-    
-    ((Sprite2DComponent*)dstData)->transform = ((Sprite2DComponent*)srcData)->transform;
 
     return true;
 }
