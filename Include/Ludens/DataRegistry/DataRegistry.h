@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Ludens/Asset/AssetRegistry.h>
+#include <Ludens/DSA/IDRegistry.h>
 #include <Ludens/DSA/Vector.h>
 #include <Ludens/Header/Handle.h>
 #include <Ludens/Header/Hash.h>
@@ -13,8 +14,8 @@ namespace LD {
 
 struct ComponentBase;
 
-/// @brief Component unique identifier distributed by the DataRegistry. Zero is invalid ID.
-using CUID = uint64_t;
+/// @brief Component unique identifier distributed by an IDRegistry. Zero is invalid ID.
+using CUID = ID;
 
 enum ComponentType
 {
@@ -97,15 +98,13 @@ struct DataRegistry : Handle<struct DataRegistryObj>
     /// @return True on success.
     bool set_component_transform_2d(CUID compID, const Transform2D& transform);
 
-    /// @brief Mark the transforms of a component subtree as dirty.
-    /// @return True on success.
-    bool mark_component_transform_dirty(CUID compID);
-
     /// @brief Get the Mat4 model matrix of a data component.
     /// @param compID Component ID to query.
     /// @param mat4 Output world space model matrix.
     /// @return True on success.
     bool get_component_world_mat4(CUID compID, Mat4& mat4);
+
+    void invalidate_transforms();
 };
 
 /// @brief Get the byte size of a data component.

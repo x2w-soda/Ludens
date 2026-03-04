@@ -28,25 +28,21 @@ namespace LD {
 template <typename T>
 concept IsDataComponent = LD::IsTrivial<T>;
 
-using ComponentFlag = uint32_t;
-
-enum ComponentFlagBit : uint32_t
-{
-    COMPONENT_FLAG_TRANSFORM_DIRTY_BIT = LD_BIT(0),
-};
-
 /// @brief Data component base members, hierarchy representation.
 struct ComponentBase
 {
-    Mat4 worldMat4;        /// world space model matrix
+    CUID cuid;             /// data component runtime ID
     char* name;            /// user defined name
     ComponentBase* next;   /// next sibling component
     ComponentBase* child;  /// first child component
     ComponentBase* parent; /// parent component
-    CUID cuid;             /// data component runtime ID
+    union
+    {
+        TransformEx* transformEx;
+        Transform2D* transform2D;
+    };
     SUID suid;             /// data component serial ID
     ComponentType type;    /// data component type
-    ComponentFlag flags;   /// data component flags
     AssetID scriptAssetID; /// the script asset to instantiate from
 };
 
@@ -64,14 +60,14 @@ struct AudioSourceComponent
 struct TransformComponent
 {
     ComponentBase* base;
-    TransformEx transform;
+    TransformEx* transform;
 };
 
 /// @brief A component with only transform 2D data.
 struct Transform2DComponent
 {
     ComponentBase* base;
-    Transform2D transform;
+    Transform2D* transform;
 };
 
 /// @brief A camera in world space. The camera is responsible for
@@ -79,7 +75,7 @@ struct Transform2DComponent
 struct CameraComponent
 {
     ComponentBase* base;
-    TransformEx transform;
+    TransformEx* transform;
     Camera camera;
     bool isMainCamera;
 };
@@ -87,7 +83,7 @@ struct CameraComponent
 struct Camera2DComponent
 {
     ComponentBase* base;
-    Transform2D transform;
+    Transform2D* transform;
     Camera2D camera;
     Rect viewport; // normalized render region
 };
@@ -97,7 +93,7 @@ struct Camera2DComponent
 struct MeshComponent
 {
     ComponentBase* base;
-    TransformEx transform; /// mesh transform
+    TransformEx* transform; /// mesh transform
     MeshDraw draw;         /// render server draw config
     AssetID assetID;       /// mesh asset id
 };
@@ -107,7 +103,7 @@ struct MeshComponent
 struct Sprite2DComponent
 {
     ComponentBase* base;
-    Transform2D transform; /// sprite 2D transform
+    Transform2D* transform; /// sprite 2D transform
     Sprite2DDraw draw;     /// render server draw config
     AssetID assetID;       /// texture asset handle
 };

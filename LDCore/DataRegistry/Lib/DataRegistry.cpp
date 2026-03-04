@@ -1,9 +1,9 @@
 #include <Ludens/DSA/HashMap.h>
 #include <Ludens/DSA/HashSet.h>
-#include <Ludens/DSA/IDCounter.h>
 #include <Ludens/DSA/Vector.h>
 #include <Ludens/DataRegistry/DataComponent.h>
 #include <Ludens/DataRegistry/DataRegistry.h>
+#include <Ludens/DataRegistry/TransformRegistry.h>
 #include <Ludens/Header/Types.h>
 #include <Ludens/Log/Log.h>
 #include <Ludens/Memory/Memory.h>
@@ -12,7 +12,7 @@
 namespace LD {
 
 static Log sLog("DataRegistry");
-static IDCounter<CUID> sCUIDCounter;
+static IDRegistry sCUIDRegistry;
 static bool duplicate_subtree(DataRegistry dst, CUID dstParentID, DataRegistry src, CUID srcID);
 static SUID get_mesh_asset_id(void* comp);
 
@@ -75,7 +75,8 @@ inline TransformEx* get_component_transform(ComponentBase** data)
     if (!base || !(sComponentTable[base->type].typeFlags & COMPONENT_TYPE_FLAG_TRANSFORM_EX))
         return nullptr;
 
-    return (TransformEx*)(data + 1);
+    LD_ASSERT(base->transformEx);
+    return base->transformEx;
 }
 
 /// @brief Get component local 2D transform.
@@ -87,28 +88,24 @@ inline Transform2D* get_component_transform_2d(ComponentBase** data)
     if (!base || !(sComponentTable[base->type].typeFlags & COMPONENT_TYPE_FLAG_TRANSFORM_2D))
         return nullptr;
 
-    return (Transform2D*)(data + 1);
+    LD_ASSERT(base->transform2D);
+    return base->transform2D;
 }
 
 struct DataRegistryObj
 {
     HashMap<ComponentType, PoolAllocator> componentPAs;
-    HashMap<CUID, ComponentBase**> cuidToCompData;
+    Vector<ComponentBase**> cuidToCompData;
     HashMap<SUID, ComponentBase**> suidToCompData;
     HashSet<CUID> roots; // TODO: root should be ordered
     PoolAllocator componentBasePA;
+    Transform2DRegistry transform2DRegistry;
 
     inline ComponentBase** get_data_from_cuid(CUID compCUID)
     {
-        auto it = cuidToCompData.find(compCUID);
+        uint32_t compIndex = compCUID.index();
 
-        if (it != cuidToCompData.end())
-        {
-            LD_ASSERT(it->second && *it->second);
-            return (ComponentBase**)it->second;
-        }
-
-        return nullptr;
+        return (compIndex < cuidToCompData.size()) ? cuidToCompData[compIndex] : nullptr;
     }
 
     inline ComponentBase** get_data_from_suid(SUID compSUID)
@@ -124,17 +121,20 @@ struct DataRegistryObj
         return nullptr;
     }
 
+    /// @brief Sparse index is used for O(1) array indexing,
+    ///        we need to grow vectors to accommodate max sparse index.
+    void reserve_sparse_index(CUID id);
+
     /// @brief Detach a component from its parent.
     void detach(ComponentBase* base);
 
     /// @brief Establish a parent-child relationship between components
     void add_child(ComponentBase* parent, ComponentBase* child);
 
-    /// @brief Mark the local transform of a component subtree as dirty.
-    void mark_component_transform_dirty(ComponentBase* base);
-
     /// @brief Get component world transform matrix
     bool get_component_world_mat4(ComponentBase* base, Mat4& mat4);
+
+    static void id_hierarchy(ID parent, Vector<ID>& children, void* user);
 };
 
 static bool duplicate_subtree(DataRegistry dst, CUID dstParentID, DataRegistry src, CUID srcID)
@@ -157,27 +157,24 @@ static bool duplicate_subtree(DataRegistry dst, CUID dstParentID, DataRegistry s
     ComponentBase* dstBase = *dstData;
     dstBase->suid = srcBase->suid;
     dstBase->scriptAssetID = srcBase->scriptAssetID;
-    dstBase->worldMat4 = srcBase->worldMat4;
     dst.unwrap()->suidToCompData[dstBase->suid] = dstData;
 
     // copy transform state
     if (sComponentTable[(int)srcBase->type].typeFlags & COMPONENT_TYPE_FLAG_TRANSFORM_2D)
     {
         ComponentBase** srcData = src.get_component_data(srcID, nullptr);
-        Transform2D* dstTransform = get_component_transform_2d(dstData);
-        Transform2D* srcTransform = get_component_transform_2d(srcData);
+        Transform2D* dstTransform = dstBase->transform2D;
+        Transform2D* srcTransform = srcBase->transform2D;
         LD_ASSERT(srcTransform && dstTransform);
         *dstTransform = *srcTransform;
-        dstBase->flags |= COMPONENT_FLAG_TRANSFORM_DIRTY_BIT;
     }
     else if (sComponentTable[(int)srcBase->type].typeFlags & COMPONENT_TYPE_FLAG_TRANSFORM_EX)
     {
         ComponentBase** srcData = src.get_component_data(srcID, nullptr);
-        TransformEx* dstTransform = get_component_transform(dstData);
-        TransformEx* srcTransform = get_component_transform(srcData);
+        TransformEx* dstTransform = dstBase->transformEx;
+        TransformEx* srcTransform = srcBase->transformEx;
         LD_ASSERT(srcTransform && dstTransform);
         *dstTransform = *srcTransform;
-        dstBase->flags |= COMPONENT_FLAG_TRANSFORM_DIRTY_BIT;
     }
 
     // maintain sibling order
@@ -199,6 +196,21 @@ static bool duplicate_subtree(DataRegistry dst, CUID dstParentID, DataRegistry s
 static SUID get_mesh_asset_id(void* comp)
 {
     return ((MeshComponent*)comp)->assetID;
+}
+
+void DataRegistryObj::reserve_sparse_index(CUID id)
+{
+    if (!id)
+        return;
+
+    uint32_t sparseIndex = id.index();
+
+    if (sparseIndex >= cuidToCompData.size())
+    {
+        cuidToCompData.resize(sparseIndex + 1);
+        for (uint32_t i = sparseIndex; i < cuidToCompData.size(); i++)
+            cuidToCompData[i] = nullptr;
+    }
 }
 
 void DataRegistryObj::detach(ComponentBase* base)
@@ -231,51 +243,27 @@ void DataRegistryObj::add_child(ComponentBase* parent, ComponentBase* child)
     }
 }
 
-void DataRegistryObj::mark_component_transform_dirty(ComponentBase* base)
-{
-    if (!base || (base->flags & COMPONENT_FLAG_TRANSFORM_DIRTY_BIT))
-        return;
-
-    base->flags |= COMPONENT_FLAG_TRANSFORM_DIRTY_BIT;
-
-    for (ComponentBase* child = base->child; child; child = child->next)
-    {
-        mark_component_transform_dirty(child);
-    }
-}
-
 bool DataRegistryObj::get_component_world_mat4(ComponentBase* base, Mat4& mat4)
 {
     if (!base)
         return false;
 
-    if (base->flags & COMPONENT_FLAG_TRANSFORM_DIRTY_BIT)
-    {
-        Mat4 parentWorldMat4(1.0f);
-        if (base->parent && !get_component_world_mat4(base->parent, parentWorldMat4))
-            return false;
-
-        TransformEx transform;
-        Transform2D transform2D;
-        Mat4 localMat4;
-        if (DataRegistry(this).get_component_transform(base->cuid, transform))
-        {
-            transform.rotation = Quat::from_euler(transform.rotationEuler);
-            localMat4 = transform.as_mat4();
-        }
-        else if (DataRegistry(this).get_component_transform_2d(base->cuid, transform2D))
-        {
-            localMat4 = transform2D.as_mat4();
-        }
-        else
-            return false;
-
-        base->worldMat4 = parentWorldMat4 * localMat4;
-        base->flags &= ~COMPONENT_FLAG_TRANSFORM_DIRTY_BIT;
-    }
-
-    mat4 = base->worldMat4;
+    mat4 = transform2DRegistry.get_world_mat4(base->cuid);
     return true;
+}
+
+void DataRegistryObj::id_hierarchy(ID parent, Vector<ID>& children, void* user)
+{
+    LD_ASSERT(children.empty());
+
+    DataRegistryObj* obj = (DataRegistryObj*)user;
+    ComponentBase** data = obj->get_data_from_cuid(parent);
+    if (!data)
+        return;
+
+    LD_ASSERT(*data);
+    for (ComponentBase* child = (*data)->child; child; child = child->next)
+        children.push_back(child->cuid);
 }
 
 DataRegistry DataRegistry::create()
@@ -332,6 +320,8 @@ DataRegistry DataRegistry::duplicate() const
 
 CUID DataRegistry::create_component(ComponentType type, const char* name, CUID parentID, SUID suid)
 {
+    LD_PROFILE_SCOPE;
+
     size_t compDataByteSize = get_component_byte_size(type);
 
     if (!mObj->componentPAs.contains(type))
@@ -350,13 +340,26 @@ CUID DataRegistry::create_component(ComponentType type, const char* name, CUID p
 
     compBase->name = heap_strdup(name, MEMORY_USAGE_MISC);
     compBase->type = type;
-    compBase->suid = suid;                  // serial identity, may be zero for components created at runtime
-    compBase->cuid = sCUIDCounter.get_id(); // runtime identity
+    compBase->suid = suid;                   // serial identity, may be zero for components created at runtime
+    compBase->cuid = sCUIDRegistry.create(); // runtime identity
+
+    if (sComponentTable[(int)type].typeFlags & COMPONENT_TYPE_FLAG_TRANSFORM_2D)
+    {
+        compBase->transform2D = mObj->transform2DRegistry.create(compBase->cuid, parentID);
+    }
+    else if (sComponentTable[(int)type].typeFlags & COMPONENT_TYPE_FLAG_TRANSFORM_EX)
+    {
+        // TODO: TransformRegistry for 3D
+        LD_UNREACHABLE;
+    }
+
+    mObj->reserve_sparse_index(compBase->cuid);
 
     if (parentID)
     {
-        LD_ASSERT(mObj->cuidToCompData.contains(parentID));
-        ComponentBase* parentBase = *(mObj->cuidToCompData[parentID]);
+        uint32_t parentIndex = parentID.index();
+        LD_ASSERT(mObj->cuidToCompData[parentIndex]);
+        ComponentBase* parentBase = *(mObj->cuidToCompData[parentIndex]);
         mObj->add_child(parentBase, compBase);
     }
     else
@@ -371,7 +374,8 @@ CUID DataRegistry::create_component(ComponentType type, const char* name, CUID p
     // first member of component data is backwards link to it's ComponentBase metadata
     *compData = compBase;
 
-    mObj->cuidToCompData[compBase->cuid] = compData;
+    uint32_t compIndex = compBase->cuid.index();
+    mObj->cuidToCompData[compIndex] = compData;
     if (compBase->suid)
         mObj->suidToCompData[compBase->suid] = compData;
 
@@ -380,30 +384,41 @@ CUID DataRegistry::create_component(ComponentType type, const char* name, CUID p
 
 void DataRegistry::destroy_component(CUID compCUID)
 {
-    auto it = mObj->cuidToCompData.find(compCUID);
+    LD_PROFILE_SCOPE;
 
-    if (it == mObj->cuidToCompData.end())
+    uint32_t compIndex = compCUID.index();
+    ComponentBase** compData = mObj->cuidToCompData[compIndex];
+
+    if (!compData)
         return;
 
-    ComponentBase** compData = it->second;
-    LD_ASSERT(compData && *compData);
-
     ComponentBase* compBase = *compData;
-    LD_ASSERT(mObj->componentPAs.contains(compBase->type));
+    LD_ASSERT(compBase);
+
+    ComponentType compType = compBase->type;
+    LD_ASSERT(mObj->componentPAs.contains(compType));
 
     SUID compSUID = compBase->suid;
 
     *compData = nullptr;
-    mObj->componentPAs[compBase->type].free(compData);
+    mObj->componentPAs[compType].free(compData);
 
     compBase->type = COMPONENT_TYPE_DATA;
     compBase->cuid = 0;
     compBase->suid = 0;
-    compBase->flags = 0;
     compBase->scriptAssetID = 0;
+
+    if (sComponentTable[(int)compType].typeFlags & COMPONENT_TYPE_FLAG_TRANSFORM_2D)
+    {
+        mObj->transform2DRegistry.destroy(compCUID, &DataRegistryObj::id_hierarchy, mObj);
+        compBase->transform2D = nullptr;
+    }
+
     mObj->componentBasePA.free(compBase);
 
-    mObj->cuidToCompData.erase(compCUID);
+    sCUIDRegistry.destroy(compCUID);
+
+    mObj->cuidToCompData[compIndex] = nullptr;
     mObj->suidToCompData.erase(compSUID);
 }
 
@@ -419,7 +434,6 @@ void DataRegistry::reparent(CUID compID, CUID parentID)
 
     mObj->detach(childBase);
     mObj->add_child(parentBase, childBase);
-    mObj->mark_component_transform_dirty(childBase);
 }
 
 ComponentBase* DataRegistry::get_component_base(CUID compCUID)
@@ -431,13 +445,14 @@ ComponentBase* DataRegistry::get_component_base(CUID compCUID)
 
 SUID DataRegistry::get_component_asset_id(CUID compID)
 {
-    auto it = mObj->cuidToCompData.find(compID);
-    if (it == mObj->cuidToCompData.end())
+    uint32_t compIndex = compID.index();
+    ComponentBase** compData = mObj->cuidToCompData[compIndex];
+
+    if (!compData)
         return (SUID)0;
 
-    ComponentBase** compData = it->second;
-    LD_ASSERT(compData);
     ComponentBase* compBase = *compData;
+    LD_ASSERT(compBase);
 
     if (!sComponentTable[compBase->type].get_asset_id)
         return (SUID)0;
@@ -543,7 +558,6 @@ bool DataRegistry::set_component_transform(CUID compID, const TransformEx& trans
         return false;
 
     *dstTransform = transform;
-    mObj->mark_component_transform_dirty(*data);
 
     return true;
 }
@@ -559,18 +573,6 @@ bool DataRegistry::set_component_transform_2d(CUID compID, const Transform2D& tr
         return false;
 
     *dstTransform = transform;
-    mObj->mark_component_transform_dirty(*data);
-
-    return true;
-}
-
-bool DataRegistry::mark_component_transform_dirty(CUID compID)
-{
-    ComponentBase** data = mObj->get_data_from_cuid(compID);
-    if (!data)
-        return false;
-
-    mObj->mark_component_transform_dirty(*data);
 
     return true;
 }
@@ -582,6 +584,13 @@ bool DataRegistry::get_component_world_mat4(CUID compID, Mat4& mat4)
     ComponentBase* base = get_component_base(compID);
 
     return mObj->get_component_world_mat4(base, mat4);
+}
+
+void DataRegistry::invalidate_transforms()
+{
+    LD_PROFILE_SCOPE;
+
+    mObj->transform2DRegistry.invalidate_transforms();
 }
 
 } // namespace LD
