@@ -628,7 +628,22 @@ void ScreenRenderComponent::draw_rect(const Rect& rect, Color color)
     v[3] = {x0, y1, 0, 0, color, 0}; // BL
 }
 
-void ScreenRenderComponent::draw_rect_outline(const Rect& rect, Color color, float width)
+void ScreenRenderComponent::draw_rect(const Mat4& model, const Rect& localRect, Color color)
+{
+    Vec4 corner[4];
+    corner[0] = model * Vec4(localRect.x, localRect.y, 0.0f, 1.0f);
+    corner[1] = model * Vec4(localRect.x + localRect.w, localRect.y, 0.0f, 1.0f);
+    corner[2] = model * Vec4(localRect.x + localRect.w, localRect.y + localRect.h, 0.0f, 1.0f);
+    corner[3] = model * Vec4(localRect.x, localRect.y + localRect.h, 0.0f, 1.0f);
+
+    QuadVertex* v = mObj->mRectBatch.write_quad();
+    v[0] = {corner[0].x, corner[0].y, 0, 0, color, 0}; // TL
+    v[1] = {corner[1].x, corner[1].y, 0, 0, color, 0}; // TR
+    v[2] = {corner[2].x, corner[2].y, 0, 0, color, 0}; // BR
+    v[3] = {corner[3].x, corner[3].y, 0, 0, color, 0}; // BL
+}
+
+void ScreenRenderComponent::draw_rect_outline(const Rect& rect, Color color, float thickness)
 {
     if (mObj->mRectBatch.get_quad_count() + 4 > mObj->mRectBatch.get_max_rect_count())
         mObj->flush_rects();
@@ -640,29 +655,33 @@ void ScreenRenderComponent::draw_rect_outline(const Rect& rect, Color color, flo
     float y0 = rect.y;
     float y1 = rect.y + rect.h;
 
-    QuadVertex* barT = mObj->mRectBatch.write_quad();
-    barT[0] = {x0, y0, 0, 0, color, 0};
-    barT[1] = {x1, y0, 0, 0, color, 0};
-    barT[2] = {x1, y0 + width, 0, 0, color, 0};
-    barT[3] = {x0, y0 + width, 0, 0, color, 0};
+    Rect barT(x0, y0, rect.w, thickness);
+    Rect barB(x0, y1 - thickness, rect.w, thickness);
+    Rect barL(x0, y0 + thickness, thickness, rect.h - 2 * thickness);
+    Rect barR(x1 - thickness, y0 + thickness, thickness, rect.h - 2 * thickness);
 
-    QuadVertex* barB = mObj->mRectBatch.write_quad();
-    barB[0] = {x0, y1 - width, 0, 0, color, 0};
-    barB[1] = {x1, y1 - width, 0, 0, color, 0};
-    barB[2] = {x1, y1, 0, 0, color, 0};
-    barB[3] = {x0, y1, 0, 0, color, 0};
+    draw_rect(barT, color);
+    draw_rect(barB, color);
+    draw_rect(barL, color);
+    draw_rect(barR, color);
+}
 
-    QuadVertex* barL = mObj->mRectBatch.write_quad();
-    barL[0] = {x0, y0 + width, 0, 0, color, 0};
-    barL[1] = {x0 + width, y0 + width, 0, 0, color, 0};
-    barL[2] = {x0 + width, y1 - width, 0, 0, color, 0};
-    barL[3] = {x0, y1 - width, 0, 0, color, 0};
+void ScreenRenderComponent::draw_rect_outline(const Mat4& model, const Rect& localRect, Color color, float thickness)
+{
+    float x0 = localRect.x;
+    float x1 = localRect.x + localRect.w;
+    float y0 = localRect.y;
+    float y1 = localRect.y + localRect.h;
 
-    QuadVertex* barR = mObj->mRectBatch.write_quad();
-    barR[0] = {x1 - width, y0 + width, 0, 0, color, 0};
-    barR[1] = {x1, y0 + width, 0, 0, color, 0};
-    barR[2] = {x1, y1 - width, 0, 0, color, 0};
-    barR[3] = {x1 - width, y1 - width, 0, 0, color, 0};
+    Rect barT(x0, y0, localRect.w, thickness);
+    Rect barB(x0, y1 - thickness, localRect.w, thickness);
+    Rect barL(x0, y0 + thickness, thickness, localRect.h - 2 * thickness);
+    Rect barR(x1 - thickness, y0 + thickness, thickness, localRect.h - 2 * thickness);
+
+    draw_rect(model, barT, color);
+    draw_rect(model, barB, color);
+    draw_rect(model, barL, color);
+    draw_rect(model, barR, color);
 }
 
 void ScreenRenderComponent::draw_rect_rounded(const Rect& rect, Color color, float radius)

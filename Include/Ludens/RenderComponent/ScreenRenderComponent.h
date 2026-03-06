@@ -2,10 +2,10 @@
 
 #include <Ludens/Header/Color.h>
 #include <Ludens/Header/Handle.h>
+#include <Ludens/Header/Math/Mat4.h>
 #include <Ludens/Header/Math/Rect.h>
 #include <Ludens/Media/Font.h>
 #include <Ludens/RenderGraph/RGraph.h>
-#include <optional>
 
 namespace LD {
 
@@ -69,11 +69,24 @@ struct ScreenRenderComponent : Handle<struct ScreenRenderComponentObj>
     /// @param color rect fill color
     void draw_rect(const Rect& rect, Color color);
 
+    /// @brief Draw a rect.
+    /// @param model Model matrix
+    /// @param localRect Local rect dimensions
+    /// @param color Rect fill color
+    void draw_rect(const Mat4& model, const Rect& localRect, Color color);
+
     /// @brief draw a rect outline
     /// @param rect render area in screen space
     /// @param color rect outline color
-    /// @param width outline thickness, grows inwards within render area
-    void draw_rect_outline(const Rect& rect, Color color, float width);
+    /// @param thickness outline thickness, grows inwards within render area
+    void draw_rect_outline(const Rect& rect, Color color, float thickness);
+
+    /// @brief Draw a rect outline.
+    /// @param model Model matrix.
+    /// @param localRect Local rect dimensions.
+    /// @param color Rect outline color.
+    /// @param thickness Outline thickness, grows inwards within render area.
+    void draw_rect_outline(const Mat4& model, const Rect& localRect, Color color, float thickness);
 
     /// @brief Draw a rect with border radius.
     /// @param rect Render area in screen space.
