@@ -12,6 +12,7 @@
 
 namespace LD {
 
+class SUID;
 struct TransformEx;
 struct Transform2D;
 
@@ -84,6 +85,8 @@ struct TOMLReader : Handle<struct TOMLReaderObj>
     bool read_f64(int index, double& f64);
     bool read_string(const char* key, std::string& str);
     bool read_string(int index, std::string& str);
+    bool read_suid(const char* key, SUID& id);
+    bool read_suid(int index, SUID& id);
 };
 
 namespace TOMLUtil {

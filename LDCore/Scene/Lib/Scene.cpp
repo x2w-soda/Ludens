@@ -120,24 +120,6 @@ void SceneContext::update(const Vec2& screenExtent, float delta)
     screenUI.resize(screenExtent);
     screenUI.update(delta);
 
-#if 0
-    if (mainCameraC) // CameraComponent to world Viewports
-    {
-        const CameraComponent* cameraC = mainCameraC;
-        const ComponentBase* base = cameraC->base;
-        LD::Camera mainCamera = cameraC->camera;
-        LD_ASSERT(base && mainCamera);
-
-        Mat4 worldMat4;
-        registry.get_component_world_mat4(base->cuid, worldMat4);
-        Vec3 forward = worldMat4.as_mat3() * Vec3(0.0f, 0.0f, 1.0f);
-
-        mainCamera.set_aspect_ratio(screenExtent.x / screenExtent.y);
-        mainCamera.set_pos(cameraC->transform.position);
-        mainCamera.set_target(cameraC->transform.position + forward);
-    }
-#endif
-
     for (auto it = registry.get_components(COMPONENT_TYPE_CAMERA_2D); it; ++it)
     {
         auto* cameraC = (Camera2DComponent*)it.data();
@@ -538,7 +520,9 @@ void Scene::backup()
     LD_PROFILE_SCOPE;
 
     LD_ASSERT(mObj->state == SCENE_STATE_LOADED);
-    LD_ASSERT(!mObj->backup);
+
+    if (mObj->backup)
+        heap_delete<SceneContext>(mObj->backup);
 
     // create and load a copy for play-in-editor session
     mObj->backup = mObj->active;
@@ -724,7 +708,8 @@ ComponentView Scene::create_component(ComponentType type, const char* name, CUID
     // TODO: DataRegistry API without CUID -> Component Data chasing.
     ComponentBase** data = reg.get_component_data(compCUID, nullptr);
     ComponentBase* base = *data;
-    sSceneComponents[(int)type].init(data);
+    if (sSceneComponents[(int)type].init)
+        sSceneComponents[(int)type].init(data);
     *data = base;
 
     return ComponentView(data);
@@ -739,11 +724,11 @@ ComponentView Scene::create_component_serial(ComponentType type, const char* nam
 
     SUID compSUID = hintSUID;
 
-    if (compSUID && !try_get_suid(compSUID)) // already registered
+    if (compSUID && !SUIDRegistry::try_get_suid(compSUID)) // already registered
         return {};
 
     if (!compSUID)
-        compSUID = get_suid();
+        compSUID = SUIDRegistry::get_suid(SERIAL_TYPE_COMPONENT);
 
     CUID parentCUID = parentData ? (*parentData)->cuid : (CUID)0;
     CUID compCUID = mObj->active->registry.create_component(type, name, parentCUID, compSUID);
@@ -790,6 +775,8 @@ ComponentView Scene::get_component(CUID compID)
 
 ComponentView Scene::get_component_by_suid(SUID compSUID)
 {
+    LD_ASSERT(compSUID && compSUID.type() == SERIAL_TYPE_COMPONENT);
+
     return ComponentView(mObj->active->registry.get_component_data_by_suid(compSUID, nullptr));
 }
 

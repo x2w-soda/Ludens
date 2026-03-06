@@ -6,6 +6,7 @@
 #include <Ludens/Media/Format/TOML.h>
 #include <Ludens/Memory/Allocator.h>
 #include <Ludens/Profiler/Profiler.h>
+#include <Ludens/Serial/SUID.h>
 
 #include <cstdint>
 #include <iostream>
@@ -1035,6 +1036,30 @@ bool TOMLReader::read_string(int index, std::string& str)
     TOMLValue value = mObj->get_index(index);
 
     return value && value.get_string(str);
+}
+
+bool TOMLReader::read_suid(const char* key, SUID& id)
+{
+    TOMLValue value = mObj->get_key(key);
+
+    uint32_t u32;
+    if (!value || !value.get_u32(u32))
+        return false;
+
+    id = SUID(u32);
+    return true;
+}
+
+bool TOMLReader::read_suid(int index, SUID& id)
+{
+    TOMLValue value = mObj->get_index(index);
+
+    uint32_t u32;
+    if (!value || !value.get_u32(u32))
+        return false;
+
+    id = SUID(u32);
+    return true;
 }
 
 namespace TOMLUtil {

@@ -5,7 +5,7 @@
 
 namespace LD {
 
-static_assert(std::is_same_v<AssetID, uint32_t>);
+static_assert(std::is_same_v<AssetID, SUID>);
 
 /// @brief Asset registry implementation.
 class AssetRegistryObj
@@ -90,7 +90,7 @@ PoolAllocator AssetRegistryObj::get_or_create_pa(AssetType type)
 
 bool AssetRegistryObj::register_asset_with_id(const AssetEntry& entry)
 {
-    if (mEntries.contains(entry.id) || !try_get_suid(entry.id))
+    if (mEntries.contains(entry.id) || !SUIDRegistry::try_get_suid(entry.id))
         return false;
 
     AssetEntry* pEntry = allocate_entry(entry.type, entry.id);
@@ -104,7 +104,7 @@ bool AssetRegistryObj::register_asset_with_id(const AssetEntry& entry)
 
 SUID AssetRegistryObj::register_asset(AssetType type, const std::string& uri, const std::string& name)
 {
-    SUID id = get_suid();
+    SUID id = SUIDRegistry::get_suid(SERIAL_TYPE_ASSET);
     AssetEntry* pEntry = allocate_entry(type, id);
     pEntry->uri = uri;
     pEntry->name = name;
@@ -116,7 +116,7 @@ SUID AssetRegistryObj::register_asset(AssetType type, const std::string& uri, co
 
 void AssetRegistryObj::unregister_asset(SUID id)
 {
-    if (id == 0 || !mEntries.contains(id))
+    if (!id || !mEntries.contains(id))
         return;
 
     AssetEntry* entry = mEntries[id];
@@ -125,7 +125,7 @@ void AssetRegistryObj::unregister_asset(SUID id)
     pa.free(entry);
 
     mEntries.erase(id);
-    free_suid(id);
+    SUIDRegistry::free_suid(id);
 }
 
 //

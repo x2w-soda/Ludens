@@ -2,13 +2,11 @@
 
 #include <Ludens/Header/Handle.h>
 #include <Ludens/Serial/SUID.h>
+
 #include <cstddef>
 #include <cstdint>
 
 namespace LD {
-
-/// @brief Asset ID uses the global serial ID space. Zero is invalid ID.
-typedef SUID AssetID;
 
 enum AssetType
 {
@@ -22,6 +20,8 @@ enum AssetType
     ASSET_TYPE_LUA_SCRIPT,
     ASSET_TYPE_ENUM_COUNT,
 };
+
+using AssetID = SUID;
 
 /// @brief Get byte size of an asset type.
 size_t get_asset_byte_size(AssetType type);

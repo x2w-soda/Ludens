@@ -3,23 +3,44 @@
 
 namespace LD {
 
-// NOTE: this should technically be main thread only,
-//       but we can make this thread safe later.
-static IDRegistry<SUID> sSUIDRegistry;
+HashSet<SUID> SUIDRegistry::sRegistered;
+uint32_t SUIDRegistry::sCounter[SERIAL_TYPE_ENUM_COUNT];
 
-SUID get_suid()
+SUID SUIDRegistry::get_suid(SerialType type)
 {
-    return sSUIDRegistry.get_id();
+    if (type == SERIAL_TYPE_NONE)
+        return (SUID)0;
+
+    // TODO: if 24-bit space is exhausted for the serial type, this is infinite
+    uint32_t i = sCounter[type];
+    for (;;)
+    {
+        if (!sRegistered.contains(i))
+        {
+            sRegistered.insert(i);
+            sCounter[type] = (i + 1) % SUID_IDENTITY_MASK;
+            break;
+        }
+
+        if (++i == SUID_IDENTITY_MASK)
+            i = 0;
+    }
+
+    return SUID(type, i);
 }
 
-bool try_get_suid(SUID id)
+bool SUIDRegistry::try_get_suid(SUID id)
 {
-    return sSUIDRegistry.try_get_id(id);
+    if (!id || sRegistered.contains(id))
+        return false;
+
+    sRegistered.insert(id);
+    return true;
 }
 
-void free_suid(SUID id)
+void SUIDRegistry::free_suid(SUID id)
 {
-    return sSUIDRegistry.free(id);
+    sRegistered.erase(id);
 }
 
 } // namespace LD

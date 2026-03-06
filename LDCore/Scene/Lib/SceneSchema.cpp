@@ -108,7 +108,10 @@ ComponentView SceneSchemaLoader::load_component(SceneSchemaLoader& loader)
         return {};
 
     SUID compSUID;
-    if (!reader.read_u32(SCENE_SCHEMA_KEY_COMPONENT_ID, compSUID))
+    if (!reader.read_suid(SCENE_SCHEMA_KEY_COMPONENT_ID, compSUID))
+        return {};
+
+    if (compSUID.type() != SERIAL_TYPE_COMPONENT)
         return {};
 
     ComponentView comp{};
@@ -124,7 +127,7 @@ ComponentView SceneSchemaLoader::load_component(SceneSchemaLoader& loader)
     }
 
     AssetID scriptID = 0;
-    reader.read_u32(SCENE_SCHEMA_KEY_COMPONENT_SCRIPT_ID, scriptID);
+    reader.read_suid(SCENE_SCHEMA_KEY_COMPONENT_SCRIPT_ID, scriptID);
 
     comp.set_script_asset_id(scriptID);
 
@@ -142,7 +145,7 @@ ComponentView SceneSchemaLoader::load_audio_source_component(SceneSchemaLoader& 
         return {};
 
     AssetID clipID = 0;
-    reader.read_u32(SCENE_SCHEMA_KEY_AUDIO_SOURCE_CLIP_ID, clipID);
+    reader.read_suid(SCENE_SCHEMA_KEY_AUDIO_SOURCE_CLIP_ID, clipID);
 
     float pan = 0.5f;
     reader.read_f32(SCENE_SCHEMA_KEY_AUDIO_SOURCE_PAN, pan);
@@ -287,7 +290,7 @@ ComponentView SceneSchemaLoader::load_mesh_component(SceneSchemaLoader& loader, 
     mesh.set_transform(transform);
 
     AssetID assetID = 0;
-    reader.read_u32(SCENE_SCHEMA_KEY_MESH_MESH_ID, assetID);
+    reader.read_suid(SCENE_SCHEMA_KEY_MESH_MESH_ID, assetID);
 
     mesh.set_mesh_asset(assetID);
 
@@ -304,10 +307,10 @@ ComponentView SceneSchemaLoader::load_sprite_2d_component(SceneSchemaLoader& loa
         return {};
 
     SUID screenLayer = 0;
-    reader.read_u32(SCENE_SCHEMA_KEY_SPRITE_2D_SCREEN_LAYER_ID, screenLayer);
+    reader.read_suid(SCENE_SCHEMA_KEY_SPRITE_2D_SCREEN_LAYER_ID, screenLayer);
 
     AssetID textureID = 0;
-    reader.read_u32(SCENE_SCHEMA_KEY_SPRITE_2D_TEXTURE_2D_ID, textureID);
+    reader.read_suid(SCENE_SCHEMA_KEY_SPRITE_2D_TEXTURE_2D_ID, textureID);
 
     if (!sprite.load(screenLayer, textureID))
         return {};
@@ -346,7 +349,7 @@ ComponentView SceneSchemaLoader::load_screen_ui_component(SceneSchemaLoader& loa
         return {};
 
     AssetID uiTemplateID = 0;
-    reader.read_u32(SCENE_SCHEMA_KEY_SCREEN_UI_UI_TEMPLATE_ID, uiTemplateID);
+    reader.read_suid(SCENE_SCHEMA_KEY_SCREEN_UI_UI_TEMPLATE_ID, uiTemplateID);
 
     if (!ui.load(uiTemplateID))
         return {};
@@ -388,7 +391,7 @@ bool SceneSchemaSaver::save_scene(Scene scene, std::string& toml, std::string& e
     mWriter.begin_table(SCENE_SCHEMA_TABLE_HIERARCHY);
     for (auto ite : mChildMap)
     {
-        std::string parentID = std::to_string(ite.first);
+        std::string parentID = std::to_string((uint32_t)ite.first);
         mWriter.key(parentID.c_str()).begin_array();
 
         for (SUID childrenID : ite.second)
@@ -618,6 +621,8 @@ bool SceneSchemaLoader::load_scene(Scene scene, const View& toml, std::string& e
 
     mReader.exit();
 
+    bool success = true;
+
     // extract component tables
     int componentCount = 0;
     if (mReader.enter_array(SCENE_SCHEMA_TABLE_COMPONENT, componentCount))
@@ -643,7 +648,14 @@ bool SceneSchemaLoader::load_scene(Scene scene, const View& toml, std::string& e
 
         for (const std::string& key : keys)
         {
-            SUID parentSUID = static_cast<SUID>(std::stoul(key));
+            SUID parentSUID((uint32_t)std::stoul(key, nullptr, 0));
+
+            if (parentSUID.type() != SERIAL_TYPE_COMPONENT)
+            {
+                err = std::format("found invalid component SUID {}", parentSUID);
+                success = false;
+                continue;
+            }
 
             int childrenCount = 0;
             if (!mReader.enter_array(key.c_str(), childrenCount))
@@ -652,8 +664,15 @@ bool SceneSchemaLoader::load_scene(Scene scene, const View& toml, std::string& e
             for (int i = 0; i < childrenCount; i++)
             {
                 SUID childSUID;
-                if (!mReader.read_u32(i, childSUID))
+                if (!mReader.read_suid(i, childSUID))
                     continue;
+
+                if (childSUID.type() != SERIAL_TYPE_COMPONENT)
+                {
+                    err = std::format("found invalid component SUID {}", childSUID);
+                    success = false;
+                    continue;
+                }
 
                 ComponentView child = mScene.get_component_by_suid(childSUID);
                 ComponentView parent = mScene.get_component_by_suid(parentSUID);
@@ -671,7 +690,7 @@ bool SceneSchemaLoader::load_scene(Scene scene, const View& toml, std::string& e
     TOMLReader::destroy(mReader);
     mReader = {};
 
-    return true;
+    return success;
 }
 
 //

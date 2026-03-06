@@ -104,8 +104,14 @@ bool AssetSchemaLoader::load_asset_entries(std::string& err)
             AssetEntry entry = {.type = assetType};
             if (!mReader.read_string(ASSET_SCHEMA_KEY_ENTRY_URI, entry.uri) ||
                 !mReader.read_string(ASSET_SCHEMA_KEY_ENTRY_NAME, entry.name) ||
-                !mReader.read_u32(ASSET_SCHEMA_KEY_ENTRY_ID, entry.id))
+                !mReader.read_suid(ASSET_SCHEMA_KEY_ENTRY_ID, entry.id))
                 continue;
+
+            if (entry.id.type() != SERIAL_TYPE_ASSET)
+            {
+                err = std::format("Asset [{}] has invalid ID {}", entry.name, entry.id);
+                return false;
+            }
 
             if (!mReg.register_asset_with_id(entry))
             {

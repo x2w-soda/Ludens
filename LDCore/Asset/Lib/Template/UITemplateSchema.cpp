@@ -368,7 +368,7 @@ void UITemplateSchemaLoader::load_ui_image_toml(UITemplateSchemaLoader& loader, 
     TOMLUtil::read_rect(reader, "image_rect", entry.image.imageRect);
 
     entry.image.texture2DAssetID = 0;
-    reader.read_u32("texture_2d", entry.image.texture2DAssetID);
+    reader.read_suid("texture_2d", entry.image.texture2DAssetID);
 }
 
 void UITemplateSchemaLoader::load_widget_toml()
