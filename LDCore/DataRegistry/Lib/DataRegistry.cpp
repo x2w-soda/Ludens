@@ -105,7 +105,7 @@ struct DataRegistryObj
     {
         uint32_t compIndex = compCUID.index();
 
-        return (compIndex < cuidToCompData.size()) ? cuidToCompData[compIndex] : nullptr;
+        return compCUID && (compIndex < cuidToCompData.size()) ? cuidToCompData[compIndex] : nullptr;
     }
 
     inline ComponentBase** get_data_from_suid(SUID compSUID)
@@ -434,6 +434,8 @@ void DataRegistry::reparent(CUID compID, CUID parentID)
 
     mObj->detach(childBase);
     mObj->add_child(parentBase, childBase);
+
+    mObj->transform2DRegistry.reparent(compID, parentID, &DataRegistryObj::id_hierarchy, mObj);
 }
 
 ComponentBase* DataRegistry::get_component_base(CUID compCUID)

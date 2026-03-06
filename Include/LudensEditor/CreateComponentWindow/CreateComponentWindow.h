@@ -19,7 +19,7 @@ struct CreateComponentWindow : Handle<struct CreateComponentWindowObj>
     static void destroy(EditorWindow window);
 
     /// @brief Set the parent component before creation.
-    void set_parent_component(CUID parentID);
+    void set_parent_component(SUID parentSUID);
 };
 
 } // namespace LD

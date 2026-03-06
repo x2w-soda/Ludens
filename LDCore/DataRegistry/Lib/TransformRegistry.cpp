@@ -100,10 +100,11 @@ Transform2D* Transform2DRegistry::create(ID childID, ID parentID)
 
     reserve_depth(childDepthLevel + 1);
 
+    Transform2D* childTransform;
     Depth& childDepth = *mDepth[childDepthLevel];
     uint64_t childLI = childDepth.local.size();
     childDepth.local.resize(childLI + 1);
-    childDepth.local[childLI].transform = (Transform2D*)mTransformPA.allocate();
+    childDepth.local[childLI].transform = childTransform = (Transform2D*)mTransformPA.allocate();
     childDepth.local[childLI].parentID = parentID;
     childDepth.local[childLI].id = childID;
 
@@ -112,7 +113,8 @@ Transform2D* Transform2DRegistry::create(ID childID, ID parentID)
     childS.localIndex = childLI;
 
     // stable address until destroyed
-    return childDepth.local[childLI].transform;
+    *childTransform = {Vec2(0.0f), Vec2(1.0f), 0.0f};
+    return childTransform;
 }
 
 void Transform2DRegistry::destroy(ID rootID, IDHierarchyCallback hierarchyCB, void* user)
@@ -161,6 +163,7 @@ void Transform2DRegistry::reparent(ID childID, ID parentID, IDHierarchyCallback 
             work.emplace(id, childID);
 
         int parentDepthLevel = -1;
+        int childDepthLevel = 0;
         Depth* parentDepth = nullptr;
         Depth* childNewDepth = nullptr;
         uint32_t childSI = childID.index();
@@ -170,8 +173,9 @@ void Transform2DRegistry::reparent(ID childID, ID parentID, IDHierarchyCallback 
         {
             parentDepthLevel = mSparse[parentID.index()].depthLevel;
             parentDepth = mDepth[parentDepthLevel];
-            reserve_depth(parentDepthLevel);
-            childNewDepth = mDepth[parentDepthLevel + 1];
+            childDepthLevel = parentDepthLevel + 1;
+            reserve_depth(childDepthLevel + 1);
+            childNewDepth = mDepth[childDepthLevel];
         }
         else
         {
@@ -185,7 +189,7 @@ void Transform2DRegistry::reparent(ID childID, ID parentID, IDHierarchyCallback 
         childNewDepth->local.resize(childNewLI + 1);
         childNewDepth->local[childNewLI] = childEntry;
 
-        childS.depthLevel = parentDepthLevel + 1;
+        childS.depthLevel = childDepthLevel;
         childS.localIndex = childNewLI;
     }
 }

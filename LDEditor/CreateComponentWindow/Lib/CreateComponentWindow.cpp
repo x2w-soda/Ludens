@@ -13,7 +13,7 @@ namespace LD {
 struct CreateComponentWindowObj : EditorWindowObj
 {
     EditorTheme theme;
-    CUID parentID = 0;
+    SUID parentSUID = 0;
     int selectedRowIndex = -1;
 
     CreateComponentWindowObj() = delete;
@@ -113,7 +113,7 @@ void CreateComponentWindowObj::on_row_mouse_down(MouseValue mouseVal, const Vec2
 {
     if (mouseVal.button() == MOUSE_BUTTON_RIGHT)
     {
-        mCtx.action_add_component(parentID, compType);
+        mCtx.action_add_component(parentSUID, compType);
         mShouldClose = true;
     }
 }
@@ -136,9 +136,9 @@ void CreateComponentWindow::destroy(EditorWindow window)
     heap_delete<CreateComponentWindowObj>(obj);
 }
 
-void CreateComponentWindow::set_parent_component(CUID parentID)
+void CreateComponentWindow::set_parent_component(SUID parentSUID)
 {
-    mObj->parentID = parentID;
+    mObj->parentSUID = parentSUID;
 }
 
 } // namespace LD
