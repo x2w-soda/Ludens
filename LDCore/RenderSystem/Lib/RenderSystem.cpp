@@ -14,6 +14,7 @@
 #include <Ludens/RenderComponent/Layout/SetLayouts.h>
 #include <Ludens/RenderComponent/Layout/VertexLayouts.h>
 #include <Ludens/RenderComponent/Pipeline/MeshPipeline.h>
+#include <Ludens/RenderComponent/Pipeline/QuadPipeline.h>
 #include <Ludens/RenderComponent/SceneOverlayComponent.h>
 #include <Ludens/RenderComponent/ScreenPickComponent.h>
 #include <Ludens/RenderComponent/ScreenRenderComponent.h>
@@ -34,6 +35,14 @@ bool Sprite2DDraw::set_image(Image2D image2D)
 
     mObj->image = RImage(image2D.unwrap());
     return true;
+}
+
+Image2D Sprite2DDraw::get_image()
+{
+    if (!mObj->image)
+        return {};
+
+    return Image2D(mObj->image.unwrap(), mObj->image.get_id());
 }
 
 Vec2 Sprite2DDraw::get_pivot()
@@ -148,7 +157,7 @@ private: // passes
     {
         void* user;
         RenderSystemMat4Callback mat4CB;
-        ScreenRenderCallback overlayCB;
+        RenderSystemScreenOverlayCallback overlayCB;
         Vector<Viewport> regionViewports;
         Vector<int> regionVPIndices;
         int overlayVPIndex = -1;
@@ -564,7 +573,6 @@ void RenderSystemObj::screen_pass(const RenderSystemScreenPass& screenP)
     {
         mScreenPass.regionViewports.resize(screenP.regionCount);
         mScreenPass.regionVPIndices.resize(screenP.regionCount);
-        LD_ASSERT(screenP.regionCount == 1); // TODO: multiple Camera2D for split-screen multiplayer
 
         for (uint32_t i = 0; i < screenP.regionCount; i++)
         {
@@ -998,6 +1006,15 @@ void RenderSystemObj::ScreenPass::render(ScreenRenderComponent renderer, void* s
     if (!self.mHasAcquiredRootWindowImage)
         return;
 
+    for (auto it : self.mLayers)
+    {
+        it.second->invalidate(self.mScreenPass.mat4CB, self.mScreenPass.user);
+    }
+
+    // We need a quad pipeline variant that covers all ScreenLayerItem
+    // - SCREEN_LAYER_ITEM_SPRITE_2D
+    renderer.bind_quad_pipeline(QUAD_PIPELINE_RECT);
+
     const size_t regionCount = self.mScreenPass.regionVPIndices.size();
     for (size_t regionI = 0; regionI < regionCount; regionI++)
     {
@@ -1012,8 +1029,6 @@ void RenderSystemObj::ScreenPass::render(ScreenRenderComponent renderer, void* s
         // TODO: layer draw order!
         for (auto it : self.mLayers)
         {
-            it.second->invalidate(self.mScreenPass.mat4CB, self.mScreenPass.user);
-
             TView<ScreenLayerItem> itemList = it.second->get_item_list();
             const int itemCount = (int)itemList.size;
 
@@ -1067,9 +1082,8 @@ void RenderSystemObj::ScreenPass::render(ScreenRenderComponent renderer, void* s
 
     if (self.mScreenPass.overlayCB && self.mScreenPass.overlayVPIndex >= 0)
     {
-        renderer.set_view_projection_index(self.mScreenPass.overlayVPIndex);
-
-        self.mScreenPass.overlayCB(renderer, self.mScreenPass.user);
+        TView<int> regionVPIndices(self.mScreenPass.regionVPIndices.data(), self.mScreenPass.regionVPIndices.size());
+        self.mScreenPass.overlayCB(renderer, regionVPIndices, self.mScreenPass.overlayVPIndex, self.mScreenPass.user);
     }
 }
 
@@ -1082,6 +1096,8 @@ void RenderSystemObj::EditorPass::render(ScreenRenderComponent renderer, void* s
     if (!self.mHasAcquiredRootWindowImage || self.mEditorPass.vpIndex < 0 || !self.mEditorPass.renderCB)
         return;
 
+    // just use the uber variation to draw editor UI.
+    renderer.bind_quad_pipeline(QUAD_PIPELINE_UBER);
     renderer.set_view_projection_index(self.mEditorPass.vpIndex);
 
     self.mEditorPass.renderCB(renderer, self.mEditorPass.user);
@@ -1241,6 +1257,24 @@ Sprite2DDraw RenderSystem::create_sprite_2d_draw(Image2D image2D, RUID layerID)
 
     LD_ASSERT(obj);
     return Sprite2DDraw(obj, obj->id);
+}
+
+Sprite2DDraw RenderSystem::migrate_sprite_2d_draw(Sprite2DDraw draw, RUID newLayerID)
+{
+    LD_ASSERT(draw && newLayerID);
+
+    Sprite2DDrawObj* oldObj = draw.unwrap();
+    Sprite2DDrawObj* newObj = mObj->create_sprite_2d_draw(oldObj->image, newLayerID);
+    if (!newObj)
+        return {};
+
+    newObj->pivot = oldObj->pivot;
+    newObj->region = oldObj->region;
+    newObj->zDepth = 0;
+
+    mObj->destroy_sprite_2d_draw(oldObj);
+
+    return Sprite2DDraw(newObj, newObj->id);
 }
 
 void RenderSystem::destroy_sprite_2d_draw(Sprite2DDraw draw)

@@ -28,6 +28,7 @@ using ImageCube = IDHandle<RImageObj, RUID>;
 typedef void (*ScreenRenderCallback)(ScreenRenderComponent renderer, void* user);
 typedef void (*RenderSystemEditorScenePickCallback)(SceneOverlayGizmoID gizmoID, RUID ruid, void* user);
 typedef bool (*RenderSystemMat4Callback)(RUID ruid, Mat4& mat4, void* user);
+typedef void (*RenderSystemScreenOverlayCallback)(ScreenRenderComponent renderer, TView<int> regionVPIndices, int overlayVPIndex, void* user);
 
 struct Sprite2DDraw : IDHandle<Sprite2DDrawObj, RUID>
 {
@@ -36,6 +37,7 @@ struct Sprite2DDraw : IDHandle<Sprite2DDrawObj, RUID>
         : IDHandle(obj, id) {}
 
     bool set_image(Image2D image2D);
+    Image2D get_image();
     Vec2 get_pivot();
     void set_pivot(const Vec2& pivot);
     uint32_t get_z_depth();
@@ -113,22 +115,21 @@ struct RenderSystemWorldPass
 /// @brief Render pass to draw 2D elements in Scene.
 struct RenderSystemScreenPass
 {
-    RenderSystemMat4Callback mat4Callback; /// callback for system to grab the model matrix of 2D objects
-    void* user;                            /// user of the scene screen pass
-
     struct Region
     {
         Viewport viewport;
         // TODO: ScreenLayer mask per-region
     };
 
-    uint32_t regionCount;
-    Region* regions;
+    RenderSystemMat4Callback mat4Callback; /// callback for system to grab the model matrix of 2D objects
+    uint32_t regionCount;                  /// non-overlapping regions to draw ScreenLayer items
+    Region* regions;                       /// number of screen regions
+    void* user;                            /// user of the screen pass
 
     /// optional overlay to render on top of all regions, in practice this would be the screen UI
     struct Overlay
     {
-        ScreenRenderCallback renderCallback;
+        RenderSystemScreenOverlayCallback renderCallback;
         Viewport viewport;
     } overlay;
 };
@@ -201,6 +202,7 @@ struct RenderSystem : Handle<class RenderSystemObj>
     RUID get_screen_layer_item(const Vec2& worldPos, RenderSystemMat4Callback mat4CB, void* user);
 
     Sprite2DDraw create_sprite_2d_draw(Image2D image2D, RUID layer);
+    Sprite2DDraw migrate_sprite_2d_draw(Sprite2DDraw draw, RUID newLayer);
     void destroy_sprite_2d_draw(Sprite2DDraw draw);
 
     MeshData create_mesh_data(ModelBinary& binary);
