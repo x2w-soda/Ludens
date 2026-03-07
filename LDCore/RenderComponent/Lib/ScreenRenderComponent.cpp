@@ -20,7 +20,8 @@ static constexpr size_t sImageSlotCount = QuadPipeline::image_slots();
 
 static RDevice sDevice;
 static RImage sWhitePixel;
-static QuadPipeline sQuadPipeline;
+static QuadPipeline sQuadPipelineUber;
+static QuadPipeline sQuadPipelineRect;
 static bool sHasStaticStartup;
 static HashMap<Hash32, ScreenRenderComponentObj*> sInstances;
 
@@ -55,6 +56,7 @@ private: // instance members
     RCommandList mList;
     RImage mImageSlots[sImageSlotCount];
     QuadVertexBatch<sMaxQuadCount> mRectBatch;
+    QuadPipelineType mPipelineType = QUAD_PIPELINE_TYPE_ENUM_COUNT;
     RGraphicsPass mGraphicsPass;
     RGraphImage mColorAttachment{};
     RGraphImage mSampledAttachment{};
@@ -148,6 +150,8 @@ ScreenRenderComponentObj::~ScreenRenderComponentObj()
 void ScreenRenderComponentObj::flush_rects()
 {
     LD_PROFILE_SCOPE;
+
+    LD_ASSERT(mPipelineType != QUAD_PIPELINE_TYPE_ENUM_COUNT); // forgot bind_quad_pipeline()
 
     Frame& frame = mFrames[mFrameIdx];
     Batch& batch = frame.batches[mBatchIdx];
@@ -314,7 +318,8 @@ void ScreenRenderComponentObj::static_startup(RDevice device)
 
     RGraph::add_release_callback(nullptr, &ScreenRenderComponentObj::static_cleanup);
 
-    sQuadPipeline = QuadPipeline::create(device);
+    sQuadPipelineUber = QuadPipeline::create(device, QUAD_PIPELINE_UBER);
+    sQuadPipelineRect = QuadPipeline::create(device, QUAD_PIPELINE_RECT);
 
     RStager stager(device, RQUEUE_TYPE_GRAPHICS);
     RImageInfo imageI = RUtil::make_2d_image_info(RIMAGE_USAGE_SAMPLED_BIT | RIMAGE_USAGE_TRANSFER_DST_BIT, RFORMAT_RGBA8, 1, 1, {});
@@ -340,8 +345,10 @@ void ScreenRenderComponentObj::static_cleanup(void* user)
     sInstances.clear();
 
     sDevice.destroy_image(sWhitePixel);
-    QuadPipeline::destroy(sQuadPipeline);
-    sQuadPipeline = {};
+    QuadPipeline::destroy(sQuadPipelineRect);
+    sQuadPipelineRect = {};
+    QuadPipeline::destroy(sQuadPipelineUber);
+    sQuadPipelineUber = {};
     sDevice = {};
 }
 
@@ -350,7 +357,8 @@ void ScreenRenderComponentObj::on_graphics_pass(RGraphicsPass pass, RCommandList
     auto* obj = (ScreenRenderComponentObj*)user;
     Frame& frame = obj->mFrames[obj->mFrameIdx];
 
-    list.cmd_bind_graphics_pipeline(sQuadPipeline.handle());
+    obj->mPipelineType = QUAD_PIPELINE_TYPE_ENUM_COUNT;
+
     list.cmd_bind_index_buffer(obj->mRectIBO, RINDEX_TYPE_U32);
 
     std::fill(obj->mImageSlots, obj->mImageSlots + sImageSlotCount, sWhitePixel);
@@ -583,6 +591,27 @@ void ScreenRenderComponent::pop_color_mask()
         mObj->mColorMask = 0xFFFFFFFF;
     else
         mObj->mColorMask = mObj->mColorMasks.top();
+}
+
+void ScreenRenderComponent::bind_quad_pipeline(QuadPipelineType type)
+{
+    LD_ASSERT(mObj->mList);
+
+    if (mObj->mPipelineType == type)
+        return;
+
+    mObj->mPipelineType = type;
+    mObj->flush_rects();
+
+    switch (type)
+    {
+    case QUAD_PIPELINE_UBER:
+        mObj->mList.cmd_bind_graphics_pipeline(sQuadPipelineUber.handle());
+        break;
+    case QUAD_PIPELINE_RECT:
+        mObj->mList.cmd_bind_graphics_pipeline(sQuadPipelineRect.handle());
+        break;
+    }
 }
 
 QuadVertex* ScreenRenderComponent::draw(RImage image)

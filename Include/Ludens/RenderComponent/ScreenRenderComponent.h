@@ -5,14 +5,20 @@
 #include <Ludens/Header/Math/Mat4.h>
 #include <Ludens/Header/Math/Rect.h>
 #include <Ludens/Media/Font.h>
+#include <Ludens/RenderComponent/Pipeline/QuadPipeline.h>
 #include <Ludens/RenderGraph/RGraph.h>
 
 namespace LD {
 
+enum QuadPipelineType;
 struct ScreenRenderComponentInfo;
 struct QuadVertex;
 
-/// @brief A component for batch rendering 2D primitives.
+/// @brief A component for batch rendering 2D primitives with QuadPipelines.
+///        1. bind_quad_pipeline
+///        2. set_view_projection_index to select the view projection matrices
+///        3. optionally configure viewport scissor state
+///        4. issue draw calls that are supported by the QuadPipeline variant
 struct ScreenRenderComponent : Handle<struct ScreenRenderComponentObj>
 {
     /// @brief Adds the component to render graph.
@@ -60,6 +66,9 @@ struct ScreenRenderComponent : Handle<struct ScreenRenderComponentObj>
 
     /// @brief Pop a color mask off the stack, the remaining top color mask takes effect.
     void pop_color_mask();
+
+    /// @note This forces a flush of the current batch since the pipeline changes.
+    void bind_quad_pipeline(QuadPipelineType type);
 
     /// @brief Get address to write 4 rect vertices. QuadVertex::control bits are already decided by image.
     QuadVertex* draw(RImage image);

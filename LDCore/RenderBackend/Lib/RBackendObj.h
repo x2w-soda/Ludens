@@ -1,13 +1,12 @@
 #pragma once
 
+#include <Ludens/DSA/HashSet.h>
+#include <Ludens/DSA/Vector.h>
 #include <Ludens/Memory/Allocator.h>
 #include <Ludens/RenderBackend/RBackend.h>
 #include <Ludens/RenderBackend/RUID.h>
+
 #include <cstdint>
-#include <optional>
-#include <unordered_map>
-#include <unordered_set>
-#include <vector>
 
 #include "RCommand.h"
 #include "RData.h"
@@ -73,7 +72,7 @@ struct RImageObj
     RUID id;
     RDevice device;
     RImageInfo info;
-    std::unordered_set<uint32_t> fboHashes;
+    HashSet<uint32_t> fboHashes;
 };
 
 /// @brief Base render pass object.
@@ -151,7 +150,7 @@ struct RCommandListObj
     RCommandPoolObj* poolObj; /// the command pool allocated from
     RPassInfoData currentPass;
     UVec2 passExtent;
-    std::vector<const RCommandType*> captures;
+    Vector<const RCommandType*> captures;
     LinearAllocator captureLA = {};
 };
 
@@ -166,7 +165,7 @@ struct RCommandPoolObj
 {
     RUID id;
     const RCommandPoolAPI* api;
-    std::vector<RCommandList> lists;
+    Vector<RCommandList> lists;
     RDeviceObj* deviceObj;
     bool hintTransient;
     bool listResettable;
@@ -178,7 +177,7 @@ struct RShaderObj
     RUID id;
     RShaderType type;
     RShaderReflection reflection;
-    std::vector<uint32_t> spirv;
+    Vector<uint32_t> spirv;
 };
 
 /// @brief Base set layout object.
@@ -187,7 +186,7 @@ struct RSetLayoutObj
     RUID id;
     uint32_t hash;
     RDeviceObj* deviceObj;
-    std::vector<RSetBindingInfo> bindings;
+    Vector<RSetBindingInfo> bindings;
 };
 
 /// @brief Base set object.
@@ -210,7 +209,7 @@ struct RSetPoolObj
     LinearAllocator setLA;
     RDeviceObj* deviceObj;
     RSetLayoutObj* layoutObj;
-    std::vector<RSet> sets;
+    Vector<RSet> sets;
 };
 
 /// @brief Base pipeline layout object.
@@ -234,15 +233,15 @@ struct RPipelineObj
     const RPipelineAPI* api;
     RDeviceObj* deviceObj;
     RPipelineLayoutObj* layoutObj;
-    std::vector<RVertexBinding> vertexBindings;
-    std::vector<RVertexAttribute> vertexAttributes;
-    std::vector<RShaderPushConstant> pushConstants;
+    Vector<RVertexBinding> vertexBindings;
+    Vector<RVertexAttribute> vertexAttributes;
+    Vector<RShaderPushConstant> pushConstants;
 
     struct
     {
         bool depthTestEnabled;
         RPassObj* passObj;
-        std::vector<RColorComponentFlags> colorWriteMasks;
+        Vector<RColorComponentFlags> colorWriteMasks;
     } variant;
 };
 

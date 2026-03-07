@@ -59,7 +59,39 @@ void main()
 // hard coded in fragment shader
 static_assert(QuadPipeline::image_slots() == 8);
 
-static const char sQuadFS[] = R"(
+static const char sQuadRectFS[] = R"(
+layout (location = 0) in vec2 vUV;
+layout (location = 1) in vec2 vLocalUV;
+layout (location = 2) in vec4 vColor;
+layout (location = 3) in flat uint vControl;
+
+layout (location = 0) out vec4 fColor;
+
+layout (set = 1, binding = 0) uniform sampler2D uImages[8];
+
+void main()
+{
+    vec4 imageColor = vec4(1.0);
+    uint imageIdx = vControl & 15;
+
+    switch (imageIdx)
+    {
+    case 0: break;
+    case 1: imageColor = texture(uImages[0], vUV); break;
+    case 2: imageColor = texture(uImages[1], vUV); break;
+    case 3: imageColor = texture(uImages[2], vUV); break;
+    case 4: imageColor = texture(uImages[3], vUV); break;
+    case 5: imageColor = texture(uImages[4], vUV); break;
+    case 6: imageColor = texture(uImages[5], vUV); break;
+    case 7: imageColor = texture(uImages[6], vUV); break;
+    case 8: imageColor = texture(uImages[7], vUV); break;
+    }
+
+    fColor = imageColor * vColor;
+}
+)";
+
+static const char sQuadUberFS[] = R"(
 layout (location = 0) in vec2 vUV;
 layout (location = 1) in vec2 vLocalUV;
 layout (location = 2) in vec4 vColor;
@@ -143,15 +175,27 @@ struct QuadPipelineObj
     RPipeline handle;
     RShader vertexShader;
     RShader fragmentShader;
+    QuadPipelineType type;
 };
 
-QuadPipeline QuadPipeline::create(RDevice device)
+QuadPipeline QuadPipeline::create(RDevice device, QuadPipelineType type)
 {
     QuadPipelineObj* obj = heap_new<QuadPipelineObj>(MEMORY_USAGE_RENDER);
 
+    obj->type = type;
     obj->device = device;
     obj->vertexShader = device.create_shader({RSHADER_TYPE_VERTEX, sQuadVS});
-    obj->fragmentShader = device.create_shader({RSHADER_TYPE_FRAGMENT, sQuadFS});
+
+    switch (type)
+    {
+    case QUAD_PIPELINE_RECT:
+        obj->fragmentShader = device.create_shader({RSHADER_TYPE_FRAGMENT, sQuadRectFS});
+        break;
+    case QUAD_PIPELINE_UBER:
+    default:
+        obj->fragmentShader = device.create_shader({RSHADER_TYPE_FRAGMENT, sQuadUberFS});
+        break;
+    }
 
     Array<RShader, 2> shaders{obj->vertexShader, obj->fragmentShader};
     Vector<RVertexAttribute> attrs;
@@ -206,6 +250,11 @@ RPipelineLayoutInfo QuadPipeline::layout()
 RPipeline QuadPipeline::handle()
 {
     return mObj->handle;
+}
+
+QuadPipelineType QuadPipeline::type()
+{
+    return mObj->type;
 }
 
 } // namespace LD
