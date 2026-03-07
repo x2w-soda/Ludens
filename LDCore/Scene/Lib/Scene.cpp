@@ -884,8 +884,6 @@ ComponentView Scene::get_ruid_component(RUID ruid)
 
 bool Scene::get_ruid_world_mat4(RUID ruid, Mat4& worldMat4)
 {
-    LD_PROFILE_SCOPE;
-
     ComponentView comp = get_ruid_component(ruid);
     if (!comp || !mObj->active->registry.get_component_world_mat4(comp.cuid(), worldMat4))
         return false;

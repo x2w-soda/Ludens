@@ -464,8 +464,6 @@ SUID DataRegistry::get_component_asset_id(CUID compID)
 
 ComponentBase** DataRegistry::get_component_data(CUID compID, ComponentType* outType)
 {
-    LD_PROFILE_SCOPE;
-
     ComponentBase** compData = mObj->get_data_from_cuid(compID);
     if (!compData)
         return nullptr;
@@ -581,8 +579,6 @@ bool DataRegistry::set_component_transform_2d(CUID compID, const Transform2D& tr
 
 bool DataRegistry::get_component_world_mat4(CUID compID, Mat4& mat4)
 {
-    LD_PROFILE_SCOPE;
-
     ComponentBase* base = get_component_base(compID);
 
     return mObj->get_component_world_mat4(base, mat4);
