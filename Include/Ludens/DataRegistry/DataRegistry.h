@@ -61,6 +61,11 @@ struct DataRegistry : Handle<struct DataRegistryObj>
     /// @brief Reparent a data component
     void reparent(CUID compID, CUID parentID);
 
+    /// @brief Try clone a component subtree.
+    /// @param rootID The subtree root component to clone.
+    /// @return Data of the root component of the cloned subtree on success.
+    ComponentBase** clone_component_subtree(CUID rootID);
+
     /// @brief Get data component base members, applicable to all types of components.
     ComponentBase* get_component_base(CUID compID);
 
@@ -105,6 +110,8 @@ struct DataRegistry : Handle<struct DataRegistryObj>
     bool get_component_world_mat4(CUID compID, Mat4& mat4);
 
     void invalidate_transforms();
+
+    std::string print_hierarchy();
 };
 
 /// @brief Get the byte size of a data component.

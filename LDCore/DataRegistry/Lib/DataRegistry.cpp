@@ -13,8 +13,16 @@ namespace LD {
 
 static Log sLog("DataRegistry");
 static IDRegistry sCUIDRegistry;
-static bool duplicate_subtree(DataRegistry dst, CUID dstParentID, DataRegistry src, CUID srcID);
+static ComponentBase** duplicate_subtree(DataRegistry dst, CUID dstParentID, DataRegistry src, CUID srcID);
+static ComponentBase** duplicate_component(ComponentBase** srcData, CUID dstParentID, DataRegistry dstRegistry, bool copySUID);
 static SUID get_mesh_asset_id(void* comp);
+
+enum ComponentPlacement
+{
+    COMPONENT_PLACEMENT_AS_FIRST_CHILD,
+    COMPONENT_PLACEMENT_AS_LAST_CHILD,
+    COMPONENT_PLACEMENT_AFTER_SIBLING,
+};
 
 using ComponentTypeFlag = uint32_t;
 enum ComponentTypeFlagBit : uint32_t
@@ -97,7 +105,8 @@ struct DataRegistryObj
     HashMap<ComponentType, PoolAllocator> componentPAs;
     Vector<ComponentBase**> cuidToCompData;
     HashMap<SUID, ComponentBase**> suidToCompData;
-    HashSet<CUID> roots; // TODO: root should be ordered
+    ComponentBase root;
+    Vector<CUID> topLevel;
     PoolAllocator componentBasePA;
     Transform2DRegistry transform2DRegistry;
 
@@ -129,40 +138,37 @@ struct DataRegistryObj
     void detach(ComponentBase* base);
 
     /// @brief Establish a parent-child relationship between components
-    void add_child(ComponentBase* parent, ComponentBase* child);
+    void add_child(ComponentBase* child, ComponentBase* parent, ComponentBase* placementTarget, ComponentPlacement placement);
 
     /// @brief Get component world transform matrix
     bool get_component_world_mat4(ComponentBase* base, Mat4& mat4);
 
+    ComponentBase** clone_subtree(ComponentBase** srcData, ComponentPlacement placement);
+
+    void print_subtree(ComponentBase** data, std::string& str, int indent);
+
     static void id_hierarchy(ID parent, Vector<ID>& children, void* user);
 };
 
-static bool duplicate_subtree(DataRegistry dst, CUID dstParentID, DataRegistry src, CUID srcID)
+static ComponentBase** duplicate_component(ComponentBase** srcData, CUID dstParentID, DataRegistry dstRegistry, bool copySUID)
 {
-    const ComponentBase* srcBase = src.get_component_base(srcID);
-    LD_ASSERT(srcBase);
-
-    CUID dstID = dst.create_component(srcBase->type, srcBase->name, dstParentID, (SUID)0);
+    ComponentBase* srcBase = *srcData;
+    SUID dstSUID = copySUID ? srcBase->suid : SUIDRegistry::get_suid(SERIAL_TYPE_COMPONENT);
+    CUID dstID = dstRegistry.create_component(srcBase->type, srcBase->name, dstParentID, dstSUID);
 
     if (!dstID)
-    {
-        sLog.error("failed to duplicate {}", srcBase->name);
-        return false;
-    }
+        return nullptr;
 
-    // copy base fields, note that serial ID is copied over.
-    ComponentBase** dstData = dst.get_component_data(dstID, nullptr);
-    LD_ASSERT(dstData);
-
+    ComponentBase** dstData = dstRegistry.get_component_data(dstID, nullptr);
     ComponentBase* dstBase = *dstData;
-    dstBase->suid = srcBase->suid;
     dstBase->scriptAssetID = srcBase->scriptAssetID;
-    dst.unwrap()->suidToCompData[dstBase->suid] = dstData;
 
-    // copy transform state
+    // if (dstBase->suid)
+    //     dstRegistry.unwrap()->suidToCompData[dstBase->suid] = dstData;
+
+    // deep copy transform state
     if (sComponentTable[(int)srcBase->type].typeFlags & COMPONENT_TYPE_FLAG_TRANSFORM_2D)
     {
-        ComponentBase** srcData = src.get_component_data(srcID, nullptr);
         Transform2D* dstTransform = dstBase->transform2D;
         Transform2D* srcTransform = srcBase->transform2D;
         LD_ASSERT(srcTransform && dstTransform);
@@ -170,27 +176,43 @@ static bool duplicate_subtree(DataRegistry dst, CUID dstParentID, DataRegistry s
     }
     else if (sComponentTable[(int)srcBase->type].typeFlags & COMPONENT_TYPE_FLAG_TRANSFORM_EX)
     {
-        ComponentBase** srcData = src.get_component_data(srcID, nullptr);
         TransformEx* dstTransform = dstBase->transformEx;
         TransformEx* srcTransform = srcBase->transformEx;
         LD_ASSERT(srcTransform && dstTransform);
         *dstTransform = *srcTransform;
     }
 
-    // maintain sibling order
-    Vector<const ComponentBase*> srcChildOrder;
-    for (const ComponentBase* srcChild = srcBase->child; srcChild; srcChild = srcChild->next)
-        srcChildOrder.push_back(srcChild);
+    return dstData;
+}
 
-    for (auto it = srcChildOrder.rbegin(); it != srcChildOrder.rend(); ++it)
+// Makes a deep copy of src component subtree from src registry into dst registry.
+// Src and dst registries may or may not be the same.
+static ComponentBase** duplicate_subtree(DataRegistry dst, CUID dstParentID, DataRegistry src, CUID srcID)
+{
+    ComponentBase** srcData = src.get_component_data(srcID, nullptr);
+    LD_ASSERT(srcData);
+
+    // If dst and src registry are the same, new SUIDs are created for the duplicate subtree components,
+    // Otherwise we copy the SUIDs from src to dst.
+    bool copySUID = (dst.unwrap() != src.unwrap());
+
+    ComponentBase* srcBase = *srcData;
+    ComponentBase** dstData = duplicate_component(srcData, dstParentID, dst, copySUID);
+    if (!dstData)
     {
-        const ComponentBase* srcChild = *it;
-
-        if (!duplicate_subtree(dst, dstID, src, srcChild->cuid))
-            return false;
+        sLog.error("failed to duplicate {}", srcBase->name);
+        return nullptr;
     }
 
-    return true;
+    CUID dstID = (*dstData)->cuid;
+
+    for (const ComponentBase* srcChild = srcBase->child; srcChild; srcChild = srcChild->next)
+    {
+        if (!duplicate_subtree(dst, dstID, src, srcChild->cuid))
+            return nullptr;
+    }
+
+    return dstData;
 }
 
 static SUID get_mesh_asset_id(void* comp)
@@ -215,41 +237,113 @@ void DataRegistryObj::reserve_sparse_index(CUID id)
 
 void DataRegistryObj::detach(ComponentBase* base)
 {
-    if (!base || !base->parent)
+    if (!base)
         return;
 
-    ComponentBase* parent = base->parent;
-    ComponentBase** pnext = &(parent->child);
-    while (*pnext && *pnext != base)
-        pnext = &(*pnext)->next;
+    LD_ASSERT(base->parent); // already detached
 
-    LD_ASSERT(*pnext == base);
-    *pnext = base->next;
+    ComponentBase* parent = base->parent;
+
+    if (parent->child == base)
+    {
+        parent->child = base->next;
+        base->parent = nullptr;
+        base->next = nullptr;
+        return;
+    }
+
+    ComponentBase* pos = parent->child;
+    while (pos && pos->next != base)
+        pos = pos->next;
+
+    LD_ASSERT(pos);
+    pos->next = base->next;
     base->parent = nullptr;
-    roots.insert(base->cuid);
+    base->next = nullptr;
 }
 
-void DataRegistryObj::add_child(ComponentBase* parent, ComponentBase* child)
+void DataRegistryObj::add_child(ComponentBase* child, ComponentBase* parent, ComponentBase* placementTarget, ComponentPlacement placement)
 {
-    if (!child->parent && parent)
-        roots.erase(child->cuid);
+    LD_ASSERT(parent);
+    LD_ASSERT(child && !child->parent && !child->next);                 // not detached
+    LD_ASSERT(!(placementTarget && placementTarget->parent != parent)); // hello?
 
     child->parent = parent;
 
-    if (parent)
+    if (!parent->child)
     {
+        parent->child = child;
+        return;
+    }
+
+    ComponentBase* pos = parent->child;
+
+    switch (placement)
+    {
+    case COMPONENT_PLACEMENT_AS_FIRST_CHILD:
         child->next = parent->child;
         parent->child = child;
+        break;
+    case COMPONENT_PLACEMENT_AS_LAST_CHILD:
+        while (pos && pos->next)
+            pos = pos->next;
+        LD_ASSERT(pos);
+        pos->next = child;
+        break;
+    case COMPONENT_PLACEMENT_AFTER_SIBLING:
+        LD_ASSERT(placementTarget);
+        while (pos && pos != placementTarget)
+            pos = pos->next;
+        LD_ASSERT(pos);
+        child->next = pos->next;
+        pos->next = child;
+        break;
+    default:
+        LD_UNREACHABLE;
     }
 }
 
 bool DataRegistryObj::get_component_world_mat4(ComponentBase* base, Mat4& mat4)
 {
-    if (!base)
+    constexpr ComponentTypeFlag transformBits = (COMPONENT_TYPE_FLAG_TRANSFORM_2D | COMPONENT_TYPE_FLAG_TRANSFORM_EX);
+
+    if (!base || !(sComponentTable[(int)base->type].typeFlags & transformBits))
         return false;
 
     mat4 = transform2DRegistry.get_world_mat4(base->cuid);
     return true;
+}
+
+ComponentBase** DataRegistryObj::clone_subtree(ComponentBase** srcData, ComponentPlacement placement)
+{
+    DataRegistry reg(this);
+    ComponentBase* srcBase = *srcData;
+    ComponentBase* srcParent = srcBase->parent;
+    LD_ASSERT(srcParent);
+
+    // src and dst registry is the same, do not copy SUID over.
+    ComponentBase** dstData = duplicate_subtree(reg, srcParent->cuid, reg, srcBase->cuid);
+    if (!dstData)
+        return nullptr;
+
+    detach(*dstData);
+    add_child(*dstData, srcBase->parent, srcBase, placement);
+
+    return dstData;
+}
+
+void DataRegistryObj::print_subtree(ComponentBase** data, std::string& str, int indent)
+{
+    ComponentBase* base = *data;
+    str += std::string(indent, ' ');
+    str += std::format("{:10} [CUID {}], [SUID {}]\n", base->name, base->cuid, base->suid);
+
+    for (ComponentBase* child = base->child; child; child = child->next)
+    {
+        ComponentBase** childData = get_data_from_cuid(child->cuid);
+        LD_ASSERT(childData);
+        print_subtree(childData, str, indent + 1);
+    }
 }
 
 void DataRegistryObj::id_hierarchy(ID parent, Vector<ID>& children, void* user)
@@ -276,6 +370,7 @@ DataRegistry DataRegistry::create()
     paI.isMultiPage = true;
     paI.usage = MEMORY_USAGE_MISC;
     obj->componentBasePA = PoolAllocator::create(paI);
+    obj->root = {}; // root dummy has CUID and SUID of zero.
 
     return {obj};
 }
@@ -309,9 +404,9 @@ DataRegistry DataRegistry::duplicate() const
     DataRegistry dst = DataRegistry::create();
     DataRegistry src(mObj);
 
-    for (CUID srcRoot : mObj->roots)
+    for (ComponentBase* child = mObj->root.child; child; child = child->next)
     {
-        bool ok = duplicate_subtree(dst, 0, src, srcRoot);
+        bool ok = duplicate_subtree(dst, 0, src, child->cuid);
         LD_ASSERT(ok);
     }
 
@@ -355,17 +450,16 @@ CUID DataRegistry::create_component(ComponentType type, const char* name, CUID p
 
     mObj->reserve_sparse_index(compBase->cuid);
 
+    ComponentBase* parentBase = &mObj->root;
+
     if (parentID)
     {
         uint32_t parentIndex = parentID.index();
         LD_ASSERT(mObj->cuidToCompData[parentIndex]);
-        ComponentBase* parentBase = *(mObj->cuidToCompData[parentIndex]);
-        mObj->add_child(parentBase, compBase);
+        parentBase = *(mObj->cuidToCompData[parentIndex]);
     }
-    else
-    {
-        mObj->roots.insert(compBase->cuid);
-    }
+
+    mObj->add_child(compBase, parentBase, nullptr, COMPONENT_PLACEMENT_AS_LAST_CHILD);
 
     // allocate component type
     ComponentBase** compData = (ComponentBase**)mObj->componentPAs[type].allocate();
@@ -433,9 +527,22 @@ void DataRegistry::reparent(CUID compID, CUID parentID)
     ComponentBase* parentBase = *parentData;
 
     mObj->detach(childBase);
-    mObj->add_child(parentBase, childBase);
+    mObj->add_child(childBase, parentBase, nullptr, COMPONENT_PLACEMENT_AS_LAST_CHILD);
 
     mObj->transform2DRegistry.reparent(compID, parentID, &DataRegistryObj::id_hierarchy, mObj);
+}
+
+ComponentBase** DataRegistry::clone_component_subtree(CUID rootID)
+{
+    ComponentBase** srcData = mObj->get_data_from_cuid(rootID);
+    if (!srcData)
+        return nullptr;
+
+    ComponentBase** dstData = mObj->clone_subtree(srcData, COMPONENT_PLACEMENT_AFTER_SIBLING);
+    if (!dstData)
+        return nullptr;
+
+    return dstData;
 }
 
 ComponentBase* DataRegistry::get_component_base(CUID compCUID)
@@ -494,15 +601,13 @@ void DataRegistry::get_root_component_data(Vector<ComponentBase**>& rootData)
 {
     LD_PROFILE_SCOPE;
 
-    rootData.resize(mObj->roots.size());
+    rootData.clear();
 
-    int i = 0;
-
-    for (CUID compID : mObj->roots)
+    for (ComponentBase* child = mObj->root.child; child; child = child->next)
     {
-        ComponentBase** data = get_component_data(compID, nullptr);
+        ComponentBase** data = get_component_data(child->cuid, nullptr);
         LD_ASSERT(data);
-        rootData[i++] = data;
+        rootData.push_back(data);
     }
 }
 
@@ -589,6 +694,19 @@ void DataRegistry::invalidate_transforms()
     LD_PROFILE_SCOPE;
 
     mObj->transform2DRegistry.invalidate_transforms();
+}
+
+std::string DataRegistry::print_hierarchy()
+{
+    std::string str;
+
+    Vector<ComponentBase**> rootData;
+    get_root_component_data(rootData);
+
+    for (ComponentBase** data : rootData)
+        mObj->print_subtree(data, str, 0);
+
+    return str;
 }
 
 } // namespace LD
