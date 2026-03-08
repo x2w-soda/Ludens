@@ -92,7 +92,7 @@ Transform2D* Transform2DRegistry::create(ID childID, ID parentID)
         mWorldMat4.resize(maxSI + 1);
     }
 
-    if (parentSI)
+    if (parentID)
     {
         Sparse& sparse = mSparse[parentSI];
         childDepthLevel = sparse.depthLevel + 1;
@@ -139,7 +139,8 @@ void Transform2DRegistry::destroy(ID rootID, IDHierarchyCallback hierarchyCB, vo
         for (ID childID : childrenID)
             work.push(childID);
 
-        (void)swap_and_pop(id);
+        Transform2D* popTransform = swap_and_pop(id);
+        mTransformPA.free(popTransform);
     }
 }
 
@@ -183,11 +184,13 @@ void Transform2DRegistry::reparent(ID childID, ID parentID, IDHierarchyCallback 
             childNewDepth = mDepth[0];
         }
 
-        Entry childEntry = swap_and_pop(childID);
+        Transform2D* childTransform = swap_and_pop(childID);
 
         size_t childNewLI = childNewDepth->local.size();
         childNewDepth->local.resize(childNewLI + 1);
-        childNewDepth->local[childNewLI] = childEntry;
+        childNewDepth->local[childNewLI].id = childID;
+        childNewDepth->local[childNewLI].parentID = parentID;
+        childNewDepth->local[childNewLI].transform = childTransform;
 
         childS.depthLevel = childDepthLevel;
         childS.localIndex = childNewLI;
@@ -208,14 +211,14 @@ void Transform2DRegistry::reserve_depth(int depth)
     }
 }
 
-Transform2DRegistry::Entry Transform2DRegistry::swap_and_pop(ID popID)
+Transform2D* Transform2DRegistry::swap_and_pop(ID popID)
 {
     uint32_t popSI = popID.index();
     Sparse& popS = mSparse[popSI];
     Depth& depth = *mDepth[popS.depthLevel];
     uint32_t popLI = popS.localIndex;
 
-    mTransformPA.free(depth.local[popLI].transform);
+    Transform2D* popTransform = depth.local[popLI].transform;
 
     uint32_t lastLI = depth.local.size() - 1;
     uint32_t lastSI = depth.local[lastLI].id.index();
@@ -229,7 +232,7 @@ Transform2DRegistry::Entry Transform2DRegistry::swap_and_pop(ID popID)
     mSparse[popSI].depthLevel = -1;
     mSparse[popSI].localIndex = 0;
 
-    return entry;
+    return popTransform;
 }
 
 } // namespace LD

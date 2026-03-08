@@ -55,7 +55,7 @@ private:
     };
 
     void reserve_depth(int depth);
-    Entry swap_and_pop(ID popID);
+    Transform2D* swap_and_pop(ID popID);
 
 private:
     Vector<Depth*> mDepth;

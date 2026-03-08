@@ -13,11 +13,15 @@ SUID SUIDRegistry::get_suid(SerialType type)
 
     // TODO: if 24-bit space is exhausted for the serial type, this is infinite
     uint32_t i = sCounter[type];
+    SUID candidate{};
+
     for (;;)
     {
-        if (!sRegistered.contains(i))
+        candidate = SUID(type, i);
+
+        if (!sRegistered.contains(candidate))
         {
-            sRegistered.insert(i);
+            sRegistered.insert(candidate);
             sCounter[type] = (i + 1) % SUID_IDENTITY_MASK;
             break;
         }
@@ -26,7 +30,7 @@ SUID SUIDRegistry::get_suid(SerialType type)
             i = 0;
     }
 
-    return SUID(type, i);
+    return candidate;
 }
 
 bool SUIDRegistry::try_get_suid(SUID id)
