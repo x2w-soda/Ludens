@@ -117,7 +117,7 @@ Transform2D* Transform2DRegistry::create(ID childID, ID parentID)
     return childTransform;
 }
 
-void Transform2DRegistry::destroy(ID rootID, IDHierarchyCallback hierarchyCB, void* user)
+void Transform2DRegistry::destroy_subtree(ID rootID, IDHierarchyCallback hierarchyCB, void* user)
 {
     // only validate root, after this we assume hierarchy callback is correct.
     uint64_t rootSI = rootID.index();
@@ -137,14 +137,17 @@ void Transform2DRegistry::destroy(ID rootID, IDHierarchyCallback hierarchyCB, vo
         hierarchyCB(id, childrenID, user);
 
         for (ID childID : childrenID)
+        {
+            LD_ASSERT(childID);
             work.push(childID);
+        }
 
         Transform2D* popTransform = swap_and_pop(id);
         mTransformPA.free(popTransform);
     }
 }
 
-void Transform2DRegistry::reparent(ID childID, ID parentID, IDHierarchyCallback hierarchyCB, void* user)
+void Transform2DRegistry::reparent_subtree(ID childID, ID parentID, IDHierarchyCallback hierarchyCB, void* user)
 {
     Vector<ID> childrenID;
     Queue<std::pair<ID, ID>> work;

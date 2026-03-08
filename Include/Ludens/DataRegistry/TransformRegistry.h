@@ -32,8 +32,8 @@ public:
     }
 
     Transform2D* create(ID id, ID parentID);
-    void destroy(ID id, IDHierarchyCallback hierarchyCB, void* user);
-    void reparent(ID id, ID parentID, IDHierarchyCallback hierarchyCB, void* user);
+    void destroy_subtree(ID id, IDHierarchyCallback hierarchyCB, void* user);
+    void reparent_subtree(ID id, ID parentID, IDHierarchyCallback hierarchyCB, void* user);
 
 private:
     struct Entry

@@ -54,12 +54,12 @@ struct DataRegistry : Handle<struct DataRegistryObj>
     /// @return Data component ID
     CUID create_component(ComponentType type, const char* name, CUID parent, SUID suid);
 
-    /// @brief Destroy a data component subtree
+    /// @brief Destroy a component subtree.
     /// @param id Data component ID
-    void destroy_component(CUID compID);
+    void destroy_component_subtree(CUID compID);
 
-    /// @brief Reparent a data component
-    void reparent(CUID compID, CUID parentID);
+    /// @brief Reparent a component subtree.
+    void reparent_component_subtree(CUID compID, CUID parentID);
 
     /// @brief Try clone a component subtree.
     /// @param rootID The subtree root component to clone.

@@ -150,11 +150,11 @@ TEST_CASE("Transform2DRegistry skewed")
 
     // destruction
 
-    reg->destroy(1, &chain_hierarchy, nullptr);
+    reg->destroy_subtree(1, &chain_hierarchy, nullptr);
     for (uint64_t i = 1; i <= N; i++)
         CHECK_FALSE(reg->has_transform(i));
 
-    reg->destroy(1, &chain_hierarchy, nullptr);
+    reg->destroy_subtree(1, &chain_hierarchy, nullptr);
 
     delete reg;
     CHECK(get_memory_leaks(nullptr) == 0);
@@ -173,7 +173,7 @@ TEST_CASE("Transform2DRegistry reparent")
         reg->set_transform(i, translate(Vec2(1.0f, 2.0f)));
     }
 
-    reg->reparent(N / 2 + 1, 0, &chain_hierarchy, nullptr);
+    reg->reparent_subtree(N / 2 + 1, 0, &chain_hierarchy, nullptr);
 
     // two chains with length N/2 starting at ID 1 and N/2 + 1
     size_t us;

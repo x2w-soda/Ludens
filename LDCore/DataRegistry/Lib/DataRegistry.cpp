@@ -143,8 +143,9 @@ struct DataRegistryObj
     /// @brief Get component world transform matrix
     bool get_component_world_mat4(ComponentBase* base, Mat4& mat4);
 
+    void destroy_subtree(ComponentBase** data);
+    void destroy_component(ComponentBase** data);
     ComponentBase** clone_subtree(ComponentBase** srcData, ComponentPlacement placement);
-
     void print_subtree(ComponentBase** data, std::string& str, int indent);
 
     static void id_hierarchy(ID parent, Vector<ID>& children, void* user);
@@ -162,9 +163,6 @@ static ComponentBase** duplicate_component(ComponentBase** srcData, CUID dstPare
     ComponentBase** dstData = dstRegistry.get_component_data(dstID, nullptr);
     ComponentBase* dstBase = *dstData;
     dstBase->scriptAssetID = srcBase->scriptAssetID;
-
-    // if (dstBase->suid)
-    //     dstRegistry.unwrap()->suidToCompData[dstBase->suid] = dstData;
 
     // deep copy transform state
     if (sComponentTable[(int)srcBase->type].typeFlags & COMPONENT_TYPE_FLAG_TRANSFORM_2D)
@@ -312,6 +310,48 @@ bool DataRegistryObj::get_component_world_mat4(ComponentBase* base, Mat4& mat4)
 
     mat4 = transform2DRegistry.get_world_mat4(base->cuid);
     return true;
+}
+
+void DataRegistryObj::destroy_subtree(ComponentBase** compData)
+{
+    LD_ASSERT(compData && *compData);
+
+    ComponentBase* compBase = *compData;
+
+    for (ComponentBase* child = compBase->child; child; child = child->next)
+    {
+        ComponentBase** childData = cuidToCompData[child->cuid.index()];
+        destroy_subtree(childData);
+    }
+
+    destroy_component(compData);
+}
+
+// NOTE: The parent's child linked list is not updated here.
+void DataRegistryObj::destroy_component(ComponentBase** compData)
+{
+    LD_ASSERT(compData && *compData);
+
+    ComponentBase* compBase = *compData;
+    SUID compSUID = compBase->suid;
+    CUID compCUID = compBase->cuid;
+    ComponentType compType = compBase->type;
+    LD_ASSERT(componentPAs.contains(compType));
+
+    *compData = nullptr;
+    componentPAs[compType].free(compData);
+
+    compBase->type = COMPONENT_TYPE_DATA;
+    compBase->cuid = 0;
+    compBase->suid = 0;
+    compBase->scriptAssetID = 0;
+
+    componentBasePA.free(compBase);
+
+    sCUIDRegistry.destroy(compCUID);
+
+    cuidToCompData[compCUID.index()] = nullptr;
+    suidToCompData.erase(compSUID);
 }
 
 ComponentBase** DataRegistryObj::clone_subtree(ComponentBase** srcData, ComponentPlacement placement)
@@ -476,7 +516,7 @@ CUID DataRegistry::create_component(ComponentType type, const char* name, CUID p
     return compBase->cuid;
 }
 
-void DataRegistry::destroy_component(CUID compCUID)
+void DataRegistry::destroy_component_subtree(CUID compCUID)
 {
     LD_PROFILE_SCOPE;
 
@@ -487,36 +527,17 @@ void DataRegistry::destroy_component(CUID compCUID)
         return;
 
     ComponentBase* compBase = *compData;
-    LD_ASSERT(compBase);
 
-    ComponentType compType = compBase->type;
-    LD_ASSERT(mObj->componentPAs.contains(compType));
-
-    SUID compSUID = compBase->suid;
-
-    *compData = nullptr;
-    mObj->componentPAs[compType].free(compData);
-
-    compBase->type = COMPONENT_TYPE_DATA;
-    compBase->cuid = 0;
-    compBase->suid = 0;
-    compBase->scriptAssetID = 0;
-
-    if (sComponentTable[(int)compType].typeFlags & COMPONENT_TYPE_FLAG_TRANSFORM_2D)
+    if (sComponentTable[(int)compBase->type].typeFlags & COMPONENT_TYPE_FLAG_TRANSFORM_2D)
     {
-        mObj->transform2DRegistry.destroy(compCUID, &DataRegistryObj::id_hierarchy, mObj);
-        compBase->transform2D = nullptr;
+        mObj->transform2DRegistry.destroy_subtree(compCUID, &DataRegistryObj::id_hierarchy, mObj);
     }
 
-    mObj->componentBasePA.free(compBase);
-
-    sCUIDRegistry.destroy(compCUID);
-
-    mObj->cuidToCompData[compIndex] = nullptr;
-    mObj->suidToCompData.erase(compSUID);
+    mObj->detach(compBase);
+    mObj->destroy_subtree(compData);
 }
 
-void DataRegistry::reparent(CUID compID, CUID parentID)
+void DataRegistry::reparent_component_subtree(CUID compID, CUID parentID)
 {
     ComponentBase** childData = mObj->get_data_from_cuid(compID);
     ComponentBase** parentData = mObj->get_data_from_cuid(parentID);
@@ -529,7 +550,7 @@ void DataRegistry::reparent(CUID compID, CUID parentID)
     mObj->detach(childBase);
     mObj->add_child(childBase, parentBase, nullptr, COMPONENT_PLACEMENT_AS_LAST_CHILD);
 
-    mObj->transform2DRegistry.reparent(compID, parentID, &DataRegistryObj::id_hierarchy, mObj);
+    mObj->transform2DRegistry.reparent_subtree(compID, parentID, &DataRegistryObj::id_hierarchy, mObj);
 }
 
 ComponentBase** DataRegistry::clone_component_subtree(CUID rootID)
