@@ -27,7 +27,7 @@ struct AudioPlayback : AudioHandle
     /// @brief Main thread destroys audio playback instance.
     static void destroy(AudioPlayback playback);
 
-    /// @brief Thread safe API after the playback is acquired by audio thread.
+    /// @brief Thread safe audio playback API.
     class Accessor
     {
     public:
