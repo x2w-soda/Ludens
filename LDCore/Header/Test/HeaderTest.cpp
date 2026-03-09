@@ -608,6 +608,20 @@ TEST_CASE("Rect scale")
     CHECK(scaled == Rect(-40.0f, 10.0f, 200.0f, 100.0f));
 }
 
+TEST_CASE("Rect rotate")
+{
+    Rect area(-1.0f, -0.5f, 2.0f, 1.0f);
+    Vec2 center = area.get_center();
+    Rect rotated = Rect::rotate(area, 0.0f);
+    CHECK(rotated == area);
+
+    rotated = Rect::rotate(area, LD_TO_RADIANS(360.0f));
+    CHECK(rotated == area);
+
+    rotated = Rect::rotate(area, LD_TO_RADIANS(90.0f));
+    CHECK(rotated == Rect(center.x - 0.5f, center.y - 1.0f, 1.0f, 2.0f));
+}
+
 TEST_CASE("Mat3 ctor")
 {
     IMat3 m{};

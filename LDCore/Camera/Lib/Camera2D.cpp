@@ -98,6 +98,15 @@ Vec2 Camera2D::get_world_position(const Vec2& screenPos)
     return mObj->pos + (screenPos - mObj->halfExtent) / mObj->zoom;
 }
 
+Rect Camera2D::get_world_aabb()
+{
+    float halfW = mObj->halfExtent.x / mObj->zoom;
+    float halfH = mObj->halfExtent.y / mObj->zoom;
+    Rect base(mObj->pos.x - halfW, mObj->pos.y - halfH, halfW * 2.0f, halfH * 2.0f);
+
+    return Rect::rotate(base, LD_TO_RADIANS(mObj->rot));
+}
+
 Mat4 Camera2D::get_view()
 {
     if (mObj->isViewDirty)

@@ -37,6 +37,10 @@ struct Camera2D : Handle<struct Camera2DObj>
     ///        taking zoom into account.
     Vec2 get_world_position(const Vec2& screenPos);
 
+    /// @brief Get 2D world AABB that contains the camera visible area,
+    ///        taking zoom and rotation into account.
+    Rect get_world_aabb();
+
     Mat4 get_view();
     Mat4 get_proj();
     Viewport get_viewport();

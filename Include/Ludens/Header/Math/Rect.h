@@ -149,7 +149,7 @@ struct TRect
     }
 
     /// @brief Scale rect width while preserving original center.
-    /// @param ratio Positive ratio to scale rect width. 
+    /// @param ratio Positive ratio to scale rect width.
     /// @return Scaled rect with new width, or the original rect if ratio is invalid.
     static inline TRect scale_w(const TRect& area, float ratio)
     {
@@ -185,6 +185,22 @@ struct TRect
         r.w += size * (T)2;
         r.h += size * (T)2;
         return r;
+    }
+
+    /// @brief Get AABB of an AABB rotated around it's center.
+    static TRect rotate(const TRect& rect, T radians)
+    {
+        const T c = (T)LD_COS(radians);
+        const T s = (T)LD_SIN(radians);
+        const T hw = rect.w * 0.5f;
+        const T hh = rect.h * 0.5f;
+        const T cx = rect.x + hw;
+        const T cy = rect.y + hh;
+
+        // rotated half extents
+        const T rhw = (T)LD_ABS(hw * c) + (T)LD_ABS(hh * s);
+        const T rhh = (T)LD_ABS(hw * s) + (T)LD_ABS(hh * c);
+        return TRect(cx - rhw, cy - rhh, rhw * (T)2, rhh * (T)2);
     }
 };
 
