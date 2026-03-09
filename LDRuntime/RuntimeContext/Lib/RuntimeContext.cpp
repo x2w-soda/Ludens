@@ -60,17 +60,27 @@ void RuntimeContextObj::render_frame(const Vec2& windowExtent)
     renderSystem.world_pass(worldP);
 #endif
 
-    RenderSystemScreenPass::Region region{};
-    region.viewport = windowViewport;
+    Vector<Viewport> screenViewports;
+    Vector<Rect> aabbs;
+    scene.get_screen_regions(screenViewports, aabbs);
+    Vector<RenderSystemScreenPass::Region> regions(screenViewports.size());
+    for (size_t i = 0; i < regions.size(); i++)
+    {
+        regions[i].viewport = screenViewports[i];
+        regions[i].worldAABB = aabbs[i];
+    }
 
     RenderSystemScreenPass screenP{};
-    screenP.overlay.renderCallback = [](ScreenRenderComponent renderer, void* user) {
+    screenP.overlay.renderCallback = [](ScreenRenderComponent renderer, TView<int>, int overlayVPIndex, void* user) {
         RuntimeContextObj& self = *(RuntimeContextObj*)user;
+        renderer.bind_quad_pipeline(QUAD_PIPELINE_UBER);
+        renderer.set_view_projection_index(overlayVPIndex);
         self.scene.render_screen_ui(renderer);
     };
+    
     screenP.overlay.viewport = windowViewport;
-    screenP.regionCount = 1;
-    screenP.regions = &region;
+    screenP.regionCount = (uint32_t)regions.size();
+    screenP.regions = regions.data();
     screenP.mat4Callback = &RuntimeContextObj::render_system_transform_callback;
     screenP.user = this;
     renderSystem.screen_pass(screenP);
@@ -164,10 +174,10 @@ RuntimeContext RuntimeContext::create(const RuntimeContextInfo& info)
     sceneI.uiTheme = UITheme::get_default_theme();
     obj->scene = Scene::create(sceneI);
 
-    obj->scene.load([&](Scene scene) -> bool {
+    obj->scene.load([&](SceneObj* sceneObj) -> bool {
         // load default scene
         std::string err;
-        return SceneSchema::load_scene_from_file(scene, defaultScenePath, err);
+        return SceneSchema::load_scene_from_file(Scene(sceneObj), defaultScenePath, err);
     });
 
     // TODO: check scene load success
