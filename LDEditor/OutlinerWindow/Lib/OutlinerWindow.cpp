@@ -1,5 +1,7 @@
 #include <Ludens/DSA/Array.h>
+#include <Ludens/DSA/HashMap.h>
 #include <Ludens/DSA/Vector.h>
+#include <Ludens/Header/KeyValue.h>
 #include <Ludens/Header/MouseValue.h>
 #include <Ludens/Memory/Memory.h>
 #include <Ludens/Profiler/Profiler.h>
@@ -39,15 +41,15 @@ struct OutlinerWindowObj : EditorWindowObj
     virtual void on_imgui(float delta) override;
 
     void component_rows(ComponentView comp, int& rowIdx, int depth);
-    void component_row(int rowIdx, int depth, SUID compSUID);
-    void on_row_mouse_down(MouseValue mouseVal, const Vec2& mousePos, SUID compSUID);
+    void component_row(ComponentView comp, int rowIdx, int depth);
+    void on_row_mouse_down(ComponentView comp, MouseValue mouseVal, const Vec2& mousePos);
 };
 
 void OutlinerWindowObj::component_rows(ComponentView comp, int& rowIdx, int depth)
 {
     LD_ASSERT(comp);
 
-    component_row(rowIdx++, depth, comp.suid());
+    component_row(comp, rowIdx++, depth);
 
     depth++;
 
@@ -60,11 +62,15 @@ void OutlinerWindowObj::component_rows(ComponentView comp, int& rowIdx, int dept
     depth--;
 }
 
-void OutlinerWindowObj::component_row(int rowIdx, int depth, SUID compSUID)
+void OutlinerWindowObj::component_row(ComponentView comp, int rowIdx, int depth)
 {
+    LD_ASSERT(comp);
+
     EditorTheme theme = mCtx.get_settings().get_theme();
     UITheme uiTheme = theme.get_ui_theme();
     const float rowHeight = theme.get_text_row_height();
+    CUID compCUID = comp.cuid();
+    SUID compSUID = comp.suid();
 
     UILayoutInfo layoutI{};
     layoutI.childAxis = UI_AXIS_X;
@@ -82,7 +88,7 @@ void OutlinerWindowObj::component_row(int rowIdx, int depth, SUID compSUID)
     if (ui_top_is_hovered())
         panelColor = Color::lift(panelColor, 0.06f);
 
-    if (compSUID && compSUID == mCtx.get_selected_component())
+    if (compCUID && compCUID == mCtx.get_selected_component())
         panelColor = theme.get_ui_theme().get_selection_color();
 
     ui_panel_color(panelColor);
@@ -90,9 +96,7 @@ void OutlinerWindowObj::component_row(int rowIdx, int depth, SUID compSUID)
     Vec2 mousePos;
     MouseValue mouseVal;
     if (ui_top_mouse_down(mouseVal, mousePos))
-        on_row_mouse_down(mouseVal, mousePos, compSUID);
-
-    ComponentView comp = mCtx.get_component(compSUID);
+        on_row_mouse_down(comp, mouseVal, mousePos);
 
     // component type icon
     if (comp)
@@ -107,9 +111,9 @@ void OutlinerWindowObj::component_row(int rowIdx, int depth, SUID compSUID)
     }
 
     // component name label
-    ui_push_text(compSUID ? mCtx.get_component_name(compSUID) : nullptr);
+    ui_push_text(compCUID ? mCtx.get_component_name(compCUID) : nullptr);
     if (ui_top_mouse_down(mouseVal, mousePos))
-        on_row_mouse_down(mouseVal, mousePos, compSUID);
+        on_row_mouse_down(comp, mouseVal, mousePos);
     ui_pop();
 
     // component script icon
@@ -124,14 +128,14 @@ void OutlinerWindowObj::component_row(int rowIdx, int depth, SUID compSUID)
     ui_pop();
 }
 
-void OutlinerWindowObj::on_row_mouse_down(MouseValue mouseVal, const Vec2& mousePos, SUID compSUID)
+void OutlinerWindowObj::on_row_mouse_down(ComponentView comp, MouseValue mouseVal, const Vec2& mousePos)
 {
     if (mouseVal.button() == MOUSE_BUTTON_LEFT)
-        mCtx.set_selected_component(compSUID);
-    else if (mouseVal.button() == MOUSE_BUTTON_RIGHT)
+        mCtx.set_selected_component(comp.cuid());
+    else if (mouseVal.button() == MOUSE_BUTTON_RIGHT && comp.suid())
     {
         ui_request_popup_window(OUTLINER_COMPONENT_MENU_POPUP, mousePos);
-        state.compSUID = compSUID;
+        state.compSUID = comp.suid();
     }
 }
 
@@ -152,6 +156,12 @@ void OutlinerWindowObj::on_imgui(float delta)
     ui_push_window("ROOT");
     ui_top_layout(layoutI);
     ui_window_set_color(theme.get_ui_theme().get_surface_color());
+
+    KeyValue keyVal;
+    if (ui_top_key_down(keyVal))
+    {
+        mCtx.input_key_value(keyVal);
+    }
 
     Vector<ComponentView> sceneRoots;
     mCtx.get_scene_roots(sceneRoots);

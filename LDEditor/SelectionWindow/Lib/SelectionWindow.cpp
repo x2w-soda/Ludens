@@ -59,6 +59,7 @@ void SelectionWindowObj::on_imgui(float delta)
 
     UILayoutInfo layoutI{};
     layoutI.childAxis = UI_AXIS_Y;
+    layoutI.childGap = 2.0f;
     layoutI.sizeX = UISize::grow();
     layoutI.sizeY = UISize::grow();
     ui_push_scroll(theme.get_ui_theme().get_surface_color());

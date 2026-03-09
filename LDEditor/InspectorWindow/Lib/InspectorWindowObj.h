@@ -9,7 +9,6 @@ namespace LD {
 /// @brief Editor inspector window implementation.
 struct InspectorWindowObj : EditorWindowObj
 {
-    SUID subjectSUID = 0; // subject component being inspected
     Impulse isRequestingNewAsset{};
     AssetType requestAssetType{};
     AssetID oldAssetID = 0;
@@ -18,10 +17,7 @@ struct InspectorWindowObj : EditorWindowObj
     InspectorWindowObj(const EditorWindowInfo& info)
         : EditorWindowObj(info), ctx(info.ctx)
     {
-        mCtx.add_observer(&InspectorWindowObj::on_editor_event, this);
     }
-
-    static void on_editor_event(const EditorEvent* event, void* user);
 
     virtual EditorWindowType get_type() override { return EDITOR_WINDOW_INSPECTOR; }
     virtual void on_imgui(float delta) override;

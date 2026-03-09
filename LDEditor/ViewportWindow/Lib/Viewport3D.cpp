@@ -58,7 +58,7 @@ void Viewport3D::imgui(ViewportState& state)
     bool begin;
 
     mCamera.set_aspect_ratio(state.sceneExtent.x / state.sceneExtent.y);
-    ComponentView subject = mCtx.get_component(state.gizmoSubjectSUID);
+    ComponentView subject = mCtx.get_component_by_suid(state.gizmoSubjectSUID);
 
     // update gizmo center and scale
     if (subject && subject.get_world_mat4(worldMat4))
@@ -136,9 +136,9 @@ void Viewport3D::pick_hover_ruid(ViewportState& state)
 {
     ComponentView comp = mCtx.get_component_by_ruid(state.hoverRUID);
 
-    state.gizmoSubjectSUID = comp ? comp.suid() : 0;
+    state.gizmoSubjectSUID = comp ? comp.suid() : (SUID)0;
 
-    mCtx.set_selected_component(state.gizmoSubjectSUID);
+    mCtx.set_selected_component(comp.cuid());
 }
 
 void Viewport3D::pick_hover_gizmo_id(ViewportState& state)
@@ -149,7 +149,7 @@ void Viewport3D::pick_hover_gizmo_id(ViewportState& state)
 
     // writes back to subject transform during mouse drag window events
     // an object should be selected before gizmo mesh can even be selected
-    ComponentView subject = mCtx.get_component(state.gizmoSubjectSUID);
+    ComponentView subject = mCtx.get_component_by_suid(state.gizmoSubjectSUID);
     LD_ASSERT(subject);
 
     // initialize subject world transform and gizmo center.
@@ -235,7 +235,7 @@ void Viewport3D::drag(ViewportState& state, MouseButton btn, const Vec2& dragPos
 
     // get inverse parent world matrix
     Mat4 parentInv(1.0f);
-    ComponentView subject = mCtx.get_component(state.gizmoSubjectSUID);
+    ComponentView subject = mCtx.get_component_by_suid(state.gizmoSubjectSUID);
     ComponentView parent{};
     bool ok;
 

@@ -24,7 +24,7 @@ void InspectorWindowObj::on_imgui(float delta)
     ui_window_set_color(theme.get_ui_theme().get_surface_color());
     ui_top_layout(layoutI);
 
-    ComponentView comp = mCtx.get_component(subjectSUID);
+    ComponentView comp = mCtx.get_component(mCtx.get_selected_component());
     if (comp)
         eui_inspect_component(*this, comp);
 
@@ -37,17 +37,6 @@ void InspectorWindowObj::request_new_asset(AssetType type, AssetID currentID)
     isRequestingNewAsset.set(true);
     requestAssetType = type;
     oldAssetID = currentID;
-}
-
-void InspectorWindowObj::on_editor_event(const EditorEvent* event, void* user)
-{
-    auto& self = *(InspectorWindowObj*)user;
-
-    if (event->type != EDITOR_EVENT_TYPE_NOTIFY_COMPONENT_SELECTION)
-        return;
-
-    const auto* selectionEvent = static_cast<const EditorNotifyComponentSelectionEvent*>(event);
-    self.subjectSUID = selectionEvent->component;
 }
 
 //
@@ -74,7 +63,11 @@ bool InspectorWindow::has_component_asset_request(SUID& compSUID, AssetID& curre
     if (!mObj->isRequestingNewAsset.read())
         return false;
 
-    compSUID = mObj->subjectSUID;
+    ComponentView comp = mObj->ctx.get_component(mObj->ctx.get_selected_component());
+    if (!comp || !comp.suid())
+        return false;
+
+    compSUID = comp.suid();
     currentAssetID = mObj->oldAssetID;
     assetType = mObj->requestAssetType;
 

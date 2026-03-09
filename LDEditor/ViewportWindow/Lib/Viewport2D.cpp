@@ -57,7 +57,7 @@ void Viewport2D::imgui(const ViewportState& state)
         {
             const Vec2 mouseWorldPos = mCamera.get_world_position(*sceneMousePos);
             ComponentView comp = mCtx.get_scene().get_2d_component_by_position(mouseWorldPos);
-            mCtx.set_selected_component(comp ? comp.suid() : 0);
+            mCtx.set_selected_component(comp ? comp.cuid() : (CUID)0);
         }
     }
     if (ui_top_scroll(scroll))

@@ -1,5 +1,4 @@
 #include <Ludens/Header/Impulse.h>
-#include <Ludens/Header/KeyValue.h>
 #include <Ludens/Header/MouseValue.h>
 #include <Ludens/Memory/Memory.h>
 #include <Ludens/Profiler/Profiler.h>
@@ -71,6 +70,10 @@ void ViewportWindowObj::on_imgui(float delta)
         // adjust for toolbar height
         state.sceneMousePos.y -= VIEWPORT_TOOLBAR_HEIGHT;
     }
+
+    KeyValue keyVal;
+    if (ui_top_key_down(keyVal))
+        ctx.input_key_value(keyVal);
 
     // TODO: this should come after toolbar?
     if (isRequestingPlay.read())
@@ -253,19 +256,19 @@ void ViewportWindowObj::on_editor_event(const EditorEvent* event, void* user)
     const auto* selectionEvent = static_cast<const EditorNotifyComponentSelectionEvent*>(event);
 
     // clear gizmo
-    if (selectionEvent->component == 0)
+    if (!selectionEvent->cuid)
     {
         self.state.gizmoSubjectSUID = 0;
         return;
     }
 
-    ComponentView subject = self.mCtx.get_component(selectionEvent->component);
+    ComponentView subject = self.mCtx.get_component(selectionEvent->cuid);
     LD_ASSERT(subject);
 
     Mat4 worldMat4;
     if (subject.get_world_mat4(worldMat4))
     {
-        self.state.gizmoSubjectSUID = selectionEvent->component;
+        self.state.gizmoSubjectSUID = subject.suid();
     }
     else
     {

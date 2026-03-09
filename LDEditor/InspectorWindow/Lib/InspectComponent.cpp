@@ -1,7 +1,9 @@
 #include <Ludens/Asset/AssetManager.h>
 #include <Ludens/Asset/AssetType/MeshAsset.h>
+#include <Ludens/Scene/ComponentViews.h>
 #include <LudensEditor/EditorWidget/UIAssetSlotWidget.h>
 #include <LudensEditor/EditorWidget/UITransformEditWidget.h>
+#include <LudensEditor/EditorWidget/UIVectorEditWidget.h>
 
 #include "InspectComponent.h"
 #include "InspectorWindowObj.h"
@@ -93,7 +95,7 @@ void eui_inspect_transform_component(InspectorWindowObj& self, ComponentView com
 
 void eui_inspect_transform_2d_component(InspectorWindowObj& self, ComponentView comp)
 {
-    LD_ASSERT(comp && comp.type() == COMPONENT_TYPE_TRANSFORM);
+    LD_ASSERT(comp && comp.type() == COMPONENT_TYPE_TRANSFORM_2D);
 
     EditorTheme editorTheme = self.ctx.get_settings().get_theme();
 
@@ -155,7 +157,7 @@ void eui_inspect_sprite_2d_component(InspectorWindowObj& self, ComponentView com
 {
     LD_ASSERT(comp && comp.type() == COMPONENT_TYPE_SPRITE_2D);
 
-    EditorTheme editorTheme = self.ctx.get_theme();
+    EditorTheme edTheme = self.ctx.get_theme();
     AssetManager AM = self.ctx.get_asset_manager();
     Sprite2DView sprite(comp);
     LD_ASSERT(sprite);
@@ -163,14 +165,22 @@ void eui_inspect_sprite_2d_component(InspectorWindowObj& self, ComponentView com
     Transform2D transform{};
     bool ok = sprite.get_transform_2d(transform);
     LD_ASSERT(ok);
-    eui_transform_2d_edit(editorTheme, &transform);
-    // sprite.set_transform_2d(transform);
+    eui_transform_2d_edit(edTheme, &transform);
+    sprite.set_transform_2d(transform);
+
+    uint32_t zDepth = sprite.get_z_depth();
+    eui_u32_edit(edTheme, "Z Depth", &zDepth);
+    sprite.set_z_depth(zDepth);
+
+    Vec2 pivot = sprite.get_pivot();
+    eui_vec2_edit(edTheme, "Pivot", &pivot);
+    sprite.set_pivot(pivot);
 
     AssetID assetID = sprite.get_texture_2d_asset();
     Texture2DAsset asset = (Texture2DAsset)AM.get_asset(assetID, ASSET_TYPE_TEXTURE_2D);
-    LD_ASSERT(asset);
+    const char* name = asset ? asset.get_name() : nullptr;
 
-    if (eui_asset_slot(editorTheme, ASSET_TYPE_TEXTURE_2D, assetID, asset.get_name()))
+    if (eui_asset_slot(edTheme, ASSET_TYPE_TEXTURE_2D, assetID, name))
         self.request_new_asset(ASSET_TYPE_TEXTURE_2D, assetID);
 }
 
