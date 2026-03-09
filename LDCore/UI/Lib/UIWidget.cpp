@@ -165,16 +165,6 @@ bool UIWidget::is_visible()
     return !static_cast<bool>(mObj->flags & UI_WIDGET_FLAG_HIDDEN_BIT);
 }
 
-void UIWidget::block_input()
-{
-    mObj->flags |= UI_WIDGET_FLAG_BLOCK_EVENT_BIT;
-}
-
-void UIWidget::unblock_input()
-{
-    mObj->flags &= ~UI_WIDGET_FLAG_BLOCK_EVENT_BIT;
-}
-
 UIWidgetType UIWidget::get_type()
 {
     return mObj->type;

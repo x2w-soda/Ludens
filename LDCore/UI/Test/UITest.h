@@ -37,7 +37,7 @@ public:
     {
         UITest* instance = get();
 
-        UIContextInfo ctxI;
+        UIContextInfo ctxI{};
         ctxI.fontAtlas = instance->mFontAtlas;
         ctxI.fontAtlasImage = {};
         ctxI.theme = instance->mTheme;

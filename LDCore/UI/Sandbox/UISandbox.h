@@ -23,7 +23,7 @@ private:
     void render();
 
     static void on_event(const WindowEvent* event, void* user);
-    static void on_screen_render(ScreenRenderComponent renderer, void* user);
+    static void on_screen_render(ScreenRenderComponent renderer, TView<int> regionVPIndices, int overlayVPIndex, void* user);
     static void on_dialog_render(ScreenRenderComponent renderer, void* user);
 
 private:

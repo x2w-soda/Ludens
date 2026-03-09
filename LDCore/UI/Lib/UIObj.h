@@ -29,9 +29,6 @@ enum UIWidgetFlagBit
     /// @brief Widget subtree will not be drawn.
     UI_WIDGET_FLAG_HIDDEN_BIT = LD_BIT(0),
 
-    /// @brief Widget handles the event on behalf of its subtree.
-    UI_WIDGET_FLAG_BLOCK_EVENT_BIT = LD_BIT(1),
-
     /// @brief Widget subtree will be drawn with scissor.
     UI_WIDGET_FLAG_DRAW_WITH_SCISSOR_BIT = LD_BIT(2),
 
@@ -150,7 +147,7 @@ struct UIContextObj
     UIWidgetObj* hoverWidgetLeaf = nullptr; /// the leaf widget under mouse cursor accepting events
     HashSet<UIWidgetObj*> hoverWidgets;     /// set of all widgets under cursor
     void* user;
-    void (*onEvent)(UIWidget, const UIEvent&, void*);
+    void (*onEvent)(UIWidget, const UIEvent&, void*) = nullptr;
     Vec2 cursorPos;              /// mouse cursor global position
     Vec2 dragStartPos;           /// mouse cursor drag start global position
     MouseButton dragMouseButton; /// mouse button used for dragging
@@ -159,6 +156,8 @@ struct UIContextObj
     void free_widget(UIWidgetObj* widget);
 
     UIWidgetObj* get_widget(const Vec2& pos);
+    UIWidgetObj* get_widget_in_layer(UILayerObj* layer, const Vec2& pos);
+    UIWidgetObj* get_widget_in_workspace(UIWorkspaceObj* space, const Vec2& pos);
 
     void pre_update();
 

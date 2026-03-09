@@ -40,13 +40,10 @@ static UIEvent get_local_event(UIWidgetObj* widget, const UIEvent& event)
 /// @param root The root widget to search recursively.
 /// @param pos Screen position to query.
 /// @return The widget at position, or null if position is out of bounds.
-static UIWidgetObj* get_widget_at_pos(UIWidgetObj* root, const Vec2& pos)
+static UIWidgetObj* get_widget_in_subtree(UIWidgetObj* root, const Vec2& pos)
 {
     if (!root->layout.rect.contains(pos))
         return nullptr;
-
-    if (root->flags & UI_WIDGET_FLAG_BLOCK_EVENT_BIT)
-        return root; // prevent subtree from being scanned
 
     for (UIWidgetObj* child = root->child; child; child = child->next)
     {
@@ -54,7 +51,7 @@ static UIWidgetObj* get_widget_at_pos(UIWidgetObj* root, const Vec2& pos)
             continue;
 
         // return deepest widget in hierarhcy that qualifies
-        UIWidgetObj* result = get_widget_at_pos(child, pos);
+        UIWidgetObj* result = get_widget_in_subtree(child, pos);
 
         if (result)
             return result;
@@ -63,7 +60,8 @@ static UIWidgetObj* get_widget_at_pos(UIWidgetObj* root, const Vec2& pos)
     return root;
 }
 
-/// @brief Bubble up along widget hierarchy and find the first widget that handles the event.
+/// @brief Bubble up along widget hierarchy until root widget (UIWindow),
+///        returns the first widget that handles the event.
 static UIWidgetObj* get_event_handler(UIWidgetObj* widget, const UIEvent& event)
 {
     while (widget)
@@ -140,41 +138,61 @@ void UIContextObj::free_widget(UIWidgetObj* widget)
     widgetPA.free(widget);
 }
 
+/// @brief Get deepest widget in context.
 UIWidgetObj* UIContextObj::get_widget(const Vec2& pos)
 {
     for (auto layerIte = layers.rbegin(); layerIte != layers.rend(); layerIte++)
     {
         UILayerObj* layer = *layerIte;
 
-        for (auto spaceIt = layer->workspaces.rbegin(); spaceIt != layer->workspaces.rend(); spaceIt++)
-        {
-            UIWorkspaceObj* space = *spaceIt;
+        UIWidgetObj* widget = get_widget_in_layer(layer, pos);
+        if (widget)
+            return widget;
+    }
 
-            Rect workspaceRect = UIWorkspace(space).get_root_rect();
-            if (space->isHidden || !workspaceRect.contains(pos))
-                continue;
+    return nullptr;
+}
 
-            // test floating windows in workspace before docked ones
-            for (auto windowIt = space->floatWindows.rbegin(); windowIt != space->floatWindows.rend(); windowIt++)
-            {
-                UIWindowObj* window = *windowIt;
+/// @brief Get deepest widget in layer.
+UIWidgetObj* UIContextObj::get_widget_in_layer(UILayerObj* layer, const Vec2& pos)
+{
+    for (auto spaceIt = layer->workspaces.rbegin(); spaceIt != layer->workspaces.rend(); spaceIt++)
+    {
+        UIWorkspaceObj* space = *spaceIt;
 
-                if (!window->layout.rect.contains(pos) || (window->flags & UI_WIDGET_FLAG_HIDDEN_BIT))
-                    continue;
+        Rect workspaceRect = UIWorkspace(space).get_root_rect();
+        if (space->isHidden || !workspaceRect.contains(pos))
+            continue;
 
-                return get_widget_at_pos((UIWidgetObj*)window, pos);
-            }
+        UIWidgetObj* widget = get_widget_in_workspace(space, pos);
+        if (widget)
+            return widget;
+    }
 
-            for (auto windowIt = space->nodeWindows.rbegin(); windowIt != space->nodeWindows.rend(); windowIt++)
-            {
-                UIWindowObj* window = *windowIt;
+    return nullptr;
+}
 
-                if (!window->layout.rect.contains(pos) || (window->flags & UI_WIDGET_FLAG_HIDDEN_BIT))
-                    continue;
+/// @brief Get deepest widget in workspace.
+UIWidgetObj* UIContextObj::get_widget_in_workspace(UIWorkspaceObj* space, const Vec2& pos)
+{
+    for (auto windowIt = space->floatWindows.rbegin(); windowIt != space->floatWindows.rend(); windowIt++)
+    {
+        UIWindowObj* window = *windowIt;
 
-                return get_widget_at_pos((UIWidgetObj*)window, pos);
-            }
-        }
+        if (!window->layout.rect.contains(pos) || (window->flags & UI_WIDGET_FLAG_HIDDEN_BIT))
+            continue;
+
+        return get_widget_in_subtree((UIWidgetObj*)window, pos);
+    }
+
+    for (auto windowIt = space->nodeWindows.rbegin(); windowIt != space->nodeWindows.rend(); windowIt++)
+    {
+        UIWindowObj* window = *windowIt;
+
+        if (!window->layout.rect.contains(pos) || (window->flags & UI_WIDGET_FLAG_HIDDEN_BIT))
+            continue;
+
+        return get_widget_in_subtree((UIWidgetObj*)window, pos);
     }
 
     return nullptr;
@@ -444,10 +462,30 @@ bool UIContextObj::input_key(const UIEvent& event)
     LD_PROFILE_SCOPE;
     LD_ASSERT(event.type == UI_EVENT_KEY_DOWN || event.type == UI_EVENT_KEY_UP);
 
+    // 1. Focused widget and its ancestor checked first.
     UIWidgetObj* widget = get_event_handler(focusWidget, event);
 
+    // 2. Fallback to leaf hover widget and its ancestors.
     if (!widget)
         widget = get_event_handler(hoverWidgetLeaf, event);
+
+    // 3. Global fallback among layers and workspaces.
+    //    Technically we only need to start from the focus or hover widget layer...
+    if (!widget)
+    {
+        for (auto layerIt = layers.rbegin(); !widget && layerIt != layers.rend(); ++layerIt)
+        {
+            UILayerObj* layer = *layerIt;
+
+            for (auto spaceIt = layer->workspaces.rbegin(); !widget && spaceIt != layer->workspaces.rend(); ++spaceIt)
+            {
+                UIWidgetObj* widgetInWorkspace = get_widget_in_workspace(*spaceIt, cursorPos);
+
+                if ((widget = get_event_handler(widgetInWorkspace, event)))
+                    break;
+            }
+        }
+    }
 
     if (!widget)
         return false;

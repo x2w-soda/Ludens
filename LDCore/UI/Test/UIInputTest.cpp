@@ -5,7 +5,7 @@
 
 static KeyCode sLastKey;
 
-TEST_CASE("UIWidget BlockInput")
+TEST_CASE("UIWidget input key")
 {
     UIWorkspace space;
     UIContext ctx = UITest::create_test_context(Vec2(100.0f, 100.0f), space);
@@ -31,11 +31,9 @@ TEST_CASE("UIWidget BlockInput")
     ctx.input_key_down(KEY_CODE_A, 0);
     CHECK(sLastKey == KEY_CODE_A);
 
-    window.block_input();
     ctx.input_key_down(KEY_CODE_B, 0);
-    CHECK(sLastKey == KEY_CODE_A);
+    CHECK(sLastKey == KEY_CODE_B);
 
-    window.unblock_input();
     ctx.input_key_down(KEY_CODE_C, 0);
     CHECK(sLastKey == KEY_CODE_C);
 

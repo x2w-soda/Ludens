@@ -91,13 +91,6 @@ struct UIWidget : Handle<struct UIWidgetObj>
     /// @brief Check if widget subtree is visible.
     bool is_visible();
 
-    /// @brief This widget will silently block input events
-    ///        without propagating to subtree.
-    void block_input();
-
-    /// @brief This widget subtree will receive input events normally.
-    void unblock_input();
-
     /// @brief Get widget type.
     UIWidgetType get_type();
 

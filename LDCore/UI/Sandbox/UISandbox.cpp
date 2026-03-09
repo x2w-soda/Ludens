@@ -238,9 +238,12 @@ void UISandbox::on_event(const WindowEvent* event, void* user)
     ui_context_input(UI_CONTEXT_NAME, event);
 }
 
-void UISandbox::on_screen_render(ScreenRenderComponent renderer, void* user)
+void UISandbox::on_screen_render(ScreenRenderComponent renderer, TView<int>, int overlayVPIndex, void* user)
 {
     UISandbox& self = *(UISandbox*)user;
+
+    renderer.bind_quad_pipeline(QUAD_PIPELINE_UBER);
+    renderer.set_view_projection_index(overlayVPIndex);
 
     ui_context_render(UI_CONTEXT_NAME, renderer);
 }
