@@ -1,19 +1,17 @@
 #include <Ludens/Profiler/Profiler.h>
+#include <Ludens/Scene/Component/AudioSourceView.h>
 
 #include "AudioSourceComponent.h"
 
 namespace LD {
 
-static const AudioSourceComponent sDefaultAudioSource = {
-    .playback = {},
-    .clipID = 0,
-    .pan = 0.5f,
-    .volumeLinear = 1.0f,
-};
-
 void init_audio_source_component(ComponentBase** dstData)
 {
-    memcpy(dstData, &sDefaultAudioSource, sizeof(AudioSourceComponent));
+    AudioSourceComponent* dstAudioSource = (AudioSourceComponent*)dstData;
+    dstAudioSource->playback = {};
+    dstAudioSource->clipID = (AssetID)0;
+    dstAudioSource->pan = 0.5f;
+    dstAudioSource->volumeLinear = 1.0f;
 }
 
 bool load_audio_source_component(SceneObj* scene, AudioSourceComponent* source, AssetID clipID, float pan, float volumeLinear, std::string& err)
@@ -158,13 +156,14 @@ float AudioSourceView::get_volume_linear()
 
 bool AudioSourceView::set_volume_linear(float volume)
 {
-    LD_ASSERT(mAudioSource->playback);
-
-    AudioPlayback::Accessor accessor = mAudioSource->playback.access();
-
     volume = std::clamp(volume, 0.0f, 1.0f);
     mAudioSource->volumeLinear = volume;
-    accessor.set_volume_linear(volume);
+
+    if (mAudioSource->playback)
+    {
+        AudioPlayback::Accessor accessor = mAudioSource->playback.access();
+        accessor.set_volume_linear(volume);
+    }
 
     return true;
 }
@@ -176,13 +175,14 @@ float AudioSourceView::get_pan()
 
 bool AudioSourceView::set_pan(float pan)
 {
-    LD_ASSERT(mAudioSource->playback);
-
-    AudioPlayback::Accessor accessor = mAudioSource->playback.access();
-
     pan = std::clamp(pan, 0.0f, 1.0f);
     mAudioSource->pan = pan;
-    accessor.set_pan(pan);
+
+    if (mAudioSource->playback)
+    {
+        AudioPlayback::Accessor accessor = mAudioSource->playback.access();
+        accessor.set_pan(pan);
+    }
 
     return true;
 }

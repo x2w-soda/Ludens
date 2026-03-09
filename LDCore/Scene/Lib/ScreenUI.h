@@ -20,8 +20,7 @@ struct ScreenUI : Handle<struct ScreenUIObj>
     static ScreenUI create(const ScreenUIInfo& info);
     static void destroy(ScreenUI ui);
 
-    void update(float delta);
-    void resize(const Vec2& extent);
+    void update(float delta, const Vec2& extent);
     void render(ScreenRenderComponent renderer);
     void input(const WindowEvent* event);
 

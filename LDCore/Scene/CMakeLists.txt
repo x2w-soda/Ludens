@@ -4,6 +4,14 @@ set(MODULE_TEST_NAME LDSceneTest)
 set(MODULE_INCLUDE
     ${LUDENS_INCLUDE_DIR}/Ludens/Scene/Scene.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Scene/SceneSchema.h
+    ${LUDENS_INCLUDE_DIR}/Ludens/Scene/ComponentView.h
+    ${LUDENS_INCLUDE_DIR}/Ludens/Scene/ComponentViews.h
+    ${LUDENS_INCLUDE_DIR}/Ludens/Scene/Component/MeshView.h
+    ${LUDENS_INCLUDE_DIR}/Ludens/Scene/Component/CameraView.h
+    ${LUDENS_INCLUDE_DIR}/Ludens/Scene/Component/Camera2DView.h
+    ${LUDENS_INCLUDE_DIR}/Ludens/Scene/Component/AudioSourceView.h
+    ${LUDENS_INCLUDE_DIR}/Ludens/Scene/Component/Sprite2DView.h
+    ${LUDENS_INCLUDE_DIR}/Ludens/Scene/Component/ScreenUIView.h
 )
 
 set(MODULE_LIB

@@ -4,6 +4,7 @@
 #include <Ludens/Header/Math/Transform.h>
 #include <Ludens/Header/Math/Vec4.h>
 #include <Ludens/Profiler/Profiler.h>
+#include <Ludens/Scene/ComponentViews.h>
 #include <Ludens/Scene/Scene.h>
 
 #include <algorithm>
@@ -57,6 +58,9 @@ static_assert(offsetof(AudioSourceComponent, playback) == 8);
 static_assert(offsetof(AudioSourceComponent, clipID) == 16);
 static_assert(offsetof(AudioSourceComponent, pan) == 20);
 static_assert(offsetof(AudioSourceComponent, volumeLinear) == 24);
+
+static_assert(alignof(Transform2DComponent) == 8);
+static_assert(offsetof(Transform2DComponent, transform) == 8);
 
 static_assert(alignof(Camera2DComponent) == 8);
 static_assert(offsetof(Camera2DComponent, transform) == 8);
@@ -114,6 +118,14 @@ typedef struct __attribute__((aligned(4))) Transform2D {
     float rotation;
 } Transform2D;
 
+// TODO: static assertions
+typedef struct __attribute__((aligned(8))) AssetObj {
+    const char* __private_name;
+    void* __private_asset_manager;
+    uint32_t id;
+    uint32_t __private_type;
+} AssetObj;
+
 void* ffi_get_parent_id(void* compID);
 void* ffi_get_child_id_by_name(void* compID, const char* name);
 
@@ -136,20 +148,33 @@ void ffi_audio_source_component_resume(AudioSourceComponent* comp);
 void ffi_audio_source_component_set_pan(AudioSourceComponent* comp, float pan);
 void ffi_audio_source_component_set_volume_linear(AudioSourceComponent* comp, float volumeLinear);
 
+typedef struct __attribute__((aligned(8))) Transform2DComponent {
+    void* base;
+    Transform2D* __private_transform;
+} Transform2DComponent;
+
 typedef struct __attribute__((aligned(8))) Camera2DComponent {
     void* base;
-    Transform2D* transform;
+    Transform2D* __private_transform;
     void* __private_camera;
     Rect viewport;
 } Camera2DComponent;
 
 typedef struct __attribute__((aligned(8))) Sprite2DComponent {
     void* base;
-    Transform2D* transform;
+    Transform2D* __private_transform;
     void* __private_drawL;
     void* __private_drawH;
-    uint32_t __private_auid;
+    uint32_t __private_textureID;
 } Sprite2DComponent;
+
+void ffi_sprite_2d_component_get_pivot(Sprite2DComponent* comp);
+void ffi_sprite_2d_component_set_pivot(Sprite2DComponent* comp, Vec2 pivot);
+Rect ffi_sprite_2d_component_get_region(Sprite2DComponent* comp);
+void ffi_sprite_2d_component_set_region(Sprite2DComponent* comp, Rect region);
+double ffi_sprite_2d_component_get_z_depth(Sprite2DComponent* comp);
+void ffi_sprite_2d_component_set_z_depth(Sprite2DComponent* comp, double zDepth);
+void ffi_sprite_2d_component_set_texture(Sprite2DComponent* comp, uint32_t suid);
 )";
 
 static const char sLuaFFImt[] = R"(local ffi = require 'ffi'
@@ -192,11 +217,38 @@ ffi.metatype("AudioSourceComponent", {
         end
         return nil
     end,
-    __newindex = function (t, k, v)
+    __newindex = function (cdata, k, v)
         if k == 'pan' and tonumber(v) ~= nil then
-            ffi.C.ffi_audio_source_component_set_pan(t, tonumber(v))
+            ffi.C.ffi_audio_source_component_set_pan(cdata, tonumber(v))
         elseif k == 'volume' and tonumber(v) ~= nil then
-            ffi.C.ffi_audio_source_component_set_volume_linear(t, tonumber(v))
+            ffi.C.ffi_audio_source_component_set_volume_linear(cdata, tonumber(v))
+        end
+    end,
+})
+
+ffi.metatype("Sprite2DComponent", {
+    __index = function (cdata, k)
+        if k == 'texture' then
+            return _G.ludens.get_or_create_asset_ref(cdata.__private_textureID)
+        elseif k == 'region' then
+            return ffi.C.ffi_sprite_2d_component_get_region(cdata)
+        elseif k == 'pivot' then
+            ffi.C.ffi_sprite_2d_component_get_pivot(cdata)
+        elseif k == 'z_depth' then
+            return ffi.C.ffi_sprite_2d_component_get_z_depth(cdata)
+        end
+        return nil
+    end,
+    __newindex = function (cdata, k, v)
+        if k == 'texture' then
+            local assetRef = v
+            ffi.C.ffi_sprite_2d_component_set_texture(cdata, assetRef.cdata.id)
+        elseif k == 'region' then
+            ffi.C.ffi_sprite_2d_component_set_region(cdata, v)
+        elseif k == 'pivot' then
+            ffi.C.ffi_sprite_2d_component_set_pivot(cdata, v)
+        elseif k == 'z_depth' then
+            ffi.C.ffi_sprite_2d_component_set_z_depth(cdata, v)
         end
     end,
 })
@@ -288,12 +340,66 @@ void ffi_audio_source_component_set_volume_linear(AudioSourceComponent* comp, fl
     accessor.set_volume_linear(volumeLinear);
 }
 
-void ffi_sprite_2d_component_set_z_depth(Sprite2DComponent* comp, uint32_t zDepth)
+Vec2FFI ffi_sprite_2d_component_get_pivot(Sprite2DComponent* comp)
+{
+    Sprite2DView sprite(comp);
+    LD_ASSERT(sprite);
+
+    Vec2 pivot = sprite.get_pivot();
+    return Vec2FFI(pivot.x, pivot.y);
+}
+
+void ffi_sprite_2d_component_set_pivot(Sprite2DComponent* comp, Vec2FFI pivot)
+{
+    Sprite2DView sprite(comp);
+    LD_ASSERT(sprite);
+
+    sprite.set_pivot(Vec2(pivot.x, pivot.y));
+}
+
+RectFFI ffi_sprite_2d_component_get_region(Sprite2DComponent* comp)
+{
+    Sprite2DView sprite(comp);
+    LD_ASSERT(sprite);
+
+    Rect region = sprite.get_region();
+    return RectFFI(region.x, region.y, region.w, region.h);
+}
+
+void ffi_sprite_2d_component_set_region(Sprite2DComponent* comp, RectFFI region)
+{
+    Sprite2DView sprite(comp);
+    LD_ASSERT(sprite);
+
+    sprite.set_region(Rect(region.x, region.y, region.w, region.h));
+}
+
+double ffi_sprite_2d_component_get_z_depth(Sprite2DComponent* comp)
+{
+    Sprite2DView sprite(comp);
+    LD_ASSERT(sprite);
+
+    return (double)sprite.get_z_depth();
+}
+
+void ffi_sprite_2d_component_set_z_depth(Sprite2DComponent* comp, double zDepth)
+{
+    Sprite2DView sprite(comp);
+    LD_ASSERT(sprite);
+
+    uint32_t u32 = 0;
+    if (zDepth > 0.0)
+        u32 = std::clamp<uint32_t>((uint32_t)zDepth, 0, std::numeric_limits<uint32_t>::max());
+
+    sprite.set_z_depth(u32);
+}
+
+void ffi_sprite_2d_component_set_texture(Sprite2DComponent* comp, uint32_t suid)
 {
     Sprite2DView sprite(comp);
 
     if (sprite)
-        sprite.set_z_depth(zDepth);
+        sprite.set_texture_2d_asset(AssetID(suid));
 }
 
 } // extern "C"

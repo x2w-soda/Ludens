@@ -16,7 +16,7 @@ ScreenUI ScreenUI::create(const ScreenUIInfo& info)
     ScreenUIObj* obj = heap_new<ScreenUIObj>(MEMORY_USAGE_SCENE);
 
     Rect screenRect(0.0f, 0.0f, info.extent.x, info.extent.y);
-    
+
     UIContextInfo ctxI{};
     ctxI.fontAtlas = info.fontAtlas;
     ctxI.fontAtlasImage = info.fontAtlasImage;
@@ -37,18 +37,15 @@ void ScreenUI::destroy(ScreenUI ui)
     heap_delete<ScreenUIObj>(obj);
 }
 
-void ScreenUI::update(float delta)
+void ScreenUI::update(float delta, const Vec2& extent)
 {
     LD_PROFILE_SCOPE;
+
+    Rect rect = mObj->space.get_root_rect();
+    if (rect.w != extent.x || rect.h != extent.y)
+        mObj->space.set_rect(Rect(0.0f, 0.0f, extent.x, extent.y));
 
     mObj->ctx.update(delta);
-}
-
-void ScreenUI::resize(const Vec2& extent)
-{
-    LD_PROFILE_SCOPE;
-
-    mObj->space.set_rect(Rect(0.0f, 0.0f, extent.x, extent.y));
 }
 
 void ScreenUI::render(ScreenRenderComponent renderer)

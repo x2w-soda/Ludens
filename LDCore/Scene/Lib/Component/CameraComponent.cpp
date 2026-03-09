@@ -1,4 +1,5 @@
 #include <Ludens/Profiler/Profiler.h>
+#include <Ludens/Scene/Component/CameraView.h>
 
 #include "CameraComponent.h"
 

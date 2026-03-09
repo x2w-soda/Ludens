@@ -5,6 +5,8 @@
 #include "RenderSystemCache.h"
 #include "SceneObj.h"
 
+#define DEFAULT_SCREEN_LAYER_NAME "__default"
+
 namespace LD {
 
 void RenderSystemCache::create(RenderSystem system, AssetManager assetManager)
@@ -73,6 +75,15 @@ CUID RenderSystemCache::get_2d_component_by_position(const Vec2& worldPos, Rende
     LD_ASSERT(mDrawToCuid.contains(ruid));
 
     return mDrawToCuid[ruid];
+}
+
+RUID RenderSystemCache::get_default_screen_layer()
+{
+    // TODO: this is so shady...
+    if (mSuidToScreenLayer.contains(0))
+        return mSuidToScreenLayer[(SUID)0];
+
+    return mSuidToScreenLayer[(SUID)0] = mSystem.create_screen_layer(DEFAULT_SCREEN_LAYER_NAME);
 }
 
 RUID RenderSystemCache::get_or_create_screen_layer(SUID layerSUID)
@@ -147,13 +158,27 @@ void RenderSystemCache::destroy_mesh_draw(MeshDraw draw)
 Image2D RenderSystemCache::get_or_create_image_2d(AssetID textureID)
 {
     Texture2DAsset textureA = (Texture2DAsset)mAssetManager.get_asset(textureID, ASSET_TYPE_TEXTURE_2D);
-    LD_ASSERT(textureA);
+    if (!textureA)
+        return {};
 
     if (!mImage2D.contains(textureID))
         mImage2D[textureID] = mSystem.create_image_2d(textureA.get_bitmap());
 
     LD_ASSERT(mImage2D[textureID]);
     return mImage2D[textureID];
+}
+
+Sprite2DDraw RenderSystemCache::create_sprite_2d_draw(CUID compID)
+{
+    LD_ASSERT(compID);
+    reserve_sparse_index(compID);
+
+    Sprite2DDraw draw = mSystem.create_sprite_2d_draw({}, get_default_screen_layer());
+    if (!draw)
+        return {};
+
+    link_id(compID, draw.get_id());
+    return draw;
 }
 
 Sprite2DDraw RenderSystemCache::create_sprite_2d_draw(CUID compID, RUID layerID, AssetID textureID)
@@ -178,6 +203,21 @@ Sprite2DDraw RenderSystemCache::create_sprite_2d_draw(CUID compID, RUID layerID,
     return draw;
 }
 
+Sprite2DDraw RenderSystemCache::migrate_sprite_2d_draw(Sprite2DDraw oldDraw, RUID newLayerID)
+{
+    if (!oldDraw || !mDrawToCuid.contains(oldDraw.get_id()))
+        return {};
+
+    CUID cuid = mDrawToCuid[oldDraw.get_id()];
+    Sprite2DDraw newDraw = mSystem.migrate_sprite_2d_draw(oldDraw, newLayerID);
+    if (!newDraw)
+        return {};
+
+    // Old draw is destroyed during successful migration
+    link_id(cuid, newDraw.get_id());
+    return newDraw;
+}
+
 void RenderSystemCache::destroy_sprite_2d_draw(Sprite2DDraw draw)
 {
     if (!draw || !mDrawToCuid.contains(draw.get_id()))
@@ -195,7 +235,7 @@ void RenderSystemCache::link_id(CUID compID, RUID drawID)
     uint32_t compIndex = compID.index();
 
     RUID oldDrawID = mCuidToDraw[compIndex];
-    mDrawToCuid[oldDrawID] = (CUID)0;
+    mDrawToCuid.erase(oldDrawID);
     mDrawToCuid[drawID] = compID;
     mCuidToDraw[compIndex] = drawID;
 }

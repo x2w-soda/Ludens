@@ -1,4 +1,5 @@
 #include <Ludens/Profiler/Profiler.h>
+#include <Ludens/Scene/Component/MeshView.h>
 
 #include "MeshComponent.h"
 

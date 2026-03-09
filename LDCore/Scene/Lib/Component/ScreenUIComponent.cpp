@@ -1,5 +1,6 @@
 #include <Ludens/Asset/AssetType/UITemplateAsset.h>
 #include <Ludens/Profiler/Profiler.h>
+#include <Ludens/Scene/Component/ScreenUIView.h>
 
 #include "../UIDriver.h"
 #include "ScreenUIComponent.h"
@@ -42,6 +43,8 @@ bool load_screen_ui_component(SceneObj* scene, ScreenUIComponent* ui, AssetID ui
         return false;
 
     ui->uiTemplateID = uiTemplateID;
+
+    ui->uiWindow.layout();
 
     return true;
 }

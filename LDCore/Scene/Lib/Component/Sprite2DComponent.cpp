@@ -1,4 +1,5 @@
 #include <Ludens/Profiler/Profiler.h>
+#include <Ludens/Scene/Component/Sprite2DView.h>
 
 #include "Sprite2DComponent.h"
 
@@ -9,9 +10,8 @@ void init_sprite_2d_component(ComponentBase** dstData)
     ComponentBase* dstBase = *dstData;
     Sprite2DComponent* dstSprite2D = (Sprite2DComponent*)dstData;
     dstSprite2D->transform = dstBase->transform2D;
-    dstSprite2D->draw = {};
     dstSprite2D->assetID = 0;
-    LD_ASSERT(dstSprite2D->transform);
+    dstSprite2D->draw = sScene->renderSystemCache.create_sprite_2d_draw(dstBase->cuid);
 }
 
 bool load_sprite_2d_component_suid(SceneObj* scene, Sprite2DComponent* sprite, SUID layerSUID, AssetID texture2D, std::string& err)
@@ -30,20 +30,22 @@ bool load_sprite_2d_component_suid(SceneObj* scene, Sprite2DComponent* sprite, S
     return load_sprite_2d_component_ruid(scene, sprite, layerRUID, texture2D, err);
 }
 
-bool load_sprite_2d_component_ruid(SceneObj* scene, Sprite2DComponent* sprite, RUID layerRUID, AssetID texture2D, std::string& err)
+bool load_sprite_2d_component_ruid(SceneObj* scene, Sprite2DComponent* sprite, RUID layerRUID, AssetID textureID, std::string& err)
 {
     LD_PROFILE_SCOPE;
 
+    LD_ASSERT(sprite->draw); // should have been created in init
+
     ComponentBase* base = sprite->base;
 
-    sprite->draw = scene->renderSystemCache.create_sprite_2d_draw(base->cuid, layerRUID, texture2D);
-    if (!sprite->draw)
+    if (layerRUID != sprite->draw.get_layer_id())
     {
-        err = "RenderSystem failed to create Sprite2DDraw";
-        return false;
+        sprite->draw = scene->renderSystemCache.migrate_sprite_2d_draw(sprite->draw, layerRUID);
     }
 
-    sprite->assetID = texture2D;
+    Image2D image = scene->renderSystemCache.get_or_create_image_2d(textureID);
+    sprite->draw.set_image(image);
+    sprite->assetID = textureID;
 
     return true;
 }
@@ -83,6 +85,25 @@ bool unload_sprite_2d_component(SceneObj* scene, ComponentBase** data, std::stri
     return true;
 }
 
+bool startup_sprite_2d_component(SceneObj* scene, ComponentBase** data, std::string& err)
+{
+    Sprite2DComponent* sprite = (Sprite2DComponent*)data;
+    ComponentBase* base = *data;
+
+    if (!sprite->draw)
+    {
+        err = "Sprite2DDraw missing";
+        return false;
+    }
+
+    return true;
+}
+
+bool cleanup_sprite_2d_component(SceneObj* scene, ComponentBase** data, std::string& err)
+{
+    return true;
+}
+
 Sprite2DView::Sprite2DView(ComponentView comp)
 {
     if (comp && comp.type() == COMPONENT_TYPE_SPRITE_2D)
@@ -108,17 +129,12 @@ bool Sprite2DView::load(SUID layerSUID, AssetID textureID)
     return load_sprite_2d_component_suid(sScene, mSprite, layerSUID, textureID, err);
 }
 
-bool Sprite2DView::set_texture_2d_asset(AssetID textureID)
+void Sprite2DView::set_texture_2d_asset(AssetID textureID)
 {
     Image2D image = sScene->renderSystemCache.get_or_create_image_2d(textureID);
 
-    if (mSprite->draw.set_image(image))
-    {
-        mSprite->assetID = textureID;
-        return true;
-    }
-
-    return false;
+    mSprite->draw.set_image(image);
+    mSprite->assetID = textureID;
 }
 
 AssetID Sprite2DView::get_texture_2d_asset()
@@ -186,6 +202,13 @@ SUID Sprite2DView::get_screen_layer_suid()
     LD_ASSERT(layerSUID);
 
     return layerSUID;
+}
+
+Rect Sprite2DView::local_rect()
+{
+    Rect region = mSprite->draw.get_region();
+    Vec2 pivot = mSprite->draw.get_pivot();
+    return Rect(-pivot.x, -pivot.y, region.w, region.h);
 }
 
 } // namespace LD

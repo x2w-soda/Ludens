@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Ludens/Header/Math/Vec2.h>
 #include <Ludens/Header/Platform.h>
 #include <cstdint>
 
@@ -22,6 +23,17 @@ const char* get_ffi_cdef();
 const char* get_ffi_mt();
 
 extern "C" {
+
+struct Vec2FFI
+{
+    float x, y;
+};
+
+struct RectFFI
+{
+    float x, y, w, h;
+};
+
 LD_FFI_EXPORT void* ffi_get_parent_id(void* cuid);
 LD_FFI_EXPORT void* ffi_get_child_id_by_name(void* cuid, const char* name);
 LD_FFI_EXPORT void ffi_audio_source_component_play(AudioSourceComponent* comp);
@@ -29,7 +41,13 @@ LD_FFI_EXPORT void ffi_audio_source_component_pause(AudioSourceComponent* comp);
 LD_FFI_EXPORT void ffi_audio_source_component_resume(AudioSourceComponent* comp);
 LD_FFI_EXPORT void ffi_audio_source_component_set_pan(AudioSourceComponent* comp, float pan);
 LD_FFI_EXPORT void ffi_audio_source_component_set_volume_linear(AudioSourceComponent* comp, float volumeLinear);
-LD_FFI_EXPORT void ffi_sprite_2d_component_set_z_depth(Sprite2DComponent* comp, uint32_t zDepth);
+LD_FFI_EXPORT Vec2FFI ffi_sprite_2d_component_get_pivot(Sprite2DComponent* comp);
+LD_FFI_EXPORT void ffi_sprite_2d_component_set_pivot(Sprite2DComponent* comp, Vec2FFI pivot);
+LD_FFI_EXPORT RectFFI ffi_sprite_2d_component_get_region(Sprite2DComponent* comp);
+LD_FFI_EXPORT void ffi_sprite_2d_component_set_region(Sprite2DComponent* comp, RectFFI region);
+LD_FFI_EXPORT double ffi_sprite_2d_component_get_z_depth(Sprite2DComponent* comp);
+LD_FFI_EXPORT void ffi_sprite_2d_component_set_z_depth(Sprite2DComponent* comp, double zDepth);
+LD_FFI_EXPORT void ffi_sprite_2d_component_set_texture(Sprite2DComponent* comp, uint32_t suid);
 } // extern "C"
 } // namespace LuaScript
 } // namespace LD

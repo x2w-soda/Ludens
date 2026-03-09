@@ -1,63 +1,20 @@
 #pragma once
 
-#include <Ludens/Asset/AssetManager.h>
 #include <Ludens/AudioSystem/AudioSystem.h>
 #include <Ludens/Camera/Camera2D.h>
 #include <Ludens/DSA/Vector.h>
-#include <Ludens/DataRegistry/DataRegistry.h>
 #include <Ludens/Header/Handle.h>
 #include <Ludens/RenderSystem/RenderSystem.h>
+#include <Ludens/Scene/ComponentView.h>
 #include <Ludens/UI/UITheme.h>
 
 #include <functional>
 
 namespace LD {
 
-struct AudioSourceComponent;
-struct MeshComponent;
-struct Sprite2DComponent;
-struct ScreenUIComponent;
-struct CameraComponent;
-struct Camera2DComponent;
-
 /// @brief Get static C string of log channel used by lua scripts.
 const char* get_lua_script_log_channel_name();
 const char* get_scene_log_channel_name();
-
-/// @brief Public interface for all components.
-class ComponentView
-{
-public:
-    ComponentView() = default;
-    ComponentView(ComponentBase** data)
-        : mData(data) {}
-
-    /// @brief Check for interface validity before calling any methods.
-    inline operator bool() const noexcept { return mData != nullptr; }
-
-    inline ComponentBase* base() { return *mData; }
-    inline ComponentBase** data() { return mData; }
-    ComponentType type();
-    CUID cuid();
-    SUID suid();
-    RUID ruid();
-
-    const char* get_name();
-    AssetID get_script_asset_id();
-    void set_script_asset_id(AssetID assetID);
-    void get_children(Vector<ComponentView>& children);
-    ComponentView get_parent();
-
-    bool get_transform(TransformEx& transform);
-    bool set_transform(const TransformEx& transform);
-    bool get_transform_2d(Transform2D& transform);
-    bool set_transform_2d(const Transform2D& transform);
-
-    bool get_world_mat4(Mat4& worldMat4);
-
-protected:
-    ComponentBase** mData = nullptr;
-};
 
 using SceneLoadFn = std::function<bool(struct SceneObj*)>;
 
@@ -120,7 +77,7 @@ public:
     Camera get_camera();
 
     /// @brief In practice each Camera2DComponent will have its own viewport region.
-    Vector<Viewport> get_screen_regions();
+    void get_screen_regions(Vector<Viewport>& outViewports, Vector<Rect>& outWorldAABBs);
 
     /// @brief Try create a component.
     /// @param type Component type.
@@ -137,11 +94,16 @@ public:
     /// @return Component interface of the newly created component on success.
     ComponentView create_component_serial(ComponentType type, const char* name, SUID parentSUID, SUID hintSUID = 0);
 
-    /// @brief Destroy a component.
-    void destroy_component(CUID compID);
+    /// @brief Destroy a component subtree.
+    void destroy_component_subtree(CUID compID);
 
-    /// @brief Reparent a component
-    void reparent(CUID compID, CUID parentID);
+    /// @brief Reparent a component subtree.
+    void reparent_component_subtree(CUID compID, CUID parentID);
+
+    /// @brief Try clone a component subtree.
+    /// @param rootID The subtree root component to clone.
+    /// @return Component view of the root component of the cloned subtree on success.
+    ComponentView clone_component_subtree(CUID rootID);
 
     /// @brief Get interfaces for root components in Scene.
     void get_root_components(Vector<ComponentView>& roots);
@@ -162,6 +124,10 @@ public:
     /// @brief Get data component from serial ID.
     ComponentView get_component_by_suid(SUID compSUID);
 
+    /// @brief Get component from sibling index path.
+    /// @note Slower code path intended for editor. 
+    ComponentView get_component_by_path(const Vector<int>& path);
+
     /// @brief Get data component from serial ID and expected type, fails upon type mismatch.
     inline ComponentView get_component_by_suid(SUID compSUID, ComponentType expectedType)
     {
@@ -181,134 +147,16 @@ public:
     /// @brief Supplies the Mat4 model matrix for a draw call
     bool get_ruid_world_mat4(RUID ruid, Mat4& mat4);
 
-    /// @brief Force invalidate all transforms.
+    /// @brief Get path of sibling indices.
+    /// @note Slow code path intended for editor.
+    bool get_component_path(ComponentView comp, Vector<int>& path);
+
+    /// @brief Force invalidate all transforms and screen UI.
     ///        Intended for Editor to invalidate without updating the Scene.
-    void invalidate_transforms();
-};
+    void invalidate();
 
-
-/// @brief Public interface for audio source components.
-class AudioSourceView : public ComponentView
-{
-public:
-    AudioSourceView() = delete;
-    AudioSourceView(ComponentView comp);
-    AudioSourceView(AudioSourceComponent* comp);
-
-    bool load(AssetID clipAsset, float pan, float volumeLinear);
-
-    void play();
-    void pause();
-    void resume();
-
-    bool set_clip_asset(AssetID clipID);
-    AssetID get_clip_asset();
-
-    float get_volume_linear();
-    bool set_volume_linear(float volume);
-    float get_pan();
-    bool set_pan(float pan);
-
-private:
-    AudioSourceComponent* mAudioSource = nullptr;
-};
-
-/// @brief Public interface for camera components.
-class CameraView : public ComponentView
-{
-public:
-    CameraView() = delete;
-    CameraView(ComponentView comp);
-    CameraView(CameraComponent* comp);
-
-    bool load_perspective(const CameraPerspectiveInfo& info);
-    bool load_orthographic(const CameraOrthographicInfo& info);
-
-    bool is_main_camera();
-    bool is_perspective();
-    bool get_perspective_info(CameraPerspectiveInfo& outInfo);
-    bool get_orthographic_info(CameraOrthographicInfo& outInfo);
-    void set_perspective(const CameraPerspectiveInfo& info);
-    void set_orthographic(const CameraOrthographicInfo& info);
-
-private:
-    CameraComponent* mCamera = nullptr;
-};
-
-/// @brief Public interface for camera 2D components.
-class Camera2DView : public ComponentView
-{
-public:
-    Camera2DView() = delete;
-    Camera2DView(ComponentView comp);
-    Camera2DView(Camera2DComponent* comp);
-
-    bool load(const Camera2DInfo& info, const Rect& viewport, std::string& err);
-
-    Camera2DInfo get_info();
-    Rect get_viewport();
-
-private:
-    Camera2DComponent* mCamera = nullptr;
-};
-
-/// @brief Public interface for mesh components.
-class MeshView : public ComponentView
-{
-public:
-    MeshView() = delete;
-    MeshView(ComponentView comp);
-    MeshView(MeshComponent* comp);
-
-    bool load();
-
-    bool set_mesh_asset(AssetID meshID);
-    AssetID get_mesh_asset();
-
-private:
-    MeshComponent* mMesh = nullptr;
-};
-
-/// @brief Public interface for Sprite2D components.
-class Sprite2DView : public ComponentView
-{
-public:
-    Sprite2DView() = delete;
-    Sprite2DView(ComponentView comp);
-    Sprite2DView(Sprite2DComponent* comp);
-
-    bool load(SUID screenLayerSUID, AssetID textureID);
-
-    bool set_texture_2d_asset(AssetID textureID);
-    AssetID get_texture_2d_asset();
-    uint32_t get_z_depth();
-    void set_z_depth(uint32_t zDepth);
-    Vec2 get_pivot();
-    void set_pivot(const Vec2& pivot);
-    Rect get_region();
-    void set_region(const Rect& region);
-    RUID get_screen_layer_ruid();
-    SUID get_screen_layer_suid();
-
-private:
-    Sprite2DComponent* mSprite = nullptr;
-};
-
-/// @brief Public interface for ScreenUI components.
-class ScreenUIView : public ComponentView
-{
-public:
-    ScreenUIView() = delete;
-    ScreenUIView(ComponentView comp);
-    ScreenUIView(ScreenUIComponent* comp);
-
-    bool load(AssetID uiTemplateID);
-
-    bool set_ui_template_asset(AssetID uiTemplateID);
-    AssetID get_ui_template_asset();
-
-private:
-    ScreenUIComponent* mUI = nullptr;
+    /// @brief Debug print component hierarchy.
+    std::string print_hierarchy();
 };
 
 } // namespace LD

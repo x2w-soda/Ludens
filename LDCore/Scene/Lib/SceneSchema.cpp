@@ -5,6 +5,7 @@
 #include <Ludens/Media/Format/TOML.h>
 #include <Ludens/Memory/Memory.h>
 #include <Ludens/Profiler/Profiler.h>
+#include <Ludens/Scene/ComponentViews.h>
 #include <Ludens/Scene/SceneSchema.h>
 
 #include <cstdint>
@@ -62,7 +63,7 @@ public:
     static ComponentView load_screen_ui_component(SceneSchemaLoader& loader, SUID compSUID, const char* compName);
 
 private:
-    static ComponentView load_component(SceneSchemaLoader& loader);
+    static ComponentView load_component(SceneSchemaLoader& loader, std::string& err);
 
 private:
     Scene mScene{};
@@ -91,7 +92,7 @@ struct
 
 static_assert(sizeof(sSceneSchemaTable) / sizeof(*sSceneSchemaTable) == COMPONENT_TYPE_ENUM_COUNT);
 
-ComponentView SceneSchemaLoader::load_component(SceneSchemaLoader& loader)
+ComponentView SceneSchemaLoader::load_component(SceneSchemaLoader& loader, std::string& err)
 {
     TOMLReader reader = loader.mReader;
     LD_ASSERT(loader.mScene && reader);
@@ -109,10 +110,16 @@ ComponentView SceneSchemaLoader::load_component(SceneSchemaLoader& loader)
 
     SUID compSUID;
     if (!reader.read_suid(SCENE_SCHEMA_KEY_COMPONENT_ID, compSUID))
+    {
+        err = std::format("component missing ID field");
         return {};
+    }
 
     if (compSUID.type() != SERIAL_TYPE_COMPONENT)
+    {
+        err = std::format("component invalid SUID {}", compSUID);
         return {};
+    }
 
     ComponentView comp{};
 
@@ -621,19 +628,20 @@ bool SceneSchemaLoader::load_scene(Scene scene, const View& toml, std::string& e
 
     mReader.exit();
 
-    bool success = true;
+    bool valid = true;
 
     // extract component tables
     int componentCount = 0;
     if (mReader.enter_array(SCENE_SCHEMA_TABLE_COMPONENT, componentCount))
     {
-        for (int i = 0; i < componentCount; i++)
+        for (int i = 0; valid && i < componentCount; i++)
         {
             if (!mReader.enter_table(i))
                 continue;
 
-            ComponentView comp = load_component(*this);
-            LD_ASSERT(comp); // TODO: error handling
+            ComponentView comp = load_component(*this, err);
+            if (!comp)
+                valid = false;
 
             mReader.exit();
         }
@@ -641,7 +649,7 @@ bool SceneSchemaLoader::load_scene(Scene scene, const View& toml, std::string& e
         mReader.exit();
     }
 
-    if (mReader.enter_table(SCENE_SCHEMA_TABLE_HIERARCHY))
+    if (valid && mReader.enter_table(SCENE_SCHEMA_TABLE_HIERARCHY))
     {
         Vector<std::string> keys;
         mReader.get_keys(keys);
@@ -653,7 +661,7 @@ bool SceneSchemaLoader::load_scene(Scene scene, const View& toml, std::string& e
             if (parentSUID.type() != SERIAL_TYPE_COMPONENT)
             {
                 err = std::format("found invalid component SUID {}", parentSUID);
-                success = false;
+                valid = false;
                 continue;
             }
 
@@ -670,7 +678,7 @@ bool SceneSchemaLoader::load_scene(Scene scene, const View& toml, std::string& e
                 if (childSUID.type() != SERIAL_TYPE_COMPONENT)
                 {
                     err = std::format("found invalid component SUID {}", childSUID);
-                    success = false;
+                    valid = false;
                     continue;
                 }
 
@@ -678,7 +686,7 @@ bool SceneSchemaLoader::load_scene(Scene scene, const View& toml, std::string& e
                 ComponentView parent = mScene.get_component_by_suid(parentSUID);
 
                 if (child && parent)
-                    scene.reparent(child.cuid(), parent.cuid());
+                    scene.reparent_component_subtree(child.cuid(), parent.cuid());
             }
 
             mReader.exit();
@@ -690,7 +698,7 @@ bool SceneSchemaLoader::load_scene(Scene scene, const View& toml, std::string& e
     TOMLReader::destroy(mReader);
     mReader = {};
 
-    return success;
+    return valid;
 }
 
 //

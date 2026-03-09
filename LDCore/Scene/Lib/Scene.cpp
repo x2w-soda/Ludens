@@ -54,16 +54,19 @@ struct SceneComponentMeta
     bool (*cleanup)(SceneObj* scene, ComponentBase** data, std::string& err);
 };
 
+static void init_nop(ComponentBase**) {}
+static bool clone_nop(SceneObj*, ComponentBase**, ComponentBase**, std::string&) { return true; }
+
 // clang-format off
 static SceneComponentMeta sSceneComponents[] = {
     {COMPONENT_TYPE_DATA,         nullptr,                      nullptr,                       nullptr,                        nullptr,                      nullptr},
     {COMPONENT_TYPE_AUDIO_SOURCE, &init_audio_source_component, &clone_audio_source_component, &unload_audio_source_component, nullptr,                      &cleanup_audio_source_component},
-    {COMPONENT_TYPE_TRANSFORM,    nullptr,                      nullptr,                       nullptr,                        nullptr,                      nullptr},
-    {COMPONENT_TYPE_TRANSFORM_2D, nullptr,                      nullptr,                       nullptr,                        nullptr,                      nullptr},
+    {COMPONENT_TYPE_TRANSFORM,    &init_nop,                    &clone_nop,                    nullptr,                        nullptr,                      nullptr},
+    {COMPONENT_TYPE_TRANSFORM_2D, &init_nop,                    &clone_nop,                    nullptr,                        nullptr,                      nullptr},
     {COMPONENT_TYPE_CAMERA,       &init_camera_component,       &clone_camera_component,       &unload_camera_component,       &startup_camera_component,    &cleanup_camera_component},
     {COMPONENT_TYPE_CAMERA_2D,    &init_camera_2d_component,    &clone_camera_2d_component,    &unload_camera_2d_component,    &startup_camera_2d_component, &cleanup_camera_2d_component},
     {COMPONENT_TYPE_MESH,         &init_mesh_component,         &clone_mesh_component,         &unload_mesh_component,         nullptr,                      nullptr},
-    {COMPONENT_TYPE_SPRITE_2D,    &init_sprite_2d_component,    &clone_sprite_2d_component,    &unload_sprite_2d_component,    nullptr,                      nullptr},
+    {COMPONENT_TYPE_SPRITE_2D,    &init_sprite_2d_component,    &clone_sprite_2d_component,    &unload_sprite_2d_component,    &startup_sprite_2d_component, &cleanup_sprite_2d_component},
     {COMPONENT_TYPE_SCREEN_UI,    &init_screen_ui_component,    &clone_screen_ui_component,    &unload_screen_ui_component,    &startup_screen_ui_component, &cleanup_screen_ui_component},
 };
 // clang-format on
@@ -117,8 +120,7 @@ void SceneContext::update(const Vec2& screenExtent, float delta)
     registry.invalidate_transforms();
 
     // update screen space UI
-    screenUI.resize(screenExtent);
-    screenUI.update(delta);
+    screenUI.update(delta, screenExtent);
 
     for (auto it = registry.get_components(COMPONENT_TYPE_CAMERA_2D); it; ++it)
     {
@@ -358,6 +360,42 @@ bool SceneObj::load_registry_from_backup()
     return true;
 }
 
+// Given two subtrees with identical hierarchy, create subsystem handles for dst subtree
+bool SceneObj::clone_subtree(ComponentBase** dstData, ComponentBase** srcData, std::string& err)
+{
+    ComponentBase* dstBase = *dstData;
+    ComponentBase* srcBase = *srcData;
+
+    // sanity checks
+    LD_ASSERT(srcBase->type == dstBase->type);
+    LD_ASSERT(srcBase->suid != dstBase->suid);
+
+    if (sSceneComponents[(int)dstBase->type].init)
+        sSceneComponents[(int)dstBase->type].init(dstData);
+    *dstData = dstBase;
+
+    if (!sSceneComponents[(int)dstBase->type].clone(sScene, dstData, srcData, err))
+        return false;
+
+    ComponentBase* dstChild = dstBase->child;
+    ComponentBase* srcChild = srcBase->child;
+
+    while (dstChild)
+    {
+        LD_ASSERT(srcChild);
+        ComponentBase** dstChildData = active->registry.get_component_data(dstChild->cuid, nullptr);
+        ComponentBase** srcChildData = active->registry.get_component_data(srcChild->cuid, nullptr);
+
+        if (!clone_subtree(dstChildData, srcChildData, err))
+            return false;
+
+        dstChild = dstChild->next;
+        srcChild = srcChild->next;
+    }
+
+    return true;
+}
+
 // This is basically the editor loading a copy of component subtree from backup data
 bool SceneObj::load_subtree_from_backup(ComponentBase** dstData, ComponentBase** srcData, std::string& err)
 {
@@ -373,13 +411,10 @@ bool SceneObj::load_subtree_from_backup(ComponentBase** dstData, ComponentBase**
     LD_ASSERT(srcBase->suid == dstBase->suid);
     LD_ASSERT((std::string(dstBase->name) == std::string(srcBase->name)));
 
-    // TODO: init should not override Transform...
     sSceneComponents[(int)dstBase->type].init(dstData);
     *dstData = dstBase;
 
-    bool ok = sSceneComponents[(int)dstBase->type].clone(sScene, dstData, srcData, err);
-    LD_ASSERT(ok);
-    if (!ok)
+    if (!sSceneComponents[(int)dstBase->type].clone(sScene, dstData, srcData, err))
         return false;
 
     ComponentBase* dstChild = dstBase->child;
@@ -387,7 +422,7 @@ bool SceneObj::load_subtree_from_backup(ComponentBase** dstData, ComponentBase**
 
     while (dstChild)
     {
-        LD_ASSERT(dstChild && srcChild);
+        LD_ASSERT(srcChild);
         ComponentBase** dstChildData = active->registry.get_component_data(dstChild->cuid, nullptr);
         ComponentBase** srcChildData = backup->registry.get_component_data(srcChild->cuid, nullptr);
 
@@ -494,9 +529,6 @@ void Scene::load(const SceneLoadFn& loadFn)
         return;
     }
     */
-
-    // force initial UI layout
-    mObj->active->screenUI.update(0.0f);
 
     mObj->state = SCENE_STATE_LOADED;
 }
@@ -669,25 +701,24 @@ Camera Scene::get_camera()
     return {};
 }
 
-Vector<Viewport> Scene::get_screen_regions()
+void Scene::get_screen_regions(Vector<Viewport>& outViewports, Vector<Rect>& outWorldAABBs)
 {
-    Vector<Viewport> viewports;
-
     // one Viewport per Camera2DComponent.
     for (auto it = mObj->active->registry.get_components(COMPONENT_TYPE_CAMERA_2D); it; ++it)
     {
         Camera2DComponent* comp = (Camera2DComponent*)it.data();
         Viewport viewport = comp->camera.get_viewport();
         viewport.region = comp->viewport;
-        viewports.push_back(viewport);
+        outViewports.push_back(viewport);
+        outWorldAABBs.push_back(comp->camera.get_world_aabb());
     }
 
-    if (!viewports.empty())
-        return viewports;
+    if (!outViewports.empty())
+        return;
 
     // if no Camera2DComponents are present, fallback to single fullscreen viewport.
-    viewports.push_back(Viewport::from_extent(mObj->extent));
-    return viewports;
+    outViewports.push_back(Viewport::from_extent(mObj->extent));
+    outWorldAABBs.push_back(Rect(0.0f, 0.0f, mObj->extent.x, mObj->extent.y));
 }
 
 ComponentView Scene::create_component(ComponentType type, const char* name, CUID parentCUID)
@@ -708,8 +739,7 @@ ComponentView Scene::create_component(ComponentType type, const char* name, CUID
     // TODO: DataRegistry API without CUID -> Component Data chasing.
     ComponentBase** data = reg.get_component_data(compCUID, nullptr);
     ComponentBase* base = *data;
-    if (sSceneComponents[(int)type].init)
-        sSceneComponents[(int)type].init(data);
+    sSceneComponents[(int)type].init(data);
     *data = base;
 
     return ComponentView(data);
@@ -742,14 +772,45 @@ ComponentView Scene::create_component_serial(ComponentType type, const char* nam
     return ComponentView(data);
 }
 
-void Scene::destroy_component(CUID compID)
+void Scene::destroy_component_subtree(CUID compID)
 {
-    mObj->active->registry.destroy_component(compID);
+    LD_ASSERT(mObj->state != SCENE_STATE_RUNNING);
+
+    ComponentBase** compData = mObj->active->registry.get_component_data(compID, nullptr);
+    if (!compData)
+        return;
+
+    mObj->active->unload_subtree(compData);
+
+    mObj->active->registry.destroy_component_subtree(compID);
 }
 
-void Scene::reparent(CUID compID, CUID parentID)
+void Scene::reparent_component_subtree(CUID compID, CUID parentID)
 {
-    mObj->active->registry.reparent(compID, parentID);
+    LD_ASSERT(mObj->state != SCENE_STATE_RUNNING);
+
+    mObj->active->registry.reparent_component_subtree(compID, parentID);
+}
+
+ComponentView Scene::clone_component_subtree(CUID rootID)
+{
+    ComponentBase** dstData = mObj->active->registry.clone_component_subtree(rootID);
+    if (!dstData)
+        return {};
+
+    // Data registry only clones ComponentBase members such as IDs and transform.
+    // At the Scene level we clone the component data and create subsystem handles.
+    ComponentBase** srcData = mObj->active->registry.get_component_data(rootID, nullptr);
+    LD_ASSERT(srcData);
+
+    std::string err;
+    if (!mObj->clone_subtree(dstData, srcData, err))
+    {
+        sSceneLog.error("failed to clone component subtree {}", err);
+        return {};
+    }
+
+    return ComponentView(dstData);
 }
 
 void Scene::get_root_components(Vector<ComponentView>& roots)
@@ -778,6 +839,11 @@ ComponentView Scene::get_component_by_suid(SUID compSUID)
     LD_ASSERT(compSUID && compSUID.type() == SERIAL_TYPE_COMPONENT);
 
     return ComponentView(mObj->active->registry.get_component_data_by_suid(compSUID, nullptr));
+}
+
+ComponentView Scene::get_component_by_path(const Vector<int>& path)
+{
+    return ComponentView(mObj->active->registry.get_component_data_by_path(path));
 }
 
 ComponentType ComponentView::type()
@@ -891,11 +957,25 @@ bool Scene::get_ruid_world_mat4(RUID ruid, Mat4& worldMat4)
     return true;
 }
 
-void Scene::invalidate_transforms()
+bool Scene::get_component_path(ComponentView comp, Vector<int>& path)
+{
+    if (!comp)
+        return false;
+
+    return mObj->active->registry.get_component_path(comp.cuid(), path);
+}
+
+void Scene::invalidate()
 {
     LD_PROFILE_SCOPE;
 
+    mObj->active->screenUI.update(0.0f, mObj->extent);
     mObj->active->registry.invalidate_transforms();
+}
+
+std::string Scene::print_hierarchy()
+{
+    return mObj->active->registry.print_hierarchy();
 }
 
 } // namespace LD

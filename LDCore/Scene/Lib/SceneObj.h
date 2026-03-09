@@ -87,6 +87,7 @@ public:
     } transition;
 
     bool load_registry_from_backup();
+    bool clone_subtree(ComponentBase** dstData, ComponentBase** srcData, std::string& err);
 
 private:
     bool load_subtree_from_backup(ComponentBase** dstData, ComponentBase** srcData, std::string& err);

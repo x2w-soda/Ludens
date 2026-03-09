@@ -1,21 +1,16 @@
+#include <Ludens/Scene/Component/Camera2DView.h>
+
 #include "Camera2DComponent.h"
 
 namespace LD {
-
-static const Camera2DComponent sDefaultCamera = {
-    .base = nullptr,
-    .transform = {},
-    .camera = {},
-    .viewport = {0.0f, 0.0f, 1.0f, 1.0f},
-};
 
 void init_camera_2d_component(ComponentBase** dstData)
 {
     ComponentBase* base = *dstData;
     Camera2DComponent* dstCamera2D = (Camera2DComponent*)dstData;
-    memcpy(dstCamera2D, &sDefaultCamera, sizeof(Camera2DComponent));
-    dstCamera2D->base = base;
     dstCamera2D->transform = base->transform2D;
+    dstCamera2D->camera = {};
+    dstCamera2D->viewport = Rect(0.0f, 0.0f, 1.0f, 1.0f);
     LD_ASSERT(dstCamera2D->transform);
 }
 
@@ -58,9 +53,11 @@ bool startup_camera_2d_component(SceneObj* scene, ComponentBase** data, std::str
     Camera2DComponent* camera = (Camera2DComponent*)data;
 
     if (!camera->camera)
-        return false;
+    {
+        camera->camera = Camera2D::create(scene->extent);
+    }
 
-    return true;
+    return (bool)camera->camera;
 }
 
 bool cleanup_camera_2d_component(SceneObj* scene, ComponentBase** data, std::string& err)
