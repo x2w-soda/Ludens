@@ -99,3 +99,46 @@ TEST_CASE("Geometry ray-plane intersection")
     p0 = r0.parametric(t);
     CHECK(p0 == Vec3(0.0f));
 }
+
+TEST_CASE("Geometry rect-circle intersection")
+{
+    constexpr float halfW = 100.0f;
+    constexpr float halfH = 50.0f;
+    constexpr float r = std::min(halfW, halfH);
+    constexpr float r2 = r * r;
+    Rect rect(10.0f, 10.0f, halfW * 2.0f, halfH * 2.0f);
+    Vec2 pos(110.0f, 60.0f);
+
+    // circle inside rect, zero radius
+    CHECK(geometry_intersects(rect, pos.x, pos.y, 0.0f));
+
+    // circle inside rect, fits rect
+    CHECK(geometry_intersects(rect, pos.x, pos.y, r2));
+
+    // circle contains rect
+    CHECK(geometry_intersects(rect, pos.x, pos.y, halfW * halfW + halfH * halfH));
+
+    // circle on the bottom of rect
+    Vec2 posB(pos.x, pos.y + halfH + r);
+    CHECK(geometry_intersects(rect, posB.x, posB.y - 1.0f, r2));
+    CHECK(geometry_intersects(rect, posB.x, posB.y, r2));
+    CHECK_FALSE(geometry_intersects(rect, posB.x, posB.y + 1.0f, r2));
+
+    // circle on the right of rect
+    Vec2 posR(pos.x + halfW + r, pos.y);
+    CHECK(geometry_intersects(rect, posR.x - 1.0f, posR.y, r2));
+    CHECK(geometry_intersects(rect, posR.x, posR.y, r2));
+    CHECK_FALSE(geometry_intersects(rect, posR.x + 1.0f, posR.y, r2));
+
+    // circle on top of rect
+    Vec2 posT(pos.x, pos.y - halfH - r);
+    CHECK(geometry_intersects(rect, posT.x, posT.y + 1.0f, r2));
+    CHECK(geometry_intersects(rect, posT.x, posT.y, r2));
+    CHECK_FALSE(geometry_intersects(rect, posT.x, posT.y - 1.0f, r2));
+
+    // circle on the left of rect
+    Vec2 posL(pos.x - halfW - r, pos.y);
+    CHECK(geometry_intersects(rect, posL.x + 1.0f, posL.y, r2));
+    CHECK(geometry_intersects(rect, posL.x, posL.y, r2));
+    CHECK_FALSE(geometry_intersects(rect, posL.x - 1.0f, posL.y, r2));
+}

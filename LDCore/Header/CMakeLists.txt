@@ -5,6 +5,7 @@ set(MODULE_INCLUDE
     ${LUDENS_INCLUDE_DIR}/Ludens/Header/Assert.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Header/Bitwise.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Header/View.h
+    ${LUDENS_INCLUDE_DIR}/Ludens/Header/Error.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Header/Handle.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Header/IDHandle.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Header/Platform.h

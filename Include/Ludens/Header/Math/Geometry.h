@@ -1,7 +1,10 @@
 #pragma once
 
 #include <Ludens/Header/Math/Math.h>
+#include <Ludens/Header/Math/Rect.h>
 #include <Ludens/Header/Math/Vec3.h>
+
+#include <algorithm>
 
 namespace LD {
 
@@ -83,6 +86,15 @@ bool geometry_intersects(const TPlane<T>& plane, const TRay<T>& ray, float& t)
 
     // if t is negative, the intersection happens behind the ray origin
     return true;
+}
+
+template <typename T>
+bool geometry_intersects(const TRect<T>& rect, T circleX, T circleY, T radiusSquared)
+{
+    T dx = circleX - std::clamp<T>(circleX, rect.x, rect.x + rect.w);
+    T dy = circleY - std::clamp<T>(circleY, rect.y, rect.y + rect.h);
+
+    return (dx * dx + dy * dy) <= radiusSquared;
 }
 
 } // namespace LD
