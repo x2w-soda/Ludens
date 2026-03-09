@@ -241,6 +241,7 @@ void ScreenRenderComponentObj::write_quad_image(const Rect& rect, Color color, i
 void ScreenRenderComponentObj::write_quad_rounded(const Rect& rect, Color color, int imageIndex, const Rect& uv, float radius)
 {
     LD_ASSERT(!mRectBatch.is_full());
+    LD_ASSERT(mPipelineType == QUAD_PIPELINE_UBER);
 
     color = color * mColorMask;
 
@@ -271,6 +272,7 @@ void ScreenRenderComponentObj::write_quad_rounded(const Rect& rect, Color color,
 void ScreenRenderComponentObj::write_quad_ellipse(const Rect& rect, Color color, int imageIndex, const Rect& uv)
 {
     LD_ASSERT(!mRectBatch.is_full());
+    LD_ASSERT(mPipelineType == QUAD_PIPELINE_UBER);
 
     color = color * mColorMask;
 
@@ -727,20 +729,7 @@ void ScreenRenderComponent::draw_ellipse(const Rect& rect, Color color)
     if (mObj->mRectBatch.is_full())
         mObj->flush_rects();
 
-    color = color * mObj->mColorMask;
-
-    float x0 = rect.x;
-    float x1 = rect.x + rect.w;
-    float y0 = rect.y;
-    float y1 = rect.y + rect.h;
-
-    UVec4 control = get_quad_vertex_control_bits(0, QUAD_MODE_ELLIPSE, 0.0f, 0.0f);
-
-    QuadVertex* v = mObj->mRectBatch.write_quad();
-    v[0] = {x0, y0, 0.0f, 0.0f, color, control[0]}; // TL
-    v[1] = {x1, y0, 0.0f, 0.0f, color, control[1]}; // TR
-    v[2] = {x1, y1, 0.0f, 0.0f, color, control[2]}; // BR
-    v[3] = {x0, y1, 0.0f, 0.0f, color, control[3]}; // BL
+    mObj->write_quad_ellipse(rect, color, 0, Rect(0.0f, 0.0f, 1.0f, 1.0f));
 }
 
 void ScreenRenderComponent::draw_ellipse_image(const Rect& rect, Color color, RImage image, const Rect& uv)

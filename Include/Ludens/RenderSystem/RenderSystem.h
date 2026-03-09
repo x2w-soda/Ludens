@@ -36,7 +36,7 @@ struct Sprite2DDraw : IDHandle<Sprite2DDrawObj, RUID>
     Sprite2DDraw(Sprite2DDrawObj* obj, RUID id)
         : IDHandle(obj, id) {}
 
-    bool set_image(Image2D image2D);
+    void set_image(Image2D image2D);
     Image2D get_image();
     Vec2 get_pivot();
     void set_pivot(const Vec2& pivot);
@@ -118,6 +118,7 @@ struct RenderSystemScreenPass
     struct Region
     {
         Viewport viewport;
+        Rect worldAABB;
         // TODO: ScreenLayer mask per-region
     };
 

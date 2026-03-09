@@ -2,6 +2,7 @@
 #include <Ludens/DSA/HashSet.h>
 #include <Ludens/DSA/Vector.h>
 #include <Ludens/Header/Assert.h>
+#include <Ludens/Header/Math/Geometry.h>
 #include <Ludens/Log/Log.h>
 #include <Ludens/Memory/Allocator.h>
 #include <Ludens/Memory/Memory.h>
@@ -28,13 +29,9 @@ namespace LD {
 
 static Log sLog("RenderSystem");
 
-bool Sprite2DDraw::set_image(Image2D image2D)
+void Sprite2DDraw::set_image(Image2D image2D)
 {
-    if (!image2D)
-        return false;
-
     mObj->image = RImage(image2D.unwrap());
-    return true;
 }
 
 Image2D Sprite2DDraw::get_image()
@@ -158,12 +155,14 @@ private: // passes
         void* user;
         RenderSystemMat4Callback mat4CB;
         RenderSystemScreenOverlayCallback overlayCB;
+        Vector<Rect> regionWorldAABBs;
         Vector<Viewport> regionViewports;
         Vector<int> regionVPIndices;
         int overlayVPIndex = -1;
 
         void reset()
         {
+            regionWorldAABBs.clear();
             regionViewports.clear();
             regionVPIndices.clear();
             overlayVPIndex = -1;
@@ -571,12 +570,14 @@ void RenderSystemObj::screen_pass(const RenderSystemScreenPass& screenP)
 
     if (screenP.regionCount > 0)
     {
+        mScreenPass.regionWorldAABBs.resize(screenP.regionCount);
         mScreenPass.regionViewports.resize(screenP.regionCount);
         mScreenPass.regionVPIndices.resize(screenP.regionCount);
 
         for (uint32_t i = 0; i < screenP.regionCount; i++)
         {
             ViewProjectionData vpData = ViewProjectionData::from_viewport(screenP.regions[i].viewport);
+            mScreenPass.regionWorldAABBs[i] = screenP.regions[i].worldAABB;
             mScreenPass.regionViewports[i] = screenP.regions[i].viewport;
             mScreenPass.regionVPIndices[i] = frame.uboManager.register_vp(vpData);
         }
@@ -1022,9 +1023,11 @@ void RenderSystemObj::ScreenPass::render(ScreenRenderComponent renderer, void* s
         if (vpIndex < 0)
             continue;
 
+        const Rect worldAABB = self.mScreenPass.regionWorldAABBs[regionI];
         const Viewport& viewport = self.mScreenPass.regionViewports[regionI];
         renderer.set_view_projection_index(vpIndex);
         renderer.push_viewport_normalized(viewport.region);
+
 
         // TODO: layer draw order!
         for (auto it : self.mLayers)
@@ -1037,11 +1040,14 @@ void RenderSystemObj::ScreenPass::render(ScreenRenderComponent renderer, void* s
                 const ScreenLayerItem& item = itemList.data[i];
                 const Sprite2DDrawObj* draw = item.sprite2D;
 
+                if (!geometry_intersects(worldAABB, item.sphereX, item.sphereY, item.sphereR2))
+                    continue;
+
                 LD_ASSERT(item.type == SCREEN_LAYER_ITEM_SPRITE_2D);
-                LD_ASSERT(draw && draw->image);
+                LD_ASSERT(draw);
 
                 Mat4 worldMat4;
-                if (!self.mScreenPass.mat4CB(draw->id, worldMat4, self.mScreenPass.user))
+                if (!draw->image || !self.mScreenPass.mat4CB(draw->id, worldMat4, self.mScreenPass.user))
                     continue;
 
                 Rect localPos, localUV;
@@ -1112,6 +1118,7 @@ void RenderSystemObj::EditorDialogPass::render(ScreenRenderComponent renderer, v
     if (!self.mHasAcquiredDialogWindowImage || self.mEditorDialogPass.vpIndex < 0 || !self.mEditorDialogPass.renderCB)
         return;
 
+    renderer.bind_quad_pipeline(QUAD_PIPELINE_UBER);
     renderer.set_view_projection_index(self.mEditorDialogPass.vpIndex);
 
     self.mEditorDialogPass.renderCB(renderer, self.mEditorDialogPass.user);

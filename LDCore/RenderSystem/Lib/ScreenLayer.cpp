@@ -177,6 +177,9 @@ void ScreenLayerObj::build_items(RenderSystemMat4Callback mat4CB, void* user)
     {
         LD_ASSERT(item.type == SCREEN_LAYER_ITEM_SPRITE_2D);
 
+        if (!item.sprite2D->image)
+            continue;
+
         Mat4 modelMat;
         bool ok = mat4CB(item.sprite2D->id, modelMat, user);
         float scaleX2 = modelMat[0][0] * modelMat[0][0] + modelMat[0][1] * modelMat[0][1]; 
