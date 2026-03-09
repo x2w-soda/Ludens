@@ -13,24 +13,23 @@ bool eui_asset_slot(EditorTheme theme, AssetType assetType, AssetID assetID, con
     MouseValue mouseVal;
     UIEvent event;
     bool newAssetRequest = false;
-    const float textLabelWidth = theme.get_text_label_width();
+    float childGap = 6.0f;
 
-    UILayoutInfo layoutI{};
-    layoutI.childAxis = UI_AXIS_X;
-    layoutI.childGap = 10.0f;
+    UILayoutInfo layoutI = theme.make_hbox_layout(&childGap);
     layoutI.sizeX = UISize::grow();
-    layoutI.sizeY = UISize::fit();
     ui_push_panel();
     ui_top_layout(layoutI);
 
+    layoutI = theme.make_text_label_layout();
     ui_push_text(get_asset_type_cstr(assetType));
-    ui_top_layout_size(UISize::fixed(textLabelWidth), UISize::fixed(24.0f));
+    ui_top_layout(layoutI);
     ui_pop();
 
     if (!assetName)
         assetName = "N/A";
 
     ui_push_text(assetName);
+    ui_top_layout(layoutI);
     ui_top_draw(&eui_draw_text_with_bg);
     if (ui_top_mouse_down(mouseVal, mousePos) && mouseVal.button() == MOUSE_BUTTON_LEFT)
         newAssetRequest = true;

@@ -1,5 +1,7 @@
 #pragma once
 
+#include <Ludens/UI/UIWidget.h>
+
 namespace LD {
 
 /// @brief Decorator to draw text with background color.

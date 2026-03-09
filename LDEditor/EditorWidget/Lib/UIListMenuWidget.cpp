@@ -8,9 +8,10 @@ namespace LD {
 
 int eui_list_menu(EditorTheme theme, int optionCount, const char** options)
 {
+    float childGap = 2.0f;
     int index = -1;
     ui_push_panel();
-    ui_top_layout(theme.make_vbox_layout(2.0f));
+    ui_top_layout(theme.make_vbox_layout(&childGap));
 
     Vec2 mousePos;
     MouseValue mouseVal;
