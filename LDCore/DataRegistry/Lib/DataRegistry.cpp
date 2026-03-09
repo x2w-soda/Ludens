@@ -9,6 +9,8 @@
 #include <Ludens/Memory/Memory.h>
 #include <Ludens/Profiler/Profiler.h>
 
+#define COMPONENT_TYPE_TRANSFORM_BITS (COMPONENT_TYPE_FLAG_TRANSFORM_2D | COMPONENT_TYPE_FLAG_TRANSFORM_EX)
+
 namespace LD {
 
 static Log sLog("DataRegistry");
@@ -303,9 +305,7 @@ void DataRegistryObj::add_child(ComponentBase* child, ComponentBase* parent, Com
 
 bool DataRegistryObj::get_component_world_mat4(ComponentBase* base, Mat4& mat4)
 {
-    constexpr ComponentTypeFlag transformBits = (COMPONENT_TYPE_FLAG_TRANSFORM_2D | COMPONENT_TYPE_FLAG_TRANSFORM_EX);
-
-    if (!base || !(sComponentTable[(int)base->type].typeFlags & transformBits))
+    if (!base || !(sComponentTable[(int)base->type].typeFlags & COMPONENT_TYPE_TRANSFORM_BITS))
         return false;
 
     mat4 = transform2DRegistry.get_world_mat4(base->cuid);
@@ -397,7 +397,10 @@ void DataRegistryObj::id_hierarchy(ID parent, Vector<ID>& children, void* user)
 
     LD_ASSERT(*data);
     for (ComponentBase* child = (*data)->child; child; child = child->next)
-        children.push_back(child->cuid);
+    {
+        if (sComponentTable[(int)child->type].typeFlags & COMPONENT_TYPE_TRANSFORM_BITS)
+            children.push_back(child->cuid);
+    }
 }
 
 DataRegistry DataRegistry::create()
@@ -618,6 +621,34 @@ ComponentBase** DataRegistry::get_component_data_by_suid(SUID compSUID, Componen
     return compData;
 }
 
+ComponentBase** DataRegistry::get_component_data_by_path(const Vector<int>& path)
+{
+    if (path.empty())
+        return nullptr;
+
+    ComponentBase* base = &mObj->root;
+
+    for (int siblingIndex : path)
+    {
+        ComponentBase* child = base->child;
+
+        for (int i = 0; i < siblingIndex; i++)
+        {
+            if (!child) // bad sibling index
+                return nullptr;
+
+            child = child->next;
+        }
+
+        if (!child) // bad sibling index
+            return nullptr;
+
+        base = child;
+    }
+
+    return mObj->get_data_from_cuid(base->cuid);
+}
+
 void DataRegistry::get_root_component_data(Vector<ComponentBase**>& rootData)
 {
     LD_PROFILE_SCOPE;
@@ -639,6 +670,27 @@ PoolAllocator::Iterator DataRegistry::get_components(ComponentType type)
         return {nullptr, nullptr, 0};
 
     return ite->second.begin();
+}
+
+bool DataRegistry::get_component_path(CUID compID, Vector<int>& path)
+{
+    ComponentBase** data = mObj->get_data_from_cuid(compID);
+    if (!data)
+        return false;
+
+    path.clear();
+
+    for (ComponentBase* base = *data; base != &mObj->root; base = base->parent)
+    {
+        int siblingIndex = 0;
+        for (ComponentBase* sib = base->parent->child; sib != base; sib = sib->next)
+            siblingIndex++;
+
+        path.push_back(siblingIndex);
+    }
+
+    std::reverse(path.begin(), path.end());
+    return true;
 }
 
 bool DataRegistry::get_component_transform(CUID compID, TransformEx& transform)

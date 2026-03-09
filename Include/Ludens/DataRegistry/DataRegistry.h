@@ -81,11 +81,20 @@ struct DataRegistry : Handle<struct DataRegistryObj>
     /// @brief Get component data by serial ID, or null on failure.
     ComponentBase** get_component_data_by_suid(SUID compSUID, ComponentType* outType);
 
+    /// @brief Get component data by sibling index path.
+    /// @note Slower code path intended for Editor.
+    ComponentBase** get_component_data_by_path(const Vector<int>& path);
+
     /// @brief Get all data components with no parents.
     void get_root_component_data(Vector<ComponentBase**>& rootData);
 
     /// @brief Get an iterator to traverse all components of a specific type.
     PoolAllocator::Iterator get_components(ComponentType type);
+
+    /// @brief Get a path of sibling indices.
+    /// @return True on success.
+    /// @note Slower code path intended for editor, sibling indices are calculated on the fly.
+    bool get_component_path(CUID compID, Vector<int>& path);
 
     /// @brief Get the local transform of a data component.
     /// @return True on success.
