@@ -1,5 +1,6 @@
 #include <Ludens/Asset/AssetManager.h>
 #include <Ludens/Asset/AssetSchema.h>
+#include <Ludens/DSA/HashMap.h>
 #include <Ludens/DSA/Observer.h>
 #include <Ludens/DSA/Vector.h>
 #include <Ludens/DataRegistry/DataRegistry.h>
@@ -11,6 +12,7 @@
 #include <Ludens/Project/ProjectSchema.h>
 #include <Ludens/RenderBackend/RStager.h>
 #include <Ludens/RenderBackend/RUtil.h>
+#include <Ludens/Scene/Component/Sprite2DView.h>
 #include <Ludens/Scene/Scene.h>
 #include <Ludens/Scene/SceneSchema.h>
 #include <Ludens/System/FileSystem.h>
@@ -49,8 +51,10 @@ struct EditorContextObj
     FS::Path projectSchemaPath;    /// path to project file
     std::string projectName;       /// project identifier
     Vector<FS::Path> scenePaths;   /// path to scene schema files in project
+    HashMap<KeyValue, EditorActionType> keyBinds;
     ObserverList<const EditorEvent*> observers;
-    SUID selectedComponentSUID = 0;
+    CUID selectedComponentCUID = 0;
+    CUID prevSelectedComponentCUID = 0;
     bool isPlaying;
 
     void notify_observers(const EditorEvent* event);
@@ -71,6 +75,9 @@ static void editor_action_open_project(EditStack stack, const EditorAction& acti
 static void editor_action_add_component(EditStack stack, const EditorAction& action, void* user);
 static void editor_action_add_component_script(EditStack stack, const EditorAction& action, void* user);
 static void editor_action_set_component_asset(EditStack stack, const EditorAction& action, void* user);
+static void editor_action_clone_component_subtree(EditStack stack, const EditorAction& action, void* user);
+static void editor_action_delete_component_subtree(EditStack stack, const EditorAction& action, void* user);
+static void editor_action_close_dialog(EditStack stack, const EditorAction& action, void* user);
 
 static void editor_action_undo(EditStack stack, const EditorAction& action, void* user)
 {
@@ -95,7 +102,7 @@ static void editor_action_new_scene(EditStack stack, const EditorAction& action,
     // Creating new Scene would clear the EditStack
     stack.clear();
 
-    obj->new_project_scene(action.newScene.schemaPath);
+    obj->new_project_scene(action.newScene);
 }
 
 static void editor_action_open_scene(EditStack stack, const EditorAction& action, void* user)
@@ -107,7 +114,7 @@ static void editor_action_open_scene(EditStack stack, const EditorAction& action
     // Opening Scene would clear the EditStack
     stack.clear();
 
-    obj->load_project_scene(action.openScene.schemaPath);
+    obj->load_project_scene(action.openScene);
 }
 
 static void editor_action_save_scene(EditStack stack, const EditorAction& action, void* user)
@@ -164,6 +171,36 @@ static void editor_action_set_component_asset(EditStack stack, const EditorActio
         obj->scene,
         action.setComponentAsset.compSUID,
         action.setComponentAsset.assetID));
+}
+
+static void editor_action_clone_component_subtree(EditStack stack, const EditorAction& action, void* user)
+{
+    LD_PROFILE_SCOPE;
+
+    auto* obj = (EditorContextObj*)user;
+
+    stack.execute(EditStack::new_command<CloneComponentSubtreeCommand>(
+        obj,
+        action.cloneComponentSubtree));
+}
+
+static void editor_action_delete_component_subtree(EditStack stack, const EditorAction& action, void* user)
+{
+    LD_PROFILE_SCOPE;
+
+    auto* obj = (EditorContextObj*)user;
+
+    stack.execute(EditStack::new_command<DeleteComponentSubtreeCommand>(
+        obj,
+        action.deleteComponentSubtree));
+}
+
+static void editor_action_close_dialog(EditStack stack, const EditorAction& action, void* user)
+{
+    auto* obj = (EditorContextObj*)user;
+
+    EditorRequestCloseDialogEvent event{};
+    EditorContext(obj).request_event(&event);
 }
 
 void EditorContextObj::notify_observers(const EditorEvent* event)
@@ -242,7 +279,7 @@ void EditorContextObj::load_project_scene(const FS::Path& sceneSchemaPath)
         return;
 
     this->sceneSchemaPath = sceneSchemaPath;
-    selectedComponentSUID = 0;
+    selectedComponentCUID = 0;
 
     if (scene)
     {
@@ -260,10 +297,10 @@ void EditorContextObj::load_project_scene(const FS::Path& sceneSchemaPath)
         scene = Scene::create(sceneI);
     }
 
-    scene.load([&](Scene scene) -> bool {
+    scene.load([&](SceneObj* sceneObj) -> bool {
         // load the scene
         std::string err;
-        return SceneSchema::load_scene_from_file(scene, sceneSchemaPath, err);
+        return SceneSchema::load_scene_from_file(Scene(sceneObj), sceneSchemaPath, err);
     });
 
     // TODO: check scene load success
@@ -342,20 +379,32 @@ EditorContext EditorContext::create(const EditorContextInfo& info)
     // register possible editor actions
     // clang-format off
     const EditorActionInfo editorActions[] = {
-        {EDITOR_ACTION_UNDO,                 &editor_action_undo,                 "Undo"},
-        {EDITOR_ACTION_REDO,                 &editor_action_redo,                 "Redo"},
-        {EDITOR_ACTION_NEW_SCENE,            &editor_action_new_scene,            "NewScene"}, 
-        {EDITOR_ACTION_OPEN_SCENE,           &editor_action_open_scene,           "OpenScene"}, 
-        {EDITOR_ACTION_SAVE_SCENE,           &editor_action_save_scene,           "SaveScene"},
-        {EDITOR_ACTION_OPEN_PROJECT,         &editor_action_open_project,         "OpenProject"},
-        {EDITOR_ACTION_ADD_COMPONENT,        &editor_action_add_component,        "AddComponent"},
-        {EDITOR_ACTION_ADD_COMPONENT_SCRIPT, &editor_action_add_component_script, "AddComponentScript"},
-        {EDITOR_ACTION_SET_COMPONENT_ASSET,  &editor_action_set_component_asset,  "SetComponentAsset"},
+        {EDITOR_ACTION_UNDO,                     &editor_action_undo,                     "Undo"},
+        {EDITOR_ACTION_REDO,                     &editor_action_redo,                     "Redo"},
+        {EDITOR_ACTION_NEW_SCENE,                &editor_action_new_scene,                "NewScene"}, 
+        {EDITOR_ACTION_OPEN_SCENE,               &editor_action_open_scene,               "OpenScene"}, 
+        {EDITOR_ACTION_SAVE_SCENE,               &editor_action_save_scene,               "SaveScene"},
+        {EDITOR_ACTION_OPEN_PROJECT,             &editor_action_open_project,             "OpenProject"},
+        {EDITOR_ACTION_ADD_COMPONENT,            &editor_action_add_component,            "AddComponent"},
+        {EDITOR_ACTION_ADD_COMPONENT_SCRIPT,     &editor_action_add_component_script,     "AddComponentScript"},
+        {EDITOR_ACTION_SET_COMPONENT_ASSET,      &editor_action_set_component_asset,      "SetComponentAsset"},
+        {EDITOR_ACTION_CLONE_COMPONENT_SUBTREE,  &editor_action_clone_component_subtree,  "CloneComponentSubtree"},
+        {EDITOR_ACTION_DELETE_COMPONENT_SUBTREE, &editor_action_delete_component_subtree, "DeleteComponentSubtree"},
+        {EDITOR_ACTION_CLOSE_DIALOG,             &editor_action_close_dialog,             "CloseDialog"},
     };
     // clang-format on
 
     for (size_t i = 0; i < sizeof(editorActions) / sizeof(*editorActions); i++)
         register_editor_action(editorActions[i]);
+
+    // register default global key binds
+    obj->keyBinds[KeyValue(KEY_CODE_Z, KEY_MOD_CONTROL_BIT)] = EDITOR_ACTION_UNDO;
+    obj->keyBinds[KeyValue(KEY_CODE_R, KEY_MOD_CONTROL_BIT)] = EDITOR_ACTION_REDO;
+    obj->keyBinds[KeyValue(KEY_CODE_S, KEY_MOD_CONTROL_BIT)] = EDITOR_ACTION_SAVE_SCENE;
+    obj->keyBinds[KeyValue(KEY_CODE_A, KEY_MOD_CONTROL_BIT)] = EDITOR_ACTION_ADD_COMPONENT;
+    obj->keyBinds[KeyValue(KEY_CODE_D, KEY_MOD_CONTROL_BIT)] = EDITOR_ACTION_CLONE_COMPONENT_SUBTREE;
+    obj->keyBinds[KeyValue(KEY_CODE_DELETE)] = EDITOR_ACTION_DELETE_COMPONENT_SUBTREE;
+    obj->keyBinds[KeyValue(KEY_CODE_ESCAPE)] = EDITOR_ACTION_CLOSE_DIALOG;
 
     return {obj};
 }
@@ -395,11 +444,82 @@ bool EditorContext::render_system_mat4_callback(RUID ruid, Mat4& mat4, void* use
     return self.scene.get_ruid_world_mat4(ruid, mat4);
 }
 
-void EditorContext::render_system_screen_pass_callback(ScreenRenderComponent renderer, void* user)
+void EditorContext::render_system_screen_pass_overlay_callback(ScreenRenderComponent renderer, TView<int> regionVPIndices, int overlayVPIndex, void* user)
 {
     EditorContextObj& self = *(EditorContextObj*)user;
 
+    // TODO: Editor toggle to display screen UI?
+    renderer.bind_quad_pipeline(QUAD_PIPELINE_UBER);
+    renderer.set_view_projection_index(overlayVPIndex);
     self.scene.render_screen_ui(renderer);
+
+    if (self.isPlaying)
+        return;
+
+    Mat4 worldMat4;
+    ComponentView selectedComp = self.scene.get_component(self.selectedComponentCUID);
+    if (selectedComp && selectedComp.get_world_mat4(worldMat4))
+    {
+        EditorTheme edTheme = self.settings.get_theme();
+        Color hightlightColor;
+        edTheme.get_gizmo_highlight_color(hightlightColor);
+
+        if (selectedComp.type() == COMPONENT_TYPE_SPRITE_2D)
+        {
+            float thickness = 2.0f; // TODO: a function of Camera zoom?
+            Sprite2DView sprite2D(selectedComp);
+            Rect rect = Rect::grow(sprite2D.local_rect(), thickness);
+
+            for (int i = 0; i < regionVPIndices.size; i++)
+            {
+                renderer.set_view_projection_index(regionVPIndices.data[i]);
+                renderer.draw_rect_outline(worldMat4, rect, hightlightColor, thickness);
+            }
+        }
+    }
+}
+
+void EditorContext::action(EditorActionType type)
+{
+    ComponentView selectedComp = mObj->scene.get_component(mObj->selectedComponentCUID);
+
+    switch (type)
+    {
+    case EDITOR_ACTION_SAVE_SCENE:
+        action_save_scene();
+        break;
+    case EDITOR_ACTION_REDO:
+        action_redo();
+        break;
+    case EDITOR_ACTION_UNDO:
+        action_undo();
+        break;
+    case EDITOR_ACTION_ADD_COMPONENT: // reinterpret as request event
+    {
+        if (selectedComp)
+        {
+            EditorRequestCreateComponentEvent event(selectedComp.suid());
+            request_event(&event);
+        }
+        break;
+    }
+    case EDITOR_ACTION_CLONE_COMPONENT_SUBTREE:
+        if (selectedComp)
+            action_clone_component_subtree(selectedComp.suid());
+        break;
+    case EDITOR_ACTION_DELETE_COMPONENT_SUBTREE:
+        if (selectedComp)
+            action_delete_component_subtree(selectedComp.suid());
+        break;
+    case EDITOR_ACTION_CLOSE_DIALOG: // reinterpret as request event
+    {
+        EditorRequestCloseDialogEvent event{};
+        request_event(&event);
+        break;
+    }
+    default:
+        break;
+    }
 }
 
 void EditorContext::action_redo()
@@ -416,21 +536,21 @@ void EditorContext::action_new_scene(const FS::Path& sceneSchemaPath)
 {
     EditorAction* action = mObj->actionQueue.enqueue(EDITOR_ACTION_NEW_SCENE);
 
-    action->newScene.schemaPath = sceneSchemaPath;
+    action->newScene = sceneSchemaPath;
 }
 
 void EditorContext::action_open_scene(const FS::Path& sceneSchemaPath)
 {
     EditorAction* action = mObj->actionQueue.enqueue(EDITOR_ACTION_OPEN_SCENE);
 
-    action->openScene.schemaPath = sceneSchemaPath;
+    action->openScene = sceneSchemaPath;
 }
 
 void EditorContext::action_open_project(const FS::Path& projectSchemaPath)
 {
     EditorAction* action = mObj->actionQueue.enqueue(EDITOR_ACTION_OPEN_PROJECT);
 
-    action->openProject.schemaPath = projectSchemaPath;
+    action->openProject = projectSchemaPath;
 }
 
 void EditorContext::action_save_scene()
@@ -460,6 +580,20 @@ void EditorContext::action_set_component_asset(SUID compSUID, AssetID assetID)
 
     action->setComponentAsset.compSUID = compSUID;
     action->setComponentAsset.assetID = assetID;
+}
+
+void EditorContext::action_clone_component_subtree(SUID compSUID)
+{
+    EditorAction* action = mObj->actionQueue.enqueue(EDITOR_ACTION_CLONE_COMPONENT_SUBTREE);
+
+    action->cloneComponentSubtree = compSUID;
+}
+
+void EditorContext::action_delete_component_subtree(SUID compSUID)
+{
+    EditorAction* action = mObj->actionQueue.enqueue(EDITOR_ACTION_DELETE_COMPONENT_SUBTREE);
+
+    action->deleteComponentSubtree = compSUID;
 }
 
 void EditorContext::poll_actions()
@@ -526,16 +660,47 @@ Scene EditorContext::get_scene()
     return mObj->scene;
 }
 
+Vector<RenderSystemScreenPass::Region> EditorContext::get_scene_screen_regions()
+{
+    Vector<Viewport> viewports;
+    Vector<Rect> worldAABBs;
+    mObj->scene.get_screen_regions(viewports, worldAABBs);
+    LD_ASSERT(viewports.size() == worldAABBs.size());
+
+    Vector<RenderSystemScreenPass::Region> regions(viewports.size());
+    for (size_t i = 0; i < viewports.size(); i++)
+    {
+        regions[i].viewport = viewports[i];
+        regions[i].worldAABB = worldAABBs[i];
+    }
+
+    return regions;
+}
+
 void EditorContext::add_observer(EditorEventFn fn, void* user)
 {
     mObj->observers.add_observer(fn, user);
 }
 
+void EditorContext::input_key_value(KeyValue keyVal)
+{
+    if (!mObj->keyBinds.contains(keyVal))
+        return;
+
+    action(mObj->keyBinds[keyVal]);
+}
+
 void EditorContext::update(const Vec2& sceneExtent, float delta)
 {
+    LD_PROFILE_SCOPE;
+
     if (mObj->isPlaying)
     {
         mObj->scene.update(sceneExtent, delta);
+    }
+    else
+    {
+        mObj->scene.invalidate();
     }
 
     // NOTE: this polls for any asset file changes.
@@ -552,16 +717,23 @@ void EditorContext::load_project_scene(const FS::Path& sceneSchemaPath)
     mObj->load_project_scene(sceneSchemaPath);
 }
 
-void EditorContext::play_scene()
+bool EditorContext::play_scene()
 {
     LD_PROFILE_SCOPE;
 
     if (mObj->isPlaying)
-        return;
+        return true;
 
     // play a duplicated scene
     mObj->scene.backup();
     mObj->isPlaying = mObj->scene.startup();
+
+    if (mObj->isPlaying)
+    {
+        mObj->prevSelectedComponentCUID = mObj->selectedComponentCUID;
+    }
+
+    return mObj->isPlaying;
 }
 
 void EditorContext::stop_scene()
@@ -575,6 +747,12 @@ void EditorContext::stop_scene()
 
     // restore original scene
     mObj->scene.cleanup();
+
+    if (mObj->prevSelectedComponentCUID)
+    {
+        set_selected_component(mObj->prevSelectedComponentCUID);
+        mObj->prevSelectedComponentCUID = 0;
+    }
 }
 
 bool EditorContext::is_playing()
@@ -587,9 +765,9 @@ void EditorContext::get_scene_roots(Vector<ComponentView>& roots)
     return mObj->scene.get_root_components(roots);
 }
 
-const char* EditorContext::get_component_name(SUID compSUID)
+const char* EditorContext::get_component_name(CUID compCUID)
 {
-    ComponentView comp = mObj->scene.get_component_by_suid(compSUID);
+    ComponentView comp = mObj->scene.get_component(compCUID);
     if (!comp)
         return nullptr;
 
@@ -601,31 +779,44 @@ void EditorContext::request_event(const EditorRequestEvent* event)
     mObj->notify_observers(event);
 }
 
-void EditorContext::set_selected_component(SUID compSUID)
+void EditorContext::set_selected_component(CUID compCUID)
 {
-    if (mObj->selectedComponentSUID == compSUID)
+    if (mObj->selectedComponentCUID == compCUID)
         return;
 
-    ComponentView comp = mObj->scene.get_component_by_suid(compSUID);
+    ComponentView comp = mObj->scene.get_component(compCUID);
     if (comp)
     {
         // update state and notify observers
-        EditorNotifyComponentSelectionEvent event(compSUID);
-        mObj->selectedComponentSUID = compSUID;
+        EditorNotifyComponentSelectionEvent event(compCUID);
+        mObj->selectedComponentCUID = compCUID;
         mObj->notify_observers(&event);
     }
     else
     {
-        mObj->selectedComponentSUID = 0;
+        mObj->selectedComponentCUID = 0;
     }
 }
 
-SUID EditorContext::get_selected_component()
+CUID EditorContext::get_selected_component()
 {
-    return mObj->selectedComponentSUID;
+    return mObj->selectedComponentCUID;
 }
 
-ComponentView EditorContext::get_component(SUID compSUID)
+ComponentView EditorContext::get_selected_component_view()
+{
+    if (!mObj->selectedComponentCUID)
+        return {};
+
+    return mObj->scene.get_component(mObj->selectedComponentCUID);
+}
+
+ComponentView EditorContext::get_component(CUID compCUID)
+{
+    return mObj->scene.get_component(compCUID);
+}
+
+ComponentView EditorContext::get_component_by_suid(SUID compSUID)
 {
     return mObj->scene.get_component_by_suid(compSUID);
 }
@@ -637,14 +828,14 @@ ComponentView EditorContext::get_component_by_ruid(RUID ruid)
 
 RUID EditorContext::get_selected_component_ruid()
 {
-    ComponentView comp = mObj->scene.get_component_by_suid(mObj->selectedComponentSUID);
+    ComponentView comp = mObj->scene.get_component(mObj->selectedComponentCUID);
 
     return comp ? comp.ruid() : 0;
 }
 
 bool EditorContext::get_selected_component_transform(TransformEx& transform)
 {
-    ComponentView comp = mObj->scene.get_component_by_suid(mObj->selectedComponentSUID);
+    ComponentView comp = mObj->scene.get_component(mObj->selectedComponentCUID);
 
     if (!comp)
         return false;

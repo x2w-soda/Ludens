@@ -23,8 +23,9 @@ struct EditorTheme : Handle<struct EditorThemeObj>
     void get_gizmo_highlight_color(Color& hl) const;
     void get_error_color(Color& err) const;
 
-    UILayoutInfo make_vbox_layout(float childGap = 5.0f) const;
-    UILayoutInfo make_hbox_layout(float childGap = 5.0f) const;
+    UILayoutInfo make_vbox_layout(float* childGap = nullptr, float* childPad = nullptr) const;
+    UILayoutInfo make_hbox_layout(float* childGap = nullptr, float* childPad = nullptr) const;
+    UILayoutInfo make_text_label_layout() const;
 };
 
 /// @brief Global editor settings that apply to all projects

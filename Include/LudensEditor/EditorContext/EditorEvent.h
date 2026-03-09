@@ -15,6 +15,7 @@ enum EditorEventType
     EDITOR_EVENT_TYPE_NOTIFY_PROJECT_LOAD,
     EDITOR_EVENT_TYPE_NOTIFY_SCENE_LOAD,
     EDITOR_EVENT_TYPE_NOTIFY_COMPONENT_SELECTION,
+    EDITOR_EVENT_TYPE_REQUEST_CLOSE_DIALOG,
     EDITOR_EVENT_TYPE_REQUEST_PROJECT_SETTINGS,
     EDITOR_EVENT_TYPE_REQUEST_COMPONENT_ASSET,
     EDITOR_EVENT_TYPE_REQUEST_NEW_PROJECT,
@@ -82,13 +83,22 @@ struct EditorNotifySceneLoadEvent : EditorNotifyEvent
 /// @brief Event signaling that the current selected component has changed.
 struct EditorNotifyComponentSelectionEvent : EditorNotifyEvent
 {
-    EditorNotifyComponentSelectionEvent(SUID component)
-        : EditorNotifyEvent(EDITOR_EVENT_TYPE_NOTIFY_COMPONENT_SELECTION), component(component)
+    EditorNotifyComponentSelectionEvent(CUID compCUID)
+        : EditorNotifyEvent(EDITOR_EVENT_TYPE_NOTIFY_COMPONENT_SELECTION), cuid(compCUID)
     {
     }
 
-    /// @brief The new component being selected, an ID of zero indicates that the selection is cleared.
-    const SUID component;
+    /// @brief The new component being selected, an invalid ID indicates that the selection is cleared.
+    const CUID cuid;
+};
+
+/// @brief Event signaling a request to close the current dialog window.
+struct EditorRequestCloseDialogEvent : EditorRequestEvent
+{
+    EditorRequestCloseDialogEvent()
+        : EditorRequestEvent(EDITOR_EVENT_TYPE_REQUEST_CLOSE_DIALOG)
+    {
+    }
 };
 
 /// @brief Event signaling a request to access project settings.

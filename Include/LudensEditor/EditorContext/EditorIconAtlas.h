@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Ludens/DataRegistry/DataRegistry.h>
 #include <Ludens/Header/Math/Rect.h>
 
 namespace LD {
@@ -33,8 +34,6 @@ enum EditorIcon
     EDITOR_ICON_VIEWPORT_WINDOW,
     EDITOR_ICON_ENUM_LAST,
 };
-
-enum ComponentType;
 
 /// @brief Early definition of an icon texture atlas for the Editor.
 ///        Currently we are using an atlas of fixed-sized icons, but

@@ -1,4 +1,6 @@
 #include <Ludens/Header/Assert.h>
+#include <Ludens/Scene/ComponentViews.h>
+#include <LudensEditor/EditorContext/EditorContext.h>
 
 #include "EditorContextCommand.h"
 
@@ -26,7 +28,7 @@ void AddComponentCommand::undo()
     ComponentView comp = mScene.get_component_by_suid(mCompSUID);
     LD_ASSERT(comp); // TODO: recovery
 
-    mScene.destroy_component(comp.cuid());
+    mScene.destroy_component_subtree(comp.cuid());
 
     mCompSUID = 0;
 }
@@ -108,6 +110,70 @@ void SetComponentAssetCommand::set_component_asset(SUID compSUID, AssetID assetI
     default:
         break;
     }
+}
+
+CloneComponentSubtreeCommand::CloneComponentSubtreeCommand(EditorContextObj* ctx, SUID compSUID)
+    : mCtx(ctx), mDstCUID(0)
+{
+    LD_ASSERT(mCtx && compSUID);
+
+    Scene scene = EditorContext(ctx).get_scene();
+    ComponentView srcComp = scene.get_component_by_suid(compSUID);
+    bool ok = scene.get_component_path(srcComp, mSrcPath);
+    LD_ASSERT(ok);
+}
+
+void CloneComponentSubtreeCommand::redo()
+{
+    EditorContext ctx(mCtx);
+    Scene scene = ctx.get_scene();
+
+    ComponentView srcComp = scene.get_component_by_path(mSrcPath);
+    LD_ASSERT(srcComp);
+
+    ComponentView dstComp = scene.clone_component_subtree(srcComp.cuid());
+    LD_ASSERT(dstComp);
+
+    Transform2D transform;
+    if (srcComp.get_transform_2d(transform))
+    {
+        transform.position += Vec2(10.0f, 10.0f);
+        dstComp.set_transform_2d(transform);
+    }
+
+    mDstCUID = dstComp.cuid();
+
+    ctx.set_selected_component(mDstCUID);
+}
+
+void CloneComponentSubtreeCommand::undo()
+{
+    EditorContext ctx(mCtx);
+    Scene scene = ctx.get_scene();
+
+    scene.destroy_component_subtree(mDstCUID);
+
+    mDstCUID = 0;
+}
+
+DeleteComponentSubtreeCommand::DeleteComponentSubtreeCommand(EditorContextObj* ctx, SUID compSUID)
+    : mCtx(ctx), mSUID(compSUID)
+{
+}
+
+void DeleteComponentSubtreeCommand::redo()
+{
+    EditorContext ctx(mCtx);
+    Scene scene = ctx.get_scene();
+
+    ComponentView comp = scene.get_component_by_suid(mSUID);
+    LD_ASSERT(comp);
+    scene.destroy_component_subtree(comp.cuid());
+}
+
+void DeleteComponentSubtreeCommand::undo()
+{
+    LD_UNREACHABLE;
 }
 
 } // namespace LD

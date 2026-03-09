@@ -3,6 +3,7 @@
 #include <Ludens/AudioSystem/AudioSystem.h>
 #include <Ludens/Camera/Camera2D.h>
 #include <Ludens/DSA/Vector.h>
+#include <Ludens/Header/KeyValue.h>
 #include <Ludens/Project/ProjectSettings.h>
 #include <Ludens/RenderSystem/RenderSystem.h>
 #include <Ludens/Scene/Scene.h>
@@ -44,7 +45,11 @@ struct EditorContext : Handle<struct EditorContextObj>
     static bool render_system_mat4_callback(RUID ruid, Mat4& mat4, void* user);
 
     /// @brief Callback to render Scene screen space contents.
-    static void render_system_screen_pass_callback(ScreenRenderComponent renderer, void* user);
+    static void render_system_screen_pass_overlay_callback(ScreenRenderComponent renderer, TView<int> regionVPIndices, int overlayVPIndex, void* user);
+
+    /// @brief Enqueue an editor action that either takes no parameters
+    ///        or could be interpreted as an EditorRequestEvent
+    void action(EditorActionType type);
 
     /// @brief Redo most recent undo.
     void action_redo();
@@ -72,6 +77,12 @@ struct EditorContext : Handle<struct EditorContextObj>
 
     // NOTE: temporary, needs refactoring once a component has multiple asset slots
     void action_set_component_asset(SUID compSUID, AssetID assetID);
+
+    /// @brief Clone a component subtree
+    void action_clone_component_subtree(SUID compSUID);
+
+    /// @brief Delete a component subtree.
+    void action_delete_component_subtree(SUID compSUID);
 
     /// @brief Complete all editor actions in queue.
     void poll_actions();
@@ -105,11 +116,13 @@ struct EditorContext : Handle<struct EditorContextObj>
 
     /// @brief Get scene handle.
     Scene get_scene();
-    inline Vector<Viewport> get_scene_screen_regions() { return get_scene().get_screen_regions(); }
+    Vector<RenderSystemScreenPass::Region> get_scene_screen_regions();
     inline Camera get_scene_camera() { return get_scene().get_camera(); }
 
     /// @brief Add an observer of the editor context
     void add_observer(EditorEventFn fn, void* user);
+
+    void input_key_value(KeyValue keyVal);
 
     /// @brief Editor context frame update, if the scene is playing, this calls the scene update.
     /// @param sceneExtent Screen size containing the scene.
@@ -118,18 +131,21 @@ struct EditorContext : Handle<struct EditorContextObj>
 
     ///@brief Load a Project to edit
     ///@warning Experimental
-    ///@note Triggers EDITOR_CONTEXT_EVENT_PROJECT_LOAD for observers
+    ///@note Emits EDITOR_EVENT_TYPE_NOTIFY_PROJECT_LOAD for observers
     void load_project(const FS::Path& projectSchemaPath);
 
     /// @brief Load a Scene from the current Project
     /// @warning Experimental
-    /// @note Triggers EDITOR_CONTEXT_EVENT_SCENE_LOAD for observers.
+    /// @note Emits EDITOR_EVENT_TYPE_NOTIFY_SCENE_LOAD for observers.
     void load_project_scene(const FS::Path& sceneSchemaPath);
 
     /// @brief Begin playing scene in the editor.
-    void play_scene();
+    /// @return True upon successful startup.
+    bool play_scene();
 
     /// @brief Stop playing scene in the editor.
+    /// @note Reselects the Component that was selected before the play session,
+    ///       emits EDITOR_EVENT_TYPE_NOTIFY_COMPONENT_SELECTION for observers.
     void stop_scene();
 
     /// @brief Whether or not the scene simulation is playing in editor.
@@ -139,22 +155,27 @@ struct EditorContext : Handle<struct EditorContextObj>
     void get_scene_roots(Vector<ComponentView>& roots);
 
     /// @brief Get the C string name of a component
-    const char* get_component_name(SUID compSUID);
+    const char* get_component_name(CUID compCUID);
 
     /// @brief Notify observers of a request event.
     void request_event(const EditorRequestEvent* event);
 
     /// @brief Assign a component in scene to be selected.
-    /// @note Triggers EDITOR_CONTEXT_EVENT_COMPONENT_SELECTION for observers.
-    void set_selected_component(SUID compSUID);
+    /// @note Emits EDITOR_EVENT_TYPE_NOTIFY_COMPONENT_SELECTION for observers.
+    void set_selected_component(CUID compCUID);
 
     /// @brief Get the currently selected component in scene
-    SUID get_selected_component();
+    CUID get_selected_component();
+
+    ComponentView get_selected_component_view();
 
     /// @brief Get component interface.
-    ComponentView get_component(SUID compSUID);
+    ComponentView get_component(CUID compCUID);
 
-    /// @brief Get the data component associated with some RUID in scene
+    /// @brief Get component by SUID, only "editor components" have a serial ID.
+    ComponentView get_component_by_suid(SUID compSUID);
+
+    /// @brief Get component associated with RUID.
     ComponentView get_component_by_ruid(RUID ruid);
 
     /// @brief get the RUID associated with the selected object in scene

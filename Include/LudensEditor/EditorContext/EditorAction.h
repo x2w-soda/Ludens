@@ -19,37 +19,38 @@ enum EditorActionType
     EDITOR_ACTION_ADD_COMPONENT,
     EDITOR_ACTION_ADD_COMPONENT_SCRIPT,
     EDITOR_ACTION_SET_COMPONENT_ASSET,
+    EDITOR_ACTION_CLONE_COMPONENT_SUBTREE,
+    EDITOR_ACTION_DELETE_COMPONENT_SUBTREE,
+    EDITOR_ACTION_CLOSE_DIALOG,
     EDITOR_ACTION_ENUM_COUNT,
 };
 
-/// @brief An editor action maps to one or more editor commands.
+struct EditorActionAddComponent
+{
+    SUID parentSUID;
+    ComponentType compType;
+};
+
+struct EditorActionAddComponentScript
+{
+    SUID compSUID;
+    AssetID assetID;
+};
+
+using EditorActionSetComponentAsset = EditorActionAddComponentScript;
+
+/// @brief An editor action maps to zero or more editor commands.
 struct EditorAction
 {
     EditorActionType type;
     union
     {
-        struct SchemaPath
-        {
-            FS::Path schemaPath;
-        } newScene, openScene, openProject;
-
-        struct AddComponent
-        {
-            SUID parentSUID;
-            ComponentType compType;
-        } addComponent;
-
-        struct AddComponentScript
-        {
-            SUID compSUID;
-            AssetID assetID;
-        } addComponentScript;
-
-        struct SetComponentAsset
-        {
-            SUID compSUID;
-            AssetID assetID;
-        } setComponentAsset;
+        FS::Path newScene, openScene, openProject;
+        EditorActionAddComponent addComponent;
+        EditorActionAddComponentScript addComponentScript;
+        EditorActionSetComponentAsset setComponentAsset;
+        SUID cloneComponentSubtree;
+        SUID deleteComponentSubtree;
     };
 
     EditorAction() = delete;

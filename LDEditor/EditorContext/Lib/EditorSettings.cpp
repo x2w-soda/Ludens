@@ -10,6 +10,7 @@ struct EditorThemeObj
     UITheme uiTheme;
     float fontSize;
     float padding;
+    float gap;
     float textRowHeight;
     float textLabelWidth;
     Color tabBGColor;
@@ -29,6 +30,7 @@ void EditorThemeObj::initialize_default()
     uiTheme = UITheme::get_default_theme();
     fontSize = 16.0f;
     padding = 5.0f;
+    gap = 2.0f;
     textRowHeight = 20.0f;
     textLabelWidth = 120.0f;
     tabBGColor = 0x202225FF;
@@ -98,29 +100,46 @@ void EditorTheme::get_error_color(Color& err) const
     err = mObj->errorColor;
 }
 
-UILayoutInfo EditorTheme::make_vbox_layout(float childGap) const
+UILayoutInfo EditorTheme::make_vbox_layout(float* childGap, float* childPad) const
 {
-    float pad = mObj->padding;
+    float gap = childGap ? *childGap : mObj->gap;
+    float pad = childPad ? *childPad : mObj->padding;
 
     UILayoutInfo layoutI{};
-    layoutI.childGap = childGap;
+    layoutI.childGap = gap;
     layoutI.childPadding = {pad, pad, pad, pad};
+    layoutI.childAxis = UI_AXIS_Y;
     layoutI.sizeX = UISize::fit();
     layoutI.sizeY = UISize::fit();
-    layoutI.childAxis = UI_AXIS_Y;
     return layoutI;
 }
 
-UILayoutInfo EditorTheme::make_hbox_layout(float childGap) const
+UILayoutInfo EditorTheme::make_hbox_layout(float* childGap, float* childPad) const
 {
-    float pad = mObj->padding;
+    float gap = childGap ? *childGap : mObj->gap;
+    float pad = childPad ? *childPad : mObj->padding;
 
     UILayoutInfo layoutI{};
-    layoutI.childGap = childGap;
+    layoutI.childGap = gap;
     layoutI.childPadding = {pad, pad, pad, pad};
+    layoutI.childAxis = UI_AXIS_X;
     layoutI.sizeX = UISize::fit();
     layoutI.sizeY = UISize::fit();
+    return layoutI;
+}
+
+UILayoutInfo EditorTheme::make_text_label_layout() const
+{
+    const float textLabelWidth = get_text_label_width();
+    const float textRowHeight = get_text_row_height();
+
+    UILayoutInfo layoutI{};
     layoutI.childAxis = UI_AXIS_X;
+    layoutI.childPadding = {2.0f, 2.0f, 2.0f, 2.0f};
+    layoutI.childGap = 5.0f;
+    layoutI.sizeX = UISize::fixed(textLabelWidth);
+    layoutI.sizeY = UISize::fixed(textRowHeight);
+
     return layoutI;
 }
 

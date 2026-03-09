@@ -14,7 +14,9 @@ EditorAction::EditorAction(EditorActionType type)
     case EDITOR_ACTION_OPEN_SCENE:
     case EDITOR_ACTION_SAVE_SCENE:
     case EDITOR_ACTION_OPEN_PROJECT:
-        new (&openScene.schemaPath) FS::Path();
+        new (&openScene) FS::Path();
+        break;
+    default:
         break;
     }
 }
@@ -26,7 +28,9 @@ EditorAction::~EditorAction()
     case EDITOR_ACTION_OPEN_SCENE:
     case EDITOR_ACTION_SAVE_SCENE:
     case EDITOR_ACTION_OPEN_PROJECT:
-        openScene.schemaPath.~path();
+        openScene.~path();
+        break;
+    default:
         break;
     }
 }

@@ -7,6 +7,8 @@
 
 namespace LD {
 
+struct EditorContextObj;
+
 class AddComponentCommand : public EditCommand
 {
 public:
@@ -54,6 +56,33 @@ private:
     SUID mCompSUID = 0;
     AssetID mAssetID = 0;
     AssetID mPrevAssetID = 0;
+};
+
+class CloneComponentSubtreeCommand : public EditCommand
+{
+public:
+    CloneComponentSubtreeCommand(EditorContextObj* ctx, SUID compSUID);
+
+    virtual void redo() override;
+    virtual void undo() override;
+
+private:
+    EditorContextObj* mCtx;
+    Vector<int> mSrcPath;
+    CUID mDstCUID = 0;
+};
+
+class DeleteComponentSubtreeCommand : public EditCommand
+{
+public:
+    DeleteComponentSubtreeCommand(EditorContextObj* ctx, SUID compSUID);
+
+    virtual void redo() override;
+    virtual void undo() override;
+
+private:
+    EditorContextObj* mCtx;
+    SUID mSUID = 0;
 };
 
 } // namespace LD
