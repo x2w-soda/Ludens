@@ -72,7 +72,7 @@ static DocumentItemMeta sItemMeta[] = {
 };
 // clang-format on
 
-static std::string LD::print_document_item_heading(DocumentItem* item)
+static std::string print_document_item_heading(DocumentItem* item)
 {
     auto* heading = (DocumentItemHeading*)item;
 

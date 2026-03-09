@@ -2,6 +2,7 @@
 
 #include <Ludens/Header/Math/Math.h>
 #include <Ludens/Header/Types.h>
+#include <cstdint>
 
 namespace LD {
 

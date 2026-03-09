@@ -2,7 +2,8 @@
 
 #include <Ludens/Header/KeyCode.h>
 
-#include <utility>
+#include <cstdint>
+#include <functional>
 
 namespace LD {
 
@@ -26,12 +27,14 @@ struct KeyValue
 } // namespace LD
 
 namespace std {
+
 template <>
 struct hash<LD::KeyValue>
 {
     size_t operator()(const LD::KeyValue& value) const
     {
-        return std::hash<uint32_t>{}(value.u32);
+        return hash<uint32_t>{}(value.u32);
     }
 };
+
 } // namespace std

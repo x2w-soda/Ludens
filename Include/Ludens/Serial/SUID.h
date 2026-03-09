@@ -81,8 +81,6 @@ private:
 
 } // namespace LD
 
-namespace std {
-
 template <>
 struct std::formatter<LD::SUID> : std::formatter<uint32_t>
 {
@@ -100,5 +98,3 @@ struct std::hash<LD::SUID>
         return std::hash<uint32_t>{}(static_cast<uint32_t>(id));
     }
 };
-
-} // namespace std

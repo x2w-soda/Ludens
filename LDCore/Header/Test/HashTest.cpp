@@ -1,5 +1,6 @@
 #include <Extra/doctest/doctest.h>
 #include <Ludens/Header/Hash.h>
+#include <cstring>
 #include <unordered_set>
 
 using namespace LD;

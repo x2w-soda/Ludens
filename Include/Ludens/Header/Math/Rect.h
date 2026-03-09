@@ -173,6 +173,19 @@ struct TRect
         const T newH = area.h * (T)ratio;
         return TRect(area.x, area.y - (newH - oldH) / (T)2, area.w, newH);
     }
+
+    static inline TRect grow(const TRect& rect, T size)
+    {
+        if (size <= (T)0)
+            return rect;
+
+        TRect r = rect;
+        r.x -= size;
+        r.y -= size;
+        r.w += size * (T)2;
+        r.h += size * (T)2;
+        return r;
+    }
 };
 
 using Rect = TRect<float>;

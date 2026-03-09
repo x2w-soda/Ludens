@@ -99,8 +99,6 @@ private:
 
 } // namespace LD
 
-namespace std {
-
 template <>
 struct std::formatter<LD::ID> : std::formatter<uint64_t>
 {
@@ -119,4 +117,3 @@ struct std::hash<LD::ID>
     }
 };
 
-} // namespace std
