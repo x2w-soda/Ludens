@@ -26,6 +26,8 @@ UITemplateEntry::UITemplateEntry(UIWidgetType type)
     case UI_WIDGET_BUTTON:
         new (&button)(UIButtonWidgetTemplate);
         break;
+    default:
+        break;
     }
 }
 
@@ -35,6 +37,8 @@ UITemplateEntry::~UITemplateEntry()
     {
     case UI_WIDGET_BUTTON:
         (&button)->~UIButtonWidgetTemplate();
+        break;
+    default:
         break;
     }
 }

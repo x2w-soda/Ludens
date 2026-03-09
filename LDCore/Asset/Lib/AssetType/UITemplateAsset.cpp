@@ -20,7 +20,8 @@ void UITemplateAssetObj::load(void* user)
 
     obj->tmpl = UITemplate::create();
 
-    bool ok = UITemplateSchema::load_ui_template_from_source(obj->tmpl, fileView, err);
+    UITemplateSchema::Error schemaErr;
+    bool ok = UITemplateSchema::load_ui_template_from_source(obj->tmpl, fileView, schemaErr);
     LD_ASSERT(ok); // TODO: asset load failure
 
     FS::Path sourcePath = job.loadPath.replace_extension("lua");

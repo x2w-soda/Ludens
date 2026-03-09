@@ -32,12 +32,14 @@ version_patch = 0
 
 [[widget]]
 index = 0
+name = 'panel'
 type = 'UIPanel'
 layout = { size_x = 'fit', size_y = 'fit', child_axis = 'x', child_align_x = 'center', child_align_y = 'center', child_gap = 10, child_padding = {left = 0, right = 0, top = 0, bottom = 0}}
 color = 0x000000FF
 
 [[widget]]
 index = 1
+name = 'image'
 type = 'UIImage'
 layout = { size_x = 'fit', size_y = 'fit', child_axis = 'x', child_align_x = 'center', child_align_y = 'center', child_gap = 10, child_padding = {left = 0, right = 0, top = 0, bottom = 0}}
 color = 0xFF00FFFF
@@ -50,7 +52,7 @@ TEST_CASE("UITemplate")
     UIContext ctx = UIContext::create({.theme = UITheme::get_default_theme()});
     UITemplate tmpl = UITemplate::create();
 
-    std::string err;
+    UITemplateSchema::Error err;
     bool ok = UITemplateSchema::load_ui_template_from_source(tmpl, View(sUIToml, sizeof(sUIToml) - 1), err);
     CHECK(ok);
 

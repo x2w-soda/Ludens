@@ -20,7 +20,7 @@ public:
     UITemplateSchemaSaver& operator=(const UITemplateSchemaSaver&) = delete;
 
     /// @brief Save template as TOML schema.
-    bool save_template(UITemplateObj* obj, std::string& toml, std::string& err);
+    bool save_template(UITemplateObj* obj, std::string& toml, UITemplateSchema::Error& err);
 
     static void save_ui_button(UITemplateSchemaSaver& saver, const UITemplateEntry& entry);
     static void save_ui_panel(UITemplateSchemaSaver& saver, const UITemplateEntry& entry);
@@ -45,14 +45,14 @@ public:
 
     UITemplateSchemaLoader& operator=(const UITemplateSchemaLoader&) = delete;
 
-    bool load_template(UITemplateObj* obj, const View& toml, std::string& err);
+    bool load_template(UITemplateObj* obj, const View& toml, UITemplateSchema::Error& err);
 
     static void load_ui_button(UITemplateSchemaLoader& loader, UITemplateEntry& entry);
     static void load_ui_panel_toml(UITemplateSchemaLoader& loader, UITemplateEntry& entry);
     static void load_ui_image_toml(UITemplateSchemaLoader& loader, UITemplateEntry& entry);
 
 private:
-    void load_widget_toml();
+    bool load_widget_toml(UITemplateSchema::Error& err);
     bool load_layout_toml(UILayoutInfo& layout);
     bool load_layout_size_toml(UISize& size, const char* key);
     bool load_layout_child_align_toml(UIAlign& align, const char* key);
@@ -196,7 +196,7 @@ UITemplateSchemaSaver::~UITemplateSchemaSaver()
         TOMLWriter::destroy(mWriter);
 }
 
-bool UITemplateSchemaSaver::save_template(UITemplateObj* obj, std::string& toml, std::string& err)
+bool UITemplateSchemaSaver::save_template(UITemplateObj* obj, std::string& toml, UITemplateSchema::Error& err)
 {
     mTmpl = obj;
 
@@ -265,12 +265,12 @@ UITemplateSchemaLoader::~UITemplateSchemaLoader()
         TOMLReader::destroy(mReader);
 }
 
-bool UITemplateSchemaLoader::load_template(UITemplateObj* obj, const View& toml, std::string& err)
+bool UITemplateSchemaLoader::load_template(UITemplateObj* obj, const View& toml, UITemplateSchema::Error& err)
 {
     mTmpl = obj;
     mTmpl->reset();
 
-    mReader = TOMLReader::create(toml, err);
+    mReader = TOMLReader::create(toml, err.str);
     if (!mReader)
         return false;
 
@@ -314,23 +314,28 @@ bool UITemplateSchemaLoader::load_template(UITemplateObj* obj, const View& toml,
         mReader.exit();
     }
 
+    bool valid = true;
+
     int widgetCount = 0;
     if (mReader.enter_array(SCENE_SCHEMA_TABLE_WIDGET, widgetCount))
     {
         mTmpl->entries.resize((size_t)widgetCount);
 
-        for (int i = 0; i < widgetCount; i++)
+        for (int i = 0; valid && i < widgetCount; i++)
         {
             if (!mReader.enter_table(i))
                 continue;
 
-            load_widget_toml();
+            if (!load_widget_toml(err))
+                valid = false;
+
             mReader.exit();
         }
 
         mReader.exit();
     }
-    return true;
+
+    return valid;
 }
 
 void UITemplateSchemaLoader::load_ui_button(UITemplateSchemaLoader& loader, UITemplateEntry& entry)
@@ -371,25 +376,25 @@ void UITemplateSchemaLoader::load_ui_image_toml(UITemplateSchemaLoader& loader, 
     reader.read_suid("texture_2d", entry.image.texture2DAssetID);
 }
 
-void UITemplateSchemaLoader::load_widget_toml()
+bool UITemplateSchemaLoader::load_widget_toml(UITemplateSchema::Error& err)
 {
     uint32_t entryIdx;
     if (!mReader.read_u32("index", entryIdx))
-        return;
+        return false;
 
     if (entryIdx >= mTmpl->entries.size())
-        return;
+        return false;
 
     UIWidgetType type;
     std::string typeStr;
     if (!mReader.read_string("type", typeStr) || !get_ui_widget_type_from_cstr(type, typeStr.c_str()))
-        return;
+        return false;
 
     UITemplateEntry* entry = mTmpl->allocate_entry(type);
     mTmpl->entries[entryIdx] = entry;
 
     if (!mReader.read_string("name", entry->name))
-        return;
+        return false;
 
     if (mReader.enter_table("layout"))
     {
@@ -515,7 +520,7 @@ bool UITemplateSchemaLoader::load_layout_child_padding_toml(UIPadding& padding, 
 // Public API
 //
 
-bool UITemplateSchema::load_ui_template_from_source(UITemplate tmpl, const View& toml, std::string& err)
+bool UITemplateSchema::load_ui_template_from_source(UITemplate tmpl, const View& toml, Error& err)
 {
     LD_PROFILE_SCOPE;
 
@@ -526,19 +531,19 @@ bool UITemplateSchema::load_ui_template_from_source(UITemplate tmpl, const View&
     return true;
 }
 
-bool UITemplateSchema::load_ui_template_from_file(UITemplate tmpl, const FS::Path& tomlPath, std::string& err)
+bool UITemplateSchema::load_ui_template_from_file(UITemplate tmpl, const FS::Path& tomlPath, Error& err)
 {
     LD_PROFILE_SCOPE;
 
     Vector<byte> toml;
-    if (!FS::read_file_to_vector(tomlPath, toml, err))
+    if (!FS::read_file_to_vector(tomlPath, toml, err.str))
         return false;
 
     View tomlView((const char*)toml.data(), toml.size());
     return load_ui_template_from_source(tmpl, tomlView, err);
 }
 
-bool UITemplateSchema::save_ui_template(UITemplate tmpl, const FS::Path& savePath, std::string& err)
+bool UITemplateSchema::save_ui_template(UITemplate tmpl, const FS::Path& savePath, Error& err)
 {
     LD_PROFILE_SCOPE;
 
@@ -549,7 +554,7 @@ bool UITemplateSchema::save_ui_template(UITemplate tmpl, const FS::Path& savePat
         return false;
 
     View tomlView(toml.data(), toml.size());
-    return FS::write_file_and_swap_backup(savePath, tomlView, err);
+    return FS::write_file_and_swap_backup(savePath, tomlView, err.str);
 }
 
 } // namespace LD
