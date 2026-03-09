@@ -280,8 +280,13 @@ void EditorWorkspace::on_imgui(float delta)
 
     // EditorWorkspace root window detects resizing.
     ui_workspace_begin(mObj->uiWorkspaceName.c_str(), mObj->rootRect);
-    ui_push_window("ROOT");
+    ui_push_window("WORKSPACE_ROOT");
     ui_top_user(mObj);
+
+    // If EditorWindow does not catch key events, capture here and forward to EditorContext.
+    KeyValue keyVal;
+    if (ui_top_key_down(keyVal))
+        mObj->ctx.input_key_value(keyVal);
 
     // find the node for splitting.
     UIEventType type;

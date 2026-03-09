@@ -55,7 +55,8 @@ private:
     FontAtlas mFontAtlas{};
     RImage mFontAtlasImage{};
     DialogType mDialogType = DIALOG_NONE;
-    CUID mSubjectSUID = 0;
+    SUID mSubjectSUID = 0;
+    bool mShouldCloseDialog = false;
 };
 
 EditorUIDialogObj::EditorUIDialogObj(const EditorUIDialogInfo& mainI)
@@ -80,11 +81,12 @@ void EditorUIDialogObj::update(float delta)
         return;
     }
 
-    if (mDialog.should_close())
+    if (mShouldCloseDialog || mDialog.should_close())
     {
         EditorDialog::destroy(mDialog);
         mDialog = {};
         mDialogType = DIALOG_NONE;
+        mShouldCloseDialog = false;
         return;
     }
 
@@ -131,14 +133,14 @@ void EditorUIDialogObj::update(float delta)
         if (selectW && selectW.has_selected(selectedPath))
         {
             mDialogType = DIALOG_NONE;
-            if (!mCtx.get_component(mSubjectSUID))
+            if (!mCtx.get_component_by_suid(mSubjectSUID))
                 return; // component out of date
 
             AssetType type;
             AssetManager AM = mCtx.get_asset_manager();
             std::string stem = selectedPath.stem().string();
             AssetID scriptAssetID = AM.get_id_from_name(stem.c_str(), &type);
-            if (scriptAssetID == 0 || type != ASSET_TYPE_LUA_SCRIPT)
+            if (scriptAssetID == (AssetID)0 || type != ASSET_TYPE_LUA_SCRIPT)
                 return; // script asset out of date
 
             mCtx.action_add_component_script(mSubjectSUID, scriptAssetID);
@@ -251,6 +253,10 @@ void EditorUIDialogObj::on_editor_event(const EditorEvent* event, void* user)
 
     switch (event->type)
     {
+    case EDITOR_EVENT_TYPE_REQUEST_CLOSE_DIALOG:
+        if (obj->mDialog)
+            obj->mShouldCloseDialog = true;
+        break;
     case EDITOR_EVENT_TYPE_REQUEST_PROJECT_SETTINGS:
         obj->dialog_project_settings();
         break;

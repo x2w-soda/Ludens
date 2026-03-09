@@ -4,6 +4,7 @@
 #include <Ludens/DSA/Vector.h>
 #include <Ludens/Media/Font.h>
 #include <Ludens/RenderComponent/SceneOverlayComponent.h>
+#include <Ludens/RenderSystem/RenderSystem.h>
 #include <Ludens/System/FileSystem.h>
 #include <Ludens/UI/UIContext.h>
 #include <Ludens/UI/UIWindow.h>
@@ -64,7 +65,7 @@ private:
     Camera get_main_camera();
 
     /// @brief Get region viewports to render screen contents.
-    Vector<Viewport> get_screen_regions();
+    Vector<RenderSystemScreenPass::Region> get_screen_regions();
 
 private:
     EditorContext mCtx;

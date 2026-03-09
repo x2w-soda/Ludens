@@ -104,19 +104,16 @@ void EditorUI::submit_frame()
     frameI.clearColor = mCtx.get_project_settings().get_rendering_settings().get_clear_color();
     mRenderSystem.next_frame(frameI);
 
-    // render screen space items
-    Vector<Viewport> regionViewports = get_screen_regions();
-    Vector<RenderSystemScreenPass::Region> regions(regionViewports.size());
-    for (size_t i = 0; i < regionViewports.size(); i++)
-        regions[i].viewport = regionViewports[i];
+    // render ScreenLayer items in regions
+    Vector<RenderSystemScreenPass::Region> regions = get_screen_regions();
 
     RenderSystemScreenPass screenP{};
     screenP.mat4Callback = &EditorContext::render_system_mat4_callback;
-    screenP.overlay.renderCallback = &EditorContext::render_system_screen_pass_callback;
-    screenP.overlay.viewport = scene2DViewport;
     screenP.regionCount = regions.size();
     screenP.regions = regions.data();
     screenP.user = mCtx.unwrap();
+    screenP.overlay.renderCallback = &EditorContext::render_system_screen_pass_overlay_callback;
+    screenP.overlay.viewport = scene2DViewport;
     mRenderSystem.screen_pass(screenP);
 
     // render the editor UI
@@ -186,16 +183,18 @@ Camera EditorUI::get_main_camera()
     return mMain.get_viewport_camera();
 }
 
-Vector<Viewport> EditorUI::get_screen_regions()
+Vector<RenderSystemScreenPass::Region> EditorUI::get_screen_regions()
 {
     if (mCtx.is_playing()) // in-game screen regions
         return mCtx.get_scene_screen_regions();
 
     Camera2D editorCamera = mMain.get_viewport_camera_2d();
-    Viewport editorViewport = editorCamera.get_viewport();
-    editorViewport.region = Rect(0.0f, 0.0f, 1.0f, 1.0f);
+    RenderSystemScreenPass::Region region;
+    region.viewport = editorCamera.get_viewport();
+    region.viewport.region = Rect(0.0f, 0.0f, 1.0f, 1.0f);
+    region.worldAABB = editorCamera.get_world_aabb();
 
-    return {editorViewport};
+    return {region};
 }
 
 void EditorUI::on_event(const WindowEvent* event, void* user)
