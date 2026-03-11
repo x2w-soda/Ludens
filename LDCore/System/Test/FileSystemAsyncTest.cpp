@@ -10,25 +10,24 @@
 
 using namespace LD;
 
-static void worker_read_file_to_vector(FS::ReadFileTask* task, const FS::Path& path, Vector<byte>* vec, Diagnostics* diag)
+static void worker_read_file_to_vector(FS::ReadFileAsync* task, const FS::Path& path, Vector<byte>* vec)
 {
-    task->begin(path, *vec, *diag);
+    task->begin(path, *vec);
 }
 
-static void worker_write_file(FS::WriteFileTask* task, const FS::Path& path, const View& view, Diagnostics* diag)
+static void worker_write_file(FS::WriteFileAsync* task, const FS::Path& path, const View& view)
 {
-    task->begin(path, view, *diag);
+    task->begin(path, view);
 }
 
-TEST_CASE("ReadFileTask bad path" * doctest::skip(!LudensLFS::get_directory_path()))
+TEST_CASE("ReadFileAsync bad path" * doctest::skip(!LudensLFS::get_directory_path()))
 {
-    Diagnostics diag;
-    FS::ReadFileTask task;
+    FS::ReadFileAsync task;
     FS::Path path = "definitelyDoesNotExist.txt";
     REQUIRE(!FS::exists(path));
 
     Vector<byte> vec;
-    std::thread worker(&worker_read_file_to_vector, &task, path, &vec, &diag);
+    std::thread worker(&worker_read_file_to_vector, &task, path, &vec);
     std::string err;
 
     bool success;
@@ -41,15 +40,13 @@ TEST_CASE("ReadFileTask bad path" * doctest::skip(!LudensLFS::get_directory_path
     CHECK(!success);
     CHECK(bytesRead == 0);
     CHECK(vec.empty());
-    CHECK(diag.get_error(err));
 
     worker.join();
 }
 
-TEST_CASE("ReadFileTask empty file" * doctest::skip(!LudensLFS::get_directory_path()))
+TEST_CASE("ReadFileAsync empty file" * doctest::skip(!LudensLFS::get_directory_path()))
 {
-    Diagnostics diag;
-    FS::ReadFileTask task;
+    FS::ReadFileAsync task;
     FS::Path path = sLudensLFS.test.emptyFilePath;
     std::string err;
     uint64_t fileSize;
@@ -57,7 +54,7 @@ TEST_CASE("ReadFileTask empty file" * doctest::skip(!LudensLFS::get_directory_pa
     REQUIRE(fileSize == 0);
 
     Vector<byte> vec;
-    std::thread worker(&worker_read_file_to_vector, &task, path, &vec, &diag);
+    std::thread worker(&worker_read_file_to_vector, &task, path, &vec);
 
     bool success;
     size_t bytesRead;
@@ -69,22 +66,21 @@ TEST_CASE("ReadFileTask empty file" * doctest::skip(!LudensLFS::get_directory_pa
     CHECK(success);
     CHECK(bytesRead == 0);
     CHECK(vec.size() == 0);
-    CHECK(!diag.get_error(err));
 
     worker.join();
 }
 
-TEST_CASE("ReadFileTask vector" * doctest::skip(!LudensLFS::get_directory_path()))
+TEST_CASE("ReadFileAsync vector" * doctest::skip(!LudensLFS::get_directory_path()))
 {
     Diagnostics diag;
-    FS::ReadFileTask task;
+    FS::ReadFileAsync task;
     Vector<byte> vec;
 
     uint64_t fileSize;
     FS::Path path = sLudensLFS.editorIconAtlasPath;
     REQUIRE(FS::get_positive_file_size(path, fileSize, diag));
 
-    std::thread worker(&worker_read_file_to_vector, &task, path, &vec, &diag);
+    std::thread worker(&worker_read_file_to_vector, &task, path, &vec);
 
     bool success;
     size_t bytesRead;
@@ -100,15 +96,15 @@ TEST_CASE("ReadFileTask vector" * doctest::skip(!LudensLFS::get_directory_path()
     worker.join();
 }
 
-TEST_CASE("WriteFileTask empty view" * doctest::skip(!LudensLFS::get_directory_path()))
+TEST_CASE("WriteFileAsync empty view" * doctest::skip(!LudensLFS::get_directory_path()))
 {
     Diagnostics diag;
-    FS::WriteFileTask task;
+    FS::WriteFileAsync task;
     FS::Path path = "definitelyDoesNotExist.txt";
     REQUIRE(!FS::exists(path));
 
     View emptyView{};
-    std::thread worker(&worker_write_file, &task, path, emptyView, &diag);
+    std::thread worker(&worker_write_file, &task, path, emptyView);
 
     bool success;
     size_t bytesWritten;
@@ -123,17 +119,16 @@ TEST_CASE("WriteFileTask empty view" * doctest::skip(!LudensLFS::get_directory_p
     worker.join();
 }
 
-TEST_CASE("WriteFileTask" * doctest::skip(!LudensLFS::get_directory_path()))
+TEST_CASE("WriteFileAsync" * doctest::skip(!LudensLFS::get_directory_path()))
 {
-    Diagnostics diag;
-    FS::WriteFileTask task;
+    FS::WriteFileAsync task;
     FS::Path path = "foo.txt";
     REQUIRE(!FS::exists(path));
 
     std::string str = "foo";
     View view(str.data(), str.size());
     
-    std::thread worker(&worker_write_file, &task, path, view, &diag);
+    std::thread worker(&worker_write_file, &task, path, view);
 
     bool success;
     size_t bytesWritten;

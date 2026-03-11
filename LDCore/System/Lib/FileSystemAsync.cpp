@@ -17,24 +17,22 @@ enum TaskStatus : uint32_t
     TASK_STATUS_FAILURE = 3,
 };
 
-ReadFileTask::ReadFileTask()
+ReadFileAsync::ReadFileAsync()
     : mStatus(TASK_STATUS_IDLE)
 {
 }
 
-void ReadFileTask::begin(const Path& filePath, const MutView& view, Diagnostics& diag)
+void ReadFileAsync::begin(const Path& filePath, const MutView& view)
 {
     LD_PROFILE_SCOPE;
 
-    DiagnosticScope scope(diag, "ReadFileTask read file to view");
-
-    mDiag = &diag;
+    DiagnosticScope scope(mDiag, "ReadFileAsync read file to view");
 
     std::ifstream file(filePath, std::ios::binary);
 
     if (!file.is_open())
     {
-        diag.mark_error(std::format("failed to open [{}]", filePath.string()));
+        mDiag.mark_error(std::format("failed to open [{}]", filePath.string()));
         mStatus.store(TASK_STATUS_FAILURE);
         return;
     }
@@ -49,7 +47,7 @@ void ReadFileTask::begin(const Path& filePath, const MutView& view, Diagnostics&
     }
     else if (fileSize > view.size)
     {
-        diag.mark_error(std::format("cant read file of size {} into view of size {}", fileSize, view.size));
+        mDiag.mark_error(std::format("cant read file of size {} into view of size {}", fileSize, view.size));
         mStatus.store(TASK_STATUS_FAILURE);
         return;
     }
@@ -80,16 +78,16 @@ void ReadFileTask::begin(const Path& filePath, const MutView& view, Diagnostics&
     mStatus.store(TASK_STATUS_SUCCESS);
 }
 
-void ReadFileTask::begin(const Path& filePath, Vector<byte>& vector, Diagnostics& diag)
+void ReadFileAsync::begin(const Path& filePath, Vector<byte>& vector)
 {
-    DiagnosticScope scope(diag, "ReadFileTask read file to vector");
+    DiagnosticScope scope(mDiag, "ReadFileAsync read file to vector");
     
     uint64_t fileSize;
     std::string err;
 
     if (!FS::get_file_size(filePath, fileSize, err))
     {
-        diag.mark_error(err);
+        mDiag.mark_error(err);
         mStatus.store(TASK_STATUS_FAILURE);
         return;
     }
@@ -97,10 +95,10 @@ void ReadFileTask::begin(const Path& filePath, Vector<byte>& vector, Diagnostics
     vector.resize(fileSize);
     MutView view((char*)vector.data(), vector.size());
 
-    begin(filePath, view, diag);
+    begin(filePath, view);
 }
 
-float ReadFileTask::progress() const
+float ReadFileAsync::progress() const
 {
     size_t fileSize = mFileSize.load();
 
@@ -110,7 +108,7 @@ float ReadFileTask::progress() const
     return (float)mBytesRead.load() / (float)fileSize;
 }
 
-bool ReadFileTask::has_completed(bool& success, size_t& bytesRead) const
+bool ReadFileAsync::has_completed(bool& success, size_t& bytesRead) const
 {
     TaskStatus status = (TaskStatus)mStatus.load();
 
@@ -132,18 +130,16 @@ bool ReadFileTask::has_completed(bool& success, size_t& bytesRead) const
     return status == TASK_STATUS_SUCCESS || status == TASK_STATUS_FAILURE;
 }
 
-WriteFileTask::WriteFileTask()
+WriteFileAsync::WriteFileAsync()
     : mStatus(TASK_STATUS_IDLE)
 {
 }
 
-void WriteFileTask::begin(const Path& filePath, const View& view, Diagnostics& diag)
+void WriteFileAsync::begin(const Path& filePath, const View& view)
 {
     LD_PROFILE_SCOPE;
 
-    DiagnosticScope scope(diag, "WriteFileTask::begin");
-
-    mDiag = &diag;
+    DiagnosticScope scope(mDiag, "WriteFileAsync::begin");
 
     if (!view.data || view.size == 0)
     {
@@ -155,7 +151,7 @@ void WriteFileTask::begin(const Path& filePath, const View& view, Diagnostics& d
 
     if (!file.is_open())
     {
-        diag.mark_error(std::format("failed to open [{}]", filePath.string()));
+        mDiag.mark_error(std::format("failed to open [{}]", filePath.string()));
         mStatus.store(TASK_STATUS_FAILURE);
         return;
     }
@@ -183,7 +179,7 @@ void WriteFileTask::begin(const Path& filePath, const View& view, Diagnostics& d
     mStatus.store(TASK_STATUS_SUCCESS);
 }
 
-float WriteFileTask::progress() const
+float WriteFileAsync::progress() const
 {
     if (mFileSize == 0)
         return 0.0f;
@@ -191,7 +187,7 @@ float WriteFileTask::progress() const
     return (float)mBytesWritten.load() / (float)mFileSize;
 }
 
-bool WriteFileTask::has_completed(bool& success, size_t& bytesWritten) const
+bool WriteFileAsync::has_completed(bool& success, size_t& bytesWritten) const
 {
     TaskStatus status = (TaskStatus)mStatus.load();
 
