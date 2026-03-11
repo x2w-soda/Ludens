@@ -213,20 +213,18 @@ void EditorContextObj::load_project(const FS::Path& projectSchemaPath)
     LD_PROFILE_SCOPE;
 
     this->projectSchemaPath = projectSchemaPath;
-    const FS::Path projectDirPath = projectSchemaPath.parent_path();
 
     std::string err;
-    project = Project::create(projectDirPath);
+    project = Project::create();
     bool ok = ProjectSchema::load_project_from_file(project, projectSchemaPath, err);
     LD_ASSERT(ok); // TODO:
 
     projectName = project.get_name();
 
-    FS::Path assetsPath = project.get_assets_path();
-    sLog.info("loading project [{}], root directory {}", projectName, projectDirPath.string());
+    const FS::Path rootPath = project.get_root_path();
+    sLog.info("loading project [{}], root directory {}", projectName, rootPath.string());
 
-    assetSchemaPath = assetsPath;
-
+    assetSchemaPath = project.get_asset_schema_absolute_path();
     if (!FS::exists(assetSchemaPath))
     {
         sLog.warn("failed to find project assets {}", assetSchemaPath.string());
@@ -239,7 +237,7 @@ void EditorContextObj::load_project(const FS::Path& projectSchemaPath)
     }
 
     AssetManagerInfo amI{};
-    amI.rootPath = projectDirPath;
+    amI.rootPath = rootPath;
     amI.watchAssets = true;
     amI.assetSchemaPath = assetSchemaPath;
     assetManager = AssetManager::create(amI);
@@ -251,7 +249,7 @@ void EditorContextObj::load_project(const FS::Path& projectSchemaPath)
     assetManager.load_all_assets();
     assetManager.end_load_batch();
 
-    project.get_scene_paths(scenePaths);
+    project.get_scene_absolute_paths(scenePaths);
 
     for (const FS::Path& scenePath : scenePaths)
     {

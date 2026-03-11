@@ -8,17 +8,16 @@ namespace LD {
 
 struct ProjectObj
 {
-    std::string name;                 /// project name, user defined
-    std::vector<FS::Path> scenePaths; /// relative paths to project schemas
-    FS::Path assetsPath;              /// relative path to project assets schema
-    FS::Path rootPath;                /// project root path
-    ProjectSettings settings;         /// project-wide settings
+    std::string name;            /// project name, user defined
+    Vector<FS::Path> scenePaths; /// relative paths to project schemas
+    FS::Path assetSchemaPath;    /// relative path to asset schema file
+    FS::Path projectSchemaPath;  /// absolute path to project schema file
+    ProjectSettings settings;    /// project-wide settings
 };
 
-Project Project::create(const FS::Path& rootPath)
+Project Project::create()
 {
     ProjectObj* obj = heap_new<ProjectObj>(MEMORY_USAGE_MISC);
-    obj->rootPath = rootPath;
     obj->settings = ProjectSettings::create();
 
     return Project(obj);
@@ -44,42 +43,48 @@ void Project::set_name(const std::string& name)
     mObj->name = name;
 }
 
-std::string Project::get_name() const
+std::string Project::get_name()
 {
     return mObj->name;
 }
 
-FS::Path Project::get_root_path() const
+FS::Path Project::get_root_path()
 {
-    return mObj->rootPath;
+    return mObj->projectSchemaPath.parent_path();
 }
 
-void Project::set_assets_path(const std::filesystem::path& assetsPath)
+void Project::set_schema_path(const FS::Path& projectSchemaPath)
 {
-    mObj->assetsPath = assetsPath;
-
-    // SPACE: error handling if Asset schema is not found.
+    mObj->projectSchemaPath = projectSchemaPath.lexically_normal();
 }
 
-std::filesystem::path Project::get_assets_path() const
+FS::Path Project::get_schema_path()
 {
-    return (mObj->rootPath / mObj->assetsPath).lexically_normal();
+    return mObj->projectSchemaPath;
 }
 
-void Project::add_scene_path(const std::filesystem::path& scenePath)
+void Project::set_asset_schema_path(const FS::Path& assetSchemaPath)
 {
-    mObj->scenePaths.push_back(scenePath);
-
-    // SPACE: error handling if Scene schema is not found.
+    mObj->assetSchemaPath = assetSchemaPath.lexically_normal();
 }
 
-void Project::get_scene_paths(std::vector<std::filesystem::path>& scenePaths) const
+FS::Path Project::get_asset_schema_path()
+{
+    return mObj->assetSchemaPath;
+}
+
+void Project::add_scene_path(const FS::Path& scenePath)
+{
+    mObj->scenePaths.push_back(scenePath.lexically_normal());
+}
+
+void Project::get_scene_paths(Vector<FS::Path>& scenePaths)
 {
     scenePaths.resize(mObj->scenePaths.size());
 
     for (size_t i = 0; i < mObj->scenePaths.size(); i++)
     {
-        scenePaths[i] = (mObj->rootPath / mObj->scenePaths[i]).lexically_normal();
+        scenePaths[i] = mObj->scenePaths[i];
     }
 }
 

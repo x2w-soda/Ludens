@@ -120,7 +120,7 @@ RuntimeContext RuntimeContext::create(const RuntimeContextInfo& info)
     const std::string windowName = startupS.get_window_name();
     const FS::Path rootPath = obj->project.get_root_path();
     const FS::Path defaultScenePath = rootPath / FS::Path(startupS.get_default_scene_path());
-    const FS::Path assetSchemaPath = rootPath / obj->project.get_assets_path();
+    const FS::Path assetSchemaPath = obj->project.get_asset_schema_absolute_path();
 
     WindowInfo windowI{};
     windowI.width = startupS.get_window_width();

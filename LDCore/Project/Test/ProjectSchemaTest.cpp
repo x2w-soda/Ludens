@@ -26,22 +26,27 @@ window_width = 1234
 window_height = 5678
 window_name = 'Foo'
 )";
-    Project proj = Project::create(FS::Path("./directory"));
     std::string err;
-    bool ok = ProjectSchema::load_project_from_source(proj, View(schemaTOML, sizeof(schemaTOML) - 1), err);
-    CHECK(ok);
+    Project proj = Project::create();
+    CHECK(ProjectSchema::load_project_from_source(proj, FS::Path("./"), View(schemaTOML, sizeof(schemaTOML) - 1), err));
 
     CHECK(proj.get_name() == "hello world");
 
-    FS::Path assetsPath = proj.get_assets_path();
-    CHECK(assetsPath == FS::Path("directory/assets.toml"));
+    FS::Path path = proj.get_root_path();
+    CHECK(path.empty());
 
-    std::vector<FS::Path> scenePaths;
-    proj.get_scene_paths(scenePaths);
+    path = proj.get_asset_schema_path();
+    CHECK(path == FS::Path("assets.toml"));
+
+    path = proj.get_asset_schema_absolute_path();
+    CHECK(path == FS::Path("assets.toml"));
+
+    Vector<FS::Path> scenePaths;
+    proj.get_scene_absolute_paths(scenePaths);
     CHECK(scenePaths.size() == 3);
-    CHECK(scenePaths[0] == FS::Path("directory/scenes/scene1.toml"));
-    CHECK(scenePaths[1] == FS::Path("directory/scenes/scene2.toml"));
-    CHECK(scenePaths[2] == FS::Path("directory/scenes/scene3.toml"));
+    CHECK(scenePaths[0] == FS::Path("scenes/scene1.toml"));
+    CHECK(scenePaths[1] == FS::Path("scenes/scene2.toml"));
+    CHECK(scenePaths[2] == FS::Path("scenes/scene3.toml"));
 
     ProjectStartupSettings startupS = proj.get_settings().get_startup_settings();
     CHECK(startupS.get_window_width() == 1234);

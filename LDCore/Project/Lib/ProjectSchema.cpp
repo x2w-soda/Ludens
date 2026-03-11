@@ -91,7 +91,7 @@ bool ProjectSchemaLoader::load_project(Project project, const View& toml, std::s
     if (!mReader.read_string(PROJECT_SCHEMA_KEY_ASSETS, str))
         return false;
 
-    project.set_assets_path(FS::Path(str));
+    project.set_asset_schema_path(FS::Path(str));
 
     int sceneCount = 0;
     if (mReader.enter_array(PROJECT_SCHEMA_KEY_SCENES, sceneCount))
@@ -219,15 +219,20 @@ void ProjectSchemaSaver::save_project_screen_layer_settings(ProjectScreenLayerSe
 // Public API
 //
 
-bool ProjectSchema::load_project_from_source(Project project, const View& toml, std::string& err)
+bool ProjectSchema::load_project_from_source(Project project, const FS::Path& rootDir, const View& toml, std::string& err)
 {
     LD_PROFILE_SCOPE;
 
-    ProjectSchemaLoader loader;
-    if (!loader.load_project(project, toml, err))
+    if (!FS::is_directory(rootDir))
+    {
+        err = std::format("invalid root directory [{}]", rootDir.string());
         return false;
+    }
 
-    return true;
+    project.set_schema_path(rootDir / FS::Path("project.toml"));
+
+    ProjectSchemaLoader loader;
+    return loader.load_project(project, toml, err);
 }
 
 bool ProjectSchema::load_project_from_file(Project project, const FS::Path& tomlPath, std::string& err)
@@ -238,8 +243,10 @@ bool ProjectSchema::load_project_from_file(Project project, const FS::Path& toml
     if (!FS::read_file_to_vector(tomlPath, toml, err))
         return false;
 
-    View tomlView((const char*)toml.data(), toml.size());
-    return load_project_from_source(project, tomlView, err);
+    project.set_schema_path(tomlPath);
+
+    ProjectSchemaLoader loader;
+    return loader.load_project(project, View((const char*)toml.data(), toml.size()), err);
 }
 
 bool ProjectSchema::save_project(Project project, const FS::Path& savePath, std::string& err)

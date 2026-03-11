@@ -12,7 +12,7 @@ namespace LD {
 struct Project : Handle<struct ProjectObj>
 {
     /// @brief Create empty project.
-    static Project create(const FS::Path& rootPath);
+    static Project create();
 
     /// @brief Destroy project.
     static void destroy(Project project);
@@ -27,26 +27,45 @@ struct Project : Handle<struct ProjectObj>
     void set_name(const std::string& name);
 
     /// @brief Get project name.
-    std::string get_name() const;
+    std::string get_name();
 
-    /// @brief Get path to directory containing Project schema.
-    FS::Path get_root_path() const;
+    /// @brief Get absolute path to directory containing Project schema.
+    FS::Path get_root_path();
 
-    /// @brief Set relative path to project Assets schema.
-    /// @param assetsPath Relative path to project root.
-    void set_assets_path(const FS::Path& assetsPath);
+    /// @brief Set absolute path to project schema.
+    void set_schema_path(const FS::Path& projectSchemaPath);
 
-    /// @brief Get path to Assets schema.
+    /// @brief Get absolute path to project schema.
+    FS::Path get_schema_path();
+
+    /// @brief Set relative path to asset schema.
+    void set_asset_schema_path(const FS::Path& assetSchemaPath);
+
+    /// @brief Get relative path to asset schema.
     /// @return Path to Assets schema after concatenating project root path.
-    FS::Path get_assets_path() const;
+    FS::Path get_asset_schema_path();
+
+    /// @brief Get absolute path to asset schema.
+    inline FS::Path get_asset_schema_absolute_path()
+    {
+        return get_root_path() / get_asset_schema_path();
+    }
 
     /// @brief Add relative path to a Scene schema.
     /// @param scenePath Relative path to project root.
     void add_scene_path(const FS::Path& scenePath);
 
-    /// @brief Get paths to scene schemas.
+    /// @brief Get relative paths to scene schemas.
     /// @param scenePaths Outputs paths to scene schemas after concatenating project root path.
-    void get_scene_paths(std::vector<FS::Path>& scenePaths) const;
+    void get_scene_paths(Vector<FS::Path>& scenePaths);
+
+    void get_scene_absolute_paths(Vector<FS::Path>& scenePaths)
+    {
+        const FS::Path rootPath = get_root_path();
+        get_scene_paths(scenePaths);
+        for (size_t i = 0; i < scenePaths.size(); i++)
+            scenePaths[i] = rootPath / scenePaths[i];
+    }
 
     /// @brief Get interface to project settings.
     ProjectSettings get_settings();

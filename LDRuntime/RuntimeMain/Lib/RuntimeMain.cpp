@@ -93,8 +93,7 @@ int main(int argc, char** argv)
     }
 
     std::string err;
-    FS::Path projectRootPath = projectSchemaPath.parent_path();
-    Project project = Project::create(projectRootPath);
+    Project project = Project::create();
     bool ok = ProjectSchema::load_project_from_file(project, projectSchemaPath, err);
     LD_ASSERT(ok); // TODO:
 
