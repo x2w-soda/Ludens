@@ -12,9 +12,29 @@ namespace fs = std::filesystem;
 namespace LD {
 namespace FS {
 
+static fs::copy_options get_copy_options(CopyOptionBits opt)
+{
+    fs::copy_options options = fs::copy_options::none;
+
+    if (opt & COPY_OPTION_OVERWRITE_EXISTING_BIT)
+        options |= fs::copy_options::overwrite_existing;
+
+    return options;
+}
+
+Path absolute(const Path& path)
+{
+    return fs::absolute(path);
+}
+
 Path current_path()
 {
     return fs::current_path();
+}
+
+Path temp_directory_path()
+{
+    return fs::temp_directory_path();
 }
 
 bool get_directory_content(const Path& directory, Vector<Path>& contents, std::string& err)
@@ -96,6 +116,23 @@ bool get_positive_file_size(const Path& path, uint64_t& size, Diagnostics& diag)
     }
 
     return true;
+}
+
+bool copy_file(const Path& src, const Path& dst, CopyOptionBits options, std::string& err)
+{
+    bool success = false;
+
+    try
+    {
+        success = fs::copy_file(src, dst, get_copy_options(options));
+    }
+    catch (const std::filesystem::filesystem_error& e)
+    {
+        err = std::format("copy_file failed with: {}", src.string(), dst.string(), e.what());
+        return false;
+    }
+
+    return success;
 }
 
 uint64_t read_file(const Path& path, const MutView& view, std::string& err)
@@ -283,11 +320,30 @@ bool is_directory(const Path& path)
     return fs::exists(path) && fs::is_directory(path);
 }
 
-bool remove(const FS::Path& path, std::string& err)
+bool create_directories(const Path& path, std::string& err)
 {
+    bool success = false;
+
     try
     {
-        fs::remove(path);
+        success = fs::create_directories(path);
+    }
+    catch (const std::filesystem::filesystem_error& e)
+    {
+        err = std::format("create_directories failed with {}", e.what());
+        return false;
+    }
+
+    return success;
+}
+
+bool remove(const FS::Path& path, std::string& err)
+{
+    bool success = false;
+
+    try
+    {
+        success = fs::remove(path);
     }
     catch (const std::filesystem::filesystem_error& e)
     {
@@ -295,7 +351,7 @@ bool remove(const FS::Path& path, std::string& err)
         return false;
     }
 
-    return true;
+    return success;
 }
 
 void filter_files_by_extension(Vector<FS::Path>& paths, const char* extension)

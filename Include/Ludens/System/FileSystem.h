@@ -14,10 +14,21 @@ class Diagnostics;
 
 namespace FS {
 
+enum CopyOptionBits
+{
+    COPY_OPTION_OVERWRITE_EXISTING_BIT = 1,
+};
+
 using Path = std::filesystem::path;
+
+/// @brief Get absolute path.
+Path absolute(const Path& path);
 
 /// @brief Get current working directory of the process.
 Path current_path();
+
+/// @brief Get a directory suitable for temporary files. The path is guaranteed to exist and to be a directory.
+Path temp_directory_path();
 
 /// @brief Query the contents of a directory, non-recursively.
 /// @param directory Path to directory to query.
@@ -34,6 +45,10 @@ bool get_file_size(const Path& path, uint64_t& size, Diagnostics& diag);
 
 /// @brief Wrapper of get_file_size where an empty file is considered an error.
 bool get_positive_file_size(const Path& path, uint64_t& size, Diagnostics& diag);
+
+/// @brief Copy file from source to destination.
+/// @return True on success.
+bool copy_file(const Path& src, const Path& dst, CopyOptionBits options, std::string& err);
 
 /// @brief Read whole file into user provided view.
 /// @return Number of bytes read on success.
@@ -67,6 +82,9 @@ bool exists(const Path& path);
 
 /// @brief Check if path exists and is a directory.
 bool is_directory(const Path& path);
+
+/// @brief Create directories along path, does nothing if target directory already exists.
+bool create_directories(const Path& path, std::string& err);
 
 /// @brief Try removing file or directory at path.
 bool remove(const FS::Path& path, std::string& err);
