@@ -42,7 +42,7 @@ window_name = 'Foo'
     CHECK(path == FS::Path("assets.toml"));
 
     Vector<FS::Path> scenePaths;
-    proj.get_scene_absolute_paths(scenePaths);
+    proj.get_scene_schema_absolute_paths(scenePaths);
     CHECK(scenePaths.size() == 3);
     CHECK(scenePaths[0] == FS::Path("scenes/scene1.toml"));
     CHECK(scenePaths[1] == FS::Path("scenes/scene2.toml"));

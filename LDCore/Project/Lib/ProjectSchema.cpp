@@ -48,7 +48,7 @@ public:
     bool load_project(Project project, const View& toml, std::string& err);
 
 private:
-    void load_project_settings(ProjectSettings settings);
+    bool load_project_settings(ProjectSettings settings, std::string& err);
     void load_project_startup_settings(ProjectStartupSettings settings);
     void load_project_screen_layer_settings(ProjectScreenLayerSettings settings);
 
@@ -66,6 +66,7 @@ ProjectSchemaLoader::~ProjectSchemaLoader()
 bool ProjectSchemaLoader::load_project(Project project, const View& toml, std::string& err)
 {
     mReader = TOMLReader::create(toml, err);
+    mProject = project;
 
     if (!mReader || !mReader.enter_table(PROJECT_SCHEMA_KEY_LUDENS_PROJECT))
         return false;
@@ -91,40 +92,82 @@ bool ProjectSchemaLoader::load_project(Project project, const View& toml, std::s
     if (!mReader.read_string(PROJECT_SCHEMA_KEY_ASSETS, str))
         return false;
 
+    mReader.exit();
+
     project.set_asset_schema_path(FS::Path(str));
 
+    bool isValid = true;
+    uint32_t u32;
+    ProjectSceneEntry sceneEntry;
     int sceneCount = 0;
-    if (mReader.enter_array(PROJECT_SCHEMA_KEY_SCENES, sceneCount))
+    if (mReader.enter_array(PROJECT_SCHEMA_KEY_SCENE, sceneCount))
     {
-        for (int i = 0; i < sceneCount; i++)
+        for (int i = 0; isValid && i < sceneCount; i++)
         {
-            if (mReader.read_string(i, str))
-                project.add_scene_path(FS::Path(str));
+            if (!mReader.enter_table(i))
+                continue; // ignore
+
+            if (!mReader.read_string(PROJECT_SCHEMA_KEY_SCENE_NAME, sceneEntry.name))
+            {
+                mReader.exit();
+                continue;
+            }
+
+            if (!mReader.read_string(PROJECT_SCHEMA_KEY_SCENE_PATH, str))
+            {
+                mReader.exit();
+                continue;
+            }
+
+            sceneEntry.path = str;
+
+            if (!mReader.read_u32(PROJECT_SCHEMA_KEY_SCENE_ID, u32))
+            {
+                mReader.exit();
+                continue;
+            }
+
+            sceneEntry.id = SUID(u32);
+
+            // conflicting scene entry makes the entire project schema invalid
+            if (!project.add_scene(sceneEntry, err))
+                isValid = false;
+
+            mReader.exit();
         }
         mReader.exit();
     }
 
-    mReader.exit();
+    if (!isValid)
+        return false;
 
     if (mReader.enter_table(PROJECT_SCHEMA_TABLE_SETTINGS))
     {
-        load_project_settings(project.get_settings());
+        isValid = load_project_settings(project.get_settings(), err);
         mReader.exit();
     }
 
     TOMLReader::destroy(mReader);
     mReader = {};
 
-    return true;
+    return isValid;
 }
 
-void ProjectSchemaLoader::load_project_settings(ProjectSettings settings)
+bool ProjectSchemaLoader::load_project_settings(ProjectSettings settings, std::string& err)
 {
     if (mReader.enter_table(PROJECT_SCHEMA_TABLE_STARTUP))
     {
         ProjectStartupSettings startup = settings.get_startup_settings();
         load_project_startup_settings(startup);
         mReader.exit();
+
+        ProjectSceneEntry dftScene;
+        SUID dftSceneID = startup.get_default_scene_id();
+        if (!mProject.get_scene(dftSceneID, dftScene))
+        {
+            err = std::format("project startup settings: default_scene_id {} does not exist", dftSceneID);
+            return false;
+        }
     }
 
     if (mReader.enter_table(PROJECT_SCHEMA_TABLE_SCREEN_LAYER))
@@ -133,6 +176,8 @@ void ProjectSchemaLoader::load_project_settings(ProjectSettings settings)
         load_project_screen_layer_settings(screenLayer);
         mReader.exit();
     }
+
+    return true;
 }
 
 void ProjectSchemaLoader::load_project_startup_settings(ProjectStartupSettings settings)
@@ -149,9 +194,9 @@ void ProjectSchemaLoader::load_project_startup_settings(ProjectStartupSettings s
     mReader.read_string(PROJECT_SCHEMA_KEY_STARTUP_WINDOW_NAME, windowName);
     settings.set_window_name(windowName);
 
-    std::string defaultScenePath = DEFAULT_STARTUP_DEFAULT_SCENE_PATH;
-    mReader.read_string(PROJECT_SCHEMA_KEY_DEFAULT_SCENE_PATH, defaultScenePath);
-    settings.set_default_scene_path(defaultScenePath);
+    uint32_t u32 = 0;
+    mReader.read_u32(PROJECT_SCHEMA_KEY_DEFAULT_SCENE_ID, u32);
+    settings.set_default_scene_id((SUID)u32);
 }
 
 void ProjectSchemaLoader::load_project_screen_layer_settings(ProjectScreenLayerSettings settings)
@@ -207,7 +252,7 @@ void ProjectSchemaSaver::save_project_startup_settings(ProjectStartupSettings se
     writer.key(PROJECT_SCHEMA_KEY_STARTUP_WINDOW_WIDTH).write_u32(settings.get_window_width());
     writer.key(PROJECT_SCHEMA_KEY_STARTUP_WINDOW_HEIGHT).write_u32(settings.get_window_height());
     writer.key(PROJECT_SCHEMA_KEY_STARTUP_WINDOW_NAME).write_string(settings.get_window_name());
-    writer.key(PROJECT_SCHEMA_KEY_DEFAULT_SCENE_PATH).write_string(settings.get_default_scene_path());
+    writer.key(PROJECT_SCHEMA_KEY_DEFAULT_SCENE_ID).write_u32(settings.get_default_scene_id());
 }
 
 void ProjectSchemaSaver::save_project_screen_layer_settings(ProjectScreenLayerSettings settings, TOMLWriter writer)
@@ -229,7 +274,7 @@ bool ProjectSchema::load_project_from_source(Project project, const FS::Path& ro
         return false;
     }
 
-    project.set_schema_path(rootDir / FS::Path("project.toml"));
+    project.set_project_schema_path(rootDir / FS::Path("project.toml"));
 
     ProjectSchemaLoader loader;
     return loader.load_project(project, toml, err);
@@ -243,7 +288,7 @@ bool ProjectSchema::load_project_from_file(Project project, const FS::Path& toml
     if (!FS::read_file_to_vector(tomlPath, toml, err))
         return false;
 
-    project.set_schema_path(tomlPath);
+    project.set_project_schema_path(tomlPath);
 
     ProjectSchemaLoader loader;
     return loader.load_project(project, View((const char*)toml.data(), toml.size()), err);

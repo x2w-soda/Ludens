@@ -3,10 +3,17 @@
 #include <Ludens/Header/Handle.h>
 #include <Ludens/Project/ProjectSettings.h>
 #include <Ludens/System/FileSystem.h>
-#include <filesystem>
+
 #include <string>
 
 namespace LD {
+
+struct ProjectSceneEntry
+{
+    FS::Path path;    // relative path to the SceneSchema file
+    std::string name; // user facing display name
+    SUID id;          // stable ID to refer to the Scene
+};
 
 /// @brief Ludens project handle.
 struct Project : Handle<struct ProjectObj>
@@ -33,10 +40,10 @@ struct Project : Handle<struct ProjectObj>
     FS::Path get_root_path();
 
     /// @brief Set absolute path to project schema.
-    void set_schema_path(const FS::Path& projectSchemaPath);
+    void set_project_schema_path(const FS::Path& projectSchemaPath);
 
     /// @brief Get absolute path to project schema.
-    FS::Path get_schema_path();
+    FS::Path get_project_schema_path();
 
     /// @brief Set relative path to asset schema.
     void set_asset_schema_path(const FS::Path& assetSchemaPath);
@@ -51,18 +58,20 @@ struct Project : Handle<struct ProjectObj>
         return get_root_path() / get_asset_schema_path();
     }
 
-    /// @brief Add relative path to a Scene schema.
-    /// @param scenePath Relative path to project root.
-    void add_scene_path(const FS::Path& scenePath);
+    /// @brief Add a Scene entry to the project. May be rejected if SUID is already registered.
+    bool add_scene(const ProjectSceneEntry& entry, std::string& err);
+
+    /// @brief Get scene entry by ID, may fail for invalid ID.
+    bool get_scene(SUID sceneID, ProjectSceneEntry& outEntry);
 
     /// @brief Get relative paths to scene schemas.
     /// @param scenePaths Outputs paths to scene schemas after concatenating project root path.
-    void get_scene_paths(Vector<FS::Path>& scenePaths);
+    void get_scene_schema_paths(Vector<FS::Path>& scenePaths);
 
-    void get_scene_absolute_paths(Vector<FS::Path>& scenePaths)
+    void get_scene_schema_absolute_paths(Vector<FS::Path>& scenePaths)
     {
         const FS::Path rootPath = get_root_path();
-        get_scene_paths(scenePaths);
+        get_scene_schema_paths(scenePaths);
         for (size_t i = 0; i < scenePaths.size(); i++)
             scenePaths[i] = rootPath / scenePaths[i];
     }

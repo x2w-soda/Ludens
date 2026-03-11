@@ -15,7 +15,7 @@ struct ProjectStartupSettingsObj
     uint32_t windowWidth = DEFAULT_STARTUP_WINDOW_WIDTH;
     uint32_t windowHeight = DEFAULT_STARTUP_WINDOW_HEIGHT;
     std::string windowName = DEFAULT_STARTUP_WINDOW_NAME;
-    std::string defaultScenePath = DEFAULT_STARTUP_DEFAULT_SCENE_PATH;
+    SUID defaultSceneID = (SUID)0;
 };
 
 struct ProjectRenderingSettingsObj
@@ -78,14 +78,14 @@ void ProjectStartupSettings::set_window_name(const std::string& name)
     mObj->startup.windowName = name;
 }
 
-std::string ProjectStartupSettings::get_default_scene_path()
+SUID ProjectStartupSettings::get_default_scene_id()
 {
-    return mObj->startup.defaultScenePath;
+    return mObj->startup.defaultSceneID;
 }
 
-void ProjectStartupSettings::set_default_scene_path(const std::string& scenePath)
+void ProjectStartupSettings::set_default_scene_id(SUID id)
 {
-    mObj->startup.defaultScenePath = scenePath;
+    mObj->startup.defaultSceneID = id;
 }
 
 Vec4 ProjectRenderingSettings::get_clear_color()

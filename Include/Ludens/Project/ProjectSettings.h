@@ -3,6 +3,7 @@
 #include <Ludens/DSA/Vector.h>
 #include <Ludens/Header/Handle.h>
 #include <Ludens/Header/Math/Vec4.h>
+#include <Ludens/Serial/SUID.h>
 
 #include <cstdint>
 #include <string>
@@ -21,8 +22,8 @@ struct ProjectStartupSettings : Handle<struct ProjectSettingsObj>
     std::string get_window_name();
     void set_window_name(const std::string& name);
 
-    std::string get_default_scene_path();
-    void set_default_scene_path(const std::string& scenePath);
+    SUID get_default_scene_id();
+    void set_default_scene_id(SUID sceneID);
 };
 
 /// @brief Settings for default rendering options.

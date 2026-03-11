@@ -8,11 +8,11 @@ namespace LD {
 
 struct ProjectObj
 {
-    std::string name;            /// project name, user defined
-    Vector<FS::Path> scenePaths; /// relative paths to project schemas
-    FS::Path assetSchemaPath;    /// relative path to asset schema file
-    FS::Path projectSchemaPath;  /// absolute path to project schema file
-    ProjectSettings settings;    /// project-wide settings
+    std::string name;                 /// project name, user defined
+    Vector<ProjectSceneEntry> scenes; /// registered scenes in the project
+    FS::Path assetSchemaPath;         /// relative path to asset schema file
+    FS::Path projectSchemaPath;       /// absolute path to project schema file
+    ProjectSettings settings;         /// project-wide settings
 };
 
 Project Project::create()
@@ -53,12 +53,12 @@ FS::Path Project::get_root_path()
     return mObj->projectSchemaPath.parent_path();
 }
 
-void Project::set_schema_path(const FS::Path& projectSchemaPath)
+void Project::set_project_schema_path(const FS::Path& projectSchemaPath)
 {
     mObj->projectSchemaPath = projectSchemaPath.lexically_normal();
 }
 
-FS::Path Project::get_schema_path()
+FS::Path Project::get_project_schema_path()
 {
     return mObj->projectSchemaPath;
 }
@@ -73,18 +73,53 @@ FS::Path Project::get_asset_schema_path()
     return mObj->assetSchemaPath;
 }
 
-void Project::add_scene_path(const FS::Path& scenePath)
+bool Project::add_scene(const ProjectSceneEntry& entry, std::string& err)
 {
-    mObj->scenePaths.push_back(scenePath.lexically_normal());
+    if (!SUIDRegistry::try_get_suid(entry.id))
+    {
+        err = std::format("Scene SUID {} already registered", entry.id);
+        return false;
+    }
+
+    if (entry.path.empty())
+    {
+        err = "empty scene schema path";
+        return false;
+    }
+
+    if (entry.name.empty())
+    {
+        err = "empty scene name";
+        return false;
+    }
+
+    mObj->scenes.push_back(entry);
+    return true;
 }
 
-void Project::get_scene_paths(Vector<FS::Path>& scenePaths)
+bool Project::get_scene(SUID sceneID, ProjectSceneEntry& outEntry)
 {
-    scenePaths.resize(mObj->scenePaths.size());
+    if (!sceneID || sceneID.type() != SERIAL_TYPE_SCENE)
+        return false;
 
-    for (size_t i = 0; i < mObj->scenePaths.size(); i++)
+    auto it = std::find_if(mObj->scenes.begin(), mObj->scenes.end(), [&](const ProjectSceneEntry& entry) {
+        return entry.id == sceneID;
+    });
+
+    if (it == mObj->scenes.end())
+        return false;
+
+    outEntry = *it;
+    return true;
+}
+
+void Project::get_scene_schema_paths(Vector<FS::Path>& scenePaths)
+{
+    scenePaths.resize(mObj->scenes.size());
+
+    for (size_t i = 0; i < mObj->scenes.size(); i++)
     {
-        scenePaths[i] = mObj->scenePaths[i];
+        scenePaths[i] = mObj->scenes[i].path;
     }
 }
 
