@@ -64,6 +64,9 @@ struct Project : Handle<struct ProjectObj>
     /// @brief Get scene entry by ID, may fail for invalid ID.
     bool get_scene(SUID sceneID, ProjectSceneEntry& outEntry);
 
+    /// @brief Get all scene entries in project.
+    void get_scenes(Vector<ProjectSceneEntry>& outEntries);
+
     /// @brief Get relative paths to scene schemas.
     /// @param scenePaths Outputs paths to scene schemas after concatenating project root path.
     void get_scene_schema_paths(Vector<FS::Path>& scenePaths);
@@ -75,6 +78,9 @@ struct Project : Handle<struct ProjectObj>
         for (size_t i = 0; i < scenePaths.size(); i++)
             scenePaths[i] = rootPath / scenePaths[i];
     }
+
+    /// @brief Set relative path to a scene schema, has no effect for invalid ID.
+    void set_scene_schema_path(SUID sceneID, const FS::Path& scenePath);
 
     /// @brief Get interface to project settings.
     ProjectSettings get_settings();

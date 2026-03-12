@@ -102,15 +102,21 @@ bool Project::get_scene(SUID sceneID, ProjectSceneEntry& outEntry)
     if (!sceneID || sceneID.type() != SERIAL_TYPE_SCENE)
         return false;
 
-    auto it = std::find_if(mObj->scenes.begin(), mObj->scenes.end(), [&](const ProjectSceneEntry& entry) {
-        return entry.id == sceneID;
-    });
+    for (const ProjectSceneEntry& entry : mObj->scenes)
+    {
+        if (entry.id == sceneID)
+        {
+            outEntry = entry;
+            return true;
+        }
+    }
 
-    if (it == mObj->scenes.end())
-        return false;
+    return false;
+}
 
-    outEntry = *it;
-    return true;
+void Project::get_scenes(Vector<ProjectSceneEntry>& outEntries)
+{
+    outEntries = mObj->scenes;
 }
 
 void Project::get_scene_schema_paths(Vector<FS::Path>& scenePaths)
@@ -120,6 +126,21 @@ void Project::get_scene_schema_paths(Vector<FS::Path>& scenePaths)
     for (size_t i = 0; i < mObj->scenes.size(); i++)
     {
         scenePaths[i] = mObj->scenes[i].path;
+    }
+}
+
+void Project::set_scene_schema_path(SUID sceneID, const FS::Path& scenePath)
+{
+    if (!sceneID || sceneID.type() != SERIAL_TYPE_SCENE)
+        return;
+
+    for (ProjectSceneEntry& entry : mObj->scenes)
+    {
+        if (entry.id == sceneID)
+        {
+            entry.path = scenePath;
+            return;
+        }
     }
 }
 

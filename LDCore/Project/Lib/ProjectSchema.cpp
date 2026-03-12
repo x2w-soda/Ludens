@@ -212,6 +212,7 @@ ProjectSchemaSaver::~ProjectSchemaSaver()
 
 bool ProjectSchemaSaver::save_project(Project project, std::string& toml, std::string& err)
 {
+    mProject = project;
     mWriter = TOMLWriter::create();
     mWriter.begin();
 
@@ -219,7 +220,22 @@ bool ProjectSchemaSaver::save_project(Project project, std::string& toml, std::s
     mWriter.key(PROJECT_SCHEMA_KEY_VERSION_MAJOR).write_i32(LD_VERSION_MAJOR);
     mWriter.key(PROJECT_SCHEMA_KEY_VERSION_MINOR).write_i32(LD_VERSION_MINOR);
     mWriter.key(PROJECT_SCHEMA_KEY_VERSION_PATCH).write_i32(LD_VERSION_PATCH);
+    mWriter.key(PROJECT_SCHEMA_KEY_ASSETS).write_string(mProject.get_asset_schema_path().string());
+    mWriter.key(PROJECT_SCHEMA_KEY_NAME).write_string(mProject.get_name());
     mWriter.end_table();
+
+    Vector<ProjectSceneEntry> scenes;
+    mProject.get_scenes(scenes);
+    mWriter.begin_array_table(PROJECT_SCHEMA_KEY_SCENE);
+    for (const ProjectSceneEntry& scene : scenes)
+    {
+        mWriter.begin_table();
+        mWriter.key(PROJECT_SCHEMA_KEY_SCENE_ID).write_u32(scene.id);
+        mWriter.key(PROJECT_SCHEMA_KEY_SCENE_NAME).write_string(scene.name);
+        mWriter.key(PROJECT_SCHEMA_KEY_SCENE_PATH).write_string(scene.path.string());
+        mWriter.end_table();
+    }
+    mWriter.end_array_table();
 
     save_project_settings(project.get_settings(), mWriter);
 
@@ -294,13 +310,23 @@ bool ProjectSchema::load_project_from_file(Project project, const FS::Path& toml
     return loader.load_project(project, View((const char*)toml.data(), toml.size()), err);
 }
 
+bool ProjectSchema::save_project_to_string(Project project, std::string& saveTOML, std::string& err)
+{
+    LD_PROFILE_SCOPE;
+
+    ProjectSchemaSaver saver;
+    if (!saver.save_project(project, saveTOML, err))
+        return false;
+
+    return true;
+}
+
 bool ProjectSchema::save_project(Project project, const FS::Path& savePath, std::string& err)
 {
     LD_PROFILE_SCOPE;
 
     std::string toml;
-    ProjectSchemaSaver saver;
-    if (!saver.save_project(project, toml, err))
+    if (!save_project_to_string(project, toml, err))
         return false;
 
     View tomlView(toml.data(), toml.size());

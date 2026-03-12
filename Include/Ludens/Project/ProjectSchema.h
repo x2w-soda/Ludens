@@ -18,6 +18,9 @@ struct ProjectSchema
     /// @brief Load a project from TOML schema file on disk.
     static bool load_project_from_file(Project project, const FS::Path& tomlPath, std::string& err);
 
+    /// @brief Try saving project as TOML string.
+    static bool save_project_to_string(Project project, std::string& saveTOML, std::string& err);
+
     /// @brief Try saving project as TOML schema file on disk.
     static bool save_project(Project project, const FS::Path& savePath, std::string& err);
 };
