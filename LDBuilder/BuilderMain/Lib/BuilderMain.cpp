@@ -1,20 +1,23 @@
 #include <Ludens/CommandLine/ArgParser.h>
+#include <Ludens/DSA/Array.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Header/Platform.h>
 #include <Ludens/JobSystem/JobSystem.h>
 #include <Ludens/Log/Log.h>
+#include <Ludens/Project/ProjectSchema.h>
 #include <Ludens/System/FileSystem.h>
 #include <Ludens/System/Timer.h>
 #include <LudensBuilder/AssetUtil/AssetUtil.h>
 #include <LudensBuilder/AudioUtil/AudioUtil.h>
 #include <LudensBuilder/Document/Document.h>
 #include <LudensBuilder/MeshUtil/MeshUtil.h>
+#include <LudensBuilder/ProjectBuilder/ProjectBuilder.h>
 #include <LudensBuilder/RenderUtil/RenderUtil.h>
 #include <LudensBuilder/Win32Util/Win32Util.h>
 
-#include <array>
 #include <cstdlib>
 #include <cstring>
+#include <thread>
 
 #include "FileTest.h"
 #include "RunTests.h"
@@ -30,6 +33,7 @@ static void builder_mode_import(int argc, char** argv);
 static void builder_mode_render(int argc, char** argv);
 static void builder_mode_file(int argc, char** argv);
 static void builder_mode_run_tests(int argc, char** argv);
+static void builder_mode_build_project(int argc, char** argv);
 
 static Log sLog("LDBuilder");
 
@@ -40,6 +44,7 @@ enum BuilderMode
     BUILDER_MODE_RENDER,
     BUILDER_MODE_FILE,
     BUILDER_MODE_RUN_TESTS,
+    BUILDER_MODE_BUILD_PROJECT,
     BUILDER_MODE_WIN32,
 };
 
@@ -62,7 +67,7 @@ private:
 
 BuilderArgs::BuilderArgs(int argc, char** argv)
 {
-    std::array<ArgOption, 1> options;
+    Array<ArgOption, 1> options;
     options[0] = {
         .index = 0,
         .shortName = "h",
@@ -100,6 +105,11 @@ BuilderArgs::BuilderArgs(int argc, char** argv)
             else if (!strcmp(optPayload, "run_tests"))
             {
                 mMode = BUILDER_MODE_RUN_TESTS;
+                break;
+            }
+            else if (!strcmp(optPayload, "build_project"))
+            {
+                mMode = BUILDER_MODE_BUILD_PROJECT;
                 break;
             }
 #ifdef LD_PLATFORM_WIN32
@@ -282,6 +292,48 @@ static void builder_mode_run_tests(int argc, char** argv)
     sLog.info("{}/{} tests passed", passCount, testCount);
 }
 
+static void builder_mode_build_project(int argc, char** argv)
+{
+    argv = find_mode_argv(&argc, argv, "build_project");
+
+    if (argc != 2)
+    {
+        sLog.info("usage: {} <ProjectSchemaFile>", argv[0]);
+        return;
+    }
+
+    std::string str;
+    FS::Path projectSchemaFile(argv[1]);
+
+    BuildProjectAsync async = BuildProjectAsync::create();
+    LD_ASSERT(async);
+
+    ProjectBuildResult buildResult;
+    ProjectBuildError buildErr;
+    ProjectBuildConfig cfg{};
+    cfg.dstRootDirectory = FS::temp_directory_path() / FS::Path("Ludens");
+    cfg.srcProjectSchema = projectSchemaFile;
+
+    if (!async.begin(cfg, buildErr))
+    {
+        sLog.error("failed to begin build {}", buildErr.str);
+        BuildProjectAsync::destroy(async);
+        return;
+    }
+
+    while (!async.has_completed() || !async.get_result(buildResult))
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+
+    if (buildResult.success)
+        sLog.info("success");
+    else
+        sLog.info("failure");
+
+    BuildProjectAsync::destroy(async);
+}
+
 #ifdef LD_PLATFORM_WIN32
 static void builder_mode_win32(int argc, char** argv)
 {
@@ -352,6 +404,9 @@ int main(int argc, char** argv)
         break;
     case BUILDER_MODE_RUN_TESTS:
         builder_mode_run_tests(argc, argv);
+        break;
+    case BUILDER_MODE_BUILD_PROJECT:
+        builder_mode_build_project(argc, argv);
         break;
 #ifdef LD_PLATFORM_WIN32
     case BUILDER_MODE_WIN32:

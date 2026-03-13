@@ -137,6 +137,7 @@ add_subdirectory(LDBuilder/AudioUtil)
 add_subdirectory(LDBuilder/AssetUtil)
 add_subdirectory(LDBuilder/Win32Util)
 add_subdirectory(LDBuilder/MeshUtil)
+add_subdirectory(LDBuilder/ProjectBuilder)
 
 add_library(LDBuilderLibs INTERFACE)
 target_link_libraries(LDBuilderLibs INTERFACE
