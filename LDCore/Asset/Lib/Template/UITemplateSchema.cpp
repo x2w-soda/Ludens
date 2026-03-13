@@ -406,6 +406,7 @@ bool UITemplateSchemaLoader::load_widget_toml(UITemplateSchema::Error& err)
         entry->layout = {};
 
     sUITemplateSchemaTable[(int)entry->type].load_toml(*this, *entry);
+    return true;
 }
 
 bool UITemplateSchemaLoader::load_layout_toml(UILayoutInfo& layout)

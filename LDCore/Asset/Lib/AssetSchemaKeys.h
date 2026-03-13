@@ -5,6 +5,9 @@
 #define ASSET_SCHEMA_KEY_VERSION_MINOR "version_minor"
 #define ASSET_SCHEMA_KEY_VERSION_PATCH "version_patch"
 
+#define ASSET_SCHEMA_KEY_ENTRY "asset"
 #define ASSET_SCHEMA_KEY_ENTRY_ID "id"
 #define ASSET_SCHEMA_KEY_ENTRY_URI "uri"
 #define ASSET_SCHEMA_KEY_ENTRY_NAME "name"
+#define ASSET_SCHEMA_KEY_ENTRY_TYPE "type"
+#define ASSET_SCHEMA_KEY_ENTRY_EXTRA_URI "extra_uri"

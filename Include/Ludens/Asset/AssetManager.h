@@ -34,16 +34,16 @@ struct AssetManager : Handle<struct AssetManagerObj>
     void load_all_assets();
 
     /// @brief Append a load job to current patch.
-    void load_asset(AssetType type, SUID id, const FS::Path& path, const std::string& name);
+    void load_asset(AssetID id);
 
     /// @brief Begin asset load batch.
     void begin_load_batch();
 
     /// @brief End asset load batch.
-    void end_load_batch();
+    bool end_load_batch(Vector<std::string>& outErrors);
 
     /// @brief Get asset ID from name
-    SUID get_id_from_name(const char* name, AssetType* outType);
+    AssetID get_id_from_name(const char* name, AssetType* outType);
 
     /// @brief Get asset from ID
     Asset get_asset(AssetID id);

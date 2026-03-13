@@ -2,6 +2,9 @@
 #include <Ludens/Asset/Template/UITemplateSchema.h>
 #include <Ludens/Profiler/Profiler.h>
 
+#include <format>
+
+#include "../AssetMeta.h"
 #include "UITemplateAssetObj.h"
 
 namespace LD {
@@ -21,12 +24,20 @@ void UITemplateAssetObj::load(void* user)
     obj->tmpl = UITemplate::create();
 
     UITemplateSchema::Error schemaErr;
-    bool ok = UITemplateSchema::load_ui_template_from_source(obj->tmpl, fileView, schemaErr);
-    LD_ASSERT(ok); // TODO: asset load failure
+    if (!UITemplateSchema::load_ui_template_from_source(obj->tmpl, fileView, schemaErr))
+    {
+        job.diagnostics.mark_error(std::format("failed to load UITemplate: {}", schemaErr.str));
+        return;
+    }
 
-    FS::Path sourcePath = job.loadPath.replace_extension("lua");
+    FS::Path sourcePath = job.rootPath / FS::Path(job.assetEntry.get_extra_uri("source"));
+
     obj->luaSource = FS::read_file_to_cstr(sourcePath, err);
-    LD_ASSERT(ok);
+    if (!obj->luaSource)
+    {
+        job.diagnostics.mark_error(std::format("failed to load UITemplate script: {}", sourcePath.string()));
+        return;
+    }
 }
 
 void UITemplateAssetObj::unload(AssetObj* base)

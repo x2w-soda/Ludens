@@ -1,5 +1,7 @@
+#include <Ludens/Asset/Asset.h>
 #include <Ludens/Asset/AssetManager.h>
 #include <Ludens/Asset/AssetType/LuaScriptAsset.h>
+#include <Ludens/DSA/Vector.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/Serial/Serial.h>
@@ -7,8 +9,6 @@
 
 #include "../AssetMeta.h"
 #include "LuaScriptAssetObj.h"
-
-#include <vector>
 
 namespace LD {
 
@@ -20,7 +20,7 @@ void LuaScriptAssetObj::load(void* user)
     LuaScriptAssetObj* obj = (LuaScriptAssetObj*)job.assetHandle.unwrap();
 
     std::string err; // TODO:
-    std::vector<byte> file;
+    Vector<byte> file;
     if (!FS::read_file_to_vector(job.loadPath, file, err))
         return;
 
@@ -50,7 +50,7 @@ void LuaScriptAssetObj::load(void* user)
         }
     }
 
-    FS::Path sourcePath = job.loadPath.replace_extension(".lua");
+    FS::Path sourcePath = job.rootPath / FS::Path(job.assetEntry.get_extra_uri("source"));
     uint64_t fileSize;
     if (!FS::get_file_size(sourcePath, fileSize, err) || fileSize == 0)
         return;
@@ -142,7 +142,7 @@ void LuaScriptAssetImportJob::execute(void* user)
     obj->domain = self.info.domain;
 
     // source path is used only during this import process
-    std::vector<byte> file;
+    Vector<byte> file;
     std::string err; // TODO:
     if (FS::read_file_to_vector(self.info.sourcePath, file, err))
     {

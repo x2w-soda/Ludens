@@ -7,12 +7,17 @@
 
 namespace LD {
 
-struct AssetEntry
+/// @brief Asset entry in the project, validated by AssetRegistry.
+struct AssetEntry : Handle<struct AssetEntryObj>
 {
-    std::string uri;
-    std::string name;
-    AssetType type;
-    SUID id;
+    SUID get_id();
+    AssetType get_type();
+    std::string get_name();
+    std::string get_uri();
+    void set_uri(const std::string& uri);
+    Vector<std::string> get_extra_uri_keys();
+    std::string get_extra_uri(const std::string& key);
+    void set_extra_uri(const std::string& key, const std::string& uri);
 };
 
 /// @brief Bookkeeping for all assets in a project.
@@ -25,20 +30,23 @@ struct AssetRegistry : Handle<struct AssetRegistryObj>
     static void destroy(AssetRegistry registry);
 
     /// @brief Register a new Asset, an ID is assigned to uniquely identify the Asset throughout the project.
-    SUID register_asset(AssetType type, const std::string& uri, const std::string& name);
+    AssetEntry register_asset(AssetType type, const std::string& uri, const std::string& name);
 
     /// @brief Used when the asset ID is also known, such as loading an Asset from the project.
-    bool register_asset_with_id(const AssetEntry& entry);
+    AssetEntry register_asset_with_id(SUID id, AssetType type, const std::string& uri, const std::string& name);
 
     /// @brief Unregister an Asset that is no longer used in the project.
     void unregister_asset(SUID id);
 
     /// @brief Lookup an Asset from ID.
-    /// @return Asset entry in the registry or nullptr.
-    const AssetEntry* find_asset(SUID id);
+    /// @return Asset entry in the registry or null handle.
+    AssetEntry get_entry(SUID id);
 
     /// @brief Lookup all asset entries for a given type.
-    void find_assets_by_type(AssetType type, Vector<const AssetEntry*>& entries);
+    void get_entries_by_type(Vector<AssetEntry>& outEntries, AssetType type);
+
+    /// @brief Get all registered assets in the registry in no particular order.
+    void get_all_entries(Vector<AssetEntry>& outEntries);
 };
 
 } // namespace LD

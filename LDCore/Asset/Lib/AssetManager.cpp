@@ -20,26 +20,33 @@ namespace LD {
 
 static Log sLog("AssetManager");
 
-
-static_assert(sizeof(sAssetTypeTable) / sizeof(*sAssetTypeTable) == ASSET_TYPE_ENUM_COUNT);
-static_assert(LD::IsTrivial<AssetObj>);
-static_assert(LD::IsTrivial<BlobAssetObj>);
-static_assert(LD::IsTrivial<FontAssetObj>);
-static_assert(LD::IsTrivial<MeshAssetObj>);
-static_assert(LD::IsTrivial<UITemplateAssetObj>);
-static_assert(LD::IsTrivial<AudioClipAssetObj>);
-static_assert(LD::IsTrivial<Texture2DAssetObj>);
-static_assert(LD::IsTrivial<TextureCubeAssetObj>);
-static_assert(LD::IsTrivial<LuaScriptAssetObj>);
-
 size_t get_asset_byte_size(AssetType type)
 {
-    return sAssetTypeTable[(int)type].size;
+    return sAssetMeta[(int)type].size;
 }
 
 const char* get_asset_type_cstr(AssetType type)
 {
-    return sAssetTypeTable[(int)type].typeName;
+    return sAssetMeta[(int)type].typeName;
+}
+
+bool get_cstr_asset_type(const char* cstr, AssetType& outType)
+{
+    if (!cstr)
+        return false;
+
+    std::string str(cstr);
+
+    for (int i = 0; i < (int)ASSET_TYPE_ENUM_COUNT; i++)
+    {
+        if (str == sAssetMeta[i].typeName)
+        {
+            outType = sAssetMeta[i].type;
+            return true;
+        }
+    }
+
+    return false;
 }
 
 AssetManagerObj::AssetManagerObj(const AssetManagerInfo& info)
@@ -96,8 +103,11 @@ AssetManagerObj::~AssetManagerObj()
         mWatcher.cleanup();
 }
 
-AssetObj* AssetManagerObj::allocate_asset(AssetType type, SUID id, const std::string& name)
+AssetObj* AssetManagerObj::allocate_asset(AssetEntry entry)
 {
+    const SUID id = entry.get_id();
+    const AssetType type = entry.get_type();
+    const std::string name = entry.get_name();
     size_t assetByteSize = get_asset_byte_size(type);
 
     if (!mAssetPA.contains(type))
@@ -142,14 +152,16 @@ void AssetManagerObj::free_asset(AssetObj* obj)
     pa.free(obj);
 }
 
-AssetLoadJob* AssetManagerObj::allocate_load_job(AssetType type, const FS::Path& loadPath, AssetObj* assetObj)
+AssetLoadJob* AssetManagerObj::allocate_load_job(AssetEntry entry, AssetObj* assetObj)
 {
     AssetLoadJob* job = (AssetLoadJob*)mLoadJobPA.allocate();
     new (job) AssetLoadJob();
 
-    job->loadPath = loadPath;
+    job->rootPath = mRootPath;
+    job->loadPath = (mRootPath / entry.get_uri()).lexically_normal();
     job->assetHandle = {assetObj};
-    job->jobHeader.onExecute = sAssetTypeTable[(int)type].load;
+    job->assetEntry = entry;
+    job->jobHeader.onExecute = sAssetMeta[(int)entry.get_type()].load;
     job->jobHeader.onComplete = &AssetManagerObj::on_asset_load_complete;
     job->jobHeader.type = (uint32_t)0; // TODO: job type for asset loading
     job->jobHeader.user = (void*)job;
@@ -186,7 +198,7 @@ void AssetManagerObj::begin_load_batch()
     free_load_jobs();
 }
 
-void AssetManagerObj::end_load_batch()
+bool AssetManagerObj::end_load_batch(Vector<std::string>& outErrors)
 {
     LD_ASSERT(mInLoadBatch);
 
@@ -195,24 +207,44 @@ void AssetManagerObj::end_load_batch()
     // TODO: wait for asset load jobs only
     JobSystem::get().wait_all();
 
+    std::string err;
+    outErrors.clear();
+
+    for (AssetLoadJob* job : mLoadJobs)
+    {
+        if (job->diagnostics.get_error(err))
+            outErrors.push_back(err);
+
+        job->~AssetLoadJob();
+        mLoadJobPA.free(job);
+    }
+
     free_load_jobs();
+
+    return outErrors.empty();
 }
 
-void AssetManagerObj::load_asset(AssetType type, SUID id, const FS::Path& uri, const std::string& name)
+void AssetManagerObj::load_asset(AssetEntry entry)
 {
     LD_ASSERT(mInLoadBatch);
 
+    if (!entry)
+        return;
+
+    const AssetType type = entry.get_type();
+    const std::string uri = entry.get_uri();
     const FS::Path loadPath = FS::Path(mRootPath / uri).lexically_normal();
     sLog.info("load_asset {}", loadPath.string());
 
+    // TODO: this is flaky
     if (mWatcher && type == ASSET_TYPE_LUA_SCRIPT)
     {
         FS::Path luaPath = loadPath;
-        mWatcher.add_watch(luaPath.replace_extension(".lua"), id);
+        mWatcher.add_watch(luaPath.replace_extension(".lua"), entry.get_id());
     }
 
-    AssetObj* obj = allocate_asset(type, id, name);
-    AssetLoadJob* job = allocate_load_job(type, loadPath, obj);
+    AssetObj* obj = allocate_asset(entry);
+    AssetLoadJob* job = allocate_load_job(entry, obj);
     mLoadJobs.push_back(job);
 
     // We need to guarantee that the address of the job header does not change.
@@ -329,19 +361,19 @@ void AssetManager::load_all_assets()
     {
         AssetType type = (AssetType)i;
 
-        std::vector<const AssetEntry*> entries;
-        mObj->find_assets_by_type(type, entries);
+        Vector<AssetEntry> entries;
+        mObj->get_entries_by_type(entries, type);
 
-        for (const AssetEntry* entry : entries)
+        for (AssetEntry entry : entries)
         {
-            mObj->load_asset(entry->type, entry->id, entry->uri, entry->name);
+            mObj->load_asset(entry);
         }
     }
 }
 
-void AssetManager::load_asset(AssetType type, SUID id, const FS::Path& path, const std::string& name)
+void AssetManager::load_asset(AssetID id)
 {
-    mObj->load_asset(type, id, path, name);
+    mObj->load_asset(mObj->get_entry(id));
 }
 
 void AssetManager::begin_load_batch()
@@ -349,9 +381,9 @@ void AssetManager::begin_load_batch()
     mObj->begin_load_batch();
 }
 
-void AssetManager::end_load_batch()
+bool AssetManager::end_load_batch(Vector<std::string>& outErrors)
 {
-    mObj->end_load_batch();
+    return mObj->end_load_batch(outErrors);
 }
 
 SUID AssetManager::get_id_from_name(const char* name, AssetType* outType)
@@ -384,101 +416,6 @@ Asset AssetManager::get_asset(const char* name, AssetType type)
         return {};
 
     return asset;
-}
-
-void asset_unload(AssetObj* base)
-{
-    LD_ASSERT(base);
-
-    if (!sAssetTypeTable[base->type].unload)
-        return;
-
-    sAssetTypeTable[base->type].unload(base);
-}
-
-const char* get_asset_type_name_cstr(AssetType type)
-{
-    return sAssetTypeTable[(int)type].typeName;
-}
-
-void asset_header_write(Serializer& serial, AssetType type)
-{
-    serial.write((const byte*)LD_ASSET_MAGIC, 4);
-    serial.write_u16(LD_VERSION_MAJOR);
-    serial.write_u16(LD_VERSION_MINOR);
-    serial.write_u16(LD_VERSION_PATCH);
-
-    const char* typeName = get_asset_type_name_cstr(type);
-    size_t len = strlen(typeName);
-
-    serial.write_u16((uint16_t)len);
-    serial.write((const byte*)typeName, len);
-}
-
-bool asset_header_read(Deserializer& serial, uint16_t& outMajor, uint16_t& outMinor, uint16_t& outPatch, AssetType& outType)
-{
-    if (serial.size() < 12)
-        return false;
-
-    char ldaMagic[4];
-    serial.read((byte*)ldaMagic, 4);
-
-    if (strncmp(ldaMagic, LD_ASSET_MAGIC, 4))
-        return false;
-
-    serial.read_u16(outMajor);
-    serial.read_u16(outMinor);
-    serial.read_u16(outPatch);
-
-    uint16_t len;
-    serial.read_u16(len);
-
-    std::string typeName;
-    typeName.resize(len);
-    serial.read((byte*)typeName.data(), typeName.size());
-
-    // TODO: this can be hashed for O(1) lookup but we barely have any asset type variety right now.
-    for (int type = 0; type < (int)ASSET_TYPE_ENUM_COUNT; type++)
-    {
-        const char* match = get_asset_type_name_cstr((AssetType)type);
-
-        if (typeName == match)
-        {
-            outType = (AssetType)type;
-            return true;
-        }
-    }
-
-    // unrecognized asset type
-    return false;
-}
-
-bool asset_header_read(Deserializer& serial, AssetType expectedType, Diagnostics& diag)
-{
-    DiagnosticScope scope(diag, "asset_header_read");
-
-    AssetType type;
-    uint16_t major, minor, patch;
-    if (!asset_header_read(serial, major, minor, patch, type))
-    {
-        diag.mark_error("failed to recognize binary asset header");
-        return false;
-    }
-
-    if (type != expectedType)
-    {
-        diag.mark_error(std::format("expected asset type {}, found {}", get_asset_type_cstr(expectedType), get_asset_type_cstr(type)));
-        return false;
-    }
-
-    if (major != LD_VERSION_MAJOR || minor != LD_VERSION_MINOR || patch != LD_VERSION_PATCH)
-    {
-        diag.mark_error(std::format("expected asset version {}.{}.{}, found {}.{}.{}",
-                                    LD_VERSION_MAJOR, LD_VERSION_MINOR, LD_VERSION_PATCH, major, minor, patch));
-        return false;
-    }
-
-    return true;
 }
 
 } // namespace LD
