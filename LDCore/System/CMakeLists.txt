@@ -3,6 +3,7 @@ set(MODULE_TEST_NAME LDSystemTest)
 
 set(MODULE_INCLUDE
 	${LUDENS_INCLUDE_DIR}/Ludens/System/Timer.h
+	${LUDENS_INCLUDE_DIR}/Ludens/System/Process.h
 	${LUDENS_INCLUDE_DIR}/Ludens/System/FileSystem.h
 	${LUDENS_INCLUDE_DIR}/Ludens/System/FileSystemAsync.h
 	${LUDENS_INCLUDE_DIR}/Ludens/System/FileWatcher.h
@@ -11,6 +12,8 @@ set(MODULE_INCLUDE
 
 set(MODULE_LIB
 	Lib/Timer.cpp
+	Lib/ProcessWin32.cpp
+	Lib/ProcessLinux.cpp
 	Lib/FileSystem.cpp
 	Lib/FileSystemAsync.cpp
 	Lib/FileWatcherWin32.cpp

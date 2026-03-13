@@ -83,7 +83,7 @@ bool exists(const Path& path);
 /// @brief Check if path exists and is a directory.
 bool is_directory(const Path& path);
 
-/// @brief Create directories along path, does nothing if target directory already exists.
+/// @brief Create directories along path, does nothing if target directory already exists and returns true.
 bool create_directories(const Path& path, std::string& err);
 
 /// @brief Try removing file or directory at path.

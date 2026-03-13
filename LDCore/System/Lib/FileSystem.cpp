@@ -322,11 +322,9 @@ bool is_directory(const Path& path)
 
 bool create_directories(const Path& path, std::string& err)
 {
-    bool success = false;
-
     try
     {
-        success = fs::create_directories(path);
+        fs::create_directories(path);
     }
     catch (const std::filesystem::filesystem_error& e)
     {
@@ -334,7 +332,7 @@ bool create_directories(const Path& path, std::string& err)
         return false;
     }
 
-    return success;
+    return true;
 }
 
 bool remove(const FS::Path& path, std::string& err)
