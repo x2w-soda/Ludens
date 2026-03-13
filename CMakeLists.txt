@@ -5,46 +5,55 @@ project(Ludens LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-message(STATUS "CMAKE_CXX_COMPILER_ID:     ${CMAKE_CXX_COMPILER_ID}")
-message(STATUS "CMAKE_CXX_COMPILER:        ${CMAKE_CXX_COMPILER}")
-message(STATUS "CMAKE_C_COMPILER_ID:       ${CMAKE_C_COMPILER_ID}")
-message(STATUS "CMAKE_C_COMPILER:          ${CMAKE_C_COMPILER}")
+message(STATUS "CMAKE_CXX_COMPILER_ID:            ${CMAKE_CXX_COMPILER_ID}")
+message(STATUS "CMAKE_CXX_COMPILER:               ${CMAKE_CXX_COMPILER}")
+message(STATUS "CMAKE_C_COMPILER_ID:              ${CMAKE_C_COMPILER_ID}")
+message(STATUS "CMAKE_C_COMPILER:                 ${CMAKE_C_COMPILER}")
 
 if(NOT CMAKE_BUILD_TYPE)
     message(STATUS "CMAKE_BUILD_TYPE not set, defaulting to Release")
     set(CMAKE_BUILD_TYPE Release CACHE STRING "" FORCE)
 endif()
 
-message(STATUS "CMAKE_BUILD_TYPE:          ${CMAKE_BUILD_TYPE}")
+message(STATUS "CMAKE_BUILD_TYPE:                 ${CMAKE_BUILD_TYPE}")
 
 set(CPP_RTTI_ENABLED OFF CACHE INTERNAL "")
 
-option(LD_COMPILE_WITH_PROFILER "compile with profiler" ON)
-message(STATUS "LD_COMPILE_WITH_PROFILER:  ${LD_COMPILE_WITH_PROFILER}")
+# Build Options
 
-if (LD_COMPILE_WITH_PROFILER)
+option(LD_OPTION_COMPILE_WITH_PROFILER "" ON)
+message(STATUS "LD_OPTION_COMPILE_WITH_PROFILER:  ${LD_OPTION_COMPILE_WITH_PROFILER}")
+
+option(LD_OPTION_BUILD_BENCHMARKS "" ON)
+message(STATUS "LD_OPTION_BUILD_BENCHMARKS:       ${LD_OPTION_BUILD_BENCHMARKS}")
+
+option(LD_OPTION_EMBED_RUNTIME "" OFF)
+message(STATUS "LD_OPTION_EMBED_RUNTIME:          ${LD_OPTION_EMBED_RUNTIME}")
+
+if (LD_OPTION_COMPILE_WITH_PROFILER)
     set(TRACY_ENABLE ON CACHE BOOL "" FORCE)
     add_compile_definitions(TRACY_ENABLE=1)
 else()
     set(TRACY_ENABLE OFF CACHE BOOL "" FORCE)
     add_compile_definitions(TRACY_ENABLE=0)
 endif()
-message(STATUS "LUDENS TRACY_ENABLE:       ${TRACY_ENABLE}")
 
-option(LD_BUILD_BENCHMARKS "build benchmarks" ON)
-message(STATUS "LD_BUILD_BENCHMARKS:       ${LD_BUILD_BENCHMARKS}")
+message(STATUS "LUDENS TRACY_ENABLE:              ${TRACY_ENABLE}")
 
 # Build Environment
 
 set(LUDENS_SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 set(LUDENS_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/Include)
+set(LUDENS_SCRIPTS_DIR ${CMAKE_CURRENT_SOURCE_DIR}/Scripts)
 set(LUDENS_EXTRA_DIR ${CMAKE_CURRENT_SOURCE_DIR}/Extra)
 set(LUDENS_BUILD_DIR ${CMAKE_BINARY_DIR})
+set(LUDENS_BUILD_EMBED_DIR ${CMAKE_BINARY_DIR}/Embed)
 
-message(STATUS "LUDENS SOURCE DIR          ${LUDENS_SOURCE_DIR}")
-message(STATUS "LUDENS INCLUDE DIR         ${LUDENS_INCLUDE_DIR}")
-message(STATUS "LUDENS EXTRA DIR           ${LUDENS_EXTRA_DIR}")
-message(STATUS "LUDENS BUILD DIR           ${LUDENS_BUILD_DIR}")
+message(STATUS "LUDENS SOURCE DIR                 ${LUDENS_SOURCE_DIR}")
+message(STATUS "LUDENS INCLUDE DIR                ${LUDENS_INCLUDE_DIR}")
+message(STATUS "LUDENS EXTRA DIR                  ${LUDENS_EXTRA_DIR}")
+message(STATUS "LUDENS BUILD DIR                  ${LUDENS_BUILD_DIR}")
+message(STATUS "LUDENS BUILD EMBED DIR            ${LUDENS_BUILD_EMBED_DIR}")
 
 # Fetch dependencies via CMake FetchContent
 include(CMake/FetchDependencies.cmake)
@@ -112,6 +121,8 @@ target_link_libraries(LDCoreLibs INTERFACE
 set(LD_RUNTIME_MODULE_FOLDER "LDRuntime")
 add_subdirectory(LDRuntime/RuntimeContext)
 add_subdirectory(LDRuntime/RuntimeMain)
+
+include(CMake/EmbedRuntime.cmake)
 
 # Ludens Builder
 # - standalone command line utility

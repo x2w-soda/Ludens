@@ -8,6 +8,11 @@ set(LUDENS_VULKAN_LIB_DIR     ${Vulkan_INCLUDE_DIR}/../Lib)
 message(STATUS "LUDENS Vulkan INCLUDE DIR:  ${LUDENS_VULKAN_INCLUDE_DIR}")
 message(STATUS "LUDENS Vulkan LIB DIR:      ${LUDENS_VULKAN_LIB_DIR}")
 
+# find Python
+
+find_package(Python3 REQUIRED COMPONENTS Interpreter)
+message(STATUS "LUDENS Python Interpreter:  ${Python3_EXECUTABLE}")
+
 # find Doxygen
 
 find_package(Doxygen REQUIRED)
