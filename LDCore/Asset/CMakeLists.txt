@@ -19,13 +19,14 @@ set(MODULE_INCLUDE
 )
 
 set(MODULE_LIB
-	Lib/AssetObj.h
 	Lib/AssetManager.cpp
 	Lib/AssetRegistry.cpp
 	Lib/AssetWatcher.h
 	Lib/AssetWatcher.cpp
 	Lib/AssetSchemaKeys.h
 	Lib/AssetSchema.cpp
+	Lib/AssetMeta.h
+	Lib/AssetMeta.cpp
 	Lib/Template/UITemplate.cpp
 	Lib/Template/UITemplateObj.h
 	Lib/Template/UITemplateSchemaKeys.h

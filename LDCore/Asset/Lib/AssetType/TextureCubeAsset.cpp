@@ -5,7 +5,7 @@
 
 #include <cstring>
 
-#include "../AssetObj.h"
+#include "../AssetMeta.h"
 #include "TextureCubeAssetObj.h"
 
 namespace LD {

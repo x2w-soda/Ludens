@@ -3,7 +3,7 @@
 #include <Ludens/RenderComponent/Layout/RMesh.h>
 #include <Ludens/System/FileSystem.h>
 
-#include "../AssetObj.h"
+#include "../AssetMeta.h"
 #include "MeshAssetObj.h"
 
 namespace LD {

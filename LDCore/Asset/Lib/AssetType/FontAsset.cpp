@@ -1,7 +1,7 @@
 #include <Ludens/Asset/AssetType/FontAsset.h>
 #include <Ludens/Profiler/Profiler.h>
 
-#include "../AssetObj.h"
+#include "../AssetMeta.h"
 #include "FontAssetObj.h"
 
 namespace LD {

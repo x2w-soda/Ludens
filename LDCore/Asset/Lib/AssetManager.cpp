@@ -4,7 +4,6 @@
 #include <Ludens/Asset/AssetType/Texture2DAsset.h>
 #include <Ludens/DSA/HashMap.h>
 #include <Ludens/Header/Types.h>
-#include <Ludens/Header/Version.h>
 #include <Ludens/Log/Log.h>
 #include <Ludens/Memory/Allocator.h>
 #include <Ludens/Profiler/Profiler.h>
@@ -15,39 +14,12 @@
 
 #include <string>
 
-#include "AssetObj.h"
-#include "AssetType/AudioClipAssetObj.h"
-#include "AssetType/BlobAssetObj.h"
-#include "AssetType/FontAssetObj.h"
-#include "AssetType/LuaScriptAssetObj.h"
-#include "AssetType/MeshAssetObj.h"
-#include "AssetType/Texture2DAssetObj.h"
-#include "AssetType/TextureCubeAssetObj.h"
-#include "AssetType/UITemplateAssetObj.h"
+#include "AssetMeta.h"
 
 namespace LD {
 
 static Log sLog("AssetManager");
 
-// clang-format off
-struct
-{
-    AssetType type;
-    const char* typeName;             /// human readable name
-    size_t size;                      /// object byte size
-    void (*load)(void* assetLoadJob); /// polymorphic load, note that this is executed on worker threads
-    void (*unload)(AssetObj* base);   /// polymorphic unload
-} sAssetTypeTable[] = {
-    {ASSET_TYPE_BLOB,         "Blob",        sizeof(BlobAssetObj),        &BlobAssetObj::load,         &BlobAssetObj::unload, },
-    {ASSET_TYPE_FONT,         "Font",        sizeof(FontAssetObj),        &FontAssetObj::load,         &FontAssetObj::unload, },
-    {ASSET_TYPE_MESH,         "Mesh",        sizeof(MeshAssetObj),        &MeshAssetObj::load,         &MeshAssetObj::unload, },
-    {ASSET_TYPE_UI_TEMPLATE,  "UITemplate",  sizeof(UITemplateAssetObj),  &UITemplateAssetObj::load,   &UITemplateAssetObj::unload, },
-    {ASSET_TYPE_AUDIO_CLIP,   "AudioClip",   sizeof(AudioClipAssetObj),   &AudioClipAssetObj::load,    &AudioClipAssetObj::unload, },
-    {ASSET_TYPE_TEXTURE_2D,   "Texture2D",   sizeof(Texture2DAssetObj),   &Texture2DAssetObj::load,    &Texture2DAssetObj::unload, },
-    {ASSET_TYPE_TEXTURE_CUBE, "TextureCube", sizeof(TextureCubeAssetObj), &TextureCubeAssetObj::load,  &TextureCubeAssetObj::unload, },
-    {ASSET_TYPE_LUA_SCRIPT,   "LuaScript",   sizeof(LuaScriptAssetObj),   &LuaScriptAssetObj::load,    &LuaScriptAssetObj::unload, },
-};
-// clang-format on
 
 static_assert(sizeof(sAssetTypeTable) / sizeof(*sAssetTypeTable) == ASSET_TYPE_ENUM_COUNT);
 static_assert(LD::IsTrivial<AssetObj>);

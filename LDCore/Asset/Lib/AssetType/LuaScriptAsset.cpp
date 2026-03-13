@@ -5,7 +5,7 @@
 #include <Ludens/Serial/Serial.h>
 #include <Ludens/System/FileSystem.h>
 
-#include "../AssetObj.h"
+#include "../AssetMeta.h"
 #include "LuaScriptAssetObj.h"
 
 #include <vector>

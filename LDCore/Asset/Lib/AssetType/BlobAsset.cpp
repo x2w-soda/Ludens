@@ -1,7 +1,7 @@
 #include <Ludens/Asset/AssetType/BlobAsset.h>
 #include <Ludens/Profiler/Profiler.h>
 
-#include "../AssetObj.h"
+#include "../AssetMeta.h"
 #include "BlobAssetObj.h"
 
 namespace LD {

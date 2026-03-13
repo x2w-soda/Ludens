@@ -5,7 +5,7 @@
 #include <Ludens/Media/AudioData.h>
 #include <Ludens/Profiler/Profiler.h>
 
-#include "../AssetObj.h"
+#include "../AssetMeta.h"
 #include "AudioClipAssetObj.h"
 
 namespace LD {

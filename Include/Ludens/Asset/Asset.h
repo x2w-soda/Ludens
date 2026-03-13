@@ -29,6 +29,18 @@ size_t get_asset_byte_size(AssetType type);
 /// @brief Get static C string for asset type.
 const char* get_asset_type_cstr(AssetType type);
 
+/// @brief Get asset type for C string.
+bool get_cstr_asset_type(const char* cstr, AssetType& outType);
+
+/// @brief Base members of asset object implementation.
+struct AssetObj
+{
+    const char* name;
+    struct AssetManagerObj* manager;
+    AssetID id;
+    AssetType type;
+};
+
 /// @brief Asset raw handle, no ownership semantics.
 struct Asset : Handle<struct AssetObj>
 {

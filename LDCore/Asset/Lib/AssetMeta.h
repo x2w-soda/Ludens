@@ -35,14 +35,16 @@ struct Serializer;
 struct AssetManagerInfo;
 struct AssetLoadJob;
 
-/// @brief Base members of asset object implementation.
-struct AssetObj
+struct AssetMeta
 {
-    const char* name;
-    struct AssetManagerObj* manager;
-    AssetID id;
     AssetType type;
+    const char* typeName;             /// human readable name
+    size_t size;                      /// object byte size
+    void (*load)(void* assetLoadJob); /// polymorphic load, note that this is executed on worker threads
+    void (*unload)(AssetObj* base);   /// polymorphic unload
 };
+
+extern AssetMeta sAssetMeta[];
 
 /// @brief Asset manager implementation.
 class AssetManagerObj
@@ -55,24 +57,29 @@ public:
 
     AssetManagerObj& operator=(const AssetManagerObj&) = delete;
 
-    AssetObj* allocate_asset(AssetType type, SUID id, const std::string& name);
+    AssetObj* allocate_asset(AssetEntry entry);
     void free_asset(AssetObj* obj);
 
-    AssetLoadJob* allocate_load_job(AssetType type, const FS::Path& loadPath, AssetObj* assetObj);
+    AssetLoadJob* allocate_load_job(AssetEntry entry, AssetObj* assetObj);
     void free_load_jobs();
 
     void poll();
 
     void begin_load_batch();
-    void end_load_batch();
-    void load_asset(AssetType type, SUID id, const FS::Path& uri, const std::string& name);
+    bool end_load_batch(Vector<std::string>& outErrors);
+    void load_asset(AssetEntry entry);
 
     SUID get_id_from_name(const char* name, AssetType* outType);
     Asset get_asset(SUID id);
 
-    inline void find_assets_by_type(AssetType type, Vector<const AssetEntry*>& entries)
+    inline AssetEntry get_entry(SUID id)
     {
-        mRegistry.find_assets_by_type(type, entries);
+        return mRegistry.get_entry(id);
+    }
+
+    inline void get_entries_by_type(Vector<AssetEntry>& entries, AssetType type)
+    {
+        mRegistry.get_entries_by_type(entries, type);
     }
 
     static void on_asset_modified(const FS::Path& path, SUID id, void* user);
@@ -96,9 +103,11 @@ private:
 struct AssetLoadJob
 {
     JobHeader jobHeader;            /// submitted to the job system
-    Asset assetHandle;              /// accessed by job thread, subject class handle
+    Asset assetHandle;              /// accessed by job thread, dst class handle
+    AssetEntry assetEntry;          /// accessed by job thread, src asset to load
     Diagnostics diagnostics;        /// accessed by job thread throughout load job
-    FS::Path loadPath;              /// path to .lda file on disk
+    FS::Path loadPath;              /// concatenates root direcotry path and uri path
+    FS::Path rootPath;              /// project root directory
     std::atomic_bool jobInProgress; /// read by main thread
     std::atomic<float> jobProgress; /// read by main thread, normalized job progress estimate
 };

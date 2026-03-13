@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../AssetObj.h"
+#include <Ludens/Asset/Asset.h>
 
 namespace LD {
 
