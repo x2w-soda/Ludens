@@ -52,7 +52,7 @@ EditorApplication::EditorApplication()
 
     RDeviceInfo deviceI{};
     deviceI.backend = RDEVICE_BACKEND_VULKAN;
-    deviceI.vsync = false; // TODO: config
+    deviceI.vsync = true; // TODO: config
     mRDevice = RDevice::create(deviceI);
 
     RenderSystemInfo serverI{};

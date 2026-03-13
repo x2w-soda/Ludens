@@ -234,6 +234,7 @@ void EditorContextObj::load_project(const FS::Path& projectSchemaPath)
     if (assetManager)
     {
         AssetManager::destroy(assetManager);
+        assetManager = {};
     }
 
     AssetManagerInfo amI{};
@@ -247,9 +248,16 @@ void EditorContextObj::load_project(const FS::Path& projectSchemaPath)
     // used by the loaded scene first?
     assetManager.begin_load_batch();
     assetManager.load_all_assets();
-    assetManager.end_load_batch();
+    
+    Vector<std::string> errors;
+    if (!assetManager.end_load_batch(errors))
+    {
+        sLog.error("AssetManager failed to load some assets, {} errors", errors.size());
+        for (const std::string& err : errors)
+            sLog.error("{}", err);
+    }
 
-    project.get_scene_absolute_paths(scenePaths);
+    project.get_scene_schema_absolute_paths(scenePaths);
 
     for (const FS::Path& scenePath : scenePaths)
     {

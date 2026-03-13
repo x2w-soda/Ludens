@@ -117,9 +117,13 @@ RuntimeContext RuntimeContext::create(const RuntimeContextInfo& info)
     obj->project = info.project;
 
     ProjectStartupSettings startupS = obj->project.get_settings().get_startup_settings();
+    ProjectSceneEntry startupScene;
+    bool success = obj->project.get_scene(startupS.get_default_scene_id(), startupScene);
+    LD_ASSERT(success); // TODO:
+
     const std::string windowName = startupS.get_window_name();
     const FS::Path rootPath = obj->project.get_root_path();
-    const FS::Path defaultScenePath = rootPath / FS::Path(startupS.get_default_scene_path());
+    const FS::Path defaultScenePath = rootPath / FS::Path(startupScene.path);
     const FS::Path assetSchemaPath = obj->project.get_asset_schema_absolute_path();
 
     WindowInfo windowI{};
@@ -132,6 +136,8 @@ RuntimeContext RuntimeContext::create(const RuntimeContextInfo& info)
     windowI.hintTitleBarColor = 0;
     windowI.hintTitleBarTextColor = 0;
     WindowRegistry::create(windowI);
+
+    sLog.info("begin loading assets [{}]", assetSchemaPath.string());
 
     // load assets
     AssetManagerInfo amI{};
@@ -151,7 +157,16 @@ RuntimeContext RuntimeContext::create(const RuntimeContextInfo& info)
     }
 
     // this blocks until all worker threads finish loading
-    obj->AM.end_load_batch();
+    Vector<std::string> loadErrors;
+    if (!obj->AM.end_load_batch(loadErrors))
+    {
+        sLog.error("AssetManager failed to load assets with {} errors", loadErrors.size());
+        for (const std::string& err : loadErrors)
+            sLog.error("{}", err);
+        LD_UNREACHABLE;
+    }
+
+    sLog.info("finish loading assets");
 
     // TODO: generalize
     FontAsset defaultFont = (FontAsset)obj->AM.get_asset("default_font", ASSET_TYPE_FONT);
@@ -181,11 +196,15 @@ RuntimeContext RuntimeContext::create(const RuntimeContextInfo& info)
     });
 
     // TODO: check scene load success
+    sLog.info("load complete");
 
     if (!obj->scene.startup())
     {
+        sLog.error("default scene failed to startup");
         LD_UNREACHABLE;
     }
+
+    sLog.info("startup complete");
 
     return RuntimeContext(obj);
 }

@@ -15,16 +15,27 @@ version_minor = 0
 version_patch = 0
 name = "hello world"
 assets = "assets.toml"
-scenes = [
-    "scenes/scene1.toml",
-    "./scenes/scene2.toml",
-    "./scenes/scene3.toml",
-]
+
+[[scene]]
+id = 0x03000000
+name = "scene1"
+path = "scenes/scene1.toml"
+
+[[scene]]
+id = 0x03000001
+name = "scene2"
+path = "scenes/scene2.toml"
+
+[[scene]]
+id = 0x03000002
+name = "scene3"
+path = "scenes/scene3.toml"
 
 [settings.startup]
 window_width = 1234
 window_height = 5678
 window_name = 'Foo'
+default_scene_id = 0x03000002
 )";
     std::string err;
     Project proj = Project::create();

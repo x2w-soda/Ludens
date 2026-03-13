@@ -219,7 +219,7 @@ bool AssetManagerObj::end_load_batch(Vector<std::string>& outErrors)
         mLoadJobPA.free(job);
     }
 
-    free_load_jobs();
+    mLoadJobs.clear();
 
     return outErrors.empty();
 }
