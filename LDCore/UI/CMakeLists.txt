@@ -16,15 +16,33 @@ set(MODULE_INCLUDE
 
 set(MODULE_LIB
     Lib/UIObj.h
-    Lib/UIContext.cpp
+    Lib/UIWidgetObj.h
+    Lib/UIWidgetObj.cpp
+    Lib/UIContextObj.h
+    Lib/UIContextObj.cpp
     Lib/UILayer.cpp
     Lib/UIWorkspace.cpp
     Lib/UIWindow.cpp
-    Lib/UIWidget.cpp
     Lib/UILayout.cpp
     Lib/UITheme.cpp
     Lib/UIAnimation.cpp
     Lib/UIImmediate.cpp
+    Lib/Widget/UIButtonWidgetObj.cpp
+    Lib/Widget/UIButtonWidgetObj.h
+    Lib/Widget/UIImageWidgetObj.cpp
+    Lib/Widget/UIImageWidgetObj.h
+    Lib/Widget/UIPanelWidgetObj.cpp
+    Lib/Widget/UIPanelWidgetObj.h
+    Lib/Widget/UIScrollWidgetObj.cpp
+    Lib/Widget/UIScrollWidgetObj.h
+    Lib/Widget/UISliderWidgetObj.cpp
+    Lib/Widget/UISliderWidgetObj.h
+    Lib/Widget/UITextWidgetObj.cpp
+    Lib/Widget/UITextWidgetObj.h
+    Lib/Widget/UITextEditWidgetObj.h
+    Lib/Widget/UITextEditWidgetObj.cpp
+    Lib/Widget/UIToggleWidgetObj.cpp
+    Lib/Widget/UIToggleWidgetObj.h
 )
 
 set(MODULE_TEST
