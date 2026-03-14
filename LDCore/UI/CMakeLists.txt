@@ -12,14 +12,24 @@ set(MODULE_INCLUDE
     ${LUDENS_INCLUDE_DIR}/Ludens/UI/UITheme.h
     ${LUDENS_INCLUDE_DIR}/Ludens/UI/UIAnimation.h
     ${LUDENS_INCLUDE_DIR}/Ludens/UI/UIImmediate.h
+    ${LUDENS_INCLUDE_DIR}/Ludens/UI/Widget/UIButtonWidget.h
+    ${LUDENS_INCLUDE_DIR}/Ludens/UI/Widget/UIImageWidget.h
+    ${LUDENS_INCLUDE_DIR}/Ludens/UI/Widget/UIPanelWidget.h
+    ${LUDENS_INCLUDE_DIR}/Ludens/UI/Widget/UIScrollWidget.h
+    ${LUDENS_INCLUDE_DIR}/Ludens/UI/Widget/UISliderWidget.h
+    ${LUDENS_INCLUDE_DIR}/Ludens/UI/Widget/UITextEditWidget.h
+    ${LUDENS_INCLUDE_DIR}/Ludens/UI/Widget/UITextWidget.h
+    ${LUDENS_INCLUDE_DIR}/Ludens/UI/Widget/UIToggleWidget.h
 )
 
 set(MODULE_LIB
     Lib/UIObj.h
-    Lib/UIWidgetObj.h
-    Lib/UIWidgetObj.cpp
     Lib/UIContextObj.h
     Lib/UIContextObj.cpp
+    Lib/UIWidgetObj.h
+    Lib/UIWidgetObj.cpp
+    Lib/UIWidgetMeta.h
+    Lib/UIWidgetMeta.cpp
     Lib/UILayer.cpp
     Lib/UIWorkspace.cpp
     Lib/UIWindow.cpp
@@ -27,22 +37,22 @@ set(MODULE_LIB
     Lib/UITheme.cpp
     Lib/UIAnimation.cpp
     Lib/UIImmediate.cpp
-    Lib/Widget/UIButtonWidgetObj.cpp
     Lib/Widget/UIButtonWidgetObj.h
-    Lib/Widget/UIImageWidgetObj.cpp
+    Lib/Widget/UIButtonWidgetObj.cpp
     Lib/Widget/UIImageWidgetObj.h
-    Lib/Widget/UIPanelWidgetObj.cpp
+    Lib/Widget/UIImageWidgetObj.cpp
     Lib/Widget/UIPanelWidgetObj.h
-    Lib/Widget/UIScrollWidgetObj.cpp
+    Lib/Widget/UIPanelWidgetObj.cpp
     Lib/Widget/UIScrollWidgetObj.h
-    Lib/Widget/UISliderWidgetObj.cpp
+    Lib/Widget/UIScrollWidgetObj.cpp
     Lib/Widget/UISliderWidgetObj.h
-    Lib/Widget/UITextWidgetObj.cpp
+    Lib/Widget/UISliderWidgetObj.cpp
     Lib/Widget/UITextWidgetObj.h
+    Lib/Widget/UITextWidgetObj.cpp
     Lib/Widget/UITextEditWidgetObj.h
     Lib/Widget/UITextEditWidgetObj.cpp
-    Lib/Widget/UIToggleWidgetObj.cpp
     Lib/Widget/UIToggleWidgetObj.h
+    Lib/Widget/UIToggleWidgetObj.cpp
 )
 
 set(MODULE_TEST

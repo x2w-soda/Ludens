@@ -1,5 +1,6 @@
 #include <Extra/doctest/doctest.h>
 #include <Ludens/Memory/Memory.h>
+#include <Ludens/UI/Widget/UITextWidget.h>
 #include <LudensUtil/LudensLFS.h>
 
 #include "UITest.h"
@@ -16,12 +17,12 @@ TEST_CASE("UITextWidget in fit container" * doctest::skip(!LudensLFS::get_direct
     UIWindowInfo windowI{};
     UIWindow window = space.create_window(space.get_root_id(), layoutI, windowI, nullptr);
 
-    UITextWidgetInfo textWI{};
-    textWI.cstr = "foo";
-    textWI.fontSize = 16;
-    UITextWidget textW1 = window.node().add_text({}, textWI, nullptr);
-    textWI.cstr = "bar";
-    UITextWidget textW2 = window.node().add_text({}, textWI, nullptr);
+    static UITextStorage textS{};
+    textS.value = "foo";
+    textS.fontSize = 16;
+    UITextWidget textW1 = (UITextWidget)window.node().add_text({}, &textS, nullptr);
+    // textS.cstr = "bar";
+    UITextWidget textW2 = (UITextWidget)window.node().add_text({}, &textS, nullptr);
 
     ctx.update(0.0f);
 

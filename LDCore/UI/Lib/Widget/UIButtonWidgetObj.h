@@ -1,18 +1,17 @@
 #pragma once
 
-#include <Ludens/UI/UIWidget.h>
+#include <Ludens/UI/Widget/UIButtonWidget.h>
 
 namespace LD {
 
 struct UIButtonWidgetObj
 {
     UIWidgetObj* base;
-    const char* text;
-    void (*onClick)(UIButtonWidget w, MouseButton btn, void* user);
-    Color textColor;
-    bool transparentBG;
+    UIButtonStorage* storage;
+    UIButtonOnClick onClick = nullptr;
 
-    static void cleanup(UIWidgetObj* base);
+    static void startup(UIWidgetObj* obj, void* storage);
+    static void cleanup(UIWidgetObj* obj);
     static bool on_event(UIWidget widget, const UIEvent& event);
 };
 

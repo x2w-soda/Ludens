@@ -7,7 +7,10 @@ struct UIWidgetObj;
 struct UIPanelWidgetObj
 {
     UIWidgetObj* base;
-    Color color;
+    UIPanelStorage* storage;
+
+    static void startup(UIWidgetObj* obj, void* storage);
+    static void cleanup(UIWidgetObj* obj);
 };
 
 } // namespace LD

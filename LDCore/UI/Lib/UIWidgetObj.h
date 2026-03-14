@@ -67,9 +67,9 @@ struct UIWidgetObj
     Vec2 scrollOffset{};           /// offset applied to children after layout
     std::string name;              /// widget debug name
     void* user = nullptr;          /// arbitrary user data
-    const UIWidgetType type;       /// type enum
+    UIWidgetType type;             /// type enum
     uint32_t flags = 0;            /// widget bit flags
-    union
+    union UIWidgetUnion
     {
         UIScrollWidgetObj scroll;
         UITextWidgetObj text;
@@ -79,10 +79,13 @@ struct UIWidgetObj
         UIButtonWidgetObj button;
         UISliderWidgetObj slider;
         UIToggleWidgetObj toggle;
-    } as{};
+
+        UIWidgetUnion() {}
+        ~UIWidgetUnion() {}
+    } as;
 
     UIWidgetObj() = delete;
-    UIWidgetObj(UIWidgetType type, const UILayoutInfo& layoutI, UIWidgetObj* parent, UIWindowObj* window, void* user);
+    UIWidgetObj(UIWidgetType type, const UILayoutInfo& layoutI, UIWidgetObj* parent, UIWindowObj* window, void* storage, void* user);
     UIWidgetObj(const UIWidgetObj&) = delete;
     ~UIWidgetObj();
 

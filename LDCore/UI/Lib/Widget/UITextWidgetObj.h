@@ -3,6 +3,7 @@
 #include <Ludens/Header/Color.h>
 #include <Ludens/Media/Font.h>
 #include <Ludens/RenderBackend/RBackend.h>
+#include <Ludens/UI/Widget/UITextWidget.h>
 
 namespace LD {
 
@@ -11,14 +12,12 @@ struct UIWidgetObj;
 struct UITextWidgetObj
 {
     UIWidgetObj* base;
-    const char* value;
+    UITextStorage* storage;
     FontAtlas fontAtlas;
     RImage fontImage;
-    Color fgColor;
-    Color bgColor;
-    float fontSize;
 
-    static void cleanup(UIWidgetObj* base);
+    static void startup(UIWidgetObj* obj, void* info);
+    static void cleanup(UIWidgetObj* obj);
 };
 
 } // namespace LD

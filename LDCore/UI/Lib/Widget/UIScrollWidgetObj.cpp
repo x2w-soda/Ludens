@@ -5,10 +5,28 @@
 
 namespace LD {
 
-void UIScrollWidgetObj::cleanup(UIWidgetObj* base)
+void UIScrollWidgetObj::startup(UIWidgetObj* obj, void* storage)
 {
-    // TODO:
-    (void)base;
+    UIScrollWidgetObj& self = obj->as.scroll;
+    new (&self) UIScrollWidgetObj();
+
+    self.base = obj;
+    self.storage = (UIScrollStorage*)storage;
+    self.offsetXDst = 0.0f;
+    self.offsetXSpeed = 0.0f;
+    self.offsetYDst = 0.0f;
+    self.offsetYSpeed = 0.0f;
+    obj->cb.onDraw = &UIScrollWidget::on_draw;
+    obj->cb.onUpdate = &UIScrollWidget::on_update;
+    obj->cb.onEvent = &UIScrollWidgetObj::on_event;
+    obj->flags |= UI_WIDGET_FLAG_DRAW_WITH_SCISSOR_BIT;
+}
+
+void UIScrollWidgetObj::cleanup(UIWidgetObj* obj)
+{
+    UIScrollWidgetObj& self = obj->as.scroll;
+
+    (&self)->~UIScrollWidgetObj();
 }
 
 bool UIScrollWidgetObj::on_event(UIWidget widget, const UIEvent& event)
@@ -59,11 +77,6 @@ void UIScrollWidget::set_scroll_offset_y(float offset)
     mObj->as.scroll.offsetYSpeed = 0.0f;
 }
 
-void UIScrollWidget::set_scroll_bg_color(Color color)
-{
-    mObj->as.scroll.bgColor = color;
-}
-
 void UIScrollWidget::on_update(UIWidget widget, float delta)
 {
     UIWidgetObj* base = widget.unwrap();
@@ -100,7 +113,7 @@ void UIScrollWidget::on_draw(UIWidget widget, ScreenRenderComponent renderer)
     UIScrollWidgetObj& self = obj->as.scroll;
     Rect rect = widget.get_rect();
 
-    renderer.draw_rect(rect, self.bgColor);
+    renderer.draw_rect(rect, self.storage->bgColor);
 }
 
 } // namespace LD

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <Ludens/UI/UIAnimation.h>
-#include <Ludens/UI/UIWidget.h>
+#include <Ludens/UI/Widget/UIToggleWidget.h>
 
 namespace LD {
 
@@ -10,10 +10,12 @@ struct UIWidgetObj;
 struct UIToggleWidgetObj
 {
     UIWidgetObj* base;
-    void (*user_on_toggle)(UIToggleWidget w, bool state, void* user);
+    UIToggleStorage* storage;
+    UIToggleOnToggle onToggle = nullptr;
     UIAnimation<QuadraticInterpolation> anim;
-    bool state;
 
+    static void startup(UIWidgetObj* obj, void* storage);
+    static void cleanup(UIWidgetObj* obj);
     static bool on_event(UIWidget widget, const UIEvent& event);
     static void on_update(UIWidget widget, float delta);
 };

@@ -34,23 +34,24 @@ static void ui_layout_shrink_x(Vector<UIWidgetObj*>& shrinkableX, float remainW)
 void ui_layout_wrap_limit(UIWidgetObj* obj, float& outMinW, float& outMaxW)
 {
     UITextWidgetObj& self = obj->as.text;
+    UITextStorage* storage = self.storage;
 
     Font font = self.fontAtlas.get_font();
     FontMetrics metrics;
-    font.get_metrics(metrics, self.fontSize);
+    font.get_metrics(metrics, storage->fontSize);
 
     outMaxW = 0.0f;
     outMinW = 0.0f;
 
-    if (!self.value)
+    if (storage->value.empty())
         return;
 
-    size_t len = strlen(self.value);
+    size_t len = storage->value.size();
     float lineW = 0.0f;
 
     for (size_t i = 0; i < len; i++)
     {
-        uint32_t c = (uint32_t)self.value[i];
+        uint32_t c = (uint32_t)storage->value[i];
 
         if (c == '\n')
         {
@@ -61,7 +62,7 @@ void ui_layout_wrap_limit(UIWidgetObj* obj, float& outMinW, float& outMaxW)
         float advanceX;
         Rect rect;
         Vec2 baseline(lineW, (float)metrics.ascent);
-        self.fontAtlas.get_baseline_glyph(c, self.fontSize, baseline, rect, advanceX);
+        self.fontAtlas.get_baseline_glyph(c, storage->fontSize, baseline, rect, advanceX);
 
         lineW += advanceX;
         outMaxW = std::max<float>(outMaxW, lineW);
@@ -74,20 +75,21 @@ static float ui_layout_wrap_size(UIWidgetObj* obj, float limitW)
     UITextWidgetObj& self = obj->as.text;
     LD_ASSERT(self.fontAtlas);
 
+    UITextStorage* storage = self.storage;
     Font font = self.fontAtlas.get_font();
     FontMetrics metrics;
-    font.get_metrics(metrics, self.fontSize);
+    font.get_metrics(metrics, storage->fontSize);
 
     Vec2 baseline(0.0f, metrics.ascent);
 
-    if (!self.value)
+    if (storage->value.empty())
         return (float)metrics.lineHeight;
 
-    size_t len = strlen(self.value);
+    size_t len = storage->value.size();
 
     for (size_t i = 0; i < len; i++)
     {
-        uint32_t c = (uint32_t)self.value[i];
+        uint32_t c = (uint32_t)storage->value[i];
 
         // TODO: text wrapping using whitespace as boundary
         if (c == '\n' || baseline.x >= limitW)
@@ -99,7 +101,7 @@ static float ui_layout_wrap_size(UIWidgetObj* obj, float limitW)
 
         float advanceX;
         Rect rect;
-        self.fontAtlas.get_baseline_glyph(c, self.fontSize, baseline, rect, advanceX);
+        self.fontAtlas.get_baseline_glyph(c, storage->fontSize, baseline, rect, advanceX);
 
         baseline.x += advanceX;
     }

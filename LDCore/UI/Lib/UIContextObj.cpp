@@ -13,6 +13,7 @@
 #include <cstdint>
 
 #include "UIObj.h"
+#include "UIWidgetMeta.h"
 
 namespace LD {
 
@@ -99,16 +100,14 @@ static UIWidgetObj* get_event_handler(UIWidgetObj* widget, const UIEvent& event)
     return nullptr;
 }
 
-UIWidgetObj* UIContextObj::alloc_widget(UIWidgetType type, const UILayoutInfo& layoutI, UIWidgetObj* parent, void* user)
+UIWidgetObj* UIContextObj::alloc_widget(UIWidgetType type, const UILayoutInfo& layoutI, UIWidgetObj* parent, void* storage, void* user)
 {
     LD_PROFILE_SCOPE;
 
     LD_ASSERT(parent);
     UIWindowObj* window = parent->window;
     UIWidgetObj* obj = (UIWidgetObj*)widgetPA.allocate();
-    new (obj) UIWidgetObj(type, layoutI, parent, window, user);
-
-    obj->theme = window->ctx()->theme;
+    new (obj) UIWidgetObj(type, layoutI, parent, window, storage, user);
 
     window->widgets.push_back(obj);
     parent->append_child(obj);
@@ -131,8 +130,8 @@ void UIContextObj::free_widget(UIWidgetObj* widget)
     size_t count = std::erase(window->widgets, widget);
     LD_ASSERT(count == 1);
 
-    invalidate_refs(widget); // remove all refs to out of scope widget
-    ui_obj_cleanup(widget);  // polymorphic cleanup
+    // remove all refs to out of scope widget
+    invalidate_refs(widget);
 
     widget->~UIWidgetObj();
     widgetPA.free(widget);

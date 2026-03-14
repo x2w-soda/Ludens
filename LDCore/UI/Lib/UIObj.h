@@ -128,7 +128,4 @@ struct UIWindowObj : UIWidgetObj
 /// @brief Perform UI layout on a widget subtree.
 extern void ui_layout(UIWidgetObj* root);
 
-/// @brief Perform any type specific cleanup or deallocations.
-extern void ui_obj_cleanup(UIWidgetObj*);
-
 } // namespace LD

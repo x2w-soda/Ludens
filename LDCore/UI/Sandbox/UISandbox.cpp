@@ -159,11 +159,12 @@ void UISandbox::imgui(const Vec2& windowExtent, float delta)
 
         ui_push_panel();
         {
-            ui_push_text("Some text1 here!!!!!!");
+            static UITextStorage sTextS;
+            ui_push_text(&sTextS, "Some text1 here!!!!!!");
             ui_pop();
             ui_push_image(mFontAtlasImage, 300, 300);
             ui_pop();
-            ui_push_text("Some text2 here!");
+            ui_push_text(&sTextS, "Some text2 here!");
             ui_pop();
         }
         ui_pop();
@@ -179,8 +180,9 @@ void UISandbox::imgui(const Vec2& windowExtent, float delta)
         }
         ui_pop();
 
+        static UITextEditStorage sTextEdit;
         std::string text;
-        ui_push_text_edit();
+        ui_push_text_edit(&sTextEdit);
         if (ui_text_edit_changed(text))
             sLog.info("Text Changed: [{}]", text);
         if (ui_text_edit_submitted(text))

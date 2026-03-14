@@ -16,7 +16,6 @@ static_assert(LD::IsTrivial<UISliderWidgetTemplate>);
 static_assert(LD::IsTrivial<UIToggleWidgetTemplate>);
 static_assert(LD::IsTrivial<UIPanelWidgetTemplate>);
 static_assert(LD::IsTrivial<UIImageWidgetTemplate>);
-static_assert(LD::IsTrivial<UITextWidgetTemplate>);
 
 UITemplateEntry::UITemplateEntry(UIWidgetType type)
     : type(type)
@@ -163,11 +162,10 @@ void UITemplateSaver::save_ui_text(UITemplateSaver& saver, UITemplateEntry& entr
     LD_ASSERT(widget && widget.get_type() == UI_WIDGET_TEXT);
 
     UITextWidget text = (UITextWidget)widget;
-    const char* cstr = text.get_text();
 
-    entry.text.info = {};
-    entry.text.info.bgColor = nullptr;
-    entry.text.info.fontSize = *text.font_size();
+    entry.text.storage = {};
+    entry.text.storage.bgColor = 0;
+    entry.text.storage.fontSize = text.get_font_size();
 
     if (cstr)
     {
@@ -175,7 +173,7 @@ void UITemplateSaver::save_ui_text(UITemplateSaver& saver, UITemplateEntry& entr
         char* dup = (char*)saver.mTmpl->LA.allocate(len + 1);
         memcpy(dup, cstr, len);
         dup[len] = '\0';
-        entry.text.info.cstr = dup;
+        entry.text.storage.value = dup;
     }
 }
 
@@ -204,7 +202,11 @@ UIWidget UITemplateLoader::load_ui_text(UITemplateLoader& loader, const UITempla
 {
     LD_ASSERT(parent && entry.type == UI_WIDGET_TEXT);
 
-    return parent.node().add_text(entry.layout, entry.text.info, nullptr);
+    UITextWidgetInfo info{};
+    info.externalStorage = false;
+    info.storage = &entry.text.storage;
+
+    return parent.node().add_text(entry.layout, info, nullptr);
 }
 
 void UITemplateSaver::save(UITemplateObj* obj, UIWidget subtree, UITemplateOnSaveCallback callback, void* user)

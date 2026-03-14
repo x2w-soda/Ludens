@@ -1,10 +1,31 @@
+#include <Ludens/UI/Widget/UISliderWidget.h>
+
 #include "../UIWidgetObj.h"
 
 namespace LD {
 
+void UISliderWidgetObj::startup(UIWidgetObj* obj, void* storage)
+{
+    UISliderWidgetObj& self = obj->as.slider;
+    new (&self) UISliderWidgetObj();
+
+    self.base = obj;
+    self.storage = (UISliderStorage*)storage;
+    self.value = std::lerp(self.storage->min, self.storage->max, self.storage->ratio);
+    obj->cb.onEvent = &UISliderWidgetObj::on_event;
+}
+
+void UISliderWidgetObj::cleanup(UIWidgetObj* obj)
+{
+    UISliderWidgetObj& self = obj->as.slider;
+
+    (&self)->~UISliderWidgetObj();
+}
+
 bool UISliderWidgetObj::on_event(UIWidget widget, const UIEvent& event)
 {
     UISliderWidgetObj& self = static_cast<UIWidgetObj*>(widget)->as.slider;
+    UISliderStorage* storage = self.storage;
 
     if (event.type == UI_EVENT_MOUSE_DOWN)
         return true;
@@ -13,8 +34,8 @@ bool UISliderWidgetObj::on_event(UIWidget widget, const UIEvent& event)
         return false;
 
     Rect rect = widget.get_rect();
-    self.ratio = std::clamp(((float)event.drag.position.x - rect.x) / rect.w, 0.0f, 1.0f);
-    self.value = std::lerp(self.min, self.max, self.ratio);
+    storage->ratio = std::clamp(((float)event.drag.position.x - rect.x) / rect.w, 0.0f, 1.0f);
+    self.value = std::lerp(storage->min, storage->max, storage->ratio);
 
     return true;
 }
@@ -24,6 +45,7 @@ void UISliderWidget::on_draw(UIWidget widget, ScreenRenderComponent renderer)
     UIWidgetObj* obj = widget;
     const UITheme& theme = obj->theme;
     UISliderWidgetObj& self = obj->as.slider;
+    UISliderStorage* storage = self.storage;
     Rect rect = widget.get_rect();
 
     float sliderw = rect.w * 0.1f;
@@ -36,25 +58,13 @@ void UISliderWidget::on_draw(UIWidget widget, ScreenRenderComponent renderer)
         color = Color::lift(color, 0.07f);
 
     rect.w = sliderw;
-    rect.x += self.ratio * sliderw * 9.0f;
+    rect.x += storage->ratio * sliderw * 9.0f;
     renderer.draw_rect(rect, color);
-}
-
-void UISliderWidget::set_value_range(float minValue, float maxValue)
-{
-    mObj->as.slider.min = minValue;
-    mObj->as.slider.max = maxValue;
-    mObj->as.slider.value = std::clamp(mObj->as.slider.value, minValue, maxValue);
 }
 
 float UISliderWidget::get_value()
 {
     return mObj->as.slider.value;
-}
-
-float UISliderWidget::get_ratio()
-{
-    return mObj->as.slider.ratio;
 }
 
 } // namespace LD

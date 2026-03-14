@@ -174,176 +174,14 @@ struct UIWidget : Handle<struct UIWidgetObj>
     void set_layout_child_align_y(UIAlign childAlignY);
 };
 
-struct UIScrollWidget : UIWidget
-{
-    /// @brief Set scroll offset along X axis.
-    void set_scroll_offset_x(float offset);
-
-    /// @brief Set scroll offset along Y axis.
-    void set_scroll_offset_y(float offset);
-
-    /// @brief Update scroll background color
-    void set_scroll_bg_color(Color color);
-
-    /// @brief Default scroll widget update for smooth scrolling.
-    static void on_update(UIWidget widget, float delta);
-
-    /// @brief Default scroll widget rendering.
-    static void on_draw(UIWidget widget, ScreenRenderComponent renderer);
-};
-
-struct UIScrollWidgetInfo
-{
-    Color bgColor;
-};
-
-struct UIPanelWidget : UIWidget
-{
-    /// @brief Access panel color.
-    Color* panel_color();
-
-    /// @brief Default panel widget rendering.
-    static void on_draw(UIWidget widget, ScreenRenderComponent renderer);
-};
-
-struct UIPanelWidgetInfo
-{
-    Color color;
-};
-
-/// @brief UI button widget.
-struct UIButtonWidget : UIWidget
-{
-    /// @brief Default button widget rendering.
-    static void on_draw(UIWidget widget, ScreenRenderComponent renderer);
-
-    const char* get_button_text();
-    void set_button_text(const char* text);
-    void set_on_click(void (*onClick)(UIButtonWidget w, MouseButton btn, void* user));
-};
-
-struct UIButtonWidgetInfo
-{
-    const char* text;
-    Color textColor;
-    void (*onClick)(UIButtonWidget w, MouseButton btn, void* user);
-    bool transparentBG;
-};
-
-/// @brief UI slider widget
-struct UISliderWidget : UIWidget
-{
-    /// @brief Set slider value range.
-    void set_value_range(float minValue, float maxValue);
-
-    /// @brief get slider value
-    float get_value();
-
-    /// @brief get normalized slider ratio between 0 and 1
-    float get_ratio();
-
-    /// @brief Default slider widget rendering.
-    static void on_draw(UIWidget widget, ScreenRenderComponent renderer);
-};
-
-struct UISliderWidgetInfo
-{
-    float min; /// slider minimum value
-    float max; /// slider maximum value
-};
-
-/// @brief UI toggle widget, is either in the "true" or "false" boolean state.
-struct UIToggleWidget : UIWidget
-{
-    /// @brief return the toggle state.
-    bool get_state();
-
-    /// @brief Default image widget rendering.
-    static void on_draw(UIWidget widget, ScreenRenderComponent renderer);
-};
-
-struct UIToggleWidgetInfo
-{
-    void (*on_toggle)(UIToggleWidget w, bool state, void* user);
-    bool state; /// the state of the toggle widget when it is created
-};
-
-/// @brief UI image widget
-struct UIImageWidget : UIWidget
-{
-    /// @brief get target image handle
-    RImage get_image();
-
-    /// @brief Set rect in image to display.
-    void set_image_rect(const Rect& rect);
-
-    /// @brief Get displayed rect in image.
-    Rect get_image_rect();
-
-    /// @brief Set image tint color.
-    void set_image_tint(Color color);
-
-    /// @brief Default image widget rendering.
-    static void on_draw(UIWidget widget, ScreenRenderComponent renderer);
-};
-
-struct UIImageWidgetInfo
-{
-    RImage image;     /// image to be renderered
-    const Rect* rect; /// if not null, the part of image to be rendered
-};
-
-struct UITextWidget : UIWidget
-{
-    /// @brief Set text content.
-    void set_text(const char* cstr);
-
-    /// @brief Get text content. Treat return value as a transient pointer.
-    const char* get_text();
-
-    void set_text_style(Color color, FontAtlas fontAtlas, RImage fontImage);
-
-    /// @brief Access text font size.
-    float* font_size();
-
-    /// @brief Default text widget rendering.
-    static void on_draw(UIWidget widget, ScreenRenderComponent renderer);
-};
-
-struct UITextWidgetInfo
-{
-    float fontSize;   /// rendered size
-    const char* cstr; /// a null terminated c string
-    Color* bgColor;   /// if not null, the background color under text
-};
-
-enum UITextEditDomain
-{
-    UI_TEXT_EDIT_DOMAIN_STRING = 0,
-    UI_TEXT_EDIT_DOMAIN_UINT,
-};
-
-struct UITextEditWidget : UIWidget
-{
-    /// @brief Set text edit field value, does not trigger on_change callbacks.
-    void set_text(View text);
-
-    /// @brief Domain influences how key input is treated and may change the final text before submission.
-    /// @note Upon domain change, text value is reset.
-    void set_domain(UITextEditDomain domain);
-
-    /// @brief Default text edit widget rendering.
-    static void on_draw(UIWidget widget, ScreenRenderComponent renderer);
-};
-
-struct UITextEditWidgetInfo
-{
-    UITextEditDomain domain; /// input domain
-    float fontSize;          /// rendered size
-    const char* placeHolder; /// default gray text to display when empty
-    void (*onChange)(UITextEditWidget widget, View text, void* user);
-    void (*onSubmit)(UITextEditWidget widget, View text, void* user);
-};
+struct UIToggleStorage;
+struct UITextStorage;
+struct UISliderStorage;
+struct UIButtonStorage;
+struct UIImageStorage;
+struct UIPanelStorage;
+struct UITextEditStorage;
+struct UIScrollStorage;
 
 /// @brief interface to manipulate widget tree hierarchy
 struct UINode : Handle<struct UIWidgetObj>
@@ -356,21 +194,14 @@ struct UINode : Handle<struct UIWidgetObj>
     /// @warning All UIWidget handle in the removed subtree is now out of date.
     void remove();
 
-    UIScrollWidget add_scroll(const UILayoutInfo& layoutI, const UIScrollWidgetInfo& widgetI, void* user);
-
-    UIPanelWidget add_panel(const UILayoutInfo& layoutI, const UIPanelWidgetInfo& widgetI, void* user);
-
-    UIImageWidget add_image(const UILayoutInfo& layoutI, const UIImageWidgetInfo& widgetI, void* user);
-
-    UIButtonWidget add_button(const UILayoutInfo& layoutI, const UIButtonWidgetInfo& widgetI, void* user);
-
-    UISliderWidget add_slider(const UILayoutInfo& layoutI, const UISliderWidgetInfo& widgetI, void* user);
-
-    UIToggleWidget add_toggle(const UILayoutInfo& layoutI, const UIToggleWidgetInfo& widgetI, void* user);
-
-    UITextWidget add_text(const UILayoutInfo& layoutI, const UITextWidgetInfo& widgetI, void* user);
-
-    UITextEditWidget add_text_edit(const UILayoutInfo& layoutI, const UITextEditWidgetInfo& widgetI, void* user);
+    UIWidget add_scroll(const UILayoutInfo& layoutI, UIScrollStorage* storage, void* user);
+    UIWidget add_panel(const UILayoutInfo& layoutI, UIPanelStorage* storage, void* user);
+    UIWidget add_image(const UILayoutInfo& layoutI, UIImageStorage* storage, void* user);
+    UIWidget add_button(const UILayoutInfo& layoutI, UIButtonStorage* storage, void* user);
+    UIWidget add_slider(const UILayoutInfo& layoutI, UISliderStorage* storage, void* user);
+    UIWidget add_toggle(const UILayoutInfo& layoutI, UIToggleStorage* storage, void* user);
+    UIWidget add_text(const UILayoutInfo& layoutI, UITextStorage* storage, void* user);
+    UIWidget add_text_edit(const UILayoutInfo& layoutI, UITextEditStorage* storage, void* user);
 };
 
 /// @brief Get static C string for widget type.

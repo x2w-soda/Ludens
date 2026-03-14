@@ -6,63 +6,24 @@
 #include <algorithm>
 
 #include "UIObj.h"
+#include "UIWidgetMeta.h"
 
 namespace LD {
 
-// clang-format off
-struct
-{
-    UIWidgetType type;
-    const char* typeName;
-    size_t objSize;
-    void (*cleanup)(UIWidgetObj* obj);
-} sWidgetTable[] = {
-    { UI_WIDGET_WINDOW,    "UIWindow",   sizeof(UIWindowObj),         nullptr },
-    { UI_WIDGET_SCROLL,    "UIScroll",   sizeof(UIScrollWidgetObj),   nullptr },
-    { UI_WIDGET_BUTTON,    "UIButton",   sizeof(UIButtonWidgetObj),   &UIButtonWidgetObj::cleanup  },
-    { UI_WIDGET_SLIDER,    "UISlider",   sizeof(UISliderWidgetObj),   nullptr },
-    { UI_WIDGET_TOGGLE,    "UIToggle",   sizeof(UIToggleWidgetObj),   nullptr },
-    { UI_WIDGET_PANEL,     "UIPanel",    sizeof(UIPanelWidgetObj),    nullptr },
-    { UI_WIDGET_IMAGE,     "UIImage",    sizeof(UIImageWidgetObj),    nullptr },
-    { UI_WIDGET_TEXT,      "UIText",     sizeof(UITextWidgetObj),     &UITextWidgetObj::cleanup },
-    { UI_WIDGET_TEXT_EDIT, "UITextEdit", sizeof(UITextEditWidgetObj), &UITextEditWidgetObj::cleanup },
-};
-// clang-format on
-
-static_assert(sizeof(sWidgetTable) / sizeof(*sWidgetTable) == UI_WIDGET_TYPE_COUNT);
-static_assert(IsTrivial<UIScrollWidgetObj>);
-static_assert(IsTrivial<UITextWidgetObj>);
-static_assert(IsTrivial<UIPanelWidgetObj>);
-static_assert(IsTrivial<UIImageWidgetObj>);
-static_assert(IsTrivial<UIToggleWidgetObj>);
-static_assert(IsTrivial<UISliderWidgetObj>);
-static_assert(IsTrivial<UIButtonWidgetObj>);
-
-UIWidgetObj::UIWidgetObj(UIWidgetType type, const UILayoutInfo& layoutI, UIWidgetObj* parent, UIWindowObj* window, void* user)
+UIWidgetObj::UIWidgetObj(UIWidgetType type, const UILayoutInfo& layoutI, UIWidgetObj* parent, UIWindowObj* window, void* storage, void* user)
     : window(window), type(type), parent(parent), user(user)
 {
-    LD_ASSERT(window);
-
     layout.info = layoutI;
     layout.rect = {};
     node = UINode(this);
+    theme = window->ctx()->theme;
 
-    switch (type)
-    {
-    case UI_WIDGET_TEXT_EDIT:
-        new (&as.textEdit) UITextEditWidgetObj();
-        break;
-    }
+    sWidgetMeta[(int)type].startup(this, storage);
 }
 
 UIWidgetObj::~UIWidgetObj()
 {
-    switch (type)
-    {
-    case UI_WIDGET_TEXT_EDIT:
-        (&as.textEdit)->~UITextEditWidgetObj();
-        break;
-    }
+    sWidgetMeta[(int)type].cleanup(this);
 }
 
 UIContextObj* UIWidgetObj::ctx() const
@@ -76,41 +37,15 @@ void UIWidgetObj::draw(ScreenRenderComponent renderer)
     if (flags & UI_WIDGET_FLAG_HIDDEN_BIT)
         return;
 
+    UIWidget widget(this);
+
     if (cb.onDraw)
     {
-        cb.onDraw(UIWidget(this), renderer);
+        cb.onDraw(widget, renderer);
         return;
     }
 
-    switch (type)
-    {
-    case UI_WIDGET_WINDOW:
-        UIWindowObj::on_draw(UIWidget(this), renderer);
-        break;
-    case UI_WIDGET_PANEL:
-        UIPanelWidget::on_draw(UIWidget(this), renderer);
-        break;
-    case UI_WIDGET_BUTTON:
-        UIButtonWidget::on_draw(UIWidget(this), renderer);
-        break;
-    case UI_WIDGET_SLIDER:
-        UISliderWidget::on_draw(UIWidget(this), renderer);
-        break;
-    case UI_WIDGET_TOGGLE:
-        UIToggleWidget::on_draw(UIWidget(this), renderer);
-        break;
-    case UI_WIDGET_IMAGE:
-        UIImageWidget::on_draw(UIWidget(this), renderer);
-        break;
-    case UI_WIDGET_TEXT:
-        UITextWidget::on_draw(UIWidget(this), renderer);
-        break;
-    case UI_WIDGET_TEXT_EDIT:
-        UITextEditWidget::on_draw(UIWidget(this), renderer);
-        break;
-    default:
-        LD_UNREACHABLE;
-    }
+    widget_on_draw(widget, renderer);
 }
 
 bool UIWidget::is_hovered()
@@ -336,64 +271,35 @@ void UINode::remove()
     mObj = nullptr;
 }
 
-UIScrollWidget UINode::add_scroll(const UILayoutInfo& layoutI, const UIScrollWidgetInfo& widgetI, void* user)
+UIWidget UINode::add_scroll(const UILayoutInfo& layoutI, UIScrollStorage* storage, void* user)
 {
-    UIWidgetObj* obj = mObj->ctx()->alloc_widget(UI_WIDGET_SCROLL, layoutI, mObj, user);
-    obj->as.scroll.base = obj;
-    obj->as.scroll.bgColor = widgetI.bgColor;
-    obj->as.scroll.offsetXDst = 0.0f;
-    obj->as.scroll.offsetXSpeed = 0.0f;
-    obj->as.scroll.offsetYDst = 0.0f;
-    obj->as.scroll.offsetYSpeed = 0.0f;
-    obj->cb.onDraw = &UIScrollWidget::on_draw;
-    obj->cb.onUpdate = &UIScrollWidget::on_update;
-    obj->cb.onEvent = &UIScrollWidgetObj::on_event;
-    obj->flags |= UI_WIDGET_FLAG_DRAW_WITH_SCISSOR_BIT;
+    UIWidgetObj* obj = mObj->ctx()->alloc_widget(UI_WIDGET_SCROLL, layoutI, mObj, storage, user);
 
     return {obj};
 }
 
-UIButtonWidget UINode::add_button(const UILayoutInfo& layoutI, const UIButtonWidgetInfo& widgetI, void* user)
+UIWidget UINode::add_button(const UILayoutInfo& layoutI, UIButtonStorage* storage, void* user)
 {
-    UIWidgetObj* obj = mObj->ctx()->alloc_widget(UI_WIDGET_BUTTON, layoutI, mObj, user);
-    obj->cb.onEvent = UIButtonWidgetObj::on_event;
-    obj->as.button.base = obj;
-    obj->as.button.text = widgetI.text ? heap_strdup(widgetI.text, MEMORY_USAGE_UI) : nullptr;
-    obj->as.button.onClick = widgetI.onClick;
-    obj->as.button.textColor = widgetI.textColor;
-    obj->as.button.transparentBG = widgetI.transparentBG;
+    UIWidgetObj* obj = mObj->ctx()->alloc_widget(UI_WIDGET_BUTTON, layoutI, mObj, storage, user);
 
-    UIButtonWidget handle{obj};
-    return handle;
+    return {obj};
 };
 
-UISliderWidget UINode::add_slider(const UILayoutInfo& layoutI, const UISliderWidgetInfo& widgetI, void* user)
+UIWidget UINode::add_slider(const UILayoutInfo& layoutI, UISliderStorage* storage, void* user)
 {
-    UIWidgetObj* obj = mObj->ctx()->alloc_widget(UI_WIDGET_SLIDER, layoutI, mObj, user);
-    obj->cb.onEvent = &UISliderWidgetObj::on_event;
-    obj->as.slider.base = obj;
-    obj->as.slider.min = widgetI.min;
-    obj->as.slider.max = widgetI.max;
-    obj->as.slider.value = widgetI.min;
-    obj->as.slider.ratio = 0.0f;
+    UIWidgetObj* obj = mObj->ctx()->alloc_widget(UI_WIDGET_SLIDER, layoutI, mObj, storage, user);
 
     return {obj};
 }
 
-UIToggleWidget UINode::add_toggle(const UILayoutInfo& layoutI, const UIToggleWidgetInfo& widgetI, void* user)
+UIWidget UINode::add_toggle(const UILayoutInfo& layoutI, UIToggleStorage* storage, void* user)
 {
-    UIWidgetObj* obj = mObj->ctx()->alloc_widget(UI_WIDGET_TOGGLE, layoutI, mObj, user);
-    obj->cb.onEvent = &UIToggleWidgetObj::on_event;
-    obj->cb.onUpdate = &UIToggleWidgetObj::on_update;
-    obj->as.toggle.base = obj;
-    obj->as.toggle.state = widgetI.state;
-    obj->as.toggle.user_on_toggle = widgetI.on_toggle;
-    obj->as.toggle.anim.reset(1.0f);
+    UIWidgetObj* obj = mObj->ctx()->alloc_widget(UI_WIDGET_TOGGLE, layoutI, mObj, storage, user);
 
     return {obj};
 }
 
-UITextWidget UINode::add_text(const UILayoutInfo& layoutI, const UITextWidgetInfo& widgetI, void* user)
+UIWidget UINode::add_text(const UILayoutInfo& layoutI, UITextStorage* storage, void* user)
 {
     UILayoutInfo textLayoutI = layoutI;
     if (!(layoutI.sizeX.type == UI_SIZE_FIXED && layoutI.sizeX.extent > 0.0f))
@@ -402,57 +308,35 @@ UITextWidget UINode::add_text(const UILayoutInfo& layoutI, const UITextWidgetInf
         textLayoutI.sizeY = UISize::fit();
     }
 
-    UIContextObj* ctx = mObj->ctx();
-    UIWidgetObj* obj = ctx->alloc_widget(UI_WIDGET_TEXT, textLayoutI, mObj, user);
-    obj->as.text.fontSize = widgetI.fontSize;
-    obj->as.text.value = widgetI.cstr ? heap_strdup(widgetI.cstr, MEMORY_USAGE_UI) : nullptr;
-    obj->as.text.fontAtlas = ctx->fontAtlas;
-    obj->as.text.fontImage = ctx->fontAtlasImage;
-    obj->as.text.bgColor = 0;
-    obj->as.text.fgColor = ctx->theme.get_on_surface_color();
-
-    if (widgetI.bgColor)
-        obj->as.text.bgColor = *widgetI.bgColor;
+    UIWidgetObj* obj = mObj->ctx()->alloc_widget(UI_WIDGET_TEXT, textLayoutI, mObj, storage, user);
 
     return {obj};
 }
 
-UITextEditWidget UINode::add_text_edit(const UILayoutInfo& layoutI, const UITextEditWidgetInfo& widgetI, void* user)
+UIWidget UINode::add_text_edit(const UILayoutInfo& layoutI, UITextEditStorage* storage, void* user)
 {
-    UIWidgetObj* obj = mObj->ctx()->alloc_widget(UI_WIDGET_TEXT_EDIT, layoutI, mObj, user);
-    obj->as.textEdit.fontSize = widgetI.fontSize;
-    obj->as.textEdit.buf = TextBuffer<char>::create();
-    obj->as.textEdit.domain = widgetI.domain;
-    obj->as.textEdit.onChange = widgetI.onChange;
-    obj->as.textEdit.onSubmit = widgetI.onSubmit;
-    obj->flags |= UI_WIDGET_FLAG_FOCUSABLE_BIT;
-    obj->cb.onEvent = &UITextEditWidgetObj::on_event;
-    obj->cb.onDraw = &UITextEditWidget::on_draw;
+    UIWidgetObj* obj = mObj->ctx()->alloc_widget(UI_WIDGET_TEXT_EDIT, layoutI, mObj, storage, user);
 
     return {obj};
 }
 
-UIPanelWidget UINode::add_panel(const UILayoutInfo& layoutI, const UIPanelWidgetInfo& widgetI, void* user)
+UIWidget UINode::add_panel(const UILayoutInfo& layoutI, UIPanelStorage* storage, void* user)
 {
-    UIWidgetObj* obj = mObj->ctx()->alloc_widget(UI_WIDGET_PANEL, layoutI, mObj, user);
-    obj->as.panel.color = widgetI.color;
+    UIWidgetObj* obj = mObj->ctx()->alloc_widget(UI_WIDGET_PANEL, layoutI, mObj, storage, user);
 
     return {obj};
 }
 
-void ui_obj_cleanup(UIWidgetObj* widget)
+UIWidget UINode::add_image(const UILayoutInfo& layoutI, UIImageStorage* storage, void* user)
 {
-    LD_ASSERT(widget);
+    UIWidgetObj* obj = mObj->ctx()->alloc_widget(UI_WIDGET_IMAGE, layoutI, mObj, storage, user);
 
-    if (!sWidgetTable[widget->type].cleanup)
-        return;
-
-    sWidgetTable[widget->type].cleanup(widget);
+    return {obj};
 }
 
 const char* get_ui_widget_type_cstr(UIWidgetType type)
 {
-    return sWidgetTable[(int)type].typeName;
+    return sWidgetMeta[(int)type].typeName;
 }
 
 bool get_ui_widget_type_from_cstr(UIWidgetType& outType, const char* cstr)
@@ -464,7 +348,7 @@ bool get_ui_widget_type_from_cstr(UIWidgetType& outType, const char* cstr)
 
     for (int i = 0; i < (int)UI_WIDGET_TYPE_COUNT; i++)
     {
-        if (!strcmp(cstr, sWidgetTable[i].typeName))
+        if (!strcmp(cstr, sWidgetMeta[i].typeName))
         {
             outType = (UIWidgetType)i;
             return true;

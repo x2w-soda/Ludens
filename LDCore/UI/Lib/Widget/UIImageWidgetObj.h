@@ -11,9 +11,10 @@ struct UIWidgetObj;
 struct UIImageWidgetObj
 {
     UIWidgetObj* base;
-    RImage imageHandle;
-    Rect imageRect;
-    Color tint;
+    UIImageStorage* storage;
+
+    static void startup(UIWidgetObj* obj, void* storage);
+    static void cleanup(UIWidgetObj* obj);
 };
 
 } // namespace LD

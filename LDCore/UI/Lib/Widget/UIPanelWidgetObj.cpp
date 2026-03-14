@@ -1,10 +1,23 @@
+#include <Ludens/UI/Widget/UIPanelWidget.h>
+
 #include "../UIWidgetObj.h"
 
 namespace LD {
 
-Color* UIPanelWidget::panel_color()
+void UIPanelWidgetObj::startup(UIWidgetObj* obj, void* storage)
 {
-    return &mObj->as.panel.color;
+    UIPanelWidgetObj& self = obj->as.panel;
+    new (&self) UIPanelWidgetObj();
+
+    self.base = obj;
+    self.storage = (UIPanelStorage*)storage;
+}
+
+void UIPanelWidgetObj::cleanup(UIWidgetObj* obj)
+{
+    UIPanelWidgetObj& self = obj->as.panel;
+
+    (&self)->~UIPanelWidgetObj();
 }
 
 void UIPanelWidget::on_draw(UIWidget widget, ScreenRenderComponent renderer)
@@ -13,7 +26,7 @@ void UIPanelWidget::on_draw(UIWidget widget, ScreenRenderComponent renderer)
     UIPanelWidgetObj& self = obj->as.panel;
     Rect rect = widget.get_rect();
 
-    renderer.draw_rect(rect, self.color);
+    renderer.draw_rect(rect, self.storage->color);
 }
 
 } // namespace LD

@@ -7,12 +7,12 @@ namespace LD {
 struct UISliderWidgetObj
 {
     UIWidgetObj* base;
+    UISliderStorage* storage;
     Vec2 dragStart;
-    float min;
-    float max;
     float value;
-    float ratio;
 
+    static void startup(UIWidgetObj* obj, void* storage);
+    static void cleanup(UIWidgetObj* obj);
     static bool on_event(UIWidget widget, const UIEvent& event);
 };
 

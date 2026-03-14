@@ -35,7 +35,7 @@ struct UIContextObj
     Vec2 dragStartPos;           /// mouse cursor drag start global position
     MouseButton dragMouseButton; /// mouse button used for dragging
 
-    UIWidgetObj* alloc_widget(UIWidgetType type, const UILayoutInfo& layoutI, UIWidgetObj* parent, void* user);
+    UIWidgetObj* alloc_widget(UIWidgetType type, const UILayoutInfo& layoutI, UIWidgetObj* parent, void* storage, void* user);
     void free_widget(UIWidgetObj* widget);
 
     UIWidgetObj* get_widget(const Vec2& pos);

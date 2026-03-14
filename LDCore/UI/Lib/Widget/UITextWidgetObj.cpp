@@ -1,66 +1,57 @@
-#include "UITextWidgetObj.h"
+#include <Ludens/UI/Widget/UITextWidget.h>
+
+#include "../UIContextObj.h"
 #include "../UIWidgetObj.h"
+#include "UITextWidgetObj.h"
 
 namespace LD {
+
+void UITextWidgetObj::startup(UIWidgetObj* obj, void* storage)
+{
+    UIContextObj* ctx = obj->ctx();
+    auto& self = obj->as.text;
+
+    self.storage = (UITextStorage*)storage;
+    self.storage->fgColor = ctx->theme.get_on_surface_color();
+    self.fontAtlas = ctx->fontAtlas;
+    self.fontImage = ctx->fontAtlasImage;
+}
 
 void UITextWidgetObj::cleanup(UIWidgetObj* base)
 {
     UITextWidgetObj& self = base->as.text;
-
-    if (self.value)
-    {
-        heap_free((void*)self.value);
-        self.value = nullptr;
-    }
 
     self.~UITextWidgetObj();
 }
 
 void UITextWidget::on_draw(UIWidget widget, ScreenRenderComponent renderer)
 {
-    UIWidgetObj* obj = (UIWidgetObj*)widget;
+    UIWidgetObj* obj = widget.unwrap();
     UIContextObj& ctx = *obj->ctx();
     const UITheme& theme = obj->theme;
     UITextWidgetObj& self = obj->as.text;
-    Rect rect = widget.get_rect();
+    const Rect& rect = obj->layout.rect;
+    const UITextStorage* storage = self.storage;
     float wrapWidth = rect.w;
 
-    if (self.value && rect.h == 0) // likely a layout bug in UI text wrapping
+    if (storage->value.empty() && rect.h == 0) // likely a layout bug in UI text wrapping
         LD_DEBUG_BREAK;
 
-    if (self.bgColor.get_alpha() > 0.0f)
-        renderer.draw_rect(rect, self.bgColor);
+    if (storage->bgColor.get_alpha() > 0.0f)
+        renderer.draw_rect(rect, storage->bgColor);
 
-    renderer.draw_text(self.fontAtlas, self.fontImage, self.fontSize, rect.get_pos(), self.value, self.fgColor, wrapWidth);
-}
-
-void UITextWidget::set_text(const char* cstr)
-{
-    if (mObj->as.text.value)
-        heap_free((void*)mObj->as.text.value);
-
-    mObj->as.text.value = cstr ? heap_strdup(cstr, MEMORY_USAGE_UI) : nullptr;
-}
-
-const char* UITextWidget::get_text()
-{
-    return mObj->as.text.value;
+    renderer.draw_text(self.fontAtlas, self.fontImage, storage->fontSize, rect.get_pos(), storage->value.c_str(), storage->fgColor, wrapWidth);
 }
 
 void UITextWidget::set_text_style(Color color, FontAtlas fontAtlas, RImage fontImage)
 {
-    mObj->as.text.fgColor = color;
+    mObj->as.text.storage->fgColor = color;
 
     if (fontAtlas && fontImage)
     {
         mObj->as.text.fontAtlas = fontAtlas;
         mObj->as.text.fontImage = fontImage;
     }
-}
-
-float* UITextWidget::font_size()
-{
-    return &mObj->as.text.fontSize;
 }
 
 } // namespace LD
