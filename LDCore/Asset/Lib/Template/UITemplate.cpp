@@ -11,11 +11,8 @@
 
 namespace LD {
 
-static_assert(LD::IsTrivial<UIScrollWidgetTemplate>);
-static_assert(LD::IsTrivial<UISliderWidgetTemplate>);
-static_assert(LD::IsTrivial<UIToggleWidgetTemplate>);
-static_assert(LD::IsTrivial<UIPanelWidgetTemplate>);
-static_assert(LD::IsTrivial<UIImageWidgetTemplate>);
+static_assert(LD::IsTrivial<UIScrollTemplate>);
+static_assert(LD::IsTrivial<UIToggleTemplate>);
 
 UITemplateEntry::UITemplateEntry(UIWidgetType type)
     : type(type)
@@ -23,7 +20,16 @@ UITemplateEntry::UITemplateEntry(UIWidgetType type)
     switch (type)
     {
     case UI_WIDGET_BUTTON:
-        new (&button)(UIButtonWidgetTemplate);
+        new (&button) UIButtonTemplate();
+        break;
+    case UI_WIDGET_SLIDER:
+        new (&slider) UISliderTemplate();
+        break;
+    case UI_WIDGET_PANEL:
+        new (&panel) UIPanelTemplate();
+        break;
+    case UI_WIDGET_IMAGE:
+        new (&image) UIImageTemplate();
         break;
     default:
         break;
@@ -35,7 +41,16 @@ UITemplateEntry::~UITemplateEntry()
     switch (type)
     {
     case UI_WIDGET_BUTTON:
-        (&button)->~UIButtonWidgetTemplate();
+        (&button)->~UIButtonTemplate();
+        break;
+    case UI_WIDGET_SLIDER:
+        (&slider)->~UISliderTemplate();
+        break;
+    case UI_WIDGET_PANEL:
+        (&panel)->~UIPanelTemplate();
+        break;
+    case UI_WIDGET_IMAGE:
+        (&image)->~UIImageTemplate();
         break;
     default:
         break;
@@ -133,8 +148,7 @@ void UITemplateSaver::save_ui_button(UITemplateSaver& saver, UITemplateEntry& en
     LD_ASSERT(widget && widget.get_type() == UI_WIDGET_BUTTON);
 
     UIButtonWidget button = (UIButtonWidget)widget;
-    entry.button.text = std::string(button.get_button_text());
-    entry.button.info.text = entry.button.text.c_str();
+    entry.button.storage = *button.get_storage();
 }
 
 void UITemplateSaver::save_ui_panel(UITemplateSaver& saver, UITemplateEntry& entry, UIWidget widget)
@@ -142,19 +156,16 @@ void UITemplateSaver::save_ui_panel(UITemplateSaver& saver, UITemplateEntry& ent
     LD_ASSERT(widget && widget.get_type() == UI_WIDGET_PANEL);
 
     UIPanelWidget panel = (UIPanelWidget)widget;
-    entry.panel.info.color = *panel.panel_color();
+    entry.panel.storage = *panel.get_storage();
 }
 
 void UITemplateSaver::save_ui_image(UITemplateSaver& saver, UITemplateEntry& entry, UIWidget widget)
 {
     LD_ASSERT(widget && widget.get_type() == UI_WIDGET_IMAGE);
 
-    Rect* imageRect = (Rect*)saver.mTmpl->LA.allocate(sizeof(Rect));
     UIImageWidget image = (UIImageWidget)widget;
-    *imageRect = image.get_image_rect();
-
-    entry.image.info.image = {};
-    entry.image.info.rect = imageRect;
+    entry.image.storage = *image.get_storage();
+    entry.image.texture2DAssetID = 0; // TODO:
 }
 
 void UITemplateSaver::save_ui_text(UITemplateSaver& saver, UITemplateEntry& entry, UIWidget widget)
@@ -163,50 +174,43 @@ void UITemplateSaver::save_ui_text(UITemplateSaver& saver, UITemplateEntry& entr
 
     UITextWidget text = (UITextWidget)widget;
 
-    entry.text.storage = {};
-    entry.text.storage.bgColor = 0;
-    entry.text.storage.fontSize = text.get_font_size();
-
-    if (cstr)
-    {
-        size_t len = strlen(cstr);
-        char* dup = (char*)saver.mTmpl->LA.allocate(len + 1);
-        memcpy(dup, cstr, len);
-        dup[len] = '\0';
-        entry.text.storage.value = dup;
-    }
+    entry.text.storage = *text.get_storage();
 }
 
 UIWidget UITemplateLoader::load_ui_button(UITemplateLoader& loader, const UITemplateEntry& entry, UIWidget parent)
 {
     LD_ASSERT(parent && entry.type == UI_WIDGET_BUTTON);
 
-    return parent.node().add_button(entry.layout, entry.button.info, nullptr);
+    UIWidget widget = parent.node().add_button(entry.layout, nullptr, nullptr);
+
+    return widget;
 }
 
 UIWidget UITemplateLoader::load_ui_panel(UITemplateLoader& loader, const UITemplateEntry& entry, UIWidget parent)
 {
     LD_ASSERT(parent && entry.type == UI_WIDGET_PANEL);
 
-    return parent.node().add_panel(entry.layout, entry.panel.info, nullptr);
+    UIWidget widget = parent.node().add_panel(entry.layout, nullptr, nullptr);
+
+    return widget;
 }
 
 UIWidget UITemplateLoader::load_ui_image(UITemplateLoader& loader, const UITemplateEntry& entry, UIWidget parent)
 {
     LD_ASSERT(parent && entry.type == UI_WIDGET_IMAGE);
 
-    return parent.node().add_image(entry.layout, entry.image.info, nullptr);
+    UIWidget widget = parent.node().add_image(entry.layout, nullptr, nullptr);
+
+    return widget;
 }
 
 UIWidget UITemplateLoader::load_ui_text(UITemplateLoader& loader, const UITemplateEntry& entry, UIWidget parent)
 {
     LD_ASSERT(parent && entry.type == UI_WIDGET_TEXT);
 
-    UITextWidgetInfo info{};
-    info.externalStorage = false;
-    info.storage = &entry.text.storage;
+    UIWidget widget = parent.node().add_text(entry.layout, nullptr, nullptr);
 
-    return parent.node().add_text(entry.layout, info, nullptr);
+    return widget;
 }
 
 void UITemplateSaver::save(UITemplateObj* obj, UIWidget subtree, UITemplateOnSaveCallback callback, void* user)

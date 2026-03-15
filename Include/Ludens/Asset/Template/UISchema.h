@@ -8,7 +8,7 @@
 
 namespace LD {
 
-struct UITemplateSchema
+struct UISchema
 {
     enum ErrorType
     {

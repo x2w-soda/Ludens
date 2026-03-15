@@ -7,7 +7,7 @@ set(MODULE_INCLUDE
 	${LUDENS_INCLUDE_DIR}/Ludens/Asset/AssetRegistry.h
 	${LUDENS_INCLUDE_DIR}/Ludens/Asset/AssetSchema.h
 	${LUDENS_INCLUDE_DIR}/Ludens/Asset/Template/UITemplate.h
-	${LUDENS_INCLUDE_DIR}/Ludens/Asset/Template/UITemplateSchema.h
+	${LUDENS_INCLUDE_DIR}/Ludens/Asset/Template/UISchema.h
 	${LUDENS_INCLUDE_DIR}/Ludens/Asset/AssetType/BlobAsset.h
 	${LUDENS_INCLUDE_DIR}/Ludens/Asset/AssetType/FontAsset.h
 	${LUDENS_INCLUDE_DIR}/Ludens/Asset/AssetType/MeshAsset.h
@@ -29,8 +29,8 @@ set(MODULE_LIB
 	Lib/AssetMeta.cpp
 	Lib/Template/UITemplate.cpp
 	Lib/Template/UITemplateObj.h
-	Lib/Template/UITemplateSchemaKeys.h
-	Lib/Template/UITemplateSchema.cpp
+	Lib/Template/UISchemaKeys.h
+	Lib/Template/UISchema.cpp
 	Lib/AssetType/BlobAssetObj.h
 	Lib/AssetType/BlobAsset.cpp
 	Lib/AssetType/FontAssetObj.h

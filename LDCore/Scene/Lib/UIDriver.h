@@ -31,7 +31,7 @@ public:
 private:
     void push_driver_table();
 
-    static void ui_button_on_click(UIButtonWidget w, MouseButton btn, void* user);
+    static void ui_button_on_click(UIWidget w, MouseButton btn, void* user);
 
 private:
     LuaState mL{};

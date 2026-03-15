@@ -5,47 +5,53 @@
 #include <Ludens/System/FileSystem.h>
 #include <Ludens/UI/UIContext.h>
 #include <Ludens/UI/UIWidget.h>
+#include <Ludens/UI/Widget/UIButtonWidget.h>
+#include <Ludens/UI/Widget/UIImageWidget.h>
+#include <Ludens/UI/Widget/UIPanelWidget.h>
+#include <Ludens/UI/Widget/UIScrollWidget.h>
+#include <Ludens/UI/Widget/UISliderWidget.h>
+#include <Ludens/UI/Widget/UITextEditWidget.h>
+#include <Ludens/UI/Widget/UITextWidget.h>
+#include <Ludens/UI/Widget/UIToggleWidget.h>
 
 #include <string>
 
 namespace LD {
 
-struct UIScrollWidgetTemplate
+struct UIScrollTemplate
 {
-    UIScrollWidgetInfo info;
+    UIScrollStorage storage;
 };
 
-struct UIButtonWidgetTemplate
+struct UIButtonTemplate
 {
-    std::string text;
-    UIButtonWidgetInfo info;
+    UIButtonStorage storage;
 };
 
-struct UISliderWidgetTemplate
+struct UISliderTemplate
 {
-    UISliderWidgetInfo info;
+    UISliderStorage storage;
 };
 
-struct UIToggleWidgetTemplate
+struct UIToggleTemplate
 {
-    UIToggleWidgetInfo info;
+    UIToggleStorage storage;
 };
 
-struct UIPanelWidgetTemplate
+struct UIPanelTemplate
 {
-    UIPanelWidgetInfo info;
+    UIPanelStorage storage;
 };
 
-struct UIImageWidgetTemplate
+struct UIImageTemplate
 {
-    UIImageWidgetInfo info;
-    Rect imageRect;           /// if size is not zero, the area in image to be rendered.
+    UIImageStorage storage;
     AssetID texture2DAssetID; /// the Texture2DAsset used by image widget.
 };
 
-struct UITextWidgetTemplate
+struct UITextTemplate
 {
-    UITextWidgetInfo info;
+    UITextStorage storage;
     AssetID fontAssetID; /// the FontAsset used by text widget.
 };
 
@@ -58,13 +64,13 @@ struct UITemplateEntry
 
     union
     {
-        UIScrollWidgetTemplate scroll;
-        UIButtonWidgetTemplate button;
-        UISliderWidgetTemplate slider;
-        UIToggleWidgetTemplate toggle;
-        UIPanelWidgetTemplate panel;
-        UIImageWidgetTemplate image;
-        UITextWidgetTemplate text;
+        UIScrollTemplate scroll;
+        UIButtonTemplate button;
+        UISliderTemplate slider;
+        UIToggleTemplate toggle;
+        UIPanelTemplate panel;
+        UIImageTemplate image;
+        UITextTemplate text;
     };
 
     UITemplateEntry() = delete;

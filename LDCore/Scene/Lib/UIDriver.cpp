@@ -1,6 +1,7 @@
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/System/FileSystem.h>
+#include <Ludens/UI/Widget/UIButtonWidget.h>
 
 #include "UIDriver.h"
 
@@ -249,7 +250,7 @@ void UIDriver::push_driver_table()
     mL.set_field(-2, "__user");
 }
 
-void UIDriver::ui_button_on_click(UIButtonWidget w, MouseButton btn, void* user)
+void UIDriver::ui_button_on_click(UIWidget w, MouseButton btn, void* user)
 {
     LD_PROFILE_SCOPE;
 

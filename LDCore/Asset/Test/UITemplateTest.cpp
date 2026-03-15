@@ -1,5 +1,5 @@
 #include <Extra/doctest/doctest.h>
-#include <Ludens/Asset/Template/UITemplateSchema.h>
+#include <Ludens/Asset/Template/UISchema.h>
 
 using namespace LD;
 
@@ -52,8 +52,8 @@ TEST_CASE("UITemplate")
     UIContext ctx = UIContext::create({.theme = UITheme::get_default_theme()});
     UITemplate tmpl = UITemplate::create();
 
-    UITemplateSchema::Error err;
-    bool ok = UITemplateSchema::load_ui_template_from_source(tmpl, View(sUIToml, sizeof(sUIToml) - 1), err);
+    UISchema::Error err;
+    bool ok = UISchema::load_ui_template_from_source(tmpl, View(sUIToml, sizeof(sUIToml) - 1), err);
     CHECK(ok);
 
     UIWorkspace space = ctx.create_layer("test").create_workspace(Rect(0, 0, 100, 100));

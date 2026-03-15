@@ -1,5 +1,5 @@
 #include <Ludens/Asset/AssetType/UITemplateAsset.h>
-#include <Ludens/Asset/Template/UITemplateSchema.h>
+#include <Ludens/Asset/Template/UISchema.h>
 #include <Ludens/Profiler/Profiler.h>
 
 #include <format>
@@ -23,8 +23,8 @@ void UITemplateAssetObj::load(void* user)
 
     obj->tmpl = UITemplate::create();
 
-    UITemplateSchema::Error schemaErr;
-    if (!UITemplateSchema::load_ui_template_from_source(obj->tmpl, fileView, schemaErr))
+    UISchema::Error schemaErr;
+    if (!UISchema::load_ui_template_from_source(obj->tmpl, fileView, schemaErr))
     {
         job.diagnostics.mark_error(std::format("failed to load UITemplate: {}", schemaErr.str));
         return;
