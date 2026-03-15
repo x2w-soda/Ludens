@@ -32,7 +32,7 @@ static_assert(IsTrivial<UISliderWidgetObj>);
 
 void widget_startup(UIWidgetObj* obj, void* storage)
 {
-    LD_ASSERT(obj && storage);
+    LD_ASSERT(obj);
 
     if (sWidgetMeta[(int)obj->type].startup)
         sWidgetMeta[(int)obj->type].startup(obj, storage);

@@ -20,6 +20,11 @@ void UIPanelWidgetObj::cleanup(UIWidgetObj* obj)
     (&self)->~UIPanelWidgetObj();
 }
 
+UIPanelStorage* UIPanelWidget::get_storage()
+{
+    return mObj->as.panel.storage;
+}
+
 void UIPanelWidget::on_draw(UIWidget widget, ScreenRenderComponent renderer)
 {
     UIWidgetObj* obj = widget;

@@ -1,3 +1,4 @@
+#include <Ludens/DSA/Array.h>
 #include <Ludens/DSA/Vector.h>
 #include <Ludens/Event/WindowEvent.h>
 #include <Ludens/JobSystem/JobSystem.h>
@@ -7,12 +8,12 @@
 #include <Ludens/RenderBackend/RUtil.h>
 #include <Ludens/System/FileSystem.h>
 #include <Ludens/UI/UIImmediate.h>
+#include <Ludens/UI/Widgets.h>
 #include <Ludens/WindowRegistry/Input.h>
 #include <Ludens/WindowRegistry/WindowRegistry.h>
 #include <LudensEditor/EditorContext/EditorIconAtlas.h>
 #include <LudensUtil/LudensLFS.h>
 
-#include <array>
 #include <string>
 
 #include "UISandbox.h"
@@ -140,47 +141,52 @@ void UISandbox::imgui(const Vec2& windowExtent, float delta)
         renderer.draw_rect(widget.get_rect(), Color(0x303030FF));
     });
 
-    ui_push_scroll({});
+    static UIScrollStorage sScroll;
+    ui_push_scroll(&sScroll);
     ui_top_layout_child_gap(10.0f);
     {
-        ui_push_button("Button1", isPressed);
-        if (isPressed)
+        static UIButtonStorage sBtn1{};
+        if (ui_push_button(&sBtn1, "Button1"))
         {
             sLog.info("Button1 pressed!");
         }
         ui_pop();
 
-        ui_push_button("Button2", isPressed);
-        if (isPressed)
+        static UIButtonStorage sBtn2{};
+        if (ui_push_button(&sBtn2, "Button2"))
         {
             sLog.info("Button2 pressed!");
         }
         ui_pop();
 
-        ui_push_panel();
+        static UIPanelStorage sPanel{};
+        ui_push_panel(&sPanel);
         {
-            static UITextStorage sTextS;
-            ui_push_text(&sTextS, "Some text1 here!!!!!!");
+            static UITextStorage sText1;
+            ui_push_text(&sText1, "Some text1 here!!!!!!");
             ui_pop();
-            ui_push_image(mFontAtlasImage, 300, 300);
+            static UIImageStorage sImage{mFontAtlasImage};
+            ui_push_image(&sImage, 300, 300);
             ui_pop();
-            ui_push_text(&sTextS, "Some text2 here!");
+            static UITextStorage sText2;
+            ui_push_text(&sText2, "Some text2 here!");
             ui_pop();
         }
         ui_pop();
 
         static float sValue = 2.0f;
-        ui_push_slider(0.0f, 3.0f, &sValue);
+        static UISliderStorage sSlider(0.0f, 3.0f, 1.0f);
+        ui_push_slider(&sSlider, &sValue);
         ui_pop();
 
-        ui_push_button("Button3", isPressed);
-        if (isPressed)
+        static UIButtonStorage sBtn3{};
+        if (ui_push_button(&sBtn3, "Button3"))
         {
             sLog.info("Button3 pressed!");
         }
         ui_pop();
 
-        static UITextEditStorage sTextEdit;
+        static UITextEditStorage sTextEdit{};
         std::string text;
         ui_push_text_edit(&sTextEdit);
         if (ui_text_edit_changed(text))

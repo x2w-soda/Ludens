@@ -1,6 +1,6 @@
 #pragma once
 
-#include <Ludens/UI/UIWidget.h>
+#include <Ludens/UI/Widget/UISliderWidget.h>
 
 namespace LD {
 
@@ -9,7 +9,11 @@ struct UISliderWidgetObj
     UIWidgetObj* base;
     UISliderStorage* storage;
     Vec2 dragStart;
-    float value;
+
+    inline float get_value()
+    {
+        return std::lerp(storage->min, storage->max, storage->ratio);
+    }
 
     static void startup(UIWidgetObj* obj, void* storage);
     static void cleanup(UIWidgetObj* obj);

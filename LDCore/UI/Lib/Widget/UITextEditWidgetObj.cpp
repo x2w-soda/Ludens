@@ -127,6 +127,36 @@ void UITextEditWidgetObj::domain_uint_on_key(const UIEvent& event, bool& hasChan
     }
 }
 
+UITextEditStorage::UITextEditStorage()
+{
+    buf = TextBuffer<char>::create();
+}
+
+UITextEditStorage::UITextEditStorage(const UITextEditStorage& other)
+    : domain(other.domain), fontSize(other.fontSize)
+{
+    TextBuffer<char> otherBuf = other.buf;
+
+    buf = TextBuffer<char>::create();
+    buf.set_string(otherBuf.to_string().c_str());
+}
+
+UITextEditStorage::~UITextEditStorage()
+{
+    TextBuffer<char>::destroy(buf);
+}
+
+UITextEditStorage& UITextEditStorage::operator=(const UITextEditStorage& other)
+{
+    TextBuffer<char> otherBuf = other.buf;
+
+    buf.set_string(otherBuf.to_string().c_str());
+    domain = other.domain;
+    fontSize = other.fontSize;
+
+    return *this;
+}
+
 void UITextEditWidget::set_text(View text)
 {
     auto& self = mObj->as.textEdit;
@@ -152,7 +182,7 @@ void UITextEditWidget::set_on_change(UITextEditOnChange onChange)
 
 void UITextEditWidget::set_on_submit(UITextEditOnSubmit onSubmit)
 {
-    mObj->as.textEdit.onChange = onSubmit;
+    mObj->as.textEdit.onSubmit = onSubmit;
 }
 
 void UITextEditWidget::on_draw(UIWidget widget, ScreenRenderComponent renderer)

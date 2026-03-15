@@ -6,7 +6,7 @@
 namespace LD {
 
 UIWindowObj::UIWindowObj(const UILayoutInfo& layoutI)
-    : UIWidgetObj(UI_WIDGET_WINDOW, layoutI, nullptr, nullptr, this, nullptr)
+    : UIWidgetObj(UI_WIDGET_WINDOW, layoutI, nullptr, this, nullptr, nullptr)
 {
 }
 

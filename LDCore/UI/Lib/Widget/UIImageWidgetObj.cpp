@@ -22,6 +22,11 @@ void UIImageWidgetObj::cleanup(UIWidgetObj* obj)
     (&self)->~UIImageWidgetObj();
 }
 
+UIImageStorage* UIImageWidget::get_storage()
+{
+    return mObj->as.image.storage;
+}
+
 void UIImageWidget::on_draw(UIWidget widget, ScreenRenderComponent renderer)
 {
     UIImageWidgetObj& self = static_cast<UIWidgetObj*>(widget)->as.image;

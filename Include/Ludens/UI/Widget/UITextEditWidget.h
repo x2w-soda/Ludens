@@ -14,6 +14,19 @@ enum UITextEditDomain
 typedef void (*UITextEditOnChange)(UIWidget widget, View text, void* user);
 typedef void (*UITextEditOnSubmit)(UIWidget widget, View text, void* user);
 
+struct UITextEditStorage
+{
+    TextBuffer<char> buf = {};                            /// current text content
+    UITextEditDomain domain = UI_TEXT_EDIT_DOMAIN_STRING; /// input domain, filters key input
+    float fontSize = 16.0f;                               /// rendered size
+
+    UITextEditStorage();
+    UITextEditStorage(const UITextEditStorage& other);
+    ~UITextEditStorage();
+
+    UITextEditStorage& operator=(const UITextEditStorage& other);
+};
+
 struct UITextEditWidget : UIWidget
 {
     /// @brief Set text edit field value, does not trigger on_change callbacks.
@@ -28,13 +41,6 @@ struct UITextEditWidget : UIWidget
 
     /// @brief Default text edit widget rendering.
     static void on_draw(UIWidget widget, ScreenRenderComponent renderer);
-};
-
-struct UITextEditStorage
-{
-    TextBuffer<char> buf;    /// current text content
-    UITextEditDomain domain; /// input domain, filters key input
-    float fontSize;          /// rendered size
 };
 
 } // namespace LD

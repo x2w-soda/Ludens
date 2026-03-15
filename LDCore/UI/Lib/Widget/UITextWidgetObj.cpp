@@ -43,6 +43,11 @@ void UITextWidget::on_draw(UIWidget widget, ScreenRenderComponent renderer)
     renderer.draw_text(self.fontAtlas, self.fontImage, storage->fontSize, rect.get_pos(), storage->value.c_str(), storage->fgColor, wrapWidth);
 }
 
+UITextStorage* UITextWidget::get_storage()
+{
+    return mObj->as.text.storage;
+}
+
 void UITextWidget::set_text_style(Color color, FontAtlas fontAtlas, RImage fontImage)
 {
     mObj->as.text.storage->fgColor = color;

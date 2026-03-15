@@ -11,7 +11,6 @@ void UISliderWidgetObj::startup(UIWidgetObj* obj, void* storage)
 
     self.base = obj;
     self.storage = (UISliderStorage*)storage;
-    self.value = std::lerp(self.storage->min, self.storage->max, self.storage->ratio);
     obj->cb.onEvent = &UISliderWidgetObj::on_event;
 }
 
@@ -35,7 +34,6 @@ bool UISliderWidgetObj::on_event(UIWidget widget, const UIEvent& event)
 
     Rect rect = widget.get_rect();
     storage->ratio = std::clamp(((float)event.drag.position.x - rect.x) / rect.w, 0.0f, 1.0f);
-    self.value = std::lerp(storage->min, storage->max, storage->ratio);
 
     return true;
 }
@@ -64,7 +62,7 @@ void UISliderWidget::on_draw(UIWidget widget, ScreenRenderComponent renderer)
 
 float UISliderWidget::get_value()
 {
-    return mObj->as.slider.value;
+    return mObj->as.slider.get_value();
 }
 
 } // namespace LD

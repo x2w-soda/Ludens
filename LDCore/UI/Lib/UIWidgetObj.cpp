@@ -16,14 +16,13 @@ UIWidgetObj::UIWidgetObj(UIWidgetType type, const UILayoutInfo& layoutI, UIWidge
     layout.info = layoutI;
     layout.rect = {};
     node = UINode(this);
-    theme = window->ctx()->theme;
 
-    sWidgetMeta[(int)type].startup(this, storage);
+    widget_startup(this, storage);
 }
 
 UIWidgetObj::~UIWidgetObj()
 {
-    sWidgetMeta[(int)type].cleanup(this);
+    widget_cleanup(this);
 }
 
 UIContextObj* UIWidgetObj::ctx() const

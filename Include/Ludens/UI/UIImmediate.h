@@ -137,33 +137,32 @@ void ui_clear_popup_window();
 bool ui_push_popup_window(const char* popupName);
 
 /// @brief Push UITextWidget.
-void ui_push_text(const char* text);
+void ui_push_text(UITextStorage* storage, const char* text);
 void ui_text_style(Color color, FontAtlas fontAtlas, RImage fontImage);
 
 /// @brief Push UITextEditWidget.
-void ui_push_text_edit(UITextEditDomain domain = UI_TEXT_EDIT_DOMAIN_STRING);
+void ui_push_text_edit(UITextEditStorage* storage);
 void ui_text_edit_set_text(View text);
 inline void ui_text_edit_set_text(const std::string& text) { ui_text_edit_set_text(View(text.data(), text.size())); }
 bool ui_text_edit_changed(std::string& text);
 bool ui_text_edit_submitted(std::string& text);
 
 /// @brief Push UIImageWidget.
-void ui_push_image(RImage image, float width, float height, Color tint = 0xFFFFFFFF, const Rect* portion = nullptr);
+void ui_push_image(UIImageStorage* storage, float width, float height);
 
 /// @brief Push UIPanelWidget.
-void ui_push_panel();
-void ui_panel_color(Color color);
+void ui_push_panel(UIPanelStorage* storage);
 
 /// @brief Push UIToggleWidget.
-void ui_push_toggle(bool& isPressed, bool& state);
+bool ui_push_toggle(UIToggleStorage* storage);
 
 /// @brief Push UIScrollWidget.
-void ui_push_scroll(Color bgColor);
+void ui_push_scroll(UIScrollStorage* storage);
 
 /// @brief Push UIButtonWidget.
-void ui_push_button(const char* text, bool& isPressed);
+bool ui_push_button(UIButtonStorage* storage, const char* text);
 
 /// @brief Push UISliderWidget.
-void ui_push_slider(float minValue, float maxValue, float* value);
+void ui_push_slider(UISliderStorage* storage, float* value);
 
 } // namespace LD

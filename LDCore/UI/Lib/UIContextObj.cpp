@@ -108,6 +108,7 @@ UIWidgetObj* UIContextObj::alloc_widget(UIWidgetType type, const UILayoutInfo& l
     UIWindowObj* window = parent->window;
     UIWidgetObj* obj = (UIWidgetObj*)widgetPA.allocate();
     new (obj) UIWidgetObj(type, layoutI, parent, window, storage, user);
+    obj->theme = theme;
 
     window->widgets.push_back(obj);
     parent->append_child(obj);

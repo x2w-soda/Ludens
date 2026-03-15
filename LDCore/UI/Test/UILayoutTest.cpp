@@ -115,8 +115,7 @@ TEST_CASE("UILayout window padding")
     UIWindow window = space.create_window(space.get_root_id(), layoutI, windowI, nullptr);
 
     layoutI = make_fixed_size_layout(100, 100);
-    UIPanelWidgetInfo panelI{};
-    UIPanelWidget child = (UIPanelWidget)window.node().add_panel(layoutI, panelI, nullptr);
+    UIPanelWidget child = (UIPanelWidget)window.node().add_panel(layoutI, nullptr, nullptr);
 
     ctx.update(0.0f);
 
@@ -146,14 +145,13 @@ TEST_CASE("UILayout hbox child grows x")
     layoutI = make_fixed_size_layout(150, 150);
     layoutI.childAxis = UI_AXIS_X;
     layoutI.childPadding = {};
-    UIPanelWidgetInfo panelI{};
-    UIPanelWidget hbox = window.node().add_panel(layoutI, panelI, nullptr);
+    UIPanelWidget hbox = (UIPanelWidget)window.node().add_panel(layoutI, nullptr, nullptr);
 
     layoutI.sizeX = UISize::grow();
     layoutI.sizeY = UISize::fixed(20.0f);
-    UIPanelWidget c1 = (UIPanelWidget)hbox.node().add_panel(layoutI, panelI, nullptr);
-    UIPanelWidget c2 = (UIPanelWidget)hbox.node().add_panel(layoutI, panelI, nullptr);
-    UIPanelWidget c3 = (UIPanelWidget)hbox.node().add_panel(layoutI, panelI, nullptr);
+    UIPanelWidget c1 = (UIPanelWidget)hbox.node().add_panel(layoutI, nullptr, nullptr);
+    UIPanelWidget c2 = (UIPanelWidget)hbox.node().add_panel(layoutI, nullptr, nullptr);
+    UIPanelWidget c3 = (UIPanelWidget)hbox.node().add_panel(layoutI, nullptr, nullptr);
 
     ctx.update(0.0f);
 
@@ -188,14 +186,13 @@ TEST_CASE("UILayout hbox child grows y")
     layoutI = make_fixed_size_layout(150, 150);
     layoutI.childAxis = UI_AXIS_X;
     layoutI.childPadding = {};
-    UIPanelWidgetInfo panelI{};
-    UIPanelWidget hbox = (UIPanelWidget)window.node().add_panel(layoutI, panelI, nullptr);
+    UIPanelWidget hbox = (UIPanelWidget)window.node().add_panel(layoutI, nullptr, nullptr);
 
     layoutI.sizeX = UISize::fixed(20.0f);
     layoutI.sizeY = UISize::grow();
-    UIPanelWidget c1 = (UIPanelWidget)hbox.node().add_panel(layoutI, panelI, nullptr);
-    UIPanelWidget c2 = (UIPanelWidget)hbox.node().add_panel(layoutI, panelI, nullptr);
-    UIPanelWidget c3 = (UIPanelWidget)hbox.node().add_panel(layoutI, panelI, nullptr);
+    UIPanelWidget c1 = (UIPanelWidget)hbox.node().add_panel(layoutI, nullptr, nullptr);
+    UIPanelWidget c2 = (UIPanelWidget)hbox.node().add_panel(layoutI, nullptr, nullptr);
+    UIPanelWidget c3 = (UIPanelWidget)hbox.node().add_panel(layoutI, nullptr, nullptr);
 
     ctx.update(0.0f);
 
@@ -230,9 +227,8 @@ TEST_CASE("UILayout nested grow")
 
     layoutI.sizeX = UISize::grow();
     layoutI.sizeY = UISize::grow();
-    UIPanelWidgetInfo panelWI{};
-    UIPanelWidget p1 = (UIPanelWidget)window.node().add_panel(layoutI, panelWI, nullptr);
-    UIPanelWidget p2 = (UIPanelWidget)p1.node().add_panel(layoutI, panelWI, nullptr); // also growing
+    UIPanelWidget p1 = (UIPanelWidget)window.node().add_panel(layoutI, nullptr, nullptr);
+    UIPanelWidget p2 = (UIPanelWidget)p1.node().add_panel(layoutI, nullptr, nullptr); // also growing
 
     window.layout();
 

@@ -95,6 +95,11 @@ void UIButtonWidget::on_draw(UIWidget widget, ScreenRenderComponent renderer)
     }
 }
 
+UIButtonStorage* UIButtonWidget::get_storage()
+{
+    return mObj->as.button.storage;
+}
+
 void UIButtonWidget::set_on_click(UIButtonOnClick onClick)
 {
     mObj->as.button.onClick = onClick;
