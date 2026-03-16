@@ -13,7 +13,7 @@ void eui_transform_edit(EditorTheme theme, TransformEx* transform)
     layoutI.childAxis = UI_AXIS_Y;
     layoutI.sizeX = UISize::grow();
     layoutI.sizeY = UISize::fit();
-    ui_push_panel();
+    ui_push_panel(nullptr);
     ui_top_layout(layoutI);
 
     float fontSize = theme.get_font_size();
@@ -30,7 +30,7 @@ void eui_transform_2d_edit(EditorTheme theme, Transform2D* transform2D)
     layoutI.childAxis = UI_AXIS_Y;
     layoutI.sizeX = UISize::grow();
     layoutI.sizeY = UISize::fit();
-    ui_push_panel();
+    ui_push_panel(nullptr);
     ui_top_layout(layoutI);
 
     eui_vec2_edit(theme, "Position", &transform2D->position);

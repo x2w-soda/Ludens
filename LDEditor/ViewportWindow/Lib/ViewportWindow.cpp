@@ -111,23 +111,24 @@ void ViewportWindowObj::toolbar()
     UITheme uiTheme = theme.get_ui_theme();
     MouseValue mouseVal;
     Vec2 mousePos;
+    UIImageStorage* imageS;
 
     UILayoutInfo layoutI{};
     layoutI.sizeX = UISize::grow();
     layoutI.sizeY = UISize::fixed(VIEWPORT_TOOLBAR_HEIGHT);
     layoutI.childAxis = UI_AXIS_X;
-    Color color = uiTheme.get_surface_color();
 
     // toolbar
-    ui_push_panel();
-    ui_panel_color(color);
+    UIPanelStorage* panelS = ui_push_panel(nullptr);
+    panelS->color = uiTheme.get_surface_color();
     ui_top_layout(layoutI);
 
     // translate gizmo
     float iconSize = VIEWPORT_TOOLBAR_HEIGHT;
     RImage iconAtlas = mCtx.get_editor_icon_atlas();
-    Rect iconRect = EditorIconAtlas::get_icon_rect(EDITOR_ICON_OFFSET);
-    ui_push_image(iconAtlas, iconSize, iconSize, 0xFFFFFFFF, &iconRect);
+    imageS = ui_push_image(nullptr, iconSize, iconSize);
+    imageS->image = iconAtlas;
+    imageS->rect = EditorIconAtlas::get_icon_rect(EDITOR_ICON_OFFSET);
     ui_top_user(this);
     ui_top_draw([](UIWidget widget, ScreenRenderComponent renderer, void* user) {
         auto* obj = (ViewportWindowObj*)user;
@@ -140,8 +141,9 @@ void ViewportWindowObj::toolbar()
     ui_pop();
 
     // rotate gizmo
-    iconRect = EditorIconAtlas::get_icon_rect(EDITOR_ICON_ROTATE);
-    ui_push_image(iconAtlas, iconSize, iconSize, 0xFFFFFFFF, &iconRect);
+    imageS = ui_push_image(nullptr, iconSize, iconSize);
+    imageS->image = iconAtlas;
+    imageS->rect = EditorIconAtlas::get_icon_rect(EDITOR_ICON_ROTATE);
     ui_top_user(this);
     ui_top_draw([](UIWidget widget, ScreenRenderComponent renderer, void* user) {
         auto* obj = (ViewportWindowObj*)user;
@@ -154,8 +156,9 @@ void ViewportWindowObj::toolbar()
     ui_pop();
 
     // scale gizmo
-    iconRect = EditorIconAtlas::get_icon_rect(EDITOR_ICON_SCALE);
-    ui_push_image(iconAtlas, iconSize, iconSize, 0xFFFFFFFF, &iconRect);
+    imageS = ui_push_image(nullptr, iconSize, iconSize);
+    imageS->image = iconAtlas;
+    imageS->rect = EditorIconAtlas::get_icon_rect(EDITOR_ICON_SCALE);
     ui_top_user(this);
     ui_top_draw([](UIWidget widget, ScreenRenderComponent renderer, void* user) {
         auto* obj = (ViewportWindowObj*)user;
@@ -170,9 +173,11 @@ void ViewportWindowObj::toolbar()
 
     // play / pause button
     bool isPlaying = mCtx.is_playing();
-    color = isPlaying ? theme.get_stop_button_color() : theme.get_play_button_color();
-    iconRect = EditorIconAtlas::get_icon_rect(isPlaying ? EDITOR_ICON_CLOSE : EDITOR_ICON_PLAY);
-    ui_push_image(iconAtlas, iconSize, iconSize, color, &iconRect);
+    imageS = ui_push_image(nullptr, iconSize, iconSize);
+    imageS->image = iconAtlas;
+    imageS->tint = isPlaying ? theme.get_stop_button_color() : theme.get_play_button_color();
+    imageS->rect = EditorIconAtlas::get_icon_rect(isPlaying ? EDITOR_ICON_CLOSE : EDITOR_ICON_PLAY);
+
     if (ui_top_mouse_down(mouseVal, mousePos) && mouseVal.button() == MOUSE_BUTTON_LEFT)
     {
         if (isPlaying)

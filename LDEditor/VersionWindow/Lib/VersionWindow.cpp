@@ -34,7 +34,7 @@ void VersionWindowObj::on_imgui(float delta)
     ui_top_layout(layoutI);
 
     std::string version = std::format("Version {}.{}.{}", LD_VERSION_MAJOR, LD_VERSION_MINOR, LD_VERSION_PATCH);
-    ui_push_text(version.c_str());
+    ui_push_text(nullptr, version.c_str());
     ui_pop();
 
 #ifdef NDEBUG
@@ -43,7 +43,7 @@ void VersionWindowObj::on_imgui(float delta)
     std::string build("Debug Build");
 #endif
 
-    ui_push_text(build.c_str());
+    ui_push_text(nullptr, build.c_str());
     ui_pop();
 
     ui_pop_window();

@@ -71,6 +71,7 @@ void OutlinerWindowObj::component_row(ComponentView comp, int rowIdx, int depth)
     const float rowHeight = theme.get_text_row_height();
     CUID compCUID = comp.cuid();
     SUID compSUID = comp.suid();
+    UIImageStorage* imageS;
 
     UILayoutInfo layoutI{};
     layoutI.childAxis = UI_AXIS_X;
@@ -78,7 +79,7 @@ void OutlinerWindowObj::component_row(ComponentView comp, int rowIdx, int depth)
     layoutI.childPadding.left = OUTLINER_ROW_LEFT_PADDING + depth * OUTLINER_ROW_LEFT_PADDING_PER_DEPTH;
     layoutI.sizeX = UISize::grow();
     layoutI.sizeY = UISize::fixed(rowHeight);
-    ui_push_panel();
+    UIPanelStorage* panelS = ui_push_panel(nullptr);
     ui_top_layout(layoutI);
 
     Color panelColor = uiTheme.get_surface_color();
@@ -91,7 +92,7 @@ void OutlinerWindowObj::component_row(ComponentView comp, int rowIdx, int depth)
     if (compCUID && compCUID == mCtx.get_selected_component())
         panelColor = theme.get_ui_theme().get_selection_color();
 
-    ui_panel_color(panelColor);
+    panelS->color = panelColor;
 
     Vec2 mousePos;
     MouseValue mouseVal;
@@ -104,14 +105,15 @@ void OutlinerWindowObj::component_row(ComponentView comp, int rowIdx, int depth)
         EditorIcon icon = EditorIconAtlas::get_component_icon(comp.type());
         if (icon != EDITOR_ICON_ENUM_LAST)
         {
-            const Rect iconRect = EditorIconAtlas::get_icon_rect(icon);
-            ui_push_image(editorIconAtlas, rowHeight, rowHeight, 0xFFFFFFFF, &iconRect);
+            imageS = ui_push_image(nullptr, rowHeight, rowHeight);
+            imageS->image = editorIconAtlas;
+            imageS->rect = EditorIconAtlas::get_icon_rect(icon);
             ui_pop();
         }
     }
 
     // component name label
-    ui_push_text(compCUID ? mCtx.get_component_name(compCUID) : nullptr);
+    ui_push_text(nullptr, compCUID ? mCtx.get_component_name(compCUID) : nullptr);
     if (ui_top_mouse_down(mouseVal, mousePos))
         on_row_mouse_down(comp, mouseVal, mousePos);
     ui_pop();
@@ -120,8 +122,9 @@ void OutlinerWindowObj::component_row(ComponentView comp, int rowIdx, int depth)
     if (comp && comp.get_script_asset_id())
     {
         float iconSize = theme.get_text_row_height();
-        const Rect iconRect = EditorIconAtlas::get_icon_rect(EDITOR_ICON_SCRIPT);
-        ui_push_image(mCtx.get_editor_icon_atlas(), iconSize, iconSize, 0xFFFFFFFF, &iconRect);
+        imageS = ui_push_image(nullptr, iconSize, iconSize);
+        imageS->rect = EditorIconAtlas::get_icon_rect(EDITOR_ICON_SCRIPT);
+        imageS->image = mCtx.get_editor_icon_atlas();
         ui_pop();
     }
 

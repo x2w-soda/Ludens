@@ -62,7 +62,8 @@ void SelectionWindowObj::on_imgui(float delta)
     layoutI.childGap = 2.0f;
     layoutI.sizeX = UISize::grow();
     layoutI.sizeY = UISize::grow();
-    ui_push_scroll(theme.get_ui_theme().get_surface_color());
+    UIScrollStorage* scrollS = ui_push_scroll(nullptr);
+    scrollS->bgColor = theme.get_ui_theme().get_surface_color();
     ui_top_layout(layoutI);
 
     int contentCount = (int)directoryContents.size();
@@ -87,13 +88,14 @@ void SelectionWindowObj::top_bar()
     layoutI.childAxis = UI_AXIS_X;
     layoutI.sizeX = UISize::grow();
     layoutI.sizeY = UISize::fit();
-    ui_push_panel();
+    ui_push_panel(nullptr);
     ui_top_layout(layoutI);
 
     Vec2 mousePos;
     MouseValue mouseVal;
-    Rect iconRect = EditorIconAtlas::get_icon_rect(EDITOR_ICON_ARROW_UP);
-    ui_push_image(editorIconAtlas, fontSize * 1.2f, fontSize * 1.2f, 0xFFFFFFFF, &iconRect);
+    UIImageStorage* imageS = ui_push_image(nullptr, fontSize * 1.2f, fontSize * 1.2f);
+    imageS->image = editorIconAtlas;
+    imageS->rect = EditorIconAtlas::get_icon_rect(EDITOR_ICON_ARROW_UP);
     if (ui_top_mouse_down(mouseVal, mousePos) && mouseVal.button() == MOUSE_BUTTON_LEFT)
     {
         directoryPath = directoryPath.parent_path();
@@ -103,7 +105,7 @@ void SelectionWindowObj::top_bar()
 
     std::string text = "Path: ";
     text += directoryPath.string();
-    ui_push_text(text.c_str());
+    ui_push_text(nullptr, text.c_str());
     ui_pop();
 
     ui_pop();
@@ -120,11 +122,11 @@ void SelectionWindowObj::bottom_bar()
     layoutI.childGap = pad;
     layoutI.sizeX = UISize::grow();
     layoutI.sizeY = UISize::fit();
-    ui_push_panel();
+    ui_push_panel(nullptr);
     ui_top_layout(layoutI);
 
-    bool isSelected;
-    ui_push_button("select", isSelected);
+    ui_push_button(nullptr, "select");
+    bool isSelected = ui_button_is_pressed();
     if (isSelected)
     {
         LD_ASSERT(0 <= selectedRowIndex && selectedRowIndex <= (int)directoryContents.size());
@@ -132,8 +134,8 @@ void SelectionWindowObj::bottom_bar()
     }
     ui_pop();
 
-    bool isCancelled;
-    ui_push_button("cancel", isCancelled);
+    ui_push_button(nullptr, "cancel");
+    bool isCancelled = ui_button_is_pressed();
     ui_pop();
 
     ui_pop();
@@ -156,22 +158,25 @@ bool SelectionWindowObj::row(int idx)
     const FS::Path& itemPath = directoryContents[idx];
     float rowHeight = fontSize * 1.2f;
     bool isDirectory = FS::is_directory(itemPath);
+    UIImageStorage* imageS;
+    UIPanelStorage* panelS;
 
     Color panelColor = idx == selectedRowIndex ? uiTheme.get_selection_color() : Color(0); // TODO:
     UILayoutInfo layoutI{};
     layoutI.sizeY = UISize::fixed(rowHeight);
     layoutI.sizeX = UISize::grow();
     layoutI.childAxis = UI_AXIS_X;
-    ui_push_panel();
-    ui_panel_color(panelColor);
+    panelS = ui_push_panel(nullptr);
+    panelS->color = panelColor;
     ui_top_layout(layoutI);
 
-    Rect iconRect = EditorIconAtlas::get_icon_rect(isDirectory ? EDITOR_ICON_FOLDER : EDITOR_ICON_FILE);
-    ui_push_image(editorIconAtlas, rowHeight, rowHeight, 0xFFFFFFFF, &iconRect);
+    imageS = ui_push_image(nullptr, rowHeight, rowHeight);
+    imageS->image = editorIconAtlas;
+    imageS->rect = EditorIconAtlas::get_icon_rect(isDirectory ? EDITOR_ICON_FOLDER : EDITOR_ICON_FILE);
     ui_pop();
 
     std::string fileString = itemPath.filename().string();
-    ui_push_text(fileString.c_str());
+    ui_push_text(nullptr, fileString.c_str());
     if (ui_top_mouse_down(mouseVal, mousePos) && mouseVal.button() == MOUSE_BUTTON_LEFT)
     {
         if (isDirectory)

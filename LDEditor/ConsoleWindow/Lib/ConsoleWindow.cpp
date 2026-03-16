@@ -60,13 +60,13 @@ void ConsoleWindowObj::on_imgui(float delta)
 
     EditorTheme edTheme = mCtx.get_theme();
     UITheme uiTheme = edTheme.get_ui_theme();
-    Color color = uiTheme.get_surface_color();
     float pad = edTheme.get_padding();
 
     ui_workspace_begin();
     ui_push_window("ROOT");
-    ui_push_scroll(color);
-
+    UIScrollStorage* scrollS = ui_push_scroll(nullptr);
+    scrollS->bgColor = uiTheme.get_surface_color();
+    
     UILayoutInfo layoutI = mCtx.make_vbox_layout();
     layoutI.sizeX = UISize::grow();
     layoutI.sizeY = UISize::grow();
@@ -95,7 +95,7 @@ void ConsoleWindowObj::on_imgui(float delta)
             break;
         }
 
-        ui_push_text(text.c_str());
+        ui_push_text(nullptr, text.c_str());
         ui_text_style(color, fontAtlas, fontImage);
         ui_pop();
     }

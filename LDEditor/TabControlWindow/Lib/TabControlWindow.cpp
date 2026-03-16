@@ -31,6 +31,9 @@ void TabControlWindowObj::on_imgui(float delta)
     UITheme uiTheme = edTheme.get_ui_theme();
     Color surfaceColor = uiTheme.get_surface_color();
     Color tabBGColor;
+    UIPanelStorage* panelS;
+    UIImageStorage* imageS;
+
     edTheme.get_tab_background_color(tabBGColor);
 
     MouseButton btn;
@@ -56,19 +59,20 @@ void TabControlWindowObj::on_imgui(float delta)
     layoutI.childPadding.left = 6.0f;
     layoutI.childPadding.right = 6.0f;
     layoutI.childGap = 6.0f;
-    ui_push_panel();
-    ui_panel_color(surfaceColor);
+    panelS = ui_push_panel(nullptr);
+    panelS->color = surfaceColor;
     ui_top_layout(layoutI);
     if (tabIcon != EDITOR_ICON_ENUM_LAST)
     {
         MouseButton btn;
         Rect iconRect = EditorIconAtlas::get_icon_rect(tabIcon);
-        RImage image = mCtx.get_editor_icon_atlas();
         float iconSize = edTheme.get_font_size() * 1.2f;
-        ui_push_image(image, iconSize, iconSize, 0xFFFFFFFF, &iconRect);
+        imageS = ui_push_image(nullptr, iconSize, iconSize);
+        imageS->image = mCtx.get_editor_icon_atlas();
+        imageS->rect = iconRect;
         ui_pop();
     }
-    ui_push_text(tabName.c_str());
+    ui_push_text(nullptr, tabName.c_str());
     ui_pop();
     ui_pop();
     ui_pop_window();

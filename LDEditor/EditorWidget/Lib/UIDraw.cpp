@@ -1,5 +1,6 @@
 #include <Ludens/Header/Assert.h>
 #include <Ludens/UI/UIWidget.h>
+#include <Ludens/UI/Widget/UITextWidget.h>
 #include <LudensEditor/EditorWidget/UIDraw.h>
 
 namespace LD {

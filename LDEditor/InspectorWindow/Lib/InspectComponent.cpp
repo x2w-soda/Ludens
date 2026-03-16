@@ -43,6 +43,7 @@ void eui_inspect_audio_source_component(InspectorWindowObj& self, ComponentView 
     AudioSourceView source(comp);
     LD_ASSERT(source);
     AssetID clipID = source.get_clip_asset();
+    UISliderStorage* sliderS;
 
     AudioClipAsset clipA(AM.get_asset(clipID).unwrap());
     const char* name = clipA ? clipA.get_name() : nullptr;
@@ -55,26 +56,32 @@ void eui_inspect_audio_source_component(InspectorWindowObj& self, ComponentView 
     layoutI.childGap = theme.get_padding();
     layoutI.sizeX = UISize::grow();
     layoutI.sizeY = UISize::fit();
-    ui_push_panel();
+    ui_push_panel(nullptr);
     {
         ui_top_layout(layoutI);
-        ui_push_text("Volume");
+        ui_push_text(nullptr, "Volume");
         ui_top_layout_size(UISize::fixed(propNameWidth), UISize::fixed(rowHeight));
         ui_pop();
         float volume = source.get_volume_linear();
-        ui_push_slider(0.0f, 1.0f, &volume);
+        sliderS = ui_push_slider(nullptr, &volume);
+        sliderS->min = 0.0f;
+        sliderS->max = 0.0f;
+
         source.set_volume_linear(volume);
         ui_pop();
     }
     ui_pop();
-    ui_push_panel();
+    ui_push_panel(nullptr);
     {
         ui_top_layout(layoutI);
-        ui_push_text("Pan");
+        ui_push_text(nullptr, "Pan");
         ui_top_layout_size(UISize::fixed(propNameWidth), UISize::fixed(rowHeight));
         ui_pop();
         float pan = source.get_pan();
-        ui_push_slider(0.0f, 1.0f, &pan);
+        sliderS = ui_push_slider(nullptr, &pan);
+        sliderS->min = 0.0f;
+        sliderS->max = 0.0f;
+
         source.set_pan(pan);
         ui_pop();
     }

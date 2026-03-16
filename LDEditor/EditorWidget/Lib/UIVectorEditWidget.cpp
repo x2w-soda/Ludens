@@ -16,17 +16,17 @@ void eui_u32_edit(EditorTheme theme, const char* label, uint32_t* u32)
 
     UILayoutInfo layoutI = theme.make_hbox_layout(&childGap, &childPad);
     layoutI.sizeX = UISize::grow();
-    ui_push_panel();
+    ui_push_panel(nullptr);
     ui_top_layout(layoutI);
     {
         layoutI = theme.make_text_label_layout();
-        ui_push_text(label);
+        ui_push_text(nullptr, label);
         ui_top_layout(layoutI);
         ui_pop();
 
         std::string str;
         str = std::format("{}", *u32);
-        ui_push_text(str.c_str());
+        ui_push_text(nullptr, str.c_str());
         ui_top_layout(layoutI);
         ui_top_draw(&eui_draw_text_with_bg);
         ui_pop();
@@ -41,17 +41,17 @@ void eui_f32_edit(EditorTheme theme, const char* label, float* f32)
 
     UILayoutInfo layoutI = theme.make_hbox_layout(&childGap, &childPad);
     layoutI.sizeX = UISize::grow();
-    ui_push_panel();
+    ui_push_panel(nullptr);
     ui_top_layout(layoutI);
     {
         layoutI = theme.make_text_label_layout();
-        ui_push_text(label);
+        ui_push_text(nullptr, label);
         ui_top_layout(layoutI);
         ui_pop();
 
         std::string str;
         str = std::format("{:8.3f}", *f32);
-        ui_push_text(str.c_str());
+        ui_push_text(nullptr, str.c_str());
         ui_top_layout(layoutI);
         ui_top_draw(&eui_draw_text_with_bg);
         ui_pop();
@@ -66,23 +66,23 @@ void eui_vec2_edit(EditorTheme theme, const char* label, Vec2* v)
 
     UILayoutInfo layoutI = theme.make_hbox_layout(&childGap, &childPad);
     layoutI.sizeX = UISize::grow();
-    ui_push_panel();
+    ui_push_panel(nullptr);
     ui_top_layout(layoutI);
     {
         layoutI = theme.make_text_label_layout();
-        ui_push_text(label);
+        ui_push_text(nullptr, label);
         ui_top_layout(layoutI);
         ui_pop();
 
         std::string str;
         str = std::format("{:8.3f}", v->x);
-        ui_push_text(str.c_str());
+        ui_push_text(nullptr, str.c_str());
         ui_top_layout(layoutI);
         ui_top_draw(&eui_draw_text_with_bg);
         ui_pop();
 
         str = std::format("{:8.3f}", v->y);
-        ui_push_text(str.c_str());
+        ui_push_text(nullptr, str.c_str());
         ui_top_layout(layoutI);
         ui_top_draw(&eui_draw_text_with_bg);
         ui_pop();
@@ -97,29 +97,29 @@ void eui_vec3_edit(EditorTheme theme, const char* label, Vec3* v)
 
     UILayoutInfo layoutI = theme.make_hbox_layout(&childGap, &childPad);
     layoutI.sizeX = UISize::grow();
-    ui_push_panel();
+    ui_push_panel(nullptr);
     ui_top_layout(layoutI);
     {
         layoutI = theme.make_text_label_layout();
-        ui_push_text(label);
+        ui_push_text(nullptr, label);
         ui_top_layout(layoutI);
         ui_pop();
 
         std::string str;
         str = std::format("{:8.3f}", v->x);
-        ui_push_text(str.c_str());
+        ui_push_text(nullptr, str.c_str());
         ui_top_layout(layoutI);
         ui_top_draw(&eui_draw_text_with_bg);
         ui_pop();
 
         str = std::format("{:8.3f}", v->y);
-        ui_push_text(str.c_str());
+        ui_push_text(nullptr, str.c_str());
         ui_top_layout(layoutI);
         ui_top_draw(&eui_draw_text_with_bg);
         ui_pop();
 
         str = std::format("{:8.3f}", v->z);
-        ui_push_text(str.c_str());
+        ui_push_text(nullptr, str.c_str());
         ui_top_layout(layoutI);
         ui_top_draw(&eui_draw_text_with_bg);
         ui_pop();

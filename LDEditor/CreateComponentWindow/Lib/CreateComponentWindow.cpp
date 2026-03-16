@@ -66,6 +66,8 @@ void CreateComponentWindowObj::component_row(ComponentType type, int rowIndex)
     const float rowHeight = theme.get_text_row_height();
     MouseValue mouseVal;
     Vec2 mousePos;
+    UIPanelStorage* panelS;
+    UIImageStorage* imageS;
 
     UILayoutInfo layoutI{};
     layoutI.childAxis = UI_AXIS_X;
@@ -74,7 +76,7 @@ void CreateComponentWindowObj::component_row(ComponentType type, int rowIndex)
     layoutI.sizeX = UISize::grow();
     layoutI.sizeY = UISize::fixed(rowHeight);
 
-    ui_push_panel();
+    panelS = ui_push_panel(nullptr);
     ui_top_layout(layoutI);
 
     Color panelColor = uiTheme.get_surface_color();
@@ -87,7 +89,7 @@ void CreateComponentWindowObj::component_row(ComponentType type, int rowIndex)
     if (ui_top_is_hovered())
         panelColor = Color::lift(panelColor, 0.06f);
 
-    ui_panel_color(panelColor);
+    panelS->color = panelColor;
     if (ui_top_mouse_down(mouseVal, mousePos))
         on_row_mouse_down(mouseVal, mousePos, type);
 
@@ -95,13 +97,14 @@ void CreateComponentWindowObj::component_row(ComponentType type, int rowIndex)
     EditorIcon icon = EditorIconAtlas::get_component_icon(type);
     if (icon != EDITOR_ICON_ENUM_LAST)
     {
-        const Rect iconRect = EditorIconAtlas::get_icon_rect(icon);
-        ui_push_image(mCtx.get_editor_icon_atlas(), rowHeight, rowHeight, 0xFFFFFFFF, &iconRect);
+        imageS = ui_push_image(nullptr, rowHeight, rowHeight);
+        imageS->image = mCtx.get_editor_icon_atlas();
+        imageS->rect = EditorIconAtlas::get_icon_rect(icon);
         ui_pop();
     }
 
     // component name
-    ui_push_text(get_component_type_name(type));
+    ui_push_text(nullptr, get_component_type_name(type));
     if (ui_top_mouse_down(mouseVal, mousePos))
         on_row_mouse_down(mouseVal, mousePos, type);
     ui_pop();

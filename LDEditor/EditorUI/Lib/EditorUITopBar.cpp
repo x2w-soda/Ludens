@@ -71,7 +71,7 @@ void EditorTopBarObj::on_imgui(float delta)
     ui_push_window(TOP_BAR_WINDOW_NAME);
     ui_top_layout(layoutI);
 
-    ui_push_text("File");
+    ui_push_text(nullptr, "File");
     if (ui_top_mouse_down(mouseVal, mousePos) && mouseVal.button() == MOUSE_BUTTON_LEFT)
     {
         ui_top_get_rect(rect);
@@ -79,7 +79,7 @@ void EditorTopBarObj::on_imgui(float delta)
     }
     ui_pop();
 
-    ui_push_text("Edit");
+    ui_push_text(nullptr, "Edit");
     if (ui_top_mouse_down(mouseVal, mousePos) && mouseVal.button() == MOUSE_BUTTON_LEFT)
     {
         ui_top_get_rect(rect);
@@ -87,7 +87,7 @@ void EditorTopBarObj::on_imgui(float delta)
     }
     ui_pop();
 
-    ui_push_text("About");
+    ui_push_text(nullptr, "About");
     if (ui_top_mouse_down(mouseVal, mousePos) && mouseVal.button() == MOUSE_BUTTON_LEFT)
     {
         ui_top_get_rect(rect);

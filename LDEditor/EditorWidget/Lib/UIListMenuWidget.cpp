@@ -10,7 +10,7 @@ int eui_list_menu(EditorTheme theme, int optionCount, const char** options)
 {
     float childGap = 2.0f;
     int index = -1;
-    ui_push_panel();
+    ui_push_panel(nullptr);
     ui_top_layout(theme.make_vbox_layout(&childGap));
 
     Vec2 mousePos;
@@ -22,7 +22,7 @@ int eui_list_menu(EditorTheme theme, int optionCount, const char** options)
 
     for (int i = 0; i < optionCount; i++)
     {
-        ui_push_panel();
+        UIPanelStorage* panelS = ui_push_panel(nullptr);
 
         ui_top_layout(optionPanelLayout);
 
@@ -30,9 +30,9 @@ int eui_list_menu(EditorTheme theme, int optionCount, const char** options)
         if (ui_top_is_hovered())
             color = Color::lift(color, 0.2f);
 
-        ui_panel_color(color);
+        panelS->color = color;
 
-        ui_push_text(options[i]);
+        ui_push_text(nullptr, options[i]);
         if (ui_top_mouse_down(mouseVal, mousePos) && mouseVal.button() == MOUSE_BUTTON_LEFT)
             index = i;
         ui_pop();

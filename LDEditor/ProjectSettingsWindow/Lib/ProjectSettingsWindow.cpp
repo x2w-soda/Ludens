@@ -58,13 +58,13 @@ void ProjectSettingsWindowObj::on_imgui(float delta)
     ui_push_window("ROOT");
     ui_top_layout_child_axis(UI_AXIS_X);
 
-    ui_push_panel();
-    ui_panel_color(bgColor);
+    UIPanelStorage* panelS = ui_push_panel(nullptr);
+    panelS->color = bgColor;
     ui_top_layout(vboxLayoutI);
     section_names();
     ui_pop();
 
-    ui_push_panel();
+    ui_push_panel(nullptr);
     ui_top_layout(vboxLayoutI);
 
     switch (section)
@@ -90,7 +90,7 @@ void ProjectSettingsWindowObj::section_names()
     MouseValue mouseVal;
     Vec2 mousePos;
 
-    ui_push_text("Startup");
+    ui_push_text(nullptr, "Startup");
     if (ui_top_mouse_down(mouseVal, mousePos) && section != SECTION_STARTUP)
     {
         section = SECTION_STARTUP;
@@ -98,7 +98,7 @@ void ProjectSettingsWindowObj::section_names()
     }
     ui_pop();
 
-    ui_push_text("Rendering");
+    ui_push_text(nullptr, "Rendering");
     if (ui_top_mouse_down(mouseVal, mousePos) && section != SECTION_RENDERING)
     {
         section = SECTION_RENDERING;
@@ -106,7 +106,7 @@ void ProjectSettingsWindowObj::section_names()
     }
     ui_pop();
 
-    ui_push_text("Screen Layers");
+    ui_push_text(nullptr, "Screen Layers");
     if (ui_top_mouse_down(mouseVal, mousePos) && section != SECTION_SCREEN_LAYERS)
     {
         section = SECTION_SCREEN_LAYERS;
@@ -124,13 +124,14 @@ void ProjectSettingsWindowObj::section_startup()
 
     std::string text;
 
-    ui_push_panel();
+    ui_push_panel(nullptr);
     ui_top_layout(layoutI);
     {
-        ui_push_text("Window Width");
+        ui_push_text(nullptr, "Window Width");
         ui_top_layout_size(UISize::fixed(propNameWidth), UISize::fixed(rowHeight));
         ui_pop();
-        ui_push_text_edit(UI_TEXT_EDIT_DOMAIN_UINT);
+        ui_push_text_edit(nullptr);
+        ui_text_edit_domain(UI_TEXT_EDIT_DOMAIN_UINT);
         // TODO: if (sectionDirty)
         if (ui_text_edit_submitted(text))
         {
@@ -142,13 +143,14 @@ void ProjectSettingsWindowObj::section_startup()
     }
     ui_pop();
 
-    ui_push_panel();
+    ui_push_panel(nullptr);
     ui_top_layout(layoutI);
     {
-        ui_push_text("Window Height");
+        ui_push_text(nullptr, "Window Height");
         ui_top_layout_size(UISize::fixed(propNameWidth), UISize::fixed(rowHeight));
         ui_pop();
-        ui_push_text_edit(UI_TEXT_EDIT_DOMAIN_UINT);
+        ui_push_text_edit(nullptr);
+        ui_text_edit_domain(UI_TEXT_EDIT_DOMAIN_UINT);
         // TODO: if (sectionDirty)
         if (ui_text_edit_submitted(text))
         {
@@ -160,15 +162,16 @@ void ProjectSettingsWindowObj::section_startup()
     }
     ui_pop();
 
-    ui_push_panel();
+    ui_push_panel(nullptr);
     ui_top_layout(layoutI);
     {
         std::string name = startupS.get_window_name();
 
-        ui_push_text("Window Name");
+        ui_push_text(nullptr, "Window Name");
         ui_top_layout_size(UISize::fixed(propNameWidth), UISize::fixed(rowHeight));
         ui_pop();
-        ui_push_text_edit(UI_TEXT_EDIT_DOMAIN_STRING);
+        ui_push_text_edit(nullptr);
+        ui_text_edit_domain(UI_TEXT_EDIT_DOMAIN_STRING);
         if (sectionDirty)
             ui_text_edit_set_text(name);
         if (ui_text_edit_submitted(name))
@@ -184,7 +187,7 @@ void ProjectSettingsWindowObj::section_rendering()
 {
     ProjectRenderingSettings renderingS = mCtx.get_project_settings().get_rendering_settings();
 
-    ui_push_text("Rendering");
+    ui_push_text(nullptr, "Rendering");
     // TODO: default clear color Vec4, color picker or maybe just text edit for now.
     ui_pop();
 }
@@ -202,11 +205,11 @@ void ProjectSettingsWindowObj::section_screen_layers()
 
     for (const ProjectScreenLayer& layer : layers)
     {
-        ui_push_panel();
+        ui_push_panel(nullptr);
         ui_top_layout(layoutI);
 
         // screen layer name
-        ui_push_text_edit();
+        ui_push_text_edit(nullptr);
         if (sectionDirty)
             ui_text_edit_set_text(layer.name);
         if (ui_text_edit_submitted(name))
@@ -217,8 +220,8 @@ void ProjectSettingsWindowObj::section_screen_layers()
         ui_pop();
 
         // removal button
-        ui_push_button("X", isPressed);
-        if (isPressed)
+        ui_push_button(nullptr, "X");
+        if (ui_button_is_pressed())
         {
             screenLayerS.destroy_layer(layer.id);
             sectionDirty = isNextFrameDirty = true;
@@ -228,10 +231,8 @@ void ProjectSettingsWindowObj::section_screen_layers()
         ui_pop();
     }
 
-    isPressed = false;
-
-    ui_push_button("Add", isPressed);
-    if (isPressed)
+    ui_push_button(nullptr, "Add");
+    if (ui_button_is_pressed())
     {
         name = std::format("layer {}", layers.size() + 1);
         screenLayerS.create_layer(name.c_str());
