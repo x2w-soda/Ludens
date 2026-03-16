@@ -5,6 +5,7 @@
 #include "UIButtonWidgetObj.h"
 
 namespace LD {
+
 void UIButtonWidgetObj::startup(UIWidgetObj* obj, void* storage)
 {
     UIButtonWidgetObj& self = obj->as.button;
@@ -12,6 +13,12 @@ void UIButtonWidgetObj::startup(UIWidgetObj* obj, void* storage)
 
     self.base = obj;
     self.storage = (UIButtonStorage*)storage;
+
+    if (!self.storage)
+    {
+        obj->flags |= UI_WIDGET_FLAG_LOCAL_STORAGE_BIT;
+        self.storage = &self.local;
+    }
 
     obj->cb.onEvent = UIButtonWidgetObj::on_event;
 

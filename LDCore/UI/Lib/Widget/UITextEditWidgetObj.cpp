@@ -13,6 +13,12 @@ void UITextEditWidgetObj::startup(UIWidgetObj* obj, void* storage)
     new (&self) UITextEditWidgetObj();
     self.storage = (UITextEditStorage*)storage;
 
+    if (!self.storage)
+    {
+        obj->flags |= UI_WIDGET_FLAG_LOCAL_STORAGE_BIT;
+        self.storage = &self.local;
+    }
+
     obj->flags |= UI_WIDGET_FLAG_FOCUSABLE_BIT;
     obj->cb.onEvent = &UITextEditWidgetObj::on_event;
     obj->cb.onDraw = &UITextEditWidget::on_draw;
@@ -157,6 +163,11 @@ UITextEditStorage& UITextEditStorage::operator=(const UITextEditStorage& other)
     return *this;
 }
 
+UITextEditStorage* UITextEditWidget::get_storage()
+{
+    return mObj->as.textEdit.storage;
+}
+
 void UITextEditWidget::set_text(View text)
 {
     auto& self = mObj->as.textEdit;
@@ -197,10 +208,9 @@ void UITextEditWidget::on_draw(UIWidget widget, ScreenRenderComponent renderer)
 
     renderer.draw_rect(rect, theme.get_field_color());
 
+    Color outlineColor = theme.get_selection_color();
     if (widget.is_focused())
-        renderer.draw_rect_outline(rect, 1, theme.get_primary_color());
-    else if (widget.is_hovered())
-        renderer.draw_rect_outline(rect, 1, theme.get_surface_color());
+        renderer.draw_rect_outline(rect, outlineColor, 1.0f);
 
     if (!storage->buf.empty())
     {

@@ -8,6 +8,7 @@ struct UISliderWidgetObj
 {
     UIWidgetObj* base;
     UISliderStorage* storage;
+    UISliderStorage local;
     Vec2 dragStart;
 
     inline float get_value()

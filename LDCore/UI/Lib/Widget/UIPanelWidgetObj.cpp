@@ -11,6 +11,12 @@ void UIPanelWidgetObj::startup(UIWidgetObj* obj, void* storage)
 
     self.base = obj;
     self.storage = (UIPanelStorage*)storage;
+
+    if (!self.storage)
+    {
+        obj->flags |= UI_WIDGET_FLAG_LOCAL_STORAGE_BIT;
+        self.storage = &self.local;
+    }
 }
 
 void UIPanelWidgetObj::cleanup(UIWidgetObj* obj)

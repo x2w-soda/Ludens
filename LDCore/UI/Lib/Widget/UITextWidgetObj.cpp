@@ -10,18 +10,27 @@ void UITextWidgetObj::startup(UIWidgetObj* obj, void* storage)
 {
     UIContextObj* ctx = obj->ctx();
     auto& self = obj->as.text;
+    new (&self) UITextWidgetObj();
 
-    self.storage = (UITextStorage*)storage;
-    self.storage->fgColor = ctx->theme.get_on_surface_color();
     self.fontAtlas = ctx->fontAtlas;
     self.fontImage = ctx->fontAtlasImage;
+    self.storage = (UITextStorage*)storage;
+
+    if (!self.storage)
+    {
+        obj->flags |= UI_WIDGET_FLAG_LOCAL_STORAGE_BIT;
+        self.storage = &self.local;
+        self.storage->bgColor = 0;
+        self.storage->fgColor = ctx->theme.get_on_surface_color();
+        self.storage->fontSize = 16.0f;
+    }
 }
 
 void UITextWidgetObj::cleanup(UIWidgetObj* base)
 {
     UITextWidgetObj& self = base->as.text;
 
-    self.~UITextWidgetObj();
+    (&self)->~UITextWidgetObj();
 }
 
 void UITextWidget::on_draw(UIWidget widget, ScreenRenderComponent renderer)

@@ -12,6 +12,13 @@ void UIToggleWidgetObj::startup(UIWidgetObj* obj, void* storage)
 
     self.base = obj;
     self.storage = (UIToggleStorage*)storage;
+
+    if (!self.storage)
+    {
+        obj->flags |= UI_WIDGET_FLAG_LOCAL_STORAGE_BIT;
+        self.storage = &self.local;
+    }
+
     obj->cb.onEvent = &UIToggleWidgetObj::on_event;
     obj->cb.onUpdate = &UIToggleWidgetObj::on_update;
     obj->as.toggle.anim.reset(1.0f);
@@ -49,6 +56,11 @@ void UIToggleWidgetObj::on_update(UIWidget widget, float delta)
 
     // drive toggle animation
     self.anim.update(delta);
+}
+
+UIToggleStorage* UIToggleWidget::get_storage()
+{
+    return mObj->as.toggle.storage;
 }
 
 void UIToggleWidget::set_on_toggle(UIToggleOnToggle onToggle)

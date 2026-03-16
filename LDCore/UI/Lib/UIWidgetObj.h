@@ -22,6 +22,9 @@ enum UIWidgetFlagBit
     /// @brief Widget subtree will not be drawn.
     UI_WIDGET_FLAG_HIDDEN_BIT = LD_BIT(0),
 
+    /// @brief Widget storage is allocated locally and has same lifetime as widget.
+    UI_WIDGET_FLAG_LOCAL_STORAGE_BIT = LD_BIT(1),
+
     /// @brief Widget subtree will be drawn with scissor.
     UI_WIDGET_FLAG_DRAW_WITH_SCISSOR_BIT = LD_BIT(2),
 

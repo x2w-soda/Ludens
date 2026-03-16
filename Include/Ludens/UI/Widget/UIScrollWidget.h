@@ -4,8 +4,15 @@
 
 namespace LD {
 
+struct UIScrollStorage
+{
+    Color bgColor;
+};
+
 struct UIScrollWidget : UIWidget
 {
+    UIScrollStorage* get_storage();
+
     /// @brief Set scroll offset along X axis.
     void set_scroll_offset_x(float offset);
 
@@ -17,11 +24,6 @@ struct UIScrollWidget : UIWidget
 
     /// @brief Default scroll widget rendering.
     static void on_draw(UIWidget widget, ScreenRenderComponent renderer);
-};
-
-struct UIScrollStorage
-{
-    Color bgColor;
 };
 
 } // namespace LD

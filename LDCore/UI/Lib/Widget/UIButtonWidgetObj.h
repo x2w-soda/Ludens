@@ -8,6 +8,7 @@ struct UIButtonWidgetObj
 {
     UIWidgetObj* base;
     UIButtonStorage* storage;
+    UIButtonStorage local;
     UIButtonOnClick onClick = nullptr;
 
     static void startup(UIWidgetObj* obj, void* storage);

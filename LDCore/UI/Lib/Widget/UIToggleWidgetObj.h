@@ -11,6 +11,7 @@ struct UIToggleWidgetObj
 {
     UIWidgetObj* base;
     UIToggleStorage* storage;
+    UIToggleStorage local;
     UIToggleOnToggle onToggle = nullptr;
     UIAnimation<QuadraticInterpolation> anim;
 

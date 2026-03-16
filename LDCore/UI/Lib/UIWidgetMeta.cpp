@@ -26,9 +26,6 @@ UIWidgetMeta sWidgetMeta[] = {
 
 static_assert(sizeof(sWidgetMeta) / sizeof(*sWidgetMeta) == UI_WIDGET_TYPE_COUNT);
 static_assert(IsTrivial<UIScrollWidgetObj>);
-static_assert(IsTrivial<UIPanelWidgetObj>);
-static_assert(IsTrivial<UIImageWidgetObj>);
-static_assert(IsTrivial<UISliderWidgetObj>);
 
 void widget_startup(UIWidgetObj* obj, void* storage)
 {

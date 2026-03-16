@@ -13,6 +13,12 @@ void UIImageWidgetObj::startup(UIWidgetObj* obj, void* storage)
 
     self.base = obj;
     self.storage = (UIImageStorage*)storage;
+
+    if (!self.storage)
+    {
+        obj->flags |= UI_WIDGET_FLAG_LOCAL_STORAGE_BIT;
+        self.storage = &self.local;
+    }
 }
 
 void UIImageWidgetObj::cleanup(UIWidgetObj* obj)

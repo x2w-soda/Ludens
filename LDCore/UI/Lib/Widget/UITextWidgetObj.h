@@ -13,6 +13,7 @@ struct UITextWidgetObj
 {
     UIWidgetObj* base;
     UITextStorage* storage;
+    UITextStorage local;
     FontAtlas fontAtlas;
     RImage fontImage;
 

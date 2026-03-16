@@ -11,6 +11,13 @@ void UISliderWidgetObj::startup(UIWidgetObj* obj, void* storage)
 
     self.base = obj;
     self.storage = (UISliderStorage*)storage;
+
+    if (!self.storage)
+    {
+        obj->flags |= UI_WIDGET_FLAG_LOCAL_STORAGE_BIT;
+        self.storage = &self.local;
+    }
+
     obj->cb.onEvent = &UISliderWidgetObj::on_event;
 }
 
@@ -58,6 +65,11 @@ void UISliderWidget::on_draw(UIWidget widget, ScreenRenderComponent renderer)
     rect.w = sliderw;
     rect.x += storage->ratio * sliderw * 9.0f;
     renderer.draw_rect(rect, color);
+}
+
+UISliderStorage* UISliderWidget::get_storage()
+{
+    return mObj->as.slider.storage;
 }
 
 float UISliderWidget::get_value()

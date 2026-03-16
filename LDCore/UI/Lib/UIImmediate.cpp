@@ -10,13 +10,7 @@
 #include <Ludens/Memory/Allocator.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/UI/UIImmediate.h>
-#include <Ludens/UI/Widget/UIButtonWidget.h>
-#include <Ludens/UI/Widget/UIImageWidget.h>
-#include <Ludens/UI/Widget/UIPanelWidget.h>
-#include <Ludens/UI/Widget/UISliderWidget.h>
-#include <Ludens/UI/Widget/UITextEditWidget.h>
-#include <Ludens/UI/Widget/UITextWidget.h>
-#include <Ludens/UI/Widget/UIToggleWidget.h>
+#include <Ludens/UI/Widgets.h>
 
 #define LD_ASSERT_UI_CONTEXT_SCOPE LD_ASSERT(sImContext && "ui_context_begin not called")
 #define LD_ASSERT_UI_LAYER_SCOPE LD_ASSERT(sImContext->imLayer && "ui_layer_begin not called")
@@ -515,14 +509,9 @@ UIWidgetState* UIWindowState::get_or_create_text_edit(UITextEditStorage* storage
     if (widgetS->widget && widgetS->widget.get_type() == UI_WIDGET_TEXT_EDIT)
         return widgetS;
 
-    storage->fontSize = 16.0f; // TODO:
-
-    UILayoutInfo layoutI{};
-    layoutI.sizeX = UISize::fixed(100.0f); // TODO:
-    layoutI.sizeY = UISize::fixed(storage->fontSize * 1.2f);
-
     UIWidget parent = get_parent_widget();
-    widgetS->widget = parent.node().add_text_edit(layoutI, storage, widgetS);
+    widgetS->widget = parent.node().add_text_edit({}, storage, widgetS);
+    widgetS->widget.set_layout_size(UISize::fixed(100.0f), UISize::fixed(19.2f)); // TODO:
 
     UITextEditWidget textW = (UITextEditWidget)widgetS->widget;
     textW.set_on_submit(&on_text_submit_handler);
@@ -619,7 +608,6 @@ UIWidgetState* UIWindowState::get_or_create_button(UIButtonStorage* storage)
     UILayoutInfo layoutI{};
     layoutI.sizeX = UISize::fixed(100.0f);
     layoutI.sizeY = UISize::fixed(20.0f);
-    storage->textColor = 0xFFFFFFFF;
 
     UIWidget parent = get_parent_widget();
     widgetS->widget = parent.node().add_button(layoutI, storage, widgetS);
@@ -1069,7 +1057,7 @@ bool ui_push_popup_window(const char* popupName)
     return true;
 }
 
-void ui_push_text(UITextStorage* storage, const char* text)
+UITextStorage* ui_push_text(UITextStorage* storage, const char* text)
 {
     LD_ASSERT_UI_PUSH;
 
@@ -1078,12 +1066,16 @@ void ui_push_text(UITextStorage* storage, const char* text)
     UITextWidget textW = (UITextWidget)imWidget->widget;
     LD_ASSERT(textW.get_type() == UI_WIDGET_TEXT);
 
+    storage = textW.get_storage();
+
     if (text)
         storage->value = std::string(text);
     else
         storage->value.clear();
 
     imWindow->imWidgetStack.push(imWidget);
+
+    return storage;
 }
 
 void ui_text_style(Color color, FontAtlas fontAtlas, RImage fontImage)
@@ -1096,7 +1088,7 @@ void ui_text_style(Color color, FontAtlas fontAtlas, RImage fontImage)
     textW.set_text_style(color, fontAtlas, fontImage);
 }
 
-void ui_push_text_edit(UITextEditStorage* storage)
+UITextEditStorage* ui_push_text_edit(UITextEditStorage* storage)
 {
     LD_ASSERT_UI_PUSH;
 
@@ -1105,9 +1097,19 @@ void ui_push_text_edit(UITextEditStorage* storage)
     UITextEditWidget textW = (UITextEditWidget)imWidget->widget;
     LD_ASSERT(textW.get_type() == UI_WIDGET_TEXT_EDIT);
 
-    textW.set_domain(storage->domain);
-
     imWindow->imWidgetStack.push(imWidget);
+
+    return textW.get_storage();
+}
+
+void ui_text_edit_domain(UITextEditDomain domain)
+{
+    LD_ASSERT_UI_TOP_WIDGET_TYPE(UI_WIDGET_TEXT_EDIT);
+
+    UIWidgetState* imWidget = sImContext->imWindow->imWidgetStack.top();
+    UITextEditWidget editW = (UITextEditWidget)imWidget->widget;
+
+    editW.set_domain(domain);
 }
 
 void ui_text_edit_set_text(View text)
@@ -1152,7 +1154,7 @@ bool ui_text_edit_submitted(std::string& text)
     return false;
 }
 
-void ui_push_image(UIImageStorage* storage, float width, float height)
+UIImageStorage* ui_push_image(UIImageStorage* storage, float width, float height)
 {
     LD_ASSERT_UI_PUSH;
 
@@ -1164,19 +1166,34 @@ void ui_push_image(UIImageStorage* storage, float width, float height)
     imageW.set_layout_size(UISize::fixed(width), UISize::fixed(height));
 
     imWindow->imWidgetStack.push(imWidget);
+
+    return imageW.get_storage();
 }
 
-void ui_push_panel(UIPanelStorage* storage)
+UIPanelStorage* ui_push_panel(UIPanelStorage* storage)
 {
     LD_ASSERT_UI_PUSH;
 
     UIWindowState* imWindow = sImContext->imWindow;
     UIWidgetState* imWidget = imWindow->get_or_create_panel(storage);
+    UIPanelWidget panelW = (UIPanelWidget)imWidget->widget;
 
     imWindow->imWidgetStack.push(imWidget);
+
+    return panelW.get_storage();
 }
 
-bool ui_push_toggle(UIToggleStorage* storage)
+void ui_panel_color(Color color)
+{
+    LD_ASSERT_UI_TOP_WIDGET_TYPE(UI_WIDGET_BUTTON);
+
+    UIWidgetState* imWidget = sImContext->imWindow->imWidgetStack.top();
+    UIPanelStorage* storage = static_cast<UIPanelWidget>(imWidget->widget).get_storage();
+
+    storage->color = color;
+}
+
+UIToggleStorage* ui_push_toggle(UIToggleStorage* storage)
 {
     LD_ASSERT_UI_PUSH;
 
@@ -1187,38 +1204,60 @@ bool ui_push_toggle(UIToggleStorage* storage)
 
     imWindow->imWidgetStack.push(imWidget);
 
+    return toggleW.get_storage();
+}
+
+bool ui_toggle_is_pressed()
+{
+    LD_ASSERT_UI_TOP_WIDGET_TYPE(UI_WIDGET_TOGGLE);
+
+    UIWidgetState* imWidget = sImContext->imWindow->imWidgetStack.top();
+
     return imWidget->isTogglePressed.read();
 }
 
-void ui_push_scroll(UIScrollStorage* storage)
+UIScrollStorage* ui_push_scroll(UIScrollStorage* storage)
 {
     LD_ASSERT_UI_PUSH;
 
     UIWindowState* imWindow = sImContext->imWindow;
     UIWidgetState* imWidget = imWindow->get_or_create_scroll(storage);
+    UIScrollWidget scrollW = (UIScrollWidget)imWidget->widget;
 
     imWindow->imWidgetStack.push(imWidget);
+
+    return scrollW.get_storage();
 }
 
-bool ui_push_button(UIButtonStorage* storage, const char* text)
+UIButtonStorage* ui_push_button(UIButtonStorage* storage, const char* text)
 {
     LD_ASSERT_UI_PUSH;
 
     UIWindowState* imWindow = sImContext->imWindow;
     UIWidgetState* imWidget = imWindow->get_or_create_button(storage);
+    UIButtonWidget buttonW = (UIButtonWidget)imWidget->widget;
+    storage = buttonW.get_storage();
 
     if (text)
         storage->text = std::string(text);
     else
         storage->text.clear();
 
-    bool isPressed = imWidget->isButtonPressed.read();
     imWindow->imWidgetStack.push(imWidget);
 
-    return isPressed;
+    return storage;
 }
 
-void ui_push_slider(UISliderStorage* storage, float* value)
+bool ui_button_is_pressed()
+{
+    LD_ASSERT_UI_TOP_WIDGET_TYPE(UI_WIDGET_BUTTON);
+
+    UIWidgetState* imWidget = sImContext->imWindow->imWidgetStack.top();
+
+    return imWidget->isButtonPressed.read();
+}
+
+UISliderStorage* ui_push_slider(UISliderStorage* storage, float* value)
 {
     LD_ASSERT_UI_PUSH;
 
@@ -1231,6 +1270,8 @@ void ui_push_slider(UISliderStorage* storage, float* value)
         *value = sliderW.get_value();
 
     imWindow->imWidgetStack.push(imWidget);
+
+    return sliderW.get_storage();
 }
 
 } // namespace LD

@@ -11,11 +11,18 @@ void UIScrollWidgetObj::startup(UIWidgetObj* obj, void* storage)
     new (&self) UIScrollWidgetObj();
 
     self.base = obj;
-    self.storage = (UIScrollStorage*)storage;
     self.offsetXDst = 0.0f;
     self.offsetXSpeed = 0.0f;
     self.offsetYDst = 0.0f;
     self.offsetYSpeed = 0.0f;
+    self.storage = (UIScrollStorage*)storage;
+
+    if (!self.storage)
+    {
+        obj->flags |= UI_WIDGET_FLAG_LOCAL_STORAGE_BIT;
+        self.storage = &self.local;
+    }
+
     obj->cb.onDraw = &UIScrollWidget::on_draw;
     obj->cb.onUpdate = &UIScrollWidget::on_update;
     obj->cb.onEvent = &UIScrollWidgetObj::on_event;
@@ -61,6 +68,11 @@ bool UIScrollWidgetObj::on_event(UIWidget widget, const UIEvent& event)
     }
 
     return true;
+}
+
+UIScrollStorage* UIScrollWidget::get_storage()
+{
+    return mObj->as.scroll.storage;
 }
 
 void UIScrollWidget::set_scroll_offset_x(float offset)

@@ -25,6 +25,7 @@ namespace LD {
 static Log sLog("UISandbox");
 
 static WindowID sWindowID;
+static UITextEditStorage* sTextEdit;
 
 UISandbox::UISandbox()
 {
@@ -109,6 +110,8 @@ void UISandbox::run()
 
     ui_imgui_init(mFontAtlas, mFontAtlasImage);
 
+    sTextEdit = heap_new<UITextEditStorage>(MEMORY_USAGE_UI);
+
     while (reg.is_window_open(rootID))
     {
         reg.poll_events();
@@ -123,6 +126,8 @@ void UISandbox::run()
 
         LD_PROFILE_FRAME_MARK;
     }
+
+    heap_delete<UITextEditStorage>(sTextEdit);
 
     ui_imgui_shutdown();
 }
@@ -146,14 +151,16 @@ void UISandbox::imgui(const Vec2& windowExtent, float delta)
     ui_top_layout_child_gap(10.0f);
     {
         static UIButtonStorage sBtn1{};
-        if (ui_push_button(&sBtn1, "Button1"))
+        ui_push_button(&sBtn1, "Button1");
+        if (ui_button_is_pressed())
         {
             sLog.info("Button1 pressed!");
         }
         ui_pop();
 
         static UIButtonStorage sBtn2{};
-        if (ui_push_button(&sBtn2, "Button2"))
+        ui_push_button(&sBtn2, "Button2");
+        if (ui_button_is_pressed())
         {
             sLog.info("Button2 pressed!");
         }
@@ -180,15 +187,15 @@ void UISandbox::imgui(const Vec2& windowExtent, float delta)
         ui_pop();
 
         static UIButtonStorage sBtn3{};
-        if (ui_push_button(&sBtn3, "Button3"))
+        ui_push_button(&sBtn3, "Button3");
+        if (ui_button_is_pressed())
         {
             sLog.info("Button3 pressed!");
         }
         ui_pop();
 
-        static UITextEditStorage sTextEdit{};
         std::string text;
-        ui_push_text_edit(&sTextEdit);
+        ui_push_text_edit(sTextEdit);
         if (ui_text_edit_changed(text))
             sLog.info("Text Changed: [{}]", text);
         if (ui_text_edit_submitted(text))

@@ -9,6 +9,7 @@ struct UITextEditWidgetObj
 {
     UIWidgetObj* base;
     UITextEditStorage* storage;
+    UITextEditStorage local;
     UITextEditOnChange onChange = nullptr;
     UITextEditOnSubmit onSubmit = nullptr;
 

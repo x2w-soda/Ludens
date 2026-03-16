@@ -29,6 +29,8 @@ struct UITextEditStorage
 
 struct UITextEditWidget : UIWidget
 {
+    UITextEditStorage* get_storage();
+
     /// @brief Set text edit field value, does not trigger on_change callbacks.
     void set_text(View text);
 

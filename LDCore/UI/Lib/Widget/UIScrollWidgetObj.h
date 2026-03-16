@@ -8,6 +8,7 @@ struct UIScrollWidgetObj
 {
     UIWidgetObj* base;
     UIScrollStorage* storage;
+    UIScrollStorage local;
     float offsetXDst;   // destination value for scrollOffset x
     float offsetYDst;   // destination value for scrollOffset y
     float offsetXSpeed; // animation speed for scrollOffset x

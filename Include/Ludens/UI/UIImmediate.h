@@ -2,6 +2,7 @@
 
 #include <Ludens/UI/UIContext.h>
 #include <Ludens/UI/UIWidget.h>
+#include <Ludens/UI/Widgets.h>
 
 // OVERVIEW
 //
@@ -137,32 +138,35 @@ void ui_clear_popup_window();
 bool ui_push_popup_window(const char* popupName);
 
 /// @brief Push UITextWidget.
-void ui_push_text(UITextStorage* storage, const char* text);
+UITextStorage* ui_push_text(UITextStorage* storage, const char* text);
 void ui_text_style(Color color, FontAtlas fontAtlas, RImage fontImage);
 
 /// @brief Push UITextEditWidget.
-void ui_push_text_edit(UITextEditStorage* storage);
+UITextEditStorage* ui_push_text_edit(UITextEditStorage* storage);
+void ui_text_edit_domain(UITextEditDomain domain);
 void ui_text_edit_set_text(View text);
 inline void ui_text_edit_set_text(const std::string& text) { ui_text_edit_set_text(View(text.data(), text.size())); }
 bool ui_text_edit_changed(std::string& text);
 bool ui_text_edit_submitted(std::string& text);
 
 /// @brief Push UIImageWidget.
-void ui_push_image(UIImageStorage* storage, float width, float height);
+UIImageStorage* ui_push_image(UIImageStorage* storage, float width, float height);
 
 /// @brief Push UIPanelWidget.
-void ui_push_panel(UIPanelStorage* storage);
+UIPanelStorage* ui_push_panel(UIPanelStorage* storage);
 
 /// @brief Push UIToggleWidget.
-bool ui_push_toggle(UIToggleStorage* storage);
+UIToggleStorage* ui_push_toggle(UIToggleStorage* storage);
+bool ui_toggle_is_pressed();
 
 /// @brief Push UIScrollWidget.
-void ui_push_scroll(UIScrollStorage* storage);
+UIScrollStorage* ui_push_scroll(UIScrollStorage* storage);
 
 /// @brief Push UIButtonWidget.
-bool ui_push_button(UIButtonStorage* storage, const char* text);
+UIButtonStorage* ui_push_button(UIButtonStorage* storage, const char* text);
+bool ui_button_is_pressed();
 
 /// @brief Push UISliderWidget.
-void ui_push_slider(UISliderStorage* storage, float* value);
+UISliderStorage* ui_push_slider(UISliderStorage* storage, float* value);
 
 } // namespace LD
