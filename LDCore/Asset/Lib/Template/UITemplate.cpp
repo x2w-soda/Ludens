@@ -183,6 +183,9 @@ UIWidget UITemplateLoader::load_ui_button(UITemplateLoader& loader, const UITemp
 
     UIWidget widget = parent.node().add_button(entry.layout, nullptr, nullptr);
 
+    UIButtonWidget buttonW = (UIButtonWidget)widget;
+    *buttonW.get_storage() = entry.button.storage;
+
     return widget;
 }
 
@@ -191,6 +194,9 @@ UIWidget UITemplateLoader::load_ui_panel(UITemplateLoader& loader, const UITempl
     LD_ASSERT(parent && entry.type == UI_WIDGET_PANEL);
 
     UIWidget widget = parent.node().add_panel(entry.layout, nullptr, nullptr);
+
+    UIPanelWidget panelW = (UIPanelWidget)widget;
+    *panelW.get_storage() = entry.panel.storage;
 
     return widget;
 }
@@ -201,6 +207,9 @@ UIWidget UITemplateLoader::load_ui_image(UITemplateLoader& loader, const UITempl
 
     UIWidget widget = parent.node().add_image(entry.layout, nullptr, nullptr);
 
+    UIImageWidget imageW = (UIImageWidget)widget;
+    *imageW.get_storage() = entry.image.storage;
+
     return widget;
 }
 
@@ -209,6 +218,9 @@ UIWidget UITemplateLoader::load_ui_text(UITemplateLoader& loader, const UITempla
     LD_ASSERT(parent && entry.type == UI_WIDGET_TEXT);
 
     UIWidget widget = parent.node().add_text(entry.layout, nullptr, nullptr);
+
+    UITextWidget textW = (UITextWidget)widget;
+    *textW.get_storage() = entry.text.storage;
 
     return widget;
 }
