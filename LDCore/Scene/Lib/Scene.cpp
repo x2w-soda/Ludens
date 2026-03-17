@@ -927,6 +927,12 @@ bool ComponentView::set_transform_2d(const Transform2D& transform)
     return sScene->active->registry.set_component_transform_2d((*mData)->cuid, transform);
 }
 
+bool ComponentView::get_world_transform_2d(Transform2D& transform)
+{
+    // TODO: DataRegistry API to take ComponentBase* directly
+    return sScene->active->registry.get_component_world_transform_2d((*mData)->cuid, transform);
+}
+
 bool ComponentView::get_world_mat4(Mat4& worldMat4)
 {
     ComponentBase* base = *mData;

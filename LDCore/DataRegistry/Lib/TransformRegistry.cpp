@@ -79,6 +79,23 @@ void Transform2DRegistry::set_transform(ID id, const Transform2D& transform)
     *depth.local[sparse.localIndex].transform = transform;
 }
 
+bool Transform2DRegistry::get_world_transform(ID id, Transform2D& outWorldTransform)
+{
+    if (!has_transform(id))
+        return false;
+
+    const Sparse& sparse = mSparse[id.index()];
+    Depth& depth = *mDepth[sparse.depthLevel];
+    const Entry& entry = depth.local[sparse.localIndex];
+
+    Transform2D parentWorld;
+    if (!get_world_transform(entry.parentID, parentWorld))
+        parentWorld = Transform2D::identity();
+
+    outWorldTransform = compute_world_transform(*entry.transform, parentWorld);
+    return true;
+}
+
 Transform2D* Transform2DRegistry::create(ID childID, ID parentID)
 {
     uint32_t childSI = childID.index();
@@ -198,6 +215,19 @@ void Transform2DRegistry::reparent_subtree(ID childID, ID parentID, IDHierarchyC
         childS.depthLevel = childDepthLevel;
         childS.localIndex = childNewLI;
     }
+}
+
+Transform2D Transform2DRegistry::compute_world_transform(const Transform2D& childLocal, const Transform2D& parentWorld)
+{
+    Vec2 scaled = childLocal.position * parentWorld.scale;
+    Vec4 rotated = Mat4::rotate(LD_TO_RADIANS(parentWorld.rotation), Vec3(0.0f, 0.0f, 1.0f)) * Vec4(scaled, 0.0f, 1.0f);
+
+    Transform2D world;
+    world.rotation = parentWorld.rotation + childLocal.rotation;
+    world.scale = parentWorld.scale * childLocal.scale;
+    world.position = parentWorld.position + Vec2(rotated.x, rotated.y);
+
+    return world;
 }
 
 void Transform2DRegistry::reserve_depth(int depth)

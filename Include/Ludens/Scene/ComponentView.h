@@ -38,6 +38,9 @@ public:
     bool get_transform_2d(Transform2D& transform);
     bool set_transform_2d(const Transform2D& transform);
 
+    /// @note Slow path for editor. 
+    bool get_world_transform_2d(Transform2D& transform);
+
     bool get_world_mat4(Mat4& worldMat4);
 
 protected:

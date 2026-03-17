@@ -145,6 +145,8 @@ struct DataRegistryObj
     /// @brief Get component world transform matrix
     bool get_component_world_mat4(ComponentBase* base, Mat4& mat4);
 
+    bool get_component_world_transform_2d(ComponentBase* base, Transform2D& transform2D);
+
     void destroy_subtree(ComponentBase** data);
     void destroy_component(ComponentBase** data);
     ComponentBase** clone_subtree(ComponentBase** srcData, ComponentPlacement placement);
@@ -310,6 +312,14 @@ bool DataRegistryObj::get_component_world_mat4(ComponentBase* base, Mat4& mat4)
 
     mat4 = transform2DRegistry.get_world_mat4(base->cuid);
     return true;
+}
+
+bool DataRegistryObj::get_component_world_transform_2d(ComponentBase* base, Transform2D& transform)
+{
+    if (!base || !(sComponentTable[(int)base->type].typeFlags & COMPONENT_TYPE_FLAG_TRANSFORM_2D))
+        return false;
+
+    return transform2DRegistry.get_world_transform(base->cuid, transform);
 }
 
 void DataRegistryObj::destroy_subtree(ComponentBase** compData)
@@ -760,6 +770,13 @@ bool DataRegistry::get_component_world_mat4(CUID compID, Mat4& mat4)
     ComponentBase* base = get_component_base(compID);
 
     return mObj->get_component_world_mat4(base, mat4);
+}
+
+bool DataRegistry::get_component_world_transform_2d(CUID compID, Transform2D& transform)
+{
+    ComponentBase* base = get_component_base(compID);
+
+    return mObj->get_component_world_transform_2d(base, transform);
 }
 
 void DataRegistry::invalidate_transforms()

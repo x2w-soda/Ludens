@@ -118,6 +118,8 @@ struct DataRegistry : Handle<struct DataRegistryObj>
     /// @return True on success.
     bool get_component_world_mat4(CUID compID, Mat4& mat4);
 
+    bool get_component_world_transform_2d(CUID compID, Transform2D& transform);
+
     void invalidate_transforms();
 
     std::string print_hierarchy();

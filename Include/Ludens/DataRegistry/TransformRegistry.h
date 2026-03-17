@@ -26,6 +26,10 @@ public:
     bool has_transform(ID id);
     void set_transform(ID id, const Transform2D& transform);
 
+    /// @brief Get world Transform2D.
+    /// @note This is slow and is intended for Editor to avoid flaky matrix decompositions.
+    bool get_world_transform(ID id, Transform2D& outWorldTransform);
+
     inline Mat4 get_world_mat4(ID id)
     {
         return mWorldMat4[id.index()];
@@ -54,6 +58,7 @@ private:
         Vector<Entry> local;
     };
 
+    Transform2D compute_world_transform(const Transform2D& childLocal, const Transform2D& parentWorld);
     void reserve_depth(int depth);
     Transform2D* swap_and_pop(ID popID);
 

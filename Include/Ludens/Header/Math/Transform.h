@@ -86,6 +86,11 @@ struct Transform2D
     {
         return Mat4::translate(Vec3(position, 0.0f)) * Mat4::rotate((float)LD_TO_RADIANS(rotation), Vec3(0.0f, 0.0f, 1.0f)) * Mat4::scale(Vec3(scale, 1.0f));
     }
+
+    static Transform2D identity()
+    {
+        return Transform2D(Vec2(0.0f, 0.0f), Vec2(1.0f, 1.0f), 0.0f);
+    }
 };
 
 } // namespace LD
