@@ -92,7 +92,7 @@ bool Transform2DRegistry::get_world_transform(ID id, Transform2D& outWorldTransf
     if (!get_world_transform(entry.parentID, parentWorld))
         parentWorld = Transform2D::identity();
 
-    outWorldTransform = compute_world_transform(*entry.transform, parentWorld);
+    outWorldTransform = Transform2D::child_world(*entry.transform, parentWorld);
     return true;
 }
 
@@ -215,19 +215,6 @@ void Transform2DRegistry::reparent_subtree(ID childID, ID parentID, IDHierarchyC
         childS.depthLevel = childDepthLevel;
         childS.localIndex = childNewLI;
     }
-}
-
-Transform2D Transform2DRegistry::compute_world_transform(const Transform2D& childLocal, const Transform2D& parentWorld)
-{
-    Vec2 scaled = childLocal.position * parentWorld.scale;
-    Vec4 rotated = Mat4::rotate(LD_TO_RADIANS(parentWorld.rotation), Vec3(0.0f, 0.0f, 1.0f)) * Vec4(scaled, 0.0f, 1.0f);
-
-    Transform2D world;
-    world.rotation = parentWorld.rotation + childLocal.rotation;
-    world.scale = parentWorld.scale * childLocal.scale;
-    world.position = parentWorld.position + Vec2(rotated.x, rotated.y);
-
-    return world;
 }
 
 void Transform2DRegistry::reserve_depth(int depth)

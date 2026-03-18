@@ -58,7 +58,6 @@ private:
         Vector<Entry> local;
     };
 
-    Transform2D compute_world_transform(const Transform2D& childLocal, const Transform2D& parentWorld);
     void reserve_depth(int depth);
     Transform2D* swap_and_pop(ID popID);
 

@@ -87,9 +87,22 @@ struct Transform2D
         return Mat4::translate(Vec3(position, 0.0f)) * Mat4::rotate((float)LD_TO_RADIANS(rotation), Vec3(0.0f, 0.0f, 1.0f)) * Mat4::scale(Vec3(scale, 1.0f));
     }
 
-    static Transform2D identity()
+    static inline Transform2D identity()
     {
         return Transform2D(Vec2(0.0f, 0.0f), Vec2(1.0f, 1.0f), 0.0f);
+    }
+
+    static inline Transform2D child_world(const Transform2D& childLocal, const Transform2D& parentWorld)
+    {
+        Vec2 scaled = childLocal.position * parentWorld.scale;
+        Vec4 rotated = Mat4::rotate(LD_TO_RADIANS(parentWorld.rotation), Vec3(0.0f, 0.0f, 1.0f)) * Vec4(scaled, 0.0f, 1.0f);
+
+        Transform2D childWorld;
+        childWorld.rotation = parentWorld.rotation + childLocal.rotation;
+        childWorld.scale = parentWorld.scale * childLocal.scale;
+        childWorld.position = parentWorld.position + Vec2(rotated.x, rotated.y);
+
+        return childWorld;
     }
 };
 
