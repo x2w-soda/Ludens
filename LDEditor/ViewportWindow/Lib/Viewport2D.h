@@ -28,7 +28,10 @@ public:
     inline Camera2D get_camera_2d() { return mCamera; }
 
 private:
+    void drag_begin(Vec2 dragBeginPos);
     void drag_controls(const ViewportState& state);
+    void mouse_button_down(const ViewportState& state, MouseValue mouseVal);
+    void mouse_button_up(const ViewportState& state, MouseValue mouseVal);
 
 private:
     EditorContext mCtx;
@@ -38,7 +41,11 @@ private:
     Optional<Vec2> mMouseWorldPos; // mouse world position
     Vec2 mDragPosPrevFrame;
     Vec2 mDragPosThisFrame;
-    Vec2 mDragMouseDelta;
+    Vec2 mDragBeginMousePos;
+    Vec2 mDragBeginMouseOffset;
+    Vec2 mDragBeginCompWorldScale;
+    float mDragBeginCompWorldDeg;
+    float mDragMouseOffsetDeg;
     bool mIsPanning = false;
     bool mIsDragging = false;
 };

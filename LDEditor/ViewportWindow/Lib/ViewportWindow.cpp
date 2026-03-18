@@ -71,10 +71,6 @@ void ViewportWindowObj::on_imgui(float delta)
         state.sceneMousePos.y -= VIEWPORT_TOOLBAR_HEIGHT;
     }
 
-    KeyValue keyVal;
-    if (ui_top_key_down(keyVal))
-        ctx.input_key_value(keyVal);
-
     // TODO: this should come after toolbar?
     if (isRequestingPlay.read())
         mCtx.play_scene();
@@ -211,6 +207,7 @@ void ViewportWindowObj::viewport_editor_imgui()
             state.gizmoType = SCENE_OVERLAY_GIZMO_SCALE;
             break;
         default:
+            ctx.input_key_value(key);
             break;
         }
     }
