@@ -38,6 +38,8 @@ set(MODULE_LIB
     Lib/UITheme.cpp
     Lib/UIAnimation.cpp
     Lib/UIImmediate.cpp
+    Lib/UIDebug.h
+    Lib/UIDebug.cpp
     Lib/Widget/UIButtonWidgetObj.h
     Lib/Widget/UIButtonWidgetObj.cpp
     Lib/Widget/UIImageWidgetObj.h

@@ -70,6 +70,8 @@ struct UIContext : Handle<struct UIContextObj>
 
     void set_user(void* user);
     void set_on_event(void (*onEvent)(UIWidget widget, const UIEvent& event, void* user));
+
+    std::string print();
 };
 
 } // namespace LD

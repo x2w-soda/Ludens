@@ -15,6 +15,8 @@
 #include "UIObj.h"
 #include "UIWidgetMeta.h"
 
+#include "UIDebug.h"
+
 namespace LD {
 
 static_assert(LD::IsTrivial<UIEvent>);
@@ -714,6 +716,15 @@ void UIContext::set_user(void* user)
 void UIContext::set_on_event(void (*onEvent)(UIWidget widget, const UIEvent& event, void* user))
 {
     mObj->onEvent = onEvent;
+}
+
+std::string UIContext::print()
+{
+    UIDebug debug{};
+
+    debug.print_context(mObj);
+
+    return debug.ss.str();
 }
 
 } // namespace LD

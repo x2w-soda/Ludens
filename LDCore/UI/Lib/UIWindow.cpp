@@ -1,4 +1,5 @@
 #include <Ludens/DSA/Vector.h>
+#include <Ludens/Profiler/Profiler.h>
 #include <Ludens/UI/UIWindow.h>
 
 #include "UIObj.h"
@@ -75,7 +76,7 @@ bool UIWindowObj::on_event(UIWidget widget, const UIEvent& signal)
     if (signal.drag.begin)
     {
         obj->dragResize = signal.drag.button == MOUSE_BUTTON_RIGHT; // right button to resize, left button to reposition
-        obj->dragOffset = dragPos - rect.get_pos();  // fixed drag offset
+        obj->dragOffset = dragPos - rect.get_pos();                 // fixed drag offset
         obj->dragBeginPos = dragPos;
         obj->dragBeginSize = rect.get_size();
     }
@@ -107,6 +108,8 @@ void UIWindow::layout()
 
 void UIWindow::render(ScreenRenderComponent& renderer)
 {
+    LD_PROFILE_SCOPE;
+
     UIWindowObj* obj = (UIWindowObj*)mObj;
 
     if (obj->flags & UI_WIDGET_FLAG_HIDDEN_BIT)
