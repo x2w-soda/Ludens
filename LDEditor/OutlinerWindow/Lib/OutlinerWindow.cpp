@@ -156,7 +156,8 @@ void OutlinerWindowObj::on_imgui(float delta)
     layoutI.childGap = 0;
 
     ui_workspace_begin();
-    ui_push_window("ROOT");
+    ui_push_window(ui_workspace_name());
+
     ui_top_layout(layoutI);
     ui_window_set_color(theme.get_ui_theme().get_surface_color());
 

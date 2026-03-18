@@ -48,7 +48,8 @@ void SelectionWindowObj::on_imgui(float delta)
     selectedPath.clear();
 
     ui_workspace_begin();
-    ui_push_window("ROOT");
+    ui_push_window(ui_workspace_name());
+
     ui_top_layout(mCtx.make_editor_window_layout(mRootRect.get_size()));
     ui_window_set_color(theme.get_ui_theme().get_surface_color());
 

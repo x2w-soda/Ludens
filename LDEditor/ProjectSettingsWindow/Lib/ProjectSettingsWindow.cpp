@@ -55,7 +55,8 @@ void ProjectSettingsWindowObj::on_imgui(float delta)
     Color bgColor = theme.get_ui_theme().get_field_color();
 
     ui_workspace_begin();
-    ui_push_window("ROOT");
+    ui_push_window(ui_workspace_name());
+
     ui_top_layout_child_axis(UI_AXIS_X);
 
     UIPanelStorage* panelS = ui_push_panel(nullptr);

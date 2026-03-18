@@ -20,7 +20,8 @@ void InspectorWindowObj::on_imgui(float delta)
     layoutI.childGap = 4.0f;
 
     ui_workspace_begin();
-    ui_push_window("ROOT");
+    ui_push_window(ui_workspace_name());
+
     ui_window_set_color(theme.get_ui_theme().get_surface_color());
     ui_top_layout(layoutI);
 

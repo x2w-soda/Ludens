@@ -47,8 +47,8 @@ public:
     inline bool should_close() const { return mShouldClose; };
     inline void set_pos(const Vec2& pos) { mRootRect.set_pos(pos.x, pos.y); }
     inline void set_rect(const Rect& rect) { mRootRect = rect; }
-
-    inline void ui_workspace_begin() { LD::ui_workspace_begin(mUIWorkspaceName.c_str(), mRootRect); }
+    inline const char* ui_workspace_name() { return mUIWorkspaceName.c_str(); }
+    inline void ui_workspace_begin() { LD::ui_workspace_begin(ui_workspace_name(), mRootRect); }
 
 protected:
     std::string mUIWorkspaceName;

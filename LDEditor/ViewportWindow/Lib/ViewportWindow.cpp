@@ -55,7 +55,7 @@ void ViewportWindowObj::on_imgui(float delta)
     UITheme uiTheme = theme.get_ui_theme();
 
     ui_workspace_begin();
-    ui_push_window("ROOT");
+    ui_push_window(ui_workspace_name());
 
     // update state for this frame
     state.delta = delta;

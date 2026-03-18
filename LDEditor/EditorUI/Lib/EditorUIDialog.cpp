@@ -302,6 +302,8 @@ void EditorUIDialog::render(ScreenRenderComponent renderer)
 
 void EditorUIDialog::update(float delta)
 {
+    LD_PROFILE_SCOPE;
+
     mObj->update(delta);
 }
 

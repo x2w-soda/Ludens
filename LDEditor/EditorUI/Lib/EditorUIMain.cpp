@@ -129,6 +129,8 @@ void EditorUIMain::on_imgui(float delta)
 
 void EditorUIMain::update(float delta)
 {
+    LD_PROFILE_SCOPE;
+
     mObj->update(delta);
 }
 

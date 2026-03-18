@@ -18,28 +18,25 @@ struct ConsoleEntry
     double sessionTime;
     std::string channel;
     std::string message;
+    std::string formatted;
     LogLevel level;
-
-    std::string format() const
-    {
-        LD_PROFILE_SCOPE;
-
-        std::chrono::duration<double> duration(sessionTime);
-        std::chrono::milliseconds ms = std::chrono::duration_cast<std::chrono::milliseconds>(duration);
-
-        return std::format("[{:%T}][{}] {}", ms, channel, message);
-    }
 };
 
 static Vector<ConsoleEntry> sHistory;
 
 static void console_log_writeback(LogLevel level, const std::string& ch, const std::string& msg, void* user)
 {
+    LD_PROFILE_SCOPE;
+
     ConsoleEntry entry{};
     entry.sessionTime = WindowRegistry::get().get_time();
     entry.channel = ch;
     entry.message = msg;
     entry.level = level;
+
+    std::chrono::duration<double> duration(entry.sessionTime);
+    std::chrono::milliseconds ms = std::chrono::duration_cast<std::chrono::milliseconds>(duration);
+    entry.formatted = std::format("[{:%T}][{}] {}", ms, entry.channel, entry.message);
 
     sHistory.push_back(entry);
 }
@@ -63,7 +60,8 @@ void ConsoleWindowObj::on_imgui(float delta)
     float pad = edTheme.get_padding();
 
     ui_workspace_begin();
-    ui_push_window("ROOT");
+    ui_push_window(ui_workspace_name());
+
     UIScrollStorage* scrollS = ui_push_scroll(nullptr);
     scrollS->bgColor = uiTheme.get_surface_color();
     
@@ -78,8 +76,6 @@ void ConsoleWindowObj::on_imgui(float delta)
 
     for (const ConsoleEntry& entry : sHistory)
     {
-        std::string text = entry.format();
-
         Color color;
 
         switch (entry.level)
@@ -95,7 +91,7 @@ void ConsoleWindowObj::on_imgui(float delta)
             break;
         }
 
-        ui_push_text(nullptr, text.c_str());
+        ui_push_text(nullptr, entry.formatted.c_str());
         ui_text_style(color, fontAtlas, fontImage);
         ui_pop();
     }

@@ -23,7 +23,8 @@ void VersionWindowObj::on_imgui(float delta)
     float pad = theme.get_padding();
 
     ui_workspace_begin();
-    ui_push_window("ROOT");
+    ui_push_window(ui_workspace_name());
+
     ui_window_set_color(uiTheme.get_surface_color());
 
     UILayoutInfo layoutI{};
