@@ -1,34 +1,12 @@
 #pragma once
 
 #include <Ludens/Camera/Camera.h>
+#include <Ludens/Gizmo/GizmoEnum.h>
 #include <Ludens/Header/Handle.h>
 #include <Ludens/Header/Math/Vec2.h>
 #include <Ludens/Header/Math/Vec3.h>
 
 namespace LD {
-
-enum GizmoControl
-{
-    GIZMO_CONTROL_NONE = 0,          /// gizmo is not active
-    GIZMO_CONTROL_AXIS_TRANSLATION,  /// translating along an axis using axis gizmo
-    GIZMO_CONTROL_PLANE_TRANSLATION, /// translating along a plane using plane gizmo
-    GIZMO_CONTROL_PLANE_ROTATION,    /// rotating along an axis using its complement plane gizmo
-    GIZMO_CONTROL_AXIS_SCALE,        /// scaling along an axis using axis gizmo
-};
-
-enum GizmoAxis
-{
-    GIZMO_AXIS_X = 0,
-    GIZMO_AXIS_Y,
-    GIZMO_AXIS_Z,
-};
-
-enum GizmoPlane
-{
-    GIZMO_PLANE_XY = 0,
-    GIZMO_PLANE_XZ,
-    GIZMO_PLANE_YZ,
-};
 
 /// @brief 3D Gizmo controller to edit the Translation, Rotation, and Scale
 ///        properties of an object in world space.
