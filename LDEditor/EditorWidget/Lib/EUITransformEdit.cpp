@@ -1,7 +1,6 @@
 #include <Ludens/Header/Math/Transform.h>
-#include <LudensEditor/EditorWidget/UIDraw.h>
-#include <LudensEditor/EditorWidget/UITransformEditWidget.h>
-#include <LudensEditor/EditorWidget/UIVectorEditWidget.h>
+#include <LudensEditor/EditorWidget/EUITransformEdit.h>
+#include <LudensEditor/EditorWidget/EUIVectorEdit.h>
 
 #include <format>
 
@@ -33,9 +32,10 @@ void eui_transform_2d_edit(EditorTheme theme, Transform2D* transform2D)
     ui_push_panel(nullptr);
     ui_top_layout(layoutI);
 
+    static EUIF32EditStorage sF32Edit;
     eui_vec2_edit(theme, "Position", &transform2D->position);
     eui_vec2_edit(theme, "Scale", &transform2D->scale);
-    eui_f32_edit(theme, "Rotation", &transform2D->rotation);
+    eui_f32_edit(&sF32Edit, "Rotation", &transform2D->rotation);
 
     ui_pop();
 }

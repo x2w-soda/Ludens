@@ -2,8 +2,7 @@
 #include <Ludens/Header/MouseValue.h>
 #include <Ludens/Memory/Memory.h>
 #include <Ludens/UI/UIImmediate.h>
-#include <LudensEditor/EditorWidget/UIAssetSlotWidget.h>
-#include <LudensEditor/EditorWidget/UIDraw.h>
+#include <LudensEditor/EditorWidget/EUIAssetSlot.h>
 
 namespace LD {
 
@@ -30,7 +29,6 @@ bool eui_asset_slot(EditorTheme theme, AssetType assetType, AssetID assetID, con
 
     ui_push_text(nullptr, assetName);
     ui_top_layout(layoutI);
-    ui_top_draw(&eui_draw_text_with_bg);
     if (ui_top_mouse_down(mouseVal, mousePos) && mouseVal.button() == MOUSE_BUTTON_LEFT)
         newAssetRequest = true;
     ui_pop();

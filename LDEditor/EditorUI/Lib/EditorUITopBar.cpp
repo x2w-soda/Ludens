@@ -6,7 +6,7 @@
 #include <Ludens/UI/UIContext.h>
 #include <Ludens/UI/UIImmediate.h>
 #include <LudensEditor/EditorUI/EditorUITopBar.h>
-#include <LudensEditor/EditorWidget/UIListMenuWidget.h>
+#include <LudensEditor/EditorWidget/EUIListMenu.h>
 
 #include <cstddef>
 #include <cstdio>

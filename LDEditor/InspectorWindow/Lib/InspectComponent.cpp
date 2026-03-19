@@ -1,9 +1,9 @@
 #include <Ludens/Asset/AssetManager.h>
 #include <Ludens/Asset/AssetType/MeshAsset.h>
 #include <Ludens/Scene/ComponentViews.h>
-#include <LudensEditor/EditorWidget/UIAssetSlotWidget.h>
-#include <LudensEditor/EditorWidget/UITransformEditWidget.h>
-#include <LudensEditor/EditorWidget/UIVectorEditWidget.h>
+#include <LudensEditor/EditorWidget/EUIAssetSlot.h>
+#include <LudensEditor/EditorWidget/EUITransformEdit.h>
+#include <LudensEditor/EditorWidget/EUIVectorEdit.h>
 
 #include "InspectComponent.h"
 #include "InspectorWindowObj.h"
@@ -176,8 +176,9 @@ void eui_inspect_sprite_2d_component(InspectorWindowObj& self, ComponentView com
     sprite.set_transform_2d(transform);
 
     uint32_t zDepth = sprite.get_z_depth();
-    eui_u32_edit(edTheme, "Z Depth", &zDepth);
-    sprite.set_z_depth(zDepth);
+    static EUIU32EditStorage sU32EditStorage; // TODO:
+    if (eui_u32_edit(&sU32EditStorage, "Z Depth", &zDepth));
+        sprite.set_z_depth(zDepth);
 
     Vec2 pivot = sprite.get_pivot();
     eui_vec2_edit(edTheme, "Pivot", &pivot);

@@ -6,6 +6,7 @@
 #include <LudensEditor/EditorContext/EditorIconAtlas.h>
 #include <LudensEditor/EditorContext/EditorWindow.h>
 #include <LudensEditor/EditorUI/EditorUI.h>
+#include <LudensEditor/EditorWidget/EditorWidget.h>
 
 #define EDITOR_BAR_HEIGHT 22.0f
 #define EDITOR_UI_CONTEXT_NAME "EDITOR_UI"
@@ -68,6 +69,8 @@ void EditorUI::update(float delta)
 {
     LD_PROFILE_SCOPE;
 
+    eui_push_theme(mCtx.get_theme());
+
     // imgui pass
     ui_context_begin(EDITOR_UI_CONTEXT_NAME, mScreenSize);
     mTopBar.on_imgui(delta);
@@ -81,6 +84,8 @@ void EditorUI::update(float delta)
     // EditorContext update.
     // If the Scene is playing in editor, this drives the Scene update as well
     mCtx.update(mMain.get_viewport_scene_size(), delta);
+
+    eui_pop_theme();
 }
 
 void EditorUI::submit_frame()

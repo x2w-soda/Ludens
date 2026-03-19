@@ -1,19 +1,20 @@
 set(MODULE_NAME LDEditorWidget)
 
 set(MODULE_LIB
-	Lib/UIVectorEditWidget.cpp
-	Lib/UITransformEditWidget.cpp
-	Lib/UIAssetSlotWidget.cpp
-	Lib/UIListMenuWidget.cpp
-	Lib/UIDraw.cpp
+	Lib/EUI.h
+	Lib/EUI.cpp
+	Lib/EUIVectorEdit.cpp
+	Lib/EUITransformEdit.cpp
+	Lib/EUIAssetSlot.cpp
+	Lib/EUIListMenu.cpp
 )
 
 set(MODULE_INCLUDE
-	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorWidget/UIVectorEditWidget.h
-	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorWidget/UITransformEditWidget.h
-	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorWidget/UIAssetSlotWidget.h
-	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorWidget/UIListMenuWidget.h
-	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorWidget/UIDraw.h
+	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorWidget/EditorWidget.h
+	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorWidget/EUIVectorEdit.h
+	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorWidget/EUITransformEdit.h
+	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorWidget/EUIAssetSlot.h
+	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorWidget/EUIListMenu.h
 )
 
 add_ludens_editor_module(
