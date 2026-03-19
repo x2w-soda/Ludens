@@ -6,12 +6,8 @@
 
 namespace LD {
 
-template <typename T>
-struct TextBufferObj;
-
 /// @brief A buffer of text subject to editing.
-template <typename T>
-struct TextBuffer : Handle<TextBufferObj<T>>
+struct TextBuffer : Handle<struct TextBufferObj>
 {
     /// @brief Create a text buffer
     static TextBuffer create();
@@ -25,8 +21,11 @@ struct TextBuffer : Handle<TextBufferObj<T>>
     /// @brief Set text buffer content to C string.
     void set_string(const char* cstr);
 
+    /// @brief Set text buffer content
+    inline void set_string(const std::string& str) { set_string(str.c_str()); }
+
     /// @brief Cast to STL string.
-    std::basic_string<T> to_string();
+    std::string to_string();
 
     /// @brief Clears text buffer content.
     void clear();
@@ -35,7 +34,7 @@ struct TextBuffer : Handle<TextBufferObj<T>>
     bool empty();
 
     /// @brief Append a char at the end of buffer.
-    void push_back(T ch);
+    void push_back(char ch);
 
     /// @brief Erase the char at the end of buffer, safe even if buffer is empty.
     void pop_back();

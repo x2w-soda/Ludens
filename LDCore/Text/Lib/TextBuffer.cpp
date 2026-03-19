@@ -11,41 +11,37 @@ namespace LD {
 /// @brief Text buffer implementation. Currently this is just a gap buffer
 ///        for general purpose text, we can implement other data structures
 ///        for more serious text editing later.
-template <typename T>
 struct TextBufferObj
 {
-    GapBuffer<T> gapBuffer;
+    GapBuffer<char> gapBuffer;
 };
 
-template <typename T>
-TextBuffer<T> TextBuffer<T>::create()
+TextBuffer TextBuffer::create()
 {
-    TextBufferObj<T>* obj = heap_new<TextBufferObj<T>>(MEMORY_USAGE_TEXT_EDIT);
+    TextBufferObj* obj = heap_new<TextBufferObj>(MEMORY_USAGE_TEXT_EDIT);
 
-    return TextBuffer<T>(obj);
+    return TextBuffer(obj);
 }
 
-template <typename T>
-void TextBuffer<T>::destroy(TextBuffer<T> buf)
-{
-    TextBufferObj<T>* obj = buf.unwrap();
 
-    heap_delete<TextBufferObj<T>>(obj);
+void TextBuffer::destroy(TextBuffer buf)
+{
+    TextBufferObj* obj = buf.unwrap();
+
+    heap_delete<TextBufferObj>(obj);
 }
 
-template <typename T>
-void TextBuffer<T>::set_string(View view)
+void TextBuffer::set_string(View view)
 {
-    TextBufferObj<T>* obj = this->mObj;
+    TextBufferObj* obj = this->mObj;
 
     obj->gapBuffer.clear();
     obj->gapBuffer.insert(0, view);
 }
 
-template <typename T>
-void TextBuffer<T>::set_string(const char* cstr)
+void TextBuffer::set_string(const char* cstr)
 {
-    TextBufferObj<T>* obj = this->mObj;
+    TextBufferObj* obj = this->mObj;
 
     obj->gapBuffer.clear();
 
@@ -55,55 +51,47 @@ void TextBuffer<T>::set_string(const char* cstr)
     obj->gapBuffer.insert(0, cstr);
 }
 
-template <typename T>
-std::basic_string<T> TextBuffer<T>::to_string()
+
+std::string TextBuffer::to_string()
 {
-    TextBufferObj<T>* obj = this->mObj;
+    TextBufferObj* obj = this->mObj;
 
     return obj->gapBuffer.to_string();
 }
 
-template <typename T>
-void TextBuffer<T>::clear()
+
+void TextBuffer::clear()
 {
-    TextBufferObj<T>* obj = this->mObj;
+    TextBufferObj* obj = this->mObj;
 
     return obj->gapBuffer.clear();
 }
 
-template <typename T>
-bool TextBuffer<T>::empty()
+
+bool TextBuffer::empty()
 {
-    TextBufferObj<T>* obj = this->mObj;
+    TextBufferObj* obj = this->mObj;
 
     return obj->gapBuffer.size() == 0;
 }
 
-template <typename T>
-void TextBuffer<T>::push_back(T ch)
+
+void TextBuffer::push_back(char ch)
 {
-    TextBufferObj<T>* obj = this->mObj;
+    TextBufferObj* obj = this->mObj;
 
     obj->gapBuffer.insert(obj->gapBuffer.size(), ch);
 }
 
-template <typename T>
-void TextBuffer<T>::pop_back()
+
+void TextBuffer::pop_back()
 {
-    TextBufferObj<T>* obj = this->mObj;
+    TextBufferObj* obj = this->mObj;
 
     if (obj->gapBuffer.size() == 0)
         return;
 
     obj->gapBuffer.erase(obj->gapBuffer.size() - 1, 1);
 }
-
-//
-// Explicit instantiations for ASCII and Unicode text buffers.
-// Expect an overall 4x memory footprint difference between the two.
-//
-
-template struct TextBuffer<char>;
-template struct TextBuffer<uint32_t>;
 
 } // namespace LD

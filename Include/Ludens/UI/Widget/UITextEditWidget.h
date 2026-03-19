@@ -16,7 +16,7 @@ typedef void (*UITextEditOnSubmit)(UIWidget widget, View text, void* user);
 
 struct UITextEditStorage
 {
-    TextBuffer<char> buf = {};                            /// current text content
+    TextBuffer buf = {};                                  /// current text content
     UITextEditDomain domain = UI_TEXT_EDIT_DOMAIN_STRING; /// input domain, filters key input
     float fontSize = 16.0f;                               /// rendered size
 
