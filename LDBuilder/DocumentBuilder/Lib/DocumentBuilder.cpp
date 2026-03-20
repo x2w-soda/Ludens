@@ -2,7 +2,7 @@
 #include <Ludens/Header/Hash.h>
 #include <Ludens/Media/Format/XML.h>
 #include <Ludens/Memory/Allocator.h>
-#include <LudensBuilder/Document/DocumentBuilder.h>
+#include <LudensBuilder/DocumentBuilder/DocumentBuilder.h>
 
 #include <string>
 

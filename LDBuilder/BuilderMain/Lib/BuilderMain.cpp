@@ -9,7 +9,7 @@
 #include <Ludens/System/Timer.h>
 #include <LudensBuilder/AssetUtil/AssetUtil.h>
 #include <LudensBuilder/AudioUtil/AudioUtil.h>
-#include <LudensBuilder/Document/Document.h>
+#include <LudensBuilder/DocumentBuilder/Document.h>
 #include <LudensBuilder/MeshUtil/MeshUtil.h>
 #include <LudensBuilder/ProjectBuilder/ProjectBuilder.h>
 #include <LudensBuilder/RenderUtil/RenderUtil.h>

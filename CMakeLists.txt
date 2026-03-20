@@ -131,13 +131,13 @@ include(CMake/EmbedRuntime.cmake)
 
 set(LD_BUILDER_MODULE_FOLDER "LDBuilder")
 set(LD_BUILDER_MODULE_LIST "" CACHE STRING "" FORCE)
-add_subdirectory(LDBuilder/Document)
+add_subdirectory(LDBuilder/DocumentBuilder)
+add_subdirectory(LDBuilder/ProjectBuilder)
 add_subdirectory(LDBuilder/RenderUtil)
 add_subdirectory(LDBuilder/AudioUtil)
 add_subdirectory(LDBuilder/AssetUtil)
 add_subdirectory(LDBuilder/Win32Util)
 add_subdirectory(LDBuilder/MeshUtil)
-add_subdirectory(LDBuilder/ProjectBuilder)
 
 add_library(LDBuilderLibs INTERFACE)
 target_link_libraries(LDBuilderLibs INTERFACE

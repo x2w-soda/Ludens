@@ -5,7 +5,7 @@
 #include <Ludens/Memory/Allocator.h>
 #include <Ludens/Memory/Memory.h>
 #include <Ludens/Profiler/Profiler.h>
-#include <LudensBuilder/Document/Document.h>
+#include <LudensBuilder/DocumentBuilder/Document.h>
 
 #include <format>
 
