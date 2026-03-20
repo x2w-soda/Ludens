@@ -16,9 +16,10 @@ typedef void (*UITextEditOnSubmit)(UIWidget widget, View text, void* user);
 
 struct UITextEditStorage
 {
-    TextBuffer buf = {};                                  /// current text content
-    UITextEditDomain domain = UI_TEXT_EDIT_DOMAIN_STRING; /// input domain, filters key input
-    float fontSize = 16.0f;                               /// rendered size
+    TextBuffer buf = {};          /// text buffer under edit
+    std::string text = {};        /// last submitted text, displayed when not editing
+    UITextEditDomain domain = {}; /// input domain, filters key input
+    float fontSize = 16.0f;       /// rendered size
 
     UITextEditStorage();
     UITextEditStorage(const UITextEditStorage& other);

@@ -36,11 +36,21 @@ bool UITextEditWidgetObj::on_event(UIWidget widget, const UIEvent& event)
     UIWidgetObj* obj = widget.unwrap();
     auto& self = obj->as.textEdit;
 
-    if (event.type == UI_EVENT_MOUSE_DOWN)
-        return true; // consume event
-
-    if (event.type != UI_EVENT_KEY_DOWN)
-        return false;
+    switch (event.type)
+    {
+    case UI_EVENT_FOCUS_ENTER:
+        self.isEditing = true;
+        return true;
+    case UI_EVENT_FOCUS_LEAVE:
+        self.isEditing = false;
+        return true;
+    case UI_EVENT_MOUSE_DOWN:
+        return true;
+    case UI_EVENT_KEY_DOWN:
+        break;
+    default:
+        return false; // not handled
+    }
 
     bool hasChanged = false;
     bool hasSubmitted = false;
@@ -61,8 +71,13 @@ bool UITextEditWidgetObj::on_event(UIWidget widget, const UIEvent& event)
     if (hasChanged && self.onChange)
         self.onChange((UITextEditWidget)widget, strView, obj->user);
 
-    if (hasSubmitted && self.onSubmit)
-        self.onSubmit((UITextEditWidget)widget, strView, obj->user);
+    if (hasSubmitted)
+    {
+        self.storage->text = str;
+
+        if (self.onSubmit)
+            self.onSubmit((UITextEditWidget)widget, strView, obj->user);
+    }
 
     return true;
 }
@@ -208,15 +223,23 @@ void UITextEditWidget::on_draw(UIWidget widget, ScreenRenderComponent renderer)
 
     renderer.draw_rect(rect, theme.get_field_color());
 
+    Color textColor = theme.get_on_surface_color();
     Color outlineColor = theme.get_selection_color();
-    if (widget.is_focused())
+    float wrapWidth = rect.w;
+
+    if (self.isEditing)
+    {
         renderer.draw_rect_outline(rect, outlineColor, 1.0f);
 
-    if (!storage->buf.empty())
+        if (!storage->buf.empty())
+        {
+            str = storage->buf.to_string();
+            renderer.draw_text(ctx.fontAtlas, ctx.fontAtlasImage, storage->fontSize, rect.get_pos(), str.c_str(), textColor, wrapWidth);
+        }
+    }
+    else
     {
-        float wrapWidth = rect.w;
-        str = storage->buf.to_string();
-        renderer.draw_text(ctx.fontAtlas, ctx.fontAtlasImage, storage->fontSize, rect.get_pos(), str.c_str(), theme.get_on_surface_color(), wrapWidth);
+        renderer.draw_text(ctx.fontAtlas, ctx.fontAtlasImage, storage->fontSize, rect.get_pos(), self.storage->text.c_str(), textColor, wrapWidth);
     }
 }
 

@@ -12,6 +12,7 @@ struct UITextEditWidgetObj
     UITextEditStorage local;
     UITextEditOnChange onChange = nullptr;
     UITextEditOnSubmit onSubmit = nullptr;
+    bool isEditing;
 
     void domain_string_on_key(const UIEvent& event, bool& hasChanged, bool& hasSubmitted);
     void domain_uint_on_key(const UIEvent& event, bool& hasChanged, bool& hasSubmitted);

@@ -6,7 +6,7 @@ using namespace LD;
 
 TEST_CASE("TextBuffer")
 {
-    TextBuffer<char> buf = TextBuffer<char>::create();
+    TextBuffer buf = TextBuffer::create();
 
     std::string str = buf.to_string();
     CHECK(str.empty());
@@ -31,5 +31,5 @@ TEST_CASE("TextBuffer")
     str = buf.to_string();
     CHECK(str.empty());
 
-    TextBuffer<char>::destroy(buf);
+    TextBuffer::destroy(buf);
 }
