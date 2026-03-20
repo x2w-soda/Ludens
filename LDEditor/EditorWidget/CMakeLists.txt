@@ -7,6 +7,7 @@ set(MODULE_LIB
 	Lib/EUITransformEdit.cpp
 	Lib/EUIAssetSlot.cpp
 	Lib/EUIListMenu.cpp
+	Lib/EUIComponent.cpp
 )
 
 set(MODULE_INCLUDE
@@ -15,6 +16,7 @@ set(MODULE_INCLUDE
 	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorWidget/EUITransformEdit.h
 	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorWidget/EUIAssetSlot.h
 	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorWidget/EUIListMenu.h
+	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorWidget/EUIComponent.h
 )
 
 add_ludens_editor_module(

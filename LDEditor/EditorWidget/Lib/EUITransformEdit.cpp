@@ -2,29 +2,42 @@
 #include <LudensEditor/EditorWidget/EUITransformEdit.h>
 #include <LudensEditor/EditorWidget/EUIVectorEdit.h>
 
+#include "EUI.h"
+
 #include <format>
 
 namespace LD {
 
-void eui_transform_edit(EditorTheme theme, TransformEx* transform)
+bool eui_transform_edit(EUITransformStorage* storage, TransformEx* transform)
 {
+    LD_ASSERT(storage);
+
+    bool hasChanged = false;
     UILayoutInfo layoutI{};
     layoutI.childAxis = UI_AXIS_Y;
     layoutI.sizeX = UISize::grow();
     layoutI.sizeY = UISize::fit();
+
     ui_push_panel(nullptr);
     ui_top_layout(layoutI);
 
-    float fontSize = theme.get_font_size();
-    eui_vec3_edit(theme, "Position", &transform->position);
-    eui_vec3_edit(theme, "Rotation", &transform->rotationEuler);
-    eui_vec3_edit(theme, "Scale", &transform->scale);
+    if (eui_vec3_edit(&storage->position, "Position", &transform->position))
+        hasChanged = true;
+
+    if (eui_vec3_edit(&storage->rotation, "Rotation", &transform->rotationEuler))
+        hasChanged = true;
+
+    if (eui_vec3_edit(&storage->scale, "Scale", &transform->scale))
+        hasChanged = true;
 
     ui_pop();
+
+    return hasChanged;
 }
 
-void eui_transform_2d_edit(EditorTheme theme, Transform2D* transform2D)
+bool eui_transform_2d_edit(EUITransform2DStorage* storage, Transform2D* transform2D)
 {
+    bool hasChanged = false;
     UILayoutInfo layoutI{};
     layoutI.childAxis = UI_AXIS_Y;
     layoutI.sizeX = UISize::grow();
@@ -32,12 +45,18 @@ void eui_transform_2d_edit(EditorTheme theme, Transform2D* transform2D)
     ui_push_panel(nullptr);
     ui_top_layout(layoutI);
 
-    static EUIF32EditStorage sF32Edit;
-    eui_vec2_edit(theme, "Position", &transform2D->position);
-    eui_vec2_edit(theme, "Scale", &transform2D->scale);
-    eui_f32_edit(&sF32Edit, "Rotation", &transform2D->rotation);
+    if (eui_vec2_edit(&storage->position, "Position", &transform2D->position))
+        hasChanged = true;
+
+    if (eui_f32_edit(&storage->rotation, "Rotation", &transform2D->rotation))
+        hasChanged = true;
+
+    if (eui_vec2_edit(&storage->scale, "Scale", &transform2D->scale))
+        hasChanged = true;
 
     ui_pop();
+
+    return hasChanged;
 }
 
 } // namespace LD

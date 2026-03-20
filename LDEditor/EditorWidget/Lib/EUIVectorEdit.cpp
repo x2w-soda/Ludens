@@ -6,34 +6,35 @@
 
 #include "EUI.h"
 
-#define PANEL_CHILD_GAP 6.0f
-#define PANEL_CHILD_PAD 2.0f
-
 namespace LD {
 
-void EUIU32EditStorage::init(uint32_t u32)
+void EUIU32Storage::init(uint32_t u32)
 {
     LD_ASSERT(u32Edit.buf);
     u32Edit.buf.set_string(std::to_string(u32));
 }
 
-void EUIF32EditStorage::init(float f32)
+void EUIF32Storage::init(float f32)
 {
     LD_ASSERT(f32Edit.buf);
     f32Edit.buf.set_string(std::to_string(f32));
 }
 
-bool eui_u32_edit(EUIU32EditStorage* storage, const char* label, uint32_t* u32)
+void EUIVec2Storage::init(const Vec2& vec2)
+{
+    vec2Edit[0].buf.set_string(std::to_string(vec2.x));
+    vec2Edit[1].buf.set_string(std::to_string(vec2.y));
+}
+
+bool eui_u32_edit(EUIU32Storage* storage, const char* label, uint32_t* u32)
 {
     LD_ASSERT(storage);
 
     EditorTheme theme = eui_get_theme();
-    float childGap = PANEL_CHILD_GAP;
-    float childPad = PANEL_CHILD_PAD;
     bool hasChanged = false;
     std::string str;
 
-    UILayoutInfo layoutI = theme.make_hbox_layout(&childGap, &childPad);
+    UILayoutInfo layoutI = theme.make_hbox_layout();
     layoutI.sizeX = UISize::grow();
     ui_push_panel(nullptr);
     ui_top_layout(layoutI);
@@ -43,9 +44,10 @@ bool eui_u32_edit(EUIU32EditStorage* storage, const char* label, uint32_t* u32)
         ui_top_layout(layoutI);
         ui_pop();
 
-        UITextEditStorage* edit = storage ? &storage->u32Edit : nullptr;
+        UITextEditStorage* edit = &storage->u32Edit;
         edit = ui_push_text_edit(edit);
         edit->domain = UI_TEXT_EDIT_DOMAIN_UINT;
+        edit->text = std::format("{}", *u32);
         hasChanged = ui_text_edit_submitted(str);
         if (hasChanged)
             *u32 = (uint32_t)std::stoul(str);
@@ -58,16 +60,16 @@ bool eui_u32_edit(EUIU32EditStorage* storage, const char* label, uint32_t* u32)
     return hasChanged;
 }
 
-bool eui_f32_edit(EUIF32EditStorage* storage, const char* label, float* f32)
+bool eui_f32_edit(EUIF32Storage* storage, const char* label, float* f32)
 {
     LD_ASSERT(storage);
 
-    float childGap = PANEL_CHILD_GAP;
-    float childPad = PANEL_CHILD_PAD;
-    EditorTheme theme = eui_get_theme();
     bool hasChanged = false;
+    EditorTheme theme = eui_get_theme();
+    UITextEditStorage* edit;
+    std::string str;
 
-    UILayoutInfo layoutI = theme.make_hbox_layout(&childGap, &childPad);
+    UILayoutInfo layoutI = theme.make_hbox_layout();
     layoutI.sizeX = UISize::grow();
     ui_push_panel(nullptr);
     ui_top_layout(layoutI);
@@ -77,9 +79,15 @@ bool eui_f32_edit(EUIF32EditStorage* storage, const char* label, float* f32)
         ui_top_layout(layoutI);
         ui_pop();
 
-        std::string str;
-        str = std::format("{:8.3f}", *f32);
-        ui_push_text(nullptr, str.c_str());
+        edit = ui_push_text_edit(&storage->f32Edit);
+        edit->domain = UI_TEXT_EDIT_DOMAIN_UINT;
+        edit->text = std::format("{:8.3f}", *f32);
+        if (ui_text_edit_submitted(str))
+        {
+            *f32 = std::stof(str);
+            hasChanged = true;
+        }
+
         ui_top_layout(layoutI);
         ui_pop();
     }
@@ -88,12 +96,16 @@ bool eui_f32_edit(EUIF32EditStorage* storage, const char* label, float* f32)
     return hasChanged;
 }
 
-void eui_vec2_edit(EditorTheme theme, const char* label, Vec2* v)
+bool eui_vec2_edit(EUIVec2Storage* storage, const char* label, Vec2* v)
 {
-    float childGap = PANEL_CHILD_GAP;
-    float childPad = PANEL_CHILD_PAD;
+    LD_ASSERT(storage);
 
-    UILayoutInfo layoutI = theme.make_hbox_layout(&childGap, &childPad);
+    bool hasChanged = false;
+    EditorTheme theme = eui_get_theme();
+    UITextEditStorage* edit;
+    std::string str;
+
+    UILayoutInfo layoutI = theme.make_hbox_layout();
     layoutI.sizeX = UISize::grow();
     ui_push_panel(nullptr);
     ui_top_layout(layoutI);
@@ -103,26 +115,35 @@ void eui_vec2_edit(EditorTheme theme, const char* label, Vec2* v)
         ui_top_layout(layoutI);
         ui_pop();
 
-        std::string str;
-        str = std::format("{:8.3f}", v->x);
-        ui_push_text(nullptr, str.c_str());
-        ui_top_layout(layoutI);
-        ui_pop();
+        for (int i = 0; i < 2; i++)
+        {
+            float* f32 = &v->x + i;
+            edit = ui_push_text_edit(&storage->vec2Edit[i]);
+            edit->domain = UI_TEXT_EDIT_DOMAIN_UINT; // UI_TEXT_EDIT_DOMAIN_F32;
+            edit->text = std::format("{:8.3f}", *f32);
+            if (ui_text_edit_submitted(str))
+            {
+                *f32 = std::stof(str);
+                hasChanged = true;
+            }
 
-        str = std::format("{:8.3f}", v->y);
-        ui_push_text(nullptr, str.c_str());
-        ui_top_layout(layoutI);
-        ui_pop();
+            ui_top_layout(layoutI);
+            ui_pop();
+        }
     }
     ui_pop();
+
+    return hasChanged;
 }
 
-void eui_vec3_edit(EditorTheme theme, const char* label, Vec3* v)
+bool eui_vec3_edit(EUIVec3Storage* storage, const char* label, Vec3* v)
 {
-    float childGap = PANEL_CHILD_GAP;
-    float childPad = PANEL_CHILD_PAD;
+    bool hasChanged = false;
+    EditorTheme theme = eui_get_theme();
+    UITextEditStorage* edit;
+    std::string str;
 
-    UILayoutInfo layoutI = theme.make_hbox_layout(&childGap, &childPad);
+    UILayoutInfo layoutI = theme.make_hbox_layout();
     layoutI.sizeX = UISize::grow();
     ui_push_panel(nullptr);
     ui_top_layout(layoutI);
@@ -132,23 +153,54 @@ void eui_vec3_edit(EditorTheme theme, const char* label, Vec3* v)
         ui_top_layout(layoutI);
         ui_pop();
 
-        std::string str;
-        str = std::format("{:8.3f}", v->x);
-        ui_push_text(nullptr, str.c_str());
-        ui_top_layout(layoutI);
+        for (int i = 0; i < 3; i++)
+        {
+            float* f32 = &v->x + i;
+            edit = ui_push_text_edit(&storage->vec3Edit[i]);
+            edit->domain = UI_TEXT_EDIT_DOMAIN_UINT; // UI_TEXT_EDIT_DOMAIN_F32;
+            edit->text = std::format("{:8.3f}", *f32);
+            if (ui_text_edit_submitted(str))
+            {
+                *f32 = std::stof(str);
+                hasChanged = true;
+            }
+
+            ui_top_layout(layoutI);
+            ui_pop();
+        }
+    }
+    ui_pop();
+
+    return hasChanged;
+}
+
+bool eui_slider_edit(EUISliderStorage* storage, const char* label, float* f32)
+{
+    bool isDragged;
+    EditorTheme theme = eui_get_theme();
+    UILayoutInfo layoutI{};
+    MouseButton btn;
+    Vec2 dragPos;
+    bool dragBegin;
+
+    layoutI.childAxis = UI_AXIS_X;
+    layoutI.childGap = theme.get_padding();
+    layoutI.sizeX = UISize::grow();
+    layoutI.sizeY = UISize::fit();
+    ui_push_panel(nullptr);
+    ui_top_layout(layoutI);
+    {
+        ui_push_text(nullptr, label);
+        ui_top_layout(theme.make_text_label_layout());
         ui_pop();
 
-        str = std::format("{:8.3f}", v->y);
-        ui_push_text(nullptr, str.c_str());
-        ui_top_layout(layoutI);
-        ui_pop();
-
-        str = std::format("{:8.3f}", v->z);
-        ui_push_text(nullptr, str.c_str());
-        ui_top_layout(layoutI);
+        ui_push_slider(&storage->slider, f32);
+        isDragged = ui_top_drag(btn, dragPos, dragBegin);
         ui_pop();
     }
     ui_pop();
+
+    return isDragged;
 }
 
 } // namespace LD

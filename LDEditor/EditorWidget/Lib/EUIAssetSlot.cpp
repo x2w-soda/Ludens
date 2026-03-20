@@ -1,18 +1,28 @@
+#include <Ludens/Asset/AssetManager.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Header/MouseValue.h>
 #include <Ludens/Memory/Memory.h>
 #include <Ludens/UI/UIImmediate.h>
 #include <LudensEditor/EditorWidget/EUIAssetSlot.h>
 
+#include "EUI.h"
+
 namespace LD {
 
-bool eui_asset_slot(EditorTheme theme, AssetType assetType, AssetID assetID, const char* assetName)
+bool eui_asset_slot(AssetID assetID, AssetType assetType)
 {
+    AssetManager AM = AssetManager::get();
+    Asset asset = AM.get_asset(assetID, assetType);
+
+    const char* assetName = "N/A";
+    if (asset)
+        assetName = asset.get_name();
+
     Vec2 mousePos;
     MouseValue mouseVal;
-    UIEvent event;
     bool newAssetRequest = false;
     float childGap = 6.0f;
+    EditorTheme theme = eui_get_theme();
 
     UILayoutInfo layoutI = theme.make_hbox_layout(&childGap);
     layoutI.sizeX = UISize::grow();
@@ -23,9 +33,6 @@ bool eui_asset_slot(EditorTheme theme, AssetType assetType, AssetID assetID, con
     ui_push_text(nullptr, get_asset_type_cstr(assetType));
     ui_top_layout(layoutI);
     ui_pop();
-
-    if (!assetName)
-        assetName = "N/A";
 
     ui_push_text(nullptr, assetName);
     ui_top_layout(layoutI);
