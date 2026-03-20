@@ -1,12 +1,11 @@
 #pragma once
 
 #include <Ludens/Scene/Scene.h>
-#include <LudensEditor/EditorContext/EditorSettings.h>
 
 namespace LD {
 
-struct InspectorWindowObj;
+struct EUIComponentStorage;
 
-void eui_inspect_component(InspectorWindowObj& self, ComponentView comp);
+void eui_inspect_component(EUIComponentStorage* storage, ComponentView comp);
 
 } // namespace LD

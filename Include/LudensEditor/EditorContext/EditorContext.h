@@ -99,9 +99,6 @@ struct EditorContext : Handle<struct EditorContextObj>
     /// @brief Get project settings for loaded project.
     ProjectSettings get_project_settings();
 
-    /// @brief Get asset manager handle.
-    AssetManager get_asset_manager();
-
     /// @brief Get icon atlas for editor.
     RImage get_editor_icon_atlas();
 

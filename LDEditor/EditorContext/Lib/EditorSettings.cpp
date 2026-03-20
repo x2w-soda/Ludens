@@ -7,41 +7,21 @@ namespace LD {
 /// @brief Editor theme data, embeds an UI theme
 struct EditorThemeObj
 {
-    UITheme uiTheme;
-    float fontSize;
-    float padding;
-    float gap;
-    float textRowHeight;
-    float textLabelWidth;
-    Color tabBGColor;
-    Color gizmoColorAxisX;
-    Color gizmoColorAxisY;
-    Color gizmoColorAxisZ;
-    Color gizmoHighlightColor;
-    Color playButtonColor;
-    Color stopButtonColor;
-    Color errorColor;
-
-    void initialize_default();
+    UITheme uiTheme = UITheme::get_default_theme();
+    float fontSize = 16.0f;
+    float childPad = 5.0f;
+    float childGap = 2.0f;
+    float textRowHeight = 20.0f;
+    float textLabelWidth = 120.0f;
+    Color tabBGColor = 0x202225FF;
+    Color gizmoColorAxisX = Vec4(0.9f, 0.1f, 0.1f, 0.8f);
+    Color gizmoColorAxisY = Vec4(0.1f, 0.9f, 0.1f, 0.8f);
+    Color gizmoColorAxisZ = Vec4(0.1f, 0.1f, 0.9f, 0.8f);
+    Color gizmoHighlightColor = 0xFFA000E0;
+    Color playButtonColor = 0x89F336FF;
+    Color stopButtonColor = 0xFF6347FF;
+    Color errorColor = 0xFF5374FF;
 };
-
-void EditorThemeObj::initialize_default()
-{
-    uiTheme = UITheme::get_default_theme();
-    fontSize = 16.0f;
-    padding = 5.0f;
-    gap = 2.0f;
-    textRowHeight = 20.0f;
-    textLabelWidth = 120.0f;
-    tabBGColor = 0x202225FF;
-    gizmoColorAxisX = Vec4(0.9f, 0.1f, 0.1f, 0.8f);
-    gizmoColorAxisY = Vec4(0.1f, 0.9f, 0.1f, 0.8f);
-    gizmoColorAxisZ = Vec4(0.1f, 0.1f, 0.9f, 0.8f);
-    gizmoHighlightColor = 0xFFA000E0;
-    playButtonColor = 0x89F336FF;
-    stopButtonColor = 0xFF6347FF;
-    errorColor = 0xFF5374FF;
-}
 
 UITheme EditorTheme::get_ui_theme()
 {
@@ -65,7 +45,7 @@ float EditorTheme::get_font_size() const
 
 float EditorTheme::get_padding() const
 {
-    return mObj->padding;
+    return mObj->childPad;
 }
 
 float EditorTheme::get_text_row_height() const
@@ -102,12 +82,12 @@ void EditorTheme::get_error_color(Color& err) const
 
 UILayoutInfo EditorTheme::make_vbox_layout(float* childGap, float* childPad) const
 {
-    float gap = childGap ? *childGap : mObj->gap;
-    float pad = childPad ? *childPad : mObj->padding;
+    float gap = childGap ? *childGap : mObj->childGap;
+    float pad = childPad ? *childPad : mObj->childPad;
 
     UILayoutInfo layoutI{};
     layoutI.childGap = gap;
-    layoutI.childPadding = {pad, pad, pad, pad};
+    layoutI.childPadding = UIPadding(pad);
     layoutI.childAxis = UI_AXIS_Y;
     layoutI.sizeX = UISize::fit();
     layoutI.sizeY = UISize::fit();
@@ -116,12 +96,12 @@ UILayoutInfo EditorTheme::make_vbox_layout(float* childGap, float* childPad) con
 
 UILayoutInfo EditorTheme::make_hbox_layout(float* childGap, float* childPad) const
 {
-    float gap = childGap ? *childGap : mObj->gap;
-    float pad = childPad ? *childPad : mObj->padding;
+    float gap = childGap ? *childGap : mObj->childGap;
+    float pad = childPad ? *childPad : mObj->childPad;
 
     UILayoutInfo layoutI{};
     layoutI.childGap = gap;
-    layoutI.childPadding = {pad, pad, pad, pad};
+    layoutI.childPadding = UIPadding(pad);
     layoutI.childAxis = UI_AXIS_X;
     layoutI.sizeX = UISize::fit();
     layoutI.sizeY = UISize::fit();
@@ -135,8 +115,8 @@ UILayoutInfo EditorTheme::make_text_label_layout() const
 
     UILayoutInfo layoutI{};
     layoutI.childAxis = UI_AXIS_X;
-    layoutI.childPadding = {2.0f, 2.0f, 2.0f, 2.0f};
-    layoutI.childGap = 5.0f;
+    layoutI.childPadding = UIPadding(mObj->childPad);
+    layoutI.childGap = mObj->childGap;
     layoutI.sizeX = UISize::fixed(textLabelWidth);
     layoutI.sizeY = UISize::fixed(textRowHeight);
 
@@ -147,20 +127,13 @@ UILayoutInfo EditorTheme::make_text_label_layout() const
 struct EditorSettingsObj
 {
     EditorThemeObj themeObj;
-
-    void initialize_default();
 };
-
-void EditorSettingsObj::initialize_default()
-{
-    themeObj.initialize_default();
-}
 
 EditorSettings EditorSettings::create()
 {
     auto* obj = (EditorSettingsObj*)heap_malloc(sizeof(EditorSettingsObj), MEMORY_USAGE_MISC);
 
-    obj->initialize_default();
+    obj->themeObj = {};
 
     return {obj};
 }

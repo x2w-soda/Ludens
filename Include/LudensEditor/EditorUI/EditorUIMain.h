@@ -20,7 +20,6 @@ struct EditorUIMain : Handle<struct EditorUIMainObj>
     static void destroy(EditorUIMain modal);
 
     void on_imgui(float delta);
-    void update(float delta);
     void resize(const Vec2& screenSize);
 
     void set_viewport_hover_id(SceneOverlayGizmoID gizmoID, RUID ruid);

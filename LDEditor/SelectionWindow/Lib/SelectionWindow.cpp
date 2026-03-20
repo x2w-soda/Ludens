@@ -119,7 +119,7 @@ void SelectionWindowObj::bottom_bar()
     UILayoutInfo layoutI{};
     layoutI.childAxis = UI_AXIS_X;
     layoutI.childAlignX = UI_ALIGN_END;
-    layoutI.childPadding = {pad, pad, pad, pad};
+    layoutI.childPadding = UIPadding(pad);
     layoutI.childGap = pad;
     layoutI.sizeX = UISize::grow();
     layoutI.sizeY = UISize::fit();

@@ -3,16 +3,15 @@
 #include <Ludens/DataRegistry/DataRegistry.h>
 #include <Ludens/Header/Impulse.h>
 #include <LudensEditor/EditorContext/EditorWindow.h>
+#include <LudensEditor/EditorWidget/EUIComponent.h>
 
 namespace LD {
 
 /// @brief Editor inspector window implementation.
 struct InspectorWindowObj : EditorWindowObj
 {
-    Impulse isRequestingNewAsset{};
-    AssetType requestAssetType{};
-    AssetID oldAssetID = 0;
     EditorContext ctx{};
+    EUIComponentStorage storage{};
 
     InspectorWindowObj(const EditorWindowInfo& info)
         : EditorWindowObj(info), ctx(info.ctx)
@@ -21,7 +20,6 @@ struct InspectorWindowObj : EditorWindowObj
 
     virtual EditorWindowType get_type() override { return EDITOR_WINDOW_INSPECTOR; }
     virtual void on_imgui(float delta) override;
-    void request_new_asset(AssetType type, AssetID currentID);
 };
 
 } // namespace LD

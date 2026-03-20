@@ -27,17 +27,10 @@ void InspectorWindowObj::on_imgui(float delta)
 
     ComponentView comp = mCtx.get_component(mCtx.get_selected_component());
     if (comp)
-        eui_inspect_component(*this, comp);
+        eui_inspect_component(&storage, comp);
 
     ui_pop_window();
     ui_workspace_end();
-}
-
-void InspectorWindowObj::request_new_asset(AssetType type, AssetID currentID)
-{
-    isRequestingNewAsset.set(true);
-    requestAssetType = type;
-    oldAssetID = currentID;
 }
 
 //
@@ -57,22 +50,6 @@ void InspectorWindow::destroy(EditorWindow window)
     auto* obj = static_cast<InspectorWindowObj*>(window.unwrap());
 
     heap_delete<InspectorWindowObj>(obj);
-}
-
-bool InspectorWindow::has_component_asset_request(SUID& compSUID, AssetID& currentAssetID, AssetType& assetType)
-{
-    if (!mObj->isRequestingNewAsset.read())
-        return false;
-
-    ComponentView comp = mObj->ctx.get_component(mObj->ctx.get_selected_component());
-    if (!comp || !comp.suid())
-        return false;
-
-    compSUID = comp.suid();
-    currentAssetID = mObj->oldAssetID;
-    assetType = mObj->requestAssetType;
-
-    return true;
 }
 
 } // namespace LD

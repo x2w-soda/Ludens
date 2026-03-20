@@ -47,12 +47,16 @@ void EditorUI::startup(const EditorUIInfo& info)
     mDialog = EditorUIDialog::create(dialogI);
 
     ui_imgui_init(mDefaultFontAtlas, mDefaultFontAtlasImage);
+    eui_startup(mCtx);
+    eui_push_theme(mCtx.get_theme());
 }
 
 void EditorUI::cleanup()
 {
     LD_PROFILE_SCOPE;
 
+    eui_pop_theme();
+    eui_cleanup();
     ui_imgui_shutdown();
 
     EditorUIDialog::destroy(mDialog);
@@ -69,8 +73,6 @@ void EditorUI::update(float delta)
 {
     LD_PROFILE_SCOPE;
 
-    eui_push_theme(mCtx.get_theme());
-
     // imgui pass
     ui_context_begin(EDITOR_UI_CONTEXT_NAME, mScreenSize);
     mTopBar.on_imgui(delta);
@@ -78,14 +80,11 @@ void EditorUI::update(float delta)
     ui_context_end(delta);
 
     // post imgui update
-    mMain.update(delta);
     mDialog.update(delta);
 
     // EditorContext update.
     // If the Scene is playing in editor, this drives the Scene update as well
     mCtx.update(mMain.get_viewport_scene_size(), delta);
-
-    eui_pop_theme();
 }
 
 void EditorUI::submit_frame()

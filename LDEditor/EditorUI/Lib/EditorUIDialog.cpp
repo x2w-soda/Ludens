@@ -123,7 +123,7 @@ void EditorUIDialogObj::update(float delta)
         {
             mDialogType = DIALOG_NONE;
             std::string stem = selectedPath.stem().string();
-            AssetManager AM = mCtx.get_asset_manager();
+            AssetManager AM = AssetManager::get();
             AssetID assetID = AM.get_id_from_name(stem.c_str(), nullptr);
             mCtx.action_set_component_asset(mSubjectSUID, assetID);
         }
@@ -137,8 +137,8 @@ void EditorUIDialogObj::update(float delta)
                 return; // component out of date
 
             AssetType type;
-            AssetManager AM = mCtx.get_asset_manager();
             std::string stem = selectedPath.stem().string();
+            AssetManager AM = AssetManager::get();
             AssetID scriptAssetID = AM.get_id_from_name(stem.c_str(), &type);
             if (scriptAssetID == (AssetID)0 || type != ASSET_TYPE_LUA_SCRIPT)
                 return; // script asset out of date

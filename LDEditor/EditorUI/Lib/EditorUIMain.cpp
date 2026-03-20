@@ -25,7 +25,6 @@ public:
     EditorUIMainObj& operator=(const EditorUIMainObj&) = delete;
 
     void on_imgui(float delta);
-    void update(float delta);
     void resize(const Vec2& screenSize);
 
 private:
@@ -80,23 +79,6 @@ void EditorUIMainObj::on_imgui(float delta)
     mSceneWorkspace.on_imgui(delta);
 }
 
-void EditorUIMainObj::update(float delta)
-{
-    LD_PROFILE_SCOPE;
-
-    SUID subjectSUID;
-    AssetID oldAssetID = 0;
-    AssetType type;
-
-    if (mInspectorWindow.has_component_asset_request(subjectSUID, oldAssetID, type))
-    {
-        // NOTE: will have to refactor, this assumes single asset slot for all component types
-        EditorRequestComponentAssetEvent event(subjectSUID, oldAssetID, type);
-
-        mCtx.request_event(&event);
-    }
-}
-
 void EditorUIMainObj::resize(const Vec2& screenSize)
 {
     Rect groundRect = Rect(0.0f, mTopBarHeight, screenSize.x, screenSize.y - mTopBarHeight);
@@ -125,13 +107,6 @@ void EditorUIMain::destroy(EditorUIMain modal)
 void EditorUIMain::on_imgui(float delta)
 {
     mObj->on_imgui(delta);
-}
-
-void EditorUIMain::update(float delta)
-{
-    LD_PROFILE_SCOPE;
-
-    mObj->update(delta);
 }
 
 void EditorUIMain::resize(const Vec2& screenSize)
