@@ -67,7 +67,7 @@ void ui_top_layout_child_axis(UIAxis childAxis);
 void ui_top_layout_child_padding(const UIPadding& pad);
 
 /// @brief Set child gap of widget on top of stack.
-void ui_top_layout_child_gap(float gap);
+void ui_top_layout_child_gap(float childGap);
 
 /// @brief Set user of widget on top of stack.
 void ui_top_user(void* user);

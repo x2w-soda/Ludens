@@ -84,8 +84,8 @@ AssetManagerObj::~AssetManagerObj()
     std::vector<AssetObj*> assets;
     assets.reserve(mAssets.size());
 
-    for (auto ite : mAssets)
-        assets.push_back(ite.second);
+    for (auto it : mAssets)
+        assets.push_back(it.second);
 
     for (AssetObj* base : assets)
     {
@@ -95,8 +95,8 @@ AssetManagerObj::~AssetManagerObj()
 
     LD_ASSERT(mAssets.empty());
 
-    for (auto ite : mAssetPA)
-        PoolAllocator::destroy(ite.second);
+    for (auto it : mAssetPA)
+        PoolAllocator::destroy(it.second);
 
     AssetRegistry::destroy(mRegistry);
 
@@ -132,9 +132,8 @@ AssetObj* AssetManagerObj::allocate_asset(AssetEntry entry)
     LD_ASSERT(id && !mAssets.contains(obj->id));
     mAssets[obj->id] = obj;
 
-    Hash32 nameHash(name.c_str());
-    LD_ASSERT(!mNameToAsset.contains(nameHash));
-    mNameToAsset[nameHash] = obj->id;
+    LD_ASSERT(!mNameToAsset.contains(name));
+    mNameToAsset[name] = obj->id;
 
     return obj;
 }
@@ -143,7 +142,7 @@ void AssetManagerObj::free_asset(AssetObj* obj)
 {
     LD_ASSERT(obj && mAssetPA.contains(obj->type));
 
-    mNameToAsset.erase(Hash32(obj->name));
+    mNameToAsset.erase(obj->name);
     mAssets.erase(obj->id);
 
     if (obj->name)
@@ -259,42 +258,41 @@ SUID AssetManagerObj::get_id_from_name(const char* name, AssetType* outType)
     if (!name)
         return 0;
 
-    Hash32 nameHash(name);
-    auto ite = mNameToAsset.find(nameHash);
+    auto it = mNameToAsset.find(name);
 
-    if (ite == mNameToAsset.end())
+    if (it == mNameToAsset.end())
         return 0;
 
-    SUID assetID = ite->second;
+    SUID assetID = it->second;
     LD_ASSERT(mAssets.contains(assetID));
 
     if (outType)
         *outType = mAssets[assetID]->type;
 
-    return ite->second;
+    return it->second;
 }
 
 Asset AssetManagerObj::get_asset(SUID id)
 {
-    auto ite = mAssets.find(id);
+    auto it = mAssets.find(id);
 
-    if (ite == mAssets.end())
+    if (it == mAssets.end())
         return {};
 
-    return Asset(ite->second);
+    return Asset(it->second);
 }
 
 void AssetManagerObj::on_asset_modified(const FS::Path& path, SUID id, void* user)
 {
     AssetManagerObj& self = *(AssetManagerObj*)user;
 
-    auto ite = self.mAssets.find(id);
-    if (ite == self.mAssets.end())
+    auto it = self.mAssets.find(id);
+    if (it == self.mAssets.end())
         return;
 
     // Experimental script reload. This only takes effect during the next Scene startup.
 
-    AssetObj* assetObj = ite->second;
+    AssetObj* assetObj = it->second;
     if (assetObj && assetObj->type == ASSET_TYPE_LUA_SCRIPT)
     {
         LuaScriptAsset scriptA(assetObj);
@@ -404,6 +402,9 @@ SUID AssetManager::get_id_from_name(const char* name, AssetType* outType)
 
 Asset AssetManager::get_asset(AssetID id)
 {
+    if (!id)
+        return {};
+
     return mObj->get_asset(id);
 }
 

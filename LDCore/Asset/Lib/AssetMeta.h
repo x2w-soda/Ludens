@@ -23,6 +23,7 @@
 
 #include <atomic>
 #include <cstdint>
+#include <string>
 
 #include "AssetWatcher.h"
 
@@ -88,7 +89,7 @@ public:
 private:
     HashMap<AssetType, PoolAllocator> mAssetPA;
     HashMap<SUID, AssetObj*> mAssets;
-    HashMap<Hash32, SUID> mNameToAsset;
+    HashMap<std::string, SUID> mNameToAsset;
     Vector<AssetLoadJob*> mLoadJobs;
     PoolAllocator mLoadJobPA;
     AssetWatcher mWatcher;     /// optional asset file watcher

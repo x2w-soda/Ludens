@@ -159,10 +159,10 @@ struct UIWidget : Handle<struct UIWidgetObj>
     void set_layout_size(const UISize& sizeX, const UISize& sizeY);
 
     /// @brief Update widget child padding after creation.
-    void set_layout_child_padding(const UIPadding& padding);
+    void set_layout_child_padding(const UIPadding& childPad);
 
     /// @brief Update widget child gap after creation.
-    void set_layout_child_gap(float gap);
+    void set_layout_child_gap(float childGap);
 
     /// @brief Update widget child axis after creation.
     void set_layout_child_axis(UIAxis axis);

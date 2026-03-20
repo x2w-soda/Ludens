@@ -131,7 +131,8 @@ bool AudioSourceView::set_clip_asset(AssetID clipID)
 {
     LD_ASSERT(mAudioSource->playback);
 
-    AudioClipAsset clipA(sScene->assetManager.get_asset(clipID).unwrap());
+    AssetManager AM = AssetManager::get();
+    AudioClipAsset clipA(AM.get_asset(clipID).unwrap());
     AudioBuffer buffer = sScene->audioSystemCache.get_or_create_audio_buffer(clipID);
 
     if (buffer)

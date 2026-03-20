@@ -13,7 +13,7 @@ TEST_CASE("UILayout alignment")
         UILayoutInfo layoutI{};
         layoutI.sizeX = UISize::fixed(100);
         layoutI.sizeY = UISize::fixed(100);
-        layoutI.childPadding = {.left = 10, .right = 30}; // alignment considers width of 60 along X
+        layoutI.childPadding = UIPadding::left_right(10.0f, 30.0f); // alignment considers width of 60 along X
         layoutI.childAxis = UI_AXIS_X;
         layoutI.childAlignX = UI_ALIGN_BEGIN;
         layoutI.childAlignY = UI_ALIGN_CENTER;
@@ -57,7 +57,7 @@ TEST_CASE("UILayout alignment")
         UILayoutInfo layoutI{};
         layoutI.sizeX = UISize::fixed(100);
         layoutI.sizeY = UISize::fixed(100);
-        layoutI.childPadding = {.top = 10, .bottom = 30}; // alignment considers width of 60 along Y
+        layoutI.childPadding = UIPadding::top_bottom(10.0f, 30.0f); // alignment considers width of 60 along Y
         layoutI.childAxis = UI_AXIS_Y;
         layoutI.childAlignX = UI_ALIGN_CENTER;
         layoutI.childAlignY = UI_ALIGN_BEGIN;
@@ -101,7 +101,7 @@ TEST_CASE("UILayout alignment")
     CHECK(profile.current == 0);
 }
 
-TEST_CASE("UILayout window padding")
+TEST_CASE("UILayout window childPad")
 {
     UIWorkspace space;
     UIContext ctx = UITest::create_test_context(Vec2(164.0f, 164.0f), space);

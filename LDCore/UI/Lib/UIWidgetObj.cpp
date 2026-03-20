@@ -204,14 +204,14 @@ void UIWidget::set_layout_size(const UISize& sizeX, const UISize& sizeY)
     mObj->layout.info.sizeY = sizeY;
 }
 
-void UIWidget::set_layout_child_padding(const UIPadding& padding)
+void UIWidget::set_layout_child_padding(const UIPadding& childPad)
 {
-    mObj->layout.info.childPadding = padding;
+    mObj->layout.info.childPadding = childPad;
 }
 
-void UIWidget::set_layout_child_gap(float gap)
+void UIWidget::set_layout_child_gap(float childGap)
 {
-    mObj->layout.info.childGap = gap;
+    mObj->layout.info.childGap = childGap;
 }
 
 void UIWidget::set_layout_child_axis(UIAxis axis)

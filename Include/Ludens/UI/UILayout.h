@@ -33,6 +33,22 @@ struct UIPadding
     float right;
     float top;
     float bottom;
+
+    UIPadding() = default;
+    UIPadding(float pad)
+        : left(pad), right(pad), top(pad), bottom(pad) {}
+    UIPadding(float leftPad, float rightPad, float topPad, float botPad)
+        : left(leftPad), right(rightPad), top(topPad), bottom(botPad) {}
+
+    static inline UIPadding left_right(float left, float right)
+    {
+        return UIPadding(left, right, 0.0f, 0.0f);
+    };
+
+    static inline UIPadding top_bottom(float top, float bot)
+    {
+        return UIPadding(0.0f, 0.0f, top, bot);
+    };
 };
 
 struct UISize

@@ -33,7 +33,8 @@ bool load_screen_ui_component(SceneObj* scene, ScreenUIComponent* ui, AssetID ui
 
     ComponentBase* base = ui->base;
 
-    UITemplateAsset asset = (UITemplateAsset)scene->assetManager.get_asset(uiTemplateID);
+    AssetManager AM = AssetManager::get();
+    UITemplateAsset asset = (UITemplateAsset)AM.get_asset(uiTemplateID);
     if (!asset || asset.get_type() != ASSET_TYPE_UI_TEMPLATE)
         return false;
 
@@ -83,7 +84,8 @@ bool startup_screen_ui_component(SceneObj* scene, ComponentBase** data, std::str
 
     auto* ui = (ScreenUIComponent*)data;
 
-    UITemplateAsset asset = (UITemplateAsset)scene->assetManager.get_asset(ui->uiTemplateID);
+    AssetManager AM = AssetManager::get();
+    UITemplateAsset asset = (UITemplateAsset)AM.get_asset(ui->uiTemplateID);
     LD_ASSERT(asset && asset.get_type() == ASSET_TYPE_UI_TEMPLATE);
 
     LuaState luaState = scene->active->lua.get_lua_state();
@@ -149,7 +151,8 @@ bool ScreenUIView::set_ui_template_asset(AssetID uiTemplateID)
 {
     LD_ASSERT(mUI->uiWindow);
 
-    UITemplateAsset asset = (UITemplateAsset)sScene->assetManager.get_asset(uiTemplateID);
+    AssetManager AM = AssetManager::get();
+    UITemplateAsset asset = (UITemplateAsset)AM.get_asset(uiTemplateID);
     if (!asset || asset.get_type() != ASSET_TYPE_UI_TEMPLATE)
         return false;
 

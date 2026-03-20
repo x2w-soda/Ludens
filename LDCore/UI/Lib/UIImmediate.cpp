@@ -758,12 +758,12 @@ void ui_top_layout_child_padding(const UIPadding& pad)
     widgetS->widget.set_layout_child_padding(pad);
 }
 
-void ui_top_layout_child_gap(float gap)
+void ui_top_layout_child_gap(float childGap)
 {
     LD_ASSERT_UI_TOP_WIDGET;
 
     UIWidgetState* widgetS = sImContext->imWindow->imWidgetStack.top();
-    widgetS->widget.set_layout_child_gap(gap);
+    widgetS->widget.set_layout_child_gap(childGap);
 }
 
 void ui_top_user(void* imUser)
