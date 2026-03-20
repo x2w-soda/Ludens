@@ -22,7 +22,6 @@ struct RuntimeContextObj
     RDevice renderDevice;
     RenderSystem renderSystem;
     AudioSystem audioSystem;
-    AssetManager AM;
     Project project;
     Scene scene{};
 
@@ -144,9 +143,9 @@ RuntimeContext RuntimeContext::create(const RuntimeContextInfo& info)
     amI.rootPath = rootPath;
     amI.watchAssets = false;
     amI.assetSchemaPath = assetSchemaPath;
-    obj->AM = AssetManager::create(amI);
-    obj->AM.begin_load_batch();
-    obj->AM.load_all_assets();
+    AssetManager AM = AssetManager::create(amI);
+    AM.begin_load_batch();
+    AM.load_all_assets();
 
     // some work on the main thread while worker threads are loading assets
     {
@@ -158,7 +157,7 @@ RuntimeContext RuntimeContext::create(const RuntimeContextInfo& info)
 
     // this blocks until all worker threads finish loading
     Vector<std::string> loadErrors;
-    if (!obj->AM.end_load_batch(loadErrors))
+    if (!AM.end_load_batch(loadErrors))
     {
         sLog.error("AssetManager failed to load assets with {} errors", loadErrors.size());
         for (const std::string& err : loadErrors)
@@ -169,7 +168,7 @@ RuntimeContext RuntimeContext::create(const RuntimeContextInfo& info)
     sLog.info("finish loading assets");
 
     // TODO: generalize
-    FontAsset defaultFont = (FontAsset)obj->AM.get_asset("default_font", ASSET_TYPE_FONT);
+    FontAsset defaultFont = (FontAsset)AM.get_asset("default_font", ASSET_TYPE_FONT);
     LD_ASSERT(defaultFont);
 
     // initialize subsystems
@@ -181,7 +180,6 @@ RuntimeContext RuntimeContext::create(const RuntimeContextInfo& info)
     obj->audioSystem = AudioSystem::create();
 
     SceneInfo sceneI{};
-    sceneI.assetManager = obj->AM;
     sceneI.audioSystem = obj->audioSystem;
     sceneI.renderSystem = obj->renderSystem;
     sceneI.fontAtlas = defaultFont.get_font_atlas();
@@ -217,11 +215,11 @@ void RuntimeContext::destroy(RuntimeContext ctx)
     obj->renderDevice.wait_idle();
     obj->scene.cleanup();
 
-    Scene::destroy(obj->scene);
+    Scene::destroy();
     AudioSystem::destroy(obj->audioSystem);
     RenderSystem::destroy(obj->renderSystem);
     RDevice::destroy(obj->renderDevice);
-    AssetManager::destroy(obj->AM);
+    AssetManager::destroy();
     WindowRegistry::destroy();
 
     heap_delete<RuntimeContextObj>(obj);

@@ -25,7 +25,6 @@ enum SceneContextType
 
 struct SceneContextInfo
 {
-    AssetManager assetManager;
     FontAtlas fontAtlas;
     RImage fontAtlasImage;
     UITheme uiTheme;
@@ -36,7 +35,6 @@ struct SceneContext
     LuaScript::Context lua;
     ScreenUI screenUI;
     DataRegistry registry;
-    AssetManager assetManager;
 
     SceneContext() = delete;
     SceneContext(const SceneContextInfo& info);
@@ -74,7 +72,6 @@ public:
     SceneContext* backup;
     SceneContextType contextTarget = SCENE_CONTEXT_ACTIVE;
     SceneContextInfo contextInfo{};
-    AssetManager assetManager{};
     AudioSystemCache audioSystemCache;
     RenderSystemCache renderSystemCache;
     SceneState state = SCENE_STATE_EMPTY;

@@ -19,6 +19,7 @@
 namespace LD {
 
 static Log sLog("AssetManager");
+static AssetManagerObj* sAssetManager = nullptr;
 
 size_t get_asset_byte_size(AssetType type)
 {
@@ -336,16 +337,26 @@ AssetID Asset::get_id()
 
 AssetManager AssetManager::create(const AssetManagerInfo& info)
 {
-    AssetManagerObj* obj = heap_new<AssetManagerObj>(MEMORY_USAGE_ASSET, info);
+    LD_ASSERT(!sAssetManager);
 
-    return {obj};
+    sAssetManager = heap_new<AssetManagerObj>(MEMORY_USAGE_ASSET, info);
+
+    return AssetManager(sAssetManager);
 }
 
-void AssetManager::destroy(AssetManager manager)
+void AssetManager::destroy()
 {
-    AssetManagerObj* obj = manager.unwrap();
+    LD_ASSERT(sAssetManager);
 
-    heap_delete<AssetManagerObj>(obj);
+    heap_delete<AssetManagerObj>(sAssetManager);
+    sAssetManager = nullptr;
+}
+
+AssetManager AssetManager::get()
+{
+    LD_ASSERT(sAssetManager);
+
+    return AssetManager(sAssetManager);
 }
 
 void AssetManager::update()

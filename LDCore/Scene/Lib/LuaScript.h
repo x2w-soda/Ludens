@@ -13,7 +13,7 @@ class Context
 {
 public:
     /// @brief In-place creation, initializes lua state and loads FFI functions.
-    void create(Scene scene, AssetManager assetManager);
+    void create(Scene scene);
 
     /// @brief In-place destruction, destroys all scripts and lua state.
     void destroy();
@@ -46,7 +46,6 @@ public:
 private:
     LuaState mL{};
     Scene mScene{};
-    AssetManager mAssetManager{};
 };
 
 /// @brief Get static C string of LuaScript log channel.

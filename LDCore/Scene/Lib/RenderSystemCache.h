@@ -14,8 +14,8 @@ namespace LD {
 class RenderSystemCache
 {
 public:
-    /// @brief In-place cretaion, connect to render system.
-    void create(RenderSystem system, AssetManager assetManager);
+    /// @brief In-place creation, connect to render system.
+    void create(RenderSystem system);
 
     /// @brief In-place destruction, destroys all resources from render system.
     void destroy();
@@ -47,7 +47,6 @@ private:
 
 private:
     RenderSystem mSystem{};
-    AssetManager mAssetManager{};
     Vector<RUID> mCuidToDraw;               /// map component to RenderSystem draw ID
     HashMap<RUID, CUID> mDrawToCuid;        /// map RenderSystem draw ID to component
     HashMap<SUID, RUID> mSuidToScreenLayer; /// map screen layer SUID to RUID

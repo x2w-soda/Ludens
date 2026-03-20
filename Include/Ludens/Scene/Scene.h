@@ -21,7 +21,6 @@ using SceneLoadFn = std::function<bool(struct SceneObj*)>;
 /// @brief Scene creation info, connects to external asset manager and subsystems.
 struct SceneInfo
 {
-    AssetManager assetManager;
     AudioSystem audioSystem;
     RenderSystem renderSystem;
     FontAtlas fontAtlas;
@@ -29,15 +28,15 @@ struct SceneInfo
     UITheme uiTheme;
 };
 
-/// @brief A game simulation. A scene is a hierarchy of components driven by scripts.
+/// @brief Scene singleton, main thread only. A scene is a hierarchy of components driven by scripts.
 struct Scene : Handle<struct SceneObj>
 {
 public:
     /// @brief Create empty scene with no components.
     static Scene create(const SceneInfo& sceneI);
 
-    /// @brief Destroy a Scene.
-    static void destroy(Scene);
+    /// @brief Destroy scene.
+    static void destroy();
 
     /// @brief In-place reset to initial state after creation.
     void reset();

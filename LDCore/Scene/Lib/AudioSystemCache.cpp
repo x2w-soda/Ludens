@@ -2,10 +2,9 @@
 
 namespace LD {
 
-void AudioSystemCache::create(AudioSystem server, AssetManager manager)
+void AudioSystemCache::create(AudioSystem server)
 {
     mSystem = server;
-    mAssetManager = manager;
     mClipToBuffer.clear();
 }
 
@@ -26,7 +25,8 @@ void AudioSystemCache::destroy()
 
 AudioBuffer AudioSystemCache::get_or_create_audio_buffer(AssetID clipID)
 {
-    AudioClipAsset clipA = (AudioClipAsset)mAssetManager.get_asset(clipID, ASSET_TYPE_AUDIO_CLIP);
+    AssetManager AM = AssetManager::get();
+    AudioClipAsset clipA = (AudioClipAsset)AM.get_asset(clipID, ASSET_TYPE_AUDIO_CLIP);
 
     if (!clipA)
         return {};

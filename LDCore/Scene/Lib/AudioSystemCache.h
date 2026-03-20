@@ -13,7 +13,7 @@ class AudioSystemCache
 {
 public:
     /// @brief In-place creation, connect to audio system.
-    void create(AudioSystem system, AssetManager manager);
+    void create(AudioSystem system);
 
     /// @brief In-place destruction, destroys all resources from audio system.
     /// @warning All playbacks should have already been destroyed, this destroys remaining audio buffers.
@@ -33,7 +33,6 @@ public:
 
 private:
     AudioSystem mSystem{};
-    AssetManager mAssetManager{};
     HashMap<AssetID, AudioBuffer> mClipToBuffer; /// map audio clip to audio buffer
 };
 

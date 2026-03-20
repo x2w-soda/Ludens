@@ -81,9 +81,8 @@ SceneContext::SceneContext(const SceneContextInfo& info)
 {
     LD_PROFILE_SCOPE;
 
-    assetManager = info.assetManager;
     registry = DataRegistry::create();
-    lua.create(Scene(sScene), assetManager);
+    lua.create(Scene(sScene));
 
     ScreenUIInfo uiI{};
     uiI.extent = {};
@@ -103,7 +102,6 @@ SceneContext::~SceneContext()
     ScreenUI::destroy(screenUI);
     lua.destroy();
     DataRegistry::destroy(registry);
-    assetManager = {};
 }
 
 void SceneContext::update(const Vec2& screenExtent, float delta)
@@ -456,11 +454,9 @@ Scene Scene::create(const SceneInfo& sceneI)
 
     LD_ASSERT(sScene == nullptr);
     sScene = heap_new<SceneObj>(MEMORY_USAGE_SCENE);
-    sScene->assetManager = sceneI.assetManager;
-    sScene->renderSystemCache.create(sceneI.renderSystem, sceneI.assetManager);
-    sScene->audioSystemCache.create(sceneI.audioSystem, sceneI.assetManager);
+    sScene->renderSystemCache.create(sceneI.renderSystem);
+    sScene->audioSystemCache.create(sceneI.audioSystem);
 
-    sScene->contextInfo.assetManager = sScene->assetManager;
     sScene->contextInfo.fontAtlas = sceneI.fontAtlas;
     sScene->contextInfo.fontAtlasImage = sceneI.fontAtlasImage;
     sScene->contextInfo.uiTheme = sceneI.uiTheme;
@@ -469,16 +465,16 @@ Scene Scene::create(const SceneInfo& sceneI)
     return Scene(sScene);
 }
 
-void Scene::destroy(Scene scene)
+void Scene::destroy()
 {
     LD_PROFILE_SCOPE;
 
-    LD_ASSERT(sScene && sScene == scene.unwrap());
+    LD_ASSERT(sScene);
     LD_ASSERT(sScene->backup == nullptr);
     LD_ASSERT(sScene->shadow == nullptr);
 
     // destroy all components
-    scene.reset();
+    Scene(sScene).reset();
 
     if (sScene->active)
         heap_delete<SceneContext>(sScene->active);

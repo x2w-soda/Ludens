@@ -19,13 +19,17 @@ struct AssetManagerInfo
     bool watchAssets;         // whether to watch asset files in project
 };
 
+/// @brief Asset manager singleton, main thread only.
 struct AssetManager : Handle<struct AssetManagerObj>
 {
     /// @brief Create asset manager.
     static AssetManager create(const AssetManagerInfo& info);
 
     /// @brief Destroy asset manager.
-    static void destroy(AssetManager manager);
+    static void destroy();
+
+    /// @brief Get asset manager singleton.
+    static AssetManager get();
 
     /// @brief If file watching is enabled, this polls for any changes.
     void update();

@@ -9,12 +9,11 @@
 
 namespace LD {
 
-void RenderSystemCache::create(RenderSystem system, AssetManager assetManager)
+void RenderSystemCache::create(RenderSystem system)
 {
     LD_PROFILE_SCOPE;
 
     mSystem = system;
-    mAssetManager = assetManager;
     mDrawToCuid.clear();
     mCuidToDraw.clear();
     mMeshData.clear();
@@ -43,7 +42,6 @@ void RenderSystemCache::destroy()
     mSuidToScreenLayer.clear();
     mScreenLayerToSuid.clear();
 
-    mAssetManager = {};
     mSystem = {};
 }
 
@@ -114,7 +112,8 @@ MeshData RenderSystemCache::get_or_create_mesh_data(AssetID meshAUID)
     if (mMeshData.contains(meshAUID))
         return mMeshData[meshAUID];
 
-    MeshAsset meshA = (MeshAsset)mAssetManager.get_asset(meshAUID, ASSET_TYPE_MESH);
+    AssetManager AM = AssetManager::get();
+    MeshAsset meshA = (MeshAsset)AM.get_asset(meshAUID, ASSET_TYPE_MESH);
     if (!meshA)
         return {};
 
@@ -157,7 +156,8 @@ void RenderSystemCache::destroy_mesh_draw(MeshDraw draw)
 
 Image2D RenderSystemCache::get_or_create_image_2d(AssetID textureID)
 {
-    Texture2DAsset textureA = (Texture2DAsset)mAssetManager.get_asset(textureID, ASSET_TYPE_TEXTURE_2D);
+    AssetManager AM = AssetManager::get();
+    Texture2DAsset textureA = (Texture2DAsset)AM.get_asset(textureID, ASSET_TYPE_TEXTURE_2D);
     if (!textureA)
         return {};
 

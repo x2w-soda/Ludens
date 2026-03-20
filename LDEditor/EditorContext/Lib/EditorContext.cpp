@@ -41,7 +41,6 @@ struct EditorContextObj
     RImage monoFontAtlasImage{};   ///
     Project project;               /// current project under edit
     Scene scene;                   /// current scene under edit
-    AssetManager assetManager;     /// loads assets for the scene
     EditorSettings settings;       /// editor global settings
     EditorActionQueue actionQueue; /// each action maps to one or more EditCommands.
     EditStack editStack;           /// undo/redo stack of EditCommands
@@ -231,26 +230,20 @@ void EditorContextObj::load_project(const FS::Path& projectSchemaPath)
         return;
     }
 
-    if (assetManager)
-    {
-        AssetManager::destroy(assetManager);
-        assetManager = {};
-    }
-
     AssetManagerInfo amI{};
     amI.rootPath = rootPath;
     amI.watchAssets = true;
     amI.assetSchemaPath = assetSchemaPath;
-    assetManager = AssetManager::create(amI);
+    AssetManager AM = AssetManager::create(amI);
 
     // Load all project assets at once using job system.
     // Once we have asynchronous-load-jobs maybe we can load assets
     // used by the loaded scene first?
-    assetManager.begin_load_batch();
-    assetManager.load_all_assets();
-    
+    AM.begin_load_batch();
+    AM.load_all_assets();
+
     Vector<std::string> errors;
-    if (!assetManager.end_load_batch(errors))
+    if (!AM.end_load_batch(errors))
     {
         sLog.error("AssetManager failed to load some assets, {} errors", errors.size());
         for (const std::string& err : errors)
@@ -294,7 +287,6 @@ void EditorContextObj::load_project_scene(const FS::Path& sceneSchemaPath)
     else
     {
         SceneInfo sceneI{};
-        sceneI.assetManager = assetManager;
         sceneI.renderSystem = renderSystem;
         sceneI.audioSystem = audioSystem;
         sceneI.fontAtlas = defaultFontAtlas;
@@ -428,13 +420,8 @@ void EditorContext::destroy(EditorContext ctx)
     }
 
     Project::destroy(obj->project);
-    Scene::destroy(obj->scene);
-
-    if (obj->assetManager)
-    {
-        AssetManager::destroy(obj->assetManager);
-        obj->assetManager = {};
-    }
+    Scene::destroy();
+    AssetManager::destroy();
 
     EditorActionQueue::destroy(obj->actionQueue);
     EditStack::destroy(obj->editStack);
@@ -630,11 +617,6 @@ ProjectSettings EditorContext::get_project_settings()
     return mObj->project.get_settings();
 }
 
-AssetManager EditorContext::get_asset_manager()
-{
-    return mObj->assetManager;
-}
-
 RImage EditorContext::get_editor_icon_atlas()
 {
     if (!mObj->iconAtlas)
@@ -710,7 +692,7 @@ void EditorContext::update(const Vec2& sceneExtent, float delta)
     }
 
     // NOTE: this polls for any asset file changes.
-    mObj->assetManager.update();
+    AssetManager::get().update();
 }
 
 void EditorContext::load_project(const FS::Path& projectSchemaPath)

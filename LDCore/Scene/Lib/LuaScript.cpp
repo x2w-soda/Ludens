@@ -364,7 +364,7 @@ static int get_asset(lua_State* l)
         return 1;
     }
 
-    Asset asset = sScene->assetManager.get_asset(suid);
+    Asset asset = AssetManager::get().get_asset(suid);
     if (!asset)
     {
         L.push_nil();
@@ -519,12 +519,11 @@ LuaModule create_ludens_module()
     return LuaModule::create(modI); // caller destroys
 }
 
-void Context::create(Scene scene, AssetManager assetManager)
+void Context::create(Scene scene)
 {
     LD_PROFILE_SCOPE;
 
     mScene = scene;
-    mAssetManager = assetManager;
 
     LuaStateInfo stateI{};
     stateI.openLibs = true;
@@ -708,7 +707,6 @@ void Context::destroy()
 
     LuaState::destroy(mL);
     mL = {};
-    mAssetManager = {};
     mScene = {};
 }
 
@@ -778,7 +776,7 @@ bool Context::create_lua_script(CUID compID, AssetID scriptAssetID, std::string&
     mL.get_field(-1, "scripts");
     mL.push_light_userdata(reinterpret_cast<void*>((uint64_t)compID));
 
-    LuaScriptAsset asset = (LuaScriptAsset)mAssetManager.get_asset(scriptAssetID, ASSET_TYPE_LUA_SCRIPT);
+    LuaScriptAsset asset = (LuaScriptAsset)AssetManager::get().get_asset(scriptAssetID, ASSET_TYPE_LUA_SCRIPT);
     LD_ASSERT(asset);
 
     const char* luaSource = asset.get_source();
