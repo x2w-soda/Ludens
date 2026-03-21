@@ -7,6 +7,7 @@ set(MODULE_TEST
 
 set(MODULE_INCLUDE
     ${LUDENS_INCLUDE_DIR}/Ludens/Text/TextBuffer.h
+    ${LUDENS_INCLUDE_DIR}/Ludens/Text/TextSpan.h
 )
 
 set(MODULE_LIB

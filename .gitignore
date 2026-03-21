@@ -10,3 +10,4 @@ BuildLinux/**
 *.manifest
 *.dmp
 *.swp
+*.png
