@@ -70,9 +70,7 @@ void ConsoleWindowObj::on_imgui(float delta)
     layoutI.sizeY = UISize::grow();
     ui_top_layout(layoutI);
 
-    FontAtlas fontAtlas;
-    RImage fontImage;
-    mCtx.get_mono_font(fontAtlas, fontImage);
+    UIFont font = mCtx.get_font_mono();
 
     for (const ConsoleEntry& entry : sHistory)
     {
@@ -92,7 +90,7 @@ void ConsoleWindowObj::on_imgui(float delta)
         }
 
         ui_push_text(nullptr, entry.formatted.c_str());
-        ui_text_style(color, fontAtlas, fontImage);
+        ui_text_style(color, font);
         ui_pop();
     }
 

@@ -22,7 +22,6 @@ void EditorUI::startup(const EditorUIInfo& info)
 
     mScreenSize = Vec2((float)info.screenWidth, (float)info.screenHeight);
     mCtx = info.ctx;
-    mCtx.get_default_font(mDefaultFontAtlas, mDefaultFontAtlasImage);
     mRenderSystem = info.renderSystem;
     mEnvCubemap = (RUID)0; // info.envCubemap
 
@@ -42,11 +41,9 @@ void EditorUI::startup(const EditorUIInfo& info)
 
     EditorUIDialogInfo dialogI{};
     dialogI.ctx = mCtx;
-    dialogI.fontAtlas = mDefaultFontAtlas;
-    dialogI.fontAtlasImage = mDefaultFontAtlasImage;
     mDialog = EditorUIDialog::create(dialogI);
 
-    ui_imgui_init(mDefaultFontAtlas, mDefaultFontAtlasImage);
+    ui_imgui_startup(mCtx.get_font_default());
     eui_startup(mCtx);
     eui_push_theme(mCtx.get_theme());
 }
@@ -57,7 +54,7 @@ void EditorUI::cleanup()
 
     eui_pop_theme();
     eui_cleanup();
-    ui_imgui_shutdown();
+    ui_imgui_cleanup();
 
     EditorUIDialog::destroy(mDialog);
     mDialog = {};

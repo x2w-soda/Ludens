@@ -52,15 +52,13 @@ private:
 private:
     EditorContext mCtx{};
     EditorDialog mDialog{};
-    FontAtlas mFontAtlas{};
-    RImage mFontAtlasImage{};
     DialogType mDialogType = DIALOG_NONE;
     SUID mSubjectSUID = 0;
     bool mShouldCloseDialog = false;
 };
 
 EditorUIDialogObj::EditorUIDialogObj(const EditorUIDialogInfo& mainI)
-    : mCtx(mainI.ctx), mFontAtlas(mainI.fontAtlas), mFontAtlasImage(mainI.fontAtlasImage)
+    : mCtx(mainI.ctx)
 {
     mCtx.add_observer(&EditorUIDialogObj::on_editor_event, this);
 }
@@ -233,8 +231,6 @@ EditorWindow EditorUIDialogObj::get_or_create_dialog(EditorWindowType type)
     EditorDialogInfo dialogI{};
     dialogI.ctx = mCtx;
     dialogI.extent = Vec2(512, 512);
-    dialogI.fontAtlas = mFontAtlas;
-    dialogI.fontAtlasImage = mFontAtlasImage;
     dialogI.type = type;
     mDialog = EditorDialog::create(dialogI);
 

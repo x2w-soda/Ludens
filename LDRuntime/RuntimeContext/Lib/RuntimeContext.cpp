@@ -24,6 +24,8 @@ struct RuntimeContextObj
     AudioSystem audioSystem;
     Project project;
     Scene scene{};
+    UIFontRegistry fontRegistry;
+    UIFont fontDefault;
 
     void render_frame(const Vec2& windowExtent);
 
@@ -76,7 +78,7 @@ void RuntimeContextObj::render_frame(const Vec2& windowExtent)
         renderer.set_view_projection_index(overlayVPIndex);
         self.scene.render_screen_ui(renderer);
     };
-    
+
     screenP.overlay.viewport = windowViewport;
     screenP.regionCount = (uint32_t)regions.size();
     screenP.regions = regions.data();
@@ -179,11 +181,13 @@ RuntimeContext RuntimeContext::create(const RuntimeContextInfo& info)
     obj->renderSystem = RenderSystem::create(systemI);
     obj->audioSystem = AudioSystem::create();
 
+    obj->fontRegistry = UIFontRegistry::create();
+    obj->fontDefault = obj->fontRegistry.add_font(defaultFont.get_font_atlas(), obj->renderSystem.get_font_atlas_image());
+
     SceneInfo sceneI{};
     sceneI.audioSystem = obj->audioSystem;
     sceneI.renderSystem = obj->renderSystem;
-    sceneI.fontAtlas = defaultFont.get_font_atlas();
-    sceneI.fontAtlasImage = obj->renderSystem.get_font_atlas_image();
+    sceneI.uiFont = obj->fontDefault;
     sceneI.uiTheme = UITheme::get_default_theme();
     obj->scene = Scene::create(sceneI);
 
@@ -216,6 +220,7 @@ void RuntimeContext::destroy(RuntimeContext ctx)
     obj->scene.cleanup();
 
     Scene::destroy();
+    UIFontRegistry::destroy(obj->fontRegistry);
     AudioSystem::destroy(obj->audioSystem);
     RenderSystem::destroy(obj->renderSystem);
     RDevice::destroy(obj->renderDevice);

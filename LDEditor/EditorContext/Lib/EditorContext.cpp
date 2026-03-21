@@ -17,6 +17,7 @@
 #include <Ludens/Scene/SceneSchema.h>
 #include <Ludens/System/FileSystem.h>
 #include <Ludens/System/Timer.h>
+#include <Ludens/UI/UIFont.h>
 #include <LudensEditor/EditorContext/EditorAction.h>
 #include <LudensEditor/EditorContext/EditorContext.h>
 
@@ -35,15 +36,14 @@ struct EditorContextObj
     RenderSystem renderSystem;     /// render server handle
     AudioSystem audioSystem;       /// audio server handle
     Image2D iconAtlas;             /// editor icon atlas handle
-    FontAtlas defaultFontAtlas;    ///
-    FontAtlas monoFontAtlas;       ///
-    RImage defaultFontAtlasImage;  ///
-    RImage monoFontAtlasImage{};   ///
     Project project;               /// current project under edit
     Scene scene;                   /// current scene under edit
     EditorSettings settings;       /// editor global settings
     EditorActionQueue actionQueue; /// each action maps to one or more EditCommands.
     EditStack editStack;           /// undo/redo stack of EditCommands
+    UIFontRegistry fontRegistry;   /// all fonts used by editor are registered here
+    UIFont fontDefault;            /// editor default regular font
+    UIFont fontMono;               /// editor default monospace font
     FS::Path iconAtlasPath;        /// path to editor icon atlas source file
     FS::Path sceneSchemaPath;      /// path to current scene file
     FS::Path assetSchemaPath;      /// path to project asset file
@@ -289,8 +289,7 @@ void EditorContextObj::load_project_scene(const FS::Path& sceneSchemaPath)
         SceneInfo sceneI{};
         sceneI.renderSystem = renderSystem;
         sceneI.audioSystem = audioSystem;
-        sceneI.fontAtlas = defaultFontAtlas;
-        sceneI.fontAtlasImage = defaultFontAtlasImage;
+        sceneI.uiFont = fontDefault;
         sceneI.uiTheme = settings.get_theme().get_ui_theme();
         scene = Scene::create(sceneI);
     }
@@ -365,14 +364,13 @@ EditorContext EditorContext::create(const EditorContextInfo& info)
     obj->renderSystem = info.renderSystem;
     obj->audioSystem = info.audioSystem;
     obj->iconAtlasPath = info.iconAtlasPath;
-    obj->defaultFontAtlas = info.defaultFontAtlas;
-    obj->defaultFontAtlasImage = info.defaultFontAtlasImage;
-    obj->monoFontAtlas = info.monoFontAtlas;
-    obj->monoFontAtlasImage = info.monoFontAtlasImage;
     obj->settings = EditorSettings::create();
     obj->isPlaying = false;
     obj->editStack = EditStack::create();
     obj->actionQueue = EditorActionQueue::create(obj->editStack, obj);
+    obj->fontRegistry = UIFontRegistry::create();
+    obj->fontDefault = obj->fontRegistry.add_font(info.defaultFontAtlas, info.defaultFontAtlasImage);
+    obj->fontMono = obj->fontRegistry.add_font(info.monoFontAtlas, info.monoFontAtlasImage);
 
     // register possible editor actions
     // clang-format off
@@ -423,6 +421,7 @@ void EditorContext::destroy(EditorContext ctx)
     Scene::destroy();
     AssetManager::destroy();
 
+    UIFontRegistry::destroy(obj->fontRegistry);
     EditorActionQueue::destroy(obj->actionQueue);
     EditStack::destroy(obj->editStack);
     EditorSettings::destroy(obj->settings);
@@ -631,16 +630,18 @@ RImage EditorContext::get_editor_icon_atlas()
     return RImage(mObj->iconAtlas.unwrap());
 }
 
-void EditorContext::get_default_font(FontAtlas& fontAtlas, RImage& fontAtlasImage)
+UIFont EditorContext::get_font_default()
 {
-    fontAtlas = mObj->defaultFontAtlas;
-    fontAtlasImage = mObj->defaultFontAtlasImage;
+    LD_ASSERT(mObj->fontDefault);
+
+    return mObj->fontDefault;
 }
 
-void EditorContext::get_mono_font(FontAtlas& fontAtlas, RImage& fontAtlasImage)
+UIFont EditorContext::get_font_mono()
 {
-    fontAtlas = mObj->monoFontAtlas;
-    fontAtlasImage = mObj->monoFontAtlasImage;
+    LD_ASSERT(mObj->fontMono);
+
+    return mObj->fontMono;
 }
 
 Scene EditorContext::get_scene()
