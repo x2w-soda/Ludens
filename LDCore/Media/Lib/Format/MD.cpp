@@ -20,7 +20,11 @@ static_assert((int)LD::MD_BLOCK_TYPE_TBODY == (int)::MD_BLOCK_TBODY);
 static_assert((int)LD::MD_BLOCK_TYPE_TR == (int)::MD_BLOCK_TR);
 static_assert((int)LD::MD_BLOCK_TYPE_TH == (int)::MD_BLOCK_TH);
 static_assert((int)LD::MD_BLOCK_TYPE_TD == (int)::MD_BLOCK_TD);
+
 static_assert((int)LD::MD_TEXT_TYPE_NORMAL == (int)::MD_TEXT_NORMAL);
+static_assert((int)LD::MD_TEXT_TYPE_NULL_CHAR == (int)::MD_TEXT_NULLCHAR);
+static_assert((int)LD::MD_TEXT_TYPE_BR == (int)::MD_TEXT_BR);
+static_assert((int)LD::MD_TEXT_TYPE_SOFT_BR == (int)::MD_TEXT_SOFTBR);
 
 static_assert((int)LD::MD_SPAN_TYPE_EM == (int)::MD_SPAN_EM);
 static_assert((int)LD::MD_SPAN_TYPE_STRONG == (int)::MD_SPAN_STRONG);

@@ -207,7 +207,16 @@ int DocumentObj::on_parser_text(MDTextType type, const View& text, void* user)
 {
     auto* obj = (DocumentObj*)user;
 
-    LD_ASSERT(type == MD_TEXT_TYPE_NORMAL);
+    switch (type)
+    {
+    case MD_TEXT_TYPE_SOFT_BR:
+        return 0; // soft line break '\n' ignored here
+    case MD_TEXT_TYPE_NORMAL:
+        break;
+    default:
+        LD_UNREACHABLE;
+    }
+
     LD_ASSERT(!obj->parseItems.empty());
 
     DocumentSpan* span = obj->allocate_span(DOCUMENT_SPAN_TEXT);
@@ -240,7 +249,7 @@ Document Document::create(const View& md)
         return {};
     }
 
-    // vector sizes are fixed now, store spans
+    // vector sizes are fixed now, get address inside vector
     size_t spanBase = 0;
     for (DocumentItem* item : obj->items)
     {
