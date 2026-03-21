@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Ludens/UI/UIContext.h>
+#include <Ludens/UI/UIFont.h>
 #include <Ludens/UI/UIWidget.h>
 #include <Ludens/UI/Widgets.h>
 
@@ -23,10 +24,10 @@ struct WindowEvent;
 
 typedef void (*IMDrawCallback)(UIWidget widget, ScreenRenderComponent renderer, void* user);
 
-void ui_imgui_init(FontAtlas fontAtlas, RImage fontAtlasImage);
+void ui_imgui_startup(UIFont font);
 
 /// @brief Release and free all resources allocated by immediate-mode API.
-void ui_imgui_shutdown();
+void ui_imgui_cleanup();
 
 bool ui_context_input(const char* ctxName, const WindowEvent* event);
 void ui_context_render(const char* ctxName, ScreenRenderComponent renderer);
@@ -139,7 +140,7 @@ bool ui_push_popup_window(const char* popupName);
 
 /// @brief Push UITextWidget.
 UITextStorage* ui_push_text(UITextStorage* storage, const char* text);
-void ui_text_style(Color color, FontAtlas fontAtlas, RImage fontImage);
+void ui_text_style(Color color, UIFont font);
 
 /// @brief Push UITextEditWidget.
 UITextEditStorage* ui_push_text_edit(UITextEditStorage* storage);

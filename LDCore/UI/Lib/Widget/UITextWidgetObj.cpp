@@ -12,8 +12,7 @@ void UITextWidgetObj::startup(UIWidgetObj* obj, void* storage)
     auto& self = obj->as.text;
     new (&self) UITextWidgetObj();
 
-    self.fontAtlas = ctx->fontAtlas;
-    self.fontImage = ctx->fontAtlasImage;
+    self.font = ctx->fontDefault;
     self.storage = (UITextStorage*)storage;
 
     if (!self.storage)
@@ -49,7 +48,7 @@ void UITextWidget::on_draw(UIWidget widget, ScreenRenderComponent renderer)
     if (storage->bgColor.get_alpha() > 0.0f)
         renderer.draw_rect(rect, storage->bgColor);
 
-    renderer.draw_text(self.fontAtlas, self.fontImage, storage->fontSize, rect.get_pos(), storage->value.c_str(), storage->fgColor, wrapWidth);
+    renderer.draw_text(self.font.font_atlas(), self.font.image(), storage->fontSize, rect.get_pos(), storage->value.c_str(), storage->fgColor, wrapWidth);
 }
 
 UITextStorage* UITextWidget::get_storage()
@@ -57,14 +56,13 @@ UITextStorage* UITextWidget::get_storage()
     return mObj->as.text.storage;
 }
 
-void UITextWidget::set_text_style(Color color, FontAtlas fontAtlas, RImage fontImage)
+void UITextWidget::set_text_style(Color color, UIFont font)
 {
     mObj->as.text.storage->fgColor = color;
 
-    if (fontAtlas && fontImage)
+    if (font)
     {
-        mObj->as.text.fontAtlas = fontAtlas;
-        mObj->as.text.fontImage = fontImage;
+        mObj->as.text.font = font;
     }
 }
 

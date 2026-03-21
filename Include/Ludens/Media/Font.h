@@ -73,6 +73,12 @@ struct FontAtlas : Handle<struct FontAtlasObj>
     /// @param advanceX baseline cursor horizontal offset in screen space
     /// @return whether the glyph is found in the atlas
     bool get_baseline_glyph(uint32_t code, float fontSize, const Vec2& baseline, Rect& glyphBB, float& advanceX);
+
+    /// @brief Measure height of text if the width is limited.
+    float measure_wrap_size(View text, float fontSizePx, float limitWidth);
+
+    /// @brief Measure minimum width and maximum width of text if unwrapped.
+    void measure_wrap_limit(View text, float fontSizePx, float& outMinWidth, float& outMaxWidth);
 };
 
 } // namespace LD

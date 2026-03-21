@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Ludens/Header/Handle.h>
+#include <Ludens/UI/UIFont.h>
 #include <Ludens/UI/UILayer.h>
 #include <LudensEditor/EditorContext/EditorContext.h>
 
@@ -9,8 +10,7 @@ namespace LD {
 struct EditorUIDialogInfo
 {
     EditorContext ctx;
-    FontAtlas fontAtlas;
-    RImage fontAtlasImage;
+    UIFont font;
 };
 
 /// @brief Manages all Editor dialogs, these are OS-level Windows

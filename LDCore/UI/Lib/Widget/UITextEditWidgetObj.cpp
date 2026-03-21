@@ -17,6 +17,7 @@ void UITextEditWidgetObj::startup(UIWidgetObj* obj, void* storage)
     {
         obj->flags |= UI_WIDGET_FLAG_LOCAL_STORAGE_BIT;
         self.storage = &self.local;
+        self.storage->font = obj->ctx()->fontDefault;
     }
 
     obj->flags |= UI_WIDGET_FLAG_FOCUSABLE_BIT;
@@ -227,6 +228,12 @@ void UITextEditWidget::on_draw(UIWidget widget, ScreenRenderComponent renderer)
     Color outlineColor = theme.get_selection_color();
     float wrapWidth = rect.w;
 
+    if (!storage->font)
+        storage->font = ctx.fontDefault;
+
+    const FontAtlas atlas = storage->font.font_atlas();
+    const RImage image = storage->font.image();
+
     if (self.isEditing)
     {
         renderer.draw_rect_outline(rect, outlineColor, 1.0f);
@@ -234,12 +241,12 @@ void UITextEditWidget::on_draw(UIWidget widget, ScreenRenderComponent renderer)
         if (!storage->buf.empty())
         {
             str = storage->buf.to_string();
-            renderer.draw_text(ctx.fontAtlas, ctx.fontAtlasImage, storage->fontSize, rect.get_pos(), str.c_str(), textColor, wrapWidth);
+            renderer.draw_text(atlas, image, storage->fontSize, rect.get_pos(), str.c_str(), textColor, wrapWidth);
         }
     }
     else
     {
-        renderer.draw_text(ctx.fontAtlas, ctx.fontAtlasImage, storage->fontSize, rect.get_pos(), self.storage->text.c_str(), textColor, wrapWidth);
+        renderer.draw_text(atlas, image, storage->fontSize, rect.get_pos(), self.storage->text.c_str(), textColor, wrapWidth);
     }
 }
 

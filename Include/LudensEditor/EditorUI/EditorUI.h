@@ -72,8 +72,6 @@ private:
     EditorUITopBar mTopBar;
     EditorUIDialog mDialog;
     EditorUIMain mMain;
-    FontAtlas mDefaultFontAtlas{};
-    RImage mDefaultFontAtlasImage{};
     RenderSystem mRenderSystem{};
     RUID mEnvCubemap = 0;
     Vec2 mScreenSize;

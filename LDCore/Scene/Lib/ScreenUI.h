@@ -9,8 +9,7 @@ namespace LD {
 struct ScreenUIInfo
 {
     Vec2 extent;
-    FontAtlas fontAtlas;
-    RImage fontAtlasImage;
+    UIFont font;
     UITheme theme;
 };
 

@@ -103,10 +103,10 @@ struct EditorContext : Handle<struct EditorContextObj>
     RImage get_editor_icon_atlas();
 
     /// @brief Get editor default font.
-    void get_default_font(FontAtlas& fontAtlas, RImage& fontAtlasImage);
+    UIFont get_font_default();
 
     /// @brief Get editor monospace font.
-    void get_mono_font(FontAtlas& fontAtlas, RImage& fontAtlasImage);
+    UIFont get_font_mono();
 
     /// @brief Get editor theme.
     inline EditorTheme get_theme() { return get_settings().get_theme(); }

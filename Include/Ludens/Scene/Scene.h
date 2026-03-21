@@ -6,6 +6,7 @@
 #include <Ludens/Header/Handle.h>
 #include <Ludens/RenderSystem/RenderSystem.h>
 #include <Ludens/Scene/ComponentView.h>
+#include <Ludens/UI/UIFont.h>
 #include <Ludens/UI/UITheme.h>
 
 #include <functional>
@@ -23,8 +24,7 @@ struct SceneInfo
 {
     AudioSystem audioSystem;
     RenderSystem renderSystem;
-    FontAtlas fontAtlas;
-    RImage fontAtlasImage;
+    UIFont uiFont;
     UITheme uiTheme;
 };
 
@@ -124,7 +124,7 @@ public:
     ComponentView get_component_by_suid(SUID compSUID);
 
     /// @brief Get component from sibling index path.
-    /// @note Slower code path intended for editor. 
+    /// @note Slower code path intended for editor.
     ComponentView get_component_by_path(const Vector<int>& path);
 
     /// @brief Get data component from serial ID and expected type, fails upon type mismatch.

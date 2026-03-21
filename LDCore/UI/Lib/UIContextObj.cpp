@@ -562,8 +562,7 @@ UIContext UIContext::create(const UIContextInfo& info)
     LD_ASSERT(info.theme);
 
     UIContextObj* obj = heap_new<UIContextObj>(MEMORY_USAGE_UI);
-    obj->fontAtlas = info.fontAtlas;
-    obj->fontAtlasImage = info.fontAtlasImage;
+    obj->fontDefault = info.font;
     obj->user = info.user;
     obj->onEvent = info.onEvent;
 

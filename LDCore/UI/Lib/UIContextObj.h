@@ -5,6 +5,7 @@
 #include <Ludens/Media/Font.h>
 #include <Ludens/Memory/Allocator.h>
 #include <Ludens/RenderBackend/RBackend.h>
+#include <Ludens/UI/UIFont.h>
 #include <Ludens/UI/UITheme.h>
 #include <Ludens/UI/UIWidget.h>
 
@@ -18,9 +19,8 @@ struct UIEvent;
 /// @brief UI context implementation.
 struct UIContextObj
 {
-    FontAtlas fontAtlas;
-    RImage fontAtlasImage;
     PoolAllocator widgetPA;
+    UIFont fontDefault;
     UITheme theme;
     Vector<UILayerObj*> layers;
     HashSet<UILayerObj*> deferredLayerDestruction;

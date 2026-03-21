@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Ludens/Text/TextBuffer.h>
+#include <Ludens/UI/UIFont.h>
 #include <Ludens/UI/UIWidget.h>
 
 namespace LD {
@@ -19,6 +20,7 @@ struct UITextEditStorage
     TextBuffer buf = {};          /// text buffer under edit
     std::string text = {};        /// last submitted text, displayed when not editing
     UITextEditDomain domain = {}; /// input domain, filters key input
+    UIFont font = {};             /// displayed font
     float fontSize = 16.0f;       /// rendered size
 
     UITextEditStorage();

@@ -309,9 +309,8 @@ void UIContextState::destroy_layer_state(UILayerState* layerS)
 }
 
 static UIContextState* sImContext = nullptr;              // current ui context
+static UIFont sImFont;                                    // default font
 static HashMap<std::string, UIContextState*> sImContexts; // all imgui frame contexts
-static FontAtlas sImFontAtlas;                            // default font atlas
-static RImage sImFontAtlasImage;                          // default font image on GPU
 
 static void on_ui_context_event(UIWidget widget, const UIEvent& event, void* user)
 {
@@ -344,8 +343,7 @@ static UIContextState* get_or_create_context_state(const char* ctxName, const Ve
     ctxS->screenExtent = screenExtent;
 
     UIContextInfo ctxI{};
-    ctxI.fontAtlas = sImFontAtlas;
-    ctxI.fontAtlasImage = sImFontAtlasImage;
+    ctxI.font = sImFont;
     ctxI.onEvent = &on_ui_context_event;
     ctxI.user = ctxS;
     ctxI.theme = UITheme::get_default_theme();
@@ -638,17 +636,16 @@ UIWidgetState* UIWindowState::get_or_create_slider(UISliderStorage* storage)
     return widgetS;
 }
 
-void ui_imgui_init(FontAtlas fontAtlas, RImage fontAtlasImage)
+void ui_imgui_startup(UIFont font)
 {
     LD_ASSERT(!sImContext);
 
-    sImFontAtlas = fontAtlas;
-    sImFontAtlasImage = fontAtlasImage;
+    sImFont = font;
 }
 
-void ui_imgui_shutdown()
+void ui_imgui_cleanup()
 {
-    LD_ASSERT(!sImContext && "ui_frame_end not called");
+    LD_ASSERT(!sImContext && "ui_context_end not called");
 
     for (const auto& it : sImContexts)
         destroy_context_state(it.second);
@@ -1078,14 +1075,14 @@ UITextStorage* ui_push_text(UITextStorage* storage, const char* text)
     return storage;
 }
 
-void ui_text_style(Color color, FontAtlas fontAtlas, RImage fontImage)
+void ui_text_style(Color color, UIFont font)
 {
     LD_ASSERT_UI_TOP_WIDGET_TYPE(UI_WIDGET_TEXT);
 
     UIWidgetState* imWidget = sImContext->imWindow->imWidgetStack.top();
     UITextWidget textW = (UITextWidget)imWidget->widget;
 
-    textW.set_text_style(color, fontAtlas, fontImage);
+    textW.set_text_style(color, font);
 }
 
 UITextEditStorage* ui_push_text_edit(UITextEditStorage* storage)

@@ -108,7 +108,9 @@ void UISandbox::run()
     WindowRegistry reg = WindowRegistry::get();
     WindowID rootID = reg.get_root_id();
 
-    ui_imgui_init(mFontAtlas, mFontAtlasImage);
+    UIFontRegistry fontReg = UIFontRegistry::create();
+    UIFont font = fontReg.add_font(mFontAtlas, mFontAtlasImage);
+    ui_imgui_startup(font);
 
     sTextEdit = heap_new<UITextEditStorage>(MEMORY_USAGE_UI);
 
@@ -129,7 +131,9 @@ void UISandbox::run()
 
     heap_delete<UITextEditStorage>(sTextEdit);
 
-    ui_imgui_shutdown();
+    ui_imgui_cleanup();
+
+    UIFontRegistry::destroy(fontReg);
 }
 
 void UISandbox::imgui(const Vec2& windowExtent, float delta)
@@ -169,14 +173,12 @@ void UISandbox::imgui(const Vec2& windowExtent, float delta)
         static UIPanelStorage sPanel{};
         ui_push_panel(&sPanel);
         {
-            static UITextStorage sText1;
-            ui_push_text(&sText1, "Some text1 here!!!!!!");
+            ui_push_text(nullptr, "Some text1 here!!!!!!");
             ui_pop();
             static UIImageStorage sImage{mFontAtlasImage};
             ui_push_image(&sImage, 300, 300);
             ui_pop();
-            static UITextStorage sText2;
-            ui_push_text(&sText2, "Some text2 here!");
+            ui_push_text(nullptr, "Some text2 here!");
             ui_pop();
         }
         ui_pop();

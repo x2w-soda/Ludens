@@ -25,8 +25,7 @@ enum SceneContextType
 
 struct SceneContextInfo
 {
-    FontAtlas fontAtlas;
-    RImage fontAtlasImage;
+    UIFont uiFont;
     UITheme uiTheme;
 };
 

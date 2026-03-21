@@ -6,6 +6,7 @@
 #include <Ludens/Header/KeyCode.h>
 #include <Ludens/Header/Math/Rect.h>
 #include <Ludens/Header/Math/Vec2.h>
+#include <Ludens/UI/UIFont.h>
 #include <Ludens/UI/UILayer.h>
 #include <Ludens/UI/UITheme.h>
 
@@ -17,9 +18,8 @@ struct WindowEvent;
 
 struct UIContextInfo
 {
-    FontAtlas fontAtlas;   /// default font atlas used to render text
-    RImage fontAtlasImage; /// font atlas image handle
-    UITheme theme;         /// the UI theme to use for widgets in this context
+    UIFont font;   /// default font for text rendering, this font out-lives the UIContext
+    UITheme theme; /// the UI theme to use for widgets in this context
     void (*onEvent)(UIWidget widget, const UIEvent& event, void* user);
     void* user;
 };

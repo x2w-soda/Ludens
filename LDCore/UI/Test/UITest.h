@@ -38,8 +38,7 @@ public:
         UITest* instance = get();
 
         UIContextInfo ctxI{};
-        ctxI.fontAtlas = instance->mFontAtlas;
-        ctxI.fontAtlasImage = {};
+        ctxI.font = instance->mFont;
         ctxI.theme = instance->mTheme;
         UIContext ctx = UIContext::create(ctxI);
 
@@ -54,7 +53,8 @@ private:
     static UITest* get();
 
 private:
-    UITheme mTheme;
-    Font mFont{};
+    UITheme mTheme{};
+    UIFontRegistry mFontRegistry{};
+    UIFont mFont{};
     FontAtlas mFontAtlas{};
 };

@@ -14,8 +14,7 @@ struct UITextWidgetObj
     UIWidgetObj* base;
     UITextStorage* storage;
     UITextStorage local;
-    FontAtlas fontAtlas;
-    RImage fontImage;
+    UIFont font;
 
     static void startup(UIWidgetObj* obj, void* info);
     static void cleanup(UIWidgetObj* obj);

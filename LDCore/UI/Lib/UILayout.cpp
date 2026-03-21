@@ -31,82 +31,22 @@ static void ui_layout_grow_x(const Vector<UIWidgetObj*>& growableX, float remain
 static void ui_layout_grow_y(const Vector<UIWidgetObj*>& growableY, float remainH);
 static void ui_layout_shrink_x(Vector<UIWidgetObj*>& shrinkableX, float remainW);
 
-void ui_layout_wrap_limit(UIWidgetObj* obj, float& outMinW, float& outMaxW)
+static void ui_layout_wrap_limit(UIWidgetObj* obj, float& outMinW, float& outMaxW)
 {
     UITextWidgetObj& self = obj->as.text;
     UITextStorage* storage = self.storage;
+    View textView(storage->value.data(), storage->value.size());
 
-    Font font = self.fontAtlas.get_font();
-    FontMetrics metrics;
-    font.get_metrics(metrics, storage->fontSize);
-
-    outMaxW = 0.0f;
-    outMinW = 0.0f;
-
-    if (storage->value.empty())
-        return;
-
-    size_t len = storage->value.size();
-    float lineW = 0.0f;
-
-    for (size_t i = 0; i < len; i++)
-    {
-        uint32_t c = (uint32_t)storage->value[i];
-
-        if (c == '\n')
-        {
-            lineW = 0.0f;
-            continue;
-        }
-
-        float advanceX;
-        Rect rect;
-        Vec2 baseline(lineW, (float)metrics.ascent);
-        self.fontAtlas.get_baseline_glyph(c, storage->fontSize, baseline, rect, advanceX);
-
-        lineW += advanceX;
-        outMaxW = std::max<float>(outMaxW, lineW);
-        outMinW = std::max<float>(outMinW, rect.w);
-    }
+    return self.font.font_atlas().measure_wrap_limit(textView, storage->fontSize, outMinW, outMaxW);
 }
 
 static float ui_layout_wrap_size(UIWidgetObj* obj, float limitW)
 {
     UITextWidgetObj& self = obj->as.text;
-    LD_ASSERT(self.fontAtlas);
-
     UITextStorage* storage = self.storage;
-    Font font = self.fontAtlas.get_font();
-    FontMetrics metrics;
-    font.get_metrics(metrics, storage->fontSize);
+    View textView(storage->value.data(), storage->value.size());
 
-    Vec2 baseline(0.0f, metrics.ascent);
-
-    if (storage->value.empty())
-        return (float)metrics.lineHeight;
-
-    size_t len = storage->value.size();
-
-    for (size_t i = 0; i < len; i++)
-    {
-        uint32_t c = (uint32_t)storage->value[i];
-
-        // TODO: text wrapping using whitespace as boundary
-        if (c == '\n' || baseline.x >= limitW)
-        {
-            baseline.y += (float)metrics.lineHeight;
-            baseline.x = 0.0f;
-            continue;
-        }
-
-        float advanceX;
-        Rect rect;
-        self.fontAtlas.get_baseline_glyph(c, storage->fontSize, baseline, rect, advanceX);
-
-        baseline.x += advanceX;
-    }
-
-    return baseline.y - (float)metrics.descent;
+    return self.font.font_atlas().measure_wrap_size(textView, storage->fontSize, limitW);
 }
 
 static void ui_layout_pass_clear(UIWidgetObj* root)

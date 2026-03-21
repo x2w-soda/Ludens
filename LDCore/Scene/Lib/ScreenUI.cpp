@@ -18,8 +18,7 @@ ScreenUI ScreenUI::create(const ScreenUIInfo& info)
     Rect screenRect(0.0f, 0.0f, info.extent.x, info.extent.y);
 
     UIContextInfo ctxI{};
-    ctxI.fontAtlas = info.fontAtlas;
-    ctxI.fontAtlasImage = info.fontAtlasImage;
+    ctxI.font = info.font;
     ctxI.theme = info.theme;
     obj->ctx = UIContext::create(ctxI);
     obj->layer = obj->ctx.create_layer("screen");

@@ -86,11 +86,9 @@ SceneContext::SceneContext(const SceneContextInfo& info)
 
     ScreenUIInfo uiI{};
     uiI.extent = {};
-    uiI.fontAtlas = info.fontAtlas;
-    uiI.fontAtlasImage = info.fontAtlasImage;
+    uiI.font = info.uiFont;
     uiI.theme = info.uiTheme;
-    LD_ASSERT(uiI.fontAtlas);
-    LD_ASSERT(uiI.fontAtlasImage);
+    LD_ASSERT(uiI.font);
     LD_ASSERT(uiI.theme);
     screenUI = LD::ScreenUI::create(uiI);
 }
@@ -457,8 +455,7 @@ Scene Scene::create(const SceneInfo& sceneI)
     sScene->renderSystemCache.create(sceneI.renderSystem);
     sScene->audioSystemCache.create(sceneI.audioSystem);
 
-    sScene->contextInfo.fontAtlas = sceneI.fontAtlas;
-    sScene->contextInfo.fontAtlasImage = sceneI.fontAtlasImage;
+    sScene->contextInfo.uiFont = sceneI.uiFont;
     sScene->contextInfo.uiTheme = sceneI.uiTheme;
     sScene->active = nullptr;
 

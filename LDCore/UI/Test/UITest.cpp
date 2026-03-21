@@ -17,9 +17,12 @@ UITest::UITest()
     if (sLudensLFS.isFound)
     {
         std::string pathString = sLudensLFS.fontPath.string();
-        mFont = Font::create_from_path(pathString.c_str());
-        mFontAtlas = FontAtlas::create_bitmap(mFont, 24);
-        LD_ASSERT(mFont && mFontAtlas);
+        Font font = Font::create_from_path(pathString.c_str());
+        mFontAtlas = FontAtlas::create_bitmap(font, 24);
+        LD_ASSERT(mFontAtlas);
+
+        mFontRegistry = UIFontRegistry::create();
+        mFont = mFontRegistry.add_font(mFontAtlas, {});
     }
 
     std::cout << std::filesystem::current_path() << std::endl;

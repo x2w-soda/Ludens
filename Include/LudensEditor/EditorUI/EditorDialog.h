@@ -13,8 +13,6 @@ struct EditorDialogInfo
     EditorContext ctx;     // connection with editor context
     EditorWindowType type; // the type to host in this dialog
     Vec2 extent;           // editor dialog window extent
-    FontAtlas fontAtlas;   // font atlas used to render text
-    RImage fontAtlasImage; // font atlas image handle
 };
 
 struct EditorDialog : Handle<struct EditorDialogObj>

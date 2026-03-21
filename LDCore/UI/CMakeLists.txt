@@ -12,6 +12,7 @@ set(MODULE_INCLUDE
     ${LUDENS_INCLUDE_DIR}/Ludens/UI/UITheme.h
     ${LUDENS_INCLUDE_DIR}/Ludens/UI/UIAnimation.h
     ${LUDENS_INCLUDE_DIR}/Ludens/UI/UIImmediate.h
+    ${LUDENS_INCLUDE_DIR}/Ludens/UI/UIFont.h
     ${LUDENS_INCLUDE_DIR}/Ludens/UI/Widgets.h
     ${LUDENS_INCLUDE_DIR}/Ludens/UI/Widget/UIButtonWidget.h
     ${LUDENS_INCLUDE_DIR}/Ludens/UI/Widget/UIImageWidget.h
@@ -38,6 +39,7 @@ set(MODULE_LIB
     Lib/UITheme.cpp
     Lib/UIAnimation.cpp
     Lib/UIImmediate.cpp
+    Lib/UIFont.cpp
     Lib/UIDebug.h
     Lib/UIDebug.cpp
     Lib/Widget/UIButtonWidgetObj.h

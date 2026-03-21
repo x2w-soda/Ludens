@@ -292,4 +292,70 @@ bool FontAtlas::get_baseline_glyph(uint32_t code, float fontSize, const Vec2& ba
     return true;
 }
 
+float FontAtlas::measure_wrap_size(View text, float fontSizePx, float limitWidth)
+{
+    FontMetrics metrics;
+    get_font().get_metrics(metrics, fontSizePx);
+
+    Vec2 baseline(0.0f, metrics.ascent);
+
+    if (text.size == 0)
+        return (float)metrics.lineHeight;
+
+    for (size_t i = 0; i < text.size; i++)
+    {
+        uint32_t c = (uint32_t)text.data[i];
+
+        // TODO: text wrapping using whitespace as boundary
+        if (c == '\n' || baseline.x >= limitWidth)
+        {
+            baseline.y += (float)metrics.lineHeight;
+            baseline.x = 0.0f;
+            continue;
+        }
+
+        float advanceX;
+        Rect rect;
+        get_baseline_glyph(c, fontSizePx, baseline, rect, advanceX);
+
+        baseline.x += advanceX;
+    }
+
+    return baseline.y - (float)metrics.descent;
+}
+
+void FontAtlas::measure_wrap_limit(View text, float fontSizePx, float& outMinWidth, float& outMaxWidth)
+{
+    FontMetrics metrics;
+    get_font().get_metrics(metrics, fontSizePx);
+
+    outMinWidth = 0.0f;
+    outMaxWidth = 0.0f;
+
+    if (text.size == 0)
+        return;
+
+    float lineW = 0.0f;
+
+    for (size_t i = 0; i < text.size; i++)
+    {
+        uint32_t c = (uint32_t)text.data[i];
+
+        if (c == '\n')
+        {
+            lineW = 0.0f;
+            continue;
+        }
+
+        float advanceX;
+        Rect rect;
+        Vec2 baseline(lineW, (float)metrics.ascent);
+        get_baseline_glyph(c, fontSizePx, baseline, rect, advanceX);
+
+        lineW += advanceX;
+        outMaxWidth = std::max<float>(outMaxWidth, lineW);
+        outMinWidth = std::max<float>(outMinWidth, rect.w);
+    }
+}
+
 } // namespace LD

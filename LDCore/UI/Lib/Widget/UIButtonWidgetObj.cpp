@@ -67,10 +67,10 @@ void UIButtonWidget::on_draw(UIWidget widget, ScreenRenderComponent renderer)
     if (!storage->text.empty())
     {
         float fontSize = rect.h * 0.8f;
-        FontAtlas atlas = ctx->fontAtlas;
+        FontAtlas atlas = ctx->fontDefault.font_atlas();
         Font font = atlas.get_font();
         FontMetrics metrics;
-        RImage atlasImage = ctx->fontAtlasImage;
+        RImage atlasImage = ctx->fontDefault.image();
         font.get_metrics(metrics, fontSize);
         Vec2 baseline = rect.get_pos();
         baseline.y += metrics.ascent;
