@@ -14,24 +14,6 @@
 
 namespace LD {
 
-enum DocumentItemType
-{
-    DOCUMENT_ITEM_HEADING,
-};
-
-struct DocumentItem
-{
-    DocumentItemType type;
-    size_t size;
-};
-
-struct DocumentItemHeading
-{
-    DocumentItem item;
-    View text;
-    int level;
-};
-
 struct DocumentParseState
 {
     DocumentItem* item;
@@ -40,8 +22,10 @@ struct DocumentParseState
 struct DocumentObj
 {
     Vector<DocumentItem*> items;
-    Stack<DocumentParseState> parseState;
-    LinearAllocator itemLA;
+    Vector<DocumentSpan*> spans;
+    Stack<DocumentItem*> parseItems;
+    LinearAllocator la;
+    size_t spanCounter = 0;
 
     DocumentObj();
     DocumentObj(const DocumentObj&) = delete;
@@ -49,11 +33,13 @@ struct DocumentObj
 
     DocumentObj& operator=(const DocumentObj&) = delete;
 
-    DocumentItem* push_state(DocumentItemType type);
-    void pop_state(DocumentItemType type);
+    DocumentItem* allocate_item(DocumentItemType type);
+    DocumentSpan* allocate_span(DocumentSpanType type);
 
     static int on_parser_enter_block(MDBlockType type, const MDBlockDetail& detail, void* user);
     static int on_parser_leave_block(MDBlockType type, const MDBlockDetail& detail, void* user);
+    static int on_parser_enter_span(MDSpanType type, const MDSpanDetail& detail, void* user);
+    static int on_parser_leave_span(MDSpanType type, const MDSpanDetail& detail, void* user);
     static int on_parser_text(MDTextType type, const View& text, void* user);
 };
 
@@ -65,19 +51,31 @@ struct DocumentItemMeta
 };
 
 static std::string print_document_item_heading(DocumentItem* item);
+static std::string print_document_item_paragraph(DocumentItem* item);
 
 // clang-format off
 static DocumentItemMeta sItemMeta[] = {
-    {DOCUMENT_ITEM_HEADING, "DocumentItemHeading", &print_document_item_heading}
+    {DOCUMENT_ITEM_HEADING,   "DocumentItemHeading",   &print_document_item_heading},
+    {DOCUMENT_ITEM_PARAGRAPH, "DocumentItemParagraph", &print_document_item_paragraph},
 };
 // clang-format on
 
 static std::string print_document_item_heading(DocumentItem* item)
 {
     auto* heading = (DocumentItemHeading*)item;
+    LD_ASSERT(heading->item.spans.size > 0);
 
+    DocumentSpan* span = heading->item.spans.data[0];
     std::string str = sItemMeta[item->type].typeCstr;
-    str += std::format(" level {}: {}\n", heading->level, heading->text);
+    str += std::format(" level {}: {}\n", heading->level, span->text);
+
+    return str;
+}
+
+std::string print_document_item_paragraph(DocumentItem* item)
+{
+    std::string str = sItemMeta[item->type].typeCstr;
+    str += std::format(" {} spans\n", item->spans.size);
 
     return str;
 }
@@ -88,40 +86,53 @@ DocumentObj::DocumentObj()
     laI.isMultiPage = true;
     laI.capacity = DOCUMENT_LA_PAGE_SIZE;
     laI.usage = DOCUMENT_MEMORY_USAGE;
-    itemLA = LinearAllocator::create(laI);
+    la = LinearAllocator::create(laI);
 }
 
 DocumentObj::~DocumentObj()
 {
-    LinearAllocator::destroy(itemLA);
+    LinearAllocator::destroy(la);
 }
 
-DocumentItem* DocumentObj::push_state(DocumentItemType type)
+DocumentItem* DocumentObj::allocate_item(DocumentItemType type)
 {
     DocumentItem* item = nullptr;
 
     switch (type)
     {
     case DOCUMENT_ITEM_HEADING:
-        item = (DocumentItem*)itemLA.allocate(sizeof(DocumentItemHeading));
+        item = (DocumentItem*)la.allocate(sizeof(DocumentItemHeading));
         item->type = type;
-        item->size = sizeof(DocumentItemHeading);
+        break;
+    case DOCUMENT_ITEM_PARAGRAPH:
+        item = (DocumentItem*)la.allocate(sizeof(DocumentItemParagraph));
+        item->type = type;
         break;
     default:
         break;
     }
 
     LD_ASSERT(item);
-    parseState.emplace(item);
-
     return item;
 }
 
-void DocumentObj::pop_state(DocumentItemType typeCheck)
+DocumentSpan* DocumentObj::allocate_span(DocumentSpanType type)
 {
-    LD_ASSERT(parseState.top().item->type == typeCheck);
+    DocumentSpan* span = nullptr;
 
-    parseState.pop();
+    switch (type)
+    {
+    case DOCUMENT_SPAN_TEXT:
+        span = (DocumentSpan*)la.allocate(sizeof(DocumentSpanText));
+        span->type = type;
+        break;
+    default:
+        break;
+    }
+
+    LD_ASSERT(span);
+    span->text = {};
+    return span;
 }
 
 int DocumentObj::on_parser_enter_block(MDBlockType type, const MDBlockDetail& detail, void* user)
@@ -136,15 +147,23 @@ int DocumentObj::on_parser_enter_block(MDBlockType type, const MDBlockDetail& de
         break;
     case MD_BLOCK_TYPE_H:
     {
-        item = obj->push_state(DOCUMENT_ITEM_HEADING);
-        obj->items.push_back(item);
+        item = obj->allocate_item(DOCUMENT_ITEM_HEADING);
+        obj->parseItems.push(item);
         auto* heading = (DocumentItemHeading*)item;
         heading->level = detail.h.level;
+        break;
+    }
+    case MD_BLOCK_TYPE_P:
+    {
+        item = obj->allocate_item(DOCUMENT_ITEM_PARAGRAPH);
+        obj->parseItems.push(item);
         break;
     }
     default:
         LD_UNREACHABLE;
     }
+
+    obj->spanCounter;
 
     return 0;
 }
@@ -153,18 +172,33 @@ int DocumentObj::on_parser_leave_block(MDBlockType type, const MDBlockDetail& de
 {
     auto* obj = (DocumentObj*)user;
 
-    switch (type)
+    if (type == MD_BLOCK_TYPE_DOC)
     {
-    case MD_BLOCK_TYPE_DOC:
-        break;
-    case MD_BLOCK_TYPE_H:
-    {
-        obj->pop_state(DOCUMENT_ITEM_HEADING);
-        break;
+        LD_ASSERT(obj->parseItems.empty());
+        return 0;
     }
-    default:
-        LD_UNREACHABLE;
-    }
+
+    DocumentItem* item = obj->parseItems.top();
+    item->spans.data = nullptr; // resolved later
+    item->spans.size = obj->spanCounter;
+
+    obj->parseItems.pop();
+    obj->spanCounter = 0;
+    obj->items.push_back(item);
+
+    return 0;
+}
+
+int DocumentObj::on_parser_enter_span(MDSpanType type, const MDSpanDetail& detail, void* user)
+{
+    auto* obj = (DocumentObj*)user;
+
+    return 0;
+}
+
+int DocumentObj::on_parser_leave_span(MDSpanType type, const MDSpanDetail& detail, void* user)
+{
+    auto* obj = (DocumentObj*)user;
 
     return 0;
 }
@@ -174,20 +208,13 @@ int DocumentObj::on_parser_text(MDTextType type, const View& text, void* user)
     auto* obj = (DocumentObj*)user;
 
     LD_ASSERT(type == MD_TEXT_TYPE_NORMAL);
+    LD_ASSERT(!obj->parseItems.empty());
 
-    DocumentItem* item = obj->parseState.top().item;
+    DocumentSpan* span = obj->allocate_span(DOCUMENT_SPAN_TEXT);
+    span->text = text;
 
-    switch (item->type)
-    {
-    case DOCUMENT_ITEM_HEADING:
-    {
-        DocumentItemHeading* heading = (DocumentItemHeading*)item;
-        heading->text = text;
-        break;
-    }
-    default:
-        LD_UNREACHABLE;
-    }
+    obj->spans.push_back(span);
+    obj->spanCounter++;
 
     return 0;
 }
@@ -201,6 +228,8 @@ Document Document::create(const View& md)
     const MDCallback callbacks = {
         .onEnterBlock = &DocumentObj::on_parser_enter_block,
         .onLeaveBlock = &DocumentObj::on_parser_leave_block,
+        .onEnterSpan = &DocumentObj::on_parser_enter_span,
+        .onLeaveSpan = &DocumentObj::on_parser_leave_span,
         .onText = &DocumentObj::on_parser_text,
     };
 
@@ -209,6 +238,14 @@ Document Document::create(const View& md)
     {
         heap_delete<DocumentObj>(obj);
         return {};
+    }
+
+    // vector sizes are fixed now, store spans
+    size_t spanBase = 0;
+    for (DocumentItem* item : obj->items)
+    {
+        item->spans.data = obj->spans.data() + spanBase;
+        spanBase += item->spans.size;
     }
 
     return Document(obj);
@@ -221,6 +258,11 @@ void Document::destroy(Document doc)
     auto* obj = doc.unwrap();
 
     heap_delete<DocumentObj>(obj);
+}
+
+TView<DocumentItem*> Document::get_items()
+{
+    return TView<DocumentItem*>(mObj->items.data(), mObj->items.size());
 }
 
 std::string Document::print()
