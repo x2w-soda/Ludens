@@ -139,6 +139,7 @@ void ui_clear_popup_window();
 bool ui_push_popup_window(const char* popupName);
 
 /// @brief Push UITextWidget.
+UITextStorage* ui_push_text(UITextStorage* storage);
 UITextStorage* ui_push_text(UITextStorage* storage, const char* text);
 void ui_text_style(Color color, UIFont font);
 
@@ -155,6 +156,7 @@ UIImageStorage* ui_push_image(UIImageStorage* storage, float width, float height
 
 /// @brief Push UIPanelWidget.
 UIPanelStorage* ui_push_panel(UIPanelStorage* storage);
+UIPanelStorage* ui_push_panel(UIPanelStorage* storage, Color color);
 
 /// @brief Push UIToggleWidget.
 UIToggleStorage* ui_push_toggle(UIToggleStorage* storage);

@@ -16,7 +16,8 @@ enum TextSpanFlagBit : TextSpanFlagBits
 /// @brief A sequence of text that should be rendered with the same font, color and attributes.
 struct TextSpan
 {
-    View text;              // non-owning view into UTF-8 text
+    uint32_t offset;        // byte offset into UTF-8 text
+    uint32_t length;        // byte length of span
     Color fgColor;          // foreground text color
     TextSpanFlagBits flags; // rendering hints
 };

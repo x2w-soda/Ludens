@@ -15,6 +15,9 @@ struct UITextStorage
     float fontSize = 16.0f; /// rendered font size
     Color bgColor = 0;      /// background color for entire widget rect
     Color fgColor = 0;
+
+    void set_value(const std::string& newValue);
+    void set_value(const std::string& newValue, const Vector<TextSpan>& newSpans);
 };
 
 struct UITextWidget : UIWidget

@@ -1054,7 +1054,7 @@ bool ui_push_popup_window(const char* popupName)
     return true;
 }
 
-UITextStorage* ui_push_text(UITextStorage* storage, const char* text)
+UITextStorage* ui_push_text(UITextStorage* storage)
 {
     LD_ASSERT_UI_PUSH;
 
@@ -1063,14 +1063,19 @@ UITextStorage* ui_push_text(UITextStorage* storage, const char* text)
     UITextWidget textW = (UITextWidget)imWidget->widget;
     LD_ASSERT(textW.get_type() == UI_WIDGET_TEXT);
 
-    storage = textW.get_storage();
+    imWindow->imWidgetStack.push(imWidget);
+
+    return textW.get_storage();
+}
+
+UITextStorage* ui_push_text(UITextStorage* storage, const char* text)
+{
+    storage = ui_push_text(storage);
 
     if (text)
-        storage->value = std::string(text);
+        storage->set_value(std::string(text));
     else
         storage->value.clear();
-
-    imWindow->imWidgetStack.push(imWidget);
 
     return storage;
 }
@@ -1180,14 +1185,12 @@ UIPanelStorage* ui_push_panel(UIPanelStorage* storage)
     return panelW.get_storage();
 }
 
-void ui_panel_color(Color color)
+UIPanelStorage* ui_push_panel(UIPanelStorage* storage, Color color)
 {
-    LD_ASSERT_UI_TOP_WIDGET_TYPE(UI_WIDGET_BUTTON);
-
-    UIWidgetState* imWidget = sImContext->imWindow->imWidgetStack.top();
-    UIPanelStorage* storage = static_cast<UIPanelWidget>(imWidget->widget).get_storage();
-
+    storage = ui_push_panel(storage);
     storage->color = color;
+
+    return storage;
 }
 
 UIToggleStorage* ui_push_toggle(UIToggleStorage* storage)

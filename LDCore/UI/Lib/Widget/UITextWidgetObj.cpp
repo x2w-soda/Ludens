@@ -6,6 +6,35 @@
 
 namespace LD {
 
+void UITextStorage::set_value(const std::string& newValue)
+{
+    value = newValue;
+
+    spans.resize(1);
+    spans[0] = {};
+    spans[0].fgColor = 0xFFFFFFFF;
+    spans[0].length = (uint32_t)value.size();
+}
+
+void UITextStorage::set_value(const std::string& newValue, const Vector<TextSpan>& newSpans)
+{
+    uint32_t base = 0;
+
+    for (const TextSpan& span : newSpans)
+    {
+        if (base != span.offset || span.offset + span.length > newValue.size())
+        {
+            LD_UNREACHABLE;
+            return;
+        }
+
+        base = span.offset + span.length;
+    }
+
+    value = newValue;
+    spans = newSpans;
+}
+
 void UITextWidgetObj::startup(UIWidgetObj* obj, void* storage)
 {
     UIContextObj* ctx = obj->ctx();
@@ -48,6 +77,7 @@ void UITextWidget::on_draw(UIWidget widget, ScreenRenderComponent renderer)
     if (storage->bgColor.get_alpha() > 0.0f)
         renderer.draw_rect(rect, storage->bgColor);
 
+    // TODO: UIFont for each span segment.
     renderer.draw_text(self.font.font_atlas(), self.font.image(), storage->fontSize, rect.get_pos(), storage->value.c_str(), storage->fgColor, wrapWidth);
 }
 
