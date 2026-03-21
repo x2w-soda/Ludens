@@ -1,3 +1,4 @@
+#include <Ludens/Header/Assert.h>
 #include <Ludens/Memory/Memory.h>
 #include <Ludens/UI/UITheme.h>
 #include <LudensEditor/EditorContext/EditorSettings.h>
@@ -22,6 +23,75 @@ struct EditorThemeObj
     Color stopButtonColor = 0xFF6347FF;
     Color errorColor = 0xFF5374FF;
 };
+
+UILayoutInfo EditorDocumentTheme::get_scroll_layout()
+{
+    UILayoutInfo layoutI{};
+    layoutI.childPadding = UIPadding(45.0f);
+    layoutI.childGap = 16.0f;
+    layoutI.childAxis = UI_AXIS_Y;
+    layoutI.sizeX = UISize::grow();
+    layoutI.sizeY = UISize::grow();
+
+    return layoutI;
+}
+
+UILayoutInfo EditorDocumentTheme::get_heading_layout(int level, float& outFontSize)
+{
+    float baseFontSize = mObj->fontSize;
+    float topPad = 0.0f;
+
+    switch (level)
+    {
+    case 1:
+        outFontSize = baseFontSize * 2.0f;
+        topPad = baseFontSize * 0.5f;
+        break;
+    case 2:
+        outFontSize = baseFontSize * 1.5f;
+        topPad = baseFontSize * 0.5f;
+        break;
+    case 3:
+        outFontSize = baseFontSize * 1.25f;
+        topPad = baseFontSize * 0.5f;
+        break;
+    case 4:
+        outFontSize = baseFontSize;
+        topPad = baseFontSize * 0.25f;
+        break;
+    case 5:
+    case 6:
+        outFontSize = baseFontSize;
+        topPad = 0.0f;
+        break;
+    default:
+        LD_UNREACHABLE;
+    }
+
+    UILayoutInfo layoutI{};
+    layoutI.childAxis = UI_AXIS_X;
+    layoutI.sizeX = UISize::fit();
+    layoutI.sizeY = UISize::fit();
+    layoutI.childPadding = UIPadding::top_bottom(topPad, 0.0f);
+
+    return layoutI;
+}
+
+UILayoutInfo EditorDocumentTheme::get_paragraph_layout()
+{
+    UILayoutInfo layoutI{};
+    layoutI.childAxis = UI_AXIS_X;
+    layoutI.childPadding = UIPadding(0.0f);
+    layoutI.sizeX = UISize::fit();
+    layoutI.sizeY = UISize::fit();
+
+    return layoutI;
+}
+
+EditorDocumentTheme EditorTheme::get_document_theme()
+{
+    return EditorDocumentTheme(mObj);
+}
 
 UITheme EditorTheme::get_ui_theme()
 {

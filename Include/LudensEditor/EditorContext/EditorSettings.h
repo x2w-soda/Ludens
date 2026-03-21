@@ -8,10 +8,19 @@
 
 namespace LD {
 
+struct EditorDocumentTheme : Handle<struct EditorThemeObj>
+{
+    UILayoutInfo get_scroll_layout();
+    UILayoutInfo get_heading_layout(int level, float& outFontSize);
+    UILayoutInfo get_paragraph_layout();
+};
+
 /// @brief Editor theme determines the color scheme, typography, UI layouts.
 struct EditorTheme : Handle<struct EditorThemeObj>
 {
+    EditorDocumentTheme get_document_theme();
     UITheme get_ui_theme();
+
     Color get_play_button_color() const;
     Color get_stop_button_color() const;
     float get_font_size() const;
