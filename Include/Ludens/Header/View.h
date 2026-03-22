@@ -3,6 +3,8 @@
 #include <cstddef>
 #include <cstring>
 #include <format>
+#include <string>
+#include <type_traits>
 
 namespace LD {
 
@@ -13,14 +15,43 @@ struct TView
     T* data;
     size_t size;
 
+    TView() = default;
+
+    TView(T* data, size_t size)
+        : data(data), size(size)
+    {
+    }
+
+    /// @brief View into C string.
+    TView(const char* cstr)
+        : data(cstr)
+    {
+        static_assert(sizeof(T) == 1);
+        size = cstr ? strlen(cstr) : 0;
+    }
+
+    /// @brief View into std string, valid before the std string invalidates.
+    TView(const std::string& str)
+        : data((T*)str.data()), size(str.size())
+    {
+        static_assert(sizeof(T) == 1);
+    }
+
+    /// @brief Copy std string_view, valid before the std string_view invalidates.
+    TView(const std::string_view& strView)
+        : data(strView.data()), size(strView.size())
+    {
+        static_assert(sizeof(T) == 1);
+    }
+
     /// @brief A view is 'truthy' if and only if it is non-null and non-zero size.
     inline operator bool() const { return data && size > 0; }
 
     /// @brief A view is equal to a C string if and only if they have same byte size and contents.
-    ///        Returns false if view is 'falsy' or string is null.
+    ///        Returns false if input C string is null.
     bool operator==(const char* cstr) const
     {
-        if (!*this || !cstr)
+        if (!cstr)
             return false;
 
         size_t len = strlen(cstr);

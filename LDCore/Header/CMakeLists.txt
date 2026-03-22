@@ -4,6 +4,7 @@ set(MODULE_BENCHMARK_NAME LDHeaderBenchmark)
 set(MODULE_INCLUDE
     ${LUDENS_INCLUDE_DIR}/Ludens/Header/Assert.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Header/Bitwise.h
+    ${LUDENS_INCLUDE_DIR}/Ludens/Header/Range.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Header/View.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Header/Error.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Header/Handle.h
@@ -32,6 +33,8 @@ set(MODULE_INCLUDE
 set(MODULE_TEST
     ${MODULE_INCLUDE}
     Test/HeaderTest.cpp
+    Test/RangeTest.cpp
+    Test/ViewTest.cpp
     Test/HashTest.cpp
     Test/GeometryTest.cpp
     Test/ColorTest.cpp
