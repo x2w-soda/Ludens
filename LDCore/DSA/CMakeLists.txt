@@ -2,6 +2,7 @@ set(MODULE_NAME LDDSA)
 set(MODULE_TEST_NAME LDDSATest)
 
 set(MODULE_INCLUDE
+	${LUDENS_INCLUDE_DIR}/Ludens/DSA/URI.h
 	${LUDENS_INCLUDE_DIR}/Ludens/DSA/IDCounter.h
 	${LUDENS_INCLUDE_DIR}/Ludens/DSA/IDRegistry.h
 	${LUDENS_INCLUDE_DIR}/Ludens/DSA/Buffer.h
@@ -28,6 +29,7 @@ set(MODULE_LIB
 set(MODULE_TEST
 	Test/DSATest.h
 	Test/DSATest.cpp
+	Test/URITest.cpp
 	Test/IDCounterTest.cpp
 	Test/IDRegistryTest.cpp
 	Test/HeapStorageTest.cpp
