@@ -55,6 +55,13 @@ TEST_CASE("URI Malformed")
     CHECK_FALSE(uri.query());
     CHECK_FALSE(uri.fragment());
 
+    uri = URI("plain text no scheme");
+    CHECK_FALSE(uri.scheme());
+    CHECK(uri.authority() == "plain text no scheme");
+    CHECK_FALSE(uri.path());
+    CHECK_FALSE(uri.query());
+    CHECK_FALSE(uri.fragment());
+
     // handle the case where query comes after fragment
     uri = URI("doc://media/icon.png#top?color=red");
     CHECK(uri.scheme() == "doc");
@@ -62,6 +69,38 @@ TEST_CASE("URI Malformed")
     CHECK(uri.path() == "icon.png");
     CHECK(uri.query() == "color=red");
     CHECK(uri.fragment() == "top");
+
+    // excessive slashes
+    uri = URI("doc://///manual/path");
+    CHECK(uri.scheme() == "doc");
+    CHECK_FALSE(uri.authority());
+    CHECK_FALSE(uri.path() == "//path");
+    CHECK_FALSE(uri.query());
+    CHECK_FALSE(uri.fragment());
+
+    // fragment with slashes
+    uri = URI("doc://manual#fragment/path/still/path");
+    CHECK(uri.scheme() == "doc");
+    CHECK(uri.authority() == "manual");
+    CHECK_FALSE(uri.path());
+    CHECK_FALSE(uri.query());
+    CHECK(uri.fragment() == "fragment/path/still/path");
+
+    // delimiter only
+    uri = URI("://?#");
+    CHECK_FALSE(uri.scheme());
+    CHECK_FALSE(uri.authority());
+    CHECK_FALSE(uri.path());
+    CHECK_FALSE(uri.query());
+    CHECK_FALSE(uri.fragment());
+
+    // multiple ?
+    uri = URI("doc://api/Search?name=test?type=lua");
+    CHECK(uri.scheme() == "doc");
+    CHECK(uri.authority() == "api");
+    CHECK(uri.path() == "Search");
+    CHECK(uri.query() == "name=test?type=lua");
+    CHECK_FALSE(uri.fragment());
 }
 
 TEST_CASE("URI HTTP")
