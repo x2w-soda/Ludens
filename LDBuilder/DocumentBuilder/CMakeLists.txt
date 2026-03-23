@@ -13,6 +13,8 @@ set(MODULE_LIB
 
 set(MODULE_TEST
     Test/DocumentBuilderTest.cpp
+    Test/DocumentItemTest.cpp
+    Test/DocumentSpanTest.cpp
 )
 
 add_ludens_builder_module(

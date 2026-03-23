@@ -14,6 +14,14 @@
 
 namespace LD {
 
+static_assert(LD::IsTrivial<DocumentSpan>);
+static_assert(LD::IsTrivial<DocumentSpanText>);
+static_assert(LD::IsTrivial<DocumentSpanImage>);
+
+static_assert(LD::IsTrivial<DocumentItem>);
+static_assert(LD::IsTrivial<DocumentItemHeading>);
+static_assert(LD::IsTrivial<DocumentItemParagraph>);
+
 struct DocumentParseState
 {
     DocumentItem* item;
@@ -24,6 +32,7 @@ struct DocumentObj
     Vector<DocumentItem*> items;
     Vector<DocumentSpan*> spans;
     Stack<DocumentItem*> parseItems;
+    Stack<DocumentSpan*> parseSpans;
     LinearAllocator la;
     size_t spanCounter = 0;
 
@@ -113,6 +122,9 @@ DocumentItem* DocumentObj::allocate_item(DocumentItemType type)
     }
 
     LD_ASSERT(item);
+    parseItems.push(item);
+    items.push_back(item);
+
     return item;
 }
 
@@ -124,14 +136,22 @@ DocumentSpan* DocumentObj::allocate_span(DocumentSpanType type)
     {
     case DOCUMENT_SPAN_TEXT:
         span = (DocumentSpan*)la.allocate(sizeof(DocumentSpanText));
-        span->type = type;
+        break;
+    case DOCUMENT_SPAN_LINK:
+        span = (DocumentSpan*)la.allocate(sizeof(DocumentSpanLink));
+        break;
+    case DOCUMENT_SPAN_IMAGE:
+        span = (DocumentSpan*)la.allocate(sizeof(DocumentSpanImage));
         break;
     default:
-        break;
+        LD_UNREACHABLE;
     }
 
-    LD_ASSERT(span);
+    span->type = type;
     span->text = {};
+    parseSpans.push(span);
+    spans.push_back(span);
+
     return span;
 }
 
@@ -148,7 +168,6 @@ int DocumentObj::on_parser_enter_block(MDBlockType type, const MDBlockDetail& de
     case MD_BLOCK_TYPE_H:
     {
         item = obj->allocate_item(DOCUMENT_ITEM_HEADING);
-        obj->parseItems.push(item);
         auto* heading = (DocumentItemHeading*)item;
         heading->level = detail.h.level;
         break;
@@ -156,14 +175,13 @@ int DocumentObj::on_parser_enter_block(MDBlockType type, const MDBlockDetail& de
     case MD_BLOCK_TYPE_P:
     {
         item = obj->allocate_item(DOCUMENT_ITEM_PARAGRAPH);
-        obj->parseItems.push(item);
         break;
     }
     default:
         LD_UNREACHABLE;
     }
 
-    obj->spanCounter;
+    obj->spanCounter = 0;
 
     return 0;
 }
@@ -183,8 +201,6 @@ int DocumentObj::on_parser_leave_block(MDBlockType type, const MDBlockDetail& de
     item->spans.size = obj->spanCounter;
 
     obj->parseItems.pop();
-    obj->spanCounter = 0;
-    obj->items.push_back(item);
 
     return 0;
 }
@@ -193,12 +209,49 @@ int DocumentObj::on_parser_enter_span(MDSpanType type, const MDSpanDetail& detai
 {
     auto* obj = (DocumentObj*)user;
 
+    switch (type)
+    {
+    case MD_SPAN_TYPE_A:
+    {
+        auto* link = (DocumentSpanLink*)obj->allocate_span(DOCUMENT_SPAN_LINK);
+        link->span.text = detail.a.title;
+        link->href = detail.a.href;
+        link->title = detail.a.title;
+        break;
+    }
+    case MD_SPAN_TYPE_IMG:
+    {
+        auto* image = (DocumentSpanImage*)obj->allocate_span(DOCUMENT_SPAN_IMAGE);
+        image->uri = detail.img.src;
+        break;
+    }
+    default:
+        LD_UNREACHABLE;
+    }
+
     return 0;
 }
 
 int DocumentObj::on_parser_leave_span(MDSpanType type, const MDSpanDetail& detail, void* user)
 {
     auto* obj = (DocumentObj*)user;
+
+    LD_ASSERT(!obj->parseSpans.empty());
+    DocumentSpan* span = obj->parseSpans.top();
+
+    switch (type)
+    {
+    case MD_SPAN_TYPE_A:
+        LD_ASSERT(span->type == DOCUMENT_SPAN_LINK);
+        break;
+    case MD_SPAN_TYPE_IMG:
+        LD_ASSERT(span->type == DOCUMENT_SPAN_IMAGE);
+        break;
+    default:
+        LD_UNREACHABLE;
+    }
+
+    obj->parseSpans.pop();
 
     return 0;
 }
@@ -219,10 +272,18 @@ int DocumentObj::on_parser_text(MDTextType type, const View& text, void* user)
 
     LD_ASSERT(!obj->parseItems.empty());
 
-    DocumentSpan* span = obj->allocate_span(DOCUMENT_SPAN_TEXT);
+    DocumentSpan* span = nullptr;
+
+    if (obj->parseSpans.empty())
+    {
+        span = obj->allocate_span(DOCUMENT_SPAN_TEXT);
+        obj->parseSpans.pop();
+    }
+    else
+        span = obj->parseSpans.top();
+
     span->text = text;
 
-    obj->spans.push_back(span);
     obj->spanCounter++;
 
     return 0;

@@ -11,6 +11,8 @@ namespace LD {
 enum DocumentSpanType
 {
     DOCUMENT_SPAN_TEXT,
+    DOCUMENT_SPAN_LINK,
+    DOCUMENT_SPAN_IMAGE,
 };
 
 struct DocumentSpan
@@ -22,6 +24,19 @@ struct DocumentSpan
 struct DocumentSpanText
 {
     DocumentSpan span;
+};
+
+struct DocumentSpanLink
+{
+    DocumentSpan span;
+    View href;
+    View title;
+};
+
+struct DocumentSpanImage
+{
+    DocumentSpan span;
+    View uri;
 };
 
 enum DocumentItemType
