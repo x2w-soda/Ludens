@@ -25,6 +25,10 @@ void EditorUI::startup(const EditorUIInfo& info)
     mRenderSystem = info.renderSystem;
     mEnvCubemap = (RUID)0; // info.envCubemap
 
+    ui_imgui_startup(mCtx.get_font_default());
+    eui_startup(mCtx);
+    eui_push_theme(mCtx.get_theme());
+
     EditorUITopBarInfo barI{};
     barI.barHeight = EDITOR_BAR_HEIGHT;
     barI.ctx = mCtx;
@@ -42,19 +46,11 @@ void EditorUI::startup(const EditorUIInfo& info)
     EditorUIDialogInfo dialogI{};
     dialogI.ctx = mCtx;
     mDialog = EditorUIDialog::create(dialogI);
-
-    ui_imgui_startup(mCtx.get_font_default());
-    eui_startup(mCtx);
-    eui_push_theme(mCtx.get_theme());
 }
 
 void EditorUI::cleanup()
 {
     LD_PROFILE_SCOPE;
-
-    eui_pop_theme();
-    eui_cleanup();
-    ui_imgui_cleanup();
 
     EditorUIDialog::destroy(mDialog);
     mDialog = {};
@@ -64,6 +60,10 @@ void EditorUI::cleanup()
 
     EditorUITopBar::destroy(mTopBar);
     mTopBar = {};
+
+    eui_pop_theme();
+    eui_cleanup();
+    ui_imgui_cleanup();
 }
 
 void EditorUI::update(float delta)
