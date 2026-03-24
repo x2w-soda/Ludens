@@ -15,6 +15,10 @@ struct LudensLFS
     /// @note Mostly a static helper for doctest to skip test cases during CRT initialization.
     static bool get_directory_path(std::filesystem::path* path = nullptr);
 
+    /// @brief Statically locate engine root directory path.
+    /// @note Mostly a static helper for doctest to skip test cases during CRT initialization.
+    static bool get_root_directory_path(std::filesystem::path* path = nullptr);
+
     bool isFound;
 
     std::filesystem::path lfsPath;

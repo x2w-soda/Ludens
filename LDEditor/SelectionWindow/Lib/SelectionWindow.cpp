@@ -12,7 +12,7 @@ static bool get_directory_contents_with_filter(const FS::Path& directory, Vector
 {
     std::string err;
 
-    if (!FS::get_directory_content(directory, contents, err))
+    if (!FS::get_directory_content(directory, contents, false, err))
         return false;
 
     FS::filter_files_by_extension(contents, extFilter);

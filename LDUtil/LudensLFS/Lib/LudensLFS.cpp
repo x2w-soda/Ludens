@@ -75,6 +75,30 @@ bool LudensLFS::get_directory_path(std::filesystem::path* path)
     return false;
 }
 
+bool LudensLFS::get_root_directory_path(std::filesystem::path* path)
+{
+    const char* candidates[] = {
+        "../Ludens/README.md",
+        "../../Ludens/README.md",
+        "../../../Ludens/README.md",
+        "../../../../Ludens/README.md",
+        "../../../../../Ludens/README.md",
+    };
+
+    for (const char* candidate : candidates)
+    {
+        if (fs::exists(candidate))
+        {
+            fs::path rootDirectory(candidate);
+            if (path)
+                *path = rootDirectory.parent_path();
+            return true;
+        }
+    }
+
+    return false;
+}
+
 /// @brief Locates the LudensLFS submodule during CRT initialization.
 LudensLFS sLudensLFS;
 
