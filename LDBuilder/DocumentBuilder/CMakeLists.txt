@@ -19,6 +19,7 @@ set(MODULE_TEST
     Test/DocumentItemTest.cpp
     Test/DocumentSpanTest.cpp
     Test/DocumentTest.cpp
+    Test/DocumentRegistryTest.cpp
 )
 
 add_ludens_builder_module(
@@ -34,4 +35,5 @@ add_ludens_builder_module_test(
 
 target_link_libraries(${MODULE_TEST_NAME} PRIVATE
     ${MODULE_NAME}
+    LDLudensLFS
 )

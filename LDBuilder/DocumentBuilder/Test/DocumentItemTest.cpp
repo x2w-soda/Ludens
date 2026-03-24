@@ -9,7 +9,7 @@ using namespace LD;
 // early testing, needs some generalization later.
 TEST_CASE("DocumentItem headings")
 {
-    Document doc = create_document(R"(
+    Document doc = require_document(R"(
 # heading 1
 ## heading 2
 ### heading 3
@@ -41,7 +41,7 @@ TEST_CASE("DocumentItem headings")
 
 TEST_CASE("DocumentItem paragraph")
 {
-    Document doc = create_document(R"(
+    Document doc = require_document(R"(
 first paragraph
 
 second paragraph

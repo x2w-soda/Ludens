@@ -8,7 +8,7 @@ using namespace LD;
 
 TEST_CASE("DocumentSpan Link")
 {
-    Document doc = create_document(R"(a paragraph with [link text](doc://manual/path/to/file.md "link title") span)");
+    Document doc = require_document(R"(a paragraph with [link text](doc://manual/path/to/file.md "link title") span)");
     auto items = doc.get_items();
     CHECK(items.size == 1);
 
@@ -35,7 +35,7 @@ TEST_CASE("DocumentSpan Link")
 
 TEST_CASE("DocumentSpan Image")
 {
-    Document doc = create_document(R"(a paragraph with ![image](media://texture/path/to/image.png) span)");
+    Document doc = require_document(R"(a paragraph with ![image](media://texture/path/to/image.png) span)");
     CHECK(doc);
     auto items = doc.get_items();
     CHECK(items.size == 1);

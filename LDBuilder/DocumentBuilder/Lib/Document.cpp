@@ -11,7 +11,6 @@
 #include <format>
 #include <string>
 
-#define DOCUMENT_MEMORY_USAGE MEMORY_USAGE_MISC
 #define DOCUMENT_LA_PAGE_SIZE 1024
 
 namespace LD {
@@ -100,7 +99,7 @@ DocumentObj::DocumentObj()
     LinearAllocatorInfo laI{};
     laI.isMultiPage = true;
     laI.capacity = DOCUMENT_LA_PAGE_SIZE;
-    laI.usage = DOCUMENT_MEMORY_USAGE;
+    laI.usage = MEMORY_USAGE_DOCUMENT;
     la = LinearAllocator::create(laI);
 }
 
@@ -174,10 +173,10 @@ void DocumentObj::add_uri(View view)
 
     parseURIs.insert(uriString);
 
-    if (uri.scheme() == "doc" && uri.authority() == "manual")
+    if (uri.scheme() == "doc" && uri.authority() == "Manual")
         refs.manual.push_back(view);
-    else if (uri.scheme() == "doc" && uri.authority() == "api")
-        refs.api.push_back(view);
+    else if (uri.scheme() == "doc" && uri.authority() == "LuaAPI")
+        refs.luaAPI.push_back(view);
     else
         refs.misc.push_back(view);
 }
@@ -322,7 +321,7 @@ Document Document::create(const DocumentInfo& info, std::string& err)
 {
     LD_PROFILE_SCOPE;
 
-    auto* obj = heap_new<DocumentObj>(DOCUMENT_MEMORY_USAGE);
+    auto* obj = heap_new<DocumentObj>(MEMORY_USAGE_DOCUMENT);
 
     obj->uri = URI(info.uri);
     LD_ASSERT(obj->uri.scheme() == "doc");

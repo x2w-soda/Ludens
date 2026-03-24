@@ -6,6 +6,12 @@
 
 namespace LD {
 
+struct DocumentRegistryValidator
+{
+    bool (*onMiscURI)(View uri);
+    std::string missingURI;
+};
+
 struct DocumentRegistry : Handle<struct DocumentRegistryObj>
 {
     /// @brief Create empty document registry.
@@ -19,6 +25,9 @@ struct DocumentRegistry : Handle<struct DocumentRegistryObj>
 
     /// @brief Retrieve document from its URI.
     Document get_document(const char* uri);
+
+    /// @brief Validate if all URIs in documents are valid.
+    bool validate(DocumentRegistryValidator& validator);
 };
 
 } // namespace LD

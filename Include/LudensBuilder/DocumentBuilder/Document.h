@@ -67,8 +67,8 @@ struct DocumentItemParagraph
 /// @brief All URI references that a Document contains.
 struct DocumentRefs
 {
-    Vector<View> manual; // docs://manual
-    Vector<View> api;    // docs://api
+    Vector<View> manual; // docs://Manual
+    Vector<View> luaAPI; // docs://LuaAPI
     Vector<View> misc;   // other unknown URI
 };
 
