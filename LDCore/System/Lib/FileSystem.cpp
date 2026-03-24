@@ -37,7 +37,7 @@ Path temp_directory_path()
     return fs::temp_directory_path();
 }
 
-bool get_directory_content(const Path& directory, Vector<Path>& contents, std::string& err)
+bool get_directory_content(const Path& directory, Vector<Path>& contents, bool recursive, std::string& err)
 {
     if (!fs::exists(directory))
     {
@@ -57,9 +57,15 @@ bool get_directory_content(const Path& directory, Vector<Path>& contents, std::s
     {
         contents.clear();
 
-        for (const fs::directory_entry& entry : fs::directory_iterator(directory))
+        if (recursive)
         {
-            contents.push_back(entry.path());
+            for (const fs::directory_entry& entry : fs::recursive_directory_iterator(directory))
+                contents.push_back(entry.path());
+        }
+        else
+        {
+            for (const fs::directory_entry& entry : fs::directory_iterator(directory))
+                contents.push_back(entry.path());
         }
     }
     catch (const fs::filesystem_error& e)

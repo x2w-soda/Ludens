@@ -33,9 +33,10 @@ Path temp_directory_path();
 /// @brief Query the contents of a directory, non-recursively.
 /// @param directory Path to directory to query.
 /// @param contents Output contents of the directory.
+/// @param recursive Whether the search is recursive.
 /// @param err Output error message.
 /// @return True on success.
-bool get_directory_content(const Path& directory, Vector<Path>& contents, std::string& err);
+bool get_directory_content(const Path& directory, Vector<Path>& contents, bool recursive, std::string& err);
 
 /// @brief Get file size in bytes.
 bool get_file_size(const Path& path, uint64_t& size, std::string& err);
