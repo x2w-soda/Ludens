@@ -31,6 +31,9 @@ public:
         parse();
     }
 
+    inline const std::string& string() const { return mString; }
+    inline View view() const { return View(mString.data(), mString.size()); }
+
     inline View scheme() const { return View(mString.data() + mSchemeRange.offset, mSchemeRange.size); }
     inline View authority() const { return View(mString.data() + mAuthorityRange.offset, mAuthorityRange.size); }
     inline View path() const { return View(mString.data() + mPathRange.offset, mPathRange.size); }

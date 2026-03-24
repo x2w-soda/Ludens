@@ -2,21 +2,21 @@
 #include <Ludens/Memory/Memory.h>
 #include <LudensBuilder/DocumentBuilder/Document.h>
 
+#include "DocumentBuilderTest.h"
+
 using namespace LD;
 
 // early testing, needs some generalization later.
 TEST_CASE("DocumentItem headings")
 {
-    static const char md[] = R"(
+    Document doc = create_document(R"(
 # heading 1
 ## heading 2
 ### heading 3
 #### heading 4
 ##### heading 5
 ###### heading 6
-)";
-    Document doc = Document::create(View(md, sizeof(md) - 1));
-    CHECK(doc);
+)");
     auto items = doc.get_items();
     CHECK(items.size == 6);
 
@@ -41,15 +41,13 @@ TEST_CASE("DocumentItem headings")
 
 TEST_CASE("DocumentItem paragraph")
 {
-    static const char md[] = R"(
+    Document doc = create_document(R"(
 first paragraph
 
 second paragraph
 with some more
 line breaks
-)";
-    Document doc = Document::create(View(md, sizeof(md) - 1));
-    CHECK(doc);
+)");
     auto items = doc.get_items();
     CHECK(items.size == 2);
 

@@ -1,3 +1,4 @@
+#include <Ludens/DSA/HashSet.h>
 #include <Ludens/DSA/Stack.h>
 #include <Ludens/DSA/Vector.h>
 #include <Ludens/Header/Assert.h>
@@ -8,6 +9,7 @@
 #include <LudensBuilder/DocumentBuilder/Document.h>
 
 #include <format>
+#include <string>
 
 #define DOCUMENT_MEMORY_USAGE MEMORY_USAGE_MISC
 #define DOCUMENT_LA_PAGE_SIZE 1024
@@ -29,10 +31,13 @@ struct DocumentParseState
 
 struct DocumentObj
 {
+    URI uri = {};
+    DocumentRefs refs = {};
     Vector<DocumentItem*> items;
     Vector<DocumentSpan*> spans;
     Stack<DocumentItem*> parseItems;
     Stack<DocumentSpan*> parseSpans;
+    HashSet<std::string> parseURIs;
     LinearAllocator la;
     size_t spanCounter = 0;
 
@@ -44,6 +49,7 @@ struct DocumentObj
 
     DocumentItem* allocate_item(DocumentItemType type);
     DocumentSpan* allocate_span(DocumentSpanType type);
+    void add_uri(View uri);
 
     static int on_parser_enter_block(MDBlockType type, const MDBlockDetail& detail, void* user);
     static int on_parser_leave_block(MDBlockType type, const MDBlockDetail& detail, void* user);
@@ -155,6 +161,27 @@ DocumentSpan* DocumentObj::allocate_span(DocumentSpanType type)
     return span;
 }
 
+void DocumentObj::add_uri(View view)
+{
+    if (!view)
+        return;
+
+    URI uri(view);
+    const std::string& uriString = uri.string();
+
+    if (parseURIs.contains(uriString))
+        return;
+
+    parseURIs.insert(uriString);
+
+    if (uri.scheme() == "doc" && uri.authority() == "manual")
+        refs.manual.push_back(view);
+    else if (uri.scheme() == "doc" && uri.authority() == "api")
+        refs.api.push_back(view);
+    else
+        refs.misc.push_back(view);
+}
+
 int DocumentObj::on_parser_enter_block(MDBlockType type, const MDBlockDetail& detail, void* user)
 {
     auto* obj = (DocumentObj*)user;
@@ -217,12 +244,14 @@ int DocumentObj::on_parser_enter_span(MDSpanType type, const MDSpanDetail& detai
         link->span.text = detail.a.title;
         link->href = detail.a.href;
         link->title = detail.a.title;
+        obj->add_uri(link->href);
         break;
     }
     case MD_SPAN_TYPE_IMG:
     {
         auto* image = (DocumentSpanImage*)obj->allocate_span(DOCUMENT_SPAN_IMAGE);
         image->uri = detail.img.src;
+        obj->add_uri(image->uri);
         break;
     }
     default:
@@ -289,11 +318,14 @@ int DocumentObj::on_parser_text(MDTextType type, const View& text, void* user)
     return 0;
 }
 
-Document Document::create(const View& md)
+Document Document::create(const DocumentInfo& info, std::string& err)
 {
     LD_PROFILE_SCOPE;
 
     auto* obj = heap_new<DocumentObj>(DOCUMENT_MEMORY_USAGE);
+
+    obj->uri = URI(info.uri);
+    LD_ASSERT(obj->uri.scheme() == "doc");
 
     const MDCallback callbacks = {
         .onEnterBlock = &DocumentObj::on_parser_enter_block,
@@ -303,8 +335,7 @@ Document Document::create(const View& md)
         .onText = &DocumentObj::on_parser_text,
     };
 
-    std::string err;
-    if (!MDParser::parse(md, err, callbacks, obj))
+    if (!MDParser::parse(info.md, err, callbacks, obj))
     {
         heap_delete<DocumentObj>(obj);
         return {};
@@ -318,6 +349,10 @@ Document Document::create(const View& md)
         spanBase += item->spans.size;
     }
 
+    LD_ASSERT(obj->parseItems.empty());
+    LD_ASSERT(obj->parseSpans.empty());
+    obj->parseURIs.clear();
+
     return Document(obj);
 }
 
@@ -328,6 +363,16 @@ void Document::destroy(Document doc)
     auto* obj = doc.unwrap();
 
     heap_delete<DocumentObj>(obj);
+}
+
+View Document::get_uri()
+{
+    return mObj->uri.view();
+}
+
+DocumentRefs Document::get_references()
+{
+    return mObj->refs;
 }
 
 TView<DocumentItem*> Document::get_items()

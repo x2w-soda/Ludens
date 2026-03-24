@@ -2,13 +2,13 @@
 #include <Ludens/Memory/Memory.h>
 #include <LudensBuilder/DocumentBuilder/Document.h>
 
+#include "DocumentBuilderTest.h"
+
 using namespace LD;
 
 TEST_CASE("DocumentSpan Link")
 {
-    static const char md[] = R"(a paragraph with [link text](doc://manual/path/to/file.md "link title") span)";
-    Document doc = Document::create(View(md, sizeof(md) - 1));
-    CHECK(doc);
+    Document doc = create_document(R"(a paragraph with [link text](doc://manual/path/to/file.md "link title") span)");
     auto items = doc.get_items();
     CHECK(items.size == 1);
 
@@ -35,8 +35,7 @@ TEST_CASE("DocumentSpan Link")
 
 TEST_CASE("DocumentSpan Image")
 {
-    static const char md[] = R"(a paragraph with ![image](media://texture/path/to/image.png) span)";
-    Document doc = Document::create(View(md, sizeof(md) - 1));
+    Document doc = create_document(R"(a paragraph with ![image](media://texture/path/to/image.png) span)");
     CHECK(doc);
     auto items = doc.get_items();
     CHECK(items.size == 1);
