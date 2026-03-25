@@ -25,6 +25,8 @@ static_assert((int)LD::MD_TEXT_TYPE_NORMAL == (int)::MD_TEXT_NORMAL);
 static_assert((int)LD::MD_TEXT_TYPE_NULL_CHAR == (int)::MD_TEXT_NULLCHAR);
 static_assert((int)LD::MD_TEXT_TYPE_BR == (int)::MD_TEXT_BR);
 static_assert((int)LD::MD_TEXT_TYPE_SOFT_BR == (int)::MD_TEXT_SOFTBR);
+static_assert((int)LD::MD_TEXT_TYPE_ENTITY == (int)::MD_TEXT_ENTITY);
+static_assert((int)LD::MD_TEXT_TYPE_CODE == (int)::MD_TEXT_CODE);
 
 static_assert((int)LD::MD_SPAN_TYPE_EM == (int)::MD_SPAN_EM);
 static_assert((int)LD::MD_SPAN_TYPE_STRONG == (int)::MD_SPAN_STRONG);
@@ -74,6 +76,11 @@ static inline bool get_native_block_detail(MDBlockType inType, void* inDetail, M
         return true;
     case MD_BLOCK_TYPE_H:
         outDetail.h.level = static_cast<MD_BLOCK_H_DETAIL*>(inDetail)->level;
+        return true;
+    case MD_BLOCK_TYPE_CODE:
+        outDetail.code.lang = View(static_cast<MD_BLOCK_CODE_DETAIL*>(inDetail)->lang.text,
+                                   static_cast<MD_BLOCK_CODE_DETAIL*>(inDetail)->lang.size);
+        outDetail.code.fenceChar = (char)static_cast<MD_BLOCK_CODE_DETAIL*>(inDetail)->fence_char;
         return true;
     default:
         break;

@@ -13,6 +13,7 @@ namespace LD {
 enum DocumentSpanType
 {
     DOCUMENT_SPAN_TEXT,
+    DOCUMENT_SPAN_CODE,
     DOCUMENT_SPAN_LINK,
     DOCUMENT_SPAN_IMAGE,
 };
@@ -24,6 +25,11 @@ struct DocumentSpan
 };
 
 struct DocumentSpanText
+{
+    DocumentSpan span;
+};
+
+struct DocumentSpanCode
 {
     DocumentSpan span;
 };
@@ -45,6 +51,9 @@ enum DocumentItemType
 {
     DOCUMENT_ITEM_HEADING,
     DOCUMENT_ITEM_PARAGRAPH,
+    DOCUMENT_ITEM_CODE_BLOCK,
+    DOCUMENT_ITEM_LIST_ENTRY,
+    DOCUMENT_ITEM_ENUM_COUNT,
 };
 
 struct DocumentItem
@@ -62,6 +71,18 @@ struct DocumentItemHeading
 struct DocumentItemParagraph
 {
     DocumentItem item;
+};
+
+struct DocumentItemCodeBlock
+{
+    DocumentItem item;
+    View lang;
+};
+
+struct DocumentItemListEntry
+{
+    DocumentItem item;
+    int index;
 };
 
 /// @brief All URI references that a Document contains.

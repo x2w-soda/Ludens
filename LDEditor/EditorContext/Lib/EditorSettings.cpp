@@ -88,6 +88,17 @@ UILayoutInfo EditorDocumentTheme::get_paragraph_layout()
     return layoutI;
 }
 
+UILayoutInfo EditorDocumentTheme::get_code_block_layout()
+{
+    UILayoutInfo layoutI{};
+    layoutI.childAxis = UI_AXIS_X;
+    layoutI.childPadding = UIPadding::left_right(5.0f, 5.0f);
+    layoutI.sizeX = UISize::fit();
+    layoutI.sizeY = UISize::fit();
+
+    return layoutI;
+}
+
 EditorDocumentTheme EditorTheme::get_document_theme()
 {
     return EditorDocumentTheme(mObj);

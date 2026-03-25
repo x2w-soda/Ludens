@@ -54,6 +54,12 @@ union MDBlockDetail
     {
         int level; /// header level 1-6
     } h;
+
+    struct Code
+    {
+        View lang;
+        char fenceChar;
+    } code;
 };
 
 enum MDSpanType
@@ -86,6 +92,8 @@ enum MDTextType
     MD_TEXT_TYPE_NULL_CHAR,
     MD_TEXT_TYPE_BR,      // hard line break with <br>
     MD_TEXT_TYPE_SOFT_BR, // soft line break '\n' found in source text
+    MD_TEXT_TYPE_ENTITY,
+    MD_TEXT_TYPE_CODE,
 };
 
 struct MDCallback

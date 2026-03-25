@@ -27,15 +27,23 @@ struct EUIDocumentMeta
 static std::string document_span_to_text_span(TView<DocumentSpan*> srcSpans, Vector<TextSpan>& dstSpans);
 static void build_document_item_heading(DocumentItem* src, EUIDocumentItemStorage& dst);
 static void build_document_item_paragraph(DocumentItem* src, EUIDocumentItemStorage& dst);
-static void eui_document_item_heading(EUIDocumentState& state, EUIDocumentItemStorage& item);
-static void eui_document_item_paragraph(EUIDocumentState& state, EUIDocumentItemStorage& item);
+static void build_document_item_code_block(DocumentItem* src, EUIDocumentItemStorage& dst);
+static void build_document_item_list_entry(DocumentItem* src, EUIDocumentItemStorage& dst);
+static void eui_document_item_heading(EUIDocumentState& state, EUIDocumentItemStorage& storage);
+static void eui_document_item_paragraph(EUIDocumentState& state, EUIDocumentItemStorage& storage);
+static void eui_document_item_code_block(EUIDocumentState& state, EUIDocumentItemStorage& storage);
+static void eui_document_item_list_entry(EUIDocumentState& state, EUIDocumentItemStorage& storage);
 
 // clang-format off
 static EUIDocumentMeta sEUIDocumentMeta[] = {
-    { &build_document_item_heading,   &eui_document_item_heading },
-    { &build_document_item_paragraph, &eui_document_item_paragraph },
+    { &build_document_item_heading,    &eui_document_item_heading },
+    { &build_document_item_paragraph,  &eui_document_item_paragraph },
+    { &build_document_item_code_block, &eui_document_item_code_block },
+    { &build_document_item_list_entry, &eui_document_item_list_entry },
 };
 // clang-format on
+
+static_assert(sizeof(sEUIDocumentMeta) / sizeof(*sEUIDocumentMeta) == (int)DOCUMENT_ITEM_ENUM_COUNT);
 
 // Adapter to convert DocumentSpan to TextSpan for rendering.
 static std::string document_span_to_text_span(TView<DocumentSpan*> srcSpans, Vector<TextSpan>& dstSpans)
@@ -89,6 +97,38 @@ static void build_document_item_paragraph(DocumentItem* src, EUIDocumentItemStor
     dst.text.fgColor = theme.get_ui_theme().get_on_surface_color();
 }
 
+static void build_document_item_code_block(DocumentItem* src, EUIDocumentItemStorage& dst)
+{
+    LD_ASSERT(src->type == DOCUMENT_ITEM_CODE_BLOCK);
+
+    EditorTheme theme = eui_get_theme();
+    auto* block = (DocumentItemCodeBlock*)src;
+
+    // TODO: more decoration for code blocks,
+    //       display language, copy button, etc.
+    (void)block;
+
+    Vector<TextSpan> textSpans;
+    std::string value = document_span_to_text_span(src->spans, textSpans);
+    dst.item = src;
+    dst.text.set_value(value, textSpans);
+    dst.text.fgColor = theme.get_ui_theme().get_on_surface_color();
+}
+
+static void build_document_item_list_entry(DocumentItem* src, EUIDocumentItemStorage& dst)
+{
+    LD_ASSERT(src->type == DOCUMENT_ITEM_LIST_ENTRY);
+
+    EditorTheme theme = eui_get_theme();
+
+    // TODO:
+    Vector<TextSpan> textSpans;
+    std::string value = document_span_to_text_span(src->spans, textSpans);
+    dst.item = src;
+    dst.text.set_value(value, textSpans);
+    dst.text.fgColor = theme.get_ui_theme().get_on_surface_color();
+}
+
 static void eui_document_item_heading(EUIDocumentState& state, EUIDocumentItemStorage& storage)
 {
     LD_ASSERT(storage.item->type == DOCUMENT_ITEM_HEADING);
@@ -111,6 +151,30 @@ static void eui_document_item_paragraph(EUIDocumentState& state, EUIDocumentItem
     ui_top_layout(state.docTheme.get_paragraph_layout());
     UITextStorage* text = ui_push_text(&storage.text);
     text->fontSize = state.fontSize;
+    ui_pop();
+    ui_pop();
+}
+
+static void eui_document_item_code_block(EUIDocumentState& state, EUIDocumentItemStorage& storage)
+{
+    LD_ASSERT(storage.item->type == DOCUMENT_ITEM_CODE_BLOCK);
+
+    ui_push_panel(nullptr, state.uiTheme.get_field_color());
+    ui_top_layout(state.docTheme.get_code_block_layout());
+    UITextStorage* text = ui_push_text(&storage.text);
+    text->fontSize = state.fontSize;
+    ui_pop();
+    ui_pop();
+}
+
+static void eui_document_item_list_entry(EUIDocumentState& state, EUIDocumentItemStorage& storage)
+{
+    LD_ASSERT(storage.item->type == DOCUMENT_ITEM_LIST_ENTRY);
+
+    ui_push_panel(nullptr);
+    ui_top_layout(state.docTheme.get_paragraph_layout());
+    UITextStorage* text = ui_push_text(&storage.text);
+    text->fontSize = state.fontSize; // TODO: list item font size?
     ui_pop();
     ui_pop();
 }

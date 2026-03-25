@@ -13,6 +13,7 @@ struct EditorDocumentTheme : Handle<struct EditorThemeObj>
     UILayoutInfo get_scroll_layout();
     UILayoutInfo get_heading_layout(int level, float& outFontSize);
     UILayoutInfo get_paragraph_layout();
+    UILayoutInfo get_code_block_layout();
 };
 
 /// @brief Editor theme determines the color scheme, typography, UI layouts.

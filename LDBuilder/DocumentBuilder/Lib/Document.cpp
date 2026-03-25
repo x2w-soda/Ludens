@@ -22,6 +22,8 @@ static_assert(LD::IsTrivial<DocumentSpanImage>);
 static_assert(LD::IsTrivial<DocumentItem>);
 static_assert(LD::IsTrivial<DocumentItemHeading>);
 static_assert(LD::IsTrivial<DocumentItemParagraph>);
+static_assert(LD::IsTrivial<DocumentItemCodeBlock>);
+static_assert(LD::IsTrivial<DocumentItemListEntry>);
 
 struct DocumentParseState
 {
@@ -32,13 +34,15 @@ struct DocumentObj
 {
     URI uri = {};
     DocumentRefs refs = {};
+    Vector<std::string*> strings;
     Vector<DocumentItem*> items;
     Vector<DocumentSpan*> spans;
     Stack<DocumentItem*> parseItems;
     Stack<DocumentSpan*> parseSpans;
     HashSet<std::string> parseURIs;
     LinearAllocator la;
-    size_t spanCounter = 0;
+    int spanCounter = 0;
+    int listEntryIndex = 0;
 
     DocumentObj();
     DocumentObj(const DocumentObj&) = delete;
@@ -49,6 +53,8 @@ struct DocumentObj
     DocumentItem* allocate_item(DocumentItemType type);
     DocumentSpan* allocate_span(DocumentSpanType type);
     void add_uri(View uri);
+    void pop_item();
+    void pop_string_span();
 
     static int on_parser_enter_block(MDBlockType type, const MDBlockDetail& detail, void* user);
     static int on_parser_leave_block(MDBlockType type, const MDBlockDetail& detail, void* user);
@@ -60,19 +66,26 @@ struct DocumentObj
 struct DocumentItemMeta
 {
     DocumentItemType type;
+    size_t byteSize;
     const char* typeCstr;
     std::string (*print)(DocumentItem* item);
 };
 
 static std::string print_document_item_heading(DocumentItem* item);
 static std::string print_document_item_paragraph(DocumentItem* item);
+static std::string print_document_item_code_block(DocumentItem* item);
+static std::string print_document_item_list_entry(DocumentItem* item);
 
 // clang-format off
 static DocumentItemMeta sItemMeta[] = {
-    {DOCUMENT_ITEM_HEADING,   "DocumentItemHeading",   &print_document_item_heading},
-    {DOCUMENT_ITEM_PARAGRAPH, "DocumentItemParagraph", &print_document_item_paragraph},
+    {DOCUMENT_ITEM_HEADING,    sizeof(DocumentItemHeading),   "DocumentItemHeading",   &print_document_item_heading},
+    {DOCUMENT_ITEM_PARAGRAPH,  sizeof(DocumentItemParagraph), "DocumentItemParagraph", &print_document_item_paragraph},
+    {DOCUMENT_ITEM_CODE_BLOCK, sizeof(DocumentItemCodeBlock), "DocumentItemCodeBlock", &print_document_item_code_block},
+    {DOCUMENT_ITEM_LIST_ENTRY, sizeof(DocumentItemListEntry), "DocumentItemListEntry", &print_document_item_list_entry},
 };
 // clang-format on
+
+static_assert(sizeof(sItemMeta) / sizeof(*sItemMeta) == (int)DOCUMENT_ITEM_ENUM_COUNT);
 
 static std::string print_document_item_heading(DocumentItem* item)
 {
@@ -86,10 +99,28 @@ static std::string print_document_item_heading(DocumentItem* item)
     return str;
 }
 
-std::string print_document_item_paragraph(DocumentItem* item)
+static std::string print_document_item_paragraph(DocumentItem* item)
 {
     std::string str = sItemMeta[item->type].typeCstr;
     str += std::format(" {} spans\n", item->spans.size);
+
+    return str;
+}
+
+static std::string print_document_item_code_block(DocumentItem* item)
+{
+    std::string str = sItemMeta[item->type].typeCstr;
+    str += std::format(" {} spans\n", item->spans.size);
+
+    return str;
+}
+
+static std::string print_document_item_list_entry(DocumentItem* item)
+{
+    auto* entry = (DocumentItemListEntry*)item;
+
+    std::string str = sItemMeta[item->type].typeCstr;
+    str += std::format(" {}\n", entry->index);
 
     return str;
 }
@@ -105,28 +136,18 @@ DocumentObj::DocumentObj()
 
 DocumentObj::~DocumentObj()
 {
+    for (std::string* str : strings)
+        heap_delete<std::string>(str);
+
     LinearAllocator::destroy(la);
 }
 
 DocumentItem* DocumentObj::allocate_item(DocumentItemType type)
 {
-    DocumentItem* item = nullptr;
-
-    switch (type)
-    {
-    case DOCUMENT_ITEM_HEADING:
-        item = (DocumentItem*)la.allocate(sizeof(DocumentItemHeading));
-        item->type = type;
-        break;
-    case DOCUMENT_ITEM_PARAGRAPH:
-        item = (DocumentItem*)la.allocate(sizeof(DocumentItemParagraph));
-        item->type = type;
-        break;
-    default:
-        break;
-    }
-
+    DocumentItem* item = (DocumentItem*)la.allocate(sItemMeta[(int)type].byteSize);
     LD_ASSERT(item);
+
+    item->type = type;
     parseItems.push(item);
     items.push_back(item);
 
@@ -141,6 +162,9 @@ DocumentSpan* DocumentObj::allocate_span(DocumentSpanType type)
     {
     case DOCUMENT_SPAN_TEXT:
         span = (DocumentSpan*)la.allocate(sizeof(DocumentSpanText));
+        break;
+    case DOCUMENT_SPAN_CODE:
+        span = (DocumentSpan*)la.allocate(sizeof(DocumentSpanCode));
         break;
     case DOCUMENT_SPAN_LINK:
         span = (DocumentSpan*)la.allocate(sizeof(DocumentSpanLink));
@@ -157,6 +181,8 @@ DocumentSpan* DocumentObj::allocate_span(DocumentSpanType type)
     parseSpans.push(span);
     spans.push_back(span);
 
+    spanCounter++;
+
     return span;
 }
 
@@ -165,68 +191,123 @@ void DocumentObj::add_uri(View view)
     if (!view)
         return;
 
-    URI uri(view);
-    const std::string& uriString = uri.string();
+    URI uriView(view);
+    const std::string& uriString = uriView.string();
 
     if (parseURIs.contains(uriString))
         return;
 
     parseURIs.insert(uriString);
 
-    if (uri.scheme() == "doc" && uri.authority() == "Manual")
+    if (uriView.scheme() == "doc" && uriView.authority() == "Manual")
         refs.manual.push_back(view);
-    else if (uri.scheme() == "doc" && uri.authority() == "LuaAPI")
+    else if (uriView.scheme() == "doc" && uriView.authority() == "LuaAPI")
         refs.luaAPI.push_back(view);
     else
         refs.misc.push_back(view);
 }
 
+void DocumentObj::pop_item()
+{
+    DocumentItem* item = parseItems.top();
+    parseItems.pop();
+
+    item->spans.data = nullptr; // resolved later
+    item->spans.size = (size_t)spanCounter;
+
+    spanCounter = 0;
+}
+
+void DocumentObj::pop_string_span()
+{
+    DocumentSpan* span = parseSpans.top();
+    std::string* code = strings.back();
+
+    span->text = View(code->data(), code->size());
+    parseSpans.pop();
+}
+
 int DocumentObj::on_parser_enter_block(MDBlockType type, const MDBlockDetail& detail, void* user)
 {
     auto* obj = (DocumentObj*)user;
-
-    DocumentItem* item = nullptr;
+    obj->spanCounter = 0;
 
     switch (type)
     {
     case MD_BLOCK_TYPE_DOC:
         break;
+    case MD_BLOCK_TYPE_UL:
+    {
+        obj->listEntryIndex = -1;
+        break;
+    }
+    case MD_BLOCK_TYPE_OL:
+    {
+        obj->listEntryIndex = detail.ol.start;
+        break;
+    }
+    case MD_BLOCK_TYPE_LI:
+    {
+        auto* entry = (DocumentItemListEntry*)obj->allocate_item(DOCUMENT_ITEM_LIST_ENTRY);
+        entry->index = -1;
+        if (obj->listEntryIndex >= 0)
+            entry->index = obj->listEntryIndex++;
+        break;
+    }
     case MD_BLOCK_TYPE_H:
     {
-        item = obj->allocate_item(DOCUMENT_ITEM_HEADING);
-        auto* heading = (DocumentItemHeading*)item;
+        auto* heading = (DocumentItemHeading*)obj->allocate_item(DOCUMENT_ITEM_HEADING);
         heading->level = detail.h.level;
+        break;
+    }
+    case MD_BLOCK_TYPE_CODE:
+    {
+        auto* block = (DocumentItemCodeBlock*)obj->allocate_item(DOCUMENT_ITEM_CODE_BLOCK);
+        block->lang = detail.code.lang;
+        obj->strings.push_back(heap_new<std::string>(MEMORY_USAGE_DOCUMENT));
+        (void)obj->allocate_span(DOCUMENT_SPAN_TEXT); // accumulate within code block
         break;
     }
     case MD_BLOCK_TYPE_P:
     {
-        item = obj->allocate_item(DOCUMENT_ITEM_PARAGRAPH);
+        (void)obj->allocate_item(DOCUMENT_ITEM_PARAGRAPH);
         break;
     }
     default:
         LD_UNREACHABLE;
     }
 
-    obj->spanCounter = 0;
-
     return 0;
 }
 
-int DocumentObj::on_parser_leave_block(MDBlockType type, const MDBlockDetail& detail, void* user)
+int DocumentObj::on_parser_leave_block(MDBlockType type, const MDBlockDetail&, void* user)
 {
     auto* obj = (DocumentObj*)user;
 
-    if (type == MD_BLOCK_TYPE_DOC)
+    switch (type)
     {
+    case MD_BLOCK_TYPE_DOC:
         LD_ASSERT(obj->parseItems.empty());
-        return 0;
+        break;
+    case MD_BLOCK_TYPE_CODE:
+    {
+        LD_ASSERT(obj->spanCounter == 1);
+        obj->pop_string_span();
+        obj->pop_item();
+        break;
     }
-
-    DocumentItem* item = obj->parseItems.top();
-    item->spans.data = nullptr; // resolved later
-    item->spans.size = obj->spanCounter;
-
-    obj->parseItems.pop();
+    case MD_BLOCK_TYPE_H:
+    case MD_BLOCK_TYPE_P:
+    case MD_BLOCK_TYPE_LI:
+        obj->pop_item();
+        break;
+    case MD_BLOCK_TYPE_UL:
+    case MD_BLOCK_TYPE_OL:
+        break;
+    default:
+        LD_DEBUG_BREAK;
+        return 1;
+    }
 
     return 0;
 }
@@ -253,6 +334,9 @@ int DocumentObj::on_parser_enter_span(MDSpanType type, const MDSpanDetail& detai
         obj->add_uri(image->uri);
         break;
     }
+    case MD_SPAN_TYPE_CODE:
+        (void)obj->allocate_span(DOCUMENT_SPAN_CODE);
+        break;
     default:
         LD_UNREACHABLE;
     }
@@ -266,6 +350,7 @@ int DocumentObj::on_parser_leave_span(MDSpanType type, const MDSpanDetail& detai
 
     LD_ASSERT(!obj->parseSpans.empty());
     DocumentSpan* span = obj->parseSpans.top();
+    obj->parseSpans.pop();
 
     switch (type)
     {
@@ -275,11 +360,13 @@ int DocumentObj::on_parser_leave_span(MDSpanType type, const MDSpanDetail& detai
     case MD_SPAN_TYPE_IMG:
         LD_ASSERT(span->type == DOCUMENT_SPAN_IMAGE);
         break;
+    case MD_SPAN_TYPE_CODE:
+        LD_ASSERT(span->type == DOCUMENT_SPAN_CODE);
+        break;
     default:
-        LD_UNREACHABLE;
+        LD_DEBUG_BREAK;
+        return 1;
     }
-
-    obj->parseSpans.pop();
 
     return 0;
 }
@@ -287,22 +374,29 @@ int DocumentObj::on_parser_leave_span(MDSpanType type, const MDSpanDetail& detai
 int DocumentObj::on_parser_text(MDTextType type, const View& text, void* user)
 {
     auto* obj = (DocumentObj*)user;
+    LD_ASSERT(!obj->parseItems.empty());
 
     switch (type)
     {
     case MD_TEXT_TYPE_SOFT_BR:
         return 0; // soft line break '\n' ignored here
+    case MD_TEXT_TYPE_CODE:
+        if (obj->parseItems.top()->type == DOCUMENT_ITEM_CODE_BLOCK)
+        {
+            obj->strings.back()->append(text.data, text.size);
+            return 0;
+        }
+        break; // inline <code></code> span
     case MD_TEXT_TYPE_NORMAL:
         break;
     default:
-        LD_UNREACHABLE;
+        LD_DEBUG_BREAK;
+        return 1;
     }
-
-    LD_ASSERT(!obj->parseItems.empty());
 
     DocumentSpan* span = nullptr;
 
-    if (obj->parseSpans.empty())
+    if (obj->parseSpans.empty()) // create span on the fly
     {
         span = obj->allocate_span(DOCUMENT_SPAN_TEXT);
         obj->parseSpans.pop();
@@ -311,8 +405,6 @@ int DocumentObj::on_parser_text(MDTextType type, const View& text, void* user)
         span = obj->parseSpans.top();
 
     span->text = text;
-
-    obj->spanCounter++;
 
     return 0;
 }
