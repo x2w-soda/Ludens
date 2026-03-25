@@ -44,10 +44,10 @@ struct TView
         static_assert(sizeof(T) == 1);
     }
 
-    /// @brief A view is 'truthy' if and only if it is non-null and non-zero size.
+    /// @brief A view is 'truthy' iff it is non-null and non-zero size.
     inline operator bool() const { return data && size > 0; }
 
-    /// @brief A view is equal to a C string if and only if they have same byte size and contents.
+    /// @brief A view is equal to a C string iff they have same byte size and contents.
     ///        Returns false if input C string is null.
     bool operator==(const char* cstr) const
     {
@@ -67,7 +67,15 @@ struct TView
         return true;
     }
 
-    /// @brief Two views are equal if and only if they have same byte size and contents.
+    /// @brief A view is equal to a char iff the view is of size one and the character matches.
+    ///        Returns false if input C string is null.
+    inline bool operator==(char c) const
+    {
+        static_assert(sizeof(T) == 1);
+        return size == 1 && static_cast<char>(data[0]) == c;
+    }
+
+    /// @brief Two views are equal iff they have same byte size and contents.
     ///        Returns false if either view is 'falsy'.
     bool operator==(const TView& other) const
     {

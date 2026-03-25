@@ -31,6 +31,8 @@ public:
         parse();
     }
 
+    inline void clear() { mString.clear(); }
+    inline bool empty() const { return mString.empty(); }
     inline const std::string& string() const { return mString; }
     inline View view() const { return View(mString.data(), mString.size()); }
 
