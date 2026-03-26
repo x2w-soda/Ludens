@@ -175,6 +175,17 @@ UILayoutInfo EditorTheme::make_vbox_layout(float* childGap, float* childPad) con
     return layoutI;
 }
 
+UILayoutInfo EditorTheme::make_vbox_layout_fixed(const Vec2& extent) const
+{
+    UILayoutInfo layoutI{};
+    layoutI.childGap = mObj->childGap;
+    layoutI.childPadding = UIPadding(mObj->childPad);
+    layoutI.childAxis = UI_AXIS_Y;
+    layoutI.sizeX = UISize::fixed(extent.x);
+    layoutI.sizeY = UISize::fixed(extent.y);
+    return layoutI;
+}
+
 UILayoutInfo EditorTheme::make_hbox_layout(float* childGap, float* childPad) const
 {
     float gap = childGap ? *childGap : mObj->childGap;

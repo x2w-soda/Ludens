@@ -9,7 +9,6 @@
 #include <Ludens/Scene/Scene.h>
 #include <Ludens/System/FileSystem.h>
 #include <Ludens/UI/UILayout.h>
-#include <LudensEditor/EditorContext/EditorAction.h>
 #include <LudensEditor/EditorContext/EditorEvent.h>
 #include <LudensEditor/EditorContext/EditorSettings.h>
 
@@ -47,45 +46,12 @@ struct EditorContext : Handle<struct EditorContextObj>
     /// @brief Callback to render Scene screen space contents.
     static void render_system_screen_pass_overlay_callback(ScreenRenderComponent renderer, TView<int> regionVPIndices, int overlayVPIndex, void* user);
 
-    /// @brief Enqueue an editor action that either takes no parameters
-    ///        or could be interpreted as an EditorRequestEvent
-    void action(EditorActionType type);
+    /// @brief Add an EditorEvent to the event queue for deferred processing.
+    ///        This is non-blocking and returns the event that is allocated by EditorContext.
+    EditorEvent* enqueue_event(EditorEventType type);
 
-    /// @brief Redo most recent undo.
-    void action_redo();
-
-    /// @brief Undo previous edit.
-    void action_undo();
-
-    /// @brief Create new empty scene.
-    void action_new_scene(const FS::Path& sceneSchemaPath);
-
-    /// @brief Open existing scene.
-    void action_open_scene(const FS::Path& sceneSchemaPath);
-
-    /// @brief Open existing project.
-    void action_open_project(const FS::Path& projectSchemaPath);
-
-    /// @brief Save the current scene schema to disk.
-    void action_save_scene();
-
-    /// @brief Add a new component under parent.
-    void action_add_component(SUID compSUID, ComponentType type);
-
-    /// @brief Add script to component.
-    void action_add_component_script(SUID compSUID, AssetID scriptAssetID);
-
-    // NOTE: temporary, needs refactoring once a component has multiple asset slots
-    void action_set_component_asset(SUID compSUID, AssetID assetID);
-
-    /// @brief Clone a component subtree
-    void action_clone_component_subtree(SUID compSUID);
-
-    /// @brief Delete a component subtree.
-    void action_delete_component_subtree(SUID compSUID);
-
-    /// @brief Complete all editor actions in queue.
-    void poll_actions();
+    /// @brief Blocks until all events are processed.
+    void poll_events();
 
     /// @brief Get directory of current project.
     FS::Path get_project_directory();
@@ -154,9 +120,6 @@ struct EditorContext : Handle<struct EditorContextObj>
     /// @brief Get the C string name of a component
     const char* get_component_name(CUID compCUID);
 
-    /// @brief Notify observers of a request event.
-    void request_event(const EditorRequestEvent* event);
-
     /// @brief Assign a component in scene to be selected.
     /// @note Emits EDITOR_EVENT_TYPE_NOTIFY_COMPONENT_SELECTION for observers.
     void set_selected_component(CUID compCUID);
@@ -180,15 +143,6 @@ struct EditorContext : Handle<struct EditorContextObj>
 
     /// @brief Get the local transform associated with the selected object in scene.
     bool get_selected_component_transform(TransformEx& transform);
-
-    /// @brief Default fixed size container layout for EditorWindow.
-    UILayoutInfo make_editor_window_layout(const Vec2& size);
-
-    /// @brief Default ui layout for vertical containers, taking editor theme into account.
-    UILayoutInfo make_vbox_layout();
-
-    /// @brief Default ui layout for horizontal containers, taking editor theme into account.
-    UILayoutInfo make_hbox_layout();
 };
 
 } // namespace LD

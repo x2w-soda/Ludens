@@ -2,7 +2,7 @@ set(MODULE_NAME LDEditorContext)
 set(MODULE_TEST_NAME LDEditorContextTest)
 
 set(MODULE_LIB
-	Lib/EditorAction.cpp
+	Lib/EditorEventQueue.cpp
 	Lib/EditorContext.cpp
 	Lib/EditorContextCommand.h
 	Lib/EditorContextCommand.cpp
@@ -13,8 +13,8 @@ set(MODULE_LIB
 
 set(MODULE_INCLUDE
 	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorContext/EditorEvent.h
+	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorContext/EditorEventQueue.h
 	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorContext/EditorContext.h
-	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorContext/EditorAction.h
 	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorContext/EditorSettings.h
 	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorContext/EditorWindow.h
 	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorContext/EditorIconAtlas.h
@@ -30,7 +30,6 @@ add_ludens_editor_module(
 set(MODULE_TEST
     Test/EditorContextTest.h
     Test/EditorContextTest.cpp
-    Test/EditorActionTest.cpp
     Test/EditStackTest.cpp
 )
 

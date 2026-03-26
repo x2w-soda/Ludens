@@ -2,6 +2,7 @@
 
 #include <Ludens/Asset/Asset.h>
 #include <Ludens/DataRegistry/DataRegistry.h>
+#include <Ludens/System/FileSystem.h>
 
 namespace LD {
 
@@ -23,12 +24,33 @@ enum EditorEventType
     EDITOR_EVENT_TYPE_REQUEST_NEW_SCENE,
     EDITOR_EVENT_TYPE_REQUEST_OPEN_SCENE,
     EDITOR_EVENT_TYPE_REQUEST_CREATE_COMPONENT,
+    EDITOR_EVENT_TYPE_REQUEST_DOCUMENT,
+    EDITOR_EVENT_TYPE_ACTION_UNDO,
+    EDITOR_EVENT_TYPE_ACTION_REDO,
+    EDITOR_EVENT_TYPE_ACTION_NEW_SCENE,
+    EDITOR_EVENT_TYPE_ACTION_OPEN_SCENE,
+    EDITOR_EVENT_TYPE_ACTION_SAVE_SCENE,
+    EDITOR_EVENT_TYPE_ACTION_OPEN_PROJECT,
+    EDITOR_EVENT_TYPE_ACTION_ADD_COMPONENT,
+    EDITOR_EVENT_TYPE_ACTION_ADD_COMPONENT_SCRIPT,
+    EDITOR_EVENT_TYPE_ACTION_SET_COMPONENT_ASSET,
+    EDITOR_EVENT_TYPE_ACTION_CLONE_COMPONENT_SUBTREE,
+    EDITOR_EVENT_TYPE_ACTION_DELETE_COMPONENT_SUBTREE,
+    EDITOR_EVENT_TYPE_ENUM_COUNT,
 };
 
 enum EditorEventCategory
 {
+    /// @brief Notify events signal a state change that observers may wish to adapt to.
     EDITOR_EVENT_CATEGORY_NOTIFY,
+
+    /// @brief Request events signal that some process should be initiated,
+    ///        no actions are committed yet and parameters are often unknown.
     EDITOR_EVENT_CATEGORY_REQUEST,
+
+    /// @brief Action events are transactional and will affect Undo Redo state,
+    ///        all parameters for the action type are already known.
+    EDITOR_EVENT_CATEGORY_ACTION,
 };
 
 struct EditorEvent
@@ -62,6 +84,15 @@ struct EditorRequestEvent : EditorEvent
     }
 };
 
+struct EditorActionEvent : EditorEvent
+{
+    EditorActionEvent() = delete;
+    EditorActionEvent(EditorEventType type)
+        : EditorEvent(type, EDITOR_EVENT_CATEGORY_ACTION)
+    {
+    }
+};
+
 /// @brief Event signaling that a Project has been loaded into the editor.
 struct EditorNotifyProjectLoadEvent : EditorNotifyEvent
 {
@@ -83,13 +114,13 @@ struct EditorNotifySceneLoadEvent : EditorNotifyEvent
 /// @brief Event signaling that the current selected component has changed.
 struct EditorNotifyComponentSelectionEvent : EditorNotifyEvent
 {
-    EditorNotifyComponentSelectionEvent(CUID compCUID)
-        : EditorNotifyEvent(EDITOR_EVENT_TYPE_NOTIFY_COMPONENT_SELECTION), cuid(compCUID)
+    EditorNotifyComponentSelectionEvent()
+        : EditorNotifyEvent(EDITOR_EVENT_TYPE_NOTIFY_COMPONENT_SELECTION)
     {
     }
 
     /// @brief The new component being selected, an invalid ID indicates that the selection is cleared.
-    const CUID cuid;
+    CUID cuid = 0;
 };
 
 /// @brief Event signaling a request to close the current dialog window.
@@ -113,14 +144,14 @@ struct EditorRequestProjectSettingsEvent : EditorRequestEvent
 /// @brief Event signaling that a component in current scene requests an asset change.
 struct EditorRequestComponentAssetEvent : EditorRequestEvent
 {
-    EditorRequestComponentAssetEvent(SUID component, AssetID oldAssetID, AssetType type)
-        : EditorRequestEvent(EDITOR_EVENT_TYPE_REQUEST_COMPONENT_ASSET), component(component), oldAssetID(oldAssetID), requestType(type)
+    EditorRequestComponentAssetEvent()
+        : EditorRequestEvent(EDITOR_EVENT_TYPE_REQUEST_COMPONENT_ASSET)
     {
     }
 
-    const SUID component;
-    const AssetID oldAssetID;
-    const AssetType requestType;
+    SUID component = 0;
+    AssetID oldAssetID = 0;
+    AssetType requestType = ASSET_TYPE_ENUM_COUNT;
 };
 
 /// @brief Event signaling the request for creating a new project.
@@ -162,12 +193,131 @@ struct EditorRequestOpenSceneEvent : EditorRequestEvent
 /// @brief Event signaling the request for creating a component in current scene.
 struct EditorRequestCreateComponentEvent : EditorRequestEvent
 {
-    EditorRequestCreateComponentEvent(SUID parent)
-        : EditorRequestEvent(EDITOR_EVENT_TYPE_REQUEST_CREATE_COMPONENT), parent(parent)
+    EditorRequestCreateComponentEvent()
+        : EditorRequestEvent(EDITOR_EVENT_TYPE_REQUEST_CREATE_COMPONENT)
     {
     }
 
-    const SUID parent;
+    SUID parent = 0;
+};
+
+/// @brief Event signaling the request for a document.
+struct EditorRequestDocumentEvent : EditorRequestEvent
+{
+    EditorRequestDocumentEvent()
+        : EditorRequestEvent(EDITOR_EVENT_TYPE_REQUEST_DOCUMENT)
+    {
+    }
+
+    // TODO: EditorWindowID as soon as we allow multiple DocumentWindow
+    std::string uri;
+};
+
+struct EditorActionUndoEvent : EditorActionEvent
+{
+    EditorActionUndoEvent()
+        : EditorActionEvent(EDITOR_EVENT_TYPE_ACTION_UNDO)
+    {
+    }
+};
+
+struct EditorActionRedoEvent : EditorActionEvent
+{
+    EditorActionRedoEvent()
+        : EditorActionEvent(EDITOR_EVENT_TYPE_ACTION_REDO)
+    {
+    }
+};
+
+struct EditorActionNewSceneEvent : EditorActionEvent
+{
+    EditorActionNewSceneEvent()
+        : EditorActionEvent(EDITOR_EVENT_TYPE_ACTION_NEW_SCENE)
+    {
+    }
+
+    FS::Path newScene;
+};
+
+struct EditorActionOpenSceneEvent : EditorActionEvent
+{
+    EditorActionOpenSceneEvent()
+        : EditorActionEvent(EDITOR_EVENT_TYPE_ACTION_OPEN_SCENE)
+    {
+    }
+
+    FS::Path openScene;
+};
+
+struct EditorActionSaveSceneEvent : EditorActionEvent
+{
+    EditorActionSaveSceneEvent()
+        : EditorActionEvent(EDITOR_EVENT_TYPE_ACTION_SAVE_SCENE)
+    {
+    }
+};
+
+struct EditorActionOpenProjectEvent : EditorActionEvent
+{
+    EditorActionOpenProjectEvent()
+        : EditorActionEvent(EDITOR_EVENT_TYPE_ACTION_OPEN_PROJECT)
+    {
+    }
+
+    FS::Path openProject;
+};
+
+struct EditorActionAddComponentEvent : EditorActionEvent
+{
+    EditorActionAddComponentEvent()
+        : EditorActionEvent(EDITOR_EVENT_TYPE_ACTION_ADD_COMPONENT)
+    {
+    }
+
+    SUID parentSUID = 0;
+    ComponentType compType = COMPONENT_TYPE_ENUM_COUNT;
+};
+
+struct EditorActionAddComponentScriptEvent : EditorActionEvent
+{
+    EditorActionAddComponentScriptEvent()
+        : EditorActionEvent(EDITOR_EVENT_TYPE_ACTION_ADD_COMPONENT_SCRIPT)
+    {
+    }
+
+    SUID compSUID = 0;
+    AssetID assetID = 0;
+};
+
+struct EditorActionSetComponentAssetEvent : EditorActionEvent
+{
+    EditorActionSetComponentAssetEvent()
+        : EditorActionEvent(EDITOR_EVENT_TYPE_ACTION_SET_COMPONENT_ASSET)
+    {
+    }
+
+    SUID compSUID = 0;
+    AssetID assetID = 0;
+};
+
+struct EditorActionCloneComponentSubtreeEvent : EditorActionEvent
+{
+    EditorActionCloneComponentSubtreeEvent()
+        : EditorActionEvent(EDITOR_EVENT_TYPE_ACTION_CLONE_COMPONENT_SUBTREE)
+    {
+    }
+
+    SUID compSUID = 0;
+};
+
+struct EditorActionDeleteComponentSubtreeEvent : EditorActionEvent
+{
+    EditorActionDeleteComponentSubtreeEvent()
+        : EditorActionEvent(EDITOR_EVENT_TYPE_ACTION_DELETE_COMPONENT_SUBTREE)
+    {
+    }
+
+    SUID compSUID = 0;
 };
 
 } // namespace LD

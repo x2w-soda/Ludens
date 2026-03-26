@@ -18,8 +18,9 @@
 #include <Ludens/System/FileSystem.h>
 #include <Ludens/System/Timer.h>
 #include <Ludens/UI/UIFont.h>
-#include <LudensEditor/EditorContext/EditorAction.h>
+#include <LudensBuilder/DocumentBuilder/DocumentRegistry.h>
 #include <LudensEditor/EditorContext/EditorContext.h>
+#include <LudensEditor/EditorContext/EditorEventQueue.h>
 
 #include <utility>
 
@@ -33,31 +34,31 @@ static Log sLog("EditorContext");
 ///        and active scene states.
 struct EditorContextObj
 {
-    RenderSystem renderSystem;     /// render server handle
-    AudioSystem audioSystem;       /// audio server handle
-    Image2D iconAtlas;             /// editor icon atlas handle
-    Project project;               /// current project under edit
-    Scene scene;                   /// current scene under edit
-    EditorSettings settings;       /// editor global settings
-    EditorActionQueue actionQueue; /// each action maps to one or more EditCommands.
-    EditStack editStack;           /// undo/redo stack of EditCommands
-    UIFontRegistry fontRegistry;   /// all fonts used by editor are registered here
-    UIFont fontDefault;            /// editor default regular font
-    UIFont fontMono;               /// editor default monospace font
-    FS::Path iconAtlasPath;        /// path to editor icon atlas source file
-    FS::Path sceneSchemaPath;      /// path to current scene file
-    FS::Path assetSchemaPath;      /// path to project asset file
-    FS::Path projectSchemaPath;    /// path to project file
-    std::string projectName;       /// project identifier
-    Vector<FS::Path> scenePaths;   /// path to scene schema files in project
-    HashMap<KeyValue, EditorActionType> keyBinds;
-    ObserverList<const EditorEvent*> observers;
-    CUID selectedComponentCUID = 0;
-    CUID prevSelectedComponentCUID = 0;
-    bool isPlaying;
+    RenderSystem renderSystem;                   /// render server handle
+    AudioSystem audioSystem;                     /// audio server handle
+    Image2D iconAtlas;                           /// editor icon atlas handle
+    Project project;                             /// current project under edit
+    Scene scene;                                 /// current scene under edit
+    EditorSettings settings;                     /// editor global settings
+    EditorEventQueue eventQueue;                 /// editor events waiting to be processed.
+    EditStack editStack;                         /// undo/redo stack of EditCommands
+    UIFontRegistry fontRegistry;                 /// all fonts used by editor are registered here
+    UIFont fontDefault;                          /// editor default regular font
+    UIFont fontMono;                             /// editor default monospace font
+    DocumentRegistry docRegistry;                /// all documents to be displayed in the editor.
+    FS::Path iconAtlasPath;                      /// path to editor icon atlas source file
+    FS::Path sceneSchemaPath;                    /// path to current scene file
+    FS::Path assetSchemaPath;                    /// path to project asset file
+    FS::Path projectSchemaPath;                  /// path to project file
+    Vector<FS::Path> scenePaths;                 /// path to scene schema files in project
+    HashMap<KeyValue, EditorEventType> keyBinds; /// key shortcuts to generate events
+    ObserverList<const EditorEvent*> observers;  /// all observers of EditorContext
+    CUID selectedComponentCUID = 0;              /// component selection state
+    CUID prevSelectedComponentCUID = 0;          /// previous component selection state
+    bool isPlaying = false;                      /// whether Scene simulation is in progress
 
+    void emit_event(EditorEventType type);
     void notify_observers(const EditorEvent* event);
-
     void load_project(const FS::Path& projectSchemaPath);
     void load_project_scene(const FS::Path& sceneSchemaPath);
     void new_project_scene(const FS::Path& sceneSchemaPath);
@@ -65,141 +66,230 @@ struct EditorContextObj
     void save_project_schema();
 };
 
-static void editor_action_undo(EditStack stack, const EditorAction& action, void* user);
-static void editor_action_redo(EditStack stack, const EditorAction& action, void* user);
-static void editor_action_new_scene(EditStack stack, const EditorAction& action, void* user);
-static void editor_action_open_scene(EditStack stack, const EditorAction& action, void* user);
-static void editor_action_save_scene(EditStack stack, const EditorAction& action, void* user);
-static void editor_action_open_project(EditStack stack, const EditorAction& action, void* user);
-static void editor_action_add_component(EditStack stack, const EditorAction& action, void* user);
-static void editor_action_add_component_script(EditStack stack, const EditorAction& action, void* user);
-static void editor_action_set_component_asset(EditStack stack, const EditorAction& action, void* user);
-static void editor_action_clone_component_subtree(EditStack stack, const EditorAction& action, void* user);
-static void editor_action_delete_component_subtree(EditStack stack, const EditorAction& action, void* user);
-static void editor_action_close_dialog(EditStack stack, const EditorAction& action, void* user);
+static void editor_broadcast_event_handler(const EditorEvent* event, void* user);
+static void editor_action_undo_event_handler(const EditorEvent* event, void* user);
+static void editor_action_redo_event_handler(const EditorEvent* event, void* user);
+static void editor_action_new_scene_event_handler(const EditorEvent* event, void* user);
+static void editor_action_open_scene_event_handler(const EditorEvent* event, void* user);
+static void editor_action_save_scene_event_handler(const EditorEvent* event, void* user);
+static void editor_action_open_project_event_handler(const EditorEvent* event, void* user);
+static void editor_action_add_component_event_handler(const EditorEvent* event, void* user);
+static void editor_action_add_component_script_event_handler(const EditorEvent* event, void* user);
+static void editor_action_set_component_asset_event_handler(const EditorEvent* event, void* user);
+static void editor_action_clone_component_subtree_event_handler(const EditorEvent* event, void* user);
+static void editor_action_delete_component_subtree_event_handler(const EditorEvent* event, void* user);
 
-static void editor_action_undo(EditStack stack, const EditorAction& action, void* user)
+static struct
 {
-    LD_PROFILE_SCOPE;
+    EditorEventType type;
+    EditorEventFn handler;
+} sEditorEventHandlers[] = {
+    {EDITOR_EVENT_TYPE_NOTIFY_PROJECT_LOAD, &editor_broadcast_event_handler},
+    {EDITOR_EVENT_TYPE_NOTIFY_SCENE_LOAD, &editor_broadcast_event_handler},
+    {EDITOR_EVENT_TYPE_NOTIFY_COMPONENT_SELECTION, &editor_broadcast_event_handler},
+    {EDITOR_EVENT_TYPE_REQUEST_CLOSE_DIALOG, &editor_broadcast_event_handler},
+    {EDITOR_EVENT_TYPE_REQUEST_PROJECT_SETTINGS, &editor_broadcast_event_handler},
+    {EDITOR_EVENT_TYPE_REQUEST_COMPONENT_ASSET, &editor_broadcast_event_handler},
+    {EDITOR_EVENT_TYPE_REQUEST_NEW_PROJECT, &editor_broadcast_event_handler},
+    {EDITOR_EVENT_TYPE_REQUEST_OPEN_PROJECT, &editor_broadcast_event_handler},
+    {EDITOR_EVENT_TYPE_REQUEST_NEW_SCENE, &editor_broadcast_event_handler},
+    {EDITOR_EVENT_TYPE_REQUEST_OPEN_SCENE, &editor_broadcast_event_handler},
+    {EDITOR_EVENT_TYPE_REQUEST_CREATE_COMPONENT, &editor_broadcast_event_handler},
+    {EDITOR_EVENT_TYPE_REQUEST_DOCUMENT, &editor_broadcast_event_handler},
+    {EDITOR_EVENT_TYPE_ACTION_UNDO, &editor_action_undo_event_handler},
+    {EDITOR_EVENT_TYPE_ACTION_REDO, &editor_action_redo_event_handler},
+    {EDITOR_EVENT_TYPE_ACTION_NEW_SCENE, &editor_action_new_scene_event_handler},
+    {EDITOR_EVENT_TYPE_ACTION_OPEN_SCENE, &editor_action_open_scene_event_handler},
+    {EDITOR_EVENT_TYPE_ACTION_SAVE_SCENE, &editor_action_save_scene_event_handler},
+    {EDITOR_EVENT_TYPE_ACTION_OPEN_PROJECT, &editor_action_open_project_event_handler},
+    {EDITOR_EVENT_TYPE_ACTION_ADD_COMPONENT, &editor_action_add_component_event_handler},
+    {EDITOR_EVENT_TYPE_ACTION_ADD_COMPONENT_SCRIPT, &editor_action_add_component_script_event_handler},
+    {EDITOR_EVENT_TYPE_ACTION_SET_COMPONENT_ASSET, &editor_action_set_component_asset_event_handler},
+    {EDITOR_EVENT_TYPE_ACTION_CLONE_COMPONENT_SUBTREE, &editor_action_clone_component_subtree_event_handler},
+    {EDITOR_EVENT_TYPE_ACTION_DELETE_COMPONENT_SUBTREE, &editor_action_delete_component_subtree_event_handler},
+};
 
-    stack.undo();
+static void editor_broadcast_event_handler(const EditorEvent* event, void* user)
+{
+    LD_ASSERT(event && user);
+
+    // broadcast events to all observers of EditorContext
+    auto* obj = (EditorContextObj*)user;
+    obj->notify_observers(event);
 }
 
-static void editor_action_redo(EditStack stack, const EditorAction& action, void* user)
+static void editor_action_undo_event_handler(const EditorEvent* event, void* user)
 {
-    LD_PROFILE_SCOPE;
+    LD_ASSERT(event->type == EDITOR_EVENT_TYPE_ACTION_UNDO);
 
-    stack.redo();
+    auto* obj = (EditorContextObj*)user;
+    obj->editStack.undo();
 }
 
-static void editor_action_new_scene(EditStack stack, const EditorAction& action, void* user)
+static void editor_action_redo_event_handler(const EditorEvent* event, void* user)
+{
+    LD_ASSERT(event->type == EDITOR_EVENT_TYPE_ACTION_REDO);
+
+    auto* obj = (EditorContextObj*)user;
+    obj->editStack.redo();
+}
+
+static void editor_action_new_scene_event_handler(const EditorEvent* event, void* user)
 {
     LD_PROFILE_SCOPE;
 
+    LD_ASSERT(event->type == EDITOR_EVENT_TYPE_ACTION_NEW_SCENE);
     EditorContextObj* obj = (EditorContextObj*)user;
+    auto* e = (const EditorActionNewSceneEvent*)event;
 
     // Creating new Scene would clear the EditStack
-    stack.clear();
+    obj->editStack.clear();
 
-    obj->new_project_scene(action.newScene);
+    obj->new_project_scene(e->newScene);
 }
 
-static void editor_action_open_scene(EditStack stack, const EditorAction& action, void* user)
+static void editor_action_open_scene_event_handler(const EditorEvent* event, void* user)
 {
     LD_PROFILE_SCOPE;
 
+    LD_ASSERT(event->type == EDITOR_EVENT_TYPE_ACTION_OPEN_SCENE);
     EditorContextObj* obj = (EditorContextObj*)user;
+    auto* e = (const EditorActionOpenSceneEvent*)event;
 
     // Opening Scene would clear the EditStack
-    stack.clear();
+    obj->editStack.clear();
 
-    obj->load_project_scene(action.openScene);
+    obj->load_project_scene(e->openScene);
 }
 
-static void editor_action_save_scene(EditStack stack, const EditorAction& action, void* user)
+static void editor_action_save_scene_event_handler(const EditorEvent* event, void* user)
 {
     LD_PROFILE_SCOPE;
 
+    LD_ASSERT(event->type == EDITOR_EVENT_TYPE_ACTION_SAVE_SCENE);
     EditorContextObj* obj = (EditorContextObj*)user;
+    (void)event;
 
     // Saving Scene writes the current schema to disk and
     // should not effect the EditStack.
     obj->save_scene_schema();
 }
 
-static void editor_action_open_project(EditStack stack, const EditorAction& action, void* user)
+static void editor_action_open_project_event_handler(const EditorEvent* event, void* user)
 {
     LD_PROFILE_SCOPE;
 
-    EditorContextObj* obj = (EditorContextObj*)user;
+    auto* obj = (EditorContextObj*)user;
 
     // TODO: save scene and project dialog?
     // TODO: how much to unwind? AssetManager for sure, EditorContext invalidation?
     LD_UNREACHABLE;
 }
 
-static void editor_action_add_component(EditStack stack, const EditorAction& action, void* user)
+static void editor_action_add_component_event_handler(const EditorEvent* event, void* user)
 {
-    EditorContextObj* obj = (EditorContextObj*)user;
-
-    stack.execute(EditStack::new_command<AddComponentCommand>(
-        obj->scene,
-        action.addComponent.parentSUID,
-        action.addComponent.compType));
-}
-
-static void editor_action_add_component_script(EditStack stack, const EditorAction& action, void* user)
-{
-    LD_PROFILE_SCOPE;
-
-    EditorContextObj* obj = (EditorContextObj*)user;
-
-    stack.execute(EditStack::new_command<AddComponentScriptCommand>(
-        obj->scene,
-        action.addComponentScript.compSUID,
-        action.addComponentScript.assetID));
-}
-
-static void editor_action_set_component_asset(EditStack stack, const EditorAction& action, void* user)
-{
-    LD_PROFILE_SCOPE;
-
+    LD_ASSERT(event->type == EDITOR_EVENT_TYPE_ACTION_ADD_COMPONENT);
     auto* obj = (EditorContextObj*)user;
+    auto* e = (const EditorActionAddComponentEvent*)event;
 
-    stack.execute(EditStack::new_command<SetComponentAssetCommand>(
+    obj->editStack.execute(EditStack::new_command<AddComponentCommand>(
         obj->scene,
-        action.setComponentAsset.compSUID,
-        action.setComponentAsset.assetID));
+        e->parentSUID,
+        e->compType));
 }
 
-static void editor_action_clone_component_subtree(EditStack stack, const EditorAction& action, void* user)
+static void editor_action_add_component_script_event_handler(const EditorEvent* event, void* user)
 {
     LD_PROFILE_SCOPE;
 
+    LD_ASSERT(event->type == EDITOR_EVENT_TYPE_ACTION_ADD_COMPONENT_SCRIPT);
     auto* obj = (EditorContextObj*)user;
+    auto* e = (const EditorActionAddComponentScriptEvent*)event;
 
-    stack.execute(EditStack::new_command<CloneComponentSubtreeCommand>(
+    obj->editStack.execute(EditStack::new_command<AddComponentScriptCommand>(
+        obj->scene,
+        e->compSUID,
+        e->assetID));
+}
+
+static void editor_action_set_component_asset_event_handler(const EditorEvent* event, void* user)
+{
+    LD_PROFILE_SCOPE;
+
+    LD_ASSERT(event->type == EDITOR_EVENT_TYPE_ACTION_SET_COMPONENT_ASSET);
+    auto* obj = (EditorContextObj*)user;
+    auto* e = (const EditorActionSetComponentAssetEvent*)event;
+
+    obj->editStack.execute(EditStack::new_command<SetComponentAssetCommand>(
+        obj->scene,
+        e->compSUID,
+        e->assetID));
+}
+
+static void editor_action_clone_component_subtree_event_handler(const EditorEvent* event, void* user)
+{
+    LD_PROFILE_SCOPE;
+
+    LD_ASSERT(event->type == EDITOR_EVENT_TYPE_ACTION_CLONE_COMPONENT_SUBTREE);
+    auto* obj = (EditorContextObj*)user;
+    auto* e = (const EditorActionCloneComponentSubtreeEvent*)event;
+
+    obj->editStack.execute(EditStack::new_command<CloneComponentSubtreeCommand>(
         obj,
-        action.cloneComponentSubtree));
+        e->compSUID));
 }
 
-static void editor_action_delete_component_subtree(EditStack stack, const EditorAction& action, void* user)
+static void editor_action_delete_component_subtree_event_handler(const EditorEvent* event, void* user)
 {
     LD_PROFILE_SCOPE;
 
+    LD_ASSERT(event->type == EDITOR_EVENT_TYPE_ACTION_DELETE_COMPONENT_SUBTREE);
     auto* obj = (EditorContextObj*)user;
+    auto* e = (const EditorActionDeleteComponentSubtreeEvent*)event;
 
-    stack.execute(EditStack::new_command<DeleteComponentSubtreeCommand>(
+    obj->editStack.execute(EditStack::new_command<DeleteComponentSubtreeCommand>(
         obj,
-        action.deleteComponentSubtree));
+        e->compSUID));
 }
 
-static void editor_action_close_dialog(EditStack stack, const EditorAction& action, void* user)
+void EditorContextObj::emit_event(EditorEventType type)
 {
-    auto* obj = (EditorContextObj*)user;
+    ComponentView selectedComp = scene.get_component(selectedComponentCUID);
 
-    EditorRequestCloseDialogEvent event{};
-    EditorContext(obj).request_event(&event);
+    switch (type)
+    {
+    case EDITOR_EVENT_TYPE_ACTION_REDO:
+    case EDITOR_EVENT_TYPE_ACTION_UNDO:
+    case EDITOR_EVENT_TYPE_ACTION_SAVE_SCENE:
+    case EDITOR_EVENT_TYPE_REQUEST_CLOSE_DIALOG:
+        (void)eventQueue.enqueue(type); // zero parameters needed
+        break;
+    case EDITOR_EVENT_TYPE_REQUEST_CREATE_COMPONENT:
+    {
+        if (selectedComp)
+        {
+            auto* event = (EditorRequestCreateComponentEvent*)eventQueue.enqueue(type);
+            event->parent = selectedComp.suid();
+        }
+        break;
+    }
+    case EDITOR_EVENT_TYPE_ACTION_CLONE_COMPONENT_SUBTREE:
+        if (selectedComp)
+        {
+            auto* event = (EditorActionCloneComponentSubtreeEvent*)eventQueue.enqueue(type);
+            event->compSUID = selectedComp.suid();
+        }
+        break;
+    case EDITOR_EVENT_TYPE_ACTION_DELETE_COMPONENT_SUBTREE:
+        if (selectedComp)
+        {
+            auto* event = (EditorActionDeleteComponentSubtreeEvent*)eventQueue.enqueue(type);
+            event->compSUID = selectedComp.suid();
+        }
+        break;
+    default:
+        break;
+    }
 }
 
 void EditorContextObj::notify_observers(const EditorEvent* event)
@@ -218,10 +308,8 @@ void EditorContextObj::load_project(const FS::Path& projectSchemaPath)
     bool ok = ProjectSchema::load_project_from_file(project, projectSchemaPath, err);
     LD_ASSERT(ok); // TODO:
 
-    projectName = project.get_name();
-
     const FS::Path rootPath = project.get_root_path();
-    sLog.info("loading project [{}], root directory {}", projectName, rootPath.string());
+    sLog.info("loading project [{}], root directory {}", project.get_name(), rootPath.string());
 
     assetSchemaPath = project.get_asset_schema_absolute_path();
     if (!FS::exists(assetSchemaPath))
@@ -367,40 +455,23 @@ EditorContext EditorContext::create(const EditorContextInfo& info)
     obj->settings = EditorSettings::create();
     obj->isPlaying = false;
     obj->editStack = EditStack::create();
-    obj->actionQueue = EditorActionQueue::create(obj->editStack, obj);
+    obj->eventQueue = EditorEventQueue::create(obj);
     obj->fontRegistry = UIFontRegistry::create();
     obj->fontDefault = obj->fontRegistry.add_font(info.defaultFontAtlas, info.defaultFontAtlasImage);
     obj->fontMono = obj->fontRegistry.add_font(info.monoFontAtlas, info.monoFontAtlasImage);
+    obj->docRegistry = DocumentRegistry::create();
 
-    // register possible editor actions
-    // clang-format off
-    const EditorActionInfo editorActions[] = {
-        {EDITOR_ACTION_UNDO,                     &editor_action_undo,                     "Undo"},
-        {EDITOR_ACTION_REDO,                     &editor_action_redo,                     "Redo"},
-        {EDITOR_ACTION_NEW_SCENE,                &editor_action_new_scene,                "NewScene"}, 
-        {EDITOR_ACTION_OPEN_SCENE,               &editor_action_open_scene,               "OpenScene"}, 
-        {EDITOR_ACTION_SAVE_SCENE,               &editor_action_save_scene,               "SaveScene"},
-        {EDITOR_ACTION_OPEN_PROJECT,             &editor_action_open_project,             "OpenProject"},
-        {EDITOR_ACTION_ADD_COMPONENT,            &editor_action_add_component,            "AddComponent"},
-        {EDITOR_ACTION_ADD_COMPONENT_SCRIPT,     &editor_action_add_component_script,     "AddComponentScript"},
-        {EDITOR_ACTION_SET_COMPONENT_ASSET,      &editor_action_set_component_asset,      "SetComponentAsset"},
-        {EDITOR_ACTION_CLONE_COMPONENT_SUBTREE,  &editor_action_clone_component_subtree,  "CloneComponentSubtree"},
-        {EDITOR_ACTION_DELETE_COMPONENT_SUBTREE, &editor_action_delete_component_subtree, "DeleteComponentSubtree"},
-        {EDITOR_ACTION_CLOSE_DIALOG,             &editor_action_close_dialog,             "CloseDialog"},
-    };
-    // clang-format on
-
-    for (size_t i = 0; i < sizeof(editorActions) / sizeof(*editorActions); i++)
-        register_editor_action(editorActions[i]);
+    for (size_t i = 0; i < sizeof(sEditorEventHandlers) / sizeof(*sEditorEventHandlers); i++)
+        register_editor_event_handler(sEditorEventHandlers[i].type, sEditorEventHandlers[i].handler);
 
     // register default global key binds
-    obj->keyBinds[KeyValue(KEY_CODE_Z, KEY_MOD_CONTROL_BIT)] = EDITOR_ACTION_UNDO;
-    obj->keyBinds[KeyValue(KEY_CODE_R, KEY_MOD_CONTROL_BIT)] = EDITOR_ACTION_REDO;
-    obj->keyBinds[KeyValue(KEY_CODE_S, KEY_MOD_CONTROL_BIT)] = EDITOR_ACTION_SAVE_SCENE;
-    obj->keyBinds[KeyValue(KEY_CODE_A, KEY_MOD_CONTROL_BIT)] = EDITOR_ACTION_ADD_COMPONENT;
-    obj->keyBinds[KeyValue(KEY_CODE_D, KEY_MOD_CONTROL_BIT)] = EDITOR_ACTION_CLONE_COMPONENT_SUBTREE;
-    obj->keyBinds[KeyValue(KEY_CODE_DELETE)] = EDITOR_ACTION_DELETE_COMPONENT_SUBTREE;
-    obj->keyBinds[KeyValue(KEY_CODE_ESCAPE)] = EDITOR_ACTION_CLOSE_DIALOG;
+    obj->keyBinds[KeyValue(KEY_CODE_Z, KEY_MOD_CONTROL_BIT)] = EDITOR_EVENT_TYPE_ACTION_UNDO;
+    obj->keyBinds[KeyValue(KEY_CODE_R, KEY_MOD_CONTROL_BIT)] = EDITOR_EVENT_TYPE_ACTION_REDO;
+    obj->keyBinds[KeyValue(KEY_CODE_S, KEY_MOD_CONTROL_BIT)] = EDITOR_EVENT_TYPE_ACTION_SAVE_SCENE;
+    obj->keyBinds[KeyValue(KEY_CODE_A, KEY_MOD_CONTROL_BIT)] = EDITOR_EVENT_TYPE_REQUEST_CREATE_COMPONENT;
+    obj->keyBinds[KeyValue(KEY_CODE_D, KEY_MOD_CONTROL_BIT)] = EDITOR_EVENT_TYPE_ACTION_CLONE_COMPONENT_SUBTREE;
+    obj->keyBinds[KeyValue(KEY_CODE_DELETE)] = EDITOR_EVENT_TYPE_ACTION_DELETE_COMPONENT_SUBTREE;
+    obj->keyBinds[KeyValue(KEY_CODE_ESCAPE)] = EDITOR_EVENT_TYPE_REQUEST_CLOSE_DIALOG;
 
     return {obj};
 }
@@ -421,8 +492,9 @@ void EditorContext::destroy(EditorContext ctx)
     Scene::destroy();
     AssetManager::destroy();
 
+    DocumentRegistry::destroy(obj->docRegistry);
     UIFontRegistry::destroy(obj->fontRegistry);
-    EditorActionQueue::destroy(obj->actionQueue);
+    EditorEventQueue::destroy(obj->eventQueue);
     EditStack::destroy(obj->editStack);
     EditorSettings::destroy(obj->settings);
 
@@ -471,126 +543,14 @@ void EditorContext::render_system_screen_pass_overlay_callback(ScreenRenderCompo
     }
 }
 
-void EditorContext::action(EditorActionType type)
+EditorEvent* EditorContext::enqueue_event(EditorEventType type)
 {
-    ComponentView selectedComp = mObj->scene.get_component(mObj->selectedComponentCUID);
-
-    switch (type)
-    {
-    case EDITOR_ACTION_SAVE_SCENE:
-        action_save_scene();
-        break;
-    case EDITOR_ACTION_REDO:
-        action_redo();
-        break;
-    case EDITOR_ACTION_UNDO:
-        action_undo();
-        break;
-    case EDITOR_ACTION_ADD_COMPONENT: // reinterpret as request event
-    {
-        if (selectedComp)
-        {
-            EditorRequestCreateComponentEvent event(selectedComp.suid());
-            request_event(&event);
-        }
-        break;
-    }
-    case EDITOR_ACTION_CLONE_COMPONENT_SUBTREE:
-        if (selectedComp)
-            action_clone_component_subtree(selectedComp.suid());
-        break;
-    case EDITOR_ACTION_DELETE_COMPONENT_SUBTREE:
-        if (selectedComp)
-            action_delete_component_subtree(selectedComp.suid());
-        break;
-    case EDITOR_ACTION_CLOSE_DIALOG: // reinterpret as request event
-    {
-        EditorRequestCloseDialogEvent event{};
-        request_event(&event);
-        break;
-    }
-    default:
-        break;
-    }
+    return mObj->eventQueue.enqueue(type);
 }
 
-void EditorContext::action_redo()
+void EditorContext::poll_events()
 {
-    (void)mObj->actionQueue.enqueue(EDITOR_ACTION_REDO);
-}
-
-void EditorContext::action_undo()
-{
-    (void)mObj->actionQueue.enqueue(EDITOR_ACTION_UNDO);
-}
-
-void EditorContext::action_new_scene(const FS::Path& sceneSchemaPath)
-{
-    EditorAction* action = mObj->actionQueue.enqueue(EDITOR_ACTION_NEW_SCENE);
-
-    action->newScene = sceneSchemaPath;
-}
-
-void EditorContext::action_open_scene(const FS::Path& sceneSchemaPath)
-{
-    EditorAction* action = mObj->actionQueue.enqueue(EDITOR_ACTION_OPEN_SCENE);
-
-    action->openScene = sceneSchemaPath;
-}
-
-void EditorContext::action_open_project(const FS::Path& projectSchemaPath)
-{
-    EditorAction* action = mObj->actionQueue.enqueue(EDITOR_ACTION_OPEN_PROJECT);
-
-    action->openProject = projectSchemaPath;
-}
-
-void EditorContext::action_save_scene()
-{
-    (void)mObj->actionQueue.enqueue(EDITOR_ACTION_SAVE_SCENE);
-}
-
-void EditorContext::action_add_component(SUID parentSUID, ComponentType type)
-{
-    EditorAction* action = mObj->actionQueue.enqueue(EDITOR_ACTION_ADD_COMPONENT);
-
-    action->addComponent.parentSUID = parentSUID;
-    action->addComponent.compType = type;
-}
-
-void EditorContext::action_add_component_script(SUID compSUID, AssetID scriptAssetID)
-{
-    EditorAction* action = mObj->actionQueue.enqueue(EDITOR_ACTION_ADD_COMPONENT_SCRIPT);
-
-    action->addComponentScript.compSUID = compSUID;
-    action->addComponentScript.assetID = scriptAssetID;
-}
-
-void EditorContext::action_set_component_asset(SUID compSUID, AssetID assetID)
-{
-    EditorAction* action = mObj->actionQueue.enqueue(EDITOR_ACTION_SET_COMPONENT_ASSET);
-
-    action->setComponentAsset.compSUID = compSUID;
-    action->setComponentAsset.assetID = assetID;
-}
-
-void EditorContext::action_clone_component_subtree(SUID compSUID)
-{
-    EditorAction* action = mObj->actionQueue.enqueue(EDITOR_ACTION_CLONE_COMPONENT_SUBTREE);
-
-    action->cloneComponentSubtree = compSUID;
-}
-
-void EditorContext::action_delete_component_subtree(SUID compSUID)
-{
-    EditorAction* action = mObj->actionQueue.enqueue(EDITOR_ACTION_DELETE_COMPONENT_SUBTREE);
-
-    action->deleteComponentSubtree = compSUID;
-}
-
-void EditorContext::poll_actions()
-{
-    mObj->actionQueue.poll_actions();
+    mObj->eventQueue.poll_events();
 }
 
 FS::Path EditorContext::get_project_directory()
@@ -676,7 +636,7 @@ void EditorContext::input_key_value(KeyValue keyVal)
     if (!mObj->keyBinds.contains(keyVal))
         return;
 
-    action(mObj->keyBinds[keyVal]);
+    mObj->emit_event(mObj->keyBinds[keyVal]);
 }
 
 void EditorContext::update(const Vec2& sceneExtent, float delta)
@@ -763,11 +723,6 @@ const char* EditorContext::get_component_name(CUID compCUID)
     return comp.get_name();
 }
 
-void EditorContext::request_event(const EditorRequestEvent* event)
-{
-    mObj->notify_observers(event);
-}
-
 void EditorContext::set_selected_component(CUID compCUID)
 {
     if (mObj->selectedComponentCUID == compCUID)
@@ -776,10 +731,11 @@ void EditorContext::set_selected_component(CUID compCUID)
     ComponentView comp = mObj->scene.get_component(compCUID);
     if (comp)
     {
-        // update state and notify observers
-        EditorNotifyComponentSelectionEvent event(compCUID);
         mObj->selectedComponentCUID = compCUID;
-        mObj->notify_observers(&event);
+
+        // update state and notify observers
+        auto* event = (EditorNotifyComponentSelectionEvent*)mObj->eventQueue.enqueue(EDITOR_EVENT_TYPE_NOTIFY_COMPONENT_SELECTION);
+        event->cuid = compCUID;
     }
     else
     {
@@ -830,25 +786,6 @@ bool EditorContext::get_selected_component_transform(TransformEx& transform)
         return false;
 
     return comp.get_transform(transform);
-}
-
-UILayoutInfo EditorContext::make_editor_window_layout(const Vec2& size)
-{
-    UILayoutInfo layoutI = mObj->settings.get_theme().make_vbox_layout();
-    layoutI.sizeX = UISize::fixed(size.x);
-    layoutI.sizeY = UISize::fixed(size.y);
-
-    return layoutI;
-}
-
-UILayoutInfo EditorContext::make_vbox_layout()
-{
-    return mObj->settings.get_theme().make_vbox_layout();
-}
-
-UILayoutInfo EditorContext::make_hbox_layout()
-{
-    return mObj->settings.get_theme().make_hbox_layout();
 }
 
 } // namespace LD

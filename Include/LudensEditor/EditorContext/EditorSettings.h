@@ -34,6 +34,7 @@ struct EditorTheme : Handle<struct EditorThemeObj>
     void get_error_color(Color& err) const;
 
     UILayoutInfo make_vbox_layout(float* childGap = nullptr, float* childPad = nullptr) const;
+    UILayoutInfo make_vbox_layout_fixed(const Vec2& extent) const;
     UILayoutInfo make_hbox_layout(float* childGap = nullptr, float* childPad = nullptr) const;
     UILayoutInfo make_text_label_layout() const;
 };
