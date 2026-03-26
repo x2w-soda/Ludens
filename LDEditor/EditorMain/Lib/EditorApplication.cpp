@@ -145,9 +145,9 @@ void EditorApplication::run()
 
         float delta = (float)reg.get_delta_time();
 
-        // Flushes the editor action queue.
+        // Flushes editor events.
         // The current project or scene could change after this.
-        mEditorCtx.poll_actions();
+        mEditorCtx.poll_events();
 
         mEditorUI.update(delta);
         mEditorUI.submit_frame();

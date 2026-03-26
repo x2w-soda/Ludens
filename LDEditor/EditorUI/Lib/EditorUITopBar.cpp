@@ -124,29 +124,25 @@ void EditorTopBarObj::file_menu_window()
     {
     case FILE_MENU_NEW_SCENE:
     {
-        EditorRequestNewSceneEvent event{};
-        ctx.request_event(&event);
+        (void)ctx.enqueue_event(EDITOR_EVENT_TYPE_REQUEST_NEW_SCENE);
         break;
     }
     case FILE_MENU_OPEN_SCENE:
     {
-        EditorRequestOpenSceneEvent event{};
-        ctx.request_event(&event);
+        (void)ctx.enqueue_event(EDITOR_EVENT_TYPE_REQUEST_OPEN_SCENE);
         break;
     }
     case FILE_MENU_SAVE_SCENE:
-        ctx.action_save_scene(); // just save the scene, no dialogs
+        (void)ctx.enqueue_event(EDITOR_EVENT_TYPE_ACTION_SAVE_SCENE);
         break;
     case FILE_MENU_NEW_PROJECT:
     {
-        EditorRequestNewProjectEvent event{};
-        ctx.request_event(&event);
+        (void)ctx.enqueue_event(EDITOR_EVENT_TYPE_REQUEST_NEW_PROJECT);
         break;
     }
     case FILE_MENU_OPEN_PROJECT:
     {
-        EditorRequestOpenProjectEvent event{};
-        ctx.request_event(&event);
+        (void)ctx.enqueue_event(EDITOR_EVENT_TYPE_REQUEST_OPEN_PROJECT);
         break;
     }
     default:
@@ -173,17 +169,14 @@ void EditorTopBarObj::edit_menu_window()
     switch (opt)
     {
     case EDIT_MENU_UNDO:
-        ctx.action_undo();
+        (void)ctx.enqueue_event(EDITOR_EVENT_TYPE_ACTION_UNDO);
         break;
     case EDIT_MENU_REDO:
-        ctx.action_redo();
+        (void)ctx.enqueue_event(EDITOR_EVENT_TYPE_ACTION_REDO);
         break;
     case EDIT_MENU_PROJECT_SETTINGS:
-    {
-        EditorRequestProjectSettingsEvent event{};
-        ctx.request_event(&event);
+        (void)ctx.enqueue_event(EDITOR_EVENT_TYPE_REQUEST_PROJECT_SETTINGS);
         break;
-    }
     default:
         break;
     }

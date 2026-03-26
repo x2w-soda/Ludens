@@ -104,7 +104,8 @@ void EditorUIDialogObj::update(float delta)
         if (selectW && selectW.has_selected(selectedPath))
         {
             mDialogType = DIALOG_NONE;
-            mCtx.action_open_scene(selectedPath);
+            auto* event = (EditorActionOpenSceneEvent*)mCtx.enqueue_event(EDITOR_EVENT_TYPE_ACTION_OPEN_SCENE);
+            event->openScene = selectedPath;
         }
         break;
     case DIALOG_OPEN_PROJECT:
@@ -112,7 +113,8 @@ void EditorUIDialogObj::update(float delta)
         if (selectW && selectW.has_selected(selectedPath))
         {
             mDialogType = DIALOG_NONE;
-            mCtx.action_open_project(selectedPath);
+            auto* event = (EditorActionOpenProjectEvent*)mCtx.enqueue_event(EDITOR_EVENT_TYPE_ACTION_OPEN_PROJECT);
+            event->openProject = selectedPath;
         }
         break;
     case DIALOG_SELECT_ASSET:
@@ -121,9 +123,9 @@ void EditorUIDialogObj::update(float delta)
         {
             mDialogType = DIALOG_NONE;
             std::string stem = selectedPath.stem().string();
-            AssetManager AM = AssetManager::get();
-            AssetID assetID = AM.get_id_from_name(stem.c_str(), nullptr);
-            mCtx.action_set_component_asset(mSubjectSUID, assetID);
+            auto* event = (EditorActionSetComponentAssetEvent*)mCtx.enqueue_event(EDITOR_EVENT_TYPE_ACTION_SET_COMPONENT_ASSET);
+            event->compSUID = mSubjectSUID;
+            event->assetID = AssetManager::get().get_id_from_name(stem.c_str(), nullptr);
         }
         break;
     case DIALOG_SELECT_SCRIPT:
@@ -141,7 +143,9 @@ void EditorUIDialogObj::update(float delta)
             if (scriptAssetID == (AssetID)0 || type != ASSET_TYPE_LUA_SCRIPT)
                 return; // script asset out of date
 
-            mCtx.action_add_component_script(mSubjectSUID, scriptAssetID);
+            auto* event = (EditorActionAddComponentScriptEvent*)mCtx.enqueue_event(EDITOR_EVENT_TYPE_ACTION_ADD_COMPONENT_SCRIPT);
+            event->compSUID = mSubjectSUID;
+            event->assetID = scriptAssetID;
         }
         break;
     default:
@@ -207,7 +211,7 @@ void EditorUIDialogObj::dialog_create_component(const EditorEvent* e)
     LD_ASSERT(e && e->type == EDITOR_EVENT_TYPE_REQUEST_CREATE_COMPONENT);
     LD_ASSERT(mDialogType == DIALOG_NONE);
     mDialogType = DIALOG_CREATE_COMPONENT;
-    
+
     CreateComponentWindow createCompW = (CreateComponentWindow)get_or_create_dialog(EDITOR_WINDOW_CREATE_COMPONENT);
 
     const auto* event = (const EditorRequestCreateComponentEvent*)e;

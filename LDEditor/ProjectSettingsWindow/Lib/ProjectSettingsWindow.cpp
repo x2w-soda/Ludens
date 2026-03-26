@@ -51,7 +51,7 @@ void ProjectSettingsWindowObj::on_imgui(float delta)
 {
     theme = mCtx.get_theme();
     editorIconAtlas = mCtx.get_editor_icon_atlas();
-    const UILayoutInfo vboxLayoutI = mCtx.make_vbox_layout();
+    const UILayoutInfo vboxLayoutI = theme.make_vbox_layout();
     Color bgColor = theme.get_ui_theme().get_field_color();
 
     ui_workspace_begin();

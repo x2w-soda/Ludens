@@ -193,8 +193,8 @@ void OutlinerWindowObj::on_imgui(float delta)
         {
         case COMPONENT_MENU_OPTION_ADD_CHILD:
         {
-            EditorRequestCreateComponentEvent event(state.compSUID);
-            mCtx.request_event(&event);
+            auto* event = (EditorRequestCreateComponentEvent*)mCtx.enqueue_event(EDITOR_EVENT_TYPE_REQUEST_CREATE_COMPONENT);
+            event->parent = state.compSUID;
             break;
         }
         default:

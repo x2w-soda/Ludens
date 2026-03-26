@@ -11,9 +11,10 @@ EditorContext eui_get_context();
 inline void eui_ctx_request_asset(SUID compID, AssetID assetID, AssetType assetType)
 {
     // NOTE: will have to refactor, this assumes single asset slot for all component types
-    EditorRequestComponentAssetEvent event(compID, assetID, assetType);
-
-    eui_get_context().request_event(&event);
+    auto* event = (EditorRequestComponentAssetEvent*)eui_get_context().enqueue_event(EDITOR_EVENT_TYPE_REQUEST_COMPONENT_ASSET);
+    event->component = compID;
+    event->oldAssetID = assetID;
+    event->requestType = assetType;
 }
 
 } // namespace LD

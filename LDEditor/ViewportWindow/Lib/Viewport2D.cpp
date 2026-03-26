@@ -40,7 +40,7 @@ void Viewport2D::destroy()
 
 void Viewport2D::imgui(const ViewportState& state)
 {
-    mCamera.set_extent(state.viewportExtent);
+    mCamera.set_extent(state.sceneExtent);
 
     mMouseScenePos.reset();
     mMouseWorldPos.reset();

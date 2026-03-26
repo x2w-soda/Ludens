@@ -16,7 +16,7 @@ void InspectorWindowObj::on_imgui(float delta)
     LD_PROFILE_SCOPE;
 
     EditorTheme theme = mCtx.get_theme();
-    UILayoutInfo layoutI = mCtx.make_editor_window_layout(mRootRect.get_size());
+    UILayoutInfo layoutI = theme.make_vbox_layout_fixed(mRootRect.get_size());
     layoutI.childGap = 4.0f;
 
     ui_workspace_begin();

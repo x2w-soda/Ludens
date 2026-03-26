@@ -65,7 +65,7 @@ void ConsoleWindowObj::on_imgui(float delta)
     UIScrollStorage* scrollS = ui_push_scroll(nullptr);
     scrollS->bgColor = uiTheme.get_surface_color();
     
-    UILayoutInfo layoutI = mCtx.make_vbox_layout();
+    UILayoutInfo layoutI = edTheme.make_vbox_layout();
     layoutI.sizeX = UISize::grow();
     layoutI.sizeY = UISize::grow();
     ui_top_layout(layoutI);

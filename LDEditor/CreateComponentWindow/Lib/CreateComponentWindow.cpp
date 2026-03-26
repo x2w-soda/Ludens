@@ -34,7 +34,7 @@ void CreateComponentWindowObj::on_imgui(float delta)
 
     ui_workspace_begin();
     ui_push_window("ROOT");
-    ui_top_layout(mCtx.make_editor_window_layout(mRootRect.get_size()));
+    ui_top_layout(theme.make_vbox_layout_fixed(mRootRect.get_size()));
     ui_window_set_color(theme.get_ui_theme().get_surface_color());
     {
         component_rows();
@@ -116,7 +116,9 @@ void CreateComponentWindowObj::on_row_mouse_down(MouseValue mouseVal, const Vec2
 {
     if (mouseVal.button() == MOUSE_BUTTON_RIGHT)
     {
-        mCtx.action_add_component(parentSUID, compType);
+        auto* event = (EditorActionAddComponentEvent*)mCtx.enqueue_event(EDITOR_EVENT_TYPE_ACTION_ADD_COMPONENT);
+        event->compType = compType;
+        event->parentSUID = parentSUID;
         mShouldClose = true;
     }
 }

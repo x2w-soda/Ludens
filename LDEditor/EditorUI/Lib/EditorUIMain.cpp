@@ -27,6 +27,8 @@ public:
     void on_imgui(float delta);
     void resize(const Vec2& screenSize);
 
+    static void on_editor_event(const EditorEvent* event, void* user);
+
 private:
     EditorContext mCtx{};
     EditorWorkspace mSceneWorkspace{};
@@ -43,6 +45,8 @@ EditorUIMainObj::EditorUIMainObj(const EditorUIMainInfo& mainI)
 {
     LD_PROFILE_SCOPE;
 
+    mCtx.add_observer(&EditorUIMainObj::on_editor_event, this);
+
     EditorWorkspaceInfo workspaceI{};
     workspaceI.ctx = mainI.ctx;
     workspaceI.uiLayerName = mainI.groundLayerName;
@@ -56,6 +60,7 @@ EditorUIMainObj::EditorUIMainObj(const EditorUIMainInfo& mainI)
     EditorAreaID outlinerArea = mSceneWorkspace.split_right(viewportArea, 0.7f);
     EditorAreaID inspectorArea = mSceneWorkspace.split_bottom(outlinerArea, 0.5f);
     EditorAreaID consoleArea = mSceneWorkspace.split_bottom(viewportArea, 0.7f);
+    EditorAreaID documentArea = mSceneWorkspace.split_right(consoleArea, 0.5f);
 
     mViewportWindow = (ViewportWindow)mSceneWorkspace.create_window(viewportArea, EDITOR_WINDOW_VIEWPORT);
     mOutlinerWindow = (OutlinerWindow)mSceneWorkspace.create_window(outlinerArea, EDITOR_WINDOW_OUTLINER);
@@ -63,6 +68,8 @@ EditorUIMainObj::EditorUIMainObj(const EditorUIMainInfo& mainI)
     mConsoleWindow = (ConsoleWindow)mSceneWorkspace.create_window(consoleArea, EDITOR_WINDOW_CONSOLE);
     mConsoleWindow.observe_channel(get_lua_script_log_channel_name());
     mConsoleWindow.observe_channel(get_scene_log_channel_name());
+
+    EditorWindow documentWindow = mSceneWorkspace.create_window(documentArea, EDITOR_WINDOW_DOCUMENT);
 }
 
 EditorUIMainObj::~EditorUIMainObj()
@@ -84,6 +91,23 @@ void EditorUIMainObj::resize(const Vec2& screenSize)
     Rect groundRect = Rect(0.0f, mTopBarHeight, screenSize.x, screenSize.y - mTopBarHeight);
 
     mSceneWorkspace.set_rect(groundRect);
+}
+
+void EditorUIMainObj::on_editor_event(const EditorEvent* event, void* user)
+{
+    auto* obj = (EditorUIMainObj*)user;
+
+    // handle requests in the main Editor region.
+    if (event->category != EDITOR_EVENT_CATEGORY_REQUEST)
+        return;
+
+    switch (event->type)
+    {
+    case EDITOR_EVENT_TYPE_REQUEST_DOCUMENT:
+        break; // TODO: async document preparation
+    default:
+        break;
+    }
 }
 
 //
