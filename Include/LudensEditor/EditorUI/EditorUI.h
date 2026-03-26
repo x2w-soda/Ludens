@@ -14,6 +14,7 @@
 #include <LudensEditor/EditorUI/EditorDialog.h>
 #include <LudensEditor/EditorUI/EditorUIDialog.h>
 #include <LudensEditor/EditorUI/EditorUIMain.h>
+#include <LudensEditor/EditorUI/EditorUIModal.h>
 #include <LudensEditor/EditorUI/EditorUITopBar.h>
 #include <LudensEditor/EditorUI/EditorWorkspace.h>
 
@@ -72,6 +73,7 @@ private:
     EditorUITopBar mTopBar;
     EditorUIDialog mDialog;
     EditorUIMain mMain;
+    EditorUIModal mModal;
     RenderSystem mRenderSystem{};
     RUID mEnvCubemap = 0;
     Vec2 mScreenSize;

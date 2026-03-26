@@ -12,6 +12,7 @@
 #define EDITOR_UI_CONTEXT_NAME "EDITOR_UI"
 #define EDITOR_UI_LAYER_TOP_BAR_NAME "EDITOR_UI_LAYER_TOP_BAR"
 #define EDITOR_UI_LAYER_MAIN_NAME "EDITOR_UI_LAYER_MAIN"
+#define EDITOR_UI_LAYER_MODAL_NAME "EDITOR_UI_LAYER_MODAL"
 
 namespace LD {
 
@@ -44,6 +45,12 @@ void EditorUI::startup(const EditorUIInfo& info)
     mainI.topBarHeight = EDITOR_BAR_HEIGHT;
     mMain = EditorUIMain::create(mainI);
 
+    EditorUIModalInfo modalI{};
+    modalI.ctx = mCtx;
+    modalI.layerName = EDITOR_UI_LAYER_MODAL_NAME;
+    modalI.screenSize = mScreenSize;
+    mModal = EditorUIModal::create(modalI);
+
     EditorUIDialogInfo dialogI{};
     dialogI.ctx = mCtx;
     mDialog = EditorUIDialog::create(dialogI);
@@ -55,6 +62,9 @@ void EditorUI::cleanup()
 
     EditorUIDialog::destroy(mDialog);
     mDialog = {};
+
+    EditorUIModal::destroy(mModal);
+    mModal = {};
 
     EditorUIMain::destroy(mMain);
     mMain = {};
@@ -75,6 +85,7 @@ void EditorUI::update(float delta)
     ui_context_begin(EDITOR_UI_CONTEXT_NAME, mScreenSize);
     mTopBar.on_imgui(delta);
     mMain.on_imgui(delta);
+    mModal.on_imgui(delta, mScreenSize);
     ui_context_end(delta);
 
     // post imgui update

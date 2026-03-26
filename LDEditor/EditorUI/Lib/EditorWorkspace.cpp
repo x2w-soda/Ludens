@@ -127,7 +127,7 @@ static_assert(sizeof(sEditorWindowTable) / sizeof(*sEditorWindowTable) == EDITOR
 EditorWorkspaceObj::~EditorWorkspaceObj()
 {
     partition.visit_leaves(partition.get_root_id(), [](EditorWorkspaceNode* node) {
-        if (!node->window)
+        if (!node->tabControl || !node->window)
             return;
 
         sEditorWindowTable[(int)node->window.get_type()].destroy(node->window);
@@ -140,6 +140,9 @@ void EditorWorkspaceObj::set_split_ratio(EditorAreaID areaID, float ratio)
     partition.set_split_ratio(areaID, ratio);
 
     partition.visit_leaves(areaID, [](EditorWorkspaceNode* node) {
+        if (!node->tabControl || !node->window)
+            return;
+
         Rect tabControlRect, windowRect;
         node->get_workspace_rects(tabControlRect, windowRect);
         node->tabControl.set_rect(tabControlRect);
@@ -153,6 +156,9 @@ void EditorWorkspaceObj::set_rect(const Rect& rect)
     rootRect = rect;
 
     partition.visit_leaves(partition.get_root_id(), [](EditorWorkspaceNode* node) {
+        if (!node->tabControl || !node->window)
+            return;
+
         Rect tabControlRect, windowRect;
         node->get_workspace_rects(tabControlRect, windowRect);
         node->tabControl.set_rect(tabControlRect);
@@ -166,6 +172,9 @@ void EditorWorkspaceObj::set_pos(const Vec2& pos)
     rootRect.set_pos(pos.x, pos.y);
 
     partition.visit_leaves(partition.get_root_id(), [](EditorWorkspaceNode* node) {
+        if (!node->tabControl || !node->window)
+            return;
+
         Rect tabControlRect, windowRect;
         node->get_workspace_rects(tabControlRect, windowRect);
         node->tabControl.set_pos(tabControlRect.get_pos());

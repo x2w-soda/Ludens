@@ -5,6 +5,7 @@ set(MODULE_LIB
 	Lib/EditorUITopBar.cpp
 	Lib/EditorUIDialog.cpp
 	Lib/EditorUIMain.cpp
+	Lib/EditorUIModal.cpp
 	Lib/EditorWorkspace.cpp
 	Lib/EditorDialog.cpp
 )
@@ -14,6 +15,7 @@ set(MODULE_INCLUDE
 	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorUI/EditorUITopBar.h
 	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorUI/EditorUIDialog.h
 	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorUI/EditorUIMain.h
+	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorUI/EditorUIModal.h
 	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorUI/EditorWorkspace.h
 	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorUI/EditorDialog.h
 )
