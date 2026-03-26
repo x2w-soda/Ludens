@@ -158,12 +158,15 @@ UIWidgetObj* UIContextObj::get_widget(const Vec2& pos)
 /// @brief Get deepest widget in layer.
 UIWidgetObj* UIContextObj::get_widget_in_layer(UILayerObj* layer, const Vec2& pos)
 {
+    if (!layer->isVisible)
+        return nullptr;
+
     for (auto spaceIt = layer->workspaces.rbegin(); spaceIt != layer->workspaces.rend(); spaceIt++)
     {
         UIWorkspaceObj* space = *spaceIt;
 
         Rect workspaceRect = UIWorkspace(space).get_root_rect();
-        if (space->isHidden || !workspaceRect.contains(pos))
+        if (!space->isVisible || !workspaceRect.contains(pos))
             continue;
 
         UIWidgetObj* widget = get_widget_in_workspace(space, pos);
@@ -177,6 +180,9 @@ UIWidgetObj* UIContextObj::get_widget_in_layer(UILayerObj* layer, const Vec2& po
 /// @brief Get deepest widget in workspace.
 UIWidgetObj* UIContextObj::get_widget_in_workspace(UIWorkspaceObj* space, const Vec2& pos)
 {
+    if (!space->isVisible)
+        return nullptr;
+
     for (auto windowIt = space->floatWindows.rbegin(); windowIt != space->floatWindows.rend(); windowIt++)
     {
         UIWindowObj* window = *windowIt;

@@ -41,7 +41,7 @@ private:
 };
 
 EditorUIMainObj::EditorUIMainObj(const EditorUIMainInfo& mainI)
-    : mCtx(mainI.ctx), mLayerName(mainI.groundLayerName), mTopBarHeight(mainI.topBarHeight)
+    : mCtx(mainI.ctx), mLayerName(mainI.layerName), mTopBarHeight(mainI.topBarHeight)
 {
     LD_PROFILE_SCOPE;
 
@@ -49,9 +49,8 @@ EditorUIMainObj::EditorUIMainObj(const EditorUIMainInfo& mainI)
 
     EditorWorkspaceInfo workspaceI{};
     workspaceI.ctx = mainI.ctx;
-    workspaceI.uiLayerName = mainI.groundLayerName;
-    workspaceI.uiWorkspaceName = "EDITOR_UI_MAIN";
-    workspaceI.rootRect = Rect(0.0f, mTopBarHeight, mainI.screenSize.x, mainI.screenSize.y);
+    workspaceI.uiLayerName = mainI.layerName;
+    workspaceI.rootRect = Rect(0.0f, mTopBarHeight, mainI.screenSize.x, mainI.screenSize.y - mTopBarHeight);
     workspaceI.isVisible = true;
     workspaceI.isFloat = false;
     mSceneWorkspace = EditorWorkspace::create(workspaceI);

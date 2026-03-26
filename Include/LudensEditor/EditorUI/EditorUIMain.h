@@ -9,7 +9,7 @@ namespace LD {
 struct EditorUIMainInfo
 {
     EditorContext ctx;
-    const char* groundLayerName;
+    const char* layerName;
     Vec2 screenSize;
     float topBarHeight;
 };

@@ -20,6 +20,10 @@ struct UILayer : Handle<struct UILayerObj>
     /// @brief Raise layer to top in context.
     void raise();
 
+    /// @brief If hidden, skips rendering for all UIWorkspaces in this layer.
+    /// @note Each UIWorkspace also has its own visbility mask via UIWorkspace::set_visible.
+    void set_visible(bool isVisible);
+
     /// @brief Create a workspace under this layer.
     UIWorkspace create_workspace(const Rect& area);
 

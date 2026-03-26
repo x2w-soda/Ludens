@@ -104,7 +104,7 @@ void UIWorkspace::render(ScreenRenderComponent& renderer)
 {
     LD_PROFILE_SCOPE;
 
-    if (mObj->isHidden)
+    if (!mObj->isVisible)
         return;
 
     for (UIWindowObj* windowObj : mObj->nodeWindows)
@@ -125,7 +125,7 @@ void UIWorkspace::raise()
 
 void UIWorkspace::set_visible(bool isVisible)
 {
-    mObj->isHidden = !isVisible;
+    mObj->isVisible = isVisible;
 }
 
 void UIWorkspace::set_rect(const Rect& rect)

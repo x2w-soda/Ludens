@@ -10,7 +10,8 @@
 
 #define EDITOR_BAR_HEIGHT 22.0f
 #define EDITOR_UI_CONTEXT_NAME "EDITOR_UI"
-#define EDITOR_GROUND_LAYER_NAME "EDITOR_GROUND_LAYER"
+#define EDITOR_UI_LAYER_TOP_BAR_NAME "EDITOR_UI_LAYER_TOP_BAR"
+#define EDITOR_UI_LAYER_MAIN_NAME "EDITOR_UI_LAYER_MAIN"
 
 namespace LD {
 
@@ -30,15 +31,15 @@ void EditorUI::startup(const EditorUIInfo& info)
     eui_push_theme(mCtx.get_theme());
 
     EditorUITopBarInfo barI{};
-    barI.barHeight = EDITOR_BAR_HEIGHT;
     barI.ctx = mCtx;
-    barI.groundLayerName = EDITOR_GROUND_LAYER_NAME;
+    barI.layerName = EDITOR_UI_LAYER_TOP_BAR_NAME;
+    barI.barHeight = EDITOR_BAR_HEIGHT;
     barI.screenSize = mScreenSize;
     mTopBar = EditorUITopBar::create(barI);
 
     EditorUIMainInfo mainI{};
     mainI.ctx = mCtx;
-    mainI.groundLayerName = EDITOR_GROUND_LAYER_NAME;
+    mainI.layerName = EDITOR_UI_LAYER_MAIN_NAME;
     mainI.screenSize = mScreenSize;
     mainI.topBarHeight = EDITOR_BAR_HEIGHT;
     mMain = EditorUIMain::create(mainI);

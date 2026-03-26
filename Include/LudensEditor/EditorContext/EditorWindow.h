@@ -58,7 +58,7 @@ protected:
     bool mShouldClose = false;
 };
 
-/// @brief Composes one UIWorkspace, belongs to the same UILayer as it's container EditorWorkspace.
+/// @brief Corresponds to a UIWorkspace.
 struct EditorWindow : Handle<class EditorWindowObj>
 {
     inline EditorWindowType get_type() { return mObj->get_type(); }

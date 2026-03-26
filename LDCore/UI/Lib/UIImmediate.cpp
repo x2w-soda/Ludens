@@ -701,9 +701,16 @@ void ui_layer_begin(const char* layerName)
     sImContext->imLayer->layer.raise();
 }
 
+void ui_layer_set_visibility(bool isVisible)
+{
+    LD_ASSERT_UI_LAYER_SCOPE;
+
+    sImContext->imLayer->layer.set_visible(isVisible);
+}
+
 void ui_layer_end()
 {
-    LD_ASSERT_UI_CONTEXT_SCOPE;
+    LD_ASSERT_UI_LAYER_SCOPE;
 
     sImContext->imLayer = nullptr;
 }

@@ -3,9 +3,9 @@
 #include <Ludens/Memory/Memory.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/UI/UIImmediate.h>
-#include <LudensEditor/DocumentWindow/DocumentWindow.h>
 #include <LudensEditor/ConsoleWindow/ConsoleWindow.h>
 #include <LudensEditor/CreateComponentWindow/CreateComponentWindow.h>
+#include <LudensEditor/DocumentWindow/DocumentWindow.h>
 #include <LudensEditor/EditorContext/EditorIconAtlas.h>
 #include <LudensEditor/EditorUI/EditorWorkspace.h>
 #include <LudensEditor/InspectorWindow/InspectorWindow.h>
@@ -59,7 +59,7 @@ struct EditorWorkspaceObj
 {
     EditorContext ctx;
     std::string uiLayerName;
-    std::string uiWorkspaceName;
+    Color rootColor;
     Rect rootRect; // spans the entire EditorWorkspace
     RectSplit<EditorWorkspaceNode, MEMORY_USAGE_UI> partition;
     EditorWorkspaceControl control{};
@@ -127,6 +127,9 @@ static_assert(sizeof(sEditorWindowTable) / sizeof(*sEditorWindowTable) == EDITOR
 EditorWorkspaceObj::~EditorWorkspaceObj()
 {
     partition.visit_leaves(partition.get_root_id(), [](EditorWorkspaceNode* node) {
+        if (!node->window)
+            return;
+
         sEditorWindowTable[(int)node->window.get_type()].destroy(node->window);
         sEditorWindowTable[EDITOR_WINDOW_TAB_CONTROL].destroy(node->tabControl);
     });
@@ -179,6 +182,9 @@ void EditorWorkspaceObj::pre_imgui()
     EditorAreaID rootID = partition.get_root_id();
 
     partition.visit_leaves(rootID, [&](EditorWorkspaceNode* node) {
+        if (!node->window)
+            return;
+
         if (node->window.should_close())
             toClose.push_back(node->nodeID);
     });
@@ -199,14 +205,13 @@ EditorWorkspace EditorWorkspace::create(const EditorWorkspaceInfo& spaceI)
     auto* obj = heap_new<EditorWorkspaceObj>(MEMORY_USAGE_UI, spaceI.rootRect);
     obj->ctx = spaceI.ctx;
     obj->uiLayerName = spaceI.uiLayerName;
-    obj->uiWorkspaceName = spaceI.uiWorkspaceName;
     obj->isFloat = spaceI.isFloat;
     obj->isVisible = spaceI.isVisible;
+    obj->rootColor = spaceI.rootColor;
     obj->rootRect = spaceI.rootRect;
 
-    LD_ASSERT(spaceI.isVisible);
     EditorWorkspace space = EditorWorkspace(obj);
-    // space.set_visible(spaceI.isVisible);
+    space.set_visible(spaceI.isVisible);
 
     return space;
 }
@@ -225,17 +230,7 @@ bool EditorWorkspace::should_close()
 
 void EditorWorkspace::set_visible(bool isVisible)
 {
-    LD_UNREACHABLE;
-
     mObj->isVisible = isVisible;
-
-    mObj->partition.visit_leaves(mObj->partition.get_root_id(), [&](EditorWorkspaceNode* node) {
-        if (node->tabControl)
-            ; // node->tabControl.set_visible(isVisible);
-
-        if (node->window)
-            ; // node->window.set_visible(isVisible);
-    });
 }
 
 EditorWindow EditorWorkspace::create_window(EditorAreaID areaID, EditorWindowType type)
@@ -279,10 +274,11 @@ void EditorWorkspace::on_imgui(float delta)
 
     // each EditorWindow contains a UIWorkspaces, but they all belong to the same UILayer.
     ui_layer_begin(mObj->uiLayerName.c_str());
+    ui_layer_set_visibility(mObj->isVisible);
 
     // EditorWorkspace root window detects resizing.
-    ui_workspace_begin(mObj->uiWorkspaceName.c_str(), mObj->rootRect);
-    ui_push_window("WORKSPACE_ROOT");
+    ui_workspace_begin("WORKSPACE_ROOT", mObj->rootRect);
+    ui_push_window("WORKSPACE_ROOT_WINDOW");
     ui_top_user(mObj);
 
     // If EditorWindow does not catch key events, capture here and forward to EditorContext.
@@ -351,6 +347,11 @@ void EditorWorkspace::on_imgui(float delta)
         auto* obj = (EditorWorkspaceObj*)user;
         EditorTheme theme = obj->ctx.get_theme();
 
+        if (obj->rootColor != 0)
+        {
+            renderer.draw_rect(obj->rootRect, obj->rootColor);
+        }
+
         Axis splitAxis;
         Rect splitRect;
         if (obj->get_hover_split_rect(splitRect, splitAxis))
@@ -377,6 +378,9 @@ void EditorWorkspace::on_imgui(float delta)
     Optional<Vec2> newWorkspacePos;
 
     mObj->partition.visit_leaves(mObj->partition.get_root_id(), [&](EditorWorkspaceNode* node) {
+        if (!node->tabControl || !node->window)
+            return;
+
         Rect tabControlRect;
         Rect windowRect;
         node->get_workspace_rects(tabControlRect, windowRect);
@@ -410,6 +414,11 @@ void EditorWorkspace::on_imgui(float delta)
 void EditorWorkspace::set_rect(const Rect& rect)
 {
     mObj->set_rect(rect);
+}
+
+Rect EditorWorkspace::get_rect()
+{
+    return mObj->rootRect;
 }
 
 EditorAreaID EditorWorkspace::get_root_id()

@@ -44,6 +44,7 @@ void ui_context_end(float delta);
 /// @brief Begin a UILayer scope.
 /// @param layerName Unique layer name within context.
 void ui_layer_begin(const char* layerName);
+void ui_layer_set_visibility(bool isVisible);
 
 /// @brief End the current layer scope.
 void ui_layer_end();

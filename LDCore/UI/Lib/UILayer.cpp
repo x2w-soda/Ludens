@@ -67,6 +67,9 @@ void UILayer::layout()
 
 void UILayer::render(ScreenRenderComponent& renderer)
 {
+    if (!mObj->isVisible)
+        return;
+
     for (UIWorkspaceObj* space : mObj->workspaces)
     {
         UIWorkspace(space).render(renderer);
@@ -76,6 +79,11 @@ void UILayer::render(ScreenRenderComponent& renderer)
 void UILayer::raise()
 {
     mObj->ctx->raise_layer(mObj);
+}
+
+void UILayer::set_visible(bool isVisible)
+{
+    mObj->isVisible = isVisible;
 }
 
 UIWorkspace UILayer::create_workspace(const Rect& area)

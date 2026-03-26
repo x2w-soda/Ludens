@@ -14,14 +14,14 @@ using EditorAreaID = uint32_t;
 struct EditorWorkspaceInfo
 {
     EditorContext ctx;
-    const char* uiLayerName;     // the UILayer this editor workspace belongs to
-    const char* uiWorkspaceName; // unique UIWorkspace name in the layer
+    const char* uiLayerName;     // the UILayer this editor workspace corresponds to
     Rect rootRect;               // total rect area for the editor workspace
+    Color rootColor = 0;         // if not zero, the background color of root rect area
     bool isVisible = true;       // initial visibility state after creation
     bool isFloat = false;
 };
 
-/// @brief Composes one or more EditorWindow, belongs to a UILayer.
+/// @brief Corresponds to a UILayer, organizes EditorWindows.
 struct EditorWorkspace : Handle<struct EditorWorkspaceObj>
 {
     /// @brief Create editor workspace.
@@ -48,6 +48,9 @@ struct EditorWorkspace : Handle<struct EditorWorkspaceObj>
 
     /// @brief Set editor workspace rect, triggers resize callbacks for EditorWindows.
     void set_rect(const Rect& area);
+
+    /// @brief Get editor workspace rect.
+    Rect get_rect();
 
     /// @brief Get area ID of root.
     EditorAreaID get_root_id();

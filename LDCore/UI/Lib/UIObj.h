@@ -53,7 +53,7 @@ struct UIWorkspaceObj
     const float splitGap = 6.0f; // TODO:
     uint32_t windowIDCounter = 0;
     uint32_t id = 0;       // workspace ID, unique within layer
-    bool isHidden = false; // workspace level visibility mask
+    bool isVisible = true; // workspace level visibility mask
 
     UIWorkspaceObj() = delete;
     UIWorkspaceObj(const UIWorkspaceObj&) = delete;
@@ -80,6 +80,7 @@ struct UILayerObj
     HashSet<UIWorkspaceObj*> deferredWorkspaceDestruction;
     Vector<UIWorkspaceObj*> workspaces;
     uint32_t workspaceIDCounter = 0;
+    bool isVisible = true;
 
     UILayerObj() = default;
     UILayerObj(const UILayerObj&) = delete;

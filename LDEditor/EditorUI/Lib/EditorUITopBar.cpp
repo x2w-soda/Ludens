@@ -222,7 +222,7 @@ EditorUITopBar EditorUITopBar::create(const EditorUITopBarInfo& barI)
 
     auto* obj = heap_new<EditorTopBarObj>(MEMORY_USAGE_UI);
     obj->ctx = barI.ctx;
-    obj->layerName = barI.groundLayerName;
+    obj->layerName = barI.layerName;
     obj->barRect = Rect(0.0f, 0.0f, barI.screenSize.x, barI.barHeight);
     obj->screenRect = Rect(0.0f, 0.0f, barI.screenSize.x, barI.screenSize.y);
 

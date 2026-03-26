@@ -92,7 +92,6 @@ EditorDialog EditorDialog::create(const EditorDialogInfo& dialogI)
     wsI.isFloat = false;
     wsI.isVisible = true;
     wsI.uiLayerName = EDITOR_DIALOG_NAME;     // unique within context
-    wsI.uiWorkspaceName = EDITOR_DIALOG_NAME; // unique within layer
     wsI.rootRect = Rect(0.0f, 0.0f, dialogI.extent.x, dialogI.extent.y);
     obj->workspace = EditorWorkspace::create(wsI);
     obj->window = obj->workspace.create_window(obj->workspace.get_root_id(), dialogI.type);

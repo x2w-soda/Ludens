@@ -9,8 +9,8 @@ namespace LD {
 struct EditorUITopBarInfo
 {
     EditorContext ctx;
-    const char* groundLayerName; // top bar lives in the ground layer
-    float barHeight;             // top bar height
+    const char* layerName; // top bar lives belongs to this layer
+    float barHeight;       // top bar height
     Vec2 screenSize;
 };
 
