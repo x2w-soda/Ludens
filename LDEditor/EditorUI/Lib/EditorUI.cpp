@@ -22,8 +22,9 @@ void EditorUI::startup(const EditorUIInfo& info)
 
     LD_ASSERT(info.renderSystem);
 
-    mScreenSize = Vec2((float)info.screenWidth, (float)info.screenHeight);
     mCtx = info.ctx;
+    mCtx.add_observer(&EditorUI::on_editor_event, this);
+    mScreenSize = Vec2((float)info.screenWidth, (float)info.screenHeight);
     mRenderSystem = info.renderSystem;
     mEnvCubemap = (RUID)0; // info.envCubemap
 
@@ -210,7 +211,7 @@ Vector<RenderSystemScreenPass::Region> EditorUI::get_screen_regions()
     return {region};
 }
 
-void EditorUI::on_event(const WindowEvent* event, void* user)
+void EditorUI::on_window_event(const WindowEvent* event, void* user)
 {
     EditorUI& self = *(EditorUI*)user;
 
@@ -225,6 +226,30 @@ void EditorUI::on_event(const WindowEvent* event, void* user)
     }
 
     ui_context_input(EDITOR_UI_CONTEXT_NAME, event);
+}
+
+void EditorUI::on_editor_event(const EditorEvent* event, void* user)
+{
+    // This is called from EditorContext::poll_events,
+    // we can emit new events but synchronous calls
+    // should be deferred to next imgui update.
+    EditorUI& self = *(EditorUI*)user;
+
+    switch (event->type)
+    {
+    case EDITOR_EVENT_TYPE_NOTIFY_PROJECT_CREATION:
+    {
+        auto* notifyE = (const EditorNotifyProjectCreationEvent*)event;
+        if (notifyE->error.empty())
+        {
+            auto* actionE = (EditorActionOpenProjectEvent*)self.mCtx.enqueue_event(EDITOR_EVENT_TYPE_ACTION_OPEN_PROJECT);
+            actionE->openProjectDir = notifyE->projectDir;
+        }
+        break;
+    }
+    default:
+        break;
+    }
 }
 
 } // namespace LD

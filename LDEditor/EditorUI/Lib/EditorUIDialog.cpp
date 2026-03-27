@@ -108,7 +108,8 @@ void EditorUIDialogObj::update(float delta)
             event->openScene = selectedPath;
         }
         break;
-    case DIALOG_OPEN_PROJECT:
+    case DIALOG_OPEN_PROJECT: // TODO: maybe handled by EDITOR_WINDOW_PROJECT?
+#if 0
         selectW = (SelectionWindow)mDialog.get_editor_window(EDITOR_WINDOW_SELECTION);
         if (selectW && selectW.has_selected(selectedPath))
         {
@@ -116,6 +117,7 @@ void EditorUIDialogObj::update(float delta)
             auto* event = (EditorActionOpenProjectEvent*)mCtx.enqueue_event(EDITOR_EVENT_TYPE_ACTION_OPEN_PROJECT);
             event->openProject = selectedPath;
         }
+#endif
         break;
     case DIALOG_SELECT_ASSET:
         selectW = (SelectionWindow)mDialog.get_editor_window(EDITOR_WINDOW_SELECTION);

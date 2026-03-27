@@ -56,7 +56,8 @@ public:
     /// @brief Resize the editor UI to new screen size.
     void resize(const Vec2& screenSize);
 
-    static void on_event(const WindowEvent* event, void* user);
+    static void on_window_event(const WindowEvent* event, void* user);
+    static void on_editor_event(const EditorEvent* event, void* user);
     static void on_render(ScreenRenderComponent renderer, void* user);
     static void on_render_dialog(ScreenRenderComponent renderer, void* user);
     static void on_scene_pick(SceneOverlayGizmoID gizmoID, RUID ruid, void* user);

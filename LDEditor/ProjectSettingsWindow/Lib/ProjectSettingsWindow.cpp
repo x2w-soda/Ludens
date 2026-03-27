@@ -122,6 +122,7 @@ void ProjectSettingsWindowObj::section_startup()
     const float rowHeight = theme.get_text_row_height();
     const float propNameWidth = theme.get_text_label_width();
     const UILayoutInfo layoutI = make_row_layout();
+    UITextEditStorage* edit = nullptr;
 
     std::string text;
 
@@ -131,8 +132,8 @@ void ProjectSettingsWindowObj::section_startup()
         ui_push_text(nullptr, "Window Width");
         ui_top_layout_size(UISize::fixed(propNameWidth), UISize::fixed(rowHeight));
         ui_pop();
-        ui_push_text_edit(nullptr);
-        ui_text_edit_domain(UI_TEXT_EDIT_DOMAIN_UINT);
+        edit = ui_push_text_edit(nullptr);
+        edit->set_domain(UI_TEXT_EDIT_DOMAIN_UINT);
         // TODO: if (sectionDirty)
         if (ui_text_edit_submitted(text))
         {
@@ -150,8 +151,8 @@ void ProjectSettingsWindowObj::section_startup()
         ui_push_text(nullptr, "Window Height");
         ui_top_layout_size(UISize::fixed(propNameWidth), UISize::fixed(rowHeight));
         ui_pop();
-        ui_push_text_edit(nullptr);
-        ui_text_edit_domain(UI_TEXT_EDIT_DOMAIN_UINT);
+        edit = ui_push_text_edit(nullptr);
+        edit->set_domain(UI_TEXT_EDIT_DOMAIN_UINT);
         // TODO: if (sectionDirty)
         if (ui_text_edit_submitted(text))
         {
@@ -171,10 +172,10 @@ void ProjectSettingsWindowObj::section_startup()
         ui_push_text(nullptr, "Window Name");
         ui_top_layout_size(UISize::fixed(propNameWidth), UISize::fixed(rowHeight));
         ui_pop();
-        ui_push_text_edit(nullptr);
-        ui_text_edit_domain(UI_TEXT_EDIT_DOMAIN_STRING);
+        edit = ui_push_text_edit(nullptr);
+        edit->set_domain(UI_TEXT_EDIT_DOMAIN_STRING);
         if (sectionDirty)
-            ui_text_edit_set_text(name);
+            edit->set_text(name);
         if (ui_text_edit_submitted(name))
             startupS.set_window_name(name);
         ui_pop();
@@ -197,6 +198,7 @@ void ProjectSettingsWindowObj::section_screen_layers()
 {
     ProjectScreenLayerSettings screenLayerS = mCtx.get_project_settings().get_screen_layer_settings();
     Vector<ProjectScreenLayer> layers = screenLayerS.get_layers();
+    UITextEditStorage* edit = nullptr;
 
     const UILayoutInfo layoutI = make_row_layout();
 
@@ -210,9 +212,9 @@ void ProjectSettingsWindowObj::section_screen_layers()
         ui_top_layout(layoutI);
 
         // screen layer name
-        ui_push_text_edit(nullptr);
+        edit = ui_push_text_edit(nullptr);
         if (sectionDirty)
-            ui_text_edit_set_text(layer.name);
+            edit->set_text(layer.name);
         if (ui_text_edit_submitted(name))
         {
             screenLayerS.rename_layer(layer.id, name.c_str());

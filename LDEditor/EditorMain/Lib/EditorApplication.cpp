@@ -31,7 +31,7 @@ EditorApplication::EditorApplication()
     windowI.width = 1600;
     windowI.height = 900;
     windowI.name = "Ludens";
-    windowI.onEvent = &EditorUI::on_event;
+    windowI.onEvent = &EditorUI::on_window_event;
     windowI.user = &mEditorUI;
     windowI.hintBorderColor = 0;
     windowI.hintTitleBarColor = 0x000000FF;

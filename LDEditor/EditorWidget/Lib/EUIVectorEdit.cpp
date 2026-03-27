@@ -10,20 +10,20 @@ namespace LD {
 
 void EUIU32Storage::init(uint32_t u32)
 {
-    LD_ASSERT(u32Edit.buf);
-    u32Edit.buf.set_string(std::to_string(u32));
+    LD_ASSERT(u32Edit.editor);
+    u32Edit.editor.set_string(std::to_string(u32));
 }
 
 void EUIF32Storage::init(float f32)
 {
-    LD_ASSERT(f32Edit.buf);
-    f32Edit.buf.set_string(std::to_string(f32));
+    LD_ASSERT(f32Edit.editor);
+    f32Edit.editor.set_string(std::to_string(f32));
 }
 
 void EUIVec2Storage::init(const Vec2& vec2)
 {
-    vec2Edit[0].buf.set_string(std::to_string(vec2.x));
-    vec2Edit[1].buf.set_string(std::to_string(vec2.y));
+    vec2Edit[0].editor.set_string(std::to_string(vec2.x));
+    vec2Edit[1].editor.set_string(std::to_string(vec2.y));
 }
 
 bool eui_u32_edit(EUIU32Storage* storage, const char* label, uint32_t* u32)
@@ -46,8 +46,9 @@ bool eui_u32_edit(EUIU32Storage* storage, const char* label, uint32_t* u32)
 
         UITextEditStorage* edit = &storage->u32Edit;
         edit = ui_push_text_edit(edit);
-        edit->domain = UI_TEXT_EDIT_DOMAIN_UINT;
-        edit->text = std::format("{}", *u32);
+        edit->set_domain(UI_TEXT_EDIT_DOMAIN_UINT);
+        if (!ui_text_edit_is_editing())
+            edit->set_text(std::format("{}", *u32));
         hasChanged = ui_text_edit_submitted(str);
         if (hasChanged)
             *u32 = (uint32_t)std::stoul(str);
@@ -80,8 +81,9 @@ bool eui_f32_edit(EUIF32Storage* storage, const char* label, float* f32)
         ui_pop();
 
         edit = ui_push_text_edit(&storage->f32Edit);
-        edit->domain = UI_TEXT_EDIT_DOMAIN_UINT;
-        edit->text = std::format("{:8.3f}", *f32);
+        edit->set_domain(UI_TEXT_EDIT_DOMAIN_UINT);
+        if (!ui_text_edit_is_editing())
+            edit->set_text(std::format("{:8.3f}", *f32));
         if (ui_text_edit_submitted(str))
         {
             *f32 = std::stof(str);
@@ -119,8 +121,9 @@ bool eui_vec2_edit(EUIVec2Storage* storage, const char* label, Vec2* v)
         {
             float* f32 = &v->x + i;
             edit = ui_push_text_edit(&storage->vec2Edit[i]);
-            edit->domain = UI_TEXT_EDIT_DOMAIN_UINT; // UI_TEXT_EDIT_DOMAIN_F32;
-            edit->text = std::format("{:8.3f}", *f32);
+            edit->set_domain(UI_TEXT_EDIT_DOMAIN_F32);
+            if (!ui_text_edit_is_editing())
+                edit->set_text(std::format("{:8.3f}", *f32));
             if (ui_text_edit_submitted(str))
             {
                 *f32 = std::stof(str);
@@ -157,8 +160,9 @@ bool eui_vec3_edit(EUIVec3Storage* storage, const char* label, Vec3* v)
         {
             float* f32 = &v->x + i;
             edit = ui_push_text_edit(&storage->vec3Edit[i]);
-            edit->domain = UI_TEXT_EDIT_DOMAIN_UINT; // UI_TEXT_EDIT_DOMAIN_F32;
-            edit->text = std::format("{:8.3f}", *f32);
+            edit->set_domain(UI_TEXT_EDIT_DOMAIN_F32);
+            if (!ui_text_edit_is_editing())
+                edit->set_text(std::format("{:8.3f}", *f32));
             if (ui_text_edit_submitted(str))
             {
                 *f32 = std::stof(str);
