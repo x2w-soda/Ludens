@@ -11,6 +11,7 @@
 #include <LudensEditor/InspectorWindow/InspectorWindow.h>
 #include <LudensEditor/OutlinerWindow/OutlinerWindow.h>
 #include <LudensEditor/ProjectSettingsWindow/ProjectSettingsWindow.h>
+#include <LudensEditor/ProjectWindow/ProjectWindow.h>
 #include <LudensEditor/SelectionWindow/SelectionWindow.h>
 #include <LudensEditor/TabControlWindow/TabControlWindow.h>
 #include <LudensEditor/VersionWindow/VersionWindow.h>
@@ -113,6 +114,7 @@ static EditorWindowMeta sEditorWindowTable[] = {
     { EDITOR_WINDOW_SELECTION,        EDITOR_ICON_ENUM_LAST,        &SelectionWindow::create,       &SelectionWindow::destroy,       "Selection" },
     { EDITOR_WINDOW_CREATE_COMPONENT, EDITOR_ICON_ENUM_LAST,        &CreateComponentWindow::create, &CreateComponentWindow::destroy, "CreateComponent" },
     { EDITOR_WINDOW_PROJECT_SETTINGS, EDITOR_ICON_ENUM_LAST,        &ProjectSettingsWindow::create, &ProjectSettingsWindow::destroy, "ProjectSettings" },
+    { EDITOR_WINDOW_PROJECT,          EDITOR_ICON_ENUM_LAST,        &ProjectWindow::create,         &ProjectWindow::destroy,         "Project" },
     { EDITOR_WINDOW_DOCUMENT,         EDITOR_ICON_ENUM_LAST,        &DocumentWindow::create,        &DocumentWindow::destroy,        "Document" },
     { EDITOR_WINDOW_VIEWPORT,         EDITOR_ICON_VIEWPORT_WINDOW,  &ViewportWindow::create,        &ViewportWindow::destroy,        "Viewport" },
     { EDITOR_WINDOW_OUTLINER,         EDITOR_ICON_OUTLINER_WINDOW,  &OutlinerWindow::create,        &OutlinerWindow::destroy,        "Outliner" },
