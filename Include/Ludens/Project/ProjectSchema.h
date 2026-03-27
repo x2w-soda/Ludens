@@ -23,6 +23,8 @@ struct ProjectSchema
 
     /// @brief Try saving project as TOML schema file on disk.
     static bool save_project(Project project, const FS::Path& savePath, std::string& err);
+
+    static std::string create_empty(const std::string& projectName, const std::string& assetSchemaPath);
 };
 
 } // namespace LD

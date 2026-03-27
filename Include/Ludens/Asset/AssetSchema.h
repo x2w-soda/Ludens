@@ -18,6 +18,8 @@ struct AssetSchema
 
     /// @brief Try saving asset registry as TOML schema file on disk.
     static bool save_registry(AssetRegistry registry, const FS::Path& savePath, std::string& err);
+
+    static std::string create_empty();
 };
 
 } // namespace LD

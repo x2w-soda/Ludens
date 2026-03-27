@@ -74,6 +74,10 @@ struct FontAtlas : Handle<struct FontAtlasObj>
     /// @return whether the glyph is found in the atlas
     bool get_baseline_glyph(uint32_t code, float fontSize, const Vec2& baseline, Rect& glyphBB, float& advanceX);
 
+    /// @brief Measure the index of the character at position.
+    /// @return If non-negative, the index into text where the character was found.
+    int measure_text_index(View text, float fontSizePx, float limitWidth, const Vec2& pos);
+
     /// @brief Measure height of text if the width is limited.
     float measure_wrap_size(View text, float fontSizePx, float limitWidth);
 

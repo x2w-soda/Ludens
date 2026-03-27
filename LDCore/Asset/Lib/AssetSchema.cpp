@@ -256,4 +256,16 @@ bool AssetSchema::save_registry(AssetRegistry registry, const FS::Path& savePath
     return FS::write_file_and_swap_backup(savePath, View(toml.data(), toml.size()), err);
 }
 
+std::string AssetSchema::create_empty()
+{
+    AssetRegistry reg = AssetRegistry::create();
+
+    std::string toml, err;
+    bool success = AssetSchema::save_registry_to_string(reg, toml, err);
+    LD_ASSERT(success);
+
+    return toml;
+}
+
+
 } // namespace LD

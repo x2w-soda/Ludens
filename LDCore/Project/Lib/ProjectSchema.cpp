@@ -333,4 +333,20 @@ bool ProjectSchema::save_project(Project project, const FS::Path& savePath, std:
     return FS::write_file_and_swap_backup(savePath, tomlView, err);
 }
 
+std::string ProjectSchema::create_empty(const std::string& projectName, const std::string& assetSchemaPath)
+{
+    Project project = Project::create();
+    project.set_name(projectName);
+    project.set_asset_schema_path(assetSchemaPath);
+    project.get_settings().get_startup_settings().set_window_name(projectName);
+
+    std::string toml, err;
+    bool success = ProjectSchema::save_project_to_string(project, toml, err);
+    LD_ASSERT(success);
+
+    Project::destroy(project);
+
+    return toml;
+}
+
 } // namespace LD

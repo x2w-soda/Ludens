@@ -416,4 +416,30 @@ bool BuildProjectAsync::get_result(ProjectBuildResult& outResult)
     return true;
 }
 
+bool create_empty_project(const std::string& projectName, const FS::Path& projectDir, std::string& err)
+{
+    LD_PROFILE_SCOPE;
+
+    if (!FS::create_directories(projectDir, err))
+    {
+        err = std::format("failed to create destination directory [{}]", projectDir.string());
+        return false;
+    }
+
+    std::string toml;
+
+    toml = AssetSchema::create_empty();
+    FS::Path assetSchemaPath = projectDir / FS::Path("assets.toml");
+    if (!FS::write_file(assetSchemaPath, View(toml.data(), toml.size()), err))
+        return false;
+
+    toml = ProjectSchema::create_empty(projectName, "assets.toml");
+    FS::Path projectSchemaPath = projectDir / FS::Path("project.toml");
+    if (!FS::write_file(projectSchemaPath, View(toml.data(), toml.size()), err))
+        return false;
+
+    return true;
+}
+
+
 } // namespace LD

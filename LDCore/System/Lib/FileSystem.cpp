@@ -326,6 +326,24 @@ bool is_directory(const Path& path)
     return fs::exists(path) && fs::is_directory(path);
 }
 
+bool is_empty_directory(const Path& path)
+{
+    if (!FS::is_directory(path))
+        return false;
+
+    bool isEmpty = false;
+
+    try
+    {
+        isEmpty = fs::is_empty(path);
+    }
+    catch (const std::filesystem::filesystem_error& e)
+    {
+    }
+
+    return isEmpty;
+}
+
 bool create_directories(const Path& path, std::string& err)
 {
     try

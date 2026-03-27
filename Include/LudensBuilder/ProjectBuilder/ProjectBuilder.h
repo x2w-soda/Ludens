@@ -49,4 +49,8 @@ struct BuildProjectAsync : Handle<struct BuildProjectAsyncObj>
     bool get_result(ProjectBuildResult& outResult);
 };
 
+/// @brief Tries to create empty project in destination directory.
+///        This call is synchronous and generates default schema files.
+bool create_empty_project(const std::string& projectName, const FS::Path& projectDir, std::string& err);
+
 } // namespace LD

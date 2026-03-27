@@ -292,6 +292,38 @@ bool FontAtlas::get_baseline_glyph(uint32_t code, float fontSize, const Vec2& ba
     return true;
 }
 
+int FontAtlas::measure_text_index(View text, float fontSizePx, float limitWidth, const Vec2& pos)
+{
+    if (!text)
+        return -1;
+
+    FontMetrics metrics;
+    get_font().get_metrics(metrics, fontSizePx);
+
+    Vec2 baseline(0.0f, metrics.ascent);
+
+    for (size_t i = 0; i < text.size; i++)
+    {
+        uint32_t c = (uint32_t)text.data[i];
+
+        // TODO: text wrapping using whitespace as boundary
+        if (c == '\n' || baseline.x >= limitWidth)
+        {
+            baseline.y += (float)metrics.lineHeight;
+            baseline.x = 0.0f;
+            continue;
+        }
+
+        float advanceX;
+        Rect rect;
+        get_baseline_glyph(c, fontSizePx, baseline, rect, advanceX);
+        baseline.x += advanceX;
+
+        if (rect.contains(pos) && i < text.size)
+            return (int)i;
+    }
+}
+
 float FontAtlas::measure_wrap_size(View text, float fontSizePx, float limitWidth)
 {
     FontMetrics metrics;
