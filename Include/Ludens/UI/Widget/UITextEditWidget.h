@@ -17,11 +17,11 @@ typedef void (*UITextEditOnSubmit)(UIWidget widget, View text, void* user);
 
 struct UITextEditStorage
 {
-    TextBuffer buf = {};          /// text buffer under edit
-    std::string text = {};        /// last submitted text, displayed when not editing
-    UITextEditDomain domain = {}; /// input domain, filters key input
-    UIFont font = {};             /// displayed font
-    float fontSize = 16.0f;       /// rendered size
+    TextBuffer buf = {};                  /// text buffer under edit
+    std::string text = {};                /// last submitted text, displayed when not editing
+    UITextEditDomain domain = {};         /// input domain, filters key input
+    UIFont font = {};                     /// displayed font
+    float fontSize = UIFont::base_size(); /// rendered size
 
     UITextEditStorage();
     UITextEditStorage(const UITextEditStorage& other);

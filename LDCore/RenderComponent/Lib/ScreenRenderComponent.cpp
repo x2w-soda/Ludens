@@ -863,4 +863,18 @@ void ScreenRenderComponent::draw_text(FontAtlas atlas, RImage atlasImage, float 
     }
 }
 
+void ScreenRenderComponent::draw_text_centered(FontAtlas atlas, RImage atlasImage, float fontSize, const Vec2& pos, const char* text, Color color, float width)
+{
+    if (!text)
+        return;
+
+    float minWidth, maxWidth;
+    View textView(text, strlen(text));
+    atlas.measure_wrap_limit(textView, fontSize, minWidth, maxWidth);
+
+    Vec2 adjustedPos = pos;
+    adjustedPos.x += (width - maxWidth) / 2.0f;
+    draw_text(atlas, atlasImage, fontSize, adjustedPos, text, color, width);
+}
+
 } // namespace LD

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Ludens/UI/UIFont.h>
 #include <Ludens/UI/UIWidget.h>
 
 #include <string>
@@ -11,8 +12,9 @@ typedef void (*UIButtonOnClick)(UIWidget w, MouseButton btn, void* user);
 struct UIButtonStorage
 {
     std::string text;
-    Color textColor;
-    bool transparentBG;
+    UIFont font = {};
+    bool transparentBG = false;
+    bool isEnabled = true;
 };
 
 /// @brief UI button widget.

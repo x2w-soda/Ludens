@@ -11,6 +11,8 @@ struct UIFont : Handle<struct UIFontObj>
 {
     FontAtlas font_atlas();
     RImage image();
+
+    static inline float base_size() { return 16.0f; }
 };
 
 struct UIFontRegistry : Handle<struct UIFontRegistryObj>

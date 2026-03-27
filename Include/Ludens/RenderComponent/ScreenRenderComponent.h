@@ -150,6 +150,9 @@ struct ScreenRenderComponent : Handle<struct ScreenRenderComponentObj>
 
     /// @brief draw a string of text
     void draw_text(FontAtlas atlas, RImage atlasImage, float fontSize, const Vec2& pos, const char* text, Color color, float wrapWidth = 0.0f);
+
+    /// @brief draw a string of text centered
+    void draw_text_centered(FontAtlas atlas, RImage atlasImage, float fontSize, const Vec2& pos, const char* text, Color color, float width);
 };
 
 struct ScreenRenderComponentInfo
