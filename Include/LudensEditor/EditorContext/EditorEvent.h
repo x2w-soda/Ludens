@@ -13,6 +13,7 @@ typedef void (*EditorEventFn)(const EditorEvent* event, void* user);
 
 enum EditorEventType
 {
+    EDITOR_EVENT_TYPE_NOTIFY_PROJECT_CREATION,
     EDITOR_EVENT_TYPE_NOTIFY_PROJECT_LOAD,
     EDITOR_EVENT_TYPE_NOTIFY_SCENE_LOAD,
     EDITOR_EVENT_TYPE_NOTIFY_COMPONENT_SELECTION,
@@ -31,6 +32,7 @@ enum EditorEventType
     EDITOR_EVENT_TYPE_ACTION_OPEN_SCENE,
     EDITOR_EVENT_TYPE_ACTION_SAVE_SCENE,
     EDITOR_EVENT_TYPE_ACTION_OPEN_PROJECT,
+    EDITOR_EVENT_TYPE_ACTION_CREATE_PROJECT,
     EDITOR_EVENT_TYPE_ACTION_ADD_COMPONENT,
     EDITOR_EVENT_TYPE_ACTION_ADD_COMPONENT_SCRIPT,
     EDITOR_EVENT_TYPE_ACTION_SET_COMPONENT_ASSET,
@@ -91,6 +93,18 @@ struct EditorActionEvent : EditorEvent
         : EditorEvent(type, EDITOR_EVENT_CATEGORY_ACTION)
     {
     }
+};
+
+/// @brief Event signaling a result of project creation.
+struct EditorNotifyProjectCreationEvent : EditorNotifyEvent
+{
+    EditorNotifyProjectCreationEvent()
+        : EditorNotifyEvent(EDITOR_EVENT_TYPE_NOTIFY_PROJECT_CREATION)
+    {
+    }
+
+    std::string error = {};   // if not empty, error message of failure
+    FS::Path projectDir = {}; // upon success, the directory of created project
 };
 
 /// @brief Event signaling that a Project has been loaded into the editor.
@@ -264,7 +278,18 @@ struct EditorActionOpenProjectEvent : EditorActionEvent
     {
     }
 
-    FS::Path openProject;
+    FS::Path openProjectDir;
+};
+
+struct EditorActionCreateProjectEvent : EditorActionEvent
+{
+    EditorActionCreateProjectEvent()
+        : EditorActionEvent(EDITOR_EVENT_TYPE_ACTION_CREATE_PROJECT)
+    {
+    }
+
+    std::string projectName;
+    FS::Path projectDir;
 };
 
 struct EditorActionAddComponentEvent : EditorActionEvent

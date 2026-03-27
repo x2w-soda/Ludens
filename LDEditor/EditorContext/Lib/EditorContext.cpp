@@ -19,6 +19,7 @@
 #include <Ludens/System/Timer.h>
 #include <Ludens/UI/UIFont.h>
 #include <LudensBuilder/DocumentBuilder/DocumentRegistry.h>
+#include <LudensBuilder/ProjectBuilder/ProjectBuilder.h>
 #include <LudensEditor/EditorContext/EditorContext.h>
 #include <LudensEditor/EditorContext/EditorEventQueue.h>
 
@@ -73,6 +74,7 @@ static void editor_action_new_scene_event_handler(const EditorEvent* event, void
 static void editor_action_open_scene_event_handler(const EditorEvent* event, void* user);
 static void editor_action_save_scene_event_handler(const EditorEvent* event, void* user);
 static void editor_action_open_project_event_handler(const EditorEvent* event, void* user);
+static void editor_action_create_project_event_handler(const EditorEvent* event, void* user);
 static void editor_action_add_component_event_handler(const EditorEvent* event, void* user);
 static void editor_action_add_component_script_event_handler(const EditorEvent* event, void* user);
 static void editor_action_set_component_asset_event_handler(const EditorEvent* event, void* user);
@@ -84,6 +86,7 @@ static struct
     EditorEventType type;
     EditorEventFn handler;
 } sEditorEventHandlers[] = {
+    {EDITOR_EVENT_TYPE_NOTIFY_PROJECT_CREATION, &editor_broadcast_event_handler},
     {EDITOR_EVENT_TYPE_NOTIFY_PROJECT_LOAD, &editor_broadcast_event_handler},
     {EDITOR_EVENT_TYPE_NOTIFY_SCENE_LOAD, &editor_broadcast_event_handler},
     {EDITOR_EVENT_TYPE_NOTIFY_COMPONENT_SELECTION, &editor_broadcast_event_handler},
@@ -102,6 +105,7 @@ static struct
     {EDITOR_EVENT_TYPE_ACTION_OPEN_SCENE, &editor_action_open_scene_event_handler},
     {EDITOR_EVENT_TYPE_ACTION_SAVE_SCENE, &editor_action_save_scene_event_handler},
     {EDITOR_EVENT_TYPE_ACTION_OPEN_PROJECT, &editor_action_open_project_event_handler},
+    {EDITOR_EVENT_TYPE_ACTION_CREATE_PROJECT, &editor_action_create_project_event_handler},
     {EDITOR_EVENT_TYPE_ACTION_ADD_COMPONENT, &editor_action_add_component_event_handler},
     {EDITOR_EVENT_TYPE_ACTION_ADD_COMPONENT_SCRIPT, &editor_action_add_component_script_event_handler},
     {EDITOR_EVENT_TYPE_ACTION_SET_COMPONENT_ASSET, &editor_action_set_component_asset_event_handler},
@@ -184,6 +188,18 @@ static void editor_action_open_project_event_handler(const EditorEvent* event, v
     // TODO: save scene and project dialog?
     // TODO: how much to unwind? AssetManager for sure, EditorContext invalidation?
     LD_UNREACHABLE;
+}
+
+static void editor_action_create_project_event_handler(const EditorEvent* event, void* user)
+{
+    LD_ASSERT(event->type == EDITOR_EVENT_TYPE_ACTION_CREATE_PROJECT);
+    auto* obj = (EditorContextObj*)user;
+    auto* e = (const EditorActionCreateProjectEvent*)event;
+    EditorContext ctx(obj);
+    
+    auto* notify = (EditorNotifyProjectCreationEvent*)ctx.enqueue_event(EDITOR_EVENT_TYPE_NOTIFY_PROJECT_CREATION);
+    if (create_empty_project(e->projectName, e->projectDir, notify->error))
+        notify->projectDir = e->projectDir;
 }
 
 static void editor_action_add_component_event_handler(const EditorEvent* event, void* user)

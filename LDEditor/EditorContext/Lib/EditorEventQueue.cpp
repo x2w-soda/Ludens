@@ -6,6 +6,7 @@ namespace LD {
 
 union EditorEventU
 {
+    EditorNotifyProjectCreationEvent notifyProjectCreation;
     EditorNotifyProjectLoadEvent notifyProjectLoad;
     EditorNotifySceneLoadEvent notifySceneLoad;
     EditorNotifyComponentSelectionEvent notifyComponentSelect;
@@ -18,6 +19,18 @@ union EditorEventU
     EditorRequestOpenSceneEvent requestOpenScene;
     EditorRequestCreateComponentEvent requestCreateComponent;
     EditorRequestDocumentEvent requestDocument;
+    EditorActionUndoEvent actionUndo;
+    EditorActionRedoEvent actionRedo;
+    EditorActionNewSceneEvent actionNewScene;
+    EditorActionOpenSceneEvent actionOpenScene;
+    EditorActionSaveSceneEvent actionSaveScene;
+    EditorActionOpenProjectEvent actionOpenProject;
+    EditorActionCreateProjectEvent actionCreateProject;
+    EditorActionAddComponentEvent actionAddComponent;
+    EditorActionAddComponentScriptEvent actionAddComponentScript;
+    EditorActionSetComponentAssetEvent actionSetComponentAsset;
+    EditorActionCloneComponentSubtreeEvent actionCloneComponentSubtree;
+    EditorActionDeleteComponentSubtreeEvent actionDeleteComponentSubtree;
 };
 
 struct EditorEventQueueObj
@@ -45,6 +58,9 @@ EditorEvent* EditorEventQueueObj::alloc_event(EditorEventType type)
 
     switch (type)
     {
+    case EDITOR_EVENT_TYPE_NOTIFY_PROJECT_CREATION:
+        new (event) EditorNotifyProjectCreationEvent();
+        break;
     case EDITOR_EVENT_TYPE_NOTIFY_PROJECT_LOAD:
         new (event) EditorNotifyProjectLoadEvent();
         break;
@@ -99,6 +115,9 @@ EditorEvent* EditorEventQueueObj::alloc_event(EditorEventType type)
     case EDITOR_EVENT_TYPE_ACTION_OPEN_PROJECT:
         new (event) EditorActionOpenProjectEvent();
         break;
+    case EDITOR_EVENT_TYPE_ACTION_CREATE_PROJECT:
+        new (event) EditorActionCreateProjectEvent();
+        break;
     case EDITOR_EVENT_TYPE_ACTION_ADD_COMPONENT:
         new (event) EditorActionAddComponentEvent();
         break;
@@ -126,6 +145,9 @@ void EditorEventQueueObj::free_event(EditorEvent* event)
 {
     switch (event->type)
     {
+    case EDITOR_EVENT_TYPE_NOTIFY_PROJECT_CREATION:
+        ((EditorNotifyProjectCreationEvent*)(event))->~EditorNotifyProjectCreationEvent();
+        break;
     case EDITOR_EVENT_TYPE_NOTIFY_PROJECT_LOAD:
         ((EditorNotifyProjectLoadEvent*)(event))->~EditorNotifyProjectLoadEvent();
         break;
@@ -179,6 +201,9 @@ void EditorEventQueueObj::free_event(EditorEvent* event)
         break;
     case EDITOR_EVENT_TYPE_ACTION_OPEN_PROJECT:
         ((EditorActionOpenProjectEvent*)(event))->~EditorActionOpenProjectEvent();
+        break;
+    case EDITOR_EVENT_TYPE_ACTION_CREATE_PROJECT:
+        ((EditorActionCreateProjectEvent*)(event))->~EditorActionCreateProjectEvent();
         break;
     case EDITOR_EVENT_TYPE_ACTION_ADD_COMPONENT:
         ((EditorActionAddComponentEvent*)(event))->~EditorActionAddComponentEvent();
