@@ -11,6 +11,7 @@ enum UITextEditDomain
 {
     UI_TEXT_EDIT_DOMAIN_STRING = 0,
     UI_TEXT_EDIT_DOMAIN_UINT,
+    UI_TEXT_EDIT_DOMAIN_F32,
 };
 
 typedef void (*UITextEditOnChange)(UIWidget widget, View text, void* user);
@@ -19,7 +20,7 @@ typedef void (*UITextEditOnSubmit)(UIWidget widget, View text, void* user);
 struct UITextEditStorage
 {
     TextEditLite editor = {};             /// text buffer editor handle
-    std::string text = {};                /// last submitted text, displayed when not editing
+    std::string original = {};            /// text value before edit
     UITextEditDomain domain = {};         /// input domain, filters key input
     UIFont font = {};                     /// displayed font
     float fontSize = UIFont::base_size(); /// rendered size
@@ -29,18 +30,20 @@ struct UITextEditStorage
     ~UITextEditStorage();
 
     UITextEditStorage& operator=(const UITextEditStorage& other);
+
+    /// @brief Set text field value, does not trigger on_change callbacks.
+    void set_text(const std::string& text);
+
+    /// @brief Domain influences how key input is treated and may change the final text before submission.
+    /// @note Upon domain change, text value is reset.
+    void set_domain(UITextEditDomain domain);
 };
 
 struct UITextEditWidget : UIWidget
 {
     UITextEditStorage* get_storage();
 
-    /// @brief Set text edit field value, does not trigger on_change callbacks.
-    void set_text(View text);
-
-    /// @brief Domain influences how key input is treated and may change the final text before submission.
-    /// @note Upon domain change, text value is reset.
-    void set_domain(UITextEditDomain domain);
+    bool is_editing();
 
     void set_on_change(UITextEditOnChange onChange);
     void set_on_submit(UITextEditOnSubmit onSubmit);

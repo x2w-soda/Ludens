@@ -146,9 +146,7 @@ void ui_text_style(Color color, UIFont font);
 
 /// @brief Push UITextEditWidget.
 UITextEditStorage* ui_push_text_edit(UITextEditStorage* storage);
-void ui_text_edit_domain(UITextEditDomain domain);
-void ui_text_edit_set_text(View text);
-inline void ui_text_edit_set_text(const std::string& text) { ui_text_edit_set_text(View(text.data(), text.size())); }
+bool ui_text_edit_is_editing();
 bool ui_text_edit_changed(std::string& text);
 bool ui_text_edit_submitted(std::string& text);
 

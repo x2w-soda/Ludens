@@ -1111,24 +1111,14 @@ UITextEditStorage* ui_push_text_edit(UITextEditStorage* storage)
     return textW.get_storage();
 }
 
-void ui_text_edit_domain(UITextEditDomain domain)
+bool ui_text_edit_is_editing()
 {
     LD_ASSERT_UI_TOP_WIDGET_TYPE(UI_WIDGET_TEXT_EDIT);
 
     UIWidgetState* imWidget = sImContext->imWindow->imWidgetStack.top();
-    UITextEditWidget editW = (UITextEditWidget)imWidget->widget;
+    UITextEditWidget textW = (UITextEditWidget)imWidget->widget;
 
-    editW.set_domain(domain);
-}
-
-void ui_text_edit_set_text(View text)
-{
-    LD_ASSERT_UI_TOP_WIDGET_TYPE(UI_WIDGET_TEXT_EDIT);
-
-    UIWidgetState* imWidget = sImContext->imWindow->imWidgetStack.top();
-    UITextEditWidget editW = (UITextEditWidget)imWidget->widget;
-
-    editW.set_text(text);
+    return textW.is_editing();
 }
 
 bool ui_text_edit_changed(std::string& text)

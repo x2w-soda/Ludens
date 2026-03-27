@@ -14,8 +14,14 @@ struct UITextEditWidgetObj
     UITextEditOnSubmit onSubmit = nullptr;
     bool isEditing;
 
+    void begin_edit();
+    void finish_edit();
+    void cancel_edit();
+    void on_mouse_down_event(const UIEvent& event);
+    void on_key_down_event(const UIEvent& event);
     void domain_string_on_key(const UIEvent& event, bool& hasChanged, bool& hasSubmitted);
     void domain_uint_on_key(const UIEvent& event, bool& hasChanged, bool& hasSubmitted);
+    void domain_f32_on_key(const UIEvent& event, bool& hasChanged, bool& hasSubmitted);
 
     static void startup(UIWidgetObj* base, void* storage);
     static void cleanup(UIWidgetObj* base);
