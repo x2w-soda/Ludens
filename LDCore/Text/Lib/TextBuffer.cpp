@@ -23,7 +23,6 @@ TextBuffer TextBuffer::create()
     return TextBuffer(obj);
 }
 
-
 void TextBuffer::destroy(TextBuffer buf)
 {
     TextBufferObj* obj = buf.unwrap();
@@ -33,65 +32,56 @@ void TextBuffer::destroy(TextBuffer buf)
 
 void TextBuffer::set_string(View view)
 {
-    TextBufferObj* obj = this->mObj;
-
-    obj->gapBuffer.clear();
-    obj->gapBuffer.insert(0, view);
+    mObj->gapBuffer.clear();
+    mObj->gapBuffer.insert(0, view);
 }
 
 void TextBuffer::set_string(const char* cstr)
 {
-    TextBufferObj* obj = this->mObj;
-
-    obj->gapBuffer.clear();
+    mObj->gapBuffer.clear();
 
     if (!cstr)
         return;
 
-    obj->gapBuffer.insert(0, cstr);
+    mObj->gapBuffer.insert(0, cstr);
 }
-
 
 std::string TextBuffer::to_string()
 {
-    TextBufferObj* obj = this->mObj;
-
-    return obj->gapBuffer.to_string();
+    return mObj->gapBuffer.to_string();
 }
 
+size_t TextBuffer::size()
+{
+    return mObj->gapBuffer.size();
+}
 
 void TextBuffer::clear()
 {
-    TextBufferObj* obj = this->mObj;
-
-    return obj->gapBuffer.clear();
+    return mObj->gapBuffer.clear();
 }
 
-
-bool TextBuffer::empty()
+void TextBuffer::insert(size_t pos, char ch)
 {
-    TextBufferObj* obj = this->mObj;
-
-    return obj->gapBuffer.size() == 0;
+    mObj->gapBuffer.insert(pos, ch);
 }
 
+void TextBuffer::erase(size_t pos)
+{
+    mObj->gapBuffer.erase(pos, 1);
+}
 
 void TextBuffer::push_back(char ch)
 {
-    TextBufferObj* obj = this->mObj;
-
-    obj->gapBuffer.insert(obj->gapBuffer.size(), ch);
+    mObj->gapBuffer.insert(mObj->gapBuffer.size(), ch);
 }
-
 
 void TextBuffer::pop_back()
 {
-    TextBufferObj* obj = this->mObj;
-
-    if (obj->gapBuffer.size() == 0)
+    if (mObj->gapBuffer.size() == 0)
         return;
 
-    obj->gapBuffer.erase(obj->gapBuffer.size() - 1, 1);
+    mObj->gapBuffer.erase(mObj->gapBuffer.size() - 1, 1);
 }
 
 } // namespace LD

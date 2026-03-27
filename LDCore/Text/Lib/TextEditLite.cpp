@@ -1,0 +1,157 @@
+#include <Ludens/Header/Assert.h>
+#include <Ludens/Memory/Memory.h>
+#include <Ludens/Text/TextBuffer.h>
+#include <Ludens/Text/TextEditLite.h>
+
+#include <algorithm>
+
+namespace LD {
+
+struct TextEditLiteObj
+{
+    size_t cursor = 0;
+    TextBuffer buffer = {};
+
+    void cursor_inc();
+    void cursor_dec();
+};
+
+void TextEditLiteObj::cursor_inc()
+{
+    if (cursor < buffer.size())
+        cursor++;
+}
+
+void TextEditLiteObj::cursor_dec()
+{
+    if (cursor > 0)
+        cursor--;
+}
+
+TextEditLite TextEditLite::create()
+{
+    auto* obj = heap_new<TextEditLiteObj>(MEMORY_USAGE_TEXT_EDIT);
+    obj->buffer = TextBuffer::create();
+    obj->cursor = 0;
+
+    return TextEditLite(obj);
+}
+
+void TextEditLite::destroy(TextEditLite editor)
+{
+    auto* obj = editor.unwrap();
+
+    TextBuffer::destroy(obj->buffer);
+
+    heap_delete<TextEditLiteObj>(obj);
+}
+
+TextEditLiteResult TextEditLite::key(KeyValue value)
+{
+    TextEditLiteResult result = TEXT_EDIT_LITE_RESULT_NONE;
+    const KeyCode code = value.code();
+    const KeyMods mods = value.mods();
+
+    if (KEY_CODE_SPACE <= code && code <= KEY_CODE_GRAVE_ACCENT)
+    {
+        // ascii printable
+        char key = (char)code;
+
+        if (KEY_CODE_A <= code && code <= KEY_CODE_Z && (mods & KEY_MOD_SHIFT_BIT) == 0)
+            key += 32;
+        else if (KEY_CODE_0 <= code && code <= KEY_CODE_9 && (mods & KEY_MOD_SHIFT_BIT))
+            key = ")!@#$%^&*("[code - KEY_CODE_0];
+        else if (KEY_CODE_LEFT_BRACKET <= code && code <= KEY_CODE_RIGHT_BRACKET && (mods & KEY_MOD_SHIFT_BIT))
+            key = "{|}"[code - KEY_CODE_LEFT_BRACKET];
+        else if (KEY_CODE_GRAVE_ACCENT == code && (mods & KEY_MOD_SHIFT_BIT))
+            key = '~';
+        else if (KEY_CODE_APOSTROPHE == code && (mods & KEY_MOD_SHIFT_BIT))
+            key = '\"';
+        else if (KEY_CODE_SEMICOLON == code && (mods & KEY_MOD_SHIFT_BIT))
+            key = ':';
+        else if (KEY_CODE_EQUAL == code && (mods & KEY_MOD_SHIFT_BIT))
+            key = '+';
+        else if (KEY_CODE_COMMA <= code && code <= KEY_CODE_SLASH && (mods & KEY_MOD_SHIFT_BIT))
+            key = "<_>?"[code - KEY_CODE_COMMA];
+
+        mObj->buffer.insert(mObj->cursor, key);
+        mObj->cursor_inc();
+        result = TEXT_EDIT_LITE_RESULT_CHANGED;
+    }
+    else if (KEY_CODE_KEYPAD_0 <= code && code <= KEY_CODE_KEYPAD_9)
+    {
+        char key = (code - KEY_CODE_KEYPAD_0) + '0';
+
+        mObj->buffer.insert(mObj->cursor, key);
+        mObj->cursor_inc();
+        result = TEXT_EDIT_LITE_RESULT_CHANGED;
+    }
+    else if (code == KEY_CODE_BACKSPACE && !mObj->buffer.empty())
+    {
+        if (mObj->cursor > 0)
+            mObj->buffer.erase(mObj->cursor - 1);
+        mObj->cursor_dec();
+        result = TEXT_EDIT_LITE_RESULT_CHANGED;
+    }
+    else if (code == KEY_CODE_DELETE)
+    {
+        mObj->buffer.erase(mObj->cursor);
+    }
+    else if (code == KEY_CODE_LEFT)
+    {
+        mObj->cursor_dec();
+    }
+    else if (code == KEY_CODE_RIGHT)
+    {
+        mObj->cursor_inc();
+    }
+    else if (code == KEY_CODE_ENTER)
+    {
+        result = TEXT_EDIT_LITE_RESULT_SUBMITTED;
+    }
+
+    return result;
+}
+
+size_t TextEditLite::get_cursor()
+{
+    return mObj->cursor;
+}
+
+void TextEditLite::set_cursor(size_t pos)
+{
+    mObj->cursor = std::min(pos, mObj->buffer.size());
+}
+
+size_t TextEditLite::size()
+{
+    return mObj->buffer.size();
+}
+
+void TextEditLite::clear()
+{
+    mObj->buffer.clear();
+
+    mObj->cursor = 0;
+}
+
+void TextEditLite::set_string(View str)
+{
+    mObj->buffer.set_string(str);
+
+    mObj->cursor = std::min(mObj->cursor, str.size);
+}
+
+void TextEditLite::set_string(const std::string& str)
+{
+    mObj->buffer.set_string(str);
+
+    mObj->cursor = std::min(mObj->cursor, str.size());
+}
+
+std::string TextEditLite::get_string()
+{
+    return mObj->buffer.to_string();
+}
+
+} // namespace LD

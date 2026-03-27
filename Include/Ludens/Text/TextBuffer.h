@@ -27,11 +27,20 @@ struct TextBuffer : Handle<struct TextBufferObj>
     /// @brief Cast to STL string.
     std::string to_string();
 
+    /// @brief Content byte size.
+    size_t size();
+
+    /// @brief Check if text buffer is empty.
+    inline bool empty() { return size() == 0; }
+
     /// @brief Clears text buffer content.
     void clear();
 
-    /// @brief Check if text buffer is empty.
-    bool empty();
+    /// @brief Insert a char at byte offset.
+    void insert(size_t pos, char ch);
+
+    /// @brief Delete a char at byte offset.
+    void erase(size_t pos);
 
     /// @brief Append a char at the end of buffer.
     void push_back(char ch);

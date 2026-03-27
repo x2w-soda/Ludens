@@ -3,15 +3,18 @@ set(MODULE_TEST_NAME LDTextTest)
 
 set(MODULE_TEST
     Test/TextTest.cpp
+    Test/TextEditLiteTest.cpp
 )
 
 set(MODULE_INCLUDE
-    ${LUDENS_INCLUDE_DIR}/Ludens/Text/TextBuffer.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Text/TextSpan.h
+    ${LUDENS_INCLUDE_DIR}/Ludens/Text/TextBuffer.h
+    ${LUDENS_INCLUDE_DIR}/Ludens/Text/TextEditLite.h
 )
 
 set(MODULE_LIB
     Lib/TextBuffer.cpp
+    Lib/TextEditLite.cpp
 )
 
 add_ludens_core_module(
