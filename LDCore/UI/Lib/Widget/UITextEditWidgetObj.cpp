@@ -66,7 +66,7 @@ bool UITextEditWidgetObj::on_event(UIWidget widget, const UIEvent& event)
         break;
     }
 
-    std::string str = self.storage->buf.to_string();
+    std::string str = self.storage->editor.get_string();
     View strView(str.data(), str.size());
 
     if (hasChanged && self.onChange)
@@ -87,41 +87,9 @@ void UITextEditWidgetObj::domain_string_on_key(const UIEvent& event, bool& hasCh
 {
     LD_ASSERT(storage->domain == UI_TEXT_EDIT_DOMAIN_STRING);
 
-    const KeyCode code = event.key.code;
-    const KeyMods mods = event.key.mods;
-
-    if (KEY_CODE_A <= code && code <= KEY_CODE_Z)
-    {
-        char key = (char)code + 32;
-
-        if (mods & KEY_MOD_SHIFT_BIT)
-            key -= 32;
-
-        storage->buf.push_back(key);
-        hasChanged = true;
-    }
-    else if (KEY_CODE_0 <= code && code <= KEY_CODE_9)
-    {
-        char key = (char)code - (char)KEY_CODE_0 + '0';
-
-        storage->buf.push_back(key);
-        hasChanged = true;
-    }
-    else if (code == KEY_CODE_SPACE)
-    {
-        storage->buf.push_back(' ');
-        hasChanged = true;
-    }
-    else if (code == KEY_CODE_BACKSPACE && !storage->buf.empty())
-    {
-        storage->buf.pop_back();
-        hasChanged = true;
-    }
-    else if (code == KEY_CODE_ENTER)
-    {
-        // this allows submission of empty text.
-        hasSubmitted = true;
-    }
+    TextEditLiteResult result = storage->editor.key(KeyValue(event.key.code, event.key.mods));
+    hasChanged = result == TEXT_EDIT_LITE_RESULT_CHANGED;
+    hasSubmitted = result == TEXT_EDIT_LITE_RESULT_SUBMITTED;
 }
 
 void UITextEditWidgetObj::domain_uint_on_key(const UIEvent& event, bool& hasChanged, bool& hasSubmitted)
@@ -131,48 +99,42 @@ void UITextEditWidgetObj::domain_uint_on_key(const UIEvent& event, bool& hasChan
     const KeyCode code = event.key.code;
     const KeyMods mods = event.key.mods;
 
-    if (KEY_CODE_0 <= code && code <= KEY_CODE_9)
-    {
-        char key = (char)code - (char)KEY_CODE_0 + '0';
+    hasChanged = false;
+    hasSubmitted = false;
 
-        storage->buf.push_back(key);
-        hasChanged = true;
-    }
-    else if (code == KEY_CODE_BACKSPACE && !storage->buf.empty())
+    // TODO: we could still input @!#$
+    if ((KEY_CODE_0 <= code && code <= KEY_CODE_9) || code == KEY_CODE_BACKSPACE || code == KEY_CODE_ENTER)
     {
-        storage->buf.pop_back();
-        hasChanged = true;
-    }
-    else if (code == KEY_CODE_ENTER && !storage->buf.empty())
-    {
-        hasSubmitted = true;
+        TextEditLiteResult result = storage->editor.key(KeyValue(event.key.code, event.key.mods));
+        hasChanged = result == TEXT_EDIT_LITE_RESULT_CHANGED;
+        hasSubmitted = result == TEXT_EDIT_LITE_RESULT_SUBMITTED;
     }
 }
 
 UITextEditStorage::UITextEditStorage()
 {
-    buf = TextBuffer::create();
+    editor = TextEditLite::create();
 }
 
 UITextEditStorage::UITextEditStorage(const UITextEditStorage& other)
     : domain(other.domain), fontSize(other.fontSize)
 {
-    TextBuffer otherBuf = other.buf;
+    TextEditLite otherEditor = other.editor;
 
-    buf = TextBuffer::create();
-    buf.set_string(otherBuf.to_string().c_str());
+    editor = TextEditLite::create();
+    editor.set_string(otherEditor.get_string());
 }
 
 UITextEditStorage::~UITextEditStorage()
 {
-    TextBuffer::destroy(buf);
+    TextEditLite::destroy(editor);
 }
 
 UITextEditStorage& UITextEditStorage::operator=(const UITextEditStorage& other)
 {
-    TextBuffer otherBuf = other.buf;
+    TextEditLite otherEditor = other.editor;
 
-    buf.set_string(otherBuf.to_string().c_str());
+    editor.set_string(otherEditor.get_string());
     domain = other.domain;
     fontSize = other.fontSize;
 
@@ -188,7 +150,7 @@ void UITextEditWidget::set_text(View text)
 {
     auto& self = mObj->as.textEdit;
 
-    self.storage->buf.set_string(text);
+    self.storage->editor.set_string(text);
 }
 
 void UITextEditWidget::set_domain(UITextEditDomain domain)
@@ -197,7 +159,7 @@ void UITextEditWidget::set_domain(UITextEditDomain domain)
 
     if (self.storage->domain != domain)
     {
-        self.storage->buf.clear();
+        self.storage->editor.clear();
         self.storage->domain = domain;
     }
 }
@@ -231,18 +193,26 @@ void UITextEditWidget::on_draw(UIWidget widget, ScreenRenderComponent renderer)
     if (!storage->font)
         storage->font = ctx.fontDefault;
 
-    const FontAtlas atlas = storage->font.font_atlas();
-    const RImage image = storage->font.image();
+    FontAtlas atlas = storage->font.font_atlas();
+    RImage image = storage->font.image();
 
     if (self.isEditing)
     {
         renderer.draw_rect_outline(rect, outlineColor, 1.0f);
 
-        if (!storage->buf.empty())
+        float minWidth, maxWidth;
+        str = storage->editor.get_string();
+        size_t cursor = storage->editor.get_cursor();
+        atlas.measure_wrap_limit(View(str.data(), cursor), storage->fontSize, minWidth, maxWidth);
+        float cursorX = maxWidth;
+
+        if (!str.empty())
         {
-            str = storage->buf.to_string();
             renderer.draw_text(atlas, image, storage->fontSize, rect.get_pos(), str.c_str(), textColor, wrapWidth);
         }
+
+        const float beamWidth = 2.0f; // TODO:
+        renderer.draw_rect(Rect(rect.x + cursorX, rect.y, beamWidth, rect.h), textColor);
     }
     else
     {

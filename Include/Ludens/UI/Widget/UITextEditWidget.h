@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Ludens/Text/TextBuffer.h>
+#include <Ludens/Text/TextEditLite.h>
 #include <Ludens/UI/UIFont.h>
 #include <Ludens/UI/UIWidget.h>
 
@@ -17,7 +18,7 @@ typedef void (*UITextEditOnSubmit)(UIWidget widget, View text, void* user);
 
 struct UITextEditStorage
 {
-    TextBuffer buf = {};                  /// text buffer under edit
+    TextEditLite editor = {};             /// text buffer editor handle
     std::string text = {};                /// last submitted text, displayed when not editing
     UITextEditDomain domain = {};         /// input domain, filters key input
     UIFont font = {};                     /// displayed font
