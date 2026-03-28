@@ -113,7 +113,7 @@ void EditorUI::submit_frame()
     frameI.sceneExtent = sceneExtent;
     frameI.envCubemap = mEnvCubemap;
     frameI.dialogWindowID = dialogWindowID;
-    frameI.clearColor = mCtx.get_project_settings().get_rendering_settings().get_clear_color();
+    frameI.clearColor = mCtx.get_scene_clear_color();
     mRenderSystem.next_frame(frameI);
 
     // render ScreenLayer items in regions

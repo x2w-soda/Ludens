@@ -31,6 +31,8 @@ struct ProjectRenderingSettings : Handle<struct ProjectSettingsObj>
 {
     Vec4 get_clear_color();
     void set_clear_color(const Vec4& color);
+
+    static Vec4 get_default_clear_color();
 };
 
 /// @brief Uniquely identifies a screen layer, invariant to rename operations.

@@ -39,9 +39,10 @@ struct EditorContextObj
     RenderSystem renderSystem;                   /// render server handle
     AudioSystem audioSystem;                     /// audio server handle
     Image2D iconAtlas;                           /// editor icon atlas handle
+    ProjectLoadAsync projectLoadAsync = {};      /// asynchronous project loading context
     Project project;                             /// current project under edit
     AssetRegistry projectAssetRegistry;          /// current project's asset registry
-    Scene scene;                                 /// current scene under edit
+    Scene scene = {};                            /// current scene under edit
     EditorSettings settings;                     /// editor global settings
     EditorEventQueue eventQueue;                 /// editor events waiting to be processed.
     EditStack editStack;                         /// undo/redo stack of EditCommands
@@ -53,7 +54,6 @@ struct EditorContextObj
     FS::Path sceneSchemaPath;                    /// path to current scene file
     FS::Path assetSchemaPath;                    /// path to project asset file
     FS::Path projectSchemaPath;                  /// path to project file
-    Vector<FS::Path> scenePaths;                 /// path to scene schema files in project
     HashMap<KeyValue, EditorEventType> keyBinds; /// key shortcuts to generate events
     ObserverList<const EditorEvent*> observers;  /// all observers of EditorContext
     CUID selectedComponentCUID = 0;              /// component selection state
@@ -62,11 +62,11 @@ struct EditorContextObj
 
     void emit_event(EditorEventType type);
     void notify_observers(const EditorEvent* event);
-    void load_project(const FS::Path& projectSchemaPath);
-    void load_project_scene(const FS::Path& sceneSchemaPath);
     void new_project_scene(const FS::Path& sceneSchemaPath);
     void save_scene_schema();
     void save_project_schema();
+    void begin_project_load_async(const FS::Path& projectSchemaPath);
+    void update_project_load_async();
 };
 
 static void editor_broadcast_event_handler(const EditorEvent* event, void* user);
@@ -165,7 +165,7 @@ static void editor_action_open_scene_event_handler(const EditorEvent* event, voi
     // Opening Scene would clear the EditStack
     obj->editStack.clear();
 
-    obj->load_project_scene(e->openScene);
+    // TODO: obj->load_project_scene(e->openScene);
 }
 
 static void editor_action_save_scene_event_handler(const EditorEvent* event, void* user)
@@ -192,7 +192,7 @@ static void editor_action_open_project_event_handler(const EditorEvent* event, v
     // TODO: save scene and project dialog?
 
     FS::Path projectSchemaPath = e->openProjectDir / FS::Path("project.toml");
-    obj->load_project(projectSchemaPath);
+    obj->begin_project_load_async(projectSchemaPath);
 }
 
 static void editor_action_create_project_event_handler(const EditorEvent* event, void* user)
@@ -318,93 +318,6 @@ void EditorContextObj::notify_observers(const EditorEvent* event)
     observers.notify(event);
 }
 
-void EditorContextObj::load_project(const FS::Path& projectSchemaPath)
-{
-    LD_PROFILE_SCOPE;
-
-    this->projectSchemaPath = projectSchemaPath;
-
-    std::string err;
-    project = Project::create();
-    bool ok = ProjectSchema::load_project_from_file(project, projectSchemaPath, err);
-    LD_ASSERT(ok); // TODO:
-
-    const FS::Path rootPath = project.get_root_path();
-    sLog.info("loading project [{}], root directory {}", project.get_name(), rootPath.string());
-
-    assetSchemaPath = project.get_asset_schema_absolute_path();
-    if (!FS::exists(assetSchemaPath))
-    {
-        sLog.warn("failed to find project assets {}", assetSchemaPath.string());
-        return;
-    }
-
-    projectAssetRegistry = AssetRegistry::create();
-    ok = AssetSchema::load_registry_from_file(projectAssetRegistry, assetSchemaPath, err);
-    LD_ASSERT(ok); // TODO: error control flow is messy
-
-    // Load all project assets at once using job system.
-    // Once we have asynchronous-load-jobs maybe we can load assets
-    // used by the loaded scene first?
-    AssetManager AM = AssetManager::get();
-    AssetRegistry oldAssetRegistry = AM.swap_asset_registry(projectAssetRegistry, rootPath);
-    AM.begin_load_batch();
-    AM.load_all_assets();
-
-    if (oldAssetRegistry)
-        AssetRegistry::destroy(oldAssetRegistry);
-
-    Vector<std::string> errors;
-    if (!AM.end_load_batch(errors))
-    {
-        sLog.error("AssetManager failed to load some assets, {} errors", errors.size());
-        for (const std::string& err : errors)
-            sLog.error("{}", err);
-    }
-
-    project.get_scene_schema_absolute_paths(scenePaths);
-
-    for (const FS::Path& scenePath : scenePaths)
-    {
-        if (!FS::exists(scenePath))
-        {
-            sLog.error("- missing scene {}", scenePath.string());
-            continue;
-        }
-
-        sLog.info("- found scene {}", scenePath.string());
-    }
-
-    (void*)eventQueue.enqueue(EDITOR_EVENT_TYPE_NOTIFY_PROJECT_LOAD);
-
-    if (!scenePaths.empty())
-        load_project_scene(scenePaths.front());
-}
-
-void EditorContextObj::load_project_scene(const FS::Path& sceneSchemaPath)
-{
-    LD_PROFILE_SCOPE;
-
-    if (!FS::exists(sceneSchemaPath))
-        return;
-
-    this->sceneSchemaPath = sceneSchemaPath;
-    selectedComponentCUID = 0;
-
-    LD_ASSERT(scene);
-    scene.unload();
-
-    scene.load([&](SceneObj* sceneObj) -> bool {
-        // load the scene
-        std::string err;
-        return SceneSchema::load_scene_from_file(Scene(sceneObj), sceneSchemaPath, err);
-    });
-
-    // TODO: check scene load success
-
-    (void*)eventQueue.enqueue(EDITOR_EVENT_TYPE_NOTIFY_SCENE_LOAD);
-}
-
 void EditorContextObj::new_project_scene(const FS::Path& newSchemaPath)
 {
     EditorContext ctx(this);
@@ -418,10 +331,8 @@ void EditorContextObj::new_project_scene(const FS::Path& newSchemaPath)
         return;
     }
 
-    sLog.info("created new scene {}", newSchemaPath.string());
-
-    load_project_scene(newSchemaPath);
-
+    // sLog.info("created new scene {}", newSchemaPath.string());
+    // TODO: load_project_scene(newSchemaPath);
     // TODO: maybe notify observers?
 }
 
@@ -453,6 +364,53 @@ void EditorContextObj::save_project_schema()
 
     size_t us = timer.stop();
     sLog.info("saved project to {} ({} ms)", projectSchemaPath.string(), us / 1000.0f);
+}
+
+void EditorContextObj::begin_project_load_async(const FS::Path& projectSchemaPath)
+{
+    LD_PROFILE_SCOPE;
+
+    std::string err;
+    const FS::Path rootPath = projectSchemaPath.parent_path();
+
+    if (projectLoadAsync)
+        ProjectLoadAsync::destroy(projectLoadAsync);
+
+    projectLoadAsync = ProjectLoadAsync::create();
+    if (!projectLoadAsync.begin(rootPath, err))
+    {
+        return; // TODO: failed to begin ProjectLoadAsync
+    }
+}
+
+void EditorContextObj::update_project_load_async()
+{
+    if (!projectLoadAsync)
+        return;
+
+    ProjectLoadStatus status = projectLoadAsync.update();
+    if (status != PROJECT_LOAD_STATUS_COMPLETE)
+        return;
+
+    ProjectLoadResult result;
+    if (!projectLoadAsync.get_result(result))
+        return;
+
+    // TODO: handle errors
+    LD_ASSERT(result.project && result.assetRegistry);
+
+    scene = Scene::get();
+    project = result.project;
+    projectAssetRegistry = result.assetRegistry;
+    assetSchemaPath = result.assetSchemaPath;
+    sceneSchemaPath = result.sceneSchemaPath;
+    selectedComponentCUID = 0;
+
+    (void*)eventQueue.enqueue(EDITOR_EVENT_TYPE_NOTIFY_PROJECT_LOAD);
+    // (void*)eventQueue.enqueue(EDITOR_EVENT_TYPE_NOTIFY_SCENE_LOAD);
+
+    ProjectLoadAsync::destroy(projectLoadAsync);
+    projectLoadAsync = {};
 }
 
 EditorContext EditorContext::create(const EditorContextInfo& info)
@@ -494,7 +452,9 @@ EditorContext EditorContext::create(const EditorContextInfo& info)
     sceneI.audioSystem = obj->audioSystem;
     sceneI.uiFont = obj->fontDefault;
     sceneI.uiTheme = obj->settings.get_theme().get_ui_theme();
-    obj->scene = Scene::create(sceneI);
+    (void)Scene::create(sceneI);
+
+    obj->scene = {};
 
     return {obj};
 }
@@ -530,12 +490,18 @@ bool EditorContext::render_system_mat4_callback(RUID ruid, Mat4& mat4, void* use
 {
     EditorContextObj& self = *(EditorContextObj*)user;
 
+    if (!self.scene)
+        return false;
+
     return self.scene.get_ruid_world_mat4(ruid, mat4);
 }
 
 void EditorContext::render_system_screen_pass_overlay_callback(ScreenRenderComponent renderer, TView<int> regionVPIndices, int overlayVPIndex, void* user)
 {
     EditorContextObj& self = *(EditorContextObj*)user;
+
+    if (!self.scene)
+        return;
 
     // TODO: Editor toggle to display screen UI?
     renderer.bind_quad_pipeline(QUAD_PIPELINE_UBER);
@@ -636,6 +602,9 @@ Scene EditorContext::get_scene()
 
 Vector<RenderSystemScreenPass::Region> EditorContext::get_scene_screen_regions()
 {
+    if (!mObj->scene)
+        return {};
+
     Vector<Viewport> viewports;
     Vector<Rect> worldAABBs;
     mObj->scene.get_screen_regions(viewports, worldAABBs);
@@ -649,6 +618,23 @@ Vector<RenderSystemScreenPass::Region> EditorContext::get_scene_screen_regions()
     }
 
     return regions;
+}
+
+Camera EditorContext::get_scene_camera()
+{
+    Scene scene = get_scene();
+
+    return scene ? scene.get_camera() : Camera();
+}
+
+Vec4 EditorContext::get_scene_clear_color()
+{
+    ProjectSettings settings = get_project_settings();
+
+    if (settings)
+        return settings.get_rendering_settings().get_clear_color();
+
+    return ProjectRenderingSettings::get_default_clear_color();
 }
 
 void EditorContext::add_observer(EditorEventFn fn, void* user)
@@ -667,6 +653,11 @@ void EditorContext::input_key_value(KeyValue keyVal)
 void EditorContext::update(const Vec2& sceneExtent, float delta)
 {
     LD_PROFILE_SCOPE;
+
+    mObj->update_project_load_async();
+
+    if (!mObj->scene)
+        return;
 
     if (mObj->isPlaying)
     {
@@ -726,11 +717,17 @@ bool EditorContext::is_playing()
 
 void EditorContext::get_scene_roots(Vector<ComponentView>& roots)
 {
-    return mObj->scene.get_root_components(roots);
+    roots.clear();
+
+    if (mObj->scene)
+        mObj->scene.get_root_components(roots);
 }
 
 const char* EditorContext::get_component_name(CUID compCUID)
 {
+    if (!mObj->scene)
+        return nullptr;
+
     ComponentView comp = mObj->scene.get_component(compCUID);
     if (!comp)
         return nullptr;
@@ -740,7 +737,7 @@ const char* EditorContext::get_component_name(CUID compCUID)
 
 void EditorContext::set_selected_component(CUID compCUID)
 {
-    if (mObj->selectedComponentCUID == compCUID)
+    if (!mObj->scene || mObj->selectedComponentCUID == compCUID)
         return;
 
     ComponentView comp = mObj->scene.get_component(compCUID);
@@ -765,7 +762,7 @@ CUID EditorContext::get_selected_component()
 
 ComponentView EditorContext::get_selected_component_view()
 {
-    if (!mObj->selectedComponentCUID)
+    if (!mObj->scene || !mObj->selectedComponentCUID)
         return {};
 
     return mObj->scene.get_component(mObj->selectedComponentCUID);
@@ -773,21 +770,33 @@ ComponentView EditorContext::get_selected_component_view()
 
 ComponentView EditorContext::get_component(CUID compCUID)
 {
+    if (!mObj->scene)
+        return {};
+
     return mObj->scene.get_component(compCUID);
 }
 
 ComponentView EditorContext::get_component_by_suid(SUID compSUID)
 {
+    if (!mObj->scene)
+        return {};
+
     return mObj->scene.get_component_by_suid(compSUID);
 }
 
 ComponentView EditorContext::get_component_by_ruid(RUID ruid)
 {
+    if (!mObj->scene)
+        return {};
+
     return mObj->scene.get_ruid_component(ruid);
 }
 
 RUID EditorContext::get_selected_component_ruid()
 {
+    if (!mObj->scene)
+        return RUID(0);
+
     ComponentView comp = mObj->scene.get_component(mObj->selectedComponentCUID);
 
     return comp ? comp.ruid() : 0;
@@ -795,6 +804,9 @@ RUID EditorContext::get_selected_component_ruid()
 
 bool EditorContext::get_selected_component_transform(TransformEx& transform)
 {
+    if (!mObj->scene)
+        return false;
+
     ComponentView comp = mObj->scene.get_component(mObj->selectedComponentCUID);
 
     if (!comp)

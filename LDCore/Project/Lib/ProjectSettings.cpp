@@ -20,7 +20,7 @@ struct ProjectStartupSettingsObj
 
 struct ProjectRenderingSettingsObj
 {
-    Vec4 clearColor = DEFAULT_RENDERING_CLEAR_COLOR;
+    Vec4 clearColor = ProjectRenderingSettings::get_default_clear_color();
 };
 
 /// @brief Project-wide source of truth for screen layers.
@@ -96,6 +96,11 @@ Vec4 ProjectRenderingSettings::get_clear_color()
 void ProjectRenderingSettings::set_clear_color(const Vec4& color)
 {
     mObj->rendering.clearColor = color;
+}
+
+Vec4 ProjectRenderingSettings::get_default_clear_color()
+{
+    return DEFAULT_RENDERING_CLEAR_COLOR;
 }
 
 //

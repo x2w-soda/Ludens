@@ -80,7 +80,8 @@ struct EditorContext : Handle<struct EditorContextObj>
     /// @brief Get scene handle.
     Scene get_scene();
     Vector<RenderSystemScreenPass::Region> get_scene_screen_regions();
-    inline Camera get_scene_camera() { return get_scene().get_camera(); }
+    Camera get_scene_camera();
+    Vec4 get_scene_clear_color();
 
     /// @brief Add an observer of the editor context
     void add_observer(EditorEventFn fn, void* user);
