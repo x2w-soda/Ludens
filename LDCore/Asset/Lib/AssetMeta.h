@@ -63,6 +63,7 @@ public:
 
     AssetLoadJob* allocate_load_job(AssetEntry entry, AssetObj* assetObj);
     void free_load_jobs();
+    bool has_load_job();
 
     void poll();
 
@@ -75,11 +76,13 @@ public:
 
     inline AssetEntry get_entry(SUID id)
     {
+        LD_ASSERT(mRegistry);
         return mRegistry.get_entry(id);
     }
 
     inline void get_entries_by_type(Vector<AssetEntry>& entries, AssetType type)
     {
+        LD_ASSERT(mRegistry);
         mRegistry.get_entries_by_type(entries, type);
     }
 
@@ -91,11 +94,11 @@ private:
     HashMap<SUID, AssetObj*> mAssets;
     HashMap<std::string, SUID> mNameToAsset;
     Vector<AssetLoadJob*> mLoadJobs;
-    PoolAllocator mLoadJobPA;
-    AssetWatcher mWatcher;     /// optional asset file watcher
-    AssetRegistry mRegistry;   /// bookkeeping for all assets in project
-    const FS::Path mRootPath;  /// asset URIs are relative paths to root path
-    bool mInLoadBatch = false; /// is within load batch scope
+    PoolAllocator mLoadJobPA = {}; /// provides address stability for each load job
+    AssetWatcher mWatcher;         /// optional asset file watcher
+    AssetRegistry mRegistry = {};  /// bookkeeping for all assets in project
+    const FS::Path mRootPath;      /// asset URIs are relative paths to root path
+    bool mInLoadBatch = false;     /// is within load batch scope
 };
 
 /// @brief Job context for loading an Asset.

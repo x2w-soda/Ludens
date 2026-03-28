@@ -39,6 +39,7 @@ struct EditorContextObj
     AudioSystem audioSystem;                     /// audio server handle
     Image2D iconAtlas;                           /// editor icon atlas handle
     Project project;                             /// current project under edit
+    AssetRegistry projectAssetRegistry;          /// current project's asset registry
     Scene scene;                                 /// current scene under edit
     EditorSettings settings;                     /// editor global settings
     EditorEventQueue eventQueue;                 /// editor events waiting to be processed.
@@ -337,10 +338,14 @@ void EditorContextObj::load_project(const FS::Path& projectSchemaPath)
         return;
     }
 
+    projectAssetRegistry = AssetRegistry::create();
+    ok = AssetSchema::load_registry_from_file(projectAssetRegistry, assetSchemaPath, err);
+    LD_ASSERT(ok); // TODO: error control flow is messy
+
     AssetManagerInfo amI{};
     amI.rootPath = rootPath;
     amI.watchAssets = true;
-    amI.assetSchemaPath = assetSchemaPath;
+    amI.registry = projectAssetRegistry;
     AssetManager AM = AssetManager::create(amI);
 
     // Load all project assets at once using job system.
@@ -505,7 +510,9 @@ void EditorContext::destroy(EditorContext ctx)
         obj->iconAtlas = {};
     }
 
+    AssetRegistry::destroy(obj->projectAssetRegistry);
     Project::destroy(obj->project);
+
     Scene::destroy();
     AssetManager::destroy();
 

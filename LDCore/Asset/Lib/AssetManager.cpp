@@ -61,10 +61,8 @@ AssetManagerObj::AssetManagerObj(const AssetManagerInfo& info)
         mWatcher.startup(watcherI);
     }
 
-    mRegistry = AssetRegistry::create();
-    std::string err;
-    bool ok = AssetSchema::load_registry_from_file(mRegistry, info.assetSchemaPath, err);
-    LD_ASSERT(ok); // TODO: loading registry should not happen in ctor, error control flow is messy
+    mRegistry = info.registry;
+    LD_ASSERT(mRegistry);
 
     PoolAllocatorInfo paI{};
     paI.blockSize = sizeof(AssetLoadJob);
@@ -98,7 +96,7 @@ AssetManagerObj::~AssetManagerObj()
     for (auto it : mAssetPA)
         PoolAllocator::destroy(it.second);
 
-    AssetRegistry::destroy(mRegistry);
+    mRegistry = {};
 
     if (mWatcher)
         mWatcher.cleanup();
@@ -180,6 +178,17 @@ void AssetManagerObj::free_load_jobs()
     }
 
     mLoadJobs.clear();
+}
+
+bool AssetManagerObj::has_load_job()
+{
+    for (AssetLoadJob* job : mLoadJobs)
+    {
+        if (job->jobInProgress.load())
+            return true;
+    }
+
+    return false;
 }
 
 void AssetManagerObj::poll()
@@ -393,6 +402,11 @@ void AssetManager::begin_load_batch()
 bool AssetManager::end_load_batch(Vector<std::string>& outErrors)
 {
     return mObj->end_load_batch(outErrors);
+}
+
+bool AssetManager::has_load_job()
+{
+    return mObj->has_load_job();
 }
 
 SUID AssetManager::get_id_from_name(const char* name, AssetType* outType)

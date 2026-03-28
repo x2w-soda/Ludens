@@ -15,7 +15,7 @@ namespace LD {
 struct AssetManagerInfo
 {
     FS::Path rootPath;        // project root directory path
-    FS::Path assetSchemaPath; // path to asset schema
+    AssetRegistry registry;   // referenced asset registry, out-lives the AssetManager
     bool watchAssets;         // whether to watch asset files in project
 };
 
@@ -45,6 +45,9 @@ struct AssetManager : Handle<struct AssetManagerObj>
 
     /// @brief End asset load batch.
     bool end_load_batch(Vector<std::string>& outErrors);
+
+    /// @brief Check if there are any load jobs in progress. Does not block.
+    bool has_load_job();
 
     /// @brief Get asset ID from name
     AssetID get_id_from_name(const char* name, AssetType* outType);
