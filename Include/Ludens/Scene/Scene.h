@@ -38,6 +38,9 @@ public:
     /// @brief Destroy scene.
     static void destroy();
 
+    /// @brief Get scene singleton handle.
+    static Scene get();
+
     /// @brief In-place reset to initial state after creation.
     void reset();
 

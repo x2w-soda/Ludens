@@ -483,6 +483,11 @@ void Scene::destroy()
     sScene = nullptr;
 }
 
+Scene Scene::get()
+{
+    return Scene(sScene);
+}
+
 void Scene::reset()
 {
     LD_PROFILE_SCOPE;

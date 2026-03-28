@@ -31,6 +31,8 @@ struct AssetManager : Handle<struct AssetManagerObj>
     /// @brief Get asset manager singleton.
     static AssetManager get();
 
+    AssetRegistry swap_asset_registry(AssetRegistry registry, const FS::Path& rootPath);
+
     /// @brief If file watching is enabled, this polls for any changes.
     void update();
 

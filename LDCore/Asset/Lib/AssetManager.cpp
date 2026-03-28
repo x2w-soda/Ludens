@@ -51,8 +51,10 @@ bool get_cstr_asset_type(const char* cstr, AssetType& outType)
 }
 
 AssetManagerObj::AssetManagerObj(const AssetManagerInfo& info)
-    : mRootPath(info.rootPath)
 {
+    registry = info.registry;
+    rootPath = info.rootPath;
+
     if (info.watchAssets)
     {
         AssetWatcherInfo watcherI{};
@@ -61,8 +63,7 @@ AssetManagerObj::AssetManagerObj(const AssetManagerInfo& info)
         mWatcher.startup(watcherI);
     }
 
-    mRegistry = info.registry;
-    LD_ASSERT(mRegistry);
+    registry = info.registry; // nullable.
 
     PoolAllocatorInfo paI{};
     paI.blockSize = sizeof(AssetLoadJob);
@@ -79,24 +80,10 @@ AssetManagerObj::~AssetManagerObj()
     free_load_jobs();
     PoolAllocator::destroy(mLoadJobPA);
 
-    std::vector<AssetObj*> assets;
-    assets.reserve(mAssets.size());
-
-    for (auto it : mAssets)
-        assets.push_back(it.second);
-
-    for (AssetObj* base : assets)
-    {
-        asset_unload(base);
-        this->free_asset(base);
-    }
-
-    LD_ASSERT(mAssets.empty());
+    unload_all_assets();
 
     for (auto it : mAssetPA)
         PoolAllocator::destroy(it.second);
-
-    mRegistry = {};
 
     if (mWatcher)
         mWatcher.cleanup();
@@ -155,8 +142,8 @@ AssetLoadJob* AssetManagerObj::allocate_load_job(AssetEntry entry, AssetObj* ass
     AssetLoadJob* job = (AssetLoadJob*)mLoadJobPA.allocate();
     new (job) AssetLoadJob();
 
-    job->rootPath = mRootPath;
-    job->loadPath = (mRootPath / entry.get_uri()).lexically_normal();
+    job->rootPath = rootPath;
+    job->loadPath = (rootPath / entry.get_uri()).lexically_normal();
     job->assetHandle = {assetObj};
     job->assetEntry = entry;
     job->jobHeader.onExecute = sAssetMeta[(int)entry.get_type()].load;
@@ -236,13 +223,14 @@ bool AssetManagerObj::end_load_batch(Vector<std::string>& outErrors)
 void AssetManagerObj::load_asset(AssetEntry entry)
 {
     LD_ASSERT(mInLoadBatch);
+    LD_ASSERT(!rootPath.empty());
 
     if (!entry)
         return;
 
     const AssetType type = entry.get_type();
     const std::string uri = entry.get_uri();
-    const FS::Path loadPath = FS::Path(mRootPath / uri).lexically_normal();
+    const FS::Path loadPath = FS::Path(rootPath / uri).lexically_normal();
     sLog.info("load_asset {}", loadPath.string());
 
     // TODO: this is flaky
@@ -260,6 +248,23 @@ void AssetManagerObj::load_asset(AssetEntry entry)
     // method 1. allocations from a PoolAllocator do not migrate
     // method 2. individual heap_new / heap_malloc for each AssetLoadJob
     JobSystem::get().submit(&job->jobHeader, JOB_DISPATCH_STANDARD);
+}
+
+void AssetManagerObj::unload_all_assets()
+{
+    std::vector<AssetObj*> assets;
+    assets.reserve(mAssets.size());
+
+    for (auto it : mAssets)
+        assets.push_back(it.second);
+
+    for (AssetObj* base : assets)
+    {
+        asset_unload(base);
+        free_asset(base);
+    }
+
+    LD_ASSERT(mAssets.empty());
 }
 
 SUID AssetManagerObj::get_id_from_name(const char* name, AssetType* outType)
@@ -345,6 +350,7 @@ AssetID Asset::get_id()
 AssetManager AssetManager::create(const AssetManagerInfo& info)
 {
     LD_ASSERT(!sAssetManager);
+    LD_ASSERT(!(info.registry && info.rootPath.empty()));
 
     sAssetManager = heap_new<AssetManagerObj>(MEMORY_USAGE_ASSET, info);
 
@@ -364,6 +370,19 @@ AssetManager AssetManager::get()
     LD_ASSERT(sAssetManager);
 
     return AssetManager(sAssetManager);
+}
+
+AssetRegistry AssetManager::swap_asset_registry(AssetRegistry registry, const FS::Path& rootPath)
+{
+    AssetRegistry oldReg = mObj->registry;
+
+    mObj->unload_all_assets();
+    mObj->registry = registry;
+    mObj->rootPath = rootPath;
+
+    // Manager does not own the Registry,
+    // caller need to destroy the registry later.
+    return oldReg;
 }
 
 void AssetManager::update()

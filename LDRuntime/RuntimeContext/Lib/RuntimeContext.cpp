@@ -1,3 +1,5 @@
+#include <Ludens/Asset/AssetRegistry.h>
+#include <Ludens/Asset/AssetSchema.h>
 #include <Ludens/Asset/AssetType/FontAsset.h>
 #include <Ludens/Asset/AssetType/TextureCubeAsset.h>
 #include <Ludens/AudioSystem/AudioSystem.h>
@@ -23,6 +25,7 @@ struct RuntimeContextObj
     RenderSystem renderSystem;
     AudioSystem audioSystem;
     Project project;
+    AssetRegistry assetRegistry{};
     Scene scene{};
     UIFontRegistry fontRegistry;
     UIFont fontDefault;
@@ -127,6 +130,11 @@ RuntimeContext RuntimeContext::create(const RuntimeContextInfo& info)
     const FS::Path defaultScenePath = rootPath / FS::Path(startupScene.path);
     const FS::Path assetSchemaPath = obj->project.get_asset_schema_absolute_path();
 
+    std::string err;
+    obj->assetRegistry = AssetRegistry::create();
+    success = AssetSchema::load_registry_from_file(obj->assetRegistry, assetSchemaPath, err);
+    LD_ASSERT(success); // TODO:
+
     WindowInfo windowI{};
     windowI.width = startupS.get_window_width();
     windowI.height = startupS.get_window_height();
@@ -142,9 +150,9 @@ RuntimeContext RuntimeContext::create(const RuntimeContextInfo& info)
 
     // load assets
     AssetManagerInfo amI{};
-    amI.rootPath = rootPath;
     amI.watchAssets = false;
-    amI.assetSchemaPath = assetSchemaPath;
+    amI.registry = obj->assetRegistry;
+    amI.rootPath = rootPath;
     AssetManager AM = AssetManager::create(amI);
     AM.begin_load_batch();
     AM.load_all_assets();
@@ -226,6 +234,7 @@ void RuntimeContext::destroy(RuntimeContext ctx)
     RDevice::destroy(obj->renderDevice);
     AssetManager::destroy();
     WindowRegistry::destroy();
+    AssetRegistry::destroy(obj->assetRegistry);
 
     heap_delete<RuntimeContextObj>(obj);
 }

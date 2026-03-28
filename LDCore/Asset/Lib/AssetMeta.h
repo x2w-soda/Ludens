@@ -70,24 +70,30 @@ public:
     void begin_load_batch();
     bool end_load_batch(Vector<std::string>& outErrors);
     void load_asset(AssetEntry entry);
+    void unload_all_assets();
 
     SUID get_id_from_name(const char* name, AssetType* outType);
     Asset get_asset(SUID id);
 
     inline AssetEntry get_entry(SUID id)
     {
-        LD_ASSERT(mRegistry);
-        return mRegistry.get_entry(id);
+        return registry ? registry.get_entry(id) : AssetEntry();
     }
 
     inline void get_entries_by_type(Vector<AssetEntry>& entries, AssetType type)
     {
-        LD_ASSERT(mRegistry);
-        mRegistry.get_entries_by_type(entries, type);
+        entries.clear();
+
+        if (registry)
+            registry.get_entries_by_type(entries, type);
     }
 
     static void on_asset_modified(const FS::Path& path, SUID id, void* user);
     static void on_asset_load_complete(void*);
+
+public:
+    AssetRegistry registry = {}; /// bookkeeping for all assets in project, not owned by manager
+    FS::Path rootPath = {};      /// asset file paths are relative to project root
 
 private:
     HashMap<AssetType, PoolAllocator> mAssetPA;
@@ -96,8 +102,6 @@ private:
     Vector<AssetLoadJob*> mLoadJobs;
     PoolAllocator mLoadJobPA = {}; /// provides address stability for each load job
     AssetWatcher mWatcher;         /// optional asset file watcher
-    AssetRegistry mRegistry = {};  /// bookkeeping for all assets in project
-    const FS::Path mRootPath;      /// asset URIs are relative paths to root path
     bool mInLoadBatch = false;     /// is within load batch scope
 };
 

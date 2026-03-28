@@ -9,6 +9,7 @@
 #include <Ludens/Memory/Memory.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/Project/Project.h>
+#include <Ludens/Project/ProjectLoadAsync.h>
 #include <Ludens/Project/ProjectSchema.h>
 #include <Ludens/RenderBackend/RStager.h>
 #include <Ludens/RenderBackend/RUtil.h>
@@ -342,17 +343,16 @@ void EditorContextObj::load_project(const FS::Path& projectSchemaPath)
     ok = AssetSchema::load_registry_from_file(projectAssetRegistry, assetSchemaPath, err);
     LD_ASSERT(ok); // TODO: error control flow is messy
 
-    AssetManagerInfo amI{};
-    amI.rootPath = rootPath;
-    amI.watchAssets = true;
-    amI.registry = projectAssetRegistry;
-    AssetManager AM = AssetManager::create(amI);
-
     // Load all project assets at once using job system.
     // Once we have asynchronous-load-jobs maybe we can load assets
     // used by the loaded scene first?
+    AssetManager AM = AssetManager::get();
+    AssetRegistry oldAssetRegistry = AM.swap_asset_registry(projectAssetRegistry, rootPath);
     AM.begin_load_batch();
     AM.load_all_assets();
+
+    if (oldAssetRegistry)
+        AssetRegistry::destroy(oldAssetRegistry);
 
     Vector<std::string> errors;
     if (!AM.end_load_batch(errors))
@@ -391,19 +391,8 @@ void EditorContextObj::load_project_scene(const FS::Path& sceneSchemaPath)
     this->sceneSchemaPath = sceneSchemaPath;
     selectedComponentCUID = 0;
 
-    if (scene)
-    {
-        scene.unload();
-    }
-    else
-    {
-        SceneInfo sceneI{};
-        sceneI.renderSystem = renderSystem;
-        sceneI.audioSystem = audioSystem;
-        sceneI.uiFont = fontDefault;
-        sceneI.uiTheme = settings.get_theme().get_ui_theme();
-        scene = Scene::create(sceneI);
-    }
+    LD_ASSERT(scene);
+    scene.unload();
 
     scene.load([&](SceneObj* sceneObj) -> bool {
         // load the scene
@@ -494,6 +483,18 @@ EditorContext EditorContext::create(const EditorContextInfo& info)
     obj->keyBinds[KeyValue(KEY_CODE_D, KEY_MOD_CONTROL_BIT)] = EDITOR_EVENT_TYPE_ACTION_CLONE_COMPONENT_SUBTREE;
     obj->keyBinds[KeyValue(KEY_CODE_DELETE)] = EDITOR_EVENT_TYPE_ACTION_DELETE_COMPONENT_SUBTREE;
     obj->keyBinds[KeyValue(KEY_CODE_ESCAPE)] = EDITOR_EVENT_TYPE_REQUEST_CLOSE_DIALOG;
+
+    AssetManagerInfo amI{};
+    amI.watchAssets = true;
+    amI.registry = {};
+    AssetManager::create(amI);
+
+    SceneInfo sceneI{};
+    sceneI.renderSystem = obj->renderSystem;
+    sceneI.audioSystem = obj->audioSystem;
+    sceneI.uiFont = obj->fontDefault;
+    sceneI.uiTheme = obj->settings.get_theme().get_ui_theme();
+    obj->scene = Scene::create(sceneI);
 
     return {obj};
 }
