@@ -5,6 +5,7 @@ set(MODULE_INCLUDE
     ${LUDENS_INCLUDE_DIR}/Ludens/Project/Project.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Project/ProjectSchema.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Project/ProjectSettings.h
+    ${LUDENS_INCLUDE_DIR}/Ludens/Project/ProjectLoadAsync.h
 )
 
 set(MODULE_LIB
@@ -13,6 +14,7 @@ set(MODULE_LIB
     Lib/ProjectSchema.cpp
     Lib/ProjectSettings.cpp
     Lib/ProjectSettingsDefault.h
+    Lib/ProjectLoadAsync.cpp
 )
 
 set(MODULE_TEST
