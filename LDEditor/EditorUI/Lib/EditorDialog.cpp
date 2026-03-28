@@ -41,6 +41,8 @@ void EditorDialogObj::destroy()
         workspace = {};
         window = {};
     }
+
+    ui_imgui_cleanup_context(EDITOR_DIALOG_NAME);
 }
 
 void EditorDialogObj::on_observer_event(const WindowEvent* event, void* user)

@@ -95,7 +95,12 @@ EditorApplication::EditorApplication()
     contextI.monoFontAtlas = mMSFontAtlas;
     contextI.monoFontAtlasImage = mRenderSystem.get_mono_font_atlas_image();
     mEditorCtx = EditorContext::create(contextI);
-    mEditorCtx.load_project(sLudensLFS.projectPath);
+
+    // TODO: Project path could be from command line args,
+    //       Async project loading would be nice too.
+    auto* actionE = (EditorActionOpenProjectEvent*)mEditorCtx.enqueue_event(EDITOR_EVENT_TYPE_ACTION_OPEN_PROJECT);
+    actionE->openProjectDir = sLudensLFS.projectPath.parent_path();
+    mEditorCtx.poll_events();
 
     // initalize editor UI
     EditorUIInfo uiI{};
@@ -137,7 +142,7 @@ void EditorApplication::run()
 
     while (reg.is_window_open(rootID))
     {
-        // Flush window events.
+        // 1. Process Window Events.
         reg.poll_events();
 
         if (reg.is_window_minimized(rootID))
@@ -145,11 +150,19 @@ void EditorApplication::run()
 
         float delta = (float)reg.get_delta_time();
 
-        // Flushes editor events.
-        // The current project or scene could change after this.
+        // 2. Editor UI imgui pass.
+        //    May generate editor events.
+        Vec2 sceneExtent = mEditorUI.update(delta);
+
+        // 3. Process Editor Events.
+        //    Note that the current project or scene could change after this.
         mEditorCtx.poll_events();
 
-        mEditorUI.update(delta);
+        // 4. EditorContext update.
+        //    If the Scene is playing in editor, this drives the Scene update as well
+        mEditorCtx.update(sceneExtent, delta);
+
+        // 5. Draw list recording and submit GPU work.
         mEditorUI.submit_frame();
 
         LD_PROFILE_FRAME_MARK;

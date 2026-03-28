@@ -92,16 +92,6 @@ struct EditorContext : Handle<struct EditorContextObj>
     /// @param delta Delta time in seconds.
     void update(const Vec2& sceneExtent, float delta);
 
-    ///@brief Load a Project to edit
-    ///@warning Experimental
-    ///@note Emits EDITOR_EVENT_TYPE_NOTIFY_PROJECT_LOAD for observers
-    void load_project(const FS::Path& projectSchemaPath);
-
-    /// @brief Load a Scene from the current Project
-    /// @warning Experimental
-    /// @note Emits EDITOR_EVENT_TYPE_NOTIFY_SCENE_LOAD for observers.
-    void load_project_scene(const FS::Path& sceneSchemaPath);
-
     /// @brief Begin playing scene in the editor.
     /// @return True upon successful startup.
     bool play_scene();

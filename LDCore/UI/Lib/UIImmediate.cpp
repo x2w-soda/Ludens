@@ -652,6 +652,19 @@ void ui_imgui_cleanup()
     sImContexts.clear();
 }
 
+void ui_imgui_cleanup_context(const char* ctxName)
+{
+    LD_ASSERT(!sImContext && "ui_context_end not called");
+
+    auto it = sImContexts.find(ctxName);
+
+    if (it != sImContexts.end())
+    {
+        destroy_context_state(it->second);
+        sImContexts.erase(it);
+    }
+}
+
 bool ui_context_input(const char* ctxName, const WindowEvent* event)
 {
     Vec2 screenExtent(0.0f);

@@ -49,7 +49,8 @@ public:
     void cleanup();
 
     /// @brief Updates the editor UI with timestep.
-    void update(float delta);
+    /// @return Scene extent.
+    Vec2 update(float delta);
 
     void submit_frame();
 

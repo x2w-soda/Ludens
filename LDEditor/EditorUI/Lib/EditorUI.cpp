@@ -78,7 +78,7 @@ void EditorUI::cleanup()
     ui_imgui_cleanup();
 }
 
-void EditorUI::update(float delta)
+Vec2 EditorUI::update(float delta)
 {
     LD_PROFILE_SCOPE;
 
@@ -92,9 +92,7 @@ void EditorUI::update(float delta)
     // post imgui update
     mDialog.update(delta);
 
-    // EditorContext update.
-    // If the Scene is playing in editor, this drives the Scene update as well
-    mCtx.update(mMain.get_viewport_scene_size(), delta);
+    return mMain.get_viewport_scene_size();
 }
 
 void EditorUI::submit_frame()

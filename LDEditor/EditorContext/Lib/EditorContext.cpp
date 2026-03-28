@@ -183,11 +183,14 @@ static void editor_action_open_project_event_handler(const EditorEvent* event, v
 {
     LD_PROFILE_SCOPE;
 
+    LD_ASSERT(event->type == EDITOR_EVENT_TYPE_ACTION_OPEN_PROJECT);
     auto* obj = (EditorContextObj*)user;
+    auto* e = (const EditorActionOpenProjectEvent*)event;
 
     // TODO: save scene and project dialog?
-    // TODO: how much to unwind? AssetManager for sure, EditorContext invalidation?
-    LD_UNREACHABLE;
+
+    FS::Path projectSchemaPath = e->openProjectDir / FS::Path("project.toml");
+    obj->load_project(projectSchemaPath);
 }
 
 static void editor_action_create_project_event_handler(const EditorEvent* event, void* user)
@@ -196,7 +199,7 @@ static void editor_action_create_project_event_handler(const EditorEvent* event,
     auto* obj = (EditorContextObj*)user;
     auto* e = (const EditorActionCreateProjectEvent*)event;
     EditorContext ctx(obj);
-    
+
     auto* notify = (EditorNotifyProjectCreationEvent*)ctx.enqueue_event(EDITOR_EVENT_TYPE_NOTIFY_PROJECT_CREATION);
     if (create_empty_project(e->projectName, e->projectDir, notify->error))
         notify->projectDir = e->projectDir;
@@ -367,11 +370,10 @@ void EditorContextObj::load_project(const FS::Path& projectSchemaPath)
         sLog.info("- found scene {}", scenePath.string());
     }
 
+    (void*)eventQueue.enqueue(EDITOR_EVENT_TYPE_NOTIFY_PROJECT_LOAD);
+
     if (!scenePaths.empty())
         load_project_scene(scenePaths.front());
-
-    EditorNotifyProjectLoadEvent event{};
-    notify_observers(&event);
 }
 
 void EditorContextObj::load_project_scene(const FS::Path& sceneSchemaPath)
@@ -406,8 +408,7 @@ void EditorContextObj::load_project_scene(const FS::Path& sceneSchemaPath)
 
     // TODO: check scene load success
 
-    EditorNotifySceneLoadEvent event{};
-    notify_observers(&event);
+    (void*)eventQueue.enqueue(EDITOR_EVENT_TYPE_NOTIFY_SCENE_LOAD);
 }
 
 void EditorContextObj::new_project_scene(const FS::Path& newSchemaPath)
@@ -670,16 +671,6 @@ void EditorContext::update(const Vec2& sceneExtent, float delta)
 
     // NOTE: this polls for any asset file changes.
     AssetManager::get().update();
-}
-
-void EditorContext::load_project(const FS::Path& projectSchemaPath)
-{
-    mObj->load_project(projectSchemaPath);
-}
-
-void EditorContext::load_project_scene(const FS::Path& sceneSchemaPath)
-{
-    mObj->load_project_scene(sceneSchemaPath);
 }
 
 bool EditorContext::play_scene()

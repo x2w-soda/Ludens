@@ -29,6 +29,9 @@ void ui_imgui_startup(UIFont font);
 /// @brief Release and free all resources allocated by immediate-mode API.
 void ui_imgui_cleanup();
 
+/// @brief Release all resources allocated by a specific immediate-mode context.
+void ui_imgui_cleanup_context(const char* ctxName);
+
 bool ui_context_input(const char* ctxName, const WindowEvent* event);
 void ui_context_render(const char* ctxName, ScreenRenderComponent renderer);
 

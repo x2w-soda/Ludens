@@ -123,28 +123,20 @@ void EditorTopBarObj::file_menu_window()
     switch (opt)
     {
     case FILE_MENU_NEW_SCENE:
-    {
         (void)ctx.enqueue_event(EDITOR_EVENT_TYPE_REQUEST_NEW_SCENE);
         break;
-    }
     case FILE_MENU_OPEN_SCENE:
-    {
         (void)ctx.enqueue_event(EDITOR_EVENT_TYPE_REQUEST_OPEN_SCENE);
         break;
-    }
     case FILE_MENU_SAVE_SCENE:
         (void)ctx.enqueue_event(EDITOR_EVENT_TYPE_ACTION_SAVE_SCENE);
         break;
     case FILE_MENU_NEW_PROJECT:
-    {
         (void)ctx.enqueue_event(EDITOR_EVENT_TYPE_REQUEST_NEW_PROJECT);
         break;
-    }
     case FILE_MENU_OPEN_PROJECT:
-    {
         (void)ctx.enqueue_event(EDITOR_EVENT_TYPE_REQUEST_OPEN_PROJECT);
         break;
-    }
     default:
         break;
     }
