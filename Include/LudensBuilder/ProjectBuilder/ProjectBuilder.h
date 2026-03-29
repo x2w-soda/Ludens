@@ -4,8 +4,6 @@
 #include <Ludens/Header/Handle.h>
 #include <Ludens/System/FileSystemAsync.h>
 
-#include <atomic>
-
 namespace LD {
 
 enum ProjectBuildErrorType
@@ -32,11 +30,11 @@ struct ProjectBuildResult
     void reset();
 };
 
-struct BuildProjectAsync : Handle<struct BuildProjectAsyncObj>
+struct ProjectBuildAsync : Handle<struct ProjectBuildAsyncObj>
 {
-    static BuildProjectAsync create();
+    static ProjectBuildAsync create();
 
-    static void destroy(BuildProjectAsync async);
+    static void destroy(ProjectBuildAsync async);
 
     /// @brief Called by worker thread to begin build jobs
     /// @return True if the async build has started.

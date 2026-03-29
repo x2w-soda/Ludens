@@ -305,7 +305,7 @@ static void builder_mode_build_project(int argc, char** argv)
     std::string str;
     FS::Path projectSchemaFile(argv[1]);
 
-    BuildProjectAsync async = BuildProjectAsync::create();
+    ProjectBuildAsync async = ProjectBuildAsync::create();
     LD_ASSERT(async);
 
     ProjectBuildResult buildResult;
@@ -317,7 +317,7 @@ static void builder_mode_build_project(int argc, char** argv)
     if (!async.begin(cfg, buildErr))
     {
         sLog.error("failed to begin build {}", buildErr.str);
-        BuildProjectAsync::destroy(async);
+        ProjectBuildAsync::destroy(async);
         return;
     }
 
@@ -331,7 +331,7 @@ static void builder_mode_build_project(int argc, char** argv)
     else
         sLog.info("failure");
 
-    BuildProjectAsync::destroy(async);
+    ProjectBuildAsync::destroy(async);
 }
 
 #ifdef LD_PLATFORM_WIN32

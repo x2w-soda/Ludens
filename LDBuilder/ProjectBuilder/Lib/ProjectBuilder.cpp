@@ -111,7 +111,7 @@ private:
     std::atomic_uint32_t mStatus{ASYNC_STATUS_IDLE};
 };
 
-struct BuildProjectAsyncObj
+struct ProjectBuildAsyncObj
 {
     AssetRegistry assetRegistry{};
     Project project{};
@@ -133,7 +133,7 @@ struct BuildProjectAsyncObj
     bool begin(const ProjectBuildConfig& cfg, ProjectBuildError& err);
 };
 
-bool BuildProjectAsyncObj::load_project_schema(const FS::Path& srcProjectSchema, ProjectBuildError& err)
+bool ProjectBuildAsyncObj::load_project_schema(const FS::Path& srcProjectSchema, ProjectBuildError& err)
 {
     project = Project::create();
 
@@ -158,7 +158,7 @@ bool BuildProjectAsyncObj::load_project_schema(const FS::Path& srcProjectSchema,
     return true;
 }
 
-bool BuildProjectAsyncObj::load_asset_schema(const FS::Path& srcAssetSchema, ProjectBuildError& err)
+bool ProjectBuildAsyncObj::load_asset_schema(const FS::Path& srcAssetSchema, ProjectBuildError& err)
 {
     assetRegistry = AssetRegistry::create();
 
@@ -175,7 +175,7 @@ bool BuildProjectAsyncObj::load_asset_schema(const FS::Path& srcAssetSchema, Pro
     return true;
 }
 
-bool BuildProjectAsyncObj::configure_dst_project_schema(ProjectBuildError& err)
+bool ProjectBuildAsyncObj::configure_dst_project_schema(ProjectBuildError& err)
 {
     LD_ASSERT(project);
 
@@ -216,7 +216,7 @@ bool BuildProjectAsyncObj::configure_dst_project_schema(ProjectBuildError& err)
     return true;
 }
 
-bool BuildProjectAsyncObj::configure_dst_asset_schema(ProjectBuildError& err)
+bool ProjectBuildAsyncObj::configure_dst_asset_schema(ProjectBuildError& err)
 {
     LD_ASSERT(assetRegistry);
 
@@ -275,7 +275,7 @@ bool BuildProjectAsyncObj::configure_dst_asset_schema(ProjectBuildError& err)
     return true;
 }
 
-bool BuildProjectAsyncObj::begin(const ProjectBuildConfig& cfg, ProjectBuildError& err)
+bool ProjectBuildAsyncObj::begin(const ProjectBuildConfig& cfg, ProjectBuildError& err)
 {
     LD_PROFILE_SCOPE;
 
@@ -339,14 +339,14 @@ void ProjectBuildResult::reset()
     success = false;
 }
 
-BuildProjectAsync BuildProjectAsync::create()
+ProjectBuildAsync ProjectBuildAsync::create()
 {
-    auto* obj = heap_new<BuildProjectAsyncObj>(MEMORY_USAGE_MISC);
+    auto* obj = heap_new<ProjectBuildAsyncObj>(MEMORY_USAGE_MISC);
 
-    return BuildProjectAsync(obj);
+    return ProjectBuildAsync(obj);
 }
 
-void BuildProjectAsync::destroy(BuildProjectAsync async)
+void ProjectBuildAsync::destroy(ProjectBuildAsync async)
 {
     auto* obj = async.unwrap();
 
@@ -356,15 +356,15 @@ void BuildProjectAsync::destroy(BuildProjectAsync async)
     for (CopyFileJob* job : obj->copySceneSchemaJobs)
         heap_delete<CopyFileJob>(job);
 
-    heap_delete<BuildProjectAsyncObj>(obj);
+    heap_delete<ProjectBuildAsyncObj>(obj);
 }
 
-bool BuildProjectAsync::begin(const ProjectBuildConfig& config, ProjectBuildError& err)
+bool ProjectBuildAsync::begin(const ProjectBuildConfig& config, ProjectBuildError& err)
 {
     return mObj->begin(config, err);
 }
 
-bool BuildProjectAsync::has_completed()
+bool ProjectBuildAsync::has_completed()
 {
     if (mObj->hasCompleted)
         return true;
@@ -407,7 +407,7 @@ bool BuildProjectAsync::has_completed()
     return mObj->hasCompleted = true;
 }
 
-bool BuildProjectAsync::get_result(ProjectBuildResult& outResult)
+bool ProjectBuildAsync::get_result(ProjectBuildResult& outResult)
 {
     if (!mObj->hasCompleted)
         return false;
