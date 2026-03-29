@@ -441,5 +441,4 @@ bool create_empty_project(const std::string& projectName, const FS::Path& projec
     return true;
 }
 
-
 } // namespace LD

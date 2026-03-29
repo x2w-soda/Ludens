@@ -1,12 +1,14 @@
 set(MODULE_NAME LDProjectBuilder)
 
 set(MODULE_INCLUDE
-	${LUDENS_INCLUDE_DIR}/LudensBuilder/ProjectBuilder/ProjectBuilder.h
+    ${LUDENS_INCLUDE_DIR}/LudensBuilder/ProjectBuilder/ProjectBuilder.h
+    ${LUDENS_INCLUDE_DIR}/LudensBuilder/ProjectBuilder/ProjectScan.h
     ${LD_EMBED_RUNTIME_H}
 )
 
 set(MODULE_LIB
-	Lib/ProjectBuilder.cpp
+    Lib/ProjectBuilder.cpp
+    Lib/ProjectScan.cpp
     ${LD_EMBED_RUNTIME_CPP}
 )
 

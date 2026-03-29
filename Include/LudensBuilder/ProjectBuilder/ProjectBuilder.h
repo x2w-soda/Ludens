@@ -2,7 +2,6 @@
 
 #include <Ludens/Header/Error.h>
 #include <Ludens/Header/Handle.h>
-#include <Ludens/System/FileSystemAsync.h>
 
 namespace LD {
 
