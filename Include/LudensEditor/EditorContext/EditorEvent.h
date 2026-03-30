@@ -103,8 +103,8 @@ struct EditorNotifyProjectCreationEvent : EditorNotifyEvent
     {
     }
 
-    std::string error = {};   // if not empty, error message of failure
-    FS::Path projectDir = {}; // upon success, the directory of created project
+    std::string error = {};      // if not empty, error message of failure
+    FS::Path projectSchema = {}; // upon success, the schema of created project
 };
 
 /// @brief Event signaling that a Project has been loaded into the editor.
@@ -278,7 +278,7 @@ struct EditorActionOpenProjectEvent : EditorActionEvent
     {
     }
 
-    FS::Path openProjectDir;
+    FS::Path projectSchema;
 };
 
 struct EditorActionCreateProjectEvent : EditorActionEvent
@@ -289,7 +289,7 @@ struct EditorActionCreateProjectEvent : EditorActionEvent
     }
 
     std::string projectName;
-    FS::Path projectDir;
+    FS::Path projectSchema;
 };
 
 struct EditorActionAddComponentEvent : EditorActionEvent

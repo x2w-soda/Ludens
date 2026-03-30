@@ -51,6 +51,7 @@ void EditorUI::startup(const EditorUIInfo& info)
     modalI.layerName = EDITOR_UI_LAYER_MODAL_NAME;
     modalI.screenSize = mScreenSize;
     mModal = EditorUIModal::create(modalI);
+    mModal.set_visible(true); // Guard until a project is loaded
 
     EditorUIDialogInfo dialogI{};
     dialogI.ctx = mCtx;
@@ -241,10 +242,13 @@ void EditorUI::on_editor_event(const EditorEvent* event, void* user)
         if (notifyE->error.empty())
         {
             auto* actionE = (EditorActionOpenProjectEvent*)self.mCtx.enqueue_event(EDITOR_EVENT_TYPE_ACTION_OPEN_PROJECT);
-            actionE->openProjectDir = notifyE->projectDir;
+            actionE->projectSchema = notifyE->projectSchema;
         }
         break;
     }
+    case EDITOR_EVENT_TYPE_NOTIFY_PROJECT_LOAD:
+        self.mModal.set_visible(false);
+        break;
     default:
         break;
     }

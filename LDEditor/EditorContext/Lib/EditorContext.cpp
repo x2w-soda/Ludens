@@ -21,6 +21,7 @@
 #include <Ludens/UI/UIFont.h>
 #include <LudensBuilder/DocumentBuilder/DocumentRegistry.h>
 #include <LudensBuilder/ProjectBuilder/ProjectBuilder.h>
+#include <LudensBuilder/ProjectBuilder/ProjectScan.h>
 #include <LudensEditor/EditorContext/EditorContext.h>
 #include <LudensEditor/EditorContext/EditorEventQueue.h>
 
@@ -36,29 +37,30 @@ static Log sLog("EditorContext");
 ///        and active scene states.
 struct EditorContextObj
 {
-    RenderSystem renderSystem;                   /// render server handle
-    AudioSystem audioSystem;                     /// audio server handle
-    Image2D iconAtlas;                           /// editor icon atlas handle
-    ProjectLoadAsync projectLoadAsync = {};      /// asynchronous project loading context
-    Project project;                             /// current project under edit
-    AssetRegistry projectAssetRegistry;          /// current project's asset registry
-    Scene scene = {};                            /// current scene under edit
-    EditorSettings settings;                     /// editor global settings
-    EditorEventQueue eventQueue;                 /// editor events waiting to be processed.
-    EditStack editStack;                         /// undo/redo stack of EditCommands
-    UIFontRegistry fontRegistry;                 /// all fonts used by editor are registered here
-    UIFont fontDefault;                          /// editor default regular font
-    UIFont fontMono;                             /// editor default monospace font
-    DocumentRegistry docRegistry;                /// all documents to be displayed in the editor.
-    FS::Path iconAtlasPath;                      /// path to editor icon atlas source file
-    FS::Path sceneSchemaPath;                    /// path to current scene file
-    FS::Path assetSchemaPath;                    /// path to project asset file
-    FS::Path projectSchemaPath;                  /// path to project file
-    HashMap<KeyValue, EditorEventType> keyBinds; /// key shortcuts to generate events
-    ObserverList<const EditorEvent*> observers;  /// all observers of EditorContext
-    CUID selectedComponentCUID = 0;              /// component selection state
-    CUID prevSelectedComponentCUID = 0;          /// previous component selection state
-    bool isPlaying = false;                      /// whether Scene simulation is in progress
+    RenderSystem renderSystem;                            /// render server handle
+    AudioSystem audioSystem;                              /// audio server handle
+    Image2D iconAtlas;                                    /// editor icon atlas handle
+    ProjectLoadAsync projectLoadAsync = {};               /// asynchronous project loading context
+    Project project;                                      /// current project under edit
+    AssetRegistry projectAssetRegistry;                   /// current project's asset registry
+    Scene scene = {};                                     /// current scene under edit
+    EditorSettings settings;                              /// editor global settings
+    EditorEventQueue eventQueue;                          /// editor events waiting to be processed
+    EditStack editStack;                                  /// undo/redo stack of EditCommands
+    UIFontRegistry fontRegistry;                          /// all fonts used by editor are registered here
+    UIFont fontDefault;                                   /// editor default regular font
+    UIFont fontMono;                                      /// editor default monospace font
+    DocumentRegistry docRegistry;                         /// all documents to be displayed in the editor
+    FS::Path iconAtlasPath;                               /// path to editor icon atlas source file
+    FS::Path sceneSchemaPath;                             /// path to current scene file
+    FS::Path assetSchemaPath;                             /// path to project asset file
+    FS::Path projectSchemaPath;                           /// path to project file
+    HashMap<KeyValue, EditorEventType> keyBinds;          /// key shortcuts to generate events
+    HashMap<FS::Path, EditorProjectEntry> projectEntries; /// projects discovered by editor context
+    ObserverList<const EditorEvent*> observers;           /// all observers of EditorContext
+    CUID selectedComponentCUID = 0;                       /// component selection state
+    CUID prevSelectedComponentCUID = 0;                   /// previous component selection state
+    bool isPlaying = false;                               /// whether Scene simulation is in progress
 
     void emit_event(EditorEventType type);
     void notify_observers(const EditorEvent* event);
@@ -67,6 +69,7 @@ struct EditorContextObj
     void save_project_schema();
     void begin_project_load_async(const FS::Path& projectSchemaPath);
     void update_project_load_async();
+    void add_project_entry(const ProjectScanResult& scanResult);
 };
 
 static void editor_broadcast_event_handler(const EditorEvent* event, void* user);
@@ -191,8 +194,7 @@ static void editor_action_open_project_event_handler(const EditorEvent* event, v
 
     // TODO: save scene and project dialog?
 
-    FS::Path projectSchemaPath = e->openProjectDir / FS::Path("project.toml");
-    obj->begin_project_load_async(projectSchemaPath);
+    obj->begin_project_load_async(e->projectSchema);
 }
 
 static void editor_action_create_project_event_handler(const EditorEvent* event, void* user)
@@ -203,8 +205,8 @@ static void editor_action_create_project_event_handler(const EditorEvent* event,
     EditorContext ctx(obj);
 
     auto* notify = (EditorNotifyProjectCreationEvent*)ctx.enqueue_event(EDITOR_EVENT_TYPE_NOTIFY_PROJECT_CREATION);
-    if (create_empty_project(e->projectName, e->projectDir, notify->error))
-        notify->projectDir = e->projectDir;
+    if (create_empty_project(e->projectName, e->projectSchema, notify->error))
+        notify->projectSchema = e->projectSchema;
 }
 
 static void editor_action_add_component_event_handler(const EditorEvent* event, void* user)
@@ -413,6 +415,17 @@ void EditorContextObj::update_project_load_async()
     projectLoadAsync = {};
 }
 
+void EditorContextObj::add_project_entry(const ProjectScanResult& scanResult)
+{
+    if (!scanResult.isProjectSchemaValid)
+        return;
+
+    EditorProjectEntry entry{};
+    entry.projectName = scanResult.projectName;
+    entry.schemaPath = scanResult.projectSchema;
+    projectEntries[entry.schemaPath] = entry;
+}
+
 EditorContext EditorContext::create(const EditorContextInfo& info)
 {
     LD_PROFILE_SCOPE;
@@ -429,6 +442,9 @@ EditorContext EditorContext::create(const EditorContextInfo& info)
     obj->fontDefault = obj->fontRegistry.add_font(info.defaultFontAtlas, info.defaultFontAtlasImage);
     obj->fontMono = obj->fontRegistry.add_font(info.monoFontAtlas, info.monoFontAtlasImage);
     obj->docRegistry = DocumentRegistry::create();
+
+    for (size_t i = 0; i < info.projectScanResultCount; i++)
+        obj->add_project_entry(info.projectScanResults[i]);
 
     for (size_t i = 0; i < sizeof(sEditorEventHandlers) / sizeof(*sEditorEventHandlers); i++)
         register_editor_event_handler(sEditorEventHandlers[i].type, sEditorEventHandlers[i].handler);
@@ -471,8 +487,11 @@ void EditorContext::destroy(EditorContext ctx)
         obj->iconAtlas = {};
     }
 
-    AssetRegistry::destroy(obj->projectAssetRegistry);
-    Project::destroy(obj->project);
+    if (obj->projectAssetRegistry)
+        AssetRegistry::destroy(obj->projectAssetRegistry);
+
+    if (obj->project)
+        Project::destroy(obj->project);
 
     Scene::destroy();
     AssetManager::destroy();
@@ -542,6 +561,16 @@ EditorEvent* EditorContext::enqueue_event(EditorEventType type)
 void EditorContext::poll_events()
 {
     mObj->eventQueue.poll_events();
+}
+
+Vector<EditorProjectEntry> EditorContext::get_project_entries()
+{
+    Vector<EditorProjectEntry> entries;
+
+    for (const auto& it : mObj->projectEntries)
+        entries.push_back(it.second);
+
+    return entries;
 }
 
 FS::Path EditorContext::get_project_directory()

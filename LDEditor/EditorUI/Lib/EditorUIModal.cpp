@@ -59,16 +59,16 @@ void EditorUIModal::on_imgui(float delta, const Vec2& screenSize)
     if (Vec2(modalRect.w, modalRect.h) != screenSize)
         mObj->backdrop.set_rect(Rect(0.0f, 0.0f, screenSize.x, screenSize.y));
 
-    if (Input::get_key_down(KEY_CODE_SPACE))
-    {
-        mObj->isVisible = !mObj->isVisible;
-    }
-
     mObj->backdrop.set_visible(mObj->isVisible);
     mObj->backdrop.on_imgui(delta);
 
     mObj->modal.set_visible(mObj->isVisible);
     mObj->modal.on_imgui(delta);
+}
+
+void EditorUIModal::set_visible(bool isVisible)
+{
+    mObj->isVisible = isVisible;
 }
 
 } // namespace LD

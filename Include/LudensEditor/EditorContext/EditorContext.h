@@ -17,6 +17,13 @@ namespace LD {
 struct ComponentBase;
 struct Transform;
 struct TransformEx;
+struct ProjectScanResult;
+
+struct EditorProjectEntry
+{
+    FS::Path schemaPath;
+    std::string projectName;
+};
 
 struct EditorContextInfo
 {
@@ -27,6 +34,8 @@ struct EditorContextInfo
     FontAtlas monoFontAtlas;
     RImage defaultFontAtlasImage;
     RImage monoFontAtlasImage;
+    size_t projectScanResultCount = 0;
+    const ProjectScanResult* projectScanResults = nullptr;
 };
 
 /// @brief Shared context among editor windows. Keeps track of
@@ -52,6 +61,9 @@ struct EditorContext : Handle<struct EditorContextObj>
 
     /// @brief Blocks until all events are processed.
     void poll_events();
+
+    /// @brief Get discovered projects.
+    Vector<EditorProjectEntry> get_project_entries();
 
     /// @brief Get directory of current project.
     FS::Path get_project_directory();

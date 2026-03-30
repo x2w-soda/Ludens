@@ -19,6 +19,7 @@ struct EditorUIModal : Handle<struct EditorUIModalObj>
     static void destroy(EditorUIModal modal);
 
     void on_imgui(float delta, const Vec2& screenSize);
+    void set_visible(bool isVisible);
 };
 
 } // namespace LD
