@@ -7,7 +7,72 @@
 #include <LudensEditor/EditorContext/EditorIconAtlas.h>
 #include <LudensEditor/ProjectWindow/ProjectWindow.h>
 
+#define PAD 10.0f
+
 namespace LD {
+
+static bool ui_row_text_button(const char* labelText, const char* buttonText, float rowHeight)
+{
+    bool btnIsPressed = false;
+
+    UILayoutInfo layoutI{};
+    layoutI.childAxis = UI_AXIS_X;
+    layoutI.sizeX = UISize::grow();
+    layoutI.sizeY = UISize::fixed(rowHeight);
+    ui_push_panel(nullptr);
+    ui_top_layout(layoutI);
+    {
+        ui_push_text(nullptr, labelText);
+        ui_pop();
+        
+        ui_push_panel(nullptr);
+        ui_top_layout(layoutI);
+        ui_pop();
+
+        layoutI.sizeX = UISize::fixed(120.0f);
+        ui_push_button(nullptr, buttonText);
+        ui_top_layout(layoutI);
+        if (ui_button_is_pressed())
+            btnIsPressed = true;
+        ui_pop();
+    }
+    ui_pop();
+
+    return btnIsPressed;
+}
+
+struct SelectProjectStorage
+{
+    UIScrollStorage projectListScroll;
+    UITextEditStorage projectSchemaEdit;
+
+    void ui_project_entry(EditorContext ctx, const EditorProjectEntry& entry);
+};
+
+void SelectProjectStorage::ui_project_entry(EditorContext ctx, const EditorProjectEntry& entry)
+{
+    EditorTheme theme = ctx.get_theme();
+
+    ui_push_panel(nullptr);
+    ui_top_layout(theme.make_vbox_layout());
+
+    ui_push_text(nullptr, entry.projectName.c_str());
+    ui_pop();
+
+    const FS::Path projectDir = entry.schemaPath.parent_path();
+    ui_push_text(nullptr, projectDir.string().c_str());
+    ui_pop();
+
+    ui_push_button(nullptr, "Load");
+    if (ui_button_is_pressed())
+    {
+        auto* actionE = (EditorActionOpenProjectEvent*)ctx.enqueue_event(EDITOR_EVENT_TYPE_ACTION_OPEN_PROJECT);
+        actionE->projectSchema = entry.schemaPath;
+    }
+    ui_pop();
+
+    ui_pop();
+}
 
 struct CreateProjectStorage
 {
@@ -41,6 +106,8 @@ void CreateProjectStorage::validate_input()
 struct ProjectWindowObj : EditorWindowObj
 {
     CreateProjectStorage createProject;
+    SelectProjectStorage selectProject;
+    bool isCreatingProject = false;
 
     ProjectWindowObj(const EditorWindowInfo& info)
         : EditorWindowObj(info)
@@ -52,7 +119,8 @@ struct ProjectWindowObj : EditorWindowObj
     virtual EditorWindowType get_type() override { return EDITOR_WINDOW_PROJECT; }
     virtual void on_imgui(float delta) override;
 
-    void create_project_imgui();
+    bool ui_create_project();
+    bool ui_select_project();
 };
 
 void ProjectWindowObj::on_imgui(float delta)
@@ -65,22 +133,34 @@ void ProjectWindowObj::on_imgui(float delta)
     ui_push_window(ui_workspace_name());
 
     UILayoutInfo layoutI = theme.make_vbox_layout_fixed(mRootRect.get_size());
-    layoutI.childPadding = UIPadding(10.0f);
-    layoutI.childGap = 10.0f;
+    layoutI.childPadding = UIPadding(PAD);
+    layoutI.childGap = PAD;
     ui_top_layout(layoutI);
 
-    create_project_imgui();
+    if (isCreatingProject)
+    {
+        if (ui_create_project())
+            isCreatingProject = false;
+    }
+    else
+    {
+        if (ui_select_project())
+            isCreatingProject = true;
+    }
 
     ui_pop_window();
     ui_workspace_end();
 }
 
-void ProjectWindowObj::create_project_imgui()
+bool ProjectWindowObj::ui_create_project()
 {
     EditorTheme theme = mCtx.get_theme();
     const float textRowHeight = theme.get_text_row_height();
     UITextStorage* text;
     std::string str;
+
+    if (ui_row_text_button("Create New Project", "Open Existing", textRowHeight))
+        return true;
 
     ui_push_text(nullptr, "Project Name");
     ui_pop();
@@ -110,9 +190,40 @@ void ProjectWindowObj::create_project_imgui()
     {
         auto* event = (EditorActionCreateProjectEvent*)mCtx.enqueue_event(EDITOR_EVENT_TYPE_ACTION_CREATE_PROJECT);
         event->projectName = createProject.projectNameEdit.editor.get_string();
-        event->projectDir = FS::Path(createProject.projectDirEdit.editor.get_string());
+        event->projectSchema = FS::Path(createProject.projectDirEdit.editor.get_string()) / FS::Path("project.toml");
     }
     ui_pop();
+
+    return false;
+}
+
+bool ProjectWindowObj::ui_select_project()
+{
+    EditorTheme theme = mCtx.get_theme();
+    const float textRowHeight = theme.get_text_row_height();
+    std::string str;
+
+    if (ui_row_text_button("Select Project", "Create New", textRowHeight))
+        return true;
+
+    UILayoutInfo layoutI{};
+    layoutI.sizeX = UISize::grow();
+    layoutI.sizeY = UISize::grow();
+    layoutI.childAxis = UI_AXIS_Y;
+    layoutI.childGap = PAD;
+    layoutI.childPadding = UIPadding(PAD);
+
+    ui_push_scroll(&selectProject.projectListScroll);
+    selectProject.projectListScroll.bgColor = theme.get_ui_theme().get_surface_color();
+    ui_top_layout(layoutI);
+
+    for (const EditorProjectEntry& entry : mCtx.get_project_entries())
+    {
+        selectProject.ui_project_entry(mCtx, entry);
+    }
+    ui_pop();
+
+    return false;
 }
 
 //
