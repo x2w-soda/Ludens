@@ -741,4 +741,24 @@ bool SceneSchema::save_scene(Scene scene, const FS::Path& savePath, std::string&
     return FS::write_file_and_swap_backup(savePath, tomlView, err);
 }
 
+std::string SceneSchema::create_empty()
+{
+    TOMLWriter writer = TOMLWriter::create();
+
+    writer.begin();
+
+    writer.begin_table(SCENE_SCHEMA_TABLE_LUDENS_SCENE);
+    writer.key(SCENE_SCHEMA_KEY_VERSION_MAJOR).write_i32(LD_VERSION_MAJOR);
+    writer.key(SCENE_SCHEMA_KEY_VERSION_MINOR).write_i32(LD_VERSION_MINOR);
+    writer.key(SCENE_SCHEMA_KEY_VERSION_PATCH).write_i32(LD_VERSION_PATCH);
+    writer.end_table();
+
+    std::string toml;
+    writer.end(toml);
+
+    TOMLWriter::destroy(writer);
+
+    return toml;
+}
+
 } // namespace LD

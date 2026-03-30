@@ -4,6 +4,7 @@
 #include <Ludens/DataRegistry/DataRegistry.h>
 #include <Ludens/Header/View.h>
 #include <Ludens/Scene/Scene.h>
+
 #include <cstdint>
 #include <string>
 
@@ -20,6 +21,8 @@ struct SceneSchema
 
     /// @brief Try saving scene as TOML schema file on disk.
     static bool save_scene(Scene scene, const FS::Path& savePath, std::string& err);
+
+    static std::string create_empty();
 };
 
 } // namespace LD

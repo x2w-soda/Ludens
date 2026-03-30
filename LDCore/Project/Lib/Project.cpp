@@ -75,10 +75,13 @@ FS::Path Project::get_asset_schema_path()
 
 bool Project::add_scene(const ProjectSceneEntry& entry, std::string& err)
 {
-    if (!SUIDRegistry::try_get_suid(entry.id))
+    for (const ProjectSceneEntry& existingEntry : mObj->scenes)
     {
-        err = std::format("Scene SUID {} already registered", entry.id);
-        return false;
+        if (existingEntry.id == entry.id)
+        {
+            err = std::format("Scene SUID {} already registered in project", entry.id);
+            return false;
+        }
     }
 
     if (entry.path.empty())

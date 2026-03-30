@@ -32,6 +32,9 @@ void Transform2DRegistry::invalidate_transforms()
 {
     LD_PROFILE_SCOPE;
 
+    if (mDepth.empty())
+        return;
+
     Depth& rootDepth = *mDepth[0];
     size_t maxChildLI = rootDepth.local.size();
 

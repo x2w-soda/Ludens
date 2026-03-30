@@ -8,6 +8,7 @@
 #include <Ludens/Memory/Memory.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/Project/ProjectSchema.h>
+#include <Ludens/Scene/SceneSchema.h>
 #include <Ludens/System/FileSystemAsync.h>
 #include <LudensBuilder/ProjectBuilder/ProjectBuilder.h>
 
@@ -416,9 +417,11 @@ bool ProjectBuildAsync::get_result(ProjectBuildResult& outResult)
     return true;
 }
 
-bool create_empty_project(const std::string& projectName, const FS::Path& projectDir, std::string& err)
+bool create_empty_project(const std::string& projectName, const FS::Path& projectSchema, std::string& err)
 {
     LD_PROFILE_SCOPE;
+
+    const FS::Path projectDir = projectSchema.parent_path();
 
     if (!FS::create_directories(projectDir, err))
     {
@@ -433,9 +436,14 @@ bool create_empty_project(const std::string& projectName, const FS::Path& projec
     if (!FS::write_file(assetSchemaPath, View(toml.data(), toml.size()), err))
         return false;
 
-    toml = ProjectSchema::create_empty(projectName, "assets.toml");
+    toml = ProjectSchema::create_empty(projectName, "assets.toml", "main.toml", "main");
     FS::Path projectSchemaPath = projectDir / FS::Path("project.toml");
     if (!FS::write_file(projectSchemaPath, View(toml.data(), toml.size()), err))
+        return false;
+
+    toml = SceneSchema::create_empty();
+    FS::Path sceneSchemaPath = projectDir / FS::Path("main.toml");
+    if (!FS::write_file(sceneSchemaPath, View(toml.data(), toml.size()), err))
         return false;
 
     return true;

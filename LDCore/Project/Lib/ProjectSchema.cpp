@@ -333,15 +333,25 @@ bool ProjectSchema::save_project(Project project, const FS::Path& savePath, std:
     return FS::write_file_and_swap_backup(savePath, tomlView, err);
 }
 
-std::string ProjectSchema::create_empty(const std::string& projectName, const std::string& assetSchemaPath)
+std::string ProjectSchema::create_empty(const std::string& projectName, const std::string& assetSchemaPath, const std::string& sceneSchemaPath, const std::string& sceneName)
 {
     Project project = Project::create();
     project.set_name(projectName);
     project.set_asset_schema_path(assetSchemaPath);
     project.get_settings().get_startup_settings().set_window_name(projectName);
 
-    std::string toml, err;
-    bool success = ProjectSchema::save_project_to_string(project, toml, err);
+    std::string err;
+    ProjectSceneEntry entry{};
+    entry.id = SUID(SERIAL_TYPE_SCENE, 0);
+    entry.name = sceneName;
+    entry.path = sceneSchemaPath;
+    bool success = project.add_scene(entry, err);
+    LD_ASSERT(success);
+
+    project.get_settings().get_startup_settings().set_default_scene_id(entry.id);
+
+    std::string toml;
+    success = ProjectSchema::save_project_to_string(project, toml, err);
     LD_ASSERT(success);
 
     Project::destroy(project);

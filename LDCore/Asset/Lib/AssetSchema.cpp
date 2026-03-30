@@ -89,7 +89,7 @@ bool AssetSchemaLoader::load_asset_entries(std::string& err)
 {
     int count;
     if (!mReader.enter_array(ASSET_SCHEMA_KEY_ENTRY, count))
-        return false;
+        return true; // zero asset entries
 
     bool isValid = true;
     AssetType assetType;
