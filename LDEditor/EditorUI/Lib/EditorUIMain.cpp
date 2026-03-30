@@ -59,7 +59,6 @@ EditorUIMainObj::EditorUIMainObj(const EditorUIMainInfo& mainI)
     EditorAreaID outlinerArea = mSceneWorkspace.split_right(viewportArea, 0.7f);
     EditorAreaID inspectorArea = mSceneWorkspace.split_bottom(outlinerArea, 0.5f);
     EditorAreaID consoleArea = mSceneWorkspace.split_bottom(viewportArea, 0.7f);
-    EditorAreaID documentArea = mSceneWorkspace.split_right(consoleArea, 0.5f);
 
     mViewportWindow = (ViewportWindow)mSceneWorkspace.create_window(viewportArea, EDITOR_WINDOW_VIEWPORT);
     mOutlinerWindow = (OutlinerWindow)mSceneWorkspace.create_window(outlinerArea, EDITOR_WINDOW_OUTLINER);
@@ -67,8 +66,6 @@ EditorUIMainObj::EditorUIMainObj(const EditorUIMainInfo& mainI)
     mConsoleWindow = (ConsoleWindow)mSceneWorkspace.create_window(consoleArea, EDITOR_WINDOW_CONSOLE);
     mConsoleWindow.observe_channel(get_lua_script_log_channel_name());
     mConsoleWindow.observe_channel(get_scene_log_channel_name());
-
-    EditorWindow documentWindow = mSceneWorkspace.create_window(documentArea, EDITOR_WINDOW_DOCUMENT);
 }
 
 EditorUIMainObj::~EditorUIMainObj()
