@@ -56,6 +56,8 @@ void ProjectLoadAsync::destroy(ProjectLoadAsync async)
 {
     auto* obj = async.unwrap();
 
+    LD_ASSERT(obj->status == PROJECT_LOAD_STATUS_IDLE);
+
     heap_delete<ProjectLoadAsyncObj>(obj);
 }
 

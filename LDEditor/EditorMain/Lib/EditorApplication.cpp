@@ -2,6 +2,7 @@
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/System/FileSystem.h>
 #include <Ludens/WindowRegistry/WindowRegistry.h>
+#include <LudensBuilder/ProjectBuilder/ProjectScan.h>
 
 #include "EditorApplication.h"
 
@@ -16,7 +17,7 @@ namespace LD {
 
 static Log sLog("LDEditor");
 
-EditorApplication::EditorApplication()
+EditorApplication::EditorApplication(const EditorApplicationInfo& info)
 {
     LD_PROFILE_SCOPE;
 
@@ -26,6 +27,14 @@ EditorApplication::EditorApplication()
     jsI.immediateQueueCapacity = 128;
     jsI.standardQueueCapacity = 128;
     JobSystem::init(jsI);
+
+    // Initial project discovery as soon as job system is initialized.
+    // Probably want some editor manifest file to cache recent projects.
+    Vector<FS::Path> projectSchemaPaths;
+    projectSchemaPaths.push_back(sLudensLFS.projectPath);
+    if (info.projectSchemaPath)
+        projectSchemaPaths.push_back(*info.projectSchemaPath);
+    begin_project_scans(projectSchemaPaths);
 
     WindowInfo windowI{};
     windowI.width = 1600;
@@ -52,7 +61,7 @@ EditorApplication::EditorApplication()
 
     RDeviceInfo deviceI{};
     deviceI.backend = RDEVICE_BACKEND_VULKAN;
-    deviceI.vsync = true; // TODO: config
+    deviceI.vsync = info.vsync;
     mRDevice = RDevice::create(deviceI);
 
     RenderSystemInfo serverI{};
@@ -63,27 +72,9 @@ EditorApplication::EditorApplication()
 
     mAudioSystem = AudioSystem::create();
 
-#if 0
-    {
-        FS::Path dirPath = sLudensLFS.skyboxFolderPath;
-        std::array<std::string, 6> facePaths;
-        facePaths[0] = FS::Path(dirPath).append("px.png").string();
-        facePaths[1] = FS::Path(dirPath).append("nx.png").string();
-        facePaths[2] = FS::Path(dirPath).append("py.png").string();
-        facePaths[3] = FS::Path(dirPath).append("ny.png").string();
-        facePaths[4] = FS::Path(dirPath).append("pz.png").string();
-        facePaths[5] = FS::Path(dirPath).append("nz.png").string();
-        std::array<const char*, 6> facePathsCstr;
-        for (int i = 0; i < 6; i++)
-            facePathsCstr[i] = facePaths[i].c_str();
-
-        Bitmap tmpCubemapFaces = Bitmap::create_cubemap_from_paths(facePathsCstr.data());
-        mEnvCubemap = mRenderSystem.create_image_cube(tmpCubemapFaces);
-        Bitmap::destroy(tmpCubemapFaces);
-    }
-#else
-    mEnvCubemap = {};
-#endif
+    // barrier to wait for all project scans to complete.
+    Vector<ProjectScanResult> projectScanResults;
+    wait_project_scans(projectScanResults);
 
     // load scene into editor context
     EditorContextInfo contextI{};
@@ -94,19 +85,22 @@ EditorApplication::EditorApplication()
     contextI.defaultFontAtlasImage = mRenderSystem.get_font_atlas_image();
     contextI.monoFontAtlas = mMSFontAtlas;
     contextI.monoFontAtlasImage = mRenderSystem.get_mono_font_atlas_image();
+    contextI.projectScanResultCount = projectScanResults.size();
+    contextI.projectScanResults = projectScanResults.data();
     mEditorCtx = EditorContext::create(contextI);
 
-    // TODO: Project path could be from command line args,
-    //       Async project loading would be nice too.
-    auto* actionE = (EditorActionOpenProjectEvent*)mEditorCtx.enqueue_event(EDITOR_EVENT_TYPE_ACTION_OPEN_PROJECT);
-    actionE->openProjectDir = sLudensLFS.projectPath.parent_path();
+    if (info.projectSchemaPath)
+    {
+        auto* actionE = (EditorActionOpenProjectEvent*)mEditorCtx.enqueue_event(EDITOR_EVENT_TYPE_ACTION_OPEN_PROJECT);
+        actionE->projectSchema = *info.projectSchemaPath;
+    }
+
     mEditorCtx.poll_events();
 
     // initalize editor UI
     EditorUIInfo uiI{};
     uiI.ctx = mEditorCtx;
     uiI.renderSystem = mRenderSystem;
-    // uiI.envCubemap = mEnvCubemap.get_id();
     uiI.screenWidth = (uint32_t)screenExtent.x;
     uiI.screenHeight = (uint32_t)screenExtent.y;
     uiI.barHeight = 22;
@@ -167,6 +161,38 @@ void EditorApplication::run()
 
         LD_PROFILE_FRAME_MARK;
     }
+}
+
+void EditorApplication::begin_project_scans(const Vector<FS::Path>& projectSchemas)
+{
+    LD_PROFILE_SCOPE;
+
+    mProjectScans.resize(projectSchemas.size());
+
+    for (size_t i = 0; i < projectSchemas.size(); i++)
+    {
+        mProjectScans[i] = ProjectScanAsync::create();
+        mProjectScans[i].begin(projectSchemas[i]);
+    }
+}
+
+void EditorApplication::wait_project_scans(Vector<ProjectScanResult>& projectScanResults)
+{
+    LD_PROFILE_SCOPE;
+
+    JobSystem::get().wait_all();
+
+    projectScanResults.resize(mProjectScans.size());
+
+    for (size_t i = 0; i < mProjectScans.size(); i++)
+    {
+        if (!mProjectScans[i].get_result(projectScanResults[i]))
+            projectScanResults[i].isProjectSchemaValid = false;
+
+        ProjectScanAsync::destroy(mProjectScans[i]);
+    }
+
+    mProjectScans.clear();
 }
 
 } // namespace LD

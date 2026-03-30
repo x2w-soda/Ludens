@@ -30,8 +30,8 @@ EditorUIModal EditorUIModal::create(const EditorUIModalInfo& modalI)
     spaceI.rootColor = 0x10101070;
     obj->backdrop = EditorWorkspace::create(spaceI);
 
-    const float modalW = 500.0f;
-    const float modalH = 500.0f;
+    const float modalW = 600.0f;
+    const float modalH = 700.0f;
     spaceI.uiLayerName = modalI.layerName;
     spaceI.isFloat = true;
     spaceI.isVisible = obj->isVisible;

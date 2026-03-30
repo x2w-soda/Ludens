@@ -376,7 +376,12 @@ void EditorContextObj::begin_project_load_async(const FS::Path& projectSchemaPat
     const FS::Path rootPath = projectSchemaPath.parent_path();
 
     if (projectLoadAsync)
+    {
+        if (projectLoadAsync.update() != PROJECT_LOAD_STATUS_IDLE)
+            return;
+
         ProjectLoadAsync::destroy(projectLoadAsync);
+    }
 
     projectLoadAsync = ProjectLoadAsync::create();
     if (!projectLoadAsync.begin(rootPath, err))
