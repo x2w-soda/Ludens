@@ -39,6 +39,7 @@ public:
     inline View scheme() const { return View(mString.data() + mSchemeRange.offset, mSchemeRange.size); }
     inline View authority() const { return View(mString.data() + mAuthorityRange.offset, mAuthorityRange.size); }
     inline View path() const { return View(mString.data() + mPathRange.offset, mPathRange.size); }
+    inline View stem() const { return View(mString.data() + mStemRange.offset, mStemRange.size); }
     inline View query() const { return View(mString.data() + mQueryRange.offset, mQueryRange.size); }
     inline View fragment() const { return View(mString.data() + mFragmentRange.offset, mFragmentRange.size); }
 
@@ -50,6 +51,7 @@ private:
         mSchemeRange = {};
         mAuthorityRange = {};
         mPathRange = {};
+        mStemRange = {};
         mQueryRange = {};
         mFragmentRange = {};
 
@@ -104,6 +106,8 @@ private:
             remaining.remove_prefix(pathStart);
             mPathRange.offset = authorityOffset + mAuthorityRange.size + 1;
             mPathRange.size = remaining.size() - 1;
+            if (mPathRange.size > 0)
+                parse_stem_range(remaining);
         }
         else
         {
@@ -112,10 +116,22 @@ private:
         }
     }
 
+    void parse_stem_range(std::string_view remaining)
+    {
+        size_t nameOffset = remaining.find_last_of('/');
+        nameOffset = nameOffset == std::string::npos ? 0 : nameOffset + 1;
+        size_t extOffset = remaining.find_first_of('.', nameOffset);
+        extOffset = (extOffset == std::string::npos) ? (remaining.size()) : extOffset;
+
+        mStemRange.offset = mPathRange.offset - 1 + nameOffset;
+        mStemRange.size = extOffset - nameOffset;
+    }
+
     std::string mString;
     Range mSchemeRange;
     Range mAuthorityRange;
     Range mPathRange;
+    Range mStemRange;
     Range mQueryRange;
     Range mFragmentRange;
 };

@@ -29,6 +29,33 @@ TEST_CASE("URI Path")
     CHECK(uri.path() == "a/b/c/d/e.md");
 }
 
+TEST_CASE("URI Stem")
+{
+    URI uri("doc://path/to/file");
+    CHECK(uri.scheme() == "doc");
+    CHECK(uri.authority() == "path");
+    CHECK(uri.path() == "to/file");
+    CHECK(uri.stem() == "file");
+
+    uri = URI("doc://path/to/file.png");
+    CHECK(uri.scheme() == "doc");
+    CHECK(uri.authority() == "path");
+    CHECK(uri.path() == "to/file.png");
+    CHECK(uri.stem() == "file");
+
+    uri = URI("doc://path/to/file.backup.png");
+    CHECK(uri.scheme() == "doc");
+    CHECK(uri.authority() == "path");
+    CHECK(uri.path() == "to/file.backup.png");
+    CHECK(uri.stem() == "file");
+
+    uri = URI("doc://path");
+    CHECK(uri.scheme() == "doc");
+    CHECK(uri.authority() == "path");
+    CHECK_FALSE(uri.path());
+    CHECK_FALSE(uri.stem());
+}
+
 TEST_CASE("URI Query Fragment")
 {
     URI uri("doc://media/icon.png?color=red#top");
