@@ -612,6 +612,13 @@ void UIContext::update(float delta)
 
 void UIContext::render(ScreenRenderComponent renderer)
 {
+    LD_PROFILE_SCOPE;
+
+    // NOTE: Currently it is possible for the user to destroy UI objects
+    //       between update() and render(), and this is required to avoid
+    //       rendering out-of-date objects waiting for removal.
+    mObj->pre_update();
+
     for (UILayerObj* layer : mObj->layers)
     {
         UILayer(layer).render(renderer);

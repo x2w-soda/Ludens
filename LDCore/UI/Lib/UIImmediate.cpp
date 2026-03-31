@@ -12,6 +12,7 @@
 #include <Ludens/UI/UIImmediate.h>
 #include <Ludens/UI/Widgets.h>
 
+#define LD_ASSERT_NOT_UI_CONTEXT_SCOPE LD_ASSERT(!sImContext && "ui_context_end not called")
 #define LD_ASSERT_UI_CONTEXT_SCOPE LD_ASSERT(sImContext && "ui_context_begin not called")
 #define LD_ASSERT_UI_LAYER_SCOPE LD_ASSERT(sImContext->imLayer && "ui_layer_begin not called")
 #define LD_ASSERT_UI_WORKSPACE_SCOPE LD_ASSERT(sImContext->imSpace && "ui_workspace_begin not called")
@@ -645,7 +646,7 @@ void ui_imgui_startup(UIFont font)
 
 void ui_imgui_cleanup()
 {
-    LD_ASSERT(!sImContext && "ui_context_end not called");
+    LD_ASSERT_NOT_UI_CONTEXT_SCOPE;
 
     for (const auto& it : sImContexts)
         destroy_context_state(it.second);
@@ -654,7 +655,7 @@ void ui_imgui_cleanup()
 
 void ui_imgui_cleanup_context(const char* ctxName)
 {
-    LD_ASSERT(!sImContext && "ui_context_end not called");
+    LD_ASSERT_NOT_UI_CONTEXT_SCOPE;
 
     auto it = sImContexts.find(ctxName);
 
@@ -663,6 +664,42 @@ void ui_imgui_cleanup_context(const char* ctxName)
         destroy_context_state(it->second);
         sImContexts.erase(it);
     }
+}
+
+void ui_imgui_cleanup_layer(const char* ctxName, const char* layerName)
+{
+    LD_ASSERT_NOT_UI_CONTEXT_SCOPE;
+
+    if (!sImContexts.contains(ctxName))
+        return;
+
+    UIContextState* ctxS = sImContexts[ctxName];
+    if (!ctxS->imLayers.contains(layerName))
+        return;
+
+    UILayerState* layerS = ctxS->imLayers[layerName];
+    ctxS->destroy_layer_state(layerS);
+    ctxS->imLayers.erase(layerName);
+}
+
+void ui_imgui_cleanup_workspace(const char* ctxName, const char* layerName, const char* workspaceName)
+{
+    LD_ASSERT_NOT_UI_CONTEXT_SCOPE;
+
+    if (!sImContexts.contains(ctxName))
+        return;
+
+    UIContextState* ctxS = sImContexts[ctxName];
+    if (!ctxS->imLayers.contains(layerName))
+        return;
+
+    UILayerState* layerS = ctxS->imLayers[layerName];
+    if (!layerS->imSpaces.contains(workspaceName))
+        return;
+
+    UIWorkspaceState* spaceS = layerS->imSpaces[workspaceName];
+    layerS->destroy_workspace_state(spaceS);
+    layerS->imSpaces.erase(workspaceName);
 }
 
 bool ui_context_input(const char* ctxName, const WindowEvent* event)

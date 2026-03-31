@@ -31,6 +31,8 @@ void ui_imgui_cleanup();
 
 /// @brief Release all resources allocated by a specific immediate-mode context.
 void ui_imgui_cleanup_context(const char* ctxName);
+void ui_imgui_cleanup_layer(const char* ctxName, const char* layerName);
+void ui_imgui_cleanup_workspace(const char* ctxName, const char* layerName, const char* workspaceName);
 
 bool ui_context_input(const char* ctxName, const WindowEvent* event);
 void ui_context_render(const char* ctxName, ScreenRenderComponent renderer);
