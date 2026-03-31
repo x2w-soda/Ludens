@@ -96,7 +96,6 @@ bool AssetSchemaLoader::load_asset_entries(std::string& err)
     AssetEntry entry{};
     Vector<std::string> keys;
     std::string entryURI;
-    std::string entryName;
     std::string entryType;
     SUID entryID;
 
@@ -106,7 +105,6 @@ bool AssetSchemaLoader::load_asset_entries(std::string& err)
             continue;
 
         if (!mReader.read_string(ASSET_SCHEMA_KEY_ENTRY_URI, entryURI) ||
-            !mReader.read_string(ASSET_SCHEMA_KEY_ENTRY_NAME, entryName) ||
             !mReader.read_string(ASSET_SCHEMA_KEY_ENTRY_TYPE, entryType) ||
             !mReader.read_suid(ASSET_SCHEMA_KEY_ENTRY_ID, entryID) ||
             !get_cstr_asset_type(entryType.c_str(), assetType))
@@ -117,24 +115,24 @@ bool AssetSchemaLoader::load_asset_entries(std::string& err)
 
         if (isValid && entryID.type() != SERIAL_TYPE_ASSET)
         {
-            err = std::format("Asset [{}] has invalid ID {}", entryName, entryID);
+            err = std::format("Asset [{}] has invalid ID {}", entryURI, entryID);
             isValid = false;
         }
 
-        if (isValid && !(entry = mReg.register_asset_with_id(entryID, assetType, entryURI, entryName)))
+        if (isValid && !(entry = mReg.register_asset_with_id(entryID, assetType, entryURI)))
         {
             err = std::format("Asset ID {} is already in use, invalid schema", entryID);
             isValid = false;
         }
 
-        if (isValid && mReader.enter_table(ASSET_SCHEMA_KEY_ENTRY_EXTRA_URI))
+        if (isValid && mReader.enter_table(ASSET_SCHEMA_KEY_ENTRY_PATH))
         {
             mReader.get_keys(keys);
 
             for (const std::string& key : keys)
             {
                 if (mReader.read_string(key.c_str(), entryURI))
-                    entry.set_extra_uri(key, entryURI);
+                    entry.set_path(key, entryURI);
             }
 
             mReader.exit();
@@ -194,15 +192,14 @@ bool AssetSchemaSaver::save_asset_entries(std::string& err)
         mWriter.begin_table();
         mWriter.key(ASSET_SCHEMA_KEY_ENTRY_ID).write_u32(entry.get_id());
         mWriter.key(ASSET_SCHEMA_KEY_ENTRY_URI).write_string(entry.get_uri());
-        mWriter.key(ASSET_SCHEMA_KEY_ENTRY_NAME).write_string(entry.get_name());
         mWriter.key(ASSET_SCHEMA_KEY_ENTRY_TYPE).write_string(typeCstr);
 
-        keys = entry.get_extra_uri_keys();
+        keys = entry.get_path_keys();
         if (!keys.empty())
         {
-            mWriter.begin_table(ASSET_SCHEMA_KEY_ENTRY_EXTRA_URI);
+            mWriter.begin_table(ASSET_SCHEMA_KEY_ENTRY_PATH);
             for (const std::string& key : keys)
-                mWriter.key(key).write_string(entry.get_extra_uri(key));
+                mWriter.key(key).write_string(entry.get_path(key));
             mWriter.end_table();
         }
 

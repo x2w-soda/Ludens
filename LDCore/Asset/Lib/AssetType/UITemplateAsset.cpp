@@ -30,7 +30,7 @@ void UITemplateAssetObj::load(void* user)
         return;
     }
 
-    FS::Path sourcePath = job.rootPath / FS::Path(job.assetEntry.get_extra_uri("source"));
+    FS::Path sourcePath = job.rootPath / FS::Path(job.assetEntry.get_path("source"));
 
     obj->luaSource = FS::read_file_to_cstr(sourcePath, err);
     if (!obj->luaSource)

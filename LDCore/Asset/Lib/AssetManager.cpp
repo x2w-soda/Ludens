@@ -143,7 +143,7 @@ AssetLoadJob* AssetManagerObj::allocate_load_job(AssetEntry entry, AssetObj* ass
     new (job) AssetLoadJob();
 
     job->rootPath = rootPath;
-    job->loadPath = (rootPath / entry.get_uri()).lexically_normal();
+    job->loadPath = FS::absolute(rootPath / entry.get_main_path());
     job->assetHandle = {assetObj};
     job->assetEntry = entry;
     job->jobHeader.onExecute = sAssetMeta[(int)entry.get_type()].load;
@@ -229,15 +229,13 @@ void AssetManagerObj::load_asset(AssetEntry entry)
         return;
 
     const AssetType type = entry.get_type();
-    const std::string uri = entry.get_uri();
-    const FS::Path loadPath = FS::Path(rootPath / uri).lexically_normal();
+    const FS::Path loadPath = FS::absolute(rootPath / FS::Path(entry.get_main_path()));
     sLog.info("load_asset {}", loadPath.string());
 
-    // TODO: this is flaky
     if (mWatcher && type == ASSET_TYPE_LUA_SCRIPT)
     {
-        FS::Path luaPath = loadPath;
-        mWatcher.add_watch(luaPath.replace_extension(".lua"), entry.get_id());
+        FS::Path luaPath = FS::absolute(rootPath / FS::Path(entry.get_path("source")));
+        mWatcher.add_watch(luaPath, entry.get_id());
     }
 
     AssetObj* obj = allocate_asset(entry);

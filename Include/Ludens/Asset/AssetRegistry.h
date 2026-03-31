@@ -15,9 +15,10 @@ struct AssetEntry : Handle<struct AssetEntryObj>
     std::string get_name();
     std::string get_uri();
     void set_uri(const std::string& uri);
-    Vector<std::string> get_extra_uri_keys();
-    std::string get_extra_uri(const std::string& key);
-    void set_extra_uri(const std::string& key, const std::string& uri);
+    Vector<std::string> get_path_keys();
+    std::string get_path(const std::string& key);
+    inline std::string get_main_path() { return get_path("main"); }
+    void set_path(const std::string& key, const std::string& uri);
 };
 
 /// @brief Bookkeeping for all assets in a project.
@@ -30,10 +31,10 @@ struct AssetRegistry : Handle<struct AssetRegistryObj>
     static void destroy(AssetRegistry registry);
 
     /// @brief Register a new Asset, an ID is assigned to uniquely identify the Asset throughout the project.
-    AssetEntry register_asset(AssetType type, const std::string& uri, const std::string& name);
+    AssetEntry register_asset(AssetType type, const std::string& uri);
 
     /// @brief Used when the asset ID is also known, such as loading an Asset from the project.
-    AssetEntry register_asset_with_id(SUID id, AssetType type, const std::string& uri, const std::string& name);
+    AssetEntry register_asset_with_id(SUID id, AssetType type, const std::string& uri);
 
     /// @brief Unregister an Asset that is no longer used in the project.
     void unregister_asset(SUID id);

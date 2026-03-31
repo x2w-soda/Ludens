@@ -7,7 +7,8 @@
 
 namespace LD {
 
-/// @brief Schema for listing all Assets under the current framework version.
+/// @brief Schema for listing all Assets involved in a project.
+///        This schema serializes to and from AssetRegistry.
 struct AssetSchema
 {
     /// @brief Load asset registry from TOML schema file on disk.

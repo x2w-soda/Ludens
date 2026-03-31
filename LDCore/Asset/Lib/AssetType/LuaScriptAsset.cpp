@@ -50,7 +50,7 @@ void LuaScriptAssetObj::load(void* user)
         }
     }
 
-    FS::Path sourcePath = job.rootPath / FS::Path(job.assetEntry.get_extra_uri("source"));
+    FS::Path sourcePath = job.rootPath / FS::Path(job.assetEntry.get_path("source"));
     uint64_t fileSize;
     if (!FS::get_file_size(sourcePath, fileSize, err) || fileSize == 0)
         return;

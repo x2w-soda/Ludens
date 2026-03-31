@@ -236,34 +236,21 @@ bool ProjectBuildAsyncObj::configure_dst_asset_schema(ProjectBuildError& err)
         return false;
     }
 
-    // flatten assets in build dst directory
-    for (size_t i = 0; i < assets.size(); i++)
+    // flatten assets in build dst directory, copy files over
+    for (AssetEntry entry : assets)
     {
-        AssetEntry entry = assets[i];
-        FS::Path srcAssetPath(entry.get_uri());
-        FS::Path dstAssetPath = dstAssetDirectory / srcAssetPath.filename();
-
-        // absolute paths for copy job
-        CopyFileJob* job = heap_new<CopyFileJob>(MEMORY_USAGE_MISC);
-        job->srcPath = srcRootDirectory / srcAssetPath;
-        job->dstPath = config.dstRootDirectory / dstAssetPath;
-        copyAssetJobs.push_back(job);
-
-        entry.set_uri(dstAssetPath.string());
-
-        // if the Asset maps to extra files on disk, copy them as well
-        keys = entry.get_extra_uri_keys();
+        keys = entry.get_path_keys();
         for (const std::string& key : keys)
         {
-            srcAssetPath = FS::Path(entry.get_extra_uri(key));
-            dstAssetPath = dstAssetDirectory / srcAssetPath.filename();
+            FS::Path srcAssetPath = FS::Path(entry.get_path(key));
+            FS::Path dstAssetPath = dstAssetDirectory / srcAssetPath.filename();
 
-            job = heap_new<CopyFileJob>(MEMORY_USAGE_MISC);
+            CopyFileJob* job = heap_new<CopyFileJob>(MEMORY_USAGE_MISC);
             job->srcPath = srcRootDirectory / srcAssetPath;
             job->dstPath = config.dstRootDirectory / dstAssetPath;
             copyAssetJobs.push_back(job);
 
-            entry.set_extra_uri(key, dstAssetPath.string());
+            entry.set_path(key, dstAssetPath.string());
         }
     }
 

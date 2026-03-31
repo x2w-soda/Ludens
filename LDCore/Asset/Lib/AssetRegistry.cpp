@@ -1,5 +1,6 @@
 #include <Ludens/Asset/AssetRegistry.h>
 #include <Ludens/DSA/HashMap.h>
+#include <Ludens/DSA/URI.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Memory/Allocator.h>
 
@@ -9,11 +10,10 @@ static_assert(std::is_same_v<AssetID, SUID>);
 
 struct AssetEntryObj
 {
-    std::string name;                           // user-facing asset name
-    std::string uri;                            // relative path to project root
-    HashMap<std::string, std::string> extraURI; // relative paths to project root; non-empty if asset maps to more than one file.
-    AssetType type;                             // asset type determines API
-    SUID id;                                    // stable serial ID, identifies the asset throughout the project
+    URI uri;                                 // virtual URI path to identify asset in project
+    HashMap<std::string, std::string> paths; // physical relative paths to project root
+    AssetType type;                          // asset type determines API
+    SUID id;                                 // stable serial ID to identify the asset in project
 };
 
 /// @brief Asset registry implementation.
@@ -26,11 +26,11 @@ public:
 
     AssetRegistryObj& operator=(const AssetRegistryObj&) = delete;
 
-    AssetEntryObj* allocate_entry(AssetType type, SUID id);
+    AssetEntryObj* allocate_entry(AssetType type);
     AssetEntryObj* get_entry(SUID id);
     void get_entries_by_type(Vector<AssetEntry>& outEntries, AssetType type);
     void get_all_entries(Vector<AssetEntry>& outEntries);
-    AssetEntry register_asset(SUID id, AssetType type, const std::string& uri, const std::string& name);
+    AssetEntry register_asset(SUID id, AssetType type, const std::string& uri);
     void unregister_asset(SUID id);
 
 private:
@@ -58,13 +58,12 @@ AssetRegistryObj::~AssetRegistryObj()
     PoolAllocator::destroy(mEntryPA);
 }
 
-AssetEntryObj* AssetRegistryObj::allocate_entry(AssetType type, SUID id)
+AssetEntryObj* AssetRegistryObj::allocate_entry(AssetType type)
 {
     AssetEntryObj* entry = (AssetEntryObj*)mEntryPA.allocate();
     new (entry) AssetEntryObj();
 
     entry->type = type;
-    entry->id = id;
 
     return entry;
 }
@@ -103,7 +102,7 @@ void AssetRegistryObj::get_all_entries(Vector<AssetEntry>& outEntries)
     }
 }
 
-AssetEntry AssetRegistryObj::register_asset(SUID id, AssetType type, const std::string& uri, const std::string& name)
+AssetEntry AssetRegistryObj::register_asset(SUID id, AssetType type, const std::string& uri)
 {
     if (id)
     {
@@ -116,9 +115,9 @@ AssetEntry AssetRegistryObj::register_asset(SUID id, AssetType type, const std::
         id = SUIDRegistry::get_suid(SERIAL_TYPE_ASSET);
     }
 
-    AssetEntryObj* entry = allocate_entry(type, id);
-    entry->uri = uri;
-    entry->name = name;
+    AssetEntryObj* entry = allocate_entry(type);
+    entry->uri = URI(uri);
+    entry->id = id;
 
     mEntries[id] = entry;
 
@@ -154,42 +153,44 @@ AssetType AssetEntry::get_type()
 
 std::string AssetEntry::get_name()
 {
-    return mObj->name;
+    View stem = mObj->uri.stem();
+
+    return std::string(stem.data, stem.size);
 }
 
 std::string AssetEntry::get_uri()
 {
-    return mObj->uri;
+    return mObj->uri.string();
 }
 
 void AssetEntry::set_uri(const std::string& uri)
 {
-    mObj->uri = uri;
+    mObj->uri = URI(uri);
 }
 
-Vector<std::string> AssetEntry::get_extra_uri_keys()
+Vector<std::string> AssetEntry::get_path_keys()
 {
     Vector<std::string> keys;
-    for (auto it : mObj->extraURI)
+    for (auto it : mObj->paths)
         keys.push_back(it.first);
 
     return keys;
 }
 
-std::string AssetEntry::get_extra_uri(const std::string& key)
+std::string AssetEntry::get_path(const std::string& key)
 {
-    auto it = mObj->extraURI.find(key);
+    auto it = mObj->paths.find(key);
 
-    if (it == mObj->extraURI.end())
+    if (it == mObj->paths.end())
         return {};
 
     return it->second;
 }
 
-void AssetEntry::set_extra_uri(const std::string& key, const std::string& uri)
+void AssetEntry::set_path(const std::string& key, const std::string& uri)
 {
     // override or append
-    mObj->extraURI[key] = uri;
+    mObj->paths[key] = uri;
 }
 
 AssetRegistry AssetRegistry::create()
@@ -206,14 +207,14 @@ void AssetRegistry::destroy(AssetRegistry registry)
     heap_delete<AssetRegistryObj>(obj);
 }
 
-AssetEntry AssetRegistry::register_asset_with_id(SUID id, AssetType type, const std::string& uri, const std::string& name)
+AssetEntry AssetRegistry::register_asset_with_id(SUID id, AssetType type, const std::string& uri)
 {
-    return mObj->register_asset(id, type, uri, name);
+    return mObj->register_asset(id, type, uri);
 }
 
-AssetEntry AssetRegistry::register_asset(AssetType type, const std::string& uri, const std::string& name)
+AssetEntry AssetRegistry::register_asset(AssetType type, const std::string& uri)
 {
-    return mObj->register_asset((SUID)0, type, uri, name);
+    return mObj->register_asset((SUID)0, type, uri);
 }
 
 void AssetRegistry::unregister_asset(SUID id)
