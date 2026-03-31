@@ -5,7 +5,7 @@
 #include <LudensEditor/EditorUI/EditorWorkspace.h>
 #include <LudensEditor/SelectionWindow/SelectionWindow.h>
 
-#define EDITOR_DIALOG_NAME "EDITOR_DIALOG"
+#include "EditorUIDef.h"
 
 namespace LD {
 
@@ -42,7 +42,7 @@ void EditorDialogObj::destroy()
         window = {};
     }
 
-    ui_imgui_cleanup_context(EDITOR_DIALOG_NAME);
+    ui_imgui_cleanup_context(EDITOR_UI_DIALOG_CONTEXT_NAME);
 }
 
 void EditorDialogObj::on_observer_event(const WindowEvent* event, void* user)
@@ -72,7 +72,7 @@ void EditorDialogObj::on_event(const WindowEvent* event, void* user)
         break;
     }
     default:
-        ui_context_input(EDITOR_DIALOG_NAME, event);
+        ui_context_input(EDITOR_UI_DIALOG_CONTEXT_NAME, event);
         break;
     }
 }
@@ -93,7 +93,8 @@ EditorDialog EditorDialog::create(const EditorDialogInfo& dialogI)
     wsI.ctx = obj->ctx;
     wsI.isFloat = false;
     wsI.isVisible = true;
-    wsI.uiLayerName = EDITOR_DIALOG_NAME;     // unique within context
+    wsI.uiContextName = EDITOR_UI_DIALOG_CONTEXT_NAME;
+    wsI.uiLayerName = EDITOR_UI_DIALOG_LAYER_NAME;
     wsI.rootRect = Rect(0.0f, 0.0f, dialogI.extent.x, dialogI.extent.y);
     obj->workspace = EditorWorkspace::create(wsI);
     obj->window = obj->workspace.create_window(obj->workspace.get_root_id(), dialogI.type);
@@ -138,14 +139,14 @@ void EditorDialog::update(float delta, const Vec2& windowExtent)
         return;
     }
 
-    ui_context_begin(EDITOR_DIALOG_NAME, windowExtent);
+    ui_context_begin(EDITOR_UI_DIALOG_CONTEXT_NAME, windowExtent);
     mObj->workspace.on_imgui(delta);
     ui_context_end(delta);
 }
 
 void EditorDialog::render(ScreenRenderComponent renderer)
 {
-    ui_context_render(EDITOR_DIALOG_NAME, renderer);
+    ui_context_render(EDITOR_UI_DIALOG_CONTEXT_NAME, renderer);
 }
 
 bool EditorDialog::should_close()

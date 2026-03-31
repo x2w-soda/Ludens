@@ -8,11 +8,7 @@
 #include <LudensEditor/EditorUI/EditorUI.h>
 #include <LudensEditor/EditorWidget/EditorWidget.h>
 
-#define EDITOR_BAR_HEIGHT 22.0f
-#define EDITOR_UI_CONTEXT_NAME "EDITOR_UI"
-#define EDITOR_UI_LAYER_TOP_BAR_NAME "EDITOR_UI_LAYER_TOP_BAR"
-#define EDITOR_UI_LAYER_MAIN_NAME "EDITOR_UI_LAYER_MAIN"
-#define EDITOR_UI_LAYER_MODAL_NAME "EDITOR_UI_LAYER_MODAL"
+#include "EditorUIDef.h"
 
 namespace LD {
 

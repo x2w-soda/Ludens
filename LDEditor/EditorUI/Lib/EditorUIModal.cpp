@@ -1,7 +1,9 @@
+#include <Ludens/Profiler/Profiler.h>
+#include <Ludens/WindowRegistry/Input.h>
 #include <LudensEditor/EditorUI/EditorUIModal.h>
 #include <LudensEditor/EditorUI/EditorWorkspace.h>
 
-#include <Ludens/WindowRegistry/Input.h>
+#include "EditorUIDef.h"
 
 namespace LD {
 
@@ -10,12 +12,15 @@ struct EditorUIModalObj
     EditorContext ctx;
     EditorWorkspace backdrop;
     EditorWorkspace modal;
-    const char* layerName = nullptr;
+    EditorWindow modalWindow;
+    std::string layerName;
     bool isVisible = false;
 };
 
 EditorUIModal EditorUIModal::create(const EditorUIModalInfo& modalI)
 {
+    LD_PROFILE_SCOPE;
+
     auto* obj = heap_new<EditorUIModalObj>(MEMORY_USAGE_UI);
     obj->ctx = modalI.ctx;
     obj->layerName = modalI.layerName;
@@ -23,6 +28,7 @@ EditorUIModal EditorUIModal::create(const EditorUIModalInfo& modalI)
 
     EditorWorkspaceInfo spaceI{};
     spaceI.ctx = obj->ctx;
+    spaceI.uiContextName = EDITOR_UI_CONTEXT_NAME;
     spaceI.uiLayerName = "EDITOR_UI_LAYER_MODAL_BACKDROP";
     spaceI.isFloat = false;
     spaceI.isVisible = obj->isVisible;
@@ -38,13 +44,15 @@ EditorUIModal EditorUIModal::create(const EditorUIModalInfo& modalI)
     spaceI.rootRect = Rect((modalI.screenSize.x - modalW) / 2.0f, (modalI.screenSize.y - modalH) / 2.0f, modalW, modalH);
     spaceI.rootColor = 0;
     obj->modal = EditorWorkspace::create(spaceI);
-    obj->modal.create_window(obj->modal.get_root_id(), EDITOR_WINDOW_PROJECT);
+    obj->modalWindow = obj->modal.create_window(obj->modal.get_root_id(), EDITOR_WINDOW_PROJECT);
 
     return EditorUIModal(obj);
 }
 
 void EditorUIModal::destroy(EditorUIModal modal)
 {
+    LD_PROFILE_SCOPE;
+
     auto* obj = modal.unwrap();
 
     EditorWorkspace::destroy(obj->modal);
@@ -69,6 +77,14 @@ void EditorUIModal::on_imgui(float delta, const Vec2& screenSize)
 void EditorUIModal::set_visible(bool isVisible)
 {
     mObj->isVisible = isVisible;
+}
+
+void EditorUIModal::set_window(EditorWindowType type)
+{
+    if (mObj->modalWindow.get_type() == type)
+        return;
+
+    mObj->modalWindow = mObj->modal.create_window(mObj->modal.get_root_id(), type);
 }
 
 } // namespace LD

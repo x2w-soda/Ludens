@@ -59,9 +59,10 @@ struct EditorWorkspaceControl
 struct EditorWorkspaceObj
 {
     EditorContext ctx;
+    std::string uiContextName;
     std::string uiLayerName;
-    Color rootColor;
-    Rect rootRect; // spans the entire EditorWorkspace
+    Color rootColor = 0;
+    Rect rootRect = {}; // spans the entire EditorWorkspace
     RectSplit<EditorWorkspaceNode, MEMORY_USAGE_UI> partition;
     EditorWorkspaceControl control{};
     bool isVisible = true;
@@ -213,9 +214,12 @@ void EditorWorkspaceObj::pre_imgui()
 
 EditorWorkspace EditorWorkspace::create(const EditorWorkspaceInfo& spaceI)
 {
+    LD_ASSERT(spaceI.uiLayerName && spaceI.uiContextName);
+
     auto* obj = heap_new<EditorWorkspaceObj>(MEMORY_USAGE_UI, spaceI.rootRect);
     obj->ctx = spaceI.ctx;
-    obj->uiLayerName = spaceI.uiLayerName;
+    obj->uiContextName = std::string(spaceI.uiContextName);
+    obj->uiLayerName = std::string(spaceI.uiLayerName);
     obj->isFloat = spaceI.isFloat;
     obj->isVisible = spaceI.isVisible;
     obj->rootColor = spaceI.rootColor;
@@ -230,6 +234,8 @@ EditorWorkspace EditorWorkspace::create(const EditorWorkspaceInfo& spaceI)
 void EditorWorkspace::destroy(EditorWorkspace space)
 {
     auto* obj = space.unwrap();
+
+    ui_imgui_cleanup_layer(obj->uiContextName.c_str(), obj->uiLayerName.c_str());
 
     heap_delete<EditorWorkspaceObj>(obj);
 }
@@ -249,9 +255,10 @@ EditorWindow EditorWorkspace::create_window(EditorAreaID areaID, EditorWindowTyp
     EditorWorkspaceNode* node = mObj->partition.get_node(areaID);
 
     if (node->window)
-    {
         destroy_window(node->window);
-    }
+
+    if (node->tabControl)
+        destroy_window(node->tabControl);
 
     const char* tabName = sEditorWindowTable[(int)type].defaultTabName;
     EditorIcon tabIcon = sEditorWindowTable[(int)type].icon;
@@ -271,6 +278,11 @@ EditorWindow EditorWorkspace::create_window(EditorAreaID areaID, EditorWindowTyp
 
 void EditorWorkspace::destroy_window(EditorWindow window)
 {
+    const std::string& uiContextName = mObj->uiContextName;
+    const std::string& uiLayerName = mObj->uiLayerName;
+    const std::string& uiWorkspaceName = window.get_ui_workspace_name();
+    ui_imgui_cleanup_workspace(uiContextName.c_str(), uiLayerName.c_str(), uiWorkspaceName.c_str());
+
     sEditorWindowTable[(int)window.get_type()].destroy(window);
 }
 
@@ -388,6 +400,7 @@ void EditorWorkspace::on_imgui(float delta)
 
     Optional<Vec2> newWorkspacePos;
 
+    // imgui pass for all EditorWindow in this EditorWorkspace
     mObj->partition.visit_leaves(mObj->partition.get_root_id(), [&](EditorWorkspaceNode* node) {
         if (!node->tabControl || !node->window)
             return;

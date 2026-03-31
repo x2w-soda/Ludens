@@ -63,6 +63,7 @@ protected:
 struct EditorWindow : Handle<class EditorWindowObj>
 {
     inline EditorWindowType get_type() { return mObj->get_type(); }
+    inline std::string get_ui_workspace_name() { return mObj->ui_workspace_name(); }
 
     inline void on_imgui(float delta) { mObj->on_imgui(delta); }
 

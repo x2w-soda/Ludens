@@ -14,6 +14,7 @@ using EditorAreaID = uint32_t;
 struct EditorWorkspaceInfo
 {
     EditorContext ctx;
+    const char* uiContextName;   // the UIContext this editor workspace is under
     const char* uiLayerName;     // the UILayer this editor workspace corresponds to
     Rect rootRect;               // total rect area for the editor workspace
     Color rootColor = 0;         // if not zero, the background color of root rect area

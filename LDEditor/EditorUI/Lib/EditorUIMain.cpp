@@ -11,6 +11,8 @@
 #include <LudensEditor/EditorUI/EditorUIMain.h>
 #include <LudensEditor/EditorUI/EditorWorkspace.h>
 
+#include "EditorUIDef.h"
+
 namespace LD {
 
 class EditorUIMainObj
@@ -49,6 +51,7 @@ EditorUIMainObj::EditorUIMainObj(const EditorUIMainInfo& mainI)
 
     EditorWorkspaceInfo workspaceI{};
     workspaceI.ctx = mainI.ctx;
+    workspaceI.uiContextName = EDITOR_UI_CONTEXT_NAME;
     workspaceI.uiLayerName = mainI.layerName;
     workspaceI.rootRect = Rect(0.0f, mTopBarHeight, mainI.screenSize.x, mainI.screenSize.y - mTopBarHeight);
     workspaceI.isVisible = true;

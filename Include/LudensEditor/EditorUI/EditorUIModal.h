@@ -3,6 +3,7 @@
 #include <Ludens/Header/Handle.h>
 #include <Ludens/UI/UILayer.h>
 #include <LudensEditor/EditorContext/EditorContext.h>
+#include <LudensEditor/EditorContext/EditorWindow.h>
 
 namespace LD {
 
@@ -20,6 +21,7 @@ struct EditorUIModal : Handle<struct EditorUIModalObj>
 
     void on_imgui(float delta, const Vec2& screenSize);
     void set_visible(bool isVisible);
+    void set_window(EditorWindowType type);
 };
 
 } // namespace LD
