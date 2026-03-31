@@ -114,7 +114,7 @@ void SelectionWindowObj::top_bar()
 
 void SelectionWindowObj::bottom_bar()
 {
-    float pad = theme.get_padding();
+    float pad = theme.get_child_pad();
 
     UILayoutInfo layoutI{};
     layoutI.childAxis = UI_AXIS_X;

@@ -75,7 +75,7 @@ void OutlinerWindowObj::component_row(ComponentView comp, int rowIdx, int depth)
 
     UILayoutInfo layoutI{};
     layoutI.childAxis = UI_AXIS_X;
-    layoutI.childGap = theme.get_padding();
+    layoutI.childGap = theme.get_child_pad();
     layoutI.childPadding.left = OUTLINER_ROW_LEFT_PADDING + depth * OUTLINER_ROW_LEFT_PADDING_PER_DEPTH;
     layoutI.sizeX = UISize::grow();
     layoutI.sizeY = UISize::fixed(rowHeight);

@@ -79,12 +79,12 @@ void EditorUIModal::set_visible(bool isVisible)
     mObj->isVisible = isVisible;
 }
 
-void EditorUIModal::set_window(EditorWindowType type)
+EditorWindow EditorUIModal::set_window(EditorWindowType type)
 {
     if (mObj->modalWindow.get_type() == type)
-        return;
+        return mObj->modalWindow;
 
-    mObj->modalWindow = mObj->modal.create_window(mObj->modal.get_root_id(), type);
+    return mObj->modalWindow = mObj->modal.create_window(mObj->modal.get_root_id(), type);
 }
 
 } // namespace LD

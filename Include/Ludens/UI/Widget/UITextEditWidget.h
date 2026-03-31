@@ -31,6 +31,8 @@ struct UITextEditStorage
 
     UITextEditStorage& operator=(const UITextEditStorage& other);
 
+    inline std::string get_text() { return editor.get_string(); }
+
     /// @brief Set text field value, does not trigger on_change callbacks.
     void set_text(const std::string& text);
 

@@ -11,7 +11,9 @@ struct EditorThemeObj
     UITheme uiTheme = UITheme::get_default_theme();
     float fontSize = 16.0f;
     float childPad = 5.0f;
+    float childPadL = 10.0f;
     float childGap = 2.0f;
+    float childGapL = 8.0f;
     float textRowHeight = 20.0f;
     float textLabelWidth = 120.0f;
     Color tabBGColor = 0x202225FF;
@@ -124,9 +126,24 @@ float EditorTheme::get_font_size() const
     return mObj->fontSize;
 }
 
-float EditorTheme::get_padding() const
+float EditorTheme::get_child_gap() const
+{
+    return mObj->childGap;
+}
+
+float EditorTheme::get_child_gap_large() const
+{
+    return mObj->childGapL;
+}
+
+float EditorTheme::get_child_pad() const
 {
     return mObj->childPad;
+}
+
+float EditorTheme::get_child_pad_large() const
+{
+    return mObj->childPadL;
 }
 
 float EditorTheme::get_text_row_height() const
@@ -210,6 +227,20 @@ UILayoutInfo EditorTheme::make_text_label_layout() const
     layoutI.childPadding = UIPadding(mObj->childPad);
     layoutI.childGap = mObj->childGap;
     layoutI.sizeX = UISize::fixed(textLabelWidth);
+    layoutI.sizeY = UISize::fixed(textRowHeight);
+
+    return layoutI;
+}
+
+UILayoutInfo EditorTheme::make_text_row_layout() const
+{
+    const float textRowHeight = get_text_row_height();
+
+    UILayoutInfo layoutI{};
+    layoutI.childAxis = UI_AXIS_X;
+    layoutI.childPadding = UIPadding(mObj->childPad);
+    layoutI.childGap = mObj->childGap;
+    layoutI.sizeX = UISize::grow();
     layoutI.sizeY = UISize::fixed(textRowHeight);
 
     return layoutI;

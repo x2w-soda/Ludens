@@ -21,7 +21,7 @@ struct EditorUIModal : Handle<struct EditorUIModalObj>
 
     void on_imgui(float delta, const Vec2& screenSize);
     void set_visible(bool isVisible);
-    void set_window(EditorWindowType type);
+    EditorWindow set_window(EditorWindowType type);
 };
 
 } // namespace LD

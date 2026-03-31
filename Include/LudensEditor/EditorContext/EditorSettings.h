@@ -25,7 +25,10 @@ struct EditorTheme : Handle<struct EditorThemeObj>
     Color get_play_button_color() const;
     Color get_stop_button_color() const;
     float get_font_size() const;
-    float get_padding() const;
+    float get_child_gap() const;
+    float get_child_gap_large() const;
+    float get_child_pad() const;
+    float get_child_pad_large() const;
     float get_text_row_height() const;
     float get_text_label_width() const;
     void get_tab_background_color(Color& bg) const;
@@ -37,6 +40,7 @@ struct EditorTheme : Handle<struct EditorThemeObj>
     UILayoutInfo make_vbox_layout_fixed(const Vec2& extent) const;
     UILayoutInfo make_hbox_layout(float* childGap = nullptr, float* childPad = nullptr) const;
     UILayoutInfo make_text_label_layout() const;
+    UILayoutInfo make_text_row_layout() const;
 };
 
 /// @brief Global editor settings that apply to all projects

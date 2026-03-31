@@ -107,6 +107,7 @@ struct ProjectWindowObj : EditorWindowObj
 {
     CreateProjectStorage createProject;
     SelectProjectStorage selectProject;
+    EditorTheme theme = {};
     bool isCreatingProject = false;
 
     ProjectWindowObj(const EditorWindowInfo& info)
@@ -127,7 +128,7 @@ void ProjectWindowObj::on_imgui(float delta)
 {
     (void)delta;
 
-    EditorTheme theme = mCtx.get_theme();
+    theme = mCtx.get_theme();
 
     ui_workspace_begin();
     ui_push_window(ui_workspace_name());
@@ -154,7 +155,6 @@ void ProjectWindowObj::on_imgui(float delta)
 
 bool ProjectWindowObj::ui_create_project()
 {
-    EditorTheme theme = mCtx.get_theme();
     const float textRowHeight = theme.get_text_row_height();
     UITextStorage* text;
     std::string str;
@@ -210,8 +210,8 @@ bool ProjectWindowObj::ui_select_project()
     layoutI.sizeX = UISize::grow();
     layoutI.sizeY = UISize::grow();
     layoutI.childAxis = UI_AXIS_Y;
-    layoutI.childGap = PAD;
-    layoutI.childPadding = UIPadding(PAD);
+    layoutI.childGap = theme.get_child_gap_large();
+    layoutI.childPadding = UIPadding(theme.get_child_pad_large());
 
     ui_push_scroll(&selectProject.projectListScroll);
     selectProject.projectListScroll.bgColor = theme.get_ui_theme().get_surface_color();

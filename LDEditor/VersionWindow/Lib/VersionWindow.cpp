@@ -20,7 +20,7 @@ void VersionWindowObj::on_imgui(float delta)
 {
     EditorTheme theme = mCtx.get_theme();
     UITheme uiTheme = theme.get_ui_theme();
-    float pad = theme.get_padding();
+    float pad = theme.get_child_pad();
 
     ui_workspace_begin();
     ui_push_window(ui_workspace_name());

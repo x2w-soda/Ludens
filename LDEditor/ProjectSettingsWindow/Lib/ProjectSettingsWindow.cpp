@@ -39,7 +39,7 @@ struct ProjectSettingsWindowObj : EditorWindowObj
     {
         UILayoutInfo layoutI{};
         layoutI.childAxis = UI_AXIS_X;
-        layoutI.childGap = theme.get_padding();
+        layoutI.childGap = theme.get_child_gap();
         layoutI.sizeX = UISize::fit();
         layoutI.sizeY = UISize::fit();
 

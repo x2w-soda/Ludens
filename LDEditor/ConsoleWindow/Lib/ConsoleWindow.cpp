@@ -57,7 +57,7 @@ void ConsoleWindowObj::on_imgui(float delta)
 
     EditorTheme edTheme = mCtx.get_theme();
     UITheme uiTheme = edTheme.get_ui_theme();
-    float pad = edTheme.get_padding();
+    float pad = edTheme.get_child_pad();
 
     ui_workspace_begin();
     ui_push_window(ui_workspace_name());

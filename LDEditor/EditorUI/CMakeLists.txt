@@ -2,6 +2,7 @@ set(MODULE_NAME LDEditorUI)
 
 set(MODULE_LIB
 	Lib/EditorUI.cpp
+	Lib/EditorUIDef.h
 	Lib/EditorUITopBar.cpp
 	Lib/EditorUIDialog.cpp
 	Lib/EditorUIMain.cpp

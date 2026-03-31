@@ -71,7 +71,7 @@ void CreateComponentWindowObj::component_row(ComponentType type, int rowIndex)
 
     UILayoutInfo layoutI{};
     layoutI.childAxis = UI_AXIS_X;
-    layoutI.childGap = theme.get_padding();
+    layoutI.childGap = theme.get_child_gap();
     layoutI.childPadding.left = 10.0f;
     layoutI.sizeX = UISize::grow();
     layoutI.sizeY = UISize::fixed(rowHeight);

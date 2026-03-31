@@ -188,7 +188,7 @@ bool eui_slider_edit(EUISliderStorage* storage, const char* label, float* f32)
     bool dragBegin;
 
     layoutI.childAxis = UI_AXIS_X;
-    layoutI.childGap = theme.get_padding();
+    layoutI.childGap = theme.get_child_gap();
     layoutI.sizeX = UISize::grow();
     layoutI.sizeY = UISize::fit();
     ui_push_panel(nullptr);
