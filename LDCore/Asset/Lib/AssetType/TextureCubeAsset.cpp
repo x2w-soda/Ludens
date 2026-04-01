@@ -1,4 +1,5 @@
 #include <Ludens/Asset/AssetType/TextureCubeAsset.h>
+#include <Ludens/Asset/AssetType/TextureCubeAssetObj.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/Serial/Serial.h>
@@ -6,11 +7,10 @@
 #include <cstring>
 
 #include "../AssetMeta.h"
-#include "TextureCubeAssetObj.h"
 
 namespace LD {
 
-static const char* sFaceChunkNames[6] = {
+const char* TextureCubeAssetObj::sFaceChunkNames[6] = {
     "PX..",
     "NX..",
     "PY..",
@@ -26,7 +26,7 @@ static void deserialize_face(Deserializer& serial, TextureCubeAssetObj& obj, con
     serial.advance(fileSize);
 }
 
-static void serialize_samp(Serializer& serial, const RSamplerInfo& samplerHint)
+void TextureCubeAssetObj::serialize_sampler(Serializer& serial, const RSamplerInfo& samplerHint)
 {
     serial.write_chunk_begin("SAMP");
     serial.write_u32((uint32_t)samplerHint.filter);
@@ -37,7 +37,7 @@ static void serialize_samp(Serializer& serial, const RSamplerInfo& samplerHint)
 
 bool TextureCubeAssetObj::serialize(Serializer& serial, const TextureCubeAssetObj& obj)
 {
-    serialize_samp(serial, obj.samplerHint);
+    serialize_sampler(serial, obj.samplerHint);
     for (int i = 0; i < 6; i++)
     {
         serial.write_chunk_begin(sFaceChunkNames[i]);
@@ -147,65 +147,6 @@ Bitmap TextureCubeAsset::get_bitmap() const
     auto* obj = (TextureCubeAssetObj*)mObj;
 
     return obj->bitmap;
-}
-
-void TextureCubeAssetImportJob::submit()
-{
-    mHeader.user = this;
-    mHeader.type = 0;
-    mHeader.onExecute = &TextureCubeAssetImportJob::execute;
-
-    JobSystem::get().submit(&mHeader, JOB_DISPATCH_STANDARD);
-}
-
-void TextureCubeAssetImportJob::execute(void* user)
-{
-    LD_PROFILE_SCOPE;
-
-    auto& self = *(TextureCubeAssetImportJob*)user;
-    auto* obj = (TextureCubeAssetObj*)self.asset.unwrap();
-
-    obj->id = 0;
-    obj->samplerHint = self.info.samplerHint;
-    obj->serialData = nullptr;
-
-    // serialize and load at the same time.
-    Serializer serial;
-    asset_header_write(serial, ASSET_TYPE_TEXTURE_CUBE);
-    serialize_samp(serial, obj->samplerHint);
-
-    std::string err; // TODO:
-    size_t fileDataOffsets[6];
-
-    for (int i = 0; i < 6; i++)
-    {
-        const FS::Path& path = self.info.sourcePaths[i];
-        uint64_t fileSize;
-        if (!FS::get_file_size(path, fileSize, err))
-            return;
-
-        obj->fileSize[i] = fileSize;
-
-        fileDataOffsets[i] = serial.write_chunk_begin(sFaceChunkNames[i]);
-
-        byte* fileData = serial.advance(fileSize);
-        if (!FS::read_file(path, MutView((char*)fileData, fileSize), err))
-            return; // TODO: fix leaks
-
-        serial.write_chunk_end();
-    }
-
-    View serialView = serial.view();
-
-    // only retrieve address after serializer has completed all writes
-    for (int i = 0; i < 6; i++)
-        obj->fileData[i] = serialView.data + fileDataOffsets[i];
-
-    bool ok = FS::write_file(self.info.savePath, serialView, err);
-    LD_ASSERT(ok); // TODO:
-
-    obj->bitmap = Bitmap::create_cubemap_from_file_data(obj->fileSize, obj->fileData);
-    LD_ASSERT(obj->bitmap);
 }
 
 } // namespace LD

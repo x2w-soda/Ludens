@@ -1,7 +1,6 @@
 #pragma once
 
 #include <Ludens/Asset/Asset.h>
-#include <Ludens/JobSystem/JobSystem.h>
 #include <Ludens/System/FileSystem.h>
 
 namespace LD {
@@ -29,29 +28,6 @@ struct LuaScriptAsset : Asset
     /// @brief Set Lua script source string.
     /// @note This only modifies the asset in RAM.
     void set_source(const char* src, size_t len);
-};
-
-struct LuaScriptAssetImportInfo
-{
-    LuaScriptDomain domain = LUA_SCRIPT_DOMAIN_COMPONENT;
-    FS::Path sourcePath; /// path to import the lua script file
-    FS::Path savePath;   /// path to save the imported asset
-};
-
-class LuaScriptAssetImportJob
-{
-public:
-    LuaScriptAsset asset;          /// subject asset handle
-    LuaScriptAssetImportInfo info; /// Blob import configuration
-
-    /// @brief Submit to job system. Address of this job instance must not
-    ///        change until the worker thread completes execution.
-    void submit();
-
-private:
-    static void execute(void*);
-
-    JobHeader mHeader{};
 };
 
 } // namespace LD

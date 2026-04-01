@@ -1,5 +1,8 @@
 #pragma once
 
+#include <Ludens/Asset/Asset.h>
+#include <Ludens/Media/AudioData.h>
+
 namespace LD {
 
 /// @brief Audio clip asset implementation.

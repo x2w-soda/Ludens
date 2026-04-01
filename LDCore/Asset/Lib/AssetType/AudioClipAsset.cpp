@@ -1,12 +1,11 @@
 #include <Ludens/Asset/AssetType/AudioClipAsset.h>
+#include <Ludens/Asset/AssetType/AudioClipAssetObj.h>
 #include <Ludens/DSA/Vector.h>
 #include <Ludens/DSP/DSP.h>
 #include <Ludens/Header/Assert.h>
-#include <Ludens/Media/AudioData.h>
 #include <Ludens/Profiler/Profiler.h>
 
 #include "../AssetMeta.h"
-#include "AudioClipAssetObj.h"
 
 namespace LD {
 
@@ -89,45 +88,6 @@ const float* AudioClipAsset::get_frames(uint32_t frameOffset)
     const float* samples = (const float*)obj->data.get_samples();
 
     return samples + frameOffset * obj->data.get_channels();
-}
-
-void AudioClipAssetImportJob::submit()
-{
-    mHeader.user = this;
-    mHeader.type = 0;
-    mHeader.onExecute = &AudioClipAssetImportJob::execute;
-
-    JobSystem::get().submit(&mHeader, JOB_DISPATCH_STANDARD);
-}
-
-void AudioClipAssetImportJob::execute(void* user)
-{
-    LD_PROFILE_SCOPE;
-
-    auto& self = *(AudioClipAssetImportJob*)user;
-    AudioClipAssetObj* obj = (AudioClipAssetObj*)self.asset.unwrap();
-
-    std::string sourcePath = self.sourcePath.string();
-    AudioData data = obj->data = AudioData::create_from_path(sourcePath);
-    LD_ASSERT(data);
-
-    uint32_t sampleCount = data.get_channels() * data.get_frame_count();
-    uint64_t sampleByteSize = (uint64_t)sample_format_byte_size(data.get_sample_format(), sampleCount);
-
-    Serializer serializer;
-    asset_header_write(serializer, ASSET_TYPE_AUDIO_CLIP);
-
-    serializer.write_u32((uint32_t)data.get_sample_format());
-    serializer.write_u32((uint32_t)data.get_sample_rate());
-    serializer.write_u32((uint32_t)data.get_channels());
-    serializer.write_u32((uint32_t)data.get_frame_count());
-
-    serializer.write_u64(sampleByteSize);
-    serializer.write((const byte*)data.get_samples(), sampleByteSize);
-
-    std::string err;
-    bool ok = FS::write_file(self.savePath, serializer.view(), err);
-    LD_ASSERT(ok); // TODO:
 }
 
 } // namespace LD

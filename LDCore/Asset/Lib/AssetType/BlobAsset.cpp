@@ -1,8 +1,8 @@
 #include <Ludens/Asset/AssetType/BlobAsset.h>
+#include <Ludens/Asset/AssetType/BlobAssetObj.h>
 #include <Ludens/Profiler/Profiler.h>
 
 #include "../AssetMeta.h"
-#include "BlobAssetObj.h"
 
 namespace LD {
 
@@ -49,50 +49,6 @@ void* BlobAsset::get_data(size_t& dataSize)
 
     dataSize = (size_t)obj->dataSize;
     return obj->data;
-}
-
-void BlobAssetImportJob::submit()
-{
-    mHeader.type = 0;
-    mHeader.user = this;
-    mHeader.onExecute = &BlobAssetImportJob::execute;
-
-    JobSystem js = JobSystem::get();
-    js.submit(&mHeader, JOB_DISPATCH_STANDARD);
-}
-
-void BlobAssetImportJob::execute(void* user)
-{
-    auto& self = *(BlobAssetImportJob*)user;
-    auto* obj = (BlobAssetObj*)self.asset.unwrap();
-
-    std::string err; // TODO:
-
-    if (self.info.sourceData)
-    {
-        obj->dataSize = self.info.sourceDataSize;
-        obj->data = heap_malloc(obj->dataSize, MEMORY_USAGE_ASSET);
-        memcpy(obj->data, self.info.sourceData, self.info.sourceDataSize);
-    }
-    else
-    {
-        size_t fileSize;
-        bool ok = FS::get_file_size(self.info.sourcePath, fileSize, err);
-        obj->dataSize = (uint64_t)fileSize;
-        obj->data = heap_malloc(obj->dataSize, MEMORY_USAGE_ASSET);
-        ok = FS::read_file(self.info.sourcePath, MutView((char*)obj->data, obj->dataSize), err);
-    }
-
-    // save asset to disk
-    Serializer serializer;
-    asset_header_write(serializer, ASSET_TYPE_BLOB);
-
-    serializer.write_u64(obj->dataSize);
-    serializer.write((const byte*)obj->data, (size_t)obj->dataSize);
-
-    View serialView = serializer.view();
-    bool ok = FS::write_file(self.info.savePath, serialView, err);
-    LD_ASSERT(ok); // TODO: asset import error
 }
 
 } // namespace LD

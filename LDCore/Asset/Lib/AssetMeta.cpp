@@ -1,14 +1,14 @@
+#include <Ludens/Asset/AssetType/AudioClipAssetObj.h>
+#include <Ludens/Asset/AssetType/BlobAssetObj.h>
+#include <Ludens/Asset/AssetType/FontAssetObj.h>
+#include <Ludens/Asset/AssetType/LuaScriptAssetObj.h>
+#include <Ludens/Asset/AssetType/MeshAssetObj.h>
+#include <Ludens/Asset/AssetType/Texture2DAssetObj.h>
+#include <Ludens/Asset/AssetType/TextureCubeAssetObj.h>
+#include <Ludens/Asset/AssetType/UITemplateAssetObj.h>
 #include <Ludens/Header/Version.h>
 
 #include "AssetMeta.h"
-#include "AssetType/AudioClipAssetObj.h"
-#include "AssetType/BlobAssetObj.h"
-#include "AssetType/FontAssetObj.h"
-#include "AssetType/LuaScriptAssetObj.h"
-#include "AssetType/MeshAssetObj.h"
-#include "AssetType/Texture2DAssetObj.h"
-#include "AssetType/TextureCubeAssetObj.h"
-#include "AssetType/UITemplateAssetObj.h"
 
 namespace LD {
 

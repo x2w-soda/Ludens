@@ -17,26 +17,4 @@ struct MeshAsset : Asset
     void unload();
 };
 
-struct MeshAssetImportInfo
-{
-    std::filesystem::path sourcePath; /// path to load the source format
-    std::filesystem::path savePath;   /// path to save the imported asset
-};
-
-class MeshAssetImportJob
-{
-public:
-    MeshAsset asset;          /// subject asset handle
-    MeshAssetImportInfo info; /// mesh import configuration
-
-    /// @brief Submit to job system. Address of this job instance must not
-    ///        change until the worker thread completes execution.
-    void submit();
-
-private:
-    static void execute(void*);
-
-    JobHeader mHeader{};
-};
-
 } // namespace LD

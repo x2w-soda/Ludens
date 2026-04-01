@@ -1,5 +1,8 @@
 #pragma once
 
+#include <Ludens/Asset/Asset.h>
+#include <Ludens/Media/Font.h>
+
 namespace LD {
 
 /// @brief Font asset implementation.

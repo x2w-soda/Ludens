@@ -52,7 +52,7 @@ TEST_CASE("UITemplate")
     UIContext ctx = UIContext::create({.theme = UITheme::get_default_theme()});
     UITemplate tmpl = UITemplate::create();
 
-    UISchema::Error err;
+    UISchema::Status err;
     bool ok = UISchema::load_ui_template_from_source(tmpl, View(sUIToml, sizeof(sUIToml) - 1), err);
     CHECK(ok);
 

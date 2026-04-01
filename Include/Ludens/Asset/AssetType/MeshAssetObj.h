@@ -1,6 +1,10 @@
 #pragma once
 
+#include <Ludens/Asset/Asset.h>
+
 namespace LD {
+
+struct ModelBinary;
 
 // NOTE: Placeholder Mesh asset implementation.
 //       Need to figure out texture and material assets first.

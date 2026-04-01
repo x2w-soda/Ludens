@@ -9,13 +9,21 @@ set(MODULE_INCLUDE
 	${LUDENS_INCLUDE_DIR}/Ludens/Asset/Template/UITemplate.h
 	${LUDENS_INCLUDE_DIR}/Ludens/Asset/Template/UISchema.h
 	${LUDENS_INCLUDE_DIR}/Ludens/Asset/AssetType/BlobAsset.h
+	${LUDENS_INCLUDE_DIR}/Ludens/Asset/AssetType/BlobAssetObj.h
 	${LUDENS_INCLUDE_DIR}/Ludens/Asset/AssetType/FontAsset.h
+	${LUDENS_INCLUDE_DIR}/Ludens/Asset/AssetType/FontAssetObj.h
 	${LUDENS_INCLUDE_DIR}/Ludens/Asset/AssetType/MeshAsset.h
+	${LUDENS_INCLUDE_DIR}/Ludens/Asset/AssetType/MeshAssetObj.h
 	${LUDENS_INCLUDE_DIR}/Ludens/Asset/AssetType/Texture2DAsset.h
+	${LUDENS_INCLUDE_DIR}/Ludens/Asset/AssetType/Texture2DAssetObj.h
 	${LUDENS_INCLUDE_DIR}/Ludens/Asset/AssetType/TextureCubeAsset.h
+	${LUDENS_INCLUDE_DIR}/Ludens/Asset/AssetType/TextureCubeAssetObj.h
 	${LUDENS_INCLUDE_DIR}/Ludens/Asset/AssetType/LuaScriptAsset.h
+	${LUDENS_INCLUDE_DIR}/Ludens/Asset/AssetType/LuaScriptAssetObj.h
 	${LUDENS_INCLUDE_DIR}/Ludens/Asset/AssetType/AudioClipAsset.h
+	${LUDENS_INCLUDE_DIR}/Ludens/Asset/AssetType/AudioClipAssetObj.h
 	${LUDENS_INCLUDE_DIR}/Ludens/Asset/AssetType/UITemplateAsset.h
+	${LUDENS_INCLUDE_DIR}/Ludens/Asset/AssetType/UITemplateAssetObj.h
 )
 
 set(MODULE_LIB
@@ -31,21 +39,13 @@ set(MODULE_LIB
 	Lib/Template/UITemplateObj.h
 	Lib/Template/UISchemaKeys.h
 	Lib/Template/UISchema.cpp
-	Lib/AssetType/BlobAssetObj.h
 	Lib/AssetType/BlobAsset.cpp
-	Lib/AssetType/FontAssetObj.h
 	Lib/AssetType/FontAsset.cpp
-	Lib/AssetType/MeshAssetObj.h
 	Lib/AssetType/MeshAsset.cpp
-	Lib/AssetType/Texture2DAssetObj.h
 	Lib/AssetType/Texture2DAsset.cpp
-	Lib/AssetType/TextureCubeAssetObj.h
 	Lib/AssetType/TextureCubeAsset.cpp
-	Lib/AssetType/LuaScriptAssetObj.h
 	Lib/AssetType/LuaScriptAsset.cpp
-	Lib/AssetType/AudioClipAssetObj.h
 	Lib/AssetType/AudioClipAsset.cpp
-	Lib/AssetType/UITemplateAssetObj.h
 	Lib/AssetType/UITemplateAsset.cpp
 )
 

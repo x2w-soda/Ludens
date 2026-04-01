@@ -21,6 +21,8 @@ namespace LD {
 static Log sLog("AssetManager");
 static AssetManagerObj* sAssetManager = nullptr;
 
+static_assert(LD::IsTrivial<AssetObj>);
+
 size_t get_asset_byte_size(AssetType type)
 {
     return sAssetMeta[(int)type].size;

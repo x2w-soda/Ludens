@@ -1,8 +1,8 @@
 #include <Ludens/Asset/AssetType/FontAsset.h>
+#include <Ludens/Asset/AssetType/FontAssetObj.h>
 #include <Ludens/Profiler/Profiler.h>
 
 #include "../AssetMeta.h"
-#include "FontAssetObj.h"
 
 namespace LD {
 
@@ -60,55 +60,6 @@ FontAtlas FontAsset::get_font_atlas()
     auto* obj = (FontAssetObj*)mObj;
 
     return obj->fontAtlas;
-}
-
-void FontAssetImportJob::submit()
-{
-    mHeader.type = 0;
-    mHeader.user = this;
-    mHeader.onExecute = &FontAssetImportJob::execute;
-
-    JobSystem js = JobSystem::get();
-    js.submit(&mHeader, JOB_DISPATCH_STANDARD);
-}
-
-void FontAssetImportJob::execute(void* user)
-{
-    auto& self = *(FontAssetImportJob*)user;
-    auto* obj = (FontAssetObj*)self.asset.unwrap();
-
-    std::string err; // TODO:
-    std::vector<byte> tmpSourceData;
-    const byte* sourceData = nullptr;
-    size_t sourceDataSize = 0;
-
-    if (self.info.sourceData)
-    {
-        sourceData = (const byte*)self.info.sourceData;
-        sourceDataSize = self.info.sourceDataSize;
-    }
-    else
-    {
-        bool ok = FS::read_file_to_vector(self.info.sourcePath, tmpSourceData, err);
-        sourceData = tmpSourceData.data();
-        sourceDataSize = tmpSourceData.size();
-    }
-
-    obj->font = Font::create_from_memory(sourceData, sourceDataSize);
-    obj->fontSize = self.info.fontSize;
-    obj->fontAtlas = FontAtlas::create_bitmap(obj->font, obj->fontSize);
-
-    // save asset to disk
-    Serializer serializer;
-    asset_header_write(serializer, ASSET_TYPE_FONT);
-
-    serializer.write_f32(obj->fontSize);
-    serializer.write_u32(sourceDataSize);
-    serializer.write(sourceData, sourceDataSize);
-
-    View serialView = serializer.view();
-    bool ok = FS::write_file(self.info.savePath, serialView, err);
-    LD_ASSERT(ok);
 }
 
 } // namespace LD

@@ -1,4 +1,5 @@
 #include <Ludens/Asset/AssetType/Texture2DAsset.h>
+#include <Ludens/Asset/AssetType/Texture2DAssetObj.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/Serial/Compress.h>
@@ -6,27 +7,26 @@
 #include <Ludens/System/FileSystem.h>
 
 #include "../AssetMeta.h"
-#include "Texture2DAssetObj.h"
 
 namespace LD {
 
-static void serialize_samp(Serializer& serial, const RSamplerInfo& samplerHint)
-{
-    serial.write_chunk_begin("SAMP");
-    serial.write_u32((uint32_t)samplerHint.filter);
-    serial.write_u32((uint32_t)samplerHint.mipmapFilter);
-    serial.write_u32((uint32_t)samplerHint.addressMode);
-    serial.write_chunk_end();
-}
-
 bool Texture2DAssetObj::serialize(Serializer& serial, const Texture2DAssetObj& obj)
 {
-    serialize_samp(serial, obj.samplerHint);
+    serialize_sampler_info(serial, obj.samplerHint);
     serial.write_chunk_begin("FILE");
     serial.write((const byte*)obj.fileData, (size_t)obj.fileSize);
     serial.write_chunk_end();
 
     return true;
+}
+
+void Texture2DAssetObj::serialize_sampler_info(Serializer& serial, const RSamplerInfo& sampler)
+{
+    serial.write_chunk_begin("SAMP");
+    serial.write_u32((uint32_t)sampler.filter);
+    serial.write_u32((uint32_t)sampler.mipmapFilter);
+    serial.write_u32((uint32_t)sampler.addressMode);
+    serial.write_chunk_end();
 }
 
 bool Texture2DAssetObj::deserialize(Deserializer& serial, Texture2DAssetObj& obj)
@@ -134,58 +134,6 @@ RSamplerInfo Texture2DAsset::get_sampler_hint() const
     auto* obj = (Texture2DAssetObj*)mObj;
 
     return obj->samplerHint;
-}
-
-void Texture2DAssetImportJob::submit()
-{
-    mHeader.user = this;
-    mHeader.type = 0;
-    mHeader.onExecute = &Texture2DAssetImportJob::execute;
-
-    JobSystem::get().submit(&mHeader, JOB_DISPATCH_STANDARD);
-}
-
-void Texture2DAssetImportJob::execute(void* user)
-{
-    LD_PROFILE_SCOPE;
-
-    auto& self = *(Texture2DAssetImportJob*)user;
-    auto* obj = (Texture2DAssetObj*)self.asset.unwrap();
-
-    obj->id = 0;
-    obj->samplerHint = self.info.samplerHint;
-    obj->serialData = nullptr;
-
-    // serialize and load at the same time.
-    Serializer serial;
-    asset_header_write(serial, ASSET_TYPE_TEXTURE_2D);
-
-    serialize_samp(serial, obj->samplerHint);
-
-    std::string err; // TODO:
-    const FS::Path& path = self.info.sourcePath;
-    uint64_t fileSize;
-    bool ok = FS::get_file_size(path, fileSize, err);
-    obj->fileSize = fileSize;
-
-    size_t fileDataOffset = serial.write_chunk_begin("FILE");
-    byte* fileData = serial.advance(fileSize);
-
-    if (!FS::read_file(path, MutView((char*)fileData, fileSize), err))
-        return; // TODO: fix leaks
-
-    serial.write_chunk_end();
-
-    View serialView = serial.view();
-
-    // only retrieve address after serializer has completed all writes
-    obj->fileData = serialView.data + fileDataOffset;
-
-    ok = FS::write_file(self.info.savePath, serialView, err);
-    LD_ASSERT(ok); // TODO:
-
-    obj->bitmap = Bitmap::create_from_file_data(obj->fileSize, obj->fileData);
-    LD_ASSERT(obj->bitmap);
 }
 
 } // namespace LD

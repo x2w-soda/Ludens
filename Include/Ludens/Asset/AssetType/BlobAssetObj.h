@@ -4,11 +4,12 @@
 
 namespace LD {
 
-/// @brief UITemplateAsset implementation
-struct UITemplateAssetObj : AssetObj
+/// @brief Blob asset implementation.
+struct BlobAssetObj : AssetObj
 {
-    UITemplate tmpl;
-    char* luaSource;
+    void* data;
+    void* fileData;
+    uint64_t dataSize;
 
     static void load(void* assetLoadJob);
     static void unload(AssetObj* base);

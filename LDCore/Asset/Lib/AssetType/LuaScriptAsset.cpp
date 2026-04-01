@@ -1,6 +1,7 @@
 #include <Ludens/Asset/Asset.h>
 #include <Ludens/Asset/AssetManager.h>
 #include <Ludens/Asset/AssetType/LuaScriptAsset.h>
+#include <Ludens/Asset/AssetType/LuaScriptAssetObj.h>
 #include <Ludens/DSA/Vector.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Profiler/Profiler.h>
@@ -8,7 +9,6 @@
 #include <Ludens/System/FileSystem.h>
 
 #include "../AssetMeta.h"
-#include "LuaScriptAssetObj.h"
 
 namespace LD {
 
@@ -120,44 +120,6 @@ void LuaScriptAsset::set_source(const char* src, size_t len)
     obj->source = (char*)heap_malloc(len + 1, MEMORY_USAGE_ASSET);
     memcpy(obj->source, src, len);
     obj->source[len] = '\0';
-}
-
-void LuaScriptAssetImportJob::submit()
-{
-    mHeader.type = 0;
-    mHeader.user = this;
-    mHeader.onExecute = &LuaScriptAssetImportJob::execute;
-
-    JobSystem js = JobSystem::get();
-    js.submit(&mHeader, JOB_DISPATCH_STANDARD);
-}
-
-void LuaScriptAssetImportJob::execute(void* user)
-{
-    auto& self = *(LuaScriptAssetImportJob*)user;
-    auto* obj = (LuaScriptAssetObj*)self.asset.unwrap();
-
-    obj->sourcePath = heap_strdup(self.info.sourcePath.string().c_str(), MEMORY_USAGE_ASSET);
-    obj->source = nullptr;
-    obj->domain = self.info.domain;
-
-    // source path is used only during this import process
-    Vector<byte> file;
-    std::string err; // TODO:
-    if (FS::read_file_to_vector(self.info.sourcePath, file, err))
-    {
-        obj->source = heap_strdup((const char*)file.data(), MEMORY_USAGE_ASSET);
-    }
-
-    Serializer serial;
-    asset_header_write(serial, ASSET_TYPE_LUA_SCRIPT);
-
-    serial.write_chunk_begin("META");
-    serial.write_u32((uint32_t)obj->domain);
-    serial.write_chunk_end();
-
-    bool ok = FS::write_file(self.info.savePath, serial.view(), err);
-    LD_ASSERT(ok);
 }
 
 } // namespace LD

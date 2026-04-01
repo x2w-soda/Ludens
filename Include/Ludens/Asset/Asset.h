@@ -58,4 +58,26 @@ struct Asset : Handle<struct AssetObj>
     AssetID get_id();
 };
 
+class Serializer;
+class Deserializer;
+class Diagnostics;
+
+/// @brief Write binary header for asset type.
+/// @param serial Serializer used to write the header.
+/// @param type Asset type information to serialize.
+void asset_header_write(Serializer& serial, AssetType type);
+
+/// @brief Attempts to read binary header from memory.
+/// @param serial Deserializer used to read header.
+/// @param outMajor Outputs the major engine version this asset is created with.
+/// @param outMinor Outputs the minor engine version this asset is created with.
+/// @param outPatch Outputs the patch engine version this asset is created with.
+/// @param outType Outputs the asset type enum if recognized.
+/// @return True if the header is recognized, and the serializer cursor sits right after the header.
+bool asset_header_read(Deserializer& serial, uint16_t& outMajor, uint16_t& outMinor, uint16_t& outPatch, AssetType& outType);
+
+/// @brief Attempts to read binary header from memory.
+/// @return True if the asset type matches and the asset version matches engine version exactly.
+bool asset_header_read(Deserializer& serial, AssetType expectedType, Diagnostics& diag);
+
 } // namespace LD

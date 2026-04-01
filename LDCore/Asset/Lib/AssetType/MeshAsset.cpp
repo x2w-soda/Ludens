@@ -1,10 +1,10 @@
 #include <Ludens/Asset/AssetType/MeshAsset.h>
+#include <Ludens/Asset/AssetType/MeshAssetObj.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/RenderComponent/Layout/RMesh.h>
 #include <Ludens/System/FileSystem.h>
 
 #include "../AssetMeta.h"
-#include "MeshAssetObj.h"
 
 namespace LD {
 
@@ -60,39 +60,6 @@ ModelBinary* MeshAsset::data()
     auto* obj = (MeshAssetObj*)mObj;
 
     return obj->modelBinary;
-}
-
-void MeshAssetImportJob::submit()
-{
-    mHeader.type = 0;
-    mHeader.user = this;
-    mHeader.onExecute = &MeshAssetImportJob::execute;
-
-    JobSystem js = JobSystem::get();
-    js.submit(&mHeader, JOB_DISPATCH_STANDARD);
-}
-
-void MeshAssetImportJob::execute(void* user)
-{
-    auto& self = *(MeshAssetImportJob*)user;
-    auto* obj = (MeshAssetObj*)self.asset.unwrap();
-
-    std::string sourcePath = self.info.sourcePath.string();
-    Model model = Model::load_gltf_model(sourcePath.c_str());
-    model.apply_node_transform();
-
-    obj->modelBinary = heap_new<ModelBinary>(MEMORY_USAGE_ASSET);
-    obj->modelBinary->from_rigid_mesh(model);
-
-    // save asset to disk
-    Serializer serializer;
-    asset_header_write(serializer, ASSET_TYPE_MESH);
-
-    ModelBinary::serialize(serializer, *obj->modelBinary);
-
-    std::string err;
-    bool ok = FS::write_file(self.info.savePath, serializer.view(), err);
-    LD_ASSERT(ok); // TODO:
 }
 
 } // namespace LD

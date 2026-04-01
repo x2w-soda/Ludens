@@ -1,11 +1,11 @@
 #include <Ludens/Asset/AssetType/UITemplateAsset.h>
+#include <Ludens/Asset/AssetType/UITemplateAssetObj.h>
 #include <Ludens/Asset/Template/UISchema.h>
 #include <Ludens/Profiler/Profiler.h>
 
 #include <format>
 
 #include "../AssetMeta.h"
-#include "UITemplateAssetObj.h"
 
 namespace LD {
 
@@ -23,7 +23,7 @@ void UITemplateAssetObj::load(void* user)
 
     obj->tmpl = UITemplate::create();
 
-    UISchema::Error schemaErr;
+    UISchema::Status schemaErr;
     if (!UISchema::load_ui_template_from_source(obj->tmpl, fileView, schemaErr))
     {
         job.diagnostics.mark_error(std::format("failed to load UITemplate: {}", schemaErr.str));
