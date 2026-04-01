@@ -309,7 +309,7 @@ static void builder_mode_build_project(int argc, char** argv)
     LD_ASSERT(async);
 
     ProjectBuildResult buildResult;
-    ProjectBuildError buildErr;
+    ProjectBuildStatus buildErr;
     ProjectBuildConfig cfg{};
     cfg.dstRootDirectory = FS::temp_directory_path() / FS::Path("Ludens");
     cfg.srcProjectSchema = projectSchemaFile;

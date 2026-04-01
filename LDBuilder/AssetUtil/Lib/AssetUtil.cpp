@@ -7,6 +7,8 @@
 #include <Ludens/Asset/AssetType/TextureCubeAsset.h>
 #include <Ludens/Log/Log.h>
 #include <Ludens/Memory/Memory.h>
+#include <LudensBuilder/AssetBuilder/AssetImporter.h>
+#include <LudensBuilder/AssetBuilder/AssetType/AssetBuilders.h>
 #include <LudensBuilder/AssetUtil/AssetUtil.h>
 
 #define LD_ASSET_EXT ".lda"
@@ -15,14 +17,28 @@ namespace LD {
 
 static Log sLog("LDBuilder");
 
+struct AssetUtilObj
+{
+    AssetImporter importer = {};
+};
+
 AssetUtil AssetUtil::create()
 {
     // SPACE: implement AssetUtilObj when we need to retain some state
-    return {};
+    auto* obj = heap_new<AssetUtilObj>(MEMORY_USAGE_ASSET);
+
+    obj->importer = AssetImporter::create();
+
+    return AssetUtil(obj);
 }
 
 void AssetUtil::destroy(AssetUtil util)
 {
+    auto* obj = util.unwrap();
+
+    AssetImporter::destroy(obj->importer);
+
+    heap_delete<AssetUtilObj>(obj);
 }
 
 bool AssetUtil::import_blob(const FS::Path& sourcePath)
@@ -33,16 +49,15 @@ bool AssetUtil::import_blob(const FS::Path& sourcePath)
     FS::Path savePath(sourcePath);
     savePath.replace_extension(LD_ASSET_EXT);
 
-    BlobAssetImportJob importJob{};
-    importJob.asset = asset;
-    importJob.info.sourcePath = sourcePath;
-    importJob.info.savePath = savePath;
-    importJob.submit();
-
-    JobSystem::get().wait_all();
+    BlobAssetImportInfo importI{};
+    importI.srcPath = sourcePath;
+    importI.dstPath = savePath;
+    AssetImportResult result = mObj->importer.import_asset_synchronous(asset, &importI);
 
     heap_free(memory);
-    sLog.info("import_blob: saved to {}", savePath.string());
+
+    if (result.status)
+        sLog.info("import_blob: saved to {}", savePath.string());
 
     return true;
 }
@@ -55,19 +70,18 @@ bool AssetUtil::import_texture_2d(const FS::Path& sourcePath)
     FS::Path savePath(sourcePath);
     savePath.replace_extension(LD_ASSET_EXT);
 
-    Texture2DAssetImportJob importJob;
-    importJob.asset = asset;
-    importJob.info.sourcePath = sourcePath;
-    importJob.info.savePath = savePath;
-    importJob.info.samplerHint.addressMode = RSAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-    importJob.info.samplerHint.filter = RFILTER_LINEAR;
-    importJob.info.samplerHint.mipmapFilter = RFILTER_LINEAR;
-    importJob.submit();
-
-    JobSystem::get().wait_all();
+    Texture2DAssetImportInfo importI{};
+    importI.srcPath = sourcePath;
+    importI.dstPath = savePath;
+    importI.samplerHint.addressMode = RSAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    importI.samplerHint.filter = RFILTER_LINEAR;
+    importI.samplerHint.mipmapFilter = RFILTER_LINEAR;
+    AssetImportResult result = mObj->importer.import_asset_synchronous(asset, &importI);
 
     heap_free(memory);
-    sLog.info("import_texture_2d: saved to {}", savePath.string());
+
+    if (result.status)
+        sLog.info("import_texture_2d: saved to {}", savePath.string());
 
     return true;
 }
@@ -95,18 +109,17 @@ bool AssetUtil::import_texture_cube(const FS::Path& sourcePath)
         "nz.png",
     };
 
-    TextureCubeAssetImportJob importJob{};
-    importJob.asset = asset;
-    importJob.info.samplerHint.filter = RFILTER_LINEAR;
-    importJob.info.samplerHint.mipmapFilter = RFILTER_LINEAR;
-    importJob.info.samplerHint.addressMode = RSAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-    importJob.info.savePath = savePath;
+    TextureCubeAssetImportInfo importI{};
+    importI.samplerHint.filter = RFILTER_LINEAR;
+    importI.samplerHint.mipmapFilter = RFILTER_LINEAR;
+    importI.samplerHint.addressMode = RSAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    importI.dstPath = savePath;
 
     bool allFacesFound = true;
 
     for (int i = 0; i < 6; i++)
     {
-        FS::Path faceFilePath = importJob.info.sourcePaths[i] = sourcePath / FS::Path(faceFileNames[i]);
+        FS::Path faceFilePath = importI.srcPaths[i] = sourcePath / FS::Path(faceFileNames[i]);
 
         if (!FS::exists(faceFilePath))
         {
@@ -118,12 +131,12 @@ bool AssetUtil::import_texture_cube(const FS::Path& sourcePath)
     if (!allFacesFound)
         return false;
 
-    importJob.submit();
-
-    JobSystem::get().wait_all();
+    AssetImportResult result = mObj->importer.import_asset_synchronous(asset, &importI);
 
     heap_free(memory);
-    sLog.info("import_texture_cube: saved to {}", savePath.string());
+
+    if (result.status)
+        sLog.info("import_texture_cube: saved to {}", savePath.string());
 
     return true;
 }
@@ -143,17 +156,15 @@ bool AssetUtil::import_font(const FS::Path& sourcePath)
     FS::Path savePath(sourcePath);
     savePath.replace_extension(LD_ASSET_EXT);
 
-    FontAssetImportJob importJob{};
-    importJob.asset = asset;
-    importJob.info.sourcePath = sourcePath;
-    importJob.info.savePath = savePath;
-    importJob.info.fontSize = 36.0; // TODO: either parameterize or use some config
-    importJob.submit();
-
-    JobSystem::get().wait_all();
+    FontAssetImportInfo importI{};
+    importI.srcPath = sourcePath;
+    importI.dstPath = savePath;
+    AssetImportResult result = mObj->importer.import_asset_synchronous(asset, &importI);
 
     heap_free(memory);
-    sLog.info("import_font: saved to {}", savePath.string());
+
+    if (result.status)
+        sLog.info("import_font: saved to {}", savePath.string());
 
     return true;
 }
@@ -173,16 +184,15 @@ bool AssetUtil::import_mesh(const FS::Path& sourcePath)
     FS::Path savePath(sourcePath);
     savePath.replace_extension(LD_ASSET_EXT);
 
-    MeshAssetImportJob importJob;
-    importJob.asset = asset;
-    importJob.info.sourcePath = sourcePath;
-    importJob.info.savePath = savePath;
-    importJob.submit();
-
-    JobSystem::get().wait_all();
+    MeshAssetImportInfo importI;
+    importI.srcPath = sourcePath;
+    importI.dstPath = savePath;
+    AssetImportResult result = mObj->importer.import_asset_synchronous(asset, &importI);
 
     heap_free(memory);
-    sLog.info("import_mesh: saved to {}", savePath.string());
+
+    if (result.status)
+        sLog.info("import_mesh: saved to {}", savePath.string());
 
     return true;
 }
@@ -202,16 +212,15 @@ bool AssetUtil::import_audio_clip(const FS::Path& sourcePath)
     FS::Path savePath(sourcePath);
     savePath.replace_extension(LD_ASSET_EXT);
 
-    AudioClipAssetImportJob importJob;
-    importJob.asset = asset;
-    importJob.sourcePath = sourcePath;
-    importJob.savePath = savePath;
-    importJob.submit();
-
-    JobSystem::get().wait_all();
+    AudioClipAssetImportInfo importI{};
+    importI.srcPath = sourcePath;
+    importI.dstPath = savePath;
+    AssetImportResult result = mObj->importer.import_asset_synchronous(asset, &importI);
 
     heap_free(memory);
-    sLog.info("import_audio_clip: saved to {}", savePath.string());
+
+    if (result.status)
+        sLog.info("import_audio_clip: saved to {}", savePath.string());
 
     return true;
 }
@@ -231,17 +240,16 @@ bool AssetUtil::import_lua_script(const FS::Path& sourcePath, LuaScriptDomain do
     FS::Path savePath(sourcePath);
     savePath.replace_extension(LD_ASSET_EXT);
 
-    LuaScriptAssetImportJob importJob;
-    importJob.asset = asset;
-    importJob.info.sourcePath = sourcePath;
-    importJob.info.savePath = savePath;
-    importJob.info.domain = domain;
-    importJob.submit();
-
-    JobSystem::get().wait_all();
+    LuaScriptAssetImportInfo importI;
+    importI.srcPath = sourcePath;
+    importI.dstPath = savePath;
+    importI.domain = domain;
+    AssetImportResult result = mObj->importer.import_asset_synchronous(asset, &importI);
 
     heap_free(memory);
-    sLog.info("import_lua_script: saved to {}", savePath.string());
+
+    if (result.status)
+        sLog.info("import_lua_script: saved to {}", savePath.string());
 
     return true;
 }

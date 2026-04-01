@@ -1,18 +1,18 @@
 #pragma once
 
-#include <Ludens/Header/Error.h>
+#include <Ludens/Header/Status.h>
 #include <Ludens/Header/Handle.h>
 
 namespace LD {
 
-enum ProjectBuildErrorType
+enum ProjectBuildStatusType
 {
     PROJECT_BUILD_ERROR_IO,
     PROJECT_BUILD_ERROR_INVALID_SRC_PROJECT_SCHEMA,
     PROJECT_BUILD_ERROR_INVALID_SRC_ASSET_SCHEMA,
 };
 
-struct ProjectBuildError : TError<ProjectBuildErrorType>
+struct ProjectBuildStatus : TStatus<ProjectBuildStatusType>
 {
 };
 
@@ -37,7 +37,7 @@ struct ProjectBuildAsync : Handle<struct ProjectBuildAsyncObj>
 
     /// @brief Called by worker thread to begin build jobs
     /// @return True if the async build has started.
-    bool begin(const ProjectBuildConfig& config, ProjectBuildError& err);
+    bool begin(const ProjectBuildConfig& config, ProjectBuildStatus& err);
 
     /// @brief Atomically check build status.
     bool has_completed();

@@ -127,14 +127,14 @@ struct ProjectBuildAsyncObj
     std::string dstProjectSchemaTOML;
     bool hasCompleted;
 
-    bool load_project_schema(const FS::Path& srcProjectSchema, ProjectBuildError& err);
-    bool load_asset_schema(const FS::Path& srcAssetSchema, ProjectBuildError& err);
-    bool configure_dst_project_schema(ProjectBuildError& err);
-    bool configure_dst_asset_schema(ProjectBuildError& err);
-    bool begin(const ProjectBuildConfig& cfg, ProjectBuildError& err);
+    bool load_project_schema(const FS::Path& srcProjectSchema, ProjectBuildStatus& err);
+    bool load_asset_schema(const FS::Path& srcAssetSchema, ProjectBuildStatus& err);
+    bool configure_dst_project_schema(ProjectBuildStatus& err);
+    bool configure_dst_asset_schema(ProjectBuildStatus& err);
+    bool begin(const ProjectBuildConfig& cfg, ProjectBuildStatus& err);
 };
 
-bool ProjectBuildAsyncObj::load_project_schema(const FS::Path& srcProjectSchema, ProjectBuildError& err)
+bool ProjectBuildAsyncObj::load_project_schema(const FS::Path& srcProjectSchema, ProjectBuildStatus& err)
 {
     project = Project::create();
 
@@ -159,7 +159,7 @@ bool ProjectBuildAsyncObj::load_project_schema(const FS::Path& srcProjectSchema,
     return true;
 }
 
-bool ProjectBuildAsyncObj::load_asset_schema(const FS::Path& srcAssetSchema, ProjectBuildError& err)
+bool ProjectBuildAsyncObj::load_asset_schema(const FS::Path& srcAssetSchema, ProjectBuildStatus& err)
 {
     assetRegistry = AssetRegistry::create();
 
@@ -176,7 +176,7 @@ bool ProjectBuildAsyncObj::load_asset_schema(const FS::Path& srcAssetSchema, Pro
     return true;
 }
 
-bool ProjectBuildAsyncObj::configure_dst_project_schema(ProjectBuildError& err)
+bool ProjectBuildAsyncObj::configure_dst_project_schema(ProjectBuildStatus& err)
 {
     LD_ASSERT(project);
 
@@ -217,7 +217,7 @@ bool ProjectBuildAsyncObj::configure_dst_project_schema(ProjectBuildError& err)
     return true;
 }
 
-bool ProjectBuildAsyncObj::configure_dst_asset_schema(ProjectBuildError& err)
+bool ProjectBuildAsyncObj::configure_dst_asset_schema(ProjectBuildStatus& err)
 {
     LD_ASSERT(assetRegistry);
 
@@ -263,7 +263,7 @@ bool ProjectBuildAsyncObj::configure_dst_asset_schema(ProjectBuildError& err)
     return true;
 }
 
-bool ProjectBuildAsyncObj::begin(const ProjectBuildConfig& cfg, ProjectBuildError& err)
+bool ProjectBuildAsyncObj::begin(const ProjectBuildConfig& cfg, ProjectBuildStatus& err)
 {
     LD_PROFILE_SCOPE;
 
@@ -347,7 +347,7 @@ void ProjectBuildAsync::destroy(ProjectBuildAsync async)
     heap_delete<ProjectBuildAsyncObj>(obj);
 }
 
-bool ProjectBuildAsync::begin(const ProjectBuildConfig& config, ProjectBuildError& err)
+bool ProjectBuildAsync::begin(const ProjectBuildConfig& config, ProjectBuildStatus& err)
 {
     return mObj->begin(config, err);
 }
