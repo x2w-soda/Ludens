@@ -4,11 +4,11 @@
 
 namespace LD {
 
-template <typename TErrorEnum>
-struct TError
+template <typename TStatusEnum>
+struct TStatus
 {
     std::string str;
-    TErrorEnum type;
+    TStatusEnum type;
 };
 
 } // namespace LD

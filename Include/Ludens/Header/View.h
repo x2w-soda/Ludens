@@ -68,7 +68,6 @@ struct TView
     }
 
     /// @brief A view is equal to a char iff the view is of size one and the character matches.
-    ///        Returns false if input C string is null.
     inline bool operator==(char c) const
     {
         static_assert(sizeof(T) == 1);
