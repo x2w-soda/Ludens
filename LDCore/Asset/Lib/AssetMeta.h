@@ -59,6 +59,7 @@ public:
     AssetManagerObj& operator=(const AssetManagerObj&) = delete;
 
     AssetObj* allocate_asset(AssetEntry entry);
+    AssetObj* allocate_asset(AssetType type, SUID id, const char* name);
     void free_asset(AssetObj* obj);
 
     AssetLoadJob* allocate_load_job(AssetEntry entry, AssetObj* assetObj);

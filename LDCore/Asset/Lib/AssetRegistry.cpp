@@ -28,6 +28,7 @@ public:
 
     AssetEntryObj* allocate_entry(AssetType type);
     AssetEntryObj* get_entry(SUID id);
+    AssetEntryObj* get_entry_by_uri(const std::string& uri);
     void get_entries_by_type(Vector<AssetEntry>& outEntries, AssetType type);
     void get_all_entries(Vector<AssetEntry>& outEntries);
     AssetEntry register_asset(SUID id, AssetType type, const std::string& uri);
@@ -36,6 +37,7 @@ public:
 private:
     PoolAllocator mEntryPA;
     HashMap<SUID, AssetEntryObj*> mEntries;
+    HashMap<std::string, AssetEntryObj*> mURIs;
 };
 
 AssetRegistryObj::AssetRegistryObj()
@@ -78,6 +80,16 @@ AssetEntryObj* AssetRegistryObj::get_entry(SUID id)
     return it->second;
 }
 
+AssetEntryObj* AssetRegistryObj::get_entry_by_uri(const std::string& uri)
+{
+    auto it = mURIs.find(uri);
+
+    if (it == mURIs.end())
+        return nullptr;
+
+    return it->second;
+}
+
 void AssetRegistryObj::get_entries_by_type(Vector<AssetEntry>& outEntries, AssetType type)
 {
     outEntries.clear();
@@ -104,6 +116,9 @@ void AssetRegistryObj::get_all_entries(Vector<AssetEntry>& outEntries)
 
 AssetEntry AssetRegistryObj::register_asset(SUID id, AssetType type, const std::string& uri)
 {
+    if (mURIs.contains(uri))
+        return {};
+
     if (id)
     {
         // try registering with known ID.
@@ -119,6 +134,7 @@ AssetEntry AssetRegistryObj::register_asset(SUID id, AssetType type, const std::
     entry->uri = URI(uri);
     entry->id = id;
 
+    mURIs[uri] = entry;
     mEntries[id] = entry;
 
     return AssetEntry(entry);
@@ -130,11 +146,15 @@ void AssetRegistryObj::unregister_asset(SUID id)
         return;
 
     AssetEntryObj* entry = mEntries[id];
-    entry->id = 0;
-    mEntryPA.free(entry);
 
     mEntries.erase(id);
     SUIDRegistry::free_suid(id);
+
+    mURIs.erase(entry->uri.string());
+
+    entry->id = 0;
+    entry->uri = {};
+    mEntryPA.free(entry);
 }
 
 //
@@ -161,11 +181,6 @@ std::string AssetEntry::get_name()
 std::string AssetEntry::get_uri()
 {
     return mObj->uri.string();
-}
-
-void AssetEntry::set_uri(const std::string& uri)
-{
-    mObj->uri = URI(uri);
 }
 
 Vector<std::string> AssetEntry::get_path_keys()
@@ -225,6 +240,11 @@ void AssetRegistry::unregister_asset(SUID id)
 AssetEntry AssetRegistry::get_entry(SUID id)
 {
     return AssetEntry(mObj->get_entry(id));
+}
+
+AssetEntry AssetRegistry::get_entry_by_uri(const std::string& uri)
+{
+    return AssetEntry(mObj->get_entry_by_uri(uri));
 }
 
 void AssetRegistry::get_entries_by_type(Vector<AssetEntry>& outEntries, AssetType type)

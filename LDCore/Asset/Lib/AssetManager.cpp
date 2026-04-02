@@ -93,9 +93,13 @@ AssetManagerObj::~AssetManagerObj()
 
 AssetObj* AssetManagerObj::allocate_asset(AssetEntry entry)
 {
-    const SUID id = entry.get_id();
-    const AssetType type = entry.get_type();
-    const std::string name = entry.get_name();
+    std::string name = entry.get_name();
+
+    return allocate_asset(entry.get_type(), entry.get_id(), name.c_str());
+}
+
+AssetObj* AssetManagerObj::allocate_asset(AssetType type, SUID id, const char* name)
+{
     size_t assetByteSize = get_asset_byte_size(type);
 
     if (!mAssetPA.contains(type))
@@ -112,15 +116,21 @@ AssetObj* AssetManagerObj::allocate_asset(AssetEntry entry)
     memset(obj, 0, assetByteSize);
 
     obj->manager = this;
-    obj->name = heap_strdup(name.c_str(), MEMORY_USAGE_ASSET);
+    obj->name = name ? heap_strdup(name, MEMORY_USAGE_ASSET) : nullptr;
     obj->id = id;
     obj->type = type;
 
-    LD_ASSERT(id && !mAssets.contains(obj->id));
-    mAssets[obj->id] = obj;
+    if (obj->id)
+    {
+        LD_ASSERT(!mAssets.contains(obj->id));
+        mAssets[obj->id] = obj;
+    }
 
-    LD_ASSERT(!mNameToAsset.contains(name));
-    mNameToAsset[name] = obj->id;
+    if (obj->name)
+    {
+        LD_ASSERT(!mNameToAsset.contains(obj->name));
+        mNameToAsset[obj->name] = obj->id;
+    }
 
     return obj;
 }
@@ -133,7 +143,10 @@ void AssetManagerObj::free_asset(AssetObj* obj)
     mAssets.erase(obj->id);
 
     if (obj->name)
+    {
         heap_free((void*)obj->name);
+        obj->name = nullptr;
+    }
 
     PoolAllocator pa = mAssetPA[obj->type];
     pa.free(obj);
@@ -152,8 +165,8 @@ AssetLoadJob* AssetManagerObj::allocate_load_job(AssetEntry entry, AssetObj* ass
     job->jobHeader.onComplete = &AssetManagerObj::on_asset_load_complete;
     job->jobHeader.type = (uint32_t)0; // TODO: job type for asset loading
     job->jobHeader.user = (void*)job;
-    job->jobInProgress.store(true); // NOTE: job is already considered in-progress before its submission
-    job->jobProgress.store(0.0f);
+    job->jobInProgress.store(true, std::memory_order_release); // NOTE: job is already considered in-progress before its submission
+    job->jobProgress.store(0.0f, std::memory_order_release);
 
     return job;
 }
@@ -173,7 +186,7 @@ bool AssetManagerObj::has_load_job()
 {
     for (AssetLoadJob* job : mLoadJobs)
     {
-        if (job->jobInProgress.load())
+        if (job->jobInProgress.load(std::memory_order_acquire))
             return true;
     }
 
@@ -324,8 +337,8 @@ void AssetManagerObj::on_asset_load_complete(void* user)
 {
     auto* job = (AssetLoadJob*)user;
 
-    job->jobInProgress.store(false);
-    job->jobProgress.store(1.0f);
+    job->jobInProgress.store(false, std::memory_order_release);
+    job->jobProgress.store(1.0f, std::memory_order_release);
 }
 
 //
@@ -367,9 +380,12 @@ void AssetManager::destroy()
 
 AssetManager AssetManager::get()
 {
-    LD_ASSERT(sAssetManager);
-
     return AssetManager(sAssetManager);
+}
+
+AssetRegistry AssetManager::get_asset_registry()
+{
+    return mObj->registry;
 }
 
 AssetRegistry AssetManager::swap_asset_registry(AssetRegistry registry, const FS::Path& rootPath)
@@ -461,6 +477,21 @@ Asset AssetManager::get_asset(const char* name, AssetType type)
         return {};
 
     return asset;
+}
+
+Asset AssetManager::reserve_asset(AssetType type)
+{
+    AssetObj* obj = mObj->allocate_asset(type, SUID(0), nullptr);
+
+    return Asset(obj);
+}
+
+AssetEntry AssetManager::resolve_asset(Asset asset, const std::string& uri)
+{
+    if (!asset || !mObj->registry)
+        return {};
+
+    return mObj->registry.register_asset(asset.get_type(), uri);
 }
 
 } // namespace LD

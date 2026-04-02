@@ -51,6 +51,7 @@ set(MODULE_LIB
 
 set(MODULE_TEST
 	Test/AssetTest.cpp
+	Test/AssetRegistryTest.cpp
 	Test/UITemplateTest.cpp
 )
 

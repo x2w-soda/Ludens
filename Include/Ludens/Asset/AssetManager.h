@@ -14,9 +14,9 @@ namespace LD {
 
 struct AssetManagerInfo
 {
-    FS::Path rootPath;        // project root directory path
-    AssetRegistry registry;   // referenced asset registry, out-lives the AssetManager
-    bool watchAssets;         // whether to watch asset files in project
+    FS::Path rootPath;      // project root directory path
+    AssetRegistry registry; // referenced asset registry, out-lives the AssetManager
+    bool watchAssets;       // whether to watch asset files in project
 };
 
 /// @brief Asset manager singleton, main thread only.
@@ -30,6 +30,8 @@ struct AssetManager : Handle<struct AssetManagerObj>
 
     /// @brief Get asset manager singleton.
     static AssetManager get();
+
+    AssetRegistry get_asset_registry();
 
     AssetRegistry swap_asset_registry(AssetRegistry registry, const FS::Path& rootPath);
 
@@ -62,6 +64,14 @@ struct AssetManager : Handle<struct AssetManagerObj>
 
     /// @brief Get asset from name and expected type, fails upon type mismatch.
     Asset get_asset(const char* name, AssetType type);
+
+    /// @brief Allocate an empty asset that needs to be resolved later.
+    ///        Intended for AssetImporter to perform "import + load" simultaneously.
+    Asset reserve_asset(AssetType type);
+
+    /// @brief Resolve the asset against the current AssetRegistry.
+    ///        Intended for AssetImporter to add an Asset to the project.
+    AssetEntry resolve_asset(Asset asset, const std::string& uri);
 };
 
 } // namespace LD

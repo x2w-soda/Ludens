@@ -14,7 +14,6 @@ struct AssetEntry : Handle<struct AssetEntryObj>
     AssetType get_type();
     std::string get_name();
     std::string get_uri();
-    void set_uri(const std::string& uri);
     Vector<std::string> get_path_keys();
     std::string get_path(const std::string& key);
     inline std::string get_main_path() { return get_path("main"); }
@@ -42,6 +41,9 @@ struct AssetRegistry : Handle<struct AssetRegistryObj>
     /// @brief Lookup an Asset from ID.
     /// @return Asset entry in the registry or null handle.
     AssetEntry get_entry(SUID id);
+
+    /// @brief Lookup an Asset from URI.
+    AssetEntry get_entry_by_uri(const std::string& uri);
 
     /// @brief Lookup all asset entries for a given type.
     void get_entries_by_type(Vector<AssetEntry>& outEntries, AssetType type);
