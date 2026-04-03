@@ -297,11 +297,7 @@ UILayerState* UIContextState::get_or_create_layer_state(const char* layerName)
 void UIContextState::destroy_layer_state(UILayerState* layerS)
 {
     for (auto it : layerS->imSpaces)
-    {
-        UIWorkspaceState* spaceS = it.second;
-        layerS->layer.destroy_workspace(spaceS->space);
-        layerS->destroy_workspace_state(spaceS);
-    }
+        layerS->destroy_workspace_state(it.second);
     layerS->imSpaces.clear();
 
     ctx.destroy_layer(layerS->layer);
@@ -358,11 +354,8 @@ static UIContextState* get_or_create_context_state(const char* ctxName, const Ve
 static void destroy_context_state(UIContextState* ctxS)
 {
     for (auto it : ctxS->imLayers)
-    {
-        UILayerState* layerS = it.second;
-        ctxS->ctx.destroy_layer(layerS->layer);
-        ctxS->destroy_layer_state(layerS);
-    }
+        ctxS->destroy_layer_state(it.second);
+    ctxS->imLayers.clear();
 
     UIContext::destroy(ctxS->ctx);
 
