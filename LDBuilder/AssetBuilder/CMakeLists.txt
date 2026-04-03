@@ -3,7 +3,6 @@ set(MODULE_NAME LDAssetBuilder)
 set(MODULE_INCLUDE
     ${LUDENS_INCLUDE_DIR}/LudensBuilder/AssetBuilder/AssetImporter.h
     ${LUDENS_INCLUDE_DIR}/LudensBuilder/AssetBuilder/AssetImportInfo.h
-    ${LUDENS_INCLUDE_DIR}/LudensBuilder/AssetBuilder/AssetImportInfoStorage.h
     ${LUDENS_INCLUDE_DIR}/LudensBuilder/AssetBuilder/AssetType/AssetBuilders.h
     ${LUDENS_INCLUDE_DIR}/LudensBuilder/AssetBuilder/AssetType/BlobAssetBuilder.h
     ${LUDENS_INCLUDE_DIR}/LudensBuilder/AssetBuilder/AssetType/FontAssetBuilder.h
@@ -19,7 +18,8 @@ set(MODULE_LIB
     Lib/AssetImporter.cpp
     Lib/AssetImportJob.h
     Lib/AssetImportJob.cpp
-    Lib/AssetImportInfoStorage.cpp
+    Lib/AssetBuilderMeta.h
+    Lib/AssetBuilderMeta.cpp
     Lib/AssetType/BlobAssetBuilder.cpp
     Lib/AssetType/FontAssetBuilder.cpp
     Lib/AssetType/MeshAssetBuilder.cpp

@@ -11,7 +11,6 @@ struct BlobAssetImportInfo : AssetImportInfo
     View srcView = {}; /// if not empty, the blob data in memory.
 };
 
-void blob_asset_copy_import_info(AssetImportInfoStorage& dstInfo, const AssetImportInfo* srcInfo);
 void blob_asset_import(void*);
 
 } // namespace LD

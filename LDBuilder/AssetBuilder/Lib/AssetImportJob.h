@@ -1,7 +1,8 @@
 #pragma once
 
 #include <Ludens/Asset/Asset.h>
-#include <LudensBuilder/AssetBuilder/AssetImportInfoStorage.h>
+#include <Ludens/Header/Assert.h>
+#include <LudensBuilder/AssetBuilder/AssetImportInfo.h>
 #include <LudensBuilder/AssetBuilder/AssetImporter.h>
 
 #include <atomic>
@@ -13,7 +14,7 @@ namespace LD {
 struct AssetImportJob
 {
     Asset asset;                           // destination asset handle to populate
-    AssetImportInfoStorage info;           // source import info
+    AssetImportInfo* info;                 // source import info, memory owned by importer
     AssetImportStatus status;              // resulting status
     std::atomic_bool hasCompleted = false; // polled by main thread
 
@@ -50,14 +51,9 @@ struct AssetImportJob
     /// @brief Try write to destination file, updates status upon failure.
     inline void write_to_dst_path(const View& view)
     {
-        FS::Path dstPath = static_cast<AssetImportInfo*>(&info.as.blob)->dstPath;
-
-        if (!FS::write_file(dstPath, view, status.str))
+        if (!FS::write_file(info->dstPath, view, status.str))
             status.type = ASSET_IMPORT_ERROR_DST_PATH;
     }
-
-    /// @brief Copy transient info into job local storage.
-    void copy_info(const AssetImportInfo* info);
 
     /// @brief Submit to job system, after which main thread should not
     ///        access member fields until job completion.

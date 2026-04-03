@@ -9,18 +9,13 @@
 
 namespace LD {
 
-void texture_cube_asset_copy_import_info(AssetImportInfoStorage& dstInfo, const AssetImportInfo* srcInfo)
-{
-    dstInfo.as.textureCube = *(const TextureCubeAssetImportInfo*)srcInfo;
-}
-
 void texture_cube_asset_import(void* user)
 {
     LD_PROFILE_SCOPE;
 
     auto& job = *(AssetImportJob*)user;
     auto* obj = (TextureCubeAssetObj*)job.asset.unwrap();
-    const TextureCubeAssetImportInfo& info = job.info.as.textureCube;
+    const auto& info = *(TextureCubeAssetImportInfo*)job.info;
 
     obj->id = 0;
     obj->samplerHint = info.samplerHint;

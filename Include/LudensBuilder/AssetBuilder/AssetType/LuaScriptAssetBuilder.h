@@ -11,7 +11,6 @@ struct LuaScriptAssetImportInfo : AssetImportInfo
     LuaScriptDomain domain = LUA_SCRIPT_DOMAIN_COMPONENT;
 };
 
-void lua_script_asset_copy_import_info(AssetImportInfoStorage& dstInfo, const AssetImportInfo* srcInfo);
 void lua_script_asset_import(void*);
 
 } // namespace LD

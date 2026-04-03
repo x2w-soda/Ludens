@@ -8,16 +8,11 @@
 
 namespace LD {
 
-void font_asset_copy_import_info(AssetImportInfoStorage& dstInfo, const AssetImportInfo* srcInfo)
-{
-    dstInfo.as.font = *(const FontAssetImportInfo*)srcInfo;
-}
-
 void font_asset_import(void* user)
 {
     auto& job = *(AssetImportJob*)user;
     auto* obj = (FontAssetObj*)job.asset.unwrap();
-    const FontAssetImportInfo& info = job.info.as.font;
+    const auto& info = *(FontAssetImportInfo*)job.info;
 
     std::vector<byte> tmpSourceData;
     const byte* sourceData = nullptr;

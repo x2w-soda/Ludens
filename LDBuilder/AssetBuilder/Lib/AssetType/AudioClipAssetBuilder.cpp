@@ -8,18 +8,13 @@
 
 namespace LD {
 
-void audio_clip_asset_copy_import_info(AssetImportInfoStorage& dstInfo, const AssetImportInfo* srcInfo)
-{
-    dstInfo.as.audioClip = *(const AudioClipAssetImportInfo*)srcInfo;
-}
-
 void audio_clip_asset_import(void* user)
 {
     LD_PROFILE_SCOPE;
 
     auto& job = *(AssetImportJob*)user;
     auto* obj = (AudioClipAssetObj*)job.asset.unwrap();
-    const AudioClipAssetImportInfo& info = job.info.as.audioClip;
+    const auto& info = *(AudioClipAssetImportInfo*)job.info;
 
     std::string sourcePath = info.srcPath.string();
     AudioData data = obj->data = AudioData::create_from_path(sourcePath);

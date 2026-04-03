@@ -45,16 +45,11 @@ static void try_import(AssetImportJob& job, BlobAssetObj* obj, const BlobAssetIm
     job.write_to_dst_path(serializer.view());
 }
 
-void blob_asset_copy_import_info(AssetImportInfoStorage& dstInfo, const AssetImportInfo* srcInfo)
-{
-    dstInfo.as.blob = *(const BlobAssetImportInfo*)srcInfo;
-}
-
 void blob_asset_import(void* user)
 {
     auto& job = *(AssetImportJob*)user;
     auto* obj = (BlobAssetObj*)job.asset.unwrap();
-    const BlobAssetImportInfo& info = job.info.as.blob;
+    const auto& info = *(BlobAssetImportInfo*)job.info;
 
     try_import(job, obj, info);
 

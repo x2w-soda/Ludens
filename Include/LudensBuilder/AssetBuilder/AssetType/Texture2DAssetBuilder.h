@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Ludens/RenderBackend/RBackend.h>
 #include <LudensBuilder/AssetBuilder/AssetImportInfo.h>
 
 namespace LD {
@@ -10,7 +11,6 @@ struct Texture2DAssetImportInfo : AssetImportInfo
     RSamplerInfo samplerHint; /// desired texture sampler mode
 };
 
-void texture_2d_asset_copy_import_info(AssetImportInfoStorage& dstInfo, const AssetImportInfo* srcInfo);
 void texture_2d_asset_import(void*);
 
 } // namespace LD

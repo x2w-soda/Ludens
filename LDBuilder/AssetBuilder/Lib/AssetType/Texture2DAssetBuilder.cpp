@@ -9,18 +9,13 @@
 
 namespace LD {
 
-void texture_2d_asset_copy_import_info(AssetImportInfoStorage& dstInfo, const AssetImportInfo* srcInfo)
-{
-    dstInfo.as.texture2D = *(Texture2DAssetImportInfo*)srcInfo;
-}
-
 void texture_2d_asset_import(void* user)
 {
     LD_PROFILE_SCOPE;
 
     auto& job = *(AssetImportJob*)user;
     auto* obj = (Texture2DAssetObj*)job.asset.unwrap();
-    const Texture2DAssetImportInfo& info = job.info.as.texture2D;
+    const auto& info = *(const Texture2DAssetImportInfo*)job.info;
 
     obj->id = 0;
     obj->samplerHint = info.samplerHint;
@@ -56,18 +51,11 @@ void texture_2d_asset_import(void* user)
     // only retrieve address after serializer has completed all writes
     obj->fileData = serialView.data + fileDataOffset;
 
-    if (!FS::write_file(info.dstPath, serialView, job.status.str))
-    {
-        job.status.type = ASSET_IMPORT_ERROR_DST_PATH;
-        return;
-    }
-
     obj->bitmap = Bitmap::create_from_file_data(obj->fileSize, obj->fileData);
-    if (!obj->bitmap)
-    {
-        job.status.type = ASSET_IMPORT_ERROR;
-        job.status.str = "failed to create Bitmap";
-    }
+    if (!job.require(obj->bitmap, "failed to create Bitmap"))
+        return;
+
+    job.write_to_dst_path(serialView);
 }
 
 } // namespace LD

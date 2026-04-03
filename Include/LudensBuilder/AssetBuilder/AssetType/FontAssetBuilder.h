@@ -12,7 +12,6 @@ struct FontAssetImportInfo : AssetImportInfo
     float fontSize = 36.0f; /// desired font size for generating font atlas
 };
 
-void font_asset_copy_import_info(AssetImportInfoStorage& dstInfo, const AssetImportInfo* srcInfo);
 void font_asset_import(void*);
 
 } // namespace LD

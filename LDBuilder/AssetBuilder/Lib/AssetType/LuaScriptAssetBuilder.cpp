@@ -8,16 +8,11 @@
 
 namespace LD {
 
-void lua_script_asset_copy_import_info(AssetImportInfoStorage& dstInfo, const AssetImportInfo* srcInfo)
-{
-    dstInfo.as.blob = *(const BlobAssetImportInfo*)srcInfo;
-}
-
 void lua_script_asset_import(void* user)
 {
     auto& job = *(AssetImportJob*)user;
     auto* obj = (LuaScriptAssetObj*)job.asset.unwrap();
-    const LuaScriptAssetImportInfo& info = job.info.as.luaScript;
+    const auto& info = *(LuaScriptAssetImportInfo*)job.info;
 
     obj->sourcePath = heap_strdup(info.srcPath.string().c_str(), MEMORY_USAGE_ASSET);
     obj->source = nullptr;

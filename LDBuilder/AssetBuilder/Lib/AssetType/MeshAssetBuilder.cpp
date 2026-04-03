@@ -9,18 +9,13 @@
 
 namespace LD {
 
-void mesh_asset_copy_import_info(AssetImportInfoStorage& dstInfo, const AssetImportInfo* srcInfo)
-{
-    dstInfo.as.mesh = *(const MeshAssetImportInfo*)srcInfo;
-}
-
 void mesh_asset_import(void* user)
 {
     LD_PROFILE_SCOPE;
 
     auto& job = *(AssetImportJob*)user;
     auto* obj = (MeshAssetObj*)job.asset.unwrap();
-    const MeshAssetImportInfo& info = job.info.as.mesh;
+    const auto& info = *(MeshAssetImportInfo*)job.info;
 
     std::string sourcePath = info.srcPath.string();
     Model model = Model::load_gltf_model(sourcePath.c_str());
