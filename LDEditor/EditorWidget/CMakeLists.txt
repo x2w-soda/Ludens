@@ -3,6 +3,7 @@ set(MODULE_NAME LDEditorWidget)
 set(MODULE_LIB
 	Lib/EUI.h
 	Lib/EUI.cpp
+	Lib/EUIRow.cpp
 	Lib/EUIVectorEdit.cpp
 	Lib/EUITransformEdit.cpp
 	Lib/EUIAssetSlot.cpp
@@ -13,6 +14,7 @@ set(MODULE_LIB
 
 set(MODULE_INCLUDE
 	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorWidget/EditorWidget.h
+	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorWidget/EUIRow.h
 	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorWidget/EUIVectorEdit.h
 	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorWidget/EUITransformEdit.h
 	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorWidget/EUIAssetSlot.h
