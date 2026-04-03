@@ -3,6 +3,7 @@
 #include <Ludens/Memory/Memory.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/UI/UIImmediate.h>
+#include <LudensEditor/AssetSelectWindow/AssetSelectWindow.h>
 #include <LudensEditor/ConsoleWindow/ConsoleWindow.h>
 #include <LudensEditor/CreateComponentWindow/CreateComponentWindow.h>
 #include <LudensEditor/DocumentWindow/DocumentWindow.h>
@@ -112,6 +113,7 @@ struct EditorWindowMeta
 // clang-format off
 static EditorWindowMeta sEditorWindowTable[] = {
     { EDITOR_WINDOW_TAB_CONTROL,      EDITOR_ICON_ENUM_LAST,        &TabControlWindow::create,      &TabControlWindow::destroy,      nullptr },
+    { EDITOR_WINDOW_ASSET_SELECT,     EDITOR_ICON_ENUM_LAST,        &AssetSelectWindow::create,     &AssetSelectWindow::destroy,     "AssetSelect" },
     { EDITOR_WINDOW_SELECTION,        EDITOR_ICON_ENUM_LAST,        &SelectionWindow::create,       &SelectionWindow::destroy,       "Selection" },
     { EDITOR_WINDOW_CREATE_COMPONENT, EDITOR_ICON_ENUM_LAST,        &CreateComponentWindow::create, &CreateComponentWindow::destroy, "CreateComponent" },
     { EDITOR_WINDOW_PROJECT_SETTINGS, EDITOR_ICON_ENUM_LAST,        &ProjectSettingsWindow::create, &ProjectSettingsWindow::destroy, "ProjectSettings" },
