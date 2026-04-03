@@ -1,22 +1,17 @@
 #include <Ludens/Header/Platform.h>
 #ifdef LD_PLATFORM_WIN32
+#include <Ludens/DSA/Vector.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Memory/Memory.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/System/DropManager.h>
-
-#include <vector>
+#include <Ludens/System/Win32Initialization.h>
 
 #define GLFW_EXPOSE_NATIVE_WIN32
 #include <GLFW/glfw3.h>
 #include <GLFW/glfw3native.h>
 
-#include <oleidl.h>
-#pragma comment(lib, "Ole32.lib")
-
 namespace LD {
-
-static bool sHasOLEInit = false;
 
 class DropTargetWin32 : IDropTarget
 {
@@ -41,6 +36,7 @@ struct DropTargetObj : public DropTargetWin32
         : DropTargetWin32(handle) {}
 
     DropTargetFileCallback onDropFile = nullptr;
+    void* user = nullptr;
 };
 
 DropTargetWin32::DropTargetWin32(HWND handle)
@@ -110,7 +106,7 @@ HRESULT STDMETHODCALLTYPE DropTargetWin32::Drop(IDataObject* pDataObj, DWORD, PO
         if (hDrop)
         {
             UINT fileCount = DragQueryFileW(hDrop, 0xFFFFFFFF, nullptr, 0);
-            std::vector<FS::Path> files((size_t)fileCount);
+            Vector<FS::Path> files((size_t)fileCount);
 
             for (UINT i = 0; i < fileCount; ++i)
             {
@@ -119,7 +115,7 @@ HRESULT STDMETHODCALLTYPE DropTargetWin32::Drop(IDataObject* pDataObj, DWORD, PO
             }
 
             if (obj->onDropFile)
-                obj->onDropFile(files.size(), files.data());
+                obj->onDropFile(files.size(), files.data(), obj->user);
 
             GlobalUnlock(storageMedium.hGlobal);
         }
@@ -134,18 +130,14 @@ HRESULT STDMETHODCALLTYPE DropTargetWin32::Drop(IDataObject* pDataObj, DWORD, PO
 // PUBLIC API
 //
 
-DropTarget DropTarget::create(GLFWwindow* handle, DropTargetFileCallback onDropFile)
+DropTarget DropTarget::create(GLFWwindow* handle, DropTargetFileCallback onDropFile, void* user)
 {
-    if (!sHasOLEInit)
-    {
-        HRESULT result = OleInitialize(nullptr);
-        (void)result; // TODO:
-        sHasOLEInit = true;
-    }
+    win32_initialize_ole();
 
     HWND nativeHandle = glfwGetWin32Window(handle);
     DropTargetObj* obj = heap_new<DropTargetObj>(MEMORY_USAGE_MISC, nativeHandle);
     obj->onDropFile = onDropFile;
+    obj->user = user;
 
     return DropTarget(obj);
 }

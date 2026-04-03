@@ -8,6 +8,7 @@ set(MODULE_INCLUDE
 	${LUDENS_INCLUDE_DIR}/Ludens/System/FileSystemAsync.h
 	${LUDENS_INCLUDE_DIR}/Ludens/System/FileWatcher.h
 	${LUDENS_INCLUDE_DIR}/Ludens/System/DropManager.h
+	${LUDENS_INCLUDE_DIR}/Ludens/System/Win32Initialization.h
 )
 
 set(MODULE_LIB
@@ -19,6 +20,8 @@ set(MODULE_LIB
 	Lib/FileWatcherWin32.cpp
 	Lib/FileWatcherLinux.cpp
 	Lib/DropManagerWin32.cpp
+	Lib/DropManagerLinux.cpp
+	Lib/Win32Initialization.cpp
 )
 
 set(MODULE_TEST

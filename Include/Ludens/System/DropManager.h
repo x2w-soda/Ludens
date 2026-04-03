@@ -10,13 +10,13 @@ namespace LD {
 
 /// @brief Callback when user drags files into application window.
 ///        This function should not block, copy these paths and defer IO operations.
-typedef void (*DropTargetFileCallback)(size_t fileCount, const FS::Path* files);
+typedef void (*DropTargetFileCallback)(size_t fileCount, const FS::Path* files, void* user);
 
 struct DropTarget : Handle<struct DropTargetObj>
 {
     /// @brief Create drop target for window. Currently only Win32 supports
     ///        file drag and drop via OLE IDropTarget.
-    static DropTarget create(GLFWwindow* window, DropTargetFileCallback onDropFile);
+    static DropTarget create(GLFWwindow* window, DropTargetFileCallback onDropFile, void* user);
 
     /// @brief Destroy drop target associated with window.
     static void destroy(DropTarget target);
