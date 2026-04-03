@@ -38,6 +38,12 @@ struct AssetRegistry : Handle<struct AssetRegistryObj>
     /// @brief Unregister an Asset that is no longer used in the project.
     void unregister_asset(SUID id);
 
+    /// @brief Check if registry is dirty due to AssetEntry changes
+    bool is_dirty();
+
+    /// @brief Clear dirty status.
+    void clear_dirty();
+
     /// @brief Lookup an Asset from ID.
     /// @return Asset entry in the registry or null handle.
     AssetEntry get_entry(SUID id);

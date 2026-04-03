@@ -13,3 +13,7 @@ add_ludens_builder_module(
     INCLUDE ${MODULE_INCLUDE}
     LIB     ${MODULE_LIB}
 )
+
+target_link_libraries(${MODULE_NAME} PRIVATE
+    LDAssetBuilder
+)

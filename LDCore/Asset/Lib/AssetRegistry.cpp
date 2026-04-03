@@ -8,8 +8,11 @@ namespace LD {
 
 static_assert(std::is_same_v<AssetID, SUID>);
 
+struct AssetRegistryObj;
+
 struct AssetEntryObj
 {
+    AssetRegistryObj* registry = nullptr;    // backwards link
     URI uri;                                 // virtual URI path to identify asset in project
     HashMap<std::string, std::string> paths; // physical relative paths to project root
     AssetType type;                          // asset type determines API
@@ -33,6 +36,9 @@ public:
     void get_all_entries(Vector<AssetEntry>& outEntries);
     AssetEntry register_asset(SUID id, AssetType type, const std::string& uri);
     void unregister_asset(SUID id);
+
+public:
+    bool isDirty = false;
 
 private:
     PoolAllocator mEntryPA;
@@ -65,6 +71,7 @@ AssetEntryObj* AssetRegistryObj::allocate_entry(AssetType type)
     AssetEntryObj* entry = (AssetEntryObj*)mEntryPA.allocate();
     new (entry) AssetEntryObj();
 
+    entry->registry = this;
     entry->type = type;
 
     return entry;
@@ -206,6 +213,8 @@ void AssetEntry::set_path(const std::string& key, const std::string& uri)
 {
     // override or append
     mObj->paths[key] = uri;
+
+    mObj->registry->isDirty = true;
 }
 
 AssetRegistry AssetRegistry::create()
@@ -235,6 +244,16 @@ AssetEntry AssetRegistry::register_asset(AssetType type, const std::string& uri)
 void AssetRegistry::unregister_asset(SUID id)
 {
     mObj->unregister_asset(id);
+}
+
+bool AssetRegistry::is_dirty()
+{
+    return mObj->isDirty;
+}
+
+void AssetRegistry::clear_dirty()
+{
+    mObj->isDirty = false;
 }
 
 AssetEntry AssetRegistry::get_entry(SUID id)

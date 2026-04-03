@@ -1,3 +1,4 @@
+#include <Ludens/Asset/AssetManager.h>
 #include <Ludens/Asset/AssetType/AudioClipAsset.h>
 #include <Ludens/Asset/AssetType/BlobAsset.h>
 #include <Ludens/Asset/AssetType/FontAsset.h>
@@ -24,10 +25,14 @@ struct AssetUtilObj
 
 AssetUtil AssetUtil::create()
 {
-    // SPACE: implement AssetUtilObj when we need to retain some state
     auto* obj = heap_new<AssetUtilObj>(MEMORY_USAGE_ASSET);
 
     obj->importer = AssetImporter::create();
+
+    // We still need AssetManager to allocate Asset memory as load destination
+    // because AssetImporter always performs "import + load" simultaneously.
+    if (!AssetManager::get())
+        AssetManager::create({});
 
     return AssetUtil(obj);
 }
@@ -43,18 +48,13 @@ void AssetUtil::destroy(AssetUtil util)
 
 bool AssetUtil::import_blob(const FS::Path& sourcePath)
 {
-    void* memory = heap_malloc(get_asset_byte_size(ASSET_TYPE_BLOB), MEMORY_USAGE_ASSET);
-    BlobAsset asset((AssetObj*)memory);
-
     FS::Path savePath(sourcePath);
     savePath.replace_extension(LD_ASSET_EXT);
 
-    BlobAssetImportInfo importI{};
-    importI.srcPath = sourcePath;
-    importI.dstPath = savePath;
-    AssetImportResult result = mObj->importer.import_asset_synchronous(asset, &importI);
-
-    heap_free(memory);
+    auto* importI = (BlobAssetImportInfo*)mObj->importer.allocate_import_info(ASSET_TYPE_BLOB);
+    importI->srcPath = sourcePath;
+    importI->dstPath = savePath;
+    AssetImportResult result = mObj->importer.import_asset_synchronous(importI);
 
     if (result.status)
         sLog.info("import_blob: saved to {}", savePath.string());
@@ -64,21 +64,16 @@ bool AssetUtil::import_blob(const FS::Path& sourcePath)
 
 bool AssetUtil::import_texture_2d(const FS::Path& sourcePath)
 {
-    void* memory = heap_malloc(get_asset_byte_size(ASSET_TYPE_TEXTURE_2D), MEMORY_USAGE_ASSET);
-    Texture2DAsset asset((AssetObj*)memory);
-
     FS::Path savePath(sourcePath);
     savePath.replace_extension(LD_ASSET_EXT);
 
-    Texture2DAssetImportInfo importI{};
-    importI.srcPath = sourcePath;
-    importI.dstPath = savePath;
-    importI.samplerHint.addressMode = RSAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-    importI.samplerHint.filter = RFILTER_LINEAR;
-    importI.samplerHint.mipmapFilter = RFILTER_LINEAR;
-    AssetImportResult result = mObj->importer.import_asset_synchronous(asset, &importI);
-
-    heap_free(memory);
+    auto* importI = (Texture2DAssetImportInfo*)mObj->importer.allocate_import_info(ASSET_TYPE_TEXTURE_2D);
+    importI->srcPath = sourcePath;
+    importI->dstPath = savePath;
+    importI->samplerHint.addressMode = RSAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    importI->samplerHint.filter = RFILTER_LINEAR;
+    importI->samplerHint.mipmapFilter = RFILTER_LINEAR;
+    AssetImportResult result = mObj->importer.import_asset_synchronous(importI);
 
     if (result.status)
         sLog.info("import_texture_2d: saved to {}", savePath.string());
@@ -88,9 +83,6 @@ bool AssetUtil::import_texture_2d(const FS::Path& sourcePath)
 
 bool AssetUtil::import_texture_cube(const FS::Path& sourcePath)
 {
-    void* memory = heap_malloc(get_asset_byte_size(ASSET_TYPE_TEXTURE_CUBE), MEMORY_USAGE_ASSET);
-    TextureCubeAsset asset((AssetObj*)memory);
-
     if (!FS::is_directory(sourcePath))
     {
         sLog.warn("import_texture_cube: directory not found {}", sourcePath.string());
@@ -109,17 +101,17 @@ bool AssetUtil::import_texture_cube(const FS::Path& sourcePath)
         "nz.png",
     };
 
-    TextureCubeAssetImportInfo importI{};
-    importI.samplerHint.filter = RFILTER_LINEAR;
-    importI.samplerHint.mipmapFilter = RFILTER_LINEAR;
-    importI.samplerHint.addressMode = RSAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-    importI.dstPath = savePath;
+    auto* importI = (TextureCubeAssetImportInfo*)mObj->importer.allocate_import_info(ASSET_TYPE_TEXTURE_CUBE);
+    importI->samplerHint.filter = RFILTER_LINEAR;
+    importI->samplerHint.mipmapFilter = RFILTER_LINEAR;
+    importI->samplerHint.addressMode = RSAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
+    importI->dstPath = savePath;
 
     bool allFacesFound = true;
 
     for (int i = 0; i < 6; i++)
     {
-        FS::Path faceFilePath = importI.srcPaths[i] = sourcePath / FS::Path(faceFileNames[i]);
+        FS::Path faceFilePath = importI->srcPaths[i] = sourcePath / FS::Path(faceFileNames[i]);
 
         if (!FS::exists(faceFilePath))
         {
@@ -131,9 +123,7 @@ bool AssetUtil::import_texture_cube(const FS::Path& sourcePath)
     if (!allFacesFound)
         return false;
 
-    AssetImportResult result = mObj->importer.import_asset_synchronous(asset, &importI);
-
-    heap_free(memory);
+    AssetImportResult result = mObj->importer.import_asset_synchronous(importI);
 
     if (result.status)
         sLog.info("import_texture_cube: saved to {}", savePath.string());
@@ -143,9 +133,6 @@ bool AssetUtil::import_texture_cube(const FS::Path& sourcePath)
 
 bool AssetUtil::import_font(const FS::Path& sourcePath)
 {
-    void* memory = heap_malloc(get_asset_byte_size(ASSET_TYPE_FONT), MEMORY_USAGE_ASSET);
-    FontAsset asset((AssetObj*)memory);
-
     std::string ext = sourcePath.extension().string();
     if (ext != ".ttf")
     {
@@ -156,12 +143,10 @@ bool AssetUtil::import_font(const FS::Path& sourcePath)
     FS::Path savePath(sourcePath);
     savePath.replace_extension(LD_ASSET_EXT);
 
-    FontAssetImportInfo importI{};
-    importI.srcPath = sourcePath;
-    importI.dstPath = savePath;
-    AssetImportResult result = mObj->importer.import_asset_synchronous(asset, &importI);
-
-    heap_free(memory);
+    auto* importI = (FontAssetImportInfo*)mObj->importer.allocate_import_info(ASSET_TYPE_FONT);
+    importI->srcPath = sourcePath;
+    importI->dstPath = savePath;
+    AssetImportResult result = mObj->importer.import_asset_synchronous(importI);
 
     if (result.status)
         sLog.info("import_font: saved to {}", savePath.string());
@@ -171,9 +156,6 @@ bool AssetUtil::import_font(const FS::Path& sourcePath)
 
 bool AssetUtil::import_mesh(const FS::Path& sourcePath)
 {
-    void* memory = heap_malloc(get_asset_byte_size(ASSET_TYPE_MESH), MEMORY_USAGE_ASSET);
-    MeshAsset asset((AssetObj*)memory);
-
     std::string ext = sourcePath.extension().string();
     if (ext != ".gltf")
     {
@@ -184,12 +166,10 @@ bool AssetUtil::import_mesh(const FS::Path& sourcePath)
     FS::Path savePath(sourcePath);
     savePath.replace_extension(LD_ASSET_EXT);
 
-    MeshAssetImportInfo importI;
-    importI.srcPath = sourcePath;
-    importI.dstPath = savePath;
-    AssetImportResult result = mObj->importer.import_asset_synchronous(asset, &importI);
-
-    heap_free(memory);
+    auto* importI = (MeshAssetImportInfo*)mObj->importer.allocate_import_info(ASSET_TYPE_MESH);
+    importI->srcPath = sourcePath;
+    importI->dstPath = savePath;
+    AssetImportResult result = mObj->importer.import_asset_synchronous(importI);
 
     if (result.status)
         sLog.info("import_mesh: saved to {}", savePath.string());
@@ -199,9 +179,6 @@ bool AssetUtil::import_mesh(const FS::Path& sourcePath)
 
 bool AssetUtil::import_audio_clip(const FS::Path& sourcePath)
 {
-    void* memory = heap_malloc(get_asset_byte_size(ASSET_TYPE_AUDIO_CLIP), MEMORY_USAGE_ASSET);
-    AudioClipAsset asset((AssetObj*)memory);
-
     std::string ext = sourcePath.extension().string();
     if (ext != ".wav" && ext != ".mp3")
     {
@@ -212,12 +189,10 @@ bool AssetUtil::import_audio_clip(const FS::Path& sourcePath)
     FS::Path savePath(sourcePath);
     savePath.replace_extension(LD_ASSET_EXT);
 
-    AudioClipAssetImportInfo importI{};
-    importI.srcPath = sourcePath;
-    importI.dstPath = savePath;
-    AssetImportResult result = mObj->importer.import_asset_synchronous(asset, &importI);
-
-    heap_free(memory);
+    auto* importI = (AudioClipAssetImportInfo*)mObj->importer.allocate_import_info(ASSET_TYPE_AUDIO_CLIP);
+    importI->srcPath = sourcePath;
+    importI->dstPath = savePath;
+    AssetImportResult result = mObj->importer.import_asset_synchronous(importI);
 
     if (result.status)
         sLog.info("import_audio_clip: saved to {}", savePath.string());
@@ -227,9 +202,6 @@ bool AssetUtil::import_audio_clip(const FS::Path& sourcePath)
 
 bool AssetUtil::import_lua_script(const FS::Path& sourcePath, LuaScriptDomain domain)
 {
-    void* memory = heap_malloc(get_asset_byte_size(ASSET_TYPE_LUA_SCRIPT), MEMORY_USAGE_ASSET);
-    LuaScriptAsset asset((AssetObj*)memory);
-
     std::string ext = sourcePath.extension().string();
     if (ext != ".lua")
     {
@@ -240,13 +212,11 @@ bool AssetUtil::import_lua_script(const FS::Path& sourcePath, LuaScriptDomain do
     FS::Path savePath(sourcePath);
     savePath.replace_extension(LD_ASSET_EXT);
 
-    LuaScriptAssetImportInfo importI;
-    importI.srcPath = sourcePath;
-    importI.dstPath = savePath;
-    importI.domain = domain;
-    AssetImportResult result = mObj->importer.import_asset_synchronous(asset, &importI);
-
-    heap_free(memory);
+    auto* importI = (LuaScriptAssetImportInfo*)mObj->importer.allocate_import_info(ASSET_TYPE_LUA_SCRIPT);
+    importI->srcPath = sourcePath;
+    importI->dstPath = savePath;
+    importI->domain = domain;
+    AssetImportResult result = mObj->importer.import_asset_synchronous(importI);
 
     if (result.status)
         sLog.info("import_lua_script: saved to {}", savePath.string());
