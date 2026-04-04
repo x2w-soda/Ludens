@@ -1,11 +1,10 @@
 #pragma once
 
 #include <Ludens/Event/Event.h>
+#include <Ludens/WindowRegistry/WindowRegistryDef.h>
 #include <cstdint>
 
 namespace LD {
-
-using WindowID = uint32_t;
 
 struct WindowEvent : Event
 {

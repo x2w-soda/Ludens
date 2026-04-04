@@ -127,6 +127,38 @@ static Bitmap generate_sdf_atlas(FontObj* obj, std::vector<msdf_atlas::GlyphGeom
     return handle;
 }
 
+static void measure_line_limits(FontAtlas atlas, FontMetrics metrics, View text, float fontSizePx, float& outMinWidth, float& outMaxWidth)
+{
+    outMinWidth = 0.0f;
+    outMaxWidth = 0.0f;
+
+    if (!text)
+        return;
+
+    Vec2 baseline(0.0f);
+    float lineW = 0.0f;
+
+    for (size_t i = 0; i < text.size; i++)
+    {
+        uint32_t c = (uint32_t)text.data[i];
+
+        if (c == '\n')
+        {
+            lineW = 0.0f;
+            continue;
+        }
+
+        float advanceX;
+        Rect rect;
+        Vec2 baseline(lineW, (float)metrics.ascent);
+        atlas.get_baseline_glyph(c, fontSizePx, baseline, rect, advanceX);
+
+        lineW += advanceX;
+        outMaxWidth = std::max<float>(outMaxWidth, lineW);
+        outMinWidth = std::max<float>(outMinWidth, rect.w);
+    }
+}
+
 Font Font::create_from_path(const char* path)
 {
     LD_PROFILE_SCOPE;
@@ -292,7 +324,13 @@ bool FontAtlas::get_baseline_glyph(uint32_t code, float fontSize, const Vec2& ba
     return true;
 }
 
-int FontAtlas::measure_text_index(View text, float fontSizePx, float limitWidth, const Vec2& pos)
+struct TextIndexProbe
+{
+    int charIndex = 0;
+    Vec2 pickPos; // in baseline local space
+};
+
+int FontAtlas::measure_text_index(View text, float fontSizePx, float limitWidth, Vec2 pos)
 {
     if (!text)
         return -1;
@@ -300,28 +338,33 @@ int FontAtlas::measure_text_index(View text, float fontSizePx, float limitWidth,
     FontMetrics metrics;
     get_font().get_metrics(metrics, fontSizePx);
 
-    Vec2 baseline(0.0f, metrics.ascent);
-
-    for (size_t i = 0; i < text.size; i++)
-    {
-        uint32_t c = (uint32_t)text.data[i];
-
-        // TODO: text wrapping using whitespace as boundary
-        if (c == '\n' || baseline.x >= limitWidth)
+    Range range(0, text.size);
+    FontAtlas handle(mObj);
+    FontGlyphIteration it{};
+    it.text = text;
+    it.fontSizePx = fontSizePx;
+    it.limitWidth = limitWidth;
+    it.lineHeight = metrics.lineHeight;
+    it.spanCount = 1;
+    it.spanAtlas = &handle;
+    it.spanRange = &range;
+    it.glyphCB = [](Rect rect, size_t charIndex, size_t spanIndex, void* user) {
+        TextIndexProbe* probe = (TextIndexProbe*)user;
+        if (rect.contains(probe->pickPos))
         {
-            baseline.y += (float)metrics.lineHeight;
-            baseline.x = 0.0f;
-            continue;
+            probe->charIndex = (int)charIndex;
+            return true;
         }
+        return false;
+    };
 
-        float advanceX;
-        Rect rect;
-        get_baseline_glyph(c, fontSizePx, baseline, rect, advanceX);
-        baseline.x += advanceX;
+    TextIndexProbe probe{};
+    probe.charIndex = -1;
+    probe.pickPos = pos;
+    probe.pickPos.y -= metrics.ascent;
+    font_glyph_iterator(&it, &probe);
 
-        if (rect.contains(pos) && i < text.size)
-            return (int)i;
-    }
+    return probe.charIndex;
 }
 
 float FontAtlas::measure_wrap_size(View text, float fontSizePx, float limitWidth)
@@ -329,29 +372,22 @@ float FontAtlas::measure_wrap_size(View text, float fontSizePx, float limitWidth
     FontMetrics metrics;
     get_font().get_metrics(metrics, fontSizePx);
 
-    Vec2 baseline(0.0f, metrics.ascent);
-
-    if (text.size == 0)
+    if (!text)
         return (float)metrics.lineHeight;
 
-    for (size_t i = 0; i < text.size; i++)
-    {
-        uint32_t c = (uint32_t)text.data[i];
+    Range range(0, text.size);
+    FontAtlas handle(mObj);
+    FontGlyphIteration it{};
+    it.text = text;
+    it.fontSizePx = fontSizePx;
+    it.limitWidth = limitWidth;
+    it.lineHeight = metrics.lineHeight;
+    it.spanCount = 1;
+    it.spanAtlas = &handle;
+    it.spanRange = &range;
 
-        // TODO: text wrapping using whitespace as boundary
-        if (c == '\n' || baseline.x >= limitWidth)
-        {
-            baseline.y += (float)metrics.lineHeight;
-            baseline.x = 0.0f;
-            continue;
-        }
-
-        float advanceX;
-        Rect rect;
-        get_baseline_glyph(c, fontSizePx, baseline, rect, advanceX);
-
-        baseline.x += advanceX;
-    }
+    Vec2 baseline(0.0f, metrics.ascent);
+    baseline += font_glyph_iterator(&it, nullptr);
 
     return baseline.y - (float)metrics.descent;
 }
@@ -361,33 +397,44 @@ void FontAtlas::measure_wrap_limit(View text, float fontSizePx, float& outMinWid
     FontMetrics metrics;
     get_font().get_metrics(metrics, fontSizePx);
 
-    outMinWidth = 0.0f;
-    outMaxWidth = 0.0f;
+    measure_line_limits(*this, metrics, text, fontSizePx, outMinWidth, outMaxWidth);
+}
 
-    if (text.size == 0)
-        return;
+Vec2 font_glyph_iterator(FontGlyphIteration* it, void* user)
+{
+    Vec2 baseline(it->startX, 0.0f);
+    size_t charI = 0;
 
-    float lineW = 0.0f;
-
-    for (size_t i = 0; i < text.size; i++)
+    for (size_t spanI = 0; spanI < it->spanCount; spanI++)
     {
-        uint32_t c = (uint32_t)text.data[i];
+        FontAtlas atlas = it->spanAtlas[spanI];
+        Range range = it->spanRange[spanI];
+        View text(it->text.data + range.offset, range.size);
 
-        if (c == '\n')
+        for (size_t j = 0; j < text.size; j++, charI++)
         {
-            lineW = 0.0f;
-            continue;
+            uint32_t c = (uint32_t)text.data[j];
+
+            // TODO: text wrapping using whitespace as boundary
+            if (c == '\n' || baseline.x >= it->limitWidth)
+            {
+                baseline.y += it->lineHeight;
+                baseline.x = 0.0f;
+                continue;
+            }
+
+            float advanceX;
+            Rect rect;
+            atlas.get_baseline_glyph(c, it->fontSizePx, baseline, rect, advanceX);
+
+            baseline.x += advanceX;
+
+            if (it->glyphCB && it->glyphCB(rect, charI, spanI, user))
+                return baseline;
         }
-
-        float advanceX;
-        Rect rect;
-        Vec2 baseline(lineW, (float)metrics.ascent);
-        get_baseline_glyph(c, fontSizePx, baseline, rect, advanceX);
-
-        lineW += advanceX;
-        outMaxWidth = std::max<float>(outMaxWidth, lineW);
-        outMinWidth = std::max<float>(outMinWidth, rect.w);
     }
+
+    return baseline;
 }
 
 } // namespace LD

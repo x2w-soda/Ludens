@@ -3,6 +3,7 @@
 #include <Ludens/Header/Handle.h>
 #include <Ludens/Header/Math/Rect.h>
 #include <Ludens/Header/Math/Vec2.h>
+#include <Ludens/Header/Range.h>
 #include <Ludens/Media/Bitmap.h>
 #include <cstddef>
 
@@ -76,7 +77,7 @@ struct FontAtlas : Handle<struct FontAtlasObj>
 
     /// @brief Measure the index of the character at position.
     /// @return If non-negative, the index into text where the character was found.
-    int measure_text_index(View text, float fontSizePx, float limitWidth, const Vec2& pos);
+    int measure_text_index(View text, float fontSizePx, float limitWidth, Vec2 pos);
 
     /// @brief Measure height of text if the width is limited.
     float measure_wrap_size(View text, float fontSizePx, float limitWidth);
@@ -84,5 +85,25 @@ struct FontAtlas : Handle<struct FontAtlasObj>
     /// @brief Measure minimum width and maximum width of text if unwrapped.
     void measure_wrap_limit(View text, float fontSizePx, float& outMinWidth, float& outMaxWidth);
 };
+
+/// @brief Return true to stop iterating.
+typedef bool (*FontGlyphCallback)(Rect rect, size_t charIndex, size_t spanIndex, void* user);
+
+struct FontGlyphIteration
+{
+    View text;                           // Text to iterate
+    size_t spanCount;                    // Number of spans
+    FontAtlas* spanAtlas;                // Font atlas for each span
+    Range* spanRange;                    // Range of text for each span
+    float lineHeight;                    // Fixed vertical distance between baselines.
+    float fontSizePx;                    // Fixed font size during iteration.
+    float limitWidth;                    // width limit before wrapping to the next baseline
+    float startX = 0.0f;                 // Starting X offset along the baseline, less than limitWidth.
+    FontGlyphCallback glyphCB = nullptr; // Optional callback, return true to stop iteration early.
+};
+
+/// @brief Iterate text.
+/// @return Offset between the start and end cursor positions.
+Vec2 font_glyph_iterator(FontGlyphIteration* it, void* user);
 
 } // namespace LD
