@@ -4,6 +4,7 @@
 #include <Ludens/Header/Color.h>
 #include <Ludens/Header/Handle.h>
 #include <Ludens/Header/Math/Vec2.h>
+#include <Ludens/WindowRegistry/WindowRegistryDef.h>
 
 #include <cstdint>
 #include <utility>
@@ -14,17 +15,6 @@ namespace LD {
 
 struct Event;
 struct Bitmap;
-
-enum CursorType
-{
-    CURSOR_TYPE_DEFAULT = 0, /// Default system cursor state, usually arrow shape
-    CURSOR_TYPE_IBEAM,       /// I-Beam cursor shape, hints at text input
-    CURSOR_TYPE_CROSSHAIR,   /// Crosshair cursor shape
-    CURSOR_TYPE_HAND,        /// Hand cursor shape
-    CURSOR_TYPE_HRESIZE,     /// Horizontal resize cursor shape
-    CURSOR_TYPE_VRESIZE,     /// Vertical resize cursor shape
-    CURSOR_TYPE_ENUM_COUNT,
-};
 
 typedef void (*WindowEventFn)(const WindowEvent* event, void*);
 

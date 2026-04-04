@@ -93,6 +93,7 @@ public:
 public: // decorators and hints
     void set_cursor_mode_normal();
     void set_cursor_mode_disabled();
+    void set_cursor(GLFWcursor* cursor);
 
     void hint_icon(int iconCount, Bitmap* icons);
     void hint_title_bar_text(const char* cstr);
@@ -125,6 +126,7 @@ private:
     uint32_t mWidth = 0;
     uint32_t mHeight = 0;
     Vector<WindowID> mChildrenID;
+    GLFWcursor* mCursor = nullptr;
     GLFWwindow* mHandle = nullptr;
     WindowRegistryObj* mRegistry = nullptr;
     WindowEventFn mOnEvent = nullptr;

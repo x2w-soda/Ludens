@@ -148,10 +148,12 @@ void WindowRegistryObj::frame_boundary()
 
 void WindowRegistryObj::hint_window_cursor_shape(WindowID id, CursorType cursor)
 {
-    if (!mWindows.contains(id))
+    auto it = mWindows.find(id);
+
+    if (it == mWindows.end())
         return;
 
-    GLFWwindow* window = mWindows[id]->get_glfw_handle();
+    WindowObj* windowObj = it->second;
     int cursorIdx = (int)cursor;
 
     if (!mCursors[cursorIdx])
@@ -165,7 +167,7 @@ void WindowRegistryObj::hint_window_cursor_shape(WindowID id, CursorType cursor)
         }
     }
 
-    glfwSetCursor(window, mCursors[cursorIdx]);
+    windowObj->set_cursor(mCursors[cursorIdx]);
 }
 
 void WindowRegistryObj::add_observer(WindowEventFn fn, void* user)

@@ -173,6 +173,15 @@ void WindowObj::set_cursor_mode_disabled()
     glfwSetInputMode(mHandle, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 }
 
+void WindowObj::set_cursor(GLFWcursor* cursor)
+{
+    if (cursor == mCursor)
+        return;
+
+    mCursor = cursor;
+    glfwSetCursor(mHandle, cursor);
+}
+
 void WindowObj::hint_icon(int iconCount, Bitmap* icons)
 {
     Vector<GLFWimage> images;

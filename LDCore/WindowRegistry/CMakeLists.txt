@@ -1,6 +1,7 @@
 set(MODULE_NAME LDWindowRegistry)
 
 set(MODULE_INCLUDE
+	${LUDENS_INCLUDE_DIR}/Ludens/WindowRegistry/WindowRegistryDef.h
 	${LUDENS_INCLUDE_DIR}/Ludens/WindowRegistry/WindowRegistry.h
 	${LUDENS_INCLUDE_DIR}/Ludens/WindowRegistry/Input.h
 )
