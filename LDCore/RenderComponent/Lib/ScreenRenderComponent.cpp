@@ -77,9 +77,9 @@ private: // instance members
     bool mHasInputImage;
 
     void flush_rects();
-    void write_quad_image(const Rect& rect, Color color, int imageIndex, const Rect& uv, bool forceAlphaOne);
-    void write_quad_rounded(const Rect& rect, Color color, int imageIndex, const Rect& uv, float radius);
-    void write_quad_ellipse(const Rect& rect, Color color, int imageIndex, const Rect& uv);
+    void write_quad_image(Rect rect, Color color, int imageIndex, Rect uv, bool forceAlphaOne);
+    void write_quad_rounded(Rect rect, Color color, int imageIndex, Rect uv, float radius);
+    void write_quad_ellipse(Rect rect, Color color, int imageIndex, Rect uv);
 
     int get_image_index(RImage image);
     inline const char* io_name() const { return "IO"; }
@@ -213,7 +213,7 @@ void ScreenRenderComponentObj::flush_rects()
     newBatch.screenSet = newBatch.imageSlotSetPool.allocate();
 }
 
-void ScreenRenderComponentObj::write_quad_image(const Rect& rect, Color color, int imageIndex, const Rect& uv, bool forceAlphaOne)
+void ScreenRenderComponentObj::write_quad_image(Rect rect, Color color, int imageIndex, Rect uv, bool forceAlphaOne)
 {
     LD_ASSERT(!mRectBatch.is_full());
 
@@ -238,7 +238,7 @@ void ScreenRenderComponentObj::write_quad_image(const Rect& rect, Color color, i
     v[3] = {x0, y1, u0, v1, color, control[3]}; // BL
 }
 
-void ScreenRenderComponentObj::write_quad_rounded(const Rect& rect, Color color, int imageIndex, const Rect& uv, float radius)
+void ScreenRenderComponentObj::write_quad_rounded(Rect rect, Color color, int imageIndex, Rect uv, float radius)
 {
     LD_ASSERT(!mRectBatch.is_full());
     LD_ASSERT(mPipelineType == QUAD_PIPELINE_UBER);
@@ -269,7 +269,7 @@ void ScreenRenderComponentObj::write_quad_rounded(const Rect& rect, Color color,
     v[3] = {x0, y1, u0, v1, color, control[3]}; // BL
 }
 
-void ScreenRenderComponentObj::write_quad_ellipse(const Rect& rect, Color color, int imageIndex, const Rect& uv)
+void ScreenRenderComponentObj::write_quad_ellipse(Rect rect, Color color, int imageIndex, Rect uv)
 {
     LD_ASSERT(!mRectBatch.is_full());
     LD_ASSERT(mPipelineType == QUAD_PIPELINE_UBER);
@@ -489,7 +489,7 @@ void ScreenRenderComponent::set_view_projection_index(int vpIndex)
     mObj->mList.cmd_push_constant(QuadPipeline::layout(), 0, sizeof(pc), &pc);
 }
 
-void ScreenRenderComponent::push_viewport(const Rect& viewport)
+void ScreenRenderComponent::push_viewport(Rect viewport)
 {
     LD_ASSERT(mObj->mList);
 
@@ -500,7 +500,7 @@ void ScreenRenderComponent::push_viewport(const Rect& viewport)
     mObj->mList.cmd_set_viewport(viewport);
 }
 
-void ScreenRenderComponent::push_viewport_normalized(const Rect& viewport)
+void ScreenRenderComponent::push_viewport_normalized(Rect viewport)
 {
     LD_ASSERT(mObj->mList);
 
@@ -537,7 +537,7 @@ void ScreenRenderComponent::pop_viewport()
     }
 }
 
-void ScreenRenderComponent::push_scissor(const Rect& scissor)
+void ScreenRenderComponent::push_scissor(Rect scissor)
 {
     LD_ASSERT(mObj->mList);
 
@@ -640,7 +640,7 @@ QuadVertex* ScreenRenderComponent::draw(RImage image)
     return v;
 }
 
-void ScreenRenderComponent::draw_rect(const Rect& rect, Color color)
+void ScreenRenderComponent::draw_rect(Rect rect, Color color)
 {
     if (mObj->mRectBatch.is_full())
         mObj->flush_rects();
@@ -659,7 +659,7 @@ void ScreenRenderComponent::draw_rect(const Rect& rect, Color color)
     v[3] = {x0, y1, 0, 0, color, 0}; // BL
 }
 
-void ScreenRenderComponent::draw_rect(const Mat4& model, const Rect& localRect, Color color)
+void ScreenRenderComponent::draw_rect(const Mat4& model, Rect localRect, Color color)
 {
     Vec4 corner[4];
     corner[0] = model * Vec4(localRect.x, localRect.y, 0.0f, 1.0f);
@@ -674,7 +674,7 @@ void ScreenRenderComponent::draw_rect(const Mat4& model, const Rect& localRect, 
     v[3] = {corner[3].x, corner[3].y, 0, 0, color, 0}; // BL
 }
 
-void ScreenRenderComponent::draw_rect_outline(const Rect& rect, Color color, float thickness)
+void ScreenRenderComponent::draw_rect_outline(Rect rect, Color color, float thickness)
 {
     if (mObj->mRectBatch.get_quad_count() + 4 > mObj->mRectBatch.get_max_rect_count())
         mObj->flush_rects();
@@ -697,7 +697,7 @@ void ScreenRenderComponent::draw_rect_outline(const Rect& rect, Color color, flo
     draw_rect(barR, color);
 }
 
-void ScreenRenderComponent::draw_rect_outline(const Mat4& model, const Rect& localRect, Color color, float thickness)
+void ScreenRenderComponent::draw_rect_outline(const Mat4& model, Rect localRect, Color color, float thickness)
 {
     float x0 = localRect.x;
     float x1 = localRect.x + localRect.w;
@@ -715,7 +715,7 @@ void ScreenRenderComponent::draw_rect_outline(const Mat4& model, const Rect& loc
     draw_rect(model, barR, color);
 }
 
-void ScreenRenderComponent::draw_rect_rounded(const Rect& rect, Color color, float radius)
+void ScreenRenderComponent::draw_rect_rounded(Rect rect, Color color, float radius)
 {
     if (mObj->mRectBatch.is_full())
         mObj->flush_rects();
@@ -724,7 +724,7 @@ void ScreenRenderComponent::draw_rect_rounded(const Rect& rect, Color color, flo
     mObj->write_quad_rounded(rect, color, 0, uv, radius);
 }
 
-void ScreenRenderComponent::draw_ellipse(const Rect& rect, Color color)
+void ScreenRenderComponent::draw_ellipse(Rect rect, Color color)
 {
     if (mObj->mRectBatch.is_full())
         mObj->flush_rects();
@@ -732,7 +732,7 @@ void ScreenRenderComponent::draw_ellipse(const Rect& rect, Color color)
     mObj->write_quad_ellipse(rect, color, 0, Rect(0.0f, 0.0f, 1.0f, 1.0f));
 }
 
-void ScreenRenderComponent::draw_ellipse_image(const Rect& rect, Color color, RImage image, const Rect& uv)
+void ScreenRenderComponent::draw_ellipse_image(Rect rect, Color color, RImage image, Rect uv)
 {
     if (mObj->mRectBatch.is_full())
         mObj->flush_rects();
@@ -743,7 +743,7 @@ void ScreenRenderComponent::draw_ellipse_image(const Rect& rect, Color color, RI
     mObj->write_quad_ellipse(rect, color, imageIdx, uv);
 }
 
-void ScreenRenderComponent::draw_image(const Rect& rect, Color color, RImage image, const Rect& uv, bool forceAlphaOne)
+void ScreenRenderComponent::draw_image(Rect rect, Color color, RImage image, Rect uv, bool forceAlphaOne)
 {
     if (mObj->mRectBatch.is_full())
         mObj->flush_rects();
@@ -754,7 +754,7 @@ void ScreenRenderComponent::draw_image(const Rect& rect, Color color, RImage ima
     mObj->write_quad_image(rect, color, imageIdx, uv, forceAlphaOne);
 }
 
-void ScreenRenderComponent::draw_image_rounded(const Rect& rect, Color color, RImage image, const Rect& uv, float radius)
+void ScreenRenderComponent::draw_image_rounded(Rect rect, Color color, RImage image, Rect uv, float radius)
 {
     if (mObj->mRectBatch.is_full())
         mObj->flush_rects();
@@ -768,7 +768,7 @@ void ScreenRenderComponent::draw_image_rounded(const Rect& rect, Color color, RI
 // NOTE: this function applies the color mask,
 //       if caller also applies the color mask
 //       we will have the mask incorrectly applied twice.
-void ScreenRenderComponent::draw_glyph(FontAtlas atlas, RImage atlasImage, float fontSize, const Vec2& pos, uint32_t code, Color color)
+void ScreenRenderComponent::draw_glyph(FontAtlas atlas, RImage atlasImage, float fontSize, Vec2 pos, uint32_t code, Color color)
 {
     if (mObj->mRectBatch.is_full())
         mObj->flush_rects();
@@ -813,7 +813,7 @@ void ScreenRenderComponent::draw_glyph(FontAtlas atlas, RImage atlasImage, float
     v[3] = {x0, y1, u0, v1, color, control[3]}; // BL
 }
 
-float ScreenRenderComponent::draw_glyph_baseline(FontAtlas atlas, RImage atlasImage, float fontSize, const Vec2& baseline, uint32_t code, Color color)
+float ScreenRenderComponent::draw_glyph_baseline(FontAtlas atlas, RImage atlasImage, float fontSize, Vec2 baseline, uint32_t code, Color color)
 {
     float advanceX;
     Rect rect;
@@ -823,10 +823,10 @@ float ScreenRenderComponent::draw_glyph_baseline(FontAtlas atlas, RImage atlasIm
     return advanceX;
 }
 
-void ScreenRenderComponent::draw_text(FontAtlas atlas, RImage atlasImage, float fontSize, const Vec2& pos, const char* text, Color color, float wrapWidth)
+Vec2 ScreenRenderComponent::draw_text(FontAtlas atlas, RImage atlasImage, float fontSize, Vec2 pos, View text, Color color, float wrapWidth)
 {
     if (!text)
-        return;
+        return pos;
 
     Font f = atlas.get_font();
     FontMetrics metrics;
@@ -838,10 +838,9 @@ void ScreenRenderComponent::draw_text(FontAtlas atlas, RImage atlasImage, float 
     // do not cause the last character in single-line text to wrap.
     wrapWidth += 0.1f;
 
-    size_t len = strlen(text);
-    for (size_t i = 0; i < len; i++)
+    for (size_t i = 0; i < text.size; i++)
     {
-        uint32_t c = (uint32_t)text[i];
+        uint32_t c = (uint32_t)text.data[i];
 
         float advanceX;
         Rect rect;
@@ -861,16 +860,17 @@ void ScreenRenderComponent::draw_text(FontAtlas atlas, RImage atlasImage, float 
 
         baseline.x += advanceX;
     }
+
+    return Vec2(baseline.x, baseline.y - metrics.ascent);
 }
 
-void ScreenRenderComponent::draw_text_centered(FontAtlas atlas, RImage atlasImage, float fontSize, const Vec2& pos, const char* text, Color color, float width)
+void ScreenRenderComponent::draw_text_centered(FontAtlas atlas, RImage atlasImage, float fontSize, Vec2 pos, View text, Color color, float width)
 {
     if (!text)
         return;
 
     float minWidth, maxWidth;
-    View textView(text, strlen(text));
-    atlas.measure_wrap_limit(textView, fontSize, minWidth, maxWidth);
+    atlas.measure_wrap_limit(text, fontSize, minWidth, maxWidth);
 
     Vec2 adjustedPos = pos;
     adjustedPos.x += (width - maxWidth) / 2.0f;
