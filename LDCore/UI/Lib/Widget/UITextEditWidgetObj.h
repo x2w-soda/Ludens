@@ -25,7 +25,8 @@ struct UITextEditWidgetObj
 
     static void startup(UIWidgetObj* base, void* storage);
     static void cleanup(UIWidgetObj* base);
-    static bool on_event(UIWidget widget, const UIEvent& event);
+    static bool on_event(UIWidgetObj* obj, const UIEvent& event);
+    static void on_draw(UIWidgetObj* obj, ScreenRenderComponent renderer);
 };
 
 } // namespace LD

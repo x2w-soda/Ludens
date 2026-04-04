@@ -36,15 +36,14 @@ void UIWidgetObj::draw(ScreenRenderComponent renderer)
     if (flags & UI_WIDGET_FLAG_HIDDEN_BIT)
         return;
 
-    UIWidget widget(this);
-
-    if (cb.onDraw)
+    if (userCB.onDraw)
     {
-        cb.onDraw(widget, renderer);
-        return;
+        userCB.onDraw(UIWidget(this), renderer);
+        return; // overrides default draw behavior
     }
 
-    widget_on_draw(widget, renderer);
+    if (sWidgetMeta[(int)type].onDraw)
+        sWidgetMeta[(int)type].onDraw(this, renderer);
 }
 
 bool UIWidget::is_hovered()
@@ -231,22 +230,22 @@ void UIWidget::set_layout_child_align_y(UIAlign childAlignY)
 
 void UIWidget::set_on_update(void (*onUpdate)(UIWidget widget, float delta))
 {
-    mObj->cb.onUpdate = onUpdate;
+    mObj->userCB.onUpdate = onUpdate;
 }
 
 void UIWidget::set_on_draw(void (*onDraw)(UIWidget widget, ScreenRenderComponent renderer))
 {
-    mObj->cb.onDraw = onDraw;
+    mObj->userCB.onDraw = onDraw;
 }
 
 void UIWidget::set_on_event(bool (*onEvent)(UIWidget widget, const UIEvent& event))
 {
-    mObj->cb.onEvent = onEvent;
+    mObj->userCB.onEvent = onEvent;
 }
 
 bool UIWidget::has_on_event()
 {
-    return mObj->cb.onEvent != nullptr;
+    return mObj->userCB.onEvent != nullptr;
 }
 
 UIContextObj* UINode::get_context()

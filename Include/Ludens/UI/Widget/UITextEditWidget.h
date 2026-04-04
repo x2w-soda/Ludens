@@ -21,8 +21,8 @@ struct UITextEditStorage
 {
     TextEditLite editor = {};             /// text buffer editor handle
     std::string original = {};            /// text value before edit
-    UITextEditDomain domain = {};         /// input domain, filters key input
     UIFont font = {};                     /// displayed font
+    UITextEditDomain domain = {};         /// input domain, filters key input
     float fontSize = UIFont::base_size(); /// rendered size
 
     UITextEditStorage();
@@ -49,9 +49,6 @@ struct UITextEditWidget : UIWidget
 
     void set_on_change(UITextEditOnChange onChange);
     void set_on_submit(UITextEditOnSubmit onSubmit);
-
-    /// @brief Default text edit widget rendering.
-    static void on_draw(UIWidget widget, ScreenRenderComponent renderer);
 };
 
 } // namespace LD

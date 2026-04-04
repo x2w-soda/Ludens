@@ -16,7 +16,9 @@ struct UIScrollWidgetObj
 
     static void startup(UIWidgetObj* obj, void* storage);
     static void cleanup(UIWidgetObj* obj);
-    static bool on_event(UIWidget widget, const UIEvent& event);
+    static bool on_event(UIWidgetObj* obj, const UIEvent& event);
+    static void on_update(UIWidgetObj* obj, float delta);
+    static void on_draw(UIWidgetObj* obj, ScreenRenderComponent renderer);
 };
 
 } // namespace LD

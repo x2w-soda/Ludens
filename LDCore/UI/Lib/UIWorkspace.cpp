@@ -2,6 +2,7 @@
 #include <Ludens/UI/UIWorkspace.h>
 
 #include "UIObj.h"
+#include "UIWidgetMeta.h"
 
 namespace LD {
 
@@ -21,6 +22,7 @@ UIWindowObj* UIWorkspaceObj::create_window(const UILayoutInfo& layoutI, const UI
     windowObj->space = this;
     windowObj->theme = layer->ctx->theme;
     windowObj->id = ++windowIDCounter;
+    windowObj->defaultMouseControls = windowI.defaultMouseControls;
 
     if (windowI.name)
         windowObj->name = std::string(windowI.name);
@@ -30,9 +32,6 @@ UIWindowObj* UIWorkspaceObj::create_window(const UILayoutInfo& layoutI, const UI
 
     if (windowI.drawWithScissor)
         windowObj->flags |= UI_WIDGET_FLAG_DRAW_WITH_SCISSOR_BIT;
-
-    if (windowI.defaultMouseControls)
-        windowObj->cb.onEvent = UIWindowObj::on_event;
 
     return windowObj;
 }
@@ -61,23 +60,20 @@ void UIWorkspaceObj::pre_update()
     deferredWindowDestruction.clear();
 }
 
-void UIWorkspaceObj::update(float delta)
+void UIWorkspaceObj::update_windows(float delta)
 {
     for (UIWindowObj* window : nodeWindows)
     {
-        if (window->cb.onUpdate)
-            window->cb.onUpdate({window}, delta);
+        widget_on_update(window, delta);
 
-        // updates all widgets within window
-        window->update(delta);
+        window->update_widgets(delta);
     }
 
     for (UIWindowObj* window : floatWindows)
     {
-        if (window->cb.onUpdate)
-            window->cb.onUpdate({window}, delta);
+        widget_on_update(window, delta);
 
-        window->update(delta);
+        window->update_widgets(delta);
     }
 }
 

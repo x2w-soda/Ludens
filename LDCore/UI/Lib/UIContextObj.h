@@ -5,12 +5,14 @@
 #include <Ludens/Media/Font.h>
 #include <Ludens/Memory/Allocator.h>
 #include <Ludens/RenderBackend/RBackend.h>
+#include <Ludens/Text/TextSpan.h>
 #include <Ludens/UI/UIFont.h>
 #include <Ludens/UI/UITheme.h>
 #include <Ludens/UI/UIWidget.h>
 
 namespace LD {
 
+struct UITextSpan;
 struct UILayerObj;
 struct UIWidgetObj;
 struct UIWorkspaceObj;
@@ -24,16 +26,20 @@ struct UIContextObj
     UITheme theme;
     Vector<UILayerObj*> layers;
     HashSet<UILayerObj*> deferredLayerDestruction;
-    UIWidgetObj* dragWidget = nullptr;      /// the widget begin dragged
-    UIWidgetObj* pressWidget = nullptr;     /// the widget pressed and not yet released
-    UIWidgetObj* focusWidget = nullptr;     /// the widget receiving key events
-    UIWidgetObj* hoverWidgetLeaf = nullptr; /// the leaf widget under mouse cursor accepting events
-    HashSet<UIWidgetObj*> hoverWidgets;     /// set of all widgets under cursor
+    UIWidgetObj* dragWidget = nullptr;        /// the widget begin dragged
+    UIWidgetObj* pressWidget = nullptr;       /// the widget pressed and not yet released
+    UIWidgetObj* focusWidget = nullptr;       /// the widget receiving key events
+    UIWidgetObj* hoverWidgetLeaf = nullptr;   /// the leaf widget under mouse cursor accepting events
+    UIWidgetObj* requestLooseFocus = nullptr; /// the widget requesting to loose focus
+    HashSet<UIWidgetObj*> hoverWidgets;       /// set of all widgets under cursor
     void* user;
     void (*onEvent)(UIWidget, const UIEvent&, void*) = nullptr;
     Vec2 cursorPos;              /// mouse cursor global position
     Vec2 dragStartPos;           /// mouse cursor drag start global position
     MouseButton dragMouseButton; /// mouse button used for dragging
+    CursorType cursorHint = CURSOR_TYPE_DEFAULT;
+
+    UIFont get_font_from_hint(TextSpanFont font);
 
     UIWidgetObj* alloc_widget(UIWidgetType type, const UILayoutInfo& layoutI, UIWidgetObj* parent, void* storage, void* user);
     void free_widget(UIWidgetObj* widget);
@@ -43,6 +49,8 @@ struct UIContextObj
     UIWidgetObj* get_widget_in_workspace(UIWorkspaceObj* space, const Vec2& pos);
 
     void pre_update();
+    void post_update();
+    void update_cursor_hint();
 
     UILayerObj* get_or_create_layer(const char* name);
     UILayerObj* get_layer(const char* name);

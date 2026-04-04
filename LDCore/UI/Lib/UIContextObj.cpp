@@ -71,7 +71,7 @@ static UIWidgetObj* get_event_handler(UIWidgetObj* widget, const UIEvent& event)
     {
         UIEvent localEvent = get_local_event(widget, event);
 
-        if (widget->cb.onEvent && widget->cb.onEvent(UIWidget(widget), localEvent))
+        if (widget_on_event(widget, localEvent))
             return widget;
 
         switch (event.type)
@@ -100,6 +100,15 @@ static UIWidgetObj* get_event_handler(UIWidgetObj* widget, const UIEvent& event)
     }
 
     return nullptr;
+}
+
+UIFont UIContextObj::get_font_from_hint(TextSpanFont font)
+{
+    // TODO: UIContext is responsible for mapping TextSpanFont intent
+    //       to actual UIFont handle, generalize for itatlic and bold fonts.
+    (void)font;
+
+    return fontDefault;
 }
 
 UIWidgetObj* UIContextObj::alloc_widget(UIWidgetType type, const UILayoutInfo& layoutI, UIWidgetObj* parent, void* storage, void* user)
@@ -224,6 +233,30 @@ void UIContextObj::pre_update()
     deferredLayerDestruction.clear();
 }
 
+void UIContextObj::post_update()
+{
+    if (focusWidget && focusWidget == requestLooseFocus)
+        focus_widget(nullptr);
+
+    requestLooseFocus = nullptr;
+
+    update_cursor_hint();
+}
+
+void UIContextObj::update_cursor_hint()
+{
+    cursorHint = CURSOR_TYPE_DEFAULT;
+
+    // TODO: UIWidgetMeta polymorphism
+    if (focusWidget && focusWidget->type == UI_WIDGET_TEXT_EDIT)
+    {
+        cursorHint = CURSOR_TYPE_IBEAM;
+        return;
+    }
+
+    // TODO: bubble up from hover leaf until we get a cursor hint
+}
+
 void UIContextObj::raise_layer(UILayerObj* obj)
 {
     if (!obj)
@@ -274,6 +307,9 @@ void UIContextObj::invalidate_refs(UIWidgetObj* removed)
     if (removed == hoverWidgetLeaf)
         hoverWidgetLeaf = nullptr;
 
+    if (removed == requestLooseFocus)
+        requestLooseFocus = nullptr;
+
     hoverWidgets.erase(removed);
 }
 
@@ -292,8 +328,9 @@ void UIContextObj::hover_widget(UIWidgetObj* nextHoverLeafWidget)
         {
             UIEvent event{};
             event.type = UI_EVENT_MOUSE_LEAVE;
-            if (widget->cb.onEvent)
-                widget->cb.onEvent(UIWidget(widget), event);
+
+            widget_on_event(widget, event);
+
             if (onEvent)
                 onEvent(UIWidget(widget), event, user);
         }
@@ -305,8 +342,9 @@ void UIContextObj::hover_widget(UIWidgetObj* nextHoverLeafWidget)
         {
             UIEvent event{};
             event.type = UI_EVENT_MOUSE_ENTER;
-            if (widget->cb.onEvent)
-                widget->cb.onEvent(UIWidget(widget), event);
+
+            widget_on_event(widget, event);
+
             if (onEvent)
                 onEvent(UIWidget(widget), event, user);
         }
@@ -327,8 +365,7 @@ void UIContextObj::focus_widget(UIWidgetObj* nextFocusWidget)
         event.type = UI_EVENT_FOCUS_LEAVE;
 
         // signal widget user
-        if (focusWidget->cb.onEvent)
-            focusWidget->cb.onEvent(UIWidget(focusWidget), event);
+        widget_on_event(focusWidget, event);
 
         // signal context user
         if (onEvent)
@@ -344,8 +381,7 @@ void UIContextObj::focus_widget(UIWidgetObj* nextFocusWidget)
         event.type = UI_EVENT_FOCUS_ENTER;
 
         // signal widget user
-        if (focusWidget->cb.onEvent)
-            focusWidget->cb.onEvent(UIWidget(focusWidget), event);
+        widget_on_event(focusWidget, event);
 
         // signal context user
         if (onEvent)
@@ -368,15 +404,24 @@ bool UIContextObj::input_mouse_position(const UIEvent& event)
         dragEvent.drag.button = dragMouseButton;
         dragEvent.drag.begin = false;
 
-        if (dragWidget->cb.onEvent)
-            dragWidget->cb.onEvent(UIWidget(dragWidget), dragEvent);
+        widget_on_event(dragWidget, dragEvent);
 
         if (onEvent)
             onEvent(UIWidget(dragWidget), dragEvent, user);
     }
 
-    UIWidgetObj* nextLeaf = get_widget(cursorPos);
-    hover_widget(nextLeaf);
+    UIWidgetObj* leaf = get_widget(cursorPos);
+    hover_widget(leaf);
+
+    UIEvent mousePosEvent{};
+    mousePosEvent.type = UI_EVENT_MOUSE_POSITION;
+    mousePosEvent.mouse.position = cursorPos;
+
+    while (leaf)
+    {
+        widget_on_event(leaf, get_local_event(leaf, mousePosEvent));
+        leaf = leaf->parent;
+    }
 
     return true;
 }
@@ -608,6 +653,8 @@ void UIContext::update(float delta)
         layer->layout();
         layer->update(delta);
     }
+
+    mObj->post_update();
 }
 
 void UIContext::render(ScreenRenderComponent renderer)
@@ -718,6 +765,11 @@ bool UIContext::input_window_event(const WindowEvent* event)
     }
 
     return isHandled;
+}
+
+CursorType UIContext::get_cursor_hint()
+{
+    return mObj->cursorHint;
 }
 
 void UIContext::set_user(void* user)

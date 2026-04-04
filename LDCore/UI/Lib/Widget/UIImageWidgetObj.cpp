@@ -28,17 +28,13 @@ void UIImageWidgetObj::cleanup(UIWidgetObj* obj)
     (&self)->~UIImageWidgetObj();
 }
 
-UIImageStorage* UIImageWidget::get_storage()
+void UIImageWidgetObj::on_draw(UIWidgetObj* obj, ScreenRenderComponent renderer)
 {
-    return mObj->as.image.storage;
-}
-
-void UIImageWidget::on_draw(UIWidget widget, ScreenRenderComponent renderer)
-{
-    UIImageWidgetObj& self = static_cast<UIWidgetObj*>(widget)->as.image;
+    UIImageWidgetObj& self = obj->as.image;
     UIImageStorage* storage = self.storage;
+    UIWidget widget(obj);
     const Rect& imageRect = storage->rect;
-    Rect rect = widget.get_rect();
+    const Rect& rect = obj->layout.rect;
     RImage image = storage->image;
     float imageW = (float)image.width();
     float imageH = (float)image.height();
@@ -56,6 +52,16 @@ void UIImageWidget::on_draw(UIWidget widget, ScreenRenderComponent renderer)
         uv.h /= imageH;
         renderer.draw_image(rect, storage->tint, image, uv, false);
     }
+}
+
+UIImageStorage* UIImageWidget::get_storage()
+{
+    return mObj->as.image.storage;
+}
+
+void UIImageWidget::on_draw(UIWidget widget, ScreenRenderComponent renderer)
+{
+    UIImageWidgetObj::on_draw(widget.unwrap(), renderer);
 }
 
 } // namespace LD

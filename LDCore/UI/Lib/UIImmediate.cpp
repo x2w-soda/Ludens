@@ -35,6 +35,13 @@ struct UIWorkspaceState;
 struct UILayerState;
 struct UIContextState;
 
+struct UITextState
+{
+    Vector<int> spanClicks;
+
+    static bool on_span_event(UIWidget widget, const UIEvent& event, UITextSpan& span, int spanIndex, void* user);
+};
+
 struct UITextEditState
 {
     std::string lastChange;
@@ -58,6 +65,7 @@ struct UIWidgetState
     {
         Impulse isTogglePressed;
         Impulse isButtonPressed;
+        UITextState text;
         UITextEditState textEdit;
     };
 
@@ -82,6 +90,9 @@ UIWidgetState::UIWidgetState(UIWidgetType type)
     case UI_WIDGET_TOGGLE:
         isTogglePressed.set(false);
         break;
+    case UI_WIDGET_TEXT:
+        new (&text) UITextState();
+        break;
     case UI_WIDGET_TEXT_EDIT:
         new (&textEdit) UITextEditState();
         break;
@@ -94,6 +105,9 @@ UIWidgetState::~UIWidgetState()
 {
     switch (type)
     {
+    case UI_WIDGET_TEXT:
+        (&text)->~UITextState();
+        break;
     case UI_WIDGET_TEXT_EDIT:
         (&textEdit)->~UITextEditState();
         break;
@@ -726,13 +740,15 @@ void ui_context_begin(const char* ctxName, const Vec2& screenExtent)
     sImContext = get_or_create_context_state(ctxName, screenExtent);
 }
 
-void ui_context_end(float delta)
+void ui_context_end(float delta, CursorType& outCursorHint)
 {
     LD_ASSERT_UI_CONTEXT_SCOPE;
     LD_ASSERT(!sImContext->imWindow && "ui_pop_window not called");
 
     sImContext->popupLayer->layer.raise(); // always on top of user declared layers
     sImContext->ctx.update(delta);
+
+    outCursorHint = sImContext->ctx.get_cursor_hint();
     sImContext = nullptr;
 }
 
@@ -1021,6 +1037,15 @@ void ui_pop()
     // make sure events don't bleed into next frame
     parentS->events.clear();
 
+    switch (parentS->type)
+    {
+    case UI_WIDGET_TEXT:
+        parentS->text.spanClicks.clear();
+        break;
+    default:
+        break;
+    }
+
     for (int i = parentS->childCounter; i < (int)parentS->children.size(); i++)
     {
         // Widget tree hierarchy has changed compared to previous frame.
@@ -1114,8 +1139,18 @@ UITextStorage* ui_push_text(UITextStorage* storage)
     LD_ASSERT(textW.get_type() == UI_WIDGET_TEXT);
 
     imWindow->imWidgetStack.push(imWidget);
+    storage = textW.get_storage();
 
-    return textW.get_storage();
+    // intercept all span callbacks for imgui API,
+    // this is done per-frame as user may modify
+    // UITextStorage any time.
+    for (UITextSpan& span : storage->spans)
+    {
+        span.user = imWidget;
+        span.onEvent = &UITextState::on_span_event;
+    }
+
+    return storage;
 }
 
 UITextStorage* ui_push_text(UITextStorage* storage, const char* text)
@@ -1130,7 +1165,7 @@ UITextStorage* ui_push_text(UITextStorage* storage, const char* text)
     return storage;
 }
 
-void ui_text_style(Color color, UIFont font)
+void ui_text_style(Color color, TextSpanFont font)
 {
     LD_ASSERT_UI_TOP_WIDGET_TYPE(UI_WIDGET_TEXT);
 
@@ -1138,6 +1173,41 @@ void ui_text_style(Color color, UIFont font)
     UITextWidget textW = (UITextWidget)imWidget->widget;
 
     textW.set_text_style(color, font);
+}
+
+bool ui_text_span_hovered(int index)
+{
+    LD_ASSERT_UI_TOP_WIDGET_TYPE(UI_WIDGET_TEXT);
+
+    if (index < 0)
+        return false;
+
+    UIWidgetState* imWidget = sImContext->imWindow->imWidgetStack.top();
+    UITextWidget textW = (UITextWidget)imWidget->widget;
+
+    return index == textW.get_span_index();
+}
+
+bool ui_text_span_pressed(int spanIndex)
+{
+    LD_ASSERT_UI_TOP_WIDGET_TYPE(UI_WIDGET_TEXT);
+
+    UIWidgetState* imWidget = sImContext->imWindow->imWidgetStack.top();
+
+    const Vector<int>& clicks = imWidget->text.spanClicks;
+
+    return std::find(clicks.begin(), clicks.end(), spanIndex) != clicks.end();
+}
+
+bool UITextState::on_span_event(UIWidget widget, const UIEvent& event, UITextSpan& span, int spanIndex, void* user)
+{
+    UIWidgetState* imWidget = (UIWidgetState*)user;
+    LD_ASSERT(imWidget && imWidget->type == UI_WIDGET_TEXT);
+
+    if (event.type == UI_EVENT_MOUSE_DOWN)
+        imWidget->text.spanClicks.push_back(spanIndex);
+
+    return true;
 }
 
 UITextEditStorage* ui_push_text_edit(UITextEditStorage* storage)

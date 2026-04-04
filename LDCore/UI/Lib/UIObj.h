@@ -68,7 +68,7 @@ struct UIWorkspaceObj
     UIWindowObj* create_window(const UILayoutInfo& layoutI, const UIWindowInfo& windowI, void* user);
     Hash64 get_hash() const;
     void pre_update();
-    void update(float delta);
+    void update_windows(float delta);
     void layout();
 };
 
@@ -119,11 +119,13 @@ struct UIWindowObj : UIWidgetObj
     inline UIContextObj* ctx() const { return space->layer->ctx; }
     inline UILayerObj* layer() const { return space->layer; }
     Hash64 get_hash() const;
-    void update(float delta);
+
+    // updates all widgets within window
+    void update_widgets(float delta);
 
     static void draw_widget_subtree(UIWidgetObj* widget, ScreenRenderComponent renderer);
-    static void on_draw(UIWidget widget, ScreenRenderComponent renderer);
-    static bool on_event(UIWidget widget, const UIEvent& event);
+    static void on_draw(UIWidgetObj* widget, ScreenRenderComponent renderer);
+    static bool on_event(UIWidgetObj* widget, const UIEvent& event);
 };
 
 /// @brief Perform UI layout on a widget subtree.

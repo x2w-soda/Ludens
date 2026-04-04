@@ -16,9 +16,6 @@ struct UIToggleWidget : UIWidget
 {
     UIToggleStorage* get_storage();
     void set_on_toggle(UIToggleOnToggle onToggle);
-
-    /// @brief Default image widget rendering.
-    static void on_draw(UIWidget widget, ScreenRenderComponent renderer);
 };
 
 } // namespace LD

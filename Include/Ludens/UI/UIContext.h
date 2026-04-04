@@ -9,6 +9,7 @@
 #include <Ludens/UI/UIFont.h>
 #include <Ludens/UI/UILayer.h>
 #include <Ludens/UI/UITheme.h>
+#include <Ludens/WindowRegistry/WindowRegistryDef.h>
 
 #include <cstdint>
 
@@ -67,6 +68,9 @@ struct UIContext : Handle<struct UIContextObj>
 
     /// @brief Get mouse cursor position.
     Vec2 get_mouse_pos();
+
+    /// @brief Get cursor type suggestion, calculated from focus state and hovered widgets.
+    CursorType get_cursor_hint();
 
     void set_user(void* user);
     void set_on_event(void (*onEvent)(UIWidget widget, const UIEvent& event, void* user));

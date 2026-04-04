@@ -21,10 +21,9 @@ void UIButtonWidgetObj::startup(UIWidgetObj* obj, void* storage)
         self.storage->font = obj->ctx()->fontDefault;
     }
 
-    obj->cb.onEvent = UIButtonWidgetObj::on_event;
-
     UIButtonWidget handle{obj};
 }
+
 void UIButtonWidgetObj::cleanup(UIWidgetObj* base)
 {
     UIButtonWidgetObj& self = base->as.button;
@@ -32,27 +31,26 @@ void UIButtonWidgetObj::cleanup(UIWidgetObj* base)
     (&self)->~UIButtonWidgetObj();
 }
 
-bool UIButtonWidgetObj::on_event(UIWidget widget, const UIEvent& event)
+bool UIButtonWidgetObj::on_event(UIWidgetObj* obj, const UIEvent& event)
 {
-    UIWidgetObj* obj = widget;
     UIButtonWidgetObj& self = obj->as.button;
 
     // TODO: click semantics, usually when MOUSE_UP event is still within the button rect.
     if (event.type == UI_EVENT_MOUSE_DOWN && self.storage->isEnabled && self.onClick)
     {
-        self.onClick(widget, event.mouse.button, obj->user);
+        self.onClick(UIWidget(obj), event.mouse.button, obj->user);
         return true;
     }
 
     return false;
 }
 
-void UIButtonWidget::on_draw(UIWidget widget, ScreenRenderComponent renderer)
+void UIButtonWidgetObj::on_draw(UIWidgetObj* obj, ScreenRenderComponent renderer)
 {
-    UIWidgetObj* obj = widget;
     UIContextObj* ctx = obj->ctx();
     UIButtonWidgetObj& self = obj->as.button;
     UIButtonStorage* storage = self.storage;
+    UIWidget widget(obj);
     UITheme theme = widget.get_theme();
     Color bgColor = theme.get_selection_color();
     Color fgColor = theme.get_on_surface_color();

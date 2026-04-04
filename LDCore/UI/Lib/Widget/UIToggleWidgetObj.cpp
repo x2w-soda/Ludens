@@ -19,8 +19,6 @@ void UIToggleWidgetObj::startup(UIWidgetObj* obj, void* storage)
         self.storage = &self.local;
     }
 
-    obj->cb.onEvent = &UIToggleWidgetObj::on_event;
-    obj->cb.onUpdate = &UIToggleWidgetObj::on_update;
     obj->as.toggle.anim.reset(1.0f);
 }
 
@@ -30,9 +28,8 @@ void UIToggleWidgetObj::cleanup(UIWidgetObj* obj)
     (&self)->~UIToggleWidgetObj();
 }
 
-bool UIToggleWidgetObj::on_event(UIWidget widget, const UIEvent& event)
+bool UIToggleWidgetObj::on_event(UIWidgetObj* obj, const UIEvent& event)
 {
-    UIWidgetObj* obj = (UIWidgetObj*)widget;
     UIToggleWidgetObj& self = obj->as.toggle;
 
     if (event.type == UI_EVENT_MOUSE_DOWN)
@@ -49,28 +46,17 @@ bool UIToggleWidgetObj::on_event(UIWidget widget, const UIEvent& event)
     return false;
 }
 
-void UIToggleWidgetObj::on_update(UIWidget widget, float delta)
+void UIToggleWidgetObj::on_update(UIWidgetObj* obj, float delta)
 {
-    UIWidgetObj* obj = (UIWidgetObj*)widget;
     UIToggleWidgetObj& self = obj->as.toggle;
 
     // drive toggle animation
     self.anim.update(delta);
 }
 
-UIToggleStorage* UIToggleWidget::get_storage()
+void UIToggleWidgetObj::on_draw(UIWidgetObj* obj, ScreenRenderComponent renderer)
 {
-    return mObj->as.toggle.storage;
-}
-
-void UIToggleWidget::set_on_toggle(UIToggleOnToggle onToggle)
-{
-    mObj->as.toggle.onToggle = onToggle;
-}
-
-void UIToggleWidget::on_draw(UIWidget widget, ScreenRenderComponent renderer)
-{
-    UIWidgetObj* obj = (UIWidgetObj*)widget;
+    UIWidget widget(obj);
     UITheme theme = widget.get_theme();
     UIToggleWidgetObj& self = obj->as.toggle;
     Rect rect = widget.get_rect();
@@ -98,6 +84,16 @@ void UIToggleWidget::on_draw(UIWidget widget, ScreenRenderComponent renderer)
         color |= 234;
     }
     renderer.draw_rect(rect, color);
+}
+
+UIToggleStorage* UIToggleWidget::get_storage()
+{
+    return mObj->as.toggle.storage;
+}
+
+void UIToggleWidget::set_on_toggle(UIToggleOnToggle onToggle)
+{
+    mObj->as.toggle.onToggle = onToggle;
 }
 
 } // namespace LD

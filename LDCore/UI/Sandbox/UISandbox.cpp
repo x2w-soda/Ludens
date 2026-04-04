@@ -173,7 +173,11 @@ void UISandbox::imgui(const Vec2& windowExtent, float delta)
         static UIPanelStorage sPanel{};
         ui_push_panel(&sPanel);
         {
-            ui_push_text(nullptr, "Some text1 here!!!!!!");
+            UITextStorage* text = ui_push_text(nullptr, "Some text1 here!!!!!!");
+            if (ui_text_span_hovered(0))
+                text->spans[0].text.fgColor = 0x20F0F0FF;
+            if (ui_text_span_pressed(0))
+                sLog.info("Text pressed");
             ui_pop();
             static UIImageStorage sImage{mFontAtlasImage};
             ui_push_image(&sImage, 300, 300);
@@ -207,9 +211,10 @@ void UISandbox::imgui(const Vec2& windowExtent, float delta)
     ui_pop();
     ui_pop_window();
 
+    CursorType cursorHint;
     ui_workspace_end();
     ui_layer_end();
-    ui_context_end(delta);
+    ui_context_end(delta, cursorHint);
 }
 
 void UISandbox::render()

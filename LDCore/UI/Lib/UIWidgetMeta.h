@@ -12,13 +12,18 @@ struct UIWidgetMeta
     size_t objSize;
     void (*startup)(UIWidgetObj* obj, void* storage);
     void (*cleanup)(UIWidgetObj* obj);
-    void (*onDraw)(UIWidget widget, ScreenRenderComponent renderer);
+    bool (*onEvent)(UIWidgetObj* obj, const UIEvent& event);
+    void (*onUpdate)(UIWidgetObj* obj, float delta);
+    void (*onDraw)(UIWidgetObj* obj, ScreenRenderComponent renderer);
+    float (*wrapSizeX)(UIWidgetObj* obj, float limitW);
+    void (*wrapLimitX)(UIWidgetObj* obj, float& minWidth, float& maxWidth);
 };
 
 extern UIWidgetMeta sWidgetMeta[];
 
 void widget_startup(UIWidgetObj* obj, void* storage);
 void widget_cleanup(UIWidgetObj* obj);
-void widget_on_draw(UIWidget widget, ScreenRenderComponent renderer);
+void widget_on_update(UIWidgetObj* obj, float delta);
+bool widget_on_event(UIWidgetObj* obj, const UIEvent& event);
 
 } // namespace LD

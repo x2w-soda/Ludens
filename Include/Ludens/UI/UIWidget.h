@@ -129,13 +129,13 @@ struct UIWidget : Handle<struct UIWidgetObj>
     /// @brief set user data pointer
     void set_user(void* user);
 
-    /// @brief override widget update callback
+    /// @brief User widget update callback
     void set_on_update(void (*onUpdate)(UIWidget widget, float delta));
 
-    /// @brief override widget draw callback
+    /// @brief User widget draw callback
     void set_on_draw(void (*onDraw)(UIWidget widget, ScreenRenderComponent renderer));
 
-    /// @brief override widget event handler callback
+    /// @brief User widget event handler callback
     void set_on_event(bool (*onEvent)(UIWidget widget, const UIEvent& event));
     bool has_on_event();
 

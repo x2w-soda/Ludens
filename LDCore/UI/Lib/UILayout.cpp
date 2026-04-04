@@ -7,16 +7,17 @@
 #include <algorithm>
 
 #include "UIObj.h"
+#include "UIWidgetMeta.h"
 
 namespace LD {
 
 /// @brief wrap limit callback, user outputs minimum extent of the wrappable
 ///        and the maximum extent if unwrapped.
-static void ui_layout_wrap_limit(UIWidgetObj* obj, float& outMinW, float& outMaxW);
+static void ui_layout_wrap_limit_x(UIWidgetObj* obj, float& outMinW, float& outMaxW);
 
 /// @brief wrap sizing callback, given length limit in main axis,
 ///        user returns the result size on the secondary axis after wrapping.
-static float ui_layout_wrap_size(UIWidgetObj* obj, float limitW);
+static float ui_layout_wrap_size_x(UIWidgetObj* obj, float limitW);
 
 static void ui_layout_pass_clear(UIWidgetObj* root);
 static void ui_layout_pass_fit_x(UIWidgetObj* root);
@@ -31,22 +32,24 @@ static void ui_layout_grow_x(const Vector<UIWidgetObj*>& growableX, float remain
 static void ui_layout_grow_y(const Vector<UIWidgetObj*>& growableY, float remainH);
 static void ui_layout_shrink_x(Vector<UIWidgetObj*>& shrinkableX, float remainW);
 
-static void ui_layout_wrap_limit(UIWidgetObj* obj, float& outMinW, float& outMaxW)
+static void ui_layout_wrap_limit_x(UIWidgetObj* obj, float& outMinW, float& outMaxW)
 {
-    UITextWidgetObj& self = obj->as.text;
-    UITextStorage* storage = self.storage;
-    View textView(storage->value.data(), storage->value.size());
+    LD_ASSERT(obj->type == UI_WIDGET_TEXT);
 
-    return self.font.font_atlas().measure_wrap_limit(textView, storage->fontSize, outMinW, outMaxW);
+    outMinW = outMaxW = 0.0f;
+
+    if (sWidgetMeta[(int)obj->type].wrapLimitX)
+        sWidgetMeta[(int)obj->type].wrapLimitX(obj, outMinW, outMaxW);
 }
 
-static float ui_layout_wrap_size(UIWidgetObj* obj, float limitW)
+static float ui_layout_wrap_size_x(UIWidgetObj* obj, float limitW)
 {
-    UITextWidgetObj& self = obj->as.text;
-    UITextStorage* storage = self.storage;
-    View textView(storage->value.data(), storage->value.size());
+    LD_ASSERT(obj->type == UI_WIDGET_TEXT);
 
-    return self.font.font_atlas().measure_wrap_size(textView, storage->fontSize, limitW);
+    if (sWidgetMeta[(int)obj->type].wrapSizeX)
+        return sWidgetMeta[(int)obj->type].wrapSizeX(obj, limitW);
+
+    return 0.0f;
 }
 
 static void ui_layout_pass_clear(UIWidgetObj* root)
@@ -80,7 +83,7 @@ static void ui_layout_pass_fit_x(UIWidgetObj* root)
             LD_ASSERT(child->type == UI_WIDGET_TEXT);
 
             float minw, maxw;
-            ui_layout_wrap_limit(child, minw, maxw);
+            ui_layout_wrap_limit_x(child, minw, maxw);
             child->layout.rect.w = maxw;
             child->layout.minw = minw;
         }
@@ -135,10 +138,10 @@ void ui_layout_pass_fit_y(UIWidgetObj* root)
             LD_ASSERT(child->type == UI_WIDGET_TEXT);
             LD_UNREACHABLE; // TODO:
 
-            float minh, maxh;
-            ui_layout_wrap_limit(child, minh, maxh);
-            child->layout.rect.h = maxh;
-            child->layout.minh = minh;
+            // float minh, maxh;
+            // ui_layout_wrap_limit_y(child, minh, maxh);
+            // child->layout.rect.h = maxh;
+            // child->layout.minh = minh;
         }
 
         if (rootLayout.childAxis == UI_AXIS_X)
@@ -275,7 +278,7 @@ static void ui_layout_pass_wrap_x(UIWidgetObj* root)
             LD_ASSERT(child->type == UI_WIDGET_TEXT);
 
             // ui_layout_pass_grow_shrink_x should have determined width along primary axis
-            float wrappedH = ui_layout_wrap_size(child, child->layout.rect.w);
+            float wrappedH = ui_layout_wrap_size_x(child, child->layout.rect.w);
 
             child->layout.rect.h = wrappedH;
         }

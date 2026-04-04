@@ -12,9 +12,6 @@ struct UIPanelStorage
 struct UIPanelWidget : UIWidget
 {
     UIPanelStorage* get_storage();
-
-    /// @brief Default panel widget rendering.
-    static void on_draw(UIWidget widget, ScreenRenderComponent renderer);
 };
 
 } // namespace LD

@@ -60,7 +60,6 @@ struct UICallback
 struct UIWidgetObj
 {
     UILayout layout;               /// must be first field for layout semantics
-    UICallback cb{};               /// callback function pointer table; TODO: single table for each type, not each instance
     UIWindowObj* window = nullptr; /// owning window
     UIWidgetObj* parent = nullptr; /// parent widget
     UIWidgetObj* child = nullptr;  /// first child widget
@@ -70,8 +69,10 @@ struct UIWidgetObj
     Vec2 scrollOffset{};           /// offset applied to children after layout
     std::string name;              /// widget debug name
     void* user = nullptr;          /// arbitrary user data
+    UICallback userCB{};           /// callback function pointer table
     UIWidgetType type;             /// type enum
     uint32_t flags = 0;            /// widget bit flags
+    bool defaultMouseControls = false;
     union UIWidgetUnion
     {
         UIScrollWidgetObj scroll;

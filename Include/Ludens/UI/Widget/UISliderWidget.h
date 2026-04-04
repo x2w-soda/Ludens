@@ -18,9 +18,6 @@ struct UISliderWidget : UIWidget
 
     /// @brief get slider value
     float get_value();
-
-    /// @brief Default slider widget rendering.
-    static void on_draw(UIWidget widget, ScreenRenderComponent renderer);
 };
 
 } // namespace LD

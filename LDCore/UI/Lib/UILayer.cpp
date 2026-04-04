@@ -43,7 +43,7 @@ void UILayerObj::update(float delta)
 {
     for (UIWorkspaceObj* space : workspaces)
     {
-        space->update(delta);
+        space->update_windows(delta);
     }
 }
 

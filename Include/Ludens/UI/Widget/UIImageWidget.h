@@ -16,7 +16,6 @@ struct UIImageWidget : UIWidget
 {
     UIImageStorage* get_storage();
 
-    /// @brief Default image widget rendering.
     static void on_draw(UIWidget widget, ScreenRenderComponent renderer);
 };
 

@@ -26,18 +26,16 @@ void UIPanelWidgetObj::cleanup(UIWidgetObj* obj)
     (&self)->~UIPanelWidgetObj();
 }
 
+void UIPanelWidgetObj::on_draw(UIWidgetObj* obj, ScreenRenderComponent renderer)
+{
+    UIPanelWidgetObj& self = obj->as.panel;
+
+    renderer.draw_rect(obj->layout.rect, self.storage->color);
+}
+
 UIPanelStorage* UIPanelWidget::get_storage()
 {
     return mObj->as.panel.storage;
-}
-
-void UIPanelWidget::on_draw(UIWidget widget, ScreenRenderComponent renderer)
-{
-    UIWidgetObj* obj = widget;
-    UIPanelWidgetObj& self = obj->as.panel;
-    Rect rect = widget.get_rect();
-
-    renderer.draw_rect(rect, self.storage->color);
 }
 
 } // namespace LD

@@ -12,15 +12,15 @@ namespace LD {
 
 // clang-format off
 UIWidgetMeta sWidgetMeta[] = {
-    { UI_WIDGET_WINDOW,    "UIWindow",   sizeof(UIWindowObj),         nullptr,                       nullptr,                       &UIWindowObj::on_draw },
-    { UI_WIDGET_SCROLL,    "UIScroll",   sizeof(UIScrollWidgetObj),   &UIScrollWidgetObj::startup,   &UIScrollWidgetObj::cleanup,   nullptr, },
-    { UI_WIDGET_BUTTON,    "UIButton",   sizeof(UIButtonWidgetObj),   &UIButtonWidgetObj::startup,   &UIButtonWidgetObj::cleanup,   &UIButtonWidget::on_draw },
-    { UI_WIDGET_SLIDER,    "UISlider",   sizeof(UISliderWidgetObj),   &UISliderWidgetObj::startup,   &UISliderWidgetObj::cleanup,   &UISliderWidget::on_draw },
-    { UI_WIDGET_TOGGLE,    "UIToggle",   sizeof(UIToggleWidgetObj),   &UIToggleWidgetObj::startup,   &UIToggleWidgetObj::cleanup,   &UIToggleWidget::on_draw },
-    { UI_WIDGET_PANEL,     "UIPanel",    sizeof(UIPanelWidgetObj),    &UIPanelWidgetObj::startup,    &UIPanelWidgetObj::cleanup,    &UIPanelWidget::on_draw },
-    { UI_WIDGET_IMAGE,     "UIImage",    sizeof(UIImageWidgetObj),    &UIImageWidgetObj::startup,    &UIImageWidgetObj::cleanup,    &UIImageWidget::on_draw },
-    { UI_WIDGET_TEXT,      "UIText",     sizeof(UITextWidgetObj),     &UITextWidgetObj::startup,     &UITextWidgetObj::cleanup,     &UITextWidget::on_draw },
-    { UI_WIDGET_TEXT_EDIT, "UITextEdit", sizeof(UITextEditWidgetObj), &UITextEditWidgetObj::startup, &UITextEditWidgetObj::cleanup, &UITextEditWidget::on_draw },
+    { UI_WIDGET_WINDOW,    "UIWindow",   sizeof(UIWindowObj),         nullptr,                       nullptr,                       &UIWindowObj::on_event,         nullptr,                          &UIWindowObj::on_draw,          nullptr, nullptr},
+    { UI_WIDGET_SCROLL,    "UIScroll",   sizeof(UIScrollWidgetObj),   &UIScrollWidgetObj::startup,   &UIScrollWidgetObj::cleanup,   &UIScrollWidgetObj::on_event,   &UIScrollWidgetObj::on_update,    &UIScrollWidgetObj::on_draw,    nullptr, nullptr},
+    { UI_WIDGET_BUTTON,    "UIButton",   sizeof(UIButtonWidgetObj),   &UIButtonWidgetObj::startup,   &UIButtonWidgetObj::cleanup,   &UIButtonWidgetObj::on_event,   nullptr,                          &UIButtonWidgetObj::on_draw,    nullptr, nullptr},
+    { UI_WIDGET_SLIDER,    "UISlider",   sizeof(UISliderWidgetObj),   &UISliderWidgetObj::startup,   &UISliderWidgetObj::cleanup,   &UISliderWidgetObj::on_event,   nullptr,                          &UISliderWidgetObj::on_draw,    nullptr, nullptr},
+    { UI_WIDGET_TOGGLE,    "UIToggle",   sizeof(UIToggleWidgetObj),   &UIToggleWidgetObj::startup,   &UIToggleWidgetObj::cleanup,   &UIToggleWidgetObj::on_event,   &UIToggleWidgetObj::on_update,    &UIToggleWidgetObj::on_draw,    nullptr, nullptr},
+    { UI_WIDGET_PANEL,     "UIPanel",    sizeof(UIPanelWidgetObj),    &UIPanelWidgetObj::startup,    &UIPanelWidgetObj::cleanup,    nullptr,                        nullptr,                          &UIPanelWidgetObj::on_draw,     nullptr, nullptr},
+    { UI_WIDGET_IMAGE,     "UIImage",    sizeof(UIImageWidgetObj),    &UIImageWidgetObj::startup,    &UIImageWidgetObj::cleanup,    nullptr,                        nullptr,                          &UIImageWidgetObj::on_draw,     nullptr, nullptr},
+    { UI_WIDGET_TEXT,      "UIText",     sizeof(UITextWidgetObj),     &UITextWidgetObj::startup,     &UITextWidgetObj::cleanup,     &UITextWidgetObj::on_event,     nullptr,                          &UITextWidgetObj::on_draw,      UITextWidgetObj::wrap_size, UITextWidgetObj::wrap_limit},
+    { UI_WIDGET_TEXT_EDIT, "UITextEdit", sizeof(UITextEditWidgetObj), &UITextEditWidgetObj::startup, &UITextEditWidgetObj::cleanup, &UITextEditWidgetObj::on_event, nullptr,                          &UITextEditWidgetObj::on_draw,  nullptr, nullptr},
 };
 // clang-format on
 
@@ -43,13 +43,31 @@ void widget_cleanup(UIWidgetObj* obj)
         sWidgetMeta[(int)obj->type].cleanup(obj);
 }
 
-void widget_on_draw(UIWidget widget, ScreenRenderComponent renderer)
+void widget_on_update(UIWidgetObj* obj, float delta)
 {
-    UIWidgetObj* obj = widget.unwrap();
     LD_ASSERT(obj);
 
-    if (sWidgetMeta[(int)obj->type].onDraw)
-        sWidgetMeta[(int)obj->type].onDraw(widget, renderer);
+    if (sWidgetMeta[(int)obj->type].onUpdate)
+        sWidgetMeta[(int)obj->type].onUpdate(obj, delta);
+
+    if (obj->userCB.onUpdate)
+        obj->userCB.onUpdate(UIWidget(obj), delta);
+}
+
+bool widget_on_event(UIWidgetObj* obj, const UIEvent& event)
+{
+    LD_ASSERT(obj);
+
+    bool libHandled = false;
+    bool userHandled = false;
+
+    if (sWidgetMeta[(int)obj->type].onEvent)
+        libHandled = sWidgetMeta[(int)obj->type].onEvent(obj, event);
+
+    if (obj->userCB.onEvent)
+        userHandled = obj->userCB.onEvent(UIWidget(obj), event);
+
+    return libHandled || userHandled;
 }
 
 } // namespace LD

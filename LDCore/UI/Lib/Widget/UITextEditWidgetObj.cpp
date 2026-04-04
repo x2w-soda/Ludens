@@ -33,8 +33,6 @@ void UITextEditWidgetObj::startup(UIWidgetObj* obj, void* storage)
     }
 
     obj->flags |= UI_WIDGET_FLAG_FOCUSABLE_BIT;
-    obj->cb.onEvent = &UITextEditWidgetObj::on_event;
-    obj->cb.onDraw = &UITextEditWidget::on_draw;
 }
 
 void UITextEditWidgetObj::cleanup(UIWidgetObj* base)
@@ -44,9 +42,8 @@ void UITextEditWidgetObj::cleanup(UIWidgetObj* base)
     obj->~UITextEditWidgetObj();
 }
 
-bool UITextEditWidgetObj::on_event(UIWidget widget, const UIEvent& event)
+bool UITextEditWidgetObj::on_event(UIWidgetObj* obj, const UIEvent& event)
 {
-    UIWidgetObj* obj = widget.unwrap();
     auto& self = obj->as.textEdit;
 
     switch (event.type)
@@ -70,6 +67,51 @@ bool UITextEditWidgetObj::on_event(UIWidget widget, const UIEvent& event)
     return false; // not handled
 }
 
+void UITextEditWidgetObj::on_draw(UIWidgetObj* obj, ScreenRenderComponent renderer)
+{
+    UIContextObj& ctx = *obj->ctx();
+    auto& self = obj->as.textEdit;
+    const Rect& rect = obj->layout.rect;
+    const UITheme& theme = ctx.theme;
+    UITextEditStorage* storage = self.storage;
+    std::string str;
+
+    renderer.draw_rect(rect, theme.get_field_color());
+
+    Color textColor = theme.get_on_surface_color();
+    Color outlineColor = theme.get_selection_color();
+    float wrapWidth = rect.w;
+
+    if (!storage->font)
+        storage->font = ctx.fontDefault;
+
+    FontAtlas atlas = storage->font.font_atlas();
+    RImage image = storage->font.image();
+    str = storage->editor.get_string();
+
+    if (self.isEditing)
+    {
+        renderer.draw_rect_outline(rect, outlineColor, 1.0f);
+
+        float minWidth, maxWidth;
+        size_t cursor = storage->editor.get_cursor();
+        atlas.measure_wrap_limit(View(str.data(), cursor), storage->fontSize, minWidth, maxWidth);
+        float cursorX = maxWidth;
+
+        if (!str.empty())
+        {
+            renderer.draw_text(atlas, image, storage->fontSize, rect.get_pos(), str.c_str(), textColor, wrapWidth);
+        }
+
+        const float beamWidth = 2.0f; // TODO:
+        renderer.draw_rect(Rect(rect.x + cursorX, rect.y, beamWidth, rect.h), textColor);
+    }
+    else
+    {
+        renderer.draw_text(atlas, image, storage->fontSize, rect.get_pos(), str.c_str(), textColor, wrapWidth);
+    }
+}
+
 void UITextEditWidgetObj::begin_edit()
 {
     isEditing = true;
@@ -80,6 +122,8 @@ void UITextEditWidgetObj::finish_edit()
 {
     isEditing = false;
     storage->original = storage->editor.get_string();
+
+    base->ctx()->requestLooseFocus = base;
 }
 
 void UITextEditWidgetObj::cancel_edit()
@@ -95,6 +139,8 @@ void UITextEditWidgetObj::cancel_edit()
         if (onChange)
             onChange({base}, view, base->user);
     }
+
+    base->ctx()->requestLooseFocus = base;
 }
 
 void UITextEditWidgetObj::on_mouse_down_event(const UIEvent& event)
@@ -260,52 +306,6 @@ void UITextEditWidget::set_on_change(UITextEditOnChange onChange)
 void UITextEditWidget::set_on_submit(UITextEditOnSubmit onSubmit)
 {
     mObj->as.textEdit.onSubmit = onSubmit;
-}
-
-void UITextEditWidget::on_draw(UIWidget widget, ScreenRenderComponent renderer)
-{
-    UIWidgetObj* obj = widget.unwrap();
-    UIContextObj& ctx = *obj->ctx();
-    auto& self = obj->as.textEdit;
-    const Rect& rect = obj->layout.rect;
-    const UITheme& theme = ctx.theme;
-    UITextEditStorage* storage = self.storage;
-    std::string str;
-
-    renderer.draw_rect(rect, theme.get_field_color());
-
-    Color textColor = theme.get_on_surface_color();
-    Color outlineColor = theme.get_selection_color();
-    float wrapWidth = rect.w;
-
-    if (!storage->font)
-        storage->font = ctx.fontDefault;
-
-    FontAtlas atlas = storage->font.font_atlas();
-    RImage image = storage->font.image();
-    str = storage->editor.get_string();
-
-    if (self.isEditing)
-    {
-        renderer.draw_rect_outline(rect, outlineColor, 1.0f);
-
-        float minWidth, maxWidth;
-        size_t cursor = storage->editor.get_cursor();
-        atlas.measure_wrap_limit(View(str.data(), cursor), storage->fontSize, minWidth, maxWidth);
-        float cursorX = maxWidth;
-
-        if (!str.empty())
-        {
-            renderer.draw_text(atlas, image, storage->fontSize, rect.get_pos(), str.c_str(), textColor, wrapWidth);
-        }
-
-        const float beamWidth = 2.0f; // TODO:
-        renderer.draw_rect(Rect(rect.x + cursorX, rect.y, beamWidth, rect.h), textColor);
-    }
-    else
-    {
-        renderer.draw_text(atlas, image, storage->fontSize, rect.get_pos(), str.c_str(), textColor, wrapWidth);
-    }
 }
 
 } // namespace LD

@@ -3,6 +3,7 @@
 #include <Ludens/UI/UIWindow.h>
 
 #include "UIObj.h"
+#include "UIWidgetMeta.h"
 
 namespace LD {
 
@@ -25,13 +26,10 @@ Hash64 UIWindowObj::get_hash() const
     return hash;
 }
 
-void UIWindowObj::update(float delta)
+void UIWindowObj::update_widgets(float delta)
 {
     for (UIWidgetObj* widget : widgets)
-    {
-        if (widget->cb.onUpdate)
-            widget->cb.onUpdate({widget}, delta);
-    }
+        widget_on_update(widget, delta);
 }
 
 void UIWindowObj::draw_widget_subtree(UIWidgetObj* widget, ScreenRenderComponent renderer)
@@ -54,28 +52,28 @@ void UIWindowObj::draw_widget_subtree(UIWidgetObj* widget, ScreenRenderComponent
         renderer.pop_scissor();
 }
 
-void UIWindowObj::on_draw(UIWidget widget, ScreenRenderComponent renderer)
+void UIWindowObj::on_draw(UIWidgetObj* widget, ScreenRenderComponent renderer)
 {
-    auto* obj = (UIWindowObj*)widget.unwrap();
-    Rect rect = widget.get_rect();
+    auto* obj = (UIWindowObj*)widget;
 
-    renderer.draw_rect(rect, obj->color);
+    renderer.draw_rect(obj->layout.rect, obj->color);
 }
 
-bool UIWindowObj::on_event(UIWidget widget, const UIEvent& signal)
+bool UIWindowObj::on_event(UIWidgetObj* widgetObj, const UIEvent& event)
 {
-    if (signal.type != UI_EVENT_MOUSE_DRAG)
+    UIWindowObj* obj = (UIWindowObj*)widgetObj;
+
+    if (!obj->defaultMouseControls || event.type != UI_EVENT_MOUSE_DRAG)
         return false;
 
-    auto* obj = (UIWindowObj*)widget.unwrap();
     UIWindow window(obj);
-    Rect rect = widget.get_rect();
+    Rect rect = obj->layout.rect;
 
-    const Vec2& dragPos = signal.drag.position;
+    const Vec2& dragPos = event.drag.position;
 
-    if (signal.drag.begin)
+    if (event.drag.begin)
     {
-        obj->dragResize = signal.drag.button == MOUSE_BUTTON_RIGHT; // right button to resize, left button to reposition
+        obj->dragResize = event.drag.button == MOUSE_BUTTON_RIGHT; // right button to resize, left button to reposition
         obj->dragOffset = dragPos - rect.get_pos();                 // fixed drag offset
         obj->dragBeginPos = dragPos;
         obj->dragBeginSize = rect.get_size();

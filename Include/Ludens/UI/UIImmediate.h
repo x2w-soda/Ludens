@@ -21,6 +21,7 @@ namespace LD {
 struct KeyValue;
 struct MouseValue;
 struct WindowEvent;
+enum CursorType;
 
 typedef void (*IMDrawCallback)(UIWidget widget, ScreenRenderComponent renderer, void* user);
 
@@ -44,7 +45,7 @@ void ui_context_render(const char* ctxName, ScreenRenderComponent renderer);
 void ui_context_begin(const char* ctxName, const Vec2& screenExtent);
 
 /// @brief End the immediate mode context.
-void ui_context_end(float delta);
+void ui_context_end(float delta, CursorType& outCursorHint);
 
 /// @brief Begin a UILayer scope.
 /// @param layerName Unique layer name within context.
@@ -147,7 +148,9 @@ bool ui_push_popup_window(const char* popupName);
 /// @brief Push UITextWidget.
 UITextStorage* ui_push_text(UITextStorage* storage);
 UITextStorage* ui_push_text(UITextStorage* storage, const char* text);
-void ui_text_style(Color color, UIFont font);
+void ui_text_style(Color color, TextSpanFont font);
+bool ui_text_span_hovered(int index);
+bool ui_text_span_pressed(int index);
 
 /// @brief Push UITextEditWidget.
 UITextEditStorage* ui_push_text_edit(UITextEditStorage* storage);

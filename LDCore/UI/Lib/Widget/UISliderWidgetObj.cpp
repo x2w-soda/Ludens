@@ -17,8 +17,6 @@ void UISliderWidgetObj::startup(UIWidgetObj* obj, void* storage)
         obj->flags |= UI_WIDGET_FLAG_LOCAL_STORAGE_BIT;
         self.storage = &self.local;
     }
-
-    obj->cb.onEvent = &UISliderWidgetObj::on_event;
 }
 
 void UISliderWidgetObj::cleanup(UIWidgetObj* obj)
@@ -28,9 +26,9 @@ void UISliderWidgetObj::cleanup(UIWidgetObj* obj)
     (&self)->~UISliderWidgetObj();
 }
 
-bool UISliderWidgetObj::on_event(UIWidget widget, const UIEvent& event)
+bool UISliderWidgetObj::on_event(UIWidgetObj* obj, const UIEvent& event)
 {
-    UISliderWidgetObj& self = static_cast<UIWidgetObj*>(widget)->as.slider;
+    UISliderWidgetObj& self = obj->as.slider;
     UISliderStorage* storage = self.storage;
 
     if (event.type == UI_EVENT_MOUSE_DOWN)
@@ -39,19 +37,19 @@ bool UISliderWidgetObj::on_event(UIWidget widget, const UIEvent& event)
     if (event.type != UI_EVENT_MOUSE_DRAG)
         return false;
 
-    Rect rect = widget.get_rect();
+    Rect rect = obj->layout.rect;
     storage->ratio = std::clamp(((float)event.drag.position.x - rect.x) / rect.w, 0.0f, 1.0f);
 
     return true;
 }
 
-void UISliderWidget::on_draw(UIWidget widget, ScreenRenderComponent renderer)
+void UISliderWidgetObj::on_draw(UIWidgetObj* obj, ScreenRenderComponent renderer)
 {
-    UIWidgetObj* obj = widget;
     const UITheme& theme = obj->theme;
     UISliderWidgetObj& self = obj->as.slider;
     UISliderStorage* storage = self.storage;
-    Rect rect = widget.get_rect();
+    UIWidget widget(obj);
+    Rect rect = obj->layout.rect;
 
     float sliderw = rect.w * 0.1f;
     renderer.draw_rect(rect, theme.get_background_color());
