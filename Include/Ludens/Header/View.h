@@ -24,24 +24,24 @@ struct TView
 
     /// @brief View into C string.
     TView(const char* cstr)
+    requires std::is_same_v<T, char> || std::is_same_v<T, const char>
         : data(cstr)
     {
-        static_assert(sizeof(T) == 1);
         size = cstr ? strlen(cstr) : 0;
     }
 
     /// @brief View into std string, valid before the std string invalidates.
     TView(const std::string& str)
+    requires std::is_same_v<T, char> || std::is_same_v<T, const char>
         : data((T*)str.data()), size(str.size())
     {
-        static_assert(sizeof(T) == 1);
     }
 
     /// @brief Copy std string_view, valid before the std string_view invalidates.
     TView(const std::string_view& strView)
+    requires std::is_same_v<T, char> || std::is_same_v<T, const char>
         : data(strView.data()), size(strView.size())
     {
-        static_assert(sizeof(T) == 1);
     }
 
     /// @brief A view is 'truthy' iff it is non-null and non-zero size.
@@ -50,6 +50,7 @@ struct TView
     /// @brief A view is equal to a C string iff they have same byte size and contents.
     ///        Returns false if input C string is null.
     bool operator==(const char* cstr) const
+    requires std::is_same_v<T, char> || std::is_same_v<T, const char>
     {
         if (!cstr)
             return false;
@@ -69,8 +70,8 @@ struct TView
 
     /// @brief A view is equal to a char iff the view is of size one and the character matches.
     inline bool operator==(char c) const
+    requires std::is_same_v<T, char> || std::is_same_v<T, const char>
     {
-        static_assert(sizeof(T) == 1);
         return size == 1 && static_cast<char>(data[0]) == c;
     }
 
@@ -84,13 +85,7 @@ struct TView
         if (data == other.data)
             return true;
 
-        for (size_t i = 0; i < size; i++)
-        {
-            if (data[i] != other.data[i])
-                return false;
-        }
-
-        return true;
+        return !memcmp(data, other.data, sizeof(T) * size);
     }
 };
 
