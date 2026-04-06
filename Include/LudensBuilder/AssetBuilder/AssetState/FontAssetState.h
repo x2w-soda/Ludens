@@ -1,7 +1,7 @@
 #pragma once
 
 #include <Ludens/Header/View.h>
-#include <LudensBuilder/AssetBuilder/AssetImportInfo.h>
+#include <LudensBuilder/AssetBuilder/AssetSource.h>
 
 namespace LD {
 

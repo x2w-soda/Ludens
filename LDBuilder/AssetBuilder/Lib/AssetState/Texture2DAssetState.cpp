@@ -2,8 +2,8 @@
 #include <Ludens/Media/Bitmap.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/Serial/Serial.h>
-#include <LudensBuilder/AssetBuilder/AssetImportInfoStorage.h>
-#include <LudensBuilder/AssetBuilder/AssetType/Texture2DAssetBuilder.h>
+#include <LudensBuilder/AssetBuilder/AssetSource/TextureAssetSource.h>
+#include <LudensBuilder/AssetBuilder/AssetState/Texture2DAssetState.h>
 
 #include "../AssetImportJob.h"
 

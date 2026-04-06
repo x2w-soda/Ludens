@@ -1,8 +1,7 @@
 #include <Ludens/Asset/AssetType/FontAssetObj.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/Serial/Serial.h>
-#include <LudensBuilder/AssetBuilder/AssetImportInfoStorage.h>
-#include <LudensBuilder/AssetBuilder/AssetType/FontAssetBuilder.h>
+#include <LudensBuilder/AssetBuilder/AssetState/FontAssetState.h>
 
 #include "../AssetImportJob.h"
 
@@ -48,6 +47,5 @@ void font_asset_import(void* user)
 
     job.write_to_dst_path(serializer.view());
 }
-
 
 } // namespace LD

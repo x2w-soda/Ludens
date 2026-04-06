@@ -2,8 +2,8 @@
 
 #include <Ludens/Asset/Asset.h>
 #include <Ludens/Header/Assert.h>
-#include <LudensBuilder/AssetBuilder/AssetImportInfo.h>
 #include <LudensBuilder/AssetBuilder/AssetImporter.h>
+#include <LudensBuilder/AssetBuilder/AssetSource.h>
 
 #include <atomic>
 

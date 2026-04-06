@@ -1,7 +1,7 @@
 #pragma once
 
 #include <Ludens/Asset/AssetType/LuaScriptAsset.h>
-#include <LudensBuilder/AssetBuilder/AssetImportInfo.h>
+#include <LudensBuilder/AssetBuilder/AssetSource.h>
 
 namespace LD {
 

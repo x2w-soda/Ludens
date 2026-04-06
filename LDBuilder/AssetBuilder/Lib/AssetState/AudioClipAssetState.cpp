@@ -1,8 +1,8 @@
 #include <Ludens/Asset/AssetType/AudioClipAssetObj.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/Serial/Serial.h>
-#include <LudensBuilder/AssetBuilder/AssetImportInfoStorage.h>
-#include <LudensBuilder/AssetBuilder/AssetType/AudioClipAssetBuilder.h>
+#include <LudensBuilder/AssetBuilder/AssetSource.h>
+#include <LudensBuilder/AssetBuilder/AssetState/AudioClipAssetState.h>
 
 #include "../AssetImportJob.h"
 

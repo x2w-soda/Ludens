@@ -2,8 +2,7 @@
 #include <Ludens/Media/Model.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/Serial/Serial.h>
-#include <LudensBuilder/AssetBuilder/AssetImportInfoStorage.h>
-#include <LudensBuilder/AssetBuilder/AssetType/MeshAssetBuilder.h>
+#include <LudensBuilder/AssetBuilder/AssetState/MeshAssetState.h>
 
 #include "../AssetImportJob.h"
 

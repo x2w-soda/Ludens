@@ -1,8 +1,7 @@
 #include <Ludens/Asset/AssetType/LuaScriptAssetObj.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/Serial/Serial.h>
-#include <LudensBuilder/AssetBuilder/AssetImportInfoStorage.h>
-#include <LudensBuilder/AssetBuilder/AssetType/LuaScriptAssetBuilder.h>
+#include <LudensBuilder/AssetBuilder/AssetState/LuaScriptAssetState.h>
 
 #include "../AssetImportJob.h"
 

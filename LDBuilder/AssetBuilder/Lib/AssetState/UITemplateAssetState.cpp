@@ -1,5 +1,5 @@
 #include <Ludens/Header/Assert.h>
-#include <LudensBuilder/AssetBuilder/AssetType/UITemplateAssetBuilder.h>
+#include <LudensBuilder/AssetBuilder/AssetState/UITemplateAssetState.h>
 
 namespace LD {
 

@@ -1,8 +1,8 @@
 #include <Ludens/Asset/AssetType/BlobAssetObj.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/Serial/Serial.h>
-#include <LudensBuilder/AssetBuilder/AssetImportInfoStorage.h>
-#include <LudensBuilder/AssetBuilder/AssetType/BlobAssetBuilder.h>
+#include <LudensBuilder/AssetBuilder/AssetSource.h>
+#include <LudensBuilder/AssetBuilder/AssetState/BlobAssetState.h>
 
 #include "../AssetImportJob.h"
 

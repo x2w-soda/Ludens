@@ -9,7 +9,8 @@
 #include <Ludens/Log/Log.h>
 #include <Ludens/Memory/Memory.h>
 #include <LudensBuilder/AssetBuilder/AssetImporter.h>
-#include <LudensBuilder/AssetBuilder/AssetType/AssetBuilders.h>
+#include <LudensBuilder/AssetBuilder/AssetSource/AssetSources.h>
+#include <LudensBuilder/AssetBuilder/AssetState/AssetStates.h>
 #include <LudensBuilder/AssetUtil/AssetUtil.h>
 
 #define LD_ASSET_EXT ".lda"

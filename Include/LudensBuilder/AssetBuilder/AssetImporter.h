@@ -3,7 +3,7 @@
 #include <Ludens/Asset/AssetRegistry.h>
 #include <Ludens/Header/Handle.h>
 #include <Ludens/Header/Status.h>
-#include <LudensBuilder/AssetBuilder/AssetImportInfo.h>
+#include <LudensBuilder/AssetBuilder/AssetSource.h>
 
 namespace LD {
 

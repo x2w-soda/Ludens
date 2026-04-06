@@ -1,4 +1,6 @@
 #include <Ludens/Header/Assert.h>
+#include <LudensBuilder/AssetBuilder/AssetSource/AssetSources.h>
+#include <LudensBuilder/AssetBuilder/AssetState/AssetStates.h>
 
 #include "AssetBuilderMeta.h"
 
