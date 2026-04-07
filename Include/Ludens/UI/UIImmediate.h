@@ -173,6 +173,7 @@ bool ui_toggle_is_pressed();
 UIScrollStorage* ui_push_scroll(UIScrollStorage* storage);
 
 /// @brief Push UIButtonWidget.
+UIButtonStorage* ui_push_button(UIButtonStorage* storage);
 UIButtonStorage* ui_push_button(UIButtonStorage* storage, const char* text);
 bool ui_button_is_pressed();
 

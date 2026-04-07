@@ -35,12 +35,9 @@ struct ProjectRenderingSettings : Handle<struct ProjectSettingsObj>
     static Vec4 get_default_clear_color();
 };
 
-/// @brief Uniquely identifies a screen layer, invariant to rename operations.
-using ProjectScreenLayerID = uint32_t;
-
 struct ProjectScreenLayer
 {
-    ProjectScreenLayerID id;
+    SUID id;
     std::string name;
 };
 
@@ -48,16 +45,20 @@ struct ProjectScreenLayer
 struct ProjectScreenLayerSettings : Handle<struct ProjectSettingsObj>
 {
     /// @brief Create a new screen layer.
-    ProjectScreenLayerID create_layer(const char* name);
+    SUID create_layer(SUIDRegistry idReg, const char* name);
+
+    /// @brief Create screen layer from known ID.
+    /// @return True on success.
+    bool create_layer(SUIDRegistry idReg, SUID id, const char* name);
 
     /// @brief Destroy existing screen layer.
-    void destroy_layer(ProjectScreenLayerID id);
+    void destroy_layer(SUIDRegistry idReg, SUID id);
 
     /// @brief Rename an existing screen layer.
-    void rename_layer(ProjectScreenLayerID id, const char* name);
+    void rename_layer(SUID id, const char* name);
 
     /// @brief Move layer to index, shifting other layers.
-    void rotate_layer(ProjectScreenLayerID id, int index);
+    void rotate_layer(SUID id, int index);
 
     /// @brief Retrieve all screen layers ordered.
     Vector<ProjectScreenLayer> get_layers();

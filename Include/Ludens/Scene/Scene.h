@@ -22,10 +22,10 @@ using SceneLoadFn = std::function<bool(struct SceneObj*)>;
 /// @brief Scene creation info, connects to external asset manager and subsystems.
 struct SceneInfo
 {
-    AudioSystem audioSystem;
-    RenderSystem renderSystem;
-    UIFont uiFont;
-    UITheme uiTheme;
+    AudioSystem audioSystem = {};
+    RenderSystem renderSystem = {};
+    UIFont uiFont = {};
+    UITheme uiTheme = {};
 };
 
 /// @brief Scene singleton, main thread only. A scene is a hierarchy of components driven by scripts.
@@ -91,10 +91,11 @@ public:
     /// @brief Try create a component with serial ID.
     /// @param type Component type.
     /// @param name Component identifier.
+    /// @param suidRegistry Used to validate or generate a new serial ID.
     /// @param parentSUID Parent serial ID, or zero if creating a root component.
-    /// @param hintSUID Serial ID to create with, or zero if requesting a new serial ID.
+    /// @param hintSUID If valid, the known serial ID. Otherwise the SUID registry allocates a new one. 
     /// @return Component interface of the newly created component on success.
-    ComponentView create_component_serial(ComponentType type, const char* name, SUID parentSUID, SUID hintSUID = 0);
+    ComponentView create_component_serial(ComponentType type, const char* name, SUIDRegistry suidRegistry, SUID parentSUID, SUID hintSUID);
 
     /// @brief Destroy a component subtree.
     void destroy_component_subtree(CUID compID);
@@ -105,7 +106,7 @@ public:
     /// @brief Try clone a component subtree.
     /// @param rootID The subtree root component to clone.
     /// @return Component view of the root component of the cloned subtree on success.
-    ComponentView clone_component_subtree(CUID rootID);
+    ComponentView clone_component_subtree(CUID rootID, SUIDRegistry suidRegistry);
 
     /// @brief Get interfaces for root components in Scene.
     void get_root_components(Vector<ComponentView>& roots);

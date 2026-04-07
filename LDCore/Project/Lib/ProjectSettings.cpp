@@ -28,11 +28,10 @@ struct ProjectScreenLayerSettingsObj
 {
     struct ProjectScreenLayerObj
     {
-        ProjectScreenLayerID id;
+        SUID id;
         std::string name;
     };
 
-    IDCounter<ProjectScreenLayerID> idCounter;
     Vector<ProjectScreenLayerObj> order;
 };
 
@@ -107,22 +106,32 @@ Vec4 ProjectRenderingSettings::get_default_clear_color()
 // Screen Layer Settings
 //
 
-ProjectScreenLayerID ProjectScreenLayerSettings::create_layer(const char* name)
+SUID ProjectScreenLayerSettings::create_layer(SUIDRegistry idReg, const char* name)
 {
-    ProjectScreenLayerID id = mObj->screenLayer.idCounter.get_id();
-    LD_ASSERT(id != 0);
+    SUID id = idReg.get_suid(SERIAL_TYPE_SCREEN_LAYER);
 
     mObj->screenLayer.order.push_back({.id = id, .name = name});
 
     return id;
 }
 
-void ProjectScreenLayerSettings::destroy_layer(ProjectScreenLayerID id)
+bool ProjectScreenLayerSettings::create_layer(SUIDRegistry idReg, SUID id, const char* name)
 {
-    std::erase_if(mObj->screenLayer.order, [&](const auto& obj) { return obj.id == id; });
+    if (id.type() != SERIAL_TYPE_SCREEN_LAYER || !idReg.try_get_suid(id))
+        return false;
+
+    mObj->screenLayer.order.push_back({.id = id, .name = name});
+
+    return true;
 }
 
-void ProjectScreenLayerSettings::rename_layer(ProjectScreenLayerID id, const char* name)
+void ProjectScreenLayerSettings::destroy_layer(SUIDRegistry idReg, SUID id)
+{
+    std::erase_if(mObj->screenLayer.order, [&](const auto& obj) { return obj.id == id; });
+    idReg.free_suid(id);
+}
+
+void ProjectScreenLayerSettings::rename_layer(SUID id, const char* name)
 {
     for (auto& obj : mObj->screenLayer.order)
     {
@@ -134,7 +143,7 @@ void ProjectScreenLayerSettings::rename_layer(ProjectScreenLayerID id, const cha
     }
 }
 
-void ProjectScreenLayerSettings::rotate_layer(ProjectScreenLayerID id, int newIndex)
+void ProjectScreenLayerSettings::rotate_layer(SUID id, int newIndex)
 {
     int layerCount = (int)mObj->screenLayer.order.size();
     int oldIndex;

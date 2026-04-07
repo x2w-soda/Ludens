@@ -6,18 +6,19 @@ using namespace LD;
 
 TEST_CASE("ProjectScreenLayerSettings")
 {
+    SUIDRegistry idReg = SUIDRegistry::create();
     ProjectSettings projectS = ProjectSettings::create();
     ProjectScreenLayerSettings layerS = projectS.get_screen_layer_settings();
     Vector<ProjectScreenLayer> order = layerS.get_layers();
     CHECK(order.empty());
 
-    ProjectScreenLayerID layer1 = layerS.create_layer("default");
+    SUID layer1 = layerS.create_layer(idReg , "default");
     order = layerS.get_layers();
     CHECK(order.size() == 1);
     CHECK(order[0].id == layer1);
     CHECK(order[0].name == "default");
     
-    ProjectScreenLayerID layer2 = layerS.create_layer("foreground");
+    SUID layer2 = layerS.create_layer(idReg, "foreground");
     order = layerS.get_layers();
     CHECK(order.size() == 2);
     CHECK(order[0].id == layer1);
@@ -35,4 +36,5 @@ TEST_CASE("ProjectScreenLayerSettings")
     CHECK(order[1].name == "default");
 
     ProjectSettings::destroy(projectS);
+    SUIDRegistry::destroy(idReg);
 }

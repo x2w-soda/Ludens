@@ -30,13 +30,13 @@ struct AssetRegistry : Handle<struct AssetRegistryObj>
     static void destroy(AssetRegistry registry);
 
     /// @brief Register a new Asset, an ID is assigned to uniquely identify the Asset throughout the project.
-    AssetEntry register_asset(AssetType type, const std::string& uri);
+    AssetEntry register_asset(SUIDRegistry idReg, AssetType type, const std::string& uri);
 
     /// @brief Used when the asset ID is also known, such as loading an Asset from the project.
-    AssetEntry register_asset_with_id(SUID id, AssetType type, const std::string& uri);
+    AssetEntry register_asset_with_id(SUIDRegistry idReg, SUID id, AssetType type, const std::string& uri);
 
     /// @brief Unregister an Asset that is no longer used in the project.
-    void unregister_asset(SUID id);
+    void unregister_asset(SUIDRegistry idReg, SUID id);
 
     /// @brief Check if registry is dirty due to AssetEntry changes
     bool is_dirty();

@@ -20,7 +20,7 @@ public:
 
     AssetSchemaLoader& operator=(const AssetSchemaLoader&) = delete;
 
-    bool load_registry(AssetRegistry reg, const View& toml, std::string& err);
+    bool load_registry(AssetRegistry reg, SUIDRegistry idReg, const View& toml, std::string& err);
 
 private:
     bool load_asset_entries(std::string& err);
@@ -28,6 +28,7 @@ private:
 private:
     AssetRegistry mReg{};
     TOMLReader mReader{};
+    SUIDRegistry mIDReg{};
 };
 
 /// @brief Saves AssetRegistry to TOML
@@ -56,10 +57,11 @@ AssetSchemaLoader::~AssetSchemaLoader()
         TOMLReader::destroy(mReader);
 }
 
-bool AssetSchemaLoader::load_registry(AssetRegistry reg, const View& toml, std::string& err)
+bool AssetSchemaLoader::load_registry(AssetRegistry reg, SUIDRegistry idReg, const View& toml, std::string& err)
 {
     mReg = reg;
     mReader = TOMLReader::create(toml, err);
+    mIDReg = idReg;
 
     if (!mReader || !mReader.enter_table(ASSET_SCHEMA_TABLE_LUDENS_ASSETS))
         return false;
@@ -119,7 +121,7 @@ bool AssetSchemaLoader::load_asset_entries(std::string& err)
             isValid = false;
         }
 
-        if (isValid && !(entry = mReg.register_asset_with_id(entryID, assetType, entryURI)))
+        if (isValid && !(entry = mReg.register_asset_with_id(mIDReg, entryID, assetType, entryURI)))
         {
             err = std::format("Asset ID {} is already in use, invalid schema", entryID);
             isValid = false;
@@ -215,7 +217,7 @@ bool AssetSchemaSaver::save_asset_entries(std::string& err)
 // Public API
 //
 
-bool AssetSchema::load_registry_from_file(AssetRegistry registry, const FS::Path& tomlPath, std::string& err)
+bool AssetSchema::load_registry_from_file(AssetRegistry registry, SUIDRegistry idRegistry, const FS::Path& tomlPath, std::string& err)
 {
     LD_PROFILE_SCOPE;
 
@@ -225,7 +227,7 @@ bool AssetSchema::load_registry_from_file(AssetRegistry registry, const FS::Path
 
     View tomlView((const char*)toml.data(), toml.size());
     AssetSchemaLoader loader;
-    if (!loader.load_registry(registry, tomlView, err))
+    if (!loader.load_registry(registry, idRegistry, tomlView, err))
         return false;
 
     return true;

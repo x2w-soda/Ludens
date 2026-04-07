@@ -11,7 +11,7 @@ void init_sprite_2d_component(ComponentBase** dstData)
     Sprite2DComponent* dstSprite2D = (Sprite2DComponent*)dstData;
     dstSprite2D->transform = dstBase->transform2D;
     dstSprite2D->assetID = 0;
-    dstSprite2D->draw = sScene->renderSystemCache.create_sprite_2d_draw(dstBase->cuid);
+    dstSprite2D->draw = sScene->renderSystemCache.create_sprite_2d_draw(dstBase->cuid, 0);
 }
 
 bool load_sprite_2d_component_suid(SceneObj* scene, Sprite2DComponent* sprite, SUID layerSUID, AssetID texture2D, std::string& err)

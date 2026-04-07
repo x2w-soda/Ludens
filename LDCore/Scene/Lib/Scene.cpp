@@ -743,7 +743,7 @@ ComponentView Scene::create_component(ComponentType type, const char* name, CUID
     return ComponentView(data);
 }
 
-ComponentView Scene::create_component_serial(ComponentType type, const char* name, SUID parentSUID, SUID hintSUID)
+ComponentView Scene::create_component_serial(ComponentType type, const char* name, SUIDRegistry suidRegistry, SUID parentSUID, SUID hintSUID)
 {
     ComponentBase** parentData = mObj->active->registry.get_component_data_by_suid(parentSUID, nullptr);
 
@@ -752,11 +752,11 @@ ComponentView Scene::create_component_serial(ComponentType type, const char* nam
 
     SUID compSUID = hintSUID;
 
-    if (compSUID && !SUIDRegistry::try_get_suid(compSUID)) // already registered
-        return {};
+    if (compSUID && !suidRegistry.try_get_suid(compSUID))
+        return {}; // already registered, reject bad input
 
     if (!compSUID)
-        compSUID = SUIDRegistry::get_suid(SERIAL_TYPE_COMPONENT);
+        compSUID = suidRegistry.get_suid(SERIAL_TYPE_COMPONENT);
 
     CUID parentCUID = parentData ? (*parentData)->cuid : (CUID)0;
     CUID compCUID = mObj->active->registry.create_component(type, name, parentCUID, compSUID);
@@ -790,9 +790,9 @@ void Scene::reparent_component_subtree(CUID compID, CUID parentID)
     mObj->active->registry.reparent_component_subtree(compID, parentID);
 }
 
-ComponentView Scene::clone_component_subtree(CUID rootID)
+ComponentView Scene::clone_component_subtree(CUID rootID, SUIDRegistry suidRegistry)
 {
-    ComponentBase** dstData = mObj->active->registry.clone_component_subtree(rootID);
+    ComponentBase** dstData = mObj->active->registry.clone_component_subtree(rootID, suidRegistry);
     if (!dstData)
         return {};
 

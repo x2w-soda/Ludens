@@ -45,16 +45,17 @@ public:
 
     ProjectSchemaLoader& operator=(const ProjectSchemaLoader&) = delete;
 
-    bool load_project(Project project, const View& toml, std::string& err);
+    bool load_project(Project project, SUIDRegistry idReg, const View& toml, std::string& err);
 
 private:
     bool load_project_settings(ProjectSettings settings, std::string& err);
     void load_project_startup_settings(ProjectStartupSettings settings);
-    void load_project_screen_layer_settings(ProjectScreenLayerSettings settings);
+    bool load_project_screen_layer_settings(ProjectScreenLayerSettings settings);
 
 private:
     Project mProject{};
     TOMLReader mReader{};
+    SUIDRegistry mIDReg{};
 };
 
 ProjectSchemaLoader::~ProjectSchemaLoader()
@@ -63,10 +64,11 @@ ProjectSchemaLoader::~ProjectSchemaLoader()
         TOMLReader::destroy(mReader);
 }
 
-bool ProjectSchemaLoader::load_project(Project project, const View& toml, std::string& err)
+bool ProjectSchemaLoader::load_project(Project project, SUIDRegistry idReg, const View& toml, std::string& err)
 {
     mReader = TOMLReader::create(toml, err);
     mProject = project;
+    mIDReg = idReg;
 
     if (!mReader || !mReader.enter_table(PROJECT_SCHEMA_KEY_LUDENS_PROJECT))
         return false;
@@ -199,9 +201,29 @@ void ProjectSchemaLoader::load_project_startup_settings(ProjectStartupSettings s
     settings.set_default_scene_id((SUID)u32);
 }
 
-void ProjectSchemaLoader::load_project_screen_layer_settings(ProjectScreenLayerSettings settings)
+bool ProjectSchemaLoader::load_project_screen_layer_settings(ProjectScreenLayerSettings settings)
 {
-    // TODO:
+    int count;
+    mReader.enter_array("layers", count);
+
+    for (int i = 0; i < count; i++)
+    {
+        if (!mReader.enter_table(i))
+            continue;
+
+        SUID suid;
+        std::string str;
+        mReader.read_suid("id", suid);
+        mReader.read_string("name", str);
+        mReader.exit();
+        
+        if (!settings.create_layer(mIDReg, suid, str.c_str()))
+            return false;
+    }
+
+    mReader.exit();
+
+    return true;
 }
 
 ProjectSchemaSaver::~ProjectSchemaSaver()
@@ -280,7 +302,7 @@ void ProjectSchemaSaver::save_project_screen_layer_settings(ProjectScreenLayerSe
 // Public API
 //
 
-bool ProjectSchema::load_project_from_source(Project project, const FS::Path& rootDir, const View& toml, std::string& err)
+bool ProjectSchema::load_project_from_source(Project project, SUIDRegistry idReg, const FS::Path& rootDir, const View& toml, std::string& err)
 {
     LD_PROFILE_SCOPE;
 
@@ -293,10 +315,10 @@ bool ProjectSchema::load_project_from_source(Project project, const FS::Path& ro
     project.set_project_schema_path(rootDir / FS::Path("project.toml"));
 
     ProjectSchemaLoader loader;
-    return loader.load_project(project, toml, err);
+    return loader.load_project(project, idReg, toml, err);
 }
 
-bool ProjectSchema::load_project_from_file(Project project, const FS::Path& tomlPath, std::string& err)
+bool ProjectSchema::load_project_from_file(Project project, SUIDRegistry idReg, const FS::Path& tomlPath, std::string& err)
 {
     LD_PROFILE_SCOPE;
 
@@ -307,7 +329,7 @@ bool ProjectSchema::load_project_from_file(Project project, const FS::Path& toml
     project.set_project_schema_path(tomlPath);
 
     ProjectSchemaLoader loader;
-    return loader.load_project(project, View((const char*)toml.data(), toml.size()), err);
+    return loader.load_project(project, idReg, View((const char*)toml.data(), toml.size()), err);
 }
 
 bool ProjectSchema::save_project_to_string(Project project, std::string& saveTOML, std::string& err)

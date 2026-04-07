@@ -1339,21 +1339,29 @@ UIScrollStorage* ui_push_scroll(UIScrollStorage* storage)
     return scrollW.get_storage();
 }
 
-UIButtonStorage* ui_push_button(UIButtonStorage* storage, const char* text)
+UIButtonStorage* ui_push_button(UIButtonStorage* storage)
 {
     LD_ASSERT_UI_PUSH;
 
     UIWindowState* imWindow = sImContext->imWindow;
     UIWidgetState* imWidget = imWindow->get_or_create_button(storage);
     UIButtonWidget buttonW = (UIButtonWidget)imWidget->widget;
-    storage = buttonW.get_storage();
+
+    imWindow->imWidgetStack.push(imWidget);
+
+    return buttonW.get_storage();
+}
+
+UIButtonStorage* ui_push_button(UIButtonStorage* storage, const char* text)
+{
+    LD_ASSERT_UI_PUSH;
+
+    storage = ui_push_button(storage);
 
     if (text)
         storage->text = std::string(text);
     else
         storage->text.clear();
-
-    imWindow->imWidgetStack.push(imWidget);
 
     return storage;
 }

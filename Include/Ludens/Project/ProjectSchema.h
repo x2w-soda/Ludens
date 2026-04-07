@@ -13,10 +13,10 @@ namespace LD {
 struct ProjectSchema
 {
     /// @brief Load a project from TOML schema source string.
-    static bool load_project_from_source(Project project, const FS::Path& rootDir, const View& toml, std::string& err);
+    static bool load_project_from_source(Project project, SUIDRegistry idReg, const FS::Path& rootDir, const View& toml, std::string& err);
 
     /// @brief Load a project from TOML schema file on disk.
-    static bool load_project_from_file(Project project, const FS::Path& tomlPath, std::string& err);
+    static bool load_project_from_file(Project project, SUIDRegistry idReg, const FS::Path& tomlPath, std::string& err);
 
     /// @brief Try saving project as TOML string.
     static bool save_project_to_string(Project project, std::string& saveTOML, std::string& err);

@@ -15,8 +15,8 @@ namespace LD {
 
 static Log sLog("DataRegistry");
 static IDRegistry sCUIDRegistry;
-static ComponentBase** duplicate_subtree(DataRegistry dst, CUID dstParentID, DataRegistry src, CUID srcID);
-static ComponentBase** duplicate_component(ComponentBase** srcData, CUID dstParentID, DataRegistry dstRegistry, bool copySUID);
+static ComponentBase** duplicate_subtree(DataRegistry dst, CUID dstParentID, SUIDRegistry dstSUIDRegistry, DataRegistry src, CUID srcID);
+static ComponentBase** duplicate_component(ComponentBase** srcData, CUID dstParentID, DataRegistry dstRegistry, SUID dstSUID);
 static SUID get_mesh_asset_id(void* comp);
 
 enum ComponentPlacement
@@ -149,16 +149,15 @@ struct DataRegistryObj
 
     void destroy_subtree(ComponentBase** data);
     void destroy_component(ComponentBase** data);
-    ComponentBase** clone_subtree(ComponentBase** srcData, ComponentPlacement placement);
+    ComponentBase** clone_subtree(ComponentBase** srcData, SUIDRegistry suidRegistry, ComponentPlacement placement);
     void print_subtree(ComponentBase** data, std::string& str, int indent);
 
     static void id_hierarchy(ID parent, Vector<ID>& children, void* user);
 };
 
-static ComponentBase** duplicate_component(ComponentBase** srcData, CUID dstParentID, DataRegistry dstRegistry, bool copySUID)
+static ComponentBase** duplicate_component(ComponentBase** srcData, CUID dstParentID, DataRegistry dstRegistry, SUID dstSUID)
 {
     ComponentBase* srcBase = *srcData;
-    SUID dstSUID = copySUID ? srcBase->suid : SUIDRegistry::get_suid(SERIAL_TYPE_COMPONENT);
     CUID dstID = dstRegistry.create_component(srcBase->type, srcBase->name, dstParentID, dstSUID);
 
     if (!dstID)
@@ -189,17 +188,20 @@ static ComponentBase** duplicate_component(ComponentBase** srcData, CUID dstPare
 
 // Makes a deep copy of src component subtree from src registry into dst registry.
 // Src and dst registries may or may not be the same.
-static ComponentBase** duplicate_subtree(DataRegistry dst, CUID dstParentID, DataRegistry src, CUID srcID)
+static ComponentBase** duplicate_subtree(DataRegistry dst, CUID dstParentID, SUIDRegistry suidRegistry, DataRegistry src, CUID srcID)
 {
     ComponentBase** srcData = src.get_component_data(srcID, nullptr);
     LD_ASSERT(srcData);
 
-    // If dst and src registry are the same, new SUIDs are created for the duplicate subtree components,
-    // Otherwise we copy the SUIDs from src to dst.
-    bool copySUID = (dst.unwrap() != src.unwrap());
-
     ComponentBase* srcBase = *srcData;
-    ComponentBase** dstData = duplicate_component(srcData, dstParentID, dst, copySUID);
+
+    // Play-in-editor may wish to copy the SUID over from src to dst.
+    // Copy-pasting a subtree in editor will have to generate new SUIDs.
+    SUID dstSUID = srcBase->suid;
+    if (suidRegistry)
+        dstSUID = suidRegistry.get_suid(SERIAL_TYPE_COMPONENT);
+
+    ComponentBase** dstData = duplicate_component(srcData, dstParentID, dst, dstSUID);
     if (!dstData)
     {
         sLog.error("failed to duplicate {}", srcBase->name);
@@ -210,7 +212,7 @@ static ComponentBase** duplicate_subtree(DataRegistry dst, CUID dstParentID, Dat
 
     for (const ComponentBase* srcChild = srcBase->child; srcChild; srcChild = srcChild->next)
     {
-        if (!duplicate_subtree(dst, dstID, src, srcChild->cuid))
+        if (!duplicate_subtree(dst, dstID, suidRegistry, src, srcChild->cuid))
             return nullptr;
     }
 
@@ -364,15 +366,15 @@ void DataRegistryObj::destroy_component(ComponentBase** compData)
     suidToCompData.erase(compSUID);
 }
 
-ComponentBase** DataRegistryObj::clone_subtree(ComponentBase** srcData, ComponentPlacement placement)
+ComponentBase** DataRegistryObj::clone_subtree(ComponentBase** srcData, SUIDRegistry suidRegistry, ComponentPlacement placement)
 {
     DataRegistry reg(this);
     ComponentBase* srcBase = *srcData;
     ComponentBase* srcParent = srcBase->parent;
-    LD_ASSERT(srcParent);
+    LD_ASSERT(srcParent && suidRegistry);
 
-    // src and dst registry is the same, do not copy SUID over.
-    ComponentBase** dstData = duplicate_subtree(reg, srcParent->cuid, reg, srcBase->cuid);
+    // duplicate a subtree in the same registry and generate new SUIDs.
+    ComponentBase** dstData = duplicate_subtree(reg, srcParent->cuid, suidRegistry, reg, srcBase->cuid);
     if (!dstData)
         return nullptr;
 
@@ -459,7 +461,7 @@ DataRegistry DataRegistry::duplicate() const
 
     for (ComponentBase* child = mObj->root.child; child; child = child->next)
     {
-        bool ok = duplicate_subtree(dst, 0, src, child->cuid);
+        bool ok = duplicate_subtree(dst, 0, {}, src, child->cuid);
         LD_ASSERT(ok);
     }
 
@@ -566,13 +568,13 @@ void DataRegistry::reparent_component_subtree(CUID compID, CUID parentID)
     mObj->transform2DRegistry.reparent_subtree(compID, parentID, &DataRegistryObj::id_hierarchy, mObj);
 }
 
-ComponentBase** DataRegistry::clone_component_subtree(CUID rootID)
+ComponentBase** DataRegistry::clone_component_subtree(CUID rootID, SUIDRegistry suidRegistry)
 {
     ComponentBase** srcData = mObj->get_data_from_cuid(rootID);
     if (!srcData)
         return nullptr;
 
-    ComponentBase** dstData = mObj->clone_subtree(srcData, COMPONENT_PLACEMENT_AFTER_SIBLING);
+    ComponentBase** dstData = mObj->clone_subtree(srcData, suidRegistry, COMPONENT_PLACEMENT_AFTER_SIBLING);
     if (!dstData)
         return nullptr;
 

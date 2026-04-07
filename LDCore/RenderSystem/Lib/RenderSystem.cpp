@@ -112,7 +112,7 @@ public:
 
     RUID create_screen_layer(const std::string& name);
     void destroy_screen_layer(RUID layerID);
-
+    RUID get_top_screen_layer();
     RUID get_screen_layer_item(const Vec2& worldPos, RenderSystemMat4Callback mat4CB, void* user);
 
     RImage create_image_2d(Bitmap bitmap);
@@ -207,6 +207,8 @@ private:
         RSet frameSet;
     };
 
+private:
+    ScreenLayerObj* get_layer(RUID ruid);
     bool pickid_is_gizmo(uint32_t pickID);
     RUID pickid_to_ruid(uint32_t pickID);
     uint32_t ruid_to_pickid(RUID ruid);
@@ -238,7 +240,7 @@ private: // resources, states and pipelines
     bool mHasAcquiredDialogWindowImage = false;
 
 private:
-    HashMap<RUID, ScreenLayerObj*> mLayers;
+    Vector<ScreenLayerObj*> mLayers;
     HashMap<RUID, RImage> mImages;
     HashMap<RUID, MeshDrawObj*> mMeshDraw; /// Mesh draw info
     PoolAllocator mMeshDataPA{};
@@ -367,8 +369,8 @@ RenderSystemObj::~RenderSystemObj()
 
     RGraph::release(mDevice);
 
-    for (auto it : mLayers)
-        heap_delete<ScreenLayerObj>(it.second);
+    for (ScreenLayerObj* obj : mLayers)
+        heap_delete<ScreenLayerObj>(obj);
 
     for (uint32_t i = 0; i < mFramesInFlight; i++)
     {
@@ -743,30 +745,32 @@ RUID RenderSystemObj::create_screen_layer(const std::string& name)
 {
     RUID layerID = get_ruid();
 
-    ScreenLayerObj* obj = mLayers[layerID] = heap_new<ScreenLayerObj>(MEMORY_USAGE_RENDER, layerID, name);
+    ScreenLayerObj* obj = heap_new<ScreenLayerObj>(MEMORY_USAGE_RENDER, layerID, name);
 
     return layerID;
 }
 
 void RenderSystemObj::destroy_screen_layer(RUID layerID)
 {
-    if (!mLayers.contains(layerID))
+    ScreenLayerObj* obj = get_layer(layerID);
+    if (!obj)
         return;
 
-    heap_delete<ScreenLayerObj>(mLayers[layerID]);
+    std::erase(mLayers, obj);
+    heap_delete<ScreenLayerObj>(obj);
+}
 
-    mLayers.erase(layerID);
+RUID RenderSystemObj::get_top_screen_layer()
+{
+    return mLayers.empty() ? RUID(0) : mLayers.front()->get_id();
 }
 
 RUID RenderSystemObj::get_screen_layer_item(const Vec2& worldPos, RenderSystemMat4Callback mat4CB, void* user)
 {
     LD_PROFILE_SCOPE;
 
-    // TODO: screen layer order
-
-    for (auto& it : mLayers)
+    for (ScreenLayerObj* layer : mLayers)
     {
-        ScreenLayerObj* layer = it.second;
         RUID id = layer->pick_item(worldPos, mat4CB, user);
 
         if (id)
@@ -914,9 +918,10 @@ void RenderSystemObj::destroy_mesh_draw(MeshDrawObj* draw)
 
 Sprite2DDrawObj* RenderSystemObj::create_sprite_2d_draw(RImage image, RUID layerID)
 {
-    LD_ASSERT(mLayers.contains(layerID));
+    ScreenLayerObj* layer = get_layer(layerID);
+    if (!layer)
+        return nullptr;
 
-    ScreenLayerObj* layer = mLayers[layerID];
     Sprite2DDrawObj* draw = layer->create_sprite_2d(get_ruid(), image);
     LD_ASSERT(draw);
 
@@ -1007,9 +1012,9 @@ void RenderSystemObj::ScreenPass::render(ScreenRenderComponent renderer, void* s
     if (!self.mHasAcquiredRootWindowImage)
         return;
 
-    for (auto it : self.mLayers)
+    for (ScreenLayerObj* layer : self.mLayers)
     {
-        it.second->invalidate(self.mScreenPass.mat4CB, self.mScreenPass.user);
+        layer->invalidate(self.mScreenPass.mat4CB, self.mScreenPass.user);
     }
 
     // We need a quad pipeline variant that covers all ScreenLayerItem
@@ -1028,11 +1033,9 @@ void RenderSystemObj::ScreenPass::render(ScreenRenderComponent renderer, void* s
         renderer.set_view_projection_index(vpIndex);
         renderer.push_viewport_normalized(viewport.region);
 
-
-        // TODO: layer draw order!
-        for (auto it : self.mLayers)
+        for (ScreenLayerObj* layer : self.mLayers)
         {
-            TView<ScreenLayerItem> itemList = it.second->get_item_list();
+            TView<ScreenLayerItem> itemList = layer->get_item_list();
             const int itemCount = (int)itemList.size;
 
             for (int i = itemCount - 1; i >= 0; i--)
@@ -1124,6 +1127,23 @@ void RenderSystemObj::EditorDialogPass::render(ScreenRenderComponent renderer, v
     self.mEditorDialogPass.renderCB(renderer, self.mEditorDialogPass.user);
 }
 
+ScreenLayerObj* RenderSystemObj::get_layer(RUID ruid)
+{
+    ScreenLayerObj* obj = nullptr;
+
+    // just linear probe layers
+    for (size_t i = 0; i < mLayers.size(); i++)
+    {
+        if (mLayers[i]->get_id() == ruid)
+        {
+            obj = mLayers[i];
+            break;
+        }
+    }
+
+    return obj;
+}
+
 bool RenderSystemObj::pickid_is_gizmo(uint32_t pickID)
 {
     return 1 <= pickID && pickID <= SCENE_OVERLAY_GIZMO_ID_LAST;
@@ -1209,6 +1229,7 @@ Image2D RenderSystem::create_image_2d(Bitmap bitmap)
     RImage image = mObj->create_image_2d(bitmap);
     return Image2D(image.unwrap(), image.get_id());
 }
+
 void RenderSystem::destroy_image_2d(Image2D image)
 {
     if (!image)
@@ -1247,6 +1268,11 @@ void RenderSystem::destroy_screen_layer(RUID layer)
         return;
 
     mObj->destroy_screen_layer(layer);
+}
+
+RUID RenderSystem::get_top_screen_layer()
+{
+    return mObj->get_top_screen_layer();
 }
 
 RUID RenderSystem::get_screen_layer_item(const Vec2& worldPos, RenderSystemMat4Callback mat4CB, void* user)

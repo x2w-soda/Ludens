@@ -34,8 +34,8 @@ public:
     AssetEntryObj* get_entry_by_uri(const std::string& uri);
     void get_entries_by_type(Vector<AssetEntry>& outEntries, AssetType type);
     void get_all_entries(Vector<AssetEntry>& outEntries);
-    AssetEntry register_asset(SUID id, AssetType type, const std::string& uri);
-    void unregister_asset(SUID id);
+    AssetEntry register_asset(SUIDRegistry idReg, SUID id, AssetType type, const std::string& uri);
+    void unregister_asset(SUIDRegistry idReg, SUID id);
 
 public:
     bool isDirty = false;
@@ -121,7 +121,7 @@ void AssetRegistryObj::get_all_entries(Vector<AssetEntry>& outEntries)
     }
 }
 
-AssetEntry AssetRegistryObj::register_asset(SUID id, AssetType type, const std::string& uri)
+AssetEntry AssetRegistryObj::register_asset(SUIDRegistry idReg, SUID id, AssetType type, const std::string& uri)
 {
     if (mURIs.contains(uri))
         return {};
@@ -129,12 +129,12 @@ AssetEntry AssetRegistryObj::register_asset(SUID id, AssetType type, const std::
     if (id)
     {
         // try registering with known ID.
-        if (mEntries.contains(id) || (id.type() != SERIAL_TYPE_ASSET) || !SUIDRegistry::try_get_suid(id))
+        if (mEntries.contains(id) || (id.type() != SERIAL_TYPE_ASSET) || !idReg.try_get_suid(id))
             return {};
     }
     else
     {
-        id = SUIDRegistry::get_suid(SERIAL_TYPE_ASSET);
+        id = idReg.get_suid(SERIAL_TYPE_ASSET);
     }
 
     AssetEntryObj* entry = allocate_entry(type);
@@ -147,7 +147,7 @@ AssetEntry AssetRegistryObj::register_asset(SUID id, AssetType type, const std::
     return AssetEntry(entry);
 }
 
-void AssetRegistryObj::unregister_asset(SUID id)
+void AssetRegistryObj::unregister_asset(SUIDRegistry idReg, SUID id)
 {
     if (!id || !mEntries.contains(id))
         return;
@@ -155,7 +155,7 @@ void AssetRegistryObj::unregister_asset(SUID id)
     AssetEntryObj* entry = mEntries[id];
 
     mEntries.erase(id);
-    SUIDRegistry::free_suid(id);
+    idReg.free_suid(id);
 
     mURIs.erase(entry->uri.string());
 
@@ -231,19 +231,19 @@ void AssetRegistry::destroy(AssetRegistry registry)
     heap_delete<AssetRegistryObj>(obj);
 }
 
-AssetEntry AssetRegistry::register_asset_with_id(SUID id, AssetType type, const std::string& uri)
+AssetEntry AssetRegistry::register_asset_with_id(SUIDRegistry idReg, SUID id, AssetType type, const std::string& uri)
 {
-    return mObj->register_asset(id, type, uri);
+    return mObj->register_asset(idReg, id, type, uri);
 }
 
-AssetEntry AssetRegistry::register_asset(AssetType type, const std::string& uri)
+AssetEntry AssetRegistry::register_asset(SUIDRegistry idReg, AssetType type, const std::string& uri)
 {
-    return mObj->register_asset((SUID)0, type, uri);
+    return mObj->register_asset(idReg, (SUID)0, type, uri);
 }
 
-void AssetRegistry::unregister_asset(SUID id)
+void AssetRegistry::unregister_asset(SUIDRegistry idReg, SUID id)
 {
-    mObj->unregister_asset(id);
+    mObj->unregister_asset(idReg, id);
 }
 
 bool AssetRegistry::is_dirty()

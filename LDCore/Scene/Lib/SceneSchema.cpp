@@ -53,7 +53,7 @@ public:
 
     SceneSchemaLoader& operator=(const SceneSchemaLoader&) = delete;
 
-    bool load_scene(Scene scene, const View& toml, std::string& err);
+    bool load_scene(Scene scene, SUIDRegistry idReg, const View& toml, std::string& err);
 
     static ComponentView load_audio_source_component(SceneSchemaLoader& loader, SUID compSUID, const char* compName);
     static ComponentView load_camera_component(SceneSchemaLoader& loader, SUID compSUID, const char* compName);
@@ -68,6 +68,7 @@ private:
 private:
     Scene mScene{};
     TOMLReader mReader{};
+    SUIDRegistry mIDReg{};
 };
 
 // clang-format off
@@ -147,7 +148,7 @@ ComponentView SceneSchemaLoader::load_audio_source_component(SceneSchemaLoader& 
     TOMLReader reader = loader.mReader;
     LD_ASSERT(scene && reader);
 
-    AudioSourceView source(scene.create_component_serial(COMPONENT_TYPE_AUDIO_SOURCE, compName, (SUID)0, compSUID));
+    AudioSourceView source(scene.create_component_serial(COMPONENT_TYPE_AUDIO_SOURCE, compName, loader.mIDReg, (SUID)0, compSUID));
     if (!source)
         return {};
 
@@ -172,7 +173,7 @@ ComponentView SceneSchemaLoader::load_camera_component(SceneSchemaLoader& loader
     TOMLReader reader = loader.mReader;
     LD_ASSERT(scene && reader);
 
-    CameraView camera(scene.create_component_serial(COMPONENT_TYPE_CAMERA, compName, (SUID)0, compSUID));
+    CameraView camera(scene.create_component_serial(COMPONENT_TYPE_CAMERA, compName, loader.mIDReg, (SUID)0, compSUID));
     if (!camera)
         return {};
 
@@ -246,7 +247,7 @@ ComponentView SceneSchemaLoader::load_camera_2d_component(SceneSchemaLoader& loa
     TOMLReader reader = loader.mReader;
     LD_ASSERT(scene && reader);
 
-    Camera2DView camera(scene.create_component_serial(COMPONENT_TYPE_CAMERA_2D, compName, (SUID)0, compSUID));
+    Camera2DView camera(scene.create_component_serial(COMPONENT_TYPE_CAMERA_2D, compName, loader.mIDReg, (SUID)0, compSUID));
     if (!camera)
         return {};
 
@@ -283,7 +284,7 @@ ComponentView SceneSchemaLoader::load_mesh_component(SceneSchemaLoader& loader, 
     TOMLReader reader = loader.mReader;
     LD_ASSERT(scene && reader);
 
-    MeshView mesh(scene.create_component_serial(COMPONENT_TYPE_MESH, compName, (SUID)0, compSUID));
+    MeshView mesh(scene.create_component_serial(COMPONENT_TYPE_MESH, compName, loader.mIDReg, (SUID)0, compSUID));
     if (!mesh)
         return {};
 
@@ -309,7 +310,7 @@ ComponentView SceneSchemaLoader::load_sprite_2d_component(SceneSchemaLoader& loa
     Scene scene = loader.mScene;
     TOMLReader reader = loader.mReader;
 
-    Sprite2DView sprite(scene.create_component_serial(COMPONENT_TYPE_SPRITE_2D, compName, (SUID)0, compSUID));
+    Sprite2DView sprite(scene.create_component_serial(COMPONENT_TYPE_SPRITE_2D, compName, loader.mIDReg, (SUID)0, compSUID));
     if (!sprite)
         return {};
 
@@ -351,7 +352,7 @@ ComponentView SceneSchemaLoader::load_screen_ui_component(SceneSchemaLoader& loa
     Scene scene = loader.mScene;
     TOMLReader reader = loader.mReader;
 
-    ScreenUIView ui(scene.create_component_serial(COMPONENT_TYPE_SCREEN_UI, compName, (SUID)0, compSUID));
+    ScreenUIView ui(scene.create_component_serial(COMPONENT_TYPE_SCREEN_UI, compName, loader.mIDReg, (SUID)0, compSUID));
     if (!ui)
         return {};
 
@@ -603,10 +604,11 @@ SceneSchemaLoader::~SceneSchemaLoader()
         TOMLReader::destroy(mReader);
 }
 
-bool SceneSchemaLoader::load_scene(Scene scene, const View& toml, std::string& err)
+bool SceneSchemaLoader::load_scene(Scene scene, SUIDRegistry idReg, const View& toml, std::string& err)
 {
     mScene = scene;
     mReader = TOMLReader::create(toml, err);
+    mIDReg = idReg;
 
     if (!mReader)
         return false;
@@ -705,18 +707,18 @@ bool SceneSchemaLoader::load_scene(Scene scene, const View& toml, std::string& e
 // Public API
 //
 
-bool SceneSchema::load_scene_from_source(Scene scene, const View& toml, std::string& err)
+bool SceneSchema::load_scene_from_source(Scene scene, SUIDRegistry idRegistry, const View& toml, std::string& err)
 {
     LD_PROFILE_SCOPE;
 
     SceneSchemaLoader loader;
-    if (!loader.load_scene(scene, toml, err))
+    if (!loader.load_scene(scene, idRegistry, toml, err))
         return false;
 
     return true;
 }
 
-bool SceneSchema::load_scene_from_file(Scene scene, const FS::Path& tomlPath, std::string& err)
+bool SceneSchema::load_scene_from_file(Scene scene, SUIDRegistry idRegistry, const FS::Path& tomlPath, std::string& err)
 {
     LD_PROFILE_SCOPE;
 
@@ -725,7 +727,7 @@ bool SceneSchema::load_scene_from_file(Scene scene, const FS::Path& tomlPath, st
         return false;
 
     View tomlView((const char*)toml.data(), toml.size());
-    return load_scene_from_source(scene, tomlView, err);
+    return load_scene_from_source(scene, idRegistry, tomlView, err);
 }
 
 bool SceneSchema::save_scene(Scene scene, const FS::Path& savePath, std::string& err)

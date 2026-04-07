@@ -12,7 +12,7 @@ namespace LD {
 struct AssetSchema
 {
     /// @brief Load asset registry from TOML schema file on disk.
-    static bool load_registry_from_file(AssetRegistry registry, const FS::Path& tomlPath, std::string& err);
+    static bool load_registry_from_file(AssetRegistry registry, SUIDRegistry idRegistry, const FS::Path& tomlPath, std::string& err);
 
     /// @brief Try saving asset registry as TOML string.
     static bool save_registry_to_string(AssetRegistry registry, std::string& saveTOML, std::string& err);

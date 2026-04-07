@@ -71,7 +71,7 @@ struct AssetManager : Handle<struct AssetManagerObj>
 
     /// @brief Resolve the asset against the current AssetRegistry.
     ///        Intended for AssetImporter to add an Asset to the project.
-    AssetEntry resolve_asset(Asset asset, const std::string& uri);
+    AssetEntry resolve_asset(SUIDRegistry idReg, Asset asset, const std::string& uri);
 };
 
 } // namespace LD

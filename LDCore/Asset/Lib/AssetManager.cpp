@@ -486,12 +486,12 @@ Asset AssetManager::reserve_asset(AssetType type)
     return Asset(obj);
 }
 
-AssetEntry AssetManager::resolve_asset(Asset asset, const std::string& uri)
+AssetEntry AssetManager::resolve_asset(SUIDRegistry idReg, Asset asset, const std::string& uri)
 {
     if (!asset || !mObj->registry)
         return {};
 
-    return mObj->registry.register_asset(asset.get_type(), uri);
+    return mObj->registry.register_asset(idReg, asset.get_type(), uri);
 }
 
 } // namespace LD

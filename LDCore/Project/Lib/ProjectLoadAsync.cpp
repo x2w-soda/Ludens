@@ -4,6 +4,7 @@
 #include <Ludens/Log/Log.h>
 #include <Ludens/Memory/Memory.h>
 #include <Ludens/Profiler/Profiler.h>
+#include <Ludens/Project/ProjectContext.h>
 #include <Ludens/Project/ProjectLoadAsync.h>
 #include <Ludens/Project/ProjectSchema.h>
 #include <Ludens/Scene/SceneSchema.h>
@@ -15,11 +16,9 @@ static Log sLog("ProjectLoadAsync");
 struct ProjectLoadAsyncObj
 {
     FS::Path projectDir;
-    FS::Path assetSchemaPath;
-    FS::Path sceneSchemaPath;
-    Project project;
-    AssetRegistry assetRegistry;
-    ProjectLoadStatus status = PROJECT_LOAD_STATUS_IDLE;
+    FS::Path sceneSchemaAbsPath;
+    ProjectContext* projectCtx = nullptr;
+    ProjectLoadState status = PROJECT_LOAD_STATE_IDLE;
 
     void load_project_scene(const FS::Path& sceneSchemaPath);
 };
@@ -38,16 +37,18 @@ void ProjectLoadAsyncObj::load_project_scene(const FS::Path& sceneSchemaPath)
     scene.load([&](SceneObj* sceneObj) -> bool {
         // load the scene
         std::string err;
-        return SceneSchema::load_scene_from_file(Scene(sceneObj), sceneSchemaPath, err);
+        return SceneSchema::load_scene_from_file(Scene(sceneObj), projectCtx->suid_registry(), sceneSchemaPath, err);
     });
 
     // TODO: check scene load success
-    this->sceneSchemaPath = sceneSchemaPath;
+    this->sceneSchemaAbsPath = sceneSchemaPath;
 }
 
-ProjectLoadAsync ProjectLoadAsync::create()
+ProjectLoadAsync ProjectLoadAsync::create(ProjectContext* projectCtx)
 {
     auto* obj = heap_new<ProjectLoadAsyncObj>(MEMORY_USAGE_MISC);
+
+    obj->projectCtx = projectCtx;
 
     return ProjectLoadAsync(obj);
 }
@@ -56,7 +57,7 @@ void ProjectLoadAsync::destroy(ProjectLoadAsync async)
 {
     auto* obj = async.unwrap();
 
-    LD_ASSERT(obj->status == PROJECT_LOAD_STATUS_IDLE);
+    LD_ASSERT(obj->status == PROJECT_LOAD_STATE_IDLE);
 
     heap_delete<ProjectLoadAsyncObj>(obj);
 }
@@ -67,57 +68,53 @@ bool ProjectLoadAsync::begin(const FS::Path& projectDir, std::string& err)
     // and submits asset load jobs for all assets in project before returning.
     LD_PROFILE_SCOPE;
 
-    mObj->status = PROJECT_LOAD_STATUS_IDLE;
+    mObj->status = PROJECT_LOAD_STATE_IDLE;
     mObj->projectDir = projectDir;
-    mObj->project = Project::create();
 
-    FS::Path projectSchemaPath = FS::absolute(projectDir / FS::Path("project.toml"));
-    if (!ProjectSchema::load_project_from_file(mObj->project, projectSchemaPath, err))
+    FS::Path projectSchemaAbsPath = FS::absolute(projectDir / FS::Path("project.toml"));
+    if (!mObj->projectCtx->load_project(projectSchemaAbsPath, err))
         return false;
 
-    sLog.info("loaded project schema [{}]", projectSchemaPath.string());
+    sLog.info("loaded project schema [{}]", projectSchemaAbsPath.string());
 
-    FS::Path assetSchemaPath = mObj->project.get_asset_schema_absolute_path();
-    if (!FS::exists(assetSchemaPath))
+    FS::Path assetSchemaAbsPath = mObj->projectCtx->asset_schema_abs_path();
+    if (!FS::exists(assetSchemaAbsPath))
     {
-        sLog.error("missing asset schema file [{}]", assetSchemaPath.string());
+        sLog.error("missing asset schema file [{}]", assetSchemaAbsPath.string());
         return false;
     }
 
-    mObj->assetSchemaPath = assetSchemaPath;
-
-    mObj->assetRegistry = AssetRegistry::create();
-    if (!AssetSchema::load_registry_from_file(mObj->assetRegistry, assetSchemaPath, err))
+    if (!mObj->projectCtx->load_asset_registry(assetSchemaAbsPath, err))
         return false;
 
-    sLog.info("loaded asset schema   [{}]", assetSchemaPath.string());
+    sLog.info("loaded asset schema   [{}]", assetSchemaAbsPath.string());
 
     AssetManager AM = AssetManager::get();
     LD_ASSERT(AM);
 
-    AssetRegistry oldAssetRegistry = AM.swap_asset_registry(mObj->assetRegistry, mObj->projectDir);
+    AssetRegistry oldAssetRegistry = AM.swap_asset_registry(mObj->projectCtx->asset_registry(), mObj->projectDir);
     AM.begin_load_batch();
     AM.load_all_assets();
 
     if (oldAssetRegistry)
         AssetRegistry::destroy(oldAssetRegistry);
 
-    mObj->status = PROJECT_LOAD_STATUS_LOADING_ASSETS;
+    mObj->status = PROJECT_LOAD_STATE_LOADING_ASSETS;
 
     return true;
 }
 
-ProjectLoadStatus ProjectLoadAsync::update()
+ProjectLoadState ProjectLoadAsync::update()
 {
     AssetManager AM = AssetManager::get();
 
-    if (mObj->status == PROJECT_LOAD_STATUS_LOADING_ASSETS)
+    if (mObj->status == PROJECT_LOAD_STATE_LOADING_ASSETS)
     {
         if (!AM.has_load_job())
-            mObj->status = PROJECT_LOAD_STATUS_LOADING_SCENE;
+            mObj->status = PROJECT_LOAD_STATE_LOADING_SCENE;
     }
 
-    if (mObj->status == PROJECT_LOAD_STATUS_LOADING_SCENE)
+    if (mObj->status == PROJECT_LOAD_STATE_LOADING_SCENE)
     {
         Vector<std::string> errors;
         if (!AM.end_load_batch(errors))
@@ -127,8 +124,7 @@ ProjectLoadStatus ProjectLoadAsync::update()
                 sLog.warn("{}", err);
         }
 
-        Vector<FS::Path> scenePaths;
-        mObj->project.get_scene_schema_absolute_paths(scenePaths);
+        Vector<FS::Path> scenePaths = mObj->projectCtx->scene_schema_abs_paths();
 
         for (const FS::Path& scenePath : scenePaths)
         {
@@ -144,7 +140,7 @@ ProjectLoadStatus ProjectLoadAsync::update()
         if (!scenePaths.empty())
             mObj->load_project_scene(scenePaths.front());
 
-        mObj->status = PROJECT_LOAD_STATUS_COMPLETE;
+        mObj->status = PROJECT_LOAD_STATE_COMPLETE;
     }
 
     return mObj->status;
@@ -152,22 +148,13 @@ ProjectLoadStatus ProjectLoadAsync::update()
 
 bool ProjectLoadAsync::get_result(ProjectLoadResult& outResult)
 {
-    if (mObj->status != PROJECT_LOAD_STATUS_COMPLETE)
+    if (mObj->status != PROJECT_LOAD_STATE_COMPLETE)
         return false;
 
-    outResult.assetRegistry = mObj->assetRegistry;
-    mObj->assetRegistry = {};
+    outResult.sceneSchemaAbsPath = mObj->sceneSchemaAbsPath;
+    mObj->sceneSchemaAbsPath.clear();
 
-    outResult.project = mObj->project;
-    mObj->project = {};
-
-    outResult.assetSchemaPath = mObj->assetSchemaPath;
-    mObj->assetSchemaPath.clear();
-
-    outResult.sceneSchemaPath = mObj->sceneSchemaPath;
-    mObj->sceneSchemaPath.clear();
-
-    mObj->status = PROJECT_LOAD_STATUS_IDLE;
+    mObj->status = PROJECT_LOAD_STATE_IDLE;
     return true;
 }
 

@@ -63,8 +63,9 @@ struct DataRegistry : Handle<struct DataRegistryObj>
 
     /// @brief Try clone a component subtree.
     /// @param rootID The subtree root component to clone.
+    /// @param suidRegistry Used to generate new serial IDs 
     /// @return Data of the root component of the cloned subtree on success.
-    ComponentBase** clone_component_subtree(CUID rootID);
+    ComponentBase** clone_component_subtree(CUID rootID, SUIDRegistry suidRegistry);
 
     /// @brief Get data component base members, applicable to all types of components.
     ComponentBase* get_component_base(CUID compID);

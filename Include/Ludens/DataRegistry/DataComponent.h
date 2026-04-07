@@ -94,8 +94,8 @@ struct MeshComponent
 {
     ComponentBase* base;
     TransformEx* transform; /// mesh transform
-    MeshDraw draw;         /// render server draw config
-    AssetID assetID;       /// mesh asset id
+    MeshDraw draw;          /// render server draw config
+    AssetID assetID;        /// mesh asset id
 };
 
 /// @brief Render data to draw a texture in 2D space
@@ -104,8 +104,8 @@ struct Sprite2DComponent
 {
     ComponentBase* base;
     Transform2D* transform; /// sprite 2D transform
-    Sprite2DDraw draw;     /// render server draw config
-    AssetID assetID;       /// texture asset handle
+    Sprite2DDraw draw;      /// render server draw config
+    AssetID assetID;        /// texture asset handle
 };
 
 struct ScreenUIComponent

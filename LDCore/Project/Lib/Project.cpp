@@ -18,6 +18,7 @@ struct ProjectObj
 Project Project::create()
 {
     ProjectObj* obj = heap_new<ProjectObj>(MEMORY_USAGE_MISC);
+
     obj->settings = ProjectSettings::create();
 
     return Project(obj);
@@ -26,6 +27,7 @@ Project Project::create()
 void Project::destroy(Project project)
 {
     ProjectObj* obj = project.unwrap();
+
     ProjectSettings::destroy(obj->settings);
 
     heap_delete<ProjectObj>(obj);

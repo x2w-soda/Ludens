@@ -5,8 +5,6 @@
 #include "RenderSystemCache.h"
 #include "SceneObj.h"
 
-#define DEFAULT_SCREEN_LAYER_NAME "__default"
-
 namespace LD {
 
 void RenderSystemCache::create(RenderSystem system)
@@ -75,28 +73,12 @@ CUID RenderSystemCache::get_2d_component_by_position(const Vec2& worldPos, Rende
     return mDrawToCuid[ruid];
 }
 
-RUID RenderSystemCache::get_default_screen_layer()
-{
-    // TODO: this is so shady...
-    if (mSuidToScreenLayer.contains(0))
-        return mSuidToScreenLayer[(SUID)0];
-
-    return mSuidToScreenLayer[(SUID)0] = mSystem.create_screen_layer(DEFAULT_SCREEN_LAYER_NAME);
-}
-
 RUID RenderSystemCache::get_or_create_screen_layer(SUID layerSUID)
 {
     if (mSuidToScreenLayer.contains(layerSUID))
         return mSuidToScreenLayer[layerSUID];
 
-    RUID layerRUID = mSystem.create_screen_layer("layer"); // TODO:
-    if (!layerRUID)
-        return 0;
-
-    mScreenLayerToSuid[layerRUID] = layerSUID;
-    mSuidToScreenLayer[layerSUID] = layerRUID;
-
-    return layerRUID;
+    return mSystem.get_top_screen_layer();
 }
 
 SUID RenderSystemCache::get_screen_layer_suid(RUID layerRUID)
@@ -168,25 +150,17 @@ Image2D RenderSystemCache::get_or_create_image_2d(AssetID textureID)
     return mImage2D[textureID];
 }
 
-Sprite2DDraw RenderSystemCache::create_sprite_2d_draw(CUID compID)
-{
-    LD_ASSERT(compID);
-    reserve_sparse_index(compID);
-
-    Sprite2DDraw draw = mSystem.create_sprite_2d_draw({}, get_default_screen_layer());
-    if (!draw)
-        return {};
-
-    link_id(compID, draw.get_id());
-    return draw;
-}
-
 Sprite2DDraw RenderSystemCache::create_sprite_2d_draw(CUID compID, RUID layerID, AssetID textureID)
 {
     LD_ASSERT(compID);
     reserve_sparse_index(compID);
 
     Sprite2DDraw draw{};
+
+    if (!layerID)
+        layerID = mSystem.get_top_screen_layer();
+
+    LD_ASSERT(layerID);
 
     if (textureID)
     {
