@@ -7,6 +7,7 @@
 #include <Ludens/Log/Log.h>
 #include <Ludens/Memory/Memory.h>
 #include <Ludens/Profiler/Profiler.h>
+#include <Ludens/Project/ProjectContext.h>
 #include <Ludens/Project/ProjectSchema.h>
 #include <Ludens/Scene/SceneSchema.h>
 #include <Ludens/System/FileSystemAsync.h>
@@ -114,8 +115,7 @@ private:
 
 struct ProjectBuildAsyncObj
 {
-    AssetRegistry assetRegistry{};
-    Project project{};
+    ProjectContext projectCtx = {};
     ProjectBuildConfig config{};
     ProjectBuildResult result{};
     WriteFileJob writeRuntimeFileJob;
@@ -136,23 +136,16 @@ struct ProjectBuildAsyncObj
 
 bool ProjectBuildAsyncObj::load_project_schema(const FS::Path& srcProjectSchema, ProjectBuildStatus& err)
 {
-    project = Project::create();
-
-    if (!ProjectSchema::load_project_from_file(project, srcProjectSchema, err.str))
+    if (!projectCtx.load_project(srcProjectSchema, err.str))
     {
         err.type = PROJECT_BUILD_ERROR_INVALID_SRC_PROJECT_SCHEMA;
         sLog.error("failed to load project {}: {}", srcProjectSchema.string(), err.str);
-
-        Project::destroy(project);
-        project = {};
         return false;
     }
 
     if (!FS::create_directories(config.dstRootDirectory, err.str))
     {
         err.type = PROJECT_BUILD_ERROR_IO;
-        Project::destroy(project);
-        project = {};
         return false;
     }
 
@@ -161,15 +154,10 @@ bool ProjectBuildAsyncObj::load_project_schema(const FS::Path& srcProjectSchema,
 
 bool ProjectBuildAsyncObj::load_asset_schema(const FS::Path& srcAssetSchema, ProjectBuildStatus& err)
 {
-    assetRegistry = AssetRegistry::create();
-
-    if (!AssetSchema::load_registry_from_file(assetRegistry, srcAssetSchema, err.str))
+    if (!projectCtx.load_asset_registry(srcAssetSchema, err.str))
     {
         err.type = PROJECT_BUILD_ERROR_INVALID_SRC_ASSET_SCHEMA;
         sLog.error("failed to load asset schema {}: {}", srcAssetSchema.string(), err.str);
-
-        AssetRegistry::destroy(assetRegistry);
-        assetRegistry = {};
         return false;
     }
 
@@ -178,8 +166,7 @@ bool ProjectBuildAsyncObj::load_asset_schema(const FS::Path& srcAssetSchema, Pro
 
 bool ProjectBuildAsyncObj::configure_dst_project_schema(ProjectBuildStatus& err)
 {
-    LD_ASSERT(project);
-
+    Project project = projectCtx.project();
     const FS::Path dstSceneDirectory("Scenes");
     const FS::Path srcRootDirectory = project.get_root_path();
 
@@ -219,11 +206,12 @@ bool ProjectBuildAsyncObj::configure_dst_project_schema(ProjectBuildStatus& err)
 
 bool ProjectBuildAsyncObj::configure_dst_asset_schema(ProjectBuildStatus& err)
 {
-    LD_ASSERT(assetRegistry);
-
+    Project project = projectCtx.project();
     const FS::Path dstAssetDirectory("Assets");
     const FS::Path srcRootDirectory = project.get_root_path();
 
+    // temporary AssetRegistry that we can patch safely.
+    AssetRegistry assetRegistry = projectCtx.asset_registry();
     Vector<std::string> keys;
     Vector<AssetEntry> assets;
     assetRegistry.get_all_entries(assets);
@@ -272,7 +260,7 @@ bool ProjectBuildAsyncObj::begin(const ProjectBuildConfig& cfg, ProjectBuildStat
     if (!load_project_schema(config.srcProjectSchema, err))
         return false;
 
-    std::string projectName = project.get_name();
+    std::string projectName = projectCtx.project().get_name();
     std::replace(projectName.begin(), projectName.end(), ' ', '_');
     FS::Path projectPath(projectName);
 
@@ -281,10 +269,10 @@ bool ProjectBuildAsyncObj::begin(const ProjectBuildConfig& cfg, ProjectBuildStat
 #endif
 
     const FS::Path dstRuntimePath = config.dstRootDirectory / projectPath;
-    const FS::Path srcProjectSchemaPath = project.get_project_schema_path();
+    const FS::Path srcProjectSchemaPath = projectCtx.project_schema_abs_path();
     const FS::Path dstProjectSchemaPath = config.dstRootDirectory / FS::Path("project.toml");
-    const FS::Path srcAssetSchemaPath = project.get_asset_schema_absolute_path();
-    const FS::Path dstAssetSchemaPath = config.dstRootDirectory / project.get_asset_schema_path();
+    const FS::Path srcAssetSchemaPath = projectCtx.asset_schema_abs_path();
+    const FS::Path dstAssetSchemaPath = config.dstRootDirectory / projectCtx.project().get_asset_schema_path();
 
     if (!load_asset_schema(srcAssetSchemaPath, err))
         return false;

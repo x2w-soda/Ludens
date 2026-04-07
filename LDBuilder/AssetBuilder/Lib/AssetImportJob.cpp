@@ -1,5 +1,5 @@
 #include <Ludens/JobSystem/JobSystem.h>
-#include <LudensBuilder/AssetBuilder/AssetType/AssetBuilders.h>
+#include <LudensBuilder/AssetBuilder/AssetSource/AssetSources.h>
 
 #include "AssetBuilderMeta.h"
 #include "AssetImportJob.h"

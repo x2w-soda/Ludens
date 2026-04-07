@@ -16,6 +16,7 @@ namespace LD {
 
 struct AssetImporterObj
 {
+    SUIDRegistry suidRegistry = {};          // if valid, used to validate and generate SUIDs
     PoolAllocator importJobPA = {};          // pool allocator for import jobs
     PoolAllocator importInfoPA = {};         // pool allocator for import infos
     Vector<AssetImportJob*> importJobs = {}; // all jobs in a batch
@@ -48,7 +49,7 @@ AssetImportStatus AssetImporterObj::resolve_asset(Asset asset, const AssetImport
     status.type = ASSET_IMPORT_SUCCESS;
 
     AssetManager AM = AssetManager::get();
-    AssetEntry entry = AM.resolve_asset(asset, info->dstURI);
+    AssetEntry entry = AM.resolve_asset(suidRegistry, asset, info->dstURI);
 
     if (!entry)
     {
@@ -159,6 +160,11 @@ void AssetImporter::destroy(AssetImporter importer)
     PoolAllocator::destroy(obj->importJobPA);
 
     heap_delete<AssetImporterObj>(obj);
+}
+
+void AssetImporter::set_suid_registry(SUIDRegistry idReg)
+{
+    mObj->suidRegistry = idReg;
 }
 
 AssetImportInfo* AssetImporter::allocate_import_info(AssetType type)

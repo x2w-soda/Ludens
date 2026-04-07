@@ -22,16 +22,18 @@ void ProjectScanAsyncObj::load_project_schema(void* user)
     LD_PROFILE_SCOPE;
 
     ProjectScanAsyncObj* obj = (ProjectScanAsyncObj*)user;
+    SUIDRegistry suidReg = SUIDRegistry::create();
     Project project = Project::create();
 
     std::string err;
-    obj->result.isProjectSchemaValid = ProjectSchema::load_project_from_file(project, obj->result.projectSchema, err);
+    obj->result.isProjectSchemaValid = ProjectSchema::load_project_from_file(project, suidReg, obj->result.projectSchema, err);
     if (obj->result.isProjectSchemaValid)
     {
         obj->result.projectName = project.get_name();
     }
 
     Project::destroy(project);
+    SUIDRegistry::destroy(suidReg);
     obj->status.store(PROJECT_SCAN_STATUS_COMPLETE);
 }
 

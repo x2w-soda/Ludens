@@ -37,6 +37,9 @@ struct AssetImporter : Handle<struct AssetImporterObj>
     static AssetImporter create();
     static void destroy(AssetImporter importer);
 
+    /// @brief Use a SUID registry for resolving import.
+    void set_suid_registry(SUIDRegistry idReg);
+
     /// @brief Allocate import info for asset type.
     AssetImportInfo* allocate_import_info(AssetType type);
 
