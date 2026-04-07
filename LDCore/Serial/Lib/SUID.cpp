@@ -1,10 +1,28 @@
-#include <Ludens/DSA/IDCounter.h>
+#include <LUdens/Memory/Memory.h>
+#include <Ludens/DSA/HashSet.h>
 #include <Ludens/Serial/SUID.h>
 
 namespace LD {
 
-HashSet<SUID> SUIDRegistry::sRegistered;
-uint32_t SUIDRegistry::sCounter[SERIAL_TYPE_ENUM_COUNT];
+struct SUIDRegistryObj
+{
+    HashSet<SUID> registered;
+    uint32_t counter[SERIAL_TYPE_ENUM_COUNT];
+};
+
+SUIDRegistry SUIDRegistry::create()
+{
+    auto* obj = heap_new<SUIDRegistryObj>(MEMORY_USAGE_MISC);
+
+    return SUIDRegistry(obj);
+}
+
+void SUIDRegistry::destroy(SUIDRegistry reg)
+{
+    auto* obj = reg.unwrap();
+
+    heap_delete<SUIDRegistryObj>(obj);
+}
 
 SUID SUIDRegistry::get_suid(SerialType type)
 {
@@ -12,17 +30,17 @@ SUID SUIDRegistry::get_suid(SerialType type)
         return (SUID)0;
 
     // TODO: if 24-bit space is exhausted for the serial type, this is infinite
-    uint32_t i = sCounter[type];
+    uint32_t i = mObj->counter[type];
     SUID candidate{};
 
     for (;;)
     {
         candidate = SUID(type, i);
 
-        if (!sRegistered.contains(candidate))
+        if (!mObj->registered.contains(candidate))
         {
-            sRegistered.insert(candidate);
-            sCounter[type] = (i + 1) % SUID_IDENTITY_MASK;
+            mObj->registered.insert(candidate);
+            mObj->counter[type] = (i + 1) % SUID_IDENTITY_MASK;
             break;
         }
 
@@ -35,16 +53,21 @@ SUID SUIDRegistry::get_suid(SerialType type)
 
 bool SUIDRegistry::try_get_suid(SUID id)
 {
-    if (!id || sRegistered.contains(id))
+    if (!id || mObj->registered.contains(id))
         return false;
 
-    sRegistered.insert(id);
+    mObj->registered.insert(id);
     return true;
 }
 
 void SUIDRegistry::free_suid(SUID id)
 {
-    sRegistered.erase(id);
+    mObj->registered.erase(id);
+}
+
+bool SUIDRegistry::contains(SUID id)
+{
+    return id && mObj->registered.contains(id);
 }
 
 } // namespace LD

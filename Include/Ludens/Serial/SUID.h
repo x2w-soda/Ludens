@@ -1,9 +1,10 @@
 #pragma once
 
-#include <Ludens/DSA/HashSet.h>
+#include <Ludens/Header/Handle.h>
 
 #include <cstdint>
 #include <format>
+#include <functional>
 
 #define SUID_IDENTITY_BITS 24
 #define SUID_IDENTITY_MASK 0xFFFFFF
@@ -16,6 +17,7 @@ enum SerialType
     SERIAL_TYPE_ASSET,
     SERIAL_TYPE_COMPONENT,
     SERIAL_TYPE_SCENE,
+    SERIAL_TYPE_SCREEN_LAYER,
     SERIAL_TYPE_ENUM_COUNT,
 };
 
@@ -60,23 +62,24 @@ private:
     uint32_t mID;
 };
 
-/// @brief Non-thread safe static SUID distributor.
-class SUIDRegistry
+/// @brief Non-thread safe SUID distributor.
+struct SUIDRegistry : Handle<struct SUIDRegistryObj>
 {
-public:
+    static SUIDRegistry create();
+    static void destroy(SUIDRegistry reg);
+
     /// @brief Acquire next valid SUID.
-    static SUID get_suid(SerialType type);
+    SUID get_suid(SerialType type);
 
     /// @brief Try acquire a SUID, this is intended for deserialization code paths where the ID is known.
     ///        Fails if the ID is invalid or already used.
-    static bool try_get_suid(SUID id);
+    bool try_get_suid(SUID id);
 
     /// @brief Release a registered SUID.
-    static void free_suid(SUID id);
+    void free_suid(SUID id);
 
-private:
-    static HashSet<SUID> sRegistered;
-    static uint32_t sCounter[SERIAL_TYPE_ENUM_COUNT];
+    /// @brief Check if a SUID is already registered.
+    bool contains(SUID id);
 };
 
 } // namespace LD
