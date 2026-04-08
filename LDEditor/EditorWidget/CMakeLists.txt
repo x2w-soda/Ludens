@@ -4,7 +4,7 @@ set(MODULE_LIB
 	Lib/EUI.h
 	Lib/EUI.cpp
 	Lib/EUIRow.cpp
-	Lib/EUIVectorEdit.cpp
+	Lib/EUIPrimitiveEdit.cpp
 	Lib/EUITransformEdit.cpp
 	Lib/EUIAssetSlot.cpp
 	Lib/EUIListMenu.cpp
@@ -15,7 +15,7 @@ set(MODULE_LIB
 set(MODULE_INCLUDE
 	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorWidget/EditorWidget.h
 	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorWidget/EUIRow.h
-	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorWidget/EUIVectorEdit.h
+	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorWidget/EUIPrimitiveEdit.h
 	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorWidget/EUITransformEdit.h
 	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorWidget/EUIAssetSlot.h
 	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorWidget/EUIListMenu.h

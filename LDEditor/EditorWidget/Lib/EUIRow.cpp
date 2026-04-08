@@ -66,7 +66,7 @@ bool eui_row_label(int rowIndex, const char* label, bool isHighlighted)
     return isSelected;
 }
 
-int eui_row_btn_btn(const char* btnLeft, const char* btnRight)
+int eui_row_btn_btn(UIButtonStorage* btnLeft, UIButtonStorage* btnRight)
 {
     int hasPressed = 0;
 
@@ -82,15 +82,21 @@ int eui_row_btn_btn(const char* btnLeft, const char* btnRight)
     ui_push_panel(nullptr);
     ui_top_layout(layoutI);
 
-    ui_push_button(nullptr, btnLeft);
-    if (ui_button_is_pressed())
-        hasPressed = 1;
-    ui_pop();
+    if (btnLeft)
+    {
+        ui_push_button(btnLeft);
+        if (ui_button_is_pressed())
+            hasPressed = 1;
+        ui_pop();
+    }
 
-    ui_push_button(nullptr, btnRight);
-    if (ui_button_is_pressed())
-        hasPressed = 2;
-    ui_pop();
+    if (btnRight)
+    {
+        ui_push_button(btnRight);
+        if (ui_button_is_pressed())
+            hasPressed = 2;
+        ui_pop();
+    }
 
     ui_pop();
     return hasPressed;

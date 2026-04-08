@@ -51,4 +51,13 @@ struct EUISliderStorage
 
 bool eui_slider_edit(EUISliderStorage* storage, const char* label, float* f32);
 
+struct EUIRectStorage
+{
+    UITextEditStorage rectEdit[4];
+
+    void init(Rect rect);
+};
+
+bool eui_rect_edit(EUIRectStorage* storage, const char* label, Rect* rect, bool normalized);
+
 } // namespace LD

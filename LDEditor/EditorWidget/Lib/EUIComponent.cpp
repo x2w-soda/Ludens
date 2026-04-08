@@ -41,6 +41,10 @@ void eui_component_camera_2d(EUICamera2DStorage* storage, Camera2DView view)
 
     if (eui_transform_2d_edit(&storage->transform, &transform))
         view.set_transform_2d(transform);
+
+    Rect viewport = view.get_viewport();
+    if (eui_rect_edit(&storage->viewport, "Viewport", &viewport, true))
+        view.set_viewport(viewport);
 }
 
 void eui_component_sprite_2d(EUISprite2DStorage* storage, Sprite2DView view)
@@ -60,6 +64,10 @@ void eui_component_sprite_2d(EUISprite2DStorage* storage, Sprite2DView view)
     Vec2 pivot = view.get_pivot();
     if (eui_vec2_edit(&storage->pivot, "Pivot", &pivot))
         view.set_pivot(pivot);
+
+    Rect region = view.get_region();
+    if (eui_rect_edit(&storage->region, "Region", &region, false))
+        view.set_region(region);
 
     AssetID assetID = view.get_texture_2d_asset();
     if (eui_asset_slot(assetID, ASSET_TYPE_TEXTURE_2D))

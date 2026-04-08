@@ -2,6 +2,7 @@
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/UI/UIImmediate.h>
 #include <LudensEditor/EditorWidget/EUIDocument.h>
+#include <LudensEditor/EditorWidget/EditorWidget.h>
 
 #include "EUI.h"
 
@@ -24,7 +25,7 @@ struct EUIDocumentMeta
     void (*imgui_fn)(EUIDocumentState& state, EUIDocumentItemStorage& item);
 };
 
-static std::string document_span_to_text_span(TView<DocumentSpan*> srcSpans, Vector<TextSpan>& dstSpans);
+static std::string document_span_to_text_span(TView<DocumentSpan*> srcSpans, Vector<UITextSpan>& dstSpans);
 static void build_document_item_heading(DocumentItem* src, EUIDocumentItemStorage& dst);
 static void build_document_item_paragraph(DocumentItem* src, EUIDocumentItemStorage& dst);
 static void build_document_item_code_block(DocumentItem* src, EUIDocumentItemStorage& dst);
@@ -33,6 +34,7 @@ static void eui_document_item_heading(EUIDocumentState& state, EUIDocumentItemSt
 static void eui_document_item_paragraph(EUIDocumentState& state, EUIDocumentItemStorage& storage);
 static void eui_document_item_code_block(EUIDocumentState& state, EUIDocumentItemStorage& storage);
 static void eui_document_item_list_entry(EUIDocumentState& state, EUIDocumentItemStorage& storage);
+static void eui_document_spans(EUIDocumentState& state, EUIDocumentItemStorage& storage, UITextStorage* testS);
 
 // clang-format off
 static EUIDocumentMeta sEUIDocumentMeta[] = {
@@ -45,11 +47,11 @@ static EUIDocumentMeta sEUIDocumentMeta[] = {
 
 static_assert(sizeof(sEUIDocumentMeta) / sizeof(*sEUIDocumentMeta) == (int)DOCUMENT_ITEM_ENUM_COUNT);
 
-// Adapter to convert DocumentSpan to TextSpan for rendering.
-static std::string document_span_to_text_span(TView<DocumentSpan*> srcSpans, Vector<TextSpan>& dstSpans)
+// Adapter to convert DocumentSpan to UITextSpan for rendering.
+static std::string document_span_to_text_span(TView<DocumentSpan*> srcSpans, Vector<UITextSpan>& dstSpans)
 {
     std::string str;
-    uint32_t offset = 0;
+    size_t offset = 0;
 
     dstSpans.resize(srcSpans.size);
 
@@ -59,12 +61,11 @@ static std::string document_span_to_text_span(TView<DocumentSpan*> srcSpans, Vec
         std::string segment = std::string(srcSpan->text.data, srcSpan->text.size);
 
         dstSpans[i] = {};
-        dstSpans[i].fgColor = 0xFFFFFFFF;
-        dstSpans[i].offset = offset;
-        dstSpans[i].length = (uint32_t)segment.size();
+        dstSpans[i].text.fgColor = 0xFFFFFFFF;
+        dstSpans[i].text.range = Range(offset, segment.size());
 
         str += segment;
-        offset += (uint32_t)segment.size();
+        offset += segment.size();
     }
 
     return str;
@@ -75,12 +76,12 @@ static void build_document_item_heading(DocumentItem* src, EUIDocumentItemStorag
     LD_ASSERT(src->type == DOCUMENT_ITEM_HEADING);
 
     EditorTheme theme = eui_get_theme();
-    Vector<TextSpan> textSpans;
+    Vector<UITextSpan> textSpans;
     std::string value = document_span_to_text_span(src->spans, textSpans);
     dst.item = src;
     dst.text.set_value(value, textSpans);
     dst.text.fontSize = theme.get_font_size();
-    dst.text.fgColor = theme.get_ui_theme().get_on_surface_color();
+    dst.text.set_fg_color(theme.get_ui_theme().get_on_surface_color());
 }
 
 static void build_document_item_paragraph(DocumentItem* src, EUIDocumentItemStorage& dst)
@@ -90,11 +91,11 @@ static void build_document_item_paragraph(DocumentItem* src, EUIDocumentItemStor
     EditorTheme theme = eui_get_theme();
     auto* paragraph = (DocumentItemParagraph*)src;
 
-    Vector<TextSpan> textSpans;
+    Vector<UITextSpan> textSpans;
     std::string value = document_span_to_text_span(src->spans, textSpans);
     dst.item = src;
     dst.text.set_value(value, textSpans);
-    dst.text.fgColor = theme.get_ui_theme().get_on_surface_color();
+    dst.text.set_fg_color(theme.get_ui_theme().get_on_surface_color());
 }
 
 static void build_document_item_code_block(DocumentItem* src, EUIDocumentItemStorage& dst)
@@ -108,11 +109,11 @@ static void build_document_item_code_block(DocumentItem* src, EUIDocumentItemSto
     //       display language, copy button, etc.
     (void)block;
 
-    Vector<TextSpan> textSpans;
+    Vector<UITextSpan> textSpans;
     std::string value = document_span_to_text_span(src->spans, textSpans);
     dst.item = src;
     dst.text.set_value(value, textSpans);
-    dst.text.fgColor = theme.get_ui_theme().get_on_surface_color();
+    dst.text.set_fg_color(theme.get_ui_theme().get_on_surface_color());
 }
 
 static void build_document_item_list_entry(DocumentItem* src, EUIDocumentItemStorage& dst)
@@ -122,11 +123,11 @@ static void build_document_item_list_entry(DocumentItem* src, EUIDocumentItemSto
     EditorTheme theme = eui_get_theme();
 
     // TODO:
-    Vector<TextSpan> textSpans;
+    Vector<UITextSpan> textSpans;
     std::string value = document_span_to_text_span(src->spans, textSpans);
     dst.item = src;
     dst.text.set_value(value, textSpans);
-    dst.text.fgColor = theme.get_ui_theme().get_on_surface_color();
+    dst.text.set_fg_color(theme.get_ui_theme().get_on_surface_color());
 }
 
 static void eui_document_item_heading(EUIDocumentState& state, EUIDocumentItemStorage& storage)
@@ -151,6 +152,7 @@ static void eui_document_item_paragraph(EUIDocumentState& state, EUIDocumentItem
     ui_top_layout(state.docTheme.get_paragraph_layout());
     UITextStorage* text = ui_push_text(&storage.text);
     text->fontSize = state.fontSize;
+    eui_document_spans(state, storage, text);
     ui_pop();
     ui_pop();
 }
@@ -177,6 +179,34 @@ static void eui_document_item_list_entry(EUIDocumentState& state, EUIDocumentIte
     text->fontSize = state.fontSize; // TODO: list item font size?
     ui_pop();
     ui_pop();
+}
+
+static void eui_document_spans(EUIDocumentState& state, EUIDocumentItemStorage& item, UITextStorage* testS)
+{
+    TView<DocumentSpan*> spans = item.item->spans;
+
+    for (int spanI = 0; spanI < (int)spans.size; spanI++)
+    {
+        const DocumentSpan* span = spans.data[spanI];
+
+        if (span->type != DOCUMENT_SPAN_LINK)
+            continue;
+
+        Color spanTextColor = state.uiTheme.get_on_surface_color();
+        if (ui_text_span_hovered(spanI))
+        {
+            spanTextColor = 0x20FFFFFF;
+            eui_set_window_cursor(CURSOR_TYPE_HAND);
+        }
+
+        testS->spans[spanI].text.fgColor = spanTextColor;
+
+        if (ui_text_span_pressed(spanI))
+        {
+            auto* link = (DocumentSpanLink*)span;
+            state.storage->requestURI = std::string(link->href.data, link->href.size);
+        }
+    }
 }
 
 void eui_document(EUIDocumentStorage* storage)

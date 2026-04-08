@@ -1,6 +1,6 @@
 #include <Ludens/Header/Math/Transform.h>
+#include <LudensEditor/EditorWidget/EUIPrimitiveEdit.h>
 #include <LudensEditor/EditorWidget/EUITransformEdit.h>
-#include <LudensEditor/EditorWidget/EUIVectorEdit.h>
 
 #include "EUI.h"
 

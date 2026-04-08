@@ -21,26 +21,23 @@ bool eui_asset_slot(AssetID assetID, AssetType assetType)
     Vec2 mousePos;
     MouseValue mouseVal;
     bool newAssetRequest = false;
-    float childGap = 6.0f;
     EditorTheme theme = eui_get_theme();
 
-    UILayoutInfo layoutI = theme.make_hbox_layout(&childGap);
-    layoutI.sizeX = UISize::grow();
-    ui_push_panel(nullptr);
-    ui_top_layout(layoutI);
+    push_prop_hbox();
+    {
+        UILayoutInfo layoutI = theme.make_text_label_layout();
+        ui_push_text(nullptr, get_asset_type_cstr(assetType));
+        ui_top_layout(layoutI);
+        ui_pop();
 
-    layoutI = theme.make_text_label_layout();
-    ui_push_text(nullptr, get_asset_type_cstr(assetType));
-    ui_top_layout(layoutI);
-    ui_pop();
-
-    ui_push_text(nullptr, assetName);
-    ui_top_layout(layoutI);
-    if (ui_top_mouse_down(mouseVal, mousePos) && mouseVal.button() == MOUSE_BUTTON_LEFT)
-        newAssetRequest = true;
-    ui_pop();
-
-    ui_pop();
+        UITextStorage* text = ui_push_text(nullptr, assetName);
+        text->bgColor = theme.get_ui_theme().get_field_color();
+        ui_top_layout(layoutI);
+        if (ui_top_mouse_down(mouseVal, mousePos) && mouseVal.button() == MOUSE_BUTTON_LEFT)
+            newAssetRequest = true;
+        ui_pop();
+    }
+    pop_prop_hbox();
 
     return newAssetRequest;
 }
