@@ -114,6 +114,8 @@ public:
     void destroy_screen_layer(RUID layerID);
     RUID get_top_screen_layer();
     RUID get_screen_layer_item(const Vec2& worldPos, RenderSystemMat4Callback mat4CB, void* user);
+    void set_screen_layer_order(size_t count, RUID* layers);
+    void set_screen_layer_name(RUID layer, const std::string& name);
 
     RImage create_image_2d(Bitmap bitmap);
     void destroy_image_2d(RImage image);
@@ -746,6 +748,7 @@ RUID RenderSystemObj::create_screen_layer(const std::string& name)
     RUID layerID = get_ruid();
 
     ScreenLayerObj* obj = heap_new<ScreenLayerObj>(MEMORY_USAGE_RENDER, layerID, name);
+    mLayers.push_back(obj);
 
     return layerID;
 }
@@ -778,6 +781,24 @@ RUID RenderSystemObj::get_screen_layer_item(const Vec2& worldPos, RenderSystemMa
     }
 
     return 0;
+}
+
+void RenderSystemObj::set_screen_layer_order(size_t count, RUID* layers)
+{
+    LD_ASSERT(count == mLayers.size());
+
+    Vector<ScreenLayerObj*> layerOrder(count);
+    for (size_t i = 0; i < count; i++)
+        layerOrder[i] = get_layer(layers[i]);
+
+    mLayers = layerOrder;
+}
+
+void RenderSystemObj::set_screen_layer_name(RUID layer, const std::string& name)
+{
+    ScreenLayerObj* obj = get_layer(layer);
+    if (obj)
+        obj->set_name(name);
 }
 
 RImage RenderSystemObj::create_image_2d(Bitmap bitmap)
@@ -1268,6 +1289,16 @@ void RenderSystem::destroy_screen_layer(RUID layer)
         return;
 
     mObj->destroy_screen_layer(layer);
+}
+
+void RenderSystem::set_screen_layer_order(size_t count, RUID* layers)
+{
+    mObj->set_screen_layer_order(count, layers);
+}
+
+void RenderSystem::set_screen_layer_name(RUID layer, const std::string& name)
+{
+    mObj->set_screen_layer_name(layer, name);
 }
 
 RUID RenderSystem::get_top_screen_layer()

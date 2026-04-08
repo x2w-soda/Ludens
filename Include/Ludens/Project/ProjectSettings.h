@@ -74,13 +74,13 @@ struct ProjectSettings : Handle<struct ProjectSettingsObj>
     static void destroy(ProjectSettings settings);
 
     /// @brief Get interface for startup settings.
-    ProjectStartupSettings get_startup_settings();
+    ProjectStartupSettings startup_settings();
 
     /// @brief Get interface for rendering settings.
-    ProjectRenderingSettings get_rendering_settings();
+    ProjectRenderingSettings rendering_settings();
 
     /// @brief Get interface for screen layer settings.
-    ProjectScreenLayerSettings get_screen_layer_settings();
+    ProjectScreenLayerSettings screen_layer_settings();
 };
 
 } // namespace LD

@@ -78,7 +78,11 @@ RUID RenderSystemCache::get_or_create_screen_layer(SUID layerSUID)
     if (mSuidToScreenLayer.contains(layerSUID))
         return mSuidToScreenLayer[layerSUID];
 
-    return mSystem.get_top_screen_layer();
+    RUID layerRUID = mSystem.create_screen_layer("ScreenLayer");
+    mSuidToScreenLayer[layerSUID] = layerRUID;
+    mScreenLayerToSuid[layerRUID] = layerSUID;
+
+    return layerRUID;
 }
 
 SUID RenderSystemCache::get_screen_layer_suid(RUID layerRUID)
@@ -87,6 +91,16 @@ SUID RenderSystemCache::get_screen_layer_suid(RUID layerRUID)
         return (SUID)0;
 
     return mScreenLayerToSuid[layerRUID];
+}
+
+void RenderSystemCache::set_screen_layer_name(RUID layerRUID, const std::string& name)
+{
+    mSystem.set_screen_layer_name(layerRUID, name);
+}
+
+void RenderSystemCache::set_screen_layer_order(size_t count, RUID* layers)
+{
+    mSystem.set_screen_layer_order(count, layers);
 }
 
 MeshData RenderSystemCache::get_or_create_mesh_data(AssetID meshAUID)
@@ -227,6 +241,21 @@ void RenderSystemCache::reserve_sparse_index(CUID compID)
         for (uint32_t i = sparseIndex; i < mCuidToDraw.size(); i++)
             mCuidToDraw[i] = 0;
     }
+}
+
+void SceneRenderSystem::configure_screen_layers(size_t count, SUID* ids, std::string* names)
+{
+    RenderSystemCache& cache = mObj->renderSystemCache;
+
+    Vector<RUID> layerOrder(count);
+
+    for (size_t i = 0; i < count; i++)
+    {
+        layerOrder[i] = cache.get_or_create_screen_layer(ids[i]);
+        cache.set_screen_layer_name(layerOrder[i], names[i]);
+    }
+
+    cache.set_screen_layer_order(layerOrder.size(), layerOrder.data());
 }
 
 } // namespace LD

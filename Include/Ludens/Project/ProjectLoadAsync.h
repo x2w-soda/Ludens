@@ -18,11 +18,6 @@ enum ProjectLoadState
     PROJECT_LOAD_STATE_COMPLETE,
 };
 
-struct ProjectLoadResult
-{
-    FS::Path sceneSchemaAbsPath;
-};
-
 /// @brief Control data for loading a project asynchronously.
 ///        Main thread only.
 struct ProjectLoadAsync : Handle<struct ProjectLoadAsyncObj>
@@ -35,9 +30,6 @@ struct ProjectLoadAsync : Handle<struct ProjectLoadAsyncObj>
 
     /// @brief Non-blocking update.
     ProjectLoadState update();
-
-    /// @brief After completion, retrieve results.
-    bool get_result(ProjectLoadResult& outResult);
 };
 
 } // namespace LD

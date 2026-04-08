@@ -19,30 +19,7 @@ struct ProjectLoadAsyncObj
     FS::Path sceneSchemaAbsPath;
     ProjectContext* projectCtx = nullptr;
     ProjectLoadState status = PROJECT_LOAD_STATE_IDLE;
-
-    void load_project_scene(const FS::Path& sceneSchemaPath);
 };
-
-void ProjectLoadAsyncObj::load_project_scene(const FS::Path& sceneSchemaPath)
-{
-    LD_PROFILE_SCOPE;
-
-    if (!FS::exists(sceneSchemaPath))
-        return;
-
-    Scene scene = Scene::get();
-    LD_ASSERT(scene);
-    scene.unload();
-
-    scene.load([&](SceneObj* sceneObj) -> bool {
-        // load the scene
-        std::string err;
-        return SceneSchema::load_scene_from_file(Scene(sceneObj), projectCtx->suid_registry(), sceneSchemaPath, err);
-    });
-
-    // TODO: check scene load success
-    this->sceneSchemaAbsPath = sceneSchemaPath;
-}
 
 ProjectLoadAsync ProjectLoadAsync::create(ProjectContext* projectCtx)
 {
@@ -57,7 +34,7 @@ void ProjectLoadAsync::destroy(ProjectLoadAsync async)
 {
     auto* obj = async.unwrap();
 
-    LD_ASSERT(obj->status == PROJECT_LOAD_STATE_IDLE);
+    LD_ASSERT(obj->status == PROJECT_LOAD_STATE_IDLE || obj->status == PROJECT_LOAD_STATE_COMPLETE);
 
     heap_delete<ProjectLoadAsyncObj>(obj);
 }
@@ -72,7 +49,7 @@ bool ProjectLoadAsync::begin(const FS::Path& projectDir, std::string& err)
     mObj->projectDir = projectDir;
 
     FS::Path projectSchemaAbsPath = FS::absolute(projectDir / FS::Path("project.toml"));
-    if (!mObj->projectCtx->load_project(projectSchemaAbsPath, err))
+    if (!mObj->projectCtx->load_project_schema(projectSchemaAbsPath, err))
         return false;
 
     sLog.info("loaded project schema [{}]", projectSchemaAbsPath.string());
@@ -84,7 +61,7 @@ bool ProjectLoadAsync::begin(const FS::Path& projectDir, std::string& err)
         return false;
     }
 
-    if (!mObj->projectCtx->load_asset_registry(assetSchemaAbsPath, err))
+    if (!mObj->projectCtx->load_asset_schema(assetSchemaAbsPath, err))
         return false;
 
     sLog.info("loaded asset schema   [{}]", assetSchemaAbsPath.string());
@@ -137,25 +114,10 @@ ProjectLoadState ProjectLoadAsync::update()
             sLog.info("- found scene {}", scenePath.string());
         }
 
-        if (!scenePaths.empty())
-            mObj->load_project_scene(scenePaths.front());
-
         mObj->status = PROJECT_LOAD_STATE_COMPLETE;
     }
 
     return mObj->status;
-}
-
-bool ProjectLoadAsync::get_result(ProjectLoadResult& outResult)
-{
-    if (mObj->status != PROJECT_LOAD_STATE_COMPLETE)
-        return false;
-
-    outResult.sceneSchemaAbsPath = mObj->sceneSchemaAbsPath;
-    mObj->sceneSchemaAbsPath.clear();
-
-    mObj->status = PROJECT_LOAD_STATE_IDLE;
-    return true;
 }
 
 } // namespace LD

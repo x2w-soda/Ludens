@@ -64,6 +64,11 @@ struct Project : Handle<struct ProjectObj>
     /// @brief Get scene entry by ID, may fail for invalid ID.
     bool get_scene(SUID sceneID, ProjectSceneEntry& outEntry);
 
+    inline bool get_default_scene(ProjectSceneEntry& outEntry)
+    {
+        return get_scene(settings().startup_settings().get_default_scene_id(), outEntry);
+    }
+
     /// @brief Get all scene entries in project.
     void get_scenes(Vector<ProjectSceneEntry>& outEntries);
 
@@ -83,7 +88,7 @@ struct Project : Handle<struct ProjectObj>
     void set_scene_schema_path(SUID sceneID, const FS::Path& scenePath);
 
     /// @brief Get interface to project settings.
-    ProjectSettings get_settings();
+    ProjectSettings settings();
 };
 
 } // namespace LD

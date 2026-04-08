@@ -19,6 +19,13 @@ const char* get_scene_log_channel_name();
 
 using SceneLoadFn = std::function<bool(struct SceneObj*)>;
 
+/// @brief Render system interface on behalf of the Scene.
+///        Main thread only.
+struct SceneRenderSystem : Handle<struct SceneObj>
+{
+    void configure_screen_layers(size_t count, SUID* ids, std::string* names);
+};
+
 /// @brief Scene creation info, connects to external asset manager and subsystems.
 struct SceneInfo
 {
@@ -81,6 +88,9 @@ public:
     /// @brief In practice each Camera2DComponent will have its own viewport region.
     void get_screen_regions(Vector<Viewport>& outViewports, Vector<Rect>& outWorldAABBs);
 
+    /// @brief Get scene render system interface
+    SceneRenderSystem render_system();
+
     /// @brief Try create a component.
     /// @param type Component type.
     /// @param name Component identifier.
@@ -93,7 +103,7 @@ public:
     /// @param name Component identifier.
     /// @param suidRegistry Used to validate or generate a new serial ID.
     /// @param parentSUID Parent serial ID, or zero if creating a root component.
-    /// @param hintSUID If valid, the known serial ID. Otherwise the SUID registry allocates a new one. 
+    /// @param hintSUID If valid, the known serial ID. Otherwise the SUID registry allocates a new one.
     /// @return Component interface of the newly created component on success.
     ComponentView create_component_serial(ComponentType type, const char* name, SUIDRegistry suidRegistry, SUID parentSUID, SUID hintSUID);
 

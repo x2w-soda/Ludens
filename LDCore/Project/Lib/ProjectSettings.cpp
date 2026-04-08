@@ -196,17 +196,17 @@ void ProjectSettings::destroy(ProjectSettings settings)
     heap_delete<ProjectSettingsObj>(obj);
 }
 
-ProjectStartupSettings ProjectSettings::get_startup_settings()
+ProjectStartupSettings ProjectSettings::startup_settings()
 {
     return ProjectStartupSettings(mObj);
 }
 
-ProjectRenderingSettings ProjectSettings::get_rendering_settings()
+ProjectRenderingSettings ProjectSettings::rendering_settings()
 {
     return ProjectRenderingSettings(mObj);
 }
 
-ProjectScreenLayerSettings ProjectSettings::get_screen_layer_settings()
+ProjectScreenLayerSettings ProjectSettings::screen_layer_settings()
 {
     return ProjectScreenLayerSettings(mObj);
 }

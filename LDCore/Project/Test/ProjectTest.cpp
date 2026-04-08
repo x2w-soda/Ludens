@@ -8,7 +8,7 @@ TEST_CASE("ProjectScreenLayerSettings")
 {
     SUIDRegistry idReg = SUIDRegistry::create();
     ProjectSettings projectS = ProjectSettings::create();
-    ProjectScreenLayerSettings layerS = projectS.get_screen_layer_settings();
+    ProjectScreenLayerSettings layerS = projectS.screen_layer_settings();
     Vector<ProjectScreenLayer> order = layerS.get_layers();
     CHECK(order.empty());
 

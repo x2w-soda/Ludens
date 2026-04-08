@@ -29,12 +29,17 @@ public:
     /// @brief Get a 2D component from 2D world position.
     CUID get_2d_component_by_position(const Vec2& worldPos, RenderSystemMat4Callback mat4CB, void* user);
 
-    RUID get_or_create_screen_layer(SUID screenLayerSUID);
-    SUID get_screen_layer_suid(RUID screenLayerRUID);
+    RUID get_or_create_screen_layer(SUID layerSUID);
+    SUID get_screen_layer_suid(RUID layerRUID);
+    void set_screen_layer_name(RUID layerRUID, const std::string& name);
+    void set_screen_layer_order(size_t count, RUID* layers);
+
     MeshData get_or_create_mesh_data(AssetID meshAUID);
     MeshDraw create_mesh_draw(CUID compID, AssetID meshID = 0);
     void destroy_mesh_draw(MeshDraw draw);
+
     Image2D get_or_create_image_2d(AssetID textureAUID);
+
     Sprite2DDraw create_sprite_2d_draw(CUID compID, RUID layerID = 0, AssetID textureID = 0);
     Sprite2DDraw migrate_sprite_2d_draw(Sprite2DDraw draw, RUID newLayerID);
     void destroy_sprite_2d_draw(Sprite2DDraw draw);

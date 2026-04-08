@@ -149,7 +149,7 @@ void Project::set_scene_schema_path(SUID sceneID, const FS::Path& scenePath)
     }
 }
 
-ProjectSettings Project::get_settings()
+ProjectSettings Project::settings()
 {
     return mObj->settings;
 }

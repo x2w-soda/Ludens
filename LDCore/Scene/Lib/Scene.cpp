@@ -719,6 +719,13 @@ void Scene::get_screen_regions(Vector<Viewport>& outViewports, Vector<Rect>& out
     outWorldAABBs.push_back(Rect(0.0f, 0.0f, mObj->extent.x, mObj->extent.y));
 }
 
+SceneRenderSystem Scene::render_system()
+{
+    LD_ASSERT(mObj);
+
+    return SceneRenderSystem(mObj);
+}
+
 ComponentView Scene::create_component(ComponentType type, const char* name, CUID parentCUID)
 {
     DataRegistry reg{};

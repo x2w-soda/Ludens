@@ -45,7 +45,7 @@ public:
 
     ProjectSchemaLoader& operator=(const ProjectSchemaLoader&) = delete;
 
-    bool load_project(Project project, SUIDRegistry idReg, const View& toml, std::string& err);
+    bool load_project_schema(Project project, SUIDRegistry idReg, const View& toml, std::string& err);
 
 private:
     bool load_project_settings(ProjectSettings settings, std::string& err);
@@ -64,7 +64,7 @@ ProjectSchemaLoader::~ProjectSchemaLoader()
         TOMLReader::destroy(mReader);
 }
 
-bool ProjectSchemaLoader::load_project(Project project, SUIDRegistry idReg, const View& toml, std::string& err)
+bool ProjectSchemaLoader::load_project_schema(Project project, SUIDRegistry idReg, const View& toml, std::string& err)
 {
     mReader = TOMLReader::create(toml, err);
     mProject = project;
@@ -145,7 +145,7 @@ bool ProjectSchemaLoader::load_project(Project project, SUIDRegistry idReg, cons
 
     if (mReader.enter_table(PROJECT_SCHEMA_TABLE_SETTINGS))
     {
-        isValid = load_project_settings(project.get_settings(), err);
+        isValid = load_project_settings(project.settings(), err);
         mReader.exit();
     }
 
@@ -159,7 +159,7 @@ bool ProjectSchemaLoader::load_project_settings(ProjectSettings settings, std::s
 {
     if (mReader.enter_table(PROJECT_SCHEMA_TABLE_STARTUP))
     {
-        ProjectStartupSettings startup = settings.get_startup_settings();
+        ProjectStartupSettings startup = settings.startup_settings();
         load_project_startup_settings(startup);
         mReader.exit();
 
@@ -174,7 +174,7 @@ bool ProjectSchemaLoader::load_project_settings(ProjectSettings settings, std::s
 
     if (mReader.enter_table(PROJECT_SCHEMA_TABLE_SCREEN_LAYER))
     {
-        ProjectScreenLayerSettings screenLayer = settings.get_screen_layer_settings();
+        ProjectScreenLayerSettings screenLayer = settings.screen_layer_settings();
         load_project_screen_layer_settings(screenLayer);
         mReader.exit();
     }
@@ -204,7 +204,8 @@ void ProjectSchemaLoader::load_project_startup_settings(ProjectStartupSettings s
 bool ProjectSchemaLoader::load_project_screen_layer_settings(ProjectScreenLayerSettings settings)
 {
     int count;
-    mReader.enter_array("layers", count);
+    if (!mReader.enter_array(PROJECT_SCHEMA_KEY_SCREEN_LAYERS, count))
+        return false; // at least one screen layer is required
 
     for (int i = 0; i < count; i++)
     {
@@ -213,10 +214,10 @@ bool ProjectSchemaLoader::load_project_screen_layer_settings(ProjectScreenLayerS
 
         SUID suid;
         std::string str;
-        mReader.read_suid("id", suid);
-        mReader.read_string("name", str);
+        mReader.read_suid(PROJECT_SCHEMA_KEY_SCREEN_LAYER_ID, suid);
+        mReader.read_string(PROJECT_SCHEMA_KEY_SCREEN_LAYER_NAME, str);
         mReader.exit();
-        
+
         if (!settings.create_layer(mIDReg, suid, str.c_str()))
             return false;
     }
@@ -259,7 +260,7 @@ bool ProjectSchemaSaver::save_project(Project project, std::string& toml, std::s
     }
     mWriter.end_array_table();
 
-    save_project_settings(project.get_settings(), mWriter);
+    save_project_settings(project.settings(), mWriter);
 
     mWriter.end(toml);
     TOMLWriter::destroy(mWriter);
@@ -273,12 +274,12 @@ void ProjectSchemaSaver::save_project_settings(ProjectSettings settings, TOMLWri
     mWriter.begin_table(PROJECT_SCHEMA_TABLE_SETTINGS);
 
     writer.begin_table(PROJECT_SCHEMA_TABLE_STARTUP);
-    ProjectStartupSettings startup = settings.get_startup_settings();
+    ProjectStartupSettings startup = settings.startup_settings();
     save_project_startup_settings(startup, writer);
     writer.end_table();
 
     writer.begin_table(PROJECT_SCHEMA_TABLE_SCREEN_LAYER);
-    ProjectScreenLayerSettings screenLayer = settings.get_screen_layer_settings();
+    ProjectScreenLayerSettings screenLayer = settings.screen_layer_settings();
     save_project_screen_layer_settings(screenLayer, writer);
     writer.end_table();
 
@@ -295,7 +296,17 @@ void ProjectSchemaSaver::save_project_startup_settings(ProjectStartupSettings se
 
 void ProjectSchemaSaver::save_project_screen_layer_settings(ProjectScreenLayerSettings settings, TOMLWriter writer)
 {
-    // TODO:
+    writer.begin_array_table(PROJECT_SCHEMA_KEY_SCREEN_LAYERS);
+
+    for (const ProjectScreenLayer layer : settings.get_layers())
+    {
+        writer.begin_table();
+        writer.key(PROJECT_SCHEMA_KEY_SCREEN_LAYER_ID).write_u32(layer.id);
+        writer.key(PROJECT_SCHEMA_KEY_SCREEN_LAYER_NAME).write_string(layer.name);
+        writer.end_table();
+    }
+
+    writer.end_array_table();
 }
 
 //
@@ -315,7 +326,7 @@ bool ProjectSchema::load_project_from_source(Project project, SUIDRegistry idReg
     project.set_project_schema_path(rootDir / FS::Path("project.toml"));
 
     ProjectSchemaLoader loader;
-    return loader.load_project(project, idReg, toml, err);
+    return loader.load_project_schema(project, idReg, toml, err);
 }
 
 bool ProjectSchema::load_project_from_file(Project project, SUIDRegistry idReg, const FS::Path& tomlPath, std::string& err)
@@ -329,7 +340,7 @@ bool ProjectSchema::load_project_from_file(Project project, SUIDRegistry idReg, 
     project.set_project_schema_path(tomlPath);
 
     ProjectSchemaLoader loader;
-    return loader.load_project(project, idReg, View((const char*)toml.data(), toml.size()), err);
+    return loader.load_project_schema(project, idReg, View((const char*)toml.data(), toml.size()), err);
 }
 
 bool ProjectSchema::save_project_to_string(Project project, std::string& saveTOML, std::string& err)
@@ -360,7 +371,7 @@ std::string ProjectSchema::create_empty(const std::string& projectName, const st
     Project project = Project::create();
     project.set_name(projectName);
     project.set_asset_schema_path(assetSchemaPath);
-    project.get_settings().get_startup_settings().set_window_name(projectName);
+    project.settings().startup_settings().set_window_name(projectName);
 
     std::string err;
     ProjectSceneEntry entry{};
@@ -370,7 +381,7 @@ std::string ProjectSchema::create_empty(const std::string& projectName, const st
     bool success = project.add_scene(entry, err);
     LD_ASSERT(success);
 
-    project.get_settings().get_startup_settings().set_default_scene_id(entry.id);
+    project.settings().startup_settings().set_default_scene_id(entry.id);
 
     std::string toml;
     success = ProjectSchema::save_project_to_string(project, toml, err);

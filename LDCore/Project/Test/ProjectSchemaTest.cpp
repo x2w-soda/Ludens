@@ -60,7 +60,7 @@ default_scene_id = 0x03000002
     CHECK(scenePaths[1] == FS::Path("scenes/scene2.toml"));
     CHECK(scenePaths[2] == FS::Path("scenes/scene3.toml"));
 
-    ProjectStartupSettings startupS = proj.get_settings().get_startup_settings();
+    ProjectStartupSettings startupS = proj.settings().startup_settings();
     CHECK(startupS.get_window_width() == 1234);
     CHECK(startupS.get_window_height() == 5678);
     CHECK(startupS.get_window_name() == "Foo");
