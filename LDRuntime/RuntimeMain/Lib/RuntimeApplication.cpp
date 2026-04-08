@@ -6,7 +6,7 @@
 
 namespace LD {
 
-RuntimeApplication::RuntimeApplication(Project project)
+RuntimeApplication::RuntimeApplication()
 {
     LD_PROFILE_SCOPE;
 
@@ -14,18 +14,40 @@ RuntimeApplication::RuntimeApplication(Project project)
     jsI.immediateQueueCapacity = 128;
     jsI.standardQueueCapacity = 128;
     JobSystem::init(jsI);
-
-    RuntimeContextInfo ctxI{};
-    ctxI.project = project;
-    mRuntimeCtx = RuntimeContext::create(ctxI);
 }
 
 RuntimeApplication::~RuntimeApplication()
 {
     LD_PROFILE_SCOPE;
 
-    RuntimeContext::destroy(mRuntimeCtx);
+    if (mRuntimeCtx)
+        RuntimeContext::destroy(mRuntimeCtx);
+
     JobSystem::shutdown();
+}
+
+bool RuntimeApplication::startup(const RuntimeApplicationInfo& info, std::string& err)
+{
+    RuntimeContextInfo ctxI{};
+    ctxI.projectSchemaPath = info.projectSchemaPath;
+    mRuntimeCtx = RuntimeContext::create(ctxI);
+
+    if (!mRuntimeCtx)
+    {
+        err = "failed to create RuntimeContext";
+        return false;
+    }
+
+    return true;
+}
+
+void RuntimeApplication::cleanup()
+{
+    if (mRuntimeCtx)
+    {
+        RuntimeContext::destroy(mRuntimeCtx);
+        mRuntimeCtx = {};
+    }
 }
 
 void RuntimeApplication::run()

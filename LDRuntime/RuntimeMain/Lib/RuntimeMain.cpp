@@ -1,6 +1,7 @@
 #include <Ludens/CommandLine/ArgParser.h>
 #include <Ludens/Log/Log.h>
 #include <Ludens/Project/Project.h>
+#include <Ludens/Project/ProjectContext.h>
 #include <Ludens/Project/ProjectSchema.h>
 #include <Ludens/System/FileSystem.h>
 
@@ -77,6 +78,7 @@ RuntimeArgs::~RuntimeArgs()
 
 int main(int argc, char** argv)
 {
+    std::string err;
     FS::Path projectSchemaPath{};
     FS::Path pwd = std::filesystem::current_path();
     sLog.info("PWD: {}", pwd.string());
@@ -92,17 +94,16 @@ int main(int argc, char** argv)
         return 0;
     }
 
-    std::string err;
-    Project project = Project::create();
-    bool ok = ProjectSchema::load_project_from_file(project, projectSchemaPath, err);
-    LD_ASSERT(ok); // TODO:
-
     {
-        RuntimeApplication runtimeApp(project);
-        runtimeApp.run();
-    }
+        RuntimeApplication runtimeApp;
+        RuntimeApplicationInfo info{};
+        info.projectSchemaPath = projectSchemaPath;
+        if (!runtimeApp.startup(info, err))
+            return 0;
 
-    Project::destroy(project);
+        runtimeApp.run();
+        runtimeApp.cleanup();
+    }
 
     int count = get_memory_leaks(nullptr);
 

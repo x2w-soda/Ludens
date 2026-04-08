@@ -1,8 +1,6 @@
 #pragma once
 
 #include <Ludens/Asset/Asset.h>
-#include <Ludens/Project/Project.h>
-#include <Ludens/RenderSystem/RenderSystem.h>
 #include <Ludens/Scene/Scene.h>
 #include <Ludens/System/FileSystem.h>
 
@@ -10,7 +8,7 @@ namespace LD {
 
 struct RuntimeContextInfo
 {
-    Project project;
+    FS::Path projectSchemaPath;
 };
 
 /// @brief Context for the game runtime.

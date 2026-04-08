@@ -6,6 +6,7 @@
 #include <Ludens/Log/Log.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/Project/Project.h>
+#include <Ludens/Project/ProjectContext.h>
 #include <Ludens/Project/ProjectSchema.h>
 #include <Ludens/RenderBackend/RBackend.h>
 #include <Ludens/Scene/Scene.h>
@@ -24,12 +25,13 @@ struct RuntimeContextObj
     RDevice renderDevice;
     RenderSystem renderSystem;
     AudioSystem audioSystem;
-    Project project;
-    AssetRegistry assetRegistry{};
-    Scene scene{};
+    Scene scene = {};
+    ProjectContext projectCtx = {};
     UIFontRegistry fontRegistry;
     UIFont fontDefault;
 
+    bool startup(const RuntimeContextInfo& info, std::string err);
+    void cleanup();
     void render_frame(const Vec2& windowExtent);
 
     /// @brief Callback to inform the render system the transforms of RUIDs.
@@ -38,9 +40,143 @@ struct RuntimeContextObj
     static void on_window_event(const WindowEvent* event, void* user);
 };
 
+bool RuntimeContextObj::startup(const RuntimeContextInfo& info, std::string err)
+{
+    if (!projectCtx.load_project_schema(info.projectSchemaPath, err))
+        return false;
+
+    Project project = projectCtx.project();
+    ProjectSettings projectS = project.settings();
+    ProjectStartupSettings startupS = projectS.startup_settings();
+    ProjectScreenLayerSettings screenLayerS = projectS.screen_layer_settings();
+    ProjectSceneEntry startupScene;
+    if (!project.get_scene(startupS.get_default_scene_id(), startupScene))
+    {
+        err = "failed to locate default scene in project";
+        return false;
+    }
+
+    const std::string windowName = startupS.get_window_name();
+    const FS::Path rootPath = project.get_root_path();
+    const FS::Path defaultScenePath = rootPath / FS::Path(startupScene.path);
+    const FS::Path assetSchemaPath = projectCtx.asset_schema_abs_path();
+
+    if (!projectCtx.load_asset_schema(assetSchemaPath, err))
+        return false;
+
+    WindowInfo windowI{};
+    windowI.width = startupS.get_window_width();
+    windowI.height = startupS.get_window_height();
+    windowI.name = windowName.c_str();
+    windowI.onEvent = &RuntimeContextObj::on_window_event;
+    windowI.user = this;
+    windowI.hintBorderColor = 0;
+    windowI.hintTitleBarColor = 0;
+    windowI.hintTitleBarTextColor = 0;
+    WindowRegistry::create(windowI);
+
+    sLog.info("begin loading assets [{}]", assetSchemaPath.string());
+
+    // load assets
+    AssetManagerInfo amI{};
+    amI.watchAssets = false;
+    amI.registry = projectCtx.asset_registry();
+    amI.rootPath = rootPath;
+    AssetManager AM = AssetManager::create(amI);
+    AM.begin_load_batch();
+    AM.load_all_assets();
+
+    // some work on the main thread while worker threads are loading assets
+    {
+        RDeviceInfo deviceI{};
+        deviceI.backend = RDEVICE_BACKEND_VULKAN;
+        deviceI.vsync = false; // TODO expose
+        renderDevice = RDevice::create(deviceI);
+    }
+
+    // this blocks until all worker threads finish loading
+    Vector<std::string> loadErrors;
+    if (!AM.end_load_batch(loadErrors))
+    {
+        sLog.error("AssetManager failed to load assets with {} errors", loadErrors.size());
+        for (const std::string& err : loadErrors)
+            sLog.error("{}", err);
+
+        return false;
+    }
+
+    sLog.info("finish loading assets");
+
+    // TODO: generalize
+    FontAsset defaultFont = (FontAsset)AM.get_asset("default_font", ASSET_TYPE_FONT);
+    if (!defaultFont)
+    {
+        LD_DEBUG_BREAK;
+        return false;
+    }
+
+    // initialize subsystems
+    RenderSystemInfo systemI{};
+    systemI.device = renderDevice;
+    systemI.defaultFontAtlas = defaultFont.get_font_atlas();
+    systemI.monoFontAtlas = {};
+    renderSystem = RenderSystem::create(systemI);
+    audioSystem = AudioSystem::create();
+
+    fontRegistry = UIFontRegistry::create();
+    fontDefault = fontRegistry.add_font(defaultFont.get_font_atlas(), renderSystem.get_font_atlas_image());
+
+    Vector<ProjectScreenLayer> layers = screenLayerS.get_layers();
+
+    SceneInfo sceneI{};
+    sceneI.audioSystem = audioSystem;
+    sceneI.renderSystem = renderSystem;
+    sceneI.uiFont = fontDefault;
+    sceneI.uiTheme = UITheme::get_default_theme();
+    scene = Scene::create(sceneI);
+
+    // Need at least one ScreenLayer before loading any Sprite2DComponents
+    projectCtx.configure_project_screen_layers();
+
+    scene.load([&](SceneObj* sceneObj) -> bool {
+        // load default scene
+        std::string err;
+        return SceneSchema::load_scene_from_file(Scene(sceneObj), projectCtx.suid_registry(), defaultScenePath, err);
+    });
+
+    // TODO: check scene load success
+    sLog.info("load complete");
+
+    if (!scene.startup())
+    {
+        sLog.error("default scene failed to startup");
+        return false;
+    }
+
+    sLog.info("startup complete");
+
+    return true;
+}
+
+void RuntimeContextObj::cleanup()
+{
+    renderDevice.wait_idle();
+    scene.cleanup();
+
+    Scene::destroy();
+    UIFontRegistry::destroy(fontRegistry);
+    AudioSystem::destroy(audioSystem);
+    RenderSystem::destroy(renderSystem);
+    RDevice::destroy(renderDevice);
+    AssetManager::destroy();
+    WindowRegistry::destroy();
+}
+
 void RuntimeContextObj::render_frame(const Vec2& windowExtent)
 {
     const Viewport windowViewport = Viewport::from_extent(windowExtent);
+
+    ProjectSettings projectS = projectCtx.project().settings();
 
     // begin rendering a frame
     RenderSystemFrameInfo frameI{};
@@ -48,7 +184,7 @@ void RuntimeContextObj::render_frame(const Vec2& windowExtent)
     frameI.screenExtent = windowExtent;
     frameI.sceneExtent = windowExtent;
     frameI.envCubemap = (RUID)0;
-    frameI.clearColor = project.get_settings().get_rendering_settings().get_clear_color();
+    frameI.clearColor = projectS.rendering_settings().get_clear_color();
     renderSystem.next_frame(frameI);
 
 #if 0
@@ -118,103 +254,13 @@ RuntimeContext RuntimeContext::create(const RuntimeContextInfo& info)
     LD_PROFILE_SCOPE;
 
     auto* obj = heap_new<RuntimeContextObj>(MEMORY_USAGE_MISC);
-    obj->project = info.project;
-
-    ProjectStartupSettings startupS = obj->project.get_settings().get_startup_settings();
-    ProjectSceneEntry startupScene;
-    bool success = obj->project.get_scene(startupS.get_default_scene_id(), startupScene);
-    LD_ASSERT(success); // TODO:
-
-    const std::string windowName = startupS.get_window_name();
-    const FS::Path rootPath = obj->project.get_root_path();
-    const FS::Path defaultScenePath = rootPath / FS::Path(startupScene.path);
-    const FS::Path assetSchemaPath = obj->project.get_asset_schema_absolute_path();
 
     std::string err;
-    obj->assetRegistry = AssetRegistry::create();
-    success = AssetSchema::load_registry_from_file(obj->assetRegistry, assetSchemaPath, err);
-    LD_ASSERT(success); // TODO:
-
-    WindowInfo windowI{};
-    windowI.width = startupS.get_window_width();
-    windowI.height = startupS.get_window_height();
-    windowI.name = windowName.c_str();
-    windowI.onEvent = &RuntimeContextObj::on_window_event;
-    windowI.user = obj;
-    windowI.hintBorderColor = 0;
-    windowI.hintTitleBarColor = 0;
-    windowI.hintTitleBarTextColor = 0;
-    WindowRegistry::create(windowI);
-
-    sLog.info("begin loading assets [{}]", assetSchemaPath.string());
-
-    // load assets
-    AssetManagerInfo amI{};
-    amI.watchAssets = false;
-    amI.registry = obj->assetRegistry;
-    amI.rootPath = rootPath;
-    AssetManager AM = AssetManager::create(amI);
-    AM.begin_load_batch();
-    AM.load_all_assets();
-
-    // some work on the main thread while worker threads are loading assets
+    if (!obj->startup(info, err))
     {
-        RDeviceInfo deviceI{};
-        deviceI.backend = RDEVICE_BACKEND_VULKAN;
-        deviceI.vsync = false; // TODO expose
-        obj->renderDevice = RDevice::create(deviceI);
+        heap_delete<RuntimeContextObj>(obj);
+        return {};
     }
-
-    // this blocks until all worker threads finish loading
-    Vector<std::string> loadErrors;
-    if (!AM.end_load_batch(loadErrors))
-    {
-        sLog.error("AssetManager failed to load assets with {} errors", loadErrors.size());
-        for (const std::string& err : loadErrors)
-            sLog.error("{}", err);
-        LD_UNREACHABLE;
-    }
-
-    sLog.info("finish loading assets");
-
-    // TODO: generalize
-    FontAsset defaultFont = (FontAsset)AM.get_asset("default_font", ASSET_TYPE_FONT);
-    LD_ASSERT(defaultFont);
-
-    // initialize subsystems
-    RenderSystemInfo systemI{};
-    systemI.device = obj->renderDevice;
-    systemI.defaultFontAtlas = defaultFont.get_font_atlas();
-    systemI.monoFontAtlas = {};
-    obj->renderSystem = RenderSystem::create(systemI);
-    obj->audioSystem = AudioSystem::create();
-
-    obj->fontRegistry = UIFontRegistry::create();
-    obj->fontDefault = obj->fontRegistry.add_font(defaultFont.get_font_atlas(), obj->renderSystem.get_font_atlas_image());
-
-    SceneInfo sceneI{};
-    sceneI.audioSystem = obj->audioSystem;
-    sceneI.renderSystem = obj->renderSystem;
-    sceneI.uiFont = obj->fontDefault;
-    sceneI.uiTheme = UITheme::get_default_theme();
-    obj->scene = Scene::create(sceneI);
-
-    obj->scene.load([&](SceneObj* sceneObj) -> bool {
-        // load default scene
-        std::string err;
-        return SceneSchema::load_scene_from_file(Scene(sceneObj), defaultScenePath, err);
-    });
-
-    // TODO: check scene load success
-    sLog.info("load complete");
-
-    if (!obj->scene.startup())
-    {
-        sLog.error("default scene failed to startup");
-        LD_UNREACHABLE;
-    }
-
-    sLog.info("startup complete");
 
     return RuntimeContext(obj);
 }
@@ -224,17 +270,8 @@ void RuntimeContext::destroy(RuntimeContext ctx)
     LD_PROFILE_SCOPE;
 
     auto* obj = (RuntimeContextObj*)ctx.unwrap();
-    obj->renderDevice.wait_idle();
-    obj->scene.cleanup();
 
-    Scene::destroy();
-    UIFontRegistry::destroy(obj->fontRegistry);
-    AudioSystem::destroy(obj->audioSystem);
-    RenderSystem::destroy(obj->renderSystem);
-    RDevice::destroy(obj->renderDevice);
-    AssetManager::destroy();
-    WindowRegistry::destroy();
-    AssetRegistry::destroy(obj->assetRegistry);
+    obj->cleanup();
 
     heap_delete<RuntimeContextObj>(obj);
 }
