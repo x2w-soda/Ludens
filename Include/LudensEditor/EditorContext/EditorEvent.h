@@ -6,6 +6,7 @@
 
 namespace LD {
 
+struct AssetImportInfo;
 struct EditorEvent;
 
 /// @brief User callback to observe editor events.
@@ -15,24 +16,28 @@ enum EditorEventType
 {
     EDITOR_EVENT_TYPE_NOTIFY_PROJECT_CREATION,
     EDITOR_EVENT_TYPE_NOTIFY_PROJECT_LOAD,
+    EDITOR_EVENT_TYPE_NOTIFY_PROJECT_SETTINGS_DIRTY,
     EDITOR_EVENT_TYPE_NOTIFY_SCENE_LOAD,
     EDITOR_EVENT_TYPE_NOTIFY_COMPONENT_SELECTION,
+    EDITOR_EVENT_TYPE_NOTIFY_FILE_DROP,
     EDITOR_EVENT_TYPE_REQUEST_CLOSE_DIALOG,
     EDITOR_EVENT_TYPE_REQUEST_PROJECT_SETTINGS,
     EDITOR_EVENT_TYPE_REQUEST_COMPONENT_ASSET,
+    EDITOR_EVENT_TYPE_REQUEST_IMPORT_ASSETS,
     EDITOR_EVENT_TYPE_REQUEST_NEW_PROJECT,
     EDITOR_EVENT_TYPE_REQUEST_OPEN_PROJECT,
     EDITOR_EVENT_TYPE_REQUEST_NEW_SCENE,
     EDITOR_EVENT_TYPE_REQUEST_OPEN_SCENE,
     EDITOR_EVENT_TYPE_REQUEST_CREATE_COMPONENT,
     EDITOR_EVENT_TYPE_REQUEST_DOCUMENT,
+    EDITOR_EVENT_TYPE_ACTION_SAVE,
     EDITOR_EVENT_TYPE_ACTION_UNDO,
     EDITOR_EVENT_TYPE_ACTION_REDO,
     EDITOR_EVENT_TYPE_ACTION_NEW_SCENE,
     EDITOR_EVENT_TYPE_ACTION_OPEN_SCENE,
-    EDITOR_EVENT_TYPE_ACTION_SAVE_SCENE,
     EDITOR_EVENT_TYPE_ACTION_OPEN_PROJECT,
     EDITOR_EVENT_TYPE_ACTION_CREATE_PROJECT,
+    EDITOR_EVENT_TYPE_ACTION_IMPORT_ASSETS,
     EDITOR_EVENT_TYPE_ACTION_ADD_COMPONENT,
     EDITOR_EVENT_TYPE_ACTION_ADD_COMPONENT_SCRIPT,
     EDITOR_EVENT_TYPE_ACTION_SET_COMPONENT_ASSET,
@@ -116,6 +121,16 @@ struct EditorNotifyProjectLoadEvent : EditorNotifyEvent
     }
 };
 
+struct EditorNotifyProjectSettingsDirtyEvent : EditorNotifyEvent
+{
+    EditorNotifyProjectSettingsDirtyEvent()
+        : EditorNotifyEvent(EDITOR_EVENT_TYPE_NOTIFY_PROJECT_SETTINGS_DIRTY)
+    {
+    }
+
+    bool dirtyScreenLayers = false;
+};
+
 /// @brief Event signaling that a Scene has been loaded into the editor.
 struct EditorNotifySceneLoadEvent : EditorNotifyEvent
 {
@@ -135,6 +150,17 @@ struct EditorNotifyComponentSelectionEvent : EditorNotifyEvent
 
     /// @brief The new component being selected, an invalid ID indicates that the selection is cleared.
     CUID cuid = 0;
+};
+
+/// @brief Event signaling that files are dragged-and-dropped into editor window.
+struct EditorNotifyFileDropEvent : EditorNotifyEvent
+{
+    EditorNotifyFileDropEvent()
+        : EditorNotifyEvent(EDITOR_EVENT_TYPE_NOTIFY_FILE_DROP)
+    {
+    }
+
+    Vector<FS::Path> files;
 };
 
 /// @brief Event signaling a request to close the current dialog window.
@@ -166,6 +192,17 @@ struct EditorRequestComponentAssetEvent : EditorRequestEvent
     SUID component = 0;
     AssetID oldAssetID = 0;
     AssetType requestType = ASSET_TYPE_ENUM_COUNT;
+};
+
+/// @brief Event requesting asset import. Import parameters unknown.
+struct EditorRequestImportAssetsEvent : EditorRequestEvent
+{
+    EditorRequestImportAssetsEvent()
+        : EditorRequestEvent(EDITOR_EVENT_TYPE_REQUEST_IMPORT_ASSETS)
+    {
+    }
+
+    FS::Path srcPath; // source file requesting import
 };
 
 /// @brief Event signaling the request for creating a new project.
@@ -227,6 +264,18 @@ struct EditorRequestDocumentEvent : EditorRequestEvent
     std::string uri;
 };
 
+struct EditorActionSaveEvent : EditorActionEvent
+{
+    EditorActionSaveEvent()
+        : EditorActionEvent(EDITOR_EVENT_TYPE_ACTION_SAVE)
+    {
+    }
+
+    bool saveProjectSchema = false;
+    bool saveSceneSchema = false;
+    bool saveAssetSchema = false;
+};
+
 struct EditorActionUndoEvent : EditorActionEvent
 {
     EditorActionUndoEvent()
@@ -263,14 +312,6 @@ struct EditorActionOpenSceneEvent : EditorActionEvent
     FS::Path openScene;
 };
 
-struct EditorActionSaveSceneEvent : EditorActionEvent
-{
-    EditorActionSaveSceneEvent()
-        : EditorActionEvent(EDITOR_EVENT_TYPE_ACTION_SAVE_SCENE)
-    {
-    }
-};
-
 struct EditorActionOpenProjectEvent : EditorActionEvent
 {
     EditorActionOpenProjectEvent()
@@ -290,6 +331,16 @@ struct EditorActionCreateProjectEvent : EditorActionEvent
 
     std::string projectName;
     FS::Path projectSchema;
+};
+
+struct EditorActionImportAssetsEvent : EditorActionEvent
+{
+    EditorActionImportAssetsEvent()
+        : EditorActionEvent(EDITOR_EVENT_TYPE_ACTION_IMPORT_ASSETS)
+    {
+    }
+
+    Vector<AssetImportInfo*> batch;
 };
 
 struct EditorActionAddComponentEvent : EditorActionEvent

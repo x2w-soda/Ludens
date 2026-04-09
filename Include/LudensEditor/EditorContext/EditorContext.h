@@ -9,6 +9,7 @@
 #include <Ludens/Scene/Scene.h>
 #include <Ludens/System/FileSystem.h>
 #include <Ludens/UI/UILayout.h>
+#include <LudensBuilder/AssetBuilder/AssetImporter.h>
 #include <LudensEditor/EditorContext/EditorEvent.h>
 #include <LudensEditor/EditorContext/EditorSettings.h>
 
@@ -55,12 +56,17 @@ struct EditorContext : Handle<struct EditorContextObj>
     /// @brief Callback to render Scene screen space contents.
     static void render_system_screen_pass_overlay_callback(ScreenRenderComponent renderer, TView<int> regionVPIndices, int overlayVPIndex, void* user);
 
+    /// @brief Callback to handle file drops into the editor window.
+    static void drop_file_callback(size_t fileCount, const FS::Path* files, void* user);
+
     /// @brief Add an EditorEvent to the event queue for deferred processing.
     ///        This is non-blocking and returns the event that is allocated by EditorContext.
     EditorEvent* enqueue_event(EditorEventType type);
 
     /// @brief Blocks until all events are processed.
     void poll_events();
+
+    AssetImporter get_asset_importer();
 
     /// @brief Get discovered projects.
     Vector<EditorProjectEntry> get_project_entries();
@@ -72,10 +78,13 @@ struct EditorContext : Handle<struct EditorContextObj>
     FS::Path get_scene_schema_path();
 
     /// @brief Get editor global settings
-    EditorSettings get_settings();
+    EditorSettings settings();
 
     /// @brief Get project settings for loaded project.
     ProjectSettings get_project_settings();
+
+    /// @brief Get serial ID registry for loaded project.
+    SUIDRegistry get_suid_registry();
 
     /// @brief Get icon atlas for editor.
     RImage get_editor_icon_atlas();
@@ -87,7 +96,7 @@ struct EditorContext : Handle<struct EditorContextObj>
     UIFont get_font_mono();
 
     /// @brief Get editor theme.
-    inline EditorTheme get_theme() { return get_settings().get_theme(); }
+    inline EditorTheme get_theme() { return settings().get_theme(); }
 
     /// @brief Get scene handle.
     Scene get_scene();

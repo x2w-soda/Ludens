@@ -8,24 +8,28 @@ union EditorEventU
 {
     EditorNotifyProjectCreationEvent notifyProjectCreation;
     EditorNotifyProjectLoadEvent notifyProjectLoad;
+    EditorNotifyProjectSettingsDirtyEvent notifyProjectSettingsDirty;
     EditorNotifySceneLoadEvent notifySceneLoad;
     EditorNotifyComponentSelectionEvent notifyComponentSelect;
+    EditorNotifyFileDropEvent notifyFileDrop;
     EditorRequestCloseDialogEvent requestCloseDialog;
     EditorRequestProjectSettingsEvent requestProjectSettings;
     EditorRequestComponentAssetEvent requestComponentAsset;
+    EditorRequestImportAssetsEvent requestImportAssets;
     EditorRequestNewProjectEvent requestNewProject;
     EditorRequestOpenProjectEvent requestOpenProject;
     EditorRequestNewSceneEvent requestNewScene;
     EditorRequestOpenSceneEvent requestOpenScene;
     EditorRequestCreateComponentEvent requestCreateComponent;
     EditorRequestDocumentEvent requestDocument;
+    EditorActionSaveEvent actionSave;
     EditorActionUndoEvent actionUndo;
     EditorActionRedoEvent actionRedo;
     EditorActionNewSceneEvent actionNewScene;
     EditorActionOpenSceneEvent actionOpenScene;
-    EditorActionSaveSceneEvent actionSaveScene;
     EditorActionOpenProjectEvent actionOpenProject;
     EditorActionCreateProjectEvent actionCreateProject;
+    EditorActionImportAssetsEvent actionImportAssets;
     EditorActionAddComponentEvent actionAddComponent;
     EditorActionAddComponentScriptEvent actionAddComponentScript;
     EditorActionSetComponentAssetEvent actionSetComponentAsset;
@@ -52,6 +56,9 @@ static EditorEventMeta sEditorEventMeta[EDITOR_EVENT_TYPE_ENUM_COUNT];
 
 static_assert(sizeof(sEditorEventMeta) / sizeof(*sEditorEventMeta) == (int)EDITOR_EVENT_TYPE_ENUM_COUNT);
 
+// TODO: The switch statement for alloc/free can not be flattened by compiler,
+//       maybe manually flatten into tables of function pointers per-type?
+//       the only polymorphism required for EditorEvents is ctor and dtor.
 EditorEvent* EditorEventQueueObj::alloc_event(EditorEventType type)
 {
     EditorEventU* event = (EditorEventU*)eventPA.allocate();
@@ -64,11 +71,17 @@ EditorEvent* EditorEventQueueObj::alloc_event(EditorEventType type)
     case EDITOR_EVENT_TYPE_NOTIFY_PROJECT_LOAD:
         new (event) EditorNotifyProjectLoadEvent();
         break;
+    case EDITOR_EVENT_TYPE_NOTIFY_PROJECT_SETTINGS_DIRTY:
+        new (event) EditorNotifyProjectSettingsDirtyEvent();
+        break;
     case EDITOR_EVENT_TYPE_NOTIFY_SCENE_LOAD:
         new (event) EditorNotifySceneLoadEvent();
         break;
     case EDITOR_EVENT_TYPE_NOTIFY_COMPONENT_SELECTION:
         new (event) EditorNotifyComponentSelectionEvent();
+        break;
+    case EDITOR_EVENT_TYPE_NOTIFY_FILE_DROP:
+        new (event) EditorNotifyFileDropEvent();
         break;
     case EDITOR_EVENT_TYPE_REQUEST_CLOSE_DIALOG:
         new (event) EditorRequestCloseDialogEvent();
@@ -78,6 +91,9 @@ EditorEvent* EditorEventQueueObj::alloc_event(EditorEventType type)
         break;
     case EDITOR_EVENT_TYPE_REQUEST_COMPONENT_ASSET:
         new (event) EditorRequestComponentAssetEvent();
+        break;
+    case EDITOR_EVENT_TYPE_REQUEST_IMPORT_ASSETS:
+        new (event) EditorRequestImportAssetsEvent();
         break;
     case EDITOR_EVENT_TYPE_REQUEST_NEW_PROJECT:
         new (event) EditorRequestNewProjectEvent();
@@ -97,6 +113,9 @@ EditorEvent* EditorEventQueueObj::alloc_event(EditorEventType type)
     case EDITOR_EVENT_TYPE_REQUEST_DOCUMENT:
         new (event) EditorRequestDocumentEvent();
         break;
+    case EDITOR_EVENT_TYPE_ACTION_SAVE:
+        new (event) EditorActionSaveEvent();
+        break;
     case EDITOR_EVENT_TYPE_ACTION_UNDO:
         new (event) EditorActionUndoEvent();
         break;
@@ -109,14 +128,14 @@ EditorEvent* EditorEventQueueObj::alloc_event(EditorEventType type)
     case EDITOR_EVENT_TYPE_ACTION_OPEN_SCENE:
         new (event) EditorActionOpenSceneEvent();
         break;
-    case EDITOR_EVENT_TYPE_ACTION_SAVE_SCENE:
-        new (event) EditorActionSaveSceneEvent();
-        break;
     case EDITOR_EVENT_TYPE_ACTION_OPEN_PROJECT:
         new (event) EditorActionOpenProjectEvent();
         break;
     case EDITOR_EVENT_TYPE_ACTION_CREATE_PROJECT:
         new (event) EditorActionCreateProjectEvent();
+        break;
+    case EDITOR_EVENT_TYPE_ACTION_IMPORT_ASSETS:
+        new (event) EditorActionImportAssetsEvent();
         break;
     case EDITOR_EVENT_TYPE_ACTION_ADD_COMPONENT:
         new (event) EditorActionAddComponentEvent();
@@ -151,11 +170,17 @@ void EditorEventQueueObj::free_event(EditorEvent* event)
     case EDITOR_EVENT_TYPE_NOTIFY_PROJECT_LOAD:
         ((EditorNotifyProjectLoadEvent*)(event))->~EditorNotifyProjectLoadEvent();
         break;
+    case EDITOR_EVENT_TYPE_NOTIFY_PROJECT_SETTINGS_DIRTY:
+        ((EditorNotifyProjectSettingsDirtyEvent*)(event))->~EditorNotifyProjectSettingsDirtyEvent();
+        break;
     case EDITOR_EVENT_TYPE_NOTIFY_SCENE_LOAD:
         ((EditorNotifySceneLoadEvent*)(event))->~EditorNotifySceneLoadEvent();
         break;
     case EDITOR_EVENT_TYPE_NOTIFY_COMPONENT_SELECTION:
         ((EditorNotifyComponentSelectionEvent*)(event))->~EditorNotifyComponentSelectionEvent();
+        break;
+    case EDITOR_EVENT_TYPE_NOTIFY_FILE_DROP:
+        ((EditorNotifyFileDropEvent*)event)->~EditorNotifyFileDropEvent();
         break;
     case EDITOR_EVENT_TYPE_REQUEST_CLOSE_DIALOG:
         ((EditorRequestCloseDialogEvent*)(event))->~EditorRequestCloseDialogEvent();
@@ -165,6 +190,9 @@ void EditorEventQueueObj::free_event(EditorEvent* event)
         break;
     case EDITOR_EVENT_TYPE_REQUEST_COMPONENT_ASSET:
         ((EditorRequestComponentAssetEvent*)(event))->~EditorRequestComponentAssetEvent();
+        break;
+    case EDITOR_EVENT_TYPE_REQUEST_IMPORT_ASSETS:
+        ((EditorRequestImportAssetsEvent*)(event))->~EditorRequestImportAssetsEvent();
         break;
     case EDITOR_EVENT_TYPE_REQUEST_NEW_PROJECT:
         ((EditorRequestNewProjectEvent*)(event))->~EditorRequestNewProjectEvent();
@@ -184,6 +212,9 @@ void EditorEventQueueObj::free_event(EditorEvent* event)
     case EDITOR_EVENT_TYPE_REQUEST_DOCUMENT:
         ((EditorRequestDocumentEvent*)(event))->~EditorRequestDocumentEvent();
         break;
+    case EDITOR_EVENT_TYPE_ACTION_SAVE:
+        ((EditorActionSaveEvent*)(event))->~EditorActionSaveEvent();
+        break;
     case EDITOR_EVENT_TYPE_ACTION_UNDO:
         ((EditorActionUndoEvent*)(event))->~EditorActionUndoEvent();
         break;
@@ -196,14 +227,14 @@ void EditorEventQueueObj::free_event(EditorEvent* event)
     case EDITOR_EVENT_TYPE_ACTION_OPEN_SCENE:
         ((EditorActionOpenSceneEvent*)(event))->~EditorActionOpenSceneEvent();
         break;
-    case EDITOR_EVENT_TYPE_ACTION_SAVE_SCENE:
-        ((EditorActionSaveSceneEvent*)(event))->~EditorActionSaveSceneEvent();
-        break;
     case EDITOR_EVENT_TYPE_ACTION_OPEN_PROJECT:
         ((EditorActionOpenProjectEvent*)(event))->~EditorActionOpenProjectEvent();
         break;
     case EDITOR_EVENT_TYPE_ACTION_CREATE_PROJECT:
         ((EditorActionCreateProjectEvent*)(event))->~EditorActionCreateProjectEvent();
+        break;
+    case EDITOR_EVENT_TYPE_ACTION_IMPORT_ASSETS:
+        ((EditorActionImportAssetsEvent*)event)->~EditorActionImportAssetsEvent();
         break;
     case EDITOR_EVENT_TYPE_ACTION_ADD_COMPONENT:
         ((EditorActionAddComponentEvent*)(event))->~EditorActionAddComponentEvent();

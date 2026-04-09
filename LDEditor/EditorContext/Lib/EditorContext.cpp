@@ -9,6 +9,7 @@
 #include <Ludens/Memory/Memory.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/Project/Project.h>
+#include <Ludens/Project/ProjectContext.h>
 #include <Ludens/Project/ProjectLoadAsync.h>
 #include <Ludens/Project/ProjectSchema.h>
 #include <Ludens/RenderBackend/RStager.h>
@@ -19,67 +20,33 @@
 #include <Ludens/System/FileSystem.h>
 #include <Ludens/System/Timer.h>
 #include <Ludens/UI/UIFont.h>
+#include <LudensBuilder/AssetBuilder/AssetImporter.h>
 #include <LudensBuilder/DocumentBuilder/DocumentRegistry.h>
 #include <LudensBuilder/ProjectBuilder/ProjectBuilder.h>
 #include <LudensBuilder/ProjectBuilder/ProjectScan.h>
+#include <LudensEditor/EditorContext/EditCommand.h>
 #include <LudensEditor/EditorContext/EditorContext.h>
 #include <LudensEditor/EditorContext/EditorEventQueue.h>
 
 #include <utility>
 
-#include "EditorContextCommand.h"
+#include "EditorContextObj.h"
 
 namespace LD {
 
 static Log sLog("EditorContext");
 
-/// @brief Editor context implementation. Keeps track of the active project
-///        and active scene states.
-struct EditorContextObj
-{
-    RenderSystem renderSystem;                            /// render server handle
-    AudioSystem audioSystem;                              /// audio server handle
-    Image2D iconAtlas;                                    /// editor icon atlas handle
-    ProjectLoadAsync projectLoadAsync = {};               /// asynchronous project loading context
-    Project project;                                      /// current project under edit
-    AssetRegistry projectAssetRegistry;                   /// current project's asset registry
-    Scene scene = {};                                     /// current scene under edit
-    EditorSettings settings;                              /// editor global settings
-    EditorEventQueue eventQueue;                          /// editor events waiting to be processed
-    EditStack editStack;                                  /// undo/redo stack of EditCommands
-    UIFontRegistry fontRegistry;                          /// all fonts used by editor are registered here
-    UIFont fontDefault;                                   /// editor default regular font
-    UIFont fontMono;                                      /// editor default monospace font
-    DocumentRegistry docRegistry;                         /// all documents to be displayed in the editor
-    FS::Path iconAtlasPath;                               /// path to editor icon atlas source file
-    FS::Path sceneSchemaPath;                             /// path to current scene file
-    FS::Path assetSchemaPath;                             /// path to project asset file
-    FS::Path projectSchemaPath;                           /// path to project file
-    HashMap<KeyValue, EditorEventType> keyBinds;          /// key shortcuts to generate events
-    HashMap<FS::Path, EditorProjectEntry> projectEntries; /// projects discovered by editor context
-    ObserverList<const EditorEvent*> observers;           /// all observers of EditorContext
-    CUID selectedComponentCUID = 0;                       /// component selection state
-    CUID prevSelectedComponentCUID = 0;                   /// previous component selection state
-    bool isPlaying = false;                               /// whether Scene simulation is in progress
-
-    void emit_event(EditorEventType type);
-    void notify_observers(const EditorEvent* event);
-    void new_project_scene(const FS::Path& sceneSchemaPath);
-    void save_scene_schema();
-    void save_project_schema();
-    void begin_project_load_async(const FS::Path& projectSchemaPath);
-    void update_project_load_async();
-    void add_project_entry(const ProjectScanResult& scanResult);
-};
-
 static void editor_broadcast_event_handler(const EditorEvent* event, void* user);
+static void editor_notify_project_settings_dirty_event_handler(const EditorEvent* event, void* user);
+static void editor_notify_file_drop_event_handler(const EditorEvent* event, void* user);
+static void editor_action_save_event_handler(const EditorEvent* event, void* user);
 static void editor_action_undo_event_handler(const EditorEvent* event, void* user);
 static void editor_action_redo_event_handler(const EditorEvent* event, void* user);
 static void editor_action_new_scene_event_handler(const EditorEvent* event, void* user);
 static void editor_action_open_scene_event_handler(const EditorEvent* event, void* user);
-static void editor_action_save_scene_event_handler(const EditorEvent* event, void* user);
 static void editor_action_open_project_event_handler(const EditorEvent* event, void* user);
 static void editor_action_create_project_event_handler(const EditorEvent* event, void* user);
+static void editor_action_import_assets_event_handler(const EditorEvent* event, void* user);
 static void editor_action_add_component_event_handler(const EditorEvent* event, void* user);
 static void editor_action_add_component_script_event_handler(const EditorEvent* event, void* user);
 static void editor_action_set_component_asset_event_handler(const EditorEvent* event, void* user);
@@ -93,24 +60,28 @@ static struct
 } sEditorEventHandlers[] = {
     {EDITOR_EVENT_TYPE_NOTIFY_PROJECT_CREATION, &editor_broadcast_event_handler},
     {EDITOR_EVENT_TYPE_NOTIFY_PROJECT_LOAD, &editor_broadcast_event_handler},
+    {EDITOR_EVENT_TYPE_NOTIFY_PROJECT_SETTINGS_DIRTY, &editor_notify_project_settings_dirty_event_handler},
     {EDITOR_EVENT_TYPE_NOTIFY_SCENE_LOAD, &editor_broadcast_event_handler},
     {EDITOR_EVENT_TYPE_NOTIFY_COMPONENT_SELECTION, &editor_broadcast_event_handler},
+    {EDITOR_EVENT_TYPE_NOTIFY_FILE_DROP, &editor_notify_file_drop_event_handler},
     {EDITOR_EVENT_TYPE_REQUEST_CLOSE_DIALOG, &editor_broadcast_event_handler},
     {EDITOR_EVENT_TYPE_REQUEST_PROJECT_SETTINGS, &editor_broadcast_event_handler},
     {EDITOR_EVENT_TYPE_REQUEST_COMPONENT_ASSET, &editor_broadcast_event_handler},
+    {EDITOR_EVENT_TYPE_REQUEST_IMPORT_ASSETS, &editor_broadcast_event_handler},
     {EDITOR_EVENT_TYPE_REQUEST_NEW_PROJECT, &editor_broadcast_event_handler},
     {EDITOR_EVENT_TYPE_REQUEST_OPEN_PROJECT, &editor_broadcast_event_handler},
     {EDITOR_EVENT_TYPE_REQUEST_NEW_SCENE, &editor_broadcast_event_handler},
     {EDITOR_EVENT_TYPE_REQUEST_OPEN_SCENE, &editor_broadcast_event_handler},
     {EDITOR_EVENT_TYPE_REQUEST_CREATE_COMPONENT, &editor_broadcast_event_handler},
     {EDITOR_EVENT_TYPE_REQUEST_DOCUMENT, &editor_broadcast_event_handler},
+    {EDITOR_EVENT_TYPE_ACTION_SAVE, &editor_action_save_event_handler},
     {EDITOR_EVENT_TYPE_ACTION_UNDO, &editor_action_undo_event_handler},
     {EDITOR_EVENT_TYPE_ACTION_REDO, &editor_action_redo_event_handler},
     {EDITOR_EVENT_TYPE_ACTION_NEW_SCENE, &editor_action_new_scene_event_handler},
     {EDITOR_EVENT_TYPE_ACTION_OPEN_SCENE, &editor_action_open_scene_event_handler},
-    {EDITOR_EVENT_TYPE_ACTION_SAVE_SCENE, &editor_action_save_scene_event_handler},
     {EDITOR_EVENT_TYPE_ACTION_OPEN_PROJECT, &editor_action_open_project_event_handler},
     {EDITOR_EVENT_TYPE_ACTION_CREATE_PROJECT, &editor_action_create_project_event_handler},
+    {EDITOR_EVENT_TYPE_ACTION_IMPORT_ASSETS, &editor_action_import_assets_event_handler},
     {EDITOR_EVENT_TYPE_ACTION_ADD_COMPONENT, &editor_action_add_component_event_handler},
     {EDITOR_EVENT_TYPE_ACTION_ADD_COMPONENT_SCRIPT, &editor_action_add_component_script_event_handler},
     {EDITOR_EVENT_TYPE_ACTION_SET_COMPONENT_ASSET, &editor_action_set_component_asset_event_handler},
@@ -125,6 +96,53 @@ static void editor_broadcast_event_handler(const EditorEvent* event, void* user)
     // broadcast events to all observers of EditorContext
     auto* obj = (EditorContextObj*)user;
     obj->notify_observers(event);
+}
+
+static void editor_notify_project_settings_dirty_event_handler(const EditorEvent* event, void* user)
+{
+    LD_ASSERT(event->type == EDITOR_EVENT_TYPE_NOTIFY_PROJECT_SETTINGS_DIRTY);
+    EditorContextObj* obj = (EditorContextObj*)user;
+    auto* e = (const EditorNotifyProjectSettingsDirtyEvent*)event;
+
+    if (e->dirtyScreenLayers)
+        obj->projectCtx.configure_project_screen_layers();
+}
+
+static void editor_notify_file_drop_event_handler(const EditorEvent* event, void* user)
+{
+    LD_ASSERT(event->type == EDITOR_EVENT_TYPE_NOTIFY_FILE_DROP);
+    EditorContextObj* obj = (EditorContextObj*)user;
+    auto* e = (const EditorNotifyFileDropEvent*)event;
+
+    if (e->files.empty())
+        return;
+
+    // Interpret dropped files.
+    // Most common use case is to begin importing assets.
+
+    const FS::Path& file = e->files.front();
+    auto* requestE = (EditorRequestImportAssetsEvent*)obj->eventQueue.enqueue(EDITOR_EVENT_TYPE_REQUEST_IMPORT_ASSETS);
+    requestE->srcPath = file;
+
+    for (size_t i = 1; i < e->files.size(); i++)
+    {
+        sLog.warn("ignored file drop: {}", e->files[i].string());
+    }
+}
+
+static void editor_action_save_event_handler(const EditorEvent* event, void* user)
+{
+    LD_ASSERT(event->type == EDITOR_EVENT_TYPE_ACTION_SAVE);
+    EditorContextObj* obj = (EditorContextObj*)user;
+    auto* e = (const EditorActionSaveEvent*)event;
+
+    // NOTE: Currently this is synchronous, probably want to make this async later.
+    if (e->saveAssetSchema)
+        obj->save_asset_schema();
+    if (e->saveSceneSchema)
+        obj->save_scene_schema();
+    if (e->saveProjectSchema)
+        obj->save_project_schema();
 }
 
 static void editor_action_undo_event_handler(const EditorEvent* event, void* user)
@@ -171,19 +189,6 @@ static void editor_action_open_scene_event_handler(const EditorEvent* event, voi
     // TODO: obj->load_project_scene(e->openScene);
 }
 
-static void editor_action_save_scene_event_handler(const EditorEvent* event, void* user)
-{
-    LD_PROFILE_SCOPE;
-
-    LD_ASSERT(event->type == EDITOR_EVENT_TYPE_ACTION_SAVE_SCENE);
-    EditorContextObj* obj = (EditorContextObj*)user;
-    (void)event;
-
-    // Saving Scene writes the current schema to disk and
-    // should not effect the EditStack.
-    obj->save_scene_schema();
-}
-
 static void editor_action_open_project_event_handler(const EditorEvent* event, void* user)
 {
     LD_PROFILE_SCOPE;
@@ -209,16 +214,32 @@ static void editor_action_create_project_event_handler(const EditorEvent* event,
         notify->projectSchema = e->projectSchema;
 }
 
+void editor_action_import_assets_event_handler(const EditorEvent* event, void* user)
+{
+    LD_ASSERT(event->type == EDITOR_EVENT_TYPE_ACTION_IMPORT_ASSETS);
+    auto* obj = (EditorContextObj*)user;
+    auto* e = (const EditorActionImportAssetsEvent*)event;
+
+    // TODO: what if batch is already in progress
+
+    obj->assetImporter.set_resolve_params(obj->projectCtx.suid_registry(), obj->projectCtx.project().get_root_path());
+    obj->assetImporter.import_batch_begin();
+
+    for (AssetImportInfo* info : e->batch)
+        obj->assetImporter.import_batch_asset(info);
+
+    obj->assetImporter.import_batch_end();
+}
+
 static void editor_action_add_component_event_handler(const EditorEvent* event, void* user)
 {
     LD_ASSERT(event->type == EDITOR_EVENT_TYPE_ACTION_ADD_COMPONENT);
     auto* obj = (EditorContextObj*)user;
     auto* e = (const EditorActionAddComponentEvent*)event;
 
-    obj->editStack.execute(EditStack::new_command<AddComponentCommand>(
-        obj->scene,
-        e->parentSUID,
-        e->compType));
+    auto* cmd = (AddComponentCommand*)obj->editStack.allocate(EDIT_COMMAND_TYPE_ADD_COMPONENT);
+    cmd->configure(e->parentSUID, e->compType);
+    obj->editStack.execute(cmd);
 }
 
 static void editor_action_add_component_script_event_handler(const EditorEvent* event, void* user)
@@ -229,10 +250,9 @@ static void editor_action_add_component_script_event_handler(const EditorEvent* 
     auto* obj = (EditorContextObj*)user;
     auto* e = (const EditorActionAddComponentScriptEvent*)event;
 
-    obj->editStack.execute(EditStack::new_command<AddComponentScriptCommand>(
-        obj->scene,
-        e->compSUID,
-        e->assetID));
+    auto* cmd = (AddComponentScriptCommand*)obj->editStack.allocate(EDIT_COMMAND_TYPE_ADD_COMPONENT_SCRIPT);
+    cmd->configure(e->compSUID, e->assetID);
+    obj->editStack.execute(cmd);
 }
 
 static void editor_action_set_component_asset_event_handler(const EditorEvent* event, void* user)
@@ -243,10 +263,9 @@ static void editor_action_set_component_asset_event_handler(const EditorEvent* e
     auto* obj = (EditorContextObj*)user;
     auto* e = (const EditorActionSetComponentAssetEvent*)event;
 
-    obj->editStack.execute(EditStack::new_command<SetComponentAssetCommand>(
-        obj->scene,
-        e->compSUID,
-        e->assetID));
+    auto* cmd = (SetComponentAssetCommand*)obj->editStack.allocate(EDIT_COMMAND_TYPE_SET_COMPONENT_ASSET);
+    cmd->configure(e->compSUID, e->assetID);
+    obj->editStack.execute(cmd);
 }
 
 static void editor_action_clone_component_subtree_event_handler(const EditorEvent* event, void* user)
@@ -257,9 +276,9 @@ static void editor_action_clone_component_subtree_event_handler(const EditorEven
     auto* obj = (EditorContextObj*)user;
     auto* e = (const EditorActionCloneComponentSubtreeEvent*)event;
 
-    obj->editStack.execute(EditStack::new_command<CloneComponentSubtreeCommand>(
-        obj,
-        e->compSUID));
+    auto* cmd = (CloneComponentSubtreeCommand*)obj->editStack.allocate(EDIT_COMMAND_TYPE_CLONE_COMPONENT_SUBTREE);
+    cmd->configure(e->compSUID);
+    obj->editStack.execute(cmd);
 }
 
 static void editor_action_delete_component_subtree_event_handler(const EditorEvent* event, void* user)
@@ -270,9 +289,9 @@ static void editor_action_delete_component_subtree_event_handler(const EditorEve
     auto* obj = (EditorContextObj*)user;
     auto* e = (const EditorActionDeleteComponentSubtreeEvent*)event;
 
-    obj->editStack.execute(EditStack::new_command<DeleteComponentSubtreeCommand>(
-        obj,
-        e->compSUID));
+    auto* cmd = (DeleteComponentSubtreeCommand*)obj->editStack.allocate(EDIT_COMMAND_TYPE_DELETE_COMPONENT_SUBTREE);
+    cmd->configure(e->compSUID);
+    obj->editStack.execute(cmd);
 }
 
 void EditorContextObj::emit_event(EditorEventType type)
@@ -281,9 +300,16 @@ void EditorContextObj::emit_event(EditorEventType type)
 
     switch (type)
     {
+    case EDITOR_EVENT_TYPE_ACTION_SAVE: // interpret as save everything
+    {
+        auto* actionE = (EditorActionSaveEvent*)eventQueue.enqueue(type);
+        actionE->saveAssetSchema = true;
+        actionE->saveSceneSchema = true;
+        actionE->saveProjectSchema = true;
+        break;
+    }
     case EDITOR_EVENT_TYPE_ACTION_REDO:
     case EDITOR_EVENT_TYPE_ACTION_UNDO:
-    case EDITOR_EVENT_TYPE_ACTION_SAVE_SCENE:
     case EDITOR_EVENT_TYPE_REQUEST_CLOSE_DIALOG:
         (void)eventQueue.enqueue(type); // zero parameters needed
         break;
@@ -338,34 +364,85 @@ void EditorContextObj::new_project_scene(const FS::Path& newSchemaPath)
     // TODO: maybe notify observers?
 }
 
+void EditorContextObj::load_project_scene(const FS::Path& sceneSchemaPath)
+{
+    LD_PROFILE_SCOPE;
+
+    if (!FS::exists(sceneSchemaPath))
+        return;
+
+    projectCtx.configure_project_screen_layers();
+
+    scene = Scene::get();
+    LD_ASSERT(scene);
+    scene.unload();
+
+    scene.load([&](SceneObj* sceneObj) -> bool {
+        // load the scene
+        std::string err;
+        return SceneSchema::load_scene_from_file(Scene(sceneObj), projectCtx.suid_registry(), sceneSchemaPath, err);
+    });
+
+    // TODO: check scene load success
+    sceneSchemaAbsPath = sceneSchemaPath;
+}
+
 void EditorContextObj::save_scene_schema()
 {
-    if (!scene || sceneSchemaPath.empty())
+    if (!scene || sceneSchemaAbsPath.empty())
         return;
 
     Timer timer;
     timer.start();
 
     std::string err;
-    SceneSchema::save_scene(scene, sceneSchemaPath, err);
+    if (!SceneSchema::save_scene(scene, sceneSchemaAbsPath, err))
+    {
+        sLog.error("failed to save scene to [{}]: {}", sceneSchemaAbsPath.string(), err);
+    }
+    else
+    {
+        size_t us = timer.stop();
+        sLog.info("saved scene ({} ms)", us / 1000.0f);
+    }
+}
 
-    size_t us = timer.stop();
-    sLog.info("saved scene to {} ({} ms)", sceneSchemaPath.string(), us / 1000.0f);
+void EditorContextObj::save_asset_schema()
+{
+    Timer timer;
+    timer.start();
+
+    std::string err;
+    std::string assetSchemaPathStr = projectCtx.asset_schema_abs_path().string();
+
+    if (!projectCtx.save_asset_registry(err))
+    {
+        sLog.error("failed to save asset registry to [{}]: {}", assetSchemaPathStr, err);
+    }
+    else
+    {
+        size_t us = timer.stop();
+        sLog.info("saved asset registry ({} ms)", us / 1000.0f);
+    }
 }
 
 void EditorContextObj::save_project_schema()
 {
-    if (!project || projectSchemaPath.empty())
-        return;
-
     Timer timer;
     timer.start();
 
     std::string err;
-    ProjectSchema::save_project(project, projectSchemaPath, err);
+    std::string projectSchemaPathStr = projectCtx.asset_schema_abs_path().string();
 
-    size_t us = timer.stop();
-    sLog.info("saved project to {} ({} ms)", projectSchemaPath.string(), us / 1000.0f);
+    if (!projectCtx.save_project(err))
+    {
+        sLog.error("failed to save project to [{}]: {}", projectSchemaPathStr, err);
+    }
+    else
+    {
+        size_t us = timer.stop();
+        sLog.info("saved project ({} ms)", us / 1000.0f);
+    }
 }
 
 void EditorContextObj::begin_project_load_async(const FS::Path& projectSchemaPath)
@@ -377,13 +454,13 @@ void EditorContextObj::begin_project_load_async(const FS::Path& projectSchemaPat
 
     if (projectLoadAsync)
     {
-        if (projectLoadAsync.update() != PROJECT_LOAD_STATUS_IDLE)
+        if (projectLoadAsync.update() != PROJECT_LOAD_STATE_IDLE)
             return;
 
         ProjectLoadAsync::destroy(projectLoadAsync);
     }
 
-    projectLoadAsync = ProjectLoadAsync::create();
+    projectLoadAsync = ProjectLoadAsync::create(&projectCtx);
     if (!projectLoadAsync.begin(rootPath, err))
     {
         return; // TODO: failed to begin ProjectLoadAsync
@@ -392,32 +469,31 @@ void EditorContextObj::begin_project_load_async(const FS::Path& projectSchemaPat
 
 void EditorContextObj::update_project_load_async()
 {
-    if (!projectLoadAsync)
+    if (!projectLoadAsync || projectLoadAsync.update() != PROJECT_LOAD_STATE_COMPLETE)
         return;
-
-    ProjectLoadStatus status = projectLoadAsync.update();
-    if (status != PROJECT_LOAD_STATUS_COMPLETE)
-        return;
-
-    ProjectLoadResult result;
-    if (!projectLoadAsync.get_result(result))
-        return;
-
-    // TODO: handle errors
-    LD_ASSERT(result.project && result.assetRegistry);
-
-    scene = Scene::get();
-    project = result.project;
-    projectAssetRegistry = result.assetRegistry;
-    assetSchemaPath = result.assetSchemaPath;
-    sceneSchemaPath = result.sceneSchemaPath;
-    selectedComponentCUID = 0;
-
-    (void*)eventQueue.enqueue(EDITOR_EVENT_TYPE_NOTIFY_PROJECT_LOAD);
-    // (void*)eventQueue.enqueue(EDITOR_EVENT_TYPE_NOTIFY_SCENE_LOAD);
 
     ProjectLoadAsync::destroy(projectLoadAsync);
     projectLoadAsync = {};
+    selectedComponentCUID = 0;
+
+    // TODO: handle errors
+    (void*)eventQueue.enqueue(EDITOR_EVENT_TYPE_NOTIFY_PROJECT_LOAD);
+
+    FS::Path sceneSchemaPath = projectCtx.default_scene_schema_abs_path();
+    LD_ASSERT(!sceneSchemaPath.empty());
+
+    load_project_scene(sceneSchemaPath);
+    // (void*)eventQueue.enqueue(EDITOR_EVENT_TYPE_NOTIFY_SCENE_LOAD);
+}
+
+void EditorContextObj::update_asset_import_async()
+{
+    AssetImportResult result;
+    if (!assetImporter || !assetImporter.import_asset_async(result))
+        return;
+
+    if (!result.status)
+        sLog.info("Asset import failed: {}", result.status.str);
 }
 
 void EditorContextObj::add_project_entry(const ProjectScanResult& scanResult)
@@ -439,9 +515,10 @@ EditorContext EditorContext::create(const EditorContextInfo& info)
     obj->renderSystem = info.renderSystem;
     obj->audioSystem = info.audioSystem;
     obj->iconAtlasPath = info.iconAtlasPath;
+    obj->assetImporter = AssetImporter::create();
     obj->settings = EditorSettings::create();
     obj->isPlaying = false;
-    obj->editStack = EditStack::create();
+    obj->editStack = EditStack::create(obj);
     obj->eventQueue = EditorEventQueue::create(obj);
     obj->fontRegistry = UIFontRegistry::create();
     obj->fontDefault = obj->fontRegistry.add_font(info.defaultFontAtlas, info.defaultFontAtlasImage);
@@ -455,9 +532,9 @@ EditorContext EditorContext::create(const EditorContextInfo& info)
         register_editor_event_handler(sEditorEventHandlers[i].type, sEditorEventHandlers[i].handler);
 
     // register default global key binds
+    obj->keyBinds[KeyValue(KEY_CODE_S, KEY_MOD_CONTROL_BIT)] = EDITOR_EVENT_TYPE_ACTION_SAVE;
     obj->keyBinds[KeyValue(KEY_CODE_Z, KEY_MOD_CONTROL_BIT)] = EDITOR_EVENT_TYPE_ACTION_UNDO;
     obj->keyBinds[KeyValue(KEY_CODE_R, KEY_MOD_CONTROL_BIT)] = EDITOR_EVENT_TYPE_ACTION_REDO;
-    obj->keyBinds[KeyValue(KEY_CODE_S, KEY_MOD_CONTROL_BIT)] = EDITOR_EVENT_TYPE_ACTION_SAVE_SCENE;
     obj->keyBinds[KeyValue(KEY_CODE_A, KEY_MOD_CONTROL_BIT)] = EDITOR_EVENT_TYPE_REQUEST_CREATE_COMPONENT;
     obj->keyBinds[KeyValue(KEY_CODE_D, KEY_MOD_CONTROL_BIT)] = EDITOR_EVENT_TYPE_ACTION_CLONE_COMPONENT_SUBTREE;
     obj->keyBinds[KeyValue(KEY_CODE_DELETE)] = EDITOR_EVENT_TYPE_ACTION_DELETE_COMPONENT_SUBTREE;
@@ -492,12 +569,6 @@ void EditorContext::destroy(EditorContext ctx)
         obj->iconAtlas = {};
     }
 
-    if (obj->projectAssetRegistry)
-        AssetRegistry::destroy(obj->projectAssetRegistry);
-
-    if (obj->project)
-        Project::destroy(obj->project);
-
     Scene::destroy();
     AssetManager::destroy();
 
@@ -506,6 +577,7 @@ void EditorContext::destroy(EditorContext ctx)
     EditorEventQueue::destroy(obj->eventQueue);
     EditStack::destroy(obj->editStack);
     EditorSettings::destroy(obj->settings);
+    AssetImporter::destroy(obj->assetImporter);
 
     heap_delete<EditorContextObj>(obj);
 }
@@ -558,6 +630,18 @@ void EditorContext::render_system_screen_pass_overlay_callback(ScreenRenderCompo
     }
 }
 
+void EditorContext::drop_file_callback(size_t fileCount, const FS::Path* files, void* user)
+{
+    // We defer heavy I/O since this is within an OS callback.
+    // The EditorEventQueue is perfect for temporal decoupling.
+    EditorContextObj* obj = (EditorContextObj*)user;
+
+    auto* notifyE = (EditorNotifyFileDropEvent*)obj->eventQueue.enqueue(EDITOR_EVENT_TYPE_NOTIFY_FILE_DROP);
+    notifyE->files.resize(fileCount);
+
+    std::copy(files, files + fileCount, notifyE->files.begin());
+}
+
 EditorEvent* EditorContext::enqueue_event(EditorEventType type)
 {
     return mObj->eventQueue.enqueue(type);
@@ -566,6 +650,11 @@ EditorEvent* EditorContext::enqueue_event(EditorEventType type)
 void EditorContext::poll_events()
 {
     mObj->eventQueue.poll_events();
+}
+
+AssetImporter EditorContext::get_asset_importer()
+{
+    return mObj->assetImporter;
 }
 
 Vector<EditorProjectEntry> EditorContext::get_project_entries()
@@ -580,25 +669,27 @@ Vector<EditorProjectEntry> EditorContext::get_project_entries()
 
 FS::Path EditorContext::get_project_directory()
 {
-    return mObj->projectSchemaPath.parent_path();
+    return mObj->projectCtx.project_schema_abs_path().parent_path();
 }
 
 FS::Path EditorContext::get_scene_schema_path()
 {
-    return mObj->sceneSchemaPath;
+    return mObj->sceneSchemaAbsPath;
 }
 
-EditorSettings EditorContext::get_settings()
+EditorSettings EditorContext::settings()
 {
     return mObj->settings;
 }
 
 ProjectSettings EditorContext::get_project_settings()
 {
-    if (!mObj->project)
-        return {};
+    return mObj->projectCtx.project().settings();
+}
 
-    return mObj->project.get_settings();
+SUIDRegistry EditorContext::get_suid_registry()
+{
+    return mObj->projectCtx.suid_registry();
 }
 
 RImage EditorContext::get_editor_icon_atlas()
@@ -666,7 +757,7 @@ Vec4 EditorContext::get_scene_clear_color()
     ProjectSettings settings = get_project_settings();
 
     if (settings)
-        return settings.get_rendering_settings().get_clear_color();
+        return settings.rendering_settings().get_clear_color();
 
     return ProjectRenderingSettings::get_default_clear_color();
 }
@@ -689,6 +780,7 @@ void EditorContext::update(const Vec2& sceneExtent, float delta)
     LD_PROFILE_SCOPE;
 
     mObj->update_project_load_async();
+    mObj->update_asset_import_async();
 
     if (!mObj->scene)
         return;
