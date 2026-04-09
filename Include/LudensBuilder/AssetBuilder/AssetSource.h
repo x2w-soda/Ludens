@@ -10,8 +10,8 @@ namespace LD {
 struct AssetImportInfo
 {
     AssetType type = ASSET_TYPE_ENUM_COUNT;
-    FS::Path dstPath;   /// absolute path to save the imported file
-    std::string dstURI; /// requested asset URI
+    FS::Path dstRelPath; /// relative path from project root to save the imported file
+    std::string dstURI;  /// requested asset URI
 };
 
 } // namespace LD

@@ -136,7 +136,7 @@ struct ProjectBuildAsyncObj
 
 bool ProjectBuildAsyncObj::load_project_schema(const FS::Path& srcProjectSchema, ProjectBuildStatus& err)
 {
-    if (!projectCtx.load_project(srcProjectSchema, err.str))
+    if (!projectCtx.load_project_schema(srcProjectSchema, err.str))
     {
         err.type = PROJECT_BUILD_ERROR_INVALID_SRC_PROJECT_SCHEMA;
         sLog.error("failed to load project {}: {}", srcProjectSchema.string(), err.str);
@@ -154,7 +154,7 @@ bool ProjectBuildAsyncObj::load_project_schema(const FS::Path& srcProjectSchema,
 
 bool ProjectBuildAsyncObj::load_asset_schema(const FS::Path& srcAssetSchema, ProjectBuildStatus& err)
 {
-    if (!projectCtx.load_asset_registry(srcAssetSchema, err.str))
+    if (!projectCtx.load_asset_schema(srcAssetSchema, err.str))
     {
         err.type = PROJECT_BUILD_ERROR_INVALID_SRC_ASSET_SCHEMA;
         sLog.error("failed to load asset schema {}: {}", srcAssetSchema.string(), err.str);

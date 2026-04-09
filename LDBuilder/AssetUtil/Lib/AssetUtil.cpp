@@ -54,7 +54,7 @@ bool AssetUtil::import_blob(const FS::Path& sourcePath)
 
     auto* importI = (BlobAssetImportInfo*)mObj->importer.allocate_import_info(ASSET_TYPE_BLOB);
     importI->srcPath = sourcePath;
-    importI->dstPath = savePath;
+    importI->dstRelPath = savePath;
     AssetImportResult result = mObj->importer.import_asset_synchronous(importI);
 
     if (result.status)
@@ -70,7 +70,7 @@ bool AssetUtil::import_texture_2d(const FS::Path& sourcePath)
 
     auto* importI = (Texture2DAssetImportInfo*)mObj->importer.allocate_import_info(ASSET_TYPE_TEXTURE_2D);
     importI->srcPath = sourcePath;
-    importI->dstPath = savePath;
+    importI->dstRelPath = savePath;
     importI->samplerHint.addressMode = RSAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
     importI->samplerHint.filter = RFILTER_LINEAR;
     importI->samplerHint.mipmapFilter = RFILTER_LINEAR;
@@ -106,7 +106,7 @@ bool AssetUtil::import_texture_cube(const FS::Path& sourcePath)
     importI->samplerHint.filter = RFILTER_LINEAR;
     importI->samplerHint.mipmapFilter = RFILTER_LINEAR;
     importI->samplerHint.addressMode = RSAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE;
-    importI->dstPath = savePath;
+    importI->dstRelPath = savePath;
 
     bool allFacesFound = true;
 
@@ -146,7 +146,7 @@ bool AssetUtil::import_font(const FS::Path& sourcePath)
 
     auto* importI = (FontAssetImportInfo*)mObj->importer.allocate_import_info(ASSET_TYPE_FONT);
     importI->srcPath = sourcePath;
-    importI->dstPath = savePath;
+    importI->dstRelPath = savePath;
     AssetImportResult result = mObj->importer.import_asset_synchronous(importI);
 
     if (result.status)
@@ -169,7 +169,7 @@ bool AssetUtil::import_mesh(const FS::Path& sourcePath)
 
     auto* importI = (MeshAssetImportInfo*)mObj->importer.allocate_import_info(ASSET_TYPE_MESH);
     importI->srcPath = sourcePath;
-    importI->dstPath = savePath;
+    importI->dstRelPath = savePath;
     AssetImportResult result = mObj->importer.import_asset_synchronous(importI);
 
     if (result.status)
@@ -192,7 +192,7 @@ bool AssetUtil::import_audio_clip(const FS::Path& sourcePath)
 
     auto* importI = (AudioClipAssetImportInfo*)mObj->importer.allocate_import_info(ASSET_TYPE_AUDIO_CLIP);
     importI->srcPath = sourcePath;
-    importI->dstPath = savePath;
+    importI->dstRelPath = savePath;
     AssetImportResult result = mObj->importer.import_asset_synchronous(importI);
 
     if (result.status)
@@ -215,7 +215,7 @@ bool AssetUtil::import_lua_script(const FS::Path& sourcePath, LuaScriptDomain do
 
     auto* importI = (LuaScriptAssetImportInfo*)mObj->importer.allocate_import_info(ASSET_TYPE_LUA_SCRIPT);
     importI->srcPath = sourcePath;
-    importI->dstPath = savePath;
+    importI->dstRelPath = savePath;
     importI->domain = domain;
     AssetImportResult result = mObj->importer.import_asset_synchronous(importI);
 

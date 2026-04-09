@@ -20,6 +20,7 @@ struct AssetImporterObj
     PoolAllocator importJobPA = {};          // pool allocator for import jobs
     PoolAllocator importInfoPA = {};         // pool allocator for import infos
     Vector<AssetImportJob*> importJobs = {}; // all jobs in a batch
+    FS::Path projectRootDir = {};
     bool isBatchScope = false;
 
     Asset reserve_asset(AssetType type);
@@ -58,8 +59,7 @@ AssetImportStatus AssetImporterObj::resolve_asset(Asset asset, const AssetImport
         return status;
     }
 
-    LD_UNREACHABLE; // TODO: this should be relative to prjoect root
-    entry.set_path("main", info->dstPath.string());
+    entry.set_path("main", info->dstRelPath.string());
 
     return status;
 }
@@ -82,6 +82,7 @@ AssetImportJob* AssetImporterObj::allocate_import_job(AssetType type)
     new (job) AssetImportJob();
 
     job->info = nullptr;
+    job->projectRootDir = projectRootDir;
 
     return job;
 }
@@ -111,7 +112,7 @@ AssetImportStatus AssetImporterObj::check_base_info(const AssetImportInfo* info)
     AssetManager AM = AssetManager::get();
     AssetRegistry registry = AM.get_asset_registry();
 
-    if (info->dstPath.empty())
+    if (info->dstRelPath.empty())
     {
         status.type = ASSET_IMPORT_ERROR_DST_PATH;
         status.str = "destination path is empty";
@@ -121,7 +122,7 @@ AssetImportStatus AssetImporterObj::check_base_info(const AssetImportInfo* info)
         status.type = ASSET_IMPORT_ERROR_DST_URI;
         status.str = "requested URI is empty";
     }
-    else if (FS::exists(info->dstPath))
+    else if (FS::exists(info->dstRelPath))
     {
         status.type = ASSET_IMPORT_ERROR_DST_PATH;
         status.str = "destination file already exists";
@@ -162,9 +163,10 @@ void AssetImporter::destroy(AssetImporter importer)
     heap_delete<AssetImporterObj>(obj);
 }
 
-void AssetImporter::set_suid_registry(SUIDRegistry idReg)
+void AssetImporter::set_resolve_params(SUIDRegistry idReg, FS::Path projectRootDir)
 {
     mObj->suidRegistry = idReg;
+    mObj->projectRootDir = projectRootDir;
 }
 
 AssetImportInfo* AssetImporter::allocate_import_info(AssetType type)

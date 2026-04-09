@@ -16,6 +16,7 @@ struct AssetImportJob
     Asset asset;                           // destination asset handle to populate
     AssetImportInfo* info;                 // source import info, memory owned by importer
     AssetImportStatus status;              // resulting status
+    FS::Path projectRootDir;               // if not empty, project root directory used during resolve
     std::atomic_bool hasCompleted = false; // polled by main thread
 
     inline bool has_completed()
@@ -51,7 +52,9 @@ struct AssetImportJob
     /// @brief Try write to destination file, updates status upon failure.
     inline void write_to_dst_path(const View& view)
     {
-        if (!FS::write_file(info->dstPath, view, status.str))
+        FS::Path dstPath = FS::absolute(projectRootDir / info->dstRelPath);
+
+        if (!FS::write_file(FS::absolute(dstPath), view, status.str))
             status.type = ASSET_IMPORT_ERROR_DST_PATH;
     }
 

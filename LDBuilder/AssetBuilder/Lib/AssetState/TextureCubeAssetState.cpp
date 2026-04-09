@@ -57,18 +57,11 @@ void texture_cube_asset_import(void* user)
     for (int i = 0; i < 6; i++)
         obj->fileData[i] = serialView.data + fileDataOffsets[i];
 
-    if (!FS::write_file(info.dstPath, serialView, job.status.str))
-    {
-        job.status.type = ASSET_IMPORT_ERROR_DST_PATH;
-        return;
-    }
-
     obj->bitmap = Bitmap::create_cubemap_from_file_data(obj->fileSize, obj->fileData);
-    if (!obj->bitmap)
-    {
-        job.status.type = ASSET_IMPORT_ERROR;
-        job.status.str = "failed to create bitmap for TextureCubeAsset";
-    }
+    if (!job.require(obj->bitmap, "failed to create bitmap for TextureCubeAsset"))
+        return;
+
+    job.write_to_dst_path(serialView);
 }
 
 } // namespace LD
