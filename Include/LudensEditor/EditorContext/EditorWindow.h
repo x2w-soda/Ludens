@@ -11,6 +11,7 @@ namespace LD {
 enum EditorWindowType
 {
     EDITOR_WINDOW_TAB_CONTROL,
+    EDITOR_WINDOW_ASSET_IMPORT,
     EDITOR_WINDOW_ASSET_SELECT,
     EDITOR_WINDOW_SELECTION,
     EDITOR_WINDOW_CREATE_COMPONENT,
@@ -27,52 +28,54 @@ enum EditorWindowType
 
 struct EditorWindowInfo
 {
+    EditorWindowType type;
     EditorContext ctx;
+    const char* name;
     const char* uiWorkspaceName;
 };
 
-/// @brief Base class for editor window implementations.
-class EditorWindowObj
+/// @brief An EditorWindow corresponds to a UIWorkspace, and can therefore consist of multiple UIWindows.
+struct EditorWindowObj
 {
-public:
-    EditorWindowObj() = delete;
+    EditorWindowType type = EDITOR_WINDOW_TYPE_ENUM_COUNT; // required for polymorphic dispatch
+    std::string name;                                      // display name in tabs
+    std::string uiWorkspaceName;                           // unique imgui workspace name
+    EditorContext ctx = {};                                // editor context handle
+    EditorTheme theme = {};                                // editor theme handle
+    Rect rootRect = {};                                    // editor window rect in screen space
+    bool shouldClose = false;                              // hint that the editor window should be closed
+
     EditorWindowObj(const EditorWindowInfo& info)
-        : mUIWorkspaceName(info.uiWorkspaceName), mCtx(info.ctx) {}
-    virtual ~EditorWindowObj() = default;
+        : type(info.type), ctx(info.ctx), name(info.name), uiWorkspaceName(info.uiWorkspaceName)
+    {
+        theme = ctx.get_theme();
+    }
 
-    /// @brief Type reflection for handle down-casting.
-    virtual EditorWindowType get_type() = 0;
+    inline void begin_update_window()
+    {
+        ui_workspace_begin(uiWorkspaceName.c_str(), rootRect);
+        ui_push_window(uiWorkspaceName.c_str());
+    }
 
-    /// @brief Derived class populates UIWindows with UIImmediate API,
-    //         callers prepares ui_frame_begin / ui_frame_end scope.
-    virtual void on_imgui(float delta) = 0;
-
-    inline bool should_close() const { return mShouldClose; };
-    inline void set_pos(const Vec2& pos) { mRootRect.set_pos(pos.x, pos.y); }
-    inline void set_rect(const Rect& rect) { mRootRect = rect; }
-    inline const char* ui_workspace_name() { return mUIWorkspaceName.c_str(); }
-    inline void ui_workspace_begin() { LD::ui_workspace_begin(ui_workspace_name(), mRootRect); }
-
-protected:
-    std::string mUIWorkspaceName;
-    EditorContext mCtx;
-    Rect mRootRect{};
-    bool mShouldClose = false;
+    inline void end_update_window()
+    {
+        ui_pop_window();
+        ui_workspace_end();
+    }
 };
 
-/// @brief Corresponds to a UIWorkspace.
-struct EditorWindow : Handle<class EditorWindowObj>
+/// @brief Editor window public handle.
+struct EditorWindow : Handle<struct EditorWindowObj>
 {
-    inline EditorWindowType get_type() { return mObj->get_type(); }
-    inline std::string get_ui_workspace_name() { return mObj->ui_workspace_name(); }
-
-    inline void on_imgui(float delta) { mObj->on_imgui(delta); }
+    inline EditorWindowType type() { return mObj->type; }
+    inline std::string get_name() { return mObj->name; }
+    inline std::string get_ui_workspace_name() { return mObj->uiWorkspaceName; }
 
     /// @brief Hint at the EditorWorkspace that this window should be destroyed.
-    inline bool should_close() const { return mObj->should_close(); };
+    inline bool should_close() const { return mObj->shouldClose; };
 
-    inline void set_pos(const Vec2& pos) { mObj->set_pos(pos); }
-    inline void set_rect(const Rect& rect) { mObj->set_rect(rect); }
+    inline void set_pos(Vec2 pos) { mObj->rootRect.set_pos(pos.x, pos.y); }
+    inline void set_rect(Rect rect) { mObj->rootRect = rect; }
 };
 
 } // namespace LD

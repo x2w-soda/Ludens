@@ -41,6 +41,7 @@ enum EditorEventType
     EDITOR_EVENT_TYPE_ACTION_ADD_COMPONENT,
     EDITOR_EVENT_TYPE_ACTION_ADD_COMPONENT_SCRIPT,
     EDITOR_EVENT_TYPE_ACTION_SET_COMPONENT_ASSET,
+    EDITOR_EVENT_TYPE_ACTION_SET_COMPONENT_TRANSFORM_2D,
     EDITOR_EVENT_TYPE_ACTION_CLONE_COMPONENT_SUBTREE,
     EDITOR_EVENT_TYPE_ACTION_DELETE_COMPONENT_SUBTREE,
     EDITOR_EVENT_TYPE_ENUM_COUNT,
@@ -375,6 +376,19 @@ struct EditorActionSetComponentAssetEvent : EditorActionEvent
     SUID compSUID = 0;
     AssetID assetID = 0;
 };
+
+struct EditorActionSetComponentTransform2DEvent : EditorActionEvent
+{
+    EditorActionSetComponentTransform2DEvent()
+        : EditorActionEvent(EDITOR_EVENT_TYPE_ACTION_SET_COMPONENT_TRANSFORM_2D)
+    {
+    }
+
+    SUID compSUID = 0;
+    Transform2D prevTransform = {};
+    Transform2D transform = {};
+};
+
 
 struct EditorActionCloneComponentSubtreeEvent : EditorActionEvent
 {

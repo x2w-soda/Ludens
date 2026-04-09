@@ -34,6 +34,9 @@ struct EditStack : Handle<struct EditStackObj>
 
     /// @brief Get number of commands in stack.
     size_t size() const;
+
+    /// @brief Get command index in stack.
+    int index();
 };
 
 } // namespace LD

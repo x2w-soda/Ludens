@@ -80,4 +80,9 @@ size_t EditStack::size() const
     return mObj->commands.size();
 }
 
+int EditStack::index()
+{
+    return mObj->index;
+}
+
 } // namespace LD

@@ -12,6 +12,7 @@ enum EditCommandType
     EDIT_COMMAND_TYPE_ADD_COMPONENT,
     EDIT_COMMAND_TYPE_ADD_COMPONENT_SCRIPT,
     EDIT_COMMAND_TYPE_SET_COMPONENT_ASSET,
+    EDIT_COMMAND_TYPE_SET_COMPONENT_TRANSFORM_2D,
     EDIT_COMMAND_TYPE_CLONE_COMPONENT_SUBTREE,
     EDIT_COMMAND_TYPE_DELETE_COMPONENT_SUBTREE,
     EDIT_COMMAND_TYPE_ENUM_COUNT,
@@ -54,6 +55,13 @@ struct SetComponentAssetCommand : EditCommand
     AssetID prevAssetID = 0;
 
     void configure(SUID compSUID, AssetID assetID);
+};
+
+struct SetComponentTransform2DCommand : EditCommand
+{
+    SUID compSUID;
+    Transform2D transform;
+    Transform2D prevTransform;
 };
 
 struct CloneComponentSubtreeCommand : EditCommand

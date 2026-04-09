@@ -50,6 +50,7 @@ static void editor_action_import_assets_event_handler(const EditorEvent* event, 
 static void editor_action_add_component_event_handler(const EditorEvent* event, void* user);
 static void editor_action_add_component_script_event_handler(const EditorEvent* event, void* user);
 static void editor_action_set_component_asset_event_handler(const EditorEvent* event, void* user);
+static void editor_action_set_component_transform_2d_event_handler(const EditorEvent* event, void* user);
 static void editor_action_clone_component_subtree_event_handler(const EditorEvent* event, void* user);
 static void editor_action_delete_component_subtree_event_handler(const EditorEvent* event, void* user);
 
@@ -85,9 +86,12 @@ static struct
     {EDITOR_EVENT_TYPE_ACTION_ADD_COMPONENT, &editor_action_add_component_event_handler},
     {EDITOR_EVENT_TYPE_ACTION_ADD_COMPONENT_SCRIPT, &editor_action_add_component_script_event_handler},
     {EDITOR_EVENT_TYPE_ACTION_SET_COMPONENT_ASSET, &editor_action_set_component_asset_event_handler},
+    {EDITOR_EVENT_TYPE_ACTION_SET_COMPONENT_TRANSFORM_2D, &editor_action_set_component_transform_2d_event_handler},
     {EDITOR_EVENT_TYPE_ACTION_CLONE_COMPONENT_SUBTREE, &editor_action_clone_component_subtree_event_handler},
     {EDITOR_EVENT_TYPE_ACTION_DELETE_COMPONENT_SUBTREE, &editor_action_delete_component_subtree_event_handler},
 };
+
+static_assert(sizeof(sEditorEventHandlers) / sizeof(*sEditorEventHandlers) == EDITOR_EVENT_TYPE_ENUM_COUNT);
 
 static void editor_broadcast_event_handler(const EditorEvent* event, void* user)
 {
@@ -137,12 +141,15 @@ static void editor_action_save_event_handler(const EditorEvent* event, void* use
     auto* e = (const EditorActionSaveEvent*)event;
 
     // NOTE: Currently this is synchronous, probably want to make this async later.
+
     if (e->saveAssetSchema)
         obj->save_asset_schema();
     if (e->saveSceneSchema)
         obj->save_scene_schema();
     if (e->saveProjectSchema)
         obj->save_project_schema();
+
+    obj->lastSavedEditIndex = obj->editStack.index();
 }
 
 static void editor_action_undo_event_handler(const EditorEvent* event, void* user)
@@ -265,6 +272,21 @@ static void editor_action_set_component_asset_event_handler(const EditorEvent* e
 
     auto* cmd = (SetComponentAssetCommand*)obj->editStack.allocate(EDIT_COMMAND_TYPE_SET_COMPONENT_ASSET);
     cmd->configure(e->compSUID, e->assetID);
+    obj->editStack.execute(cmd);
+}
+
+void editor_action_set_component_transform_2d_event_handler(const EditorEvent* event, void* user)
+{
+    LD_PROFILE_SCOPE;
+
+    LD_ASSERT(event->type == EDITOR_EVENT_TYPE_ACTION_SET_COMPONENT_TRANSFORM_2D);
+    auto* obj = (EditorContextObj*)user;
+    auto* e = (const EditorActionSetComponentTransform2DEvent*)event;
+
+    auto* cmd = (SetComponentTransform2DCommand*)obj->editStack.allocate(EDIT_COMMAND_TYPE_SET_COMPONENT_TRANSFORM_2D);
+    cmd->compSUID = e->compSUID;
+    cmd->transform = e->transform;
+    cmd->prevTransform = e->prevTransform;
     obj->editStack.execute(cmd);
 }
 
@@ -519,6 +541,7 @@ EditorContext EditorContext::create(const EditorContextInfo& info)
     obj->settings = EditorSettings::create();
     obj->isPlaying = false;
     obj->editStack = EditStack::create(obj);
+    obj->lastSavedEditIndex = obj->editStack.index();
     obj->eventQueue = EditorEventQueue::create(obj);
     obj->fontRegistry = UIFontRegistry::create();
     obj->fontDefault = obj->fontRegistry.add_font(info.defaultFontAtlas, info.defaultFontAtlasImage);
@@ -655,6 +678,11 @@ void EditorContext::poll_events()
 AssetImporter EditorContext::get_asset_importer()
 {
     return mObj->assetImporter;
+}
+
+bool EditorContext::is_project_dirty()
+{
+    return mObj->editStack.index() != mObj->lastSavedEditIndex;
 }
 
 Vector<EditorProjectEntry> EditorContext::get_project_entries()

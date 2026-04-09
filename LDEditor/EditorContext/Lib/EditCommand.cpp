@@ -20,6 +20,10 @@ static void set_component_asset_command_destroy(EditCommand* baseCmd) { heap_del
 static void set_component_asset_command_redo(EditCommand* baseCmd);
 static void set_component_asset_command_undo(EditCommand* baseCmd);
 static void set_component_asset(Scene scene, SUID compSUID, AssetID assetID);
+static EditCommand* set_component_transform_2d_command_create() { return heap_new<SetComponentTransform2DCommand>(MEMORY_USAGE_MISC); }
+static void set_component_transform_2d_command_destroy(EditCommand* baseCmd) { heap_delete<SetComponentTransform2DCommand>((SetComponentTransform2DCommand*)baseCmd); }
+static void set_component_transform_2d_command_redo(EditCommand* baseCmd);
+static void set_component_transform_2d_command_undo(EditCommand* baseCmd);
 static EditCommand* clone_component_subtree_command_create() { return heap_new<CloneComponentSubtreeCommand>(MEMORY_USAGE_MISC); }
 static void clone_component_subtree_command_destroy(EditCommand* baseCmd) { heap_delete<CloneComponentSubtreeCommand>((CloneComponentSubtreeCommand*)baseCmd); }
 static void clone_component_subtree_command_redo(EditCommand* baseCmd);
@@ -41,6 +45,7 @@ static EditCommandMeta sEditCommand[]{
     {&add_component_command_create, &add_component_command_destroy, &add_component_command_redo, &add_component_command_undo},
     {&add_component_script_command_create, &add_component_script_command_destroy, &add_component_script_command_redo, &add_component_script_command_undo},
     {&set_component_asset_command_create, &set_component_asset_command_destroy, &set_component_asset_command_redo, &set_component_asset_command_undo},
+    {&set_component_transform_2d_command_create, &set_component_transform_2d_command_destroy, &set_component_transform_2d_command_redo, &set_component_transform_2d_command_undo},
     {&clone_component_subtree_command_create, &clone_component_subtree_command_destroy, &clone_component_subtree_command_redo, &clone_component_subtree_command_undo},
     {&delete_component_subtree_command_create, &delete_component_subtree_command_destroy, &delete_component_subtree_command_redo, &delete_component_subtree_command_undo},
 };
@@ -198,6 +203,24 @@ static void set_component_asset_command_undo(EditCommand* baseCmd)
     auto* cmd = (SetComponentAssetCommand*)baseCmd;
 
     set_component_asset(cmd->ctx->scene, cmd->compSUID, cmd->prevAssetID);
+}
+
+static void set_component_transform_2d_command_redo(EditCommand* baseCmd)
+{
+    auto* cmd = (SetComponentTransform2DCommand*)baseCmd;
+    ComponentView comp = cmd->ctx->scene.get_component_by_suid(cmd->compSUID);
+    LD_ASSERT(comp);
+
+    (void)comp.set_transform_2d(cmd->transform);
+}
+
+static void set_component_transform_2d_command_undo(EditCommand* baseCmd)
+{
+    auto* cmd = (SetComponentTransform2DCommand*)baseCmd;
+    ComponentView comp = cmd->ctx->scene.get_component_by_suid(cmd->compSUID);
+    LD_ASSERT(comp);
+
+    (void)comp.set_transform_2d(cmd->prevTransform);
 }
 
 static void clone_component_subtree_command_redo(EditCommand* baseCmd)

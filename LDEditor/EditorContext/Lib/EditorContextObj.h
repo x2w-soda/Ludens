@@ -36,6 +36,7 @@ struct EditorContextObj
     CUID selectedComponentCUID = 0;                       /// component selection state
     CUID prevSelectedComponentCUID = 0;                   /// previous component selection state
     bool isPlaying = false;                               /// whether Scene simulation is in progress
+    int lastSavedEditIndex = 0;
 
     void emit_event(EditorEventType type);
     void notify_observers(const EditorEvent* event);

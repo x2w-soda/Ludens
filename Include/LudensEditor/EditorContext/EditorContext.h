@@ -20,6 +20,12 @@ struct Transform;
 struct TransformEx;
 struct ProjectScanResult;
 
+struct EditorUpdateTick
+{
+    float delta;     // delta time in seconds
+    Vec2 screenSize; // window size
+};
+
 struct EditorProjectEntry
 {
     FS::Path schemaPath;
@@ -67,6 +73,9 @@ struct EditorContext : Handle<struct EditorContextObj>
     void poll_events();
 
     AssetImporter get_asset_importer();
+
+    /// @brief Check if the Project in RAM is different from the one on disk.
+    bool is_project_dirty();
 
     /// @brief Get discovered projects.
     Vector<EditorProjectEntry> get_project_entries();

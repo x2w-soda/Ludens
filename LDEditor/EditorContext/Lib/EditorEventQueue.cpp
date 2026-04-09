@@ -33,6 +33,7 @@ union EditorEventU
     EditorActionAddComponentEvent actionAddComponent;
     EditorActionAddComponentScriptEvent actionAddComponentScript;
     EditorActionSetComponentAssetEvent actionSetComponentAsset;
+    EditorActionSetComponentTransform2DEvent actionSetComponentTransform2D;
     EditorActionCloneComponentSubtreeEvent actionCloneComponentSubtree;
     EditorActionDeleteComponentSubtreeEvent actionDeleteComponentSubtree;
 };
@@ -146,6 +147,9 @@ EditorEvent* EditorEventQueueObj::alloc_event(EditorEventType type)
     case EDITOR_EVENT_TYPE_ACTION_SET_COMPONENT_ASSET:
         new (event) EditorActionSetComponentAssetEvent();
         break;
+    case EDITOR_EVENT_TYPE_ACTION_SET_COMPONENT_TRANSFORM_2D:
+        new (event) EditorActionSetComponentTransform2DEvent();
+        break;
     case EDITOR_EVENT_TYPE_ACTION_CLONE_COMPONENT_SUBTREE:
         new (event) EditorActionCloneComponentSubtreeEvent();
         break;
@@ -244,6 +248,9 @@ void EditorEventQueueObj::free_event(EditorEvent* event)
         break;
     case EDITOR_EVENT_TYPE_ACTION_SET_COMPONENT_ASSET:
         ((EditorActionSetComponentAssetEvent*)(event))->~EditorActionSetComponentAssetEvent();
+        break;
+    case EDITOR_EVENT_TYPE_ACTION_SET_COMPONENT_TRANSFORM_2D:
+        ((EditorActionSetComponentTransform2DEvent*)(event))->~EditorActionSetComponentTransform2DEvent();
         break;
     case EDITOR_EVENT_TYPE_ACTION_CLONE_COMPONENT_SUBTREE:
         ((EditorActionCloneComponentSubtreeEvent*)(event))->~EditorActionCloneComponentSubtreeEvent();
