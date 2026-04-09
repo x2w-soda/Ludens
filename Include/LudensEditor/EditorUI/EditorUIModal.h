@@ -19,7 +19,10 @@ struct EditorUIModal : Handle<struct EditorUIModalObj>
     static EditorUIModal create(const EditorUIModalInfo& modalI);
     static void destroy(EditorUIModal modal);
 
-    void on_imgui(float delta, const Vec2& screenSize);
+    void pre_update(const EditorUpdateTick& tick);
+    void update(const EditorUpdateTick& tick);
+    void post_update();
+
     void set_visible(bool isVisible);
     EditorWindow set_window(EditorWindowType type);
 };

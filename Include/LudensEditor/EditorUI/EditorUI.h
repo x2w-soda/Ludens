@@ -49,13 +49,10 @@ public:
     void cleanup();
 
     /// @brief Updates the editor UI with timestep.
-    /// @return Scene extent.
-    Vec2 update(float delta);
+    /// @return Scene extent in the screen.
+    Vec2 update(float delta, Vec2 screenExtent);
 
     void submit_frame();
-
-    /// @brief Resize the editor UI to new screen size.
-    void resize(const Vec2& screenSize);
 
     static void on_window_event(const WindowEvent* event, void* user);
     static void on_editor_event(const EditorEvent* event, void* user);
@@ -64,6 +61,10 @@ public:
     static void on_scene_pick(SceneOverlayGizmoID gizmoID, RUID ruid, void* user);
 
 private:
+    void main_pre_update();
+    void main_update();
+    void main_post_update();
+
     /// @brief Get the main camera used to render scene from.
     Camera get_main_camera();
 
@@ -76,9 +77,9 @@ private:
     EditorUIDialog mDialog;
     EditorUIMain mMain;
     EditorUIModal mModal;
+    EditorUpdateTick mTick;
     RenderSystem mRenderSystem{};
     RUID mEnvCubemap = 0;
-    Vec2 mScreenSize;
 };
 
 } // namespace LD

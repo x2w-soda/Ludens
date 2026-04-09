@@ -3,6 +3,7 @@
 #include <Ludens/Scene/Scene.h>
 #include <Ludens/UI/UIImmediate.h>
 #include <Ludens/WindowRegistry/WindowRegistry.h>
+#include <LudensEditor/AssetImportWindow/AssetImportWindow.h>
 #include <LudensEditor/EditorContext/EditorIconAtlas.h>
 #include <LudensEditor/EditorContext/EditorWindow.h>
 #include <LudensEditor/EditorUI/EditorUI.h>
@@ -20,7 +21,8 @@ void EditorUI::startup(const EditorUIInfo& info)
 
     mCtx = info.ctx;
     mCtx.add_observer(&EditorUI::on_editor_event, this);
-    mScreenSize = Vec2((float)info.screenWidth, (float)info.screenHeight);
+    mTick = {};
+    mTick.screenSize = Vec2((float)info.screenWidth, (float)info.screenHeight);
     mRenderSystem = info.renderSystem;
     mEnvCubemap = (RUID)0; // info.envCubemap
 
@@ -32,20 +34,20 @@ void EditorUI::startup(const EditorUIInfo& info)
     barI.ctx = mCtx;
     barI.layerName = EDITOR_UI_LAYER_TOP_BAR_NAME;
     barI.barHeight = EDITOR_BAR_HEIGHT;
-    barI.screenSize = mScreenSize;
+    barI.screenSize = mTick.screenSize;
     mTopBar = EditorUITopBar::create(barI);
 
     EditorUIMainInfo mainI{};
     mainI.ctx = mCtx;
     mainI.layerName = EDITOR_UI_LAYER_MAIN_NAME;
-    mainI.screenSize = mScreenSize;
+    mainI.screenSize = mTick.screenSize;
     mainI.topBarHeight = EDITOR_BAR_HEIGHT;
     mMain = EditorUIMain::create(mainI);
 
     EditorUIModalInfo modalI{};
     modalI.ctx = mCtx;
     modalI.layerName = EDITOR_UI_LAYER_MODAL_NAME;
-    modalI.screenSize = mScreenSize;
+    modalI.screenSize = mTick.screenSize;
     mModal = EditorUIModal::create(modalI);
     mModal.set_visible(true); // Guard until a project is loaded
 
@@ -75,21 +77,54 @@ void EditorUI::cleanup()
     ui_imgui_cleanup();
 }
 
-Vec2 EditorUI::update(float delta)
+Vec2 EditorUI::update(float delta, Vec2 screenSize)
 {
     LD_PROFILE_SCOPE;
 
-    // imgui pass
-    ui_context_begin(EDITOR_UI_CONTEXT_NAME, mScreenSize);
-    mTopBar.on_imgui(delta);
-    mMain.on_imgui(delta);
-    mModal.on_imgui(delta, mScreenSize);
-    ui_context_end(delta);
+    // skip minimizations
+    if (screenSize.x > 0.0f && screenSize.y > 0.0f)
+        mTick.screenSize = screenSize;
 
-    // post imgui update
+    mTick.delta = delta;
+
+    main_pre_update();
+    main_update();
+    main_post_update();
+
+    // Update dialog window
     mDialog.update(delta);
 
     return mMain.get_viewport_scene_size();
+}
+
+// Main window resizes
+void EditorUI::main_pre_update()
+{
+    mMain.pre_update(mTick);
+    mModal.pre_update(mTick);
+}
+
+// Main window imgui pass
+void EditorUI::main_update()
+{
+    CursorType cursorHint;
+
+    eui_begin_window(WindowRegistry::get().get_root_id());
+    ui_context_begin(EDITOR_UI_CONTEXT_NAME, mTick.screenSize);
+    mTopBar.update(mTick);
+    mMain.update(mTick);
+    mModal.update(mTick);
+    ui_context_end(mTick.delta, cursorHint);
+    if (eui_get_window_cursor() == CURSOR_TYPE_DEFAULT)
+        eui_set_window_cursor(cursorHint);
+    eui_end_window();
+}
+
+// Main window deferred destructions
+void EditorUI::main_post_update()
+{
+    mMain.post_update();
+    mModal.post_update();
 }
 
 void EditorUI::submit_frame()
@@ -150,18 +185,6 @@ void EditorUI::submit_frame()
     mRenderSystem.submit_frame();
 }
 
-void EditorUI::resize(const Vec2& screenSize)
-{
-    // skip minimization
-    if (screenSize.x == 0.0f || screenSize.y == 0.0f)
-        return;
-
-    mScreenSize = screenSize;
-
-    // recalculate workspace window areas
-    mMain.resize(mScreenSize);
-}
-
 void EditorUI::on_render(ScreenRenderComponent renderer, void* user)
 {
     EditorUI& self = *(EditorUI*)user;
@@ -210,16 +233,6 @@ void EditorUI::on_window_event(const WindowEvent* event, void* user)
 {
     EditorUI& self = *(EditorUI*)user;
 
-    switch (event->type)
-    {
-    case EVENT_TYPE_WINDOW_RESIZE:
-        self.resize(Vec2(static_cast<const WindowResizeEvent*>(event)->width,
-                         static_cast<const WindowResizeEvent*>(event)->height));
-        break;
-    default:
-        break;
-    }
-
     ui_context_input(EDITOR_UI_CONTEXT_NAME, event);
 }
 
@@ -230,8 +243,23 @@ void EditorUI::on_editor_event(const EditorEvent* event, void* user)
     // should be deferred to next imgui update.
     EditorUI& self = *(EditorUI*)user;
 
+    AssetImportWindow importWindow{};
+
     switch (event->type)
     {
+    case EDITOR_EVENT_TYPE_REQUEST_NEW_PROJECT:
+        self.mModal.set_window(EDITOR_WINDOW_PROJECT);
+        self.mModal.set_visible(true);
+        break;
+    case EDITOR_EVENT_TYPE_REQUEST_IMPORT_ASSETS:
+    {
+        auto* notifyE = (const EditorRequestImportAssetsEvent*)event;
+        importWindow = (AssetImportWindow)self.mModal.set_window(EDITOR_WINDOW_ASSET_IMPORT);
+        importWindow.set_type(ASSET_TYPE_TEXTURE_2D);
+        importWindow.set_source_path(notifyE->srcPath.string());
+        self.mModal.set_visible(true);
+        break;
+    }
     case EDITOR_EVENT_TYPE_NOTIFY_PROJECT_CREATION:
     {
         auto* notifyE = (const EditorNotifyProjectCreationEvent*)event;

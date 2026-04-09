@@ -1,5 +1,6 @@
 #include <Ludens/Memory/Memory.h>
 #include <Ludens/Profiler/Profiler.h>
+#include <LudensEditor/AssetSelectWindow/AssetSelectWindow.h>
 #include <LudensEditor/CreateComponentWindow/CreateComponentWindow.h>
 #include <LudensEditor/SelectionWindow/SelectionWindow.h>
 
@@ -88,13 +89,17 @@ void EditorUIDialogObj::update(float delta)
         return;
     }
 
-    Vec2 windowExtent = WindowRegistry::get().get_window_extent(mDialog.get_id());
+    EditorUpdateTick tick{};
+    tick.delta = delta;
+    tick.screenSize = WindowRegistry::get().get_window_extent(mDialog.get_id());
 
+    SUID suid{};
     FS::Path selectedPath{};
     SelectionWindow selectW{};
+    AssetSelectWindow assetSelectW{};
 
     // updates the UIContext in the EditorDialog (a separate OS-level Window)
-    mDialog.update(delta, windowExtent);
+    mDialog.update(tick);
 
     // generate actions or events
     switch (mDialogType)
@@ -120,14 +125,13 @@ void EditorUIDialogObj::update(float delta)
 #endif
         break;
     case DIALOG_SELECT_ASSET:
-        selectW = (SelectionWindow)mDialog.get_editor_window(EDITOR_WINDOW_SELECTION);
-        if (selectW && selectW.has_selected(selectedPath))
+        assetSelectW = (AssetSelectWindow)mDialog.get_editor_window(EDITOR_WINDOW_ASSET_SELECT);
+        if (assetSelectW && assetSelectW.has_selected_asset(suid))
         {
             mDialogType = DIALOG_NONE;
-            std::string stem = selectedPath.stem().string();
             auto* event = (EditorActionSetComponentAssetEvent*)mCtx.enqueue_event(EDITOR_EVENT_TYPE_ACTION_SET_COMPONENT_ASSET);
             event->compSUID = mSubjectSUID;
-            event->assetID = AssetManager::get().get_id_from_name(stem.c_str(), nullptr);
+            event->assetID = suid;
         }
         break;
     case DIALOG_SELECT_SCRIPT:
@@ -195,8 +199,8 @@ void EditorUIDialogObj::dialog_select_asset(const EditorEvent* e)
     const auto* event = (const EditorRequestComponentAssetEvent*)e;
     mSubjectSUID = event->component;
 
-    SelectionWindow selectionW = (SelectionWindow)get_or_create_dialog(EDITOR_WINDOW_SELECTION);
-    selectionW.show(mCtx.get_project_directory(), "lda");
+    AssetSelectWindow selectW = (AssetSelectWindow)get_or_create_dialog(EDITOR_WINDOW_ASSET_SELECT);
+    selectW.set_filter(event->requestType);
 }
 
 void EditorUIDialogObj::dialog_select_script()

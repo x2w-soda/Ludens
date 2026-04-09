@@ -3,6 +3,7 @@
 #include <Ludens/UI/UIImmediate.h>
 #include <LudensEditor/EditorUI/EditorDialog.h>
 #include <LudensEditor/EditorUI/EditorWorkspace.h>
+#include <LudensEditor/EditorWidget/EditorWidget.h>
 #include <LudensEditor/SelectionWindow/SelectionWindow.h>
 
 #include "EditorUIDef.h"
@@ -126,7 +127,7 @@ void EditorDialog::destroy(EditorDialog dialog)
     heap_delete<EditorDialogObj>(obj);
 }
 
-void EditorDialog::update(float delta, const Vec2& windowExtent)
+void EditorDialog::update(const EditorUpdateTick& tick)
 {
     LD_PROFILE_SCOPE;
 
@@ -139,9 +140,14 @@ void EditorDialog::update(float delta, const Vec2& windowExtent)
         return;
     }
 
-    ui_context_begin(EDITOR_UI_DIALOG_CONTEXT_NAME, windowExtent);
-    mObj->workspace.on_imgui(delta);
-    ui_context_end(delta);
+    CursorType cursorHint;
+    eui_begin_window(mObj->windowID);
+    ui_context_begin(EDITOR_UI_DIALOG_CONTEXT_NAME, tick.screenSize);
+    mObj->workspace.update(tick);
+    ui_context_end(tick.delta, cursorHint);
+    if (eui_get_window_cursor() == CURSOR_TYPE_DEFAULT)
+        eui_set_window_cursor(cursorHint);
+    eui_end_window();
 }
 
 void EditorDialog::render(ScreenRenderComponent renderer)
@@ -156,7 +162,7 @@ bool EditorDialog::should_close()
 
 EditorWindow EditorDialog::get_editor_window(EditorWindowType typeCheck)
 {
-    if (!mObj->window || mObj->window.get_type() != typeCheck)
+    if (!mObj->window || mObj->window.type() != typeCheck)
         return {};
 
     return mObj->window;

@@ -28,9 +28,13 @@ add_ludens_editor_module(
 )
 
 target_link_libraries(${MODULE_NAME} PRIVATE
-	LDCoreLibs
-	LDLudensLFS # TODO: embed required media instead of fetching from submodule
+    LDCoreLibs
+    LDLudensLFS # TODO: embed required media instead of fetching from submodule
     LDInspectorWindow
+    LDProjectWindow
+    LDDocumentWindow
+    LDAssetImportWindow
+    LDAssetSelectWindow
     LDVersionWindow
     LDViewportWindow
     LDSelectionWindow

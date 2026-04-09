@@ -45,7 +45,11 @@ struct EditorWorkspace : Handle<struct EditorWorkspaceObj>
     void destroy_window(EditorWindow window);
 
     /// @brief Imgui pass on all EditorWindows in this workspace.
-    void on_imgui(float delta);
+    void update(const EditorUpdateTick& tick);
+
+    /// @brief Post Imgui pass, safely destroy windows before rendering.
+    /// @return IDs of EditorWindows destroyed.
+    Vector<EditorAreaID> post_update();
 
     /// @brief Set editor workspace rect, triggers resize callbacks for EditorWindows.
     void set_rect(const Rect& area);

@@ -19,8 +19,9 @@ struct EditorUIMain : Handle<struct EditorUIMainObj>
     static EditorUIMain create(const EditorUIMainInfo& modalI);
     static void destroy(EditorUIMain modal);
 
-    void on_imgui(float delta);
-    void resize(const Vec2& screenSize);
+    void pre_update(const EditorUpdateTick& tick);
+    void update(const EditorUpdateTick& tick);
+    void post_update();
 
     void set_viewport_hover_id(SceneOverlayGizmoID gizmoID, RUID ruid);
     Camera get_viewport_camera();

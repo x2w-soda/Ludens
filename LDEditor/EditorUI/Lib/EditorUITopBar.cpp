@@ -8,14 +8,10 @@
 #include <LudensEditor/EditorUI/EditorUITopBar.h>
 #include <LudensEditor/EditorWidget/EUIListMenu.h>
 
+#include "EditorUIDef.h"
+
 #include <cstddef>
 #include <cstdio>
-
-#define TOP_BAR_WORKSPACE_NAME "TOP_BAR_WORKSPACE"
-#define TOP_BAR_WINDOW_NAME "TOP_BAR_WINDOW"
-#define TOP_BAR_MENU_FILE_NAME "TOP_BAR_MENU_FILE"
-#define TOP_BAR_MENU_EDIT_NAME "TOP_BAR_MENU_EDIT"
-#define TOP_BAR_MENU_ABOUT_NAME "TOP_BAR_MENU_ABOUT"
 
 namespace LD {
 
@@ -47,20 +43,20 @@ struct EditorTopBarObj
     Rect barRect;
     Rect screenRect;
 
-    void on_imgui(float delta);
+    void update(float delta);
     void file_menu_window();
     void edit_menu_window();
     void about_menu_window();
 };
 
-void EditorTopBarObj::on_imgui(float delta)
+void EditorTopBarObj::update(float delta)
 {
     Vec2 mousePos;
     MouseValue mouseVal;
     Rect rect;
 
     ui_layer_begin(layerName);
-    ui_workspace_begin(TOP_BAR_WORKSPACE_NAME, barRect);
+    ui_workspace_begin(EDITOR_TOP_BAR_WORKSPACE_NAME, barRect);
 
     UILayoutInfo layoutI{};
     layoutI.childAxis = UI_AXIS_X;
@@ -68,14 +64,14 @@ void EditorTopBarObj::on_imgui(float delta)
     layoutI.sizeX = UISize::fixed(barRect.w);
     layoutI.sizeY = UISize::fixed(barRect.h);
 
-    ui_push_window(TOP_BAR_WINDOW_NAME);
+    ui_push_window(EDITOR_TOP_BAR_WINDOW_NAME);
     ui_top_layout(layoutI);
 
     ui_push_text(nullptr, "File");
     if (ui_top_mouse_down(mouseVal, mousePos) && mouseVal.button() == MOUSE_BUTTON_LEFT)
     {
         ui_top_get_rect(rect);
-        ui_request_popup_window(TOP_BAR_MENU_FILE_NAME, rect.get_pos_bl());
+        ui_request_popup_window(EDITOR_TOP_BAR_MENU_FILE_NAME, rect.get_pos_bl());
     }
     ui_pop();
 
@@ -83,7 +79,7 @@ void EditorTopBarObj::on_imgui(float delta)
     if (ui_top_mouse_down(mouseVal, mousePos) && mouseVal.button() == MOUSE_BUTTON_LEFT)
     {
         ui_top_get_rect(rect);
-        ui_request_popup_window(TOP_BAR_MENU_EDIT_NAME, rect.get_pos_bl());
+        ui_request_popup_window(EDITOR_TOP_BAR_MENU_EDIT_NAME, rect.get_pos_bl());
     }
     ui_pop();
 
@@ -91,7 +87,7 @@ void EditorTopBarObj::on_imgui(float delta)
     if (ui_top_mouse_down(mouseVal, mousePos) && mouseVal.button() == MOUSE_BUTTON_LEFT)
     {
         ui_top_get_rect(rect);
-        ui_request_popup_window(TOP_BAR_MENU_ABOUT_NAME, rect.get_pos_bl());
+        ui_request_popup_window(EDITOR_TOP_BAR_MENU_ABOUT_NAME, rect.get_pos_bl());
     }
     ui_pop();
     ui_pop_window();
@@ -106,7 +102,7 @@ void EditorTopBarObj::on_imgui(float delta)
 
 void EditorTopBarObj::file_menu_window()
 {
-    if (!ui_push_popup_window(TOP_BAR_MENU_FILE_NAME))
+    if (!ui_push_popup_window(EDITOR_TOP_BAR_MENU_FILE_NAME))
         return;
 
     Array<const char*, 5> options;
@@ -129,8 +125,11 @@ void EditorTopBarObj::file_menu_window()
         (void)ctx.enqueue_event(EDITOR_EVENT_TYPE_REQUEST_OPEN_SCENE);
         break;
     case FILE_MENU_SAVE_SCENE:
-        (void)ctx.enqueue_event(EDITOR_EVENT_TYPE_ACTION_SAVE_SCENE);
+    {
+        auto* actionE = (EditorActionSaveEvent*)ctx.enqueue_event(EDITOR_EVENT_TYPE_ACTION_SAVE);
+        actionE->saveSceneSchema = true;
         break;
+    }
     case FILE_MENU_NEW_PROJECT:
         (void)ctx.enqueue_event(EDITOR_EVENT_TYPE_REQUEST_NEW_PROJECT);
         break;
@@ -146,7 +145,7 @@ void EditorTopBarObj::file_menu_window()
 
 void EditorTopBarObj::edit_menu_window()
 {
-    if (!ui_push_popup_window(TOP_BAR_MENU_EDIT_NAME))
+    if (!ui_push_popup_window(EDITOR_TOP_BAR_MENU_EDIT_NAME))
         return;
 
     Array<const char*, 3> options;
@@ -178,7 +177,7 @@ void EditorTopBarObj::edit_menu_window()
 
 void EditorTopBarObj::about_menu_window()
 {
-    if (!ui_push_popup_window(TOP_BAR_MENU_ABOUT_NAME))
+    if (!ui_push_popup_window(EDITOR_TOP_BAR_MENU_ABOUT_NAME))
         return;
 
     Array<const char*, 1> options;
@@ -228,9 +227,9 @@ void EditorUITopBar::destroy(EditorUITopBar topBar)
     heap_delete<EditorTopBarObj>(obj);
 }
 
-void EditorUITopBar::on_imgui(float delta)
+void EditorUITopBar::update(const EditorUpdateTick& tick)
 {
-    mObj->on_imgui(delta);
+    mObj->update(tick.delta);
 }
 
 } // namespace LD

@@ -10,9 +10,9 @@ namespace LD {
 struct EditorUIModalObj
 {
     EditorContext ctx;
-    EditorWorkspace backdrop;
-    EditorWorkspace modal;
-    EditorWindow modalWindow;
+    EditorWorkspace backdropWS;
+    EditorWorkspace modalWS;
+    EditorWindow modalW;
     std::string layerName;
     bool isVisible = false;
 };
@@ -34,7 +34,7 @@ EditorUIModal EditorUIModal::create(const EditorUIModalInfo& modalI)
     spaceI.isVisible = obj->isVisible;
     spaceI.rootRect = Rect(0.0f, 0.0f, modalI.screenSize.x, modalI.screenSize.y);
     spaceI.rootColor = 0x10101070;
-    obj->backdrop = EditorWorkspace::create(spaceI);
+    obj->backdropWS = EditorWorkspace::create(spaceI);
 
     const float modalW = 600.0f;
     const float modalH = 700.0f;
@@ -43,8 +43,8 @@ EditorUIModal EditorUIModal::create(const EditorUIModalInfo& modalI)
     spaceI.isVisible = obj->isVisible;
     spaceI.rootRect = Rect((modalI.screenSize.x - modalW) / 2.0f, (modalI.screenSize.y - modalH) / 2.0f, modalW, modalH);
     spaceI.rootColor = 0;
-    obj->modal = EditorWorkspace::create(spaceI);
-    obj->modalWindow = obj->modal.create_window(obj->modal.get_root_id(), EDITOR_WINDOW_PROJECT);
+    obj->modalWS = EditorWorkspace::create(spaceI);
+    obj->modalW = obj->modalWS.create_window(obj->modalWS.get_root_id(), EDITOR_WINDOW_PROJECT);
 
     return EditorUIModal(obj);
 }
@@ -55,23 +55,38 @@ void EditorUIModal::destroy(EditorUIModal modal)
 
     auto* obj = modal.unwrap();
 
-    EditorWorkspace::destroy(obj->modal);
-    EditorWorkspace::destroy(obj->backdrop);
+    EditorWorkspace::destroy(obj->modalWS);
+    EditorWorkspace::destroy(obj->backdropWS);
 
     heap_delete<EditorUIModalObj>(obj);
 }
 
-void EditorUIModal::on_imgui(float delta, const Vec2& screenSize)
+void EditorUIModal::pre_update(const EditorUpdateTick& tick)
 {
-    Rect modalRect = mObj->backdrop.get_rect();
-    if (Vec2(modalRect.w, modalRect.h) != screenSize)
-        mObj->backdrop.set_rect(Rect(0.0f, 0.0f, screenSize.x, screenSize.y));
+    Rect modalRect = mObj->backdropWS.get_rect();
+    if (Vec2(modalRect.w, modalRect.h) != tick.screenSize)
+        mObj->backdropWS.set_rect(Rect(0.0f, 0.0f, tick.screenSize.x, tick.screenSize.y));
+}
 
-    mObj->backdrop.set_visible(mObj->isVisible);
-    mObj->backdrop.on_imgui(delta);
+void EditorUIModal::update(const EditorUpdateTick& tick)
+{
+    mObj->backdropWS.set_visible(mObj->isVisible);
+    mObj->backdropWS.update(tick);
 
-    mObj->modal.set_visible(mObj->isVisible);
-    mObj->modal.on_imgui(delta);
+    mObj->modalWS.set_visible(mObj->isVisible);
+    mObj->modalWS.update(tick);
+}
+
+void EditorUIModal::post_update()
+{
+    mObj->backdropWS.post_update();
+    
+    Vector<EditorAreaID> destroyed = mObj->modalWS.post_update();
+    if (!destroyed.empty() && destroyed.front() == mObj->modalWS.get_root_id())
+    {
+        mObj->modalW = {};
+        mObj->isVisible = false;
+    }
 }
 
 void EditorUIModal::set_visible(bool isVisible)
@@ -81,10 +96,10 @@ void EditorUIModal::set_visible(bool isVisible)
 
 EditorWindow EditorUIModal::set_window(EditorWindowType type)
 {
-    if (mObj->modalWindow.get_type() == type)
-        return mObj->modalWindow;
+    if (mObj->modalW && mObj->modalW.type() == type)
+        return mObj->modalW;
 
-    return mObj->modalWindow = mObj->modal.create_window(mObj->modal.get_root_id(), type);
+    return mObj->modalW = mObj->modalWS.create_window(mObj->modalWS.get_root_id(), type);
 }
 
 } // namespace LD

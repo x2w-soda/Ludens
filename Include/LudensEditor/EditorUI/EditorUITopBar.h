@@ -20,7 +20,7 @@ struct EditorUITopBar : Handle<struct EditorTopBarObj>
     static EditorUITopBar create(const EditorUITopBarInfo& topBarI);
     static void destroy(EditorUITopBar topBar);
 
-    void on_imgui(float delta);
+    void update(const EditorUpdateTick& tick);
 };
 
 } // namespace LD

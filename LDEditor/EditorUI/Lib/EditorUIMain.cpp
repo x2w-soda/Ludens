@@ -2,6 +2,7 @@
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/Scene/Scene.h>
 #include <LudensEditor/ConsoleWindow/ConsoleWindow.h>
+#include <LudensEditor/DocumentWindow/DocumentWindow.h>
 #include <LudensEditor/InspectorWindow/InspectorWindow.h>
 #include <LudensEditor/OutlinerWindow/OutlinerWindow.h>
 #include <LudensEditor/SelectionWindow/SelectionWindow.h>
@@ -26,8 +27,9 @@ public:
 
     EditorUIMainObj& operator=(const EditorUIMainObj&) = delete;
 
-    void on_imgui(float delta);
-    void resize(const Vec2& screenSize);
+    void pre_update(const EditorUpdateTick& tick);
+    void update(const EditorUpdateTick& tick);
+    void post_update();
 
     static void on_editor_event(const EditorEvent* event, void* user);
 
@@ -38,6 +40,7 @@ private:
     OutlinerWindow mOutlinerWindow{};
     InspectorWindow mInspectorWindow{};
     ConsoleWindow mConsoleWindow{};
+    Rect mMainRect{};
     const char* mLayerName = nullptr;
     float mTopBarHeight = 0.0f;
 };
@@ -62,6 +65,7 @@ EditorUIMainObj::EditorUIMainObj(const EditorUIMainInfo& mainI)
     EditorAreaID outlinerArea = mSceneWorkspace.split_right(viewportArea, 0.7f);
     EditorAreaID inspectorArea = mSceneWorkspace.split_bottom(outlinerArea, 0.5f);
     EditorAreaID consoleArea = mSceneWorkspace.split_bottom(viewportArea, 0.7f);
+    EditorAreaID documentArea = mSceneWorkspace.split_right(consoleArea, 0.5f);
 
     mViewportWindow = (ViewportWindow)mSceneWorkspace.create_window(viewportArea, EDITOR_WINDOW_VIEWPORT);
     mOutlinerWindow = (OutlinerWindow)mSceneWorkspace.create_window(outlinerArea, EDITOR_WINDOW_OUTLINER);
@@ -69,6 +73,9 @@ EditorUIMainObj::EditorUIMainObj(const EditorUIMainInfo& mainI)
     mConsoleWindow = (ConsoleWindow)mSceneWorkspace.create_window(consoleArea, EDITOR_WINDOW_CONSOLE);
     mConsoleWindow.observe_channel(get_lua_script_log_channel_name());
     mConsoleWindow.observe_channel(get_scene_log_channel_name());
+    mConsoleWindow.observe_channel("EditorContext");
+
+    DocumentWindow window = (DocumentWindow)mSceneWorkspace.create_window(documentArea, EDITOR_WINDOW_DOCUMENT);
 }
 
 EditorUIMainObj::~EditorUIMainObj()
@@ -78,18 +85,28 @@ EditorUIMainObj::~EditorUIMainObj()
     EditorWorkspace::destroy(mSceneWorkspace);
 }
 
-void EditorUIMainObj::on_imgui(float delta)
+void EditorUIMainObj::pre_update(const EditorUpdateTick& tick)
+{
+    Rect mainRect = Rect(0.0f, mTopBarHeight, tick.screenSize.x, tick.screenSize.y - mTopBarHeight);
+
+    // with epsilon tolerance
+    if (mainRect != mMainRect)
+    {
+        mMainRect = mainRect;
+        mSceneWorkspace.set_rect(mMainRect);
+    }
+}
+
+void EditorUIMainObj::update(const EditorUpdateTick& tick)
 {
     LD_PROFILE_SCOPE;
 
-    mSceneWorkspace.on_imgui(delta);
+    mSceneWorkspace.update(tick);
 }
 
-void EditorUIMainObj::resize(const Vec2& screenSize)
+void EditorUIMainObj::post_update()
 {
-    Rect groundRect = Rect(0.0f, mTopBarHeight, screenSize.x, screenSize.y - mTopBarHeight);
-
-    mSceneWorkspace.set_rect(groundRect);
+    mSceneWorkspace.post_update();
 }
 
 void EditorUIMainObj::on_editor_event(const EditorEvent* event, void* user)
@@ -127,16 +144,19 @@ void EditorUIMain::destroy(EditorUIMain modal)
     heap_delete<EditorUIMainObj>(obj);
 }
 
-void EditorUIMain::on_imgui(float delta)
+void EditorUIMain::pre_update(const EditorUpdateTick& tick)
 {
-    mObj->on_imgui(delta);
+    mObj->pre_update(tick);
 }
 
-void EditorUIMain::resize(const Vec2& screenSize)
+void EditorUIMain::update(const EditorUpdateTick& tick)
 {
-    LD_ASSERT(screenSize.x > 0.0f && screenSize.y > 0.0f);
+    mObj->update(tick);
+}
 
-    mObj->resize(screenSize);
+void EditorUIMain::post_update()
+{
+    mObj->post_update();
 }
 
 void EditorUIMain::set_viewport_hover_id(SceneOverlayGizmoID gizmoID, RUID ruid)

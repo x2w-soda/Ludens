@@ -3,12 +3,14 @@
 #include <Ludens/Memory/Memory.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/UI/UIImmediate.h>
+#include <LudensEditor/AssetImportWindow/AssetImportWindow.h>
 #include <LudensEditor/AssetSelectWindow/AssetSelectWindow.h>
 #include <LudensEditor/ConsoleWindow/ConsoleWindow.h>
 #include <LudensEditor/CreateComponentWindow/CreateComponentWindow.h>
 #include <LudensEditor/DocumentWindow/DocumentWindow.h>
 #include <LudensEditor/EditorContext/EditorIconAtlas.h>
 #include <LudensEditor/EditorUI/EditorWorkspace.h>
+#include <LudensEditor/EditorWidget/EditorWidget.h>
 #include <LudensEditor/InspectorWindow/InspectorWindow.h>
 #include <LudensEditor/OutlinerWindow/OutlinerWindow.h>
 #include <LudensEditor/ProjectSettingsWindow/ProjectSettingsWindow.h>
@@ -98,7 +100,7 @@ struct EditorWorkspaceObj
     void set_split_ratio(EditorAreaID areaID, float ratio);
     void set_rect(const Rect& rect);
     void set_pos(const Vec2& pos);
-    void pre_imgui();
+    void pre_update();
 };
 
 struct EditorWindowMeta
@@ -107,27 +109,44 @@ struct EditorWindowMeta
     EditorIcon icon;
     EditorWindow (*create)(const EditorWindowInfo&);
     void (*destroy)(EditorWindow);
-    const char* defaultTabName;
+    void (*update)(EditorWindowObj*, const EditorUpdateTick& tick);
+    const char* defaultName;
 };
 
 // clang-format off
-static EditorWindowMeta sEditorWindowTable[] = {
-    { EDITOR_WINDOW_TAB_CONTROL,      EDITOR_ICON_ENUM_LAST,        &TabControlWindow::create,      &TabControlWindow::destroy,      nullptr },
-    { EDITOR_WINDOW_ASSET_SELECT,     EDITOR_ICON_ENUM_LAST,        &AssetSelectWindow::create,     &AssetSelectWindow::destroy,     "AssetSelect" },
-    { EDITOR_WINDOW_SELECTION,        EDITOR_ICON_ENUM_LAST,        &SelectionWindow::create,       &SelectionWindow::destroy,       "Selection" },
-    { EDITOR_WINDOW_CREATE_COMPONENT, EDITOR_ICON_ENUM_LAST,        &CreateComponentWindow::create, &CreateComponentWindow::destroy, "CreateComponent" },
-    { EDITOR_WINDOW_PROJECT_SETTINGS, EDITOR_ICON_ENUM_LAST,        &ProjectSettingsWindow::create, &ProjectSettingsWindow::destroy, "ProjectSettings" },
-    { EDITOR_WINDOW_PROJECT,          EDITOR_ICON_ENUM_LAST,        &ProjectWindow::create,         &ProjectWindow::destroy,         "Project" },
-    { EDITOR_WINDOW_DOCUMENT,         EDITOR_ICON_ENUM_LAST,        &DocumentWindow::create,        &DocumentWindow::destroy,        "Document" },
-    { EDITOR_WINDOW_VIEWPORT,         EDITOR_ICON_VIEWPORT_WINDOW,  &ViewportWindow::create,        &ViewportWindow::destroy,        "Viewport" },
-    { EDITOR_WINDOW_OUTLINER,         EDITOR_ICON_OUTLINER_WINDOW,  &OutlinerWindow::create,        &OutlinerWindow::destroy,        "Outliner" },
-    { EDITOR_WINDOW_INSPECTOR,        EDITOR_ICON_INSPECTOR_WINDOW, &InspectorWindow::create,       &InspectorWindow::destroy,       "Inspector" },
-    { EDITOR_WINDOW_CONSOLE,          EDITOR_ICON_CONSOLE_WINDOW,   &ConsoleWindow::create,         &ConsoleWindow::destroy,         "Console" },
-    { EDITOR_WINDOW_VERSION,          EDITOR_ICON_ENUM_LAST,        &VersionWindow::create,         &VersionWindow::destroy,         "Version" },
+static EditorWindowMeta sEditorWindow[] = {
+    { EDITOR_WINDOW_TAB_CONTROL,      EDITOR_ICON_ENUM_LAST,        &TabControlWindow::create,      &TabControlWindow::destroy,      &TabControlWindow::update,      nullptr },
+    { EDITOR_WINDOW_ASSET_IMPORT,     EDITOR_ICON_ENUM_LAST,        &AssetImportWindow::create,     &AssetImportWindow::destroy,     &AssetImportWindow::update,     "AssetImport" },
+    { EDITOR_WINDOW_ASSET_SELECT,     EDITOR_ICON_ENUM_LAST,        &AssetSelectWindow::create,     &AssetSelectWindow::destroy,     &AssetSelectWindow::update,     "AssetSelect" },
+    { EDITOR_WINDOW_SELECTION,        EDITOR_ICON_ENUM_LAST,        &SelectionWindow::create,       &SelectionWindow::destroy,       &SelectionWindow::update,       "Selection" },
+    { EDITOR_WINDOW_CREATE_COMPONENT, EDITOR_ICON_ENUM_LAST,        &CreateComponentWindow::create, &CreateComponentWindow::destroy, &CreateComponentWindow::update, "CreateComponent" },
+    { EDITOR_WINDOW_PROJECT_SETTINGS, EDITOR_ICON_ENUM_LAST,        &ProjectSettingsWindow::create, &ProjectSettingsWindow::destroy, &ProjectSettingsWindow::update, "ProjectSettings" },
+    { EDITOR_WINDOW_PROJECT,          EDITOR_ICON_ENUM_LAST,        &ProjectWindow::create,         &ProjectWindow::destroy,         &ProjectWindow::update,         "Project" },
+    { EDITOR_WINDOW_DOCUMENT,         EDITOR_ICON_ENUM_LAST,        &DocumentWindow::create,        &DocumentWindow::destroy,        &DocumentWindow::update,        "Document" },
+    { EDITOR_WINDOW_VIEWPORT,         EDITOR_ICON_VIEWPORT_WINDOW,  &ViewportWindow::create,        &ViewportWindow::destroy,        &ViewportWindow::update,        "Viewport" },
+    { EDITOR_WINDOW_OUTLINER,         EDITOR_ICON_OUTLINER_WINDOW,  &OutlinerWindow::create,        &OutlinerWindow::destroy,        &OutlinerWindow::update,        "Outliner" },
+    { EDITOR_WINDOW_INSPECTOR,        EDITOR_ICON_INSPECTOR_WINDOW, &InspectorWindow::create,       &InspectorWindow::destroy,       &InspectorWindow::update,       "Inspector" },
+    { EDITOR_WINDOW_CONSOLE,          EDITOR_ICON_CONSOLE_WINDOW,   &ConsoleWindow::create,         &ConsoleWindow::destroy,         &ConsoleWindow::update,         "Console" },
+    { EDITOR_WINDOW_VERSION,          EDITOR_ICON_ENUM_LAST,        &VersionWindow::create,         &VersionWindow::destroy,         &VersionWindow::update,         "Version" },
 };
 // clang-format on
 
-static_assert(sizeof(sEditorWindowTable) / sizeof(*sEditorWindowTable) == EDITOR_WINDOW_TYPE_ENUM_COUNT);
+static_assert(sizeof(sEditorWindow) / sizeof(*sEditorWindow) == EDITOR_WINDOW_TYPE_ENUM_COUNT);
+
+static EditorWindow editor_window_create(const EditorWindowInfo& info)
+{
+    return sEditorWindow[(int)info.type].create(info);
+}
+
+static void editor_window_destroy(EditorWindow window)
+{
+    sEditorWindow[(int)window.type()].destroy(window);
+}
+
+static void editor_window_update(EditorWindowObj* obj, const EditorUpdateTick& tick)
+{
+    sEditorWindow[(int)obj->type].update(obj, tick);
+}
 
 EditorWorkspaceObj::~EditorWorkspaceObj()
 {
@@ -135,8 +154,8 @@ EditorWorkspaceObj::~EditorWorkspaceObj()
         if (!node->tabControl || !node->window)
             return;
 
-        sEditorWindowTable[(int)node->window.get_type()].destroy(node->window);
-        sEditorWindowTable[EDITOR_WINDOW_TAB_CONTROL].destroy(node->tabControl);
+        sEditorWindow[(int)node->window.type()].destroy(node->window);
+        sEditorWindow[EDITOR_WINDOW_TAB_CONTROL].destroy(node->tabControl);
     });
 }
 
@@ -187,7 +206,7 @@ void EditorWorkspaceObj::set_pos(const Vec2& pos)
     });
 }
 
-void EditorWorkspaceObj::pre_imgui()
+void EditorWorkspaceObj::pre_update()
 {
     if (shouldClose)
         return;
@@ -196,11 +215,17 @@ void EditorWorkspaceObj::pre_imgui()
     EditorAreaID rootID = partition.get_root_id();
 
     partition.visit_leaves(rootID, [&](EditorWorkspaceNode* node) {
-        if (!node->window)
+        if (!node->window || !node->tabControl)
             return;
 
         if (node->window.should_close())
             toClose.push_back(node->nodeID);
+        else
+        {
+            std::string displayName = node->window.get_name();
+            TabControlWindow tab = (TabControlWindow)node->tabControl;
+            tab.set_window_name(displayName.c_str());
+        }
     });
 
     if (!toClose.empty())
@@ -262,20 +287,25 @@ EditorWindow EditorWorkspace::create_window(EditorAreaID areaID, EditorWindowTyp
     if (node->tabControl)
         destroy_window(node->tabControl);
 
-    const char* tabName = sEditorWindowTable[(int)type].defaultTabName;
-    EditorIcon tabIcon = sEditorWindowTable[(int)type].icon;
-    std::string tabWorkspaceName(tabName);
-    tabWorkspaceName += "Tab";
+    const char* windowName = sEditorWindow[(int)type].defaultName;
+    EditorIcon windowIcon = sEditorWindow[(int)type].icon;
+    std::string tabWindowName(windowName);
+    tabWindowName += "Tab";
+
     EditorWindowInfo windowI{};
     windowI.ctx = mObj->ctx;
-    windowI.uiWorkspaceName = tabWorkspaceName.c_str();
-    node->tabControl = sEditorWindowTable[(int)EDITOR_WINDOW_TAB_CONTROL].create(windowI);
+    windowI.type = EDITOR_WINDOW_TAB_CONTROL;
+    windowI.name = tabWindowName.c_str();
+    windowI.uiWorkspaceName = tabWindowName.c_str();
+    node->tabControl = editor_window_create(windowI);
 
     TabControlWindow tabControl = (TabControlWindow)node->tabControl;
-    tabControl.set_window_type(type, tabName, tabIcon);
+    tabControl.set_window_type(type, windowName, windowIcon);
 
-    windowI.uiWorkspaceName = tabName;
-    return node->window = sEditorWindowTable[(int)type].create(windowI);
+    windowI.type = type;
+    windowI.name = windowName;
+    windowI.uiWorkspaceName = windowName;
+    return node->window = editor_window_create(windowI);
 }
 
 void EditorWorkspace::destroy_window(EditorWindow window)
@@ -285,14 +315,14 @@ void EditorWorkspace::destroy_window(EditorWindow window)
     const std::string& uiWorkspaceName = window.get_ui_workspace_name();
     ui_imgui_cleanup_workspace(uiContextName.c_str(), uiLayerName.c_str(), uiWorkspaceName.c_str());
 
-    sEditorWindowTable[(int)window.get_type()].destroy(window);
+    editor_window_destroy(window);
 }
 
-void EditorWorkspace::on_imgui(float delta)
+void EditorWorkspace::update(const EditorUpdateTick& tick)
 {
     LD_PROFILE_SCOPE;
 
-    mObj->pre_imgui();
+    mObj->pre_update();
 
     if (mObj->shouldClose)
         return;
@@ -368,6 +398,11 @@ void EditorWorkspace::on_imgui(float delta)
         mObj->control.dragSplitID = 0;
     }
 
+    if (mObj->control.dragSplitID)
+        eui_set_window_cursor(mObj->control.dragSplitAxis == AXIS_X ? CURSOR_TYPE_VRESIZE : CURSOR_TYPE_HRESIZE);
+    else if (mObj->control.hoverSplitID)
+        eui_set_window_cursor(mObj->control.hoverSplitAxis == AXIS_X ? CURSOR_TYPE_VRESIZE : CURSOR_TYPE_HRESIZE);
+
     ui_top_draw([](UIWidget widget, ScreenRenderComponent renderer, void* user) {
         auto* obj = (EditorWorkspaceObj*)user;
         EditorTheme theme = obj->ctx.get_theme();
@@ -411,9 +446,9 @@ void EditorWorkspace::on_imgui(float delta)
         Rect windowRect;
         node->get_workspace_rects(tabControlRect, windowRect);
         node->tabControl.set_rect(tabControlRect);
-        node->tabControl.on_imgui(delta);
+        editor_window_update(node->tabControl.unwrap(), tick);
         node->window.set_rect(windowRect);
-        node->window.on_imgui(delta);
+        editor_window_update(node->window.unwrap(), tick);
 
         bool beginDrag;
         Vec2 screenPos;
@@ -435,6 +470,28 @@ void EditorWorkspace::on_imgui(float delta)
     }
 
     ui_layer_end();
+}
+
+Vector<EditorAreaID> EditorWorkspace::post_update()
+{
+    Vector<EditorAreaID> ids;
+
+    mObj->partition.visit_leaves(mObj->partition.get_root_id(), [&](EditorWorkspaceNode* node) {
+        if (!node->tabControl || !node->window)
+            return;
+
+        if (node->window.should_close())
+        {
+            ids.push_back(node->nodeID);
+
+            destroy_window(node->window);
+            node->window = {};
+            destroy_window(node->tabControl);
+            node->tabControl = {};
+        }
+    });
+
+    return ids;
 }
 
 void EditorWorkspace::set_rect(const Rect& rect)
