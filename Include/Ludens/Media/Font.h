@@ -79,6 +79,11 @@ struct FontAtlas : Handle<struct FontAtlasObj>
     /// @return If non-negative, the index into text where the character was found.
     int measure_text_index(View text, float fontSizePx, float limitWidth, Vec2 pos);
 
+    /// @brief Measure the index of the character such that cursor is the closest to position.
+    /// @return If non-negative, the index into text with the least distance to position.
+    ///         If negative, the end of text is closest to position.
+    int measure_cursor_index(View text, float fontSizePx, float limitWidth, Vec2 pos);
+
     /// @brief Measure height of text if the width is limited.
     float measure_wrap_size(View text, float fontSizePx, float limitWidth);
 
@@ -87,7 +92,7 @@ struct FontAtlas : Handle<struct FontAtlasObj>
 };
 
 /// @brief Return true to stop iterating.
-typedef bool (*FontGlyphCallback)(Rect rect, size_t charIndex, size_t spanIndex, void* user);
+typedef bool (*FontGlyphCallback)(Rect rect, Vec2 baseline, size_t charIndex, size_t spanIndex, void* user);
 
 struct FontGlyphIteration
 {

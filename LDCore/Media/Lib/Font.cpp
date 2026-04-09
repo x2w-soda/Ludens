@@ -327,6 +327,7 @@ bool FontAtlas::get_baseline_glyph(uint32_t code, float fontSize, const Vec2& ba
 struct TextIndexProbe
 {
     int charIndex = 0;
+    float minDistSquared = 0.0f;
     Vec2 pickPos; // in baseline local space
 };
 
@@ -348,7 +349,7 @@ int FontAtlas::measure_text_index(View text, float fontSizePx, float limitWidth,
     it.spanCount = 1;
     it.spanAtlas = &handle;
     it.spanRange = &range;
-    it.glyphCB = [](Rect rect, size_t charIndex, size_t spanIndex, void* user) {
+    it.glyphCB = [](Rect rect, Vec2, size_t charIndex, size_t, void* user) {
         TextIndexProbe* probe = (TextIndexProbe*)user;
         if (rect.contains(probe->pickPos))
         {
@@ -363,6 +364,51 @@ int FontAtlas::measure_text_index(View text, float fontSizePx, float limitWidth,
     probe.pickPos = pos;
     probe.pickPos.y -= metrics.ascent;
     font_glyph_iterator(&it, &probe);
+
+    return probe.charIndex;
+}
+
+int FontAtlas::measure_cursor_index(View text, float fontSizePx, float limitWidth, Vec2 pos)
+{
+    if (!text)
+        return -1;
+
+    FontMetrics metrics;
+    get_font().get_metrics(metrics, fontSizePx);
+
+    Range range(0, text.size);
+    FontAtlas handle(mObj);
+    FontGlyphIteration it{};
+    it.text = text;
+    it.fontSizePx = fontSizePx;
+    it.limitWidth = limitWidth;
+    it.lineHeight = metrics.lineHeight;
+    it.spanCount = 1;
+    it.spanAtlas = &handle;
+    it.spanRange = &range;
+    it.glyphCB = [](Rect rect, Vec2 baseline, size_t charIndex, size_t spanIndex, void* user) {
+        TextIndexProbe* probe = (TextIndexProbe*)user;
+        Vec2 delta = baseline - probe->pickPos;
+        float distSquared = Vec2::dot(delta, delta);
+        if (probe->minDistSquared < 0.0f || distSquared < probe->minDistSquared)
+        {
+            probe->minDistSquared = distSquared;
+            probe->charIndex = (int)charIndex;
+        }
+        return false;
+    };
+
+    TextIndexProbe probe{};
+    probe.charIndex = -1;
+    probe.minDistSquared = -1.0f;
+    probe.pickPos = pos;
+    probe.pickPos.y -= metrics.ascent;
+    Vec2 baseline = font_glyph_iterator(&it, &probe);
+
+    Vec2 delta = baseline - probe.pickPos;
+    float distSquared = Vec2::dot(delta, delta);
+    if (probe.minDistSquared < 0.0f || distSquared < probe.minDistSquared)
+        probe.charIndex = -1;
 
     return probe.charIndex;
 }
@@ -426,10 +472,10 @@ Vec2 font_glyph_iterator(FontGlyphIteration* it, void* user)
             float advanceX;
             Rect rect;
             atlas.get_baseline_glyph(c, it->fontSizePx, baseline, rect, advanceX);
-
+            bool quit = (it->glyphCB && it->glyphCB(rect, baseline, charI, spanI, user));
             baseline.x += advanceX;
 
-            if (it->glyphCB && it->glyphCB(rect, charI, spanI, user))
+            if (quit)
                 return baseline;
         }
     }

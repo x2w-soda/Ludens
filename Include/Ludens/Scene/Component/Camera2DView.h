@@ -19,6 +19,7 @@ public:
 
     Camera2DInfo get_info();
     Rect get_viewport();
+    void set_viewport(Rect viewport);
 
 private:
     Camera2DComponent* mCamera = nullptr;

@@ -78,7 +78,7 @@ void UITextWidgetObj::update_span_index(Vec2 localPos)
     fontIt.spanCount = spanCount;
     fontIt.limitWidth = base->layout.rect.w;
     fontIt.fontSizePx = storage->fontSize;
-    fontIt.glyphCB = [](Rect rect, size_t charIndex, size_t spanIndex, void* user) -> bool {
+    fontIt.glyphCB = [](Rect rect, Vec2 baseline, size_t charIndex, size_t spanIndex, void* user) -> bool {
         TextSpanProbe* probe = (TextSpanProbe*)user;
         if (probe->spanIdx < 0 && rect.contains(probe->pickPos))
         {

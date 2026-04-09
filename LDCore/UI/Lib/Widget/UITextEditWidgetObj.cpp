@@ -152,9 +152,11 @@ void UITextEditWidgetObj::on_mouse_down_event(const UIEvent& event)
     Rect rect = base->layout.rect;
 
     std::string str = storage->editor.get_string();
-    int index = atlas.measure_text_index(View(str.data(), str.size()), storage->fontSize, rect.w, event.mouse.position);
-    if (index >= 0)
-        storage->editor.set_cursor((size_t)index);
+    int index = atlas.measure_cursor_index(View(str.data(), str.size()), storage->fontSize, rect.w, event.mouse.position);
+    if (index < 0)
+        index = (int)str.size();
+
+    storage->editor.set_cursor((size_t)index);
 }
 
 void UITextEditWidgetObj::on_key_down_event(const UIEvent& event)

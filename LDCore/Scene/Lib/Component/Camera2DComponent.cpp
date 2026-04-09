@@ -4,6 +4,11 @@
 
 namespace LD {
 
+static Rect clamp_rect(Rect rect)
+{
+    return Rect(std::clamp(rect.x, 0.0f, 1.0f), std::clamp(rect.y, 0.0f, 1.0f), std::clamp(rect.w, 0.0f, 1.0f), std::clamp(rect.h, 0.0f, 1.0f));
+}
+
 void init_camera_2d_component(ComponentBase** dstData)
 {
     ComponentBase* base = *dstData;
@@ -105,6 +110,11 @@ Camera2DInfo Camera2DView::get_info()
 Rect Camera2DView::get_viewport()
 {
     return mCamera->viewport;
+}
+
+void Camera2DView::set_viewport(Rect viewport)
+{
+    mCamera->viewport = clamp_rect(viewport);
 }
 
 } // namespace LD
