@@ -8,13 +8,16 @@ namespace LD {
 ///        EditCommands for undo and redo.
 struct EditStackObj
 {
+    EditorContextObj* ctx = nullptr;
     Vector<EditCommand*> commands;
     size_t index = 0;
 };
 
-EditStack EditStack::create()
+EditStack EditStack::create(EditorContextObj* ctx)
 {
     auto* obj = heap_new<EditStackObj>(MEMORY_USAGE_MISC);
+
+    obj->ctx = ctx;
 
     return EditStack(obj);
 }
@@ -31,28 +34,27 @@ void EditStack::destroy(EditStack stack)
 void EditStack::clear()
 {
     for (EditCommand* cmd : mObj->commands)
-    {
-        // this depends on how EditStack::new_command allocates
-        heap_delete<EditCommand>(cmd);
-    }
+        EditCommand::destroy(cmd);
 
     mObj->commands.clear();
 }
 
-bool EditStack::execute(EditCommand* cmd)
+EditCommand* EditStack::allocate(EditCommandType type)
 {
-    if (!cmd->mIsValid)
-        return false;
+    return EditCommand::create(type, mObj->ctx);
+}
 
-    cmd->redo();
+void EditStack::execute(EditCommand* cmd)
+{
+    LD_ASSERT(cmd);
+
+    EditCommand::redo(cmd);
 
     if (mObj->index < mObj->commands.size())
         mObj->commands.erase(mObj->commands.begin() + mObj->index, mObj->commands.end());
 
     mObj->commands.push_back(cmd);
     mObj->index++;
-
-    return true;
 }
 
 void EditStack::undo()
@@ -60,7 +62,7 @@ void EditStack::undo()
     if (mObj->index == 0)
         return;
 
-    mObj->commands[mObj->index - 1]->undo();
+    EditCommand::undo(mObj->commands[mObj->index - 1]);
     mObj->index--;
 }
 
@@ -69,7 +71,7 @@ void EditStack::redo()
     if (mObj->index >= mObj->commands.size())
         return;
 
-    mObj->commands[mObj->index]->redo();
+    EditCommand::redo(mObj->commands[mObj->index]);
     mObj->index++;
 }
 
