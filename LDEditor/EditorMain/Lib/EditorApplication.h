@@ -4,6 +4,7 @@
 #include <Ludens/DSA/Vector.h>
 #include <Ludens/Media/Font.h>
 #include <Ludens/RenderSystem/RenderSystem.h>
+#include <Ludens/System/DropManager.h>
 #include <Ludens/System/FileSystem.h>
 #include <LudensBuilder/ProjectBuilder/ProjectScan.h>
 #include <LudensEditor/EditorContext/EditorContext.h>
@@ -49,6 +50,7 @@ private:
     RImage mMSFontAtlasImage;
     ImageCube mEnvCubemap = {};
     Vector<ProjectScanAsync> mProjectScans;
+    DropTarget mDropTarget = {};
 };
 
 } // namespace LD

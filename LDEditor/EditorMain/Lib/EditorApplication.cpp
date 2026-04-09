@@ -1,6 +1,7 @@
 #include <Ludens/Log/Log.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/System/FileSystem.h>
+#include <Ludens/System/Win32Initialization.h>
 #include <Ludens/WindowRegistry/WindowRegistry.h>
 #include <LudensBuilder/ProjectBuilder/ProjectScan.h>
 
@@ -70,6 +71,7 @@ EditorApplication::EditorApplication(const EditorApplicationInfo& info)
     serverI.monoFontAtlas = mMSFontAtlas;
     mRenderSystem = RenderSystem::create(serverI);
 
+    win32_initialize_ole();
     mAudioSystem = AudioSystem::create();
 
     // barrier to wait for all project scans to complete.
@@ -88,6 +90,9 @@ EditorApplication::EditorApplication(const EditorApplicationInfo& info)
     contextI.projectScanResultCount = projectScanResults.size();
     contextI.projectScanResults = projectScanResults.data();
     mEditorCtx = EditorContext::create(contextI);
+
+    GLFWwindow* rootNativeWindow = reg.get_window_glfw_handle(reg.get_root_id());
+    mDropTarget = DropTarget::create(rootNativeWindow, &EditorContext::drop_file_callback, mEditorCtx.unwrap());
 
     if (info.projectSchemaPath)
     {
@@ -117,6 +122,7 @@ EditorApplication::~EditorApplication()
     if (mEnvCubemap)
         mRenderSystem.destroy_image_cube(mEnvCubemap);
 
+    DropTarget::destroy(mDropTarget);
     EditorContext::destroy(mEditorCtx);
     AudioSystem::destroy(mAudioSystem);
     RenderSystem::destroy(mRenderSystem);
@@ -143,10 +149,11 @@ void EditorApplication::run()
             continue;
 
         float delta = (float)reg.get_delta_time();
+        Vec2 screenExtent = reg.get_window_extent(rootID);
 
         // 2. Editor UI imgui pass.
         //    May generate editor events.
-        Vec2 sceneExtent = mEditorUI.update(delta);
+        Vec2 sceneExtent = mEditorUI.update(delta, screenExtent);
 
         // 3. Process Editor Events.
         //    Note that the current project or scene could change after this.
