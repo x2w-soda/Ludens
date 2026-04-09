@@ -47,30 +47,25 @@ struct ConsoleWindowObj : EditorWindowObj
     ConsoleWindowObj(const EditorWindowInfo& info)
         : EditorWindowObj(info) {}
 
-    virtual EditorWindowType get_type() override { return EDITOR_WINDOW_CONSOLE; }
-    virtual void on_imgui(float delta) override;
+    void update(float delta);
 };
 
-void ConsoleWindowObj::on_imgui(float delta)
+void ConsoleWindowObj::update(float delta)
 {
     LD_PROFILE_SCOPE;
 
-    EditorTheme edTheme = mCtx.get_theme();
-    UITheme uiTheme = edTheme.get_ui_theme();
-    float pad = edTheme.get_child_pad();
+    UITheme uiTheme = theme.get_ui_theme();
+    float pad = theme.get_child_pad();
 
-    ui_workspace_begin();
-    ui_push_window(ui_workspace_name());
+    begin_update_window();
 
     UIScrollStorage* scrollS = ui_push_scroll(nullptr);
     scrollS->bgColor = uiTheme.get_surface_color();
-    
-    UILayoutInfo layoutI = edTheme.make_vbox_layout();
+
+    UILayoutInfo layoutI = theme.make_vbox_layout();
     layoutI.sizeX = UISize::grow();
     layoutI.sizeY = UISize::grow();
     ui_top_layout(layoutI);
-
-    UIFont font = mCtx.get_font_mono();
 
     for (const ConsoleEntry& entry : sHistory)
     {
@@ -80,7 +75,7 @@ void ConsoleWindowObj::on_imgui(float delta)
         {
         case LOG_LEVEL_WARN:
         case LOG_LEVEL_ERROR:
-            edTheme.get_error_color(color);
+            theme.get_error_color(color);
             break;
         case LOG_LEVEL_DEBUG:
         case LOG_LEVEL_INFO:
@@ -90,7 +85,7 @@ void ConsoleWindowObj::on_imgui(float delta)
         }
 
         ui_push_text(nullptr, entry.formatted.c_str());
-        ui_text_style(color, font);
+        ui_text_style(color, TEXT_SPAN_FONT_MONOSPACE);
         ui_pop();
     }
 
@@ -111,6 +106,13 @@ void ConsoleWindow::destroy(EditorWindow window)
     auto* obj = static_cast<ConsoleWindowObj*>(window.unwrap());
 
     heap_delete<ConsoleWindowObj>(obj);
+}
+
+void ConsoleWindow::update(EditorWindowObj* base, const EditorUpdateTick& tick)
+{
+    auto* obj = (ConsoleWindowObj*)base;
+
+    obj->update(tick.delta);
 }
 
 void ConsoleWindow::observe_channel(const char* channelName)

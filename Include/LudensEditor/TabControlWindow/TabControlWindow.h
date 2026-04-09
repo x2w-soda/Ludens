@@ -13,14 +13,13 @@ struct TabControlWindow : Handle<struct TabControlWindowObj>
     TabControlWindow() = default;
     TabControlWindow(const EditorWindowObj* obj) { mObj = (TabControlWindowObj*)obj; }
 
-    /// @brief Create tab control window.
     static EditorWindow create(const EditorWindowInfo& windowI);
-
-    /// @brief Destroy tab control window.
     static void destroy(EditorWindow window);
+    static void update(EditorWindowObj* obj, const EditorUpdateTick& tick);
 
     // TODO: API for multiple tabs...
     void set_window_type(EditorWindowType type, const char* name, EditorIcon icon);
+    void set_window_name(const char* name);
 
     /// @brief Check if tab control window is dragged.
     bool has_drag(MouseButton& dragBtn, Vec2& screenPos, bool& dragBegin);

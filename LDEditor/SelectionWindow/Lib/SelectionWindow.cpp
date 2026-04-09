@@ -32,25 +32,23 @@ struct SelectionWindowObj : EditorWindowObj
     SelectionWindowObj(const EditorWindowInfo& info)
         : EditorWindowObj(info)
     {
-        editorIconAtlas = mCtx.get_editor_icon_atlas();
+        editorIconAtlas = ctx.get_editor_icon_atlas();
     }
 
-    virtual EditorWindowType get_type() override { return EDITOR_WINDOW_SELECTION; }
-    virtual void on_imgui(float delta) override;
+    void update(float delta);
     void top_bar();
     void bottom_bar();
     bool row(int idx);
 };
 
-void SelectionWindowObj::on_imgui(float delta)
+void SelectionWindowObj::update(float delta)
 {
-    theme = mCtx.get_theme();
+    theme = ctx.get_theme();
     selectedPath.clear();
 
-    ui_workspace_begin();
-    ui_push_window(ui_workspace_name());
+    begin_update_window();
 
-    ui_top_layout(theme.make_vbox_layout_fixed(mRootRect.get_size()));
+    ui_top_layout(theme.make_vbox_layout_fixed(rootRect.get_size()));
     ui_window_set_color(theme.get_ui_theme().get_surface_color());
 
     top_bar();
@@ -77,8 +75,8 @@ void SelectionWindowObj::on_imgui(float delta)
     ui_pop();
 
     bottom_bar();
-    ui_pop_window();
-    ui_workspace_end();
+
+    end_update_window();
 }
 
 void SelectionWindowObj::top_bar()
@@ -142,7 +140,7 @@ void SelectionWindowObj::bottom_bar()
     ui_pop();
 
     if (isSelected || isCancelled)
-        mShouldClose = true;
+        shouldClose = true;
 }
 
 bool SelectionWindowObj::row(int idx)
@@ -153,7 +151,7 @@ bool SelectionWindowObj::row(int idx)
 
     Vec2 mousePos;
     MouseValue mouseVal;
-    EditorTheme edTheme = mCtx.get_theme();
+    EditorTheme edTheme = ctx.get_theme();
     UITheme uiTheme = edTheme.get_ui_theme();
     float fontSize = edTheme.get_font_size();
     const FS::Path& itemPath = directoryContents[idx];
@@ -211,6 +209,13 @@ void SelectionWindow::destroy(EditorWindow window)
     auto* obj = static_cast<SelectionWindowObj*>(window.unwrap());
 
     heap_delete<SelectionWindowObj>(obj);
+}
+
+void SelectionWindow::update(EditorWindowObj* base, const EditorUpdateTick& tick)
+{
+    auto* obj = static_cast<SelectionWindowObj*>(base);
+
+    obj->update(tick.delta);
 }
 
 void SelectionWindow::show(const FS::Path& directoryPath, const char* extensionFilter)

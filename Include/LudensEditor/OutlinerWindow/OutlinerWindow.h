@@ -16,11 +16,9 @@ struct OutlinerWindow : Handle<struct OutlinerWindowObj>
     OutlinerWindow() = default;
     OutlinerWindow(const EditorWindowObj* obj) { mObj = (OutlinerWindowObj*)obj; }
 
-    /// @brief Create editor outliner window.
     static EditorWindow create(const EditorWindowInfo& windowI);
-
-    /// @brief Destroy editor outliner window
     static void destroy(EditorWindow window);
+    static void update(EditorWindowObj* obj, const EditorUpdateTick& tick);
 };
 
 } // namespace LD

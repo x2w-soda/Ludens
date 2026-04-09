@@ -34,12 +34,10 @@ struct OutlinerWindowObj : EditorWindowObj
     OutlinerWindowObj(const EditorWindowInfo& info)
         : EditorWindowObj(info)
     {
-        editorIconAtlas = mCtx.get_editor_icon_atlas();
+        editorIconAtlas = ctx.get_editor_icon_atlas();
     }
 
-    virtual EditorWindowType get_type() override { return EDITOR_WINDOW_OUTLINER; }
-    virtual void on_imgui(float delta) override;
-
+    void update(float delta);
     void component_rows(ComponentView comp, int& rowIdx, int depth);
     void component_row(ComponentView comp, int rowIdx, int depth);
     void on_row_mouse_down(ComponentView comp, MouseValue mouseVal, const Vec2& mousePos);
@@ -66,7 +64,7 @@ void OutlinerWindowObj::component_row(ComponentView comp, int rowIdx, int depth)
 {
     LD_ASSERT(comp);
 
-    EditorTheme theme = mCtx.get_settings().get_theme();
+    EditorTheme theme = ctx.settings().get_theme();
     UITheme uiTheme = theme.get_ui_theme();
     const float rowHeight = theme.get_text_row_height();
     CUID compCUID = comp.cuid();
@@ -89,7 +87,7 @@ void OutlinerWindowObj::component_row(ComponentView comp, int rowIdx, int depth)
     if (ui_top_is_hovered())
         panelColor = Color::lift(panelColor, 0.06f);
 
-    if (compCUID && compCUID == mCtx.get_selected_component())
+    if (compCUID && compCUID == ctx.get_selected_component())
         panelColor = theme.get_ui_theme().get_selection_color();
 
     panelS->color = panelColor;
@@ -113,7 +111,7 @@ void OutlinerWindowObj::component_row(ComponentView comp, int rowIdx, int depth)
     }
 
     // component name label
-    ui_push_text(nullptr, compCUID ? mCtx.get_component_name(compCUID) : nullptr);
+    ui_push_text(nullptr, compCUID ? ctx.get_component_name(compCUID) : nullptr);
     if (ui_top_mouse_down(mouseVal, mousePos))
         on_row_mouse_down(comp, mouseVal, mousePos);
     ui_pop();
@@ -124,7 +122,7 @@ void OutlinerWindowObj::component_row(ComponentView comp, int rowIdx, int depth)
         float iconSize = theme.get_text_row_height();
         imageS = ui_push_image(nullptr, iconSize, iconSize);
         imageS->rect = EditorIconAtlas::get_icon_rect(EDITOR_ICON_SCRIPT);
-        imageS->image = mCtx.get_editor_icon_atlas();
+        imageS->image = ctx.get_editor_icon_atlas();
         ui_pop();
     }
 
@@ -134,7 +132,7 @@ void OutlinerWindowObj::component_row(ComponentView comp, int rowIdx, int depth)
 void OutlinerWindowObj::on_row_mouse_down(ComponentView comp, MouseValue mouseVal, const Vec2& mousePos)
 {
     if (mouseVal.button() == MOUSE_BUTTON_LEFT)
-        mCtx.set_selected_component(comp.cuid());
+        ctx.set_selected_component(comp.cuid());
     else if (mouseVal.button() == MOUSE_BUTTON_RIGHT && comp.suid())
     {
         ui_request_popup_window(OUTLINER_COMPONENT_MENU_POPUP, mousePos);
@@ -142,21 +140,20 @@ void OutlinerWindowObj::on_row_mouse_down(ComponentView comp, MouseValue mouseVa
     }
 }
 
-void OutlinerWindowObj::on_imgui(float delta)
+void OutlinerWindowObj::update(float delta)
 {
     LD_PROFILE_SCOPE;
 
-    EditorTheme theme = mCtx.get_theme();
+    EditorTheme theme = ctx.get_theme();
     UILayoutInfo layoutI{};
-    layoutI.sizeX = UISize::fixed(mRootRect.w);
-    layoutI.sizeY = UISize::fixed(mRootRect.h);
+    layoutI.sizeX = UISize::fixed(rootRect.w);
+    layoutI.sizeY = UISize::fixed(rootRect.h);
     layoutI.childAxis = UI_AXIS_Y;
     layoutI.childPadding.left = 0;
     layoutI.childPadding.right = 0;
     layoutI.childGap = 0;
 
-    ui_workspace_begin();
-    ui_push_window(ui_workspace_name());
+    begin_update_window();
 
     ui_top_layout(layoutI);
     ui_window_set_color(theme.get_ui_theme().get_surface_color());
@@ -164,11 +161,11 @@ void OutlinerWindowObj::on_imgui(float delta)
     KeyValue keyVal;
     if (ui_top_key_down(keyVal))
     {
-        mCtx.input_key_value(keyVal);
+        ctx.input_key_value(keyVal);
     }
 
     Vector<ComponentView> sceneRoots;
-    mCtx.get_scene_roots(sceneRoots);
+    ctx.get_scene_roots(sceneRoots);
 
     int rowIdx = 0;
     int depth = 0;
@@ -178,7 +175,7 @@ void OutlinerWindowObj::on_imgui(float delta)
         component_rows(sceneRoot, rowIdx, depth);
     }
 
-    ui_pop_window();
+    end_update_window();
 
     if (ui_push_popup_window(OUTLINER_COMPONENT_MENU_POPUP))
     {
@@ -193,7 +190,7 @@ void OutlinerWindowObj::on_imgui(float delta)
         {
         case COMPONENT_MENU_OPTION_ADD_CHILD:
         {
-            auto* event = (EditorRequestCreateComponentEvent*)mCtx.enqueue_event(EDITOR_EVENT_TYPE_REQUEST_CREATE_COMPONENT);
+            auto* event = (EditorRequestCreateComponentEvent*)ctx.enqueue_event(EDITOR_EVENT_TYPE_REQUEST_CREATE_COMPONENT);
             event->parent = state.compSUID;
             break;
         }
@@ -203,8 +200,6 @@ void OutlinerWindowObj::on_imgui(float delta)
 
         ui_pop_window();
     }
-
-    ui_workspace_end();
 }
 
 //
@@ -220,11 +215,16 @@ EditorWindow OutlinerWindow::create(const EditorWindowInfo& windowI)
 
 void OutlinerWindow::destroy(EditorWindow window)
 {
-    LD_ASSERT(window && window.get_type() == EDITOR_WINDOW_OUTLINER);
-
     auto* obj = static_cast<OutlinerWindowObj*>(window.unwrap());
 
     heap_delete<OutlinerWindowObj>(obj);
+}
+
+void OutlinerWindow::update(EditorWindowObj* base, const EditorUpdateTick& tick)
+{
+    auto* obj = static_cast<OutlinerWindowObj*>(base);
+
+    obj->update(tick.delta);
 }
 
 } // namespace LD

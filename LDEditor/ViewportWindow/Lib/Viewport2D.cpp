@@ -98,21 +98,18 @@ void Viewport2D::drag_begin(Vec2 dragBeginPos)
     mDragPosPrevFrame = dragBeginPos;
     mDragBeginMouseOffset = {};
     mDragMouseOffsetDeg = 0.0f;
-    mDragBeginCompWorldDeg = 0.0f;
-    mDragBeginCompWorldScale = Vec2(1.0f, 1.0f);
 
-    Transform2D worldTransform;
     ComponentView selectedComp = mCtx.get_selected_component_view();
-    if (selectedComp && selectedComp.get_world_transform_2d(worldTransform))
+    if (selectedComp &&
+        selectedComp.get_world_transform_2d(mDragBeginCompWorldTransform) &&
+        selectedComp.get_transform_2d(mDragBeginCompLocalTransform))
     {
-        mDragBeginCompWorldDeg = worldTransform.rotation;
-        mDragBeginCompWorldScale = worldTransform.scale;
-
         if (mMouseWorldPos)
         {
+            const Vec2 compWorldPos = mDragBeginCompWorldTransform.position;
             const Vec2 mouseWorldPos = mMouseWorldPos.value();
-            mDragBeginMouseOffset = worldTransform.position - mouseWorldPos;
-            mDragMouseOffsetDeg = LD_TO_DEGREES(LD_ATAN2(mouseWorldPos.y - worldTransform.position.y, mouseWorldPos.x - worldTransform.position.x));
+            mDragBeginMouseOffset = compWorldPos - mouseWorldPos;
+            mDragMouseOffsetDeg = LD_TO_DEGREES(LD_ATAN2(mouseWorldPos.y - compWorldPos.y, mouseWorldPos.x - compWorldPos.x));
         }
     }
 }
@@ -142,11 +139,11 @@ void Viewport2D::drag_controls(const ViewportState& state)
         selectedComp.set_transform_2d(newChildLocal);
         break;
     case SCENE_OVERLAY_GIZMO_ROTATION:
-        newChildLocal = Gizmo2D::rotate(childLocal, parentWorld, mouseWorldPos, mDragMouseOffsetDeg, mDragBeginCompWorldDeg);
+        newChildLocal = Gizmo2D::rotate(childLocal, parentWorld, mouseWorldPos, mDragMouseOffsetDeg, mDragBeginCompWorldTransform.rotation);
         selectedComp.set_transform_2d(newChildLocal);
         break;
     case SCENE_OVERLAY_GIZMO_SCALE:
-        newChildLocal = Gizmo2D::scale(childLocal, parentWorld, mouseWorldPos, dragBeginMouseDist, mDragBeginCompWorldScale);
+        newChildLocal = Gizmo2D::scale(childLocal, parentWorld, mouseWorldPos, dragBeginMouseDist, mDragBeginCompWorldTransform.scale);
         selectedComp.set_transform_2d(newChildLocal);
         break;
     default:
@@ -168,7 +165,21 @@ void Viewport2D::mouse_button_down(const ViewportState& state, MouseValue mouseV
 
 void Viewport2D::mouse_button_up(const ViewportState& state, MouseValue mouseVal)
 {
-    mIsDragging = false;
+    ComponentView selectedComp = mCtx.get_selected_component_view();
+
+    if (mIsDragging)
+    {
+        mIsDragging = false;
+
+        Transform2D transform;
+        if (selectedComp && selectedComp.get_transform_2d(transform))
+        {
+            auto* actionE = (EditorActionSetComponentTransform2DEvent*)mCtx.enqueue_event(EDITOR_EVENT_TYPE_ACTION_SET_COMPONENT_TRANSFORM_2D);
+            actionE->compSUID = selectedComp.suid();
+            actionE->prevTransform = mDragBeginCompLocalTransform;
+            actionE->transform = transform;
+        }
+    }
 }
 
 } // namespace LD

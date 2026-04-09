@@ -3,7 +3,7 @@
 #include <Ludens/Scene/ComponentViews.h>
 #include <LudensEditor/EditorWidget/EUIAssetSlot.h>
 #include <LudensEditor/EditorWidget/EUIComponent.h>
-#include <LudensEditor/EditorWidget/EUIVectorEdit.h>
+#include <LudensEditor/EditorWidget/EUIPrimitiveEdit.h>
 
 #include "InspectComponent.h"
 #include "InspectorWindowObj.h"

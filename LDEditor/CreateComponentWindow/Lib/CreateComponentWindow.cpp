@@ -12,7 +12,6 @@ namespace LD {
 
 struct CreateComponentWindowObj : EditorWindowObj
 {
-    EditorTheme theme;
     SUID parentSUID = 0;
     int selectedRowIndex = -1;
 
@@ -20,27 +19,23 @@ struct CreateComponentWindowObj : EditorWindowObj
     CreateComponentWindowObj(const EditorWindowInfo& info)
         : EditorWindowObj(info) {}
 
-    virtual EditorWindowType get_type() override { return EDITOR_WINDOW_CREATE_COMPONENT; }
-    virtual void on_imgui(float delta) override;
-
+    void update(float delta);
     void component_rows();
     void component_row(ComponentType type, int rowIndex);
     void on_row_mouse_down(MouseValue mouseVal, const Vec2& mousePos, ComponentType compType);
 };
 
-void CreateComponentWindowObj::on_imgui(float delta)
+void CreateComponentWindowObj::update(float delta)
 {
-    theme = mCtx.get_theme();
+    begin_update_window();
 
-    ui_workspace_begin();
-    ui_push_window("ROOT");
-    ui_top_layout(theme.make_vbox_layout_fixed(mRootRect.get_size()));
+    ui_top_layout(theme.make_vbox_layout_fixed(rootRect.get_size()));
     ui_window_set_color(theme.get_ui_theme().get_surface_color());
     {
         component_rows();
     }
-    ui_pop_window();
-    ui_workspace_end();
+
+    end_update_window();
 }
 
 void CreateComponentWindowObj::component_rows()
@@ -61,7 +56,6 @@ void CreateComponentWindowObj::component_rows()
 
 void CreateComponentWindowObj::component_row(ComponentType type, int rowIndex)
 {
-    EditorTheme theme = mCtx.get_settings().get_theme();
     UITheme uiTheme = theme.get_ui_theme();
     const float rowHeight = theme.get_text_row_height();
     MouseValue mouseVal;
@@ -98,7 +92,7 @@ void CreateComponentWindowObj::component_row(ComponentType type, int rowIndex)
     if (icon != EDITOR_ICON_ENUM_LAST)
     {
         imageS = ui_push_image(nullptr, rowHeight, rowHeight);
-        imageS->image = mCtx.get_editor_icon_atlas();
+        imageS->image = ctx.get_editor_icon_atlas();
         imageS->rect = EditorIconAtlas::get_icon_rect(icon);
         ui_pop();
     }
@@ -116,10 +110,10 @@ void CreateComponentWindowObj::on_row_mouse_down(MouseValue mouseVal, const Vec2
 {
     if (mouseVal.button() == MOUSE_BUTTON_RIGHT)
     {
-        auto* event = (EditorActionAddComponentEvent*)mCtx.enqueue_event(EDITOR_EVENT_TYPE_ACTION_ADD_COMPONENT);
+        auto* event = (EditorActionAddComponentEvent*)ctx.enqueue_event(EDITOR_EVENT_TYPE_ACTION_ADD_COMPONENT);
         event->compType = compType;
         event->parentSUID = parentSUID;
-        mShouldClose = true;
+        shouldClose = true;
     }
 }
 
@@ -139,6 +133,13 @@ void CreateComponentWindow::destroy(EditorWindow window)
     auto* obj = static_cast<CreateComponentWindowObj*>(window.unwrap());
 
     heap_delete<CreateComponentWindowObj>(obj);
+}
+
+void CreateComponentWindow::update(EditorWindowObj* base, const EditorUpdateTick& tick)
+{
+    auto* obj = static_cast<CreateComponentWindowObj*>(base);
+
+    obj->update(tick.delta);
 }
 
 void CreateComponentWindow::set_parent_component(SUID parentSUID)

@@ -14,11 +14,9 @@ struct InspectorWindow : Handle<struct InspectorWindowObj>
     InspectorWindow() = default;
     InspectorWindow(const EditorWindowObj* obj) { mObj = (InspectorWindowObj*)obj; }
 
-    /// @brief Create editor inspector window.
     static EditorWindow create(const EditorWindowInfo& windowInfo);
-
-    /// @brief Destroy editor inspector window.
     static void destroy(EditorWindow window);
+    static void update(EditorWindowObj* obj, const EditorUpdateTick& tick);
 };
 
 } // namespace LD

@@ -13,11 +13,9 @@ struct SelectionWindow : Handle<struct SelectionWindowObj>
     SelectionWindow() = default;
     SelectionWindow(const EditorWindowObj* obj) { mObj = (SelectionWindowObj*)obj; }
 
-    /// @brief Create editor selection window.
     static EditorWindow create(const EditorWindowInfo& windowI);
-
-    /// @brief Destroy editor selection window.
     static void destroy(EditorWindow window);
+    static void update(EditorWindowObj* obj, const EditorUpdateTick& tick);
 
     void show(const FS::Path& directoryPath, const char* extensionFilter);
     bool has_selected(FS::Path& path);

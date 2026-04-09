@@ -20,16 +20,15 @@ enum Section
 struct ProjectSettingsWindowObj : EditorWindowObj
 {
     RImage editorIconAtlas{};
-    EditorTheme theme{};
     Section section = SECTION_STARTUP;
-    bool sectionDirty = false;
 
     ProjectSettingsWindowObj(const EditorWindowInfo& info)
-        : EditorWindowObj(info) {}
+        : EditorWindowObj(info)
+    {
+        ctx = info.ctx;
+    }
 
-    virtual EditorWindowType get_type() override { return EDITOR_WINDOW_PROJECT_SETTINGS; }
-    virtual void on_imgui(float delta) override;
-
+    void update(float delta);
     void section_names();
     void section_startup();
     void section_rendering();
@@ -47,15 +46,13 @@ struct ProjectSettingsWindowObj : EditorWindowObj
     }
 };
 
-void ProjectSettingsWindowObj::on_imgui(float delta)
+void ProjectSettingsWindowObj::update(float delta)
 {
-    theme = mCtx.get_theme();
-    editorIconAtlas = mCtx.get_editor_icon_atlas();
+    editorIconAtlas = ctx.get_editor_icon_atlas();
     const UILayoutInfo vboxLayoutI = theme.make_vbox_layout();
     Color bgColor = theme.get_ui_theme().get_field_color();
 
-    ui_workspace_begin();
-    ui_push_window(ui_workspace_name());
+    begin_update_window();
 
     ui_top_layout_child_axis(UI_AXIS_X);
 
@@ -82,8 +79,7 @@ void ProjectSettingsWindowObj::on_imgui(float delta)
     }
     ui_pop();
 
-    ui_pop_window();
-    ui_workspace_end();
+    end_update_window();
 }
 
 void ProjectSettingsWindowObj::section_names()
@@ -95,7 +91,6 @@ void ProjectSettingsWindowObj::section_names()
     if (ui_top_mouse_down(mouseVal, mousePos) && section != SECTION_STARTUP)
     {
         section = SECTION_STARTUP;
-        sectionDirty = true;
     }
     ui_pop();
 
@@ -103,7 +98,6 @@ void ProjectSettingsWindowObj::section_names()
     if (ui_top_mouse_down(mouseVal, mousePos) && section != SECTION_RENDERING)
     {
         section = SECTION_RENDERING;
-        sectionDirty = true;
     }
     ui_pop();
 
@@ -111,14 +105,13 @@ void ProjectSettingsWindowObj::section_names()
     if (ui_top_mouse_down(mouseVal, mousePos) && section != SECTION_SCREEN_LAYERS)
     {
         section = SECTION_SCREEN_LAYERS;
-        sectionDirty = true;
     }
     ui_pop();
 }
 
 void ProjectSettingsWindowObj::section_startup()
 {
-    ProjectStartupSettings startupS = mCtx.get_project_settings().get_startup_settings();
+    ProjectStartupSettings startupS = ctx.get_project_settings().startup_settings();
     const float rowHeight = theme.get_text_row_height();
     const float propNameWidth = theme.get_text_label_width();
     const UILayoutInfo layoutI = make_row_layout();
@@ -174,20 +167,18 @@ void ProjectSettingsWindowObj::section_startup()
         ui_pop();
         edit = ui_push_text_edit(nullptr);
         edit->set_domain(UI_TEXT_EDIT_DOMAIN_STRING);
-        if (sectionDirty)
+        if (!ui_text_edit_is_editing())
             edit->set_text(name);
         if (ui_text_edit_submitted(name))
             startupS.set_window_name(name);
         ui_pop();
     }
     ui_pop();
-
-    sectionDirty = false;
 }
 
 void ProjectSettingsWindowObj::section_rendering()
 {
-    ProjectRenderingSettings renderingS = mCtx.get_project_settings().get_rendering_settings();
+    ProjectRenderingSettings renderingS = ctx.get_project_settings().rendering_settings();
 
     ui_push_text(nullptr, "Rendering");
     // TODO: default clear color Vec4, color picker or maybe just text edit for now.
@@ -196,15 +187,16 @@ void ProjectSettingsWindowObj::section_rendering()
 
 void ProjectSettingsWindowObj::section_screen_layers()
 {
-    ProjectScreenLayerSettings screenLayerS = mCtx.get_project_settings().get_screen_layer_settings();
+    ProjectScreenLayerSettings screenLayerS = ctx.get_project_settings().screen_layer_settings();
     Vector<ProjectScreenLayer> layers = screenLayerS.get_layers();
     UITextEditStorage* edit = nullptr;
+    SUIDRegistry idReg = ctx.get_suid_registry();
 
     const UILayoutInfo layoutI = make_row_layout();
 
     std::string name;
     bool isPressed = false;
-    bool isNextFrameDirty = false;
+    bool isScreenLayerDirty = false;
 
     for (const ProjectScreenLayer& layer : layers)
     {
@@ -213,21 +205,21 @@ void ProjectSettingsWindowObj::section_screen_layers()
 
         // screen layer name
         edit = ui_push_text_edit(nullptr);
-        if (sectionDirty)
+        if (!ui_text_edit_is_editing())
             edit->set_text(layer.name);
         if (ui_text_edit_submitted(name))
         {
             screenLayerS.rename_layer(layer.id, name.c_str());
-            sectionDirty = isNextFrameDirty = true;
+            isScreenLayerDirty = true;
         }
         ui_pop();
 
         // removal button
         ui_push_button(nullptr, "X");
-        if (ui_button_is_pressed())
+        if (ui_button_is_pressed() && layers.size() > 1)
         {
-            screenLayerS.destroy_layer(layer.id);
-            sectionDirty = isNextFrameDirty = true;
+            screenLayerS.destroy_layer(idReg, layer.id);
+            isScreenLayerDirty = true;
         }
         ui_pop();
 
@@ -238,13 +230,16 @@ void ProjectSettingsWindowObj::section_screen_layers()
     if (ui_button_is_pressed())
     {
         name = std::format("layer {}", layers.size() + 1);
-        screenLayerS.create_layer(name.c_str());
-        sectionDirty = isNextFrameDirty = true;
+        (void)screenLayerS.create_layer(idReg, name.c_str());
+        isScreenLayerDirty = true;
     }
     ui_pop();
 
-    if (!isNextFrameDirty)
-        sectionDirty = false;
+    if (isScreenLayerDirty)
+    {
+        auto* notifyE = (EditorNotifyProjectSettingsDirtyEvent*)ctx.enqueue_event(EDITOR_EVENT_TYPE_NOTIFY_PROJECT_SETTINGS_DIRTY);
+        notifyE->dirtyScreenLayers = true;
+    }
 }
 
 //
@@ -263,6 +258,13 @@ void ProjectSettingsWindow::destroy(EditorWindow window)
     auto* obj = static_cast<ProjectSettingsWindowObj*>(window.unwrap());
 
     heap_delete<ProjectSettingsWindowObj>(obj);
+}
+
+void ProjectSettingsWindow::update(EditorWindowObj* base, const EditorUpdateTick& tick)
+{
+    auto* obj = static_cast<ProjectSettingsWindowObj*>(base);
+
+    obj->update(tick.delta);
 }
 
 } // namespace LD

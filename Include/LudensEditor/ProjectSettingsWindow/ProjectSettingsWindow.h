@@ -12,11 +12,9 @@ struct ProjectSettingsWindow : Handle<struct ProjectSettingsWindowObj>
     ProjectSettingsWindow() = default;
     ProjectSettingsWindow(const EditorWindowObj* obj) { mObj = (ProjectSettingsWindowObj*)obj; }
 
-    /// @brief Create editor project settings window.
     static EditorWindow create(const EditorWindowInfo& windowI);
-
-    /// @brief Destroy editor project settings window.
     static void destroy(EditorWindow window);
+    static void update(EditorWindowObj* obj, const EditorUpdateTick& tick);
 };
 
 } // namespace LD

@@ -10,24 +10,31 @@ namespace LD {
 
 struct TabControlWindowObj : EditorWindowObj
 {
-    EditorWindowType type;
     std::string tabName;
+    EditorWindowType tabType = EDITOR_WINDOW_TYPE_ENUM_COUNT;
     EditorIcon tabIcon = EDITOR_ICON_ENUM_LAST;
-    Impulse dragImpulse;
+    Impulse dragImpulse = {};
     MouseButton dragBtn;
-    Vec2 dragPos;
-    bool dragBegin;
+    Vec2 dragPos = {};
+    bool dragBegin = false;
 
     TabControlWindowObj(const EditorWindowInfo& info)
         : EditorWindowObj(info) {}
 
-    virtual inline EditorWindowType get_type() override { return EDITOR_WINDOW_TAB_CONTROL; }
-    virtual void on_imgui(float delta) override;
+    inline void set_tab_name(const char* name)
+    {
+        if (name)
+            tabName = std::string(name);
+        else
+            tabName.clear();
+    }
+
+    void update(float delta);
 };
 
-void TabControlWindowObj::on_imgui(float delta)
+void TabControlWindowObj::update(float delta)
 {
-    EditorTheme edTheme = mCtx.get_theme();
+    EditorTheme edTheme = ctx.get_theme();
     UITheme uiTheme = edTheme.get_ui_theme();
     Color surfaceColor = uiTheme.get_surface_color();
     Color tabBGColor;
@@ -40,8 +47,7 @@ void TabControlWindowObj::on_imgui(float delta)
     Vec2 pos;
     bool begin;
 
-    ui_workspace_begin();
-    ui_push_window(ui_workspace_name());
+    begin_update_window();
 
     ui_window_set_color(tabBGColor);
     ui_top_layout_child_axis(UI_AXIS_X);
@@ -69,15 +75,15 @@ void TabControlWindowObj::on_imgui(float delta)
         Rect iconRect = EditorIconAtlas::get_icon_rect(tabIcon);
         float iconSize = edTheme.get_font_size() * 1.2f;
         imageS = ui_push_image(nullptr, iconSize, iconSize);
-        imageS->image = mCtx.get_editor_icon_atlas();
+        imageS->image = ctx.get_editor_icon_atlas();
         imageS->rect = iconRect;
         ui_pop();
     }
     ui_push_text(nullptr, tabName.c_str());
     ui_pop();
     ui_pop();
-    ui_pop_window();
-    ui_workspace_end();
+
+    end_update_window();
 }
 
 //
@@ -93,21 +99,28 @@ EditorWindow TabControlWindow::create(const EditorWindowInfo& windowI)
 
 void TabControlWindow::destroy(EditorWindow window)
 {
-    LD_ASSERT(window && window.get_type() == EDITOR_WINDOW_TAB_CONTROL);
     auto* obj = static_cast<TabControlWindowObj*>(window.unwrap());
 
     heap_delete<TabControlWindowObj>(obj);
 }
 
+void TabControlWindow::update(EditorWindowObj* base, const EditorUpdateTick& tick)
+{
+    auto* obj = (TabControlWindowObj*)base;
+
+    obj->update(tick.delta);
+}
+
 void TabControlWindow::set_window_type(EditorWindowType type, const char* name, EditorIcon icon)
 {
-    mObj->type = type;
+    mObj->tabType = type;
     mObj->tabIcon = icon;
+    mObj->set_tab_name(name);
+}
 
-    if (name)
-        mObj->tabName = std::string(name);
-    else
-        mObj->tabName.clear();
+void TabControlWindow::set_window_name(const char* name)
+{
+    mObj->set_tab_name(name);
 }
 
 bool TabControlWindow::has_drag(MouseButton& dragBtn, Vec2& screenPos, bool& dragBegin)

@@ -13,11 +13,9 @@ struct ConsoleWindow : Handle<struct ConsoleWindowObj>
     ConsoleWindow() = default;
     ConsoleWindow(const EditorWindowObj* obj) { mObj = (ConsoleWindowObj*)obj; }
 
-    /// @brief Create console window.
     static EditorWindow create(const EditorWindowInfo& editorI);
-
-    /// @brief Destroy console window.
     static void destroy(EditorWindow window);
+    static void update(EditorWindowObj* base, const EditorUpdateTick& tick);
 
     /// @brief Registers an observer to dump logs in editor console window.
     void observe_channel(const char* channelName);

@@ -12,11 +12,9 @@ struct CreateComponentWindow : Handle<struct CreateComponentWindowObj>
     CreateComponentWindow() = default;
     CreateComponentWindow(const EditorWindowObj* obj) { mObj = (CreateComponentWindowObj*)obj; }
 
-    /// @brief Create editor selection window.
     static EditorWindow create(const EditorWindowInfo& windowI);
-
-    /// @brief Destroy editor selection window.
     static void destroy(EditorWindow window);
+    static void update(EditorWindowObj* obj, const EditorUpdateTick& tick);
 
     /// @brief Set the parent component before creation.
     void set_parent_component(SUID parentSUID);

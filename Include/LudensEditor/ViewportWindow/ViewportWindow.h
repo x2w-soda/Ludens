@@ -18,11 +18,9 @@ struct ViewportWindow : Handle<struct ViewportWindowObj>
     ViewportWindow() = default;
     ViewportWindow(const EditorWindowObj* obj) { mObj = (ViewportWindowObj*)obj; }
 
-    /// @brief Create a viewport window
     static EditorWindow create(const EditorWindowInfo& windowI);
-
-    /// @brief Destroy viewport window.
     static void destroy(EditorWindow viewport);
+    static void update(EditorWindowObj* obj, const EditorUpdateTick& tick);
 
     /// @brief Get the camera for rendering the scene in the viewport window.
     Camera get_editor_camera();

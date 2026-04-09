@@ -14,6 +14,7 @@ struct AssetSelectWindow : Handle<struct AssetSelectWindowObj>
 
     static EditorWindow create(const EditorWindowInfo& windowI);
     static void destroy(EditorWindow window);
+    static void update(EditorWindowObj* obj, const EditorUpdateTick& tick);
 
     void set_filter(AssetType type);
     bool has_selected_asset(AssetID& id);

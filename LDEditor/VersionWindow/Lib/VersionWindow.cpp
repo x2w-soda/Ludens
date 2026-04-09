@@ -12,18 +12,16 @@ struct VersionWindowObj : EditorWindowObj
     VersionWindowObj(const EditorWindowInfo& info)
         : EditorWindowObj(info) {}
 
-    virtual inline EditorWindowType get_type() override { return EDITOR_WINDOW_VERSION; }
-    virtual void on_imgui(float delta) override;
+    void update(float delta);
 };
 
-void VersionWindowObj::on_imgui(float delta)
+void VersionWindowObj::update(float delta)
 {
-    EditorTheme theme = mCtx.get_theme();
+    EditorTheme theme = ctx.get_theme();
     UITheme uiTheme = theme.get_ui_theme();
     float pad = theme.get_child_pad();
 
-    ui_workspace_begin();
-    ui_push_window(ui_workspace_name());
+    begin_update_window();
 
     ui_window_set_color(uiTheme.get_surface_color());
 
@@ -47,8 +45,7 @@ void VersionWindowObj::on_imgui(float delta)
     ui_push_text(nullptr, build.c_str());
     ui_pop();
 
-    ui_pop_window();
-    ui_workspace_end();
+    end_update_window();
 }
 
 //
@@ -64,10 +61,16 @@ EditorWindow VersionWindow::create(const EditorWindowInfo& windowI)
 
 void VersionWindow::destroy(EditorWindow window)
 {
-    LD_ASSERT(window && window.get_type() == EDITOR_WINDOW_VERSION);
     auto* obj = static_cast<VersionWindowObj*>(window.unwrap());
 
     heap_delete<VersionWindowObj>(obj);
+}
+
+void VersionWindow::update(EditorWindowObj* base, const EditorUpdateTick& tick)
+{
+    auto* obj = (VersionWindowObj*)base;
+
+    obj->update(tick.delta);
 }
 
 } // namespace LD

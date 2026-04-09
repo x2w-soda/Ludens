@@ -5,6 +5,7 @@
 #include <Ludens/System/FileSystem.h>
 #include <Ludens/UI/UIImmediate.h>
 #include <LudensEditor/EditorContext/EditorIconAtlas.h>
+#include <LudensEditor/EditorWidget/EUIRow.h>
 #include <LudensEditor/ProjectWindow/ProjectWindow.h>
 
 #define PAD 10.0f
@@ -24,12 +25,41 @@ static bool ui_row_text_button(const char* labelText, const char* buttonText, fl
     {
         ui_push_text(nullptr, labelText);
         ui_pop();
-        
+
         ui_push_panel(nullptr);
         ui_top_layout(layoutI);
         ui_pop();
 
         layoutI.sizeX = UISize::fixed(120.0f);
+        ui_push_button(nullptr, buttonText);
+        ui_top_layout(layoutI);
+        if (ui_button_is_pressed())
+            btnIsPressed = true;
+        ui_pop();
+    }
+    ui_pop();
+
+    return btnIsPressed;
+}
+
+static bool ui_row_text_edit_button(UITextEditStorage* storage, const char* buttonText, float rowHeight)
+{
+    bool btnIsPressed = false;
+
+    UILayoutInfo layoutI{};
+    layoutI.childAxis = UI_AXIS_X;
+    layoutI.childGap = PAD;
+    layoutI.sizeX = UISize::grow();
+    layoutI.sizeY = UISize::fixed(rowHeight);
+
+    ui_push_panel(nullptr);
+    ui_top_layout(layoutI);
+    {
+        ui_push_text_edit(storage);
+        ui_top_layout(layoutI);
+        ui_pop();
+
+        layoutI.sizeX = UISize::fixed(100.0f);
         ui_push_button(nullptr, buttonText);
         ui_top_layout(layoutI);
         if (ui_button_is_pressed())
@@ -107,7 +137,6 @@ struct ProjectWindowObj : EditorWindowObj
 {
     CreateProjectStorage createProject;
     SelectProjectStorage selectProject;
-    EditorTheme theme = {};
     bool isCreatingProject = false;
 
     ProjectWindowObj(const EditorWindowInfo& info)
@@ -117,23 +146,18 @@ struct ProjectWindowObj : EditorWindowObj
         createProject.validate_input();
     }
 
-    virtual EditorWindowType get_type() override { return EDITOR_WINDOW_PROJECT; }
-    virtual void on_imgui(float delta) override;
-
+    void update(float delta);
     bool ui_create_project();
     bool ui_select_project();
 };
 
-void ProjectWindowObj::on_imgui(float delta)
+void ProjectWindowObj::update(float delta)
 {
     (void)delta;
 
-    theme = mCtx.get_theme();
+    begin_update_window();
 
-    ui_workspace_begin();
-    ui_push_window(ui_workspace_name());
-
-    UILayoutInfo layoutI = theme.make_vbox_layout_fixed(mRootRect.get_size());
+    UILayoutInfo layoutI = theme.make_vbox_layout_fixed(rootRect.get_size());
     layoutI.childPadding = UIPadding(PAD);
     layoutI.childGap = PAD;
     ui_top_layout(layoutI);
@@ -149,15 +173,17 @@ void ProjectWindowObj::on_imgui(float delta)
             isCreatingProject = true;
     }
 
-    ui_pop_window();
-    ui_workspace_end();
+    end_update_window();
 }
 
 bool ProjectWindowObj::ui_create_project()
 {
     const float textRowHeight = theme.get_text_row_height();
     UITextStorage* text;
+    Color errorColor;
     std::string str;
+
+    theme.get_error_color(errorColor);
 
     if (ui_row_text_button("Create New Project", "Open Existing", textRowHeight))
         return true;
@@ -170,7 +196,7 @@ bool ProjectWindowObj::ui_create_project()
         createProject.validate_input();
     ui_pop();
     text = ui_push_text(nullptr, createProject.projectNameErr.c_str());
-    theme.get_error_color(text->fgColor);
+    text->set_fg_color(errorColor);
     ui_pop();
 
     ui_push_text(nullptr, "Project Directory");
@@ -181,25 +207,26 @@ bool ProjectWindowObj::ui_create_project()
         createProject.validate_input();
     ui_pop();
     text = ui_push_text(nullptr, createProject.projectDirErr.c_str());
-    theme.get_error_color(text->fgColor);
+    text->set_fg_color(errorColor);
     ui_pop();
 
-    UIButtonStorage* btn = ui_push_button(nullptr, "Create");
-    btn->isEnabled = createProject.is_valid_input();
-    if (ui_button_is_pressed())
+    static UIButtonStorage sBtn[2];
+    // sBtn[0].text = "Cancel";
+    sBtn[1].text = "Create";
+    sBtn[1].isEnabled = createProject.is_valid_input();
+    int btnPressed = eui_row_btn_btn(nullptr, sBtn + 1);
+    if (btnPressed == 2)
     {
-        auto* event = (EditorActionCreateProjectEvent*)mCtx.enqueue_event(EDITOR_EVENT_TYPE_ACTION_CREATE_PROJECT);
+        auto* event = (EditorActionCreateProjectEvent*)ctx.enqueue_event(EDITOR_EVENT_TYPE_ACTION_CREATE_PROJECT);
         event->projectName = createProject.projectNameEdit.editor.get_string();
         event->projectSchema = FS::Path(createProject.projectDirEdit.editor.get_string()) / FS::Path("project.toml");
     }
-    ui_pop();
 
     return false;
 }
 
 bool ProjectWindowObj::ui_select_project()
 {
-    EditorTheme theme = mCtx.get_theme();
     const float textRowHeight = theme.get_text_row_height();
     std::string str;
 
@@ -217,11 +244,18 @@ bool ProjectWindowObj::ui_select_project()
     selectProject.projectListScroll.bgColor = theme.get_ui_theme().get_surface_color();
     ui_top_layout(layoutI);
 
-    for (const EditorProjectEntry& entry : mCtx.get_project_entries())
+    for (const EditorProjectEntry& entry : ctx.get_project_entries())
     {
-        selectProject.ui_project_entry(mCtx, entry);
+        selectProject.ui_project_entry(ctx, entry);
     }
     ui_pop();
+
+    ui_push_text(nullptr, "Locate Project");
+    ui_top_layout_size(UISize::wrap(), UISize::fixed(textRowHeight));
+    ui_pop();
+
+    if (ui_row_text_edit_button(&selectProject.projectSchemaEdit, "Add", textRowHeight))
+        ;
 
     return false;
 }
@@ -242,6 +276,13 @@ void ProjectWindow::destroy(EditorWindow window)
     auto* obj = static_cast<ProjectWindowObj*>(window.unwrap());
 
     heap_delete<ProjectWindowObj>(obj);
+}
+
+void ProjectWindow::update(EditorWindowObj* base, const EditorUpdateTick& tick)
+{
+    auto* obj = static_cast<ProjectWindowObj*>(base);
+
+    obj->update(tick.delta);
 }
 
 } // namespace LD

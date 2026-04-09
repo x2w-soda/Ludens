@@ -5,7 +5,6 @@ namespace LD {
 
 struct AssetSelectWindowObj : EditorWindowObj
 {
-    EditorTheme theme = {};
     AssetType filterType = ASSET_TYPE_ENUM_COUNT;
     UIScrollStorage uiEntryScroll;
     int selectedRowIndex = -1;
@@ -16,12 +15,11 @@ struct AssetSelectWindowObj : EditorWindowObj
     {
     }
 
-    EditorWindowType get_type() override { return EDITOR_WINDOW_ASSET_SELECT; }
-    void on_imgui(float delta) override;
-    inline AssetImporter get_asset_importer() { return mCtx.get_asset_importer(); }
+    void update(float delta);
+    inline AssetImporter get_asset_importer() { return ctx.get_asset_importer(); }
 };
 
-void AssetSelectWindowObj::on_imgui(float delta)
+void AssetSelectWindowObj::update(float delta)
 {
     (void)delta;
 
@@ -37,8 +35,6 @@ void AssetSelectWindowObj::on_imgui(float delta)
             AR.get_entries_by_type(entries, filterType);
     }
 
-    theme = mCtx.get_theme();
-
     std::string str;
     UILayoutInfo layoutI = theme.make_vbox_layout();
     layoutI.childPadding = UIPadding(theme.get_child_pad_large());
@@ -46,8 +42,8 @@ void AssetSelectWindowObj::on_imgui(float delta)
     layoutI.sizeX = UISize::grow();
     layoutI.sizeY = UISize::grow();
 
-    ui_workspace_begin();
-    ui_push_window(ui_workspace_name());
+    begin_update_window();
+
     ui_push_panel(nullptr);
     ui_top_layout(layoutI);
 
@@ -60,18 +56,21 @@ void AssetSelectWindowObj::on_imgui(float delta)
     }
     eui_pop_row_scroll();
 
-    int btn = eui_row_btn_btn("cancel", "select");
-    if (btn == 1)
-        mShouldClose = true;
-    else if (btn == 2 && 0 <= selectedRowIndex && selectedRowIndex < entries.size())
+    static UIButtonStorage sBtn[2];
+    sBtn[0].text = "Cancel";
+    sBtn[1].text = "Select";
+    int btnPressed = eui_row_btn_btn(sBtn, sBtn + 1);
+    if (btnPressed == 1)
+        shouldClose = true;
+    else if (btnPressed == 2 && 0 <= selectedRowIndex && selectedRowIndex < entries.size())
     {
-        mShouldClose = true;
+        shouldClose = true;
         selectedAssetID = entries[selectedRowIndex].get_id();
     }
 
     ui_pop();
-    ui_pop_window();
-    ui_workspace_end();
+
+    end_update_window();
 }
 
 //
@@ -90,6 +89,13 @@ void AssetSelectWindow::destroy(EditorWindow window)
     auto* obj = static_cast<AssetSelectWindowObj*>(window.unwrap());
 
     heap_delete<AssetSelectWindowObj>(obj);
+}
+
+void AssetSelectWindow::update(EditorWindowObj* base, const EditorUpdateTick& tick)
+{
+    auto* obj = static_cast<AssetSelectWindowObj*>(base);
+
+    obj->update(tick.delta);
 }
 
 void AssetSelectWindow::set_filter(AssetType type)

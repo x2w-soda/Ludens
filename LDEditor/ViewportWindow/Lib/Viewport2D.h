@@ -43,8 +43,8 @@ private:
     Vec2 mDragPosThisFrame;
     Vec2 mDragBeginMousePos;
     Vec2 mDragBeginMouseOffset;
-    Vec2 mDragBeginCompWorldScale;
-    float mDragBeginCompWorldDeg;
+    Transform2D mDragBeginCompLocalTransform;
+    Transform2D mDragBeginCompWorldTransform;
     float mDragMouseOffsetDeg;
     bool mIsPanning = false;
     bool mIsDragging = false;
