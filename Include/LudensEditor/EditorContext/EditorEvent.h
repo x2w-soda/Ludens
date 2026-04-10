@@ -3,6 +3,7 @@
 #include <Ludens/Asset/Asset.h>
 #include <Ludens/DataRegistry/DataRegistry.h>
 #include <Ludens/System/FileSystem.h>
+#include <LudensEditor/EditorContext/EditorContextDef.h>
 
 namespace LD {
 
@@ -21,6 +22,7 @@ enum EditorEventType
     EDITOR_EVENT_TYPE_NOTIFY_COMPONENT_SELECTION,
     EDITOR_EVENT_TYPE_NOTIFY_FILE_DROP,
     EDITOR_EVENT_TYPE_REQUEST_CLOSE_DIALOG,
+    EDITOR_EVENT_TYPE_REQUEST_WORKSPACE_LAYOUT,
     EDITOR_EVENT_TYPE_REQUEST_PROJECT_SETTINGS,
     EDITOR_EVENT_TYPE_REQUEST_COMPONENT_ASSET,
     EDITOR_EVENT_TYPE_REQUEST_IMPORT_ASSETS,
@@ -171,6 +173,16 @@ struct EditorRequestCloseDialogEvent : EditorRequestEvent
         : EditorRequestEvent(EDITOR_EVENT_TYPE_REQUEST_CLOSE_DIALOG)
     {
     }
+};
+
+struct EditorRequestWorkspaceLayoutEvent : EditorRequestEvent
+{
+    EditorRequestWorkspaceLayoutEvent()
+        : EditorRequestEvent(EDITOR_EVENT_TYPE_REQUEST_WORKSPACE_LAYOUT)
+    {
+    }
+
+    EditorUIMainLayout layout = EDITOR_UI_MAIN_LAYOUT_SCENE;
 };
 
 /// @brief Event signaling a request to access project settings.
@@ -388,7 +400,6 @@ struct EditorActionSetComponentTransform2DEvent : EditorActionEvent
     Transform2D prevTransform = {};
     Transform2D transform = {};
 };
-
 
 struct EditorActionCloneComponentSubtreeEvent : EditorActionEvent
 {

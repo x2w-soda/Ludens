@@ -49,6 +49,7 @@ struct EditorContextObj
     void update_project_load_async();
     void update_asset_import_async();
     void add_project_entry(const ProjectScanResult& scanResult);
+    bool prepare_document(const char* uri);
 };
 
 } // namespace LD

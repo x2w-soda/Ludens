@@ -3,6 +3,11 @@
 
 namespace LD {
 
+const char* document_uri_default_page()
+{
+    return "ld://Doc/Manual/GettingStarted/index.md";
+}
+
 void document_uri_normalize(URI& uri)
 {
     if (!document_uri_is_valid(uri))

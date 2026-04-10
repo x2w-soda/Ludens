@@ -13,6 +13,7 @@ union EditorEventU
     EditorNotifyComponentSelectionEvent notifyComponentSelect;
     EditorNotifyFileDropEvent notifyFileDrop;
     EditorRequestCloseDialogEvent requestCloseDialog;
+    EditorRequestWorkspaceLayoutEvent requestWorkspaceLayout;
     EditorRequestProjectSettingsEvent requestProjectSettings;
     EditorRequestComponentAssetEvent requestComponentAsset;
     EditorRequestImportAssetsEvent requestImportAssets;
@@ -86,6 +87,9 @@ EditorEvent* EditorEventQueueObj::alloc_event(EditorEventType type)
         break;
     case EDITOR_EVENT_TYPE_REQUEST_CLOSE_DIALOG:
         new (event) EditorRequestCloseDialogEvent();
+        break;
+    case EDITOR_EVENT_TYPE_REQUEST_WORKSPACE_LAYOUT:
+        new (event) EditorRequestWorkspaceLayoutEvent();
         break;
     case EDITOR_EVENT_TYPE_REQUEST_PROJECT_SETTINGS:
         new (event) EditorRequestProjectSettingsEvent();
@@ -188,6 +192,9 @@ void EditorEventQueueObj::free_event(EditorEvent* event)
         break;
     case EDITOR_EVENT_TYPE_REQUEST_CLOSE_DIALOG:
         ((EditorRequestCloseDialogEvent*)(event))->~EditorRequestCloseDialogEvent();
+        break;
+    case EDITOR_EVENT_TYPE_REQUEST_WORKSPACE_LAYOUT:
+        ((EditorRequestWorkspaceLayoutEvent*)event)->~EditorRequestWorkspaceLayoutEvent();
         break;
     case EDITOR_EVENT_TYPE_REQUEST_PROJECT_SETTINGS:
         ((EditorRequestProjectSettingsEvent*)(event))->~EditorRequestProjectSettingsEvent();

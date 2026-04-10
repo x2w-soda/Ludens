@@ -10,6 +10,8 @@
 #include <Ludens/System/FileSystem.h>
 #include <Ludens/UI/UILayout.h>
 #include <LudensBuilder/AssetBuilder/AssetImporter.h>
+#include <LudensBuilder/DocumentBuilder/Document.h>
+#include <LudensEditor/EditorContext/EditorContextDef.h>
 #include <LudensEditor/EditorContext/EditorEvent.h>
 #include <LudensEditor/EditorContext/EditorSettings.h>
 
@@ -19,18 +21,6 @@ struct ComponentBase;
 struct Transform;
 struct TransformEx;
 struct ProjectScanResult;
-
-struct EditorUpdateTick
-{
-    float delta;     // delta time in seconds
-    Vec2 screenSize; // window size
-};
-
-struct EditorProjectEntry
-{
-    FS::Path schemaPath;
-    std::string projectName;
-};
 
 struct EditorContextInfo
 {
@@ -164,6 +154,9 @@ struct EditorContext : Handle<struct EditorContextObj>
 
     /// @brief Get the local transform associated with the selected object in scene.
     bool get_selected_component_transform(TransformEx& transform);
+
+    /// @brief Get document from its URI. Could fail and return null handle.
+    Document get_document(const char* uri);
 };
 
 } // namespace LD

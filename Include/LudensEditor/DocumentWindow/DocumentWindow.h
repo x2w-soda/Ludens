@@ -18,6 +18,7 @@ struct DocumentWindow : Handle<struct DocumentWindowObj>
 
     static EditorWindow create(const EditorWindowInfo& windowI);
     static void destroy(EditorWindow window);
+    static void pre_update(EditorWindowObj* obj, const EditorUpdateTick& tick);
     static void update(EditorWindowObj* obj, const EditorUpdateTick& tick);
 };
 

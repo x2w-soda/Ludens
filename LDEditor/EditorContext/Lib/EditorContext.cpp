@@ -22,11 +22,13 @@
 #include <Ludens/UI/UIFont.h>
 #include <LudensBuilder/AssetBuilder/AssetImporter.h>
 #include <LudensBuilder/DocumentBuilder/DocumentRegistry.h>
+#include <LudensBuilder/DocumentBuilder/DocumentURI.h>
 #include <LudensBuilder/ProjectBuilder/ProjectBuilder.h>
 #include <LudensBuilder/ProjectBuilder/ProjectScan.h>
 #include <LudensEditor/EditorContext/EditCommand.h>
 #include <LudensEditor/EditorContext/EditorContext.h>
 #include <LudensEditor/EditorContext/EditorEventQueue.h>
+#include <LudensUtil/LudensLFS.h>
 
 #include <utility>
 
@@ -66,6 +68,7 @@ static struct
     {EDITOR_EVENT_TYPE_NOTIFY_COMPONENT_SELECTION, &editor_broadcast_event_handler},
     {EDITOR_EVENT_TYPE_NOTIFY_FILE_DROP, &editor_notify_file_drop_event_handler},
     {EDITOR_EVENT_TYPE_REQUEST_CLOSE_DIALOG, &editor_broadcast_event_handler},
+    {EDITOR_EVENT_TYPE_REQUEST_WORKSPACE_LAYOUT, &editor_broadcast_event_handler},
     {EDITOR_EVENT_TYPE_REQUEST_PROJECT_SETTINGS, &editor_broadcast_event_handler},
     {EDITOR_EVENT_TYPE_REQUEST_COMPONENT_ASSET, &editor_broadcast_event_handler},
     {EDITOR_EVENT_TYPE_REQUEST_IMPORT_ASSETS, &editor_broadcast_event_handler},
@@ -529,6 +532,36 @@ void EditorContextObj::add_project_entry(const ProjectScanResult& scanResult)
     projectEntries[entry.schemaPath] = entry;
 }
 
+bool EditorContextObj::prepare_document(const char* uriCstr)
+{
+    if (docRegistry.get_document(uriCstr))
+        return true;
+
+    // SPACE: Load Markdown documents embedded in LDEditor binary.
+    //        For development builds we just load from disk.
+
+    FS::Path relPath = document_uri_md_path(uriCstr);
+    if (relPath.empty())
+        return false;
+
+    FS::Path path;
+    if (!LudensLFS::get_root_directory_path(&path))
+        return false;
+
+    path = FS::absolute(path / "Docs" / relPath);
+
+    std::string err;
+    Vector<byte> v;
+    if (!FS::read_file_to_vector(path, v, err))
+        return false;
+
+    DocumentInfo docI{};
+    docI.uri = uriCstr;
+    docI.md = View((const char*)v.data(), v.size());
+    docI.copyData = true;
+    return docRegistry.add_document(docI, err);
+}
+
 EditorContext EditorContext::create(const EditorContextInfo& info)
 {
     LD_PROFILE_SCOPE;
@@ -967,6 +1000,13 @@ bool EditorContext::get_selected_component_transform(TransformEx& transform)
         return false;
 
     return comp.get_transform(transform);
+}
+
+Document EditorContext::get_document(const char* uri)
+{
+    mObj->prepare_document(uri);
+
+    return mObj->docRegistry.get_document(uri);
 }
 
 } // namespace LD

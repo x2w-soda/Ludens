@@ -14,6 +14,7 @@ set(MODULE_LIB
 set(MODULE_INCLUDE
 	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorContext/EditorEvent.h
 	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorContext/EditorEventQueue.h
+	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorContext/EditorContextDef.h
 	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorContext/EditorContext.h
 	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorContext/EditorSettings.h
 	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorContext/EditorWindow.h

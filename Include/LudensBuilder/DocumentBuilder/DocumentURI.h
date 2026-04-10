@@ -6,6 +6,7 @@ namespace LD {
 
 class URI;
 
+const char* document_uri_default_page();
 void document_uri_normalize(URI& uri);
 
 /// @brief Check if a URI is a valid path.
