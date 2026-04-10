@@ -97,7 +97,8 @@ struct DocumentRefs
 struct DocumentInfo
 {
     View md;
-    const char* uri;
+    const char* uri = nullptr;
+    bool copyData = false;
 };
 
 struct Document : Handle<struct DocumentObj>

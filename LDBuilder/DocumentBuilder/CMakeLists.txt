@@ -3,12 +3,14 @@ set(MODULE_TEST_NAME LDDocumentBuilderTest)
 
 set(MODULE_INCLUDE
     ${LUDENS_INCLUDE_DIR}/LudensBuilder/DocumentBuilder/Document.h
+    ${LUDENS_INCLUDE_DIR}/LudensBuilder/DocumentBuilder/DocumentURI.h
     ${LUDENS_INCLUDE_DIR}/LudensBuilder/DocumentBuilder/DocumentBuilder.h
     ${LUDENS_INCLUDE_DIR}/LudensBuilder/DocumentBuilder/DocumentRegistry.h
 )
 
 set(MODULE_LIB
     Lib/Document.cpp
+    Lib/DocumentURI.cpp
     Lib/DocumentBuilder.cpp
     Lib/DocumentRegistry.cpp
 )
@@ -20,6 +22,7 @@ set(MODULE_TEST
     Test/DocumentSpanTest.cpp
     Test/DocumentTest.cpp
     Test/DocumentRegistryTest.cpp
+    Test/DocumentURITest.cpp
 )
 
 add_ludens_builder_module(

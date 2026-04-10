@@ -44,6 +44,17 @@ struct TView
     {
     }
 
+    /// @brief Check if view ends with string.
+    bool ends_with(const char* cstr) const
+    requires std::is_same_v<T, char> || std::is_same_v<T, const char>
+    {
+        if (!cstr)
+            return false;
+
+        size_t len = strlen(cstr);
+        return size >= len && !memcmp(data + size - len, cstr, len);
+    }
+
     /// @brief A view is 'truthy' iff it is non-null and non-zero size.
     inline operator bool() const { return data && size > 0; }
 

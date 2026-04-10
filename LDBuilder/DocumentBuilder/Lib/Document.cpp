@@ -7,6 +7,7 @@
 #include <Ludens/Memory/Memory.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <LudensBuilder/DocumentBuilder/Document.h>
+#include <LudensBuilder/DocumentBuilder/DocumentURI.h>
 
 #include <format>
 #include <string>
@@ -34,6 +35,7 @@ struct DocumentObj
 {
     URI uri = {};
     DocumentRefs refs = {};
+    Vector<char> copy;
     Vector<std::string*> strings;
     Vector<DocumentItem*> items;
     Vector<DocumentSpan*> spans;
@@ -192,6 +194,7 @@ void DocumentObj::add_uri(View view)
         return;
 
     URI uriView(view);
+    document_uri_normalize(uriView);
     const std::string& uriString = uriView.string();
 
     if (parseURIs.contains(uriString))
@@ -199,9 +202,9 @@ void DocumentObj::add_uri(View view)
 
     parseURIs.insert(uriString);
 
-    if (uriView.scheme() == "doc" && uriView.authority() == "Manual")
+    if (document_uri_is_manual(uriView))
         refs.manual.push_back(view);
-    else if (uriView.scheme() == "doc" && uriView.authority() == "LuaAPI")
+    else if (document_uri_is_lua_api(uriView))
         refs.luaAPI.push_back(view);
     else
         refs.misc.push_back(view);
@@ -416,7 +419,16 @@ Document Document::create(const DocumentInfo& info, std::string& err)
     auto* obj = heap_new<DocumentObj>(MEMORY_USAGE_DOCUMENT);
 
     obj->uri = URI(info.uri);
-    LD_ASSERT(obj->uri.scheme() == "doc");
+    LD_ASSERT(obj->uri.scheme() == "ld");
+    LD_ASSERT(obj->uri.authority() == "Doc");
+
+    View view = info.md;
+    if (info.copyData)
+    {
+        obj->copy.resize(info.md.size);
+        std::copy(info.md.data, info.md.data + info.md.size, obj->copy.data());
+        view = View(obj->copy.data(), obj->copy.size());
+    }
 
     const MDCallback callbacks = {
         .onEnterBlock = &DocumentObj::on_parser_enter_block,
@@ -426,7 +438,7 @@ Document Document::create(const DocumentInfo& info, std::string& err)
         .onText = &DocumentObj::on_parser_text,
     };
 
-    if (!MDParser::parse(info.md, err, callbacks, obj))
+    if (!MDParser::parse(view, err, callbacks, obj))
     {
         heap_delete<DocumentObj>(obj);
         return {};

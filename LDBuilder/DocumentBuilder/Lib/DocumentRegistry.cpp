@@ -2,6 +2,7 @@
 #include <Ludens/Memory/Memory.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <LudensBuilder/DocumentBuilder/DocumentRegistry.h>
+#include <LudensBuilder/DocumentBuilder/DocumentURI.h>
 
 #include <format>
 
@@ -21,7 +22,10 @@ bool DocumentRegistryObj::validate_doc_uris(const DocumentRefs& refs, std::strin
     {
         docURI = std::string(api.data, api.size);
 
-        if (!docs.contains(docURI))
+        URI uri(docURI);
+        document_uri_normalize(uri);
+
+        if (!docs.contains(uri.string()))
             return false;
     }
 
@@ -29,7 +33,10 @@ bool DocumentRegistryObj::validate_doc_uris(const DocumentRefs& refs, std::strin
     {
         docURI = std::string(manual.data, manual.size);
 
-        if (!docs.contains(docURI))
+        URI uri(docURI);
+        document_uri_normalize(uri);
+
+        if (!docs.contains(uri.string()))
             return false;
     }
 

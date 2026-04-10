@@ -9,7 +9,7 @@
 #include <filesystem>
 
 /// @brief Require valid document before test.
-LD::Document require_document(const char* md, const char* uri = "doc://test.md");
+LD::Document require_document(const char* md, const char* uri = "ld://Doc/Test.md");
 
 /// @brief Require valid document for all files under Docs/ folder before test.
 ///        Since documents mostly rely on views, user keeps the stroage alive for testing.

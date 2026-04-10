@@ -42,7 +42,7 @@ bool require_documents(DocumentRegistry reg, HashSet<Vector<byte>*>& storage, co
 
         std::string uriString = std::filesystem::relative(mdPath, docPath).string();
         std::replace(uriString.begin(), uriString.end(), '\\', '/');
-        uriString = "doc://" + uriString;
+        uriString = "ld://Doc/" + uriString;
 
         DocumentInfo info{};
         info.md = View((const char*)mdStorage->data(), mdStorage->size());
