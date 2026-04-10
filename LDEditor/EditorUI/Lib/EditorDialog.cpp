@@ -140,6 +140,8 @@ void EditorDialog::update(const EditorUpdateTick& tick)
         return;
     }
 
+    mObj->workspace.pre_update(tick);
+
     CursorType cursorHint;
     eui_begin_window(mObj->windowID);
     ui_context_begin(EDITOR_UI_DIALOG_CONTEXT_NAME, tick.screenSize);
@@ -148,6 +150,8 @@ void EditorDialog::update(const EditorUpdateTick& tick)
     if (eui_get_window_cursor() == CURSOR_TYPE_DEFAULT)
         eui_set_window_cursor(cursorHint);
     eui_end_window();
+
+   (void)mObj->workspace.post_update();
 }
 
 void EditorDialog::render(ScreenRenderComponent renderer)

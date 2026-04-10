@@ -2,14 +2,13 @@
 
 #include <Ludens/Header/Handle.h>
 #include <Ludens/UI/UILayer.h>
-#include <LudensEditor/EditorContext/EditorContext.h>
+#include <LudensEditor/EditorContext/EditorContextDef.h>
 
 namespace LD {
 
 struct EditorUIMainInfo
 {
     EditorContext ctx;
-    const char* layerName;
     Vec2 screenSize;
     float topBarHeight;
 };
@@ -23,6 +22,7 @@ struct EditorUIMain : Handle<struct EditorUIMainObj>
     void update(const EditorUpdateTick& tick);
     void post_update();
 
+    void set_layout(EditorUIMainLayout layout);
     void set_viewport_hover_id(SceneOverlayGizmoID gizmoID, RUID ruid);
     Camera get_viewport_camera();
     Camera2D get_viewport_camera_2d();

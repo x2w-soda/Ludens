@@ -90,6 +90,29 @@ void EditorTopBarObj::update(float delta)
         ui_request_popup_window(EDITOR_TOP_BAR_MENU_ABOUT_NAME, rect.get_pos_bl());
     }
     ui_pop();
+
+    ui_push_panel(nullptr);
+    layoutI.sizeX = UISize::grow();
+    ui_top_layout(layoutI);
+    ui_pop();
+
+    EditorRequestWorkspaceLayoutEvent* requestE;
+    ui_push_text(nullptr, "Scene");
+    if (ui_top_mouse_down(mouseVal, mousePos) && mouseVal.button() == MOUSE_BUTTON_LEFT)
+    {
+        requestE = (EditorRequestWorkspaceLayoutEvent*)ctx.enqueue_event(EDITOR_EVENT_TYPE_REQUEST_WORKSPACE_LAYOUT);
+        requestE->layout = EDITOR_UI_MAIN_LAYOUT_SCENE;
+    }
+    ui_pop();
+
+    ui_push_text(nullptr, "Docs");
+    if (ui_top_mouse_down(mouseVal, mousePos) && mouseVal.button() == MOUSE_BUTTON_LEFT)
+    {
+        requestE = (EditorRequestWorkspaceLayoutEvent*)ctx.enqueue_event(EDITOR_EVENT_TYPE_REQUEST_WORKSPACE_LAYOUT);
+        requestE->layout = EDITOR_UI_MAIN_LAYOUT_DOCS;
+    }
+    ui_pop();
+
     ui_pop_window();
 
     ui_workspace_end();

@@ -16,6 +16,37 @@
 
 namespace LD {
 
+struct EditorWorkspaceLayout
+{
+    std::string uiLayerName;
+    EditorWorkspace workspace;
+
+    EditorWorkspaceLayout(EditorContext ctx, Rect rootRect, const char* uiLayerName);
+    EditorWorkspaceLayout(const EditorWorkspaceLayout&) = delete;
+    ~EditorWorkspaceLayout();
+
+    EditorWorkspaceLayout& operator=(const EditorWorkspaceLayout&) = delete;
+};
+
+EditorWorkspaceLayout::EditorWorkspaceLayout(EditorContext ctx, Rect rootRect, const char* uiLayerName)
+{
+    EditorWorkspaceInfo workspaceI{};
+    workspaceI.ctx = ctx;
+    workspaceI.uiContextName = EDITOR_UI_CONTEXT_NAME;
+    workspaceI.uiLayerName = uiLayerName;
+    workspaceI.rootRect = rootRect;
+    workspaceI.isVisible = false;
+    workspaceI.isFloat = false;
+    workspace = EditorWorkspace::create(workspaceI);
+
+    this->uiLayerName = uiLayerName;
+}
+
+EditorWorkspaceLayout::~EditorWorkspaceLayout()
+{
+    EditorWorkspace::destroy(workspace);
+}
+
 class EditorUIMainObj
 {
     friend class EditorUIMain;
@@ -27,6 +58,7 @@ public:
 
     EditorUIMainObj& operator=(const EditorUIMainObj&) = delete;
 
+    EditorWorkspace get_active_workspace();
     void pre_update(const EditorUpdateTick& tick);
     void update(const EditorUpdateTick& tick);
     void post_update();
@@ -35,78 +67,97 @@ public:
 
 private:
     EditorContext mCtx{};
-    EditorWorkspace mSceneWorkspace{};
-    ViewportWindow mViewportWindow{};
-    OutlinerWindow mOutlinerWindow{};
-    InspectorWindow mInspectorWindow{};
-    ConsoleWindow mConsoleWindow{};
-    Rect mMainRect{};
-    const char* mLayerName = nullptr;
+    EditorUIMainLayout mActiveLayout = {};
+    Vector<EditorWorkspaceLayout*> mLayouts;
+    ViewportWindow mViewportWindow = {};
+    OutlinerWindow mOutlinerWindow = {};
+    InspectorWindow mInspectorWindow = {};
+    ConsoleWindow mConsoleWindow = {};
+    Rect mMainRect = {};
     float mTopBarHeight = 0.0f;
 };
 
 EditorUIMainObj::EditorUIMainObj(const EditorUIMainInfo& mainI)
-    : mCtx(mainI.ctx), mLayerName(mainI.layerName), mTopBarHeight(mainI.topBarHeight)
+    : mCtx(mainI.ctx), mTopBarHeight(mainI.topBarHeight)
 {
     LD_PROFILE_SCOPE;
 
     mCtx.add_observer(&EditorUIMainObj::on_editor_event, this);
 
-    EditorWorkspaceInfo workspaceI{};
-    workspaceI.ctx = mainI.ctx;
-    workspaceI.uiContextName = EDITOR_UI_CONTEXT_NAME;
-    workspaceI.uiLayerName = mainI.layerName;
-    workspaceI.rootRect = Rect(0.0f, mTopBarHeight, mainI.screenSize.x, mainI.screenSize.y - mTopBarHeight);
-    workspaceI.isVisible = true;
-    workspaceI.isFloat = false;
-    mSceneWorkspace = EditorWorkspace::create(workspaceI);
+    Rect rootRect(0.0f, mTopBarHeight, mainI.screenSize.x, mainI.screenSize.y - mTopBarHeight);
 
-    EditorAreaID viewportArea = mSceneWorkspace.get_root_id();
-    EditorAreaID outlinerArea = mSceneWorkspace.split_right(viewportArea, 0.7f);
-    EditorAreaID inspectorArea = mSceneWorkspace.split_bottom(outlinerArea, 0.5f);
-    EditorAreaID consoleArea = mSceneWorkspace.split_bottom(viewportArea, 0.7f);
-    EditorAreaID documentArea = mSceneWorkspace.split_right(consoleArea, 0.5f);
+    mLayouts.resize(2);
+    mLayouts[0] = heap_new<EditorWorkspaceLayout>(MEMORY_USAGE_UI, mainI.ctx, rootRect, EDITOR_UI_LAYER_MAIN_SCENE_NAME);
+    mLayouts[0]->workspace.set_visible(true);
 
-    mViewportWindow = (ViewportWindow)mSceneWorkspace.create_window(viewportArea, EDITOR_WINDOW_VIEWPORT);
-    mOutlinerWindow = (OutlinerWindow)mSceneWorkspace.create_window(outlinerArea, EDITOR_WINDOW_OUTLINER);
-    mInspectorWindow = (InspectorWindow)mSceneWorkspace.create_window(inspectorArea, EDITOR_WINDOW_INSPECTOR);
-    mConsoleWindow = (ConsoleWindow)mSceneWorkspace.create_window(consoleArea, EDITOR_WINDOW_CONSOLE);
+    EditorWorkspace workspace = mLayouts[0]->workspace;
+    EditorAreaID viewportArea = workspace.get_root_id();
+    EditorAreaID outlinerArea = workspace.split_right(viewportArea, 0.7f);
+    EditorAreaID inspectorArea = workspace.split_bottom(outlinerArea, 0.5f);
+    EditorAreaID consoleArea = workspace.split_bottom(viewportArea, 0.7f);
+
+    mViewportWindow = (ViewportWindow)workspace.create_window(viewportArea, EDITOR_WINDOW_VIEWPORT);
+    mOutlinerWindow = (OutlinerWindow)workspace.create_window(outlinerArea, EDITOR_WINDOW_OUTLINER);
+    mInspectorWindow = (InspectorWindow)workspace.create_window(inspectorArea, EDITOR_WINDOW_INSPECTOR);
+    mConsoleWindow = (ConsoleWindow)workspace.create_window(consoleArea, EDITOR_WINDOW_CONSOLE);
     mConsoleWindow.observe_channel(get_lua_script_log_channel_name());
     mConsoleWindow.observe_channel(get_scene_log_channel_name());
     mConsoleWindow.observe_channel("EditorContext");
 
-    DocumentWindow window = (DocumentWindow)mSceneWorkspace.create_window(documentArea, EDITOR_WINDOW_DOCUMENT);
+    mLayouts[1] = heap_new<EditorWorkspaceLayout>(MEMORY_USAGE_UI, mainI.ctx, rootRect, EDITOR_UI_LAYER_MAIN_DOCS_NAME);
+
+    workspace = mLayouts[1]->workspace;
+    EditorAreaID docLArea = workspace.get_root_id();
+    EditorAreaID docRArea = workspace.split_right(docLArea, 0.5f);
+    DocumentWindow documentWindow = {};
+    documentWindow = (DocumentWindow)workspace.create_window(docLArea, EDITOR_WINDOW_DOCUMENT);
+    documentWindow = (DocumentWindow)workspace.create_window(docRArea, EDITOR_WINDOW_DOCUMENT);
+
+    mActiveLayout = EDITOR_UI_MAIN_LAYOUT_SCENE;
 }
 
 EditorUIMainObj::~EditorUIMainObj()
 {
     LD_PROFILE_SCOPE;
 
-    EditorWorkspace::destroy(mSceneWorkspace);
+    for (EditorWorkspaceLayout* layout : mLayouts)
+        heap_delete<EditorWorkspaceLayout>(layout);
+}
+
+EditorWorkspace EditorUIMainObj::get_active_workspace()
+{
+    LD_ASSERT((size_t)mActiveLayout < mLayouts.size());
+
+    return mLayouts[(int)mActiveLayout]->workspace;
 }
 
 void EditorUIMainObj::pre_update(const EditorUpdateTick& tick)
 {
     Rect mainRect = Rect(0.0f, mTopBarHeight, tick.screenSize.x, tick.screenSize.y - mTopBarHeight);
+    EditorWorkspace workspace = get_active_workspace();
 
     // with epsilon tolerance
     if (mainRect != mMainRect)
     {
         mMainRect = mainRect;
-        mSceneWorkspace.set_rect(mMainRect);
+        workspace.set_rect(mMainRect);
     }
+
+    workspace.pre_update(tick);
 }
 
 void EditorUIMainObj::update(const EditorUpdateTick& tick)
 {
     LD_PROFILE_SCOPE;
 
-    mSceneWorkspace.update(tick);
+    EditorWorkspace workspace = get_active_workspace();
+    workspace.update(tick);
 }
 
 void EditorUIMainObj::post_update()
 {
-    mSceneWorkspace.post_update();
+    EditorWorkspace workspace = get_active_workspace();
+    workspace.post_update();
 }
 
 void EditorUIMainObj::on_editor_event(const EditorEvent* event, void* user)
@@ -157,6 +208,19 @@ void EditorUIMain::update(const EditorUpdateTick& tick)
 void EditorUIMain::post_update()
 {
     mObj->post_update();
+}
+
+void EditorUIMain::set_layout(EditorUIMainLayout layoutType)
+{
+    EditorWorkspaceLayout* layout = mObj->mLayouts[(int)mObj->mActiveLayout];
+    layout->workspace.set_visible(false);
+
+    // make sure we explicitly set the old layout as invisible right now.
+    ui_imgui_set_layer_visible(EDITOR_UI_CONTEXT_NAME, layout->uiLayerName.c_str(), false);
+
+    mObj->mActiveLayout = layoutType;
+    layout = mObj->mLayouts[(int)mObj->mActiveLayout];
+    layout->workspace.set_visible(true);
 }
 
 void EditorUIMain::set_viewport_hover_id(SceneOverlayGizmoID gizmoID, RUID ruid)

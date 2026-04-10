@@ -44,6 +44,9 @@ struct EditorWorkspace : Handle<struct EditorWorkspaceObj>
     /// @note Deferred destruction until next context update.
     void destroy_window(EditorWindow window);
 
+    /// @brief Pre Imgui pass, windows may wish to establish some invariants before Imgui pass.
+    void pre_update(const EditorUpdateTick& tick);
+
     /// @brief Imgui pass on all EditorWindows in this workspace.
     void update(const EditorUpdateTick& tick);
 

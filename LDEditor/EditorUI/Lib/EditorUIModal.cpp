@@ -66,6 +66,9 @@ void EditorUIModal::pre_update(const EditorUpdateTick& tick)
     Rect modalRect = mObj->backdropWS.get_rect();
     if (Vec2(modalRect.w, modalRect.h) != tick.screenSize)
         mObj->backdropWS.set_rect(Rect(0.0f, 0.0f, tick.screenSize.x, tick.screenSize.y));
+
+    mObj->backdropWS.pre_update(tick);
+    mObj->modalWS.pre_update(tick);
 }
 
 void EditorUIModal::update(const EditorUpdateTick& tick)
@@ -79,7 +82,8 @@ void EditorUIModal::update(const EditorUpdateTick& tick)
 
 void EditorUIModal::post_update()
 {
-    mObj->backdropWS.post_update();
+    (void)mObj->backdropWS.post_update();
+    (void)mObj->modalWS.post_update();
     
     Vector<EditorAreaID> destroyed = mObj->modalWS.post_update();
     if (!destroyed.empty() && destroyed.front() == mObj->modalWS.get_root_id())

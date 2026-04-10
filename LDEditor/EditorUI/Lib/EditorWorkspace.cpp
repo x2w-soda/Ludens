@@ -100,7 +100,6 @@ struct EditorWorkspaceObj
     void set_split_ratio(EditorAreaID areaID, float ratio);
     void set_rect(const Rect& rect);
     void set_pos(const Vec2& pos);
-    void pre_update();
 };
 
 struct EditorWindowMeta
@@ -109,25 +108,26 @@ struct EditorWindowMeta
     EditorIcon icon;
     EditorWindow (*create)(const EditorWindowInfo&);
     void (*destroy)(EditorWindow);
+    void (*preUpdate)(EditorWindowObj*, const EditorUpdateTick& tick);
     void (*update)(EditorWindowObj*, const EditorUpdateTick& tick);
     const char* defaultName;
 };
 
 // clang-format off
 static EditorWindowMeta sEditorWindow[] = {
-    { EDITOR_WINDOW_TAB_CONTROL,      EDITOR_ICON_ENUM_LAST,        &TabControlWindow::create,      &TabControlWindow::destroy,      &TabControlWindow::update,      nullptr },
-    { EDITOR_WINDOW_ASSET_IMPORT,     EDITOR_ICON_ENUM_LAST,        &AssetImportWindow::create,     &AssetImportWindow::destroy,     &AssetImportWindow::update,     "AssetImport" },
-    { EDITOR_WINDOW_ASSET_SELECT,     EDITOR_ICON_ENUM_LAST,        &AssetSelectWindow::create,     &AssetSelectWindow::destroy,     &AssetSelectWindow::update,     "AssetSelect" },
-    { EDITOR_WINDOW_SELECTION,        EDITOR_ICON_ENUM_LAST,        &SelectionWindow::create,       &SelectionWindow::destroy,       &SelectionWindow::update,       "Selection" },
-    { EDITOR_WINDOW_CREATE_COMPONENT, EDITOR_ICON_ENUM_LAST,        &CreateComponentWindow::create, &CreateComponentWindow::destroy, &CreateComponentWindow::update, "CreateComponent" },
-    { EDITOR_WINDOW_PROJECT_SETTINGS, EDITOR_ICON_ENUM_LAST,        &ProjectSettingsWindow::create, &ProjectSettingsWindow::destroy, &ProjectSettingsWindow::update, "ProjectSettings" },
-    { EDITOR_WINDOW_PROJECT,          EDITOR_ICON_ENUM_LAST,        &ProjectWindow::create,         &ProjectWindow::destroy,         &ProjectWindow::update,         "Project" },
-    { EDITOR_WINDOW_DOCUMENT,         EDITOR_ICON_ENUM_LAST,        &DocumentWindow::create,        &DocumentWindow::destroy,        &DocumentWindow::update,        "Document" },
-    { EDITOR_WINDOW_VIEWPORT,         EDITOR_ICON_VIEWPORT_WINDOW,  &ViewportWindow::create,        &ViewportWindow::destroy,        &ViewportWindow::update,        "Viewport" },
-    { EDITOR_WINDOW_OUTLINER,         EDITOR_ICON_OUTLINER_WINDOW,  &OutlinerWindow::create,        &OutlinerWindow::destroy,        &OutlinerWindow::update,        "Outliner" },
-    { EDITOR_WINDOW_INSPECTOR,        EDITOR_ICON_INSPECTOR_WINDOW, &InspectorWindow::create,       &InspectorWindow::destroy,       &InspectorWindow::update,       "Inspector" },
-    { EDITOR_WINDOW_CONSOLE,          EDITOR_ICON_CONSOLE_WINDOW,   &ConsoleWindow::create,         &ConsoleWindow::destroy,         &ConsoleWindow::update,         "Console" },
-    { EDITOR_WINDOW_VERSION,          EDITOR_ICON_ENUM_LAST,        &VersionWindow::create,         &VersionWindow::destroy,         &VersionWindow::update,         "Version" },
+    { EDITOR_WINDOW_TAB_CONTROL,      EDITOR_ICON_ENUM_LAST,        &TabControlWindow::create,      &TabControlWindow::destroy,      nullptr,                     &TabControlWindow::update,      nullptr },
+    { EDITOR_WINDOW_ASSET_IMPORT,     EDITOR_ICON_ENUM_LAST,        &AssetImportWindow::create,     &AssetImportWindow::destroy,     nullptr,                     &AssetImportWindow::update,     "AssetImport" },
+    { EDITOR_WINDOW_ASSET_SELECT,     EDITOR_ICON_ENUM_LAST,        &AssetSelectWindow::create,     &AssetSelectWindow::destroy,     nullptr,                     &AssetSelectWindow::update,     "AssetSelect" },
+    { EDITOR_WINDOW_SELECTION,        EDITOR_ICON_ENUM_LAST,        &SelectionWindow::create,       &SelectionWindow::destroy,       nullptr,                     &SelectionWindow::update,       "Selection" },
+    { EDITOR_WINDOW_CREATE_COMPONENT, EDITOR_ICON_ENUM_LAST,        &CreateComponentWindow::create, &CreateComponentWindow::destroy, nullptr,                     &CreateComponentWindow::update, "CreateComponent" },
+    { EDITOR_WINDOW_PROJECT_SETTINGS, EDITOR_ICON_ENUM_LAST,        &ProjectSettingsWindow::create, &ProjectSettingsWindow::destroy, nullptr,                     &ProjectSettingsWindow::update, "ProjectSettings" },
+    { EDITOR_WINDOW_PROJECT,          EDITOR_ICON_ENUM_LAST,        &ProjectWindow::create,         &ProjectWindow::destroy,         nullptr,                     &ProjectWindow::update,         "Project" },
+    { EDITOR_WINDOW_DOCUMENT,         EDITOR_ICON_ENUM_LAST,        &DocumentWindow::create,        &DocumentWindow::destroy,        &DocumentWindow::pre_update, &DocumentWindow::update,        "Document" },
+    { EDITOR_WINDOW_VIEWPORT,         EDITOR_ICON_VIEWPORT_WINDOW,  &ViewportWindow::create,        &ViewportWindow::destroy,        nullptr,                     &ViewportWindow::update,        "Viewport" },
+    { EDITOR_WINDOW_OUTLINER,         EDITOR_ICON_OUTLINER_WINDOW,  &OutlinerWindow::create,        &OutlinerWindow::destroy,        nullptr,                     &OutlinerWindow::update,        "Outliner" },
+    { EDITOR_WINDOW_INSPECTOR,        EDITOR_ICON_INSPECTOR_WINDOW, &InspectorWindow::create,       &InspectorWindow::destroy,       nullptr,                     &InspectorWindow::update,       "Inspector" },
+    { EDITOR_WINDOW_CONSOLE,          EDITOR_ICON_CONSOLE_WINDOW,   &ConsoleWindow::create,         &ConsoleWindow::destroy,         nullptr,                     &ConsoleWindow::update,         "Console" },
+    { EDITOR_WINDOW_VERSION,          EDITOR_ICON_ENUM_LAST,        &VersionWindow::create,         &VersionWindow::destroy,         nullptr,                     &VersionWindow::update,         "Version" },
 };
 // clang-format on
 
@@ -141,6 +141,12 @@ static EditorWindow editor_window_create(const EditorWindowInfo& info)
 static void editor_window_destroy(EditorWindow window)
 {
     sEditorWindow[(int)window.type()].destroy(window);
+}
+
+static void editor_window_pre_update(EditorWindowObj* obj, const EditorUpdateTick& tick)
+{
+    if (sEditorWindow[(int)obj->type].preUpdate)
+        sEditorWindow[(int)obj->type].preUpdate(obj, tick);
 }
 
 static void editor_window_update(EditorWindowObj* obj, const EditorUpdateTick& tick)
@@ -206,35 +212,6 @@ void EditorWorkspaceObj::set_pos(const Vec2& pos)
     });
 }
 
-void EditorWorkspaceObj::pre_update()
-{
-    if (shouldClose)
-        return;
-
-    Vector<EditorAreaID> toClose;
-    EditorAreaID rootID = partition.get_root_id();
-
-    partition.visit_leaves(rootID, [&](EditorWorkspaceNode* node) {
-        if (!node->window || !node->tabControl)
-            return;
-
-        if (node->window.should_close())
-            toClose.push_back(node->nodeID);
-        else
-        {
-            std::string displayName = node->window.get_name();
-            TabControlWindow tab = (TabControlWindow)node->tabControl;
-            tab.set_window_name(displayName.c_str());
-        }
-    });
-
-    if (!toClose.empty())
-    {
-        LD_ASSERT(toClose.size() == 1 && toClose[0] == rootID);
-        shouldClose = true;
-    }
-}
-
 //
 // Public API
 //
@@ -287,7 +264,7 @@ EditorWindow EditorWorkspace::create_window(EditorAreaID areaID, EditorWindowTyp
     if (node->tabControl)
         destroy_window(node->tabControl);
 
-    const char* windowName = sEditorWindow[(int)type].defaultName;
+    std::string windowName = std::format("{}{}", sEditorWindow[(int)type].defaultName, node->nodeID);
     EditorIcon windowIcon = sEditorWindow[(int)type].icon;
     std::string tabWindowName(windowName);
     tabWindowName += "Tab";
@@ -300,11 +277,11 @@ EditorWindow EditorWorkspace::create_window(EditorAreaID areaID, EditorWindowTyp
     node->tabControl = editor_window_create(windowI);
 
     TabControlWindow tabControl = (TabControlWindow)node->tabControl;
-    tabControl.set_window_type(type, windowName, windowIcon);
+    tabControl.set_window_type(type, windowName.c_str(), windowIcon);
 
     windowI.type = type;
-    windowI.name = windowName;
-    windowI.uiWorkspaceName = windowName;
+    windowI.name = windowName.c_str();
+    windowI.uiWorkspaceName = windowName.c_str();
     return node->window = editor_window_create(windowI);
 }
 
@@ -318,18 +295,43 @@ void EditorWorkspace::destroy_window(EditorWindow window)
     editor_window_destroy(window);
 }
 
+void EditorWorkspace::pre_update(const EditorUpdateTick& tick)
+{
+    Vector<EditorAreaID> toClose;
+    EditorAreaID rootID = mObj->partition.get_root_id();
+
+    mObj->partition.visit_leaves(rootID, [&](EditorWorkspaceNode* node) {
+        if (!node->window || !node->tabControl)
+            return;
+
+        if (node->window.should_close())
+            toClose.push_back(node->nodeID);
+        else
+        {
+            editor_window_pre_update(node->window.unwrap(), tick);
+
+            TabControlWindow tab = (TabControlWindow)node->tabControl;
+            tab.set_window_name(node->window.get_name().c_str());
+        }
+    });
+
+    if (!toClose.empty())
+    {
+        LD_ASSERT(toClose.size() == 1 && toClose[0] == rootID);
+        mObj->shouldClose = true;
+    }
+}
+
 void EditorWorkspace::update(const EditorUpdateTick& tick)
 {
     LD_PROFILE_SCOPE;
-
-    mObj->pre_update();
 
     if (mObj->shouldClose)
         return;
 
     // each EditorWindow contains a UIWorkspaces, but they all belong to the same UILayer.
     ui_layer_begin(mObj->uiLayerName.c_str());
-    ui_layer_set_visibility(mObj->isVisible);
+    ui_layer_set_visible(mObj->isVisible);
 
     // EditorWorkspace root window detects resizing.
     ui_workspace_begin("WORKSPACE_ROOT", mObj->rootRect);
@@ -475,8 +477,11 @@ void EditorWorkspace::update(const EditorUpdateTick& tick)
 Vector<EditorAreaID> EditorWorkspace::post_update()
 {
     Vector<EditorAreaID> ids;
+    int leafCount = 0;
 
     mObj->partition.visit_leaves(mObj->partition.get_root_id(), [&](EditorWorkspaceNode* node) {
+        leafCount++;
+
         if (!node->tabControl || !node->window)
             return;
 
@@ -490,6 +495,9 @@ Vector<EditorAreaID> EditorWorkspace::post_update()
             node->tabControl = {};
         }
     });
+
+    if (leafCount == 1 && ids.size() == 1)
+        mObj->shouldClose = true;
 
     return ids;
 }

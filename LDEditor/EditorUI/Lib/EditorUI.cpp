@@ -39,7 +39,6 @@ void EditorUI::startup(const EditorUIInfo& info)
 
     EditorUIMainInfo mainI{};
     mainI.ctx = mCtx;
-    mainI.layerName = EDITOR_UI_LAYER_MAIN_NAME;
     mainI.screenSize = mTick.screenSize;
     mainI.topBarHeight = EDITOR_BAR_HEIGHT;
     mMain = EditorUIMain::create(mainI);
@@ -251,12 +250,18 @@ void EditorUI::on_editor_event(const EditorEvent* event, void* user)
         self.mModal.set_window(EDITOR_WINDOW_PROJECT);
         self.mModal.set_visible(true);
         break;
+    case EDITOR_EVENT_TYPE_REQUEST_WORKSPACE_LAYOUT:
+    {
+        auto* requestE = (const EditorRequestWorkspaceLayoutEvent*)event;
+        self.mMain.set_layout(requestE->layout);
+        break;
+    }
     case EDITOR_EVENT_TYPE_REQUEST_IMPORT_ASSETS:
     {
-        auto* notifyE = (const EditorRequestImportAssetsEvent*)event;
+        auto* requestE = (const EditorRequestImportAssetsEvent*)event;
         importWindow = (AssetImportWindow)self.mModal.set_window(EDITOR_WINDOW_ASSET_IMPORT);
         importWindow.set_type(ASSET_TYPE_TEXTURE_2D);
-        importWindow.set_source_path(notifyE->srcPath.string());
+        importWindow.set_source_path(requestE->srcPath.string());
         self.mModal.set_visible(true);
         break;
     }
