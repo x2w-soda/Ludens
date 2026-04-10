@@ -74,6 +74,11 @@ UIScrollStorage* UIScrollWidget::get_storage()
     return mObj->as.scroll.storage;
 }
 
+void UIScrollWidget::set_storage(UIScrollStorage* storage)
+{
+    mObj->as.scroll.storage = storage;
+}
+
 void UIScrollWidget::set_scroll_offset_x(float offset)
 {
     mObj->scrollOffset.x = offset;

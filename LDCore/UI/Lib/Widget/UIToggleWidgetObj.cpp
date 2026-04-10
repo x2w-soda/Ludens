@@ -91,6 +91,11 @@ UIToggleStorage* UIToggleWidget::get_storage()
     return mObj->as.toggle.storage;
 }
 
+void UIToggleWidget::set_storage(UIToggleStorage* storage)
+{
+    mObj->as.toggle.storage = storage;
+}
+
 void UIToggleWidget::set_on_toggle(UIToggleOnToggle onToggle)
 {
     mObj->as.toggle.onToggle = onToggle;

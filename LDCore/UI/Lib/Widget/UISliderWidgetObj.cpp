@@ -70,6 +70,11 @@ UISliderStorage* UISliderWidget::get_storage()
     return mObj->as.slider.storage;
 }
 
+void UISliderWidget::set_storage(UISliderStorage* storage)
+{
+    mObj->as.slider.storage = storage;
+}
+
 float UISliderWidget::get_value()
 {
     return mObj->as.slider.get_value();

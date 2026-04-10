@@ -21,6 +21,7 @@ struct UIButtonStorage
 struct UIButtonWidget : UIWidget
 {
     UIButtonStorage* get_storage();
+    void set_storage(UIButtonStorage* storage);
 
     void set_on_click(UIButtonOnClick onClick);
 };

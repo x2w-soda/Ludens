@@ -15,6 +15,7 @@ struct UISliderStorage
 struct UISliderWidget : UIWidget
 {
     UISliderStorage* get_storage();
+    void set_storage(UISliderStorage* storage);
 
     /// @brief get slider value
     float get_value();

@@ -31,6 +31,7 @@ struct UITextStorage
 struct UITextWidget : UIWidget
 {
     UITextStorage* get_storage();
+    void set_storage(UITextStorage* storage);
 
     /// @brief Set uniform text style for all spans.
     void set_text_style(Color color, TextSpanFont font);

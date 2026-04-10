@@ -15,6 +15,7 @@ typedef void (*UIToggleOnToggle)(UIWidget w, bool state, void* user);
 struct UIToggleWidget : UIWidget
 {
     UIToggleStorage* get_storage();
+    void set_storage(UIToggleStorage* storage);
     void set_on_toggle(UIToggleOnToggle onToggle);
 };
 

@@ -12,6 +12,7 @@ struct UIScrollStorage
 struct UIScrollWidget : UIWidget
 {
     UIScrollStorage* get_storage();
+    void set_storage(UIScrollStorage* storage);
 
     /// @brief Set scroll offset along X axis.
     void set_scroll_offset_x(float offset);

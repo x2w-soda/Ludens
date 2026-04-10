@@ -15,6 +15,7 @@ struct UIImageStorage
 struct UIImageWidget : UIWidget
 {
     UIImageStorage* get_storage();
+    void set_storage(UIImageStorage* storage);
 
     static void on_draw(UIWidget widget, ScreenRenderComponent renderer);
 };

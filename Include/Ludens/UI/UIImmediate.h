@@ -34,6 +34,7 @@ void ui_imgui_cleanup();
 void ui_imgui_cleanup_context(const char* ctxName);
 void ui_imgui_cleanup_layer(const char* ctxName, const char* layerName);
 void ui_imgui_cleanup_workspace(const char* ctxName, const char* layerName, const char* workspaceName);
+void ui_imgui_set_layer_visible(const char* ctxName, const char* layerName, bool isVisible);
 
 bool ui_context_input(const char* ctxName, const WindowEvent* event);
 void ui_context_render(const char* ctxName, ScreenRenderComponent renderer);
@@ -50,7 +51,7 @@ void ui_context_end(float delta, CursorType& outCursorHint);
 /// @brief Begin a UILayer scope.
 /// @param layerName Unique layer name within context.
 void ui_layer_begin(const char* layerName);
-void ui_layer_set_visibility(bool isVisible);
+void ui_layer_set_visible(bool isVisible);
 
 /// @brief End the current layer scope.
 void ui_layer_end();

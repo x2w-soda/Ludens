@@ -38,4 +38,9 @@ UIPanelStorage* UIPanelWidget::get_storage()
     return mObj->as.panel.storage;
 }
 
+void UIPanelWidget::set_storage(UIPanelStorage* storage)
+{
+    mObj->as.panel.storage = storage;
+}
+
 } // namespace LD

@@ -215,6 +215,11 @@ UITextStorage* UITextWidget::get_storage()
     return mObj->as.text.storage;
 }
 
+void UITextWidget::set_storage(UITextStorage* storage)
+{
+    mObj->as.text.storage = storage;
+}
+
 void UITextWidget::set_text_style(Color color, TextSpanFont font)
 {
     UITextStorage* storage = mObj->as.text.storage;

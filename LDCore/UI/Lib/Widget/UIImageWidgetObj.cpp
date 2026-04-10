@@ -59,6 +59,11 @@ UIImageStorage* UIImageWidget::get_storage()
     return mObj->as.image.storage;
 }
 
+void UIImageWidget::set_storage(UIImageStorage* storage)
+{
+    mObj->as.image.storage = storage;
+}
+
 void UIImageWidget::on_draw(UIWidget widget, ScreenRenderComponent renderer)
 {
     UIImageWidgetObj::on_draw(widget.unwrap(), renderer);

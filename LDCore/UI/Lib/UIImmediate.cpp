@@ -498,9 +498,14 @@ UIWindowState::~UIWindowState()
 UIWidgetState* UIWindowState::get_or_create_text(UITextStorage* storage)
 {
     UIWidgetState* widgetS = get_or_create_widget_state(UI_WIDGET_TEXT);
+    UITextWidget textW = (UITextWidget)widgetS->widget;
 
     if (widgetS->widget && widgetS->widget.get_type() == UI_WIDGET_TEXT)
+    {
+        if (storage)
+            textW.set_storage(storage);
         return widgetS;
+    }
 
     UIWidget parent = get_parent_widget();
     widgetS->widget = parent.node().add_text({}, storage, widgetS);
@@ -511,15 +516,20 @@ UIWidgetState* UIWindowState::get_or_create_text(UITextStorage* storage)
 UIWidgetState* UIWindowState::get_or_create_text_edit(UITextEditStorage* storage)
 {
     UIWidgetState* widgetS = get_or_create_widget_state(UI_WIDGET_TEXT_EDIT);
+    UITextEditWidget textW = (UITextEditWidget)widgetS->widget;
 
     if (widgetS->widget && widgetS->widget.get_type() == UI_WIDGET_TEXT_EDIT)
+    {
+        if (storage)
+            textW.set_storage(storage);
         return widgetS;
+    }
 
     UIWidget parent = get_parent_widget();
     widgetS->widget = parent.node().add_text_edit({}, storage, widgetS);
     widgetS->widget.set_layout_size(UISize::fixed(100.0f), UISize::fixed(19.2f)); // TODO:
 
-    UITextEditWidget textW = (UITextEditWidget)widgetS->widget;
+    textW = (UITextEditWidget)widgetS->widget;
     textW.set_on_submit(&on_text_submit_handler);
     textW.set_on_change(&on_text_change_handler);
 
@@ -529,9 +539,14 @@ UIWidgetState* UIWindowState::get_or_create_text_edit(UITextEditStorage* storage
 UIWidgetState* UIWindowState::get_or_create_image(UIImageStorage* storage)
 {
     UIWidgetState* widgetS = get_or_create_widget_state(UI_WIDGET_IMAGE);
+    UIImageWidget imageW = (UIImageWidget)widgetS->widget;
 
     if (widgetS->widget && widgetS->widget.get_type() == UI_WIDGET_IMAGE)
+    {
+        if (storage)
+            imageW.set_storage(storage);
         return widgetS;
+    }
 
     UILayoutInfo layoutI{};
     layoutI.sizeX = UISize::fixed(10.0f);
@@ -546,9 +561,14 @@ UIWidgetState* UIWindowState::get_or_create_image(UIImageStorage* storage)
 UIWidgetState* UIWindowState::get_or_create_panel(UIPanelStorage* storage)
 {
     UIWidgetState* widgetS = get_or_create_widget_state(UI_WIDGET_PANEL);
+    UIPanelWidget panelW = (UIPanelWidget)widgetS->widget;
 
     if (widgetS->widget && widgetS->widget.get_type() == UI_WIDGET_PANEL)
+    {
+        if (storage)
+            panelW.set_storage(storage);
         return widgetS;
+    }
 
     UILayoutInfo layoutI{};
     layoutI.sizeX = UISize::fit();
@@ -564,9 +584,14 @@ UIWidgetState* UIWindowState::get_or_create_panel(UIPanelStorage* storage)
 UIWidgetState* UIWindowState::get_or_create_toggle(UIToggleStorage* storage)
 {
     UIWidgetState* widgetS = get_or_create_widget_state(UI_WIDGET_TOGGLE);
+    UIToggleWidget toggleW = (UIToggleWidget)widgetS->widget;
 
     if (widgetS->widget && widgetS->widget.get_type() == UI_WIDGET_TOGGLE)
+    {
+        if (storage)
+            toggleW.set_storage(storage);
         return widgetS;
+    }
 
     UILayoutInfo layoutI{};
     layoutI.sizeX = UISize::grow();
@@ -577,7 +602,7 @@ UIWidgetState* UIWindowState::get_or_create_toggle(UIToggleStorage* storage)
     UIWidget parent = get_parent_widget();
     widgetS->widget = parent.node().add_toggle(layoutI, storage, widgetS);
 
-    UIToggleWidget toggleW = (UIToggleWidget)widgetS->widget;
+    toggleW = (UIToggleWidget)widgetS->widget;
     toggleW.set_on_toggle([](UIWidget, bool, void* user) {
         UIWidgetState* widgetS = (UIWidgetState*)user;
         widgetS->isTogglePressed.set(true);
@@ -589,9 +614,14 @@ UIWidgetState* UIWindowState::get_or_create_toggle(UIToggleStorage* storage)
 UIWidgetState* UIWindowState::get_or_create_scroll(UIScrollStorage* storage)
 {
     UIWidgetState* widgetS = get_or_create_widget_state(UI_WIDGET_SCROLL);
+    UIScrollWidget scrollW = (UIScrollWidget)widgetS->widget;
 
     if (widgetS->widget && widgetS->widget.get_type() == UI_WIDGET_SCROLL)
+    {
+        if (storage)
+            scrollW.set_storage(storage);
         return widgetS;
+    }
 
     UILayoutInfo layoutI{};
     layoutI.sizeX = UISize::grow();
@@ -607,9 +637,14 @@ UIWidgetState* UIWindowState::get_or_create_scroll(UIScrollStorage* storage)
 UIWidgetState* UIWindowState::get_or_create_button(UIButtonStorage* storage)
 {
     UIWidgetState* widgetS = get_or_create_widget_state(UI_WIDGET_BUTTON);
+    UIButtonWidget buttonW = (UIButtonWidget)widgetS->widget;
 
     if (widgetS->widget && widgetS->widget.get_type() == UI_WIDGET_BUTTON)
+    {
+        if (storage)
+            buttonW.set_storage(storage);
         return widgetS;
+    }
 
     UILayoutInfo layoutI{};
     layoutI.sizeX = UISize::fixed(100.0f);
@@ -617,8 +652,8 @@ UIWidgetState* UIWindowState::get_or_create_button(UIButtonStorage* storage)
 
     UIWidget parent = get_parent_widget();
     widgetS->widget = parent.node().add_button(layoutI, storage, widgetS);
-    UIButtonWidget buttonW = (UIButtonWidget)widgetS->widget;
 
+    buttonW = (UIButtonWidget)widgetS->widget;
     buttonW.set_on_click([](UIWidget, MouseButton, void* user) {
         auto* state = (UIWidgetState*)user;
         state->isButtonPressed.set(true);
@@ -630,9 +665,14 @@ UIWidgetState* UIWindowState::get_or_create_button(UIButtonStorage* storage)
 UIWidgetState* UIWindowState::get_or_create_slider(UISliderStorage* storage)
 {
     UIWidgetState* widgetS = get_or_create_widget_state(UI_WIDGET_SLIDER);
+    UISliderWidget sliderW = (UISliderWidget)widgetS->widget;
 
     if (widgetS->widget && widgetS->widget.get_type() == UI_WIDGET_SLIDER)
+    {
+        if (storage)
+            sliderW.set_storage(storage);
         return widgetS;
+    }
 
     UILayoutInfo layoutI{};
     layoutI.sizeX = UISize::grow();
@@ -709,6 +749,21 @@ void ui_imgui_cleanup_workspace(const char* ctxName, const char* layerName, cons
     layerS->imSpaces.erase(workspaceName);
 }
 
+void ui_imgui_set_layer_visible(const char* ctxName, const char* layerName, bool isVisible)
+{
+    LD_ASSERT_NOT_UI_CONTEXT_SCOPE;
+
+    if (!sImContexts.contains(ctxName))
+        return;
+
+    UIContextState* ctxS = sImContexts[ctxName];
+    if (!ctxS->imLayers.contains(layerName))
+        return;
+
+    UILayerState* layerS = ctxS->imLayers[layerName];
+    layerS->layer.set_visible(isVisible);
+}
+
 bool ui_context_input(const char* ctxName, const WindowEvent* event)
 {
     Vec2 screenExtent(0.0f);
@@ -760,7 +815,7 @@ void ui_layer_begin(const char* layerName)
     sImContext->imLayer->layer.raise();
 }
 
-void ui_layer_set_visibility(bool isVisible)
+void ui_layer_set_visible(bool isVisible)
 {
     LD_ASSERT_UI_LAYER_SCOPE;
 

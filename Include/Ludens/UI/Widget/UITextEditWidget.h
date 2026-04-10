@@ -44,6 +44,7 @@ struct UITextEditStorage
 struct UITextEditWidget : UIWidget
 {
     UITextEditStorage* get_storage();
+    void set_storage(UITextEditStorage* storage);
 
     bool is_editing();
 

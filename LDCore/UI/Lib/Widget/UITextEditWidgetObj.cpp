@@ -295,6 +295,11 @@ UITextEditStorage* UITextEditWidget::get_storage()
     return mObj->as.textEdit.storage;
 }
 
+void UITextEditWidget::set_storage(UITextEditStorage* storage)
+{
+    mObj->as.textEdit.storage = storage;
+}
+
 bool UITextEditWidget::is_editing()
 {
     return mObj->as.textEdit.isEditing;
