@@ -1,6 +1,7 @@
 Build/**
 build/**
 BuildLinux/**
+*.bak
 *.o
 *.so
 *.obj
