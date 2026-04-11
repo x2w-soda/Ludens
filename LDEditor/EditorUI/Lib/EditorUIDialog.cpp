@@ -125,14 +125,6 @@ void EditorUIDialogObj::update(float delta)
 #endif
         break;
     case DIALOG_SELECT_ASSET:
-        assetSelectW = (AssetSelectWindow)mDialog.get_editor_window(EDITOR_WINDOW_ASSET_SELECT);
-        if (assetSelectW && assetSelectW.has_selected_asset(suid))
-        {
-            mDialogType = DIALOG_NONE;
-            auto* event = (EditorActionSetComponentAssetEvent*)mCtx.enqueue_event(EDITOR_EVENT_TYPE_ACTION_SET_COMPONENT_ASSET);
-            event->compSUID = mSubjectSUID;
-            event->assetID = suid;
-        }
         break;
     case DIALOG_SELECT_SCRIPT:
         selectW = (SelectionWindow)mDialog.get_editor_window(EDITOR_WINDOW_SELECTION);
@@ -201,6 +193,7 @@ void EditorUIDialogObj::dialog_select_asset(const EditorEvent* e)
 
     AssetSelectWindow selectW = (AssetSelectWindow)get_or_create_dialog(EDITOR_WINDOW_ASSET_SELECT);
     selectW.set_filter(event->requestType);
+    selectW.set_component(mSubjectSUID);
 }
 
 void EditorUIDialogObj::dialog_select_script()

@@ -7,6 +7,8 @@
 #include <Ludens/UI/UIImmediate.h>
 #include <LudensEditor/EditorUI/EditorUITopBar.h>
 #include <LudensEditor/EditorWidget/EUIListMenu.h>
+#include <LudensEditor/EditorWidget/EUIPrimitiveEdit.h>
+#include <LudensEditor/EditorWidget/EUIText.h>
 
 #include "EditorUIDef.h"
 
@@ -40,16 +42,27 @@ struct EditorTopBarObj
 {
     EditorContext ctx;
     const char* layerName;
+    float barHeight;
     Rect barRect;
-    Rect screenRect;
+    EUITextStorage textFile;
+    EUITextStorage textEdit;
+    EUITextStorage textAbout;
+    EUITextStorage textScene;
+    EUITextStorage textDocs;
 
-    void update(float delta);
+    void invalidate_screen_size(Vec2 screenSize);
+    void update();
     void file_menu_window();
     void edit_menu_window();
     void about_menu_window();
 };
 
-void EditorTopBarObj::update(float delta)
+void EditorTopBarObj::invalidate_screen_size(Vec2 screenSize)
+{
+    barRect = Rect(0.0f, 0.0f, screenSize.x, barHeight);
+}
+
+void EditorTopBarObj::update()
 {
     Vec2 mousePos;
     MouseValue mouseVal;
@@ -60,36 +73,22 @@ void EditorTopBarObj::update(float delta)
 
     UILayoutInfo layoutI{};
     layoutI.childAxis = UI_AXIS_X;
-    layoutI.childGap = 5.0f;
     layoutI.sizeX = UISize::fixed(barRect.w);
     layoutI.sizeY = UISize::fixed(barRect.h);
 
     ui_push_window(EDITOR_TOP_BAR_WINDOW_NAME);
     ui_top_layout(layoutI);
 
-    ui_push_text(nullptr, "File");
-    if (ui_top_mouse_down(mouseVal, mousePos) && mouseVal.button() == MOUSE_BUTTON_LEFT)
-    {
-        ui_top_get_rect(rect);
+    const float height = ctx.get_theme().get_text_row_height();
+
+    if (eui_text(&textFile, "File", height, &rect))
         ui_request_popup_window(EDITOR_TOP_BAR_MENU_FILE_NAME, rect.get_pos_bl());
-    }
-    ui_pop();
 
-    ui_push_text(nullptr, "Edit");
-    if (ui_top_mouse_down(mouseVal, mousePos) && mouseVal.button() == MOUSE_BUTTON_LEFT)
-    {
-        ui_top_get_rect(rect);
+    if (eui_text(&textEdit, "Edit", height, &rect))
         ui_request_popup_window(EDITOR_TOP_BAR_MENU_EDIT_NAME, rect.get_pos_bl());
-    }
-    ui_pop();
 
-    ui_push_text(nullptr, "About");
-    if (ui_top_mouse_down(mouseVal, mousePos) && mouseVal.button() == MOUSE_BUTTON_LEFT)
-    {
-        ui_top_get_rect(rect);
+    if (eui_text(&textAbout, "About", height, &rect))
         ui_request_popup_window(EDITOR_TOP_BAR_MENU_ABOUT_NAME, rect.get_pos_bl());
-    }
-    ui_pop();
 
     ui_push_panel(nullptr);
     layoutI.sizeX = UISize::grow();
@@ -97,21 +96,18 @@ void EditorTopBarObj::update(float delta)
     ui_pop();
 
     EditorRequestWorkspaceLayoutEvent* requestE;
-    ui_push_text(nullptr, "Scene");
-    if (ui_top_mouse_down(mouseVal, mousePos) && mouseVal.button() == MOUSE_BUTTON_LEFT)
+
+    if (eui_text(&textScene, "Scene", height, &rect))
     {
         requestE = (EditorRequestWorkspaceLayoutEvent*)ctx.enqueue_event(EDITOR_EVENT_TYPE_REQUEST_WORKSPACE_LAYOUT);
         requestE->layout = EDITOR_UI_MAIN_LAYOUT_SCENE;
     }
-    ui_pop();
 
-    ui_push_text(nullptr, "Docs");
-    if (ui_top_mouse_down(mouseVal, mousePos) && mouseVal.button() == MOUSE_BUTTON_LEFT)
+    if (eui_text(&textDocs, "Docs", height, &rect))
     {
         requestE = (EditorRequestWorkspaceLayoutEvent*)ctx.enqueue_event(EDITOR_EVENT_TYPE_REQUEST_WORKSPACE_LAYOUT);
         requestE->layout = EDITOR_UI_MAIN_LAYOUT_DOCS;
     }
-    ui_pop();
 
     ui_pop_window();
 
@@ -237,8 +233,8 @@ EditorUITopBar EditorUITopBar::create(const EditorUITopBarInfo& barI)
     auto* obj = heap_new<EditorTopBarObj>(MEMORY_USAGE_UI);
     obj->ctx = barI.ctx;
     obj->layerName = barI.layerName;
-    obj->barRect = Rect(0.0f, 0.0f, barI.screenSize.x, barI.barHeight);
-    obj->screenRect = Rect(0.0f, 0.0f, barI.screenSize.x, barI.screenSize.y);
+    obj->barHeight = barI.barHeight;
+    obj->invalidate_screen_size(barI.screenSize);
 
     return EditorUITopBar(obj);
 }
@@ -250,9 +246,16 @@ void EditorUITopBar::destroy(EditorUITopBar topBar)
     heap_delete<EditorTopBarObj>(obj);
 }
 
+void EditorUITopBar::pre_update(const EditorUpdateTick& tick)
+{
+    mObj->invalidate_screen_size(tick.screenSize);
+}
+
 void EditorUITopBar::update(const EditorUpdateTick& tick)
 {
-    mObj->update(tick.delta);
+    (void)tick;
+
+    mObj->update();
 }
 
 } // namespace LD

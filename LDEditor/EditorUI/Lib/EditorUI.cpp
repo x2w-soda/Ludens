@@ -1,5 +1,7 @@
 #include <Ludens/Event/Event.h>
 #include <Ludens/Profiler/Profiler.h>
+#include <Ludens/Scene/Component/Camera2DView.h>
+#include <Ludens/Scene/Component/Sprite2DView.h>
 #include <Ludens/Scene/Scene.h>
 #include <Ludens/UI/UIImmediate.h>
 #include <Ludens/WindowRegistry/WindowRegistry.h>
@@ -99,6 +101,7 @@ Vec2 EditorUI::update(float delta, Vec2 screenSize)
 // Main window resizes
 void EditorUI::main_pre_update()
 {
+    mTopBar.pre_update(mTick);
     mMain.pre_update(mTick);
     mModal.pre_update(mTick);
 }
@@ -151,19 +154,19 @@ void EditorUI::submit_frame()
     Vector<RenderSystemScreenPass::Region> regions = get_screen_regions();
 
     RenderSystemScreenPass screenP{};
-    screenP.mat4Callback = &EditorContext::render_system_mat4_callback;
+    screenP.user = this;
+    screenP.mat4Callback = &EditorUI::on_mat4_callback;
     screenP.regionCount = regions.size();
     screenP.regions = regions.data();
-    screenP.user = mCtx.unwrap();
-    screenP.overlay.renderCallback = &EditorContext::render_system_screen_pass_overlay_callback;
+    screenP.overlay.renderCallback = &EditorUI::on_screen_pass_overlay;
     screenP.overlay.viewport = scene2DViewport;
     mRenderSystem.screen_pass(screenP);
 
     // render the editor UI
     RenderSystemEditorPass editorP{};
+    editorP.user = this;
     editorP.renderCallback = &EditorUI::on_render;
     editorP.scenePickCallback = &EditorUI::on_scene_pick;
-    editorP.user = this;
     editorP.sceneMousePickQuery = nullptr;
     editorP.viewport = window2DViewport;
     Vec2 queryPos;
@@ -175,9 +178,9 @@ void EditorUI::submit_frame()
     if (dialogWindowID)
     {
         RenderSystemEditorDialogPass editorDP{};
+        editorDP.user = this;
         editorDP.dialogWindow = dialogWindowID;
         editorDP.renderCallback = &EditorUI::on_render_dialog;
-        editorDP.user = this;
         mRenderSystem.editor_dialog_pass(editorDP);
     }
 
@@ -205,6 +208,70 @@ void EditorUI::on_scene_pick(SceneOverlayGizmoID gizmoID, RUID ruid, void* user)
     self.mMain.set_viewport_hover_id(gizmoID, ruid);
 }
 
+void EditorUI::on_screen_pass_overlay(ScreenRenderComponent renderer, TView<int> regionVPIndices, int overlayVPIndex, void* user)
+{
+    EditorUI& self = *(EditorUI*)user;
+    EditorContext ctx = self.mCtx;
+    Scene scene = ctx.get_scene();
+    Camera2D editorCamera = self.mMain.get_viewport_camera_2d();
+
+    if (!scene || !editorCamera)
+        return;
+
+    // TODO: Editor toggle to display screen UI?
+    renderer.bind_quad_pipeline(QUAD_PIPELINE_UBER);
+    renderer.set_view_projection_index(overlayVPIndex);
+    scene.render_screen_ui(renderer);
+
+    if (ctx.is_playing())
+        return;
+
+    Vector<ComponentView> camera2Ds = scene.get_components(COMPONENT_TYPE_CAMERA_2D);
+    ComponentView selectedComp = ctx.get_selected_component_view();
+    const float thickness = 2.0f / editorCamera.get_zoom();
+    Color hightlightColor;
+    ctx.get_theme().get_gizmo_highlight_color(hightlightColor);
+    Color cameraOutlineColor = 0x00FF00FF; // TODO: source of truth
+
+    for (int i = 0; i < regionVPIndices.size; i++)
+    {
+        renderer.set_view_projection_index(regionVPIndices.data[i]);
+
+        // Draw selected component outline
+        Mat4 worldMat4;
+        if (selectedComp && selectedComp.get_world_mat4(worldMat4))
+        {
+
+            if (selectedComp.type() == COMPONENT_TYPE_SPRITE_2D)
+            {
+                Sprite2DView sprite2D(selectedComp);
+                Rect rect = Rect::grow(sprite2D.local_rect(), thickness);
+                renderer.draw_rect_outline(worldMat4, rect, hightlightColor, thickness);
+            }
+        }
+
+        // Draw Camera2D outline
+        for (size_t i = 0; i < camera2Ds.size(); i++)
+        {
+            Camera2DView camera2D = (Camera2DView)camera2Ds[i];
+            if (!camera2D.get_world_mat4(worldMat4))
+                continue;
+
+            Vec2 extent = camera2D.get_extent() / camera2D.get_zoom();
+            Rect rect(-extent.x / 2.0f, -extent.y / 2.0f, extent.x, extent.y);
+            rect = Rect::grow(rect, thickness);
+            renderer.draw_rect_outline(worldMat4, rect, cameraOutlineColor, thickness);
+        }
+    }
+}
+
+bool EditorUI::on_mat4_callback(RUID ruid, Mat4& mat4, void* user)
+{
+    EditorUI& self = *(EditorUI*)user;
+
+    return EditorContext::render_system_mat4_callback(ruid, mat4, self.mCtx.unwrap());
+}
+
 Camera EditorUI::get_main_camera()
 {
     Camera sceneCamera;
@@ -220,6 +287,8 @@ Vector<RenderSystemScreenPass::Region> EditorUI::get_screen_regions()
         return mCtx.get_scene_screen_regions();
 
     Camera2D editorCamera = mMain.get_viewport_camera_2d();
+    LD_ASSERT(editorCamera);
+
     RenderSystemScreenPass::Region region;
     region.viewport = editorCamera.get_viewport();
     region.viewport.region = Rect(0.0f, 0.0f, 1.0f, 1.0f);

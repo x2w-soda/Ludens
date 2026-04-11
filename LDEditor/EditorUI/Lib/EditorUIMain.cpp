@@ -133,16 +133,10 @@ EditorWorkspace EditorUIMainObj::get_active_workspace()
 
 void EditorUIMainObj::pre_update(const EditorUpdateTick& tick)
 {
-    Rect mainRect = Rect(0.0f, mTopBarHeight, tick.screenSize.x, tick.screenSize.y - mTopBarHeight);
+    mMainRect = Rect(0.0f, mTopBarHeight, tick.screenSize.x, tick.screenSize.y - mTopBarHeight);
+
     EditorWorkspace workspace = get_active_workspace();
-
-    // with epsilon tolerance
-    if (mainRect != mMainRect)
-    {
-        mMainRect = mainRect;
-        workspace.set_rect(mMainRect);
-    }
-
+    workspace.set_rect(mMainRect);
     workspace.pre_update(tick);
 }
 

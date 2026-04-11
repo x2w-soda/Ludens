@@ -20,6 +20,7 @@ struct EditorUITopBar : Handle<struct EditorTopBarObj>
     static EditorUITopBar create(const EditorUITopBarInfo& topBarI);
     static void destroy(EditorUITopBar topBar);
 
+    void pre_update(const EditorUpdateTick& tick);
     void update(const EditorUpdateTick& tick);
 };
 

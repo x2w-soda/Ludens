@@ -6,9 +6,9 @@ namespace LD {
 struct AssetSelectWindowObj : EditorWindowObj
 {
     AssetType filterType = ASSET_TYPE_ENUM_COUNT;
+    SUID component = 0;
     UIScrollStorage uiEntryScroll;
     int selectedRowIndex = -1;
-    AssetID selectedAssetID = {};
 
     AssetSelectWindowObj(const EditorWindowInfo& info)
         : EditorWindowObj(info)
@@ -65,7 +65,13 @@ void AssetSelectWindowObj::update(float delta)
     else if (btnPressed == 2 && 0 <= selectedRowIndex && selectedRowIndex < entries.size())
     {
         shouldClose = true;
-        selectedAssetID = entries[selectedRowIndex].get_id();
+
+        if (component)
+        {
+            auto* actionE = (EditorActionSetComponentAssetEvent*)ctx.enqueue_event(EDITOR_EVENT_TYPE_ACTION_SET_COMPONENT_ASSET);
+            actionE->compSUID = component;
+            actionE->assetID = entries[selectedRowIndex].get_id();
+        }
     }
 
     ui_pop();
@@ -103,16 +109,9 @@ void AssetSelectWindow::set_filter(AssetType type)
     mObj->filterType = type;
 }
 
-bool AssetSelectWindow::has_selected_asset(AssetID& id)
+void AssetSelectWindow::set_component(SUID comp)
 {
-    if (mObj->selectedAssetID)
-    {
-        id = mObj->selectedAssetID;
-        mObj->selectedAssetID = {};
-        return true;
-    }
-
-    return false;
+    mObj->component = comp;
 }
 
 } // namespace LD

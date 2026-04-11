@@ -250,12 +250,14 @@ bool ProjectWindowObj::ui_select_project()
     }
     ui_pop();
 
+#if 0
     ui_push_text(nullptr, "Locate Project");
     ui_top_layout_size(UISize::wrap(), UISize::fixed(textRowHeight));
     ui_pop();
 
     if (ui_row_text_edit_button(&selectProject.projectSchemaEdit, "Add", textRowHeight))
         ;
+#endif
 
     return false;
 }

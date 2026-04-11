@@ -17,7 +17,7 @@ struct AssetSelectWindow : Handle<struct AssetSelectWindowObj>
     static void update(EditorWindowObj* obj, const EditorUpdateTick& tick);
 
     void set_filter(AssetType type);
-    bool has_selected_asset(AssetID& id);
+    void set_component(SUID comp);
 };
 
 } // namespace LD

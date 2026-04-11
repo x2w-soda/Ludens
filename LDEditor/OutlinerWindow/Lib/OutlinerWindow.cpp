@@ -85,7 +85,7 @@ void OutlinerWindowObj::component_row(ComponentView comp, int rowIdx, int depth)
         panelColor = Color::lift(panelColor, 0.02f);
 
     if (ui_top_is_hovered())
-        panelColor = Color::lift(panelColor, 0.06f);
+        panelColor = uiTheme.get_surface_color_lifted();
 
     if (compCUID && compCUID == ctx.get_selected_component())
         panelColor = theme.get_ui_theme().get_selection_color();

@@ -59,6 +59,8 @@ public:
     static void on_render(ScreenRenderComponent renderer, void* user);
     static void on_render_dialog(ScreenRenderComponent renderer, void* user);
     static void on_scene_pick(SceneOverlayGizmoID gizmoID, RUID ruid, void* user);
+    static void on_screen_pass_overlay(ScreenRenderComponent renderer, TView<int> regionVPIndices, int overlayVPIndex, void* user);
+    static bool on_mat4_callback(RUID ruid, Mat4& mat4, void* user); 
 
 private:
     void main_pre_update();

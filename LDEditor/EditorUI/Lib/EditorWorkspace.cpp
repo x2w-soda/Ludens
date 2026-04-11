@@ -264,25 +264,29 @@ EditorWindow EditorWorkspace::create_window(EditorAreaID areaID, EditorWindowTyp
     if (node->tabControl)
         destroy_window(node->tabControl);
 
-    std::string windowName = std::format("{}{}", sEditorWindow[(int)type].defaultName, node->nodeID);
-    EditorIcon windowIcon = sEditorWindow[(int)type].icon;
+    std::string windowName = sEditorWindow[(int)type].defaultName;
+    std::string uiWorkspaceName = windowName + std::to_string(node->nodeID);
     std::string tabWindowName(windowName);
-    tabWindowName += "Tab";
+    EditorIcon windowIcon = sEditorWindow[(int)type].icon;
 
     EditorWindowInfo windowI{};
     windowI.ctx = mObj->ctx;
+    windowI.type = type;
+    windowI.name = windowName.c_str();
+    windowI.uiWorkspaceName = uiWorkspaceName.c_str();
+    node->window = editor_window_create(windowI);
+
+    windowName += "Tab";
+    uiWorkspaceName += "Tab";
     windowI.type = EDITOR_WINDOW_TAB_CONTROL;
-    windowI.name = tabWindowName.c_str();
-    windowI.uiWorkspaceName = tabWindowName.c_str();
+    windowI.name = windowName.c_str();
+    windowI.uiWorkspaceName = uiWorkspaceName.c_str();
     node->tabControl = editor_window_create(windowI);
 
     TabControlWindow tabControl = (TabControlWindow)node->tabControl;
-    tabControl.set_window_type(type, windowName.c_str(), windowIcon);
+    tabControl.set_window_type(type, node->window.get_name().c_str(), windowIcon);
 
-    windowI.type = type;
-    windowI.name = windowName.c_str();
-    windowI.uiWorkspaceName = windowName.c_str();
-    return node->window = editor_window_create(windowI);
+    return node->window;
 }
 
 void EditorWorkspace::destroy_window(EditorWindow window)
@@ -504,6 +508,9 @@ Vector<EditorAreaID> EditorWorkspace::post_update()
 
 void EditorWorkspace::set_rect(const Rect& rect)
 {
+    if (mObj->rootRect == rect)
+        return; // skip invalidation with epsilon tolerance
+
     mObj->set_rect(rect);
 }
 

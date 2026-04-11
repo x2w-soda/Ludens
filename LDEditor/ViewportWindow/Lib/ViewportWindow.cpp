@@ -5,6 +5,7 @@
 #include <Ludens/UI/UIImmediate.h>
 #include <LudensEditor/EditorContext/EditorIconAtlas.h>
 #include <LudensEditor/EditorContext/EditorWindow.h>
+#include <LudensEditor/EditorWidget/EUIIcon.h>
 #include <LudensEditor/ViewportWindow/ViewportWindow.h>
 
 #include "Viewport2D.h"
@@ -30,6 +31,10 @@ struct ViewportWindowObj : EditorWindowObj
     ViewportState state = {}; /// passed down to Viewport2D or Viewport3D each frame
     Impulse isRequestingPlay = {};
     Impulse isRequestingStop = {};
+    EUIIconStorage iconTranslate;
+    EUIIconStorage iconRotate;
+    EUIIconStorage iconScale;
+    EUIIconStorage iconPlay;
 
     ViewportWindowObj() = default;
     ViewportWindowObj(const EditorWindowInfo& info)
@@ -118,69 +123,35 @@ void ViewportWindowObj::toolbar()
     panelS->color = uiTheme.get_surface_color();
     ui_top_layout(layoutI);
 
+    constexpr float iconSize = VIEWPORT_TOOLBAR_HEIGHT;
+    Color bgColor = uiTheme.get_selection_color();
+
     // translate gizmo
-    float iconSize = VIEWPORT_TOOLBAR_HEIGHT;
-    RImage iconAtlas = ctx.get_editor_icon_atlas();
-    imageS = ui_push_image(nullptr, iconSize, iconSize);
-    imageS->image = iconAtlas;
-    imageS->rect = EditorIconAtlas::get_icon_rect(EDITOR_ICON_OFFSET);
-    ui_top_user(this);
-    ui_top_draw([](UIWidget widget, ScreenRenderComponent renderer, void* user) {
-        auto* obj = (ViewportWindowObj*)user;
-        if (obj->state.gizmoType == SCENE_OVERLAY_GIZMO_TRANSLATION)
-            renderer.draw_rect(widget.get_rect(), obj->ctx.get_theme().get_ui_theme().get_selection_color());
-        UIImageWidget::on_draw(widget, renderer);
-    });
-    if (ui_top_mouse_down(mouseVal, mousePos) && mouseVal.button() == MOUSE_BUTTON_LEFT)
+    iconTranslate.bgColor = state.gizmoType == SCENE_OVERLAY_GIZMO_TRANSLATION ? bgColor : Color(0);
+    if (eui_icon(iconTranslate, EDITOR_ICON_OFFSET, iconSize))
         state.gizmoType = SCENE_OVERLAY_GIZMO_TRANSLATION;
-    ui_pop();
 
     // rotate gizmo
-    imageS = ui_push_image(nullptr, iconSize, iconSize);
-    imageS->image = iconAtlas;
-    imageS->rect = EditorIconAtlas::get_icon_rect(EDITOR_ICON_ROTATE);
-    ui_top_user(this);
-    ui_top_draw([](UIWidget widget, ScreenRenderComponent renderer, void* user) {
-        auto* obj = (ViewportWindowObj*)user;
-        if (obj->state.gizmoType == SCENE_OVERLAY_GIZMO_ROTATION)
-            renderer.draw_rect(widget.get_rect(), obj->ctx.get_theme().get_ui_theme().get_selection_color());
-        UIImageWidget::on_draw(widget, renderer);
-    });
-    if (ui_top_mouse_down(mouseVal, mousePos) && mouseVal.button() == MOUSE_BUTTON_LEFT)
+    iconRotate.bgColor = state.gizmoType == SCENE_OVERLAY_GIZMO_ROTATION ? bgColor : Color(0);
+    if (eui_icon(iconRotate, EDITOR_ICON_ROTATE, iconSize))
         state.gizmoType = SCENE_OVERLAY_GIZMO_ROTATION;
-    ui_pop();
 
     // scale gizmo
-    imageS = ui_push_image(nullptr, iconSize, iconSize);
-    imageS->image = iconAtlas;
-    imageS->rect = EditorIconAtlas::get_icon_rect(EDITOR_ICON_SCALE);
-    ui_top_user(this);
-    ui_top_draw([](UIWidget widget, ScreenRenderComponent renderer, void* user) {
-        auto* obj = (ViewportWindowObj*)user;
-        UITheme theme = obj->ctx.get_theme().get_ui_theme();
-        if (obj->state.gizmoType == SCENE_OVERLAY_GIZMO_SCALE)
-            renderer.draw_rect(widget.get_rect(), theme.get_selection_color());
-        UIImageWidget::on_draw(widget, renderer);
-    });
-    if (ui_top_mouse_down(mouseVal, mousePos) && mouseVal.button() == MOUSE_BUTTON_LEFT)
+    iconScale.bgColor = state.gizmoType == SCENE_OVERLAY_GIZMO_SCALE ? bgColor : Color(0);
+    if (eui_icon(iconScale, EDITOR_ICON_SCALE, iconSize))
         state.gizmoType = SCENE_OVERLAY_GIZMO_SCALE;
-    ui_pop();
 
     // play / pause button
     bool isPlaying = ctx.is_playing();
-    imageS = ui_push_image(nullptr, iconSize, iconSize);
-    imageS->image = iconAtlas;
-    imageS->tint = isPlaying ? theme.get_stop_button_color() : theme.get_play_button_color();
-    imageS->rect = EditorIconAtlas::get_icon_rect(isPlaying ? EDITOR_ICON_CLOSE : EDITOR_ICON_PLAY);
-
-    if (ui_top_mouse_down(mouseVal, mousePos) && mouseVal.button() == MOUSE_BUTTON_LEFT)
+    EditorIcon iconType = isPlaying ? EDITOR_ICON_CLOSE : EDITOR_ICON_PLAY;
+    iconPlay.image.tint = isPlaying ? theme.get_stop_button_color() : theme.get_play_button_color();
+    if (eui_icon(iconPlay, iconType, iconSize))
     {
         if (isPlaying)
             ctx.stop_scene();
         else
             ctx.play_scene();
     }
-    ui_pop();
 
     ui_pop();
 }

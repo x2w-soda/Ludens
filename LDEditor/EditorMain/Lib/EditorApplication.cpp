@@ -94,10 +94,14 @@ EditorApplication::EditorApplication(const EditorApplicationInfo& info)
     GLFWwindow* rootNativeWindow = reg.get_window_glfw_handle(reg.get_root_id());
     mDropTarget = DropTarget::create(rootNativeWindow, &EditorContext::drop_file_callback, mEditorCtx.unwrap());
 
-    if (info.projectSchemaPath)
+    const FS::Path* path = info.projectSchemaPath;
+    if (!path) // open sandbox project in LFS repository
+        path = &sLudensLFS.projectPath;
+
+    if (path)
     {
         auto* actionE = (EditorActionOpenProjectEvent*)mEditorCtx.enqueue_event(EDITOR_EVENT_TYPE_ACTION_OPEN_PROJECT);
-        actionE->projectSchema = *info.projectSchemaPath;
+        actionE->projectSchema = *path;
     }
 
     mEditorCtx.poll_events();

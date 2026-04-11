@@ -49,9 +49,6 @@ struct EditorContext : Handle<struct EditorContextObj>
     /// @brief Callback to inform the render system the model matrix of RUIDs
     static bool render_system_mat4_callback(RUID ruid, Mat4& mat4, void* user);
 
-    /// @brief Callback to render Scene screen space contents.
-    static void render_system_screen_pass_overlay_callback(ScreenRenderComponent renderer, TView<int> regionVPIndices, int overlayVPIndex, void* user);
-
     /// @brief Callback to handle file drops into the editor window.
     static void drop_file_callback(size_t fileCount, const FS::Path* files, void* user);
 

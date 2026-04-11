@@ -14,7 +14,6 @@
 #include <Ludens/Project/ProjectSchema.h>
 #include <Ludens/RenderBackend/RStager.h>
 #include <Ludens/RenderBackend/RUtil.h>
-#include <Ludens/Scene/Component/Sprite2DView.h>
 #include <Ludens/Scene/Scene.h>
 #include <Ludens/Scene/SceneSchema.h>
 #include <Ludens/System/FileSystem.h>
@@ -648,44 +647,6 @@ bool EditorContext::render_system_mat4_callback(RUID ruid, Mat4& mat4, void* use
     return self.scene.get_ruid_world_mat4(ruid, mat4);
 }
 
-void EditorContext::render_system_screen_pass_overlay_callback(ScreenRenderComponent renderer, TView<int> regionVPIndices, int overlayVPIndex, void* user)
-{
-    EditorContextObj& self = *(EditorContextObj*)user;
-
-    if (!self.scene)
-        return;
-
-    // TODO: Editor toggle to display screen UI?
-    renderer.bind_quad_pipeline(QUAD_PIPELINE_UBER);
-    renderer.set_view_projection_index(overlayVPIndex);
-    self.scene.render_screen_ui(renderer);
-
-    if (self.isPlaying)
-        return;
-
-    Mat4 worldMat4;
-    ComponentView selectedComp = self.scene.get_component(self.selectedComponentCUID);
-    if (selectedComp && selectedComp.get_world_mat4(worldMat4))
-    {
-        EditorTheme edTheme = self.settings.get_theme();
-        Color hightlightColor;
-        edTheme.get_gizmo_highlight_color(hightlightColor);
-
-        if (selectedComp.type() == COMPONENT_TYPE_SPRITE_2D)
-        {
-            float thickness = 2.0f; // TODO: a function of Camera zoom?
-            Sprite2DView sprite2D(selectedComp);
-            Rect rect = Rect::grow(sprite2D.local_rect(), thickness);
-
-            for (int i = 0; i < regionVPIndices.size; i++)
-            {
-                renderer.set_view_projection_index(regionVPIndices.data[i]);
-                renderer.draw_rect_outline(worldMat4, rect, hightlightColor, thickness);
-            }
-        }
-    }
-}
-
 void EditorContext::drop_file_callback(size_t fileCount, const FS::Path* files, void* user)
 {
     // We defer heavy I/O since this is within an OS callback.
@@ -848,11 +809,14 @@ void EditorContext::update(const Vec2& sceneExtent, float delta)
 
     if (mObj->isPlaying)
     {
-        mObj->scene.update(sceneExtent, delta);
+        SceneUpdateTick tick{};
+        tick.extent = sceneExtent;
+        tick.delta = delta;
+        mObj->scene.update(tick);
     }
     else
     {
-        mObj->scene.invalidate();
+        mObj->scene.invalidate(sceneExtent);
     }
 
     // NOTE: this polls for any asset file changes.

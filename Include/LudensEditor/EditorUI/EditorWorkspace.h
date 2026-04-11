@@ -54,7 +54,8 @@ struct EditorWorkspace : Handle<struct EditorWorkspaceObj>
     /// @return IDs of EditorWindows destroyed.
     Vector<EditorAreaID> post_update();
 
-    /// @brief Set editor workspace rect, triggers resize callbacks for EditorWindows.
+    /// @brief Set editor workspace rect, may trigger resize callbacks for EditorWindows.
+    /// @note New area rect is compared with previous rect with floating point tolerance.
     void set_rect(const Rect& area);
 
     /// @brief Get editor workspace rect.
