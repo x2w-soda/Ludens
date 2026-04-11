@@ -156,7 +156,9 @@ struct UIWidget : Handle<struct UIWidgetObj>
     void set_layout(const UILayoutInfo& layout);
 
     /// @brief Update widget sizing policy after creation.
-    void set_layout_size(const UISize& sizeX, const UISize& sizeY);
+    void set_layout_size(UISize sizeX, UISize sizeY);
+    void set_layout_size_x(UISize sizeX);
+    void set_layout_size_y(UISize sizeY);
 
     /// @brief Update widget child padding after creation.
     void set_layout_child_padding(const UIPadding& childPad);

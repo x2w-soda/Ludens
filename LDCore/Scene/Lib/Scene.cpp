@@ -839,6 +839,16 @@ ComponentView Scene::get_component(CUID compID)
     return ComponentView(mObj->active->registry.get_component_data(compID, nullptr));
 }
 
+Vector<ComponentView> Scene::get_components(ComponentType type)
+{
+    Vector<ComponentView> views; // TODO: reserve size...
+
+    for (auto it = mObj->active->registry.get_components(type); it; ++it)
+        views.push_back(ComponentView((ComponentBase**)it.data()));
+
+    return views;
+}
+
 ComponentView Scene::get_component_by_suid(SUID compSUID)
 {
     LD_ASSERT(compSUID && compSUID.type() == SERIAL_TYPE_COMPONENT);

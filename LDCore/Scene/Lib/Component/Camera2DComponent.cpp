@@ -117,4 +117,25 @@ void Camera2DView::set_viewport(Rect viewport)
     mCamera->viewport = clamp_rect(viewport);
 }
 
+Vec2 Camera2DView::get_extent()
+{
+    return mCamera->camera.get_extent();
+}
+
+void Camera2DView::set_extent(Vec2 extent)
+{
+    mCamera->camera.set_extent(extent);
+}
+
+float Camera2DView::get_zoom()
+{
+    return mCamera->camera.get_zoom();
+}
+
+void Camera2DView::set_zoom(float zoom)
+{
+    if (zoom != 0.0f)
+        mCamera->camera.set_zoom(zoom);
+}
+
 } // namespace LD

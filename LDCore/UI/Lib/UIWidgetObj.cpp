@@ -197,9 +197,19 @@ void UIWidget::set_layout(const UILayoutInfo& layout)
     mObj->layout.info = layout;
 }
 
-void UIWidget::set_layout_size(const UISize& sizeX, const UISize& sizeY)
+void UIWidget::set_layout_size(UISize sizeX, UISize sizeY)
 {
     mObj->layout.info.sizeX = sizeX;
+    mObj->layout.info.sizeY = sizeY;
+}
+
+void UIWidget::set_layout_size_x(UISize sizeX)
+{
+    mObj->layout.info.sizeX = sizeX;
+}
+
+void UIWidget::set_layout_size_y(UISize sizeY)
+{
     mObj->layout.info.sizeY = sizeY;
 }
 

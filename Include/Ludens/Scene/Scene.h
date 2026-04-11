@@ -124,6 +124,9 @@ public:
     /// @brief Get data component from ID.
     ComponentView get_component(CUID compID);
 
+    /// @brief Get components by type.
+    Vector<ComponentView> get_components(ComponentType type);
+
     /// @brief Get data component from ID and expected type, fails upon type mismatch.
     inline ComponentView get_component(CUID compID, ComponentType expectedType)
     {

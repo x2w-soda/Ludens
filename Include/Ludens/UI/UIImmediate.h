@@ -67,7 +67,9 @@ void ui_workspace_end();
 void ui_top_layout(const UILayoutInfo& layoutI);
 
 /// @brief Set size of widget on top of stack.
-void ui_top_layout_size(const UISize& sizeX, const UISize& sizeY);
+void ui_top_layout_size(UISize sizeX, UISize sizeY);
+void ui_top_layout_size_x(UISize sizeX);
+void ui_top_layout_size_y(UISize sizeY);
 
 /// @brief Set child axis of widget on top of stack.
 void ui_top_layout_child_axis(UIAxis childAxis);

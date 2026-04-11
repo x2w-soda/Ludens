@@ -20,6 +20,10 @@ public:
     Camera2DInfo get_info();
     Rect get_viewport();
     void set_viewport(Rect viewport);
+    Vec2 get_extent();
+    void set_extent(Vec2 extent);
+    float get_zoom();
+    void set_zoom(float zoom);
 
 private:
     Camera2DComponent* mCamera = nullptr;
