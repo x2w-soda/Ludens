@@ -28,7 +28,7 @@ Camera2D Camera2D::create(const Camera2DInfo& info)
     return Camera2D(obj);
 }
 
-Camera2D Camera2D::create(const Vec2& extent)
+Camera2D Camera2D::create(Vec2 extent)
 {
     Camera2DObj* obj = (Camera2DObj*)heap_new<Camera2DObj>(MEMORY_USAGE_MISC);
     obj->halfExtent = extent * 0.5f;
@@ -48,9 +48,10 @@ void Camera2D::destroy(Camera2D camera)
     heap_delete<Camera2DObj>(obj);
 }
 
-void Camera2D::set_extent(const Vec2& extent)
+void Camera2D::set_extent(Vec2 extent)
 {
     mObj->halfExtent = extent * 0.5f;
+    mObj->isProjDirty = true;
 }
 
 Vec2 Camera2D::get_extent()
@@ -58,7 +59,7 @@ Vec2 Camera2D::get_extent()
     return mObj->halfExtent * 2.0f;
 }
 
-void Camera2D::set_position(const Vec2& pos)
+void Camera2D::set_position(Vec2 pos)
 {
     mObj->pos = pos;
     mObj->isViewDirty = true;
@@ -82,9 +83,7 @@ float Camera2D::get_rotation()
 
 void Camera2D::set_zoom(float zoom)
 {
-    LD_ASSERT(zoom != 0.0f);
-
-    mObj->zoom = zoom;
+    mObj->zoom = std::max(zoom, 0.01f);
     mObj->isProjDirty = true;
 }
 

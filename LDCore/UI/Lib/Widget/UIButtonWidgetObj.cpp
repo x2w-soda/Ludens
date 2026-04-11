@@ -63,10 +63,7 @@ void UIButtonWidgetObj::on_draw(UIWidgetObj* obj, ScreenRenderComponent renderer
 
     if (storage->isEnabled)
     {
-        if (widget.is_pressed())
-            bgColor = Color::darken(bgColor, 0.05f);
-        else if (widget.is_hovered())
-            bgColor = Color::lift(bgColor, 0.07f);
+        bgColor = widget.get_state_color(bgColor);
     }
     else
     {

@@ -3,6 +3,7 @@ set(MODULE_TEST_NAME LDSceneTest)
 
 set(MODULE_INCLUDE
     ${LUDENS_INCLUDE_DIR}/Ludens/Scene/Scene.h
+    ${LUDENS_INCLUDE_DIR}/Ludens/Scene/SceneDef.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Scene/SceneSchema.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Scene/ComponentView.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Scene/ComponentViews.h

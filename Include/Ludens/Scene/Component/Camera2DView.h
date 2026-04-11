@@ -24,6 +24,8 @@ public:
     void set_extent(Vec2 extent);
     float get_zoom();
     void set_zoom(float zoom);
+    Camera2DConstraint get_constraint();
+    void set_constraint(Camera2DConstraint constraint);
 
 private:
     Camera2DComponent* mCamera = nullptr;

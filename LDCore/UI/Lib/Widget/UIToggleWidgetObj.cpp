@@ -72,18 +72,8 @@ void UIToggleWidgetObj::on_draw(UIWidgetObj* obj, ScreenRenderComponent renderer
 
     rect.x += rect.w * ratio;
 
-    uint32_t color = theme.get_on_surface_color();
-    if (widget.is_pressed())
-    {
-        color &= ~0xFF;
-        color |= 200;
-    }
-    else if (widget.is_hovered())
-    {
-        color &= ~0xFF;
-        color |= 234;
-    }
-    renderer.draw_rect(rect, color);
+    uint32_t color = theme.get_selection_color();
+    renderer.draw_rect(rect, widget.get_state_color(color));
 }
 
 UIToggleStorage* UIToggleWidget::get_storage()

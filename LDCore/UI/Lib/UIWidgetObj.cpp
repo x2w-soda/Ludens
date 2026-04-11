@@ -182,6 +182,16 @@ void UIWidget::set_consume_scroll_event(bool consumes)
         mObj->flags &= ~UI_WIDGET_FLAG_CONSUME_SCROLL_EVENT_BIT;
 }
 
+Color UIWidget::get_state_color(Color color)
+{
+    if (is_pressed())
+        color = Color::darken(color, 0.05f);
+    else if (is_hovered())
+        color = Color::lift(color, 0.07f);
+
+    return color;
+}
+
 UIWidget UIWidget::get_child_by_name(const std::string& childName)
 {
     return UIWidget(mObj->get_child_by_name(childName));

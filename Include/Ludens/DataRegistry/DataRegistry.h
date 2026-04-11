@@ -3,6 +3,7 @@
 #include <Ludens/Asset/AssetRegistry.h>
 #include <Ludens/DSA/IDRegistry.h>
 #include <Ludens/DSA/Vector.h>
+#include <Ludens/DataRegistry/DataRegistryDef.h>
 #include <Ludens/Header/Handle.h>
 #include <Ludens/Header/Hash.h>
 #include <Ludens/Header/Math/Transform.h>
@@ -16,20 +17,6 @@ struct ComponentBase;
 
 /// @brief Component unique identifier distributed by an IDRegistry. Zero is invalid ID.
 using CUID = ID;
-
-enum ComponentType
-{
-    COMPONENT_TYPE_DATA = 0,
-    COMPONENT_TYPE_AUDIO_SOURCE,
-    COMPONENT_TYPE_TRANSFORM,
-    COMPONENT_TYPE_TRANSFORM_2D,
-    COMPONENT_TYPE_CAMERA,
-    COMPONENT_TYPE_CAMERA_2D,
-    COMPONENT_TYPE_MESH,
-    COMPONENT_TYPE_SPRITE_2D,
-    COMPONENT_TYPE_SCREEN_UI,
-    COMPONENT_TYPE_ENUM_COUNT,
-};
 
 /// @brief The DataRegistry is the allocator of all DataComponents.
 struct DataRegistry : Handle<struct DataRegistryObj>
@@ -63,7 +50,7 @@ struct DataRegistry : Handle<struct DataRegistryObj>
 
     /// @brief Try clone a component subtree.
     /// @param rootID The subtree root component to clone.
-    /// @param suidRegistry Used to generate new serial IDs 
+    /// @param suidRegistry Used to generate new serial IDs
     /// @return Data of the root component of the cloned subtree on success.
     ComponentBase** clone_component_subtree(CUID rootID, SUIDRegistry suidRegistry);
 

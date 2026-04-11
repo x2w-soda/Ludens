@@ -4,6 +4,7 @@ set(MODULE_TEST_NAME LDDataRegistryTest)
 set(MODULE_INCLUDE
     ${LUDENS_INCLUDE_DIR}/Ludens/DataRegistry/DataComponent.h
     ${LUDENS_INCLUDE_DIR}/Ludens/DataRegistry/DataRegistry.h
+    ${LUDENS_INCLUDE_DIR}/Ludens/DataRegistry/DataRegistryDef.h
     ${LUDENS_INCLUDE_DIR}/Ludens/DataRegistry/TransformRegistry.h
 )
 

@@ -6,6 +6,7 @@
 #include <Ludens/Header/Handle.h>
 #include <Ludens/RenderSystem/RenderSystem.h>
 #include <Ludens/Scene/ComponentView.h>
+#include <Ludens/Scene/SceneDef.h>
 #include <Ludens/UI/UIFont.h>
 #include <Ludens/UI/UITheme.h>
 
@@ -71,7 +72,7 @@ public:
     /// @brief Update the scene with delta time.
     /// @param extent Screen size this frame.
     /// @param delta Delta time in seconds.
-    void update(const Vec2& extent, float delta);
+    void update(const SceneUpdateTick& tick);
 
     /// @brief Non-blocking request to begin a transition to another scene.
     bool request_transition(const SceneLoadFn& loadFn);
@@ -169,7 +170,7 @@ public:
 
     /// @brief Force invalidate all transforms and screen UI.
     ///        Intended for Editor to invalidate without updating the Scene.
-    void invalidate();
+    void invalidate(Vec2 extent);
 
     /// @brief Debug print component hierarchy.
     std::string print_hierarchy();

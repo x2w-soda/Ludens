@@ -18,13 +18,13 @@ struct Camera2DInfo
 struct Camera2D : Handle<struct Camera2DObj>
 {
     static Camera2D create(const Camera2DInfo& info);
-    static Camera2D create(const Vec2& extent);
+    static Camera2D create(Vec2 extent);
     static void destroy(Camera2D camera);
 
-    void set_extent(const Vec2& extent);
+    void set_extent(Vec2 extent);
     Vec2 get_extent();
 
-    void set_position(const Vec2& pos);
+    void set_position(Vec2 pos);
     Vec2 get_position();
 
     void set_rotation(float rotation);

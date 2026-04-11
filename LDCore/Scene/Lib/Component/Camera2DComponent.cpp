@@ -59,7 +59,7 @@ bool startup_camera_2d_component(SceneObj* scene, ComponentBase** data, std::str
 
     if (!camera->camera)
     {
-        camera->camera = Camera2D::create(scene->extent);
+        camera->camera = Camera2D::create(scene->tick.extent);
     }
 
     return (bool)camera->camera;
@@ -136,6 +136,16 @@ void Camera2DView::set_zoom(float zoom)
 {
     if (zoom != 0.0f)
         mCamera->camera.set_zoom(zoom);
+}
+
+Camera2DConstraint Camera2DView::get_constraint()
+{
+    return mCamera->constraint;
+}
+
+void Camera2DView::set_constraint(Camera2DConstraint constraint)
+{
+    mCamera->constraint = constraint;
 }
 
 } // namespace LD

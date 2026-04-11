@@ -1,4 +1,5 @@
 #include <Ludens/Profiler/Profiler.h>
+#include <Ludens/Scene/SceneDef.h>
 
 #include "ScreenUI.h"
 
@@ -36,15 +37,15 @@ void ScreenUI::destroy(ScreenUI ui)
     heap_delete<ScreenUIObj>(obj);
 }
 
-void ScreenUI::update(float delta, const Vec2& extent)
+void ScreenUI::update(const SceneUpdateTick& tick)
 {
     LD_PROFILE_SCOPE;
 
     Rect rect = mObj->space.get_root_rect();
-    if (rect.w != extent.x || rect.h != extent.y)
-        mObj->space.set_rect(Rect(0.0f, 0.0f, extent.x, extent.y));
+    if (rect.w != tick.extent.x || rect.h != tick.extent.y)
+        mObj->space.set_rect(Rect(0.0f, 0.0f, tick.extent.x, tick.extent.y));
 
-    mObj->ctx.update(delta);
+    mObj->ctx.update(tick.delta);
 }
 
 void ScreenUI::render(ScreenRenderComponent renderer)

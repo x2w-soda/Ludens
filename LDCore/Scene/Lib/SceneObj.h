@@ -42,7 +42,11 @@ struct SceneContext
 
     SceneContext& operator=(const SceneContext&) = delete;
 
-    void update(const Vec2& screenExtent, float delta);
+    // Intended for editor to invalidate without simulating the scene.
+    void invalidate(Vec2 extent);
+    void invalidate_cameras(Vec2 extent);
+
+    void update(const SceneUpdateTick& tick);
 
     bool startup_registry();
     void cleanup_registry();
@@ -74,7 +78,7 @@ public:
     AudioSystemCache audioSystemCache;
     RenderSystemCache renderSystemCache;
     SceneState state = SCENE_STATE_EMPTY;
-    Vec2 extent{};
+    SceneUpdateTick tick = {};
 
     struct Transition
     {

@@ -86,6 +86,7 @@ struct Camera2DComponent
     Transform2D* transform;
     Camera2D camera;
     Rect viewport; // normalized render region
+    Camera2DConstraint constraint;
 };
 
 /// @brief Render data for meshes that do not deform.

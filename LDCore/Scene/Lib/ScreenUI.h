@@ -6,6 +6,8 @@
 
 namespace LD {
 
+struct SceneUpdateTick;
+
 struct ScreenUIInfo
 {
     Vec2 extent;
@@ -19,7 +21,7 @@ struct ScreenUI : Handle<struct ScreenUIObj>
     static ScreenUI create(const ScreenUIInfo& info);
     static void destroy(ScreenUI ui);
 
-    void update(float delta, const Vec2& extent);
+    void update(const SceneUpdateTick& tick);
     void render(ScreenRenderComponent renderer);
     void input(const WindowEvent* event);
 

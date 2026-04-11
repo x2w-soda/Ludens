@@ -102,22 +102,18 @@ SceneContext::~SceneContext()
     DataRegistry::destroy(registry);
 }
 
-void SceneContext::update(const Vec2& screenExtent, float delta)
+void SceneContext::invalidate(Vec2 extent)
 {
-    LD_PROFILE_SCOPE;
-
-    // update all lua script instances
-    std::string err;
-    bool success = lua.update(delta, err);
-    if (!success)
-        sSceneLog.error("script update failed: {}", err);
-
-    // after this, the transforms are thread-safe read-only for the rest of the frame
     registry.invalidate_transforms();
+    invalidate_cameras(extent);
 
-    // update screen space UI
-    screenUI.update(delta, screenExtent);
+    SceneUpdateTick tick{};
+    tick.extent = extent;
+    screenUI.update(tick);
+}
 
+void SceneContext::invalidate_cameras(Vec2 extent)
+{
     for (auto it = registry.get_components(COMPONENT_TYPE_CAMERA_2D); it; ++it)
     {
         auto* cameraC = (Camera2DComponent*)it.data();
@@ -132,7 +128,40 @@ void SceneContext::update(const Vec2& screenExtent, float delta)
 
         cameraC->camera.set_position(worldPos);
         cameraC->camera.set_rotation(LD_TO_DEGREES(rotRadians));
+
+        switch (cameraC->constraint)
+        {
+        case CAMERA_2D_CONSTRAINT_FIXED:
+        {
+            float width = cameraC->viewport.w * extent.x;
+            float height = cameraC->viewport.h * extent.y;
+            cameraC->camera.set_extent(Vec2(width, height));
+            break;
+        }
+        case CAMERA_2D_CONSTRAINT_FREE:
+        default:
+            break;
+        }
     }
+}
+
+void SceneContext::update(const SceneUpdateTick& tick)
+{
+    LD_PROFILE_SCOPE;
+
+    // update all lua script instances
+    std::string err;
+    bool success = lua.update(tick.delta, err);
+    if (!success)
+        sSceneLog.error("script update failed: {}", err);
+
+    // after this, the transforms are thread-safe read-only for the rest of the frame
+    registry.invalidate_transforms();
+
+    invalidate_cameras(tick.extent);
+
+    // update screen space UI
+    screenUI.update(tick);
 }
 
 bool SceneContext::startup_registry()
@@ -611,12 +640,12 @@ void Scene::cleanup()
     }
 }
 
-void Scene::update(const Vec2& screenExtent, float delta)
+void Scene::update(const SceneUpdateTick& tick)
 {
     LD_PROFILE_SCOPE;
-    LD_ASSERT(screenExtent.x > 0.0f && screenExtent.y > 0.0f);
+    LD_ASSERT(tick.extent.x > 0.0f && tick.extent.y > 0.0f);
 
-    mObj->extent = screenExtent;
+    mObj->tick = tick;
 
     if (mObj->transition.inProgress)
     {
@@ -663,7 +692,7 @@ void Scene::update(const Vec2& screenExtent, float delta)
         mObj->transition.inProgress = false;
     }
 
-    mObj->active->update(screenExtent, delta);
+    mObj->active->update(mObj->tick);
 
     // any heap allocations for audio is done on main thread.
     mObj->audioSystemCache.update();
@@ -715,8 +744,9 @@ void Scene::get_screen_regions(Vector<Viewport>& outViewports, Vector<Rect>& out
         return;
 
     // if no Camera2DComponents are present, fallback to single fullscreen viewport.
-    outViewports.push_back(Viewport::from_extent(mObj->extent));
-    outWorldAABBs.push_back(Rect(0.0f, 0.0f, mObj->extent.x, mObj->extent.y));
+    Vec2 extent = mObj->tick.extent;
+    outViewports.push_back(Viewport::from_extent(extent));
+    outWorldAABBs.push_back(Rect(0.0f, 0.0f, extent.x, extent.y));
 }
 
 SceneRenderSystem Scene::render_system()
@@ -986,12 +1016,11 @@ bool Scene::get_component_path(ComponentView comp, Vector<int>& path)
     return mObj->active->registry.get_component_path(comp.cuid(), path);
 }
 
-void Scene::invalidate()
+void Scene::invalidate(Vec2 extent)
 {
     LD_PROFILE_SCOPE;
 
-    mObj->active->screenUI.update(0.0f, mObj->extent);
-    mObj->active->registry.invalidate_transforms();
+    mObj->active->invalidate(extent);
 }
 
 std::string Scene::print_hierarchy()

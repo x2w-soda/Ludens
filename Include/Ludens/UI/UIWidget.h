@@ -147,6 +147,8 @@ struct UIWidget : Handle<struct UIWidgetObj>
     void set_consume_key_event(bool consumes);
     void set_consume_scroll_event(bool consumes);
 
+    Color get_state_color(Color base);
+
     UIWidget get_child_by_name(const std::string& childName);
 
     /// @brief Get current widget layout.
