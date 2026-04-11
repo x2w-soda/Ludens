@@ -217,4 +217,32 @@ bool eui_rect_edit(EUIRectStorage* storage, const char* label, Rect* rect, bool 
     return hasChanged;
 }
 
+bool eui_toggle_edit(EUIToggleStorage* storage, const char* label, bool* state)
+{
+    bool hasChanged = false;
+    EditorTheme theme = eui_get_theme();
+
+    push_prop_hbox();
+    {
+        UILayoutInfo layoutI = theme.make_text_label_layout();
+        ui_push_text(nullptr, label);
+        ui_top_layout(layoutI);
+        ui_pop();
+
+        UIToggleStorage* toggle = ui_push_toggle(&storage->toggle);
+        ui_top_layout_size(UISize::fixed(80.0f), layoutI.sizeY);
+        if (ui_toggle_is_pressed())
+        {
+            hasChanged = true;
+            *state = toggle->state;
+        }
+        else
+            toggle->state = *state;
+        ui_pop();
+    }
+    pop_prop_hbox();
+
+    return hasChanged;
+}
+
 } // namespace LD

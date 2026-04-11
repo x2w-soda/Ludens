@@ -1,5 +1,6 @@
 #include <LudensEditor/EditorWidget/EUIAssetSlot.h>
 #include <LudensEditor/EditorWidget/EUIComponent.h>
+#include <LudensEditor/EditorWidget/EUISegmentControl.h>
 
 #include "EUI.h"
 
@@ -45,6 +46,18 @@ void eui_component_camera_2d(EUICamera2DStorage* storage, Camera2DView view)
     Rect viewport = view.get_viewport();
     if (eui_rect_edit(&storage->viewport, "Viewport", &viewport, true))
         view.set_viewport(viewport);
+
+    float zoom = view.get_zoom();
+    if (eui_f32_edit(&storage->zoom, "Zoom", &zoom))
+        view.set_zoom(zoom);
+
+    bool isFixed = view.get_constraint() == CAMERA_2D_CONSTRAINT_FIXED;
+    if (eui_toggle_edit(&storage->constraint, "Constraint", &isFixed))
+        view.set_constraint(isFixed ? CAMERA_2D_CONSTRAINT_FIXED : CAMERA_2D_CONSTRAINT_FREE);
+
+    Vec2 extent = view.get_extent();
+    if (eui_vec2_edit(&storage->extent, "Extent", &extent))
+        view.set_extent(extent);
 }
 
 void eui_component_sprite_2d(EUISprite2DStorage* storage, Sprite2DView view)

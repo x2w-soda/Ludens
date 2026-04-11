@@ -20,7 +20,10 @@ void eui_component_audio_source(EUIAudioSourceStorage* storage, AudioSourceView 
 struct EUICamera2DStorage
 {
     EUITransform2DStorage transform;
+    EUIF32Storage zoom;
     EUIRectStorage viewport;
+    EUIVec2Storage extent;
+    EUIToggleStorage constraint;
 };
 
 void eui_component_camera_2d(EUICamera2DStorage* storage, Camera2DView view);

@@ -60,4 +60,11 @@ struct EUIRectStorage
 
 bool eui_rect_edit(EUIRectStorage* storage, const char* label, Rect* rect, bool normalized);
 
+struct EUIToggleStorage
+{
+    UIToggleStorage toggle;
+};
+
+bool eui_toggle_edit(EUIToggleStorage* storage, const char* label, bool* state);
+
 } // namespace LD
