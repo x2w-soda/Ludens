@@ -7,12 +7,14 @@ set(MODULE_TEST
 )
 
 set(MODULE_INCLUDE
+    ${LUDENS_INCLUDE_DIR}/Ludens/Text/Text.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Text/TextSpan.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Text/TextBuffer.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Text/TextEditLite.h
 )
 
 set(MODULE_LIB
+    Lib/Text.cpp
     Lib/TextBuffer.cpp
     Lib/TextEditLite.cpp
 )

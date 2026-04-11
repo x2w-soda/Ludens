@@ -72,7 +72,7 @@ struct RImageObj
     RUID id;
     RDevice device;
     RImageInfo info;
-    HashSet<uint32_t> fboHashes;
+    HashSet<Hash64> fboHashes;
 };
 
 /// @brief Base render pass object.

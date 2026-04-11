@@ -1,4 +1,5 @@
 #include <Ludens/DSA/Vector.h>
+#include <Ludens/DSA/HashMap.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Header/Hash.h>
 #include <Ludens/Log/Log.h>
@@ -21,10 +22,10 @@
 namespace LD {
 
 static Log sLog("RBackend");
-static std::unordered_map<Hash64, RPassObj*> sPasses;
-static std::unordered_map<Hash64, RSetLayoutObj*> sSetLayouts;
-static std::unordered_map<Hash64, RPipelineLayoutObj*> sPipelineLayouts;
-static std::unordered_map<Hash64, RFramebufferObj*> sFramebuffers;
+static HashMap<Hash64, RPassObj*> sPasses;
+static HashMap<Hash64, RSetLayoutObj*> sSetLayouts;
+static HashMap<Hash64, RPipelineLayoutObj*> sPipelineLayouts;
+static HashMap<Hash64, RFramebufferObj*> sFramebuffers;
 
 static std::string print_shader_binding(const RShaderBinding& shaderBinding);
 static std::string print_set_bindings(uint32_t setIndex, uint32_t bindingCount, const RSetBindingInfo* bindings);
@@ -539,7 +540,7 @@ void RDevice::destroy_image(RImage image)
         // slow path, destroy all framebuffers using this image
         wait_idle();
 
-        for (uint32_t fboHash : obj->fboHashes)
+        for (Hash64 fboHash : obj->fboHashes)
         {
             if (sFramebuffers.contains(fboHash))
             {

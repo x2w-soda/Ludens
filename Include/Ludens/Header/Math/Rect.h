@@ -202,6 +202,17 @@ struct TRect
         const T rhh = (T)LD_ABS(hw * s) + (T)LD_ABS(hh * c);
         return TRect(cx - rhw, cy - rhh, rhw * (T)2, rhh * (T)2);
     }
+
+    static TRect map_normalized(const TRect& rect, const TRect& normalized)
+    {
+        TRect result = rect;
+        result.x += normalized.x * rect.w;
+        result.y += normalized.y * rect.h;
+        result.w *= normalized.w;
+        result.h *= normalized.h;
+
+        return result;
+    }
 };
 
 using Rect = TRect<float>;

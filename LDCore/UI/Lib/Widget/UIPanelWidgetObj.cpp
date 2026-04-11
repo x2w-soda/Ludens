@@ -29,8 +29,12 @@ void UIPanelWidgetObj::cleanup(UIWidgetObj* obj)
 void UIPanelWidgetObj::on_draw(UIWidgetObj* obj, ScreenRenderComponent renderer)
 {
     UIPanelWidgetObj& self = obj->as.panel;
+    UIPanelStorage& storage = *self.storage;
 
-    renderer.draw_rect(obj->layout.rect, self.storage->color);
+    if (storage.color != 0.0f)
+    {
+        renderer.draw_rect_rounded(obj->layout.rect, storage.color, storage.radius);
+    }
 }
 
 UIPanelStorage* UIPanelWidget::get_storage()

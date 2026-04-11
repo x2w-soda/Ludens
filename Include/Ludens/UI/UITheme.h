@@ -16,6 +16,7 @@ struct UIThemeInfo
     Color backgroundColor;
     Color fieldColor;
     Color selectionColor;
+    float liftRatio = 0.06f;
 };
 
 /// @brief Handle to a UI theme.
@@ -25,6 +26,7 @@ struct UITheme : Handle<UIThemeInfo>
     static UITheme get_default_theme();
 
     inline Color get_surface_color() const { return mObj->surfaceColor; };
+    inline Color get_surface_color_lifted() const { return Color::lift(mObj->surfaceColor, mObj->liftRatio); };
     inline Color get_on_surface_color() const { return mObj->onSurfaceColor; };
     inline Color get_primary_color() const { return mObj->primaryColor; };
     inline Color get_background_color() const { return mObj->backgroundColor; };

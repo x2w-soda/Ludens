@@ -6,7 +6,8 @@ namespace LD {
 
 struct UIPanelStorage
 {
-    Color color = 0;
+    Color color = 0;     // if not zero, the backdrop panel color
+    float radius = 0.0f; // border radius
 };
 
 struct UIPanelWidget : UIWidget

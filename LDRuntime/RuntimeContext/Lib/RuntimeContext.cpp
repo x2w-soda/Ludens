@@ -281,11 +281,13 @@ void RuntimeContext::update(float delta)
     LD_PROFILE_SCOPE;
 
     WindowRegistry reg = WindowRegistry::get();
-    const Vec2 windowExtent = reg.get_window_extent(reg.get_root_id());
 
-    mObj->scene.update(windowExtent, delta);
+    SceneUpdateTick tick{};
+    tick.extent = reg.get_window_extent(reg.get_root_id());
+    tick.delta = delta;
+    mObj->scene.update(tick);
 
-    mObj->render_frame(windowExtent);
+    mObj->render_frame(tick.extent);
 }
 
 } // namespace LD

@@ -495,10 +495,8 @@ bool SceneSchemaSaver::save_camera_2d_component(SceneSchemaSaver& saver, Compone
 
     Camera2DInfo info = camera.get_info();
     TOMLWriter writer = saver.mWriter;
-    Transform2D transform;
-    transform.scale = Vec2(1.0f); // immutable
-    transform.rotation = info.rotation;
-    transform.position = info.position;
+    Transform2D transform{};
+    (void)camera.get_transform_2d(transform);
 
     if (!TOMLUtil::write_transform_2d(writer, SCENE_SCHEMA_KEY_COMPONENT_TRANSFORM, transform) ||
         !TOMLUtil::write_vec2(writer, SCENE_SCHEMA_KEY_CAMERA_2D_EXTENT, info.extent) ||

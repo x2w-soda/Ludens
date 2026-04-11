@@ -504,11 +504,7 @@ void ScreenRenderComponent::push_viewport_normalized(Rect viewport)
 {
     LD_ASSERT(mObj->mList);
 
-    Rect screenViewport;
-    screenViewport.x = viewport.x * (float)mObj->mScreenWidth;
-    screenViewport.y = viewport.y * (float)mObj->mScreenHeight;
-    screenViewport.w = viewport.w * (float)mObj->mScreenWidth;
-    screenViewport.h = viewport.h * (float)mObj->mScreenHeight;
+    Rect screenViewport = Rect::map_normalized(Rect(0.0f, 0.0f, (float)mObj->mScreenWidth, (float)mObj->mScreenHeight), viewport);
 
     push_viewport(screenViewport);
 }

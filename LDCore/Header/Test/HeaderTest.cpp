@@ -622,6 +622,21 @@ TEST_CASE("Rect rotate")
     CHECK(rotated == Rect(center.x - 0.5f, center.y - 1.0f, 1.0f, 2.0f));
 }
 
+TEST_CASE("Rect map_normalized")
+{
+    Rect region(-10.0f, -20.0f, 100.0f, 200.0f);
+    Rect rect;
+
+    rect = Rect::map_normalized(region, Rect(0.0f, 0.0f, 1.0f, 1.0f));
+    CHECK(rect == region);
+
+    rect = Rect::map_normalized(region, Rect(0.0f, 0.0f, 0.5f, 0.25f));
+    CHECK(rect == Rect(-10.0f, -20.0f, 50.0f, 50.0f));
+
+    rect = Rect::map_normalized(region, Rect(0.2f, 0.4f, 0.5f, 0.25f));
+    CHECK(rect == Rect(10.0f, 60.0f, 50.0f, 50.0f));
+}
+
 TEST_CASE("Mat3 ctor")
 {
     IMat3 m{};

@@ -1,5 +1,6 @@
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Memory/Memory.h>
+#include <Ludens/Text/Text.h>
 #include <Ludens/Text/TextBuffer.h>
 #include <Ludens/Text/TextEditLite.h>
 
@@ -14,6 +15,8 @@ struct TextEditLiteObj
 
     void cursor_inc();
     void cursor_dec();
+    bool remove_char();
+    bool remove_range(Range range);
 };
 
 void TextEditLiteObj::cursor_inc()
@@ -26,6 +29,33 @@ void TextEditLiteObj::cursor_dec()
 {
     if (cursor > 0)
         cursor--;
+}
+
+bool TextEditLiteObj::remove_char()
+{
+    if (buffer.size() == 0 || cursor == 0)
+        return false;
+
+    buffer.erase(cursor - 1);
+    cursor_dec();
+    return true;
+}
+
+bool TextEditLiteObj::remove_range(Range range)
+{
+    size_t size = buffer.size();
+    if (size < range.offset)
+        return false;
+
+    size -= range.offset;
+    size = std::min(size, range.size);
+
+    cursor = range.offset;
+
+    for (size_t i = 0; i < size; i++)
+        buffer.erase(cursor);
+
+    return size > 0;
 }
 
 TextEditLite TextEditLite::create()
@@ -86,12 +116,24 @@ TextEditLiteResult TextEditLite::key(KeyValue value)
         mObj->cursor_inc();
         result = TEXT_EDIT_LITE_RESULT_CHANGED;
     }
-    else if (code == KEY_CODE_BACKSPACE && !mObj->buffer.empty())
+    else if (code == KEY_CODE_BACKSPACE)
     {
-        if (mObj->cursor > 0)
-            mObj->buffer.erase(mObj->cursor - 1);
-        mObj->cursor_dec();
-        result = TEXT_EDIT_LITE_RESULT_CHANGED;
+        bool hasChanged;
+
+        if (mods & KEY_MOD_CONTROL_BIT)
+        {
+            // yeah this can definitely be done better
+            std::string str = mObj->buffer.to_string();
+            View view(str.data(), str.size());
+
+            size_t pos = text_find_previous_word(view, mObj->cursor);
+            hasChanged = mObj->remove_range(Range(pos, mObj->cursor - pos));
+        }
+        else
+            hasChanged = mObj->remove_char();
+
+        if (hasChanged)
+            result = TEXT_EDIT_LITE_RESULT_CHANGED;
     }
     else if (code == KEY_CODE_DELETE)
     {
