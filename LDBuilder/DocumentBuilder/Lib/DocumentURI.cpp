@@ -3,18 +3,30 @@
 
 namespace LD {
 
-const char* document_uri_default_page()
+const char* document_uri_default_page_path()
 {
-    return "ld://Doc/Manual/GettingStarted/index.md";
+    return "Manual/GettingStarted";
 }
 
-void document_uri_normalize(URI& uri)
+std::string document_uri_normalized_path(const URI& uri)
 {
     if (!document_uri_is_valid(uri))
-        return;
+        return {};
 
-    View path = uri.path();
+    View pathV = uri.path();
+    std::string pathStr = std::string(pathV.data, pathV.size);
+    if (pathStr.ends_with('/'))
+        pathStr.pop_back();
 
+    FS::Path path = pathStr;
+
+    if (path.filename() == "index.md")
+        path = path.parent_path();
+
+    if (path.extension() == ".md")
+        path.replace_extension("");
+
+    /*
     if (path.ends_with("/"))
     {
         std::string pathStr = std::string(path.data, path.size);
@@ -27,6 +39,8 @@ void document_uri_normalize(URI& uri)
         pathStr += "/index.md";
         uri = URI("ld://Doc/" + pathStr);
     }
+    */
+    return path.string();
 }
 
 bool document_uri_is_valid(const char* uriCstr)
@@ -39,17 +53,9 @@ bool document_uri_is_valid(const URI& uri)
     return uri.scheme() == "ld" && uri.authority() == "Doc";
 }
 
-FS::Path document_uri_md_path(const char* uriCstr)
+FS::Path document_md_path_from_uri_path(const char* uriPath)
 {
-    URI uri(uriCstr);
-
-    if (!document_uri_is_valid(uri))
-        return {};
-
-    document_uri_normalize(uri);
-
-    View pathView = uri.path();
-    FS::Path path = std::string(pathView.data, pathView.size);
+    FS::Path path = uriPath;
     if (path.empty())
         return {};
 

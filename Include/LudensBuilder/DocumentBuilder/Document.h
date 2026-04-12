@@ -97,7 +97,7 @@ struct DocumentRefs
 struct DocumentInfo
 {
     View md;
-    const char* uri = nullptr;
+    const char* uriPath = nullptr;
     bool copyData = false;
 };
 
@@ -109,8 +109,8 @@ struct Document : Handle<struct DocumentObj>
     /// @brief Destroy document.
     static void destroy(Document doc);
 
-    /// @brief Get document URI.
-    View get_uri();
+    /// @brief Get document URI path.
+    std::string get_uri_path();
 
     /// @brief Get all URI references from this document.
     DocumentRefs get_references();

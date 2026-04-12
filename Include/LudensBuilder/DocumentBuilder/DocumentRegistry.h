@@ -23,8 +23,8 @@ struct DocumentRegistry : Handle<struct DocumentRegistryObj>
     /// @brief Try add a document.
     bool add_document(const DocumentInfo& info, std::string& err);
 
-    /// @brief Retrieve document from its URI.
-    Document get_document(const char* uri);
+    /// @brief Retrieve document from its URI path.
+    Document get_document(const char* uriPath);
 
     /// @brief Validate if all URIs in documents are valid.
     bool validate(DocumentRegistryValidator& validator);

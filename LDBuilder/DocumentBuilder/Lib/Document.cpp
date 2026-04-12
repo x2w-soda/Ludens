@@ -33,7 +33,7 @@ struct DocumentParseState
 
 struct DocumentObj
 {
-    URI uri = {};
+    std::string uriPath = {};
     DocumentRefs refs = {};
     Vector<char> copy;
     Vector<std::string*> strings;
@@ -194,13 +194,12 @@ void DocumentObj::add_uri(View view)
         return;
 
     URI uriView(view);
-    document_uri_normalize(uriView);
-    const std::string& uriString = uriView.string();
+    std::string uriPath = document_uri_normalized_path(uriView);
 
-    if (parseURIs.contains(uriString))
+    if (parseURIs.contains(uriPath))
         return;
 
-    parseURIs.insert(uriString);
+    parseURIs.insert(uriPath);
 
     if (document_uri_is_manual(uriView))
         refs.manual.push_back(view);
@@ -418,9 +417,7 @@ Document Document::create(const DocumentInfo& info, std::string& err)
 
     auto* obj = heap_new<DocumentObj>(MEMORY_USAGE_DOCUMENT);
 
-    obj->uri = URI(info.uri);
-    LD_ASSERT(obj->uri.scheme() == "ld");
-    LD_ASSERT(obj->uri.authority() == "Doc");
+    obj->uriPath = info.uriPath;
 
     View view = info.md;
     if (info.copyData)
@@ -468,9 +465,9 @@ void Document::destroy(Document doc)
     heap_delete<DocumentObj>(obj);
 }
 
-View Document::get_uri()
+std::string Document::get_uri_path()
 {
-    return mObj->uri.view();
+    return mObj->uriPath;
 }
 
 DocumentRefs Document::get_references()

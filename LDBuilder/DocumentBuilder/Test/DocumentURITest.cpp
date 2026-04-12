@@ -4,29 +4,26 @@
 
 using namespace LD;
 
-TEST_CASE("DocumentURI normalized")
+TEST_CASE("DocumentURI normalized path")
 {
     URI uri("ld://Doc/Manual/");
-    document_uri_normalize(uri);
-    CHECK(uri.string() == "ld://Doc/Manual/index.md");
+    std::string str;
+    
+    str = document_uri_normalized_path(uri);
+    CHECK(str == "Manual");
 
-    uri = URI("ld://Doc/Manual");
-    document_uri_normalize(uri);
-    CHECK(uri.string() == "ld://Doc/Manual/index.md");
+    str = document_uri_normalized_path(URI("ld://Doc/Manual"));
+    CHECK(str == "Manual");
 
-    uri = URI("ld://Doc/Manual/Hello.md");
-    document_uri_normalize(uri);
-    CHECK(uri.string() == "ld://Doc/Manual/Hello.md");
+    str = document_uri_normalized_path(URI("ld://Doc/Manual/Hello.md"));
+    CHECK(str == "Manual/Hello");
 }
 
 TEST_CASE("DocumentURI md path")
 {
-    FS::Path path = document_uri_md_path("ld://Doc/Manual");
+    FS::Path path = document_md_path_from_uri_path("Manual");
     CHECK(path == "Manual/index.md");
 
-    path = document_uri_md_path("ld://Doc/Manual");
-    CHECK(path == "Manual/index.md");
-
-    path = document_uri_md_path("ld://Doc/Manual/index.md");
+    path = document_md_path_from_uri_path("Manual/index.md");
     CHECK(path == "Manual/index.md");
 }

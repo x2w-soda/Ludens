@@ -23,9 +23,9 @@ bool DocumentRegistryObj::validate_doc_uris(const DocumentRefs& refs, std::strin
         docURI = std::string(api.data, api.size);
 
         URI uri(docURI);
-        document_uri_normalize(uri);
+        std::string path = document_uri_normalized_path(uri);
 
-        if (!docs.contains(uri.string()))
+        if (!docs.contains(path))
             return false;
     }
 
@@ -34,9 +34,9 @@ bool DocumentRegistryObj::validate_doc_uris(const DocumentRefs& refs, std::strin
         docURI = std::string(manual.data, manual.size);
 
         URI uri(docURI);
-        document_uri_normalize(uri);
+        std::string path = document_uri_normalized_path(uri);
 
-        if (!docs.contains(uri.string()))
+        if (!docs.contains(path))
             return false;
     }
 
@@ -76,15 +76,19 @@ void DocumentRegistry::destroy(DocumentRegistry registry)
 
 bool DocumentRegistry::add_document(const DocumentInfo& info, std::string& err)
 {
-    if (!info.uri)
+    LD_ASSERT(info.uriPath);
+    std::string uriPath = info.uriPath;
+
+    if (uriPath.empty())
     {
-        err = "empty uri";
+        err = "invalid uri";
         return false;
     }
 
-    if (mObj->docs.contains(info.uri))
+
+    if (mObj->docs.contains(uriPath))
     {
-        err = std::format("document with uri [{}] already exists", info.uri);
+        err = std::format("document with uri path [{}] already exists", uriPath);
         return false;
     }
 
@@ -92,14 +96,14 @@ bool DocumentRegistry::add_document(const DocumentInfo& info, std::string& err)
     if (!doc)
         return false;
 
-    mObj->docs[info.uri] = doc;
+    mObj->docs[uriPath] = doc;
 
     return true;
 }
 
-Document DocumentRegistry::get_document(const char* uri)
+Document DocumentRegistry::get_document(const char* uriPath)
 {
-    auto it = mObj->docs.find(uri);
+    auto it = mObj->docs.find(uriPath);
 
     if (it == mObj->docs.end())
         return {};
