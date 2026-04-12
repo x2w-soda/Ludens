@@ -14,8 +14,10 @@ public:
     URI() = default;
 
     explicit URI(const char* cstr)
-        : mString(cstr)
     {
+        if (cstr)
+            mString = cstr;
+
         parse();
     }
 

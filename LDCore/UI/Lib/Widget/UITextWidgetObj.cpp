@@ -49,6 +49,16 @@ void UITextStorage::set_fg_color(Color fgColor)
         span.text.fgColor = fgColor;
 }
 
+std::string UITextStorage::get_substring(int spanIndex)
+{
+    if (spans.empty())
+        return {};
+
+    spanIndex = std::min(spanIndex, (int)spans.size() - 1);
+    Range range = spans[spanIndex].text.range;
+    return value.substr(0, range.offset + range.size);
+}
+
 void UITextWidgetObj::update_span_index(Vec2 localPos)
 {
     UIContextObj* ctx = base->ctx();
