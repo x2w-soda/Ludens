@@ -18,6 +18,17 @@ static bool is_digit_key(KeyValue key)
            (KEY_CODE_KEYPAD_0 <= key.code() && key.code() <= KEY_CODE_KEYPAD_9);
 }
 
+struct UITextEditDrawInfo
+{
+    ScreenRenderComponent renderer;
+    FontAtlas atlas;
+    RImage image;
+    Color textColor;
+    Color outlineColor;
+    float fontSize;
+    std::string str;
+};
+
 void UITextEditWidgetObj::startup(UIWidgetObj* obj, void* storage)
 {
     UITextEditWidgetObj& self = obj->as.textEdit;
@@ -72,43 +83,30 @@ void UITextEditWidgetObj::on_draw(UIWidgetObj* obj, ScreenRenderComponent render
     UIContextObj& ctx = *obj->ctx();
     auto& self = obj->as.textEdit;
     const Rect& rect = obj->layout.rect;
-    const UITheme& theme = ctx.theme;
+    UITheme theme = ctx.theme;
     UITextEditStorage* storage = self.storage;
-    std::string str;
 
     renderer.draw_rect(rect, theme.get_field_color());
-
-    Color textColor = theme.get_on_surface_color();
-    Color outlineColor = theme.get_selection_color();
-    float wrapWidth = rect.w;
 
     if (!storage->font)
         storage->font = ctx.fontDefault;
 
-    FontAtlas atlas = storage->font.font_atlas();
-    RImage image = storage->font.image();
-    str = storage->editor.get_string();
+    UITextEditDrawInfo info{};
+    info.renderer = renderer;
+    info.atlas = storage->font.font_atlas();
+    info.image = storage->font.image();
+    info.textColor = theme.get_on_surface_color();
+    info.outlineColor = theme.get_selection_color();
+    info.fontSize = storage->fontSize;
+    info.str = storage->editor.get_string();
 
     if (self.isEditing)
     {
-        renderer.draw_rect_outline(rect, outlineColor, 1.0f);
-
-        float minWidth, maxWidth;
-        size_t cursor = storage->editor.get_cursor();
-        atlas.measure_wrap_limit(View(str.data(), cursor), storage->fontSize, minWidth, maxWidth);
-        float cursorX = maxWidth;
-
-        if (!str.empty())
-        {
-            renderer.draw_text(atlas, image, storage->fontSize, rect.get_pos(), str.c_str(), textColor, wrapWidth);
-        }
-
-        const float beamWidth = 2.0f; // TODO:
-        renderer.draw_rect(Rect(rect.x + cursorX, rect.y, beamWidth, rect.h), textColor);
+        self.draw_edit_state(info);
     }
     else
     {
-        renderer.draw_text(atlas, image, storage->fontSize, rect.get_pos(), str.c_str(), textColor, wrapWidth);
+        renderer.draw_text(info.atlas, info.image, storage->fontSize, rect.get_pos(), info.str.c_str(), info.textColor, rect.w);
     }
 }
 
@@ -241,6 +239,43 @@ void UITextEditWidgetObj::domain_f32_on_key(const UIEvent& event, bool& hasChang
         TextEditLiteResult result = storage->editor.key(key);
         hasChanged = result == TEXT_EDIT_LITE_RESULT_CHANGED;
         hasSubmitted = result == TEXT_EDIT_LITE_RESULT_SUBMITTED;
+    }
+}
+
+void UITextEditWidgetObj::draw_edit_state(UITextEditDrawInfo& info)
+{
+    Rect rect = base->layout.rect;
+    UITheme theme = base->ctx()->theme;
+    Color outlineColor = theme.get_selection_color();
+
+    info.renderer.draw_rect_outline(rect, outlineColor, 1.0f);
+
+    float minWidth, maxWidth;
+    Range selection = storage->editor.get_selection();
+    size_t cursor = storage->editor.get_cursor();
+
+    if (selection) // draw selection area
+    {
+        int queries[2] = {selection.offset, selection.offset + selection.size};
+        Vec2 positions[2];
+        info.atlas.measure_baseline_positions(View(info.str), info.fontSize, rect.w, 2, queries, positions);
+
+        float startX = positions[0].x;
+        float endX = positions[1].x;
+        info.renderer.draw_rect(Rect(rect.x + startX, rect.y, endX - startX, rect.h), 0x404040FF);
+    }
+
+    if (!info.str.empty())
+    {
+        info.renderer.draw_text(info.atlas, info.image, storage->fontSize, rect.get_pos(), info.str.c_str(), info.textColor, rect.w);
+    }
+
+    if (!selection) // draw cursor
+    {
+        info.atlas.measure_wrap_limit(View(info.str.data(), cursor), info.fontSize, minWidth, maxWidth);
+        float cursorX = maxWidth;
+        const float beamWidth = 2.0f; // TODO:
+        info.renderer.draw_rect(Rect(rect.x + cursorX, rect.y, beamWidth, rect.h), info.textColor);
     }
 }
 

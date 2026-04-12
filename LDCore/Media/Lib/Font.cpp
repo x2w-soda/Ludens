@@ -324,11 +324,15 @@ bool FontAtlas::get_baseline_glyph(uint32_t code, float fontSize, const Vec2& ba
     return true;
 }
 
-struct TextIndexProbe
+struct FontGlyphProbe
 {
     int charIndex = 0;
     float minDistSquared = 0.0f;
     Vec2 pickPos; // in baseline local space
+    int posQueryCount = 0;
+    int posQueryAnswered = 0;
+    int* posQueryCharIndices = nullptr;
+    Vec2* posQueryBaselinePos = nullptr;
 };
 
 int FontAtlas::measure_text_index(View text, float fontSizePx, float limitWidth, Vec2 pos)
@@ -350,7 +354,7 @@ int FontAtlas::measure_text_index(View text, float fontSizePx, float limitWidth,
     it.spanAtlas = &handle;
     it.spanRange = &range;
     it.glyphCB = [](Rect rect, Vec2, size_t charIndex, size_t, void* user) {
-        TextIndexProbe* probe = (TextIndexProbe*)user;
+        FontGlyphProbe* probe = (FontGlyphProbe*)user;
         if (rect.contains(probe->pickPos))
         {
             probe->charIndex = (int)charIndex;
@@ -359,7 +363,7 @@ int FontAtlas::measure_text_index(View text, float fontSizePx, float limitWidth,
         return false;
     };
 
-    TextIndexProbe probe{};
+    FontGlyphProbe probe{};
     probe.charIndex = -1;
     probe.pickPos = pos;
     probe.pickPos.y -= metrics.ascent;
@@ -387,7 +391,7 @@ int FontAtlas::measure_cursor_index(View text, float fontSizePx, float limitWidt
     it.spanAtlas = &handle;
     it.spanRange = &range;
     it.glyphCB = [](Rect rect, Vec2 baseline, size_t charIndex, size_t spanIndex, void* user) {
-        TextIndexProbe* probe = (TextIndexProbe*)user;
+        FontGlyphProbe* probe = (FontGlyphProbe*)user;
         Vec2 delta = baseline - probe->pickPos;
         float distSquared = Vec2::dot(delta, delta);
         if (probe->minDistSquared < 0.0f || distSquared < probe->minDistSquared)
@@ -398,7 +402,7 @@ int FontAtlas::measure_cursor_index(View text, float fontSizePx, float limitWidt
         return false;
     };
 
-    TextIndexProbe probe{};
+    FontGlyphProbe probe{};
     probe.charIndex = -1;
     probe.minDistSquared = -1.0f;
     probe.pickPos = pos;
@@ -411,6 +415,48 @@ int FontAtlas::measure_cursor_index(View text, float fontSizePx, float limitWidt
         probe.charIndex = -1;
 
     return probe.charIndex;
+}
+
+void FontAtlas::measure_baseline_positions(View text, float fontSizePx, float limitWidth, int queryCount, int* inQueryIndices, Vec2* outQueryBaselinePos)
+{
+    FontMetrics metrics;
+    get_font().get_metrics(metrics, fontSizePx);
+
+    if (!text || queryCount == 0)
+        return;
+
+    Range range(0, text.size);
+    FontAtlas handle(mObj);
+    FontGlyphIteration it{};
+    it.text = text;
+    it.fontSizePx = fontSizePx;
+    it.limitWidth = limitWidth;
+    it.lineHeight = metrics.lineHeight;
+    it.spanCount = 1;
+    it.spanAtlas = &handle;
+    it.spanRange = &range;
+    it.glyphCB = [](Rect rect, Vec2 baseline, size_t charIndex, size_t spanIndex, void* user) -> bool {
+        FontGlyphProbe* probe = (FontGlyphProbe*)user;
+        
+        if (charIndex == (size_t)probe->posQueryCharIndices[probe->posQueryAnswered])
+            probe->posQueryBaselinePos[probe->posQueryAnswered++] = baseline;
+        
+        return probe->posQueryAnswered == probe->posQueryCount;
+    };
+
+    FontGlyphProbe probe{};
+    probe.posQueryCount = queryCount;
+    probe.posQueryCharIndices = inQueryIndices;
+    probe.posQueryBaselinePos = outQueryBaselinePos;
+    probe.posQueryAnswered = 0;
+    Vec2 lastPos = font_glyph_iterator(&it, &probe);
+
+    // handle end of text position query.
+    if (probe.posQueryAnswered == probe.posQueryCount - 1 && probe.posQueryCharIndices[probe.posQueryAnswered] == text.size)
+        probe.posQueryBaselinePos[probe.posQueryAnswered++] = lastPos;
+
+    // If this fires, the query index sequence is *not* strictly increasing.
+    LD_ASSERT(probe.posQueryAnswered == probe.posQueryCount);
 }
 
 float FontAtlas::measure_wrap_size(View text, float fontSizePx, float limitWidth)

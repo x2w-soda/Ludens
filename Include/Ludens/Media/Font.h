@@ -84,6 +84,10 @@ struct FontAtlas : Handle<struct FontAtlasObj>
     ///         If negative, the end of text is closest to position.
     int measure_cursor_index(View text, float fontSizePx, float limitWidth, Vec2 pos);
 
+    /// @brief Measure the starting baseline position of characters given query indices.
+    /// @warning The query indices must be strictly-increasing.
+    void measure_baseline_positions(View text, float fontSizePx, float limitWidth, int queryCount, int* inQueryIndices, Vec2* outQueryBaselinePos);
+
     /// @brief Measure height of text if the width is limited.
     float measure_wrap_size(View text, float fontSizePx, float limitWidth);
 

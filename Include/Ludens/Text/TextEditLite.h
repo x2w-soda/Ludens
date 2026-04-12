@@ -2,6 +2,7 @@
 
 #include <Ludens/Header/Handle.h>
 #include <Ludens/Header/KeyValue.h>
+#include <Ludens/Header/Range.h>
 #include <Ludens/Header/View.h>
 
 #include <cstddef>
@@ -30,6 +31,9 @@ struct TextEditLite : Handle<struct TextEditLiteObj>
 
     /// @brief Set cursor byte offset.
     void set_cursor(size_t pos);
+
+    /// @brief Get selection byte range.
+    Range get_selection();
 
     /// @brief Get byte size.
     size_t size();

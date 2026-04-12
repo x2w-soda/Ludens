@@ -11,12 +11,18 @@ namespace LD {
 struct TextEditLiteObj
 {
     size_t cursor = 0;
+    Range selection = {};
     TextBuffer buffer = {};
 
     void cursor_inc();
     void cursor_dec();
     bool remove_char();
     bool remove_range(Range range);
+    bool remove_selection();
+    bool remove();
+    bool deletion();
+    void add(char c);
+    void select_all();
 };
 
 void TextEditLiteObj::cursor_inc()
@@ -58,6 +64,56 @@ bool TextEditLiteObj::remove_range(Range range)
     return size > 0;
 }
 
+bool TextEditLiteObj::remove_selection()
+{
+    if (selection)
+    {
+        bool hasRemoved = remove_range(selection);
+        selection.size = 0;
+        return hasRemoved;
+    }
+
+    return false;
+}
+
+/// @brief Expected 'backspace' behavior
+bool TextEditLiteObj::remove()
+{
+    if (remove_selection())
+        return true;
+
+    return remove_char();
+}
+
+/// @brief Expected 'delete' behavior
+bool TextEditLiteObj::deletion()
+{
+    if (remove_selection())
+        return true;
+
+    buffer.erase(cursor);
+}
+
+void TextEditLiteObj::add(char c)
+{
+    if (selection)
+    {
+        size_t cursorPos = selection.offset;
+        (void)remove_selection();
+        cursor = cursorPos;
+    }
+
+    buffer.insert(cursor, c);
+
+    cursor_inc();
+}
+
+void TextEditLiteObj::select_all()
+{
+    selection = Range(0, buffer.size());
+    cursor = 0;
+}
+
 TextEditLite TextEditLite::create()
 {
     auto* obj = heap_new<TextEditLiteObj>(MEMORY_USAGE_TEXT_EDIT);
@@ -82,7 +138,11 @@ TextEditLiteResult TextEditLite::key(KeyValue value)
     const KeyCode code = value.code();
     const KeyMods mods = value.mods();
 
-    if (KEY_CODE_SPACE <= code && code <= KEY_CODE_GRAVE_ACCENT)
+    if (mods == KEY_MOD_CONTROL_BIT && code == KEY_CODE_A)
+    {
+        mObj->select_all();
+    }
+    else if (KEY_CODE_SPACE <= code && code <= KEY_CODE_GRAVE_ACCENT)
     {
         // ascii printable
         char key = (char)code;
@@ -104,40 +164,52 @@ TextEditLiteResult TextEditLite::key(KeyValue value)
         else if (KEY_CODE_COMMA <= code && code <= KEY_CODE_SLASH && (mods & KEY_MOD_SHIFT_BIT))
             key = "<_>?"[code - KEY_CODE_COMMA];
 
-        mObj->buffer.insert(mObj->cursor, key);
-        mObj->cursor_inc();
+        mObj->add(key);
         result = TEXT_EDIT_LITE_RESULT_CHANGED;
     }
     else if (KEY_CODE_KEYPAD_0 <= code && code <= KEY_CODE_KEYPAD_9)
     {
         char key = (code - KEY_CODE_KEYPAD_0) + '0';
 
-        mObj->buffer.insert(mObj->cursor, key);
-        mObj->cursor_inc();
+        mObj->add(key);
         result = TEXT_EDIT_LITE_RESULT_CHANGED;
     }
     else if (code == KEY_CODE_BACKSPACE)
     {
-        bool hasChanged;
+        bool hasChanged = false;
 
-        if (mods & KEY_MOD_CONTROL_BIT)
+        if (mods & KEY_MOD_CONTROL_BIT) // remove selection or previous word
         {
-            // yeah this can definitely be done better
-            std::string str = mObj->buffer.to_string();
-            View view(str.data(), str.size());
+            hasChanged = mObj->remove_selection();
 
-            size_t pos = text_find_previous_word(view, mObj->cursor);
-            hasChanged = mObj->remove_range(Range(pos, mObj->cursor - pos));
+            if (!hasChanged)
+            {
+                // yeah this can definitely be done better
+                std::string str = mObj->buffer.to_string();
+                View view(str.data(), str.size());
+
+                size_t pos = text_find_previous_word(view, mObj->cursor);
+                hasChanged = mObj->remove_range(Range(pos, mObj->cursor - pos));
+            }
         }
-        else
-            hasChanged = mObj->remove_char();
+        else // remove selection or char
+            hasChanged = mObj->remove();
 
         if (hasChanged)
             result = TEXT_EDIT_LITE_RESULT_CHANGED;
     }
     else if (code == KEY_CODE_DELETE)
     {
-        mObj->buffer.erase(mObj->cursor);
+        if (mObj->deletion())
+            result = TEXT_EDIT_LITE_RESULT_CHANGED;
+    }
+    else if (code == KEY_CODE_HOME)
+    {
+        mObj->cursor = 0;
+    }
+    else if (code == KEY_CODE_END)
+    {
+        mObj->cursor = mObj->buffer.size();
     }
     else if (code == KEY_CODE_LEFT)
     {
@@ -163,6 +235,12 @@ size_t TextEditLite::get_cursor()
 void TextEditLite::set_cursor(size_t pos)
 {
     mObj->cursor = std::min(pos, mObj->buffer.size());
+    mObj->selection = Range(0, 0);
+}
+
+Range TextEditLite::get_selection()
+{
+    return mObj->selection;
 }
 
 size_t TextEditLite::size()
@@ -175,6 +253,7 @@ void TextEditLite::clear()
     mObj->buffer.clear();
 
     mObj->cursor = 0;
+    mObj->selection = Range(0, 0);
 }
 
 void TextEditLite::set_string(View str)
@@ -182,13 +261,12 @@ void TextEditLite::set_string(View str)
     mObj->buffer.set_string(str);
 
     mObj->cursor = std::min(mObj->cursor, str.size);
+    mObj->selection = Range(0, 0);
 }
 
 void TextEditLite::set_string(const std::string& str)
 {
-    mObj->buffer.set_string(str);
-
-    mObj->cursor = std::min(mObj->cursor, str.size());
+    set_string(View(str));
 }
 
 std::string TextEditLite::get_string()

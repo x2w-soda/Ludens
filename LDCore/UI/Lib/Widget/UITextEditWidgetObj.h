@@ -5,6 +5,8 @@
 
 namespace LD {
 
+struct UITextEditDrawInfo;
+
 struct UITextEditWidgetObj
 {
     UIWidgetObj* base;
@@ -22,6 +24,7 @@ struct UITextEditWidgetObj
     void domain_string_on_key(const UIEvent& event, bool& hasChanged, bool& hasSubmitted);
     void domain_uint_on_key(const UIEvent& event, bool& hasChanged, bool& hasSubmitted);
     void domain_f32_on_key(const UIEvent& event, bool& hasChanged, bool& hasSubmitted);
+    void draw_edit_state(UITextEditDrawInfo& info);
 
     static void startup(UIWidgetObj* base, void* storage);
     static void cleanup(UIWidgetObj* base);
