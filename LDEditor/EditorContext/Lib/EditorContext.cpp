@@ -531,15 +531,15 @@ void EditorContextObj::add_project_entry(const ProjectScanResult& scanResult)
     projectEntries[entry.schemaPath] = entry;
 }
 
-bool EditorContextObj::prepare_document(const char* uriCstr)
+bool EditorContextObj::prepare_document(const char* uriPath)
 {
-    if (docRegistry.get_document(uriCstr))
+    if (docRegistry.get_document(uriPath))
         return true;
 
     // SPACE: Load Markdown documents embedded in LDEditor binary.
     //        For development builds we just load from disk.
 
-    FS::Path relPath = document_uri_md_path(uriCstr);
+    FS::Path relPath = document_md_path_from_uri_path(uriPath);
     if (relPath.empty())
         return false;
 
@@ -555,7 +555,7 @@ bool EditorContextObj::prepare_document(const char* uriCstr)
         return false;
 
     DocumentInfo docI{};
-    docI.uri = uriCstr;
+    docI.uriPath = uriPath;
     docI.md = View((const char*)v.data(), v.size());
     docI.copyData = true;
     return docRegistry.add_document(docI, err);
@@ -966,11 +966,11 @@ bool EditorContext::get_selected_component_transform(TransformEx& transform)
     return comp.get_transform(transform);
 }
 
-Document EditorContext::get_document(const char* uri)
+Document EditorContext::get_document(const char* uriPath)
 {
-    mObj->prepare_document(uri);
+    mObj->prepare_document(uriPath);
 
-    return mObj->docRegistry.get_document(uri);
+    return mObj->docRegistry.get_document(uriPath);
 }
 
 } // namespace LD

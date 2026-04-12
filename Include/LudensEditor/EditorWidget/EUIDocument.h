@@ -18,7 +18,7 @@ struct EUIDocumentStorage
     Document document = {};
     UIScrollStorage scroll;
     Vector<EUIDocumentItemStorage> items;
-    std::string requestURI = {}; // if not empty, user should rebuild from the requested URI
+    std::string requestURIPath = {}; // if not empty, user should rebuild from the requested URI
 
     /// @brief Build storage from document.
     /// @param doc Document to display.

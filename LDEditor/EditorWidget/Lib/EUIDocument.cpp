@@ -1,6 +1,7 @@
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/UI/UIImmediate.h>
+#include <LudensBuilder/DocumentBuilder/DocumentURI.h>
 #include <LudensEditor/EditorWidget/EUIDocument.h>
 #include <LudensEditor/EditorWidget/EditorWidget.h>
 
@@ -204,7 +205,7 @@ static void eui_document_spans(EUIDocumentState& state, EUIDocumentItemStorage& 
         if (ui_text_span_pressed(spanI))
         {
             auto* link = (DocumentSpanLink*)span;
-            state.storage->requestURI = std::string(link->href.data, link->href.size);
+            state.storage->requestURIPath = document_uri_normalized_path(URI(link->href));
         }
     }
 }

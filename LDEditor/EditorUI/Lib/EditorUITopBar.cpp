@@ -81,13 +81,13 @@ void EditorTopBarObj::update()
 
     const float height = ctx.get_theme().get_text_row_height();
 
-    if (eui_text(&textFile, "File", height, &rect))
+    if (eui_text(textFile, "File", height, &rect))
         ui_request_popup_window(EDITOR_TOP_BAR_MENU_FILE_NAME, rect.get_pos_bl());
 
-    if (eui_text(&textEdit, "Edit", height, &rect))
+    if (eui_text(textEdit, "Edit", height, &rect))
         ui_request_popup_window(EDITOR_TOP_BAR_MENU_EDIT_NAME, rect.get_pos_bl());
 
-    if (eui_text(&textAbout, "About", height, &rect))
+    if (eui_text(textAbout, "About", height, &rect))
         ui_request_popup_window(EDITOR_TOP_BAR_MENU_ABOUT_NAME, rect.get_pos_bl());
 
     ui_push_panel(nullptr);
@@ -97,13 +97,13 @@ void EditorTopBarObj::update()
 
     EditorRequestWorkspaceLayoutEvent* requestE;
 
-    if (eui_text(&textScene, "Scene", height, &rect))
+    if (eui_text(textScene, "Scene", height, &rect))
     {
         requestE = (EditorRequestWorkspaceLayoutEvent*)ctx.enqueue_event(EDITOR_EVENT_TYPE_REQUEST_WORKSPACE_LAYOUT);
         requestE->layout = EDITOR_UI_MAIN_LAYOUT_SCENE;
     }
 
-    if (eui_text(&textDocs, "Docs", height, &rect))
+    if (eui_text(textDocs, "Docs", height, &rect))
     {
         requestE = (EditorRequestWorkspaceLayoutEvent*)ctx.enqueue_event(EDITOR_EVENT_TYPE_REQUEST_WORKSPACE_LAYOUT);
         requestE->layout = EDITOR_UI_MAIN_LAYOUT_DOCS;

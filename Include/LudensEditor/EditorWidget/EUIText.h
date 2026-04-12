@@ -11,6 +11,17 @@ struct EUITextStorage
     float radius = 0.4f;
 };
 
-bool eui_text(EUITextStorage* storage, const char* label, float height, Rect* outRect = nullptr);
+bool eui_text(EUITextStorage& storage, const char* label, float height, Rect* outRect = nullptr);
+
+struct EUITextBreadcrumbStorage
+{
+    UITextStorage text;
+    UIPanelStorage panel;
+
+    /// @brief Build breadcrumb text using '/' as separator
+    void build(const char* text);
+};
+
+int eui_text_breadcrumb(EUITextBreadcrumbStorage& storage, float height);
 
 } // namespace LD

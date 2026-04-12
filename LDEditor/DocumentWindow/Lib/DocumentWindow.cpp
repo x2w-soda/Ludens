@@ -11,6 +11,7 @@
 #include <LudensEditor/EditorContext/EditorIconAtlas.h>
 #include <LudensEditor/EditorContext/EditorWindow.h>
 #include <LudensEditor/EditorWidget/EUIDocument.h>
+#include <LudensEditor/EditorWidget/EUIText.h>
 
 namespace LD {
 
@@ -18,41 +19,44 @@ namespace LD {
 struct DocumentWindowObj : EditorWindowObj
 {
     EUIDocumentStorage documentStorage;
-    std::string currentURI;
+    EUITextBreadcrumbStorage breadcrumb;
+    std::string currentURIPath;
 
     DocumentWindowObj(const EditorWindowInfo& info)
         : EditorWindowObj(info)
     {
-        /*
-        std::string err;
-        DocumentInfo docI{};
-        docI.md = View(source, sizeof(source) - 1);
-        docI.uri = "ld://Doc/Manual";
-        Document doc = Document::create(docI, err);
-        documentStorage.build(doc);
-        */
     }
 
+    void build(Document doc);
     void pre_update();
     void update();
+    void top_bar();
 };
+
+void DocumentWindowObj::build(Document doc)
+{
+    if (!doc)
+        return;
+
+    currentURIPath = doc.get_uri_path();
+    documentStorage.requestURIPath.clear();
+    documentStorage.build(doc);
+
+    std::string str = doc.get_uri_path();
+    breadcrumb.build(str.c_str());
+}
 
 void DocumentWindowObj::pre_update()
 {
-    if (currentURI.empty())
-        documentStorage.requestURI = document_uri_default_page();
+    if (currentURIPath.empty())
+        documentStorage.requestURIPath = document_uri_default_page_path();
 
-    if (!documentStorage.requestURI.empty() && documentStorage.requestURI != currentURI)
+    if (!documentStorage.requestURIPath.empty() && documentStorage.requestURIPath != currentURIPath)
     {
-        Document doc = ctx.get_document(documentStorage.requestURI.c_str());
+        Document doc = ctx.get_document(documentStorage.requestURIPath.c_str());
 
-        if (doc)
-        {
-            // Rebuild document before imgui pass.
-            currentURI = documentStorage.requestURI;
-            documentStorage.requestURI.clear();
-            documentStorage.build(doc);
-        }
+        // Rebuild document before imgui pass.
+        build(doc);
     }
 }
 
@@ -61,10 +65,33 @@ void DocumentWindowObj::update()
     LD_PROFILE_SCOPE;
 
     begin_update_window();
+    ui_top_layout_child_axis(UI_AXIS_Y);
+
+    top_bar();
 
     eui_document(&documentStorage);
 
     end_update_window();
+}
+
+void DocumentWindowObj::top_bar()
+{
+    float barHeight = theme.get_text_row_height();
+    Color bgColor = theme.get_ui_theme().get_surface_color();
+
+    UIPanelStorage* panel = ui_push_panel(nullptr, bgColor);
+    UILayoutInfo layoutI = theme.make_hbox_layout();
+    layoutI.sizeX = UISize::grow();
+    ui_top_layout(layoutI);
+    
+    int spanI = eui_text_breadcrumb(breadcrumb, barHeight);
+    if (spanI >= 0)
+    {
+        std::string path = breadcrumb.text.get_substring(spanI);
+        documentStorage.requestURIPath = path;
+    }
+
+    ui_pop();
 }
 
 //

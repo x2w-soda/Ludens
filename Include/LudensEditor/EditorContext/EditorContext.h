@@ -152,8 +152,8 @@ struct EditorContext : Handle<struct EditorContextObj>
     /// @brief Get the local transform associated with the selected object in scene.
     bool get_selected_component_transform(TransformEx& transform);
 
-    /// @brief Get document from its URI. Could fail and return null handle.
-    Document get_document(const char* uri);
+    /// @brief Get document from its URI path. Could fail and return null handle.
+    Document get_document(const char* uriPath);
 };
 
 } // namespace LD
