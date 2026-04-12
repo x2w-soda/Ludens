@@ -22,6 +22,6 @@ struct EUITextBreadcrumbStorage
     void build(const char* text);
 };
 
-int eui_text_breadcrumb(EUITextBreadcrumbStorage& storage, float height);
+int eui_text_breadcrumb(EUITextBreadcrumbStorage& storage, float height, Color hlColor);
 
 } // namespace LD

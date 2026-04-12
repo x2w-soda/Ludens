@@ -60,7 +60,7 @@ bool eui_text(EUITextStorage& storage, const char* label, float height, Rect* ou
     return isPressed;
 }
 
-int eui_text_breadcrumb(EUITextBreadcrumbStorage& storage, float height)
+int eui_text_breadcrumb(EUITextBreadcrumbStorage& storage, float height, Color hlColor)
 {
     EditorTheme theme = eui_get_theme();
     int spanIndex = -1;
@@ -78,17 +78,21 @@ int eui_text_breadcrumb(EUITextBreadcrumbStorage& storage, float height)
         ui_push_text(&storage.text);
         ui_top_layout(layoutI);
 
-        Color spanTextColor = theme.get_ui_theme().get_on_surface_color();
-
         for (int i = 0; i < storage.text.spans.size(); i++)
         {
+            TextSpan& span = storage.text.spans[i].text;
+            Color spanTextColor = theme.get_ui_theme().get_on_surface_color();
+
+            if (span.range.size == 1 && storage.text.value[span.range.offset] == '/')
+                continue;
+
             if (ui_text_span_hovered(i))
             {
-                spanTextColor = 0x20FFFFFF;
+                spanTextColor = hlColor;
                 eui_set_window_cursor(CURSOR_TYPE_HAND);
             }
 
-            storage.text.spans[i].text.fgColor = spanTextColor;
+            span.fgColor = spanTextColor;
 
             if (ui_text_span_pressed(i))
                 spanIndex = i;

@@ -12,7 +12,7 @@ TEST_CASE("DocumentRefs")
 [](scheme://uri)
 )",
                                     "ld://Doc/Test.md");
-    CHECK(doc.get_uri() == "ld://Doc/Test.md");
+    CHECK(doc.get_uri_path() == "Test");
 
     DocumentRefs refs = doc.get_references();
     CHECK(refs.luaAPI.size() == 1);
@@ -38,7 +38,7 @@ TEST_CASE("DocumentRefs Deduplication")
 [](ld://Doc/LuaAPI/LuaScripting.md)
 )",
                                     "ld://Doc/test.md");
-    CHECK(doc.get_uri() == "ld://Doc/test.md");
+    CHECK(doc.get_uri_path() == "test");
 
     DocumentRefs refs = doc.get_references();
     CHECK(refs.luaAPI.size() == 1);

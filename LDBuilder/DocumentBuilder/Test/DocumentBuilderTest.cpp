@@ -5,6 +5,7 @@
 
 #include <Ludens/Memory/Memory.h>
 #include <Ludens/System/FileSystem.h>
+#include <LudensBuilder/DocumentBuilder/DocumentURI.h>
 
 #include <algorithm>
 #include <format>
@@ -14,10 +15,11 @@ using namespace LD;
 
 Document require_document(const char* md, const char* uri)
 {
+    std::string path = document_uri_normalized_path(URI(uri));
     std::string err;
     DocumentInfo info{};
     info.md = View(md, strlen(md));
-    info.uri = uri;
+    info.uriPath = path.c_str();
     Document doc = Document::create(info, err);
     REQUIRE(doc);
 
@@ -43,10 +45,11 @@ bool require_documents(DocumentRegistry reg, HashSet<Vector<byte>*>& storage, co
         std::string uriString = std::filesystem::relative(mdPath, docPath).string();
         std::replace(uriString.begin(), uriString.end(), '\\', '/');
         uriString = "ld://Doc/" + uriString;
+        std::string uriPath = document_uri_normalized_path(URI(uriString));
 
         DocumentInfo info{};
         info.md = View((const char*)mdStorage->data(), mdStorage->size());
-        info.uri = uriString.c_str();
+        info.uriPath = uriPath.c_str();
         REQUIRE(reg.add_document(info, err));
 
         std::cout << std::format("DocumentBuilderTest: loaded {}", uriString) << std::endl;
