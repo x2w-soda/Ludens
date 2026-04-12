@@ -34,6 +34,7 @@ struct TextEditLite : Handle<struct TextEditLiteObj>
 
     /// @brief Get selection byte range.
     Range get_selection();
+    void set_selection(Range selection);
 
     /// @brief Get byte size.
     size_t size();

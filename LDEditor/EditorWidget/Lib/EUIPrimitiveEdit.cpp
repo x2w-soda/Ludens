@@ -10,28 +10,26 @@ namespace LD {
 
 void EUIU32Storage::init(uint32_t u32)
 {
-    LD_ASSERT(u32Edit.editor);
-    u32Edit.editor.set_string(std::to_string(u32));
+    u32Edit.set_text(std::to_string(u32));
 }
 
 void EUIF32Storage::init(float f32)
 {
-    LD_ASSERT(f32Edit.editor);
-    f32Edit.editor.set_string(std::to_string(f32));
+    f32Edit.set_text(std::to_string(f32));
 }
 
 void EUIVec2Storage::init(const Vec2& vec2)
 {
-    vec2Edit[0].editor.set_string(std::to_string(vec2.x));
-    vec2Edit[1].editor.set_string(std::to_string(vec2.y));
+    vec2Edit[0].set_text(std::to_string(vec2.x));
+    vec2Edit[1].set_text(std::to_string(vec2.y));
 }
 
 void EUIRectStorage::init(Rect rect)
 {
-    rectEdit[0].editor.set_string(std::to_string(rect.x));
-    rectEdit[1].editor.set_string(std::to_string(rect.y));
-    rectEdit[2].editor.set_string(std::to_string(rect.w));
-    rectEdit[3].editor.set_string(std::to_string(rect.h));
+    rectEdit[0].set_text(std::to_string(rect.x));
+    rectEdit[1].set_text(std::to_string(rect.y));
+    rectEdit[2].set_text(std::to_string(rect.w));
+    rectEdit[3].set_text(std::to_string(rect.h));
 }
 
 bool eui_u32_edit(EUIU32Storage* storage, const char* label, uint32_t* u32)

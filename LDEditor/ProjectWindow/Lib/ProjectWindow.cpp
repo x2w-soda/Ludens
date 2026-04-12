@@ -117,8 +117,8 @@ struct CreateProjectStorage
 
 void CreateProjectStorage::validate_input()
 {
-    std::string projectName = projectNameEdit.editor.get_string();
-    FS::Path projectDir(projectDirEdit.editor.get_string());
+    std::string projectName = projectNameEdit.get_text();
+    FS::Path projectDir(projectDirEdit.get_text());
     bool parentDirExists = FS::is_directory(projectDir.parent_path());
     bool projectDirExists = FS::is_directory(projectDir);
 
@@ -218,8 +218,8 @@ bool ProjectWindowObj::ui_create_project()
     if (btnPressed == 2)
     {
         auto* event = (EditorActionCreateProjectEvent*)ctx.enqueue_event(EDITOR_EVENT_TYPE_ACTION_CREATE_PROJECT);
-        event->projectName = createProject.projectNameEdit.editor.get_string();
-        event->projectSchema = FS::Path(createProject.projectDirEdit.editor.get_string()) / FS::Path("project.toml");
+        event->projectName = createProject.projectNameEdit.get_text();
+        event->projectSchema = FS::Path(createProject.projectDirEdit.get_text()) / FS::Path("project.toml");
     }
 
     return false;

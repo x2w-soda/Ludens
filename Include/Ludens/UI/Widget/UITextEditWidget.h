@@ -17,12 +17,13 @@ enum UITextEditDomain
 typedef void (*UITextEditOnChange)(UIWidget widget, View text, void* user);
 typedef void (*UITextEditOnSubmit)(UIWidget widget, View text, void* user);
 
-struct UITextEditStorage
+class UITextEditStorage
 {
-    TextEditLite editor = {};             /// text buffer editor handle
+    friend struct UITextEditWidgetObj;
+
+public:
     std::string original = {};            /// text value before edit
     UIFont font = {};                     /// displayed font
-    UITextEditDomain domain = {};         /// input domain, filters key input
     float fontSize = UIFont::base_size(); /// rendered size
 
     UITextEditStorage();
@@ -31,7 +32,7 @@ struct UITextEditStorage
 
     UITextEditStorage& operator=(const UITextEditStorage& other);
 
-    inline std::string get_text() { return editor.get_string(); }
+    inline std::string get_text() { return mEditor.get_string(); }
 
     /// @brief Set text field value, does not trigger on_change callbacks.
     void set_text(const std::string& text);
@@ -39,6 +40,12 @@ struct UITextEditStorage
     /// @brief Domain influences how key input is treated and may change the final text before submission.
     /// @note Upon domain change, text value is reset.
     void set_domain(UITextEditDomain domain);
+
+private:
+    UITextEditDomain mDomain = UI_TEXT_EDIT_DOMAIN_STRING;
+    TextEditLite mEditor = {};
+    size_t mDragBeginPos = 0;
+    size_t mDragPos = 0;
 };
 
 struct UITextEditWidget : UIWidget

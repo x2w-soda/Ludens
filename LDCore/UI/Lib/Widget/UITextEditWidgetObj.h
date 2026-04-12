@@ -20,6 +20,7 @@ struct UITextEditWidgetObj
     void finish_edit();
     void cancel_edit();
     void on_mouse_down_event(const UIEvent& event);
+    void on_mouse_drag_event(const UIEvent& event);
     void on_key_down_event(const UIEvent& event);
     void domain_string_on_key(const UIEvent& event, bool& hasChanged, bool& hasSubmitted);
     void domain_uint_on_key(const UIEvent& event, bool& hasChanged, bool& hasSubmitted);

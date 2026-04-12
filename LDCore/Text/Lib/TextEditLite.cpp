@@ -23,6 +23,8 @@ struct TextEditLiteObj
     bool deletion();
     void add(char c);
     void select_all();
+    bool exit_selection_left();
+    bool exit_selection_right();
 };
 
 void TextEditLiteObj::cursor_inc()
@@ -112,6 +114,26 @@ void TextEditLiteObj::select_all()
 {
     selection = Range(0, buffer.size());
     cursor = 0;
+}
+
+bool TextEditLiteObj::exit_selection_left()
+{
+    if (!selection)
+        return false;
+
+    cursor = selection.offset;
+    selection.size = 0;
+    return true;
+}
+
+bool TextEditLiteObj::exit_selection_right()
+{
+    if (!selection)
+        return false;
+
+    cursor = selection.offset + selection.size;
+    selection.size = 0;
+    return true;
 }
 
 TextEditLite TextEditLite::create()
@@ -213,11 +235,13 @@ TextEditLiteResult TextEditLite::key(KeyValue value)
     }
     else if (code == KEY_CODE_LEFT)
     {
-        mObj->cursor_dec();
+        if (!mObj->exit_selection_left())
+            mObj->cursor_dec();
     }
     else if (code == KEY_CODE_RIGHT)
     {
-        mObj->cursor_inc();
+        if (!mObj->exit_selection_right())
+            mObj->cursor_inc();
     }
     else if (code == KEY_CODE_ENTER)
     {
@@ -241,6 +265,11 @@ void TextEditLite::set_cursor(size_t pos)
 Range TextEditLite::get_selection()
 {
     return mObj->selection;
+}
+
+void TextEditLite::set_selection(Range selection)
+{
+    mObj->selection = Range::clamp_size(selection, mObj->buffer.size());
 }
 
 size_t TextEditLite::size()
