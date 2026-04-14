@@ -3,6 +3,8 @@
 #include <Ludens/Header/Math/Math.h>
 #include <Ludens/Header/Math/Vec2.h>
 
+#include <algorithm>
+
 namespace LD {
 
 template <typename T>
@@ -185,6 +187,30 @@ struct TRect
         r.w += size * (T)2;
         r.h += size * (T)2;
         return r;
+    }
+
+    static inline TRect get_union(const TRect& lhs, const TRect& rhs)
+    {
+        T minX = std::min<T>(lhs.x, rhs.x);
+        T minY = std::min<T>(lhs.y, rhs.y);
+        T maxX = std::max<T>(lhs.x + lhs.w, rhs.x + rhs.w);
+        T maxY = std::max<T>(lhs.y + lhs.h, rhs.y + rhs.h);
+
+        return TRect(minX, minY, maxX - minX, maxY - minY);
+    }
+
+    static inline TRect get_intersect(const TRect& lhs, const TRect& rhs)
+    {
+        T minX = std::max<T>(lhs.x, rhs.x);
+        T minY = std::max<T>(lhs.y, rhs.y);
+        T maxX = std::min<T>(lhs.x + lhs.w, rhs.x + rhs.w);
+        T maxY = std::min<T>(lhs.y + lhs.h, rhs.y + rhs.h);
+        TRect rect(minX, minY, maxX - minX, maxY - minY);
+
+        if (rect.w <= (T)0 || rect.h <= (T)0)
+            return TRect((T)0, (T)0, (T)0, (T)0);
+
+        return rect;
     }
 
     /// @brief Get AABB of an AABB rotated around it's center.

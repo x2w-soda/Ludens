@@ -36,6 +36,7 @@ set(MODULE_TEST
     Test/RangeTest.cpp
     Test/ViewTest.cpp
     Test/HashTest.cpp
+    Test/RectTest.cpp
     Test/GeometryTest.cpp
     Test/ColorTest.cpp
     Test/IDHandleTest.cpp
