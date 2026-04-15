@@ -81,6 +81,9 @@ public: // layout and visibility
     /// @brief Get widget extent in screen space.
     Vec2 get_size();
 
+    /// @brief Get union of children rects in screen space.
+    Rect get_child_rect_union();
+
     /// @brief get mouse position relative to widget origin
     /// @param pos output mouse position if mouse is within widget
     /// @return true if mouse is within widget rect

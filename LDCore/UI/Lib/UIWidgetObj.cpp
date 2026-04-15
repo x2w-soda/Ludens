@@ -175,6 +175,11 @@ Vec2 UIWidget::get_size()
     return mObj->L->rect.get_size();
 }
 
+Rect UIWidget::get_child_rect_union()
+{
+    return mObj->get_child_rect_union();
+}
+
 UITheme UIWidget::get_theme()
 {
     return mObj->theme;
