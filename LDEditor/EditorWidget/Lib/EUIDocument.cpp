@@ -12,7 +12,7 @@ namespace LD {
 /// @brief Document imgui state
 struct EUIDocumentState
 {
-    EUIDocumentStorage* storage;
+    EUIDocument* eui;
     size_t itemIndex;
     EditorTheme theme;
     EditorDocumentTheme docTheme;
@@ -22,20 +22,20 @@ struct EUIDocumentState
 
 struct EUIDocumentMeta
 {
-    void (*build_fn)(DocumentItem* src, EUIDocumentItemStorage& dst);
-    void (*imgui_fn)(EUIDocumentState& state, EUIDocumentItemStorage& item);
+    void (*build_fn)(DocumentItem* src, EUIDocumentItem& dst);
+    void (*imgui_fn)(EUIDocumentState& state, EUIDocumentItem& item);
 };
 
 static std::string document_span_to_text_span(TView<DocumentSpan*> srcSpans, Vector<UITextSpan>& dstSpans);
-static void build_document_item_heading(DocumentItem* src, EUIDocumentItemStorage& dst);
-static void build_document_item_paragraph(DocumentItem* src, EUIDocumentItemStorage& dst);
-static void build_document_item_code_block(DocumentItem* src, EUIDocumentItemStorage& dst);
-static void build_document_item_list_entry(DocumentItem* src, EUIDocumentItemStorage& dst);
-static void eui_document_item_heading(EUIDocumentState& state, EUIDocumentItemStorage& storage);
-static void eui_document_item_paragraph(EUIDocumentState& state, EUIDocumentItemStorage& storage);
-static void eui_document_item_code_block(EUIDocumentState& state, EUIDocumentItemStorage& storage);
-static void eui_document_item_list_entry(EUIDocumentState& state, EUIDocumentItemStorage& storage);
-static void eui_document_spans(EUIDocumentState& state, EUIDocumentItemStorage& storage, UITextStorage* testS);
+static void build_document_item_heading(DocumentItem* src, EUIDocumentItem& dst);
+static void build_document_item_paragraph(DocumentItem* src, EUIDocumentItem& dst);
+static void build_document_item_code_block(DocumentItem* src, EUIDocumentItem& dst);
+static void build_document_item_list_entry(DocumentItem* src, EUIDocumentItem& dst);
+static void eui_document_item_heading(EUIDocumentState& state, EUIDocumentItem& storage);
+static void eui_document_item_paragraph(EUIDocumentState& state, EUIDocumentItem& storage);
+static void eui_document_item_code_block(EUIDocumentState& state, EUIDocumentItem& storage);
+static void eui_document_item_list_entry(EUIDocumentState& state, EUIDocumentItem& storage);
+static void eui_document_spans(EUIDocumentState& state, EUIDocumentItem& storage, UITextData* testS);
 
 // clang-format off
 static EUIDocumentMeta sEUIDocumentMeta[] = {
@@ -72,7 +72,7 @@ static std::string document_span_to_text_span(TView<DocumentSpan*> srcSpans, Vec
     return str;
 }
 
-static void build_document_item_heading(DocumentItem* src, EUIDocumentItemStorage& dst)
+static void build_document_item_heading(DocumentItem* src, EUIDocumentItem& dst)
 {
     LD_ASSERT(src->type == DOCUMENT_ITEM_HEADING);
 
@@ -85,7 +85,7 @@ static void build_document_item_heading(DocumentItem* src, EUIDocumentItemStorag
     dst.text.set_fg_color(theme.get_ui_theme().get_on_surface_color());
 }
 
-static void build_document_item_paragraph(DocumentItem* src, EUIDocumentItemStorage& dst)
+static void build_document_item_paragraph(DocumentItem* src, EUIDocumentItem& dst)
 {
     LD_ASSERT(src->type == DOCUMENT_ITEM_PARAGRAPH);
 
@@ -99,7 +99,7 @@ static void build_document_item_paragraph(DocumentItem* src, EUIDocumentItemStor
     dst.text.set_fg_color(theme.get_ui_theme().get_on_surface_color());
 }
 
-static void build_document_item_code_block(DocumentItem* src, EUIDocumentItemStorage& dst)
+static void build_document_item_code_block(DocumentItem* src, EUIDocumentItem& dst)
 {
     LD_ASSERT(src->type == DOCUMENT_ITEM_CODE_BLOCK);
 
@@ -117,7 +117,7 @@ static void build_document_item_code_block(DocumentItem* src, EUIDocumentItemSto
     dst.text.set_fg_color(theme.get_ui_theme().get_on_surface_color());
 }
 
-static void build_document_item_list_entry(DocumentItem* src, EUIDocumentItemStorage& dst)
+static void build_document_item_list_entry(DocumentItem* src, EUIDocumentItem& dst)
 {
     LD_ASSERT(src->type == DOCUMENT_ITEM_LIST_ENTRY);
 
@@ -131,7 +131,7 @@ static void build_document_item_list_entry(DocumentItem* src, EUIDocumentItemSto
     dst.text.set_fg_color(theme.get_ui_theme().get_on_surface_color());
 }
 
-static void eui_document_item_heading(EUIDocumentState& state, EUIDocumentItemStorage& storage)
+static void eui_document_item_heading(EUIDocumentState& state, EUIDocumentItem& storage)
 {
     LD_ASSERT(storage.item->type == DOCUMENT_ITEM_HEADING);
 
@@ -139,52 +139,55 @@ static void eui_document_item_heading(EUIDocumentState& state, EUIDocumentItemSt
     auto* heading = (DocumentItemHeading*)storage.item;
     ui_push_panel(nullptr);
     ui_top_layout(state.docTheme.get_heading_layout(heading->level, headingFontSize));
-    UITextStorage* text = ui_push_text(&storage.text);
-    text->fontSize = headingFontSize;
+    storage.text.fontSize = headingFontSize;
+    (void)ui_push_text(&storage.text);
     ui_pop();
     ui_pop();
 }
 
-static void eui_document_item_paragraph(EUIDocumentState& state, EUIDocumentItemStorage& storage)
+static void eui_document_item_paragraph(EUIDocumentState& state, EUIDocumentItem& storage)
 {
     LD_ASSERT(storage.item->type == DOCUMENT_ITEM_PARAGRAPH);
 
     ui_push_panel(nullptr);
     ui_top_layout(state.docTheme.get_paragraph_layout());
-    UITextStorage* text = ui_push_text(&storage.text);
-    text->fontSize = state.fontSize;
-    eui_document_spans(state, storage, text);
+    storage.text.fontSize = state.fontSize;
+    (void)ui_push_text(&storage.text);
+    eui_document_spans(state, storage, &storage.text);
     ui_pop();
     ui_pop();
 }
 
-static void eui_document_item_code_block(EUIDocumentState& state, EUIDocumentItemStorage& storage)
+static void eui_document_item_code_block(EUIDocumentState& state, EUIDocumentItem& storage)
 {
     LD_ASSERT(storage.item->type == DOCUMENT_ITEM_CODE_BLOCK);
 
     ui_push_panel(nullptr, state.uiTheme.get_field_color());
     ui_top_layout(state.docTheme.get_code_block_layout());
-    UITextStorage* text = ui_push_text(&storage.text);
-    text->fontSize = state.fontSize;
+    storage.text.fontSize = state.fontSize;
+    (void)ui_push_text(&storage.text);
     ui_pop();
     ui_pop();
 }
 
-static void eui_document_item_list_entry(EUIDocumentState& state, EUIDocumentItemStorage& storage)
+static void eui_document_item_list_entry(EUIDocumentState& state, EUIDocumentItem& storage)
 {
     LD_ASSERT(storage.item->type == DOCUMENT_ITEM_LIST_ENTRY);
 
     ui_push_panel(nullptr);
     ui_top_layout(state.docTheme.get_paragraph_layout());
-    UITextStorage* text = ui_push_text(&storage.text);
-    text->fontSize = state.fontSize; // TODO: list item font size?
+    storage.text.fontSize = state.fontSize; // TODO: list item font size?
+    (void)ui_push_text(&storage.text);
     ui_pop();
     ui_pop();
 }
 
-static void eui_document_spans(EUIDocumentState& state, EUIDocumentItemStorage& item, UITextStorage* testS)
+static void eui_document_spans(EUIDocumentState& state, EUIDocumentItem& item, UITextData* textS)
 {
     TView<DocumentSpan*> spans = item.item->spans;
+    Vector<UITextSpan>& uiSpans = textS->get_spans();
+
+    LD_ASSERT(spans.size == uiSpans.size());
 
     for (int spanI = 0; spanI < (int)spans.size; spanI++)
     {
@@ -200,65 +203,84 @@ static void eui_document_spans(EUIDocumentState& state, EUIDocumentItemStorage& 
             eui_set_window_cursor(CURSOR_TYPE_HAND);
         }
 
-        testS->spans[spanI].text.fgColor = spanTextColor;
+        uiSpans[spanI].text.fgColor = spanTextColor;
 
         if (ui_text_span_pressed(spanI))
         {
             auto* link = (DocumentSpanLink*)span;
-            state.storage->requestURIPath = document_uri_normalized_path(URI(link->href));
+            state.eui->set_request_uri_path(document_uri_normalized_path(URI(link->href)));
         }
     }
 }
 
-void eui_document(EUIDocumentStorage* storage)
+void EUIDocument::push()
 {
     LD_PROFILE_SCOPE;
 
-    if (!storage || !storage->document)
+    if (!mDocument)
         return;
 
     EUIDocumentState state{};
-    state.storage = storage;
+    state.eui = this;
     state.theme = eui_get_theme();
     state.docTheme = state.theme.get_document_theme();
     state.uiTheme = state.theme.get_ui_theme();
     state.fontSize = state.theme.get_font_size();
 
-    EditorContext ctx = eui_get_context();
-    UIScrollStorage* scroll = ui_push_scroll(&storage->scroll);
-    scroll->bgColor = state.uiTheme.get_surface_color();
-
     UILayoutInfo layoutI = state.docTheme.get_scroll_layout();
-    ui_top_layout(layoutI);
+    mScroll.bgColor = state.uiTheme.get_surface_color();
+    mScroll.barColor = state.uiTheme.get_selection_color();
+    mScroll.push(&layoutI);
 
-    for (size_t i = 0; i < storage->items.size(); i++)
+    for (size_t i = 0; i < mItems.size(); i++)
     {
         state.itemIndex = i;
 
-        EUIDocumentItemStorage& itemS = storage->items[i];
+        EUIDocumentItem& itemS = mItems[i];
         sEUIDocumentMeta[(int)itemS.item->type].imgui_fn(state, itemS);
     }
-
-    ui_pop();
 }
 
-void EUIDocumentStorage::build(Document doc)
+void EUIDocument::pop()
+{
+    mScroll.pop();
+}
+
+bool EUIDocument::get_request_uri_path(std::string& outPath)
+{
+    if (!mRequestURIPath.empty())
+    {
+        outPath = mRequestURIPath;
+        mRequestURIPath.clear(); // consume
+        return true;
+    }
+
+    return false;
+}
+
+void EUIDocument::set_request_uri_path(const std::string& path)
+{
+    mRequestURIPath = path;
+}
+
+void EUIDocument::build(Document doc)
 {
     LD_PROFILE_SCOPE;
 
     if (!doc)
         return;
 
-    document = doc;
+    mDocument = doc;
+    mRequestURIPath.clear();
 
-    TView<DocumentItem*> itemV = document.get_items();
-    items.resize(itemV.size);
+    TView<DocumentItem*> itemV = mDocument.get_items();
+    mItems.resize(itemV.size);
 
     for (size_t i = 0; i < itemV.size; i++)
     {
         DocumentItem* src = itemV.data[i];
 
-        sEUIDocumentMeta[(int)src->type].build_fn(src, items[i]);
+        sEUIDocumentMeta[(int)src->type].build_fn(src, mItems[i]);
     }
 }
 

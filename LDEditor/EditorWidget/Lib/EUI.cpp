@@ -45,11 +45,11 @@ void pop_prop_edit_vbox()
     ui_pop();
 }
 
-bool push_text_edit_f32(UITextEditStorage* edit, float* f32, std::string& str, bool normalized)
+bool push_text_edit_f32(UITextEditData* edit, float* f32, std::string& str, bool normalized)
 {
     bool commit = false;
 
-    edit = ui_push_text_edit(edit);
+    (void)ui_push_text_edit(edit);
     edit->set_domain(UI_TEXT_EDIT_DOMAIN_F32);
     if (!ui_text_edit_is_editing())
         edit->set_text(std::format("{:8.3f}", *f32));

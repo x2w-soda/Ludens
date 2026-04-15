@@ -47,8 +47,8 @@ bool eui_u32_edit(EUIU32Storage* storage, const char* label, uint32_t* u32)
         ui_top_layout(layoutI);
         ui_pop();
 
-        UITextEditStorage* edit = &storage->u32Edit;
-        edit = ui_push_text_edit(edit);
+        UITextEditData* edit = &storage->u32Edit;
+        ui_push_text_edit(edit);
         edit->set_domain(UI_TEXT_EDIT_DOMAIN_UINT);
         if (!ui_text_edit_is_editing())
             edit->set_text(std::format("{}", *u32));
@@ -70,7 +70,6 @@ bool eui_f32_edit(EUIF32Storage* storage, const char* label, float* f32)
 
     bool hasChanged = false;
     EditorTheme theme = eui_get_theme();
-    UITextEditStorage* edit;
     std::string str;
 
     push_prop_hbox();
@@ -95,7 +94,7 @@ bool eui_vec2_edit(EUIVec2Storage* storage, const char* label, Vec2* v)
 
     bool hasChanged = false;
     EditorTheme theme = eui_get_theme();
-    UITextEditStorage* edit;
+    UITextEditData* edit;
     std::string str;
 
     push_prop_hbox();
@@ -123,7 +122,7 @@ bool eui_vec3_edit(EUIVec3Storage* storage, const char* label, Vec3* v)
 {
     bool hasChanged = false;
     EditorTheme theme = eui_get_theme();
-    UITextEditStorage* edit;
+    UITextEditData* edit;
     std::string str;
 
     push_prop_hbox();
@@ -174,7 +173,7 @@ bool eui_rect_edit(EUIRectStorage* storage, const char* label, Rect* rect, bool 
 {
     bool hasChanged = false;
     EditorTheme theme = eui_get_theme();
-    UITextEditStorage* edit;
+    UITextEditData* edit;
     std::string str;
 
     push_prop_hbox();
@@ -227,15 +226,15 @@ bool eui_toggle_edit(EUIToggleStorage* storage, const char* label, bool* state)
         ui_top_layout(layoutI);
         ui_pop();
 
-        UIToggleStorage* toggle = ui_push_toggle(&storage->toggle);
+        ui_push_toggle(&storage->toggle);
         ui_top_layout_size(UISize::fixed(80.0f), layoutI.sizeY);
         if (ui_toggle_is_pressed())
         {
             hasChanged = true;
-            *state = toggle->state;
+            *state = storage->toggle.state;
         }
         else
-            toggle->state = *state;
+            storage->toggle.state = *state;
         ui_pop();
     }
     pop_prop_hbox();

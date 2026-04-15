@@ -5,7 +5,7 @@
 
 namespace LD {
 
-bool eui_row_label_text_edit(const char* label, UITextEditStorage* edit, std::string& outText)
+bool eui_row_label_text_edit(const char* label, UITextEditData* edit, std::string& outText)
 {
     EditorTheme theme = eui_get_theme();
     UILayoutInfo layoutI = theme.make_text_row_layout();
@@ -34,7 +34,7 @@ bool eui_row_label(int rowIndex, const char* label, bool isHighlighted)
     layoutI.sizeX = UISize::grow();
     layoutI.sizeY = UISize::fixed(textRowHeight);
 
-    UIPanelStorage* panelS = ui_push_panel(nullptr);
+    auto* panelData = (UIPanelData*)ui_push_panel(nullptr).get_data();
     ui_top_layout(layoutI);
 
     Color panelColor = theme.get_ui_theme().get_surface_color();
@@ -47,7 +47,7 @@ bool eui_row_label(int rowIndex, const char* label, bool isHighlighted)
     if (ui_top_is_hovered())
         panelColor = Color::lift(panelColor, 0.06f);
 
-    panelS->color = panelColor;
+    panelData->color = panelColor;
 
     bool isSelected = false;
 
@@ -66,7 +66,7 @@ bool eui_row_label(int rowIndex, const char* label, bool isHighlighted)
     return isSelected;
 }
 
-int eui_row_btn_btn(UIButtonStorage* btnLeft, UIButtonStorage* btnRight)
+int eui_row_btn_btn(UIButtonData* btnLeft, UIButtonData* btnRight)
 {
     int hasPressed = 0;
 
@@ -102,7 +102,7 @@ int eui_row_btn_btn(UIButtonStorage* btnLeft, UIButtonStorage* btnRight)
     return hasPressed;
 }
 
-void eui_push_row_scroll(UIScrollStorage* scroll)
+void eui_push_row_scroll(UIScrollData* scroll)
 {
     EditorTheme theme = eui_get_theme();
 
@@ -111,8 +111,8 @@ void eui_push_row_scroll(UIScrollStorage* scroll)
     layoutI.childGap = theme.get_child_gap();
     layoutI.sizeX = UISize::grow();
     layoutI.sizeY = UISize::grow();
-    scroll = ui_push_scroll(scroll);
     scroll->bgColor = theme.get_ui_theme().get_surface_color();
+    ui_push_scroll(scroll);
     ui_top_layout(layoutI);
 }
 

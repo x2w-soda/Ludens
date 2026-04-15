@@ -9,9 +9,9 @@ bool eui_icon(EUIIconStorage& storage, EditorIcon iconType, float iconSize)
 {
     EditorContext ctx = eui_get_context();
 
-    UIImageStorage* image = ui_push_image(&storage.image, iconSize, iconSize);
-    image->image = ctx.get_editor_icon_atlas();
-    image->rect = EditorIconAtlas::get_icon_rect(iconType);
+    ui_push_image(&storage.image, iconSize, iconSize);
+    storage.image.image = ctx.get_editor_icon_atlas();
+    storage.image.rect = EditorIconAtlas::get_icon_rect(iconType);
     ui_top_user(&storage);
     ui_top_draw([](UIWidget widget, ScreenRenderComponent renderer, void* user) {
         auto& storage = *(EUIIconStorage*)user;

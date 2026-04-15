@@ -22,7 +22,7 @@ int eui_list_menu(EditorTheme theme, int optionCount, const char** options)
 
     for (int i = 0; i < optionCount; i++)
     {
-        UIPanelStorage* panelS = ui_push_panel(nullptr);
+        UIPanelData* panelS = (UIPanelData*)ui_push_panel(nullptr).get_data();
 
         ui_top_layout(optionPanelLayout);
 

@@ -7,7 +7,7 @@ namespace LD {
 
 struct EUIIconStorage
 {
-    UIImageStorage image;
+    UIImageData image;
     Color bgColor = 0;
 };
 

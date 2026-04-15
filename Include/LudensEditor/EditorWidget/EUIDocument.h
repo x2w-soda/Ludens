@@ -4,27 +4,34 @@
 #include <Ludens/UI/Widget/UIScrollWidget.h>
 #include <Ludens/UI/Widget/UITextWidget.h>
 #include <LudensBuilder/DocumentBuilder/Document.h>
+#include <LudensEditor/EditorWidget/EUIScroll.h>
 
 namespace LD {
 
-struct EUIDocumentItemStorage
+struct EUIDocumentItem
 {
     DocumentItem* item;
-    UITextStorage text;
+    UITextData text;
 };
 
-struct EUIDocumentStorage
+class EUIDocument
 {
-    Document document = {};
-    UIScrollStorage scroll;
-    Vector<EUIDocumentItemStorage> items;
-    std::string requestURIPath = {}; // if not empty, user should rebuild from the requested URI
-
+public:
     /// @brief Build storage from document.
     /// @param doc Document to display.
     void build(Document doc);
-};
 
-void eui_document(EUIDocumentStorage* storage);
+    void push();
+    void pop();
+
+    bool get_request_uri_path(std::string& outPath);
+    void set_request_uri_path(const std::string& path);
+
+private:
+    Document mDocument = {};
+    EUIScroll mScroll;
+    Vector<EUIDocumentItem> mItems;
+    std::string mRequestURIPath = {}; // if not empty, user should rebuild from the requested URI
+};
 
 } // namespace LD

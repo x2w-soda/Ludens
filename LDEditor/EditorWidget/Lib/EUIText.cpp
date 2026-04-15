@@ -34,9 +34,9 @@ bool eui_text(EUITextStorage& storage, const char* label, float height, Rect* ou
     layoutI.sizeX = UISize::fit();
     layoutI.sizeY = UISize::fixed(height);
     layoutI.childPadding = UIPadding::left_right(4.0f, 4.0f);
-    UIPanelStorage* panel = ui_push_panel(&storage.panel);
-    panel->color = 0;
-    panel->radius = storage.radius;
+    ui_push_panel(&storage.panel);
+    storage.panel.color = 0;
+    storage.panel.radius = storage.radius;
     if (ui_top_is_hovered())
         storage.panel.color = theme.get_ui_theme().get_surface_color_lifted();
 
@@ -78,12 +78,15 @@ int eui_text_breadcrumb(EUITextBreadcrumbStorage& storage, float height, Color h
         ui_push_text(&storage.text);
         ui_top_layout(layoutI);
 
-        for (int i = 0; i < storage.text.spans.size(); i++)
+        Vector<UITextSpan>& spans = storage.text.get_spans();
+        const std::string& value = storage.text.get_value();
+
+        for (size_t i = 0; i < spans.size(); i++)
         {
-            TextSpan& span = storage.text.spans[i].text;
+            TextSpan& span = spans[i].text;
             Color spanTextColor = theme.get_ui_theme().get_on_surface_color();
 
-            if (span.range.size == 1 && storage.text.value[span.range.offset] == '/')
+            if (span.range.size == 1 && value[span.range.offset] == '/')
                 continue;
 
             if (ui_text_span_hovered(i))

@@ -6,8 +6,8 @@ namespace LD {
 
 struct EUITextStorage
 {
-    UITextStorage text;
-    UIPanelStorage panel;
+    UITextData text;
+    UIPanelData panel;
     float radius = 0.4f;
 };
 
@@ -15,8 +15,8 @@ bool eui_text(EUITextStorage& storage, const char* label, float height, Rect* ou
 
 struct EUITextBreadcrumbStorage
 {
-    UITextStorage text;
-    UIPanelStorage panel;
+    UITextData text;
+    UIPanelData panel;
 
     /// @brief Build breadcrumb text using '/' as separator
     void build(const char* text);

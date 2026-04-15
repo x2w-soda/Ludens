@@ -6,7 +6,7 @@ namespace LD {
 
 struct EUISegmentControlStorage
 {
-    UIButtonStorage buttons[3];
+    UIButtonData buttons[3];
 };
 
 int eui_segment_control(EUISegmentControlStorage& storage, const char* label, const char* options[3], float optionWidth = 0.0f);

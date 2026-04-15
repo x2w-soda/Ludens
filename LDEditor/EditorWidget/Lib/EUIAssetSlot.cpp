@@ -30,7 +30,7 @@ bool eui_asset_slot(AssetID assetID, AssetType assetType)
         ui_top_layout(layoutI);
         ui_pop();
 
-        UITextStorage* text = ui_push_text(nullptr, assetName);
+        UITextData* text = (UITextData*)ui_push_text(nullptr, assetName).get_data();
         text->bgColor = theme.get_ui_theme().get_field_color();
         ui_top_layout(layoutI);
         if (ui_top_mouse_down(mouseVal, mousePos) && mouseVal.button() == MOUSE_BUTTON_LEFT)
