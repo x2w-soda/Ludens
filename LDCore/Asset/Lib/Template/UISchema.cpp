@@ -72,6 +72,7 @@ struct
 } sUISchemaTable[] = {
     {UI_WIDGET_WINDOW,    nullptr,                                    nullptr},
     {UI_WIDGET_SCROLL,    nullptr,                                    nullptr},
+    {UI_WIDGET_SCROLL_BAR,nullptr,                                    nullptr},
     {UI_WIDGET_BUTTON,    &UISchemaSaver::save_ui_button,     &UISchemaLoader::load_ui_button},
     {UI_WIDGET_SLIDER,    nullptr,                                    nullptr},
     {UI_WIDGET_TOGGLE,    nullptr,                                    nullptr},
@@ -82,6 +83,8 @@ struct
 };
 // clang-format on
 
+static_assert(sizeof(sUISchemaTable) / sizeof(*sUISchemaTable) == (size_t)UI_WIDGET_TYPE_COUNT);
+
 void UISchemaSaver::save_widget_subtree(uint32_t idx)
 {
     LD_ASSERT(mWriter.is_array_table_scope());
@@ -90,7 +93,7 @@ void UISchemaSaver::save_widget_subtree(uint32_t idx)
 
     mWriter.begin_table();
 
-    std::string typeStr(get_ui_widget_type_cstr(entry->type));
+    std::string typeStr(UIWidget::get_type_cstr(entry->type));
     mWriter.key("type").write_string(typeStr);
     mWriter.key("name").write_string(entry->name);
     mWriter.key("index").write_u32(idx);
@@ -383,7 +386,7 @@ bool UISchemaLoader::load_widget_toml(UISchema::Status& err)
 
     UIWidgetType type;
     std::string typeStr;
-    if (!mReader.read_string("type", typeStr) || !get_ui_widget_type_from_cstr(type, typeStr.c_str()))
+    if (!mReader.read_string("type", typeStr) || !UIWidget::get_type_from_cstr(type, typeStr.c_str()))
         return false;
 
     UITemplateEntry* entry = mTmpl->allocate_entry(type);

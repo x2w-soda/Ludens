@@ -74,7 +74,7 @@ TEST_CASE("UITemplate")
     CHECK(widgets[0].get_type() == UI_WIDGET_PANEL);
     CHECK(widgets[1].get_type() == UI_WIDGET_IMAGE);
 
-    widgets[0].node().get_children(widgets);
+    widgets[0].get_children(widgets);
     CHECK(widgets.size() == 1);
     CHECK(widgets[0].get_type() == UI_WIDGET_IMAGE);
 

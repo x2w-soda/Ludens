@@ -47,10 +47,15 @@ UILayoutInfo UITextEditWidgetObj::default_layout()
 
 void UITextEditWidgetObj::startup(UIWidgetObj* obj)
 {
+    UIContextObj* ctx = obj->ctx();
     UITextEditWidgetObj& self = obj->U->textEdit;
     new (&self) UITextEditWidgetObj();
     self.connect(obj);
-    self.get_data().font = obj->ctx()->fontDefault;
+
+    UITextEditData& data = self.get_data();
+    data.font = ctx->fontDefault;
+    data.bgColor = ctx->theme.get_field_color();
+    data.bgColorEdit = data.bgColor;
 
     obj->flags |= UI_WIDGET_FLAG_FOCUSABLE_BIT;
 }
@@ -65,12 +70,12 @@ void UITextEditWidgetObj::cleanup(UIWidgetObj* obj)
 bool UITextEditWidgetObj::on_event(UIWidgetObj* obj, const UIEvent& event)
 {
     UITextEditWidgetObj& self = obj->U->textEdit;
+    const UITextEditData& data = self.get_data();
 
     switch (event.type)
     {
     case UI_EVENT_KEY_DOWN:
-        self.on_key_down_event(event);
-        return true;
+        return self.on_key_down_event(event);
     case UI_EVENT_MOUSE_DOWN:
         self.on_mouse_down_event(event);
         return true;
@@ -78,7 +83,8 @@ bool UITextEditWidgetObj::on_event(UIWidgetObj* obj, const UIEvent& event)
         self.on_mouse_drag_event(event);
         return true;
     case UI_EVENT_FOCUS_ENTER:
-        self.begin_edit();
+        if (data.beginEditOnFocus)
+            self.begin_edit();
         return true;
     case UI_EVENT_FOCUS_LEAVE:
         self.finish_edit();
@@ -98,8 +104,6 @@ void UITextEditWidgetObj::on_draw(UIWidgetObj* obj, ScreenRenderComponent render
     UITextEditData& data = self.get_data();
     UITheme theme = ctx.theme;
 
-    renderer.draw_rect(rect, theme.get_field_color());
-
     if (!data.font)
         data.font = ctx.fontDefault;
 
@@ -114,12 +118,21 @@ void UITextEditWidgetObj::on_draw(UIWidgetObj* obj, ScreenRenderComponent render
 
     if (data.mIsEditing)
     {
+        renderer.draw_rect(rect, data.bgColorEdit);
         self.draw_edit_state(info);
     }
     else
     {
+        renderer.draw_rect(rect, data.bgColor);
         renderer.draw_text(info.atlas, info.image, data.fontSize, rect.get_pos(), info.str.c_str(), info.textColor, rect.w);
     }
+}
+
+CursorType UITextEditWidgetObj::cursor_hint(UIWidgetObj* obj)
+{
+    UITextEditWidgetObj& self = obj->U->textEdit;
+
+    return self.get_data().is_editing() ? CURSOR_TYPE_IBEAM : CURSOR_TYPE_DEFAULT;
 }
 
 void UITextEditWidgetObj::begin_edit()
@@ -132,6 +145,9 @@ void UITextEditWidgetObj::begin_edit()
 void UITextEditWidgetObj::finish_edit()
 {
     UITextEditData& data = get_data();
+    if (!data.mIsEditing)
+        return;
+
     data.mIsEditing = false;
     data.mOriginal = data.mEditor.get_string();
 
@@ -196,19 +212,20 @@ void UITextEditWidgetObj::on_mouse_drag_event(const UIEvent& event)
     }
 }
 
-void UITextEditWidgetObj::on_key_down_event(const UIEvent& event)
+bool UITextEditWidgetObj::on_key_down_event(const UIEvent& event)
 {
-    if (event.type != UI_EVENT_KEY_DOWN)
-        return;
-
     UITextEditData& data = get_data();
+
+    if (event.type != UI_EVENT_KEY_DOWN || !data.is_editing())
+        return false;
+
     bool hasChanged = false;
     bool hasSubmitted = false;
 
     if (event.key.code == KEY_CODE_ESCAPE)
     {
         cancel_edit();
-        return;
+        return true;
     }
 
     switch (data.mDomain)
@@ -239,6 +256,8 @@ void UITextEditWidgetObj::on_key_down_event(const UIEvent& event)
         if (data.onSubmit)
             data.onSubmit({base}, strView, base->user);
     }
+
+    return true;
 }
 
 void UITextEditWidgetObj::domain_string_on_key(const UIEvent& event, bool& hasChanged, bool& hasSubmitted)
@@ -367,6 +386,19 @@ void UITextEditData::set_domain(UITextEditDomain mDomain)
         mOriginal.clear();
         this->mDomain = mDomain;
     }
+}
+
+bool UITextEditWidget::try_begin_edit()
+{
+    UITextEditWidgetObj& self = mObj->U->textEdit;
+
+    if (is_focused())
+    {
+        self.begin_edit();
+        return true;
+    }
+
+    return false;
 }
 
 bool UITextEditWidget::is_editing()

@@ -20,6 +20,9 @@ public:
     UITextEditOnSubmit onSubmit = nullptr;
     UIFont font = {};                     /// displayed font
     float fontSize = UIFont::base_size(); /// rendered size
+    Color bgColor = 0;                    /// if non zero, the background color when not editing
+    Color bgColorEdit = 0;                /// if non zero, the background color during edit
+    bool beginEditOnFocus = true;         /// whether the widget should start editing upon focus (mouse click)
 
     UITextEditData();
     UITextEditData(const UITextEditData& other);
@@ -49,6 +52,7 @@ private:
 
 struct UITextEditWidget : UIWidget
 {
+    bool try_begin_edit();
     bool is_editing();
 
     void set_on_change(UITextEditOnChange onChange);

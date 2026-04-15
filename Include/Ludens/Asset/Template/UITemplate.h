@@ -20,38 +20,38 @@ namespace LD {
 
 struct UIScrollTemplate
 {
-    UIScrollStorage storage;
+    UIScrollData storage;
 };
 
 struct UIButtonTemplate
 {
-    UIButtonStorage storage;
+    UIButtonData storage;
 };
 
 struct UISliderTemplate
 {
-    UISliderStorage storage;
+    UISliderData storage;
 };
 
 struct UIToggleTemplate
 {
-    UIToggleStorage storage;
+    UIToggleData storage;
 };
 
 struct UIPanelTemplate
 {
-    UIPanelStorage storage;
+    UIPanelData storage;
 };
 
 struct UIImageTemplate
 {
-    UIImageStorage storage;
+    UIImageData storage;
     AssetID texture2DAssetID; /// the Texture2DAsset used by image widget.
 };
 
 struct UITextTemplate
 {
-    UITextStorage storage;
+    UITextData storage;
     AssetID fontAssetID; /// the FontAsset used by text widget.
 };
 
