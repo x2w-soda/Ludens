@@ -119,6 +119,13 @@ struct DataRegistryObj
         return compCUID && (compIndex < cuidToCompData.size()) ? cuidToCompData[compIndex] : nullptr;
     }
 
+    inline ComponentBase* get_base_from_cuid(CUID compCUID)
+    {
+        ComponentBase** data = get_data_from_cuid(compCUID);
+
+        return data ? *data : nullptr;
+    }
+
     inline ComponentBase** get_data_from_suid(SUID compSUID)
     {
         auto it = suidToCompData.find(compSUID);
@@ -590,9 +597,7 @@ ComponentBase* DataRegistry::get_component_base(CUID compCUID)
 
 SUID DataRegistry::get_component_asset_id(CUID compID)
 {
-    uint32_t compIndex = compID.index();
-    ComponentBase** compData = mObj->cuidToCompData[compIndex];
-
+    ComponentBase** compData = mObj->get_data_from_cuid(compID);
     if (!compData)
         return (SUID)0;
 
@@ -603,6 +608,18 @@ SUID DataRegistry::get_component_asset_id(CUID compID)
         return (SUID)0;
 
     return sComponentTable[compBase->type].get_asset_id(compData);
+}
+
+void DataRegistry::set_component_name(CUID compID, const char* cstr)
+{
+    ComponentBase* compBase = mObj->get_base_from_cuid(compID);
+
+    if (compBase && cstr)
+    {
+        LD_ASSERT(compBase->name);
+        heap_free(compBase->name);
+        compBase->name = heap_strdup(cstr, MEMORY_USAGE_MISC);
+    }
 }
 
 ComponentBase** DataRegistry::get_component_data(CUID compID, ComponentType* outType)

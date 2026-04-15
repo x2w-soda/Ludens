@@ -60,6 +60,8 @@ struct DataRegistry : Handle<struct DataRegistryObj>
     /// @brief Get a representative asset of a component.
     AssetID get_component_asset_id(CUID compID);
 
+    void set_component_name(CUID compID, const char* cstr);
+
     /// @brief Get component data, or null on failure.
     /// @param compID Data component ID
     /// @param outType If not null, outputs data component type on success

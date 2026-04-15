@@ -28,6 +28,7 @@ public:
     RUID ruid();
 
     const char* get_name();
+    void set_name(const char* cstr);
     AssetID get_script_asset_id();
     void set_script_asset_id(AssetID assetID);
     void get_children(Vector<ComponentView>& children);

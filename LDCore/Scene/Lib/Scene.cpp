@@ -916,6 +916,11 @@ const char* ComponentView::get_name()
     return (*mData)->name;
 }
 
+void ComponentView::set_name(const char* cstr)
+{
+    sScene->active->registry.set_component_name((*mData)->cuid, cstr);
+}
+
 AssetID ComponentView::get_script_asset_id()
 {
     return (*mData)->scriptAssetID;
