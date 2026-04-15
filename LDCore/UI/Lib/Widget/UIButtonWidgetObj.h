@@ -2,16 +2,15 @@
 
 #include <Ludens/UI/Widget/UIButtonWidget.h>
 
+#include "../UILibDef.h"
+
 namespace LD {
 
-struct UIButtonWidgetObj
+struct UIButtonWidgetObj : UIWidgetBaseObj<UIButtonData>
 {
-    UIWidgetObj* base = nullptr;
-    UIButtonStorage* storage = nullptr;
-    UIButtonStorage local;
-    UIButtonOnClick onClick = nullptr;
+    void set_on_click(UIButtonOnClick onClick);
 
-    static void startup(UIWidgetObj* obj, void* storage);
+    static void startup(UIWidgetObj* obj);
     static void cleanup(UIWidgetObj* obj);
     static bool on_event(UIWidgetObj* obj, const UIEvent& event);
     static void on_draw(UIWidgetObj* obj, ScreenRenderComponent renderer);

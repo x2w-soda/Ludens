@@ -44,7 +44,7 @@ void UIFontRegistry::destroy(UIFontRegistry registry)
 
 UIFont UIFontRegistry::add_font(FontAtlas atlas, RImage image)
 {
-    LD_ASSERT(atlas && image);
+    LD_ASSERT(atlas);
 
     auto* fontObj = heap_new<UIFontObj>(MEMORY_USAGE_UI);
     fontObj->atlas = atlas;

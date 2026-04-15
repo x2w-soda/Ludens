@@ -57,7 +57,7 @@ void UIDebug::print_window(UIWindowObj* window)
 
 void UIDebug::print_widget_tree(UIWidgetObj* widget)
 {
-    const char* cstr = get_ui_widget_type_cstr(widget->type);
+    const char* cstr = UIWidget::get_type_cstr(widget->type);
 
     ss << std::string(printIndent, ' ') << std::format("{}: {}", cstr, widget->name) << std::endl;
     printIndent += INDENT_SPACES;

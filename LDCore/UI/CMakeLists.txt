@@ -3,6 +3,7 @@ set(MODULE_TEST_NAME LDUITest)
 set(MODULE_SANDBOX_NAME LDUISandbox)
 
 set(MODULE_INCLUDE
+    ${LUDENS_INCLUDE_DIR}/Ludens/UI/UIDef.h
     ${LUDENS_INCLUDE_DIR}/Ludens/UI/UIContext.h
     ${LUDENS_INCLUDE_DIR}/Ludens/UI/UILayer.h
     ${LUDENS_INCLUDE_DIR}/Ludens/UI/UIWorkspace.h
@@ -18,6 +19,7 @@ set(MODULE_INCLUDE
     ${LUDENS_INCLUDE_DIR}/Ludens/UI/Widget/UIImageWidget.h
     ${LUDENS_INCLUDE_DIR}/Ludens/UI/Widget/UIPanelWidget.h
     ${LUDENS_INCLUDE_DIR}/Ludens/UI/Widget/UIScrollWidget.h
+    ${LUDENS_INCLUDE_DIR}/Ludens/UI/Widget/UIScrollBarWidget.h
     ${LUDENS_INCLUDE_DIR}/Ludens/UI/Widget/UISliderWidget.h
     ${LUDENS_INCLUDE_DIR}/Ludens/UI/Widget/UITextEditWidget.h
     ${LUDENS_INCLUDE_DIR}/Ludens/UI/Widget/UITextWidget.h
@@ -26,6 +28,7 @@ set(MODULE_INCLUDE
 
 set(MODULE_LIB
     Lib/UIObj.h
+    Lib/UILibDef.h
     Lib/UIContextObj.h
     Lib/UIContextObj.cpp
     Lib/UIWidgetObj.h
@@ -50,6 +53,8 @@ set(MODULE_LIB
     Lib/Widget/UIPanelWidgetObj.cpp
     Lib/Widget/UIScrollWidgetObj.h
     Lib/Widget/UIScrollWidgetObj.cpp
+    Lib/Widget/UIScrollBarWidgetObj.cpp
+    Lib/Widget/UIScrollBarWidgetObj.cpp
     Lib/Widget/UISliderWidgetObj.h
     Lib/Widget/UISliderWidgetObj.cpp
     Lib/Widget/UITextWidgetObj.h

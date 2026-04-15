@@ -4,47 +4,39 @@
 
 namespace LD {
 
-void UIPanelWidgetObj::startup(UIWidgetObj* obj, void* storage)
+UILayoutInfo UIPanelWidgetObj::default_layout()
 {
-    UIPanelWidgetObj& self = obj->as.panel;
+    UILayoutInfo layoutI{};
+    layoutI.sizeX = UISize::fit();
+    layoutI.sizeY = UISize::fit();
+    layoutI.childAxis = UI_AXIS_Y;
+
+    return layoutI;
+}
+
+void UIPanelWidgetObj::startup(UIWidgetObj* obj)
+{
+    UIPanelWidgetObj& self = obj->U->panel;
     new (&self) UIPanelWidgetObj();
-
-    self.base = obj;
-    self.storage = (UIPanelStorage*)storage;
-
-    if (!self.storage)
-    {
-        obj->flags |= UI_WIDGET_FLAG_LOCAL_STORAGE_BIT;
-        self.storage = &self.local;
-    }
+    self.connect(obj);
 }
 
 void UIPanelWidgetObj::cleanup(UIWidgetObj* obj)
 {
-    UIPanelWidgetObj& self = obj->as.panel;
+    UIPanelWidgetObj& self = obj->U->panel;
 
     (&self)->~UIPanelWidgetObj();
 }
 
 void UIPanelWidgetObj::on_draw(UIWidgetObj* obj, ScreenRenderComponent renderer)
 {
-    UIPanelWidgetObj& self = obj->as.panel;
-    UIPanelStorage& storage = *self.storage;
+    UIPanelWidgetObj& self = obj->U->panel;
+    const UIPanelData& data = self.get_data();
 
-    if (storage.color != 0.0f)
+    if (data.color != 0.0f)
     {
-        renderer.draw_rect_rounded(obj->layout.rect, storage.color, storage.radius);
+        renderer.draw_rect_rounded(self.get_rect(), data.color, data.radius);
     }
-}
-
-UIPanelStorage* UIPanelWidget::get_storage()
-{
-    return mObj->as.panel.storage;
-}
-
-void UIPanelWidget::set_storage(UIPanelStorage* storage)
-{
-    mObj->as.panel.storage = storage;
 }
 
 } // namespace LD

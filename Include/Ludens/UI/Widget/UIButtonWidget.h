@@ -9,20 +9,23 @@ namespace LD {
 
 typedef void (*UIButtonOnClick)(UIWidget w, MouseButton btn, void* user);
 
-struct UIButtonStorage
+class UIButtonData
 {
+    friend struct UIButtonWidgetObj;
+
+public:
     std::string text;
     UIFont font = {};
     bool transparentBG = false;
     bool isEnabled = true;
+
+private:
+    UIButtonOnClick mOnClick = nullptr;
 };
 
 /// @brief UI button widget.
 struct UIButtonWidget : UIWidget
 {
-    UIButtonStorage* get_storage();
-    void set_storage(UIButtonStorage* storage);
-
     void set_on_click(UIButtonOnClick onClick);
 };
 

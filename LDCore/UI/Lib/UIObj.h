@@ -105,16 +105,18 @@ struct UIWindowObj : UIWidgetObj
 
     UIWindowObj& operator=(const UIWindowObj&) = delete;
 
+    UIWidgetLayout layout = {};
     UIWorkspaceObj* space = nullptr; /// owning workspace
     Vector<UIWidgetObj*> widgets;    /// all widgets within the window
-    Optional<Color> colorMask{};     /// optional mask to modify widget colors in window
+    Optional<Color> colorMask = {};  /// optional mask to modify widget colors in window
     Color color = 0;                 /// window background color
     uint32_t id = 0;                 /// window ID, unique within workspace
-    Vec2 dragOffset;
-    Vec2 dragBeginPos;
-    Vec2 dragBeginSize;
+    Vec2 dragOffset = {};
+    Vec2 dragBeginPos = {};
+    Vec2 dragBeginSize = {};
     void (*onResize)(UIWindow window, const Vec2& size) = nullptr;
     bool dragResize = false; // resize or reposition
+    bool defaultMouseControls = false;
 
     inline UIContextObj* ctx() const { return space->layer->ctx; }
     inline UILayerObj* layer() const { return space->layer; }

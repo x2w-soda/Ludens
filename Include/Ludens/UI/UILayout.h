@@ -1,31 +1,8 @@
 #pragma once
 
-#include <Ludens/Header/Directional.h>
+#include <Ludens/UI/UIDef.h>
 
 namespace LD {
-
-struct UIWidgetObj;
-
-enum UIAxis : char
-{
-    UI_AXIS_X = AXIS_X,
-    UI_AXIS_Y = AXIS_Y,
-};
-
-enum UIAlign : char
-{
-    UI_ALIGN_BEGIN,
-    UI_ALIGN_CENTER,
-    UI_ALIGN_END,
-};
-
-enum UISizeType
-{
-    UI_SIZE_FIXED = 0,
-    UI_SIZE_GROW,
-    UI_SIZE_WRAP,
-    UI_SIZE_FIT,
-};
 
 struct UIPadding
 {
@@ -84,8 +61,6 @@ struct UISize
 /// @brief the layout properties of a UI node.
 struct UILayoutInfo
 {
-    UILayoutInfo() = default;
-
     /// @brief size layout policy along the horizontal axis
     UISize sizeX;
 
@@ -106,6 +81,12 @@ struct UILayoutInfo
 
     /// @brief Alignment of children along Y axis.
     UIAlign childAlignY;
+
+    UILayoutInfo() = default;
+    UILayoutInfo(UISize x, UISize y)
+        : sizeX(x), sizeY(y), childPadding{}, childGap(0.0f), childAxis(), childAlignX(), childAlignY()
+    {
+    }
 };
 
 } // namespace LD

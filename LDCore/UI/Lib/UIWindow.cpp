@@ -8,14 +8,15 @@
 namespace LD {
 
 UIWindowObj::UIWindowObj(const UILayoutInfo& layoutI)
-    : UIWidgetObj(UI_WIDGET_WINDOW, layoutI, nullptr, this, nullptr, nullptr)
+    : UIWidgetObj(UI_WIDGET_WINDOW, &layout, nullptr, nullptr, this, nullptr, nullptr)
 {
+    layout.info = layoutI;
 }
 
 UIWindowObj::~UIWindowObj()
 {
     while (!widgets.empty())
-        ctx()->free_widget(widgets.front());
+        ctx()->free_widget_obj(widgets.front());
 }
 
 Hash64 UIWindowObj::get_hash() const
@@ -39,7 +40,7 @@ void UIWindowObj::draw_widget_subtree(UIWidgetObj* widget, ScreenRenderComponent
 
     bool useScissor = (widget->flags & UI_WIDGET_FLAG_DRAW_WITH_SCISSOR_BIT);
     if (useScissor)
-        renderer.push_scissor(widget->layout.rect);
+        renderer.push_scissor(widget->L->rect);
 
     widget->draw(renderer);
 
@@ -56,7 +57,7 @@ void UIWindowObj::on_draw(UIWidgetObj* widget, ScreenRenderComponent renderer)
 {
     auto* obj = (UIWindowObj*)widget;
 
-    renderer.draw_rect(obj->layout.rect, obj->color);
+    renderer.draw_rect(obj->L->rect, obj->color);
 }
 
 bool UIWindowObj::on_event(UIWidgetObj* widgetObj, const UIEvent& event)
@@ -67,7 +68,7 @@ bool UIWindowObj::on_event(UIWidgetObj* widgetObj, const UIEvent& event)
         return false;
 
     UIWindow window(obj);
-    Rect rect = obj->layout.rect;
+    Rect rect = obj->L->rect;
 
     const Vec2& dragPos = event.drag.position;
 
@@ -126,8 +127,8 @@ void UIWindow::render(ScreenRenderComponent& renderer)
 void UIWindow::set_pos(const Vec2& pos)
 {
     UIWindowObj* obj = (UIWindowObj*)mObj;
-    obj->layout.rect.x = pos.x;
-    obj->layout.rect.y = pos.y;
+    obj->L->rect.x = pos.x;
+    obj->L->rect.y = pos.y;
 }
 
 void UIWindow::set_size(const Vec2& size)
@@ -135,8 +136,8 @@ void UIWindow::set_size(const Vec2& size)
     UIWindowObj* obj = (UIWindowObj*)mObj;
     (void)obj;
 
-    mObj->layout.info.sizeX = UISize::fixed(size.x);
-    mObj->layout.info.sizeY = UISize::fixed(size.y);
+    mObj->L->info.sizeX = UISize::fixed(size.x);
+    mObj->L->info.sizeY = UISize::fixed(size.y);
 }
 
 void UIWindow::set_rect(const Rect& rect)
@@ -144,10 +145,10 @@ void UIWindow::set_rect(const Rect& rect)
     UIWindowObj* obj = (UIWindowObj*)mObj;
     (void)obj;
 
-    obj->layout.rect.x = rect.x;
-    obj->layout.rect.y = rect.y;
-    mObj->layout.info.sizeX = UISize::fixed(rect.w);
-    mObj->layout.info.sizeY = UISize::fixed(rect.h);
+    obj->L->rect.x = rect.x;
+    obj->L->rect.y = rect.y;
+    mObj->L->info.sizeX = UISize::fixed(rect.w);
+    mObj->L->info.sizeY = UISize::fixed(rect.h);
 }
 
 void UIWindow::set_color(Color bg)
@@ -175,7 +176,7 @@ void UIWindow::get_widgets(Vector<UIWidget>& widgets)
 
 Rect UIWindow::get_rect() const
 {
-    return mObj->layout.rect;
+    return mObj->L->rect;
 }
 
 Hash64 UIWindow::get_hash()

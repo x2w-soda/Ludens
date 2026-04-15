@@ -12,27 +12,37 @@ namespace LD {
 
 // clang-format off
 UIWidgetMeta sWidgetMeta[] = {
-    { UI_WIDGET_WINDOW,    "UIWindow",   sizeof(UIWindowObj),         nullptr,                       nullptr,                       &UIWindowObj::on_event,         nullptr,                          &UIWindowObj::on_draw,          nullptr, nullptr},
-    { UI_WIDGET_SCROLL,    "UIScroll",   sizeof(UIScrollWidgetObj),   &UIScrollWidgetObj::startup,   &UIScrollWidgetObj::cleanup,   &UIScrollWidgetObj::on_event,   &UIScrollWidgetObj::on_update,    &UIScrollWidgetObj::on_draw,    nullptr, nullptr},
-    { UI_WIDGET_BUTTON,    "UIButton",   sizeof(UIButtonWidgetObj),   &UIButtonWidgetObj::startup,   &UIButtonWidgetObj::cleanup,   &UIButtonWidgetObj::on_event,   nullptr,                          &UIButtonWidgetObj::on_draw,    nullptr, nullptr},
-    { UI_WIDGET_SLIDER,    "UISlider",   sizeof(UISliderWidgetObj),   &UISliderWidgetObj::startup,   &UISliderWidgetObj::cleanup,   &UISliderWidgetObj::on_event,   nullptr,                          &UISliderWidgetObj::on_draw,    nullptr, nullptr},
-    { UI_WIDGET_TOGGLE,    "UIToggle",   sizeof(UIToggleWidgetObj),   &UIToggleWidgetObj::startup,   &UIToggleWidgetObj::cleanup,   &UIToggleWidgetObj::on_event,   &UIToggleWidgetObj::on_update,    &UIToggleWidgetObj::on_draw,    nullptr, nullptr},
-    { UI_WIDGET_PANEL,     "UIPanel",    sizeof(UIPanelWidgetObj),    &UIPanelWidgetObj::startup,    &UIPanelWidgetObj::cleanup,    nullptr,                        nullptr,                          &UIPanelWidgetObj::on_draw,     nullptr, nullptr},
-    { UI_WIDGET_IMAGE,     "UIImage",    sizeof(UIImageWidgetObj),    &UIImageWidgetObj::startup,    &UIImageWidgetObj::cleanup,    nullptr,                        nullptr,                          &UIImageWidgetObj::on_draw,     nullptr, nullptr},
-    { UI_WIDGET_TEXT,      "UIText",     sizeof(UITextWidgetObj),     &UITextWidgetObj::startup,     &UITextWidgetObj::cleanup,     &UITextWidgetObj::on_event,     nullptr,                          &UITextWidgetObj::on_draw,      UITextWidgetObj::wrap_size, UITextWidgetObj::wrap_limit},
-    { UI_WIDGET_TEXT_EDIT, "UITextEdit", sizeof(UITextEditWidgetObj), &UITextEditWidgetObj::startup, &UITextEditWidgetObj::cleanup, &UITextEditWidgetObj::on_event, nullptr,                          &UITextEditWidgetObj::on_draw,  nullptr, nullptr},
+    { UI_WIDGET_WINDOW,      "UIWindow",     sizeof(UIWindowObj),          nullptr, nullptr,                         nullptr,                         &UIWindowObj::on_event,           nullptr,                          &UIWindowObj::on_draw,          nullptr, nullptr},
+    { UI_WIDGET_SCROLL,      "UIScroll",     sizeof(UIScrollWidgetObj),    &UIScrollWidgetObj::default_layout,   &UIScrollWidgetObj::startup,     &UIScrollWidgetObj::cleanup,     &UIScrollWidgetObj::on_event,     &UIScrollWidgetObj::on_update,    &UIScrollWidgetObj::on_draw,    nullptr, nullptr},
+    { UI_WIDGET_SCROLL_BAR,  "UIScrollBar",  sizeof(UIScrollBarWidgetObj), nullptr,                              &UIScrollBarWidgetObj::startup,  &UIScrollBarWidgetObj::cleanup,  &UIScrollBarWidgetObj::on_event,  nullptr,                          &UIScrollBarWidgetObj::on_draw, nullptr, nullptr},
+    { UI_WIDGET_BUTTON,      "UIButton",     sizeof(UIButtonWidgetObj),    nullptr,                              &UIButtonWidgetObj::startup,     &UIButtonWidgetObj::cleanup,     &UIButtonWidgetObj::on_event,     nullptr,                          &UIButtonWidgetObj::on_draw,    nullptr, nullptr},
+    { UI_WIDGET_SLIDER,      "UISlider",     sizeof(UISliderWidgetObj),    nullptr,                              &UISliderWidgetObj::startup,     &UISliderWidgetObj::cleanup,     &UISliderWidgetObj::on_event,     nullptr,                          &UISliderWidgetObj::on_draw,    nullptr, nullptr},
+    { UI_WIDGET_TOGGLE,      "UIToggle",     sizeof(UIToggleWidgetObj),    nullptr,                              &UIToggleWidgetObj::startup,     &UIToggleWidgetObj::cleanup,     &UIToggleWidgetObj::on_event,     &UIToggleWidgetObj::on_update,    &UIToggleWidgetObj::on_draw,    nullptr, nullptr},
+    { UI_WIDGET_PANEL,       "UIPanel",      sizeof(UIPanelWidgetObj),     &UIPanelWidgetObj::default_layout,    &UIPanelWidgetObj::startup,      &UIPanelWidgetObj::cleanup,      nullptr,                          nullptr,                          &UIPanelWidgetObj::on_draw,     nullptr, nullptr},
+    { UI_WIDGET_IMAGE,       "UIImage",      sizeof(UIImageWidgetObj),     nullptr,                              &UIImageWidgetObj::startup,      &UIImageWidgetObj::cleanup,      nullptr,                          nullptr,                          &UIImageWidgetObj::on_draw,     nullptr, nullptr},
+    { UI_WIDGET_TEXT,        "UIText",       sizeof(UITextWidgetObj),      &UITextWidgetObj::default_layout,     &UITextWidgetObj::startup,       &UITextWidgetObj::cleanup,       &UITextWidgetObj::on_event,       nullptr,                          &UITextWidgetObj::on_draw,      UITextWidgetObj::wrap_size, UITextWidgetObj::wrap_limit},
+    { UI_WIDGET_TEXT_EDIT,   "UITextEdit",   sizeof(UITextEditWidgetObj),  &UITextEditWidgetObj::default_layout, &UITextEditWidgetObj::startup,   &UITextEditWidgetObj::cleanup,   &UITextEditWidgetObj::on_event,   nullptr,                          &UITextEditWidgetObj::on_draw,  nullptr, nullptr},
 };
 // clang-format on
 
 static_assert(sizeof(sWidgetMeta) / sizeof(*sWidgetMeta) == UI_WIDGET_TYPE_COUNT);
-static_assert(IsTrivial<UIScrollWidgetObj>);
 
-void widget_startup(UIWidgetObj* obj, void* storage)
+UILayoutInfo widget_default_layout(UIWidgetType type)
+{
+    UILayoutInfo defaultLayout = {};
+
+    if (sWidgetMeta[(int)type].defaultLayout)
+        defaultLayout = sWidgetMeta[(int)type].defaultLayout();
+
+    return defaultLayout;
+}
+
+void widget_startup(UIWidgetObj* obj)
 {
     LD_ASSERT(obj);
 
     if (sWidgetMeta[(int)obj->type].startup)
-        sWidgetMeta[(int)obj->type].startup(obj, storage);
+        sWidgetMeta[(int)obj->type].startup(obj);
 }
 
 void widget_cleanup(UIWidgetObj* obj)

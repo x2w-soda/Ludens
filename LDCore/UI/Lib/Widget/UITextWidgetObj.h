@@ -3,22 +3,20 @@
 #include <Ludens/Header/Color.h>
 #include <Ludens/Media/Font.h>
 #include <Ludens/RenderBackend/RBackend.h>
+#include <Ludens/Text/TextSpan.h>
 #include <Ludens/UI/Widget/UITextWidget.h>
+
+#include "../UILibDef.h"
 
 namespace LD {
 
-struct UIWidgetObj;
-
-struct UITextWidgetObj
+struct UITextWidgetObj : UIWidgetBaseObj<UITextData>
 {
-    UIWidgetObj* base;
-    UITextStorage* storage;
-    UITextStorage local;
-    int spanIndex = -1;
-
+    void set_text_style(Color color, TextSpanFont font);
     void update_span_index(Vec2 localPos);
 
-    static void startup(UIWidgetObj* obj, void* info);
+    static UILayoutInfo default_layout();
+    static void startup(UIWidgetObj* obj);
     static void cleanup(UIWidgetObj* obj);
     static bool on_event(UIWidgetObj* obj, const UIEvent& event);
     static void on_draw(UIWidgetObj* obj, ScreenRenderComponent renderer);

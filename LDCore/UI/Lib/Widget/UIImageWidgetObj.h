@@ -5,17 +5,13 @@
 #include <Ludens/RenderBackend/RBackend.h>
 #include <Ludens/UI/Widget/UIImageWidget.h>
 
+#include "../UILibDef.h"
+
 namespace LD {
 
-struct UIWidgetObj;
-
-struct UIImageWidgetObj
+struct UIImageWidgetObj : UIWidgetBaseObj<UIImageData>
 {
-    UIWidgetObj* base;
-    UIImageStorage* storage;
-    UIImageStorage local;
-
-    static void startup(UIWidgetObj* obj, void* storage);
+    static void startup(UIWidgetObj* obj);
     static void cleanup(UIWidgetObj* obj);
     static void on_draw(UIWidgetObj* obj, ScreenRenderComponent renderer);
 };

@@ -10,7 +10,8 @@ struct UIWidgetMeta
     UIWidgetType type;
     const char* typeName;
     size_t objSize;
-    void (*startup)(UIWidgetObj* obj, void* storage);
+    UILayoutInfo (*defaultLayout)();
+    void (*startup)(UIWidgetObj* obj);
     void (*cleanup)(UIWidgetObj* obj);
     bool (*onEvent)(UIWidgetObj* obj, const UIEvent& event);
     void (*onUpdate)(UIWidgetObj* obj, float delta);
@@ -21,7 +22,8 @@ struct UIWidgetMeta
 
 extern UIWidgetMeta sWidgetMeta[];
 
-void widget_startup(UIWidgetObj* obj, void* storage);
+UILayoutInfo widget_default_layout(UIWidgetType type);
+void widget_startup(UIWidgetObj* obj);
 void widget_cleanup(UIWidgetObj* obj);
 void widget_on_update(UIWidgetObj* obj, float delta);
 bool widget_on_event(UIWidgetObj* obj, const UIEvent& event);

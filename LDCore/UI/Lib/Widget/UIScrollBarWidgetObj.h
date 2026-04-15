@@ -1,19 +1,14 @@
 #pragma once
 
-#include <Ludens/UI/Widget/UISliderWidget.h>
+#include <Ludens/UI/Widget/UIScrollBarWidget.h>
 
 #include "../UILibDef.h"
 
 namespace LD {
 
-struct UISliderWidgetObj : UIWidgetBaseObj<UISliderData>
+struct UIScrollBarWidgetObj : UIWidgetBaseObj<UIScrollBarData>
 {
-    inline float get_value()
-    {
-        UISliderData& data = get_data();
-
-        return std::lerp(data.min, data.max, data.mRatio);
-    }
+    void on_mouse_drag(const UIEvent& event);
 
     static void startup(UIWidgetObj* obj);
     static void cleanup(UIWidgetObj* obj);

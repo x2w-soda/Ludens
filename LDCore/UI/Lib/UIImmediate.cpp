@@ -153,15 +153,12 @@ struct UIWindowState
         return imWidgetStack.empty() ? (UIWidget)window : (UIWidget)imWidgetStack.top()->widget;
     }
 
+    UIWidgetState* get_or_create_widget(UIWidgetType type, void* data);
     UIWidgetState* get_or_create_widget_state(UIWidgetType type);
-    UIWidgetState* get_or_create_text(UITextStorage* storage);
-    UIWidgetState* get_or_create_text_edit(UITextEditStorage* storage);
-    UIWidgetState* get_or_create_image(UIImageStorage* storage);
-    UIWidgetState* get_or_create_panel(UIPanelStorage* storage);
-    UIWidgetState* get_or_create_toggle(UIToggleStorage* storage);
-    UIWidgetState* get_or_create_scroll(UIScrollStorage* storage);
-    UIWidgetState* get_or_create_button(UIButtonStorage* storage);
-    UIWidgetState* get_or_create_slider(UISliderStorage* storage);
+    UIWidgetState* get_or_create_text_edit(UITextEditData* data);
+    UIWidgetState* get_or_create_toggle(UIToggleData* data);
+    UIWidgetState* get_or_create_button(UIButtonData* data);
+    UIWidgetState* get_or_create_slider(UISliderData* data);
 };
 
 struct UIWorkspaceState
@@ -321,6 +318,7 @@ void UIContextState::destroy_layer_state(UILayerState* layerS)
 
 static UIContextState* sImContext = nullptr;              // current ui context
 static UIFont sImFont;                                    // default font
+static UIFont sImFontMono;                                // default font
 static HashMap<std::string, UIContextState*> sImContexts; // all imgui frame contexts
 
 static void on_ui_context_event(UIWidget widget, const UIEvent& event, void* user)
@@ -355,6 +353,7 @@ static UIContextState* get_or_create_context_state(const char* ctxName, const Ve
 
     UIContextInfo ctxI{};
     ctxI.font = sImFont;
+    ctxI.fontMono = sImFontMono;
     ctxI.onEvent = &on_ui_context_event;
     ctxI.user = ctxS;
     ctxI.theme = UITheme::get_default_theme();
@@ -399,7 +398,7 @@ static void destroy_widget_subtree(PoolAllocator statePA, UIWidgetState* widgetS
         destroy_widget_subtree(statePA, childS);
     }
 
-    widgetS->widget.node().remove();
+    widgetS->widget.remove();
     widgetS->~UIWidgetState();
     statePA.free(widgetS);
 }
@@ -414,6 +413,23 @@ static Hash64 get_widget_state_hash(UIWidgetType type, int siblingIndex, Hash64 
     hash_combine(hash64, siblingIndex);
 
     return (Hash64)hash64;
+}
+
+UIWidgetState* UIWindowState::get_or_create_widget(UIWidgetType type, void* data)
+{
+    UIWidgetState* widgetS = get_or_create_widget_state(type);
+
+    if (widgetS->widget && widgetS->widget.get_type() == type)
+    {
+        if (data)
+            widgetS->widget.set_data(data);
+        return widgetS;
+    }
+
+    UIWidget parent = get_parent_widget();
+    widgetS->widget = parent.add_child(type, UIWidget::get_default_layout(type), data, widgetS);
+
+    return widgetS;
 }
 
 // NOTE: has side effect of incrementing the childCounter of top widget
@@ -495,38 +511,20 @@ UIWindowState::~UIWindowState()
     PoolAllocator::destroy(widgetStatePA);
 }
 
-UIWidgetState* UIWindowState::get_or_create_text(UITextStorage* storage)
-{
-    UIWidgetState* widgetS = get_or_create_widget_state(UI_WIDGET_TEXT);
-    UITextWidget textW = (UITextWidget)widgetS->widget;
-
-    if (widgetS->widget && widgetS->widget.get_type() == UI_WIDGET_TEXT)
-    {
-        if (storage)
-            textW.set_storage(storage);
-        return widgetS;
-    }
-
-    UIWidget parent = get_parent_widget();
-    widgetS->widget = parent.node().add_text({}, storage, widgetS);
-
-    return widgetS;
-}
-
-UIWidgetState* UIWindowState::get_or_create_text_edit(UITextEditStorage* storage)
+UIWidgetState* UIWindowState::get_or_create_text_edit(UITextEditData* data)
 {
     UIWidgetState* widgetS = get_or_create_widget_state(UI_WIDGET_TEXT_EDIT);
     UITextEditWidget textW = (UITextEditWidget)widgetS->widget;
 
     if (widgetS->widget && widgetS->widget.get_type() == UI_WIDGET_TEXT_EDIT)
     {
-        if (storage)
-            textW.set_storage(storage);
+        if (data)
+            textW.set_data(data);
         return widgetS;
     }
 
     UIWidget parent = get_parent_widget();
-    widgetS->widget = parent.node().add_text_edit({}, storage, widgetS);
+    widgetS->widget = parent.add_child(UI_WIDGET_TEXT_EDIT, {}, data, widgetS);
     widgetS->widget.set_layout_size(UISize::fixed(100.0f), UISize::fixed(19.2f)); // TODO:
 
     textW = (UITextEditWidget)widgetS->widget;
@@ -536,60 +534,15 @@ UIWidgetState* UIWindowState::get_or_create_text_edit(UITextEditStorage* storage
     return widgetS;
 }
 
-UIWidgetState* UIWindowState::get_or_create_image(UIImageStorage* storage)
-{
-    UIWidgetState* widgetS = get_or_create_widget_state(UI_WIDGET_IMAGE);
-    UIImageWidget imageW = (UIImageWidget)widgetS->widget;
-
-    if (widgetS->widget && widgetS->widget.get_type() == UI_WIDGET_IMAGE)
-    {
-        if (storage)
-            imageW.set_storage(storage);
-        return widgetS;
-    }
-
-    UILayoutInfo layoutI{};
-    layoutI.sizeX = UISize::fixed(10.0f);
-    layoutI.sizeY = UISize::fixed(10.0f);
-
-    UIWidget parent = get_parent_widget();
-    widgetS->widget = (UIWidget)parent.node().add_image({}, storage, widgetS);
-
-    return widgetS;
-}
-
-UIWidgetState* UIWindowState::get_or_create_panel(UIPanelStorage* storage)
-{
-    UIWidgetState* widgetS = get_or_create_widget_state(UI_WIDGET_PANEL);
-    UIPanelWidget panelW = (UIPanelWidget)widgetS->widget;
-
-    if (widgetS->widget && widgetS->widget.get_type() == UI_WIDGET_PANEL)
-    {
-        if (storage)
-            panelW.set_storage(storage);
-        return widgetS;
-    }
-
-    UILayoutInfo layoutI{};
-    layoutI.sizeX = UISize::fit();
-    layoutI.sizeY = UISize::fit();
-    layoutI.childAxis = UI_AXIS_Y;
-
-    UIWidget parent = get_parent_widget();
-    widgetS->widget = parent.node().add_panel(layoutI, storage, widgetS);
-
-    return widgetS;
-}
-
-UIWidgetState* UIWindowState::get_or_create_toggle(UIToggleStorage* storage)
+UIWidgetState* UIWindowState::get_or_create_toggle(UIToggleData* data)
 {
     UIWidgetState* widgetS = get_or_create_widget_state(UI_WIDGET_TOGGLE);
     UIToggleWidget toggleW = (UIToggleWidget)widgetS->widget;
 
     if (widgetS->widget && widgetS->widget.get_type() == UI_WIDGET_TOGGLE)
     {
-        if (storage)
-            toggleW.set_storage(storage);
+        if (data)
+            toggleW.set_data(data);
         return widgetS;
     }
 
@@ -597,10 +550,10 @@ UIWidgetState* UIWindowState::get_or_create_toggle(UIToggleStorage* storage)
     layoutI.sizeX = UISize::grow();
     layoutI.sizeY = UISize::fit();
 
-    storage->state = false;
+    data->state = false;
 
     UIWidget parent = get_parent_widget();
-    widgetS->widget = parent.node().add_toggle(layoutI, storage, widgetS);
+    widgetS->widget = parent.add_child(UI_WIDGET_TOGGLE, layoutI, data, widgetS);
 
     toggleW = (UIToggleWidget)widgetS->widget;
     toggleW.set_on_toggle([](UIWidget, bool, void* user) {
@@ -611,38 +564,15 @@ UIWidgetState* UIWindowState::get_or_create_toggle(UIToggleStorage* storage)
     return widgetS;
 }
 
-UIWidgetState* UIWindowState::get_or_create_scroll(UIScrollStorage* storage)
-{
-    UIWidgetState* widgetS = get_or_create_widget_state(UI_WIDGET_SCROLL);
-    UIScrollWidget scrollW = (UIScrollWidget)widgetS->widget;
-
-    if (widgetS->widget && widgetS->widget.get_type() == UI_WIDGET_SCROLL)
-    {
-        if (storage)
-            scrollW.set_storage(storage);
-        return widgetS;
-    }
-
-    UILayoutInfo layoutI{};
-    layoutI.sizeX = UISize::grow();
-    layoutI.sizeY = UISize::grow();
-    layoutI.childAxis = UI_AXIS_Y;
-
-    UIWidget parent = get_parent_widget();
-    widgetS->widget = parent.node().add_scroll(layoutI, storage, widgetS);
-
-    return widgetS;
-}
-
-UIWidgetState* UIWindowState::get_or_create_button(UIButtonStorage* storage)
+UIWidgetState* UIWindowState::get_or_create_button(UIButtonData* data)
 {
     UIWidgetState* widgetS = get_or_create_widget_state(UI_WIDGET_BUTTON);
     UIButtonWidget buttonW = (UIButtonWidget)widgetS->widget;
 
     if (widgetS->widget && widgetS->widget.get_type() == UI_WIDGET_BUTTON)
     {
-        if (storage)
-            buttonW.set_storage(storage);
+        if (data)
+            buttonW.set_data(data);
         return widgetS;
     }
 
@@ -651,7 +581,7 @@ UIWidgetState* UIWindowState::get_or_create_button(UIButtonStorage* storage)
     layoutI.sizeY = UISize::fixed(20.0f);
 
     UIWidget parent = get_parent_widget();
-    widgetS->widget = parent.node().add_button(layoutI, storage, widgetS);
+    widgetS->widget = parent.add_child(UI_WIDGET_BUTTON, layoutI, data, widgetS);
 
     buttonW = (UIButtonWidget)widgetS->widget;
     buttonW.set_on_click([](UIWidget, MouseButton, void* user) {
@@ -662,15 +592,15 @@ UIWidgetState* UIWindowState::get_or_create_button(UIButtonStorage* storage)
     return widgetS;
 }
 
-UIWidgetState* UIWindowState::get_or_create_slider(UISliderStorage* storage)
+UIWidgetState* UIWindowState::get_or_create_slider(UISliderData* data)
 {
     UIWidgetState* widgetS = get_or_create_widget_state(UI_WIDGET_SLIDER);
     UISliderWidget sliderW = (UISliderWidget)widgetS->widget;
 
     if (widgetS->widget && widgetS->widget.get_type() == UI_WIDGET_SLIDER)
     {
-        if (storage)
-            sliderW.set_storage(storage);
+        if (data)
+            sliderW.set_data(data);
         return widgetS;
     }
 
@@ -679,16 +609,17 @@ UIWidgetState* UIWindowState::get_or_create_slider(UISliderStorage* storage)
     layoutI.sizeY = UISize::fixed(20.0f);
 
     UIWidget parent = get_parent_widget();
-    widgetS->widget = parent.node().add_slider(layoutI, storage, widgetS);
+    widgetS->widget = parent.add_child(UI_WIDGET_SLIDER, layoutI, data, widgetS);
 
     return widgetS;
 }
 
-void ui_imgui_startup(UIFont font)
+void ui_imgui_startup(UIFont font, UIFont fontMono)
 {
     LD_ASSERT(!sImContext);
 
     sImFont = font;
+    sImFontMono = fontMono;
 }
 
 void ui_imgui_cleanup()
@@ -1200,40 +1131,37 @@ bool ui_push_popup_window(const char* popupName)
     return true;
 }
 
-UITextStorage* ui_push_text(UITextStorage* storage)
+UITextWidget ui_push_text(UITextData* data)
 {
     LD_ASSERT_UI_PUSH;
 
     UIWindowState* imWindow = sImContext->imWindow;
-    UIWidgetState* imWidget = imWindow->get_or_create_text(storage);
+    UIWidgetState* imWidget = imWindow->get_or_create_widget(UI_WIDGET_TEXT, data);
     UITextWidget textW = (UITextWidget)imWidget->widget;
     LD_ASSERT(textW.get_type() == UI_WIDGET_TEXT);
 
     imWindow->imWidgetStack.push(imWidget);
-    storage = textW.get_storage();
+    data = (UITextData*)textW.get_data();
 
     // intercept all span callbacks for imgui API,
     // this is done per-frame as user may modify
-    // UITextStorage any time.
-    for (UITextSpan& span : storage->spans)
-    {
-        span.user = imWidget;
-        span.onEvent = &UITextState::on_span_event;
-    }
+    // UITextdata any time.
+    data->set_span_on_event(&UITextState::on_span_event, imWidget);
 
-    return storage;
+    return textW;
 }
 
-UITextStorage* ui_push_text(UITextStorage* storage, const char* text)
+UITextWidget ui_push_text(UITextData* data, const char* text)
 {
-    storage = ui_push_text(storage);
+    UITextWidget textW = ui_push_text(data);
+    data = (UITextData*)textW.get_data();
 
     if (text)
-        storage->set_value(std::string(text));
+        data->set_value(std::string(text));
     else
-        storage->value.clear();
+        data->clear_value();
 
-    return storage;
+    return textW;
 }
 
 void ui_text_style(Color color, TextSpanFont font)
@@ -1281,18 +1209,18 @@ bool UITextState::on_span_event(UIWidget widget, const UIEvent& event, UITextSpa
     return true;
 }
 
-UITextEditStorage* ui_push_text_edit(UITextEditStorage* storage)
+UITextEditWidget ui_push_text_edit(UITextEditData* data)
 {
     LD_ASSERT_UI_PUSH;
 
     UIWindowState* imWindow = sImContext->imWindow;
-    UIWidgetState* imWidget = imWindow->get_or_create_text_edit(storage);
+    UIWidgetState* imWidget = imWindow->get_or_create_text_edit(data);
     UITextEditWidget textW = (UITextEditWidget)imWidget->widget;
     LD_ASSERT(textW.get_type() == UI_WIDGET_TEXT_EDIT);
 
     imWindow->imWidgetStack.push(imWidget);
 
-    return textW.get_storage();
+    return textW;
 }
 
 bool ui_text_edit_is_editing()
@@ -1337,55 +1265,54 @@ bool ui_text_edit_submitted(std::string& text)
     return false;
 }
 
-UIImageStorage* ui_push_image(UIImageStorage* storage, float width, float height)
+UIImageWidget ui_push_image(UIImageData* data, float width, float height)
 {
     LD_ASSERT_UI_PUSH;
 
     UIWindowState* imWindow = sImContext->imWindow;
-    UIWidgetState* imWidget = imWindow->get_or_create_image(storage);
+    UIWidgetState* imWidget = imWindow->get_or_create_widget(UI_WIDGET_IMAGE, data);
     UIImageWidget imageW = (UIImageWidget)imWidget->widget;
-    LD_ASSERT(imageW.get_type() == UI_WIDGET_IMAGE);
 
     imageW.set_layout_size(UISize::fixed(width), UISize::fixed(height));
 
     imWindow->imWidgetStack.push(imWidget);
 
-    return imageW.get_storage();
+    return imageW;
 }
 
-UIPanelStorage* ui_push_panel(UIPanelStorage* storage)
+UIPanelWidget ui_push_panel(UIPanelData* data)
 {
     LD_ASSERT_UI_PUSH;
 
     UIWindowState* imWindow = sImContext->imWindow;
-    UIWidgetState* imWidget = imWindow->get_or_create_panel(storage);
-    UIPanelWidget panelW = (UIPanelWidget)imWidget->widget;
+    UIWidgetState* imWidget = imWindow->get_or_create_widget(UI_WIDGET_PANEL, data);
 
     imWindow->imWidgetStack.push(imWidget);
 
-    return panelW.get_storage();
+    return (UIPanelWidget)imWidget->widget;
 }
 
-UIPanelStorage* ui_push_panel(UIPanelStorage* storage, Color color)
+UIPanelWidget ui_push_panel(UIPanelData* data, Color color)
 {
-    storage = ui_push_panel(storage);
-    storage->color = color;
+    UIPanelWidget panelW = ui_push_panel(data);
+    data = (UIPanelData*)panelW.get_data();
+    data->color = color;
 
-    return storage;
+    return panelW;
 }
 
-UIToggleStorage* ui_push_toggle(UIToggleStorage* storage)
+UIToggleWidget ui_push_toggle(UIToggleData* data)
 {
     LD_ASSERT_UI_PUSH;
 
     UIWindowState* imWindow = sImContext->imWindow;
-    UIWidgetState* imWidget = imWindow->get_or_create_toggle(storage);
+    UIWidgetState* imWidget = imWindow->get_or_create_toggle(data);
     UIToggleWidget toggleW = (UIToggleWidget)imWidget->widget;
     LD_ASSERT(toggleW.get_type() == UI_WIDGET_TOGGLE);
 
     imWindow->imWidgetStack.push(imWidget);
 
-    return toggleW.get_storage();
+    return toggleW;
 }
 
 bool ui_toggle_is_pressed()
@@ -1397,44 +1324,55 @@ bool ui_toggle_is_pressed()
     return imWidget->isTogglePressed.read();
 }
 
-UIScrollStorage* ui_push_scroll(UIScrollStorage* storage)
+UIScrollWidget ui_push_scroll(UIScrollData* data)
 {
     LD_ASSERT_UI_PUSH;
 
     UIWindowState* imWindow = sImContext->imWindow;
-    UIWidgetState* imWidget = imWindow->get_or_create_scroll(storage);
-    UIScrollWidget scrollW = (UIScrollWidget)imWidget->widget;
+    UIWidgetState* imWidget = imWindow->get_or_create_widget(UI_WIDGET_SCROLL, data);
 
     imWindow->imWidgetStack.push(imWidget);
 
-    return scrollW.get_storage();
+    return (UIScrollWidget)imWidget->widget;
 }
 
-UIButtonStorage* ui_push_button(UIButtonStorage* storage)
+UIScrollBarWidget ui_push_scroll_bar(UIScrollBarData* data)
 {
     LD_ASSERT_UI_PUSH;
 
     UIWindowState* imWindow = sImContext->imWindow;
-    UIWidgetState* imWidget = imWindow->get_or_create_button(storage);
-    UIButtonWidget buttonW = (UIButtonWidget)imWidget->widget;
+    UIWidgetState* imWidget = imWindow->get_or_create_widget(UI_WIDGET_SCROLL_BAR, data);
 
     imWindow->imWidgetStack.push(imWidget);
 
-    return buttonW.get_storage();
+    return (UIScrollBarWidget)imWidget->widget;
 }
 
-UIButtonStorage* ui_push_button(UIButtonStorage* storage, const char* text)
+UIButtonWidget ui_push_button(UIButtonData* data)
 {
     LD_ASSERT_UI_PUSH;
 
-    storage = ui_push_button(storage);
+    UIWindowState* imWindow = sImContext->imWindow;
+    UIWidgetState* imWidget = imWindow->get_or_create_button(data);
+
+    imWindow->imWidgetStack.push(imWidget);
+
+    return (UIButtonWidget)imWidget->widget;
+}
+
+UIButtonWidget ui_push_button(UIButtonData* data, const char* text)
+{
+    LD_ASSERT_UI_PUSH;
+
+    UIButtonWidget btnW = ui_push_button(data);
+    data = (UIButtonData*)btnW.get_data();
 
     if (text)
-        storage->text = std::string(text);
+        data->text = std::string(text);
     else
-        storage->text.clear();
+        data->text.clear();
 
-    return storage;
+    return btnW;
 }
 
 bool ui_button_is_pressed()
@@ -1446,12 +1384,12 @@ bool ui_button_is_pressed()
     return imWidget->isButtonPressed.read();
 }
 
-UISliderStorage* ui_push_slider(UISliderStorage* storage, float* value)
+UISliderWidget ui_push_slider(UISliderData* data, float* value)
 {
     LD_ASSERT_UI_PUSH;
 
     UIWindowState* imWindow = sImContext->imWindow;
-    UIWidgetState* imWidget = imWindow->get_or_create_slider(storage);
+    UIWidgetState* imWidget = imWindow->get_or_create_slider(data);
     UISliderWidget sliderW = (UISliderWidget)imWidget->widget;
     LD_ASSERT(sliderW.get_type() == UI_WIDGET_SLIDER);
 
@@ -1460,7 +1398,7 @@ UISliderStorage* ui_push_slider(UISliderStorage* storage, float* value)
 
     imWindow->imWidgetStack.push(imWidget);
 
-    return sliderW.get_storage();
+    return sliderW;
 }
 
 } // namespace LD

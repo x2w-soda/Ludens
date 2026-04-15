@@ -5,40 +5,34 @@
 
 namespace LD {
 
-void UIToggleWidgetObj::startup(UIWidgetObj* obj, void* storage)
+void UIToggleWidgetObj::startup(UIWidgetObj* obj)
 {
-    UIToggleWidgetObj& self = obj->as.toggle;
+    UIToggleWidgetObj& self = obj->U->toggle;
     new (&self) UIToggleWidgetObj();
+    self.connect(obj);
 
-    self.base = obj;
-    self.storage = (UIToggleStorage*)storage;
-
-    if (!self.storage)
-    {
-        obj->flags |= UI_WIDGET_FLAG_LOCAL_STORAGE_BIT;
-        self.storage = &self.local;
-    }
-
-    obj->as.toggle.anim.reset(1.0f);
+    self.get_data().mAnim.reset(1.0f);
 }
 
 void UIToggleWidgetObj::cleanup(UIWidgetObj* obj)
 {
-    UIToggleWidgetObj& self = obj->as.toggle;
+    UIToggleWidgetObj& self = obj->U->toggle;
+
     (&self)->~UIToggleWidgetObj();
 }
 
 bool UIToggleWidgetObj::on_event(UIWidgetObj* obj, const UIEvent& event)
 {
-    UIToggleWidgetObj& self = obj->as.toggle;
+    UIToggleWidgetObj& self = obj->U->toggle;
+    UIToggleData& data = self.get_data();
 
     if (event.type == UI_EVENT_MOUSE_DOWN)
     {
-        self.storage->state = !self.storage->state;
-        self.anim.set(0.32f);
+        data.state = !data.state;
+        data.mAnim.set(0.32f);
 
-        if (self.onToggle)
-            self.onToggle({obj}, self.storage->state, obj->user);
+        if (data.onToggle)
+            data.onToggle({obj}, data.state, obj->user);
 
         return true;
     }
@@ -48,17 +42,19 @@ bool UIToggleWidgetObj::on_event(UIWidgetObj* obj, const UIEvent& event)
 
 void UIToggleWidgetObj::on_update(UIWidgetObj* obj, float delta)
 {
-    UIToggleWidgetObj& self = obj->as.toggle;
+    UIToggleWidgetObj& self = obj->U->toggle;
+    UIToggleData& data = self.get_data();
 
     // drive toggle animation
-    self.anim.update(delta);
+    data.mAnim.update(delta);
 }
 
 void UIToggleWidgetObj::on_draw(UIWidgetObj* obj, ScreenRenderComponent renderer)
 {
     UIWidget widget(obj);
     UITheme theme = widget.get_theme();
-    UIToggleWidgetObj& self = obj->as.toggle;
+    UIToggleWidgetObj& self = obj->U->toggle;
+    UIToggleData& data = self.get_data();
     Rect rect = widget.get_rect();
 
     renderer.draw_rect(rect, theme.get_background_color());
@@ -66,8 +62,8 @@ void UIToggleWidgetObj::on_draw(UIWidgetObj* obj, ScreenRenderComponent renderer
     rect.w /= 2.0f;
 
     // animate position
-    float ratio = self.anim.get();
-    if (!self.storage->state)
+    float ratio = data.mAnim.get();
+    if (!data.state)
         ratio = 1.0f - ratio;
 
     rect.x += rect.w * ratio;
@@ -76,19 +72,11 @@ void UIToggleWidgetObj::on_draw(UIWidgetObj* obj, ScreenRenderComponent renderer
     renderer.draw_rect(rect, widget.get_state_color(color));
 }
 
-UIToggleStorage* UIToggleWidget::get_storage()
-{
-    return mObj->as.toggle.storage;
-}
-
-void UIToggleWidget::set_storage(UIToggleStorage* storage)
-{
-    mObj->as.toggle.storage = storage;
-}
-
 void UIToggleWidget::set_on_toggle(UIToggleOnToggle onToggle)
 {
-    mObj->as.toggle.onToggle = onToggle;
+    UIToggleWidgetObj& self = mObj->U->toggle;
+
+    self.get_data().onToggle = onToggle;
 }
 
 } // namespace LD

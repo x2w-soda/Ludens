@@ -11,6 +11,8 @@
 
 namespace LD {
 
+static_assert(sizeof(UIWidgetLayout) <= 96);
+
 /// @brief wrap limit callback, user outputs minimum extent of the wrappable
 ///        and the maximum extent if unwrapped.
 static void ui_layout_wrap_limit_x(UIWidgetObj* obj, float& outMinW, float& outMaxW);
@@ -54,8 +56,8 @@ static float ui_layout_wrap_size_x(UIWidgetObj* obj, float limitW)
 
 static void ui_layout_pass_clear(UIWidgetObj* root)
 {
-    root->layout.rect.w = 0;
-    root->layout.rect.h = 0;
+    root->L->rect.w = 0;
+    root->L->rect.h = 0;
 
     for (UIWidgetObj* child = root->child; child; child = child->next)
         ui_layout_pass_clear(child);
@@ -63,20 +65,20 @@ static void ui_layout_pass_clear(UIWidgetObj* root)
 
 static void ui_layout_pass_fit_x(UIWidgetObj* root)
 {
-    const UILayoutInfo& rootLayout = root->layout.info;
+    const UILayoutInfo& rootLayout = root->L->info;
     UIWidgetObj* widget = (UIWidgetObj*)root;
-    float posx = root->layout.rect.x + rootLayout.childPadding.left;
+    float posx = root->L->rect.x + rootLayout.childPadding.left;
     float width = 0.0f;
 
     for (UIWidgetObj* child = widget->child; child; child = child->next)
     {
         ui_layout_pass_fit_x(child);
-        const UILayoutInfo& childLayout = child->layout.info;
+        const UILayoutInfo& childLayout = child->L->info;
 
         if (childLayout.sizeX.type == UI_SIZE_FIXED)
         {
-            child->layout.rect.w = childLayout.sizeX.extent;
-            child->layout.minw = child->layout.rect.w;
+            child->L->rect.w = childLayout.sizeX.extent;
+            child->L->minw = child->L->rect.w;
         }
         else if (childLayout.sizeX.type == UI_SIZE_WRAP)
         {
@@ -84,8 +86,8 @@ static void ui_layout_pass_fit_x(UIWidgetObj* root)
 
             float minw, maxw;
             ui_layout_wrap_limit_x(child, minw, maxw);
-            child->layout.rect.w = maxw;
-            child->layout.minw = minw;
+            child->L->rect.w = maxw;
+            child->L->minw = minw;
         }
 
         if (rootLayout.childAxis == UI_AXIS_X)
@@ -93,24 +95,24 @@ static void ui_layout_pass_fit_x(UIWidgetObj* root)
             if (child != root->child)
                 posx += rootLayout.childGap;
 
-            posx += child->layout.rect.w;
-            width = posx - root->layout.rect.x;
-            root->layout.minw += child->layout.minw;
+            posx += child->L->rect.w;
+            width = posx - root->L->rect.x;
+            root->L->minw += child->L->minw;
         }
         else
         {
-            width = std::max(width, child->layout.rect.w + rootLayout.childPadding.right);
-            root->layout.minw = std::max(root->layout.minw, child->layout.minw);
+            width = std::max(width, child->L->rect.w + rootLayout.childPadding.right);
+            root->L->minw = std::max(root->L->minw, child->L->minw);
         }
     }
 
     switch (rootLayout.sizeX.type)
     {
     case UI_SIZE_FIT:
-        root->layout.rect.w = width + rootLayout.childPadding.right;
+        root->L->rect.w = width + rootLayout.childPadding.right;
         break;
     case UI_SIZE_FIXED:
-        root->layout.rect.w = rootLayout.sizeX.extent;
+        root->L->rect.w = rootLayout.sizeX.extent;
         break;
     default:
         break;
@@ -119,19 +121,19 @@ static void ui_layout_pass_fit_x(UIWidgetObj* root)
 
 void ui_layout_pass_fit_y(UIWidgetObj* root)
 {
-    const UILayoutInfo& rootLayout = root->layout.info;
-    float posy = root->layout.rect.y + rootLayout.childPadding.top;
+    const UILayoutInfo& rootLayout = root->L->info;
+    float posy = root->L->rect.y + rootLayout.childPadding.top;
     float height = 0.0f;
 
     for (UIWidgetObj* child = root->child; child; child = child->next)
     {
         ui_layout_pass_fit_y(child);
-        const UILayoutInfo& childLayout = child->layout.info;
+        const UILayoutInfo& childLayout = child->L->info;
 
         if (childLayout.sizeY.type == UI_SIZE_FIXED)
         {
-            child->layout.rect.h = childLayout.sizeY.extent;
-            child->layout.minh = child->layout.rect.h;
+            child->L->rect.h = childLayout.sizeY.extent;
+            child->L->minh = child->L->rect.h;
         }
         else if (childLayout.sizeY.type == UI_SIZE_WRAP)
         {
@@ -140,23 +142,23 @@ void ui_layout_pass_fit_y(UIWidgetObj* root)
 
             // float minh, maxh;
             // ui_layout_wrap_limit_y(child, minh, maxh);
-            // child->layout.rect.h = maxh;
-            // child->layout.minh = minh;
+            // child->L->rect.h = maxh;
+            // child->L->minh = minh;
         }
 
         if (rootLayout.childAxis == UI_AXIS_X)
         {
-            height = std::max(height, child->layout.rect.h + rootLayout.childPadding.bottom);
-            root->layout.minh = std::max(root->layout.minh, child->layout.minh);
+            height = std::max(height, child->L->rect.h + rootLayout.childPadding.bottom);
+            root->L->minh = std::max(root->L->minh, child->L->minh);
         }
         else
         {
             if (child != root->child)
                 posy += rootLayout.childGap;
 
-            posy += child->layout.rect.h;
-            height = posy - root->layout.rect.y;
-            root->layout.minh += child->layout.minh;
+            posy += child->L->rect.h;
+            height = posy - root->L->rect.y;
+            root->L->minh += child->L->minh;
         }
     }
 
@@ -165,10 +167,10 @@ void ui_layout_pass_fit_y(UIWidgetObj* root)
     case UI_SIZE_FIT:
         if (rootLayout.sizeX.type == UI_SIZE_WRAP)
             break;
-        root->layout.rect.h = height + rootLayout.childPadding.bottom;
+        root->L->rect.h = height + rootLayout.childPadding.bottom;
         break;
     case UI_SIZE_FIXED:
-        root->layout.rect.h = rootLayout.sizeY.extent;
+        root->L->rect.h = rootLayout.sizeY.extent;
         break;
     default:
         break;
@@ -177,14 +179,14 @@ void ui_layout_pass_fit_y(UIWidgetObj* root)
 
 static void ui_layout_pass_grow_shrink_x(UIWidgetObj* root)
 {
-    const UILayoutInfo& rootLayout = root->layout.info;
-    float remainW = root->layout.rect.w - rootLayout.childPadding.left - rootLayout.childPadding.right;
+    const UILayoutInfo& rootLayout = root->L->info;
+    float remainW = root->L->rect.w - rootLayout.childPadding.left - rootLayout.childPadding.right;
 
     Vector<UIWidgetObj*> growableX;
     Vector<UIWidgetObj*> shrinkableX;
     for (UIWidgetObj* child = root->child; child; child = child->next)
     {
-        const UISize& sizeX = child->layout.info.sizeX;
+        const UISize& sizeX = child->L->info.sizeX;
 
         if (sizeX.type == UI_SIZE_GROW)
             growableX.push_back(child);
@@ -196,7 +198,7 @@ static void ui_layout_pass_grow_shrink_x(UIWidgetObj* root)
     {
         remainW -= (root->get_children_count() - 1) * rootLayout.childGap;
         for (UIWidgetObj* child = root->child; child; child = child->next)
-            remainW -= child->layout.rect.w;
+            remainW -= child->L->rect.w;
 
         ui_layout_grow_x(growableX, remainW);
         ui_layout_shrink_x(shrinkableX, remainW);
@@ -205,15 +207,15 @@ static void ui_layout_pass_grow_shrink_x(UIWidgetObj* root)
     {
         for (UIWidgetObj* child = root->child; child; child = child->next)
         {
-            const UISize& sizeX = child->layout.info.sizeX;
+            const UISize& sizeX = child->L->info.sizeX;
 
             if (sizeX.type == UI_SIZE_GROW)
             {
-                child->layout.rect.w = remainW;
+                child->L->rect.w = remainW;
             }
             else if (sizeX.type == UI_SIZE_WRAP)
             {
-                float childRemainW = remainW - child->layout.rect.w;
+                float childRemainW = remainW - child->L->rect.w;
                 Vector<UIWidgetObj*> v{child};
                 ui_layout_shrink_x(v, childRemainW);
             }
@@ -226,13 +228,13 @@ static void ui_layout_pass_grow_shrink_x(UIWidgetObj* root)
 
 void ui_layout_pass_grow_shrink_y(UIWidgetObj* root)
 {
-    const UILayoutInfo& rootLayout = root->layout.info;
-    float remainH = root->layout.rect.h - rootLayout.childPadding.top - rootLayout.childPadding.bottom;
+    const UILayoutInfo& rootLayout = root->L->info;
+    float remainH = root->L->rect.h - rootLayout.childPadding.top - rootLayout.childPadding.bottom;
 
     Vector<UIWidgetObj*> growableY;
     for (UIWidgetObj* child = root->child; child; child = child->next)
     {
-        const UILayoutInfo& childLayout = child->layout.info;
+        const UILayoutInfo& childLayout = child->L->info;
 
         if (childLayout.sizeY.type == UI_SIZE_GROW)
             growableY.push_back(child);
@@ -242,7 +244,7 @@ void ui_layout_pass_grow_shrink_y(UIWidgetObj* root)
     {
         remainH -= (root->get_children_count() - 1) * rootLayout.childGap;
         for (UIWidgetObj* child = root->child; child; child = child->next)
-            remainH -= child->layout.rect.h;
+            remainH -= child->L->rect.h;
 
         ui_layout_grow_y(growableY, remainH);
         // TODO: shrink y
@@ -251,12 +253,12 @@ void ui_layout_pass_grow_shrink_y(UIWidgetObj* root)
     {
         for (UIWidgetObj* child = root->child; child; child = child->next)
         {
-            const UILayoutInfo& childLayout = child->layout.info;
+            const UILayoutInfo& childLayout = child->L->info;
             const UISize& sizeY = childLayout.sizeY;
 
             if (sizeY.type == UI_SIZE_GROW)
             {
-                child->layout.rect.h = remainH;
+                child->L->rect.h = remainH;
             }
         }
     }
@@ -271,33 +273,33 @@ static void ui_layout_pass_wrap_x(UIWidgetObj* root)
     for (UIWidgetObj* child = root->child; child; child = child->next)
     {
         ui_layout_pass_wrap_x(child);
-        const UILayoutInfo& childLayout = child->layout.info;
+        const UILayoutInfo& childLayout = child->L->info;
 
         if (childLayout.sizeX.type == UI_SIZE_WRAP)
         {
             LD_ASSERT(child->type == UI_WIDGET_TEXT);
 
             // ui_layout_pass_grow_shrink_x should have determined width along primary axis
-            float wrappedH = ui_layout_wrap_size_x(child, child->layout.rect.w);
+            float wrappedH = ui_layout_wrap_size_x(child, child->L->rect.w);
 
-            child->layout.rect.h = wrappedH;
+            child->L->rect.h = wrappedH;
         }
     }
 }
 
 static void ui_layout_pass_pos_align(UIWidgetObj* root)
 {
-    const UILayoutInfo& rootLayout = root->layout.info;
-    float posx = root->layout.rect.x + rootLayout.childPadding.left;
-    float posy = root->layout.rect.y + rootLayout.childPadding.top;
+    const UILayoutInfo& rootLayout = root->L->info;
+    float posx = root->L->rect.x + rootLayout.childPadding.left;
+    float posy = root->L->rect.y + rootLayout.childPadding.top;
     float childAccW = 0.0f;
     float childAccH = 0.0f;
     int childCount = 0;
 
     for (UIWidgetObj* child = root->child; child; child = child->next)
     {
-        childAccW += child->layout.rect.w;
-        childAccH += child->layout.rect.h;
+        childAccW += child->L->rect.w;
+        childAccH += child->L->rect.h;
         childCount++;
     }
 
@@ -310,7 +312,7 @@ static void ui_layout_pass_pos_align(UIWidgetObj* root)
     // handle alignment along main axis
     if (rootLayout.childAxis == UI_AXIS_X)
     {
-        remainW = root->layout.rect.w - rootLayout.childPadding.left - rootLayout.childPadding.right - childAccW;
+        remainW = root->L->rect.w - rootLayout.childPadding.left - rootLayout.childPadding.right - childAccW;
         remainW -= rootLayout.childGap * (childCount - 1);
 
         switch (rootLayout.childAlignX)
@@ -327,7 +329,7 @@ static void ui_layout_pass_pos_align(UIWidgetObj* root)
     }
     else
     {
-        remainH = root->layout.rect.h - rootLayout.childPadding.top - rootLayout.childPadding.bottom - childAccH;
+        remainH = root->L->rect.h - rootLayout.childPadding.top - rootLayout.childPadding.bottom - childAccH;
         remainH -= rootLayout.childGap * (childCount - 1);
 
         switch (rootLayout.childAlignY)
@@ -345,22 +347,22 @@ static void ui_layout_pass_pos_align(UIWidgetObj* root)
 
     for (UIWidgetObj* child = root->child; child; child = child->next)
     {
-        child->layout.rect.x = posx;
-        child->layout.rect.y = posy;
+        child->L->rect.x = posx;
+        child->L->rect.y = posy;
 
         // handle alignment across main axis for each child.
         if (rootLayout.childAxis == UI_AXIS_X)
         {
-            posx += child->layout.rect.w + rootLayout.childGap;
-            remainH = root->layout.rect.h - child->layout.rect.h;
+            posx += child->L->rect.w + rootLayout.childGap;
+            remainH = root->L->rect.h - child->L->rect.h;
 
             switch (rootLayout.childAlignY)
             {
             case UI_ALIGN_CENTER:
-                child->layout.rect.y += remainH / 2.0f;
+                child->L->rect.y += remainH / 2.0f;
                 break;
             case UI_ALIGN_END:
-                child->layout.rect.y += remainH;
+                child->L->rect.y += remainH;
                 break;
             default:
                 break;
@@ -368,16 +370,16 @@ static void ui_layout_pass_pos_align(UIWidgetObj* root)
         }
         else // main axis Y
         {
-            posy += child->layout.rect.h + rootLayout.childGap;
-            remainW = root->layout.rect.w - child->layout.rect.w;
+            posy += child->L->rect.h + rootLayout.childGap;
+            remainW = root->L->rect.w - child->L->rect.w;
 
             switch (rootLayout.childAlignX)
             {
             case UI_ALIGN_CENTER:
-                child->layout.rect.x += remainW / 2.0f;
+                child->L->rect.x += remainW / 2.0f;
                 break;
             case UI_ALIGN_END:
-                child->layout.rect.x += remainW;
+                child->L->rect.x += remainW;
                 break;
             default:
                 break;
@@ -390,15 +392,15 @@ static void ui_layout_pass_pos_align(UIWidgetObj* root)
 
 static void ui_layout_pass_scroll_offset(UIWidgetObj* root, Vec2 offset)
 {
-    const UILayoutInfo& rootLayout = root->layout.info;
+    const UILayoutInfo& rootLayout = root->L->info;
     (void)rootLayout;
 
-    offset += root->scrollOffset;
+    offset += root->L->childOffset;
 
     for (UIWidgetObj* child = root->child; child; child = child->next)
     {
-        child->layout.rect.x += offset.x;
-        child->layout.rect.y += offset.y;
+        child->L->rect.x += offset.x;
+        child->L->rect.y += offset.y;
 
         ui_layout_pass_scroll_offset(child, offset);
     }
@@ -411,20 +413,20 @@ static void ui_layout_grow_x(const Vector<UIWidgetObj*>& growableX, float remain
 
     while (remainW > 0.0f)
     {
-        float smallestW = growableX[0]->layout.rect.w;
+        float smallestW = growableX[0]->L->rect.w;
         float secondSmallestW = smallestW;
         float growW = remainW;
 
         for (UIWidgetObj* child : growableX)
         {
-            if (child->layout.rect.w < smallestW)
+            if (child->L->rect.w < smallestW)
             {
                 secondSmallestW = smallestW;
-                smallestW = child->layout.rect.w;
+                smallestW = child->L->rect.w;
             }
-            else if (child->layout.rect.w > smallestW)
+            else if (child->L->rect.w > smallestW)
             {
-                secondSmallestW = std::min(secondSmallestW, child->layout.rect.w);
+                secondSmallestW = std::min(secondSmallestW, child->L->rect.w);
                 growW = secondSmallestW - smallestW;
             }
         }
@@ -433,9 +435,9 @@ static void ui_layout_grow_x(const Vector<UIWidgetObj*>& growableX, float remain
 
         for (UIWidgetObj* child : growableX)
         {
-            if (child->layout.rect.w == smallestW)
+            if (child->L->rect.w == smallestW)
             {
-                child->layout.rect.w += growW;
+                child->L->rect.w += growW;
                 remainW -= growW;
             }
         }
@@ -449,20 +451,20 @@ void ui_layout_grow_y(const Vector<UIWidgetObj*>& growableY, float remainH)
 
     while (remainH > 0.0f)
     {
-        float smallestH = growableY[0]->layout.rect.h;
+        float smallestH = growableY[0]->L->rect.h;
         float secondSmallestH = smallestH;
         float growH = remainH;
 
         for (UIWidgetObj* child : growableY)
         {
-            if (child->layout.rect.h < smallestH)
+            if (child->L->rect.h < smallestH)
             {
                 secondSmallestH = smallestH;
-                smallestH = child->layout.rect.h;
+                smallestH = child->L->rect.h;
             }
-            else if (child->layout.rect.h > smallestH)
+            else if (child->L->rect.h > smallestH)
             {
-                secondSmallestH = std::min(secondSmallestH, child->layout.rect.h);
+                secondSmallestH = std::min(secondSmallestH, child->L->rect.h);
                 growH = secondSmallestH - smallestH;
             }
         }
@@ -471,9 +473,9 @@ void ui_layout_grow_y(const Vector<UIWidgetObj*>& growableY, float remainH)
 
         for (UIWidgetObj* child : growableY)
         {
-            if (child->layout.rect.h == smallestH)
+            if (child->L->rect.h == smallestH)
             {
-                child->layout.rect.h += growH;
+                child->L->rect.h += growH;
                 remainH -= growH;
             }
         }
@@ -484,7 +486,7 @@ static void ui_layout_shrink_x(Vector<UIWidgetObj*>& shrinkableX, float remainW)
 {
     while (!shrinkableX.empty() && remainW < 0.0f)
     {
-        float largestW = shrinkableX[0]->layout.rect.w;
+        float largestW = shrinkableX[0]->L->rect.w;
         float secondLargestW = largestW;
         float shrinkW = remainW;
 
@@ -492,14 +494,14 @@ static void ui_layout_shrink_x(Vector<UIWidgetObj*>& shrinkableX, float remainW)
         {
             UIWidgetObj* child = shrinkableX[i];
 
-            if (child->layout.rect.w > largestW)
+            if (child->L->rect.w > largestW)
             {
                 secondLargestW = largestW;
-                largestW = child->layout.rect.w;
+                largestW = child->L->rect.w;
             }
-            else if (child->layout.rect.w < largestW)
+            else if (child->L->rect.w < largestW)
             {
-                secondLargestW = std::max(secondLargestW, child->layout.rect.w);
+                secondLargestW = std::max(secondLargestW, child->L->rect.w);
                 shrinkW = secondLargestW - largestW;
             }
         }
@@ -513,17 +515,17 @@ static void ui_layout_shrink_x(Vector<UIWidgetObj*>& shrinkableX, float remainW)
         for (size_t i = 0; i < shrinkableX.size(); i++)
         {
             UIWidgetObj* child = shrinkableX[i];
-            float childPrevW = child->layout.rect.w;
+            float childPrevW = child->L->rect.w;
 
-            if (child->layout.rect.w == largestW)
+            if (child->L->rect.w == largestW)
             {
-                child->layout.rect.w += shrinkW;
-                if (child->layout.rect.w <= child->layout.minw)
+                child->L->rect.w += shrinkW;
+                if (child->L->rect.w <= child->L->minw)
                 {
-                    child->layout.rect.w = child->layout.minw;
+                    child->L->rect.w = child->L->minw;
                     toErase.push_back(i);
                 }
-                remainW -= (child->layout.rect.w - childPrevW);
+                remainW -= (child->L->rect.w - childPrevW);
             }
         }
 

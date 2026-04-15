@@ -2,17 +2,14 @@
 
 #include <Ludens/UI/Widget/UIPanelWidget.h>
 
+#include "../UILibDef.h"
+
 namespace LD {
 
-struct UIWidgetObj;
-
-struct UIPanelWidgetObj
+struct UIPanelWidgetObj : UIWidgetBaseObj<UIPanelData>
 {
-    UIWidgetObj* base;
-    UIPanelStorage* storage;
-    UIPanelStorage local;
-
-    static void startup(UIWidgetObj* obj, void* storage);
+    static UILayoutInfo default_layout();
+    static void startup(UIWidgetObj* obj);
     static void cleanup(UIWidgetObj* obj);
     static void on_draw(UIWidgetObj* obj, ScreenRenderComponent renderer);
 };

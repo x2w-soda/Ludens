@@ -9,31 +9,44 @@
 
 namespace LD {
 
+struct UITextSpan;
+
+typedef bool (*UISpanOnEvent)(UIWidget widget, const UIEvent& event, UITextSpan& span, int spanIndex, void* user);
+
 struct UITextSpan
 {
     TextSpan text = {};
-    bool (*onEvent)(UIWidget widget, const UIEvent& event, UITextSpan& span, int spanIndex, void* user) = nullptr;
+    UISpanOnEvent onEvent = nullptr;
     void* user = nullptr;
 };
 
-struct UITextStorage
+class UITextData
 {
-    std::string value;                    /// text value to display
-    Vector<UITextSpan> spans;             /// text spans for rendering, must be synched with value
-    float fontSize = UIFont::base_size(); /// rendered font size
-    Color bgColor = 0;                    /// background color for entire widget rect
+    friend struct UITextWidgetObj;
 
+public:
+    Color bgColor = 0;                    /// background color for entire widget rect
+    float fontSize = UIFont::base_size(); /// rendered font size
+
+    void clear_value();
     void set_value(const std::string& newValue);
     void set_value(const std::string& newValue, const Vector<UITextSpan>& newSpans);
     void set_fg_color(Color fgColor);
+    void set_span_on_event(UISpanOnEvent onEvent, void* user);
     std::string get_substring(int spanIndex);
+    inline int get_span_index() { return mSpanIndex; }
+    inline const std::string& get_value() const { return mValue; }
+    inline const Vector<UITextSpan>& get_spans() const { return mSpans; }
+    inline Vector<UITextSpan>& get_spans() { return mSpans; }
+
+private:
+    std::string mValue;        /// text value to display
+    Vector<UITextSpan> mSpans; /// text spans for rendering, must be synched with value
+    int mSpanIndex = -1;
 };
 
 struct UITextWidget : UIWidget
 {
-    UITextStorage* get_storage();
-    void set_storage(UITextStorage* storage);
-
     /// @brief Set uniform text style for all spans.
     void set_text_style(Color color, TextSpanFont font);
 

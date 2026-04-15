@@ -28,7 +28,7 @@ void EditorUI::startup(const EditorUIInfo& info)
     mRenderSystem = info.renderSystem;
     mEnvCubemap = (RUID)0; // info.envCubemap
 
-    ui_imgui_startup(mCtx.get_font_default());
+    ui_imgui_startup(mCtx.get_font_default(), mCtx.get_font_mono());
     eui_startup(mCtx);
     eui_push_theme(mCtx.get_theme());
 

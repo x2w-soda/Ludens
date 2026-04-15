@@ -19,8 +19,9 @@ struct WindowEvent;
 
 struct UIContextInfo
 {
-    UIFont font;   /// default font for text rendering, this font out-lives the UIContext
-    UITheme theme; /// the UI theme to use for widgets in this context
+    UIFont font;     /// default font for text rendering, this font out-lives the UIContext
+    UIFont fontMono; /// optional font for monospace text
+    UITheme theme;   /// the UI theme to use for widgets in this context
     void (*onEvent)(UIWidget widget, const UIEvent& event, void* user);
     void* user;
 };

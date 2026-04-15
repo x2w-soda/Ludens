@@ -18,11 +18,22 @@ struct UIWidgetObj;
 struct UIWorkspaceObj;
 struct UIEvent;
 
+struct UIWidgetAllocInfo
+{
+    UIWidgetType type;
+    UIWidgetObj* parent;
+    void* data;
+    void* user;
+};
+
 /// @brief UI context implementation.
 struct UIContextObj
 {
-    PoolAllocator widgetPA;
+    PoolAllocator widgetUnionPA;
+    PoolAllocator widgetLayoutPA;
+    PoolAllocator widgetObjPA;
     UIFont fontDefault;
+    UIFont fontMonospace;
     UITheme theme;
     Vector<UILayerObj*> layers;
     HashSet<UILayerObj*> deferredLayerDestruction;
@@ -41,8 +52,8 @@ struct UIContextObj
 
     UIFont get_font_from_hint(TextSpanFont font);
 
-    UIWidgetObj* alloc_widget(UIWidgetType type, const UILayoutInfo& layoutI, UIWidgetObj* parent, void* storage, void* user);
-    void free_widget(UIWidgetObj* widget);
+    UIWidgetObj* alloc_widget_obj(const UIWidgetAllocInfo& info);
+    void free_widget_obj(UIWidgetObj* widget);
 
     UIWidgetObj* get_widget(const Vec2& pos);
     UIWidgetObj* get_widget_in_layer(UILayerObj* layer, const Vec2& pos);

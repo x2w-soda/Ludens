@@ -40,33 +40,31 @@ struct UITextEditDrawInfo
     std::string str;
 };
 
-void UITextEditWidgetObj::startup(UIWidgetObj* obj, void* storage)
+UILayoutInfo UITextEditWidgetObj::default_layout()
 {
-    UITextEditWidgetObj& self = obj->as.textEdit;
-    new (&self) UITextEditWidgetObj();
-    self.base = obj;
-    self.storage = (UITextEditStorage*)storage;
+    return UILayoutInfo(UISize::fixed(100.0f), UISize::fixed(19.2f));
+}
 
-    if (!self.storage)
-    {
-        obj->flags |= UI_WIDGET_FLAG_LOCAL_STORAGE_BIT;
-        self.storage = &self.local;
-        self.storage->font = obj->ctx()->fontDefault;
-    }
+void UITextEditWidgetObj::startup(UIWidgetObj* obj)
+{
+    UITextEditWidgetObj& self = obj->U->textEdit;
+    new (&self) UITextEditWidgetObj();
+    self.connect(obj);
+    self.get_data().font = obj->ctx()->fontDefault;
 
     obj->flags |= UI_WIDGET_FLAG_FOCUSABLE_BIT;
 }
 
-void UITextEditWidgetObj::cleanup(UIWidgetObj* base)
+void UITextEditWidgetObj::cleanup(UIWidgetObj* obj)
 {
-    UITextEditWidgetObj* obj = &base->as.textEdit;
+    UITextEditWidgetObj& self = obj->U->textEdit;
 
-    obj->~UITextEditWidgetObj();
+    (&self)->~UITextEditWidgetObj();
 }
 
 bool UITextEditWidgetObj::on_event(UIWidgetObj* obj, const UIEvent& event)
 {
-    auto& self = obj->as.textEdit;
+    UITextEditWidgetObj& self = obj->U->textEdit;
 
     switch (event.type)
     {
@@ -95,61 +93,64 @@ bool UITextEditWidgetObj::on_event(UIWidgetObj* obj, const UIEvent& event)
 void UITextEditWidgetObj::on_draw(UIWidgetObj* obj, ScreenRenderComponent renderer)
 {
     UIContextObj& ctx = *obj->ctx();
-    auto& self = obj->as.textEdit;
-    const Rect& rect = obj->layout.rect;
+    auto& self = obj->U->textEdit;
+    const Rect& rect = self.get_rect();
+    UITextEditData& data = self.get_data();
     UITheme theme = ctx.theme;
-    UITextEditStorage* storage = self.storage;
 
     renderer.draw_rect(rect, theme.get_field_color());
 
-    if (!storage->font)
-        storage->font = ctx.fontDefault;
+    if (!data.font)
+        data.font = ctx.fontDefault;
 
     UITextEditDrawInfo info{};
     info.renderer = renderer;
-    info.atlas = storage->font.font_atlas();
-    info.image = storage->font.image();
+    info.atlas = data.font.font_atlas();
+    info.image = data.font.image();
     info.textColor = theme.get_on_surface_color();
     info.outlineColor = theme.get_selection_color();
-    info.fontSize = storage->fontSize;
-    info.str = storage->mEditor.get_string();
+    info.fontSize = data.fontSize;
+    info.str = data.mEditor.get_string();
 
-    if (self.isEditing)
+    if (data.mIsEditing)
     {
         self.draw_edit_state(info);
     }
     else
     {
-        renderer.draw_text(info.atlas, info.image, storage->fontSize, rect.get_pos(), info.str.c_str(), info.textColor, rect.w);
+        renderer.draw_text(info.atlas, info.image, data.fontSize, rect.get_pos(), info.str.c_str(), info.textColor, rect.w);
     }
 }
 
 void UITextEditWidgetObj::begin_edit()
 {
-    isEditing = true;
-    storage->original = storage->mEditor.get_string();
+    UITextEditData& data = get_data();
+    data.mIsEditing = true;
+    data.mOriginal = data.mEditor.get_string();
 }
 
 void UITextEditWidgetObj::finish_edit()
 {
-    isEditing = false;
-    storage->original = storage->mEditor.get_string();
+    UITextEditData& data = get_data();
+    data.mIsEditing = false;
+    data.mOriginal = data.mEditor.get_string();
 
     base->ctx()->requestLooseFocus = base;
 }
 
 void UITextEditWidgetObj::cancel_edit()
 {
-    isEditing = false;
+    UITextEditData& data = get_data();
+    data.mIsEditing = false;
 
-    std::string canceled = storage->mEditor.get_string();
-    if (canceled != storage->original)
+    std::string canceled = data.mEditor.get_string();
+    if (canceled != data.mOriginal)
     {
-        storage->mEditor.set_string(storage->original);
+        data.mEditor.set_string(data.mOriginal);
 
-        View view(storage->original.data(), storage->original.size());
-        if (onChange)
-            onChange({base}, view, base->user);
+        View view(data.mOriginal.data(), data.mOriginal.size());
+        if (data.onChange)
+            data.onChange({base}, view, base->user);
     }
 
     base->ctx()->requestLooseFocus = base;
@@ -160,15 +161,16 @@ void UITextEditWidgetObj::on_mouse_down_event(const UIEvent& event)
     if (event.type != UI_EVENT_MOUSE_DOWN)
         return;
 
-    FontAtlas atlas = storage->font.font_atlas();
-    Rect rect = base->layout.rect;
+    UITextEditData& data = get_data();
+    FontAtlas atlas = data.font.font_atlas();
+    Rect rect = get_rect();
 
-    std::string str = storage->mEditor.get_string();
-    int index = atlas.measure_cursor_index(View(str.data(), str.size()), storage->fontSize, rect.w, event.mouse.position);
+    std::string str = data.mEditor.get_string();
+    int index = atlas.measure_cursor_index(View(str.data(), str.size()), data.fontSize, rect.w, event.mouse.position);
     if (index < 0)
         index = (int)str.size();
 
-    storage->mEditor.set_cursor((size_t)index);
+    data.mEditor.set_cursor((size_t)index);
 }
 
 void UITextEditWidgetObj::on_mouse_drag_event(const UIEvent& event)
@@ -176,20 +178,21 @@ void UITextEditWidgetObj::on_mouse_drag_event(const UIEvent& event)
     if (event.type != UI_EVENT_MOUSE_DRAG || event.drag.button != MOUSE_BUTTON_LEFT)
         return;
 
-    FontAtlas atlas = storage->font.font_atlas();
-    Rect rect = base->layout.rect;
+    UITextEditData& data = get_data();
+    FontAtlas atlas = data.font.font_atlas();
+    Rect rect = get_rect();
 
-    std::string str = storage->mEditor.get_string();
-    Vec2 localPos = event.drag.position - base->layout.rect.get_pos();
-    int index = atlas.measure_cursor_index(View(str.data(), str.size()), storage->fontSize, rect.w, localPos);
+    std::string str = data.mEditor.get_string();
+    Vec2 localPos = event.drag.position - rect.get_pos();
+    int index = atlas.measure_cursor_index(View(str.data(), str.size()), data.fontSize, rect.w, localPos);
 
     if (event.drag.begin)
-        storage->mDragBeginPos = index < 0 ? str.size() : index;
+        data.mDragBeginPos = index < 0 ? str.size() : index;
     else
     {
-        storage->mDragPos = index < 0 ? str.size() : index;
-        Range dragRange = Range::from_offsets(storage->mDragPos, storage->mDragBeginPos);
-        storage->mEditor.set_selection(dragRange);
+        data.mDragPos = index < 0 ? str.size() : index;
+        Range dragRange = Range::from_offsets(data.mDragPos, data.mDragBeginPos);
+        data.mEditor.set_selection(dragRange);
     }
 }
 
@@ -198,6 +201,7 @@ void UITextEditWidgetObj::on_key_down_event(const UIEvent& event)
     if (event.type != UI_EVENT_KEY_DOWN)
         return;
 
+    UITextEditData& data = get_data();
     bool hasChanged = false;
     bool hasSubmitted = false;
 
@@ -207,7 +211,7 @@ void UITextEditWidgetObj::on_key_down_event(const UIEvent& event)
         return;
     }
 
-    switch (storage->mDomain)
+    switch (data.mDomain)
     {
     case UI_TEXT_EDIT_DOMAIN_STRING:
         domain_string_on_key(event, hasChanged, hasSubmitted);
@@ -222,33 +226,35 @@ void UITextEditWidgetObj::on_key_down_event(const UIEvent& event)
         break;
     }
 
-    std::string str = storage->mEditor.get_string();
+    std::string str = data.mEditor.get_string();
     View strView(str.data(), str.size());
 
-    if (hasChanged && onChange)
-        onChange({base}, strView, base->user);
+    if (hasChanged && data.onChange)
+        data.onChange({base}, strView, base->user);
 
     if (hasSubmitted)
     {
         finish_edit();
 
-        if (onSubmit)
-            onSubmit({base}, strView, base->user);
+        if (data.onSubmit)
+            data.onSubmit({base}, strView, base->user);
     }
 }
 
 void UITextEditWidgetObj::domain_string_on_key(const UIEvent& event, bool& hasChanged, bool& hasSubmitted)
 {
-    LD_ASSERT(storage->mDomain == UI_TEXT_EDIT_DOMAIN_STRING);
+    UITextEditData& data = get_data();
+    LD_ASSERT(data.mDomain == UI_TEXT_EDIT_DOMAIN_STRING);
 
-    TextEditLiteResult result = storage->mEditor.key(KeyValue(event.key.code, event.key.mods));
+    TextEditLiteResult result = data.mEditor.key(KeyValue(event.key.code, event.key.mods));
     hasChanged = result == TEXT_EDIT_LITE_RESULT_CHANGED;
     hasSubmitted = result == TEXT_EDIT_LITE_RESULT_SUBMITTED;
 }
 
 void UITextEditWidgetObj::domain_uint_on_key(const UIEvent& event, bool& hasChanged, bool& hasSubmitted)
 {
-    LD_ASSERT(storage->mDomain == UI_TEXT_EDIT_DOMAIN_UINT);
+    UITextEditData& data = get_data();
+    LD_ASSERT(data.mDomain == UI_TEXT_EDIT_DOMAIN_UINT);
 
     KeyValue key(event.key.code, event.key.mods);
     hasChanged = false;
@@ -256,7 +262,7 @@ void UITextEditWidgetObj::domain_uint_on_key(const UIEvent& event, bool& hasChan
 
     if (is_edit_key(key) || is_digit_key(key))
     {
-        TextEditLiteResult result = storage->mEditor.key(key);
+        TextEditLiteResult result = data.mEditor.key(key);
         hasChanged = result == TEXT_EDIT_LITE_RESULT_CHANGED;
         hasSubmitted = result == TEXT_EDIT_LITE_RESULT_SUBMITTED;
     }
@@ -264,7 +270,8 @@ void UITextEditWidgetObj::domain_uint_on_key(const UIEvent& event, bool& hasChan
 
 void UITextEditWidgetObj::domain_f32_on_key(const UIEvent& event, bool& hasChanged, bool& hasSubmitted)
 {
-    LD_ASSERT(storage->mDomain == UI_TEXT_EDIT_DOMAIN_F32);
+    UITextEditData& data = get_data();
+    LD_ASSERT(data.mDomain == UI_TEXT_EDIT_DOMAIN_F32);
 
     KeyValue key(event.key.code, event.key.mods);
     hasChanged = false;
@@ -272,7 +279,7 @@ void UITextEditWidgetObj::domain_f32_on_key(const UIEvent& event, bool& hasChang
 
     if (is_edit_key(key) || is_digit_key(key) || key == KeyCode(KEY_CODE_PERIOD))
     {
-        TextEditLiteResult result = storage->mEditor.key(key);
+        TextEditLiteResult result = data.mEditor.key(key);
         hasChanged = result == TEXT_EDIT_LITE_RESULT_CHANGED;
         hasSubmitted = result == TEXT_EDIT_LITE_RESULT_SUBMITTED;
     }
@@ -280,15 +287,16 @@ void UITextEditWidgetObj::domain_f32_on_key(const UIEvent& event, bool& hasChang
 
 void UITextEditWidgetObj::draw_edit_state(UITextEditDrawInfo& info)
 {
-    Rect rect = base->layout.rect;
+    UITextEditData& data = get_data();
+    Rect rect = get_rect();
     UITheme theme = base->ctx()->theme;
     Color outlineColor = theme.get_selection_color();
 
     info.renderer.draw_rect_outline(rect, outlineColor, 1.0f);
 
     float minWidth, maxWidth;
-    Range selection = storage->mEditor.get_selection();
-    size_t cursor = storage->mEditor.get_cursor();
+    Range selection = data.mEditor.get_selection();
+    size_t cursor = data.mEditor.get_cursor();
 
     if (selection) // draw selection area
     {
@@ -303,7 +311,7 @@ void UITextEditWidgetObj::draw_edit_state(UITextEditDrawInfo& info)
 
     if (!info.str.empty())
     {
-        info.renderer.draw_text(info.atlas, info.image, storage->fontSize, rect.get_pos(), info.str.c_str(), info.textColor, rect.w);
+        info.renderer.draw_text(info.atlas, info.image, data.fontSize, rect.get_pos(), info.str.c_str(), info.textColor, rect.w);
     }
 
     if (!selection) // draw cursor
@@ -315,12 +323,12 @@ void UITextEditWidgetObj::draw_edit_state(UITextEditDrawInfo& info)
     }
 }
 
-UITextEditStorage::UITextEditStorage()
+UITextEditData::UITextEditData()
 {
     mEditor = TextEditLite::create();
 }
 
-UITextEditStorage::UITextEditStorage(const UITextEditStorage& other)
+UITextEditData::UITextEditData(const UITextEditData& other)
     : mDomain(other.mDomain), fontSize(other.fontSize)
 {
     TextEditLite otherEditor = other.mEditor;
@@ -329,12 +337,12 @@ UITextEditStorage::UITextEditStorage(const UITextEditStorage& other)
     mEditor.set_string(otherEditor.get_string());
 }
 
-UITextEditStorage::~UITextEditStorage()
+UITextEditData::~UITextEditData()
 {
     TextEditLite::destroy(mEditor);
 }
 
-UITextEditStorage& UITextEditStorage::operator=(const UITextEditStorage& other)
+UITextEditData& UITextEditData::operator=(const UITextEditData& other)
 {
     TextEditLite otherEditor = other.mEditor;
 
@@ -345,45 +353,41 @@ UITextEditStorage& UITextEditStorage::operator=(const UITextEditStorage& other)
     return *this;
 }
 
-void UITextEditStorage::set_text(const std::string& str)
+void UITextEditData::set_text(const std::string& str)
 {
-    original = str;
+    mOriginal = str;
     mEditor.set_string(str);
 }
 
-void UITextEditStorage::set_domain(UITextEditDomain mDomain)
+void UITextEditData::set_domain(UITextEditDomain mDomain)
 {
     if (this->mDomain != mDomain)
     {
         mEditor.clear();
-        original.clear();
+        mOriginal.clear();
         this->mDomain = mDomain;
     }
 }
 
-UITextEditStorage* UITextEditWidget::get_storage()
-{
-    return mObj->as.textEdit.storage;
-}
-
-void UITextEditWidget::set_storage(UITextEditStorage* storage)
-{
-    mObj->as.textEdit.storage = storage;
-}
-
 bool UITextEditWidget::is_editing()
 {
-    return mObj->as.textEdit.isEditing;
+    UITextEditWidgetObj& self = mObj->U->textEdit;
+
+    return self.get_data().is_editing();
 }
 
 void UITextEditWidget::set_on_change(UITextEditOnChange onChange)
 {
-    mObj->as.textEdit.onChange = onChange;
+    UITextEditWidgetObj& self = mObj->U->textEdit;
+
+    self.get_data().onChange = onChange;
 }
 
 void UITextEditWidget::set_on_submit(UITextEditOnSubmit onSubmit)
 {
-    mObj->as.textEdit.onSubmit = onSubmit;
+    UITextEditWidgetObj& self = mObj->U->textEdit;
+
+    self.get_data().onSubmit = onSubmit;
 }
 
 } // namespace LD

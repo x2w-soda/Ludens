@@ -30,7 +30,7 @@ static UIEvent get_local_event(UIWidgetObj* widget, const UIEvent& event)
     case UI_EVENT_MOUSE_DOWN:
     case UI_EVENT_MOUSE_UP:
     case UI_EVENT_MOUSE_POSITION:
-        localEvent.mouse.position -= widget->layout.rect.get_pos();
+        localEvent.mouse.position -= widget->L->rect.get_pos();
         break;
     default:
         break;
@@ -45,12 +45,12 @@ static UIEvent get_local_event(UIWidgetObj* widget, const UIEvent& event)
 /// @return The widget at position, or null if position is out of bounds.
 static UIWidgetObj* get_widget_in_subtree(UIWidgetObj* root, const Vec2& pos)
 {
-    if (!root->layout.rect.contains(pos))
+    if (!root->L->rect.contains(pos))
         return nullptr;
 
     for (UIWidgetObj* child = root->child; child; child = child->next)
     {
-        if (!child->layout.rect.contains(pos))
+        if (!child->L->rect.contains(pos))
             continue;
 
         // return deepest widget in hierarhcy that qualifies
@@ -106,33 +106,33 @@ UIFont UIContextObj::get_font_from_hint(TextSpanFont font)
 {
     // TODO: UIContext is responsible for mapping TextSpanFont intent
     //       to actual UIFont handle, generalize for itatlic and bold fonts.
-    (void)font;
+    if (font == TEXT_SPAN_FONT_MONOSPACE && fontMonospace)
+        return fontMonospace;
 
     return fontDefault;
 }
 
-UIWidgetObj* UIContextObj::alloc_widget(UIWidgetType type, const UILayoutInfo& layoutI, UIWidgetObj* parent, void* storage, void* user)
+UIWidgetObj* UIContextObj::alloc_widget_obj(const UIWidgetAllocInfo& info)
 {
-    LD_PROFILE_SCOPE;
+    LD_ASSERT(info.parent);
 
-    LD_ASSERT(parent);
-    UIWindowObj* window = parent->window;
-    UIWidgetObj* obj = (UIWidgetObj*)widgetPA.allocate();
-    new (obj) UIWidgetObj(type, layoutI, parent, window, storage, user);
+    UIWidgetLayout* widgetL = (UIWidgetLayout*)widgetLayoutPA.allocate();
+    UIWidgetUnion* widgetU = (UIWidgetUnion*)widgetUnionPA.allocate();
+    UIWindowObj* window = info.parent->window;
+    UIWidgetObj* obj = (UIWidgetObj*)widgetObjPA.allocate();
+    new (obj) UIWidgetObj(info.type, widgetL, widgetU, info.parent, window, info.data, info.user);
     obj->theme = theme;
 
     window->widgets.push_back(obj);
-    parent->append_child(obj);
+    info.parent->append_child(obj);
 
     return obj;
 }
 
-void UIContextObj::free_widget(UIWidgetObj* widget)
+void UIContextObj::free_widget_obj(UIWidgetObj* widget)
 {
-    LD_PROFILE_SCOPE;
-
     while (widget->child)
-        free_widget(widget->child);
+        free_widget_obj(widget->child);
 
     UIWidgetObj* parent = widget->parent;
     if (parent)
@@ -145,8 +145,13 @@ void UIContextObj::free_widget(UIWidgetObj* widget)
     // remove all refs to out of scope widget
     invalidate_refs(widget);
 
+    UIWidgetLayout* widgetL = widget->L;
+    UIWidgetUnion* widgetU = widget->U;
+
     widget->~UIWidgetObj();
-    widgetPA.free(widget);
+    widgetObjPA.free(widget);
+    widgetUnionPA.free(widgetU);
+    widgetLayoutPA.free(widgetL);
 }
 
 /// @brief Get deepest widget in context.
@@ -196,7 +201,7 @@ UIWidgetObj* UIContextObj::get_widget_in_workspace(UIWorkspaceObj* space, const 
     {
         UIWindowObj* window = *windowIt;
 
-        if (!window->layout.rect.contains(pos) || (window->flags & UI_WIDGET_FLAG_HIDDEN_BIT))
+        if (!window->L->rect.contains(pos) || (window->flags & UI_WIDGET_FLAG_HIDDEN_BIT))
             continue;
 
         return get_widget_in_subtree((UIWidgetObj*)window, pos);
@@ -206,7 +211,7 @@ UIWidgetObj* UIContextObj::get_widget_in_workspace(UIWorkspaceObj* space, const 
     {
         UIWindowObj* window = *windowIt;
 
-        if (!window->layout.rect.contains(pos) || (window->flags & UI_WIDGET_FLAG_HIDDEN_BIT))
+        if (!window->L->rect.contains(pos) || (window->flags & UI_WIDGET_FLAG_HIDDEN_BIT))
             continue;
 
         return get_widget_in_subtree((UIWidgetObj*)window, pos);
@@ -614,16 +619,25 @@ UIContext UIContext::create(const UIContextInfo& info)
 
     UIContextObj* obj = heap_new<UIContextObj>(MEMORY_USAGE_UI);
     obj->fontDefault = info.font;
+    obj->fontMonospace = info.fontMono;
     obj->user = info.user;
     obj->onEvent = info.onEvent;
+    obj->theme = info.theme;
+
+    constexpr size_t widgetsPerPage = 32;
 
     PoolAllocatorInfo paI{};
-    paI.blockSize = sizeof(UIWidgetObj);
-    paI.isMultiPage = true;
-    paI.pageSize = 64; // widgets per memory page
     paI.usage = MEMORY_USAGE_UI;
-    obj->widgetPA = PoolAllocator::create(paI);
-    obj->theme = info.theme;
+    paI.pageSize = widgetsPerPage;
+    paI.isMultiPage = true;
+    paI.blockSize = sizeof(UIWidgetObj);
+    obj->widgetObjPA = PoolAllocator::create(paI);
+
+    paI.blockSize = sizeof(UIWidgetUnion);
+    obj->widgetUnionPA = PoolAllocator::create(paI);
+
+    paI.blockSize = sizeof(UIWidgetLayout);
+    obj->widgetLayoutPA = PoolAllocator::create(paI);
 
     return UIContext(obj);
 }
@@ -638,7 +652,9 @@ void UIContext::destroy(UIContext ctx)
     obj->pre_update();
     LD_ASSERT(obj->layers.empty());
 
-    PoolAllocator::destroy(obj->widgetPA);
+    PoolAllocator::destroy(obj->widgetLayoutPA);
+    PoolAllocator::destroy(obj->widgetUnionPA);
+    PoolAllocator::destroy(obj->widgetObjPA);
     heap_delete<UIContextObj>(obj);
 }
 

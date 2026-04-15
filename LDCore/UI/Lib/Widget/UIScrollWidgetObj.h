@@ -2,19 +2,17 @@
 
 #include <Ludens/UI/Widget/UIScrollWidget.h>
 
+#include "../UILibDef.h"
+
 namespace LD {
 
-struct UIScrollWidgetObj
+struct UIScrollWidgetObj : UIWidgetBaseObj<UIScrollData>
 {
-    UIWidgetObj* base;
-    UIScrollStorage* storage;
-    UIScrollStorage local;
-    float offsetXDst;   // destination value for scrollOffset x
-    float offsetYDst;   // destination value for scrollOffset y
-    float offsetXSpeed; // animation speed for scrollOffset x
-    float offsetYSpeed; // animation speed for scrollOffset y
+    void set_offset_dst_x(float dstX, bool snap);
+    void set_offset_dst_y(float dstY, bool snap);
 
-    static void startup(UIWidgetObj* obj, void* storage);
+    static UILayoutInfo default_layout();
+    static void startup(UIWidgetObj* obj);
     static void cleanup(UIWidgetObj* obj);
     static bool on_event(UIWidgetObj* obj, const UIEvent& event);
     static void on_update(UIWidgetObj* obj, float delta);

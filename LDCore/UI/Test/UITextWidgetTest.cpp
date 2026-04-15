@@ -17,12 +17,12 @@ TEST_CASE("UITextWidget in fit container" * doctest::skip(!LudensLFS::get_direct
     UIWindowInfo windowI{};
     UIWindow window = space.create_window(space.get_root_id(), layoutI, windowI, nullptr);
 
-    static UITextStorage textS{};
-    textS.value = "foo";
+    static UITextData textS{};
+    textS.set_value("foo");
     textS.fontSize = 16;
-    UITextWidget textW1 = (UITextWidget)window.node().add_text({}, &textS, nullptr);
+    UITextWidget textW1 = (UITextWidget)window.add_child(UI_WIDGET_TEXT, {}, &textS, nullptr);
     // textS.cstr = "bar";
-    UITextWidget textW2 = (UITextWidget)window.node().add_text({}, &textS, nullptr);
+    UITextWidget textW2 = (UITextWidget)window.add_child(UI_WIDGET_TEXT, {}, &textS, nullptr);
 
     ctx.update(0.0f);
 

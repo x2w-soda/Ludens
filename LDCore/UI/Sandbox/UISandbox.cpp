@@ -25,7 +25,7 @@ namespace LD {
 static Log sLog("UISandbox");
 
 static WindowID sWindowID;
-static UITextEditStorage* sTextEdit;
+static UITextEditData* sTextEdit;
 
 UISandbox::UISandbox()
 {
@@ -110,9 +110,9 @@ void UISandbox::run()
 
     UIFontRegistry fontReg = UIFontRegistry::create();
     UIFont font = fontReg.add_font(mFontAtlas, mFontAtlasImage);
-    ui_imgui_startup(font);
+    ui_imgui_startup(font, {});
 
-    sTextEdit = heap_new<UITextEditStorage>(MEMORY_USAGE_UI);
+    sTextEdit = heap_new<UITextEditData>(MEMORY_USAGE_UI);
 
     while (reg.is_window_open(rootID))
     {
@@ -129,7 +129,7 @@ void UISandbox::run()
         LD_PROFILE_FRAME_MARK;
     }
 
-    heap_delete<UITextEditStorage>(sTextEdit);
+    heap_delete<UITextEditData>(sTextEdit);
 
     ui_imgui_cleanup();
 
@@ -150,11 +150,11 @@ void UISandbox::imgui(const Vec2& windowExtent, float delta)
         renderer.draw_rect(widget.get_rect(), Color(0x303030FF));
     });
 
-    static UIScrollStorage sScroll;
+    static UIScrollData sScroll;
     ui_push_scroll(&sScroll);
     ui_top_layout_child_gap(10.0f);
     {
-        static UIButtonStorage sBtn1{};
+        static UIButtonData sBtn1{};
         ui_push_button(&sBtn1, "Button1");
         if (ui_button_is_pressed())
         {
@@ -162,7 +162,7 @@ void UISandbox::imgui(const Vec2& windowExtent, float delta)
         }
         ui_pop();
 
-        static UIButtonStorage sBtn2{};
+        static UIButtonData sBtn2{};
         ui_push_button(&sBtn2, "Button2");
         if (ui_button_is_pressed())
         {
@@ -170,16 +170,14 @@ void UISandbox::imgui(const Vec2& windowExtent, float delta)
         }
         ui_pop();
 
-        static UIPanelStorage sPanel{};
+        static UIPanelData sPanel{};
         ui_push_panel(&sPanel);
         {
-            UITextStorage* text = ui_push_text(nullptr, "Some text1 here!!!!!!");
-            if (ui_text_span_hovered(0))
-                text->spans[0].text.fgColor = 0x20F0F0FF;
+            UITextWidget text = ui_push_text(nullptr, "Some text1 here!!!!!!");
             if (ui_text_span_pressed(0))
                 sLog.info("Text pressed");
             ui_pop();
-            static UIImageStorage sImage{mFontAtlasImage};
+            static UIImageData sImage{mFontAtlasImage};
             ui_push_image(&sImage, 300, 300);
             ui_pop();
             ui_push_text(nullptr, "Some text2 here!");
@@ -188,11 +186,11 @@ void UISandbox::imgui(const Vec2& windowExtent, float delta)
         ui_pop();
 
         static float sValue = 2.0f;
-        static UISliderStorage sSlider(0.0f, 3.0f, 1.0f);
+        static UISliderData sSlider;
         ui_push_slider(&sSlider, &sValue);
         ui_pop();
 
-        static UIButtonStorage sBtn3{};
+        static UIButtonData sBtn3{};
         ui_push_button(&sBtn3, "Button3");
         if (ui_button_is_pressed())
         {

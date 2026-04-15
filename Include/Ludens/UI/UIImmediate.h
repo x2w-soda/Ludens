@@ -25,7 +25,7 @@ enum CursorType;
 
 typedef void (*IMDrawCallback)(UIWidget widget, ScreenRenderComponent renderer, void* user);
 
-void ui_imgui_startup(UIFont font);
+void ui_imgui_startup(UIFont font, UIFont fontMono);
 
 /// @brief Release and free all resources allocated by immediate-mode API.
 void ui_imgui_cleanup();
@@ -149,38 +149,41 @@ void ui_clear_popup_window();
 bool ui_push_popup_window(const char* popupName);
 
 /// @brief Push UITextWidget.
-UITextStorage* ui_push_text(UITextStorage* storage);
-UITextStorage* ui_push_text(UITextStorage* storage, const char* text);
+UITextWidget ui_push_text(UITextData* data);
+UITextWidget ui_push_text(UITextData* data, const char* text);
 void ui_text_style(Color color, TextSpanFont font);
 bool ui_text_span_hovered(int index);
 bool ui_text_span_pressed(int index);
 
 /// @brief Push UITextEditWidget.
-UITextEditStorage* ui_push_text_edit(UITextEditStorage* storage);
+UITextEditWidget ui_push_text_edit(UITextEditData* data);
 bool ui_text_edit_is_editing();
 bool ui_text_edit_changed(std::string& text);
 bool ui_text_edit_submitted(std::string& text);
 
 /// @brief Push UIImageWidget.
-UIImageStorage* ui_push_image(UIImageStorage* storage, float width, float height);
+UIImageWidget ui_push_image(UIImageData* data, float width, float height);
 
 /// @brief Push UIPanelWidget.
-UIPanelStorage* ui_push_panel(UIPanelStorage* storage);
-UIPanelStorage* ui_push_panel(UIPanelStorage* storage, Color color);
+UIPanelWidget ui_push_panel(UIPanelData* data);
+UIPanelWidget ui_push_panel(UIPanelData* data, Color color);
 
 /// @brief Push UIToggleWidget.
-UIToggleStorage* ui_push_toggle(UIToggleStorage* storage);
+UIToggleWidget ui_push_toggle(UIToggleData* data);
 bool ui_toggle_is_pressed();
 
 /// @brief Push UIScrollWidget.
-UIScrollStorage* ui_push_scroll(UIScrollStorage* storage);
+UIScrollWidget ui_push_scroll(UIScrollData* data);
+
+/// @brief Push UIScrollBarWidget.
+UIScrollBarWidget ui_push_scroll_bar(UIScrollBarData* data);
 
 /// @brief Push UIButtonWidget.
-UIButtonStorage* ui_push_button(UIButtonStorage* storage);
-UIButtonStorage* ui_push_button(UIButtonStorage* storage, const char* text);
+UIButtonWidget ui_push_button(UIButtonData* data);
+UIButtonWidget ui_push_button(UIButtonData* data, const char* text);
 bool ui_button_is_pressed();
 
 /// @brief Push UISliderWidget.
-UISliderStorage* ui_push_slider(UISliderStorage* storage, float* value);
+UISliderWidget ui_push_slider(UISliderData* data, float* value);
 
 } // namespace LD

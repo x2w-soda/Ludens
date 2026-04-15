@@ -12,17 +12,22 @@ struct TextSpanProbe
     Vec2 pickPos;     // probe position in baseline space
 };
 
-void UITextStorage::set_value(const std::string& newValue)
+void UITextData::clear_value()
 {
-    value = newValue;
-
-    spans.resize(1);
-    spans[0].text = {};
-    spans[0].text.fgColor = 0xFFFFFFFF;
-    spans[0].text.range = Range(0, value.size());
+    mValue.clear();
+    mSpans.clear();
 }
 
-void UITextStorage::set_value(const std::string& newValue, const Vector<UITextSpan>& newSpans)
+void UITextData::set_value(const std::string& newValue)
+{
+    mValue = newValue;
+
+    mSpans.resize(1);
+    mSpans[0].text.fgColor = 0xFFFFFFFF;
+    mSpans[0].text.range = Range(0, mValue.size());
+}
+
+void UITextData::set_value(const std::string& newValue, const Vector<UITextSpan>& newSpans)
 {
     uint32_t base = 0;
 
@@ -39,55 +44,76 @@ void UITextStorage::set_value(const std::string& newValue, const Vector<UITextSp
         base = range.offset + range.size;
     }
 
-    spans = newSpans;
-    value = newValue;
+    mSpans = newSpans;
+    mValue = newValue;
 }
 
-void UITextStorage::set_fg_color(Color fgColor)
+void UITextData::set_fg_color(Color fgColor)
 {
-    for (UITextSpan& span : spans)
+    for (UITextSpan& span : mSpans)
         span.text.fgColor = fgColor;
 }
 
-std::string UITextStorage::get_substring(int spanIndex)
+void UITextData::set_span_on_event(UISpanOnEvent onEvent, void* user)
 {
-    if (spans.empty())
+    for (UITextSpan& span : mSpans)
+    {
+        span.user = user;
+        span.onEvent = onEvent;
+    }
+}
+
+std::string UITextData::get_substring(int spanIndex)
+{
+    if (mSpans.empty())
         return {};
 
-    spanIndex = std::min(spanIndex, (int)spans.size() - 1);
-    Range range = spans[spanIndex].text.range;
-    return value.substr(0, range.offset + range.size);
+    spanIndex = std::min(spanIndex, (int)mSpans.size() - 1);
+    Range range = mSpans[spanIndex].text.range;
+    return mValue.substr(0, range.offset + range.size);
+}
+
+void UITextWidgetObj::set_text_style(Color color, TextSpanFont font)
+{
+    UITextData& data = *(UITextData*)base->data;
+
+    for (UITextSpan span : data.mSpans)
+    {
+        span.text.fgColor = color;
+        span.text.font = font;
+    }
 }
 
 void UITextWidgetObj::update_span_index(Vec2 localPos)
 {
     UIContextObj* ctx = base->ctx();
-    TView<UITextSpan> spans(storage->spans.data(), storage->spans.size());
+    UITextData& data = *(UITextData*)base->data;
+    TView<UITextSpan> spans(data.mSpans.data(), data.mSpans.size());
     FontMetrics metrics;
 
     float lineHeight = 0.0f;
     float ascent = 0.0f;
-    size_t spanCount = storage->spans.size();
+    size_t spanCount = data.mSpans.size();
     Vector<Range> ranges(spanCount);
     Vector<FontAtlas> atlas(spanCount);
-    for (size_t i = 0; i < storage->spans.size(); i++)
+    for (size_t i = 0; i < data.mSpans.size(); i++)
     {
-        UIFont font = ctx->get_font_from_hint(storage->spans[i].text.font);
-        ranges[i] = storage->spans[i].text.range;
+        UIFont font = ctx->get_font_from_hint(data.mSpans[i].text.font);
+        ranges[i] = data.mSpans[i].text.range;
         atlas[i] = font.font_atlas();
-        atlas[i].get_font().get_metrics(metrics, storage->fontSize);
+        atlas[i].get_font().get_metrics(metrics, data.fontSize);
         lineHeight = std::max(lineHeight, (float)metrics.lineHeight);
         ascent = std::max(ascent, (float)metrics.ascent);
     }
 
     FontGlyphIteration fontIt{};
-    fontIt.text = View(storage->value);
+    fontIt.text = View(data.mValue);
     fontIt.lineHeight = lineHeight;
     fontIt.spanAtlas = atlas.data();
     fontIt.spanRange = ranges.data();
     fontIt.spanCount = spanCount;
-    fontIt.limitWidth = base->layout.rect.w;
-    fontIt.fontSizePx = storage->fontSize;
+    fontIt.limitWidth = base->L->rect.w;
+    fontIt.fontSizePx = data.fontSize;
     fontIt.glyphCB = [](Rect rect, Vec2 baseline, size_t charIndex, size_t spanIndex, void* user) -> bool {
         TextSpanProbe* probe = (TextSpanProbe*)user;
         if (probe->spanIdx < 0 && rect.contains(probe->pickPos))
@@ -104,51 +130,46 @@ void UITextWidgetObj::update_span_index(Vec2 localPos)
     probe.pickPos.y -= ascent;
     font_glyph_iterator(&fontIt, &probe);
 
-    spanIndex = probe.spanIdx;
+    data.mSpanIndex = probe.spanIdx;
 }
 
-void UITextWidgetObj::startup(UIWidgetObj* obj, void* storage)
+UILayoutInfo UITextWidgetObj::default_layout()
 {
-    UIContextObj* ctx = obj->ctx();
-    auto& self = obj->as.text;
+    return UILayoutInfo(UISize::wrap(), UISize::fit());
+}
+
+void UITextWidgetObj::startup(UIWidgetObj* obj)
+{
+    auto& self = obj->U->text;
     new (&self) UITextWidgetObj();
-
-    self.base = obj;
-    self.storage = (UITextStorage*)storage;
-
-    if (!self.storage)
-    {
-        obj->flags |= UI_WIDGET_FLAG_LOCAL_STORAGE_BIT;
-        self.storage = &self.local;
-        *self.storage = {};
-    }
+    self.connect(obj);
 }
 
-void UITextWidgetObj::cleanup(UIWidgetObj* base)
+void UITextWidgetObj::cleanup(UIWidgetObj* obj)
 {
-    UITextWidgetObj& self = base->as.text;
+    UITextWidgetObj& self = obj->U->text;
 
     (&self)->~UITextWidgetObj();
 }
 
 bool UITextWidgetObj::on_event(UIWidgetObj* obj, const UIEvent& event)
 {
-    UITextWidgetObj& self = obj->as.text;
-    UITextStorage* storage = self.storage;
+    UITextWidgetObj& self = obj->U->text;
+    UITextData& data = self.get_data();
 
     switch (event.type)
     {
     case UI_EVENT_MOUSE_LEAVE:
-        self.spanIndex = -1;
+        data.mSpanIndex = -1;
         break;
     case UI_EVENT_MOUSE_ENTER:
     case UI_EVENT_MOUSE_DOWN:
     case UI_EVENT_MOUSE_POSITION:
         self.update_span_index(event.mouse.position);
-        if (0 <= self.spanIndex && self.spanIndex < storage->spans.size())
+        if (0 <= data.mSpanIndex && data.mSpanIndex < data.mSpans.size())
         {
-            UITextSpan& span = storage->spans[self.spanIndex];
-            if (span.onEvent && span.onEvent(UIWidget(obj), event, span, self.spanIndex, span.user))
+            UITextSpan& span = data.mSpans[data.mSpanIndex];
+            if (span.onEvent && span.onEvent(UIWidget(obj), event, span, data.mSpanIndex, span.user))
                 return true;
         }
         break;
@@ -162,19 +183,19 @@ bool UITextWidgetObj::on_event(UIWidgetObj* obj, const UIEvent& event)
 void UITextWidgetObj::on_draw(UIWidgetObj* obj, ScreenRenderComponent renderer)
 {
     UIContextObj& ctx = *obj->ctx();
-    const UITheme& theme = obj->theme;
-    UITextWidgetObj& self = obj->as.text;
-    const Rect& rect = obj->layout.rect;
-    const UITextStorage* storage = self.storage;
+    UITheme theme = obj->theme;
+    UITextWidgetObj& self = obj->U->text;
+    const UITextData& data = self.get_data();
+    Rect rect = self.get_rect();
     float wrapWidth = rect.w;
 
-    if (storage->value.empty() && rect.h == 0) // likely a layout bug in UI text wrapping
+    if (data.mValue.empty() && rect.h == 0) // likely a layout bug in UI text wrapping
         LD_DEBUG_BREAK;
 
-    if (storage->bgColor.get_alpha() > 0.0f)
-        renderer.draw_rect(rect, storage->bgColor);
+    if (data.bgColor.get_alpha() > 0.0f)
+        renderer.draw_rect(rect, data.bgColor);
 
-    if (storage->spans.empty())
+    if (data.mSpans.empty())
     {
         LD_DEBUG_BREAK; // are u sure?
         return;
@@ -182,14 +203,14 @@ void UITextWidgetObj::on_draw(UIWidgetObj* obj, ScreenRenderComponent renderer)
 
     Vec2 pos = rect.get_pos();
 
-    for (const UITextSpan& span : storage->spans)
+    for (const UITextSpan& span : data.mSpans)
     {
         UIFont font = ctx.get_font_from_hint(span.text.font);
         FontAtlas atlas = font.font_atlas();
         RImage image = font.image();
 
-        View textView(storage->value.data() + span.text.range.offset, span.text.range.size);
-        pos = renderer.draw_text(atlas, image, storage->fontSize, pos, textView, span.text.fgColor, wrapWidth);
+        View textView(data.mValue.data() + span.text.range.offset, span.text.range.size);
+        pos = renderer.draw_text(atlas, image, data.fontSize, pos, textView, span.text.fgColor, wrapWidth);
     }
 }
 
@@ -197,53 +218,38 @@ void UITextWidgetObj::wrap_limit(UIWidgetObj* obj, float& outMinW, float& outMax
 {
     LD_ASSERT(obj->type == UI_WIDGET_TEXT);
 
-    UITextWidgetObj& self = obj->as.text;
-    UITextStorage* storage = self.storage;
+    UITextWidgetObj& self = obj->U->text;
+    UITextData& data = self.get_data();
     UIContextObj* ctx = obj->ctx();
-    TView<UITextSpan> spans(storage->spans.data(), storage->spans.size());
+    TView<UITextSpan> spans(data.mSpans.data(), data.mSpans.size());
 
     // TODO: each span may use a different font.
-    ctx->fontDefault.font_atlas().measure_wrap_limit(View(storage->value), storage->fontSize, outMinW, outMaxW);
+    ctx->fontDefault.font_atlas().measure_wrap_limit(View(data.mValue), data.fontSize, outMinW, outMaxW);
 }
 
 float UITextWidgetObj::wrap_size(UIWidgetObj* obj, float limitW)
 {
     LD_ASSERT(obj->type == UI_WIDGET_TEXT);
 
-    UITextWidgetObj& self = obj->as.text;
-    UITextStorage* storage = self.storage;
-    UIContextObj* ctx = obj->ctx();
-    TView<UITextSpan> spans(storage->spans.data(), storage->spans.size());
-    View textView(storage->value);
+    UITextWidgetObj& self = obj->U->text;
+    UITextData& data = self.get_data();
+    TView<UITextSpan> spans(data.mSpans.data(), data.mSpans.size());
+    View textView(data.mValue);
 
     // TODO: each span may use a different font.
-    return ctx->fontDefault.font_atlas().measure_wrap_size(View(storage->value), storage->fontSize, limitW);
-}
-
-UITextStorage* UITextWidget::get_storage()
-{
-    return mObj->as.text.storage;
-}
-
-void UITextWidget::set_storage(UITextStorage* storage)
-{
-    mObj->as.text.storage = storage;
+    return obj->ctx()->fontDefault.font_atlas().measure_wrap_size(View(data.mValue), data.fontSize, limitW);
 }
 
 void UITextWidget::set_text_style(Color color, TextSpanFont font)
 {
-    UITextStorage* storage = mObj->as.text.storage;
-
-    for (UITextSpan span : storage->spans)
-    {
-        span.text.fgColor = color;
-        span.text.font = font;
-    }
+    mObj->U->text.set_text_style(color, font);
 }
 
 int UITextWidget::get_span_index()
 {
-    return mObj->as.text.spanIndex;
+    UITextWidgetObj& self = mObj->U->text;
+
+    return self.get_data().get_span_index();
 }
 
 } // namespace LD
