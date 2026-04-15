@@ -18,7 +18,7 @@ namespace LD {
 /// @brief Editor document window implementation.
 struct DocumentWindowObj : EditorWindowObj
 {
-    EUIDocumentStorage documentStorage;
+    EUIDocument document;
     EUITextBreadcrumbStorage breadcrumb;
     std::string currentURIPath;
 
@@ -39,8 +39,7 @@ void DocumentWindowObj::build(Document doc)
         return;
 
     currentURIPath = doc.get_uri_path();
-    documentStorage.requestURIPath.clear();
-    documentStorage.build(doc);
+    document.build(doc);
 
     std::string str = doc.get_uri_path();
     breadcrumb.build(str.c_str());
@@ -49,11 +48,12 @@ void DocumentWindowObj::build(Document doc)
 void DocumentWindowObj::pre_update()
 {
     if (currentURIPath.empty())
-        documentStorage.requestURIPath = document_uri_default_page_path();
+        document.set_request_uri_path(document_uri_default_page_path());
 
-    if (!documentStorage.requestURIPath.empty() && documentStorage.requestURIPath != currentURIPath)
+    std::string requestURIPath;
+    if (document.get_request_uri_path(requestURIPath) && requestURIPath != currentURIPath)
     {
-        Document doc = ctx.get_document(documentStorage.requestURIPath.c_str());
+        Document doc = ctx.get_document(requestURIPath.c_str());
 
         // Rebuild document before imgui pass.
         build(doc);
@@ -69,7 +69,8 @@ void DocumentWindowObj::update()
 
     top_bar();
 
-    eui_document(&documentStorage);
+    document.push();
+    document.pop();
 
     end_update_window();
 }
@@ -79,16 +80,16 @@ void DocumentWindowObj::top_bar()
     float barHeight = theme.get_text_row_height();
     Color bgColor = theme.get_ui_theme().get_surface_color();
 
-    UIPanelStorage* panel = ui_push_panel(nullptr, bgColor);
+    UIPanelData* panel = (UIPanelData*)ui_push_panel(nullptr, bgColor).get_data();
     UILayoutInfo layoutI = theme.make_hbox_layout();
     layoutI.sizeX = UISize::grow();
     ui_top_layout(layoutI);
-    
+
     int spanI = eui_text_breadcrumb(breadcrumb, barHeight, 0x20FFFFFF);
     if (spanI >= 0)
     {
         std::string path = breadcrumb.text.get_substring(spanI);
-        documentStorage.requestURIPath = path;
+        document.set_request_uri_path(path);
     }
 
     ui_pop();

@@ -6,6 +6,7 @@
 #include <Ludens/WindowRegistry/WindowRegistry.h>
 #include <LudensEditor/ConsoleWindow/ConsoleWindow.h>
 #include <LudensEditor/EditorContext/EditorWindow.h>
+#include <LudensEditor/EditorWidget/EUIScroll.h>
 
 #include <chrono>
 #include <format>
@@ -44,6 +45,8 @@ static void console_log_writeback(LogLevel level, const std::string& ch, const s
 /// @brief Editor console window implementation.
 struct ConsoleWindowObj : EditorWindowObj
 {
+    EUIScroll scroll;
+
     ConsoleWindowObj(const EditorWindowInfo& info)
         : EditorWindowObj(info) {}
 
@@ -55,18 +58,12 @@ void ConsoleWindowObj::update(float delta)
     LD_PROFILE_SCOPE;
 
     UITheme uiTheme = theme.get_ui_theme();
-    float pad = theme.get_child_pad();
 
     begin_update_window();
 
-    UIScrollStorage* scrollS = ui_push_scroll(nullptr);
-    scrollS->bgColor = uiTheme.get_surface_color();
-
-    UILayoutInfo layoutI = theme.make_vbox_layout();
-    layoutI.sizeX = UISize::grow();
-    layoutI.sizeY = UISize::grow();
-    ui_top_layout(layoutI);
-
+    scroll.bgColor = uiTheme.get_surface_color();
+    scroll.barColor = uiTheme.get_selection_color();
+    scroll.push();
     for (const ConsoleEntry& entry : sHistory)
     {
         Color color;
@@ -88,8 +85,8 @@ void ConsoleWindowObj::update(float delta)
         ui_text_style(color, TEXT_SPAN_FONT_MONOSPACE);
         ui_pop();
     }
+    scroll.pop();
 
-    ui_pop();
     ui_pop_window();
     ui_workspace_end();
 }

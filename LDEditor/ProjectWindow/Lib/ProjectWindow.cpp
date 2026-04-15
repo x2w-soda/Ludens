@@ -42,7 +42,7 @@ static bool ui_row_text_button(const char* labelText, const char* buttonText, fl
     return btnIsPressed;
 }
 
-static bool ui_row_text_edit_button(UITextEditStorage* storage, const char* buttonText, float rowHeight)
+static bool ui_row_text_edit_button(UITextEditData* storage, const char* buttonText, float rowHeight)
 {
     bool btnIsPressed = false;
 
@@ -73,8 +73,8 @@ static bool ui_row_text_edit_button(UITextEditStorage* storage, const char* butt
 
 struct SelectProjectStorage
 {
-    UIScrollStorage projectListScroll;
-    UITextEditStorage projectSchemaEdit;
+    UIScrollData projectListScroll;
+    UITextEditData projectSchemaEdit;
 
     void ui_project_entry(EditorContext ctx, const EditorProjectEntry& entry);
 };
@@ -106,8 +106,8 @@ void SelectProjectStorage::ui_project_entry(EditorContext ctx, const EditorProje
 
 struct CreateProjectStorage
 {
-    UITextEditStorage projectNameEdit;
-    UITextEditStorage projectDirEdit;
+    UITextEditData projectNameEdit;
+    UITextEditData projectDirEdit;
     std::string projectNameErr;
     std::string projectDirErr;
 
@@ -179,7 +179,7 @@ void ProjectWindowObj::update(float delta)
 bool ProjectWindowObj::ui_create_project()
 {
     const float textRowHeight = theme.get_text_row_height();
-    UITextStorage* text;
+    UITextData* text;
     Color errorColor;
     std::string str;
 
@@ -195,7 +195,7 @@ bool ProjectWindowObj::ui_create_project()
     if (ui_text_edit_changed(str) || ui_text_edit_submitted(str))
         createProject.validate_input();
     ui_pop();
-    text = ui_push_text(nullptr, createProject.projectNameErr.c_str());
+    text = (UITextData*)ui_push_text(nullptr, createProject.projectNameErr.c_str()).get_data();
     text->set_fg_color(errorColor);
     ui_pop();
 
@@ -206,11 +206,11 @@ bool ProjectWindowObj::ui_create_project()
     if (ui_text_edit_changed(str) || ui_text_edit_submitted(str))
         createProject.validate_input();
     ui_pop();
-    text = ui_push_text(nullptr, createProject.projectDirErr.c_str());
+    text = (UITextData*)ui_push_text(nullptr, createProject.projectDirErr.c_str()).get_data();
     text->set_fg_color(errorColor);
     ui_pop();
 
-    static UIButtonStorage sBtn[2];
+    static UIButtonData sBtn[2];
     // sBtn[0].text = "Cancel";
     sBtn[1].text = "Create";
     sBtn[1].isEnabled = createProject.is_valid_input();

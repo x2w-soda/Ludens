@@ -7,7 +7,7 @@ struct AssetSelectWindowObj : EditorWindowObj
 {
     AssetType filterType = ASSET_TYPE_ENUM_COUNT;
     SUID component = 0;
-    UIScrollStorage uiEntryScroll;
+    UIScrollData uiEntryScroll;
     int selectedRowIndex = -1;
 
     AssetSelectWindowObj(const EditorWindowInfo& info)
@@ -56,7 +56,7 @@ void AssetSelectWindowObj::update(float delta)
     }
     eui_pop_row_scroll();
 
-    static UIButtonStorage sBtn[2];
+    static UIButtonData sBtn[2];
     sBtn[0].text = "Cancel";
     sBtn[1].text = "Select";
     int btnPressed = eui_row_btn_btn(sBtn, sBtn + 1);

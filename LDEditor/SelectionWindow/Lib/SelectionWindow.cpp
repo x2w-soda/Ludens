@@ -61,8 +61,8 @@ void SelectionWindowObj::update(float delta)
     layoutI.childGap = 2.0f;
     layoutI.sizeX = UISize::grow();
     layoutI.sizeY = UISize::grow();
-    UIScrollStorage* scrollS = ui_push_scroll(nullptr);
-    scrollS->bgColor = theme.get_ui_theme().get_surface_color();
+    auto* scrollData = (UIScrollData*)ui_push_scroll(nullptr).get_data();
+    scrollData->bgColor = theme.get_ui_theme().get_surface_color();
     ui_top_layout(layoutI);
 
     int contentCount = (int)directoryContents.size();
@@ -92,9 +92,9 @@ void SelectionWindowObj::top_bar()
 
     Vec2 mousePos;
     MouseValue mouseVal;
-    UIImageStorage* imageS = ui_push_image(nullptr, fontSize * 1.2f, fontSize * 1.2f);
-    imageS->image = editorIconAtlas;
-    imageS->rect = EditorIconAtlas::get_icon_rect(EDITOR_ICON_ARROW_UP);
+    auto* imageData = (UIImageData*)ui_push_image(nullptr, fontSize * 1.2f, fontSize * 1.2f).get_data();
+    imageData->image = editorIconAtlas;
+    imageData->rect = EditorIconAtlas::get_icon_rect(EDITOR_ICON_ARROW_UP);
     if (ui_top_mouse_down(mouseVal, mousePos) && mouseVal.button() == MOUSE_BUTTON_LEFT)
     {
         directoryPath = directoryPath.parent_path();
@@ -157,19 +157,19 @@ bool SelectionWindowObj::row(int idx)
     const FS::Path& itemPath = directoryContents[idx];
     float rowHeight = fontSize * 1.2f;
     bool isDirectory = FS::is_directory(itemPath);
-    UIImageStorage* imageS;
-    UIPanelStorage* panelS;
+    UIImageData* imageS;
+    UIPanelData* panelS;
 
     Color panelColor = idx == selectedRowIndex ? uiTheme.get_selection_color() : Color(0); // TODO:
     UILayoutInfo layoutI{};
     layoutI.sizeY = UISize::fixed(rowHeight);
     layoutI.sizeX = UISize::grow();
     layoutI.childAxis = UI_AXIS_X;
-    panelS = ui_push_panel(nullptr);
+    panelS = (UIPanelData*)ui_push_panel(nullptr).get_data();
     panelS->color = panelColor;
     ui_top_layout(layoutI);
 
-    imageS = ui_push_image(nullptr, rowHeight, rowHeight);
+    imageS = (UIImageData*)ui_push_image(nullptr, rowHeight, rowHeight).get_data();
     imageS->image = editorIconAtlas;
     imageS->rect = EditorIconAtlas::get_icon_rect(isDirectory ? EDITOR_ICON_FOLDER : EDITOR_ICON_FILE);
     ui_pop();

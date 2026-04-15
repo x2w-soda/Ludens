@@ -36,8 +36,8 @@ struct TabControlWindowObj : EditorWindowObj
 void TabControlWindowObj::tab()
 {
     UITheme uiTheme = theme.get_ui_theme();
-    UIPanelStorage* panelS;
-    UIImageStorage* imageS;
+    UIPanelData* panelData;
+    UIImageData* imageData;
 
     const float height = theme.get_text_row_height();
 
@@ -48,17 +48,17 @@ void TabControlWindowObj::tab()
     layoutI.childPadding.left = 6.0f;
     layoutI.childPadding.right = 6.0f;
     layoutI.childGap = 6.0f;
-    panelS = ui_push_panel(nullptr);
-    panelS->color = theme.get_ui_theme().get_surface_color();
+    panelData = (UIPanelData*)ui_push_panel(nullptr).get_data();
+    panelData->color = uiTheme.get_surface_color();
     ui_top_layout(layoutI);
     if (tabIcon != EDITOR_ICON_ENUM_LAST)
     {
         MouseButton btn;
         Rect iconRect = EditorIconAtlas::get_icon_rect(tabIcon);
         float iconSize = height * 0.9f;
-        imageS = ui_push_image(nullptr, iconSize, iconSize);
-        imageS->image = ctx.get_editor_icon_atlas();
-        imageS->rect = iconRect;
+        imageData = (UIImageData*)ui_push_image(nullptr, iconSize, iconSize).get_data();
+        imageData->image = ctx.get_editor_icon_atlas();
+        imageData->rect = iconRect;
         ui_pop();
     }
     ui_push_text(nullptr, tabName.c_str());

@@ -60,8 +60,8 @@ void CreateComponentWindowObj::component_row(ComponentType type, int rowIndex)
     const float rowHeight = theme.get_text_row_height();
     MouseValue mouseVal;
     Vec2 mousePos;
-    UIPanelStorage* panelS;
-    UIImageStorage* imageS;
+    UIPanelData* panelData;
+    UIImageData* imageData;
 
     UILayoutInfo layoutI{};
     layoutI.childAxis = UI_AXIS_X;
@@ -70,7 +70,7 @@ void CreateComponentWindowObj::component_row(ComponentType type, int rowIndex)
     layoutI.sizeX = UISize::grow();
     layoutI.sizeY = UISize::fixed(rowHeight);
 
-    panelS = ui_push_panel(nullptr);
+    panelData = (UIPanelData*)ui_push_panel(nullptr).get_data();
     ui_top_layout(layoutI);
 
     Color panelColor = uiTheme.get_surface_color();
@@ -83,7 +83,7 @@ void CreateComponentWindowObj::component_row(ComponentType type, int rowIndex)
     if (ui_top_is_hovered())
         panelColor = Color::lift(panelColor, 0.06f);
 
-    panelS->color = panelColor;
+    panelData->color = panelColor;
     if (ui_top_mouse_down(mouseVal, mousePos))
         on_row_mouse_down(mouseVal, mousePos, type);
 
@@ -91,9 +91,9 @@ void CreateComponentWindowObj::component_row(ComponentType type, int rowIndex)
     EditorIcon icon = EditorIconAtlas::get_component_icon(type);
     if (icon != EDITOR_ICON_ENUM_LAST)
     {
-        imageS = ui_push_image(nullptr, rowHeight, rowHeight);
-        imageS->image = ctx.get_editor_icon_atlas();
-        imageS->rect = EditorIconAtlas::get_icon_rect(icon);
+        imageData = (UIImageData*)ui_push_image(nullptr, rowHeight, rowHeight).get_data();
+        imageData->image = ctx.get_editor_icon_atlas();
+        imageData->rect = EditorIconAtlas::get_icon_rect(icon);
         ui_pop();
     }
 

@@ -111,7 +111,7 @@ void ViewportWindowObj::toolbar()
     UITheme uiTheme = theme.get_ui_theme();
     MouseValue mouseVal;
     Vec2 mousePos;
-    UIImageStorage* imageS;
+    UIImageData* imageS;
 
     UILayoutInfo layoutI{};
     layoutI.sizeX = UISize::grow();
@@ -119,8 +119,8 @@ void ViewportWindowObj::toolbar()
     layoutI.childAxis = UI_AXIS_X;
 
     // toolbar
-    UIPanelStorage* panelS = ui_push_panel(nullptr);
-    panelS->color = uiTheme.get_surface_color();
+    UIPanelWidget panelW = ui_push_panel(nullptr);
+    static_cast<UIPanelData*>(panelW.get_data())->color = uiTheme.get_surface_color();
     ui_top_layout(layoutI);
 
     constexpr float iconSize = VIEWPORT_TOOLBAR_HEIGHT;

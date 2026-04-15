@@ -9,8 +9,8 @@ namespace LD {
 struct AssetImportWindowObj : EditorWindowObj
 {
     AssetImportInfo* importInfo = {};
-    UITextEditStorage dstFilePath;
-    UITextEditStorage dstURI;
+    UITextEditData dstFilePath;
+    UITextEditData dstURI;
 
     AssetImportWindowObj(const EditorWindowInfo& info)
         : EditorWindowObj(info)
@@ -48,7 +48,7 @@ void AssetImportWindowObj::update(float delta)
         // eui_texture_2d_asset_import(texture2DAIS, importInfo);
     }
 
-    static UIButtonStorage sBtn[2];
+    static UIButtonData sBtn[2];
     sBtn[0].text = "Cancel";
     sBtn[1].text = "Import";
     int btnPressed = eui_row_btn_btn(sBtn, sBtn + 1);
