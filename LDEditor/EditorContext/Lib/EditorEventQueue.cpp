@@ -31,6 +31,7 @@ union EditorEventU
     EditorActionOpenProjectEvent actionOpenProject;
     EditorActionCreateProjectEvent actionCreateProject;
     EditorActionImportAssetsEvent actionImportAssets;
+    EditorActionRenameComponentEvent actionRenameComponent;
     EditorActionAddComponentEvent actionAddComponent;
     EditorActionAddComponentScriptEvent actionAddComponentScript;
     EditorActionSetComponentAssetEvent actionSetComponentAsset;
@@ -142,6 +143,9 @@ EditorEvent* EditorEventQueueObj::alloc_event(EditorEventType type)
     case EDITOR_EVENT_TYPE_ACTION_IMPORT_ASSETS:
         new (event) EditorActionImportAssetsEvent();
         break;
+    case EDITOR_EVENT_TYPE_ACTION_RENAME_COMPONENT:
+        new (event) EditorActionRenameComponentEvent();
+        break;
     case EDITOR_EVENT_TYPE_ACTION_ADD_COMPONENT:
         new (event) EditorActionAddComponentEvent();
         break;
@@ -246,6 +250,9 @@ void EditorEventQueueObj::free_event(EditorEvent* event)
         break;
     case EDITOR_EVENT_TYPE_ACTION_IMPORT_ASSETS:
         ((EditorActionImportAssetsEvent*)event)->~EditorActionImportAssetsEvent();
+        break;
+    case EDITOR_EVENT_TYPE_ACTION_RENAME_COMPONENT:
+        ((EditorActionRenameComponentEvent*)(event))->~EditorActionRenameComponentEvent();
         break;
     case EDITOR_EVENT_TYPE_ACTION_ADD_COMPONENT:
         ((EditorActionAddComponentEvent*)(event))->~EditorActionAddComponentEvent();

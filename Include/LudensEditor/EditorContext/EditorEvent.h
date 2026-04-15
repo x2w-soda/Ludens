@@ -40,6 +40,7 @@ enum EditorEventType
     EDITOR_EVENT_TYPE_ACTION_OPEN_PROJECT,
     EDITOR_EVENT_TYPE_ACTION_CREATE_PROJECT,
     EDITOR_EVENT_TYPE_ACTION_IMPORT_ASSETS,
+    EDITOR_EVENT_TYPE_ACTION_RENAME_COMPONENT,
     EDITOR_EVENT_TYPE_ACTION_ADD_COMPONENT,
     EDITOR_EVENT_TYPE_ACTION_ADD_COMPONENT_SCRIPT,
     EDITOR_EVENT_TYPE_ACTION_SET_COMPONENT_ASSET,
@@ -354,6 +355,17 @@ struct EditorActionImportAssetsEvent : EditorActionEvent
     }
 
     Vector<AssetImportInfo*> batch;
+};
+
+struct EditorActionRenameComponentEvent : EditorActionEvent
+{
+    EditorActionRenameComponentEvent()
+        : EditorActionEvent(EDITOR_EVENT_TYPE_ACTION_RENAME_COMPONENT)
+    {
+    }
+
+    SUID compSUID = 0;
+    std::string newName;
 };
 
 struct EditorActionAddComponentEvent : EditorActionEvent

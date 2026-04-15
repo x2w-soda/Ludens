@@ -9,6 +9,7 @@ struct EditorContextObj;
 
 enum EditCommandType
 {
+    EDIT_COMMAND_TYPE_RENAME_COMPONENT,
     EDIT_COMMAND_TYPE_ADD_COMPONENT,
     EDIT_COMMAND_TYPE_ADD_COMPONENT_SCRIPT,
     EDIT_COMMAND_TYPE_SET_COMPONENT_ASSET,
@@ -27,6 +28,15 @@ struct EditCommand
     static void undo(EditCommand* cmd);
     static EditCommand* create(EditCommandType type, EditorContextObj* ctx);
     static void destroy(EditCommand* cmd);
+};
+
+struct RenameComponentCommand : EditCommand
+{
+    SUID compSUID = 0;
+    std::string oldName;
+    std::string newName;
+
+    void configure(SUID compSUID, const std::string& newName);
 };
 
 struct AddComponentCommand : EditCommand

@@ -7,6 +7,10 @@
 
 namespace LD {
 
+static EditCommand* rename_component_command_create() { return heap_new<RenameComponentCommand>(MEMORY_USAGE_MISC); }
+static void rename_component_command_destroy(EditCommand* baseCmd) { heap_delete<RenameComponentCommand>((RenameComponentCommand*)baseCmd); }
+static void rename_component_command_redo(EditCommand* baseCmd);
+static void rename_component_command_undo(EditCommand* baseCmd);
 static EditCommand* add_component_command_create() { return heap_new<AddComponentCommand>(MEMORY_USAGE_MISC); }
 static void add_component_command_destroy(EditCommand* baseCmd) { heap_delete<AddComponentCommand>((AddComponentCommand*)baseCmd); }
 static void add_component_command_redo(EditCommand* baseCmd);
@@ -42,6 +46,7 @@ struct EditCommandMeta
 };
 
 static EditCommandMeta sEditCommand[]{
+    {&rename_component_command_create, &rename_component_command_destroy, &rename_component_command_redo, &rename_component_command_undo},
     {&add_component_command_create, &add_component_command_destroy, &add_component_command_redo, &add_component_command_undo},
     {&add_component_script_command_create, &add_component_script_command_destroy, &add_component_script_command_redo, &add_component_script_command_undo},
     {&set_component_asset_command_create, &set_component_asset_command_destroy, &set_component_asset_command_redo, &set_component_asset_command_undo},
@@ -74,6 +79,16 @@ EditCommand* EditCommand::create(EditCommandType type, EditorContextObj* ctx)
 void EditCommand::destroy(EditCommand* cmd)
 {
     sEditCommand[(int)cmd->type].destroy(cmd);
+}
+
+void RenameComponentCommand::configure(SUID compSUID, const std::string& newName)
+{
+    ComponentView comp = ctx->scene.get_component_by_suid(compSUID);
+    LD_ASSERT(comp); // TODO: recovery
+
+    this->compSUID = compSUID;
+    this->newName = newName;
+    this->oldName = comp.get_name();
 }
 
 void AddComponentCommand::configure(SUID parentSUID, ComponentType compType)
@@ -118,6 +133,28 @@ static void set_component_asset(Scene scene, SUID compSUID, AssetID assetID)
     default:
         break;
     }
+}
+
+static void rename_component_command_redo(EditCommand* baseCmd)
+{
+    auto* cmd = (RenameComponentCommand*)baseCmd;
+    ComponentView comp = cmd->ctx->scene.get_component_by_suid(cmd->compSUID);
+    LD_ASSERT(comp); // TODO: recovery
+
+    comp.set_name(cmd->newName.c_str());
+
+    EditorContext(cmd->ctx).set_selected_component(comp.cuid());
+}
+
+static void rename_component_command_undo(EditCommand* baseCmd)
+{
+    auto* cmd = (RenameComponentCommand*)baseCmd;
+    ComponentView comp = cmd->ctx->scene.get_component_by_suid(cmd->compSUID);
+    LD_ASSERT(comp); // TODO: recovery
+
+    comp.set_name(cmd->oldName.c_str());
+
+    EditorContext(cmd->ctx).set_selected_component(comp.cuid());
 }
 
 static void add_component_command_redo(EditCommand* baseCmd)

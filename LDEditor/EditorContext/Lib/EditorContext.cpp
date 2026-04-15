@@ -48,6 +48,7 @@ static void editor_action_open_scene_event_handler(const EditorEvent* event, voi
 static void editor_action_open_project_event_handler(const EditorEvent* event, void* user);
 static void editor_action_create_project_event_handler(const EditorEvent* event, void* user);
 static void editor_action_import_assets_event_handler(const EditorEvent* event, void* user);
+static void editor_action_rename_component_event_handler(const EditorEvent* event, void* user);
 static void editor_action_add_component_event_handler(const EditorEvent* event, void* user);
 static void editor_action_add_component_script_event_handler(const EditorEvent* event, void* user);
 static void editor_action_set_component_asset_event_handler(const EditorEvent* event, void* user);
@@ -85,6 +86,7 @@ static struct
     {EDITOR_EVENT_TYPE_ACTION_OPEN_PROJECT, &editor_action_open_project_event_handler},
     {EDITOR_EVENT_TYPE_ACTION_CREATE_PROJECT, &editor_action_create_project_event_handler},
     {EDITOR_EVENT_TYPE_ACTION_IMPORT_ASSETS, &editor_action_import_assets_event_handler},
+    {EDITOR_EVENT_TYPE_ACTION_RENAME_COMPONENT, &editor_action_rename_component_event_handler},
     {EDITOR_EVENT_TYPE_ACTION_ADD_COMPONENT, &editor_action_add_component_event_handler},
     {EDITOR_EVENT_TYPE_ACTION_ADD_COMPONENT_SCRIPT, &editor_action_add_component_script_event_handler},
     {EDITOR_EVENT_TYPE_ACTION_SET_COMPONENT_ASSET, &editor_action_set_component_asset_event_handler},
@@ -238,6 +240,17 @@ void editor_action_import_assets_event_handler(const EditorEvent* event, void* u
         obj->assetImporter.import_batch_asset(info);
 
     obj->assetImporter.import_batch_end();
+}
+
+static void editor_action_rename_component_event_handler(const EditorEvent* event, void* user)
+{
+    LD_ASSERT(event->type == EDITOR_EVENT_TYPE_ACTION_RENAME_COMPONENT);
+    auto* obj = (EditorContextObj*)user;
+    auto* e = (const EditorActionRenameComponentEvent*)event;
+
+    auto* cmd = (RenameComponentCommand*)obj->editStack.allocate(EDIT_COMMAND_TYPE_RENAME_COMPONENT);
+    cmd->configure(e->compSUID, e->newName);
+    obj->editStack.execute(cmd);
 }
 
 static void editor_action_add_component_event_handler(const EditorEvent* event, void* user)
