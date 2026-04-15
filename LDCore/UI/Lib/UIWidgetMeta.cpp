@@ -21,7 +21,7 @@ UIWidgetMeta sWidgetMeta[] = {
     { UI_WIDGET_PANEL,       "UIPanel",      sizeof(UIPanelWidgetObj),     &UIPanelWidgetObj::default_layout,    &UIPanelWidgetObj::startup,      &UIPanelWidgetObj::cleanup,      nullptr,                          nullptr,                          &UIPanelWidgetObj::on_draw,     nullptr, nullptr},
     { UI_WIDGET_IMAGE,       "UIImage",      sizeof(UIImageWidgetObj),     nullptr,                              &UIImageWidgetObj::startup,      &UIImageWidgetObj::cleanup,      nullptr,                          nullptr,                          &UIImageWidgetObj::on_draw,     nullptr, nullptr},
     { UI_WIDGET_TEXT,        "UIText",       sizeof(UITextWidgetObj),      &UITextWidgetObj::default_layout,     &UITextWidgetObj::startup,       &UITextWidgetObj::cleanup,       &UITextWidgetObj::on_event,       nullptr,                          &UITextWidgetObj::on_draw,      UITextWidgetObj::wrap_size, UITextWidgetObj::wrap_limit},
-    { UI_WIDGET_TEXT_EDIT,   "UITextEdit",   sizeof(UITextEditWidgetObj),  &UITextEditWidgetObj::default_layout, &UITextEditWidgetObj::startup,   &UITextEditWidgetObj::cleanup,   &UITextEditWidgetObj::on_event,   nullptr,                          &UITextEditWidgetObj::on_draw,  nullptr, nullptr},
+    { UI_WIDGET_TEXT_EDIT,   "UITextEdit",   sizeof(UITextEditWidgetObj),  &UITextEditWidgetObj::default_layout, &UITextEditWidgetObj::startup,   &UITextEditWidgetObj::cleanup,   &UITextEditWidgetObj::on_event,   nullptr,                          &UITextEditWidgetObj::on_draw,  nullptr, nullptr, &UITextEditWidgetObj::cursor_hint},
 };
 // clang-format on
 
@@ -35,6 +35,18 @@ UILayoutInfo widget_default_layout(UIWidgetType type)
         defaultLayout = sWidgetMeta[(int)type].defaultLayout();
 
     return defaultLayout;
+}
+
+CursorType widget_cursor_hint(UIWidgetObj* obj)
+{
+    LD_ASSERT(obj);
+
+    CursorType hint = CURSOR_TYPE_DEFAULT;
+
+    if (sWidgetMeta[(int)obj->type].cursorHint)
+        hint = sWidgetMeta[(int)obj->type].cursorHint(obj);
+
+    return hint;
 }
 
 void widget_startup(UIWidgetObj* obj)

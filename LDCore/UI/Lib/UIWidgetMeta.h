@@ -18,11 +18,13 @@ struct UIWidgetMeta
     void (*onDraw)(UIWidgetObj* obj, ScreenRenderComponent renderer);
     float (*wrapSizeX)(UIWidgetObj* obj, float limitW);
     void (*wrapLimitX)(UIWidgetObj* obj, float& minWidth, float& maxWidth);
+    CursorType (*cursorHint)(UIWidgetObj* obj);
 };
 
 extern UIWidgetMeta sWidgetMeta[];
 
 UILayoutInfo widget_default_layout(UIWidgetType type);
+CursorType widget_cursor_hint(UIWidgetObj* obj);
 void widget_startup(UIWidgetObj* obj);
 void widget_cleanup(UIWidgetObj* obj);
 void widget_on_update(UIWidgetObj* obj, float delta);

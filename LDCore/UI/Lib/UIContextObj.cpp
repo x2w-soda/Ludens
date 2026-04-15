@@ -252,14 +252,21 @@ void UIContextObj::update_cursor_hint()
 {
     cursorHint = CURSOR_TYPE_DEFAULT;
 
-    // TODO: UIWidgetMeta polymorphism
-    if (focusWidget && focusWidget->type == UI_WIDGET_TEXT_EDIT)
+    // focused widget gets to hint first
+    if (focusWidget)
     {
-        cursorHint = CURSOR_TYPE_IBEAM;
-        return;
+        cursorHint = widget_cursor_hint(focusWidget);
+        if (cursorHint != CURSOR_TYPE_DEFAULT)
+            return;
     }
 
-    // TODO: bubble up from hover leaf until we get a cursor hint
+    // bubble up along hover widgets
+    for (UIWidgetObj* widget = hoverWidgetLeaf; widget; widget = widget->parent)
+    {
+        cursorHint = widget_cursor_hint(widget);
+        if (cursorHint != CURSOR_TYPE_DEFAULT)
+            return;
+    }
 }
 
 void UIContextObj::raise_layer(UILayerObj* obj)
