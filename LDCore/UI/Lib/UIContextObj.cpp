@@ -102,6 +102,82 @@ static UIWidgetObj* get_event_handler(UIWidgetObj* widget, const UIEvent& event)
     return nullptr;
 }
 
+void UIOverlay::startup(UIContextObj* ctx)
+{
+    LD_ASSERT(!layerObj);
+
+    layerObj = heap_new<UILayerObj>(MEMORY_USAGE_UI, ctx);
+    layerObj->name = std::string("OVERLAY");
+
+    workspace = UILayer(layerObj).create_workspace(Rect());
+}
+
+void UIOverlay::cleanup()
+{
+    LD_ASSERT(layerObj && workspace);
+
+    UILayer layer(layerObj);
+
+    layer.destroy_workspace(workspace);
+    layerObj->pre_update(); // force destruction
+
+    heap_delete<UILayerObj>(layerObj);
+    layerObj = nullptr;
+}
+
+void UIOverlay::pre_update()
+{
+    layerObj->pre_update();
+}
+
+void UIOverlay::reserve_windows(int level)
+{
+    if (level >= (int)stack.size())
+    {
+        UILayoutInfo layoutI(UISize::fit(), UISize::fit(), UI_AXIS_Y);
+
+        stack.resize(level + 1);
+        for (int i = level; i < (int)stack.size(); i++)
+        {
+            stack[i] = workspace.create_float_window(layoutI, {}, nullptr);
+            stack[i].hide();
+        }
+    }
+}
+
+int UIOverlay::find_widget(UIWidgetObj* obj)
+{
+    if (!obj)
+        return -1;
+
+    for (size_t i = 0; i < stack.size(); i++)
+    {
+        if (stack[i].unwrap()->id == obj->window->id)
+            return (int)i;
+    }
+
+    return -1;
+}
+
+UIWindow UIOverlay::set_level(int level)
+{
+    reserve_windows(level);
+
+    for (int i = level + 1; i < (int)stack.size(); i++)
+    {
+        stack[i].hide();
+    }
+
+    currentLevel = level;
+    if (currentLevel < 0)
+        return {};
+
+    UIWindow window = stack[currentLevel];
+    window.show();
+
+    return window;
+}
+
 UIFont UIContextObj::get_font_from_hint(TextSpanFont font)
 {
     // TODO: UIContext is responsible for mapping TextSpanFont intent
@@ -120,8 +196,9 @@ UIWidgetObj* UIContextObj::alloc_widget_obj(const UIWidgetAllocInfo& info)
     UIWidgetUnion* widgetU = (UIWidgetUnion*)widgetUnionPA.allocate();
     UIWindowObj* window = info.parent->window;
     UIWidgetObj* obj = (UIWidgetObj*)widgetObjPA.allocate();
-    new (obj) UIWidgetObj(info.type, widgetL, widgetU, info.parent, window, info.data, info.user);
-    obj->theme = theme;
+    new (obj) UIWidgetObj(info.type, this, widgetL, widgetU, info.parent, window, info.data, info.user);
+
+    widget_startup(obj);
 
     window->widgets.push_back(obj);
     info.parent->append_child(obj);
@@ -148,7 +225,10 @@ void UIContextObj::free_widget_obj(UIWidgetObj* widget)
     UIWidgetLayout* widgetL = widget->L;
     UIWidgetUnion* widgetU = widget->U;
 
+    widget_cleanup(widget);
+
     widget->~UIWidgetObj();
+
     widgetObjPA.free(widget);
     widgetUnionPA.free(widgetU);
     widgetLayoutPA.free(widgetL);
@@ -157,13 +237,17 @@ void UIContextObj::free_widget_obj(UIWidgetObj* widget)
 /// @brief Get deepest widget in context.
 UIWidgetObj* UIContextObj::get_widget(const Vec2& pos)
 {
-    for (auto layerIte = layers.rbegin(); layerIte != layers.rend(); layerIte++)
-    {
-        UILayerObj* layer = *layerIte;
+    UIWidgetObj* widgetObj = get_widget_in_layer(overlay.layerObj, pos);
+    if (widgetObj)
+        return widgetObj;
 
-        UIWidgetObj* widget = get_widget_in_layer(layer, pos);
-        if (widget)
-            return widget;
+    for (auto layerIt = layers.rbegin(); layerIt != layers.rend(); layerIt++)
+    {
+        UILayerObj* layerObj = *layerIt;
+
+        widgetObj = get_widget_in_layer(layerObj, pos);
+        if (widgetObj)
+            return widgetObj;
     }
 
     return nullptr;
@@ -222,6 +306,8 @@ UIWidgetObj* UIContextObj::get_widget_in_workspace(UIWorkspaceObj* space, const 
 
 void UIContextObj::pre_update()
 {
+    overlay.pre_update();
+
     for (UILayerObj* layer : layers)
     {
         // removes workspaces from layers
@@ -285,9 +371,8 @@ UILayerObj* UIContextObj::get_or_create_layer(const char* name)
     if (obj)
         return obj;
 
-    obj = heap_new<UILayerObj>(MEMORY_USAGE_UI);
+    obj = heap_new<UILayerObj>(MEMORY_USAGE_UI, this);
     obj->name = std::string(name);
-    obj->ctx = this;
     layers.push_back(obj);
 
     return obj;
@@ -448,6 +533,7 @@ bool UIContextObj::input_mouse_down(const UIEvent& event)
     {
         pressWidget = nullptr;
         focus_widget(nullptr);
+        overlay.clear_windows();
         return false;
     }
 
@@ -569,11 +655,20 @@ bool UIContextObj::input_scroll(const UIEvent& event)
 
     UIWidgetObj* widget = get_widget(cursorPos);
     if (!widget)
+    {
+        overlay.clear_windows();
         return false;
+    }
 
     widget = get_event_handler(widget, event);
     if (!widget)
+    {
+        overlay.clear_windows();
         return false;
+    }
+
+    if (overlay.find_widget(widget) < 0)
+        overlay.clear_windows();
 
     // signal context user
     if (onEvent)
@@ -646,6 +741,8 @@ UIContext UIContext::create(const UIContextInfo& info)
     paI.blockSize = sizeof(UIWidgetLayout);
     obj->widgetLayoutPA = PoolAllocator::create(paI);
 
+    obj->overlay.startup(obj);
+
     return UIContext(obj);
 }
 
@@ -659,22 +756,29 @@ void UIContext::destroy(UIContext ctx)
     obj->pre_update();
     LD_ASSERT(obj->layers.empty());
 
+    obj->overlay.cleanup();
+
     PoolAllocator::destroy(obj->widgetLayoutPA);
     PoolAllocator::destroy(obj->widgetUnionPA);
     PoolAllocator::destroy(obj->widgetObjPA);
     heap_delete<UIContextObj>(obj);
 }
 
-void UIContext::update(float delta)
+void UIContext::update(Vec2 extent, float delta)
 {
     LD_PROFILE_SCOPE;
 
     mObj->pre_update();
 
+    if (mObj->overlay.workspace.get_root_rect().get_size() != extent)
+        mObj->overlay.workspace.set_rect(Rect(0.0f, 0.0f, extent.x, extent.y));
+    mObj->overlay.layerObj->update(delta);
+    mObj->overlay.layerObj->layout();
+
     for (UILayerObj* layer : mObj->layers)
     {
-        layer->layout();
         layer->update(delta);
+        layer->layout();
     }
 
     mObj->post_update();
@@ -693,6 +797,9 @@ void UIContext::render(ScreenRenderComponent renderer)
     {
         UILayer(layer).render(renderer);
     }
+
+    // always drawn after user created layers
+    UILayer(mObj->overlay.layerObj).render(renderer);
 }
 
 bool UIContext::input_key_down(KeyCode code, KeyMods mods)
@@ -788,6 +895,21 @@ bool UIContext::input_window_event(const WindowEvent* event)
     }
 
     return isHandled;
+}
+
+void UIContext::clear_overlay_windows()
+{
+    mObj->overlay.clear_windows();
+}
+
+int UIContext::get_overlay_level()
+{
+    return mObj->overlay.get_level();
+}
+
+UIWindow UIContext::set_overlay_level(int level)
+{
+    return mObj->overlay.set_level(level);
 }
 
 CursorType UIContext::get_cursor_hint()

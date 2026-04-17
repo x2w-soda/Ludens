@@ -50,6 +50,11 @@ struct UITextEditState
     Impulse isSubmitted;
 };
 
+struct UIDropdownState
+{
+    Impulse isOpened = {};
+};
+
 struct UIWidgetState
 {
     UIWidget widget{};               // actual retained widget
@@ -67,6 +72,7 @@ struct UIWidgetState
         Impulse isButtonPressed;
         UITextState text;
         UITextEditState textEdit;
+        UIDropdownState dropdown;
     };
 
     UIWidgetState() = delete;
@@ -96,6 +102,9 @@ UIWidgetState::UIWidgetState(UIWidgetType type)
     case UI_WIDGET_TEXT_EDIT:
         new (&textEdit) UITextEditState();
         break;
+    case UI_WIDGET_DROPDOWN:
+        new (&dropdown) UIDropdownState();
+        break;
     default:
         break;
     }
@@ -110,6 +119,9 @@ UIWidgetState::~UIWidgetState()
         break;
     case UI_WIDGET_TEXT_EDIT:
         (&textEdit)->~UITextEditState();
+        break;
+    case UI_WIDGET_DROPDOWN:
+        (&dropdown)->~UIDropdownState();
         break;
     default:
         break;
@@ -141,8 +153,7 @@ struct UIWindowState
 {
     UIWindow window;
     PoolAllocator widgetStatePA;
-    UIWorkspaceState* space = nullptr; // owning workspace
-    UIWidgetState* state = nullptr;    // widget state for the window itself
+    UIWidgetState* state = nullptr; // widget state for the window itself
     Stack<UIWidgetState*> imWidgetStack;
 
     UIWindowState();
@@ -179,7 +190,6 @@ UIWindowState* UIWorkspaceState::get_or_create_window_state(const char* windowNa
         return imWindows[key];
 
     windowS = heap_new<UIWindowState>(MEMORY_USAGE_UI);
-    windowS->space = this;
     windowS->state = (UIWidgetState*)windowS->widgetStatePA.allocate();
     new (windowS->state) UIWidgetState(UI_WIDGET_WINDOW);
 
@@ -192,7 +202,7 @@ UIWindowState* UIWorkspaceState::get_or_create_window_state(const char* windowNa
     if (floatingWindow)
         window = space.create_float_window(layoutI, windowI, windowS->state);
     else
-        window = space.create_window(space.get_root_id(), layoutI, windowI, windowS->state);
+        window = space.create_docked_window(space.get_root_id(), layoutI, windowI, windowS->state);
     window.set_color(0xE0);
     windowS->window = window;
     windowS->state->widget = (UIWidget)window;
@@ -249,37 +259,16 @@ struct UIContextState
     UILayerState* imLayer = nullptr;              // current layer
     UIWorkspaceState* imSpace = nullptr;          // current workspace
     UIWindowState* imWindow = nullptr;            // current window
-    UIWindowState* imPopup = nullptr;             // global popup window
+    Vector<UIWindowState*> imOverlayWindows;      // overlay window stack
+    HashMap<int, std::string> imOverlayUsers;     // overlay window users this frame
     HashMap<std::string, UILayerState*> imLayers; // all layers in this context
-    UILayerState* popupLayer{};
-    UIWorkspaceState* popupSpace{};
     Vec2 screenExtent;
 
-    void clear_popup_window();
-    void set_screen_extent(const Vec2& extent);
     void set_window_state(UIWindowState* windowS);
-    UIWindowState* get_or_create_popup_window_state(const char* popupName);
+    UIWindowState* get_or_create_overlay_window_state(int level);
     UILayerState* get_or_create_layer_state(const char* layerName);
     void destroy_layer_state(UILayerState* layerS);
 };
-
-void UIContextState::clear_popup_window()
-{
-    if (imPopup)
-    {
-        imPopup->window.hide();
-        imPopup = nullptr;
-    }
-}
-
-void UIContextState::set_screen_extent(const Vec2& extent)
-{
-    if (extent == screenExtent)
-        return;
-
-    screenExtent = extent;
-    popupSpace->space.set_rect(Rect(0.0f, 0.0f, extent.x, extent.y));
-}
 
 void UIContextState::set_window_state(UIWindowState* windowS)
 {
@@ -288,9 +277,33 @@ void UIContextState::set_window_state(UIWindowState* windowS)
     imWindow->imWidgetStack.push(imWindow->state);
 }
 
-UIWindowState* UIContextState::get_or_create_popup_window_state(const char* popupName)
+UIWindowState* UIContextState::get_or_create_overlay_window_state(int level)
 {
-    return popupSpace->get_or_create_window_state(popupName, true);
+    if (level >= (int)imOverlayWindows.size())
+    {
+        imOverlayWindows.resize(level + 1);
+        for (int i = level; i < (int)imOverlayWindows.size(); i++)
+            imOverlayWindows[i] = nullptr;
+    }
+
+    if (imOverlayWindows[level])
+    {
+        (void)ctx.set_overlay_level(level);
+        return imOverlayWindows[level];
+    }
+
+    UIWindowState* windowS = heap_new<UIWindowState>(MEMORY_USAGE_UI);
+    windowS->state = (UIWidgetState*)windowS->widgetStatePA.allocate();
+    new (windowS->state) UIWidgetState(UI_WIDGET_WINDOW);
+
+    windowS->window = ctx.set_overlay_level(level);
+    windowS->window.set_user(windowS->state);
+    windowS->state->widget = (UIWidget)windowS->window;
+    windowS->state->widgetHash = windowS->window.get_hash();
+
+    imOverlayWindows[level] = windowS;
+
+    return windowS;
 }
 
 UILayerState* UIContextState::get_or_create_layer_state(const char* layerName)
@@ -326,10 +339,12 @@ static void on_ui_context_event(UIWidget widget, const UIEvent& event, void* use
     UIContextState* ctxS = (UIContextState*)user;
     UIWidgetState* widgetS = (UIWidgetState*)widget.get_user();
 
+    /*
     if (ctxS->imPopup && ctxS->imPopup != widgetS->window && event.type == UI_EVENT_MOUSE_DOWN)
     {
-        ctxS->clear_popup_window();
+        ctxS->ctx.clear_overlay_windows();
     }
+    */
 
     // cache events for this frame for imgui API.
     widgetS->events.push_back(event);
@@ -338,13 +353,12 @@ static void on_ui_context_event(UIWidget widget, const UIEvent& event, void* use
 static UIContextState* get_or_create_context_state(const char* ctxName, const Vec2& screenExtent)
 {
     UIContextState* ctxS = nullptr;
-    const Rect screenRect(0.0f, 0.0f, screenExtent.x, screenExtent.y);
     std::string key(ctxName);
 
     if (sImContexts.contains(key))
     {
         ctxS = sImContexts[key];
-        ctxS->set_screen_extent(screenExtent);
+        ctxS->screenExtent = screenExtent;
         return ctxS;
     }
 
@@ -358,8 +372,6 @@ static UIContextState* get_or_create_context_state(const char* ctxName, const Ve
     ctxI.user = ctxS;
     ctxI.theme = UITheme::get_default_theme();
     ctxS->ctx = UIContext::create(ctxI);
-    ctxS->popupLayer = ctxS->get_or_create_layer_state("ImguiLayer");
-    ctxS->popupSpace = ctxS->popupLayer->get_or_create_workspace_state("ImguiWorkspace", screenRect);
 
     return ctxS;
 }
@@ -369,6 +381,9 @@ static void destroy_context_state(UIContextState* ctxS)
     for (auto it : ctxS->imLayers)
         ctxS->destroy_layer_state(it.second);
     ctxS->imLayers.clear();
+
+    for (auto windowS : ctxS->imOverlayWindows)
+        heap_delete<UIWindowState>(windowS);
 
     UIContext::destroy(ctxS->ctx);
 
@@ -498,10 +513,6 @@ UIWindowState::UIWindowState()
 
 UIWindowState::~UIWindowState()
 {
-    LD_ASSERT(space);
-
-    space->space.destroy_window(window);
-
     for (auto it = widgetStatePA.begin(); it; ++it)
     {
         UIWidgetState* widgetS = (UIWidgetState*)it.data();
@@ -731,8 +742,8 @@ void ui_context_end(float delta, CursorType& outCursorHint)
     LD_ASSERT_UI_CONTEXT_SCOPE;
     LD_ASSERT(!sImContext->imWindow && "ui_pop_window not called");
 
-    sImContext->popupLayer->layer.raise(); // always on top of user declared layers
-    sImContext->ctx.update(delta);
+    // sImContext->popupLayer->layer.raise(); // always on top of user declared layers
+    sImContext->ctx.update(sImContext->screenExtent, delta);
 
     outCursorHint = sImContext->ctx.get_cursor_hint();
     sImContext = nullptr;
@@ -1094,39 +1105,47 @@ void ui_window_set_rect(const Rect& rect)
     sImContext->imWindow->window.set_rect(rect);
 }
 
-void ui_request_popup_window(const char* popupName, const Vec2& position)
+void ui_request_overlay_window(const char* overlayUser, int level, Vec2 position)
 {
-    ui_clear_popup_window();
+    LD_ASSERT_UI_WINDOW_SCOPE;
 
-    UIWindowState* popupS = sImContext->get_or_create_popup_window_state(popupName);
-    sImContext->imPopup = popupS;
-    sImContext->imPopup->window.hide();
-    sImContext->imPopup->window.set_pos(position);
+    sImContext->imOverlayUsers[level] = overlayUser;
+
+    UIWindowState* popupS = sImContext->get_or_create_overlay_window_state(level);
+    popupS->window.set_pos(position);
 }
 
-void ui_clear_popup_window()
+void ui_clear_overlay_windows()
 {
     LD_ASSERT_UI_CONTEXT_SCOPE;
 
-    sImContext->clear_popup_window();
+    sImContext->ctx.clear_overlay_windows();
+    sImContext->imOverlayUsers.clear();
 }
 
-bool ui_push_popup_window(const char* popupName)
+bool ui_push_overlay_window(const char* overlayUser)
 {
     LD_ASSERT_UI_CONTEXT_SCOPE;
 
-    if (!sImContext->imPopup)
+    int level = -1;
+
+    for (const auto it : sImContext->imOverlayUsers)
+    {
+        if (it.second == overlayUser)
+        {
+            level = it.first;
+            break;
+        }
+    }
+
+    if (level < 0 || level > sImContext->ctx.get_overlay_level())
         return false;
 
-    std::string currentPopupName;
-    UIWindow popupW = sImContext->imPopup->window;
-    popupW.get_name(currentPopupName);
-    if (currentPopupName != popupName)
+    UIWindowState* windowS = sImContext->imOverlayWindows[level];
+    if (!windowS)
         return false;
 
-    popupW.show();
-
-    sImContext->set_window_state(sImContext->imPopup);
+    sImContext->set_window_state(windowS);
 
     return true;
 }
@@ -1263,6 +1282,63 @@ bool ui_text_edit_submitted(std::string& text)
     }
 
     return false;
+}
+
+UIDropdownWidget ui_push_dropdown(UIDropdownData* data)
+{
+    LD_ASSERT_UI_PUSH;
+
+    UIWindowState* imWindow = sImContext->imWindow;
+    UIWidgetState* imWidget = imWindow->get_or_create_widget(UI_WIDGET_DROPDOWN, data);
+    UIDropdownWidget dropdownW = (UIDropdownWidget)imWidget->widget;
+    UIDropdownData* dropdownData = (UIDropdownData*)dropdownW.get_data();
+    dropdownData->onOpen = [](UIWidget widget) {
+        auto* state = (UIWidgetState*)widget.get_user();
+        state->dropdown.isOpened.set(true);
+    };
+
+    imWindow->imWidgetStack.push(imWidget);
+
+    return dropdownW;
+}
+
+bool ui_dropdown_is_opened()
+{
+    LD_ASSERT_UI_TOP_WIDGET_TYPE(UI_WIDGET_DROPDOWN);
+
+    UIWidgetState* imWidget = sImContext->imWindow->imWidgetStack.top();
+
+    return imWidget->dropdown.isOpened.read();
+}
+
+void ui_dropdown_overlay(UIDropdownWidget widget)
+{
+    LD_ASSERT_UI_WINDOW_SCOPE;
+
+    if (!widget)
+        return;
+
+    UIDropdownData* data = (UIDropdownData*)widget.get_data();
+
+    ui_push_panel(nullptr, 0x101010FF);
+    ui_top_layout(UILayoutInfo(UISize::fit(), UISize::fit(), UI_AXIS_Y));
+
+    for (size_t i = 0; i < data->options.size(); i++)
+    {
+        const std::string& opt = data->options[i];
+        MouseValue mouseVal;
+        Vec2 mousePos;
+
+        UITextData* textData = (UITextData*)ui_push_text(nullptr, opt.c_str()).get_data();
+        if (ui_top_mouse_down(mouseVal, mousePos) && mouseVal.button() == MOUSE_BUTTON_LEFT)
+        {
+            widget.set_option(i);
+            ui_clear_overlay_windows();
+        }
+        ui_pop();
+    }
+
+    ui_pop();
 }
 
 UIImageWidget ui_push_image(UIImageData* data, float width, float height)

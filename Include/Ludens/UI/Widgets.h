@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Ludens/UI/Widget/UIButtonWidget.h>
+#include <Ludens/UI/Widget/UIDropdownWidget.h>
 #include <Ludens/UI/Widget/UIImageWidget.h>
 #include <Ludens/UI/Widget/UIPanelWidget.h>
 #include <Ludens/UI/Widget/UIScrollBarWidget.h>

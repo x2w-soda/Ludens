@@ -12,18 +12,18 @@ namespace LD {
 
 static_assert(sizeof(UIWidgetUnion) <= 128);
 
-UIWidgetObj::UIWidgetObj(UIWidgetType type, UIWidgetLayout* widgetL, UIWidgetUnion* widgetU, UIWidgetObj* parent, UIWindowObj* window, void* data, void* user)
+UIWidgetObj::UIWidgetObj(UIWidgetType type, UIContextObj* ctx, UIWidgetLayout* widgetL, UIWidgetUnion* widgetU, UIWidgetObj* parent, UIWindowObj* window, void* data, void* user)
     : type(type), L(widgetL), U(widgetU), window(window), parent(parent), data(data), user(user)
 {
     LD_ASSERT(L);
-    // LD_ASSERT(U);
 
-    widget_startup(this);
+    id = ctx->idRegistry.create();
+    theme = ctx->theme;
 }
 
 UIWidgetObj::~UIWidgetObj()
 {
-    widget_cleanup(this);
+    window->ctx->idRegistry.destroy(id);
 }
 
 void UIWidgetObj::append_child(UIWidgetObj* newChild)
@@ -153,6 +153,11 @@ bool UIWidget::is_visible()
 UIWidgetType UIWidget::get_type()
 {
     return mObj->type;
+}
+
+UIID UIWidget::get_id()
+{
+    return mObj->id;
 }
 
 UIContextObj* UIWidget::get_context_obj()
@@ -371,6 +376,14 @@ void UIWidget::remove()
 
     ctx->free_widget_obj(mObj);
     mObj = nullptr;
+}
+
+void UIWidget::remove_children()
+{
+    UIContextObj* ctx = mObj->ctx();
+
+    while (mObj->child)
+        ctx->free_widget_obj(mObj->child);
 }
 
 const char* UIWidget::get_type_cstr(UIWidgetType type)

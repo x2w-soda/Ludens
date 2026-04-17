@@ -15,7 +15,7 @@ TEST_CASE("UIWidget input key")
     layoutI.sizeX = UISize::fixed(100);
     layoutI.sizeY = UISize::fixed(100);
     UIWindowInfo windowI{};
-    UIWindow window = space.create_window(space.get_root_id(), layoutI, windowI, nullptr);
+    UIWindow window = space.create_docked_window(space.get_root_id(), layoutI, windowI, nullptr);
     window.set_on_event([](UIWidget widget, const UIEvent& event) -> bool {
         if (event.type != UI_EVENT_KEY_DOWN)
             return false;

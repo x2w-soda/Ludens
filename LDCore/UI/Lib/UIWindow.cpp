@@ -7,16 +7,20 @@
 
 namespace LD {
 
-UIWindowObj::UIWindowObj(const UILayoutInfo& layoutI)
-    : UIWidgetObj(UI_WIDGET_WINDOW, &layout, nullptr, nullptr, this, nullptr, nullptr)
+UIWindowObj::UIWindowObj(const UILayoutInfo& layoutI, UIContextObj* ctx)
+    : UIWidgetObj(UI_WIDGET_WINDOW, ctx, &layout, nullptr, nullptr, this, nullptr, nullptr), ctx(ctx)
 {
     layout.info = layoutI;
+    theme = ctx->theme;
+    id = ctx->idRegistry.create();
 }
 
 UIWindowObj::~UIWindowObj()
 {
+    ctx->idRegistry.destroy(id);
+
     while (!widgets.empty())
-        ctx()->free_widget_obj(widgets.front());
+        ctx->free_widget_obj(widgets.front());
 }
 
 Hash64 UIWindowObj::get_hash() const

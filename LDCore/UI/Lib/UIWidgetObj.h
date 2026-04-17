@@ -6,6 +6,7 @@
 #include "UILibDef.h"
 
 #include "Widget/UIButtonWidgetObj.h"
+#include "Widget/UIDropdownWidgetObj.h"
 #include "Widget/UIImageWidgetObj.h"
 #include "Widget/UIPanelWidgetObj.h"
 #include "Widget/UIScrollBarWidgetObj.h"
@@ -33,6 +34,7 @@ union UIWidgetUnion
     UIButtonWidgetObj button;
     UISliderWidgetObj slider;
     UIToggleWidgetObj toggle;
+    UIDropdownWidgetObj dropdown;
 
     UIWidgetUnion() {}
     ~UIWidgetUnion() {}
@@ -42,6 +44,7 @@ union UIWidgetUnion
 struct UIWidgetObj
 {
     UIWidgetType type;             /// type enum
+    UIID id = {};                  /// widget ID unique throught context
     UIWidgetLayout* L = nullptr;   /// widget layout information
     UIWidgetUnion* U = nullptr;    /// widget type-specific information
     UIWindowObj* window = nullptr; /// owning window
@@ -56,7 +59,7 @@ struct UIWidgetObj
     uint32_t flags = 0;            /// widget bit flags
 
     UIWidgetObj() = delete;
-    UIWidgetObj(UIWidgetType type, UIWidgetLayout* widgetL, UIWidgetUnion* widgetU, UIWidgetObj* parent, UIWindowObj* window, void* storage, void* user);
+    UIWidgetObj(UIWidgetType type, UIContextObj* ctx, UIWidgetLayout* widgetL, UIWidgetUnion* widgetU, UIWidgetObj* parent, UIWindowObj* window, void* storage, void* user);
     UIWidgetObj(const UIWidgetObj&) = delete;
     ~UIWidgetObj();
 

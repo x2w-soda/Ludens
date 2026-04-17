@@ -38,8 +38,9 @@ struct UIContext : Handle<struct UIContextObj>
     static void destroy(UIContext ctx);
 
     /// @brief update UI context
+    /// @param extent Screen size extent
     /// @param delta delta time in seconds
-    void update(float delta);
+    void update(Vec2 extent, float delta);
 
     /// @brief Render each UILayer in order.
     void render(ScreenRenderComponent renderer);
@@ -54,6 +55,10 @@ struct UIContext : Handle<struct UIContextObj>
     /// @brief Translate a Window event to input and pass it to the UI context,
     ///        the WindowID is ignored and mouse positions are relative to UI context origin.
     bool input_window_event(const WindowEvent* event);
+
+    int get_overlay_level();
+    UIWindow set_overlay_level(int level);
+    void clear_overlay_windows();
 
     /// @brief Create and add a layer to context.
     UILayer create_layer(const char* layerName);

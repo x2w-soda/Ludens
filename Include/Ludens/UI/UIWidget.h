@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Ludens/DSA/IDRegistry.h>
 #include <Ludens/Header/Handle.h>
 #include <Ludens/Header/View.h>
 #include <Ludens/Media/Font.h>
@@ -11,11 +12,16 @@
 
 namespace LD {
 
+using UIID = ID;
+
 /// @brief UIWidget handle, this contains all the base methods of a widget.
 struct UIWidget : Handle<struct UIWidgetObj>
 {
     /// @brief Get widget type.
     UIWidgetType get_type();
+
+    /// @brief Get widget unique ID throught UIContext.
+    UIID get_id();
 
     struct UIContextObj* get_context_obj();
 
@@ -61,6 +67,10 @@ public: // hierarchy and identity
     /// @brief Remove self subtree from parent.
     /// @warning All UIWidget handle in the removed subtree is now out of date.
     void remove();
+
+    /// @brief Remove all children from self.
+    /// @warning All UIWidget handles of the children subtrees are now out of date.
+    void remove_children();
 
 public: // layout and visibility
     /// @brief If hidden, skips rendering for all UIWidgets in this subtree.

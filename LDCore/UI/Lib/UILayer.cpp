@@ -5,8 +5,16 @@
 
 namespace LD {
 
+UILayerObj::UILayerObj(UIContextObj* ctx)
+    : ctx(ctx)
+{
+    id = ctx->idRegistry.create();
+}
+
 UILayerObj::~UILayerObj()
 {
+    ctx->idRegistry.destroy(id);
+
     for (UIWorkspaceObj* space : workspaces)
         heap_delete<UIWorkspaceObj>(space);
 }
@@ -88,9 +96,7 @@ void UILayer::set_visible(bool isVisible)
 
 UIWorkspace UILayer::create_workspace(const Rect& area)
 {
-    UIWorkspaceObj* obj = heap_new<UIWorkspaceObj>(MEMORY_USAGE_UI, area);
-    obj->layer = mObj;
-    obj->id = ++mObj->workspaceIDCounter;
+    UIWorkspaceObj* obj = heap_new<UIWorkspaceObj>(MEMORY_USAGE_UI, mObj, area);
 
     mObj->workspaces.push_back(obj);
 

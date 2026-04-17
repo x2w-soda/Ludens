@@ -6,8 +6,16 @@
 
 namespace LD {
 
+UIWorkspaceObj::UIWorkspaceObj(UILayerObj* layer, Rect area)
+    : layer(layer), partition(area, UI_WORKSPACE_SPLIT_GAP)
+{
+    id = layer->ctx->idRegistry.create();
+}
+
 UIWorkspaceObj::~UIWorkspaceObj()
 {
+    layer->ctx->idRegistry.destroy(id);
+
     for (UIWindowObj* window : nodeWindows)
         heap_delete<UIWindowObj>(window);
 
@@ -17,11 +25,9 @@ UIWorkspaceObj::~UIWorkspaceObj()
 
 UIWindowObj* UIWorkspaceObj::create_window(const UILayoutInfo& layoutI, const UIWindowInfo& windowI, void* user)
 {
-    UIWindowObj* windowObj = heap_new<UIWindowObj>(MEMORY_USAGE_UI, layoutI);
+    UIWindowObj* windowObj = heap_new<UIWindowObj>(MEMORY_USAGE_UI, layoutI, layer->ctx);
     windowObj->user = user;
     windowObj->space = this;
-    windowObj->theme = layer->ctx->theme;
-    windowObj->id = ++windowIDCounter;
     windowObj->defaultMouseControls = windowI.defaultMouseControls;
 
     if (windowI.name)
@@ -149,7 +155,7 @@ void UIWorkspace::set_pos(const Vec2& pos)
     });
 }
 
-UIWindow UIWorkspace::create_window(UIAreaID areaID, const UILayoutInfo& layoutI, const UIWindowInfo& windowI, void* user)
+UIWindow UIWorkspace::create_docked_window(UIAreaID areaID, const UILayoutInfo& layoutI, const UIWindowInfo& windowI, void* user)
 {
     UIWorkspaceNode* node = mObj->partition.get_node(areaID);
     if (!node || !node->isLeaf)

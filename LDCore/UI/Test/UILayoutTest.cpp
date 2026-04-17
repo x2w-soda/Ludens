@@ -19,7 +19,7 @@ TEST_CASE("UILayout alignment")
         layoutI.childAlignY = UI_ALIGN_CENTER;
         layoutI.childGap = 10.0f;
         UIWindowInfo windowI{};
-        UIWindow window = space.create_window(space.get_root_id(), layoutI, windowI, nullptr);
+        UIWindow window = space.create_docked_window(space.get_root_id(), layoutI, windowI, nullptr);
 
         layoutI.sizeX = UISize::fixed(20);
         layoutI.sizeY = UISize::fixed(40);
@@ -62,7 +62,7 @@ TEST_CASE("UILayout alignment")
         layoutI.childAlignY = UI_ALIGN_BEGIN;
         layoutI.childGap = 10.0f;
         UIWindowInfo windowI{};
-        UIWindow window = space.create_window(space.get_root_id(), layoutI, windowI, nullptr);
+        UIWindow window = space.create_docked_window(space.get_root_id(), layoutI, windowI, nullptr);
 
         layoutI.sizeX = UISize::fixed(40);
         layoutI.sizeY = UISize::fixed(20);
@@ -111,12 +111,12 @@ TEST_CASE("UILayout window childPad")
 
     UIWindowInfo windowI{};
     windowI.name = "test_window";
-    UIWindow window = space.create_window(space.get_root_id(), layoutI, windowI, nullptr);
+    UIWindow window = space.create_docked_window(space.get_root_id(), layoutI, windowI, nullptr);
 
     layoutI = make_fixed_size_layout(100, 100);
     UIPanelWidget child = (UIPanelWidget)window.add_child(UI_WIDGET_PANEL, layoutI, nullptr, nullptr);
 
-    ctx.update(0.0f);
+    ctx.update({}, 0.0f);
 
     Rect rect = window.get_rect();
     CHECK(rect == Rect(0, 0, 164, 164));
@@ -138,7 +138,7 @@ TEST_CASE("UILayout hbox child grows x")
     layoutI.childPadding = {10, 10, 10, 10};
     UIWindowInfo windowI{};
     windowI.name = "test_window";
-    UIWindow window = space.create_window(space.get_root_id(), layoutI, windowI, nullptr);
+    UIWindow window = space.create_docked_window(space.get_root_id(), layoutI, windowI, nullptr);
 
     // horizontal container
     layoutI = make_fixed_size_layout(150, 150);
@@ -152,7 +152,7 @@ TEST_CASE("UILayout hbox child grows x")
     UIPanelWidget c2 = (UIPanelWidget)hbox.add_child(UI_WIDGET_PANEL, layoutI, nullptr, nullptr);
     UIPanelWidget c3 = (UIPanelWidget)hbox.add_child(UI_WIDGET_PANEL, layoutI, nullptr, nullptr);
 
-    ctx.update(0.0f);
+    ctx.update({}, 0.0f);
 
     Rect rect = window.get_rect();
     CHECK(rect == Rect(0, 0, 170, 170));
@@ -179,7 +179,7 @@ TEST_CASE("UILayout hbox child grows y")
     layoutI.childPadding = {10, 10, 10, 10};
     UIWindowInfo windowI{};
     windowI.name = "test_window";
-    UIWindow window = space.create_window(space.get_root_id(), layoutI, windowI, nullptr);
+    UIWindow window = space.create_docked_window(space.get_root_id(), layoutI, windowI, nullptr);
 
     // horizontal container
     layoutI = make_fixed_size_layout(150, 150);
@@ -193,7 +193,7 @@ TEST_CASE("UILayout hbox child grows y")
     UIPanelWidget c2 = (UIPanelWidget)hbox.add_child(UI_WIDGET_PANEL, layoutI, nullptr, nullptr);
     UIPanelWidget c3 = (UIPanelWidget)hbox.add_child(UI_WIDGET_PANEL, layoutI, nullptr, nullptr);
 
-    ctx.update(0.0f);
+    ctx.update({}, 0.0f);
 
     Rect rect = window.get_rect();
     CHECK(rect == Rect(0, 0, 170, 170));
@@ -222,7 +222,7 @@ TEST_CASE("UILayout nested grow")
     layoutI.sizeX = UISize::fixed(500);
     layoutI.sizeY = UISize::fixed(500);
     UIWindowInfo windowI{};
-    UIWindow window = space.create_window(space.get_root_id(), layoutI, windowI, nullptr);
+    UIWindow window = space.create_docked_window(space.get_root_id(), layoutI, windowI, nullptr);
 
     layoutI.sizeX = UISize::grow();
     layoutI.sizeY = UISize::grow();

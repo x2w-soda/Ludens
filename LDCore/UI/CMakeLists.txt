@@ -21,6 +21,7 @@ set(MODULE_INCLUDE
     ${LUDENS_INCLUDE_DIR}/Ludens/UI/Widget/UIScrollWidget.h
     ${LUDENS_INCLUDE_DIR}/Ludens/UI/Widget/UIScrollBarWidget.h
     ${LUDENS_INCLUDE_DIR}/Ludens/UI/Widget/UISliderWidget.h
+    ${LUDENS_INCLUDE_DIR}/Ludens/UI/Widget/UIDropdownWidget.h
     ${LUDENS_INCLUDE_DIR}/Ludens/UI/Widget/UITextEditWidget.h
     ${LUDENS_INCLUDE_DIR}/Ludens/UI/Widget/UITextWidget.h
     ${LUDENS_INCLUDE_DIR}/Ludens/UI/Widget/UIToggleWidget.h
@@ -61,6 +62,8 @@ set(MODULE_LIB
     Lib/Widget/UITextWidgetObj.cpp
     Lib/Widget/UITextEditWidgetObj.h
     Lib/Widget/UITextEditWidgetObj.cpp
+    Lib/Widget/UIDropdownWidgetObj.h
+    Lib/Widget/UIDropdownWidgetObj.cpp
     Lib/Widget/UIToggleWidgetObj.h
     Lib/Widget/UIToggleWidgetObj.cpp
 )

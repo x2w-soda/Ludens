@@ -15,7 +15,7 @@ TEST_CASE("UITextWidget in fit container" * doctest::skip(!LudensLFS::get_direct
     layoutI.sizeX = UISize::fit();
     layoutI.sizeY = UISize::fit();
     UIWindowInfo windowI{};
-    UIWindow window = space.create_window(space.get_root_id(), layoutI, windowI, nullptr);
+    UIWindow window = space.create_docked_window(space.get_root_id(), layoutI, windowI, nullptr);
 
     static UITextData textS{};
     textS.set_value("foo");
@@ -24,7 +24,7 @@ TEST_CASE("UITextWidget in fit container" * doctest::skip(!LudensLFS::get_direct
     // textS.cstr = "bar";
     UITextWidget textW2 = (UITextWidget)window.add_child(UI_WIDGET_TEXT, {}, &textS, nullptr);
 
-    ctx.update(0.0f);
+    ctx.update({}, 0.0f);
 
     Rect rect = textW1.get_rect();
     CHECK(rect.x == 0);
@@ -40,7 +40,7 @@ TEST_CASE("UITextWidget in fit container" * doctest::skip(!LudensLFS::get_direct
 
     window.set_layout_child_axis(UI_AXIS_Y);
 
-    ctx.update(0.0f);
+    ctx.update({}, 0.0f);
 
     rect = textW1.get_rect();
     CHECK(rect.x == 0);

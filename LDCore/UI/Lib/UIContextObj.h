@@ -9,9 +9,11 @@
 #include <Ludens/UI/UIFont.h>
 #include <Ludens/UI/UITheme.h>
 #include <Ludens/UI/UIWidget.h>
+#include <Ludens/UI/UIWorkspace.h>
 
 namespace LD {
 
+struct UIContextObj;
 struct UITextSpan;
 struct UILayerObj;
 struct UIWidgetObj;
@@ -26,6 +28,23 @@ struct UIWidgetAllocInfo
     void* user;
 };
 
+struct UIOverlay
+{
+    UILayerObj* layerObj = nullptr; /// global layer on top of all user created layers
+    UIWorkspace workspace = {};     /// single workspace inside overlay layer
+    Vector<UIWindow> stack;         /// floating popup windows
+    int currentLevel = -1;
+
+    void startup(UIContextObj* ctx);
+    void cleanup();
+    void pre_update();
+    void reserve_windows(int level);
+    int find_widget(UIWidgetObj* obj);
+    inline int get_level() const { return currentLevel; }
+    UIWindow set_level(int level);
+    inline void clear_windows() { (void)set_level(-1); }
+};
+
 /// @brief UI context implementation.
 struct UIContextObj
 {
@@ -35,16 +54,19 @@ struct UIContextObj
     UIFont fontDefault;
     UIFont fontMonospace;
     UITheme theme;
-    Vector<UILayerObj*> layers;
-    HashSet<UILayerObj*> deferredLayerDestruction;
-    UIWidgetObj* dragWidget = nullptr;        /// the widget begin dragged
-    UIWidgetObj* pressWidget = nullptr;       /// the widget pressed and not yet released
-    UIWidgetObj* focusWidget = nullptr;       /// the widget receiving key events
-    UIWidgetObj* hoverWidgetLeaf = nullptr;   /// the leaf widget under mouse cursor accepting events
-    UIWidgetObj* requestLooseFocus = nullptr; /// the widget requesting to loose focus
-    HashSet<UIWidgetObj*> hoverWidgets;       /// set of all widgets under cursor
-    void* user;
+    IDRegistry idRegistry;                         /// allocates all UIIDs in this context
+    UIOverlay overlay;                             /// directly managed by the context
+    Vector<UILayerObj*> layers;                    /// all user created layers, ordered.
+    HashSet<UILayerObj*> deferredLayerDestruction; /// pending layer destruction queue
+    UIWidgetObj* dragWidget = nullptr;             /// the widget begin dragged
+    UIWidgetObj* pressWidget = nullptr;            /// the widget pressed and not yet released
+    UIWidgetObj* focusWidget = nullptr;            /// the widget receiving key events
+    UIWidgetObj* hoverWidgetLeaf = nullptr;        /// the leaf widget under mouse cursor accepting events
+    UIWidgetObj* requestLooseFocus = nullptr;      /// the widget requesting to loose focus
+    HashSet<UIWidgetObj*> hoverWidgets;            /// set of all widgets under cursor
+    void* user = nullptr;                          /// context user
     void (*onEvent)(UIWidget, const UIEvent&, void*) = nullptr;
+    Vec2 extent;                 /// screen space extent
     Vec2 cursorPos;              /// mouse cursor global position
     Vec2 dragStartPos;           /// mouse cursor drag start global position
     MouseButton dragMouseButton; /// mouse button used for dragging

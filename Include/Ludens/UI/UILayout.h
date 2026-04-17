@@ -83,8 +83,8 @@ struct UILayoutInfo
     UIAlign childAlignY;
 
     UILayoutInfo() = default;
-    UILayoutInfo(UISize x, UISize y)
-        : sizeX(x), sizeY(y), childPadding{}, childGap(0.0f), childAxis(), childAlignX(), childAlignY()
+    UILayoutInfo(UISize x, UISize y, UIAxis childAxis = UI_AXIS_Y)
+        : sizeX(x), sizeY(y), childPadding{}, childGap(0.0f), childAxis(childAxis), childAlignX(), childAlignY()
     {
     }
 };

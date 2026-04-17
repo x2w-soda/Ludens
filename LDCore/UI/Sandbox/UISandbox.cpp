@@ -150,6 +150,8 @@ void UISandbox::imgui(const Vec2& windowExtent, float delta)
         renderer.draw_rect(widget.get_rect(), Color(0x303030FF));
     });
 
+    UIDropdownWidget dropdownW = {};
+
     static UIScrollData sScroll;
     ui_push_scroll(&sScroll);
     ui_top_layout_child_gap(10.0f);
@@ -205,9 +207,26 @@ void UISandbox::imgui(const Vec2& windowExtent, float delta)
         if (ui_text_edit_submitted(text))
             sLog.info("Text Submitted: [{}]", text);
         ui_pop();
+
+        static UIDropdownData sDropdownData;
+        sDropdownData.options = {"option 1", "option 2", "option 3"};
+        dropdownW = ui_push_dropdown(&sDropdownData);
+        ui_top_layout_size(UISize::fixed(100.0f), UISize::fixed(20.0f));
+        if (ui_dropdown_is_opened())
+        {
+            Rect rect = dropdownW.get_rect();
+            ui_request_overlay_window("OVERLAY", 0, rect.get_pos_bl());
+        }
+        ui_pop();
     }
     ui_pop();
     ui_pop_window();
+
+    if (ui_push_overlay_window("OVERLAY"))
+    {
+        ui_dropdown_overlay(dropdownW);
+        ui_pop_window();
+    }
 
     CursorType cursorHint;
     ui_workspace_end();

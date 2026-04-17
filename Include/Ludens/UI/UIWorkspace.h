@@ -32,7 +32,7 @@ struct UIWorkspace : Handle<struct UIWorkspaceObj>
     void set_pos(const Vec2& pos);
 
     /// @brief Create and add a window to the workspace, the window is docked in the desginated area.
-    UIWindow create_window(UIAreaID areaID, const UILayoutInfo& layoutI, const UIWindowInfo& windowI, void* user);
+    UIWindow create_docked_window(UIAreaID areaID, const UILayoutInfo& layoutI, const UIWindowInfo& windowI, void* user);
 
     /// @brief Create and add a window to the workspace, the window is not docked.
     UIWindow create_float_window(const UILayoutInfo& layoutI, const UIWindowInfo& windowI, void* user);

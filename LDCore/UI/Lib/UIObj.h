@@ -46,21 +46,17 @@ struct UIWorkspaceNode
 struct UIWorkspaceObj
 {
     UILayerObj* layer = nullptr;
+    UIID id = {};
     HashSet<UIWindowObj*> deferredWindowDestruction;
     Vector<UIWindowObj*> nodeWindows;  // windows docked in workspace nodes
     Vector<UIWindowObj*> floatWindows; // floating windows
     RectSplit<UIWorkspaceNode, MEMORY_USAGE_UI> partition;
     const float splitGap = 6.0f; // TODO:
-    uint32_t windowIDCounter = 0;
-    uint32_t id = 0;       // workspace ID, unique within layer
-    bool isVisible = true; // workspace level visibility mask
+    bool isVisible = true;       // workspace level visibility mask
 
     UIWorkspaceObj() = delete;
     UIWorkspaceObj(const UIWorkspaceObj&) = delete;
-    UIWorkspaceObj(const Rect& area)
-        : partition(area, UI_WORKSPACE_SPLIT_GAP)
-    {
-    }
+    UIWorkspaceObj(UILayerObj* layer, Rect area);
     ~UIWorkspaceObj();
 
     UIWorkspaceObj& operator=(const UIWorkspaceObj&) = delete;
@@ -76,13 +72,14 @@ struct UIWorkspaceObj
 struct UILayerObj
 {
     UIContextObj* ctx = nullptr;
+    UIID id = {};
     std::string name;
     HashSet<UIWorkspaceObj*> deferredWorkspaceDestruction;
     Vector<UIWorkspaceObj*> workspaces;
-    uint32_t workspaceIDCounter = 0;
     bool isVisible = true;
 
-    UILayerObj() = default;
+    UILayerObj() = delete;
+    UILayerObj(UIContextObj* ctx);
     UILayerObj(const UILayerObj&) = delete;
     ~UILayerObj();
 
@@ -99,18 +96,18 @@ struct UILayerObj
 struct UIWindowObj : UIWidgetObj
 {
     UIWindowObj() = delete;
-    UIWindowObj(const UILayoutInfo& layoutI);
+    UIWindowObj(const UILayoutInfo& layoutI, UIContextObj* ctx);
     UIWindowObj(const UIWindowObj&) = delete;
     ~UIWindowObj();
 
     UIWindowObj& operator=(const UIWindowObj&) = delete;
 
     UIWidgetLayout layout = {};
+    UIContextObj* ctx = nullptr;
     UIWorkspaceObj* space = nullptr; /// owning workspace
     Vector<UIWidgetObj*> widgets;    /// all widgets within the window
     Optional<Color> colorMask = {};  /// optional mask to modify widget colors in window
     Color color = 0;                 /// window background color
-    uint32_t id = 0;                 /// window ID, unique within workspace
     Vec2 dragOffset = {};
     Vec2 dragBeginPos = {};
     Vec2 dragBeginSize = {};
@@ -118,7 +115,6 @@ struct UIWindowObj : UIWidgetObj
     bool dragResize = false; // resize or reposition
     bool defaultMouseControls = false;
 
-    inline UIContextObj* ctx() const { return space->layer->ctx; }
     inline UILayerObj* layer() const { return space->layer; }
     Hash64 get_hash() const;
 

@@ -12,7 +12,7 @@ namespace LD {
 
 // clang-format off
 UIWidgetMeta sWidgetMeta[] = {
-    { UI_WIDGET_WINDOW,      "UIWindow",     sizeof(UIWindowObj),          nullptr, nullptr,                         nullptr,                         &UIWindowObj::on_event,      nullptr,                          &UIWindowObj::on_draw,            nullptr, nullptr},
+    { UI_WIDGET_WINDOW,      "UIWindow",     sizeof(UIWindowObj),          nullptr,                              nullptr,                         nullptr,                         &UIWindowObj::on_event,           nullptr,                          &UIWindowObj::on_draw,          nullptr, nullptr},
     { UI_WIDGET_SCROLL,      "UIScroll",     sizeof(UIScrollWidgetObj),    &UIScrollWidgetObj::default_layout,   &UIScrollWidgetObj::startup,     &UIScrollWidgetObj::cleanup,     &UIScrollWidgetObj::on_event,     &UIScrollWidgetObj::on_update,    &UIScrollWidgetObj::on_draw,    nullptr, nullptr},
     { UI_WIDGET_SCROLL_BAR,  "UIScrollBar",  sizeof(UIScrollBarWidgetObj), nullptr,                              &UIScrollBarWidgetObj::startup,  &UIScrollBarWidgetObj::cleanup,  &UIScrollBarWidgetObj::on_event,  &UIScrollBarWidgetObj::on_update, &UIScrollBarWidgetObj::on_draw, nullptr, nullptr},
     { UI_WIDGET_BUTTON,      "UIButton",     sizeof(UIButtonWidgetObj),    nullptr,                              &UIButtonWidgetObj::startup,     &UIButtonWidgetObj::cleanup,     &UIButtonWidgetObj::on_event,     nullptr,                          &UIButtonWidgetObj::on_draw,    nullptr, nullptr},
@@ -22,6 +22,7 @@ UIWidgetMeta sWidgetMeta[] = {
     { UI_WIDGET_IMAGE,       "UIImage",      sizeof(UIImageWidgetObj),     nullptr,                              &UIImageWidgetObj::startup,      &UIImageWidgetObj::cleanup,      nullptr,                          nullptr,                          &UIImageWidgetObj::on_draw,     nullptr, nullptr},
     { UI_WIDGET_TEXT,        "UIText",       sizeof(UITextWidgetObj),      &UITextWidgetObj::default_layout,     &UITextWidgetObj::startup,       &UITextWidgetObj::cleanup,       &UITextWidgetObj::on_event,       nullptr,                          &UITextWidgetObj::on_draw,      UITextWidgetObj::wrap_size, UITextWidgetObj::wrap_limit},
     { UI_WIDGET_TEXT_EDIT,   "UITextEdit",   sizeof(UITextEditWidgetObj),  &UITextEditWidgetObj::default_layout, &UITextEditWidgetObj::startup,   &UITextEditWidgetObj::cleanup,   &UITextEditWidgetObj::on_event,   nullptr,                          &UITextEditWidgetObj::on_draw,  nullptr, nullptr, &UITextEditWidgetObj::cursor_hint},
+    { UI_WIDGET_DROPDOWN,    "UIDropdown",   sizeof(UIDropdownWidgetObj),  nullptr,                              &UIDropdownWidgetObj::startup,   &UIDropdownWidgetObj::cleanup,   &UIDropdownWidgetObj::on_event,   nullptr,                          &UIDropdownWidgetObj::on_draw,  nullptr, nullptr},
 };
 // clang-format on
 

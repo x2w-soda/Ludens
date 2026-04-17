@@ -138,15 +138,15 @@ void ui_window_set_rect(const Rect& rect);
 /// @brief Request the global popup window.
 /// @param popupName Unique name
 /// @param position Moves popup window to position.
-void ui_request_popup_window(const char* popupName, const Vec2& position);
+void ui_request_overlay_window(const char* overlayUser, int level, Vec2 position);
 
 /// @brief Clear the global popup window.
-void ui_clear_popup_window();
+void ui_clear_overlay_windows();
 
 /// @brief Try push the global popup window, only succeeds if true is returned,
 ///        in which case the user must later call "ui_pop_window".
 /// @param popupName Unique name of the popup window.
-bool ui_push_popup_window(const char* popupName);
+bool ui_push_overlay_window(const char* overlayUser);
 
 /// @brief Push UITextWidget.
 UITextWidget ui_push_text(UITextData* data);
@@ -160,6 +160,11 @@ UITextEditWidget ui_push_text_edit(UITextEditData* data);
 bool ui_text_edit_is_editing();
 bool ui_text_edit_changed(std::string& text);
 bool ui_text_edit_submitted(std::string& text);
+
+/// @brief Push UIDropdownWidget.
+UIDropdownWidget ui_push_dropdown(UIDropdownData* data);
+bool ui_dropdown_is_opened();
+void ui_dropdown_overlay(UIDropdownWidget widget);
 
 /// @brief Push UIImageWidget.
 UIImageWidget ui_push_image(UIImageData* data, float width, float height);
