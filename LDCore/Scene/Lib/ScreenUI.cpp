@@ -45,7 +45,7 @@ void ScreenUI::update(const SceneUpdateTick& tick)
     if (rect.w != tick.extent.x || rect.h != tick.extent.y)
         mObj->space.set_rect(Rect(0.0f, 0.0f, tick.extent.x, tick.extent.y));
 
-    mObj->ctx.update(tick.delta);
+    mObj->ctx.update(tick.extent, tick.delta);
 }
 
 void ScreenUI::render(ScreenRenderComponent renderer)

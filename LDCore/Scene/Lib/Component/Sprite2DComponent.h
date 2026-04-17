@@ -11,5 +11,7 @@ bool clone_sprite_2d_component(SceneObj* scene, ComponentBase** dstData, Compone
 bool unload_sprite_2d_component(SceneObj* scene, ComponentBase** data, std::string& err);
 bool startup_sprite_2d_component(SceneObj* scene, ComponentBase** data, std::string& err);
 bool cleanup_sprite_2d_component(SceneObj* scene, ComponentBase** data, std::string& err);
+AssetID sprite_2d_component_get_asset(SceneObj* scene, ComponentBase** data, uint32_t assetSlotIndex);
+bool sprite_2d_component_set_asset(SceneObj* scene, ComponentBase** data, uint32_t assetSlotIndex, AssetID id);
 
 } // namespace LD

@@ -148,6 +148,7 @@ struct
     {UI_WIDGET_IMAGE,     &UITemplateSaver::save_ui_image,    &UITemplateLoader::load_ui_image, },
     {UI_WIDGET_TEXT,      &UITemplateSaver::save_ui_text,     &UITemplateLoader::load_ui_text,  },
     {UI_WIDGET_TEXT_EDIT, nullptr,                            nullptr,                          },
+    {UI_WIDGET_DROPDOWN,  nullptr,                            nullptr,                          },
 };
 // clang-format on
 

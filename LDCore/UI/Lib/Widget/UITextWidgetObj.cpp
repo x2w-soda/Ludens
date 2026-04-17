@@ -77,7 +77,7 @@ void UITextWidgetObj::set_text_style(Color color, TextSpanFont font)
 {
     UITextData& data = *(UITextData*)base->data;
 
-    for (UITextSpan span : data.mSpans)
+    for (UITextSpan& span : data.mSpans)
     {
         span.text.fgColor = color;
         span.text.font = font;
@@ -224,7 +224,11 @@ void UITextWidgetObj::wrap_limit(UIWidgetObj* obj, float& outMinW, float& outMax
     TView<UITextSpan> spans(data.mSpans.data(), data.mSpans.size());
 
     // TODO: each span may use a different font.
-    ctx->fontDefault.font_atlas().measure_wrap_limit(View(data.mValue), data.fontSize, outMinW, outMaxW);
+    if (!data.mValue.empty() && spans.size > 0)
+    {
+        UIFont font = ctx->get_font_from_hint(spans.data[0].text.font);
+        font.font_atlas().measure_wrap_limit(View(data.mValue), data.fontSize, outMinW, outMaxW);
+    }
 }
 
 float UITextWidgetObj::wrap_size(UIWidgetObj* obj, float limitW)
@@ -232,12 +236,17 @@ float UITextWidgetObj::wrap_size(UIWidgetObj* obj, float limitW)
     LD_ASSERT(obj->type == UI_WIDGET_TEXT);
 
     UITextWidgetObj& self = obj->U->text;
+    UIContextObj* ctx = obj->ctx();
     UITextData& data = self.get_data();
     TView<UITextSpan> spans(data.mSpans.data(), data.mSpans.size());
     View textView(data.mValue);
+    UIFont font = ctx->fontDefault;
 
     // TODO: each span may use a different font.
-    return obj->ctx()->fontDefault.font_atlas().measure_wrap_size(View(data.mValue), data.fontSize, limitW);
+    if (!data.mValue.empty() && spans.size > 0)
+        font = ctx->get_font_from_hint(spans.data[0].text.font);
+
+    return font.font_atlas().measure_wrap_size(View(data.mValue), data.fontSize, limitW);
 }
 
 void UITextWidget::set_text_style(Color color, TextSpanFont font)

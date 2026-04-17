@@ -62,7 +62,7 @@ TEST_CASE("UITemplate")
     layoutI.sizeY = UISize::fit();
     UIWindowInfo windowI{};
     windowI.name = "test";
-    UIWindow window = space.create_window(space.get_root_id(), layoutI, windowI, nullptr);
+    UIWindow window = space.create_docked_window(space.get_root_id(), layoutI, windowI, nullptr);
 
     UITemplateTest test;
     UIWidget subtree = tmpl.load(window, &UITemplateTest::on_load, &test);

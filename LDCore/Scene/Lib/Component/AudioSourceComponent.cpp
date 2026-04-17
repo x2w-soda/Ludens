@@ -5,6 +5,36 @@
 
 namespace LD {
 
+static bool load_audio_clip(SceneObj* scene, AudioSourceComponent* source, AssetID clipID)
+{
+    // NOTE: Buffer not destroyed upon component unload.
+    //       Other components may still be using it for playback.
+    AudioBuffer buffer = scene->audioSystemCache.get_or_create_audio_buffer(clipID);
+    if (!buffer)
+        return false;
+
+    if (source->playback)
+        scene->audioSystemCache.set_playback_buffer(source->playback, buffer);
+
+    source->clipID = clipID;
+    return true;
+}
+
+static bool load_audio_playback(SceneObj* scene, AudioSourceComponent* source, float pan, float volumeLinear)
+{
+    AudioBuffer buffer = scene->audioSystemCache.get_or_create_audio_buffer(source->clipID);
+    if (!buffer)
+        return false;
+
+    source->playback = scene->audioSystemCache.create_playback(buffer, pan, volumeLinear);
+    if (!source->playback)
+        return false;
+
+    source->pan = pan;
+    source->volumeLinear = volumeLinear;
+    return true;
+}
+
 void init_audio_source_component(ComponentBase** dstData)
 {
     AudioSourceComponent* dstAudioSource = (AudioSourceComponent*)dstData;
@@ -18,25 +48,18 @@ bool load_audio_source_component(SceneObj* scene, AudioSourceComponent* source, 
 {
     LD_PROFILE_SCOPE;
 
-    // NOTE: Buffer not destroyed upon component unload.
-    //       Other components may still be using it for playback.
-    AudioBuffer buffer = scene->audioSystemCache.get_or_create_audio_buffer(clipID);
-    if (!buffer)
+    if (!load_audio_clip(scene, source, clipID))
     {
-        err = "failed to create AudioBuffer";
+        err = "failed to prepare audio clip";
         return false;
     }
 
-    source->pan = pan;
-    source->volumeLinear = volumeLinear;
-    source->playback = scene->audioSystemCache.create_playback(buffer, pan, volumeLinear);
-    if (!source->playback)
+    if (!load_audio_playback(scene, source, pan, volumeLinear))
     {
         err = "failed to create AudioPlayback";
         return false;
     }
 
-    source->clipID = clipID;
     return true;
 }
 
@@ -73,12 +96,29 @@ bool cleanup_audio_source_component(SceneObj* scene, ComponentBase** sourceData,
     auto* source = (AudioSourceComponent*)sourceData;
 
     if (source->playback)
-    {
         scene->audioSystemCache.stop_playback(source->playback);
-        source->playback = {};
-    }
 
     return true;
+}
+
+AssetID audio_source_component_get_asset(SceneObj* scene, ComponentBase** data, uint32_t assetSlotIndex)
+{
+    if (assetSlotIndex != 0)
+        return 0;
+
+    auto* source = (AudioSourceComponent*)data;
+    return source->clipID;
+}
+
+bool audio_source_component_set_asset(SceneObj* scene, ComponentBase** data, uint32_t assetSlotIndex, AssetID id)
+{
+    auto* source = (AudioSourceComponent*)data;
+    AudioSourceView sourceV(source);
+
+    if (assetSlotIndex != 0)
+        return false;
+
+    return sourceV.set_clip_asset(id);
 }
 
 AudioSourceView::AudioSourceView(ComponentView comp)

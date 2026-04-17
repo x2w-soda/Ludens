@@ -104,6 +104,28 @@ bool cleanup_sprite_2d_component(SceneObj* scene, ComponentBase** data, std::str
     return true;
 }
 
+AssetID sprite_2d_component_get_asset(SceneObj* scene, ComponentBase** data, uint32_t assetSlotIndex)
+{
+    Sprite2DComponent* sprite = (Sprite2DComponent*)data;
+
+    if (assetSlotIndex != 0)
+        return AssetID(0);
+
+    return sprite->assetID;
+}
+
+bool sprite_2d_component_set_asset(SceneObj* scene, ComponentBase** data, uint32_t assetSlotIndex, AssetID assetID)
+{
+    Sprite2DComponent* sprite = (Sprite2DComponent*)data;
+    Sprite2DView spriteV(sprite);
+
+    if (assetSlotIndex != 0)
+        return false;
+
+    spriteV.set_texture_2d_asset(assetID);
+    return true;
+}
+
 Sprite2DView::Sprite2DView(ComponentView comp)
 {
     if (comp && comp.type() == COMPONENT_TYPE_SPRITE_2D)

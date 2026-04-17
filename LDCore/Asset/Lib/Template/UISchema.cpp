@@ -80,6 +80,7 @@ struct
     {UI_WIDGET_IMAGE,     &UISchemaSaver::save_ui_image,      &UISchemaLoader::load_ui_image_toml},
     {UI_WIDGET_TEXT,      nullptr,                                    nullptr},
     {UI_WIDGET_TEXT_EDIT, nullptr,                                    nullptr},
+    {UI_WIDGET_DROPDOWN,  nullptr,                                    nullptr},
 };
 // clang-format on
 

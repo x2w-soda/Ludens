@@ -84,8 +84,7 @@ Rect UIWidgetObj::get_child_rect_union()
 
 UIContextObj* UIWidgetObj::ctx() const
 {
-    // crazy pointer chasing
-    return window->space->layer->ctx;
+    return window->ctx;
 }
 
 void UIWidgetObj::draw(ScreenRenderComponent renderer)

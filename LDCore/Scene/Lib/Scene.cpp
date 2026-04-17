@@ -52,6 +52,8 @@ struct SceneComponentMeta
     bool (*unload)(SceneObj* scene, ComponentBase** data, std::string& err);
     bool (*startup)(SceneObj* scene, ComponentBase** data, std::string& err);
     bool (*cleanup)(SceneObj* scene, ComponentBase** data, std::string& err);
+    AssetID (*getAsset)(SceneObj* scene, ComponentBase** data, uint32_t assetSlotIndex);
+    bool (*setAsset)(SceneObj* scene, ComponentBase** data, uint32_t assetSlotIndex, AssetID assetID);
 };
 
 static void init_nop(ComponentBase**) {}
@@ -59,19 +61,39 @@ static bool clone_nop(SceneObj*, ComponentBase**, ComponentBase**, std::string&)
 
 // clang-format off
 static SceneComponentMeta sSceneComponents[] = {
-    {COMPONENT_TYPE_DATA,         nullptr,                      nullptr,                       nullptr,                        nullptr,                      nullptr},
-    {COMPONENT_TYPE_AUDIO_SOURCE, &init_audio_source_component, &clone_audio_source_component, &unload_audio_source_component, nullptr,                      &cleanup_audio_source_component},
-    {COMPONENT_TYPE_TRANSFORM,    &init_nop,                    &clone_nop,                    nullptr,                        nullptr,                      nullptr},
-    {COMPONENT_TYPE_TRANSFORM_2D, &init_nop,                    &clone_nop,                    nullptr,                        nullptr,                      nullptr},
-    {COMPONENT_TYPE_CAMERA,       &init_camera_component,       &clone_camera_component,       &unload_camera_component,       &startup_camera_component,    &cleanup_camera_component},
-    {COMPONENT_TYPE_CAMERA_2D,    &init_camera_2d_component,    &clone_camera_2d_component,    &unload_camera_2d_component,    &startup_camera_2d_component, &cleanup_camera_2d_component},
-    {COMPONENT_TYPE_MESH,         &init_mesh_component,         &clone_mesh_component,         &unload_mesh_component,         nullptr,                      nullptr},
-    {COMPONENT_TYPE_SPRITE_2D,    &init_sprite_2d_component,    &clone_sprite_2d_component,    &unload_sprite_2d_component,    &startup_sprite_2d_component, &cleanup_sprite_2d_component},
-    {COMPONENT_TYPE_SCREEN_UI,    &init_screen_ui_component,    &clone_screen_ui_component,    &unload_screen_ui_component,    &startup_screen_ui_component, &cleanup_screen_ui_component},
+    {COMPONENT_TYPE_DATA,         nullptr,                      nullptr,                       nullptr,                        nullptr,                      nullptr,                         nullptr, nullptr},
+    {COMPONENT_TYPE_AUDIO_SOURCE, &init_audio_source_component, &clone_audio_source_component, &unload_audio_source_component, nullptr,                      &cleanup_audio_source_component, &audio_source_component_get_asset, &audio_source_component_set_asset},
+    {COMPONENT_TYPE_TRANSFORM,    &init_nop,                    &clone_nop,                    nullptr,                        nullptr,                      nullptr,                         nullptr, nullptr},
+    {COMPONENT_TYPE_TRANSFORM_2D, &init_nop,                    &clone_nop,                    nullptr,                        nullptr,                      nullptr,                         nullptr, nullptr},
+    {COMPONENT_TYPE_CAMERA,       &init_camera_component,       &clone_camera_component,       &unload_camera_component,       &startup_camera_component,    &cleanup_camera_component,       nullptr, nullptr},
+    {COMPONENT_TYPE_CAMERA_2D,    &init_camera_2d_component,    &clone_camera_2d_component,    &unload_camera_2d_component,    &startup_camera_2d_component, &cleanup_camera_2d_component,    nullptr, nullptr},
+    {COMPONENT_TYPE_MESH,         &init_mesh_component,         &clone_mesh_component,         &unload_mesh_component,         nullptr,                      nullptr,                         nullptr, nullptr},
+    {COMPONENT_TYPE_SPRITE_2D,    &init_sprite_2d_component,    &clone_sprite_2d_component,    &unload_sprite_2d_component,    &startup_sprite_2d_component, &cleanup_sprite_2d_component,    &sprite_2d_component_get_asset, &sprite_2d_component_set_asset},
+    {COMPONENT_TYPE_SCREEN_UI,    &init_screen_ui_component,    &clone_screen_ui_component,    &unload_screen_ui_component,    &startup_screen_ui_component, &cleanup_screen_ui_component,    nullptr, nullptr},
 };
 // clang-format on
 
 static_assert(sizeof(sSceneComponents) / sizeof(*sSceneComponents) == COMPONENT_TYPE_ENUM_COUNT);
+
+static AssetID scene_component_get_asset(SceneObj* scene, ComponentBase** data, uint32_t assetSlotIndex)
+{
+    ComponentBase* base = *data;
+
+    if (sSceneComponents[(int)base->type].getAsset)
+        return sSceneComponents[(int)base->type].getAsset(scene, data, assetSlotIndex);
+
+    return AssetID(0);
+}
+
+static bool scene_component_set_asset(SceneObj* scene, ComponentBase** data, uint32_t assetSlotIndex, AssetID assetID)
+{
+    ComponentBase* base = *data;
+
+    if (sSceneComponents[(int)base->type].setAsset)
+        return sSceneComponents[(int)base->type].setAsset(scene, data, assetSlotIndex, assetID);
+
+    return false;
+}
 
 //
 // IMPLEMENTATION
@@ -921,6 +943,16 @@ void ComponentView::set_name(const char* cstr)
     sScene->active->registry.set_component_name((*mData)->cuid, cstr);
 }
 
+AssetID ComponentView::get_asset_id(uint32_t assetSlotIndex)
+{
+    return scene_component_get_asset(sScene, mData, assetSlotIndex);
+}
+
+bool ComponentView::set_asset_id(uint32_t assetSlotIndex, AssetID assetID)
+{
+    return scene_component_set_asset(sScene, mData, assetSlotIndex, assetID);
+}
+
 AssetID ComponentView::get_script_asset_id()
 {
     return (*mData)->scriptAssetID;
@@ -928,6 +960,8 @@ AssetID ComponentView::get_script_asset_id()
 
 void ComponentView::set_script_asset_id(AssetID assetID)
 {
+    // TODO: check AssetType???
+
     (*mData)->scriptAssetID = assetID;
 }
 

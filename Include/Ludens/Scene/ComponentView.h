@@ -29,6 +29,8 @@ public:
 
     const char* get_name();
     void set_name(const char* cstr);
+    AssetID get_asset_id(uint32_t assetSlotIndex);
+    bool set_asset_id(uint32_t assetSlotIndex, AssetID id);
     AssetID get_script_asset_id();
     void set_script_asset_id(AssetID assetID);
     void get_children(Vector<ComponentView>& children);
@@ -39,7 +41,7 @@ public:
     bool get_transform_2d(Transform2D& transform);
     bool set_transform_2d(const Transform2D& transform);
 
-    /// @note Slow path for editor. 
+    /// @note Slow path for editor.
     bool get_world_transform_2d(Transform2D& transform);
 
     bool get_world_mat4(Mat4& worldMat4);
