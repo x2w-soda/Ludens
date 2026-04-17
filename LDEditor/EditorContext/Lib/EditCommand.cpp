@@ -15,15 +15,14 @@ static EditCommand* add_component_command_create() { return heap_new<AddComponen
 static void add_component_command_destroy(EditCommand* baseCmd) { heap_delete<AddComponentCommand>((AddComponentCommand*)baseCmd); }
 static void add_component_command_redo(EditCommand* baseCmd);
 static void add_component_command_undo(EditCommand* baseCmd);
-static EditCommand* add_component_script_command_create() { return heap_new<AddComponentScriptCommand>(MEMORY_USAGE_MISC); }
-static void add_component_script_command_destroy(EditCommand* baseCmd) { heap_delete<AddComponentScriptCommand>((AddComponentScriptCommand*)baseCmd); }
+static EditCommand* add_component_script_command_create() { return heap_new<SetComponentScriptCommand>(MEMORY_USAGE_MISC); }
+static void add_component_script_command_destroy(EditCommand* baseCmd) { heap_delete<SetComponentScriptCommand>((SetComponentScriptCommand*)baseCmd); }
 static void add_component_script_command_redo(EditCommand* baseCmd);
 static void add_component_script_command_undo(EditCommand* baseCmd);
 static EditCommand* set_component_asset_command_create() { return heap_new<SetComponentAssetCommand>(MEMORY_USAGE_MISC); }
 static void set_component_asset_command_destroy(EditCommand* baseCmd) { heap_delete<SetComponentAssetCommand>((SetComponentAssetCommand*)baseCmd); }
 static void set_component_asset_command_redo(EditCommand* baseCmd);
 static void set_component_asset_command_undo(EditCommand* baseCmd);
-static void set_component_asset(Scene scene, SUID compSUID, AssetID assetID);
 static EditCommand* set_component_transform_2d_command_create() { return heap_new<SetComponentTransform2DCommand>(MEMORY_USAGE_MISC); }
 static void set_component_transform_2d_command_destroy(EditCommand* baseCmd) { heap_delete<SetComponentTransform2DCommand>((SetComponentTransform2DCommand*)baseCmd); }
 static void set_component_transform_2d_command_redo(EditCommand* baseCmd);
@@ -185,28 +184,31 @@ static void add_component_command_undo(EditCommand* baseCmd)
     cmd->compSUID = 0;
 }
 
-void AddComponentScriptCommand::configure(SUID compSUID, AssetID scriptAssetID)
+void SetComponentScriptCommand::configure(SUID compSUID, AssetID scriptAssetID)
 {
     LD_ASSERT(compSUID && scriptAssetID);
 
+    ComponentView comp = ctx->scene.get_component_by_suid(compSUID);
+    LD_ASSERT(comp);
+
     this->compSUID = compSUID;
     this->scriptAssetID = scriptAssetID;
+    this->prevScriptAssetID = comp.get_script_asset_id();
 }
 
 static void add_component_script_command_redo(EditCommand* baseCmd)
 {
-    auto* cmd = (AddComponentScriptCommand*)baseCmd;
+    auto* cmd = (SetComponentScriptCommand*)baseCmd;
 
     ComponentView comp = cmd->ctx->scene.get_component_by_suid(cmd->compSUID);
     LD_ASSERT(comp);
 
-    cmd->prevScriptAssetID = comp.get_script_asset_id();
     comp.set_script_asset_id(cmd->scriptAssetID);
 }
 
 static void add_component_script_command_undo(EditCommand* baseCmd)
 {
-    auto* cmd = (AddComponentScriptCommand*)baseCmd;
+    auto* cmd = (SetComponentScriptCommand*)baseCmd;
 
     ComponentView comp = cmd->ctx->scene.get_component_by_suid(cmd->compSUID);
     LD_ASSERT(comp);
@@ -214,32 +216,33 @@ static void add_component_script_command_undo(EditCommand* baseCmd)
     comp.set_script_asset_id(cmd->prevScriptAssetID);
 }
 
-void SetComponentAssetCommand::configure(SUID compSUID, AssetID assetID)
+void SetComponentAssetCommand::configure(SUID compSUID, AssetID assetID, uint32_t assetSlotIndex)
 {
-    LD_ASSERT(compSUID && assetID);
+    ComponentView comp = ctx->scene.get_component_by_suid(compSUID);
+    LD_ASSERT(comp && assetID);
+
     this->compSUID = compSUID;
     this->assetID = assetID;
-    prevAssetID = 0;
+    this->assetSlotIndex = assetSlotIndex;
+    this->prevAssetID = comp.get_asset_id(assetSlotIndex);
 }
 
 static void set_component_asset_command_redo(EditCommand* baseCmd)
 {
     auto* cmd = (SetComponentAssetCommand*)baseCmd;
-    Scene scene = cmd->ctx->scene;
 
-    ComponentView comp = scene.get_component_by_suid(cmd->compSUID);
-    LD_ASSERT(comp);
-
-    cmd->prevAssetID = comp.get_script_asset_id();
-
-    set_component_asset(scene, cmd->compSUID, cmd->assetID);
+    ComponentView comp = cmd->ctx->scene.get_component_by_suid(cmd->compSUID);
+    if (comp)
+        (void)comp.set_asset_id(cmd->assetSlotIndex, cmd->assetID);
 }
 
 static void set_component_asset_command_undo(EditCommand* baseCmd)
 {
     auto* cmd = (SetComponentAssetCommand*)baseCmd;
 
-    set_component_asset(cmd->ctx->scene, cmd->compSUID, cmd->prevAssetID);
+    ComponentView comp = cmd->ctx->scene.get_component_by_suid(cmd->compSUID);
+    if (comp)
+        (void)comp.set_asset_id(cmd->assetSlotIndex, cmd->prevAssetID);
 }
 
 static void set_component_transform_2d_command_redo(EditCommand* baseCmd)

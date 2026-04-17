@@ -33,7 +33,7 @@ union EditorEventU
     EditorActionImportAssetsEvent actionImportAssets;
     EditorActionRenameComponentEvent actionRenameComponent;
     EditorActionAddComponentEvent actionAddComponent;
-    EditorActionAddComponentScriptEvent actionAddComponentScript;
+    EditorActionSetComponentScriptEvent actionSetComponentScript;
     EditorActionSetComponentAssetEvent actionSetComponentAsset;
     EditorActionSetComponentTransform2DEvent actionSetComponentTransform2D;
     EditorActionCloneComponentSubtreeEvent actionCloneComponentSubtree;
@@ -95,6 +95,9 @@ EditorEvent* EditorEventQueueObj::alloc_event(EditorEventType type)
     case EDITOR_EVENT_TYPE_REQUEST_PROJECT_SETTINGS:
         new (event) EditorRequestProjectSettingsEvent();
         break;
+    case EDITOR_EVENT_TYPE_REQUEST_COMPONENT_SCRIPT:
+        new (event) EditorRequestComponentScriptEvent();
+        break;
     case EDITOR_EVENT_TYPE_REQUEST_COMPONENT_ASSET:
         new (event) EditorRequestComponentAssetEvent();
         break;
@@ -149,8 +152,8 @@ EditorEvent* EditorEventQueueObj::alloc_event(EditorEventType type)
     case EDITOR_EVENT_TYPE_ACTION_ADD_COMPONENT:
         new (event) EditorActionAddComponentEvent();
         break;
-    case EDITOR_EVENT_TYPE_ACTION_ADD_COMPONENT_SCRIPT:
-        new (event) EditorActionAddComponentScriptEvent();
+    case EDITOR_EVENT_TYPE_ACTION_SET_COMPONENT_SCRIPT:
+        new (event) EditorActionSetComponentScriptEvent();
         break;
     case EDITOR_EVENT_TYPE_ACTION_SET_COMPONENT_ASSET:
         new (event) EditorActionSetComponentAssetEvent();
@@ -202,6 +205,9 @@ void EditorEventQueueObj::free_event(EditorEvent* event)
         break;
     case EDITOR_EVENT_TYPE_REQUEST_PROJECT_SETTINGS:
         ((EditorRequestProjectSettingsEvent*)(event))->~EditorRequestProjectSettingsEvent();
+        break;
+    case EDITOR_EVENT_TYPE_REQUEST_COMPONENT_SCRIPT:
+        ((EditorRequestComponentScriptEvent*)(event))->~EditorRequestComponentScriptEvent();
         break;
     case EDITOR_EVENT_TYPE_REQUEST_COMPONENT_ASSET:
         ((EditorRequestComponentAssetEvent*)(event))->~EditorRequestComponentAssetEvent();
@@ -257,8 +263,8 @@ void EditorEventQueueObj::free_event(EditorEvent* event)
     case EDITOR_EVENT_TYPE_ACTION_ADD_COMPONENT:
         ((EditorActionAddComponentEvent*)(event))->~EditorActionAddComponentEvent();
         break;
-    case EDITOR_EVENT_TYPE_ACTION_ADD_COMPONENT_SCRIPT:
-        ((EditorActionAddComponentScriptEvent*)(event))->~EditorActionAddComponentScriptEvent();
+    case EDITOR_EVENT_TYPE_ACTION_SET_COMPONENT_SCRIPT:
+        ((EditorActionSetComponentScriptEvent*)(event))->~EditorActionSetComponentScriptEvent();
         break;
     case EDITOR_EVENT_TYPE_ACTION_SET_COMPONENT_ASSET:
         ((EditorActionSetComponentAssetEvent*)(event))->~EditorActionSetComponentAssetEvent();

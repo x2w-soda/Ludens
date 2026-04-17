@@ -24,6 +24,7 @@ enum EditorEventType
     EDITOR_EVENT_TYPE_REQUEST_CLOSE_DIALOG,
     EDITOR_EVENT_TYPE_REQUEST_WORKSPACE_LAYOUT,
     EDITOR_EVENT_TYPE_REQUEST_PROJECT_SETTINGS,
+    EDITOR_EVENT_TYPE_REQUEST_COMPONENT_SCRIPT,
     EDITOR_EVENT_TYPE_REQUEST_COMPONENT_ASSET,
     EDITOR_EVENT_TYPE_REQUEST_IMPORT_ASSETS,
     EDITOR_EVENT_TYPE_REQUEST_NEW_PROJECT,
@@ -42,7 +43,7 @@ enum EditorEventType
     EDITOR_EVENT_TYPE_ACTION_IMPORT_ASSETS,
     EDITOR_EVENT_TYPE_ACTION_RENAME_COMPONENT,
     EDITOR_EVENT_TYPE_ACTION_ADD_COMPONENT,
-    EDITOR_EVENT_TYPE_ACTION_ADD_COMPONENT_SCRIPT,
+    EDITOR_EVENT_TYPE_ACTION_SET_COMPONENT_SCRIPT,
     EDITOR_EVENT_TYPE_ACTION_SET_COMPONENT_ASSET,
     EDITOR_EVENT_TYPE_ACTION_SET_COMPONENT_TRANSFORM_2D,
     EDITOR_EVENT_TYPE_ACTION_CLONE_COMPONENT_SUBTREE,
@@ -195,6 +196,17 @@ struct EditorRequestProjectSettingsEvent : EditorRequestEvent
     }
 };
 
+/// @brief Event signaling that a component in current scene requests changing its script.
+struct EditorRequestComponentScriptEvent : EditorRequestEvent
+{
+    EditorRequestComponentScriptEvent()
+        : EditorRequestEvent(EDITOR_EVENT_TYPE_REQUEST_COMPONENT_SCRIPT)
+    {
+    }
+
+    SUID compSUID = 0;
+};
+
 /// @brief Event signaling that a component in current scene requests an asset change.
 struct EditorRequestComponentAssetEvent : EditorRequestEvent
 {
@@ -203,9 +215,10 @@ struct EditorRequestComponentAssetEvent : EditorRequestEvent
     {
     }
 
-    SUID component = 0;
+    SUID compSUID = 0;
     AssetID oldAssetID = 0;
     AssetType requestType = ASSET_TYPE_ENUM_COUNT;
+    uint32_t assetSlotIndex = 0;
 };
 
 /// @brief Event requesting asset import. Import parameters unknown.
@@ -379,10 +392,10 @@ struct EditorActionAddComponentEvent : EditorActionEvent
     ComponentType compType = COMPONENT_TYPE_ENUM_COUNT;
 };
 
-struct EditorActionAddComponentScriptEvent : EditorActionEvent
+struct EditorActionSetComponentScriptEvent : EditorActionEvent
 {
-    EditorActionAddComponentScriptEvent()
-        : EditorActionEvent(EDITOR_EVENT_TYPE_ACTION_ADD_COMPONENT_SCRIPT)
+    EditorActionSetComponentScriptEvent()
+        : EditorActionEvent(EDITOR_EVENT_TYPE_ACTION_SET_COMPONENT_SCRIPT)
     {
     }
 
@@ -399,6 +412,7 @@ struct EditorActionSetComponentAssetEvent : EditorActionEvent
 
     SUID compSUID = 0;
     AssetID assetID = 0;
+    uint32_t assetSlotIndex = 0;
 };
 
 struct EditorActionSetComponentTransform2DEvent : EditorActionEvent

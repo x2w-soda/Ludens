@@ -11,7 +11,7 @@ enum EditCommandType
 {
     EDIT_COMMAND_TYPE_RENAME_COMPONENT,
     EDIT_COMMAND_TYPE_ADD_COMPONENT,
-    EDIT_COMMAND_TYPE_ADD_COMPONENT_SCRIPT,
+    EDIT_COMMAND_TYPE_SET_COMPONENT_SCRIPT,
     EDIT_COMMAND_TYPE_SET_COMPONENT_ASSET,
     EDIT_COMMAND_TYPE_SET_COMPONENT_TRANSFORM_2D,
     EDIT_COMMAND_TYPE_CLONE_COMPONENT_SUBTREE,
@@ -49,7 +49,7 @@ struct AddComponentCommand : EditCommand
 };
 
 /// @brief Command to set associate a Script with a Component in scene.
-struct AddComponentScriptCommand : EditCommand
+struct SetComponentScriptCommand : EditCommand
 {
     SUID compSUID = 0;
     AssetID scriptAssetID = 0;
@@ -63,8 +63,9 @@ struct SetComponentAssetCommand : EditCommand
     SUID compSUID = 0;
     AssetID assetID = 0;
     AssetID prevAssetID = 0;
+    uint32_t assetSlotIndex = 0;
 
-    void configure(SUID compSUID, AssetID assetID);
+    void configure(SUID compSUID, AssetID assetID, uint32_t assetSlotIndex);
 };
 
 struct SetComponentTransform2DCommand : EditCommand

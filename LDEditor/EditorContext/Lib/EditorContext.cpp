@@ -50,7 +50,7 @@ static void editor_action_create_project_event_handler(const EditorEvent* event,
 static void editor_action_import_assets_event_handler(const EditorEvent* event, void* user);
 static void editor_action_rename_component_event_handler(const EditorEvent* event, void* user);
 static void editor_action_add_component_event_handler(const EditorEvent* event, void* user);
-static void editor_action_add_component_script_event_handler(const EditorEvent* event, void* user);
+static void editor_action_set_component_script_event_handler(const EditorEvent* event, void* user);
 static void editor_action_set_component_asset_event_handler(const EditorEvent* event, void* user);
 static void editor_action_set_component_transform_2d_event_handler(const EditorEvent* event, void* user);
 static void editor_action_clone_component_subtree_event_handler(const EditorEvent* event, void* user);
@@ -70,6 +70,7 @@ static struct
     {EDITOR_EVENT_TYPE_REQUEST_CLOSE_DIALOG, &editor_broadcast_event_handler},
     {EDITOR_EVENT_TYPE_REQUEST_WORKSPACE_LAYOUT, &editor_broadcast_event_handler},
     {EDITOR_EVENT_TYPE_REQUEST_PROJECT_SETTINGS, &editor_broadcast_event_handler},
+    {EDITOR_EVENT_TYPE_REQUEST_COMPONENT_SCRIPT, &editor_broadcast_event_handler},
     {EDITOR_EVENT_TYPE_REQUEST_COMPONENT_ASSET, &editor_broadcast_event_handler},
     {EDITOR_EVENT_TYPE_REQUEST_IMPORT_ASSETS, &editor_broadcast_event_handler},
     {EDITOR_EVENT_TYPE_REQUEST_NEW_PROJECT, &editor_broadcast_event_handler},
@@ -88,7 +89,7 @@ static struct
     {EDITOR_EVENT_TYPE_ACTION_IMPORT_ASSETS, &editor_action_import_assets_event_handler},
     {EDITOR_EVENT_TYPE_ACTION_RENAME_COMPONENT, &editor_action_rename_component_event_handler},
     {EDITOR_EVENT_TYPE_ACTION_ADD_COMPONENT, &editor_action_add_component_event_handler},
-    {EDITOR_EVENT_TYPE_ACTION_ADD_COMPONENT_SCRIPT, &editor_action_add_component_script_event_handler},
+    {EDITOR_EVENT_TYPE_ACTION_SET_COMPONENT_SCRIPT, &editor_action_set_component_script_event_handler},
     {EDITOR_EVENT_TYPE_ACTION_SET_COMPONENT_ASSET, &editor_action_set_component_asset_event_handler},
     {EDITOR_EVENT_TYPE_ACTION_SET_COMPONENT_TRANSFORM_2D, &editor_action_set_component_transform_2d_event_handler},
     {EDITOR_EVENT_TYPE_ACTION_CLONE_COMPONENT_SUBTREE, &editor_action_clone_component_subtree_event_handler},
@@ -264,15 +265,15 @@ static void editor_action_add_component_event_handler(const EditorEvent* event, 
     obj->editStack.execute(cmd);
 }
 
-static void editor_action_add_component_script_event_handler(const EditorEvent* event, void* user)
+static void editor_action_set_component_script_event_handler(const EditorEvent* event, void* user)
 {
     LD_PROFILE_SCOPE;
 
-    LD_ASSERT(event->type == EDITOR_EVENT_TYPE_ACTION_ADD_COMPONENT_SCRIPT);
+    LD_ASSERT(event->type == EDITOR_EVENT_TYPE_ACTION_SET_COMPONENT_SCRIPT);
     auto* obj = (EditorContextObj*)user;
-    auto* e = (const EditorActionAddComponentScriptEvent*)event;
+    auto* e = (const EditorActionSetComponentScriptEvent*)event;
 
-    auto* cmd = (AddComponentScriptCommand*)obj->editStack.allocate(EDIT_COMMAND_TYPE_ADD_COMPONENT_SCRIPT);
+    auto* cmd = (SetComponentScriptCommand*)obj->editStack.allocate(EDIT_COMMAND_TYPE_SET_COMPONENT_SCRIPT);
     cmd->configure(e->compSUID, e->assetID);
     obj->editStack.execute(cmd);
 }
@@ -286,7 +287,7 @@ static void editor_action_set_component_asset_event_handler(const EditorEvent* e
     auto* e = (const EditorActionSetComponentAssetEvent*)event;
 
     auto* cmd = (SetComponentAssetCommand*)obj->editStack.allocate(EDIT_COMMAND_TYPE_SET_COMPONENT_ASSET);
-    cmd->configure(e->compSUID, e->assetID);
+    cmd->configure(e->compSUID, e->assetID, e->assetSlotIndex);
     obj->editStack.execute(cmd);
 }
 
