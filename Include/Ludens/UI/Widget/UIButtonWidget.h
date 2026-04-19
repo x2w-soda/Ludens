@@ -18,6 +18,7 @@ public:
     UIFont font = {};
     bool transparentBG = false;
     bool isEnabled = true;
+    float radius = 0.2f;
 
 private:
     UIButtonOnClick mOnClick = nullptr;

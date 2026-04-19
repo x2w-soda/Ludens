@@ -22,10 +22,20 @@ struct UIPadding
         return UIPadding(left, right, 0.0f, 0.0f);
     };
 
+    static inline UIPadding left_right(float pad)
+    {
+        return UIPadding(pad, pad, 0.0f, 0.0f);
+    }
+
     static inline UIPadding top_bottom(float top, float bot)
     {
         return UIPadding(0.0f, 0.0f, top, bot);
     };
+
+    static inline UIPadding top_bottom(float pad)
+    {
+        return UIPadding(0.0f, 0.0f, pad, pad);
+    }
 };
 
 struct UISize

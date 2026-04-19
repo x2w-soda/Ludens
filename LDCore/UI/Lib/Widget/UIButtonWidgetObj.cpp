@@ -69,7 +69,7 @@ void UIButtonWidgetObj::on_draw(UIWidgetObj* obj, ScreenRenderComponent renderer
     }
 
     if (!data.transparentBG)
-        renderer.draw_rect(rect, bgColor);
+        renderer.draw_rect_rounded(rect, bgColor, data.radius);
 
     if (!data.text.empty())
         renderer.draw_text_centered(data.font.font_atlas(), data.font.image(), fontSize, rect.get_pos(), data.text.c_str(), fgColor, wrapWidth);

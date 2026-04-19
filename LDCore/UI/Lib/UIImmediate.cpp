@@ -1225,7 +1225,7 @@ bool UITextState::on_span_event(UIWidget widget, const UIEvent& event, UITextSpa
     if (event.type == UI_EVENT_MOUSE_DOWN)
         imWidget->text.spanClicks.push_back(spanIndex);
 
-    return true;
+    return false; // click through
 }
 
 UITextEditWidget ui_push_text_edit(UITextEditData* data)
