@@ -1,6 +1,6 @@
 #pragma once
 
-#include <cstddef>
+#include <cstdint>
 
 namespace LD {
 
@@ -50,5 +50,6 @@ struct TRange
 };
 
 using Range = TRange<size_t>;
+using Range32 = TRange<uint32_t>;
 
 } // namespace LD

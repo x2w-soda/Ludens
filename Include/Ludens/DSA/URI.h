@@ -45,6 +45,9 @@ public:
     inline View query() const { return View(mString.data() + mQueryRange.offset, mQueryRange.size); }
     inline View fragment() const { return View(mString.data() + mFragmentRange.offset, mFragmentRange.size); }
 
+    inline std::string path_string() const { return std::string(mString.data() + mPathRange.offset, mPathRange.size); }
+    inline std::string stem_string() const { return std::string(mString.data() + mStemRange.offset, mStemRange.size); }
+
 private:
     void parse()
     {
@@ -57,7 +60,7 @@ private:
         mQueryRange = {};
         mFragmentRange = {};
 
-        size_t authorityOffset = 0;
+        uint32_t authorityOffset = 0;
 
         // Scheme before ://
         size_t schemeEnd = remaining.find("://");
@@ -66,7 +69,7 @@ private:
             mSchemeRange.offset = 0;
             mSchemeRange.size = schemeEnd;
             remaining.remove_prefix(schemeEnd + 3);
-            authorityOffset = schemeEnd + 3;
+            authorityOffset = static_cast<uint32_t>(schemeEnd + 3);
         }
 
         size_t fragmentStart = remaining.find('#');
@@ -79,8 +82,8 @@ private:
             if (queryStart != std::string::npos && queryStart > fragmentStart)
                 fragmentEnd = queryStart;
 
-            mFragmentRange.offset = authorityOffset + fragmentStart + 1;
-            mFragmentRange.size = fragmentEnd - fragmentStart - 1;
+            mFragmentRange.offset = static_cast<uint32_t>(authorityOffset + fragmentStart + 1);
+            mFragmentRange.size = static_cast<uint32_t>(fragmentEnd - fragmentStart - 1);
         }
 
         // Query after ? and before #
@@ -90,8 +93,8 @@ private:
             if (fragmentStart != std::string::npos && fragmentStart > queryStart)
                 queryEnd = fragmentStart;
 
-            mQueryRange.offset = authorityOffset + queryStart + 1;
-            mQueryRange.size = queryEnd - queryStart - 1;
+            mQueryRange.offset = static_cast<uint32_t>(authorityOffset + queryStart + 1);
+            mQueryRange.size = static_cast<uint32_t>(queryEnd - queryStart - 1);
         }
 
         size_t size = remaining.size();
@@ -104,7 +107,7 @@ private:
         if (pathStart != std::string::npos)
         {
             mAuthorityRange.offset = authorityOffset;
-            mAuthorityRange.size = pathStart;
+            mAuthorityRange.size = (uint32_t)pathStart;
             remaining.remove_prefix(pathStart);
             mPathRange.offset = authorityOffset + mAuthorityRange.size + 1;
             mPathRange.size = remaining.size() - 1;
@@ -125,17 +128,17 @@ private:
         size_t extOffset = remaining.find_first_of('.', nameOffset);
         extOffset = (extOffset == std::string::npos) ? (remaining.size()) : extOffset;
 
-        mStemRange.offset = mPathRange.offset - 1 + nameOffset;
-        mStemRange.size = extOffset - nameOffset;
+        mStemRange.offset = static_cast<uint32_t>(mPathRange.offset - 1 + nameOffset);
+        mStemRange.size = static_cast<uint32_t>(extOffset - nameOffset);
     }
 
     std::string mString;
-    Range mSchemeRange;
-    Range mAuthorityRange;
-    Range mPathRange;
-    Range mStemRange;
-    Range mQueryRange;
-    Range mFragmentRange;
+    Range32 mSchemeRange;
+    Range32 mAuthorityRange;
+    Range32 mPathRange;
+    Range32 mStemRange;
+    Range32 mQueryRange;
+    Range32 mFragmentRange;
 };
 
 } // namespace LD
