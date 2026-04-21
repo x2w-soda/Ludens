@@ -47,6 +47,7 @@ struct Bitmap : Handle<struct BitmapObj>
 
     /// @brief Create bitmap from file data in RAM.
     static Bitmap create_from_file_data(uint32_t fileSize, const void* fileData);
+    static inline Bitmap create_from_file_data(View fileView) { return create_from_file_data((uint32_t)fileView.size, fileView.data); }
 
     /// @brief create 6 layered bitmap from 6 paths to each face
     /// @param paths an array of 6 paths

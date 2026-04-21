@@ -95,7 +95,7 @@ struct Transform2D
     static inline Transform2D child_world(const Transform2D& childLocal, const Transform2D& parentWorld)
     {
         Vec2 scaled = childLocal.position * parentWorld.scale;
-        Vec4 rotated = Mat4::rotate(LD_TO_RADIANS(parentWorld.rotation), Vec3(0.0f, 0.0f, 1.0f)) * Vec4(scaled, 0.0f, 1.0f);
+        Vec4 rotated = Mat4::rotate((float)LD_TO_RADIANS(parentWorld.rotation), Vec3(0.0f, 0.0f, 1.0f)) * Vec4(scaled, 0.0f, 1.0f);
 
         Transform2D childWorld;
         childWorld.rotation = parentWorld.rotation + childLocal.rotation;

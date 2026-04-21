@@ -81,7 +81,7 @@ bool Project::add_scene(const ProjectSceneEntry& entry, std::string& err)
     {
         if (existingEntry.id == entry.id)
         {
-            err = std::format("Scene SUID {} already registered in project", entry.id);
+            err = std::format("Scene SUID 0x{} already registered in project", entry.id.to_string());
             return false;
         }
     }

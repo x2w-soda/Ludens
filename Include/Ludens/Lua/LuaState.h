@@ -12,7 +12,7 @@ struct lua_State;
 namespace LD {
 
 class Buffer;
-struct LuaState;
+class LuaState;
 struct LuaStateObj;
 typedef int (*LuaFn)(lua_State*);
 

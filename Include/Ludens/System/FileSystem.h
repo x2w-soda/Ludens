@@ -53,11 +53,11 @@ bool copy_file(const Path& src, const Path& dst, CopyOptionBits options, std::st
 
 /// @brief Read whole file into user provided view.
 /// @return Number of bytes read on success.
-uint64_t read_file(const Path& path, const MutView& view, std::string& err);
+uint64_t read_file(const Path& path, MutView view, std::string& err);
 
 /// @brief Read whole file into user provided view.
 /// @return Number of bytes read on success.
-uint64_t read_file(const Path& path, const MutView& view, Diagnostics& diag);
+uint64_t read_file(const Path& path, MutView view, Diagnostics& diag);
 
 /// @brief Read whole file into byte vector.
 bool read_file_to_vector(const FS::Path& path, Vector<byte>& v, std::string& err);
@@ -67,16 +67,16 @@ bool read_file_to_vector(const FS::Path& path, Vector<byte>& v, std::string& err
 char* read_file_to_cstr(const FS::Path& path, std::string err);
 
 /// @brief Write bytes to a file.
-bool write_file(const Path& path, const View& view, std::string& err);
+bool write_file(const Path& path, View view, std::string& err);
 
 /// @brief Write bytes to a file.
-bool write_file(const Path& path, const View& view, Diagnostics& diag);
+bool write_file(const Path& path, View view, Diagnostics& diag);
 
 /// @brief A safer write_file protocol, behaves the same as write_file if the save file does not exist.
 ///        Otherwise, the existing file is renamed as backup, the new contents are written to a tmp file,
 ///        and finally the tmp file is renamed to the save file path.
 /// @return True if all steps of the protocol succeeded.
-bool write_file_and_swap_backup(const Path& path, const View& view, std::string& err);
+bool write_file_and_swap_backup(const Path& path, View view, std::string& err);
 
 /// @brief Check if path exists in filesystem.
 bool exists(const Path& path);

@@ -89,7 +89,7 @@ Camera2DView::Camera2DView(Camera2DComponent* comp)
     }
 }
 
-bool Camera2DView::load(const Camera2DInfo& info, const Rect& viewport, std::string& err)
+bool Camera2DView::load(const Camera2DInfo& info, Rect viewport, std::string& err)
 {
     return load_camera_2d_component(sScene, mCamera, info, viewport, err);
 }

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Ludens/Header/Math/Rect.h>
 #include <Ludens/Scene/ComponentView.h>
 
 namespace LD {
@@ -15,7 +16,7 @@ public:
     Camera2DView(ComponentView comp);
     Camera2DView(Camera2DComponent* comp);
 
-    bool load(const Camera2DInfo& info, const Rect& viewport, std::string& err);
+    bool load(const Camera2DInfo& info, Rect viewport, std::string& err);
 
     Camera2DInfo get_info();
     Rect get_viewport();

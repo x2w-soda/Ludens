@@ -27,5 +27,5 @@
 #endif
 
 #ifndef LD_UNREACHABLE
-#define LD_UNREACHABLE LD_ASSERT(false && "unreachable")
+#define LD_UNREACHABLE LD_DEBUG_BREAK
 #endif

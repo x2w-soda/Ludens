@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Ludens/Header/Math/Rect.h>
 #include <Ludens/Scene/ComponentView.h>
 
 namespace LD {
@@ -21,9 +22,9 @@ public:
     uint32_t get_z_depth();
     void set_z_depth(uint32_t zDepth);
     Vec2 get_pivot();
-    void set_pivot(const Vec2& pivot);
+    void set_pivot(Vec2 pivot);
     Rect get_region();
-    void set_region(const Rect& region);
+    void set_region(Rect region);
     RUID get_screen_layer_ruid();
     SUID get_screen_layer_suid();
 

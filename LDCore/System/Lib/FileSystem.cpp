@@ -141,7 +141,7 @@ bool copy_file(const Path& src, const Path& dst, CopyOptionBits options, std::st
     return success;
 }
 
-uint64_t read_file(const Path& path, const MutView& view, std::string& err)
+uint64_t read_file(const Path& path, MutView view, std::string& err)
 {
     LD_PROFILE_SCOPE;
 
@@ -182,7 +182,7 @@ uint64_t read_file(const Path& path, const MutView& view, std::string& err)
     return (uint64_t)fsize;
 }
 
-uint64_t read_file(const Path& path, const MutView& view, Diagnostics& diag)
+uint64_t read_file(const Path& path, MutView view, Diagnostics& diag)
 {
     std::string err;
     DiagnosticScope scope(diag, __func__);
@@ -234,7 +234,7 @@ char* read_file_to_cstr(const FS::Path& path, std::string err)
     return cstr;
 }
 
-bool write_file(const Path& path, const View& view, std::string& err)
+bool write_file(const Path& path, View view, std::string& err)
 {
     LD_PROFILE_SCOPE;
 
@@ -258,7 +258,7 @@ bool write_file(const Path& path, const View& view, std::string& err)
     return true;
 }
 
-bool write_file(const Path& path, const View& view, Diagnostics& diag)
+bool write_file(const Path& path, View view, Diagnostics& diag)
 {
     std::string err;
     DiagnosticScope scope(diag, __func__);
@@ -272,7 +272,7 @@ bool write_file(const Path& path, const View& view, Diagnostics& diag)
     return true;
 }
 
-bool write_file_and_swap_backup(const Path& path, const View& view, std::string& err)
+bool write_file_and_swap_backup(const Path& path, View view, std::string& err)
 {
     LD_PROFILE_SCOPE;
 

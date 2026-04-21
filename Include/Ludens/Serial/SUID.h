@@ -58,6 +58,11 @@ public:
         return static_cast<SerialType>(mID >> SUID_IDENTITY_BITS);
     }
 
+    inline std::string to_string() const
+    {
+        return std::format("{:08X}", mID);
+    }
+
 private:
     uint32_t mID;
 };

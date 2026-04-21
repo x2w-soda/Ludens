@@ -67,7 +67,7 @@ private:
         if (schemeEnd != std::string::npos)
         {
             mSchemeRange.offset = 0;
-            mSchemeRange.size = schemeEnd;
+            mSchemeRange.size = (uint32_t)schemeEnd;
             remaining.remove_prefix(schemeEnd + 3);
             authorityOffset = static_cast<uint32_t>(schemeEnd + 3);
         }
@@ -110,14 +110,14 @@ private:
             mAuthorityRange.size = (uint32_t)pathStart;
             remaining.remove_prefix(pathStart);
             mPathRange.offset = authorityOffset + mAuthorityRange.size + 1;
-            mPathRange.size = remaining.size() - 1;
+            mPathRange.size = static_cast<uint32_t>(remaining.size() - 1);
             if (mPathRange.size > 0)
                 parse_stem_range(remaining);
         }
         else
         {
             mAuthorityRange.offset = authorityOffset;
-            mAuthorityRange.size = remaining.size();
+            mAuthorityRange.size = (uint32_t)remaining.size();
         }
     }
 

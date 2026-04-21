@@ -185,7 +185,7 @@ Vec2 Sprite2DView::get_pivot()
     return mSprite->draw.get_pivot();
 }
 
-void Sprite2DView::set_pivot(const Vec2& pivot)
+void Sprite2DView::set_pivot(Vec2 pivot)
 {
     LD_ASSERT(mSprite->draw);
 
@@ -199,7 +199,7 @@ Rect Sprite2DView::get_region()
     return mSprite->draw.get_region();
 }
 
-void Sprite2DView::set_region(const Rect& rect)
+void Sprite2DView::set_region(Rect rect)
 {
     LD_ASSERT(mSprite->draw);
 
