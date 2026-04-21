@@ -2,6 +2,7 @@ set(MODULE_NAME LDAsset)
 set(MODULE_TEST_NAME LDAssetTest)
 
 set(MODULE_INCLUDE
+	${LUDENS_INCLUDE_DIR}/Ludens/Asset/AssetDef.h
 	${LUDENS_INCLUDE_DIR}/Ludens/Asset/Asset.h
 	${LUDENS_INCLUDE_DIR}/Ludens/Asset/AssetManager.h
 	${LUDENS_INCLUDE_DIR}/Ludens/Asset/AssetRegistry.h
@@ -29,6 +30,7 @@ set(MODULE_INCLUDE
 set(MODULE_LIB
 	Lib/AssetManager.cpp
 	Lib/AssetRegistry.cpp
+	Lib/AssetLoadJob.h
 	Lib/AssetWatcher.h
 	Lib/AssetWatcher.cpp
 	Lib/AssetSchemaKeys.h

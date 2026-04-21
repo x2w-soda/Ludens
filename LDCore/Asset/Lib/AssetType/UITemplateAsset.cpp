@@ -8,7 +8,7 @@
 #include "../AssetMeta.h"
 
 namespace LD {
-
+#if 0
 void UITemplateAssetObj::load(void* user)
 {
     LD_PROFILE_SCOPE;
@@ -30,7 +30,7 @@ void UITemplateAssetObj::load(void* user)
         return;
     }
 
-    FS::Path sourcePath = job.rootPath / FS::Path(job.assetEntry.get_path("source"));
+    FS::Path sourcePath = job.rootPath / FS::Path(job.assetEntry.get_file_path("source"));
 
     obj->luaSource = FS::read_file_to_cstr(sourcePath, err);
     if (!obj->luaSource)
@@ -53,6 +53,7 @@ void UITemplateAssetObj::unload(AssetObj* base)
     UITemplate::destroy(obj->tmpl);
     obj->tmpl = {};
 }
+#endif
 
 //
 // Public API

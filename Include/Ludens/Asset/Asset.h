@@ -1,27 +1,14 @@
 #pragma once
 
+#include <Ludens/Asset/AssetDef.h>
 #include <Ludens/Header/Handle.h>
-#include <Ludens/Serial/SUID.h>
 
 #include <cstddef>
 #include <cstdint>
 
 namespace LD {
 
-enum AssetType
-{
-    ASSET_TYPE_BLOB = 0,
-    ASSET_TYPE_FONT,
-    ASSET_TYPE_MESH,
-    ASSET_TYPE_UI_TEMPLATE,
-    ASSET_TYPE_AUDIO_CLIP,
-    ASSET_TYPE_TEXTURE_2D,
-    ASSET_TYPE_TEXTURE_CUBE,
-    ASSET_TYPE_LUA_SCRIPT,
-    ASSET_TYPE_ENUM_COUNT,
-};
-
-using AssetID = SUID;
+struct AssetManagerObj;
 
 /// @brief Get byte size of an asset type.
 size_t get_asset_byte_size(AssetType type);
@@ -35,10 +22,10 @@ bool get_cstr_asset_type(const char* cstr, AssetType& outType);
 /// @brief Base members of asset object implementation.
 struct AssetObj
 {
-    const char* name;
-    struct AssetManagerObj* manager;
-    AssetID id;
     AssetType type;
+    AssetID id;
+    AssetManagerObj* manager;
+    bool isReserved;
 };
 
 /// @brief Asset raw handle, no ownership semantics.
@@ -51,8 +38,11 @@ struct Asset : Handle<struct AssetObj>
     /// @brief Get asset type.
     AssetType get_type();
 
+    /// @brief Get asset path.
+    std::string get_path();
+
     /// @brief Get asset name.
-    const char* get_name();
+    std::string get_name();
 
     /// @brief Get asset serial ID.
     AssetID get_id();
@@ -61,6 +51,7 @@ struct Asset : Handle<struct AssetObj>
 class Serializer;
 class Deserializer;
 class Diagnostics;
+struct AssetLoadStatus;
 
 /// @brief Write binary header for asset type.
 /// @param serial Serializer used to write the header.
@@ -78,6 +69,6 @@ bool asset_header_read(Deserializer& serial, uint16_t& outMajor, uint16_t& outMi
 
 /// @brief Attempts to read binary header from memory.
 /// @return True if the asset type matches and the asset version matches engine version exactly.
-bool asset_header_read(Deserializer& serial, AssetType expectedType, Diagnostics& diag);
+bool asset_header_read(Deserializer& serial, AssetType expectedType, std::string& err);
 
 } // namespace LD

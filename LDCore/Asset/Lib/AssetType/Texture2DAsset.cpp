@@ -6,15 +6,46 @@
 #include <Ludens/Serial/Serial.h>
 #include <Ludens/System/FileSystem.h>
 
+#include "../AssetLoadJob.h"
 #include "../AssetMeta.h"
 
 namespace LD {
+
+bool Texture2DAssetObj::load_from_binary(AssetLoadJob& job, const FS::Path& filePath)
+{
+    uint64_t serialSize;
+    if (!job.get_file_size(filePath, serialSize))
+        return false;
+
+    serialData.resize(serialSize);
+    if (!job.read_file(filePath, MutView((char*)serialData.data(), serialSize)))
+        return false;
+
+    Deserializer serial(serialData.data(), serialSize);
+
+    AssetType type;
+    uint16_t major, minor, patch;
+    if (!asset_header_read(serial, major, minor, patch, type))
+        return false;
+
+    if (type != ASSET_TYPE_TEXTURE_2D)
+        return false;
+
+    if (!Texture2DAssetObj::deserialize(serial, *this))
+        return false;
+
+    bitmap = Bitmap::create_from_file_data(fileView);
+    if (!job.require(bitmap, "failed to create Bitmap"))
+        return false;
+
+    return true;
+}
 
 bool Texture2DAssetObj::serialize(Serializer& serial, const Texture2DAssetObj& obj)
 {
     serialize_sampler_info(serial, obj.samplerHint);
     serial.write_chunk_begin("FILE");
-    serial.write((const byte*)obj.fileData, (size_t)obj.fileSize);
+    serial.write((const byte*)obj.fileView.data, obj.fileView.size);
     serial.write_chunk_end();
 
     return true;
@@ -53,13 +84,23 @@ bool Texture2DAssetObj::deserialize(Deserializer& serial, Texture2DAssetObj& obj
         }
         else if (name == "FILE")
         {
-            obj.fileSize = chunkSize;
-            obj.fileData = (void*)chunkData;
+            obj.fileView.size = chunkSize;
+            obj.fileView.data = (const char*)chunkData;
             serial.advance(chunkSize);
         }
     }
 
-    return hasSampChunk && obj.fileSize > 0 && obj.fileData;
+    return hasSampChunk && obj.fileView;
+}
+
+void Texture2DAssetObj::create(AssetObj* base)
+{
+    new (base) Texture2DAssetObj();
+}
+
+void Texture2DAssetObj::destroy(AssetObj* base)
+{
+    ((Texture2DAssetObj*)base)->~Texture2DAssetObj();
 }
 
 void Texture2DAssetObj::load(void* user)
@@ -69,29 +110,9 @@ void Texture2DAssetObj::load(void* user)
     auto& job = *(AssetLoadJob*)user;
     Texture2DAssetObj* obj = (Texture2DAssetObj*)job.assetHandle.unwrap();
 
-    std::string err; // TODO:
-    uint64_t serialSize;
-    if (!FS::get_file_size(job.loadPath, serialSize, err) || serialSize == 0)
-        return;
-
-    obj->serialData = heap_malloc(serialSize, MEMORY_USAGE_ASSET);
-    if (!FS::read_file(job.loadPath, MutView((char*)obj->serialData, serialSize), err))
-        return;
-
-    Deserializer serial(obj->serialData, serialSize);
-
-    AssetType type;
-    uint16_t major, minor, patch;
-    if (!asset_header_read(serial, major, minor, patch, type))
-        return;
-
-    if (type != ASSET_TYPE_TEXTURE_2D)
-        return;
-
-    if (!Texture2DAssetObj::deserialize(serial, *obj))
-        return;
-
-    obj->bitmap = Bitmap::create_from_file_data(obj->fileSize, obj->fileData);
+    FS::Path filePath = job.assetDirPath / LD_ASSET_DEFAULT_BINARY_FILE_NAME;
+    if (FS::exists(filePath))
+        obj->load_from_binary(job, filePath);
 }
 
 void Texture2DAssetObj::unload(AssetObj* base)
@@ -104,14 +125,8 @@ void Texture2DAssetObj::unload(AssetObj* base)
         self.bitmap = {};
     }
 
-    if (self.serialData)
-    {
-        heap_free((void*)self.serialData);
-        self.serialData = nullptr;
-    }
-
-    self.fileData = nullptr;
-    self.fileSize = 0;
+    self.serialData.clear();
+    self.fileView = {};
 }
 
 void Texture2DAsset::unload()

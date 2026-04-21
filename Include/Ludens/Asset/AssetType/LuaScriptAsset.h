@@ -23,11 +23,11 @@ struct LuaScriptAsset : Asset
     FS::Path get_source_path();
 
     /// @brief Get Lua script source string.
-    const char* get_source();
+    View get_source();
 
     /// @brief Set Lua script source string.
     /// @note This only modifies the asset in RAM.
-    void set_source(const char* src, size_t len);
+    void set_source(View source);
 };
 
 } // namespace LD

@@ -9,6 +9,7 @@
 #include "../AssetMeta.h"
 
 namespace LD {
+#if 0
 
 const char* TextureCubeAssetObj::sFaceChunkNames[6] = {
     "PX..",
@@ -149,4 +150,5 @@ Bitmap TextureCubeAsset::get_bitmap() const
     return obj->bitmap;
 }
 
+#endif
 } // namespace LD

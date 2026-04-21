@@ -11,8 +11,8 @@ struct UITemplateAssetObj : AssetObj
     UITemplate tmpl;
     char* luaSource;
 
-    static void load(void* assetLoadJob);
-    static void unload(AssetObj* base);
+    // static void load(void* assetLoadJob);
+    // static void unload(AssetObj* base);
 };
 
 } // namespace LD

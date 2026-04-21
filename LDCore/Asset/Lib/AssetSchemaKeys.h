@@ -7,6 +7,6 @@
 
 #define ASSET_SCHEMA_KEY_ENTRY "asset"
 #define ASSET_SCHEMA_KEY_ENTRY_ID "id"
-#define ASSET_SCHEMA_KEY_ENTRY_URI "uri"
-#define ASSET_SCHEMA_KEY_ENTRY_TYPE "type"
 #define ASSET_SCHEMA_KEY_ENTRY_PATH "path"
+#define ASSET_SCHEMA_KEY_ENTRY_TYPE "type"
+#define ASSET_SCHEMA_KEY_ENTRY_FILE_PATHS "file_paths"

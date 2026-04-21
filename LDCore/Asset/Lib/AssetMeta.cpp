@@ -14,27 +14,14 @@ namespace LD {
 
 // clang-format off
 AssetMeta sAssetMeta[] = {
-    {ASSET_TYPE_BLOB,         "Blob",        sizeof(BlobAssetObj),        &BlobAssetObj::load,         &BlobAssetObj::unload, },
-    {ASSET_TYPE_FONT,         "Font",        sizeof(FontAssetObj),        &FontAssetObj::load,         &FontAssetObj::unload, },
-    {ASSET_TYPE_MESH,         "Mesh",        sizeof(MeshAssetObj),        &MeshAssetObj::load,         &MeshAssetObj::unload, },
-    {ASSET_TYPE_UI_TEMPLATE,  "UITemplate",  sizeof(UITemplateAssetObj),  &UITemplateAssetObj::load,   &UITemplateAssetObj::unload, },
-    {ASSET_TYPE_AUDIO_CLIP,   "AudioClip",   sizeof(AudioClipAssetObj),   &AudioClipAssetObj::load,    &AudioClipAssetObj::unload, },
-    {ASSET_TYPE_TEXTURE_2D,   "Texture2D",   sizeof(Texture2DAssetObj),   &Texture2DAssetObj::load,    &Texture2DAssetObj::unload, },
-    {ASSET_TYPE_TEXTURE_CUBE, "TextureCube", sizeof(TextureCubeAssetObj), &TextureCubeAssetObj::load,  &TextureCubeAssetObj::unload, },
-    {ASSET_TYPE_LUA_SCRIPT,   "LuaScript",   sizeof(LuaScriptAssetObj),   &LuaScriptAssetObj::load,    &LuaScriptAssetObj::unload, },
+    {ASSET_TYPE_FONT,         "Font",        sizeof(FontAssetObj),       &FontAssetObj::create,      &FontAssetObj::destroy,      &FontAssetObj::load,        &FontAssetObj::unload, },
+    {ASSET_TYPE_AUDIO_CLIP,   "AudioClip",   sizeof(AudioClipAssetObj),  &AudioClipAssetObj::create, &AudioClipAssetObj::destroy, &AudioClipAssetObj::load,   &AudioClipAssetObj::unload, },
+    {ASSET_TYPE_TEXTURE_2D,   "Texture2D",   sizeof(Texture2DAssetObj),  &Texture2DAssetObj::create, &Texture2DAssetObj::destroy, &Texture2DAssetObj::load,   &Texture2DAssetObj::unload, },
+    {ASSET_TYPE_LUA_SCRIPT,   "LuaScript",   sizeof(LuaScriptAssetObj),  &LuaScriptAssetObj::create, &LuaScriptAssetObj::destroy, &LuaScriptAssetObj::load,   &LuaScriptAssetObj::unload, },
 };
 // clang-format on
 
 static_assert(sizeof(sAssetMeta) / sizeof(*sAssetMeta) == ASSET_TYPE_ENUM_COUNT);
-static_assert(LD::IsTrivial<AssetObj>);
-static_assert(LD::IsTrivial<BlobAssetObj>);
-static_assert(LD::IsTrivial<FontAssetObj>);
-static_assert(LD::IsTrivial<MeshAssetObj>);
-static_assert(LD::IsTrivial<UITemplateAssetObj>);
-static_assert(LD::IsTrivial<AudioClipAssetObj>);
-static_assert(LD::IsTrivial<Texture2DAssetObj>);
-static_assert(LD::IsTrivial<TextureCubeAssetObj>);
-static_assert(LD::IsTrivial<LuaScriptAssetObj>);
 
 void asset_unload(AssetObj* base)
 {
@@ -103,28 +90,26 @@ bool asset_header_read(Deserializer& serial, uint16_t& outMajor, uint16_t& outMi
     return false;
 }
 
-bool asset_header_read(Deserializer& serial, AssetType expectedType, Diagnostics& diag)
+bool asset_header_read(Deserializer& serial, AssetType expectedType, std::string& err)
 {
-    DiagnosticScope scope(diag, "asset_header_read");
-
     AssetType type;
     uint16_t major, minor, patch;
     if (!asset_header_read(serial, major, minor, patch, type))
     {
-        diag.mark_error("failed to recognize binary asset header");
+        err = "failed to recognize binary asset header";
         return false;
     }
 
     if (type != expectedType)
     {
-        diag.mark_error(std::format("expected asset type {}, found {}", get_asset_type_cstr(expectedType), get_asset_type_cstr(type)));
+        err = std::format("expected asset type {}, found {}", get_asset_type_cstr(expectedType), get_asset_type_cstr(type));
         return false;
     }
 
     if (major != LD_VERSION_MAJOR || minor != LD_VERSION_MINOR || patch != LD_VERSION_PATCH)
     {
-        diag.mark_error(std::format("expected asset version {}.{}.{}, found {}.{}.{}",
-                                    LD_VERSION_MAJOR, LD_VERSION_MINOR, LD_VERSION_PATCH, major, minor, patch));
+        err = std::format("expected asset version {}.{}.{}, found {}.{}.{}",
+                          LD_VERSION_MAJOR, LD_VERSION_MINOR, LD_VERSION_PATCH, major, minor, patch);
         return false;
     }
 

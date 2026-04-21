@@ -2,21 +2,50 @@
 
 #include <Ludens/Asset/Asset.h>
 #include <Ludens/Asset/AssetRegistry.h>
-#include <Ludens/Asset/AssetType/AudioClipAsset.h>
-#include <Ludens/Asset/AssetType/LuaScriptAsset.h>
-#include <Ludens/Asset/AssetType/MeshAsset.h>
-#include <Ludens/Asset/AssetType/Texture2DAsset.h>
 #include <Ludens/Header/Handle.h>
-#include <Ludens/RenderSystem/RenderSystem.h>
+#include <Ludens/Header/Status.h>
 #include <Ludens/System/FileSystem.h>
 
 namespace LD {
 
+enum AssetLoadStatusType
+{
+    ASSET_LOAD_SUCCESS,
+    ASSET_LOAD_ERROR,
+    ASSET_LOAD_ERROR_FILE_PATH,
+};
+
+struct AssetLoadStatus : TStatus<AssetLoadStatusType>
+{
+    inline operator bool() const noexcept
+    {
+        return type == ASSET_LOAD_SUCCESS;
+    }
+};
+
+/// @brief Asset manager environmental context.
+struct AssetManagerEnv
+{
+    FS::Path rootPath = {};          // absolute path to project root directory
+    FS::Path storageDir = "storage"; // relative path to storage directory
+    AssetRegistry registry = {};     // referenced asset registry
+
+    inline AssetEntry get_entry(SUID id)
+    {
+        return registry ? registry.get_entry(id) : AssetEntry();
+    }
+
+    /// @brief Get aboslute path to asset storage directory
+    inline FS::Path get_asset_dir_path(AssetID id)
+    {
+        return FS::absolute(rootPath / storageDir / FS::Path(id.to_string()));
+    }
+};
+
 struct AssetManagerInfo
 {
-    FS::Path rootPath;      // project root directory path
-    AssetRegistry registry; // referenced asset registry, out-lives the AssetManager
-    bool watchAssets;       // whether to watch asset files in project
+    AssetManagerEnv env; // initial environment
+    bool watchAssets;    // whether to watch asset files in project
 };
 
 /// @brief Asset manager singleton, main thread only.
@@ -48,7 +77,7 @@ struct AssetManager : Handle<struct AssetManagerObj>
     void begin_load_batch();
 
     /// @brief End asset load batch.
-    bool end_load_batch(Vector<std::string>& outErrors);
+    bool end_load_batch(Vector<AssetLoadStatus>& outErrors);
 
     /// @brief Check if there are any load jobs in progress. Does not block.
     bool has_load_job();
@@ -67,11 +96,14 @@ struct AssetManager : Handle<struct AssetManagerObj>
 
     /// @brief Allocate an empty asset that needs to be resolved later.
     ///        Intended for AssetImporter to perform "import + load" simultaneously.
-    Asset reserve_asset(AssetType type);
+    Asset alloc_reserved_asset(SUIDRegistry idReg, AssetType type, const std::string& path);
+    void free_reserved_asset(SUIDRegistry idReg, Asset reservedAsset);
 
     /// @brief Resolve the asset against the current AssetRegistry.
     ///        Intended for AssetImporter to add an Asset to the project.
-    AssetEntry resolve_asset(SUIDRegistry idReg, Asset asset, const std::string& uri);
+    /// @return A valid entry associated with the Asset upon success.
+    /// @note Upon failure, the reserved asset should be freed.
+    AssetEntry resolve_asset(SUIDRegistry idReg, Asset reservedAsset);
 };
 
 } // namespace LD

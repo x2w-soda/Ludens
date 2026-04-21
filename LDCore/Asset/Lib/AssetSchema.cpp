@@ -97,7 +97,7 @@ bool AssetSchemaLoader::load_asset_entries(std::string& err)
     AssetType assetType;
     AssetEntry entry{};
     Vector<std::string> keys;
-    std::string entryURI;
+    std::string entryPath;
     std::string entryType;
     SUID entryID;
 
@@ -106,7 +106,7 @@ bool AssetSchemaLoader::load_asset_entries(std::string& err)
         if (!mReader.enter_table(i))
             continue;
 
-        if (!mReader.read_string(ASSET_SCHEMA_KEY_ENTRY_URI, entryURI) ||
+        if (!mReader.read_string(ASSET_SCHEMA_KEY_ENTRY_PATH, entryPath) ||
             !mReader.read_string(ASSET_SCHEMA_KEY_ENTRY_TYPE, entryType) ||
             !mReader.read_suid(ASSET_SCHEMA_KEY_ENTRY_ID, entryID) ||
             !get_cstr_asset_type(entryType.c_str(), assetType))
@@ -117,24 +117,24 @@ bool AssetSchemaLoader::load_asset_entries(std::string& err)
 
         if (isValid && entryID.type() != SERIAL_TYPE_ASSET)
         {
-            err = std::format("Asset [{}] has invalid ID {}", entryURI, entryID);
+            err = std::format("Asset [{}] has invalid ID {}", entryPath, entryID);
             isValid = false;
         }
 
-        if (isValid && !(entry = mReg.register_asset_with_id(mIDReg, entryID, assetType, entryURI)))
+        if (isValid && !(entry = mReg.register_asset_with_id(mIDReg, entryID, assetType, entryPath)))
         {
-            err = std::format("Asset ID {} is already in use, invalid schema", entryID);
+            err = std::format("Asset ID 0x{} is already in use, invalid schema", entryID.to_string());
             isValid = false;
         }
 
-        if (isValid && mReader.enter_table(ASSET_SCHEMA_KEY_ENTRY_PATH))
+        if (isValid && mReader.enter_table(ASSET_SCHEMA_KEY_ENTRY_FILE_PATHS))
         {
             mReader.get_keys(keys);
 
             for (const std::string& key : keys)
             {
-                if (mReader.read_string(key.c_str(), entryURI))
-                    entry.set_path(key, entryURI);
+                if (mReader.read_string(key.c_str(), entryPath))
+                    entry.set_file_path(key, entryPath);
             }
 
             mReader.exit();
@@ -193,15 +193,15 @@ bool AssetSchemaSaver::save_asset_entries(std::string& err)
 
         mWriter.begin_table();
         mWriter.key(ASSET_SCHEMA_KEY_ENTRY_ID).write_u32(entry.get_id());
-        mWriter.key(ASSET_SCHEMA_KEY_ENTRY_URI).write_string(entry.get_uri());
+        mWriter.key(ASSET_SCHEMA_KEY_ENTRY_PATH).write_string(entry.get_path());
         mWriter.key(ASSET_SCHEMA_KEY_ENTRY_TYPE).write_string(typeCstr);
 
-        keys = entry.get_path_keys();
+        keys = entry.get_file_path_keys();
         if (!keys.empty())
         {
-            mWriter.begin_table(ASSET_SCHEMA_KEY_ENTRY_PATH);
+            mWriter.begin_table(ASSET_SCHEMA_KEY_ENTRY_FILE_PATHS);
             for (const std::string& key : keys)
-                mWriter.key(key).write_string(entry.get_path(key));
+                mWriter.key(key).write_string(entry.get_file_path(key));
             mWriter.end_table();
         }
 

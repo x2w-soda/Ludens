@@ -5,31 +5,26 @@
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Profiler/Profiler.h>
 
+#include "../AssetLoadJob.h"
 #include "../AssetMeta.h"
 
 namespace LD {
 
-void AudioClipAssetObj::load(void* user)
+bool AudioClipAssetObj::load_from_binary(AssetLoadJob& job, const FS::Path& filePath)
 {
-    LD_PROFILE_SCOPE;
-
-    auto& job = *(AssetLoadJob*)user;
-    AudioClipAssetObj* obj = (AudioClipAssetObj*)job.assetHandle.unwrap();
-
-    std::string err;
     Vector<byte> tmp;
-    if (!FS::read_file_to_vector(job.loadPath, tmp, err))
-        return;
+    if (!job.read_file_to_vector(filePath, tmp))
+        return false;
 
     Deserializer serial(tmp.data(), tmp.size());
 
     AssetType type;
     uint16_t major, minor, patch;
     if (!asset_header_read(serial, major, minor, patch, type))
-        return;
+        return false;
 
     if (type != ASSET_TYPE_AUDIO_CLIP)
-        return;
+        return false;
 
     uint32_t u32;
     uint32_t channels;
@@ -48,7 +43,34 @@ void AudioClipAssetObj::load(void* user)
     const byte* sampleData = serial.view_now();
     serial.advance(sampleByteSize);
 
-    obj->data = AudioData::create_from_samples(channels, sampleRate, frameCount, sampleData, sampleByteSize);
+    data = AudioData::create_from_samples(channels, sampleRate, frameCount, sampleData, sampleByteSize);
+
+    if (!job.require(data, "failed to create AudioData"))
+        return false;
+
+    return true;
+}
+
+void AudioClipAssetObj::create(AssetObj* base)
+{
+    new (base) AudioClipAssetObj();
+}
+
+void AudioClipAssetObj::destroy(AssetObj* base)
+{
+    ((AudioClipAssetObj*)base)->~AudioClipAssetObj();
+}
+
+void AudioClipAssetObj::load(void* user)
+{
+    LD_PROFILE_SCOPE;
+
+    auto& job = *(AssetLoadJob*)user;
+    AudioClipAssetObj* obj = (AudioClipAssetObj*)job.assetHandle.unwrap();
+
+    FS::Path filePath = job.assetDirPath / LD_ASSET_DEFAULT_BINARY_FILE_NAME;
+    if (FS::exists(filePath))
+        obj->load_from_binary(job, filePath);
 }
 
 void AudioClipAssetObj::unload(AssetObj* base)

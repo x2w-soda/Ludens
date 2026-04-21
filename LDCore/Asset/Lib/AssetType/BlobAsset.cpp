@@ -5,6 +5,7 @@
 #include "../AssetMeta.h"
 
 namespace LD {
+#if 0
 
 void BlobAssetObj::load(void* assetLoadJob)
 {
@@ -51,4 +52,5 @@ void* BlobAsset::get_data(size_t& dataSize)
     return obj->data;
 }
 
+#endif
 } // namespace LD

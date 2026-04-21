@@ -14,6 +14,7 @@ struct AssetUtil : Handle<struct AssetUtilObj>
     static AssetUtil create();
     static void destroy(AssetUtil util);
 
+#if 0
     /// @brief Import a Blob asset from source file.
     /// @return True on success.
     bool import_blob(const FS::Path& sourcePath);
@@ -44,6 +45,7 @@ struct AssetUtil : Handle<struct AssetUtilObj>
     /// @param sourcePath Relative path to lua file to import.
     /// @return True on success.
     bool import_lua_script(const FS::Path& sourcePath, LuaScriptDomain domain);
+#endif
 };
 
 } // namespace LD

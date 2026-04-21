@@ -8,10 +8,14 @@ namespace LD {
 ///        to instantiate lua script instances.
 struct LuaScriptAssetObj : AssetObj
 {
-    char* sourcePath; /// lua script file path
-    char* source;     /// lua source code string, if found
-    LuaScriptDomain domain;
+    std::string sourcePath;      /// lua script file path
+    std::string source;          /// lua source code string, if found
+    LuaScriptDomain domain = {}; /// intended script domain
 
+    bool load_from_binary(AssetLoadJob& job, const FS::Path& filePath);
+
+    static void create(AssetObj* base);
+    static void destroy(AssetObj* base);
     static void load(void* assetLoadJob);
     static void unload(AssetObj* base);
 };

@@ -7,6 +7,7 @@
 #include "../AssetMeta.h"
 
 namespace LD {
+#if 0
 
 void MeshAssetObj::load(void* user)
 {
@@ -62,4 +63,5 @@ ModelBinary* MeshAsset::data()
     return obj->modelBinary;
 }
 
+#endif
 } // namespace LD

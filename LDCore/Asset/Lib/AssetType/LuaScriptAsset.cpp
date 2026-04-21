@@ -8,31 +8,27 @@
 #include <Ludens/Serial/Serial.h>
 #include <Ludens/System/FileSystem.h>
 
+#include "../AssetLoadJob.h"
 #include "../AssetMeta.h"
 
 namespace LD {
 
-void LuaScriptAssetObj::load(void* user)
+// TODO: this isn't really binary, source code should be baked into LuaJIT bytecode
+bool LuaScriptAssetObj::load_from_binary(AssetLoadJob& job, const FS::Path& filePath)
 {
-    LD_PROFILE_SCOPE;
-
-    auto& job = *(AssetLoadJob*)user;
-    LuaScriptAssetObj* obj = (LuaScriptAssetObj*)job.assetHandle.unwrap();
-
-    std::string err; // TODO:
     Vector<byte> file;
-    if (!FS::read_file_to_vector(job.loadPath, file, err))
-        return;
+    if (!job.read_file_to_vector(filePath, file))
+        return false;
 
     Deserializer serial(file.data(), file.size());
 
     AssetType type;
     uint16_t major, minor, patch;
     if (!asset_header_read(serial, major, minor, patch, type))
-        return;
+        return false;
 
     if (type != ASSET_TYPE_LUA_SCRIPT)
-        return;
+        return false;
 
     std::string chunkName;
     chunkName.resize(4);
@@ -45,44 +41,45 @@ void LuaScriptAssetObj::load(void* user)
         {
             uint32_t domainU32;
             serial.read_u32(domainU32);
-            obj->domain = (LuaScriptDomain)domainU32;
+            domain = (LuaScriptDomain)domainU32;
             continue;
         }
     }
 
-    FS::Path sourcePath = job.rootPath / FS::Path(job.assetEntry.get_path("source"));
-    uint64_t fileSize;
-    if (!FS::get_file_size(sourcePath, fileSize, err) || fileSize == 0)
-        return;
+    FS::Path sourcePath = job.assetDirPath / FS::Path(job.assetEntry.get_file_path("source"));
+    if (!job.read_file_to_str(sourcePath, source))
+        return false;
 
-    obj->sourcePath = heap_strdup(sourcePath.string().c_str(), MEMORY_USAGE_ASSET);
-    obj->source = FS::read_file_to_cstr(sourcePath, err);
+    return true;
+}
 
-    if (!obj->source)
-    {
-        heap_free(obj->sourcePath);
-        obj->sourcePath = nullptr;
-        return;
-    }
+void LuaScriptAssetObj::create(AssetObj* base)
+{
+    new (base) LuaScriptAssetObj();
+}
+
+void LuaScriptAssetObj::destroy(AssetObj* base)
+{
+    ((LuaScriptAssetObj*)base)->~LuaScriptAssetObj();
+}
+
+void LuaScriptAssetObj::load(void* user)
+{
+    LD_PROFILE_SCOPE;
+
+    auto& job = *(AssetLoadJob*)user;
+    LuaScriptAssetObj* obj = (LuaScriptAssetObj*)job.assetHandle.unwrap();
+
+    FS::Path filePath = job.assetDirPath / LD_ASSET_DEFAULT_BINARY_FILE_NAME;
+    if (FS::exists(filePath))
+        obj->load_from_binary(job, filePath);
 
     // TODO:
 }
 
 void LuaScriptAssetObj::unload(AssetObj* base)
 {
-    LuaScriptAssetObj& self = *(LuaScriptAssetObj*)base;
-
-    if (self.sourcePath)
-    {
-        heap_free((void*)self.sourcePath);
-        self.sourcePath = nullptr;
-    }
-
-    if (self.source)
-    {
-        heap_free((void*)self.source);
-        self.source = nullptr;
-    }
+    (void)base;
 }
 
 void LuaScriptAsset::unload()
@@ -96,30 +93,25 @@ void LuaScriptAsset::unload()
 FS::Path LuaScriptAsset::get_source_path()
 {
     auto* obj = (LuaScriptAssetObj*)mObj;
-    LD_ASSERT(obj->sourcePath);
+    LD_ASSERT(!obj->sourcePath.empty());
 
     return FS::Path(obj->sourcePath);
 }
 
-const char* LuaScriptAsset::get_source()
+View LuaScriptAsset::get_source()
 {
     auto* obj = (LuaScriptAssetObj*)mObj;
-    LD_ASSERT(obj->source);
+    LD_ASSERT(!obj->source.empty());
 
-    return obj->source;
+    return View(obj->source.data(), obj->source.size());
 }
 
-void LuaScriptAsset::set_source(const char* src, size_t len)
+void LuaScriptAsset::set_source(View source)
 {
     auto* obj = (LuaScriptAssetObj*)mObj;
-    LD_ASSERT(obj->source);
 
-    if (obj->source)
-        heap_free(obj->source);
-
-    obj->source = (char*)heap_malloc(len + 1, MEMORY_USAGE_ASSET);
-    memcpy(obj->source, src, len);
-    obj->source[len] = '\0';
+    obj->source.resize(source.size);
+    memcpy(obj->source.data(), source.data, source.size);
 }
 
 } // namespace LD

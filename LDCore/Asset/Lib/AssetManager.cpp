@@ -14,14 +14,13 @@
 
 #include <string>
 
+#include "AssetLoadJob.h"
 #include "AssetMeta.h"
 
 namespace LD {
 
 static Log sLog("AssetManager");
 static AssetManagerObj* sAssetManager = nullptr;
-
-static_assert(LD::IsTrivial<AssetObj>);
 
 size_t get_asset_byte_size(AssetType type)
 {
@@ -54,8 +53,7 @@ bool get_cstr_asset_type(const char* cstr, AssetType& outType)
 
 AssetManagerObj::AssetManagerObj(const AssetManagerInfo& info)
 {
-    registry = info.registry;
-    rootPath = info.rootPath;
+    env = info.env;
 
     if (info.watchAssets)
     {
@@ -64,8 +62,6 @@ AssetManagerObj::AssetManagerObj(const AssetManagerInfo& info)
         watcherI.user = this;
         mWatcher.startup(watcherI);
     }
-
-    registry = info.registry; // nullable.
 
     PoolAllocatorInfo paI{};
     paI.blockSize = sizeof(AssetLoadJob);
@@ -84,8 +80,11 @@ AssetManagerObj::~AssetManagerObj()
 
     unload_all_assets();
 
-    for (auto it : mAssetPA)
-        PoolAllocator::destroy(it.second);
+    for (auto pa : mAssetPA)
+    {
+        if (pa)
+            PoolAllocator::destroy(pa);
+    }
 
     if (mWatcher)
         mWatcher.cleanup();
@@ -93,72 +92,71 @@ AssetManagerObj::~AssetManagerObj()
 
 AssetObj* AssetManagerObj::allocate_asset(AssetEntry entry)
 {
-    std::string name = entry.get_name();
-
-    return allocate_asset(entry.get_type(), entry.get_id(), name.c_str());
+    return allocate_asset(entry.get_type(), entry.get_id(), entry.get_name(), false);
 }
 
-AssetObj* AssetManagerObj::allocate_asset(AssetType type, SUID id, const char* name)
+AssetObj* AssetManagerObj::allocate_asset(AssetType type, SUID id, const std::string& path, bool isReserved)
 {
-    size_t assetByteSize = get_asset_byte_size(type);
+    LD_ASSERT(id && !path.empty());
 
-    if (!mAssetPA.contains(type))
+    if (!mAssetPA[(int)type])
     {
         PoolAllocatorInfo paI{};
         paI.usage = MEMORY_USAGE_ASSET;
-        paI.blockSize = assetByteSize;
+        paI.blockSize = get_asset_byte_size(type);
         paI.pageSize = 16;
         paI.isMultiPage = true;
         mAssetPA[type] = PoolAllocator::create(paI);
     }
 
     AssetObj* obj = (AssetObj*)mAssetPA[type].allocate();
-    memset(obj, 0, assetByteSize);
+    sAssetMeta[(int)type].create(obj);
 
-    obj->manager = this;
-    obj->name = name ? heap_strdup(name, MEMORY_USAGE_ASSET) : nullptr;
-    obj->id = id;
     obj->type = type;
+    obj->id = id;
+    obj->manager = this;
+    obj->isReserved = isReserved;
 
-    if (obj->id)
-    {
-        LD_ASSERT(!mAssets.contains(obj->id));
-        mAssets[obj->id] = obj;
-    }
-
-    if (obj->name)
-    {
-        LD_ASSERT(!mNameToAsset.contains(obj->name));
-        mNameToAsset[obj->name] = obj->id;
-    }
+    if (!obj->isReserved)
+        register_asset(obj);
 
     return obj;
 }
 
 void AssetManagerObj::free_asset(AssetObj* obj)
 {
-    LD_ASSERT(obj && mAssetPA.contains(obj->type));
+    if (!obj)
+        return;
 
-    mNameToAsset.erase(obj->name);
+    int type = (int)obj->type;
+
+    LD_ASSERT(mAssetPA[type]);
+
     mAssets.erase(obj->id);
 
-    if (obj->name)
-    {
-        heap_free((void*)obj->name);
-        obj->name = nullptr;
-    }
-
-    PoolAllocator pa = mAssetPA[obj->type];
-    pa.free(obj);
+    sAssetMeta[type].destroy(obj);
+    mAssetPA[type].free(obj);
 }
 
-AssetLoadJob* AssetManagerObj::allocate_load_job(AssetEntry entry, AssetObj* assetObj)
+void AssetManagerObj::register_asset(AssetObj* obj)
+{
+    LD_ASSERT(obj && obj->id);
+
+    LD_ASSERT(!mAssets.contains(obj->id));
+    mAssets[obj->id] = obj;
+}
+
+void AssetManagerObj::unregister_asset(AssetObj* obj)
+{
+    mAssets.erase(obj->id);
+}
+
+AssetLoadJob* AssetManagerObj::allocate_load_job(AssetEntry entry, AssetObj* assetObj, const FS::Path& dirPath)
 {
     AssetLoadJob* job = (AssetLoadJob*)mLoadJobPA.allocate();
     new (job) AssetLoadJob();
 
-    job->rootPath = rootPath;
-    job->loadPath = FS::absolute(rootPath / entry.get_main_path());
+    job->assetDirPath = dirPath;
     job->assetHandle = {assetObj};
     job->assetEntry = entry;
     job->jobHeader.onExecute = sAssetMeta[(int)entry.get_type()].load;
@@ -209,7 +207,7 @@ void AssetManagerObj::begin_load_batch()
     free_load_jobs();
 }
 
-bool AssetManagerObj::end_load_batch(Vector<std::string>& outErrors)
+bool AssetManagerObj::end_load_batch(Vector<AssetLoadStatus>& outErrors)
 {
     LD_ASSERT(mInLoadBatch);
 
@@ -223,8 +221,8 @@ bool AssetManagerObj::end_load_batch(Vector<std::string>& outErrors)
 
     for (AssetLoadJob* job : mLoadJobs)
     {
-        if (job->diagnostics.get_error(err))
-            outErrors.push_back(err);
+        if (!job->status)
+            outErrors.push_back(job->status);
 
         job->~AssetLoadJob();
         mLoadJobPA.free(job);
@@ -238,23 +236,26 @@ bool AssetManagerObj::end_load_batch(Vector<std::string>& outErrors)
 void AssetManagerObj::load_asset(AssetEntry entry)
 {
     LD_ASSERT(mInLoadBatch);
-    LD_ASSERT(!rootPath.empty());
+    LD_ASSERT(!env.rootPath.empty());
 
     if (!entry)
         return;
 
     const AssetType type = entry.get_type();
-    const FS::Path loadPath = FS::absolute(rootPath / FS::Path(entry.get_main_path()));
-    sLog.info("load_asset {}", loadPath.string());
+    const FS::Path dirPath = env.get_asset_dir_path(entry.get_id());
+    sLog.info("request asset [{}] {}", dirPath.string(), entry.get_name());
 
+    /*
+    TODO: per-type hooks after successful asset load
     if (mWatcher && type == ASSET_TYPE_LUA_SCRIPT)
     {
-        FS::Path luaPath = FS::absolute(rootPath / FS::Path(entry.get_path("source")));
+        FS::Path luaPath = FS::absolute(rootPath / FS::Path(entry.get_file_path("source")));
         mWatcher.add_watch(luaPath, entry.get_id());
     }
+    */
 
     AssetObj* obj = allocate_asset(entry);
-    AssetLoadJob* job = allocate_load_job(entry, obj);
+    AssetLoadJob* job = allocate_load_job(entry, obj, dirPath);
     mLoadJobs.push_back(job);
 
     // We need to guarantee that the address of the job header does not change.
@@ -282,21 +283,18 @@ void AssetManagerObj::unload_all_assets()
 
 SUID AssetManagerObj::get_id_from_name(const char* name, AssetType* outType)
 {
-    if (!name)
+    if (!name || !env.registry)
         return 0;
 
-    auto it = mNameToAsset.find(name);
+    AssetEntry entry = env.registry.get_entry_by_name(name);
 
-    if (it == mNameToAsset.end())
+    if (!entry)
         return 0;
-
-    SUID assetID = it->second;
-    LD_ASSERT(mAssets.contains(assetID));
 
     if (outType)
-        *outType = mAssets[assetID]->type;
+        *outType = entry.get_type();
 
-    return it->second;
+    return entry.get_id();
 }
 
 Asset AssetManagerObj::get_asset(SUID id)
@@ -328,7 +326,7 @@ void AssetManagerObj::on_asset_modified(const FS::Path& path, SUID id, void* use
         Vector<byte> buf;
         if (FS::read_file_to_vector(path, buf, err))
         {
-            scriptA.set_source((const char*)buf.data(), (size_t)buf.size());
+            scriptA.set_source(View((const char*)buf.data(), buf.size()));
         }
     }
 }
@@ -350,9 +348,26 @@ AssetType Asset::get_type()
     return mObj->type;
 }
 
-const char* Asset::get_name()
+std::string Asset::get_path()
 {
-    return mObj->name;
+    AssetRegistry AR = mObj->manager->env.registry;
+    LD_ASSERT(AR);
+
+    AssetEntry entry = AR.get_entry(mObj->id);
+    LD_ASSERT(entry);
+
+    return entry.get_path();
+}
+
+std::string Asset::get_name()
+{
+    AssetRegistry AR = mObj->manager->env.registry;
+    LD_ASSERT(AR);
+
+    AssetEntry entry = AR.get_entry(mObj->id);
+    LD_ASSERT(entry);
+
+    return entry.get_name();
 }
 
 AssetID Asset::get_id()
@@ -363,7 +378,7 @@ AssetID Asset::get_id()
 AssetManager AssetManager::create(const AssetManagerInfo& info)
 {
     LD_ASSERT(!sAssetManager);
-    LD_ASSERT(!(info.registry && info.rootPath.empty()));
+    LD_ASSERT(!(info.env.registry && info.env.rootPath.empty()));
 
     sAssetManager = heap_new<AssetManagerObj>(MEMORY_USAGE_ASSET, info);
 
@@ -385,16 +400,16 @@ AssetManager AssetManager::get()
 
 AssetRegistry AssetManager::get_asset_registry()
 {
-    return mObj->registry;
+    return mObj->env.registry;
 }
 
 AssetRegistry AssetManager::swap_asset_registry(AssetRegistry registry, const FS::Path& rootPath)
 {
-    AssetRegistry oldReg = mObj->registry;
+    AssetRegistry oldReg = mObj->env.registry;
 
     mObj->unload_all_assets();
-    mObj->registry = registry;
-    mObj->rootPath = rootPath;
+    mObj->env.registry = registry;
+    mObj->env.rootPath = rootPath;
 
     // Manager does not own the Registry,
     // caller need to destroy the registry later.
@@ -426,7 +441,7 @@ void AssetManager::load_all_assets()
 
 void AssetManager::load_asset(AssetID id)
 {
-    mObj->load_asset(mObj->get_entry(id));
+    mObj->load_asset(mObj->env.get_entry(id));
 }
 
 void AssetManager::begin_load_batch()
@@ -434,7 +449,7 @@ void AssetManager::begin_load_batch()
     mObj->begin_load_batch();
 }
 
-bool AssetManager::end_load_batch(Vector<std::string>& outErrors)
+bool AssetManager::end_load_batch(Vector<AssetLoadStatus>& outErrors)
 {
     return mObj->end_load_batch(outErrors);
 }
@@ -479,19 +494,43 @@ Asset AssetManager::get_asset(const char* name, AssetType type)
     return asset;
 }
 
-Asset AssetManager::reserve_asset(AssetType type)
+Asset AssetManager::alloc_reserved_asset(SUIDRegistry idReg, AssetType type, const std::string& path)
 {
-    AssetObj* obj = mObj->allocate_asset(type, SUID(0), nullptr);
+    // NOTE: this ID is not registered in AssetRegistry until successful resolve
+    SUID reservedID = idReg.get_suid(SERIAL_TYPE_ASSET);
+
+    AssetObj* obj = mObj->allocate_asset(type, reservedID, path, true);
 
     return Asset(obj);
 }
 
-AssetEntry AssetManager::resolve_asset(SUIDRegistry idReg, Asset asset, const std::string& uri)
+void AssetManager::free_reserved_asset(SUIDRegistry idReg, Asset reservedAsset)
 {
-    if (!asset || !mObj->registry)
+    AssetObj* obj = reservedAsset.unwrap();
+    LD_ASSERT(obj && obj->isReserved); // this is a valid asset already
+
+    idReg.free_suid(obj->id);
+
+    mObj->free_asset(reservedAsset.unwrap());
+}
+
+AssetEntry AssetManager::resolve_asset(SUIDRegistry idReg, Asset reservedAsset)
+{
+    if (!reservedAsset || !mObj->env.registry)
         return {};
 
-    return mObj->registry.register_asset(idReg, asset.get_type(), uri);
+    LD_ASSERT(reservedAsset.unwrap()->isReserved);
+
+    AssetEntry entry = mObj->env.registry.register_asset_with_id(idReg, reservedAsset.get_id(), reservedAsset.get_type(), reservedAsset.get_path());
+
+    if (entry) // successfully resolved, the Asset handle could be used normally.
+    {
+        AssetObj* obj = reservedAsset.unwrap();
+        obj->isReserved = false;
+        mObj->register_asset(obj);
+    }
+
+    return entry;
 }
 
 } // namespace LD

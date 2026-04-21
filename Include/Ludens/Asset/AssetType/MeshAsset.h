@@ -11,7 +11,7 @@ namespace LD {
 struct MeshAsset : Asset
 {
     /// @brief get mesh binary data
-    struct ModelBinary* data();
+    class ModelBinary* data();
 
     /// @brief Unload asset from RAM. The handle becomes null afterwards.
     void unload();
