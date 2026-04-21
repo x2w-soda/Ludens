@@ -18,12 +18,12 @@ void UITextData::clear_value()
     mSpans.clear();
 }
 
-void UITextData::set_value(const std::string& newValue)
+void UITextData::set_value(const std::string& newValue, Color* color)
 {
     mValue = newValue;
 
     mSpans.resize(1);
-    mSpans[0].text.fgColor = 0xFFFFFFFF;
+    mSpans[0].text.fgColor = color ? *color : Color(0xFFFFFFFF);
     mSpans[0].text.range = Range(0, mValue.size());
 }
 
@@ -195,11 +195,8 @@ void UITextWidgetObj::on_draw(UIWidgetObj* obj, ScreenRenderComponent renderer)
     if (data.bgColor.get_alpha() > 0.0f)
         renderer.draw_rect(rect, data.bgColor);
 
-    if (data.mSpans.empty())
-    {
-        LD_DEBUG_BREAK; // are u sure?
+    if (data.mValue.empty() || data.mSpans.empty())
         return;
-    }
 
     Vec2 pos = rect.get_pos();
 

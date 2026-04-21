@@ -160,7 +160,7 @@ void main()
         vec2 q = abs(p) - halfExtent + vec2(borderRadius); // relative to inner rect
         dist = length(max(q, 0.0)) + min(max(q.x, q.y), 0.0) - borderRadius;
         delta = fwidth(dist);
-        color.a = 1.0 - smoothstep(-delta, delta, dist);
+        color.a *= 1.0 - smoothstep(-delta, delta, dist);
         break;
     }
 

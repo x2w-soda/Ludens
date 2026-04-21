@@ -42,6 +42,7 @@ struct Sprite2DDrawObj
     }
 };
 
+#if 0
 /// @brief High level intent to draw a mesh, iterated.
 struct MeshDataObj
 {
@@ -55,5 +56,6 @@ struct MeshDrawObj
     RUID id = 0;
     MeshData data{};
 };
+#endif
 
 } // namespace LD

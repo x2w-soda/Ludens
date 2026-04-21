@@ -93,12 +93,12 @@ ProjectLoadState ProjectLoadAsync::update()
 
     if (mObj->status == PROJECT_LOAD_STATE_LOADING_SCENE)
     {
-        Vector<std::string> errors;
+        Vector<AssetLoadStatus> errors;
         if (!AM.end_load_batch(errors))
         {
             sLog.warn("AssetManager failed to load some assets, {} errors", errors.size());
-            for (const std::string& err : errors)
-                sLog.warn("{}", err);
+            for (const AssetLoadStatus& err : errors)
+                sLog.warn("{}", err.str);
         }
 
         Vector<FS::Path> scenePaths = mObj->projectCtx->scene_schema_abs_paths();

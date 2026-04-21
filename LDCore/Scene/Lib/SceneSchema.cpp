@@ -30,9 +30,9 @@ public:
     static bool save_audio_source_component(SceneSchemaSaver& saver, ComponentView comp);
     static bool save_camera_component(SceneSchemaSaver& saver, ComponentView comp);
     static bool save_camera_2d_component(SceneSchemaSaver& saver, ComponentView comp);
-    static bool save_mesh_component(SceneSchemaSaver& saver, ComponentView comp);
+    //static bool save_mesh_component(SceneSchemaSaver& saver, ComponentView comp);
     static bool save_sprite_2d_component(SceneSchemaSaver& saver, ComponentView comp);
-    static bool save_screen_ui_component(SceneSchemaSaver& saver, ComponentView comp);
+    //static bool save_screen_ui_component(SceneSchemaSaver& saver, ComponentView comp);
 
 private:
     static void save_component(SceneSchemaSaver& saver, ComponentView comp);
@@ -58,9 +58,9 @@ public:
     static ComponentView load_audio_source_component(SceneSchemaLoader& loader, SUID compSUID, const char* compName);
     static ComponentView load_camera_component(SceneSchemaLoader& loader, SUID compSUID, const char* compName);
     static ComponentView load_camera_2d_component(SceneSchemaLoader& loader, SUID compSUID, const char* compName);
-    static ComponentView load_mesh_component(SceneSchemaLoader& loader, SUID compSUID, const char* compName);
+    //static ComponentView load_mesh_component(SceneSchemaLoader& loader, SUID compSUID, const char* compName);
     static ComponentView load_sprite_2d_component(SceneSchemaLoader& loader, SUID compSUID, const char* compName);
-    static ComponentView load_screen_ui_component(SceneSchemaLoader& loader, SUID compSUID, const char* compName);
+    //static ComponentView load_screen_ui_component(SceneSchemaLoader& loader, SUID compSUID, const char* compName);
 
 private:
     static ComponentView load_component(SceneSchemaLoader& loader, std::string& err);
@@ -85,9 +85,9 @@ struct
     {COMPONENT_TYPE_TRANSFORM_2D,   "Transform2D", nullptr,                                           nullptr},
     {COMPONENT_TYPE_CAMERA,         "Camera",      &SceneSchemaLoader::load_camera_component,         &SceneSchemaSaver::save_camera_component},
     {COMPONENT_TYPE_CAMERA_2D,      "Camera2D",    &SceneSchemaLoader::load_camera_2d_component,      &SceneSchemaSaver::save_camera_2d_component},
-    {COMPONENT_TYPE_MESH,           "Mesh",        &SceneSchemaLoader::load_mesh_component,           &SceneSchemaSaver::save_mesh_component},
+    {COMPONENT_TYPE_MESH,           "Mesh",        nullptr,                                           nullptr},
     {COMPONENT_TYPE_SPRITE_2D,      "Sprite2D",    &SceneSchemaLoader::load_sprite_2d_component,      &SceneSchemaSaver::save_sprite_2d_component},
-    {COMPONENT_TYPE_SCREEN_UI,      "ScreenUI",    &SceneSchemaLoader::load_screen_ui_component,      &SceneSchemaSaver::save_screen_ui_component},
+    {COMPONENT_TYPE_SCREEN_UI,      "ScreenUI",    nullptr,                                           nullptr},
 };
 // clang-format on
 
@@ -278,6 +278,7 @@ ComponentView SceneSchemaLoader::load_camera_2d_component(SceneSchemaLoader& loa
     return ComponentView(camera.data());
 }
 
+#if 0
 ComponentView SceneSchemaLoader::load_mesh_component(SceneSchemaLoader& loader, SUID compSUID, const char* compName)
 {
     Scene scene = loader.mScene;
@@ -304,6 +305,7 @@ ComponentView SceneSchemaLoader::load_mesh_component(SceneSchemaLoader& loader, 
 
     return ComponentView(mesh.data());
 }
+#endif
 
 ComponentView SceneSchemaLoader::load_sprite_2d_component(SceneSchemaLoader& loader, SUID compSUID, const char* compName)
 {
@@ -347,6 +349,7 @@ ComponentView SceneSchemaLoader::load_sprite_2d_component(SceneSchemaLoader& loa
     return ComponentView(sprite.data());
 }
 
+#if 0
 ComponentView SceneSchemaLoader::load_screen_ui_component(SceneSchemaLoader& loader, SUID compSUID, const char* compName)
 {
     Scene scene = loader.mScene;
@@ -364,6 +367,7 @@ ComponentView SceneSchemaLoader::load_screen_ui_component(SceneSchemaLoader& loa
 
     return ComponentView(ui.data());
 }
+#endif
 
 SceneSchemaSaver::~SceneSchemaSaver()
 {
@@ -507,6 +511,7 @@ bool SceneSchemaSaver::save_camera_2d_component(SceneSchemaSaver& saver, Compone
     return true;
 }
 
+#if 0
 bool SceneSchemaSaver::save_mesh_component(SceneSchemaSaver& saver, ComponentView comp)
 {
     LD_ASSERT(saver.mScene && saver.mWriter && comp);
@@ -523,6 +528,7 @@ bool SceneSchemaSaver::save_mesh_component(SceneSchemaSaver& saver, ComponentVie
 
     return true;
 }
+#endif
 
 bool SceneSchemaSaver::save_sprite_2d_component(SceneSchemaSaver& saver, ComponentView comp)
 {
@@ -547,6 +553,7 @@ bool SceneSchemaSaver::save_sprite_2d_component(SceneSchemaSaver& saver, Compone
     return true;
 }
 
+#if 0
 bool SceneSchemaSaver::save_screen_ui_component(SceneSchemaSaver& saver, ComponentView comp)
 {
     LD_ASSERT(saver.mScene && saver.mWriter && comp);
@@ -560,6 +567,7 @@ bool SceneSchemaSaver::save_screen_ui_component(SceneSchemaSaver& saver, Compone
 
     return true;
 }
+#endif
 
 void SceneSchemaSaver::save_component(SceneSchemaSaver& saver, ComponentView root)
 {

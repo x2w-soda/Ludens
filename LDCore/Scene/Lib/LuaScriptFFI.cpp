@@ -53,10 +53,9 @@ static_assert(offsetof(Transform2D, position) == 0);
 static_assert(offsetof(Transform2D, scale) == 8);
 static_assert(offsetof(Transform2D, rotation) == 16);
 
-static_assert(offsetof(AssetObj, name) == 0);
+static_assert(offsetof(AssetObj, type) == 0);
+static_assert(offsetof(AssetObj, id) == 4);
 static_assert(offsetof(AssetObj, manager) == 8);
-static_assert(offsetof(AssetObj, id) == 16);
-static_assert(offsetof(AssetObj, type) == 20);
 
 static_assert(alignof(AudioSourceComponent) == 8);
 static_assert(offsetof(AudioSourceComponent, playback) == 8);
@@ -124,10 +123,9 @@ typedef struct __attribute__((aligned(4))) Transform2D {
 } Transform2D;
 
 typedef struct __attribute__((aligned(8))) AssetObj {
-    const char* __private_name;
-    void* __private_asset_manager;
-    uint32_t id;
     uint32_t __private_type;
+    uint32_t id;
+    void* __private_asset_manager;
 } AssetObj;
 
 void* ffi_get_parent_id(void* compID);

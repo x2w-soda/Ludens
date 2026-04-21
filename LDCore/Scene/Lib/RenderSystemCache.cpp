@@ -14,7 +14,6 @@ void RenderSystemCache::create(RenderSystem system)
     mSystem = system;
     mDrawToCuid.clear();
     mCuidToDraw.clear();
-    mMeshData.clear();
     mImage2D.clear();
     mSuidToScreenLayer.clear();
     mScreenLayerToSuid.clear();
@@ -30,10 +29,6 @@ void RenderSystemCache::destroy()
     for (const auto& it : mImage2D)
         mSystem.destroy_image_2d(it.second);
     mImage2D.clear();
-
-    for (const auto& it : mMeshData)
-        mSystem.destroy_mesh_data(it.second);
-    mMeshData.clear();
 
     for (const auto& it : mSuidToScreenLayer)
         mSystem.destroy_screen_layer(it.second);
@@ -103,6 +98,7 @@ void RenderSystemCache::set_screen_layer_order(size_t count, RUID* layers)
     mSystem.set_screen_layer_order(count, layers);
 }
 
+#if 0
 MeshData RenderSystemCache::get_or_create_mesh_data(AssetID meshAUID)
 {
     if (mMeshData.contains(meshAUID))
@@ -149,6 +145,7 @@ void RenderSystemCache::destroy_mesh_draw(MeshDraw draw)
 
     mSystem.destroy_mesh_draw(draw);
 }
+#endif
 
 Image2D RenderSystemCache::get_or_create_image_2d(AssetID textureID)
 {

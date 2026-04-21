@@ -7,6 +7,7 @@
 
 namespace LD {
 
+#if 0
 static UIWindow create_window_container(SceneObj* scene)
 {
     UILayoutInfo layoutI{};
@@ -170,5 +171,35 @@ AssetID ScreenUIView::get_ui_template_asset()
 {
     return mUI->uiTemplateID;
 }
+#else
+void init_screen_ui_component(ComponentBase** dstData)
+{
+    LD_UNREACHABLE;
+}
+bool load_screen_ui_component(SceneObj* scene, ScreenUIComponent* ui, AssetID uiTemplateID, std::string& err)
+{
+    return false;
+}
+bool clone_screen_ui_component(SceneObj* scene, ComponentBase** dstData, ComponentBase** srcData, std::string& err)
+{
+    return false;
+}
+bool unload_screen_ui_component(SceneObj* scene, ComponentBase** data, std::string& err)
+{
+    return false;
+}
+bool startup_screen_ui_component(SceneObj* scene, ComponentBase** data, std::string& err)
+{
+    return false;
+}
 
+bool cleanup_screen_ui_component(SceneObj* scene, ComponentBase** data, std::string& err)
+{
+    return false;
+}
+AssetID ScreenUIView::get_ui_template_asset()
+{
+    return 0;
+}
+#endif
 } // namespace LD

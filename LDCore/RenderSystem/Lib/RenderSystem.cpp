@@ -79,6 +79,7 @@ RUID Sprite2DDraw::get_layer_id()
     return mObj->layer->get_id();
 }
 
+#if 0
 bool MeshDraw::set_mesh_asset(MeshData data)
 {
     if (!data)
@@ -94,6 +95,7 @@ bool MeshDraw::set_mesh_asset(MeshData data)
 
     return true;
 }
+#endif
 
 /// @brief Render system implementation.
 class RenderSystemObj
@@ -245,8 +247,6 @@ private:
     Vector<ScreenLayerObj*> mLayers;
     HashMap<RUID, RImage> mImages;
     HashMap<RUID, MeshDrawObj*> mMeshDraw; /// Mesh draw info
-    PoolAllocator mMeshDataPA{};
-    PoolAllocator mMeshDrawPA{};
 };
 
 RenderSystemObj::RenderSystemObj(const RenderSystemInfo& systemI)
@@ -330,21 +330,6 @@ RenderSystemObj::RenderSystemObj(const RenderSystemInfo& systemI)
         RSetImageUpdateInfo imageUpdateI = RUtil::make_single_set_image_update_info(frame.frameSet, 1, RBINDING_TYPE_COMBINED_IMAGE_SAMPLER, &layout, &mWhiteCubemap);
         mDevice.update_set_images(1, &imageUpdateI);
     }
-
-    //
-    // User created resources
-    //
-
-    PoolAllocatorInfo paI{};
-    paI.usage = MEMORY_USAGE_RENDER;
-    paI.isMultiPage = true;
-    paI.blockSize = sizeof(MeshDrawObj);
-    paI.pageSize = 32;
-    mMeshDrawPA = PoolAllocator::create(paI);
-
-    paI.blockSize = sizeof(MeshDataObj);
-    paI.pageSize = 16;
-    mMeshDataPA = PoolAllocator::create(paI);
 }
 
 RenderSystemObj::~RenderSystemObj()
@@ -352,22 +337,6 @@ RenderSystemObj::~RenderSystemObj()
     LD_PROFILE_SCOPE;
 
     mDevice.wait_idle();
-
-    for (auto it = mMeshDataPA.begin(); it; ++it)
-    {
-        auto* data = (MeshDataObj*)it.data();
-        data->id = 0;
-        data->~MeshDataObj();
-    }
-    PoolAllocator::destroy(mMeshDataPA);
-
-    for (auto it = mMeshDrawPA.begin(); it; ++it)
-    {
-        auto* draw = (MeshDrawObj*)it.data();
-        draw->id = 0;
-        draw->~MeshDrawObj();
-    }
-    PoolAllocator::destroy(mMeshDrawPA);
 
     RGraph::release(mDevice);
 
@@ -833,6 +802,7 @@ void RenderSystemObj::destroy_image_2d(RImage image)
     mDevice.destroy_image(image);
 }
 
+#if 0
 RImage RenderSystemObj::create_image_cube(Bitmap cubemapFaces)
 {
     RSamplerInfo cubemapSamplerI{};
@@ -936,6 +906,7 @@ void RenderSystemObj::destroy_mesh_draw(MeshDrawObj* draw)
     mMeshDrawPA.free(draw);
     mMeshDraw.erase(drawID);
 }
+#endif
 
 Sprite2DDrawObj* RenderSystemObj::create_sprite_2d_draw(RImage image, RUID layerID)
 {
@@ -969,6 +940,7 @@ void RenderSystemObj::WorldPass::forward_rendering(ForwardRenderComponent render
     if (!self.mHasAcquiredRootWindowImage || self.mWorldPass.worldVPIndex < 0)
         return;
 
+#if 0
     renderer.set_mesh_pipeline(meshPipeline);
 
     // render Color and 16-bit ID
@@ -1020,6 +992,7 @@ void RenderSystemObj::WorldPass::forward_rendering(ForwardRenderComponent render
             renderer.draw_mesh(data->mesh);
         }
     }
+#endif
 
     renderer.draw_skybox();
 }
@@ -1259,6 +1232,7 @@ void RenderSystem::destroy_image_2d(Image2D image)
     mObj->destroy_image_2d(RImage(image.unwrap()));
 }
 
+#if 0
 ImageCube RenderSystem::create_image_cube(Bitmap cubemapFaces)
 {
     if (!cubemapFaces)
@@ -1275,6 +1249,7 @@ void RenderSystem::destroy_image_cube(ImageCube image)
 
     mObj->destroy_image_cube(RImage(image.unwrap()));
 }
+#endif
 
 RUID RenderSystem::create_screen_layer(const std::string& name)
 {
@@ -1349,6 +1324,7 @@ void RenderSystem::destroy_sprite_2d_draw(Sprite2DDraw draw)
     mObj->destroy_sprite_2d_draw(draw.unwrap());
 }
 
+#if 0
 MeshData RenderSystem::create_mesh_data(ModelBinary& binary)
 {
     MeshDataObj* obj = mObj->create_mesh_data(binary);
@@ -1390,5 +1366,6 @@ void RenderSystem::destroy_mesh_draw(MeshDraw draw)
 
     mObj->destroy_mesh_draw(draw.unwrap());
 }
+#endif
 
 } // namespace LD

@@ -2,6 +2,8 @@
 
 #include <Ludens/Asset/AssetManager.h>
 #include <Ludens/DataRegistry/DataRegistry.h>
+#include <Ludens/RenderBackend/RUID.h>
+#include <Ludens/Serial/SUID.h>
 
 namespace LD {
 

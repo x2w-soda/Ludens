@@ -4,6 +4,7 @@
 #include "MeshComponent.h"
 
 namespace LD {
+#if 0
 
 void init_mesh_component(ComponentBase** dstData)
 {
@@ -100,5 +101,22 @@ AssetID MeshView::get_mesh_asset()
 {
     return mMesh->assetID;
 }
-
+#else
+void init_mesh_component(ComponentBase** dstData)
+{
+    LD_UNREACHABLE;
+}
+bool load_mesh_component(SceneObj* scene, MeshComponent* mesh, AssetID meshAID, std::string& err)
+{
+    return false;
+}
+bool clone_mesh_component(SceneObj* scene, ComponentBase** dstData, ComponentBase** srcData, std::string& err)
+{
+    return false;
+}
+bool unload_mesh_component(SceneObj* scene, ComponentBase** data, std::string& err)
+{
+    return false;
+}
+#endif
 } // namespace LD

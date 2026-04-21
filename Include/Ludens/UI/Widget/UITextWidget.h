@@ -29,7 +29,7 @@ public:
     float fontSize = UIFont::base_size(); /// rendered font size
 
     void clear_value();
-    void set_value(const std::string& newValue);
+    void set_value(const std::string& newValue, Color* color = nullptr);
     void set_value(const std::string& newValue, const Vector<UITextSpan>& newSpans);
     void set_fg_color(Color fgColor);
     void set_span_on_event(UISpanOnEvent onEvent, void* user);

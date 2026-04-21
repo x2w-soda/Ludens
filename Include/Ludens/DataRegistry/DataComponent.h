@@ -95,7 +95,7 @@ struct MeshComponent
 {
     ComponentBase* base;
     TransformEx* transform; /// mesh transform
-    MeshDraw draw;          /// render server draw config
+    void* draw;             /// render server draw config
     AssetID assetID;        /// mesh asset id
 };
 

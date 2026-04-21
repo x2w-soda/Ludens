@@ -47,6 +47,7 @@ struct Sprite2DDraw : IDHandle<Sprite2DDrawObj, RUID>
     RUID get_layer_id();
 };
 
+#if 0
 struct MeshData : IDHandle<MeshDataObj, RUID>
 {
     MeshData() = default;
@@ -62,6 +63,7 @@ struct MeshDraw : IDHandle<MeshDrawObj, RUID>
 
     bool set_mesh_asset(MeshData data);
 };
+#endif
 
 /// @brief Render system creation info
 struct RenderSystemInfo
@@ -194,8 +196,10 @@ struct RenderSystem : Handle<class RenderSystemObj>
     Image2D create_image_2d(Bitmap bitmap);
     void destroy_image_2d(Image2D image);
 
+#if 0
     ImageCube create_image_cube(Bitmap cubemapFaces);
     void destroy_image_cube(ImageCube image);
+#endif
 
     RUID create_screen_layer(const std::string& name);
     void destroy_screen_layer(RUID layer);
@@ -207,13 +211,6 @@ struct RenderSystem : Handle<class RenderSystemObj>
     Sprite2DDraw create_sprite_2d_draw(Image2D image2D, RUID layer);
     Sprite2DDraw migrate_sprite_2d_draw(Sprite2DDraw draw, RUID newLayer);
     void destroy_sprite_2d_draw(Sprite2DDraw draw);
-
-    MeshData create_mesh_data(ModelBinary& binary);
-    void destroy_mesh_data(MeshData data);
-
-    MeshDraw create_mesh_draw();
-    MeshDraw create_mesh_draw(MeshData data);
-    void destroy_mesh_draw(MeshDraw draw);
 };
 
 } // namespace LD

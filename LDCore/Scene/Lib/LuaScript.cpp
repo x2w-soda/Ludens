@@ -1,3 +1,4 @@
+#include <Ludens/Asset/AssetType/LuaScriptAsset.h>
 #include <Ludens/DSA/Array.h>
 #include <Ludens/DataRegistry/DataComponent.h>
 #include <Ludens/Log/Log.h>
@@ -779,10 +780,11 @@ bool Context::create_lua_script(CUID compID, AssetID scriptAssetID, std::string&
     LuaScriptAsset asset = (LuaScriptAsset)AssetManager::get().get_asset(scriptAssetID, ASSET_TYPE_LUA_SCRIPT);
     LD_ASSERT(asset);
 
-    const char* luaSource = asset.get_source();
+    View luaSourceV = asset.get_source();
+    std::string luaSource(luaSourceV.data, luaSourceV.size);
 
     // this should push the script instance table onto stack
-    if (!mL.do_string(luaSource))
+    if (!mL.do_string(luaSource.c_str()))
     {
         err = mL.to_string(-1);
         mL.resize(oldSize);

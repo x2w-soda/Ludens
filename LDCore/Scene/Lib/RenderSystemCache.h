@@ -34,9 +34,11 @@ public:
     void set_screen_layer_name(RUID layerRUID, const std::string& name);
     void set_screen_layer_order(size_t count, RUID* layers);
 
+#if 0
     MeshData get_or_create_mesh_data(AssetID meshAUID);
     MeshDraw create_mesh_draw(CUID compID, AssetID meshID = 0);
     void destroy_mesh_draw(MeshDraw draw);
+#endif
 
     Image2D get_or_create_image_2d(AssetID textureAUID);
 
@@ -54,7 +56,6 @@ private:
     HashMap<RUID, CUID> mDrawToCuid;        /// map RenderSystem draw ID to component
     HashMap<SUID, RUID> mSuidToScreenLayer; /// map screen layer SUID to RUID
     HashMap<RUID, SUID> mScreenLayerToSuid; /// map screen layer RUID to SUID
-    HashMap<AssetID, MeshData> mMeshData;
     HashMap<AssetID, Image2D> mImage2D;
 };
 
