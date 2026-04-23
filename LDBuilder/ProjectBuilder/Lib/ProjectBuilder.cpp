@@ -167,14 +167,15 @@ bool ProjectBuildAsyncObj::load_asset_schema(const FS::Path& srcAssetSchema, Pro
 bool ProjectBuildAsyncObj::configure_dst_project_schema(ProjectBuildStatus& err)
 {
     Project project = projectCtx.project();
-    const FS::Path dstSceneDirectory("Scenes");
-    const FS::Path srcRootDirectory = project.get_root_path();
+    const FS::Path srcRootDirAbsPath = project.get_root_dir_abs_path();
+    const FS::Path dstRootDirAbsPath = FS::absolute(config.dstRootDirectory);
+    const FS::Path dstStorageDirAbsPath = FS::absolute(dstRootDirAbsPath / project.get_storage_dir_rel_path());
 
-    Vector<ProjectSceneEntry> scenes;
+    Vector<SUIDEntry> scenes;
     project.get_scenes(scenes);
     copySceneSchemaJobs.resize(scenes.size());
 
-    if (!FS::create_directories(config.dstRootDirectory / dstSceneDirectory, err.str))
+    if (!FS::create_directories(dstStorageDirAbsPath, err.str))
     {
         err.type = PROJECT_BUILD_ERROR_IO;
         return false;
@@ -183,16 +184,14 @@ bool ProjectBuildAsyncObj::configure_dst_project_schema(ProjectBuildStatus& err)
     // flatten scenes in build dst directory
     for (size_t i = 0; i < scenes.size(); i++)
     {
-        const ProjectSceneEntry& entry = scenes[i];
-        const FS::Path& srcScenePath = entry.path;
-        FS::Path dstScenePath = dstSceneDirectory / srcScenePath.filename();
+        const SUIDEntry& entry = scenes[i];
+        FS::Path relPath;
+        (void)project.get_scene_schema_rel_path(entry.id, relPath);
 
         // absolute paths for copy job
         copySceneSchemaJobs[i] = heap_new<CopyFileJob>(MEMORY_USAGE_MISC);
-        copySceneSchemaJobs[i]->srcPath = srcRootDirectory / srcScenePath;
-        copySceneSchemaJobs[i]->dstPath = config.dstRootDirectory / dstScenePath;
-
-        project.set_scene_schema_path(entry.id, dstScenePath);
+        copySceneSchemaJobs[i]->srcPath = srcRootDirAbsPath / relPath;
+        copySceneSchemaJobs[i]->dstPath = dstRootDirAbsPath / relPath;
     }
 
     if (!ProjectSchema::save_project_to_string(project, dstProjectSchemaTOML, err.str))
@@ -208,7 +207,7 @@ bool ProjectBuildAsyncObj::configure_dst_asset_schema(ProjectBuildStatus& err)
 {
     Project project = projectCtx.project();
     const FS::Path dstAssetDirectory("Assets");
-    const FS::Path srcRootDirectory = project.get_root_path();
+    const FS::Path srcRootDirectory = project.get_root_dir_abs_path();
 
     // temporary AssetRegistry that we can patch safely.
     AssetRegistry assetRegistry = projectCtx.asset_registry();
@@ -227,10 +226,10 @@ bool ProjectBuildAsyncObj::configure_dst_asset_schema(ProjectBuildStatus& err)
     // flatten assets in build dst directory, copy files over
     for (AssetEntry entry : assets)
     {
-        keys = entry.get_path_keys();
+        keys = entry.get_file_path_keys();
         for (const std::string& key : keys)
         {
-            FS::Path srcAssetPath = FS::Path(entry.get_path(key));
+            FS::Path srcAssetPath = FS::Path(entry.get_file_path(key));
             FS::Path dstAssetPath = dstAssetDirectory / srcAssetPath.filename();
 
             CopyFileJob* job = heap_new<CopyFileJob>(MEMORY_USAGE_MISC);
@@ -238,7 +237,7 @@ bool ProjectBuildAsyncObj::configure_dst_asset_schema(ProjectBuildStatus& err)
             job->dstPath = config.dstRootDirectory / dstAssetPath;
             copyAssetJobs.push_back(job);
 
-            entry.set_path(key, dstAssetPath.string());
+            entry.set_file_path(key, dstAssetPath.string());
         }
     }
 
@@ -272,7 +271,7 @@ bool ProjectBuildAsyncObj::begin(const ProjectBuildConfig& cfg, ProjectBuildStat
     const FS::Path srcProjectSchemaPath = projectCtx.project_schema_abs_path();
     const FS::Path dstProjectSchemaPath = config.dstRootDirectory / FS::Path("project.toml");
     const FS::Path srcAssetSchemaPath = projectCtx.asset_schema_abs_path();
-    const FS::Path dstAssetSchemaPath = config.dstRootDirectory / projectCtx.project().get_asset_schema_path();
+    const FS::Path dstAssetSchemaPath = config.dstRootDirectory / projectCtx.project().get_asset_schema_rel_path();
 
     if (!load_asset_schema(srcAssetSchemaPath, err))
         return false;
@@ -317,6 +316,9 @@ void ProjectBuildResult::reset()
 
 ProjectBuildAsync ProjectBuildAsync::create()
 {
+    // TODO:
+    LD_UNREACHABLE;
+
     auto* obj = heap_new<ProjectBuildAsyncObj>(MEMORY_USAGE_MISC);
 
     return ProjectBuildAsync(obj);

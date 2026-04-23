@@ -29,7 +29,6 @@ namespace LD {
 static void print_help(const char* argv0);
 static int find_argi(int argc, char** argv, const char* match);
 static char** find_mode_argv(int* argc, char** argv, const char* match);
-static void builder_mode_import(int argc, char** argv);
 static void builder_mode_render(int argc, char** argv);
 static void builder_mode_file(int argc, char** argv);
 static void builder_mode_run_tests(int argc, char** argv);
@@ -40,7 +39,6 @@ static Log sLog("LDBuilder");
 enum BuilderMode
 {
     BUILDER_MODE_ERROR = 0,
-    BUILDER_MODE_IMPORT,
     BUILDER_MODE_RENDER,
     BUILDER_MODE_FILE,
     BUILDER_MODE_RUN_TESTS,
@@ -87,12 +85,7 @@ BuilderArgs::BuilderArgs(int argc, char** argv)
         // first positional argument decides builder mode.
         if (optIndex < 0 && ((ArgResult)optIndex == ARG_RESULT_POSITIONAL))
         {
-            if (!strcmp(optPayload, "import"))
-            {
-                mMode = BUILDER_MODE_IMPORT;
-                break;
-            }
-            else if (!strcmp(optPayload, "render"))
+            if (!strcmp(optPayload, "render"))
             {
                 mMode = BUILDER_MODE_RENDER;
                 break;
@@ -161,6 +154,7 @@ static char** find_mode_argv(int* argc, char** argv, const char* match)
     return argv + argi;
 }
 
+#if 0
 static void builder_mode_import(int argc, char** argv)
 {
     argv = find_mode_argv(&argc, argv, "import");
@@ -205,6 +199,7 @@ static void builder_mode_import(int argc, char** argv)
 
     AssetUtil::destroy(util);
 }
+#endif
 
 static void builder_mode_render(int argc, char** argv)
 {
@@ -393,9 +388,6 @@ int main(int argc, char** argv)
 
     switch (args.get_mode())
     {
-    case BUILDER_MODE_IMPORT:
-        builder_mode_import(argc, argv);
-        break;
     case BUILDER_MODE_RENDER:
         builder_mode_render(argc, argv);
         break;

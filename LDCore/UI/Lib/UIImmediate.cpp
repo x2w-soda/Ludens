@@ -213,6 +213,8 @@ UIWindowState* UIWorkspaceState::get_or_create_window_state(const char* windowNa
 
 void UIWorkspaceState::destroy_window_state(UIWindowState* windowS)
 {
+    space.destroy_window(windowS->window);
+
     heap_delete<UIWindowState>(windowS);
 }
 

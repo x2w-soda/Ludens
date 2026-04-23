@@ -49,16 +49,16 @@ bool RuntimeContextObj::startup(const RuntimeContextInfo& info, std::string err)
     ProjectSettings projectS = project.settings();
     ProjectStartupSettings startupS = projectS.startup_settings();
     ProjectScreenLayerSettings screenLayerS = projectS.screen_layer_settings();
-    ProjectSceneEntry startupScene;
-    if (!project.get_scene(startupS.get_default_scene_id(), startupScene))
+
+    FS::Path defaultSceneSchemaPath;
+    if (!project.get_default_scene_schema_abs_path(defaultSceneSchemaPath))
     {
         err = "failed to locate default scene in project";
         return false;
     }
 
     const std::string windowName = startupS.get_window_name();
-    const FS::Path rootPath = project.get_root_path();
-    const FS::Path defaultScenePath = rootPath / FS::Path(startupScene.path);
+    const FS::Path projectRootDir = project.get_root_dir_abs_path();
     const FS::Path assetSchemaPath = projectCtx.asset_schema_abs_path();
 
     if (!projectCtx.load_asset_schema(assetSchemaPath, err))
@@ -80,8 +80,8 @@ bool RuntimeContextObj::startup(const RuntimeContextInfo& info, std::string err)
     // load assets
     AssetManagerInfo amI{};
     amI.watchAssets = false;
-    amI.registry = projectCtx.asset_registry();
-    amI.rootPath = rootPath;
+    amI.env.registry = projectCtx.asset_registry();
+    amI.env.rootPath = projectRootDir;
     AssetManager AM = AssetManager::create(amI);
     AM.begin_load_batch();
     AM.load_all_assets();
@@ -95,12 +95,12 @@ bool RuntimeContextObj::startup(const RuntimeContextInfo& info, std::string err)
     }
 
     // this blocks until all worker threads finish loading
-    Vector<std::string> loadErrors;
+    Vector<AssetLoadStatus> loadErrors;
     if (!AM.end_load_batch(loadErrors))
     {
         sLog.error("AssetManager failed to load assets with {} errors", loadErrors.size());
-        for (const std::string& err : loadErrors)
-            sLog.error("{}", err);
+        for (const AssetLoadStatus& err : loadErrors)
+            sLog.error("{}", err.str);
 
         return false;
     }
@@ -141,7 +141,7 @@ bool RuntimeContextObj::startup(const RuntimeContextInfo& info, std::string err)
     scene.load([&](SceneObj* sceneObj) -> bool {
         // load default scene
         std::string err;
-        return SceneSchema::load_scene_from_file(Scene(sceneObj), projectCtx.suid_registry(), defaultScenePath, err);
+        return SceneSchema::load_scene_from_file(Scene(sceneObj), projectCtx.suid_registry(), defaultSceneSchemaPath, err);
     });
 
     // TODO: check scene load success

@@ -15,7 +15,7 @@ public:
     bool is_acquired();
 
 private:
-    std::atomic_bool mAudioThreadAcquired;
+    std::atomic_bool mAudioThreadAcquired = {};
 };
 
 struct AudioHandle : public Handle<AudioObject>

@@ -46,7 +46,7 @@ void AssetUtil::destroy(AssetUtil util)
 
     heap_delete<AssetUtilObj>(obj);
 }
-
+#if 0
 bool AssetUtil::import_blob(const FS::Path& sourcePath)
 {
     FS::Path savePath(sourcePath);
@@ -225,4 +225,5 @@ bool AssetUtil::import_lua_script(const FS::Path& sourcePath, LuaScriptDomain do
     return true;
 }
 
+#endif
 } // namespace LD

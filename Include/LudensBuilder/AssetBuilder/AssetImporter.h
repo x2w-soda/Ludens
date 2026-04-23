@@ -38,7 +38,7 @@ struct AssetImporter : Handle<struct AssetImporterObj>
     static void destroy(AssetImporter importer);
 
     /// @brief Use a SUID registry for resolving import.
-    void set_resolve_params(SUIDRegistry idReg, FS::Path projectRootDir);
+    void set_resolve_params(SUIDRegistry idReg, const FS::Path& projectStorageDirAbsPath);
 
     /// @brief Allocate import info for asset type.
     AssetImportInfo* allocate_import_info(AssetType type);

@@ -23,7 +23,8 @@ struct AssetImporterObj
     PoolAllocator importJobPA = {};          // pool allocator for import jobs
     PoolAllocator importInfoPA = {};         // pool allocator for import infos
     Vector<AssetImportJob*> importJobs = {}; // all jobs in a batch
-    FS::Path projectRootDir = {};
+    FS::Path projectStorageDirAbsPath = {};
+
     bool isBatchScope = false;
 
     Asset reserve_asset(AssetType type);
@@ -150,10 +151,10 @@ void AssetImporter::destroy(AssetImporter importer)
     heap_delete<AssetImporterObj>(obj);
 }
 
-void AssetImporter::set_resolve_params(SUIDRegistry idReg, FS::Path projectRootDir)
+void AssetImporter::set_resolve_params(SUIDRegistry idReg, const FS::Path& projectStorageDirAbsPath)
 {
     mObj->suidRegistry = idReg;
-    mObj->projectRootDir = projectRootDir;
+    mObj->projectStorageDirAbsPath = projectStorageDirAbsPath;
 }
 
 AssetImportInfo* AssetImporter::allocate_import_info(AssetType type)
@@ -190,7 +191,7 @@ void AssetImporter::import_batch_asset(AssetImportInfo* info)
     AssetImportJob* job = mObj->allocate_import_job(info->type);
     job->status = mObj->check_base_info(info);
     job->asset = mObj->reserve_asset(info->type);
-    job->assetDir = FS::absolute(mObj->projectRootDir / "storage" / job->asset.get_id().to_string());
+    job->assetDir = FS::absolute(mObj->projectStorageDirAbsPath / job->asset.get_id().to_string());
     job->info = info;
 
     mObj->importJobs.push_back(job);
@@ -243,7 +244,7 @@ AssetImportResult AssetImporter::import_asset_synchronous(AssetImportInfo* info)
     AssetImportJob* job = mObj->allocate_import_job(info->type);
     job->status = mObj->check_base_info(info);
     job->asset = mObj->reserve_asset(info->type);
-    job->assetDir = FS::absolute(mObj->projectRootDir / "storage" / job->asset.get_id().to_string());
+    job->assetDir = FS::absolute(mObj->projectStorageDirAbsPath / job->asset.get_id().to_string());
     job->info = info;
 
     AssetImportResult result{};

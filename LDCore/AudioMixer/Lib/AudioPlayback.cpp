@@ -35,6 +35,7 @@ void AudioPlayback::destroy(AudioPlayback playback)
     LD_ASSERT(!playback.is_acquired());
     auto* obj = (AudioPlaybackObj*)playback.unwrap();
 
+    obj->~AudioPlaybackObj();
     obj->playbackPA.free(obj);
 }
 
@@ -70,6 +71,8 @@ void AudioPlayback::Accessor::set_pan(float pan)
 
 AudioPlayback::Accessor AudioPlayback::access()
 {
+    LD_ASSERT(mObj->is_acquired());
+
     return Accessor((AudioPlaybackObj*)mObj);
 }
 

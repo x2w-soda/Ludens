@@ -83,14 +83,11 @@ AudioData AudioData::create_from_path(const FS::Path& path)
         return {};
 
     std::string err; // TODO:
-    uint64_t fileSize;
-    if (!FS::get_file_size(path, fileSize, err) || fileSize == 0)
+    Vector<byte> fileData;
+    if (!FS::read_file_to_vector(path, fileData, err))
         return {};
 
-    Vector<char> fileData(fileSize);
     std::string ext = path.extension().string();
-    if (!FS::read_file(path, MutView(fileData.data(), fileSize), err))
-        return {};
 
     AudioDataFormat format{};
     if (ext == ".wav")

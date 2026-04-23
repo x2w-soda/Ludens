@@ -3,6 +3,7 @@
 #include <Ludens/DSA/URI.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Memory/Allocator.h>
+#include <Ludens/Serial/SUIDTable.h>
 #include <Ludens/System/FileSystem.h>
 
 #include <format>
@@ -16,7 +17,6 @@ struct AssetRegistryObj;
 struct AssetEntryObj
 {
     AssetRegistryObj* registry = nullptr;        // backwards link
-    URI uri;                                     // virtual URI path to identify asset in project
     HashMap<std::string, std::string> filePaths; // physical relative paths to project root
     AssetType type;                              // asset type determines API
     SUID id;                                     // stable serial ID to identify the asset in project
@@ -33,6 +33,7 @@ public:
     AssetRegistryObj& operator=(const AssetRegistryObj&) = delete;
 
     AssetEntryObj* allocate_entry(AssetType type);
+    void free_entry(AssetEntryObj* entry);
     AssetEntryObj* get_entry(SUID id);
     AssetEntryObj* get_entry_by_path(const std::string& path);
     AssetEntryObj* get_entry_by_name(const std::string& name);
@@ -40,9 +41,13 @@ public:
     void get_all_entries(Vector<AssetEntry>& outEntries);
     AssetEntry register_asset(SUIDRegistry idReg, SUID id, AssetType type, const std::string& path);
     void unregister_asset(SUIDRegistry idReg, SUID id);
-    bool is_path_valid(const std::string& path, std::string& collidingPath);
-    bool is_rename_path_valid(const std::string& newPath, AssetEntryObj* self);
     bool set_path(SUID id, const std::string& newPath);
+
+    inline bool is_path_valid(const std::string& path, std::string& collidingPath) { return mTable.is_path_valid(path, collidingPath); }
+    inline bool is_path_rename_valid(SUID id, const std::string& newPath) { return mTable.is_path_rename_valid(id, newPath); }
+
+    std::string get_asset_name_by_id(SUID id);
+    std::string get_asset_path_by_id(SUID id);
 
 public:
     bool isDirty = false;
@@ -50,8 +55,7 @@ public:
 private:
     PoolAllocator mEntryPA;
     HashMap<SUID, AssetEntryObj*> mEntries;
-    HashMap<std::string, SUID> mPaths;
-    HashMap<std::string, SUID> mNames;
+    SUIDTable mTable;
 };
 
 AssetRegistryObj::AssetRegistryObj()
@@ -85,6 +89,15 @@ AssetEntryObj* AssetRegistryObj::allocate_entry(AssetType type)
     return entry;
 }
 
+void AssetRegistryObj::free_entry(AssetEntryObj* entry)
+{
+    entry->id = 0;
+    entry->registry = nullptr;
+
+    entry->~AssetEntryObj();
+    mEntryPA.free(entry);
+}
+
 AssetEntryObj* AssetRegistryObj::get_entry(SUID id)
 {
     auto it = mEntries.find(id);
@@ -97,24 +110,22 @@ AssetEntryObj* AssetRegistryObj::get_entry(SUID id)
 
 AssetEntryObj* AssetRegistryObj::get_entry_by_path(const std::string& uriPath)
 {
-    auto it = mPaths.find(uriPath);
-
-    if (it == mPaths.end())
+    SUID assetID = mTable.find_by_path(uriPath);
+    if (!assetID)
         return nullptr;
 
-    LD_ASSERT(mEntries.contains(it->second));
-    return mEntries[it->second];
+    LD_ASSERT(mEntries.contains(assetID));
+    return mEntries[assetID];
 }
 
 AssetEntryObj* AssetRegistryObj::get_entry_by_name(const std::string& name)
 {
-    auto it = mNames.find(name);
-
-    if (it == mNames.end())
+    SUID assetID = mTable.find_by_name(name);
+    if (!assetID)
         return nullptr;
 
-    LD_ASSERT(mEntries.contains(it->second));
-    return mEntries[it->second];
+    LD_ASSERT(mEntries.contains(assetID));
+    return mEntries[assetID];
 }
 
 void AssetRegistryObj::get_entries_by_type(Vector<AssetEntry>& outEntries, AssetType type)
@@ -143,13 +154,10 @@ void AssetRegistryObj::get_all_entries(Vector<AssetEntry>& outEntries)
 
 AssetEntry AssetRegistryObj::register_asset(SUIDRegistry idReg, SUID id, AssetType type, const std::string& path)
 {
-    if (mPaths.contains(path))
-        return {};
-
     URI uri(LD_ASSET_URI_SCHEME_AUTHORITY + path);
     std::string name = uri.stem_string();
 
-    if (mNames.contains(name))
+    if (mTable.find_by_path(path) || mTable.find_by_name(name))
         return {};
 
     if (id)
@@ -166,12 +174,10 @@ AssetEntry AssetRegistryObj::register_asset(SUIDRegistry idReg, SUID id, AssetTy
     }
 
     AssetEntryObj* entry = allocate_entry(type);
-    entry->uri = uri;
     entry->id = id;
 
+    mTable.register_id(id, path);
     mEntries[id] = entry;
-    mPaths[path] = id;
-    mNames[name] = id;
 
     return AssetEntry(entry);
 }
@@ -183,90 +189,35 @@ void AssetRegistryObj::unregister_asset(SUIDRegistry idReg, SUID id)
 
     AssetEntryObj* entry = mEntries[id];
 
-    mEntries.erase(id);
-
     idReg.free_suid(id);
-
-    std::string str = entry->uri.path_string();
-    LD_ASSERT(mPaths.contains(str));
-    mPaths.erase(str);
-
-    str = entry->uri.stem_string();
-    LD_ASSERT(mNames.contains(str));
-    mNames.erase(str);
-
-    entry->id = 0;
-    mEntryPA.free(entry);
-}
-
-bool AssetRegistryObj::is_path_valid(const std::string& path, std::string& collidingPath)
-{
-    std::string name = FS::Path(path).stem().string();
-
-    if (mPaths.contains(path))
-    {
-        collidingPath = path;
-        return false;
-    }
-
-    if (mNames.contains(name))
-    {
-        SUID assetID = mNames[name];
-        LD_ASSERT(mEntries.contains(assetID));
-
-        collidingPath = mEntries[assetID]->uri.path_string();
-        return false;
-    }
-
-    return true;
-}
-
-bool AssetRegistryObj::is_rename_path_valid(const std::string& newPath, AssetEntryObj* self)
-{
-    std::string oldPath = self->uri.path_string();
-    std::string oldName = self->uri.stem_string();
-    std::string newName = FS::Path(newPath).stem().string();
-
-    if (newPath == oldPath)
-        return true; // this could also be false depending on semantics...
-
-    if (mPaths.contains(newPath))
-        return false;
-
-    // if we change stem name, it must not collide with existing names.
-    if (newName != oldName && mNames.contains(newName))
-        return false;
-
-    return true;
+    mEntries.erase(id);
+    mTable.unregister_id(id);
+    free_entry(entry);
 }
 
 bool AssetRegistryObj::set_path(SUID id, const std::string& newPath)
 {
-    std::string str;
-    if (!mEntries.contains(id))
-        return false;
+    if (mTable.set_path(id, newPath))
+    {
+        isDirty = true;
+        return true;
+    }
 
-    AssetEntryObj* obj = mEntries[id];
-    if (!is_rename_path_valid(newPath, obj))
-        return false;
+    return false;
+}
 
-    str = obj->uri.path_string();
-    LD_ASSERT(mPaths.contains(str));
-    mPaths.erase(str);
+std::string AssetRegistryObj::get_asset_name_by_id(SUID id)
+{
+    std::string name;
+    (void)mTable.get_name(id, name);
+    return name;
+}
 
-    str = obj->uri.stem_string();
-    LD_ASSERT(mNames.contains(str));
-    mNames.erase(str);
-
-    obj->uri = URI(LD_ASSET_URI_SCHEME_AUTHORITY + newPath);
-    std::string newName = obj->uri.stem_string();
-
-    mPaths[newPath] = id;
-    mNames[newName] = id;
-
-    isDirty = true;
-
-    return true;
+std::string AssetRegistryObj::get_asset_path_by_id(SUID id)
+{
+    std::string path;
+    (void)mTable.get_path(id, path);
+    return path;
 }
 
 //
@@ -285,12 +236,12 @@ AssetType AssetEntry::get_type()
 
 std::string AssetEntry::get_name()
 {
-    return mObj->uri.stem_string();
+    return mObj->registry->get_asset_name_by_id(mObj->id);
 }
 
 std::string AssetEntry::get_path()
 {
-    return mObj->uri.path_string();
+    return mObj->registry->get_asset_path_by_id(mObj->id);
 }
 
 bool AssetEntry::set_path(const std::string& path)
