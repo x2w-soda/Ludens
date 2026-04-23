@@ -7,7 +7,7 @@
 #include "../AssetImportJob.h"
 
 namespace LD {
-
+#if 0
 void texture_cube_asset_import(void* user)
 {
     LD_PROFILE_SCOPE;
@@ -33,7 +33,7 @@ void texture_cube_asset_import(void* user)
         uint64_t fileSize;
         if (!FS::get_file_size(path, fileSize, job.status.str))
         {
-            job.status.type = ASSET_IMPORT_ERROR_SRC_PATH;
+            job.status.type = ASSET_IMPORT_ERROR_SRC_FILE;
             return;
         }
 
@@ -44,7 +44,7 @@ void texture_cube_asset_import(void* user)
         byte* fileData = serial.advance(fileSize);
         if (!FS::read_file(path, MutView((char*)fileData, fileSize), job.status.str))
         {
-            job.status.type = ASSET_IMPORT_ERROR_SRC_PATH;
+            job.status.type = ASSET_IMPORT_ERROR_SRC_FILE;
             return; // TODO: fix leaks
         }
 
@@ -63,5 +63,5 @@ void texture_cube_asset_import(void* user)
 
     job.write_to_dst_path(serialView);
 }
-
+#endif
 } // namespace LD

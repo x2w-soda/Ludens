@@ -7,7 +7,7 @@
 #include "../AssetImportJob.h"
 
 namespace LD {
-
+#if 0
 void mesh_asset_import(void* user)
 {
     LD_PROFILE_SCOPE;
@@ -32,7 +32,7 @@ void mesh_asset_import(void* user)
 
     ModelBinary::serialize(serializer, *obj->modelBinary);
 
-    job.write_to_dst_path(serializer.view());
+    job.write_to_dst_file(serializer.view());
 }
-
+#endif
 } // namespace LD

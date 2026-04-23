@@ -6,6 +6,9 @@
 #include <Ludens/Memory/Allocator.h>
 #include <LudensBuilder/AssetBuilder/AssetImporter.h>
 
+#include <cctype>
+#include <format>
+
 #include "AssetBuilderMeta.h"
 #include "AssetImportJob.h"
 
@@ -24,7 +27,7 @@ struct AssetImporterObj
     bool isBatchScope = false;
 
     Asset reserve_asset(AssetType type);
-    AssetImportStatus resolve_asset(Asset asset, const AssetImportInfo* info);
+    void resolve_asset(AssetImportJob* job);
     AssetImportInfo* allocate_import_info(AssetType type);
     void free_import_info(AssetImportInfo* asset);
     AssetImportJob* allocate_import_job(AssetType type);
@@ -38,51 +41,45 @@ Asset AssetImporterObj::reserve_asset(AssetType type)
     AssetManager AM = AssetManager::get();
     LD_ASSERT(AM);
 
-    return AM.reserve_asset(type);
+    return AM.alloc_reserved_asset(suidRegistry, type);
 }
 
 // NOTE: This is the last step that decides whether the import transaction succeeds.
 //       The import task succeeds iff the AssetRegistry (referenced by AssetManager)
 //       registers the imported asset as a new entry.
-AssetImportStatus AssetImporterObj::resolve_asset(Asset asset, const AssetImportInfo* info)
+void AssetImporterObj::resolve_asset(AssetImportJob* job)
 {
-    AssetImportStatus status{};
-    status.type = ASSET_IMPORT_SUCCESS;
+    LD_ASSERT(job->status);
 
     AssetManager AM = AssetManager::get();
-    AssetEntry entry = AM.resolve_asset(suidRegistry, asset, info->dstURI);
+    AssetEntry entry = AM.resolve_asset(suidRegistry, job->asset, job->info->dstPath);
 
     if (!entry)
     {
-        status.str = "failed to register asset in AssetRegistry";
-        status.type = ASSET_IMPORT_ERROR;
-        return status;
+        job->status.str = "failed to register asset in AssetRegistry";
+        job->status.type = ASSET_IMPORT_ERROR;
     }
-
-    entry.set_path("main", info->dstRelPath.string());
-
-    return status;
+    else
+    {
+        for (const auto& it : job->files)
+            entry.set_file_path(it.first, it.second.string());
+    }
 }
 
 AssetImportInfo* AssetImporterObj::allocate_import_info(AssetType type)
 {
-    AssetImportInfo* info = sBuilderMeta[(int)type].alloc_info();
-    info->type = type;
-    return info;
+    return sImportMeta[(int)type].allocInfo();
 }
 
 void AssetImporterObj::free_import_info(AssetImportInfo* info)
 {
-    sBuilderMeta[(int)info->type].free_info(info);
+    sImportMeta[(int)info->type].freeInfo(info);
 }
 
 AssetImportJob* AssetImporterObj::allocate_import_job(AssetType type)
 {
     AssetImportJob* job = (AssetImportJob*)importJobPA.allocate();
     new (job) AssetImportJob();
-
-    job->info = nullptr;
-    job->projectRootDir = projectRootDir;
 
     return job;
 }
@@ -112,25 +109,15 @@ AssetImportStatus AssetImporterObj::check_base_info(const AssetImportInfo* info)
     AssetManager AM = AssetManager::get();
     AssetRegistry registry = AM.get_asset_registry();
 
-    if (info->dstRelPath.empty())
+    if (info->dstPath.empty())
     {
         status.type = ASSET_IMPORT_ERROR_DST_PATH;
-        status.str = "destination path is empty";
+        status.str = "requested URI path is empty";
     }
-    else if (info->dstURI.empty())
-    {
-        status.type = ASSET_IMPORT_ERROR_DST_URI;
-        status.str = "requested URI is empty";
-    }
-    else if (FS::exists(info->dstRelPath))
+    else if (registry && registry.get_entry_by_path(info->dstPath))
     {
         status.type = ASSET_IMPORT_ERROR_DST_PATH;
-        status.str = "destination file already exists";
-    }
-    else if (registry && registry.get_entry_by_uri(info->dstURI))
-    {
-        status.type = ASSET_IMPORT_ERROR_DST_URI;
-        status.str = "URI already registered in project";
+        status.str = "URI path already registered in project";
     }
 
     return status;
@@ -203,6 +190,7 @@ void AssetImporter::import_batch_asset(AssetImportInfo* info)
     AssetImportJob* job = mObj->allocate_import_job(info->type);
     job->status = mObj->check_base_info(info);
     job->asset = mObj->reserve_asset(info->type);
+    job->assetDir = FS::absolute(mObj->projectRootDir / "storage" / job->asset.get_id().to_string());
     job->info = info;
 
     mObj->importJobs.push_back(job);
@@ -229,7 +217,7 @@ bool AssetImporter::import_asset_async(AssetImportResult& outResult)
             completedJob = job;
 
             if (job->status)
-                job->status = mObj->resolve_asset(job->asset, job->info);
+                mObj->resolve_asset(job);
 
             outResult.status = job->status;
             outResult.dstAsset = job->asset;
@@ -255,25 +243,53 @@ AssetImportResult AssetImporter::import_asset_synchronous(AssetImportInfo* info)
     AssetImportJob* job = mObj->allocate_import_job(info->type);
     job->status = mObj->check_base_info(info);
     job->asset = mObj->reserve_asset(info->type);
+    job->assetDir = FS::absolute(mObj->projectRootDir / "storage" / job->asset.get_id().to_string());
     job->info = info;
-
-    if (job->status)
-        job->execute_synchronous();
-    else
-        job->hasCompleted.store(true);
-
-    LD_ASSERT(job->has_completed());
 
     AssetImportResult result{};
     result.dstAsset = job->asset;
     result.status = job->status;
 
     if (job->status)
-        job->status = mObj->resolve_asset(job->asset, job->info);
+        job->execute_synchronous();
+    else
+    {
+        job->hasCompleted.store(true);
+        result.dstAsset = {};
+    }
+
+    LD_ASSERT(job->has_completed());
+
+    if (job->status)
+        mObj->resolve_asset(job);
+    else
+    {
+        result.dstAsset = {};
+    }
 
     mObj->free_import_job(job);
 
     return result;
+}
+
+bool AssetImporter::get_asset_type_from_path(const FS::Path& path, AssetType& outType)
+{
+    outType = ASSET_TYPE_ENUM_COUNT;
+
+    std::string ext = path.extension().string();
+    std::transform(ext.begin(), ext.end(), ext.begin(), [](int c) { return std::tolower(c); });
+
+    // TODO: generalize text search utilities
+    if (ext == ".mp3" || ext == ".wav")
+        outType = ASSET_TYPE_AUDIO_CLIP;
+    else if (ext == ".png" || ext == ".jpg" || ext == ".jpeg")
+        outType = ASSET_TYPE_TEXTURE_2D;
+    else if (ext == ".ttf")
+        outType = ASSET_TYPE_FONT;
+    else if (ext == ".lua")
+        outType = ASSET_TYPE_LUA_SCRIPT;
+
+    return outType != ASSET_TYPE_ENUM_COUNT;
 }
 
 } // namespace LD

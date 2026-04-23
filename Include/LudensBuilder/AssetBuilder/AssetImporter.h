@@ -3,7 +3,7 @@
 #include <Ludens/Asset/AssetRegistry.h>
 #include <Ludens/Header/Handle.h>
 #include <Ludens/Header/Status.h>
-#include <LudensBuilder/AssetBuilder/AssetSource.h>
+#include <LudensBuilder/AssetBuilder/AssetBuilderDef.h>
 
 namespace LD {
 
@@ -11,9 +11,9 @@ enum AssetImportStatusType
 {
     ASSET_IMPORT_SUCCESS,
     ASSET_IMPORT_ERROR,
-    ASSET_IMPORT_ERROR_SRC_PATH,
+    ASSET_IMPORT_ERROR_SRC_FILE,
     ASSET_IMPORT_ERROR_DST_PATH,
-    ASSET_IMPORT_ERROR_DST_URI,
+    ASSET_IMPORT_ERROR_DST_FILE,
 };
 
 struct AssetImportStatus : TStatus<AssetImportStatusType>
@@ -65,6 +65,11 @@ struct AssetImporter : Handle<struct AssetImporterObj>
     /// @brief Blocks until a single import process has completed on the calling thread.
     /// @warn Frees the import info.
     AssetImportResult import_asset_synchronous(AssetImportInfo* info);
+
+public: // static methods
+
+    /// @brief Get expected asset type from path.
+    static bool get_asset_type_from_path(const FS::Path& path, AssetType& outType);
 };
 
 } // namespace LD

@@ -12,7 +12,7 @@ void AssetImportJob::submit()
     status.str.clear();
 
     JobHeader header{};
-    header.onExecute = sBuilderMeta[info->type].import_fn;
+    header.onExecute = sImportMeta[info->type].importFn;
     header.onComplete = [](void* user) { ((AssetImportJob*)user)->hasCompleted.store(true, std::memory_order_release); };
     header.user = this;
     JobSystem::get().submit(&header, JOB_DISPATCH_STANDARD);
@@ -23,7 +23,9 @@ void AssetImportJob::execute_synchronous()
     status.type = ASSET_IMPORT_SUCCESS;
     status.str.clear();
 
-    sBuilderMeta[(int)info->type].import_fn(this);
+    sImportMeta[(int)info->type].importFn(this);
+
+    hasCompleted.store(true, std::memory_order_release);
 }
 
 } // namespace LD

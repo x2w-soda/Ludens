@@ -1,13 +1,13 @@
 #include <Ludens/Asset/AssetType/BlobAssetObj.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/Serial/Serial.h>
-#include <LudensBuilder/AssetBuilder/AssetSource.h>
+#include <LudensBuilder/AssetBuilder/AssetBuilderDef.h>
 #include <LudensBuilder/AssetBuilder/AssetState/BlobAssetState.h>
 
 #include "../AssetImportJob.h"
 
 namespace LD {
-
+#if 0
 static void try_import(AssetImportJob& job, BlobAssetObj* obj, const BlobAssetImportInfo info)
 {
     if (info.srcView)
@@ -21,7 +21,7 @@ static void try_import(AssetImportJob& job, BlobAssetObj* obj, const BlobAssetIm
         size_t fileSize;
         if (!FS::get_file_size(info.srcPath, fileSize, job.status.str))
         {
-            job.status.type = ASSET_IMPORT_ERROR_SRC_PATH;
+            job.status.type = ASSET_IMPORT_ERROR_SRC_FILE;
             return;
         }
 
@@ -30,7 +30,7 @@ static void try_import(AssetImportJob& job, BlobAssetObj* obj, const BlobAssetIm
 
         if (!FS::read_file(info.srcPath, MutView((char*)obj->data, obj->dataSize), job.status.str))
         {
-            job.status.type = ASSET_IMPORT_ERROR_SRC_PATH;
+            job.status.type = ASSET_IMPORT_ERROR_SRC_FILE;
             return;
         }
     }
@@ -42,7 +42,7 @@ static void try_import(AssetImportJob& job, BlobAssetObj* obj, const BlobAssetIm
     serializer.write_u64(obj->dataSize);
     serializer.write((const byte*)obj->data, (size_t)obj->dataSize);
 
-    job.write_to_dst_path(serializer.view());
+    job.write_to_dst_file(serializer.view());
 }
 
 void blob_asset_import(void* user)
@@ -63,4 +63,5 @@ void blob_asset_import(void* user)
     }
 }
 
+#endif
 } // namespace LD

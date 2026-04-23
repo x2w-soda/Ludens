@@ -1,18 +1,30 @@
 #pragma once
 
+#include <LudensBuilder/AssetBuilder/AssetBuilderDef.h>
 #include <LudensBuilder/AssetBuilder/AssetImporter.h>
 #include <LudensBuilder/AssetBuilder/AssetSource/AssetSources.h>
 
 namespace LD {
 
-/// @brief Asset builder polymorphism by AssetType
-struct AssetBuilderMeta
+/// @brief Asset polymorphic creation by AssetBuildType
+struct AssetCreateMeta
 {
-    AssetImportInfo* (*alloc_info)();
-    void (*free_info)(AssetImportInfo*);
-    void (*import_fn)(void*);
+    AssetCreateInfo* (*allocInfo)();
+    void (*freeInfo)(AssetCreateInfo*);
+    bool (*createFn)(AssetCreateInfo* createInfo, std::string& err);
+    bool (*prepareImportFn)(const AssetCreateInfo* createInfo, AssetImportInfo* importInfo, std::string& err);
 };
 
-extern AssetBuilderMeta sBuilderMeta[];
+/// @brief Asset polymorphic import by AssetType
+struct AssetImportMeta
+{
+    AssetImportInfo* (*allocInfo)();
+    void (*freeInfo)(AssetImportInfo*);
+    void (*importFn)(void*);
+    bool (*setSrcFiles)(AssetImportInfo*, size_t, const FS::Path*);
+};
+
+extern AssetCreateMeta sCreateMeta[];
+extern AssetImportMeta sImportMeta[];
 
 } // namespace LD
