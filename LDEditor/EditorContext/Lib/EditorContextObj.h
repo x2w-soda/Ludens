@@ -4,6 +4,8 @@
 #include <Ludens/DSA/Observer.h>
 #include <Ludens/Project/ProjectContext.h>
 #include <Ludens/Project/ProjectLoadAsync.h>
+#include <LudensBuilder/AssetBuilder/AssetBuilder.h>
+#include <LudensBuilder/AssetBuilder/AssetImporter.h>
 #include <LudensBuilder/DocumentBuilder/DocumentRegistry.h>
 #include <LudensEditor/EditorContext/EditStack.h>
 #include <LudensEditor/EditorContext/EditorEventQueue.h>
@@ -20,6 +22,7 @@ struct EditorContextObj
     ProjectContext projectCtx = {};                       /// project level states
     ProjectLoadAsync projectLoadAsync = {};               /// asynchronous project loading context
     AssetImporter assetImporter = {};                     /// asset batch importer
+    AssetBuilder assetBuilder = {};                       /// build assets from within the editor
     Scene scene = {};                                     /// current scene under edit
     EditorSettings settings;                              /// editor global settings
     EditorEventQueue eventQueue;                          /// editor events waiting to be processed

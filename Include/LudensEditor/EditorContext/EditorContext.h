@@ -9,7 +9,7 @@
 #include <Ludens/Scene/Scene.h>
 #include <Ludens/System/FileSystem.h>
 #include <Ludens/UI/UILayout.h>
-#include <LudensBuilder/AssetBuilder/AssetImporter.h>
+#include <LudensBuilder/AssetBuilder/AssetBuilderDef.h>
 #include <LudensBuilder/DocumentBuilder/Document.h>
 #include <LudensEditor/EditorContext/EditorContextDef.h>
 #include <LudensEditor/EditorContext/EditorEvent.h>
@@ -21,6 +21,8 @@ struct ComponentBase;
 struct Transform;
 struct TransformEx;
 struct ProjectScanResult;
+struct AssetImportInfo;
+struct AssetCreateInfo;
 
 struct EditorContextInfo
 {
@@ -33,6 +35,18 @@ struct EditorContextInfo
     RImage monoFontAtlasImage;
     size_t projectScanResultCount = 0;
     const ProjectScanResult* projectScanResults = nullptr;
+};
+
+struct EditorContextAssetInterface : Handle<struct EditorContextObj>
+{
+    AssetImportInfo* alloc_asset_import_info(AssetType type);
+    void free_asset_import_info(AssetImportInfo* info);
+    AssetCreateInfo* alloc_asset_create_info(AssetCreateType type);
+    void free_asset_create_info(AssetCreateInfo* info);
+
+    /// @brief Blocking call to create and import Asset into project.
+    /// @return Asset handle upon success.
+    Asset create_asset(AssetCreateInfo* info, const std::string importDstPath, std::string& err);
 };
 
 /// @brief Shared context among editor windows. Keeps track of
@@ -59,7 +73,7 @@ struct EditorContext : Handle<struct EditorContextObj>
     /// @brief Blocks until all events are processed.
     void poll_events();
 
-    AssetImporter get_asset_importer();
+    inline EditorContextAssetInterface asset_interface() const { return {mObj}; }
 
     /// @brief Check if the Project in RAM is different from the one on disk.
     bool is_project_dirty();

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <Ludens/Asset/AssetManager.h>
-#include <Ludens/DataRegistry/DataComponent.h>
+#include <Ludens/DataRegistry/DataRegistry.h>
 
 namespace LD {
 
@@ -9,6 +9,7 @@ struct EditorContextObj;
 
 enum EditCommandType
 {
+    EDIT_COMMAND_TYPE_RENAME_ASSET,
     EDIT_COMMAND_TYPE_RENAME_COMPONENT,
     EDIT_COMMAND_TYPE_ADD_COMPONENT,
     EDIT_COMMAND_TYPE_SET_COMPONENT_SCRIPT,
@@ -28,6 +29,15 @@ struct EditCommand
     static void undo(EditCommand* cmd);
     static EditCommand* create(EditCommandType type, EditorContextObj* ctx);
     static void destroy(EditCommand* cmd);
+};
+
+struct RenameAssetCommand : EditCommand
+{
+    AssetID assetID = 0;
+    std::string oldPath;
+    std::string newPath;
+
+    void configure(AssetID assetID, const std::string& newPath);
 };
 
 struct RenameComponentCommand : EditCommand

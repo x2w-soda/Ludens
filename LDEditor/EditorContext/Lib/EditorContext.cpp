@@ -19,6 +19,7 @@
 #include <Ludens/System/FileSystem.h>
 #include <Ludens/System/Timer.h>
 #include <Ludens/UI/UIFont.h>
+#include <LudensBuilder/AssetBuilder/AssetBuilder.h>
 #include <LudensBuilder/AssetBuilder/AssetImporter.h>
 #include <LudensBuilder/DocumentBuilder/DocumentRegistry.h>
 #include <LudensBuilder/DocumentBuilder/DocumentURI.h>
@@ -48,6 +49,8 @@ static void editor_action_open_scene_event_handler(const EditorEvent* event, voi
 static void editor_action_open_project_event_handler(const EditorEvent* event, void* user);
 static void editor_action_create_project_event_handler(const EditorEvent* event, void* user);
 static void editor_action_import_assets_event_handler(const EditorEvent* event, void* user);
+static void editor_action_import_assets_async_event_handler(const EditorEvent* event, void* user);
+static void editor_action_rename_asset_event_handler(const EditorEvent* event, void* user);
 static void editor_action_rename_component_event_handler(const EditorEvent* event, void* user);
 static void editor_action_add_component_event_handler(const EditorEvent* event, void* user);
 static void editor_action_set_component_script_event_handler(const EditorEvent* event, void* user);
@@ -67,7 +70,7 @@ static struct
     {EDITOR_EVENT_TYPE_NOTIFY_SCENE_LOAD, &editor_broadcast_event_handler},
     {EDITOR_EVENT_TYPE_NOTIFY_COMPONENT_SELECTION, &editor_broadcast_event_handler},
     {EDITOR_EVENT_TYPE_NOTIFY_FILE_DROP, &editor_notify_file_drop_event_handler},
-    {EDITOR_EVENT_TYPE_REQUEST_CLOSE_DIALOG, &editor_broadcast_event_handler},
+    {EDITOR_EVENT_TYPE_REQUEST_HIDE_MODAL, &editor_broadcast_event_handler},
     {EDITOR_EVENT_TYPE_REQUEST_WORKSPACE_LAYOUT, &editor_broadcast_event_handler},
     {EDITOR_EVENT_TYPE_REQUEST_PROJECT_SETTINGS, &editor_broadcast_event_handler},
     {EDITOR_EVENT_TYPE_REQUEST_COMPONENT_SCRIPT, &editor_broadcast_event_handler},
@@ -87,6 +90,8 @@ static struct
     {EDITOR_EVENT_TYPE_ACTION_OPEN_PROJECT, &editor_action_open_project_event_handler},
     {EDITOR_EVENT_TYPE_ACTION_CREATE_PROJECT, &editor_action_create_project_event_handler},
     {EDITOR_EVENT_TYPE_ACTION_IMPORT_ASSETS, &editor_action_import_assets_event_handler},
+    {EDITOR_EVENT_TYPE_ACTION_IMPORT_ASSETS_ASYNC, &editor_action_import_assets_async_event_handler},
+    {EDITOR_EVENT_TYPE_ACTION_RENAME_ASSET, &editor_action_rename_asset_event_handler},
     {EDITOR_EVENT_TYPE_ACTION_RENAME_COMPONENT, &editor_action_rename_component_event_handler},
     {EDITOR_EVENT_TYPE_ACTION_ADD_COMPONENT, &editor_action_add_component_event_handler},
     {EDITOR_EVENT_TYPE_ACTION_SET_COMPONENT_SCRIPT, &editor_action_set_component_script_event_handler},
@@ -226,11 +231,28 @@ static void editor_action_create_project_event_handler(const EditorEvent* event,
         notify->projectSchema = e->projectSchema;
 }
 
-void editor_action_import_assets_event_handler(const EditorEvent* event, void* user)
+static void editor_action_import_assets_event_handler(const EditorEvent* event, void* user)
 {
     LD_ASSERT(event->type == EDITOR_EVENT_TYPE_ACTION_IMPORT_ASSETS);
     auto* obj = (EditorContextObj*)user;
     auto* e = (const EditorActionImportAssetsEvent*)event;
+
+    // TODO: what if async batch is already in progress
+
+    obj->assetImporter.set_resolve_params(obj->projectCtx.suid_registry(), obj->projectCtx.project().get_root_path());
+
+    // blocking import on main thread.
+    for (AssetImportInfo* info : e->batch)
+    {
+        (void)obj->assetImporter.import_asset_synchronous(info);
+    }
+}
+
+static void editor_action_import_assets_async_event_handler(const EditorEvent* event, void* user)
+{
+    LD_ASSERT(event->type == EDITOR_EVENT_TYPE_ACTION_IMPORT_ASSETS_ASYNC);
+    auto* obj = (EditorContextObj*)user;
+    auto* e = (const EditorActionImportAssetsAsyncEvent*)event;
 
     // TODO: what if batch is already in progress
 
@@ -241,6 +263,17 @@ void editor_action_import_assets_event_handler(const EditorEvent* event, void* u
         obj->assetImporter.import_batch_asset(info);
 
     obj->assetImporter.import_batch_end();
+}
+
+void editor_action_rename_asset_event_handler(const EditorEvent* event, void* user)
+{
+    LD_ASSERT(event->type == EDITOR_EVENT_TYPE_ACTION_RENAME_ASSET);
+    auto* obj = (EditorContextObj*)user;
+    auto* e = (const EditorActionRenameAssetEvent*)event;
+
+    auto* cmd = (RenameAssetCommand*)obj->editStack.allocate(EDIT_COMMAND_TYPE_RENAME_ASSET);
+    cmd->configure(e->assetID, e->newPath);
+    obj->editStack.execute(cmd);
 }
 
 static void editor_action_rename_component_event_handler(const EditorEvent* event, void* user)
@@ -334,7 +367,10 @@ static void editor_action_delete_component_subtree_event_handler(const EditorEve
 
 void EditorContextObj::emit_event(EditorEventType type)
 {
-    ComponentView selectedComp = scene.get_component(selectedComponentCUID);
+    ComponentView selectedComp = {};
+
+    if (scene)
+        selectedComp = scene.get_component(selectedComponentCUID);
 
     switch (type)
     {
@@ -348,7 +384,7 @@ void EditorContextObj::emit_event(EditorEventType type)
     }
     case EDITOR_EVENT_TYPE_ACTION_REDO:
     case EDITOR_EVENT_TYPE_ACTION_UNDO:
-    case EDITOR_EVENT_TYPE_REQUEST_CLOSE_DIALOG:
+    case EDITOR_EVENT_TYPE_REQUEST_HIDE_MODAL:
         (void)eventQueue.enqueue(type); // zero parameters needed
         break;
     case EDITOR_EVENT_TYPE_REQUEST_CREATE_COMPONENT:
@@ -501,7 +537,9 @@ void EditorContextObj::begin_project_load_async(const FS::Path& projectSchemaPat
     projectLoadAsync = ProjectLoadAsync::create(&projectCtx);
     if (!projectLoadAsync.begin(rootPath, err))
     {
-        return; // TODO: failed to begin ProjectLoadAsync
+        sLog.error("failed to load project {}\n{}", projectSchemaPath.string(), err);
+        LD_DEBUG_BREAK;
+        return;
     }
 }
 
@@ -583,6 +621,7 @@ EditorContext EditorContext::create(const EditorContextInfo& info)
     obj->renderSystem = info.renderSystem;
     obj->audioSystem = info.audioSystem;
     obj->iconAtlasPath = info.iconAtlasPath;
+    obj->assetBuilder = AssetBuilder::create();
     obj->assetImporter = AssetImporter::create();
     obj->settings = EditorSettings::create();
     obj->isPlaying = false;
@@ -607,11 +646,10 @@ EditorContext EditorContext::create(const EditorContextInfo& info)
     obj->keyBinds[KeyValue(KEY_CODE_A, KEY_MOD_CONTROL_BIT)] = EDITOR_EVENT_TYPE_REQUEST_CREATE_COMPONENT;
     obj->keyBinds[KeyValue(KEY_CODE_D, KEY_MOD_CONTROL_BIT)] = EDITOR_EVENT_TYPE_ACTION_CLONE_COMPONENT_SUBTREE;
     obj->keyBinds[KeyValue(KEY_CODE_DELETE)] = EDITOR_EVENT_TYPE_ACTION_DELETE_COMPONENT_SUBTREE;
-    obj->keyBinds[KeyValue(KEY_CODE_ESCAPE)] = EDITOR_EVENT_TYPE_REQUEST_CLOSE_DIALOG;
+    obj->keyBinds[KeyValue(KEY_CODE_ESCAPE)] = EDITOR_EVENT_TYPE_REQUEST_HIDE_MODAL;
 
     AssetManagerInfo amI{};
     amI.watchAssets = true;
-    amI.registry = {};
     AssetManager::create(amI);
 
     SceneInfo sceneI{};
@@ -647,6 +685,7 @@ void EditorContext::destroy(EditorContext ctx)
     EditStack::destroy(obj->editStack);
     EditorSettings::destroy(obj->settings);
     AssetImporter::destroy(obj->assetImporter);
+    AssetBuilder::destroy(obj->assetBuilder);
 
     heap_delete<EditorContextObj>(obj);
 }
@@ -683,9 +722,55 @@ void EditorContext::poll_events()
     mObj->eventQueue.poll_events();
 }
 
-AssetImporter EditorContext::get_asset_importer()
+AssetImportInfo* EditorContextAssetInterface::alloc_asset_import_info(AssetType type)
 {
-    return mObj->assetImporter;
+    return mObj->assetImporter.allocate_import_info(type);
+}
+
+void EditorContextAssetInterface::free_asset_import_info(AssetImportInfo* info)
+{
+    mObj->assetImporter.free_import_info(info);
+}
+
+AssetCreateInfo* EditorContextAssetInterface::alloc_asset_create_info(AssetCreateType type)
+{
+    return mObj->assetBuilder.allocate_create_info(type);
+}
+
+void EditorContextAssetInterface::free_asset_create_info(AssetCreateInfo* info)
+{
+    mObj->assetBuilder.free_create_info(info);
+}
+
+Asset EditorContextAssetInterface::create_asset(AssetCreateInfo* info, const std::string importDstPath, std::string& err)
+{
+    LD_PROFILE_SCOPE;
+
+    AssetBuilder builder = mObj->assetBuilder;
+    AssetImporter importer = mObj->assetImporter;
+
+    if (!builder.create_asset(info, err))
+        return {};
+
+    AssetImportInfo* importInfo = importer.allocate_import_info(info->assetType);
+    importInfo->dstPath = importDstPath;
+
+    Asset dstAsset = {};
+
+    if (builder.prepare_import(info, importInfo, err))
+    {
+        importer.set_resolve_params(mObj->projectCtx.suid_registry(), mObj->projectCtx.project().get_root_path());
+
+        AssetImportResult result = importer.import_asset_synchronous(importInfo);
+        if (result.status.type == ASSET_IMPORT_SUCCESS && result.dstAsset)
+            dstAsset = result.dstAsset;
+        else
+            err = result.status.str;
+    }
+
+    builder.free_create_info(info);
+
+    return dstAsset;
 }
 
 bool EditorContext::is_project_dirty()

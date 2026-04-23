@@ -12,7 +12,7 @@ union EditorEventU
     EditorNotifySceneLoadEvent notifySceneLoad;
     EditorNotifyComponentSelectionEvent notifyComponentSelect;
     EditorNotifyFileDropEvent notifyFileDrop;
-    EditorRequestCloseDialogEvent requestCloseDialog;
+    EditorRequestHideModalEvent requestHideModal;
     EditorRequestWorkspaceLayoutEvent requestWorkspaceLayout;
     EditorRequestProjectSettingsEvent requestProjectSettings;
     EditorRequestComponentAssetEvent requestComponentAsset;
@@ -31,6 +31,7 @@ union EditorEventU
     EditorActionOpenProjectEvent actionOpenProject;
     EditorActionCreateProjectEvent actionCreateProject;
     EditorActionImportAssetsEvent actionImportAssets;
+    EditorActionImportAssetsAsyncEvent actionImportAssetsAsync;
     EditorActionRenameComponentEvent actionRenameComponent;
     EditorActionAddComponentEvent actionAddComponent;
     EditorActionSetComponentScriptEvent actionSetComponentScript;
@@ -86,8 +87,8 @@ EditorEvent* EditorEventQueueObj::alloc_event(EditorEventType type)
     case EDITOR_EVENT_TYPE_NOTIFY_FILE_DROP:
         new (event) EditorNotifyFileDropEvent();
         break;
-    case EDITOR_EVENT_TYPE_REQUEST_CLOSE_DIALOG:
-        new (event) EditorRequestCloseDialogEvent();
+    case EDITOR_EVENT_TYPE_REQUEST_HIDE_MODAL:
+        new (event) EditorRequestHideModalEvent();
         break;
     case EDITOR_EVENT_TYPE_REQUEST_WORKSPACE_LAYOUT:
         new (event) EditorRequestWorkspaceLayoutEvent();
@@ -146,6 +147,12 @@ EditorEvent* EditorEventQueueObj::alloc_event(EditorEventType type)
     case EDITOR_EVENT_TYPE_ACTION_IMPORT_ASSETS:
         new (event) EditorActionImportAssetsEvent();
         break;
+    case EDITOR_EVENT_TYPE_ACTION_IMPORT_ASSETS_ASYNC:
+        new (event) EditorActionImportAssetsAsyncEvent();
+        break;
+    case EDITOR_EVENT_TYPE_ACTION_RENAME_ASSET:
+        new (event) EditorActionRenameAssetEvent();
+        break;
     case EDITOR_EVENT_TYPE_ACTION_RENAME_COMPONENT:
         new (event) EditorActionRenameComponentEvent();
         break;
@@ -197,8 +204,8 @@ void EditorEventQueueObj::free_event(EditorEvent* event)
     case EDITOR_EVENT_TYPE_NOTIFY_FILE_DROP:
         ((EditorNotifyFileDropEvent*)event)->~EditorNotifyFileDropEvent();
         break;
-    case EDITOR_EVENT_TYPE_REQUEST_CLOSE_DIALOG:
-        ((EditorRequestCloseDialogEvent*)(event))->~EditorRequestCloseDialogEvent();
+    case EDITOR_EVENT_TYPE_REQUEST_HIDE_MODAL:
+        ((EditorRequestHideModalEvent*)(event))->~EditorRequestHideModalEvent();
         break;
     case EDITOR_EVENT_TYPE_REQUEST_WORKSPACE_LAYOUT:
         ((EditorRequestWorkspaceLayoutEvent*)event)->~EditorRequestWorkspaceLayoutEvent();
@@ -256,6 +263,12 @@ void EditorEventQueueObj::free_event(EditorEvent* event)
         break;
     case EDITOR_EVENT_TYPE_ACTION_IMPORT_ASSETS:
         ((EditorActionImportAssetsEvent*)event)->~EditorActionImportAssetsEvent();
+        break;
+    case EDITOR_EVENT_TYPE_ACTION_IMPORT_ASSETS_ASYNC:
+        ((EditorActionImportAssetsAsyncEvent*)event)->~EditorActionImportAssetsAsyncEvent();
+        break;
+    case EDITOR_EVENT_TYPE_ACTION_RENAME_ASSET:
+        ((EditorActionRenameAssetEvent*)(event))->~EditorActionRenameAssetEvent();
         break;
     case EDITOR_EVENT_TYPE_ACTION_RENAME_COMPONENT:
         ((EditorActionRenameComponentEvent*)(event))->~EditorActionRenameComponentEvent();

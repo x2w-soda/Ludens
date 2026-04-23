@@ -8,6 +8,7 @@
 namespace LD {
 
 struct AssetImportInfo;
+struct AssetCreateInfo;
 struct EditorEvent;
 
 /// @brief User callback to observe editor events.
@@ -21,7 +22,7 @@ enum EditorEventType
     EDITOR_EVENT_TYPE_NOTIFY_SCENE_LOAD,
     EDITOR_EVENT_TYPE_NOTIFY_COMPONENT_SELECTION,
     EDITOR_EVENT_TYPE_NOTIFY_FILE_DROP,
-    EDITOR_EVENT_TYPE_REQUEST_CLOSE_DIALOG,
+    EDITOR_EVENT_TYPE_REQUEST_HIDE_MODAL,
     EDITOR_EVENT_TYPE_REQUEST_WORKSPACE_LAYOUT,
     EDITOR_EVENT_TYPE_REQUEST_PROJECT_SETTINGS,
     EDITOR_EVENT_TYPE_REQUEST_COMPONENT_SCRIPT,
@@ -41,6 +42,8 @@ enum EditorEventType
     EDITOR_EVENT_TYPE_ACTION_OPEN_PROJECT,
     EDITOR_EVENT_TYPE_ACTION_CREATE_PROJECT,
     EDITOR_EVENT_TYPE_ACTION_IMPORT_ASSETS,
+    EDITOR_EVENT_TYPE_ACTION_IMPORT_ASSETS_ASYNC,
+    EDITOR_EVENT_TYPE_ACTION_RENAME_ASSET,
     EDITOR_EVENT_TYPE_ACTION_RENAME_COMPONENT,
     EDITOR_EVENT_TYPE_ACTION_ADD_COMPONENT,
     EDITOR_EVENT_TYPE_ACTION_SET_COMPONENT_SCRIPT,
@@ -168,11 +171,12 @@ struct EditorNotifyFileDropEvent : EditorNotifyEvent
     Vector<FS::Path> files;
 };
 
-/// @brief Event signaling a request to close the current dialog window.
-struct EditorRequestCloseDialogEvent : EditorRequestEvent
+/// @brief Event signaling a request to hide the modal window.
+///        Note that this is a request and may be rejected.
+struct EditorRequestHideModalEvent : EditorRequestEvent
 {
-    EditorRequestCloseDialogEvent()
-        : EditorRequestEvent(EDITOR_EVENT_TYPE_REQUEST_CLOSE_DIALOG)
+    EditorRequestHideModalEvent()
+        : EditorRequestEvent(EDITOR_EVENT_TYPE_REQUEST_HIDE_MODAL)
     {
     }
 };
@@ -360,6 +364,7 @@ struct EditorActionCreateProjectEvent : EditorActionEvent
     FS::Path projectSchema;
 };
 
+/// @brief Synchronously import a batch of assets
 struct EditorActionImportAssetsEvent : EditorActionEvent
 {
     EditorActionImportAssetsEvent()
@@ -368,6 +373,28 @@ struct EditorActionImportAssetsEvent : EditorActionEvent
     }
 
     Vector<AssetImportInfo*> batch;
+};
+
+/// @brief Begin an async import batch
+struct EditorActionImportAssetsAsyncEvent : EditorActionEvent
+{
+    EditorActionImportAssetsAsyncEvent()
+        : EditorActionEvent(EDITOR_EVENT_TYPE_ACTION_IMPORT_ASSETS_ASYNC)
+    {
+    }
+
+    Vector<AssetImportInfo*> batch;
+};
+
+struct EditorActionRenameAssetEvent : EditorActionEvent
+{
+    EditorActionRenameAssetEvent()
+        : EditorActionEvent(EDITOR_EVENT_TYPE_ACTION_RENAME_ASSET)
+    {
+    }
+
+    AssetID assetID = 0;
+    std::string newPath;
 };
 
 struct EditorActionRenameComponentEvent : EditorActionEvent

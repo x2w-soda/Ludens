@@ -1,9 +1,20 @@
 #pragma once
 
+#include <LudensBuilder/AssetBuilder/AssetState/LuaScriptAssetState.h>
 #include <LudensEditor/EditorContext/EditorContext.h>
 
 namespace LD {
 namespace EditorContextUtil {
+
+inline Asset create_lua_script_asset(EditorContext ctx, const std::string& requestPath, std::string& err)
+{
+    EditorContextAssetInterface assetI = ctx.asset_interface();
+
+    auto* info = (LuaScriptAssetCreateInfo*)assetI.alloc_asset_create_info(ASSET_CREATE_TYPE_LUA_SCRIPT);
+    info->domain = LUA_SCRIPT_DOMAIN_COMPONENT;
+
+    return assetI.create_asset(info, requestPath, err);
+}
 
 inline void set_component_asset(EditorContext ctx, SUID compSUID, AssetID assetID, uint32_t assetSlotIndex)
 {

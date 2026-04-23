@@ -7,6 +7,10 @@
 
 namespace LD {
 
+static EditCommand* rename_asset_command_create() { return heap_new<RenameAssetCommand>(MEMORY_USAGE_MISC); }
+static void rename_asset_command_destroy(EditCommand* baseCmd) { heap_delete<RenameAssetCommand>((RenameAssetCommand*)baseCmd); }
+static void rename_asset_command_redo(EditCommand* baseCmd);
+static void rename_asset_command_undo(EditCommand* baseCmd);
 static EditCommand* rename_component_command_create() { return heap_new<RenameComponentCommand>(MEMORY_USAGE_MISC); }
 static void rename_component_command_destroy(EditCommand* baseCmd) { heap_delete<RenameComponentCommand>((RenameComponentCommand*)baseCmd); }
 static void rename_component_command_redo(EditCommand* baseCmd);
@@ -45,6 +49,7 @@ struct EditCommandMeta
 };
 
 static EditCommandMeta sEditCommand[]{
+    {&rename_asset_command_create, &rename_asset_command_destroy, &rename_asset_command_redo, &rename_asset_command_undo},
     {&rename_component_command_create, &rename_component_command_destroy, &rename_component_command_redo, &rename_component_command_undo},
     {&add_component_command_create, &add_component_command_destroy, &add_component_command_redo, &add_component_command_undo},
     {&add_component_script_command_create, &add_component_script_command_destroy, &add_component_script_command_redo, &add_component_script_command_undo},
@@ -78,6 +83,16 @@ EditCommand* EditCommand::create(EditCommandType type, EditorContextObj* ctx)
 void EditCommand::destroy(EditCommand* cmd)
 {
     sEditCommand[(int)cmd->type].destroy(cmd);
+}
+
+void RenameAssetCommand::configure(AssetID assetID, const std::string& newPath)
+{
+    AssetEntry entry = ctx->projectCtx.asset_registry().get_entry(assetID);
+    LD_ASSERT(entry); // TODO: recovery
+
+    this->assetID = assetID;
+    this->oldPath = entry.get_path();
+    this->newPath = newPath;
 }
 
 void RenameComponentCommand::configure(SUID compSUID, const std::string& newName)
@@ -132,6 +147,32 @@ static void set_component_asset(Scene scene, SUID compSUID, AssetID assetID)
     default:
         break;
     }
+}
+
+static void rename_asset_command_redo(EditCommand* baseCmd)
+{
+    auto* cmd = (RenameAssetCommand*)baseCmd;
+
+    AssetRegistry AR = cmd->ctx->projectCtx.asset_registry();
+    LD_ASSERT(AR);
+
+    AssetEntry entry = AR.get_entry(cmd->assetID);
+    LD_ASSERT(entry);
+
+    (void)entry.set_path(cmd->newPath);
+}
+
+static void rename_asset_command_undo(EditCommand* baseCmd)
+{
+    auto* cmd = (RenameAssetCommand*)baseCmd;
+
+    AssetRegistry AR = cmd->ctx->projectCtx.asset_registry();
+    LD_ASSERT(AR);
+
+    AssetEntry entry = AR.get_entry(cmd->assetID);
+    LD_ASSERT(entry);
+
+    (void)entry.set_path(cmd->oldPath);
 }
 
 static void rename_component_command_redo(EditCommand* baseCmd)
