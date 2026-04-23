@@ -96,14 +96,14 @@ struct AssetManager : Handle<struct AssetManagerObj>
 
     /// @brief Allocate an empty asset that needs to be resolved later.
     ///        Intended for AssetImporter to perform "import + load" simultaneously.
-    Asset alloc_reserved_asset(SUIDRegistry idReg, AssetType type, const std::string& path);
+    Asset alloc_reserved_asset(SUIDRegistry idReg, AssetType type);
     void free_reserved_asset(SUIDRegistry idReg, Asset reservedAsset);
 
     /// @brief Resolve the asset against the current AssetRegistry.
     ///        Intended for AssetImporter to add an Asset to the project.
     /// @return A valid entry associated with the Asset upon success.
     /// @note Upon failure, the reserved asset should be freed.
-    AssetEntry resolve_asset(SUIDRegistry idReg, Asset reservedAsset);
+    AssetEntry resolve_asset(SUIDRegistry idReg, Asset reservedAsset, const std::string& uriPath);
 };
 
 } // namespace LD

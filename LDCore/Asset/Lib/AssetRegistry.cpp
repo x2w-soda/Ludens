@@ -41,6 +41,7 @@ public:
     AssetEntry register_asset(SUIDRegistry idReg, SUID id, AssetType type, const std::string& path);
     void unregister_asset(SUIDRegistry idReg, SUID id);
     bool is_path_valid(const std::string& path, std::string& collidingPath);
+    bool is_rename_path_valid(const std::string& newPath, AssetEntryObj* self);
     bool set_path(SUID id, const std::string& newPath);
 
 public:
@@ -220,13 +221,34 @@ bool AssetRegistryObj::is_path_valid(const std::string& path, std::string& colli
     return true;
 }
 
+bool AssetRegistryObj::is_rename_path_valid(const std::string& newPath, AssetEntryObj* self)
+{
+    std::string oldPath = self->uri.path_string();
+    std::string oldName = self->uri.stem_string();
+    std::string newName = FS::Path(newPath).stem().string();
+
+    if (newPath == oldPath)
+        return true; // this could also be false depending on semantics...
+
+    if (mPaths.contains(newPath))
+        return false;
+
+    // if we change stem name, it must not collide with existing names.
+    if (newName != oldName && mNames.contains(newName))
+        return false;
+
+    return true;
+}
+
 bool AssetRegistryObj::set_path(SUID id, const std::string& newPath)
 {
     std::string str;
-    if (!mEntries.contains(id) || !is_path_valid(newPath, str))
+    if (!mEntries.contains(id))
         return false;
 
     AssetEntryObj* obj = mEntries[id];
+    if (!is_rename_path_valid(newPath, obj))
+        return false;
 
     str = obj->uri.path_string();
     LD_ASSERT(mPaths.contains(str));

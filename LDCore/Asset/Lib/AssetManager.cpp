@@ -92,12 +92,12 @@ AssetManagerObj::~AssetManagerObj()
 
 AssetObj* AssetManagerObj::allocate_asset(AssetEntry entry)
 {
-    return allocate_asset(entry.get_type(), entry.get_id(), entry.get_name(), false);
+    return allocate_asset(entry.get_type(), entry.get_id(), false);
 }
 
-AssetObj* AssetManagerObj::allocate_asset(AssetType type, SUID id, const std::string& path, bool isReserved)
+AssetObj* AssetManagerObj::allocate_asset(AssetType type, SUID id, bool isReserved)
 {
-    LD_ASSERT(id && !path.empty());
+    LD_ASSERT(id);
 
     if (!mAssetPA[(int)type])
     {
@@ -163,7 +163,9 @@ AssetLoadJob* AssetManagerObj::allocate_load_job(AssetEntry entry, AssetObj* ass
     job->jobHeader.onComplete = &AssetManagerObj::on_asset_load_complete;
     job->jobHeader.type = (uint32_t)0; // TODO: job type for asset loading
     job->jobHeader.user = (void*)job;
-    job->jobInProgress.store(true, std::memory_order_release); // NOTE: job is already considered in-progress before its submission
+
+    // NOTE: job is already considered in-progress before its submission
+    job->jobInProgress.store(true, std::memory_order_release);
     job->jobProgress.store(0.0f, std::memory_order_release);
 
     return job;
@@ -494,12 +496,12 @@ Asset AssetManager::get_asset(const char* name, AssetType type)
     return asset;
 }
 
-Asset AssetManager::alloc_reserved_asset(SUIDRegistry idReg, AssetType type, const std::string& path)
+Asset AssetManager::alloc_reserved_asset(SUIDRegistry idReg, AssetType type)
 {
     // NOTE: this ID is not registered in AssetRegistry until successful resolve
     SUID reservedID = idReg.get_suid(SERIAL_TYPE_ASSET);
 
-    AssetObj* obj = mObj->allocate_asset(type, reservedID, path, true);
+    AssetObj* obj = mObj->allocate_asset(type, reservedID, true);
 
     return Asset(obj);
 }
@@ -514,14 +516,14 @@ void AssetManager::free_reserved_asset(SUIDRegistry idReg, Asset reservedAsset)
     mObj->free_asset(reservedAsset.unwrap());
 }
 
-AssetEntry AssetManager::resolve_asset(SUIDRegistry idReg, Asset reservedAsset)
+AssetEntry AssetManager::resolve_asset(SUIDRegistry idReg, Asset reservedAsset, const std::string& uriPath)
 {
     if (!reservedAsset || !mObj->env.registry)
         return {};
 
     LD_ASSERT(reservedAsset.unwrap()->isReserved);
 
-    AssetEntry entry = mObj->env.registry.register_asset_with_id(idReg, reservedAsset.get_id(), reservedAsset.get_type(), reservedAsset.get_path());
+    AssetEntry entry = mObj->env.registry.register_asset_with_id(idReg, reservedAsset.get_id(), reservedAsset.get_type(), uriPath);
 
     if (entry) // successfully resolved, the Asset handle could be used normally.
     {

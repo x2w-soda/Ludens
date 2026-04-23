@@ -59,7 +59,7 @@ public:
     AssetManagerObj& operator=(const AssetManagerObj&) = delete;
 
     AssetObj* allocate_asset(AssetEntry entry);
-    AssetObj* allocate_asset(AssetType type, SUID id, const std::string& path, bool isReserved);
+    AssetObj* allocate_asset(AssetType type, SUID id, bool isReserved);
     void free_asset(AssetObj* obj);
     void register_asset(AssetObj* obj);
     void unregister_asset(AssetObj* obj);
