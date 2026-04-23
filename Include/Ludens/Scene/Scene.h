@@ -34,6 +34,7 @@ struct SceneInfo
     RenderSystem renderSystem = {};
     UIFont uiFont = {};
     UITheme uiTheme = {};
+    SUIDRegistry suidRegistry = {};
 };
 
 /// @brief Scene singleton, main thread only. A scene is a hierarchy of components driven by scripts.
@@ -109,7 +110,7 @@ public:
     ComponentView create_component_serial(ComponentType type, const char* name, SUIDRegistry suidRegistry, SUID parentSUID, SUID hintSUID);
 
     /// @brief Destroy a component subtree.
-    void destroy_component_subtree(CUID compID);
+    void destroy_component_subtree(CUID compID, SUIDRegistry suidRegistry);
 
     /// @brief Reparent a component subtree.
     void reparent_component_subtree(CUID compID, CUID parentID);

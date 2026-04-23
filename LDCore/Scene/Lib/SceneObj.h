@@ -50,7 +50,7 @@ struct SceneContext
 
     bool startup_registry();
     void cleanup_registry();
-    void unload_registry();
+    void unload_registry(SUIDRegistry suidRegistry);
 
     /// @brief Startup a component subtree recursively, attaching scripts to components
     bool startup_subtree(ComponentBase** data, Vector<ComponentBase**>& startupOrder, std::string& err);
@@ -63,7 +63,7 @@ struct SceneContext
     bool cleanup_component(ComponentBase** data, std::string& err);
 
     /// @brief Unload components recursively, destroying resources from systems/servers.
-    void unload_subtree(ComponentBase** data);
+    void unload_subtree(ComponentBase** data, SUIDRegistry suidRegistry);
 };
 
 /// @brief Scene implementation.
@@ -74,7 +74,8 @@ public:
     SceneContext* shadow;
     SceneContext* backup;
     SceneContextType contextTarget = SCENE_CONTEXT_ACTIVE;
-    SceneContextInfo contextInfo{};
+    SceneContextInfo contextInfo = {};
+    SUIDRegistry suidRegistry = {};
     AudioSystemCache audioSystemCache;
     RenderSystemCache renderSystemCache;
     SceneState state = SCENE_STATE_EMPTY;

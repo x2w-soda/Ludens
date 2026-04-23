@@ -346,7 +346,7 @@ bool SceneContext::cleanup_component(ComponentBase** data, std::string& err)
     return success;
 }
 
-void SceneContext::unload_registry()
+void SceneContext::unload_registry(SUIDRegistry suidRegistry)
 {
     LD_PROFILE_SCOPE;
 
@@ -355,14 +355,15 @@ void SceneContext::unload_registry()
 
     for (ComponentBase** rootData : roots)
     {
-        unload_subtree(rootData);
+        unload_subtree(rootData, suidRegistry);
     }
 }
 
-void SceneContext::unload_subtree(ComponentBase** data)
+void SceneContext::unload_subtree(ComponentBase** data, SUIDRegistry suidRegistry)
 {
     LD_PROFILE_SCOPE;
 
+    LD_ASSERT(suidRegistry);
     LD_ASSERT(data);
     ComponentBase* base = (*data);
 
@@ -374,10 +375,13 @@ void SceneContext::unload_subtree(ComponentBase** data)
             sSceneLog.error("failed to unload component: {}", err);
     }
 
+    if (base->suid)
+        suidRegistry.free_suid(base->suid);
+
     for (ComponentBase* child = base->child; child; child = child->next)
     {
         ComponentBase** childData = registry.get_component_data(child->cuid, nullptr);
-        unload_subtree(childData);
+        unload_subtree(childData, suidRegistry);
     }
 }
 
@@ -502,9 +506,12 @@ Scene Scene::create(const SceneInfo& sceneI)
     LD_PROFILE_SCOPE;
 
     LD_ASSERT(sScene == nullptr);
+    LD_ASSERT(sceneI.suidRegistry);
+
     sScene = heap_new<SceneObj>(MEMORY_USAGE_SCENE);
     sScene->renderSystemCache.create(sceneI.renderSystem);
     sScene->audioSystemCache.create(sceneI.audioSystem);
+    sScene->suidRegistry = sceneI.suidRegistry;
 
     sScene->contextInfo.uiFont = sceneI.uiFont;
     sScene->contextInfo.uiTheme = sceneI.uiTheme;
@@ -527,6 +534,7 @@ void Scene::destroy()
     if (sScene->active)
         heap_delete<SceneContext>(sScene->active);
 
+    sScene->suidRegistry = {};
     sScene->audioSystemCache.destroy();
     sScene->renderSystemCache.destroy();
 
@@ -589,7 +597,7 @@ void Scene::unload()
     if (mObj->state == SCENE_STATE_EMPTY)
         return;
 
-    mObj->active->unload_registry();
+    mObj->active->unload_registry(mObj->suidRegistry);
     heap_delete<SceneContext>(mObj->active);
     mObj->active = nullptr;
 
@@ -631,7 +639,7 @@ bool Scene::startup()
 
     if (mObj->backup)
     {
-        mObj->active->unload_registry();
+        mObj->active->unload_registry(mObj->suidRegistry);
         heap_delete<SceneContext>(mObj->active);
         mObj->active = mObj->backup;
         mObj->backup = nullptr;
@@ -654,7 +662,7 @@ void Scene::cleanup()
     // after play-in-editor session, restore the backup.
     if (mObj->backup)
     {
-        mObj->active->unload_registry();
+        mObj->active->unload_registry(mObj->suidRegistry);
         heap_delete<SceneContext>(mObj->active);
 
         mObj->active = mObj->backup;
@@ -699,7 +707,7 @@ void Scene::update(const SceneUpdateTick& tick)
             }
             else
             {
-                mObj->shadow->unload_registry();
+                mObj->shadow->unload_registry(mObj->suidRegistry);
                 heap_delete<SceneContext>(mObj->shadow);
                 sSceneLog.error("failed to transition to scene, startup failed");
             }
@@ -829,7 +837,7 @@ ComponentView Scene::create_component_serial(ComponentType type, const char* nam
     return ComponentView(data);
 }
 
-void Scene::destroy_component_subtree(CUID compID)
+void Scene::destroy_component_subtree(CUID compID, SUIDRegistry suidRegistry)
 {
     LD_ASSERT(mObj->state != SCENE_STATE_RUNNING);
 
@@ -837,7 +845,7 @@ void Scene::destroy_component_subtree(CUID compID)
     if (!compData)
         return;
 
-    mObj->active->unload_subtree(compData);
+    mObj->active->unload_subtree(compData, suidRegistry);
 
     mObj->active->registry.destroy_component_subtree(compID);
 }

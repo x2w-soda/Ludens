@@ -48,6 +48,9 @@ bool load_audio_source_component(SceneObj* scene, AudioSourceComponent* source, 
 {
     LD_PROFILE_SCOPE;
 
+    if (!clipID) // empty state without audio buffer or playback
+        return true;
+
     if (!load_audio_clip(scene, source, clipID))
     {
         err = "failed to prepare audio clip";
@@ -148,37 +151,33 @@ bool AudioSourceView::load(AssetID clipAsset, float pan, float volumeLinear)
 
 void AudioSourceView::play()
 {
-    LD_ASSERT(mAudioSource->playback);
-
     sScene->audioSystemCache.start_playback(mAudioSource->playback);
 }
 
 void AudioSourceView::pause()
 {
-    LD_ASSERT(mAudioSource->playback);
-
     sScene->audioSystemCache.pause_playback(mAudioSource->playback);
 }
 
 void AudioSourceView::resume()
 {
-    LD_ASSERT(mAudioSource->playback);
-
     sScene->audioSystemCache.resume_playback(mAudioSource->playback);
 }
 
 bool AudioSourceView::set_clip_asset(AssetID clipID)
 {
-    LD_ASSERT(mAudioSource->playback);
-
     AssetManager AM = AssetManager::get();
     AudioClipAsset clipA(AM.get_asset(clipID).unwrap());
     AudioBuffer buffer = sScene->audioSystemCache.get_or_create_audio_buffer(clipID);
 
     if (buffer)
     {
+        if (!mAudioSource->playback)
+            mAudioSource->playback = sScene->audioSystemCache.create_playback(buffer, mAudioSource->pan, mAudioSource->volumeLinear);
+        else
+            sScene->audioSystemCache.set_playback_buffer(mAudioSource->playback, buffer);
+
         mAudioSource->clipID = clipID;
-        sScene->audioSystemCache.set_playback_buffer(mAudioSource->playback, buffer);
         return true;
     }
 
