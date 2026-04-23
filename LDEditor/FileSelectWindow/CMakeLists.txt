@@ -1,11 +1,11 @@
-set(MODULE_NAME LDSelectionWindow)
+set(MODULE_NAME LDFileSelectWindow)
 
 set(MODULE_INCLUDE
-	${LUDENS_INCLUDE_DIR}/LudensEditor/SelectionWindow/SelectionWindow.h
+	${LUDENS_INCLUDE_DIR}/LudensEditor/FileSelectWindow/FileSelectWindow.h
 )
 
 set(MODULE_LIB
-	Lib/SelectionWindow.cpp
+	Lib/FileSelectWindow.cpp
 )
 
 add_ludens_editor_module(

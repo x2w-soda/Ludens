@@ -35,9 +35,9 @@ target_link_libraries(${MODULE_NAME} PRIVATE
     LDDocumentWindow
     LDAssetImportWindow
     LDAssetSelectWindow
+    LDFileSelectWindow
     LDVersionWindow
     LDViewportWindow
-    LDSelectionWindow
     LDCreateComponentWindow
     LDProjectSettingsWindow
     LDTabControlWindow

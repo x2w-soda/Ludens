@@ -4,7 +4,7 @@
 #include <Ludens/Memory/Memory.h>
 #include <Ludens/UI/UIImmediate.h>
 #include <LudensEditor/EditorContext/EditorIconAtlas.h>
-#include <LudensEditor/SelectionWindow/SelectionWindow.h>
+#include <LudensEditor/FileSelectWindow/FileSelectWindow.h>
 
 namespace LD {
 
@@ -19,7 +19,7 @@ static bool get_directory_contents_with_filter(const FS::Path& directory, Vector
     return true;
 }
 
-struct SelectionWindowObj : EditorWindowObj
+struct FileSelectWindowObj : EditorWindowObj
 {
     RImage editorIconAtlas{};
     EditorTheme theme;
@@ -29,7 +29,7 @@ struct SelectionWindowObj : EditorWindowObj
     FS::Path selectedPath;
     int selectedRowIndex = -1;
 
-    SelectionWindowObj(const EditorWindowInfo& info)
+    FileSelectWindowObj(const EditorWindowInfo& info)
         : EditorWindowObj(info)
     {
         editorIconAtlas = ctx.get_editor_icon_atlas();
@@ -41,7 +41,7 @@ struct SelectionWindowObj : EditorWindowObj
     bool row(int idx);
 };
 
-void SelectionWindowObj::update(float delta)
+void FileSelectWindowObj::update(float delta)
 {
     theme = ctx.get_theme();
     selectedPath.clear();
@@ -79,7 +79,7 @@ void SelectionWindowObj::update(float delta)
     end_update_window();
 }
 
-void SelectionWindowObj::top_bar()
+void FileSelectWindowObj::top_bar()
 {
     float fontSize = theme.get_font_size();
 
@@ -110,7 +110,7 @@ void SelectionWindowObj::top_bar()
     ui_pop();
 }
 
-void SelectionWindowObj::bottom_bar()
+void FileSelectWindowObj::bottom_bar()
 {
     float pad = theme.get_child_pad();
 
@@ -143,7 +143,7 @@ void SelectionWindowObj::bottom_bar()
         shouldClose = true;
 }
 
-bool SelectionWindowObj::row(int idx)
+bool FileSelectWindowObj::row(int idx)
 {
     bool isSelected = false;
 
@@ -197,28 +197,28 @@ bool SelectionWindowObj::row(int idx)
 // Public API
 //
 
-EditorWindow SelectionWindow::create(const EditorWindowInfo& windowI)
+EditorWindow FileSelectWindow::create(const EditorWindowInfo& windowI)
 {
-    auto* obj = heap_new<SelectionWindowObj>(MEMORY_USAGE_UI, windowI);
+    auto* obj = heap_new<FileSelectWindowObj>(MEMORY_USAGE_UI, windowI);
 
     return EditorWindow(obj);
 }
 
-void SelectionWindow::destroy(EditorWindow window)
+void FileSelectWindow::destroy(EditorWindow window)
 {
-    auto* obj = static_cast<SelectionWindowObj*>(window.unwrap());
+    auto* obj = static_cast<FileSelectWindowObj*>(window.unwrap());
 
-    heap_delete<SelectionWindowObj>(obj);
+    heap_delete<FileSelectWindowObj>(obj);
 }
 
-void SelectionWindow::update(EditorWindowObj* base, const EditorUpdateTick& tick)
+void FileSelectWindow::update(EditorWindowObj* base, const EditorUpdateTick& tick)
 {
-    auto* obj = static_cast<SelectionWindowObj*>(base);
+    auto* obj = static_cast<FileSelectWindowObj*>(base);
 
     obj->update(tick.delta);
 }
 
-void SelectionWindow::show(const FS::Path& directoryPath, const char* extensionFilter)
+void FileSelectWindow::show(const FS::Path& directoryPath, const char* extensionFilter)
 {
     mObj->directoryPath = directoryPath;
     mObj->directoryContents.clear();
@@ -227,7 +227,7 @@ void SelectionWindow::show(const FS::Path& directoryPath, const char* extensionF
     mObj->selectedRowIndex = -1;
 }
 
-bool SelectionWindow::has_selected(FS::Path& path)
+bool FileSelectWindow::has_selected(FS::Path& path)
 {
     if (mObj->selectedPath.empty())
         return false;

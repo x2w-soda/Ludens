@@ -3,9 +3,9 @@
 #include <Ludens/Scene/Scene.h>
 #include <LudensEditor/ConsoleWindow/ConsoleWindow.h>
 #include <LudensEditor/DocumentWindow/DocumentWindow.h>
+#include <LudensEditor/FileSelectWindow/FileSelectWindow.h>
 #include <LudensEditor/InspectorWindow/InspectorWindow.h>
 #include <LudensEditor/OutlinerWindow/OutlinerWindow.h>
-#include <LudensEditor/SelectionWindow/SelectionWindow.h>
 #include <LudensEditor/VersionWindow/VersionWindow.h>
 #include <LudensEditor/ViewportWindow/ViewportWindow.h>
 

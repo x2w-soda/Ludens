@@ -4,7 +4,7 @@
 #include <LudensEditor/EditorUI/EditorDialog.h>
 #include <LudensEditor/EditorUI/EditorWorkspace.h>
 #include <LudensEditor/EditorWidget/EditorWidget.h>
-#include <LudensEditor/SelectionWindow/SelectionWindow.h>
+#include <LudensEditor/FileSelectWindow/FileSelectWindow.h>
 
 #include "EditorUIDef.h"
 

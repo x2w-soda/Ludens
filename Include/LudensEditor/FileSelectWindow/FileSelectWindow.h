@@ -8,17 +8,17 @@
 namespace LD {
 
 /// @brief Editor selection window. Generic dialog for all kinds of selection tasks.
-struct SelectionWindow : Handle<struct SelectionWindowObj>
+struct FileSelectWindow : Handle<struct FileSelectWindowObj>
 {
-    SelectionWindow() = default;
-    SelectionWindow(const EditorWindowObj* obj) { mObj = (SelectionWindowObj*)obj; }
+    FileSelectWindow() = default;
+    FileSelectWindow(const EditorWindowObj* obj) { mObj = (FileSelectWindowObj*)obj; }
+
+    void show(const FS::Path& directoryPath, const char* extensionFilter);
+    bool has_selected(FS::Path& path);
 
     static EditorWindow create(const EditorWindowInfo& windowI);
     static void destroy(EditorWindow window);
     static void update(EditorWindowObj* obj, const EditorUpdateTick& tick);
-
-    void show(const FS::Path& directoryPath, const char* extensionFilter);
-    bool has_selected(FS::Path& path);
 };
 
 } // namespace LD
