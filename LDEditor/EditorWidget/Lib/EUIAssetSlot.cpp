@@ -14,7 +14,7 @@ bool eui_asset_slot(AssetID assetID, AssetType assetType)
     AssetManager AM = AssetManager::get();
     Asset asset = AM.get_asset(assetID, assetType);
 
-    const char* assetName = "N/A";
+    std::string assetName = "N/A";
     if (asset)
         assetName = asset.get_name();
 
@@ -30,7 +30,7 @@ bool eui_asset_slot(AssetID assetID, AssetType assetType)
         ui_top_layout(layoutI);
         ui_pop();
 
-        UITextData* text = (UITextData*)ui_push_text(nullptr, assetName).get_data();
+        UITextData* text = (UITextData*)ui_push_text(nullptr, assetName.c_str()).get_data();
         text->bgColor = theme.get_ui_theme().get_field_color();
         ui_top_layout(layoutI);
         if (ui_top_mouse_down(mouseVal, mousePos) && mouseVal.button() == MOUSE_BUTTON_LEFT)

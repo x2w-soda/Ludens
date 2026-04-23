@@ -4,6 +4,6 @@
 
 namespace LD {
 
-int eui_list_menu(EditorTheme theme, int optionCount, const char** options);
+int eui_list_menu(int optionCount, const char** options);
 
 } // namespace LD

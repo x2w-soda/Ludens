@@ -23,31 +23,30 @@ static void breadcrumb_text_to_spans(const std::string& str, Vector<UITextSpan>&
     }
 }
 
-bool eui_text(EUITextStorage& storage, const char* label, float height, Rect* outRect)
+bool EUIText::update(const char* label, float height, Rect* outRect)
 {
     bool isPressed = false;
     EditorTheme theme = eui_get_theme();
     MouseValue mouseVal;
     Vec2 mousePos;
+    const float pad = theme.get_child_pad();
 
-    UILayoutInfo layoutI{};
-    layoutI.sizeX = UISize::fit();
-    layoutI.sizeY = UISize::fixed(height);
-    layoutI.childPadding = UIPadding::left_right(4.0f, 4.0f);
-    ui_push_panel(&storage.panel);
-    storage.panel.color = 0;
-    storage.panel.radius = storage.radius;
+    ui_push_panel(&mPanel);
+    UILayoutInfo layoutI(UISize::fit(), UISize::fixed(height));
+    layoutI.childPadding = UIPadding::left_right(pad / 2.0f, pad / 2.0f);
+    ui_top_layout(layoutI);
+    mPanel.color = 0;
+    mPanel.radius = radius;
     if (ui_top_is_hovered())
-        storage.panel.color = theme.get_ui_theme().get_surface_color_lifted();
+        mPanel.color = theme.get_ui_theme().get_surface_color_lifted();
 
     if (outRect)
         ui_top_get_rect(*outRect);
 
-    ui_top_layout(layoutI);
     {
         layoutI.sizeX = UISize::wrap();
         layoutI.sizeY = UISize::fixed(height);
-        ui_push_text(&storage.text, label);
+        ui_push_text(&mText, label);
         ui_top_layout(layoutI);
 
         if (ui_top_mouse_down(mouseVal, mousePos))
@@ -60,26 +59,33 @@ bool eui_text(EUITextStorage& storage, const char* label, float height, Rect* ou
     return isPressed;
 }
 
-int eui_text_breadcrumb(EUITextBreadcrumbStorage& storage, float height, Color hlColor)
+void EUITextBreadcrumb::build(const char* cstr)
+{
+    Vector<UITextSpan> spans;
+    breadcrumb_text_to_spans(cstr, spans);
+    mText.set_value(cstr, spans);
+}
+
+std::string EUITextBreadcrumb::update(float height, Color hlColor)
 {
     EditorTheme theme = eui_get_theme();
-    int spanIndex = -1;
+    std::string str;
 
     UILayoutInfo layoutI{};
     layoutI.sizeX = UISize::fit();
     layoutI.sizeY = UISize::fixed(height);
     layoutI.childPadding = UIPadding::left_right(4.0f, 4.0f);
-    ui_push_panel(&storage.panel);
+    ui_push_panel(&mPanel);
     ui_top_layout(layoutI);
     {
         layoutI.sizeX = UISize::wrap();
         layoutI.sizeY = UISize::fixed(height);
 
-        ui_push_text(&storage.text);
+        ui_push_text(&mText);
         ui_top_layout(layoutI);
 
-        Vector<UITextSpan>& spans = storage.text.get_spans();
-        const std::string& value = storage.text.get_value();
+        Vector<UITextSpan>& spans = mText.get_spans();
+        const std::string& value = mText.get_value();
 
         for (size_t i = 0; i < spans.size(); i++)
         {
@@ -98,21 +104,14 @@ int eui_text_breadcrumb(EUITextBreadcrumbStorage& storage, float height, Color h
             span.fgColor = spanTextColor;
 
             if (ui_text_span_pressed(i))
-                spanIndex = i;
+                str = mText.get_substring(i);
         }
 
         ui_pop();
     }
     ui_pop();
 
-    return spanIndex;
-}
-
-void EUITextBreadcrumbStorage::build(const char* cstr)
-{
-    Vector<UITextSpan> spans;
-    breadcrumb_text_to_spans(cstr, spans);
-    text.set_value(cstr, spans);
+    return str;
 }
 
 } // namespace LD

@@ -4,24 +4,29 @@
 
 namespace LD {
 
-struct EUITextStorage
+class EUIText
 {
-    UITextData text;
-    UIPanelData panel;
+public:
     float radius = 0.4f;
+
+    bool update(const char* label, float height, Rect* outRect = nullptr);
+
+private:
+    UITextData mText;
+    UIPanelData mPanel;
 };
 
-bool eui_text(EUITextStorage& storage, const char* label, float height, Rect* outRect = nullptr);
-
-struct EUITextBreadcrumbStorage
+class EUITextBreadcrumb
 {
-    UITextData text;
-    UIPanelData panel;
-
+public:
     /// @brief Build breadcrumb text using '/' as separator
     void build(const char* text);
-};
 
-int eui_text_breadcrumb(EUITextBreadcrumbStorage& storage, float height, Color hlColor);
+    std::string update(float height, Color hlColor);
+
+private:
+    UITextData mText;
+    UIPanelData mPanel;
+};
 
 } // namespace LD

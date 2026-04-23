@@ -4,13 +4,18 @@
 #include <Ludens/UI/UIImmediate.h>
 #include <LudensEditor/EditorWidget/EUIListMenu.h>
 
+#include "EUI.h"
+
 namespace LD {
 
-int eui_list_menu(EditorTheme theme, int optionCount, const char** options)
+int eui_list_menu(int optionCount, const char** options)
 {
+    EditorTheme theme = eui_get_theme();
+    UITheme uiTheme = theme.get_ui_theme();
+
     float childGap = 2.0f;
     int index = -1;
-    ui_push_panel(nullptr);
+    ui_push_panel(nullptr, uiTheme.get_background_color());
     ui_top_layout(theme.make_vbox_layout(&childGap));
 
     Vec2 mousePos;
@@ -26,7 +31,7 @@ int eui_list_menu(EditorTheme theme, int optionCount, const char** options)
 
         ui_top_layout(optionPanelLayout);
 
-        Color color = theme.get_ui_theme().get_background_color();
+        Color color = uiTheme.get_background_color();
         if (ui_top_is_hovered())
             color = Color::lift(color, 0.2f);
 

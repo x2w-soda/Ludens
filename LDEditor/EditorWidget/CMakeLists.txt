@@ -4,11 +4,11 @@ set(MODULE_LIB
 	Lib/EUI.h
 	Lib/EUI.cpp
 	Lib/EUIRow.cpp
+	Lib/EUIProp.cpp
 	Lib/EUIIcon.cpp
 	Lib/EUIText.cpp
 	Lib/EUIScroll.cpp
-	Lib/EUIPrimitiveEdit.cpp
-	Lib/EUITransformEdit.cpp
+	Lib/EUIButton.cpp
 	Lib/EUIAssetSlot.cpp
 	Lib/EUIListMenu.cpp
 	Lib/EUIComponent.cpp
@@ -19,11 +19,11 @@ set(MODULE_LIB
 set(MODULE_INCLUDE
 	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorWidget/EditorWidget.h
 	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorWidget/EUIRow.h
+	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorWidget/EUIProp.h
 	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorWidget/EUIIcon.h
 	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorWidget/EUIText.h
 	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorWidget/EUIScroll.h
-	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorWidget/EUIPrimitiveEdit.h
-	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorWidget/EUITransformEdit.h
+	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorWidget/EUIButton.h
 	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorWidget/EUIAssetSlot.h
 	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorWidget/EUIListMenu.h
 	${LUDENS_INCLUDE_DIR}/LudensEditor/EditorWidget/EUIComponent.h

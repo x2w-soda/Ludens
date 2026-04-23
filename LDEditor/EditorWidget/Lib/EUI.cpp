@@ -31,10 +31,7 @@ void pop_prop_hbox()
 void push_prop_edit_vbox()
 {
     EditorTheme theme = eui_get_theme();
-    UILayoutInfo layoutI{};
-    layoutI.childAxis = UI_AXIS_Y;
-    layoutI.sizeX = UISize::fit();
-    layoutI.sizeY = UISize::fit();
+    UILayoutInfo layoutI(UISize::fit(), UISize::fit(), UI_AXIS_Y);
     layoutI.childGap = theme.get_child_gap_large();
     ui_push_panel(nullptr);
     ui_top_layout(layoutI);
@@ -49,7 +46,10 @@ bool push_text_edit_f32(UITextEditData* edit, float* f32, std::string& str, bool
 {
     bool commit = false;
 
+    EditorTheme theme = eui_get_theme();
+
     (void)ui_push_text_edit(edit);
+    edit->bgColor = edit->bgColorEdit = theme.get_ui_theme().get_field_color();
     edit->set_domain(UI_TEXT_EDIT_DOMAIN_F32);
     if (!ui_text_edit_is_editing())
         edit->set_text(std::format("{:8.3f}", *f32));
