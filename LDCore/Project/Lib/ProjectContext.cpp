@@ -37,7 +37,7 @@ bool ProjectContext::load_asset_schema(const FS::Path& assetSchemaPath, std::str
 
 bool ProjectContext::save_project(std::string err)
 {
-    if (!ProjectSchema::save_project(mProject, mProject.get_project_schema_path(), err))
+    if (!ProjectSchema::save_project(mProject, mProject.get_project_schema_abs_path(), err))
         return false;
 
     return true;
@@ -45,7 +45,7 @@ bool ProjectContext::save_project(std::string err)
 
 bool ProjectContext::save_asset_registry(std::string err)
 {
-    if (!AssetSchema::save_registry(mAssetRegistry, mProject.get_asset_schema_absolute_path(), err))
+    if (!AssetSchema::save_registry(mAssetRegistry, mProject.get_asset_schema_abs_path(), err))
         return false;
 
     return true;
@@ -69,24 +69,6 @@ void ProjectContext::configure_project_screen_layers()
     }
 
     renderS.configure_screen_layers(layers.size(), ids.data(), names.data());
-}
-
-Vector<FS::Path> ProjectContext::scene_schema_abs_paths()
-{
-    Vector<FS::Path> paths;
-
-    mProject.get_scene_schema_absolute_paths(paths);
-
-    return paths;
-}
-
-FS::Path ProjectContext::default_scene_schema_abs_path()
-{
-    ProjectSceneEntry entry;
-    if (!mProject.get_default_scene(entry))
-        return {};
-
-    return FS::absolute(mProject.get_root_path() / entry.path);
 }
 
 } // namespace LD

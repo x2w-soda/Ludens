@@ -34,10 +34,9 @@ public:
     inline Project project() const { return mProject; }
     inline SUIDRegistry suid_registry() const { return mSUIDRegistry; }
     inline AssetRegistry asset_registry() const { return mAssetRegistry; }
-    inline FS::Path asset_schema_abs_path() { return mProject ? mProject.get_asset_schema_absolute_path() : FS::Path(); }
-    inline FS::Path project_schema_abs_path() { return mProject ? mProject.get_project_schema_path() : FS::Path(); }
-    Vector<FS::Path> scene_schema_abs_paths();
-    FS::Path default_scene_schema_abs_path();
+    inline FS::Path root_dir_abs_path() { return mProject ? mProject.get_root_dir_abs_path() : FS::Path(); }
+    inline FS::Path asset_schema_abs_path() { return mProject ? mProject.get_asset_schema_abs_path() : FS::Path(); }
+    inline FS::Path project_schema_abs_path() { return mProject ? mProject.get_project_schema_abs_path() : FS::Path(); }
 
 private:
     Project mProject = {};             // project handle

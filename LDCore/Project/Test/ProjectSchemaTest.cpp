@@ -18,18 +18,15 @@ assets = "assets.toml"
 
 [[scene]]
 id = 0x03000000
-name = "scene1"
-path = "scenes/scene1.toml"
+path = "scenes/scene1"
 
 [[scene]]
 id = 0x03000001
-name = "scene2"
-path = "scenes/scene2.toml"
+path = "scenes/scene2"
 
 [[scene]]
 id = 0x03000002
-name = "scene3"
-path = "scenes/scene3.toml"
+path = "scenes/scene3"
 
 [settings.startup]
 window_width = 1234
@@ -44,21 +41,19 @@ default_scene_id = 0x03000002
 
     CHECK(proj.get_name() == "hello world");
 
-    FS::Path path = proj.get_root_path();
+    FS::Path path = proj.get_root_dir_abs_path();
     CHECK(path.empty());
 
-    path = proj.get_asset_schema_path();
+    path = proj.get_asset_schema_rel_path();
     CHECK(path == FS::Path("assets.toml"));
 
-    path = proj.get_asset_schema_absolute_path();
-    CHECK(path == FS::Path("assets.toml"));
-
-    Vector<FS::Path> scenePaths;
-    proj.get_scene_schema_absolute_paths(scenePaths);
-    CHECK(scenePaths.size() == 3);
-    CHECK(scenePaths[0] == FS::Path("scenes/scene1.toml"));
-    CHECK(scenePaths[1] == FS::Path("scenes/scene2.toml"));
-    CHECK(scenePaths[2] == FS::Path("scenes/scene3.toml"));
+    CHECK(proj.get_scene_schema_rel_path(0x03000000, path));
+    CHECK(path == "storage/03000000/scene.toml");
+    CHECK(proj.get_scene_schema_rel_path(0x03000001, path));
+    CHECK(path == "storage/03000001/scene.toml");
+    CHECK(proj.get_scene_schema_rel_path(0x03000002, path));
+    CHECK(path == "storage/03000002/scene.toml");
+    CHECK_FALSE(proj.get_scene_schema_rel_path(0x03000003, path));
 
     ProjectStartupSettings startupS = proj.settings().startup_settings();
     CHECK(startupS.get_window_width() == 1234);

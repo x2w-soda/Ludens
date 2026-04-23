@@ -96,11 +96,11 @@ bool ProjectSchemaLoader::load_project_schema(Project project, SUIDRegistry idRe
 
     mReader.exit();
 
-    project.set_asset_schema_path(FS::Path(str));
+    project.set_asset_schema_rel_path(FS::Path(str));
 
     bool isValid = true;
     uint32_t u32;
-    ProjectSceneEntry sceneEntry;
+    std::string uriPath;
     int sceneCount = 0;
     if (mReader.enter_array(PROJECT_SCHEMA_KEY_SCENE, sceneCount))
     {
@@ -109,19 +109,11 @@ bool ProjectSchemaLoader::load_project_schema(Project project, SUIDRegistry idRe
             if (!mReader.enter_table(i))
                 continue; // ignore
 
-            if (!mReader.read_string(PROJECT_SCHEMA_KEY_SCENE_NAME, sceneEntry.name))
+            if (!mReader.read_string(PROJECT_SCHEMA_KEY_SCENE_PATH, uriPath))
             {
                 mReader.exit();
                 continue;
             }
-
-            if (!mReader.read_string(PROJECT_SCHEMA_KEY_SCENE_PATH, str))
-            {
-                mReader.exit();
-                continue;
-            }
-
-            sceneEntry.path = str;
 
             if (!mReader.read_u32(PROJECT_SCHEMA_KEY_SCENE_ID, u32))
             {
@@ -129,10 +121,8 @@ bool ProjectSchemaLoader::load_project_schema(Project project, SUIDRegistry idRe
                 continue;
             }
 
-            sceneEntry.id = SUID(u32);
-
             // conflicting scene entry makes the entire project schema invalid
-            if (!project.add_scene(sceneEntry, err))
+            if (!project.register_scene_with_id(mIDReg, SUID(u32), uriPath, err))
                 isValid = false;
 
             mReader.exit();
@@ -163,11 +153,10 @@ bool ProjectSchemaLoader::load_project_settings(ProjectSettings settings, std::s
         load_project_startup_settings(startup);
         mReader.exit();
 
-        ProjectSceneEntry dftScene;
         SUID dftSceneID = startup.get_default_scene_id();
-        if (!mProject.get_scene(dftSceneID, dftScene))
+        if (!mProject.has_scene(dftSceneID))
         {
-            err = std::format("project startup settings: default_scene_id {} does not exist", dftSceneID);
+            err = std::format("project startup settings: default_scene_id 0x{} does not exist", dftSceneID.to_string());
             return false;
         }
     }
@@ -243,19 +232,18 @@ bool ProjectSchemaSaver::save_project(Project project, std::string& toml, std::s
     mWriter.key(PROJECT_SCHEMA_KEY_VERSION_MAJOR).write_i32(LD_VERSION_MAJOR);
     mWriter.key(PROJECT_SCHEMA_KEY_VERSION_MINOR).write_i32(LD_VERSION_MINOR);
     mWriter.key(PROJECT_SCHEMA_KEY_VERSION_PATCH).write_i32(LD_VERSION_PATCH);
-    mWriter.key(PROJECT_SCHEMA_KEY_ASSETS).write_string(mProject.get_asset_schema_path().string());
+    mWriter.key(PROJECT_SCHEMA_KEY_ASSETS).write_string(mProject.get_asset_schema_rel_path().string());
     mWriter.key(PROJECT_SCHEMA_KEY_NAME).write_string(mProject.get_name());
     mWriter.end_table();
 
-    Vector<ProjectSceneEntry> scenes;
+    Vector<SUIDEntry> scenes;
     mProject.get_scenes(scenes);
     mWriter.begin_array_table(PROJECT_SCHEMA_KEY_SCENE);
-    for (const ProjectSceneEntry& scene : scenes)
+    for (const SUIDEntry& scene : scenes)
     {
         mWriter.begin_table();
         mWriter.key(PROJECT_SCHEMA_KEY_SCENE_ID).write_u32(scene.id);
-        mWriter.key(PROJECT_SCHEMA_KEY_SCENE_NAME).write_string(scene.name);
-        mWriter.key(PROJECT_SCHEMA_KEY_SCENE_PATH).write_string(scene.path.string());
+        mWriter.key(PROJECT_SCHEMA_KEY_SCENE_PATH).write_string(scene.path);
         mWriter.end_table();
     }
     mWriter.end_array_table();
@@ -323,8 +311,6 @@ bool ProjectSchema::load_project_from_source(Project project, SUIDRegistry idReg
         return false;
     }
 
-    project.set_project_schema_path(rootDir / FS::Path("project.toml"));
-
     ProjectSchemaLoader loader;
     return loader.load_project_schema(project, idReg, toml, err);
 }
@@ -337,7 +323,7 @@ bool ProjectSchema::load_project_from_file(Project project, SUIDRegistry idReg, 
     if (!FS::read_file_to_vector(tomlPath, toml, err))
         return false;
 
-    project.set_project_schema_path(tomlPath);
+    project.set_project_schema_abs_path(FS::absolute(tomlPath));
 
     ProjectSchemaLoader loader;
     return loader.load_project_schema(project, idReg, View((const char*)toml.data(), toml.size()), err);
@@ -366,28 +352,27 @@ bool ProjectSchema::save_project(Project project, const FS::Path& savePath, std:
     return FS::write_file_and_swap_backup(savePath, tomlView, err);
 }
 
-std::string ProjectSchema::create_empty(const std::string& projectName, const std::string& assetSchemaPath, const std::string& sceneSchemaPath, const std::string& sceneName)
+std::string ProjectSchema::create_empty(const std::string& projectName, const std::string& assetSchemaRelPath, const std::string& sceneURIPath, const std::string& sceneName)
 {
+    SUIDRegistry idReg = SUIDRegistry::create();
     Project project = Project::create();
     project.set_name(projectName);
-    project.set_asset_schema_path(assetSchemaPath);
+    project.set_asset_schema_rel_path(assetSchemaRelPath);
     project.settings().startup_settings().set_window_name(projectName);
 
     std::string err;
-    ProjectSceneEntry entry{};
-    entry.id = SUID(SERIAL_TYPE_SCENE, 0);
-    entry.name = sceneName;
-    entry.path = sceneSchemaPath;
-    bool success = project.add_scene(entry, err);
+    SUID defaultSceneID(SERIAL_TYPE_SCENE, 0);
+    bool success = project.register_scene_with_id(idReg, defaultSceneID, sceneURIPath, err);
     LD_ASSERT(success);
 
-    project.settings().startup_settings().set_default_scene_id(entry.id);
+    project.settings().startup_settings().set_default_scene_id(defaultSceneID);
 
     std::string toml;
     success = ProjectSchema::save_project_to_string(project, toml, err);
     LD_ASSERT(success);
 
     Project::destroy(project);
+    SUIDRegistry::destroy(idReg);
 
     return toml;
 }

@@ -101,7 +101,8 @@ ProjectLoadState ProjectLoadAsync::update()
                 sLog.warn("{}", err.str);
         }
 
-        Vector<FS::Path> scenePaths = mObj->projectCtx->scene_schema_abs_paths();
+        Vector<FS::Path> scenePaths;
+        mObj->projectCtx->project().get_scene_schema_abs_paths(scenePaths);
 
         for (const FS::Path& scenePath : scenePaths)
         {

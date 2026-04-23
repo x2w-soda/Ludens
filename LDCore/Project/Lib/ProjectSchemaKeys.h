@@ -8,7 +8,6 @@
 #define PROJECT_SCHEMA_KEY_ASSETS "assets"
 #define PROJECT_SCHEMA_KEY_SCENE "scene"
 
-#define PROJECT_SCHEMA_KEY_SCENE_NAME "name"
 #define PROJECT_SCHEMA_KEY_SCENE_PATH "path"
 #define PROJECT_SCHEMA_KEY_SCENE_ID "id"
 

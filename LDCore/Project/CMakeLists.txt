@@ -3,6 +3,7 @@ set(MODULE_TEST_NAME LDProjectTest)
 
 set(MODULE_INCLUDE
     ${LUDENS_INCLUDE_DIR}/Ludens/Project/Project.h
+    ${LUDENS_INCLUDE_DIR}/Ludens/Project/ProjectDef.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Project/ProjectSchema.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Project/ProjectContext.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Project/ProjectSettings.h

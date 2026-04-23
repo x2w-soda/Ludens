@@ -2,18 +2,13 @@
 
 #include <Ludens/Header/Handle.h>
 #include <Ludens/Project/ProjectSettings.h>
+#include <Ludens/Serial/SUID.h>
+#include <Ludens/Serial/SUIDTable.h>
 #include <Ludens/System/FileSystem.h>
 
 #include <string>
 
 namespace LD {
-
-struct ProjectSceneEntry
-{
-    FS::Path path;    // relative path to the SceneSchema file
-    std::string name; // user facing display name
-    SUID id;          // stable ID to refer to the Scene
-};
 
 /// @brief Ludens project handle.
 struct Project : Handle<struct ProjectObj>
@@ -30,62 +25,38 @@ struct Project : Handle<struct ProjectObj>
     /// @param patch Patch semantiv version
     void get_version(int& major, int& minor, int& patch);
 
-    /// @brief Set project name.
-    void set_name(const std::string& name);
-
-    /// @brief Get project name.
+    void set_name(const std::string& projectName);
     std::string get_name();
 
-    /// @brief Get absolute path to directory containing Project schema.
-    FS::Path get_root_path();
+    /// @brief Project root directory is the directory containing Project schema.
+    FS::Path get_root_dir_abs_path();
+    FS::Path get_storage_dir_rel_path();
+    void set_storage_dir_rel_path(const FS::Path& relPath);
+    FS::Path get_storage_dir_abs_path();
 
-    /// @brief Set absolute path to project schema.
-    void set_project_schema_path(const FS::Path& projectSchemaPath);
+    void set_project_schema_abs_path(const FS::Path& projectSchemaAbsPath);
+    FS::Path get_project_schema_abs_path();
 
-    /// @brief Get absolute path to project schema.
-    FS::Path get_project_schema_path();
+    void set_asset_schema_rel_path(const FS::Path& relPath);
+    FS::Path get_asset_schema_rel_path();
+    FS::Path get_asset_schema_abs_path();
 
-    /// @brief Set relative path to asset schema.
-    void set_asset_schema_path(const FS::Path& assetSchemaPath);
+    SUID register_scene(SUIDRegistry idReg, const std::string& uriPath, std::string& err);
+    SUID register_scene_with_id(SUIDRegistry idReg, SUID id, const std::string& uriPath, std::string& err);
+    void unregister_scene(SUIDRegistry idReg, SUID id);
+    inline SUID get_default_scene_id() { return settings().startup_settings().get_default_scene_id(); }
 
-    /// @brief Get relative path to asset schema.
-    /// @return Path to Assets schema after concatenating project root path.
-    FS::Path get_asset_schema_path();
-
-    /// @brief Get absolute path to asset schema.
-    inline FS::Path get_asset_schema_absolute_path()
-    {
-        return get_root_path() / get_asset_schema_path();
-    }
-
-    /// @brief Add a Scene entry to the project. May be rejected if SUID is already registered.
-    bool add_scene(const ProjectSceneEntry& entry, std::string& err);
-
-    /// @brief Get scene entry by ID, may fail for invalid ID.
-    bool get_scene(SUID sceneID, ProjectSceneEntry& outEntry);
-
-    inline bool get_default_scene(ProjectSceneEntry& outEntry)
-    {
-        return get_scene(settings().startup_settings().get_default_scene_id(), outEntry);
-    }
+    bool has_scene(SUID sceneID);
+    bool get_scene_uri_path(SUID sceneID, std::string& outPath);
+    bool get_default_scene_uri_path(std::string& outPath);
+    bool set_scene_uri_path(SUID sceneID, const std::string& path);
+    bool get_scene_schema_rel_path(SUID sceneID, FS::Path& outPath);
+    bool get_scene_schema_abs_path(SUID sceneID, FS::Path& outPath);
+    void get_scene_schema_abs_paths(Vector<FS::Path>& scenePaths);
+    bool get_default_scene_schema_abs_path(FS::Path& outPath);
 
     /// @brief Get all scene entries in project.
-    void get_scenes(Vector<ProjectSceneEntry>& outEntries);
-
-    /// @brief Get relative paths to scene schemas.
-    /// @param scenePaths Outputs paths to scene schemas after concatenating project root path.
-    void get_scene_schema_paths(Vector<FS::Path>& scenePaths);
-
-    void get_scene_schema_absolute_paths(Vector<FS::Path>& scenePaths)
-    {
-        const FS::Path rootPath = get_root_path();
-        get_scene_schema_paths(scenePaths);
-        for (size_t i = 0; i < scenePaths.size(); i++)
-            scenePaths[i] = rootPath / scenePaths[i];
-    }
-
-    /// @brief Set relative path to a scene schema, has no effect for invalid ID.
-    void set_scene_schema_path(SUID sceneID, const FS::Path& scenePath);
+    void get_scenes(Vector<SUIDEntry>& outEntries);
 
     /// @brief Get interface to project settings.
     ProjectSettings settings();
