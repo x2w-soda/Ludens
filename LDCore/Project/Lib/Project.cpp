@@ -51,19 +51,19 @@ SUID ProjectObj::register_scene(SUIDRegistry idReg, SUID sceneID, const std::str
     if (sceneID) // try register with known ID
     {
         if (idReg.contains(sceneID) || sceneTable.contains(sceneID))
-            return false;
+            return {};
 
         (void)idReg.try_get_suid(sceneID);
-        return sceneTable.register_id(sceneID, uriPath);
+        return sceneTable.register_id(sceneID, uriPath) ? sceneID : SUID(0);
     }
 
     // try register with new ID
     sceneID = idReg.get_suid(SERIAL_TYPE_SCENE);
     if (sceneTable.register_id(sceneID, uriPath))
-        return true;
+        return sceneID;
 
     idReg.free_suid(sceneID);
-    return false;
+    return {};
 #endif
 }
 
@@ -188,6 +188,11 @@ bool Project::get_default_scene_uri_path(std::string& outPath)
 bool Project::set_scene_uri_path(SUID sceneID, const std::string& path)
 {
     return mObj->sceneTable.set_path(sceneID, path);
+}
+
+bool Project::is_scene_uri_path_valid(const std::string& path, std::string& collidingPath)
+{
+    return mObj->sceneTable.is_path_valid(path, collidingPath);
 }
 
 bool Project::get_scene_schema_rel_path(SUID sceneID, FS::Path& outPath)

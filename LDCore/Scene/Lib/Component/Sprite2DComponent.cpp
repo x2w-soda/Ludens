@@ -3,6 +3,8 @@
 
 #include "Sprite2DComponent.h"
 
+#define INIT_REGION_SIZE 100.0f
+
 namespace LD {
 
 void init_sprite_2d_component(ComponentBase** dstData)
@@ -12,6 +14,9 @@ void init_sprite_2d_component(ComponentBase** dstData)
     dstSprite2D->transform = dstBase->transform2D;
     dstSprite2D->assetID = 0;
     dstSprite2D->draw = sScene->renderSystemCache.create_sprite_2d_draw(dstBase->cuid, 0);
+
+    dstSprite2D->draw.set_region(Rect(0.0f, 0.0f, INIT_REGION_SIZE, INIT_REGION_SIZE));
+    dstSprite2D->draw.set_pivot(Vec2(INIT_REGION_SIZE / 2.0f));
 }
 
 bool load_sprite_2d_component_suid(SceneObj* scene, Sprite2DComponent* sprite, SUID layerSUID, AssetID texture2D, std::string& err)

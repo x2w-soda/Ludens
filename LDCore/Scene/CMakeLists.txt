@@ -11,6 +11,7 @@ set(MODULE_INCLUDE
     ${LUDENS_INCLUDE_DIR}/Ludens/Scene/Component/CameraView.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Scene/Component/Camera2DView.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Scene/Component/AudioSourceView.h
+    ${LUDENS_INCLUDE_DIR}/Ludens/Scene/Component/Transform2DView.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Scene/Component/Sprite2DView.h
     ${LUDENS_INCLUDE_DIR}/Ludens/Scene/Component/ScreenUIView.h
 )
@@ -40,6 +41,8 @@ set(MODULE_LIB
     Lib/Component/Camera2DComponent.cpp
     Lib/Component/AudioSourceComponent.h
     Lib/Component/AudioSourceComponent.cpp
+    Lib/Component/Transform2DComponent.h
+    Lib/Component/Transform2DComponent.cpp
     Lib/Component/Sprite2DComponent.h
     Lib/Component/Sprite2DComponent.cpp
     Lib/Component/ScreenUIComponent.h

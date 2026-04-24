@@ -54,6 +54,9 @@ void SUIDTable::unregister_id(SUID id)
 
 bool SUIDTable::is_path_valid(const std::string& path, std::string& collidingPath)
 {
+    if (path.empty())
+        return false;
+
     std::string name = FS::Path(path).stem().string();
 
     if (mPaths.contains(path))

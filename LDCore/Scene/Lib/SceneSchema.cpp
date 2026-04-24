@@ -28,11 +28,12 @@ public:
     bool save_scene(Scene scene, std::string& toml, std::string& err);
 
     static bool save_audio_source_component(SceneSchemaSaver& saver, ComponentView comp);
+    static bool save_transform_2d_component(SceneSchemaSaver& saver, ComponentView comp);
     static bool save_camera_component(SceneSchemaSaver& saver, ComponentView comp);
     static bool save_camera_2d_component(SceneSchemaSaver& saver, ComponentView comp);
-    //static bool save_mesh_component(SceneSchemaSaver& saver, ComponentView comp);
+    // static bool save_mesh_component(SceneSchemaSaver& saver, ComponentView comp);
     static bool save_sprite_2d_component(SceneSchemaSaver& saver, ComponentView comp);
-    //static bool save_screen_ui_component(SceneSchemaSaver& saver, ComponentView comp);
+    // static bool save_screen_ui_component(SceneSchemaSaver& saver, ComponentView comp);
 
 private:
     static void save_component(SceneSchemaSaver& saver, ComponentView comp);
@@ -56,11 +57,12 @@ public:
     bool load_scene(Scene scene, SUIDRegistry idReg, const View& toml, std::string& err);
 
     static ComponentView load_audio_source_component(SceneSchemaLoader& loader, SUID compSUID, const char* compName);
+    static ComponentView load_transform_2d_component(SceneSchemaLoader& loader, SUID compSUID, const char* compName);
     static ComponentView load_camera_component(SceneSchemaLoader& loader, SUID compSUID, const char* compName);
     static ComponentView load_camera_2d_component(SceneSchemaLoader& loader, SUID compSUID, const char* compName);
-    //static ComponentView load_mesh_component(SceneSchemaLoader& loader, SUID compSUID, const char* compName);
+    // static ComponentView load_mesh_component(SceneSchemaLoader& loader, SUID compSUID, const char* compName);
     static ComponentView load_sprite_2d_component(SceneSchemaLoader& loader, SUID compSUID, const char* compName);
-    //static ComponentView load_screen_ui_component(SceneSchemaLoader& loader, SUID compSUID, const char* compName);
+    // static ComponentView load_screen_ui_component(SceneSchemaLoader& loader, SUID compSUID, const char* compName);
 
 private:
     static ComponentView load_component(SceneSchemaLoader& loader, std::string& err);
@@ -82,7 +84,7 @@ struct
     {COMPONENT_TYPE_DATA,           "Data",        nullptr,                                           nullptr},
     {COMPONENT_TYPE_AUDIO_SOURCE,   "AudioSource", &SceneSchemaLoader::load_audio_source_component,   &SceneSchemaSaver::save_audio_source_component},
     {COMPONENT_TYPE_TRANSFORM,      "Transform",   nullptr,                                           nullptr},
-    {COMPONENT_TYPE_TRANSFORM_2D,   "Transform2D", nullptr,                                           nullptr},
+    {COMPONENT_TYPE_TRANSFORM_2D,   "Transform2D", &SceneSchemaLoader::load_transform_2d_component,   &SceneSchemaSaver::save_transform_2d_component},
     {COMPONENT_TYPE_CAMERA,         "Camera",      &SceneSchemaLoader::load_camera_component,         &SceneSchemaSaver::save_camera_component},
     {COMPONENT_TYPE_CAMERA_2D,      "Camera2D",    &SceneSchemaLoader::load_camera_2d_component,      &SceneSchemaSaver::save_camera_2d_component},
     {COMPONENT_TYPE_MESH,           "Mesh",        nullptr,                                           nullptr},
@@ -165,6 +167,25 @@ ComponentView SceneSchemaLoader::load_audio_source_component(SceneSchemaLoader& 
         return {};
 
     return ComponentView(source.data());
+}
+
+ComponentView SceneSchemaLoader::load_transform_2d_component(SceneSchemaLoader& loader, SUID compSUID, const char* compName)
+{
+    Scene scene = loader.mScene;
+    TOMLReader reader = loader.mReader;
+    LD_ASSERT(scene && reader);
+
+    Transform2DView view(scene.create_component_serial(COMPONENT_TYPE_TRANSFORM_2D, compName, loader.mIDReg, (SUID)0, compSUID));
+    if (!view)
+        return {};
+
+    Transform2D transform;
+    if (!TOMLUtil::read_transform_2d(reader, SCENE_SCHEMA_KEY_COMPONENT_TRANSFORM, transform))
+        return {};
+
+    view.set_transform_2d(transform);
+
+    return view;
 }
 
 ComponentView SceneSchemaLoader::load_camera_component(SceneSchemaLoader& loader, SUID compSUID, const char* compName)
@@ -432,6 +453,21 @@ bool SceneSchemaSaver::save_audio_source_component(SceneSchemaSaver& saver, Comp
     writer.key(SCENE_SCHEMA_KEY_AUDIO_SOURCE_CLIP_ID).write_u32(source.get_clip_asset());
     writer.key(SCENE_SCHEMA_KEY_AUDIO_SOURCE_PAN).write_f32(source.get_pan());
     writer.key(SCENE_SCHEMA_KEY_AUDIO_SOURCE_VOLUME_LINEAR).write_f32(source.get_volume_linear());
+
+    return true;
+}
+
+bool SceneSchemaSaver::save_transform_2d_component(SceneSchemaSaver& saver, ComponentView comp)
+{
+    LD_ASSERT(saver.mScene && saver.mWriter && comp);
+
+    if (!comp)
+        return false;
+
+    TOMLWriter writer = saver.mWriter;
+    Transform2D transform;
+    if (!comp.get_transform_2d(transform) || !TOMLUtil::write_transform_2d(writer, SCENE_SCHEMA_KEY_COMPONENT_TRANSFORM, transform))
+        return false;
 
     return true;
 }

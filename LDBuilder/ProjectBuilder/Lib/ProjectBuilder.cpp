@@ -426,4 +426,21 @@ bool create_empty_project(const std::string& projectName, const FS::Path& projec
     return true;
 }
 
+bool create_empty_scene(const FS::Path& sceneSchemaAbsPath, std::string& err)
+{
+    const FS::Path directory = sceneSchemaAbsPath.parent_path();
+
+    if (!FS::create_directories(directory, err))
+    {
+        err = std::format("failed to create destination directory [{}]", directory.string());
+        return false;
+    }
+
+    std::string toml = SceneSchema::create_empty();
+    if (!FS::write_file(sceneSchemaAbsPath, View(toml.data(), toml.size()), err))
+        return false;
+
+    return true;
+}
+
 } // namespace LD

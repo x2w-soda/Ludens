@@ -47,7 +47,7 @@ Vec2 Sprite2DDraw::get_pivot()
     return mObj->pivot;
 }
 
-void Sprite2DDraw::set_pivot(const Vec2& pivot)
+void Sprite2DDraw::set_pivot(Vec2 pivot)
 {
     mObj->pivot = pivot;
 }
@@ -67,7 +67,7 @@ Rect Sprite2DDraw::get_region()
     return mObj->region;
 }
 
-void Sprite2DDraw::set_region(const Rect& region)
+void Sprite2DDraw::set_region(Rect region)
 {
     mObj->region = region;
 }

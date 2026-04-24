@@ -50,6 +50,8 @@ struct Project : Handle<struct ProjectObj>
     bool get_scene_uri_path(SUID sceneID, std::string& outPath);
     bool get_default_scene_uri_path(std::string& outPath);
     bool set_scene_uri_path(SUID sceneID, const std::string& path);
+    bool is_scene_uri_path_valid(const std::string& path, std::string& collidingPath);
+
     bool get_scene_schema_rel_path(SUID sceneID, FS::Path& outPath);
     bool get_scene_schema_abs_path(SUID sceneID, FS::Path& outPath);
     void get_scene_schema_abs_paths(Vector<FS::Path>& scenePaths);

@@ -540,10 +540,6 @@ UIWidgetState* UIWindowState::get_or_create_text_edit(UITextEditData* data)
     widgetS->widget = parent.add_child(UI_WIDGET_TEXT_EDIT, {}, data, widgetS);
     widgetS->widget.set_layout_size(UISize::fixed(100.0f), UISize::fixed(19.2f)); // TODO:
 
-    textW = (UITextEditWidget)widgetS->widget;
-    textW.set_on_submit(&on_text_submit_handler);
-    textW.set_on_change(&on_text_change_handler);
-
     return widgetS;
 }
 
@@ -1238,6 +1234,9 @@ UITextEditWidget ui_push_text_edit(UITextEditData* data)
     UIWidgetState* imWidget = imWindow->get_or_create_text_edit(data);
     UITextEditWidget textW = (UITextEditWidget)imWidget->widget;
     LD_ASSERT(textW.get_type() == UI_WIDGET_TEXT_EDIT);
+
+    textW.set_on_submit(&on_text_submit_handler);
+    textW.set_on_change(&on_text_change_handler);
 
     imWindow->imWidgetStack.push(imWidget);
 

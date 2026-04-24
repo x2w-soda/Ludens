@@ -56,6 +56,8 @@ void ScreenLayerObj::invalidate(RenderSystemMat4Callback mat4CB, void* user)
     {
         auto* draw = (Sprite2DDrawObj*)it.data();
 
+        LD_ASSERT(draw->id != 0);
+
         ScreenLayerItem item;
         item.zDepth = draw->zDepth;
         item.type = SCREEN_LAYER_ITEM_SPRITE_2D;

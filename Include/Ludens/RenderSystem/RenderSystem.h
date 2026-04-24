@@ -39,11 +39,11 @@ struct Sprite2DDraw : IDHandle<Sprite2DDrawObj, RUID>
     void set_image(Image2D image2D);
     Image2D get_image();
     Vec2 get_pivot();
-    void set_pivot(const Vec2& pivot);
+    void set_pivot(Vec2 pivot);
     uint32_t get_z_depth();
     void set_z_depth(uint32_t zDepth);
     Rect get_region();
-    void set_region(const Rect& region);
+    void set_region(Rect region);
     RUID get_layer_id();
 };
 

@@ -11,10 +11,12 @@ static Rect clamp_rect(Rect rect)
 
 void init_camera_2d_component(ComponentBase** dstData)
 {
+    Vec2 extent = sScene->tick.extent;
+
     ComponentBase* base = *dstData;
     Camera2DComponent* dstCamera2D = (Camera2DComponent*)dstData;
     dstCamera2D->transform = base->transform2D;
-    dstCamera2D->camera = {};
+    dstCamera2D->camera = Camera2D::create(extent);
     dstCamera2D->viewport = Rect(0.0f, 0.0f, 1.0f, 1.0f);
     LD_ASSERT(dstCamera2D->transform);
 }
@@ -26,7 +28,12 @@ bool clone_camera_2d_component(SceneObj* scene, ComponentBase** dstData, Compone
 
     Rect viewport = srcCamera.get_viewport();
     Camera2DInfo info = srcCamera.get_info();
-    return load_camera_2d_component(scene, (Camera2DComponent*)dstData, info, viewport, err);
+    Camera2DComponent* dstCamera2D = (Camera2DComponent*)dstData;
+    if (!load_camera_2d_component(scene, dstCamera2D, info, viewport, err))
+        return false;
+
+    dstCamera2D->constraint = srcCamera.get_constraint();
+    return true;
 }
 
 bool load_camera_2d_component(SceneObj* scene, Camera2DComponent* camera, const Camera2DInfo& info, const Rect& viewport, std::string& err)

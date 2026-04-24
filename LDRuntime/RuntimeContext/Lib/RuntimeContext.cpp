@@ -133,6 +133,7 @@ bool RuntimeContextObj::startup(const RuntimeContextInfo& info, std::string err)
     sceneI.renderSystem = renderSystem;
     sceneI.uiFont = fontDefault;
     sceneI.uiTheme = UITheme::get_default_theme();
+    sceneI.suidRegistry = projectCtx.suid_registry();
     scene = Scene::create(sceneI);
 
     // Need at least one ScreenLayer before loading any Sprite2DComponents
