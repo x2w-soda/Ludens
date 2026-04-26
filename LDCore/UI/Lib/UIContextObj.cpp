@@ -683,6 +683,9 @@ bool UIContextObj::input_scroll(const UIEvent& event)
 
 UILayer UIContext::create_layer(const char* layerName)
 {
+    if (!mObj->deferredLayerDestruction.empty())
+        mObj->pre_update();
+
     return UILayer(mObj->get_or_create_layer(layerName));
 }
 

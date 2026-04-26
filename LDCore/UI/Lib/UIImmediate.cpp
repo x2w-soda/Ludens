@@ -592,12 +592,6 @@ UIWidgetState* UIWindowState::get_or_create_button(UIButtonData* data)
     UIWidget parent = get_parent_widget();
     widgetS->widget = parent.add_child(UI_WIDGET_BUTTON, layoutI, data, widgetS);
 
-    buttonW = (UIButtonWidget)widgetS->widget;
-    buttonW.set_on_click([](UIWidget, MouseButton, void* user) {
-        auto* state = (UIWidgetState*)user;
-        state->isButtonPressed.set(true);
-    });
-
     return widgetS;
 }
 
@@ -1433,6 +1427,12 @@ UIButtonWidget ui_push_button(UIButtonData* data)
     UIWidgetState* imWidget = imWindow->get_or_create_button(data);
 
     imWindow->imWidgetStack.push(imWidget);
+
+    UIButtonWidget buttonW = (UIButtonWidget)imWidget->widget;
+    buttonW.set_on_click([](UIWidget, MouseButton, void* user) {
+        auto* state = (UIWidgetState*)user;
+        state->isButtonPressed.set(true);
+    });
 
     return (UIButtonWidget)imWidget->widget;
 }
