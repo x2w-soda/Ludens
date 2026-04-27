@@ -2,6 +2,7 @@
 
 #include <Ludens/Asset/Asset.h>
 #include <Ludens/DataRegistry/DataRegistry.h>
+#include <Ludens/Serial/Property.h>
 #include <Ludens/System/FileSystem.h>
 #include <LudensEditor/EditorContext/EditorContextDef.h>
 
@@ -13,60 +14,6 @@ struct EditorEvent;
 
 /// @brief User callback to observe editor events.
 typedef void (*EditorEventFn)(const EditorEvent* event, void* user);
-
-enum EditorEventType
-{
-    EDITOR_EVENT_TYPE_NOTIFY_PROJECT_CREATION,
-    EDITOR_EVENT_TYPE_NOTIFY_PROJECT_LOAD,
-    EDITOR_EVENT_TYPE_NOTIFY_PROJECT_SETTINGS_DIRTY,
-    EDITOR_EVENT_TYPE_NOTIFY_SCENE_LOAD,
-    EDITOR_EVENT_TYPE_NOTIFY_COMPONENT_SELECTION,
-    EDITOR_EVENT_TYPE_NOTIFY_FILE_DROP,
-    EDITOR_EVENT_TYPE_REQUEST_HIDE_MODAL,
-    EDITOR_EVENT_TYPE_REQUEST_WORKSPACE_LAYOUT,
-    EDITOR_EVENT_TYPE_REQUEST_PROJECT_SETTINGS,
-    EDITOR_EVENT_TYPE_REQUEST_COMPONENT_SCRIPT,
-    EDITOR_EVENT_TYPE_REQUEST_COMPONENT_ASSET,
-    EDITOR_EVENT_TYPE_REQUEST_IMPORT_ASSETS,
-    EDITOR_EVENT_TYPE_REQUEST_NEW_PROJECT,
-    EDITOR_EVENT_TYPE_REQUEST_OPEN_PROJECT,
-    EDITOR_EVENT_TYPE_REQUEST_NEW_SCENE,
-    EDITOR_EVENT_TYPE_REQUEST_OPEN_SCENE,
-    EDITOR_EVENT_TYPE_REQUEST_CREATE_COMPONENT,
-    EDITOR_EVENT_TYPE_REQUEST_DOCUMENT,
-    EDITOR_EVENT_TYPE_ACTION_SAVE,
-    EDITOR_EVENT_TYPE_ACTION_UNDO,
-    EDITOR_EVENT_TYPE_ACTION_REDO,
-    EDITOR_EVENT_TYPE_ACTION_NEW_SCENE,
-    EDITOR_EVENT_TYPE_ACTION_OPEN_SCENE,
-    EDITOR_EVENT_TYPE_ACTION_OPEN_PROJECT,
-    EDITOR_EVENT_TYPE_ACTION_CREATE_PROJECT,
-    EDITOR_EVENT_TYPE_ACTION_IMPORT_ASSETS,
-    EDITOR_EVENT_TYPE_ACTION_IMPORT_ASSETS_ASYNC,
-    EDITOR_EVENT_TYPE_ACTION_RENAME_ASSET,
-    EDITOR_EVENT_TYPE_ACTION_RENAME_COMPONENT,
-    EDITOR_EVENT_TYPE_ACTION_ADD_COMPONENT,
-    EDITOR_EVENT_TYPE_ACTION_SET_COMPONENT_SCRIPT,
-    EDITOR_EVENT_TYPE_ACTION_SET_COMPONENT_ASSET,
-    EDITOR_EVENT_TYPE_ACTION_SET_COMPONENT_TRANSFORM_2D,
-    EDITOR_EVENT_TYPE_ACTION_CLONE_COMPONENT_SUBTREE,
-    EDITOR_EVENT_TYPE_ACTION_DELETE_COMPONENT_SUBTREE,
-    EDITOR_EVENT_TYPE_ENUM_COUNT,
-};
-
-enum EditorEventCategory
-{
-    /// @brief Notify events signal a state change that observers may wish to adapt to.
-    EDITOR_EVENT_CATEGORY_NOTIFY,
-
-    /// @brief Request events signal that some process should be initiated,
-    ///        no actions are committed yet and parameters are often unknown.
-    EDITOR_EVENT_CATEGORY_REQUEST,
-
-    /// @brief Action events are transactional and will affect Undo Redo state,
-    ///        all parameters for the action type are already known.
-    EDITOR_EVENT_CATEGORY_ACTION,
-};
 
 struct EditorEvent
 {
@@ -171,6 +118,19 @@ struct EditorNotifyFileDropEvent : EditorNotifyEvent
     Vector<FS::Path> files;
 };
 
+/// @brief Event signaling a request to show a window in modal.
+///        Note that this is a request and may be rejected.
+struct EditorRequestShowModalEvent : EditorRequestEvent
+{
+    EditorRequestShowModalEvent()
+        : EditorRequestEvent(EDITOR_EVENT_TYPE_REQUEST_SHOW_MODAL)
+    {
+    }
+
+    EditorWindowType windowType = EDITOR_WINDOW_TYPE_ENUM_COUNT;
+    int windowModeHint = 0;
+};
+
 /// @brief Event signaling a request to hide the modal window.
 ///        Note that this is a request and may be rejected.
 struct EditorRequestHideModalEvent : EditorRequestEvent
@@ -237,10 +197,10 @@ struct EditorRequestImportAssetsEvent : EditorRequestEvent
 };
 
 /// @brief Event signaling the request for creating a new project.
-struct EditorRequestNewProjectEvent : EditorRequestEvent
+struct EditorRequestCreateProjectEvent : EditorRequestEvent
 {
-    EditorRequestNewProjectEvent()
-        : EditorRequestEvent(EDITOR_EVENT_TYPE_REQUEST_NEW_PROJECT)
+    EditorRequestCreateProjectEvent()
+        : EditorRequestEvent(EDITOR_EVENT_TYPE_REQUEST_CREATE_PROJECT)
     {
     }
 };
@@ -255,10 +215,10 @@ struct EditorRequestOpenProjectEvent : EditorRequestEvent
 };
 
 /// @brief Event signaling the request for creating a new scene in current project.
-struct EditorRequestNewSceneEvent : EditorRequestEvent
+struct EditorRequestCreateSceneEvent : EditorRequestEvent
 {
-    EditorRequestNewSceneEvent()
-        : EditorRequestEvent(EDITOR_EVENT_TYPE_REQUEST_NEW_SCENE)
+    EditorRequestCreateSceneEvent()
+        : EditorRequestEvent(EDITOR_EVENT_TYPE_REQUEST_CREATE_SCENE)
     {
     }
 };
@@ -323,16 +283,6 @@ struct EditorActionRedoEvent : EditorActionEvent
     }
 };
 
-struct EditorActionNewSceneEvent : EditorActionEvent
-{
-    EditorActionNewSceneEvent()
-        : EditorActionEvent(EDITOR_EVENT_TYPE_ACTION_NEW_SCENE)
-    {
-    }
-
-    FS::Path newScene;
-};
-
 struct EditorActionOpenSceneEvent : EditorActionEvent
 {
     EditorActionOpenSceneEvent()
@@ -340,7 +290,7 @@ struct EditorActionOpenSceneEvent : EditorActionEvent
     {
     }
 
-    FS::Path openScene;
+    SUID sceneID = 0;
 };
 
 struct EditorActionOpenProjectEvent : EditorActionEvent
@@ -362,6 +312,16 @@ struct EditorActionCreateProjectEvent : EditorActionEvent
 
     std::string projectName;
     FS::Path projectSchema;
+};
+
+struct EditorActionCreateSceneEvent : EditorActionEvent
+{
+    EditorActionCreateSceneEvent()
+        : EditorActionEvent(EDITOR_EVENT_TYPE_ACTION_CREATE_SCENE)
+    {
+    }
+
+    std::string scenePath;
 };
 
 /// @brief Synchronously import a batch of assets
@@ -394,6 +354,17 @@ struct EditorActionRenameAssetEvent : EditorActionEvent
     }
 
     AssetID assetID = 0;
+    std::string newPath;
+};
+
+struct EditorActionRenameSceneEvent : EditorActionEvent
+{
+    EditorActionRenameSceneEvent()
+        : EditorActionEvent(EDITOR_EVENT_TYPE_ACTION_RENAME_SCENE)
+    {
+    }
+
+    SUID sceneID = 0;
     std::string newPath;
 };
 
@@ -442,16 +413,15 @@ struct EditorActionSetComponentAssetEvent : EditorActionEvent
     uint32_t assetSlotIndex = 0;
 };
 
-struct EditorActionSetComponentTransform2DEvent : EditorActionEvent
+struct EditorActionSetComponentPropsEvent : EditorActionEvent
 {
-    EditorActionSetComponentTransform2DEvent()
-        : EditorActionEvent(EDITOR_EVENT_TYPE_ACTION_SET_COMPONENT_TRANSFORM_2D)
+    EditorActionSetComponentPropsEvent()
+        : EditorActionEvent(EDITOR_EVENT_TYPE_ACTION_SET_COMPONENT_PROPS)
     {
     }
 
     SUID compSUID = 0;
-    Transform2D prevTransform = {};
-    Transform2D transform = {};
+    Vector<PropertyDelta> delta;
 };
 
 struct EditorActionCloneComponentSubtreeEvent : EditorActionEvent

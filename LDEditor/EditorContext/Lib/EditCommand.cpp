@@ -11,6 +11,10 @@ static EditCommand* rename_asset_command_create() { return heap_new<RenameAssetC
 static void rename_asset_command_destroy(EditCommand* baseCmd) { heap_delete<RenameAssetCommand>((RenameAssetCommand*)baseCmd); }
 static void rename_asset_command_redo(EditCommand* baseCmd);
 static void rename_asset_command_undo(EditCommand* baseCmd);
+static EditCommand* rename_scene_command_create() { return heap_new<RenameSceneCommand>(MEMORY_USAGE_MISC); }
+static void rename_scene_command_destroy(EditCommand* baseCmd) { heap_delete<RenameSceneCommand>((RenameSceneCommand*)baseCmd); }
+static void rename_scene_command_redo(EditCommand* baseCmd);
+static void rename_scene_command_undo(EditCommand* baseCmd);
 static EditCommand* rename_component_command_create() { return heap_new<RenameComponentCommand>(MEMORY_USAGE_MISC); }
 static void rename_component_command_destroy(EditCommand* baseCmd) { heap_delete<RenameComponentCommand>((RenameComponentCommand*)baseCmd); }
 static void rename_component_command_redo(EditCommand* baseCmd);
@@ -19,10 +23,10 @@ static EditCommand* add_component_command_create() { return heap_new<AddComponen
 static void add_component_command_destroy(EditCommand* baseCmd) { heap_delete<AddComponentCommand>((AddComponentCommand*)baseCmd); }
 static void add_component_command_redo(EditCommand* baseCmd);
 static void add_component_command_undo(EditCommand* baseCmd);
-static EditCommand* add_component_script_command_create() { return heap_new<SetComponentScriptCommand>(MEMORY_USAGE_MISC); }
-static void add_component_script_command_destroy(EditCommand* baseCmd) { heap_delete<SetComponentScriptCommand>((SetComponentScriptCommand*)baseCmd); }
-static void add_component_script_command_redo(EditCommand* baseCmd);
-static void add_component_script_command_undo(EditCommand* baseCmd);
+static EditCommand* set_component_script_command_create() { return heap_new<SetComponentScriptCommand>(MEMORY_USAGE_MISC); }
+static void set_component_script_command_destroy(EditCommand* baseCmd) { heap_delete<SetComponentScriptCommand>((SetComponentScriptCommand*)baseCmd); }
+static void set_component_script_command_redo(EditCommand* baseCmd);
+static void set_component_script_command_undo(EditCommand* baseCmd);
 static EditCommand* set_component_asset_command_create() { return heap_new<SetComponentAssetCommand>(MEMORY_USAGE_MISC); }
 static void set_component_asset_command_destroy(EditCommand* baseCmd) { heap_delete<SetComponentAssetCommand>((SetComponentAssetCommand*)baseCmd); }
 static void set_component_asset_command_redo(EditCommand* baseCmd);
@@ -31,6 +35,10 @@ static EditCommand* set_component_transform_2d_command_create() { return heap_ne
 static void set_component_transform_2d_command_destroy(EditCommand* baseCmd) { heap_delete<SetComponentTransform2DCommand>((SetComponentTransform2DCommand*)baseCmd); }
 static void set_component_transform_2d_command_redo(EditCommand* baseCmd);
 static void set_component_transform_2d_command_undo(EditCommand* baseCmd);
+static EditCommand* set_component_props_command_create() { return heap_new<SetComponentPropsCommand>(MEMORY_USAGE_MISC); }
+static void set_component_props_command_destroy(EditCommand* baseCmd) { heap_delete<SetComponentPropsCommand>((SetComponentPropsCommand*)baseCmd); }
+static void set_component_props_command_redo(EditCommand* baseCmd);
+static void set_component_props_command_undo(EditCommand* baseCmd);
 static EditCommand* clone_component_subtree_command_create() { return heap_new<CloneComponentSubtreeCommand>(MEMORY_USAGE_MISC); }
 static void clone_component_subtree_command_destroy(EditCommand* baseCmd) { heap_delete<CloneComponentSubtreeCommand>((CloneComponentSubtreeCommand*)baseCmd); }
 static void clone_component_subtree_command_redo(EditCommand* baseCmd);
@@ -50,11 +58,13 @@ struct EditCommandMeta
 
 static EditCommandMeta sEditCommand[]{
     {&rename_asset_command_create, &rename_asset_command_destroy, &rename_asset_command_redo, &rename_asset_command_undo},
+    {&rename_scene_command_create, &rename_scene_command_destroy, &rename_scene_command_redo, &rename_scene_command_undo},
     {&rename_component_command_create, &rename_component_command_destroy, &rename_component_command_redo, &rename_component_command_undo},
     {&add_component_command_create, &add_component_command_destroy, &add_component_command_redo, &add_component_command_undo},
-    {&add_component_script_command_create, &add_component_script_command_destroy, &add_component_script_command_redo, &add_component_script_command_undo},
+    {&set_component_script_command_create, &set_component_script_command_destroy, &set_component_script_command_redo, &set_component_script_command_undo},
     {&set_component_asset_command_create, &set_component_asset_command_destroy, &set_component_asset_command_redo, &set_component_asset_command_undo},
     {&set_component_transform_2d_command_create, &set_component_transform_2d_command_destroy, &set_component_transform_2d_command_redo, &set_component_transform_2d_command_undo},
+    {&set_component_props_command_create, &set_component_props_command_destroy, &set_component_props_command_redo, &set_component_props_command_undo},
     {&clone_component_subtree_command_create, &clone_component_subtree_command_destroy, &clone_component_subtree_command_redo, &clone_component_subtree_command_undo},
     {&delete_component_subtree_command_create, &delete_component_subtree_command_destroy, &delete_component_subtree_command_redo, &delete_component_subtree_command_undo},
 };
@@ -95,6 +105,15 @@ void RenameAssetCommand::configure(AssetID assetID, const std::string& newPath)
     this->newPath = newPath;
 }
 
+void RenameSceneCommand::configure(SUID sceneID, const std::string& newPath)
+{
+    this->sceneID = sceneID;
+    this->newPath = newPath;
+    this->oldPath.clear();
+
+    (void)ctx->projectCtx.project().get_scene_uri_path(sceneID, this->oldPath);
+}
+
 void RenameComponentCommand::configure(SUID compSUID, const std::string& newName)
 {
     ComponentView comp = ctx->scene.get_component_by_suid(compSUID);
@@ -107,9 +126,8 @@ void RenameComponentCommand::configure(SUID compSUID, const std::string& newName
 
 void AddComponentCommand::configure(SUID parentSUID, ComponentType compType)
 {
-    LD_ASSERT(parentSUID);
-
     this->parentSUID = parentSUID;
+    this->compSUID = 0;
     this->compType = compType;
 }
 
@@ -175,6 +193,26 @@ static void rename_asset_command_undo(EditCommand* baseCmd)
     (void)entry.set_path(cmd->oldPath);
 }
 
+static void rename_scene_command_redo(EditCommand* baseCmd)
+{
+    auto* cmd = (RenameSceneCommand*)baseCmd;
+
+    Project project = cmd->ctx->projectCtx.project();
+    LD_ASSERT(project);
+
+    (void)project.set_scene_uri_path(cmd->sceneID, cmd->newPath);
+}
+
+static void rename_scene_command_undo(EditCommand* baseCmd)
+{
+    auto* cmd = (RenameSceneCommand*)baseCmd;
+
+    Project project = cmd->ctx->projectCtx.project();
+    LD_ASSERT(project);
+
+    (void)project.set_scene_uri_path(cmd->sceneID, cmd->oldPath);
+}
+
 static void rename_component_command_redo(EditCommand* baseCmd)
 {
     auto* cmd = (RenameComponentCommand*)baseCmd;
@@ -220,7 +258,8 @@ static void add_component_command_undo(EditCommand* baseCmd)
     ComponentView comp = scene.get_component_by_suid(cmd->compSUID);
     LD_ASSERT(comp); // TODO: recovery
 
-    scene.destroy_component_subtree(comp.cuid());
+    SUIDRegistry suidReg = cmd->ctx->projectCtx.suid_registry();
+    scene.destroy_component_subtree(comp.cuid(), suidReg);
 
     cmd->compSUID = 0;
 }
@@ -237,7 +276,7 @@ void SetComponentScriptCommand::configure(SUID compSUID, AssetID scriptAssetID)
     this->prevScriptAssetID = comp.get_script_asset_id();
 }
 
-static void add_component_script_command_redo(EditCommand* baseCmd)
+static void set_component_script_command_redo(EditCommand* baseCmd)
 {
     auto* cmd = (SetComponentScriptCommand*)baseCmd;
 
@@ -247,7 +286,7 @@ static void add_component_script_command_redo(EditCommand* baseCmd)
     comp.set_script_asset_id(cmd->scriptAssetID);
 }
 
-static void add_component_script_command_undo(EditCommand* baseCmd)
+static void set_component_script_command_undo(EditCommand* baseCmd)
 {
     auto* cmd = (SetComponentScriptCommand*)baseCmd;
 
@@ -304,6 +343,24 @@ static void set_component_transform_2d_command_undo(EditCommand* baseCmd)
     (void)comp.set_transform_2d(cmd->prevTransform);
 }
 
+static void set_component_props_command_redo(EditCommand* baseCmd)
+{
+    auto* cmd = (SetComponentPropsCommand*)baseCmd;
+    ComponentView comp = cmd->ctx->scene.get_component_by_suid(cmd->compSUID);
+    LD_ASSERT(comp);
+
+    comp.property_meta_table()->apply_new_properties(comp.data(), cmd->delta);
+}
+
+static void set_component_props_command_undo(EditCommand* baseCmd)
+{
+    auto* cmd = (SetComponentPropsCommand*)baseCmd;
+    ComponentView comp = cmd->ctx->scene.get_component_by_suid(cmd->compSUID);
+    LD_ASSERT(comp);
+
+    comp.property_meta_table()->apply_old_properties(comp.data(), cmd->delta);
+}
+
 static void clone_component_subtree_command_redo(EditCommand* baseCmd)
 {
     auto* cmd = (CloneComponentSubtreeCommand*)baseCmd;
@@ -333,7 +390,8 @@ static void clone_component_subtree_command_undo(EditCommand* baseCmd)
     auto* cmd = (CloneComponentSubtreeCommand*)baseCmd;
     Scene scene = cmd->ctx->scene;
 
-    scene.destroy_component_subtree(cmd->dstCUID);
+    SUIDRegistry suidReg = cmd->ctx->projectCtx.suid_registry();
+    scene.destroy_component_subtree(cmd->dstCUID, suidReg);
 
     cmd->dstCUID = 0;
 }
@@ -358,9 +416,10 @@ static void delete_component_subtree_command_redo(EditCommand* baseCmd)
     auto* cmd = (DeleteComponentSubtreeCommand*)baseCmd;
     Scene scene = cmd->ctx->scene;
 
+    SUIDRegistry suidReg = cmd->ctx->projectCtx.suid_registry();
     ComponentView comp = scene.get_component_by_suid(cmd->compSUID);
     LD_ASSERT(comp);
-    scene.destroy_component_subtree(comp.cuid());
+    scene.destroy_component_subtree(comp.cuid(), suidReg);
 }
 
 static void delete_component_subtree_command_undo(EditCommand* baseCmd)

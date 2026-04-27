@@ -2,6 +2,7 @@
 
 #include <Ludens/Asset/AssetManager.h>
 #include <Ludens/DataRegistry/DataRegistry.h>
+#include <Ludens/Serial/Property.h>
 
 namespace LD {
 
@@ -10,11 +11,13 @@ struct EditorContextObj;
 enum EditCommandType
 {
     EDIT_COMMAND_TYPE_RENAME_ASSET,
+    EDIT_COMMAND_TYPE_RENAME_SCENE,
     EDIT_COMMAND_TYPE_RENAME_COMPONENT,
     EDIT_COMMAND_TYPE_ADD_COMPONENT,
     EDIT_COMMAND_TYPE_SET_COMPONENT_SCRIPT,
     EDIT_COMMAND_TYPE_SET_COMPONENT_ASSET,
     EDIT_COMMAND_TYPE_SET_COMPONENT_TRANSFORM_2D,
+    EDIT_COMMAND_TYPE_SET_COMPONENT_PROPS,
     EDIT_COMMAND_TYPE_CLONE_COMPONENT_SUBTREE,
     EDIT_COMMAND_TYPE_DELETE_COMPONENT_SUBTREE,
     EDIT_COMMAND_TYPE_ENUM_COUNT,
@@ -38,6 +41,15 @@ struct RenameAssetCommand : EditCommand
     std::string newPath;
 
     void configure(AssetID assetID, const std::string& newPath);
+};
+
+struct RenameSceneCommand : EditCommand
+{
+    SUID sceneID = 0;
+    std::string oldPath;
+    std::string newPath;
+
+    void configure(SUID sceneID, const std::string& newPath);
 };
 
 struct RenameComponentCommand : EditCommand
@@ -83,6 +95,12 @@ struct SetComponentTransform2DCommand : EditCommand
     SUID compSUID;
     Transform2D transform;
     Transform2D prevTransform;
+};
+
+struct SetComponentPropsCommand : EditCommand
+{
+    SUID compSUID;
+    Vector<PropertyDelta> delta;
 };
 
 struct CloneComponentSubtreeCommand : EditCommand

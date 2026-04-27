@@ -17,18 +17,18 @@ union EditorEventU
     EditorRequestProjectSettingsEvent requestProjectSettings;
     EditorRequestComponentAssetEvent requestComponentAsset;
     EditorRequestImportAssetsEvent requestImportAssets;
-    EditorRequestNewProjectEvent requestNewProject;
-    EditorRequestOpenProjectEvent requestOpenProject;
-    EditorRequestNewSceneEvent requestNewScene;
     EditorRequestOpenSceneEvent requestOpenScene;
+    EditorRequestOpenProjectEvent requestOpenProject;
+    EditorRequestCreateSceneEvent requestNewScene;
+    EditorRequestCreateProjectEvent requestNewProject;
     EditorRequestCreateComponentEvent requestCreateComponent;
     EditorRequestDocumentEvent requestDocument;
     EditorActionSaveEvent actionSave;
     EditorActionUndoEvent actionUndo;
     EditorActionRedoEvent actionRedo;
-    EditorActionNewSceneEvent actionNewScene;
     EditorActionOpenSceneEvent actionOpenScene;
     EditorActionOpenProjectEvent actionOpenProject;
+    EditorActionCreateSceneEvent actionCreateScene;
     EditorActionCreateProjectEvent actionCreateProject;
     EditorActionImportAssetsEvent actionImportAssets;
     EditorActionImportAssetsAsyncEvent actionImportAssetsAsync;
@@ -36,7 +36,6 @@ union EditorEventU
     EditorActionAddComponentEvent actionAddComponent;
     EditorActionSetComponentScriptEvent actionSetComponentScript;
     EditorActionSetComponentAssetEvent actionSetComponentAsset;
-    EditorActionSetComponentTransform2DEvent actionSetComponentTransform2D;
     EditorActionCloneComponentSubtreeEvent actionCloneComponentSubtree;
     EditorActionDeleteComponentSubtreeEvent actionDeleteComponentSubtree;
 };
@@ -87,6 +86,9 @@ EditorEvent* EditorEventQueueObj::alloc_event(EditorEventType type)
     case EDITOR_EVENT_TYPE_NOTIFY_FILE_DROP:
         new (event) EditorNotifyFileDropEvent();
         break;
+    case EDITOR_EVENT_TYPE_REQUEST_SHOW_MODAL:
+        new (event) EditorRequestShowModalEvent();
+        break;
     case EDITOR_EVENT_TYPE_REQUEST_HIDE_MODAL:
         new (event) EditorRequestHideModalEvent();
         break;
@@ -105,17 +107,17 @@ EditorEvent* EditorEventQueueObj::alloc_event(EditorEventType type)
     case EDITOR_EVENT_TYPE_REQUEST_IMPORT_ASSETS:
         new (event) EditorRequestImportAssetsEvent();
         break;
-    case EDITOR_EVENT_TYPE_REQUEST_NEW_PROJECT:
-        new (event) EditorRequestNewProjectEvent();
+    case EDITOR_EVENT_TYPE_REQUEST_OPEN_SCENE:
+        new (event) EditorRequestOpenSceneEvent();
         break;
     case EDITOR_EVENT_TYPE_REQUEST_OPEN_PROJECT:
         new (event) EditorRequestOpenProjectEvent();
         break;
-    case EDITOR_EVENT_TYPE_REQUEST_NEW_SCENE:
-        new (event) EditorRequestNewSceneEvent();
+    case EDITOR_EVENT_TYPE_REQUEST_CREATE_SCENE:
+        new (event) EditorRequestCreateSceneEvent();
         break;
-    case EDITOR_EVENT_TYPE_REQUEST_OPEN_SCENE:
-        new (event) EditorRequestOpenSceneEvent();
+    case EDITOR_EVENT_TYPE_REQUEST_CREATE_PROJECT:
+        new (event) EditorRequestCreateProjectEvent();
         break;
     case EDITOR_EVENT_TYPE_REQUEST_CREATE_COMPONENT:
         new (event) EditorRequestCreateComponentEvent();
@@ -132,14 +134,14 @@ EditorEvent* EditorEventQueueObj::alloc_event(EditorEventType type)
     case EDITOR_EVENT_TYPE_ACTION_REDO:
         new (event) EditorActionRedoEvent();
         break;
-    case EDITOR_EVENT_TYPE_ACTION_NEW_SCENE:
-        new (event) EditorActionNewSceneEvent();
-        break;
     case EDITOR_EVENT_TYPE_ACTION_OPEN_SCENE:
         new (event) EditorActionOpenSceneEvent();
         break;
     case EDITOR_EVENT_TYPE_ACTION_OPEN_PROJECT:
         new (event) EditorActionOpenProjectEvent();
+        break;
+    case EDITOR_EVENT_TYPE_ACTION_CREATE_SCENE:
+        new (event) EditorActionCreateSceneEvent();
         break;
     case EDITOR_EVENT_TYPE_ACTION_CREATE_PROJECT:
         new (event) EditorActionCreateProjectEvent();
@@ -153,6 +155,9 @@ EditorEvent* EditorEventQueueObj::alloc_event(EditorEventType type)
     case EDITOR_EVENT_TYPE_ACTION_RENAME_ASSET:
         new (event) EditorActionRenameAssetEvent();
         break;
+    case EDITOR_EVENT_TYPE_ACTION_RENAME_SCENE:
+        new (event) EditorActionRenameSceneEvent();
+        break;
     case EDITOR_EVENT_TYPE_ACTION_RENAME_COMPONENT:
         new (event) EditorActionRenameComponentEvent();
         break;
@@ -165,8 +170,8 @@ EditorEvent* EditorEventQueueObj::alloc_event(EditorEventType type)
     case EDITOR_EVENT_TYPE_ACTION_SET_COMPONENT_ASSET:
         new (event) EditorActionSetComponentAssetEvent();
         break;
-    case EDITOR_EVENT_TYPE_ACTION_SET_COMPONENT_TRANSFORM_2D:
-        new (event) EditorActionSetComponentTransform2DEvent();
+    case EDITOR_EVENT_TYPE_ACTION_SET_COMPONENT_PROPS:
+        new (event) EditorActionSetComponentPropsEvent();
         break;
     case EDITOR_EVENT_TYPE_ACTION_CLONE_COMPONENT_SUBTREE:
         new (event) EditorActionCloneComponentSubtreeEvent();
@@ -204,6 +209,9 @@ void EditorEventQueueObj::free_event(EditorEvent* event)
     case EDITOR_EVENT_TYPE_NOTIFY_FILE_DROP:
         ((EditorNotifyFileDropEvent*)event)->~EditorNotifyFileDropEvent();
         break;
+    case EDITOR_EVENT_TYPE_REQUEST_SHOW_MODAL:
+        ((EditorRequestShowModalEvent*)event)->~EditorRequestShowModalEvent();
+        break;
     case EDITOR_EVENT_TYPE_REQUEST_HIDE_MODAL:
         ((EditorRequestHideModalEvent*)(event))->~EditorRequestHideModalEvent();
         break;
@@ -222,17 +230,17 @@ void EditorEventQueueObj::free_event(EditorEvent* event)
     case EDITOR_EVENT_TYPE_REQUEST_IMPORT_ASSETS:
         ((EditorRequestImportAssetsEvent*)(event))->~EditorRequestImportAssetsEvent();
         break;
-    case EDITOR_EVENT_TYPE_REQUEST_NEW_PROJECT:
-        ((EditorRequestNewProjectEvent*)(event))->~EditorRequestNewProjectEvent();
+    case EDITOR_EVENT_TYPE_REQUEST_OPEN_SCENE:
+        ((EditorRequestOpenSceneEvent*)(event))->~EditorRequestOpenSceneEvent();
         break;
     case EDITOR_EVENT_TYPE_REQUEST_OPEN_PROJECT:
         ((EditorRequestOpenProjectEvent*)(event))->~EditorRequestOpenProjectEvent();
         break;
-    case EDITOR_EVENT_TYPE_REQUEST_NEW_SCENE:
-        ((EditorRequestNewSceneEvent*)(event))->~EditorRequestNewSceneEvent();
+    case EDITOR_EVENT_TYPE_REQUEST_CREATE_SCENE:
+        ((EditorRequestCreateSceneEvent*)(event))->~EditorRequestCreateSceneEvent();
         break;
-    case EDITOR_EVENT_TYPE_REQUEST_OPEN_SCENE:
-        ((EditorRequestOpenSceneEvent*)(event))->~EditorRequestOpenSceneEvent();
+    case EDITOR_EVENT_TYPE_REQUEST_CREATE_PROJECT:
+        ((EditorRequestCreateProjectEvent*)(event))->~EditorRequestCreateProjectEvent();
         break;
     case EDITOR_EVENT_TYPE_REQUEST_CREATE_COMPONENT:
         ((EditorRequestCreateComponentEvent*)(event))->~EditorRequestCreateComponentEvent();
@@ -249,9 +257,6 @@ void EditorEventQueueObj::free_event(EditorEvent* event)
     case EDITOR_EVENT_TYPE_ACTION_REDO:
         ((EditorActionRedoEvent*)(event))->~EditorActionRedoEvent();
         break;
-    case EDITOR_EVENT_TYPE_ACTION_NEW_SCENE:
-        ((EditorActionNewSceneEvent*)(event))->~EditorActionNewSceneEvent();
-        break;
     case EDITOR_EVENT_TYPE_ACTION_OPEN_SCENE:
         ((EditorActionOpenSceneEvent*)(event))->~EditorActionOpenSceneEvent();
         break;
@@ -261,6 +266,9 @@ void EditorEventQueueObj::free_event(EditorEvent* event)
     case EDITOR_EVENT_TYPE_ACTION_CREATE_PROJECT:
         ((EditorActionCreateProjectEvent*)(event))->~EditorActionCreateProjectEvent();
         break;
+    case EDITOR_EVENT_TYPE_ACTION_CREATE_SCENE:
+        ((EditorActionCreateSceneEvent*)event)->~EditorActionCreateSceneEvent();
+        break;
     case EDITOR_EVENT_TYPE_ACTION_IMPORT_ASSETS:
         ((EditorActionImportAssetsEvent*)event)->~EditorActionImportAssetsEvent();
         break;
@@ -269,6 +277,9 @@ void EditorEventQueueObj::free_event(EditorEvent* event)
         break;
     case EDITOR_EVENT_TYPE_ACTION_RENAME_ASSET:
         ((EditorActionRenameAssetEvent*)(event))->~EditorActionRenameAssetEvent();
+        break;
+    case EDITOR_EVENT_TYPE_ACTION_RENAME_SCENE:
+        ((EditorActionRenameSceneEvent*)event)->~EditorActionRenameSceneEvent();
         break;
     case EDITOR_EVENT_TYPE_ACTION_RENAME_COMPONENT:
         ((EditorActionRenameComponentEvent*)(event))->~EditorActionRenameComponentEvent();
@@ -282,8 +293,8 @@ void EditorEventQueueObj::free_event(EditorEvent* event)
     case EDITOR_EVENT_TYPE_ACTION_SET_COMPONENT_ASSET:
         ((EditorActionSetComponentAssetEvent*)(event))->~EditorActionSetComponentAssetEvent();
         break;
-    case EDITOR_EVENT_TYPE_ACTION_SET_COMPONENT_TRANSFORM_2D:
-        ((EditorActionSetComponentTransform2DEvent*)(event))->~EditorActionSetComponentTransform2DEvent();
+    case EDITOR_EVENT_TYPE_ACTION_SET_COMPONENT_PROPS:
+        ((EditorActionSetComponentPropsEvent*)(event))->~EditorActionSetComponentPropsEvent();
         break;
     case EDITOR_EVENT_TYPE_ACTION_CLONE_COMPONENT_SUBTREE:
         ((EditorActionCloneComponentSubtreeEvent*)(event))->~EditorActionCloneComponentSubtreeEvent();

@@ -33,6 +33,7 @@ struct EditorContextObj
     DocumentRegistry docRegistry;                         /// all documents to be displayed in the editor
     FS::Path iconAtlasPath;                               /// path to editor icon atlas source file
     FS::Path sceneSchemaAbsPath;                          /// path to current scene under edit
+    SUID activeSceneID = 0;                               /// current scene ID
     HashMap<KeyValue, EditorEventType> keyBinds;          /// key shortcuts to generate events
     HashMap<FS::Path, EditorProjectEntry> projectEntries; /// projects discovered by editor context
     ObserverList<const EditorEvent*> observers;           /// all observers of EditorContext
@@ -43,8 +44,7 @@ struct EditorContextObj
 
     void emit_event(EditorEventType type);
     void notify_observers(const EditorEvent* event);
-    void new_project_scene(const FS::Path& sceneSchemaPath);
-    void load_project_scene(const FS::Path& sceneSchemaPath);
+    void load_project_scene(SUID sceneID);
     void save_scene_schema();
     void save_asset_schema();
     void save_project_schema();

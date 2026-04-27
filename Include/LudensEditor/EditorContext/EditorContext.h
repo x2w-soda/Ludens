@@ -4,9 +4,11 @@
 #include <Ludens/Camera/Camera2D.h>
 #include <Ludens/DSA/Vector.h>
 #include <Ludens/Header/KeyValue.h>
+#include <Ludens/Project/Project.h>
 #include <Ludens/Project/ProjectSettings.h>
 #include <Ludens/RenderSystem/RenderSystem.h>
 #include <Ludens/Scene/Scene.h>
+#include <Ludens/Serial/SUIDTable.h>
 #include <Ludens/System/FileSystem.h>
 #include <Ludens/UI/UILayout.h>
 #include <LudensBuilder/AssetBuilder/AssetBuilderDef.h>
@@ -81,6 +83,9 @@ struct EditorContext : Handle<struct EditorContextObj>
     /// @brief Get discovered projects.
     Vector<EditorProjectEntry> get_project_entries();
 
+    /// @brief Get all scene entries in current project.
+    Vector<SUIDEntry> get_project_scene_entries();
+
     /// @brief Get directory of current project.
     FS::Path get_project_directory();
 
@@ -89,6 +94,9 @@ struct EditorContext : Handle<struct EditorContextObj>
 
     /// @brief Get editor global settings
     EditorSettings settings();
+
+    /// @brief Get project handle, nullable.
+    Project get_project();
 
     /// @brief Get project settings for loaded project.
     ProjectSettings get_project_settings();

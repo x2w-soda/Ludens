@@ -31,6 +31,16 @@ inline void set_component_script(EditorContext ctx, SUID compSUID, AssetID asset
     event->assetID = assetID;
 }
 
+inline void set_component_props(EditorContext ctx, SUID compSUID, const Vector<PropertyDelta>& delta)
+{
+    if (!compSUID || delta.empty())
+        return;
+
+    auto* event = (EditorActionSetComponentPropsEvent*)ctx.enqueue_event(EDITOR_EVENT_TYPE_ACTION_SET_COMPONENT_PROPS);
+    event->compSUID = compSUID;
+    event->delta = delta;
+}
+
 inline void request_component_asset(EditorContext ctx, SUID compSUID, AssetID assetID, AssetType assetType, uint32_t assetSlotIndex)
 {
     auto* event = (EditorRequestComponentAssetEvent*)ctx.enqueue_event(EDITOR_EVENT_TYPE_REQUEST_COMPONENT_ASSET);

@@ -37,6 +37,7 @@ void EditStack::clear()
         EditCommand::destroy(cmd);
 
     mObj->commands.clear();
+    mObj->index = 0;
 }
 
 EditCommand* EditStack::allocate(EditCommandType type)
