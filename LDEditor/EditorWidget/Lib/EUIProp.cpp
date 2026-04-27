@@ -1,4 +1,6 @@
 #include <Ludens/Header/Assert.h>
+#include <Ludens/Serial/Property.h>
+#include <LudensEditor/EditorWidget/EUIAssetSlot.h>
 #include <LudensEditor/EditorWidget/EUIProp.h>
 
 #include <format>
@@ -8,6 +10,7 @@
 
 namespace LD {
 
+/*
 void EUIU32Prop::init(uint32_t u32)
 {
     mEdit.set_text(std::to_string(u32));
@@ -313,6 +316,242 @@ bool EUITransform2DProp::update(Transform2D* transform2D)
     ui_pop();
 
     return hasChanged;
+}
+*/
+
+bool eui_u32_prop(const char* label, uint32_t* u32)
+{
+    EditorTheme theme = eui_get_theme();
+    std::string str;
+    bool hasChanged = false;
+
+    push_prop_hbox();
+    {
+        UILayoutInfo layoutI = theme.make_text_label_layout();
+        ui_push_text(nullptr, label);
+        ui_top_layout(layoutI);
+        ui_pop();
+
+        auto* edit = (UITextEditData*)ui_push_text_edit(nullptr).get_data();
+        edit->set_domain(UI_TEXT_EDIT_DOMAIN_UINT);
+        if (!ui_text_edit_is_editing())
+            edit->set_text(std::format("{}", *u32));
+        hasChanged = ui_text_edit_submitted(str);
+        if (hasChanged)
+            *u32 = (uint32_t)std::stoul(str);
+        ui_pop();
+    }
+    pop_prop_hbox();
+
+    return hasChanged;
+}
+
+bool eui_f32_prop(const char* label, float* f32)
+{
+    EditorTheme theme = eui_get_theme();
+    std::string str;
+    bool hasChanged = false;
+
+    push_prop_hbox();
+    {
+        UILayoutInfo layoutI = theme.make_text_label_layout();
+        ui_push_text(nullptr, label);
+        ui_top_layout(layoutI);
+        ui_pop();
+
+        hasChanged = push_text_edit_f32(nullptr, f32, str, false);
+        ui_top_layout(layoutI);
+        pop_text_edit_f32();
+    }
+    pop_prop_hbox();
+
+    return hasChanged;
+}
+
+bool eui_vec2_prop(const char* label, Vec2* v)
+{
+    return eui_vec2_prop(label, (float*)v);
+}
+
+bool eui_vec2_prop(const char* label, float f32[2])
+{
+    EditorTheme theme = eui_get_theme();
+    std::string str;
+    bool hasChanged = false;
+
+    push_prop_hbox();
+    {
+        UILayoutInfo layoutI = theme.make_text_label_layout();
+        ui_push_text(nullptr, label);
+        ui_top_layout(layoutI);
+        ui_pop();
+
+        for (int i = 0; i < 2; i++)
+        {
+            bool commit = push_text_edit_f32(nullptr, f32 + i, str, false);
+            hasChanged = hasChanged || commit;
+            ui_top_layout(layoutI);
+            pop_text_edit_f32();
+        }
+    }
+    pop_prop_hbox();
+
+    return hasChanged;
+}
+
+bool eui_slider_prop(const char* label, float* f32)
+{
+    bool isDragged;
+    EditorTheme theme = eui_get_theme();
+    MouseButton btn;
+    Vec2 dragPos;
+    bool dragBegin;
+
+    push_prop_hbox();
+    {
+        ui_push_text(nullptr, label);
+        ui_top_layout(theme.make_text_label_layout());
+        ui_pop();
+
+        ui_push_slider(nullptr, f32);
+        isDragged = ui_top_drag(btn, dragPos, dragBegin);
+        ui_pop();
+    }
+    pop_prop_hbox();
+
+    return isDragged;
+}
+
+bool eui_toggle_prop(const char* label, bool* b8)
+{
+    bool hasChanged = false;
+    EditorTheme theme = eui_get_theme();
+
+    push_prop_hbox();
+    {
+        UILayoutInfo layoutI = theme.make_text_label_layout();
+        ui_push_text(nullptr, label);
+        ui_top_layout(layoutI);
+        ui_pop();
+
+        UIToggleData* toggle = (UIToggleData*)ui_push_toggle(nullptr).get_data();
+        ui_top_layout_size(UISize::fixed(80.0f), layoutI.sizeY);
+        if (ui_toggle_is_pressed())
+        {
+            hasChanged = true;
+            *b8 = toggle->state;
+        }
+        else
+            toggle->state = *b8;
+        ui_pop();
+    }
+    pop_prop_hbox();
+
+    return hasChanged;
+}
+
+bool eui_rect_prop(const char* label, Rect* rect, bool normalized)
+{
+    EditorTheme theme = eui_get_theme();
+    bool hasChanged = false;
+    std::string str;
+
+    push_prop_hbox();
+    {
+        bool commit;
+        UILayoutInfo layoutI = theme.make_text_label_layout();
+        ui_push_text(nullptr, label);
+        ui_top_layout(layoutI);
+        ui_pop();
+
+        push_prop_edit_vbox();
+        {
+            commit = push_text_edit_f32(nullptr, &rect->x, str, normalized);
+            hasChanged = hasChanged || commit;
+            ui_top_layout(layoutI);
+            pop_text_edit_f32();
+            commit = push_text_edit_f32(nullptr, &rect->w, str, normalized);
+            hasChanged = hasChanged || commit;
+            ui_top_layout(layoutI);
+            pop_text_edit_f32();
+        }
+        pop_prop_edit_vbox();
+
+        push_prop_edit_vbox();
+        {
+            commit = push_text_edit_f32(nullptr, &rect->y, str, normalized);
+            hasChanged = hasChanged || commit;
+            ui_top_layout(layoutI);
+            pop_text_edit_f32();
+            commit = push_text_edit_f32(nullptr, &rect->h, str, normalized);
+            hasChanged = hasChanged || commit;
+            ui_top_layout(layoutI);
+            pop_text_edit_f32();
+        }
+        pop_prop_edit_vbox();
+    }
+    pop_prop_hbox();
+
+    return hasChanged;
+}
+
+Vector<PropertyDelta> eui_component_property_table(ComponentView& view)
+{
+    void* obj = view.data();
+    const PropertyMetaTable& table = *view.property_meta_table();
+    EditorContext ctx = eui_get_context();
+    EditorTheme theme = eui_get_theme();
+
+    Vector<PropertyValue> oldProps = table.get_property_snapshot(obj);
+    Vector<PropertyValue> newProps = oldProps;
+
+    for (PropertyValue& prop : newProps)
+    {
+        const PropertyMeta& meta = table.entries[prop.index];
+
+        switch (meta.type)
+        {
+        case VALUE_TYPE_F32:
+            if (meta.uiHint == PROPERTY_UI_HINT_SLIDER)
+                eui_slider_prop(meta.name, prop.value.v16.f32);
+            else
+                eui_f32_prop(meta.name, prop.value.v16.f32);
+            break;
+        case VALUE_TYPE_U32:
+            if (meta.uiHint == PROPERTY_UI_HINT_ASSET)
+            {
+                constexpr uint32_t assetIndex = 0; // TODO:
+                AssetType assetType = view.get_asset_type(assetIndex);
+                AssetID assetID = (AssetID)prop.value.get_u32();
+                if (eui_asset_slot(assetID, assetType))
+                    EditorContextUtil::request_component_asset(ctx, view.suid(), assetID, assetType, assetIndex);
+            }
+            else
+                eui_u32_prop(meta.name, prop.value.v16.u32);
+            break;
+        case VALUE_TYPE_BOOL:
+            eui_toggle_prop(meta.name, prop.value.v16.b8);
+            break;
+        case VALUE_TYPE_VEC2:
+            eui_vec2_prop(meta.name, (float*)&prop.value.v16.f32);
+            break;
+        case VALUE_TYPE_RECT:
+            eui_rect_prop(meta.name, &prop.value.v16.rect, meta.flags & PROPERTY_FLAG_NORMALIZED_BIT);
+            break;
+        case VALUE_TYPE_TRANSFORM_2D:
+        {
+            eui_vec2_prop("Position", &prop.value.transform2D.position);
+            eui_f32_prop("Rotation", &prop.value.transform2D.rotation);
+            eui_vec2_prop("Scale", &prop.value.transform2D.scale);
+            break;
+        }
+        default:
+            LD_DEBUG_BREAK;
+            break;
+        }
+    }
+
+    return table.get_property_delta(obj, oldProps, newProps);
 }
 
 } // namespace LD

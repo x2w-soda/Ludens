@@ -2,7 +2,7 @@
 #include <Ludens/Header/MouseValue.h>
 #include <Ludens/Text/Text.h>
 #include <LudensEditor/EditorWidget/EUIText.h>
-#include <LudensEditor/EditorWidget/EditorWIdget.h>
+#include <LudensEditor/EditorWidget/EditorWidget.h>
 
 #include "EUI.h"
 

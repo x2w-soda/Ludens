@@ -48,7 +48,7 @@ bool push_text_edit_f32(UITextEditData* edit, float* f32, std::string& str, bool
 
     EditorTheme theme = eui_get_theme();
 
-    (void)ui_push_text_edit(edit);
+    edit = (UITextEditData*)ui_push_text_edit(edit).get_data();
     edit->bgColor = edit->bgColorEdit = theme.get_ui_theme().get_field_color();
     edit->set_domain(UI_TEXT_EDIT_DOMAIN_F32);
     if (!ui_text_edit_is_editing())

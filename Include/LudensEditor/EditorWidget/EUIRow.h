@@ -6,6 +6,7 @@
 namespace LD {
 
 struct AssetRegistry;
+struct Project;
 class UITextEditData;
 
 bool eui_row_label_text_edit(const char* label, UITextEditData* edit, std::string& outText);
@@ -43,6 +44,19 @@ class EUIAssetPathEditRow
 {
 public:
     bool update(AssetRegistry& assetReg, std::string& path);
+
+    inline bool is_path_valid() const { return mIsPathValid; }
+
+private:
+    UITextEditData mEdit;
+    UITextData mStatus;
+    bool mIsPathValid = true;
+};
+
+class EUIScenePathEditRow
+{
+public:
+    bool update(Project& project, std::string& path);
 
     inline bool is_path_valid() const { return mIsPathValid; }
 

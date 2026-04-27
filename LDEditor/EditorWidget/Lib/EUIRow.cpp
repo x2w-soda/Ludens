@@ -185,4 +185,53 @@ bool EUIAssetPathEditRow::update(AssetRegistry& assetReg, std::string& path)
     return hasSubmitted;
 }
 
+bool EUIScenePathEditRow::update(Project& project, std::string& path)
+{
+    EditorTheme theme = eui_get_theme();
+    UILayoutInfo layoutI = theme.make_text_row_layout();
+    bool hasChanged = false;
+    bool hasSubmitted = false;
+    std::string collidingPath;
+
+    Color fgColor = theme.get_ui_theme().get_on_surface_color();
+
+    ui_push_text(nullptr, "Scene Path");
+    ui_top_layout(layoutI);
+    ui_pop();
+
+    UITextEditWidget editW = ui_push_text_edit(&mEdit);
+    if (!editW.is_editing())
+        mEdit.set_text(path);
+    hasChanged = ui_text_edit_changed(path);
+    hasSubmitted = ui_text_edit_submitted(path);
+    if (hasChanged && project)
+    {
+        mIsPathValid = project.is_scene_uri_path_valid(path, collidingPath);
+
+        if (path.empty())
+            mStatus.clear_value();
+        else if (mIsPathValid)
+        {
+            mStatus.set_value("Valid scene path", &fgColor);
+        }
+        else if (!collidingPath.empty())
+        {
+            theme.get_error_color(fgColor);
+            mStatus.set_value("Path collision with [" + collidingPath + "]", &fgColor);
+        }
+        else
+        {
+            theme.get_error_color(fgColor);
+            mStatus.set_value("Invalid scene path", &fgColor);
+        }
+    }
+    ui_top_layout(layoutI);
+    ui_pop();
+
+    ui_push_text(&mStatus);
+    ui_pop();
+
+    return hasSubmitted;
+}
+
 } // namespace LD

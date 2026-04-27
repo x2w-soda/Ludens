@@ -7,6 +7,7 @@
 
 namespace LD {
 
+/*
 void eui_component_transform_2d(EUITransform2DProp* storage, ComponentView view);
 
 struct EUIAudioSourceStorage
@@ -62,5 +63,6 @@ struct EUIComponentStorage
 
     EUIComponentStorage& operator=(const EUIComponentStorage&) = delete;
 };
+*/
 
 } // namespace LD

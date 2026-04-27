@@ -2,16 +2,19 @@
 
 #include <Ludens/Header/Math/Rect.h>
 #include <Ludens/Header/Math/Vec2.h>
+#include <Ludens/Serial/Property.h>
 #include <Ludens/UI/UIImmediate.h>
 #include <Ludens/UI/UIWidget.h>
 #include <LudensEditor/EditorContext/EditorSettings.h>
 
 namespace LD {
 
+class ComponentView;
 struct Transform;
 struct TransformEx;
 struct Transform2D;
 
+/*
 class EUIU32Prop
 {
 public:
@@ -71,6 +74,8 @@ private:
     UITextEditData mEdit[4];
 };
 
+bool eui_rect_prop(const char* label, Rect* rect, bool normalized);
+
 class EUIToggleProp
 {
 public:
@@ -110,5 +115,14 @@ private:
     EUIF32Prop mRot;
     EUIVec2Prop mScale;
 };
+*/
+
+bool eui_u32_prop(const char* label, uint32_t* u32);
+bool eui_f32_prop(const char* label, float* f32);
+bool eui_vec2_prop(const char* label, Vec2* v);
+bool eui_vec2_prop(const char* label, float f32[2]);
+bool eui_slider_prop(const char* label, float* f32);
+bool eui_toggle_prop(const char* label, bool* b8);
+Vector<PropertyDelta> eui_component_property_table(ComponentView& view);
 
 } // namespace LD
