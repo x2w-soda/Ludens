@@ -65,7 +65,9 @@ void ViewportWindowObj::update(float delta)
     // update state for this frame
     state.delta = delta;
     state.viewportExtent = rootRect.get_size();
-    state.sceneExtent = Vec2(state.viewportExtent.x, state.viewportExtent.y - VIEWPORT_TOOLBAR_HEIGHT);
+    Vec2 nextSceneExtent(state.viewportExtent.x, state.viewportExtent.y - VIEWPORT_TOOLBAR_HEIGHT);
+    if (nextSceneExtent.x > 0.0f && nextSceneExtent.y > 0.0f)
+        state.sceneExtent = nextSceneExtent;
 
     // active mouse picking if cursor is within viewport window
     state.sceneMousePos = Vec2(-1.0f);

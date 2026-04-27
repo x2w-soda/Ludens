@@ -1,3 +1,4 @@
+#include <Ludens/DSA/IndexTable.h>
 #include <Ludens/DSA/Vector.h>
 #include <Ludens/Log/Log.h>
 #include <Ludens/Memory/Memory.h>
@@ -58,6 +59,7 @@ void ConsoleWindowObj::update(float delta)
     LD_PROFILE_SCOPE;
 
     UITheme uiTheme = theme.get_ui_theme();
+    const float rowHeight = theme.get_text_row_height();
 
     begin_update_window();
 
@@ -82,6 +84,7 @@ void ConsoleWindowObj::update(float delta)
         }
 
         ui_push_text(nullptr, entry.formatted.c_str());
+        ui_top_layout_size(UISize::wrap(), UISize::fit());
         ui_text_style(color, TEXT_SPAN_FONT_MONOSPACE);
         ui_pop();
     }

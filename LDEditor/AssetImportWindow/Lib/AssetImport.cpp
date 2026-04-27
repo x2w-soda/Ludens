@@ -1,6 +1,6 @@
 #include <Ludens/Asset/AssetManager.h>
 #include <Ludens/Asset/AssetType/Texture2DAsset.h>
-#include <LudensBuilder/AssetBuilder/AssetSource.h>
+#include <LudensBuilder/AssetBuilder/AssetBuilderDef.h>
 
 #include "AssetImport.h"
 

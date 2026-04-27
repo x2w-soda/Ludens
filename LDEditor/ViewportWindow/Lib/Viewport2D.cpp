@@ -174,10 +174,18 @@ void Viewport2D::mouse_button_up(const ViewportState& state, MouseValue mouseVal
         Transform2D transform;
         if (selectedComp && selectedComp.get_transform_2d(transform))
         {
+            /*
             auto* actionE = (EditorActionSetComponentTransform2DEvent*)mCtx.enqueue_event(EDITOR_EVENT_TYPE_ACTION_SET_COMPONENT_TRANSFORM_2D);
             actionE->compSUID = selectedComp.suid();
             actionE->prevTransform = mDragBeginCompLocalTransform;
             actionE->transform = transform;
+            */
+            auto* actionE = (EditorActionSetComponentPropsEvent*)mCtx.enqueue_event(EDITOR_EVENT_TYPE_ACTION_SET_COMPONENT_PROPS);
+            actionE->compSUID = selectedComp.suid();
+            actionE->delta.resize(1);
+            actionE->delta[0].index = COMPONENT_PROP_TRANSFORM;
+            actionE->delta[0].oldValue.set_transform_2d(mDragBeginCompLocalTransform);
+            actionE->delta[0].newValue.set_transform_2d(transform);
         }
     }
 }

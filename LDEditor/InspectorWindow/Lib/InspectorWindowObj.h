@@ -10,8 +10,6 @@ namespace LD {
 /// @brief Editor inspector window implementation.
 struct InspectorWindowObj : EditorWindowObj
 {
-    EUIComponentStorage storage{};
-
     InspectorWindowObj(const EditorWindowInfo& info)
         : EditorWindowObj(info)
     {

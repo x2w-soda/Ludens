@@ -19,7 +19,7 @@ namespace LD {
 struct DocumentWindowObj : EditorWindowObj
 {
     EUIDocument document;
-    EUITextBreadcrumbStorage breadcrumb;
+    EUITextBreadcrumb breadcrumb;
     std::string currentURIPath;
 
     DocumentWindowObj(const EditorWindowInfo& info)
@@ -85,12 +85,9 @@ void DocumentWindowObj::top_bar()
     layoutI.sizeX = UISize::grow();
     ui_top_layout(layoutI);
 
-    int spanI = eui_text_breadcrumb(breadcrumb, barHeight, 0x20FFFFFF);
-    if (spanI >= 0)
-    {
-        std::string path = breadcrumb.text.get_substring(spanI);
+    std::string path = breadcrumb.update(barHeight, 0x20FFFFFF);
+    if (!path.empty())
         document.set_request_uri_path(path);
-    }
 
     ui_pop();
 }

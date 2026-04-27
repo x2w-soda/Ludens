@@ -25,7 +25,10 @@ void InspectorWindowObj::update(float delta)
 
     ComponentView comp = ctx.get_component(ctx.get_selected_component());
     if (comp)
-        eui_inspect_component(&storage, comp);
+    {
+        eui_inspect_component_script(ctx, comp);
+        eui_inspect_component(ctx, comp);
+    }
 
     end_update_window();
 }

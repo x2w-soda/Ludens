@@ -9,22 +9,20 @@ namespace LD {
 struct AssetImportWindowObj : EditorWindowObj
 {
     AssetImportInfo* importInfo = {};
-    UITextEditData dstFilePath;
-    UITextEditData dstURI;
+    EUIAssetPathEditRow uiDstPathRow;
+    EUIButtonRow<2> uiButtonRow;
+    std::string dstPath;
 
     AssetImportWindowObj(const EditorWindowInfo& info)
         : EditorWindowObj(info)
     {
     }
 
-    void update(float delta);
-    inline AssetImporter get_asset_importer() { return ctx.get_asset_importer(); }
+    void update();
 };
 
-void AssetImportWindowObj::update(float delta)
+void AssetImportWindowObj::update()
 {
-    (void)delta;
-
     std::string str;
     UILayoutInfo layoutI = theme.make_vbox_layout();
     layoutI.childPadding = UIPadding(theme.get_child_pad_large());
@@ -32,26 +30,20 @@ void AssetImportWindowObj::update(float delta)
     layoutI.sizeX = UISize::grow();
     layoutI.sizeY = UISize::grow();
 
+    AssetRegistry assetReg = AssetManager::get().get_asset_registry();
+
     begin_update_window();
 
     ui_push_panel(nullptr);
     ui_top_layout(layoutI);
 
-    if (eui_row_label_text_edit("Imported File Path", &dstFilePath, str))
-        importInfo->dstRelPath = str;
+    if (uiDstPathRow.update(assetReg, dstPath))
+        importInfo->dstPath = dstPath;
 
-    if (eui_row_label_text_edit("Asset URI", &dstURI, str))
-        importInfo->dstURI = str;
-
-    if (importInfo && importInfo->type == ASSET_TYPE_TEXTURE_2D)
-    {
-        // eui_texture_2d_asset_import(texture2DAIS, importInfo);
-    }
-
-    static UIButtonData sBtn[2];
-    sBtn[0].text = "Cancel";
-    sBtn[1].text = "Import";
-    int btnPressed = eui_row_btn_btn(sBtn, sBtn + 1);
+    uiButtonRow.label[0] = "Cancel";
+    uiButtonRow.label[1] = "Import";
+    uiButtonRow.isEnabled[1] = !dstPath.empty() && uiDstPathRow.is_path_valid();
+    int btnPressed = uiButtonRow.update();
     if (btnPressed == 1)
         shouldClose = true;
     else if (btnPressed == 2 && importInfo)
@@ -59,8 +51,7 @@ void AssetImportWindowObj::update(float delta)
         auto* actionE = (EditorActionImportAssetsEvent*)ctx.enqueue_event(EDITOR_EVENT_TYPE_ACTION_IMPORT_ASSETS);
         actionE->batch.resize(1);
         actionE->batch[0] = importInfo;
-        importInfo->dstRelPath = dstFilePath.get_text();
-        importInfo->dstURI = dstURI.get_text();
+        importInfo->dstPath = dstPath;
         importInfo = nullptr;
     }
 
@@ -77,9 +68,6 @@ EditorWindow AssetImportWindow::create(const EditorWindowInfo& windowI)
 {
     auto* obj = heap_new<AssetImportWindowObj>(MEMORY_USAGE_UI, windowI);
 
-    // TODO:
-    LD_UNREACHABLE;
-
     return EditorWindow(obj);
 }
 
@@ -94,25 +82,28 @@ void AssetImportWindow::update(EditorWindowObj* base, const EditorUpdateTick& ti
 {
     auto* obj = static_cast<AssetImportWindowObj*>(base);
 
-    obj->update(tick.delta);
+    (void)tick;
+
+    obj->update();
 }
 
 void AssetImportWindow::set_type(AssetType type)
 {
-    AssetImporter importer = mObj->get_asset_importer();
+    EditorContextAssetInterface assetI = mObj->ctx.asset_interface();
 
     if (mObj->importInfo)
-        importer.free_import_info(mObj->importInfo);
+        assetI.free_asset_import_info(mObj->importInfo);
 
-    mObj->importInfo = importer.allocate_import_info(type);
+    mObj->importInfo = assetI.alloc_asset_import_info(type);
 }
 
-void AssetImportWindow::set_source_path(const std::string& srcPath)
+void AssetImportWindow::set_source_file(const FS::Path& srcFilePath)
 {
-    LD_ASSERT(mObj->importInfo && mObj->importInfo->type == ASSET_TYPE_TEXTURE_2D);
+    if (!mObj->importInfo)
+        return;
 
-    ((Texture2DAssetImportInfo*)mObj->importInfo)->srcPath = srcPath;
-    mObj->dstURI.set_text(FS::Path(srcPath).stem().string());
+    (void)mObj->importInfo->set_src_files(1, &srcFilePath);
+    mObj->dstPath = FS::Path(srcFilePath).stem().string();
 }
 
 } // namespace LD

@@ -12,6 +12,63 @@
 
 namespace LD {
 
+struct ProjectWindowObj;
+
+struct ProjectWindowObj : EditorWindowObj
+{
+    ProjectWindowMode mode = PROJECT_WINDOW_SELECT_PROJECT;
+
+    struct SelectProjectStorage
+    {
+        UIScrollData projectListScroll;
+        UITextEditData projectSchemaEdit;
+
+        void reset();
+        bool update(ProjectWindowObj* obj);
+        void ui_project_entry(EditorContext ctx, const EditorProjectEntry& entry);
+    } selectProject;
+
+    struct CreateProjectStorage
+    {
+        EUIButtonRow<2> buttonRow;
+        UITextEditData projectNameEdit;
+        UITextEditData projectDirEdit;
+        std::string projectNameErr;
+        std::string projectDirErr;
+
+        bool update(ProjectWindowObj* obj);
+        void validate_input();
+        inline bool is_valid_input() { return projectNameErr.empty() && projectDirErr.empty(); }
+    } createProject;
+
+    struct SaveProjectStorage
+    {
+        EUIButtonRow<3> buttonRow;
+        EditorWindowType nextWindowType = EDITOR_WINDOW_TYPE_ENUM_COUNT;
+        int nextWindowModeHint = 0;
+
+        void update(ProjectWindowObj* obj);
+    } saveProject;
+
+    struct CreateSceneStorage
+    {
+        EUIScenePathEditRow pathEditRow;
+        EUIButtonRow<2> buttonRow;
+        std::string scenePath;
+
+        void update(ProjectWindowObj* obj);
+    } createScene;
+
+    ProjectWindowObj(const EditorWindowInfo& info)
+        : EditorWindowObj(info)
+    {
+        createProject.projectDirEdit.set_text(FS::current_path().string());
+        createProject.validate_input();
+    }
+
+    void update();
+};
+
 static bool ui_row_text_button(const char* labelText, const char* buttonText, float rowHeight)
 {
     bool btnIsPressed = false;
@@ -42,44 +99,89 @@ static bool ui_row_text_button(const char* labelText, const char* buttonText, fl
     return btnIsPressed;
 }
 
-static bool ui_row_text_edit_button(UITextEditData* storage, const char* buttonText, float rowHeight)
+bool ProjectWindowObj::CreateProjectStorage::update(ProjectWindowObj* obj)
 {
-    bool btnIsPressed = false;
+    EditorTheme theme = obj->ctx.get_theme();
+    const float textRowHeight = theme.get_text_row_height();
+    UITextData* text;
+    Color errorColor;
+    std::string str;
+
+    theme.get_error_color(errorColor);
+
+    if (ui_row_text_button("Create New Project", "Open Existing", textRowHeight))
+        return true;
+
+    ui_push_text(nullptr, "Project Name");
+    ui_pop();
+    ui_push_text_edit(&projectNameEdit);
+    ui_top_layout_size(UISize::grow(), UISize::fixed(textRowHeight));
+    if (ui_text_edit_changed(str) || ui_text_edit_submitted(str))
+        validate_input();
+    ui_pop();
+    text = (UITextData*)ui_push_text(nullptr, projectNameErr.c_str()).get_data();
+    text->set_fg_color(errorColor);
+    ui_pop();
+
+    ui_push_text(nullptr, "Project Directory");
+    ui_pop();
+    ui_push_text_edit(&projectDirEdit);
+    ui_top_layout_size(UISize::grow(), UISize::fixed(textRowHeight));
+    if (ui_text_edit_changed(str) || ui_text_edit_submitted(str))
+        validate_input();
+    ui_pop();
+    text = (UITextData*)ui_push_text(nullptr, projectDirErr.c_str()).get_data();
+    text->set_fg_color(errorColor);
+    ui_pop();
+
+    buttonRow.label[0] = "Cancel";
+    buttonRow.label[1] = "Create";
+    buttonRow.isEnabled[1] = is_valid_input();
+    int btnPressed = buttonRow.update();
+    if (btnPressed == 1)
+        obj->shouldClose = true;
+    else if (btnPressed == 2)
+    {
+        obj->shouldClose = true;
+
+        auto* event = (EditorActionCreateProjectEvent*)obj->ctx.enqueue_event(EDITOR_EVENT_TYPE_ACTION_CREATE_PROJECT);
+        event->projectName = projectNameEdit.get_text();
+        event->projectSchema = FS::Path(projectDirEdit.get_text()) / FS::Path("project.toml");
+    }
+
+    return false;
+}
+
+bool ProjectWindowObj::SelectProjectStorage::update(ProjectWindowObj* obj)
+{
+    EditorTheme theme = obj->ctx.get_theme();
+    const float textRowHeight = theme.get_text_row_height();
+    std::string str;
+
+    if (ui_row_text_button("Select Project", "Create New", textRowHeight))
+        return true;
 
     UILayoutInfo layoutI{};
-    layoutI.childAxis = UI_AXIS_X;
-    layoutI.childGap = PAD;
     layoutI.sizeX = UISize::grow();
-    layoutI.sizeY = UISize::fixed(rowHeight);
+    layoutI.sizeY = UISize::grow();
+    layoutI.childAxis = UI_AXIS_Y;
+    layoutI.childGap = theme.get_child_gap_large();
+    layoutI.childPadding = UIPadding(theme.get_child_pad_large());
 
-    ui_push_panel(nullptr);
+    ui_push_scroll(&projectListScroll);
+    projectListScroll.bgColor = theme.get_ui_theme().get_surface_color();
     ui_top_layout(layoutI);
-    {
-        ui_push_text_edit(storage);
-        ui_top_layout(layoutI);
-        ui_pop();
 
-        layoutI.sizeX = UISize::fixed(100.0f);
-        ui_push_button(nullptr, buttonText);
-        ui_top_layout(layoutI);
-        if (ui_button_is_pressed())
-            btnIsPressed = true;
-        ui_pop();
+    for (const EditorProjectEntry& entry : obj->ctx.get_project_entries())
+    {
+        ui_project_entry(obj->ctx, entry);
     }
     ui_pop();
 
-    return btnIsPressed;
+    return false;
 }
 
-struct SelectProjectStorage
-{
-    UIScrollData projectListScroll;
-    UITextEditData projectSchemaEdit;
-
-    void ui_project_entry(EditorContext ctx, const EditorProjectEntry& entry);
-};
-
-void SelectProjectStorage::ui_project_entry(EditorContext ctx, const EditorProjectEntry& entry)
+void ProjectWindowObj::SelectProjectStorage::ui_project_entry(EditorContext ctx, const EditorProjectEntry& entry)
 {
     EditorTheme theme = ctx.get_theme();
 
@@ -104,18 +206,7 @@ void SelectProjectStorage::ui_project_entry(EditorContext ctx, const EditorProje
     ui_pop();
 }
 
-struct CreateProjectStorage
-{
-    UITextEditData projectNameEdit;
-    UITextEditData projectDirEdit;
-    std::string projectNameErr;
-    std::string projectDirErr;
-
-    void validate_input();
-    inline bool is_valid_input() { return projectNameErr.empty() && projectDirErr.empty(); }
-};
-
-void CreateProjectStorage::validate_input()
+void ProjectWindowObj::CreateProjectStorage::validate_input()
 {
     std::string projectName = projectNameEdit.get_text();
     FS::Path projectDir(projectDirEdit.get_text());
@@ -133,28 +224,57 @@ void CreateProjectStorage::validate_input()
         projectDirErr = "Project directory exists and is not empty";
 }
 
-struct ProjectWindowObj : EditorWindowObj
+void ProjectWindowObj::SaveProjectStorage::update(ProjectWindowObj* obj)
 {
-    CreateProjectStorage createProject;
-    SelectProjectStorage selectProject;
-    bool isCreatingProject = false;
+    buttonRow.label[0] = "Discard";
+    buttonRow.label[1] = "Cancel";
+    buttonRow.label[2] = "Save";
+    int btnPressed = buttonRow.update();
 
-    ProjectWindowObj(const EditorWindowInfo& info)
-        : EditorWindowObj(info)
+    if (btnPressed == 1)
     {
-        createProject.projectDirEdit.set_text(FS::current_path().string());
-        createProject.validate_input();
+        // TODO: clear edit stack?
+        auto* requestE = (EditorRequestShowModalEvent*)obj->ctx.enqueue_event(EDITOR_EVENT_TYPE_REQUEST_SHOW_MODAL);
+        requestE->windowType = nextWindowType;
+        requestE->windowModeHint = nextWindowModeHint;
     }
+    else if (btnPressed == 2)
+    {
+        obj->shouldClose = true;
+    }
+    else if (btnPressed == 3)
+    {
+        auto* requestE = (EditorRequestShowModalEvent*)obj->ctx.enqueue_event(EDITOR_EVENT_TYPE_REQUEST_SHOW_MODAL);
+        requestE->windowType = nextWindowType;
+        requestE->windowModeHint = nextWindowModeHint;
+    }
+}
 
-    void update(float delta);
-    bool ui_create_project();
-    bool ui_select_project();
-};
-
-void ProjectWindowObj::update(float delta)
+void ProjectWindowObj::CreateSceneStorage::update(ProjectWindowObj* obj)
 {
-    (void)delta;
+    Project project = obj->ctx.get_project();
+    std::string str;
 
+    if (pathEditRow.update(project, scenePath))
+        ;
+
+    buttonRow.label[0] = "Cancel";
+    buttonRow.label[1] = "Create";
+    buttonRow.isEnabled[1] = project.is_scene_uri_path_valid(scenePath, str);
+    int btnPressed = buttonRow.update();
+    if (btnPressed == 1)
+        obj->shouldClose = true;
+    else if (btnPressed == 2)
+    {
+        obj->shouldClose = true;
+
+        auto* event = (EditorActionCreateSceneEvent*)obj->ctx.enqueue_event(EDITOR_EVENT_TYPE_ACTION_CREATE_SCENE);
+        event->scenePath = scenePath;
+    }
+}
+
+void ProjectWindowObj::update()
+{
     begin_update_window();
 
     UILayoutInfo layoutI = theme.make_vbox_layout_fixed(rootRect.get_size());
@@ -162,109 +282,61 @@ void ProjectWindowObj::update(float delta)
     layoutI.childGap = PAD;
     ui_top_layout(layoutI);
 
-    if (isCreatingProject)
+    switch (mode)
     {
-        if (ui_create_project())
-            isCreatingProject = false;
-    }
-    else
-    {
-        if (ui_select_project())
-            isCreatingProject = true;
+    case PROJECT_WINDOW_CREATE_PROJECT:
+        if (createProject.update(this))
+            mode = PROJECT_WINDOW_SELECT_PROJECT;
+        break;
+    case PROJECT_WINDOW_SELECT_PROJECT:
+        if (selectProject.update(this))
+            mode = PROJECT_WINDOW_CREATE_PROJECT;
+        break;
+    case PROJECT_WINDOW_SAVE_PROJECT:
+        saveProject.update(this);
+        break;
+    case PROJECT_WINDOW_CREATE_SCENE:
+        createScene.update(this);
+        break;
+    default:
+        break;
     }
 
     end_update_window();
 }
 
-bool ProjectWindowObj::ui_create_project()
-{
-    const float textRowHeight = theme.get_text_row_height();
-    UITextData* text;
-    Color errorColor;
-    std::string str;
-
-    theme.get_error_color(errorColor);
-
-    if (ui_row_text_button("Create New Project", "Open Existing", textRowHeight))
-        return true;
-
-    ui_push_text(nullptr, "Project Name");
-    ui_pop();
-    ui_push_text_edit(&createProject.projectNameEdit);
-    ui_top_layout_size(UISize::grow(), UISize::fixed(textRowHeight));
-    if (ui_text_edit_changed(str) || ui_text_edit_submitted(str))
-        createProject.validate_input();
-    ui_pop();
-    text = (UITextData*)ui_push_text(nullptr, createProject.projectNameErr.c_str()).get_data();
-    text->set_fg_color(errorColor);
-    ui_pop();
-
-    ui_push_text(nullptr, "Project Directory");
-    ui_pop();
-    ui_push_text_edit(&createProject.projectDirEdit);
-    ui_top_layout_size(UISize::grow(), UISize::fixed(textRowHeight));
-    if (ui_text_edit_changed(str) || ui_text_edit_submitted(str))
-        createProject.validate_input();
-    ui_pop();
-    text = (UITextData*)ui_push_text(nullptr, createProject.projectDirErr.c_str()).get_data();
-    text->set_fg_color(errorColor);
-    ui_pop();
-
-    static UIButtonData sBtn[2];
-    // sBtn[0].text = "Cancel";
-    sBtn[1].text = "Create";
-    sBtn[1].isEnabled = createProject.is_valid_input();
-    int btnPressed = eui_row_btn_btn(nullptr, sBtn + 1);
-    if (btnPressed == 2)
-    {
-        auto* event = (EditorActionCreateProjectEvent*)ctx.enqueue_event(EDITOR_EVENT_TYPE_ACTION_CREATE_PROJECT);
-        event->projectName = createProject.projectNameEdit.get_text();
-        event->projectSchema = FS::Path(createProject.projectDirEdit.get_text()) / FS::Path("project.toml");
-    }
-
-    return false;
-}
-
-bool ProjectWindowObj::ui_select_project()
-{
-    const float textRowHeight = theme.get_text_row_height();
-    std::string str;
-
-    if (ui_row_text_button("Select Project", "Create New", textRowHeight))
-        return true;
-
-    UILayoutInfo layoutI{};
-    layoutI.sizeX = UISize::grow();
-    layoutI.sizeY = UISize::grow();
-    layoutI.childAxis = UI_AXIS_Y;
-    layoutI.childGap = theme.get_child_gap_large();
-    layoutI.childPadding = UIPadding(theme.get_child_pad_large());
-
-    ui_push_scroll(&selectProject.projectListScroll);
-    selectProject.projectListScroll.bgColor = theme.get_ui_theme().get_surface_color();
-    ui_top_layout(layoutI);
-
-    for (const EditorProjectEntry& entry : ctx.get_project_entries())
-    {
-        selectProject.ui_project_entry(ctx, entry);
-    }
-    ui_pop();
-
-#if 0
-    ui_push_text(nullptr, "Locate Project");
-    ui_top_layout_size(UISize::wrap(), UISize::fixed(textRowHeight));
-    ui_pop();
-
-    if (ui_row_text_edit_button(&selectProject.projectSchemaEdit, "Add", textRowHeight))
-        ;
-#endif
-
-    return false;
-}
-
 //
 // Public API
 //
+
+void ProjectWindow::set_mode(ProjectWindowMode mode)
+{
+    mObj->mode = mode;
+
+    switch (mObj->mode)
+    {
+    case PROJECT_WINDOW_CREATE_PROJECT:
+        mObj->createProject = {};
+        break;
+    case PROJECT_WINDOW_SELECT_PROJECT:
+        mObj->selectProject = {};
+        break;
+    case PROJECT_WINDOW_SAVE_PROJECT:
+        mObj->saveProject = {};
+        break;
+    case PROJECT_WINDOW_CREATE_SCENE:
+        mObj->createScene = {};
+        break;
+    default:
+        break;
+    }
+}
+
+void ProjectWindow::set_save_project_continuation(EditorWindowType windowType, int modeHint)
+{
+    mObj->saveProject.nextWindowType = windowType;
+    mObj->saveProject.nextWindowModeHint = modeHint;
+}
 
 EditorWindow ProjectWindow::create(const EditorWindowInfo& windowI)
 {
@@ -284,7 +356,9 @@ void ProjectWindow::update(EditorWindowObj* base, const EditorUpdateTick& tick)
 {
     auto* obj = static_cast<ProjectWindowObj*>(base);
 
-    obj->update(tick.delta);
+    (void)tick;
+
+    obj->update();
 }
 
 } // namespace LD

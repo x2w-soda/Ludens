@@ -12,12 +12,12 @@ struct AssetImportWindow : Handle<struct AssetImportWindowObj>
     AssetImportWindow() = default;
     AssetImportWindow(const EditorWindowObj* obj) { mObj = (AssetImportWindowObj*)obj; }
 
+    void set_type(AssetType type);
+    void set_source_file(const FS::Path& srcFilePath);
+
     static EditorWindow create(const EditorWindowInfo& windowI);
     static void destroy(EditorWindow window);
     static void update(EditorWindowObj* obj, const EditorUpdateTick& tick);
-
-    void set_type(AssetType type);
-    void set_source_path(const std::string& srcPath);
 };
 
 } // namespace LD

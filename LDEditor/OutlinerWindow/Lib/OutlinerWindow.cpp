@@ -25,7 +25,6 @@ struct OutlinerWindowObj;
 /// @brief Outliner frame state
 struct OutlinerFrameState
 {
-    SUID compSUID;
     ComponentView selectedComp;
     bool requestCompRename;
 };
@@ -46,7 +45,8 @@ private:
 struct OutlinerWindowObj : EditorWindowObj
 {
     RImage editorIconAtlas;
-    OutlinerFrameState state{};
+    OutlinerFrameState state = {};
+    SUID parentSUID = {};
     IndexTable<OutlinerRow, MEMORY_USAGE_UI> rows;
 
     OutlinerWindowObj(const EditorWindowInfo& info)
@@ -84,8 +84,8 @@ void OutlinerWindowObj::on_row_mouse_down(ComponentView comp, MouseValue mouseVa
         ctx.set_selected_component(comp.cuid());
     else if (mouseVal.button() == MOUSE_BUTTON_RIGHT && comp.suid())
     {
-        ui_request_popup_window(OUTLINER_COMPONENT_MENU_POPUP, mousePos);
-        state.compSUID = comp.suid();
+        ui_request_overlay_window(OUTLINER_COMPONENT_MENU_POPUP, 0, mousePos);
+        parentSUID = comp.suid();
     }
 }
 
@@ -102,11 +102,7 @@ void OutlinerWindowObj::update()
 {
     LD_PROFILE_SCOPE;
 
-    EditorTheme theme = ctx.get_theme();
-    UILayoutInfo layoutI{};
-    layoutI.sizeX = UISize::fixed(rootRect.w);
-    layoutI.sizeY = UISize::fixed(rootRect.h);
-    layoutI.childAxis = UI_AXIS_Y;
+    UILayoutInfo layoutI(UISize::fixed(rootRect.w), UISize::fixed(rootRect.h), UI_AXIS_Y);
     layoutI.childPadding.left = 0;
     layoutI.childPadding.right = 0;
     layoutI.childGap = 0;
@@ -119,10 +115,17 @@ void OutlinerWindowObj::update()
     ui_top_layout(layoutI);
     ui_window_set_color(theme.get_ui_theme().get_surface_color());
 
+    Vec2 mousePos;
+    MouseValue mouseVal;
     KeyValue keyVal;
     if (ui_top_key_down(keyVal) && !input_key(keyVal))
     {
         ctx.input_key_value(keyVal);
+    }
+    if (ui_top_mouse_down(mouseVal, mousePos) && mouseVal.button() == MOUSE_BUTTON_RIGHT)
+    {
+        ui_request_overlay_window(OUTLINER_COMPONENT_MENU_POPUP, 0, mousePos);
+        parentSUID = SUID(0);
     }
 
     Vector<ComponentView> sceneRoots;
@@ -138,21 +141,24 @@ void OutlinerWindowObj::update()
 
     end_update_window();
 
-    if (ui_push_popup_window(OUTLINER_COMPONENT_MENU_POPUP))
+    if (ui_push_overlay_window(OUTLINER_COMPONENT_MENU_POPUP))
     {
         Array<const char*, 1> options;
         options[COMPONENT_MENU_OPTION_ADD_CHILD] = "Add Child";
+        if (!parentSUID)
+            options[COMPONENT_MENU_OPTION_ADD_CHILD] = "Add Component";
 
-        int opt = eui_list_menu(theme, options.size(), options.data());
+        int opt = eui_list_menu(options.size(), options.data());
         if (opt >= 0)
-            ui_clear_popup_window();
+            ui_clear_overlay_windows();
 
         switch (opt)
         {
         case COMPONENT_MENU_OPTION_ADD_CHILD:
         {
             auto* event = (EditorRequestCreateComponentEvent*)ctx.enqueue_event(EDITOR_EVENT_TYPE_REQUEST_CREATE_COMPONENT);
-            event->parent = state.compSUID;
+            event->parent = parentSUID;
+            parentSUID = SUID(0);
             break;
         }
         default:
@@ -165,7 +171,7 @@ void OutlinerWindowObj::update()
 
 void OutlinerRow::update(OutlinerWindowObj* obj, ComponentView comp, int rowIdx, int depth)
 {
-    EditorTheme theme = obj->ctx.get_theme();
+    EditorTheme theme = obj->theme;
     UITheme uiTheme = theme.get_ui_theme();
     const float rowHeight = theme.get_text_row_height();
     CUID compCUID = comp.cuid();

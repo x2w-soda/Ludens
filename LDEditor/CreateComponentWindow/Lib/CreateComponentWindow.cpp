@@ -42,9 +42,10 @@ void CreateComponentWindowObj::component_rows()
 {
     UITheme uiTheme = theme.get_ui_theme();
 
-    Array<ComponentType, 3> types = {
+    Array<ComponentType, 4> types = {
         COMPONENT_TYPE_AUDIO_SOURCE,
         COMPONENT_TYPE_TRANSFORM_2D,
+        COMPONENT_TYPE_CAMERA_2D,
         COMPONENT_TYPE_SPRITE_2D,
     };
 

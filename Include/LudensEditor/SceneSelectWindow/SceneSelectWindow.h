@@ -6,15 +6,11 @@
 
 namespace LD {
 
-/// @brief Window to select assets in project by URI
-struct AssetSelectWindow : Handle<struct AssetSelectWindowObj>
+/// @brief Window to select a Scene from a Project.
+struct SceneSelectWindow : Handle<struct SceneSelectWindowObj>
 {
-    AssetSelectWindow() = default;
-    AssetSelectWindow(const EditorWindowObj* obj) { mObj = (AssetSelectWindowObj*)obj; }
-
-    void set_filter(AssetType type);
-    void set_component(SUID comp);
-    void set_component_asset_slot_index(uint32_t index);
+    SceneSelectWindow() = default;
+    SceneSelectWindow(const EditorWindowObj* obj) { mObj = (SceneSelectWindowObj*)obj; }
 
     static EditorWindow create(const EditorWindowInfo& windowI);
     static void destroy(EditorWindow window);

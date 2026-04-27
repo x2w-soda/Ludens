@@ -215,13 +215,13 @@ void Viewport3D::drag(ViewportState& state, MouseButton btn, const Vec2& dragPos
         switch (plane)
         {
         case GIZMO_PLANE_XY:
-            worldT.rotationEuler.z = LD_TO_DEGREES(mGizmo.get_plane_rotate());
+            worldT.rotationEuler.z = (float)LD_TO_DEGREES(mGizmo.get_plane_rotate());
             break;
         case GIZMO_PLANE_XZ:
-            worldT.rotationEuler.y = LD_TO_DEGREES(mGizmo.get_plane_rotate());
+            worldT.rotationEuler.y = (float)LD_TO_DEGREES(mGizmo.get_plane_rotate());
             break;
         case GIZMO_PLANE_YZ:
-            worldT.rotationEuler.x = LD_TO_DEGREES(mGizmo.get_plane_rotate());
+            worldT.rotationEuler.x = (float)LD_TO_DEGREES(mGizmo.get_plane_rotate());
             break;
         }
         worldT.rotation = Quat::from_euler(worldT.rotationEuler);
