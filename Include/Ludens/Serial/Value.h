@@ -1,7 +1,11 @@
 #pragma once
 
+#include <Ludens/Header/Math/Rect.h>
+#include <Ludens/Header/Math/Transform.h>
+
 #include <cstddef>
 #include <cstdint>
+#include <string>
 
 namespace LD {
 
@@ -18,12 +22,19 @@ enum ValueType : uint16_t
     VALUE_TYPE_I64,
     VALUE_TYPE_U64,
     VALUE_TYPE_BOOL,
+    VALUE_TYPE_VEC2,
+    VALUE_TYPE_VEC3,
+    VALUE_TYPE_VEC4,
+    VALUE_TYPE_RECT,
+    VALUE_TYPE_STRING,
+    VALUE_TYPE_TRANSFORM_2D,
+    VALUE_TYPE_TRANSFORM,
     VALUE_TYPE_ENUM_COUNT,
 };
 
-union Value
+union Value8
 {
-    bool b;
+    bool b8;
     float f32;
     double f64;
     int8_t i8;
@@ -34,6 +45,79 @@ union Value
     uint16_t u16;
     uint32_t u32;
     uint64_t u64;
+};
+
+union Value16
+{
+    bool b8[16];
+    float f32[4];
+    double f64[2];
+    int16_t i16[8];
+    int32_t i32[4];
+    int64_t i64[2];
+    uint16_t u16[8];
+    uint32_t u32[4];
+    uint64_t u64[2];
+    Rect rect;
+};
+
+class Value64
+{
+public:
+    ValueType type = VALUE_TYPE_ENUM_COUNT;
+
+    union
+    {
+        Value16 v16;
+        Transform2D transform2D;
+        TransformEx transformEx;
+        std::string str;
+    };
+
+    Value64() {}
+    Value64(const Value64&);
+    Value64(Value64&&) noexcept;
+    explicit Value64(const std::string& str);
+    explicit Value64(float f32);
+    explicit Value64(double f64);
+    explicit Value64(uint32_t u32);
+    explicit Value64(uint64_t u64);
+    explicit Value64(Vec2 vec2);
+    explicit Value64(Vec3 vec3);
+    explicit Value64(Vec4 vec4);
+    explicit Value64(Rect rect);
+    ~Value64();
+
+    Value64& operator=(const Value64&);
+    Value64& operator=(Value64&&) noexcept;
+
+    bool operator==(const Value64& other) const;
+
+    void set_u32(uint32_t u32);
+    uint32_t get_u32() const;
+    void set_f32(float f32);
+    float get_f32() const;
+    void set_f64(double f64);
+    double get_f64() const;
+    void set_vec2(Vec2 vec2);
+    Vec2 get_vec2() const;
+    void set_vec3(Vec3 vec3);
+    Vec3 get_vec3() const;
+    void set_vec4(Vec4 vec4);
+    Vec4 get_vec4() const;
+    void set_rect(Rect rect);
+    Rect get_rect() const;
+    void set_transform_2d(const Transform2D& transform);
+    Transform2D get_transform_2d() const;
+    void set_transform(const TransformEx& transform);
+    TransformEx get_transform() const;
+    void set_string(const std::string& str);
+    std::string get_string() const;
+
+private:
+    void destroy();
+    void copy_from(const Value64& other);
+    void move_from(Value64&& other);
 };
 
 /// @brief Get byte size of value type, or zero for varying length values.

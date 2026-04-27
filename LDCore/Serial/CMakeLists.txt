@@ -40,6 +40,7 @@ target_include_directories(${MODULE_NAME} PRIVATE
 
 set(MODULE_TEST
 	Test/SerialTest.cpp
+	Test/ValueTest.cpp
 	Test/PacketTest.cpp
 	Test/EndiannessTest.cpp
 	Test/CompressionTest.cpp
