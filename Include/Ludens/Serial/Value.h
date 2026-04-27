@@ -99,6 +99,8 @@ public:
     float get_f32() const;
     void set_f64(double f64);
     double get_f64() const;
+    void set_bool(bool b8);
+    bool get_bool() const;
     void set_vec2(Vec2 vec2);
     Vec2 get_vec2() const;
     void set_vec3(Vec3 vec3);

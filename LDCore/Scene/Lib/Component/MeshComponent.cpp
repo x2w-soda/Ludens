@@ -102,6 +102,29 @@ AssetID MeshView::get_mesh_asset()
     return mMesh->assetID;
 }
 #else
+MeshView::MeshView(ComponentView comp)
+{
+    if (comp && comp.type() == COMPONENT_TYPE_MESH)
+    {
+        mData = comp.data();
+        mMesh = (MeshComponent*)mData;
+    }
+}
+
+MeshView::MeshView(MeshComponent* comp)
+{
+    if (comp && comp->base && comp->base->cuid)
+    {
+        mData = (ComponentBase**)comp;
+        mMesh = comp;
+    }
+}
+bool MeshView::set_mesh_asset(AssetID meshID)
+{
+    LD_ASSERT(mMesh->draw);
+
+    return false;
+}
 void init_mesh_component(ComponentBase** dstData)
 {
     LD_UNREACHABLE;

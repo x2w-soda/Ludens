@@ -1,11 +1,89 @@
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/Scene/Component/Sprite2DView.h>
+#include <Ludens/Serial/Property.h>
 
 #include "Sprite2DComponent.h"
 
 #define INIT_REGION_SIZE 100.0f
 
 namespace LD {
+
+// clang-format off
+static PropertyMeta sSprite2DPropMeta[] = {
+    {"transform", VALUE_TYPE_TRANSFORM_2D, {}},
+    {"texture", VALUE_TYPE_U32, {}, PROPERTY_UI_HINT_ASSET},
+    {"z_depth", VALUE_TYPE_U32, {}},
+    {"pivot", VALUE_TYPE_VEC2, {}},
+    {"region", VALUE_TYPE_RECT, {}},
+};
+// clang-format on
+
+void sprite_2d_prop_getter(void* data, uint32_t index, Value64& val)
+{
+    Sprite2DView view((Sprite2DComponent*)data);
+    Transform2D transform2D;
+
+    switch (index)
+    {
+    case SPRITE_2D_PROP_TRANSFORM:
+        (void)view.get_transform_2d(transform2D);
+        val.set_transform_2d(transform2D);
+        break;
+    case SPRITE_2D_PROP_TEXTURE_2D_ASSET:
+        val.set_u32((uint32_t)view.get_texture_2d_asset());
+        break;
+    case SPRITE_2D_PROP_Z_DEPTH:
+        val.set_u32(view.get_z_depth());
+        break;
+    case SPRITE_2D_PROP_PIVOT:
+        val.set_vec2(view.get_pivot());
+        break;
+    case SPRITE_2D_PROP_REGION:
+        val.set_rect(view.get_region());
+        break;
+    case SPRITE_2D_PROP_SCREEN_LAYER:
+        // TODO:
+        break;
+    default:
+        break;
+    }
+}
+
+void sprite_2d_prop_setter(void* data, uint32_t index, const Value64& val)
+{
+    Sprite2DView view((Sprite2DComponent*)data);
+
+    switch (index)
+    {
+    case SPRITE_2D_PROP_TRANSFORM:
+        view.set_transform_2d(val.get_transform_2d());
+        break;
+    case SPRITE_2D_PROP_TEXTURE_2D_ASSET:
+        view.set_texture_2d_asset((AssetID)val.get_u32());
+        break;
+    case SPRITE_2D_PROP_Z_DEPTH:
+        view.set_z_depth(val.get_u32());
+        break;
+    case SPRITE_2D_PROP_PIVOT:
+        view.set_pivot(val.get_vec2());
+        break;
+    case SPRITE_2D_PROP_REGION:
+        view.set_region(val.get_rect());
+        break;
+    case SPRITE_2D_PROP_SCREEN_LAYER:
+        // TODO:
+        break;
+    default:
+        break;
+    }
+}
+
+PropertyMetaTable gSprite2DPropMetaTable{
+    .entries = sSprite2DPropMeta,
+    .entryCount = sizeof(sSprite2DPropMeta) / sizeof(*sSprite2DPropMeta),
+    .getter = &sprite_2d_prop_getter,
+    .setter = &sprite_2d_prop_setter,
+};
 
 void init_sprite_2d_component(ComponentBase** dstData)
 {
@@ -129,6 +207,14 @@ bool sprite_2d_component_set_asset(SceneObj* scene, ComponentBase** data, uint32
 
     spriteV.set_texture_2d_asset(assetID);
     return true;
+}
+
+AssetType sprite_2d_component_get_asset_type(SceneObj* scene, uint32_t assetSlotIndex)
+{
+    if (assetSlotIndex != 0)
+        return ASSET_TYPE_ENUM_COUNT;
+
+    return ASSET_TYPE_TEXTURE_2D;
 }
 
 Sprite2DView::Sprite2DView(ComponentView comp)

@@ -558,11 +558,10 @@ UIWidgetState* UIWindowState::get_or_create_toggle(UIToggleData* data)
     UILayoutInfo layoutI{};
     layoutI.sizeX = UISize::grow();
     layoutI.sizeY = UISize::fit();
-
-    data->state = false;
-
     UIWidget parent = get_parent_widget();
     widgetS->widget = parent.add_child(UI_WIDGET_TOGGLE, layoutI, data, widgetS);
+    data = (UIToggleData*)widgetS->widget.get_data();
+    data->state = false;
 
     toggleW = (UIToggleWidget)widgetS->widget;
     toggleW.set_on_toggle([](UIWidget, bool, void* user) {

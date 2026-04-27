@@ -1,8 +1,80 @@
 #include <Ludens/Scene/Component/Camera2DView.h>
+#include <Ludens/Serial/Property.h>
 
 #include "Camera2DComponent.h"
 
 namespace LD {
+
+// clang-format off
+static PropertyMeta sCamera2DPropMeta[] = {
+    {"z_depth", VALUE_TYPE_U32},
+    {"viewport", VALUE_TYPE_RECT},
+    {"extent", VALUE_TYPE_VEC2},
+    {"zoom", VALUE_TYPE_F32},
+    {"constraint", VALUE_TYPE_BOOL },
+};
+// clang-format on
+
+static void camera_2d_prop_getter(void* data, uint32_t index, Value64& val)
+{
+    Camera2DView view((Camera2DComponent*)data);
+    Transform2D transform2D;
+
+    switch (index)
+    {
+    case CAMERA_2D_PROP_TRANSFORM:
+        (void)view.get_transform_2d(transform2D);
+        val.set_transform_2d(transform2D);
+        break;
+    case CAMERA_2D_PROP_VIEWPORT:
+        val.set_rect(view.get_viewport());
+        break;
+    case CAMERA_2D_PROP_EXTENT:
+        val.set_vec2(view.get_extent());
+        break;
+    case CAMERA_2D_PROP_ZOOM:
+        val.set_f32(view.get_zoom());
+        break;
+    case CAMERA_2D_PROP_CONSTRAINT:
+        val.set_bool((bool)view.get_constraint());
+        break;
+    default:
+        break;
+    }
+}
+
+static void camera_2d_prop_setter(void* data, uint32_t index, const Value64& val)
+{
+    Camera2DView view((Camera2DComponent*)data);
+
+    switch (index)
+    {
+    case CAMERA_2D_PROP_TRANSFORM:
+        view.set_transform_2d(val.get_transform_2d());
+        break;
+    case CAMERA_2D_PROP_VIEWPORT:
+        view.set_viewport(val.get_rect());
+        break;
+    case CAMERA_2D_PROP_EXTENT:
+        view.set_extent(val.get_vec2());
+        break;
+    case CAMERA_2D_PROP_ZOOM:
+        view.set_zoom(val.get_f32());
+        break;
+    case CAMERA_2D_PROP_CONSTRAINT:
+        view.set_constraint((Camera2DConstraint)val.get_bool());
+        break;
+    default:
+        break;
+    }
+}
+
+PropertyMetaTable gCamera2DPropMetaTable{
+    .entries = sCamera2DPropMeta,
+    .entryCount = sizeof(sCamera2DPropMeta) / sizeof(*sCamera2DPropMeta),
+    .getter = &camera_2d_prop_getter,
+    .setter = &camera_2d_prop_setter,
+};
 
 static Rect clamp_rect(Rect rect)
 {

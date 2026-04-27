@@ -256,6 +256,20 @@ double Value64::get_f64() const
     return v16.f64[0];
 }
 
+void Value64::set_bool(bool b8)
+{
+    destroy();
+    type = VALUE_TYPE_BOOL;
+    v16.b8[0] = b8;
+}
+
+bool Value64::get_bool() const
+{
+    LD_ASSERT(type == VALUE_TYPE_BOOL);
+
+    return v16.b8[0];
+}
+
 void Value64::set_vec2(Vec2 vec2)
 {
     destroy();

@@ -8,6 +8,15 @@ namespace LD {
 struct Camera2DComponent;
 struct Camera2DInfo;
 
+enum Camera2DProp
+{
+    CAMERA_2D_PROP_TRANSFORM,
+    CAMERA_2D_PROP_VIEWPORT,
+    CAMERA_2D_PROP_EXTENT,
+    CAMERA_2D_PROP_ZOOM,
+    CAMERA_2D_PROP_CONSTRAINT,
+};
+
 /// @brief Public interface for camera 2D components.
 class Camera2DView : public ComponentView
 {

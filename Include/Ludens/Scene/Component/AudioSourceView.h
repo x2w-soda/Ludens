@@ -6,6 +6,13 @@ namespace LD {
 
 struct AudioSourceComponent;
 
+enum AudioSourceProp
+{
+    AUDIO_SOURCE_PROP_CLIP_ASSET,
+    AUDIO_SOURCE_PROP_PAN,
+    AUDIO_SOURCE_PROP_VOLUME_LINEAR,
+};
+
 /// @brief Public interface for audio source components.
 class AudioSourceView : public ComponentView
 {

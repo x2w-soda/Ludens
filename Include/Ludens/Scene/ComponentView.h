@@ -5,11 +5,14 @@
 #include <Ludens/RenderBackend/RUID.h>
 #include <Ludens/Serial/SUID.h>
 
+#define COMPONENT_PROP_TRANSFORM 0
+
 namespace LD {
 
 struct ComponentBase;
 struct TransformEx;
 struct Transform2D;
+struct PropertyMetaTable;
 
 /// @brief Public interface for all components.
 class ComponentView
@@ -24,6 +27,7 @@ public:
 
     inline ComponentBase* base() { return *mData; }
     inline ComponentBase** data() { return mData; }
+    const PropertyMetaTable* property_meta_table();
     ComponentType type();
     CUID cuid();
     SUID suid();
@@ -33,6 +37,7 @@ public:
     void set_name(const char* cstr);
     AssetID get_asset_id(uint32_t assetSlotIndex);
     bool set_asset_id(uint32_t assetSlotIndex, AssetID id);
+    AssetType get_asset_type(uint32_t assetSlotIndex);
     AssetID get_script_asset_id();
     void set_script_asset_id(AssetID assetID);
     void get_children(Vector<ComponentView>& children);

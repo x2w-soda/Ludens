@@ -7,6 +7,16 @@ namespace LD {
 
 struct Sprite2DComponent;
 
+enum Sprite2DProp
+{
+    SPRITE_2D_PROP_TRANSFORM = COMPONENT_PROP_TRANSFORM,
+    SPRITE_2D_PROP_TEXTURE_2D_ASSET,
+    SPRITE_2D_PROP_Z_DEPTH,
+    SPRITE_2D_PROP_PIVOT,
+    SPRITE_2D_PROP_REGION,
+    SPRITE_2D_PROP_SCREEN_LAYER,
+};
+
 /// @brief Public interface for Sprite2D components.
 class Sprite2DView : public ComponentView
 {
