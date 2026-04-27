@@ -12,6 +12,7 @@ struct EditorUIModalInfo
     EditorContext ctx;
     const char* layerName;
     Vec2 screenSize;
+    bool isVisible;
 };
 
 struct EditorUIModal : Handle<struct EditorUIModalObj>
@@ -23,8 +24,11 @@ struct EditorUIModal : Handle<struct EditorUIModalObj>
     void update(const EditorUpdateTick& tick);
     void post_update();
 
-    void set_visible(bool isVisible);
-    EditorWindow set_window(EditorWindowType type);
+    /// @brief Show a single window in modal.
+    EditorWindow show_window(EditorWindowType type);
+
+    /// @brief Hide the modal.
+    void hide();
 };
 
 } // namespace LD

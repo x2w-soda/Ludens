@@ -5,11 +5,15 @@
 #include <Ludens/Scene/Scene.h>
 #include <Ludens/UI/UIImmediate.h>
 #include <Ludens/WindowRegistry/WindowRegistry.h>
+#include <LudensBuilder/AssetBuilder/AssetImporter.h>
 #include <LudensEditor/AssetImportWindow/AssetImportWindow.h>
+#include <LudensEditor/AssetSelectWindow/AssetSelectWindow.h>
+#include <LudensEditor/CreateComponentWindow/CreateComponentWindow.h>
 #include <LudensEditor/EditorContext/EditorIconAtlas.h>
 #include <LudensEditor/EditorContext/EditorWindow.h>
 #include <LudensEditor/EditorUI/EditorUI.h>
 #include <LudensEditor/EditorWidget/EditorWidget.h>
+#include <LudensEditor/ProjectWindow/ProjectWindow.h>
 
 #include "EditorUIDef.h"
 
@@ -49,20 +53,13 @@ void EditorUI::startup(const EditorUIInfo& info)
     modalI.ctx = mCtx;
     modalI.layerName = EDITOR_UI_LAYER_MODAL_NAME;
     modalI.screenSize = mTick.screenSize;
+    modalI.isVisible = true;
     mModal = EditorUIModal::create(modalI);
-    mModal.set_visible(true); // Guard until a project is loaded
-
-    EditorUIDialogInfo dialogI{};
-    dialogI.ctx = mCtx;
-    mDialog = EditorUIDialog::create(dialogI);
 }
 
 void EditorUI::cleanup()
 {
     LD_PROFILE_SCOPE;
-
-    EditorUIDialog::destroy(mDialog);
-    mDialog = {};
 
     EditorUIModal::destroy(mModal);
     mModal = {};
@@ -91,9 +88,6 @@ Vec2 EditorUI::update(float delta, Vec2 screenSize)
     main_pre_update();
     main_update();
     main_post_update();
-
-    // Update dialog window
-    mDialog.update(delta);
 
     return mMain.get_viewport_scene_size();
 }
@@ -134,7 +128,6 @@ void EditorUI::submit_frame()
     LD_PROFILE_SCOPE;
 
     WindowRegistry reg = WindowRegistry::get();
-    const WindowID dialogWindowID = mDialog.get_dialog_window_id();
     const Vec2 windowExtent = reg.get_window_extent(reg.get_root_id());
     const Vec2 sceneExtent = mMain.get_viewport_scene_size();
     const Viewport scene2DViewport = Viewport::from_extent(sceneExtent);
@@ -146,7 +139,6 @@ void EditorUI::submit_frame()
     frameI.screenExtent = windowExtent;
     frameI.sceneExtent = sceneExtent;
     frameI.envCubemap = mEnvCubemap;
-    frameI.dialogWindowID = dialogWindowID;
     frameI.clearColor = mCtx.get_scene_clear_color();
     mRenderSystem.next_frame(frameI);
 
@@ -174,6 +166,7 @@ void EditorUI::submit_frame()
         editorP.sceneMousePickQuery = &queryPos;
     mRenderSystem.editor_pass(editorP);
 
+#if 0
     // render dialog window
     if (dialogWindowID)
     {
@@ -183,6 +176,7 @@ void EditorUI::submit_frame()
         editorDP.renderCallback = &EditorUI::on_render_dialog;
         mRenderSystem.editor_dialog_pass(editorDP);
     }
+#endif
 
     mRenderSystem.submit_frame();
 }
@@ -192,13 +186,6 @@ void EditorUI::on_render(ScreenRenderComponent renderer, void* user)
     EditorUI& self = *(EditorUI*)user;
 
     ui_context_render(EDITOR_UI_CONTEXT_NAME, renderer);
-}
-
-void EditorUI::on_render_dialog(ScreenRenderComponent renderer, void* user)
-{
-    EditorUI& self = *(EditorUI*)user;
-
-    self.mDialog.render(renderer);
 }
 
 void EditorUI::on_scene_pick(SceneOverlayGizmoID gizmoID, RUID ruid, void* user)
@@ -312,31 +299,122 @@ void EditorUI::on_editor_event(const EditorEvent* event, void* user)
     EditorUI& self = *(EditorUI*)user;
 
     AssetImportWindow importWindow{};
+    ProjectWindow projectWindow{};
 
     switch (event->type)
     {
-    case EDITOR_EVENT_TYPE_REQUEST_NEW_PROJECT:
-        self.mModal.set_window(EDITOR_WINDOW_PROJECT);
-        self.mModal.set_visible(true);
+    case EDITOR_EVENT_TYPE_REQUEST_SHOW_MODAL:
+    {
+        const auto* requestE = (const EditorRequestShowModalEvent*)event;
+        EditorWindow window = self.mModal.show_window(requestE->windowType);
+        if (window.type() == EDITOR_WINDOW_PROJECT)
+            static_cast<ProjectWindow>(window).set_mode((ProjectWindowMode)requestE->windowModeHint);
+        break;
+    }
+    case EDITOR_EVENT_TYPE_REQUEST_HIDE_MODAL:
+        self.mModal.hide();
         break;
     case EDITOR_EVENT_TYPE_REQUEST_WORKSPACE_LAYOUT:
     {
-        auto* requestE = (const EditorRequestWorkspaceLayoutEvent*)event;
+        const auto* requestE = (const EditorRequestWorkspaceLayoutEvent*)event;
         self.mMain.set_layout(requestE->layout);
+        break;
+    }
+    case EDITOR_EVENT_TYPE_REQUEST_PROJECT_SETTINGS:
+        self.mModal.show_window(EDITOR_WINDOW_PROJECT_SETTINGS); // TODO:
+        break;
+    case EDITOR_EVENT_TYPE_REQUEST_COMPONENT_SCRIPT:
+    {
+        const auto* requestE = (const EditorRequestComponentScriptEvent*)event;
+        AssetSelectWindow selectW = (AssetSelectWindow)self.mModal.show_window(EDITOR_WINDOW_ASSET_SELECT);
+        selectW.set_filter(ASSET_TYPE_LUA_SCRIPT);
+        selectW.set_component(requestE->compSUID);
+        break;
+    }
+    case EDITOR_EVENT_TYPE_REQUEST_COMPONENT_ASSET:
+    {
+        const auto* requestE = (const EditorRequestComponentAssetEvent*)event;
+        AssetSelectWindow selectW = (AssetSelectWindow)self.mModal.show_window(EDITOR_WINDOW_ASSET_SELECT);
+        selectW.set_filter(requestE->requestType);
+        selectW.set_component(requestE->compSUID);
+        selectW.set_component_asset_slot_index(requestE->assetSlotIndex);
         break;
     }
     case EDITOR_EVENT_TYPE_REQUEST_IMPORT_ASSETS:
     {
-        auto* requestE = (const EditorRequestImportAssetsEvent*)event;
-        importWindow = (AssetImportWindow)self.mModal.set_window(EDITOR_WINDOW_ASSET_IMPORT);
-        importWindow.set_type(ASSET_TYPE_TEXTURE_2D);
-        importWindow.set_source_path(requestE->srcPath.string());
-        self.mModal.set_visible(true);
+        AssetType type;
+        const auto* requestE = (const EditorRequestImportAssetsEvent*)event;
+        importWindow = (AssetImportWindow)self.mModal.show_window(EDITOR_WINDOW_ASSET_IMPORT);
+
+        if (AssetImporter::get_asset_type_from_path(requestE->srcPath, type))
+        {
+            importWindow.set_type(type);
+            importWindow.set_source_file(requestE->srcPath);
+        }
+        // TODO: warn
+        break;
+    }
+    case EDITOR_EVENT_TYPE_REQUEST_OPEN_SCENE:
+        if (self.mCtx.is_project_dirty())
+        {
+            projectWindow = (ProjectWindow)self.mModal.show_window(EDITOR_WINDOW_PROJECT);
+            projectWindow.set_mode(PROJECT_WINDOW_SAVE_PROJECT);
+            projectWindow.set_save_project_continuation(EDITOR_WINDOW_SCENE_SELECT, 0);
+        }
+        else
+        {
+            self.mModal.show_window(EDITOR_WINDOW_SCENE_SELECT);
+        }
+        break;
+    case EDITOR_EVENT_TYPE_REQUEST_OPEN_PROJECT:
+        if (self.mCtx.is_project_dirty())
+        {
+            projectWindow = (ProjectWindow)self.mModal.show_window(EDITOR_WINDOW_PROJECT);
+            projectWindow.set_mode(PROJECT_WINDOW_SAVE_PROJECT);
+            projectWindow.set_save_project_continuation(EDITOR_WINDOW_PROJECT, (int)PROJECT_WINDOW_SELECT_PROJECT);
+        }
+        else
+        {
+            projectWindow = (ProjectWindow)self.mModal.show_window(EDITOR_WINDOW_PROJECT);
+            projectWindow.set_mode(PROJECT_WINDOW_SELECT_PROJECT);
+        }
+        break;
+    case EDITOR_EVENT_TYPE_REQUEST_CREATE_SCENE:
+        if (self.mCtx.is_project_dirty())
+        {
+            projectWindow = (ProjectWindow)self.mModal.show_window(EDITOR_WINDOW_PROJECT);
+            projectWindow.set_mode(PROJECT_WINDOW_SAVE_PROJECT);
+            projectWindow.set_save_project_continuation(EDITOR_WINDOW_PROJECT, (int)PROJECT_WINDOW_CREATE_SCENE);
+        }
+        else
+        {
+            projectWindow = (ProjectWindow)self.mModal.show_window(EDITOR_WINDOW_PROJECT);
+            projectWindow.set_mode(PROJECT_WINDOW_CREATE_SCENE);
+        }
+        break;
+    case EDITOR_EVENT_TYPE_REQUEST_CREATE_PROJECT:
+        if (self.mCtx.is_project_dirty())
+        {
+            projectWindow = (ProjectWindow)self.mModal.show_window(EDITOR_WINDOW_PROJECT);
+            projectWindow.set_mode(PROJECT_WINDOW_SAVE_PROJECT);
+            projectWindow.set_save_project_continuation(EDITOR_WINDOW_PROJECT, (int)PROJECT_WINDOW_CREATE_PROJECT);
+        }
+        else
+        {
+            projectWindow = (ProjectWindow)self.mModal.show_window(EDITOR_WINDOW_PROJECT);
+            projectWindow.set_mode(PROJECT_WINDOW_CREATE_PROJECT);
+        }
+        break;
+    case EDITOR_EVENT_TYPE_REQUEST_CREATE_COMPONENT:
+    {
+        const auto* requestE = (const EditorRequestCreateComponentEvent*)event;
+        CreateComponentWindow createCompW = (CreateComponentWindow)self.mModal.show_window(EDITOR_WINDOW_CREATE_COMPONENT);
+        createCompW.set_parent_component(requestE->parent);
         break;
     }
     case EDITOR_EVENT_TYPE_NOTIFY_PROJECT_CREATION:
     {
-        auto* notifyE = (const EditorNotifyProjectCreationEvent*)event;
+        const auto* notifyE = (const EditorNotifyProjectCreationEvent*)event;
         if (notifyE->error.empty())
         {
             auto* actionE = (EditorActionOpenProjectEvent*)self.mCtx.enqueue_event(EDITOR_EVENT_TYPE_ACTION_OPEN_PROJECT);
@@ -345,7 +423,7 @@ void EditorUI::on_editor_event(const EditorEvent* event, void* user)
         break;
     }
     case EDITOR_EVENT_TYPE_NOTIFY_PROJECT_LOAD:
-        self.mModal.set_visible(false);
+        self.mModal.hide();
         break;
     default:
         break;

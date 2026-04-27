@@ -6,6 +6,7 @@
 #include <LudensEditor/EditorContext/EditorContext.h>
 
 namespace LD {
+#if 0
 
 struct EditorUIDialogInfo
 {
@@ -25,4 +26,5 @@ struct EditorUIDialog : Handle<struct EditorUIDialogObj>
     WindowID get_dialog_window_id();
 };
 
+#endif
 } // namespace LD

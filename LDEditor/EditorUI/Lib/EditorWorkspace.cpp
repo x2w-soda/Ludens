@@ -11,11 +11,12 @@
 #include <LudensEditor/EditorContext/EditorIconAtlas.h>
 #include <LudensEditor/EditorUI/EditorWorkspace.h>
 #include <LudensEditor/EditorWidget/EditorWidget.h>
+#include <LudensEditor/FileSelectWindow/FileSelectWindow.h>
 #include <LudensEditor/InspectorWindow/InspectorWindow.h>
 #include <LudensEditor/OutlinerWindow/OutlinerWindow.h>
 #include <LudensEditor/ProjectSettingsWindow/ProjectSettingsWindow.h>
 #include <LudensEditor/ProjectWindow/ProjectWindow.h>
-#include <LudensEditor/SelectionWindow/SelectionWindow.h>
+#include <LudensEditor/SceneSelectWindow/SceneSelectWindow.h>
 #include <LudensEditor/TabControlWindow/TabControlWindow.h>
 #include <LudensEditor/VersionWindow/VersionWindow.h>
 #include <LudensEditor/ViewportWindow/ViewportWindow.h>
@@ -110,24 +111,26 @@ struct EditorWindowMeta
     void (*destroy)(EditorWindow);
     void (*preUpdate)(EditorWindowObj*, const EditorUpdateTick& tick);
     void (*update)(EditorWindowObj*, const EditorUpdateTick& tick);
+    Vec2 (*getSizeHint)(Vec2 screenSize);
     const char* defaultName;
 };
 
 // clang-format off
 static EditorWindowMeta sEditorWindow[] = {
-    { EDITOR_WINDOW_TAB_CONTROL,      EDITOR_ICON_ENUM_LAST,        &TabControlWindow::create,      &TabControlWindow::destroy,      nullptr,                     &TabControlWindow::update,      nullptr },
-    { EDITOR_WINDOW_ASSET_IMPORT,     EDITOR_ICON_ENUM_LAST,        &AssetImportWindow::create,     &AssetImportWindow::destroy,     nullptr,                     &AssetImportWindow::update,     "AssetImport" },
-    { EDITOR_WINDOW_ASSET_SELECT,     EDITOR_ICON_ENUM_LAST,        &AssetSelectWindow::create,     &AssetSelectWindow::destroy,     nullptr,                     &AssetSelectWindow::update,     "AssetSelect" },
-    { EDITOR_WINDOW_SELECTION,        EDITOR_ICON_ENUM_LAST,        &SelectionWindow::create,       &SelectionWindow::destroy,       nullptr,                     &SelectionWindow::update,       "Selection" },
-    { EDITOR_WINDOW_CREATE_COMPONENT, EDITOR_ICON_ENUM_LAST,        &CreateComponentWindow::create, &CreateComponentWindow::destroy, nullptr,                     &CreateComponentWindow::update, "CreateComponent" },
-    { EDITOR_WINDOW_PROJECT_SETTINGS, EDITOR_ICON_ENUM_LAST,        &ProjectSettingsWindow::create, &ProjectSettingsWindow::destroy, nullptr,                     &ProjectSettingsWindow::update, "ProjectSettings" },
-    { EDITOR_WINDOW_PROJECT,          EDITOR_ICON_ENUM_LAST,        &ProjectWindow::create,         &ProjectWindow::destroy,         nullptr,                     &ProjectWindow::update,         "Project" },
-    { EDITOR_WINDOW_DOCUMENT,         EDITOR_ICON_ENUM_LAST,        &DocumentWindow::create,        &DocumentWindow::destroy,        &DocumentWindow::pre_update, &DocumentWindow::update,        "Document" },
-    { EDITOR_WINDOW_VIEWPORT,         EDITOR_ICON_VIEWPORT_WINDOW,  &ViewportWindow::create,        &ViewportWindow::destroy,        nullptr,                     &ViewportWindow::update,        "Viewport" },
-    { EDITOR_WINDOW_OUTLINER,         EDITOR_ICON_OUTLINER_WINDOW,  &OutlinerWindow::create,        &OutlinerWindow::destroy,        nullptr,                     &OutlinerWindow::update,        "Outliner" },
-    { EDITOR_WINDOW_INSPECTOR,        EDITOR_ICON_INSPECTOR_WINDOW, &InspectorWindow::create,       &InspectorWindow::destroy,       nullptr,                     &InspectorWindow::update,       "Inspector" },
-    { EDITOR_WINDOW_CONSOLE,          EDITOR_ICON_CONSOLE_WINDOW,   &ConsoleWindow::create,         &ConsoleWindow::destroy,         nullptr,                     &ConsoleWindow::update,         "Console" },
-    { EDITOR_WINDOW_VERSION,          EDITOR_ICON_ENUM_LAST,        &VersionWindow::create,         &VersionWindow::destroy,         nullptr,                     &VersionWindow::update,         "Version" },
+    { EDITOR_WINDOW_TAB_CONTROL,      EDITOR_ICON_ENUM_LAST,        &TabControlWindow::create,      &TabControlWindow::destroy,      nullptr,                     &TabControlWindow::update,      nullptr, nullptr },
+    { EDITOR_WINDOW_ASSET_IMPORT,     EDITOR_ICON_ENUM_LAST,        &AssetImportWindow::create,     &AssetImportWindow::destroy,     nullptr,                     &AssetImportWindow::update,     nullptr, "AssetImport" },
+    { EDITOR_WINDOW_ASSET_SELECT,     EDITOR_ICON_ENUM_LAST,        &AssetSelectWindow::create,     &AssetSelectWindow::destroy,     nullptr,                     &AssetSelectWindow::update,     nullptr, "AssetSelect" },
+    { EDITOR_WINDOW_SCENE_SELECT,     EDITOR_ICON_ENUM_LAST,        &SceneSelectWindow::create,     &SceneSelectWindow::destroy,     nullptr,                     &SceneSelectWindow::update,     nullptr, "SceneSelect" },
+    { EDITOR_WINDOW_FILE_SELECT,      EDITOR_ICON_ENUM_LAST,        &FileSelectWindow::create,      &FileSelectWindow::destroy,      nullptr,                     &FileSelectWindow::update,      nullptr, "FileSelect" },
+    { EDITOR_WINDOW_CREATE_COMPONENT, EDITOR_ICON_ENUM_LAST,        &CreateComponentWindow::create, &CreateComponentWindow::destroy, nullptr,                     &CreateComponentWindow::update, nullptr, "CreateComponent" },
+    { EDITOR_WINDOW_PROJECT_SETTINGS, EDITOR_ICON_ENUM_LAST,        &ProjectSettingsWindow::create, &ProjectSettingsWindow::destroy, nullptr,                     &ProjectSettingsWindow::update, nullptr, "ProjectSettings" },
+    { EDITOR_WINDOW_PROJECT,          EDITOR_ICON_ENUM_LAST,        &ProjectWindow::create,         &ProjectWindow::destroy,         nullptr,                     &ProjectWindow::update,         nullptr, "Project" },
+    { EDITOR_WINDOW_DOCUMENT,         EDITOR_ICON_ENUM_LAST,        &DocumentWindow::create,        &DocumentWindow::destroy,        &DocumentWindow::pre_update, &DocumentWindow::update,        nullptr, "Document" },
+    { EDITOR_WINDOW_VIEWPORT,         EDITOR_ICON_VIEWPORT_WINDOW,  &ViewportWindow::create,        &ViewportWindow::destroy,        nullptr,                     &ViewportWindow::update,        nullptr, "Viewport" },
+    { EDITOR_WINDOW_OUTLINER,         EDITOR_ICON_OUTLINER_WINDOW,  &OutlinerWindow::create,        &OutlinerWindow::destroy,        nullptr,                     &OutlinerWindow::update,        nullptr, "Outliner" },
+    { EDITOR_WINDOW_INSPECTOR,        EDITOR_ICON_INSPECTOR_WINDOW, &InspectorWindow::create,       &InspectorWindow::destroy,       nullptr,                     &InspectorWindow::update,       nullptr, "Inspector" },
+    { EDITOR_WINDOW_CONSOLE,          EDITOR_ICON_CONSOLE_WINDOW,   &ConsoleWindow::create,         &ConsoleWindow::destroy,         nullptr,                     &ConsoleWindow::update,         nullptr, "Console" },
+    { EDITOR_WINDOW_VERSION,          EDITOR_ICON_ENUM_LAST,        &VersionWindow::create,         &VersionWindow::destroy,         nullptr,                     &VersionWindow::update,         nullptr, "Version" },
 };
 // clang-format on
 
@@ -237,6 +240,9 @@ EditorWorkspace EditorWorkspace::create(const EditorWorkspaceInfo& spaceI)
 
 void EditorWorkspace::destroy(EditorWorkspace space)
 {
+    if (!space)
+        return;
+
     auto* obj = space.unwrap();
 
     ui_imgui_cleanup_layer(obj->uiContextName.c_str(), obj->uiLayerName.c_str());
@@ -501,7 +507,12 @@ Vector<EditorAreaID> EditorWorkspace::post_update()
     });
 
     if (leafCount == 1 && ids.size() == 1)
+    {
         mObj->shouldClose = true;
+
+        // remove out of date UILayer before rendering.
+        ui_imgui_cleanup_layer(mObj->uiContextName.c_str(), mObj->uiLayerName.c_str());
+    }
 
     return ids;
 }
@@ -532,6 +543,14 @@ EditorAreaID EditorWorkspace::split_right(EditorAreaID areaID, float ratio)
 EditorAreaID EditorWorkspace::split_bottom(EditorAreaID areaID, float ratio)
 {
     return mObj->partition.split_bottom(areaID, ratio);
+}
+
+Vec2 EditorWorkspace::get_window_size_hint(EditorWindowType type, Vec2 screenSize)
+{
+    if (sEditorWindow[(int)type].getSizeHint)
+        return sEditorWindow[(int)type].getSizeHint(screenSize);
+
+    return Vec2(screenSize.x * 0.375f, screenSize.y * 0.65f);
 }
 
 } // namespace LD

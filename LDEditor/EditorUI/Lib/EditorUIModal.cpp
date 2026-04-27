@@ -13,9 +13,39 @@ struct EditorUIModalObj
     EditorWorkspace backdropWS;
     EditorWorkspace modalWS;
     EditorWindow modalW;
+    Vec2 screenSize;
     std::string layerName;
     bool isVisible = false;
+
+    void prepare_modal_workspace(EditorWindowType windowType);
 };
+
+void EditorUIModalObj::prepare_modal_workspace(EditorWindowType windowType)
+{
+    if (modalW && modalW.type() != windowType)
+    {
+        EditorWorkspace::destroy(modalWS);
+        modalWS = {};
+        modalW = {};
+    }
+
+    if (!modalWS)
+    {
+        Vec2 sizeHint = EditorWorkspace::get_window_size_hint(windowType, screenSize);
+
+        EditorWorkspaceInfo spaceI{};
+        spaceI.ctx = ctx;
+        spaceI.uiContextName = EDITOR_UI_CONTEXT_NAME;
+        spaceI.uiLayerName = layerName.c_str();
+        spaceI.isFloat = true;
+        spaceI.isVisible = isVisible;
+        spaceI.rootRect = Rect((screenSize.x - sizeHint.x) / 2.0f, (screenSize.y - sizeHint.y) / 2.0f, sizeHint.x, sizeHint.y);
+        modalWS = EditorWorkspace::create(spaceI);
+        modalW = modalWS.create_window(modalWS.get_root_id(), windowType);
+    }
+
+    LD_ASSERT(modalW);
+}
 
 EditorUIModal EditorUIModal::create(const EditorUIModalInfo& modalI)
 {
@@ -24,7 +54,8 @@ EditorUIModal EditorUIModal::create(const EditorUIModalInfo& modalI)
     auto* obj = heap_new<EditorUIModalObj>(MEMORY_USAGE_UI);
     obj->ctx = modalI.ctx;
     obj->layerName = modalI.layerName;
-    obj->isVisible = false;
+    obj->isVisible = modalI.isVisible;
+    obj->screenSize = modalI.screenSize;
 
     EditorWorkspaceInfo spaceI{};
     spaceI.ctx = obj->ctx;
@@ -36,15 +67,7 @@ EditorUIModal EditorUIModal::create(const EditorUIModalInfo& modalI)
     spaceI.rootColor = 0x10101070;
     obj->backdropWS = EditorWorkspace::create(spaceI);
 
-    const float modalW = 600.0f;
-    const float modalH = 700.0f;
-    spaceI.uiLayerName = modalI.layerName;
-    spaceI.isFloat = true;
-    spaceI.isVisible = obj->isVisible;
-    spaceI.rootRect = Rect((modalI.screenSize.x - modalW) / 2.0f, (modalI.screenSize.y - modalH) / 2.0f, modalW, modalH);
-    spaceI.rootColor = 0;
-    obj->modalWS = EditorWorkspace::create(spaceI);
-    obj->modalW = obj->modalWS.create_window(obj->modalWS.get_root_id(), EDITOR_WINDOW_PROJECT);
+    obj->prepare_modal_workspace(EDITOR_WINDOW_PROJECT);
 
     return EditorUIModal(obj);
 }
@@ -63,12 +86,16 @@ void EditorUIModal::destroy(EditorUIModal modal)
 
 void EditorUIModal::pre_update(const EditorUpdateTick& tick)
 {
+    mObj->screenSize = tick.screenSize;
+
     Rect modalRect = mObj->backdropWS.get_rect();
-    if (Vec2(modalRect.w, modalRect.h) != tick.screenSize)
-        mObj->backdropWS.set_rect(Rect(0.0f, 0.0f, tick.screenSize.x, tick.screenSize.y));
+    if (Vec2(modalRect.w, modalRect.h) != mObj->screenSize)
+        mObj->backdropWS.set_rect(Rect(0.0f, 0.0f, mObj->screenSize.x, mObj->screenSize.y));
 
     mObj->backdropWS.pre_update(tick);
-    mObj->modalWS.pre_update(tick);
+
+    if (mObj->modalWS)
+        mObj->modalWS.pre_update(tick);
 }
 
 void EditorUIModal::update(const EditorUpdateTick& tick)
@@ -76,34 +103,42 @@ void EditorUIModal::update(const EditorUpdateTick& tick)
     mObj->backdropWS.set_visible(mObj->isVisible);
     mObj->backdropWS.update(tick);
 
-    mObj->modalWS.set_visible(mObj->isVisible);
-    mObj->modalWS.update(tick);
+    if (mObj->modalWS)
+    {
+        mObj->modalWS.set_visible(mObj->isVisible);
+        mObj->modalWS.update(tick);
+    }
 }
 
 void EditorUIModal::post_update()
 {
     (void)mObj->backdropWS.post_update();
-    (void)mObj->modalWS.post_update();
-    
-    Vector<EditorAreaID> destroyed = mObj->modalWS.post_update();
-    if (!destroyed.empty() && destroyed.front() == mObj->modalWS.get_root_id())
+
+    if (mObj->modalWS)
     {
-        mObj->modalW = {};
-        mObj->isVisible = false;
+        (void)mObj->modalWS.post_update();
+
+        if (mObj->modalWS.should_close())
+        {
+            EditorWorkspace::destroy(mObj->modalWS);
+            mObj->modalWS = {};
+            mObj->modalW = {};
+            mObj->isVisible = false;
+        }
     }
 }
 
-void EditorUIModal::set_visible(bool isVisible)
+EditorWindow EditorUIModal::show_window(EditorWindowType type)
 {
-    mObj->isVisible = isVisible;
+    mObj->prepare_modal_workspace(type);
+    mObj->isVisible = true;
+
+    return mObj->modalW;
 }
 
-EditorWindow EditorUIModal::set_window(EditorWindowType type)
+void EditorUIModal::hide()
 {
-    if (mObj->modalW && mObj->modalW.type() == type)
-        return mObj->modalW;
-
-    return mObj->modalW = mObj->modalWS.create_window(mObj->modalWS.get_root_id(), type);
+    mObj->isVisible = false;
 }
 
 } // namespace LD

@@ -48,7 +48,6 @@ private:
     FontAtlas mMSFontAtlas;
     RImage mFontAtlasImage;
     RImage mMSFontAtlasImage;
-    ImageCube mEnvCubemap = {};
     Vector<ProjectScanAsync> mProjectScans;
     DropTarget mDropTarget = {};
 };

@@ -35,6 +35,7 @@ target_link_libraries(${MODULE_NAME} PRIVATE
     LDDocumentWindow
     LDAssetImportWindow
     LDAssetSelectWindow
+    LDSceneSelectWindow
     LDFileSelectWindow
     LDVersionWindow
     LDViewportWindow

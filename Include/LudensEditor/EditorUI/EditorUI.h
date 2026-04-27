@@ -12,7 +12,6 @@
 #include <LudensEditor/EditorContext/EditorContext.h>
 
 #include <LudensEditor/EditorUI/EditorDialog.h>
-#include <LudensEditor/EditorUI/EditorUIDialog.h>
 #include <LudensEditor/EditorUI/EditorUIMain.h>
 #include <LudensEditor/EditorUI/EditorUIModal.h>
 #include <LudensEditor/EditorUI/EditorUITopBar.h>
@@ -57,7 +56,6 @@ public:
     static void on_window_event(const WindowEvent* event, void* user);
     static void on_editor_event(const EditorEvent* event, void* user);
     static void on_render(ScreenRenderComponent renderer, void* user);
-    static void on_render_dialog(ScreenRenderComponent renderer, void* user);
     static void on_scene_pick(SceneOverlayGizmoID gizmoID, RUID ruid, void* user);
     static void on_screen_pass_overlay(ScreenRenderComponent renderer, TView<int> regionVPIndices, int overlayVPIndex, void* user);
     static bool on_mat4_callback(RUID ruid, Mat4& mat4, void* user); 
@@ -76,7 +74,6 @@ private:
 private:
     EditorContext mCtx;
     EditorUITopBar mTopBar;
-    EditorUIDialog mDialog;
     EditorUIMain mMain;
     EditorUIModal mModal;
     EditorUpdateTick mTick;

@@ -7,7 +7,7 @@
 #include <Ludens/UI/UIImmediate.h>
 #include <LudensEditor/EditorUI/EditorUITopBar.h>
 #include <LudensEditor/EditorWidget/EUIListMenu.h>
-#include <LudensEditor/EditorWidget/EUIPrimitiveEdit.h>
+#include <LudensEditor/EditorWidget/EUIProp.h>
 #include <LudensEditor/EditorWidget/EUIText.h>
 
 #include "EditorUIDef.h"
@@ -44,11 +44,11 @@ struct EditorTopBarObj
     const char* layerName;
     float barHeight;
     Rect barRect;
-    EUITextStorage textFile;
-    EUITextStorage textEdit;
-    EUITextStorage textAbout;
-    EUITextStorage textScene;
-    EUITextStorage textDocs;
+    EUIText textFile;
+    EUIText textEdit;
+    EUIText textAbout;
+    EUIText textScene;
+    EUIText textDocs;
 
     void invalidate_screen_size(Vec2 screenSize);
     void update();
@@ -81,14 +81,14 @@ void EditorTopBarObj::update()
 
     const float height = ctx.get_theme().get_text_row_height();
 
-    if (eui_text(textFile, "File", height, &rect))
-        ui_request_popup_window(EDITOR_TOP_BAR_MENU_FILE_NAME, rect.get_pos_bl());
+    if (textFile.update("File", height, &rect))
+        ui_request_overlay_window(EDITOR_TOP_BAR_MENU_FILE_NAME, 0, rect.get_pos_bl());
 
-    if (eui_text(textEdit, "Edit", height, &rect))
-        ui_request_popup_window(EDITOR_TOP_BAR_MENU_EDIT_NAME, rect.get_pos_bl());
+    if (textEdit.update("Edit", height, &rect))
+        ui_request_overlay_window(EDITOR_TOP_BAR_MENU_EDIT_NAME, 0, rect.get_pos_bl());
 
-    if (eui_text(textAbout, "About", height, &rect))
-        ui_request_popup_window(EDITOR_TOP_BAR_MENU_ABOUT_NAME, rect.get_pos_bl());
+    if (textAbout.update("About", height, &rect))
+        ui_request_overlay_window(EDITOR_TOP_BAR_MENU_ABOUT_NAME, 0, rect.get_pos_bl());
 
     ui_push_panel(nullptr);
     layoutI.sizeX = UISize::grow();
@@ -97,13 +97,13 @@ void EditorTopBarObj::update()
 
     EditorRequestWorkspaceLayoutEvent* requestE;
 
-    if (eui_text(textScene, "Scene", height, &rect))
+    if (textScene.update("Scene", height, &rect))
     {
         requestE = (EditorRequestWorkspaceLayoutEvent*)ctx.enqueue_event(EDITOR_EVENT_TYPE_REQUEST_WORKSPACE_LAYOUT);
         requestE->layout = EDITOR_UI_MAIN_LAYOUT_SCENE;
     }
 
-    if (eui_text(textDocs, "Docs", height, &rect))
+    if (textDocs.update("Docs", height, &rect))
     {
         requestE = (EditorRequestWorkspaceLayoutEvent*)ctx.enqueue_event(EDITOR_EVENT_TYPE_REQUEST_WORKSPACE_LAYOUT);
         requestE->layout = EDITOR_UI_MAIN_LAYOUT_DOCS;
@@ -121,7 +121,7 @@ void EditorTopBarObj::update()
 
 void EditorTopBarObj::file_menu_window()
 {
-    if (!ui_push_popup_window(EDITOR_TOP_BAR_MENU_FILE_NAME))
+    if (!ui_push_overlay_window(EDITOR_TOP_BAR_MENU_FILE_NAME))
         return;
 
     Array<const char*, 5> options;
@@ -131,14 +131,14 @@ void EditorTopBarObj::file_menu_window()
     options[FILE_MENU_NEW_PROJECT] = "New Project";
     options[FILE_MENU_OPEN_PROJECT] = "Open Project";
 
-    int opt = eui_list_menu(ctx.get_theme(), (int)options.size(), options.data());
+    int opt = eui_list_menu((int)options.size(), options.data());
     if (opt >= 0)
-        ui_clear_popup_window();
+        ui_clear_overlay_windows();
 
     switch (opt)
     {
     case FILE_MENU_NEW_SCENE:
-        (void)ctx.enqueue_event(EDITOR_EVENT_TYPE_REQUEST_NEW_SCENE);
+        (void)ctx.enqueue_event(EDITOR_EVENT_TYPE_REQUEST_CREATE_SCENE);
         break;
     case FILE_MENU_OPEN_SCENE:
         (void)ctx.enqueue_event(EDITOR_EVENT_TYPE_REQUEST_OPEN_SCENE);
@@ -150,7 +150,7 @@ void EditorTopBarObj::file_menu_window()
         break;
     }
     case FILE_MENU_NEW_PROJECT:
-        (void)ctx.enqueue_event(EDITOR_EVENT_TYPE_REQUEST_NEW_PROJECT);
+        (void)ctx.enqueue_event(EDITOR_EVENT_TYPE_REQUEST_CREATE_PROJECT);
         break;
     case FILE_MENU_OPEN_PROJECT:
         (void)ctx.enqueue_event(EDITOR_EVENT_TYPE_REQUEST_OPEN_PROJECT);
@@ -164,7 +164,7 @@ void EditorTopBarObj::file_menu_window()
 
 void EditorTopBarObj::edit_menu_window()
 {
-    if (!ui_push_popup_window(EDITOR_TOP_BAR_MENU_EDIT_NAME))
+    if (!ui_push_overlay_window(EDITOR_TOP_BAR_MENU_EDIT_NAME))
         return;
 
     Array<const char*, 3> options;
@@ -172,9 +172,9 @@ void EditorTopBarObj::edit_menu_window()
     options[EDIT_MENU_REDO] = "Redo";
     options[EDIT_MENU_PROJECT_SETTINGS] = "Project Settings";
 
-    int opt = eui_list_menu(ctx.get_theme(), (int)options.size(), options.data());
+    int opt = eui_list_menu((int)options.size(), options.data());
     if (opt >= 0)
-        ui_clear_popup_window();
+        ui_clear_overlay_windows();
 
     switch (opt)
     {
@@ -196,15 +196,15 @@ void EditorTopBarObj::edit_menu_window()
 
 void EditorTopBarObj::about_menu_window()
 {
-    if (!ui_push_popup_window(EDITOR_TOP_BAR_MENU_ABOUT_NAME))
+    if (!ui_push_overlay_window(EDITOR_TOP_BAR_MENU_ABOUT_NAME))
         return;
 
     Array<const char*, 1> options;
     options[ABOUT_MENU_VERSION] = "Version";
 
-    int opt = eui_list_menu(ctx.get_theme(), (int)options.size(), options.data());
+    int opt = eui_list_menu((int)options.size(), options.data());
     if (opt >= 0)
-        ui_clear_popup_window();
+        ui_clear_overlay_windows();
 
     switch (opt)
     {

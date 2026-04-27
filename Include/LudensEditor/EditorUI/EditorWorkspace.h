@@ -14,11 +14,11 @@ using EditorAreaID = uint32_t;
 struct EditorWorkspaceInfo
 {
     EditorContext ctx;
-    const char* uiContextName;   // the UIContext this editor workspace is under
-    const char* uiLayerName;     // the UILayer this editor workspace corresponds to
-    Rect rootRect;               // total rect area for the editor workspace
-    Color rootColor = 0;         // if not zero, the background color of root rect area
-    bool isVisible = true;       // initial visibility state after creation
+    const char* uiContextName; // the UIContext this editor workspace is under
+    const char* uiLayerName;   // the UILayer this editor workspace corresponds to
+    Rect rootRect;             // total rect area for the editor workspace
+    Color rootColor = 0;       // if not zero, the background color of root rect area
+    bool isVisible = true;     // initial visibility state after creation
     bool isFloat = false;
 };
 
@@ -71,6 +71,11 @@ struct EditorWorkspace : Handle<struct EditorWorkspaceObj>
     /// @brief Split an area to make room for bottom.
     /// @return New area from bottom partition.
     EditorAreaID split_bottom(EditorAreaID areaID, float ratio);
+
+public: // static methods
+
+    /// @brief Get window size hint from window type and screen size.
+    static Vec2 get_window_size_hint(EditorWindowType type, Vec2 screenSize);
 };
 
 } // namespace LD

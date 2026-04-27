@@ -1,3 +1,4 @@
+#include <Ludens/JobSystem/JobSystem.h>
 #include <Ludens/Log/Log.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/System/FileSystem.h>
@@ -94,6 +95,7 @@ EditorApplication::EditorApplication(const EditorApplicationInfo& info)
     GLFWwindow* rootNativeWindow = reg.get_window_glfw_handle(reg.get_root_id());
     mDropTarget = DropTarget::create(rootNativeWindow, &EditorContext::drop_file_callback, mEditorCtx.unwrap());
 
+    /*
     const FS::Path* path = info.projectSchemaPath;
     if (!path) // open sandbox project in LFS repository
         path = &sLudensLFS.projectPath;
@@ -105,6 +107,7 @@ EditorApplication::EditorApplication(const EditorApplicationInfo& info)
     }
 
     mEditorCtx.poll_events();
+    */
 
     // initalize editor UI
     EditorUIInfo uiI{};
@@ -123,8 +126,6 @@ EditorApplication::~EditorApplication()
     mEditorUI.cleanup();
 
     mRDevice.wait_idle();
-    if (mEnvCubemap)
-        mRenderSystem.destroy_image_cube(mEnvCubemap);
 
     DropTarget::destroy(mDropTarget);
     EditorContext::destroy(mEditorCtx);
