@@ -2,19 +2,11 @@
 
 #include <Ludens/AudioBackend/AudioBackend.h>
 #include <Ludens/AudioMixer/AudioBuffer.h>
+#include <Ludens/AudioMixer/AudioMixerDef.h>
 #include <Ludens/Memory/Allocator.h>
 #include <cstdint>
 
 namespace LD {
-
-struct AudioPlaybackObj;
-
-struct AudioPlaybackInfo
-{
-    PoolAllocator playbackPA; // Used to create and destroy playback instance.
-    float volumeLinear;       // Normalized linear volume in [0, 1]
-    float pan;                // Left to right panning in [0, 1]
-};
 
 struct AudioPlayback : AudioHandle
 {
@@ -22,34 +14,16 @@ struct AudioPlayback : AudioHandle
     static size_t byte_size();
 
     /// @brief Main thread creates audio playback instance.
-    static AudioPlayback create(const AudioPlaybackInfo& info);
+    static AudioPlayback create(PoolAllocator playbackPA);
 
     /// @brief Main thread destroys audio playback instance.
     static void destroy(AudioPlayback playback);
 
-    /// @brief Thread safe audio playback API.
-    class Accessor
-    {
-    public:
-        Accessor(AudioPlaybackObj*);
+    /// @brief Main thread stores latest state atomically.
+    void store(AudioPlaybackState state);
 
-        /// @brief Reads current playback state.
-        /// @param info Output playback state except the pool allocator field
-        /// @warning Each field is atomically read, but the full tuple of fields may not be atomic.
-        void read(AudioPlaybackInfo& info);
-
-        /// @brief Request volume change before next mix.
-        void set_volume_linear(float volume);
-
-        /// @brief Request pan change before next mix.
-        void set_pan(float pan);
-
-    private:
-        AudioPlaybackObj* mObj;
-    };
-
-    /// @brief Create accessor from main thread.
-    Accessor access();
+    /// @brief Audio thread loads latest state atomically.
+    AudioPlaybackState load();
 
     /// @brief Audio thread sets audio buffer as source, resets frame cursor to 0 and pauses.
     void set_buffer(AudioBuffer buffer);

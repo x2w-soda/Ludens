@@ -86,8 +86,6 @@ public:
     static void create_playback(AudioMixerObj* self, const AudioCommand& cmd);
     static void destroy_playback(AudioMixerObj* self, const AudioCommand& cmd);
     static void set_playback_buffer(AudioMixerObj* self, const AudioCommand& cmd);
-    static void set_playback_volume_linear(AudioMixerObj* self, const AudioCommand& cmd);
-    static void set_playback_pan(AudioMixerObj* self, const AudioCommand& cmd);
     static void create_playback_effect(AudioMixerObj* self, const AudioCommand& cmd);
     static void destroy_playback_effect(AudioMixerObj* self, const AudioCommand& cmd);
     static void start_playback(AudioMixerObj* self, const AudioCommand& cmd);
@@ -177,34 +175,6 @@ void AudioMixerObj::set_playback_buffer(AudioMixerObj* self, const AudioCommand&
     playbackObj->buffer = buffer;
     playbackObj->isPlaying = false;
     playbackObj->frameCursor = 0;
-}
-
-void AudioMixerObj::set_playback_volume_linear(AudioMixerObj* self, const AudioCommand& cmd)
-{
-    LD_ASSERT(cmd.type == AUDIO_COMMAND_SET_PLAYBACK_VOLUME_LINEAR);
-
-    AudioPlayback playback = cmd.setPlaybackVolumeLinear.playback;
-    float volumeLinear = std::clamp(cmd.setPlaybackVolumeLinear.volumeLinear, 0.0f, 1.0f);
-
-    if (!playback.is_acquired())
-        return;
-
-    AudioPlaybackObj* playbackObj = (AudioPlaybackObj*)playback.unwrap();
-    playbackObj->volumeLinear.store(volumeLinear);
-}
-
-void AudioMixerObj::set_playback_pan(AudioMixerObj* self, const AudioCommand& cmd)
-{
-    LD_ASSERT(cmd.type == AUDIO_COMMAND_SET_PLAYBACK_PAN);
-
-    AudioPlayback playback = cmd.setPlaybackPan.playback;
-    float pan = std::clamp(cmd.setPlaybackPan.pan, 0.0f, 1.0f);
-
-    if (!playback.is_acquired())
-        return;
-
-    AudioPlaybackObj* playbackObj = (AudioPlaybackObj*)playback.unwrap();
-    playbackObj->pan.store(pan);
 }
 
 void AudioMixerObj::create_playback_effect(AudioMixerObj* self, const AudioCommand& cmd)
@@ -310,8 +280,6 @@ struct AudioCommandMeta
     {AUDIO_COMMAND_CREATE_PLAYBACK,            &AudioMixerObj::create_playback},
     {AUDIO_COMMAND_DESTROY_PLAYBACK,           &AudioMixerObj::destroy_playback},
     {AUDIO_COMMAND_SET_PLAYBACK_BUFFER,        &AudioMixerObj::set_playback_buffer},
-    {AUDIO_COMMAND_SET_PLAYBACK_VOLUME_LINEAR, &AudioMixerObj::set_playback_volume_linear},
-    {AUDIO_COMMAND_SET_PLAYBACK_PAN,           &AudioMixerObj::set_playback_pan},
     {AUDIO_COMMAND_CREATE_PLAYBACK_EFFECT,     &AudioMixerObj::create_playback_effect},
     {AUDIO_COMMAND_DESTROY_PLAYBACK_EFFECT,    &AudioMixerObj::destroy_playback_effect},
     {AUDIO_COMMAND_START_PLAYBACK,             &AudioMixerObj::start_playback},

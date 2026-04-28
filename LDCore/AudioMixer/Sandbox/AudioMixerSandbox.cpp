@@ -51,14 +51,15 @@ public:
         mClickAB = AudioBuffer::create_from_wav(sLudensLFS.audio.uiClick1Path);
         LD_ASSERT(mClickAB);
 
-        AudioPlaybackInfo playbackI{};
-        playbackI.playbackPA = mPlaybackPA;
-        playbackI.pan = 0.5f;
-        playbackI.volumeLinear = 0.6f;
-        mPlayback1 = AudioPlayback::create(playbackI);
-        playbackI.pan = 0.5f;
-        playbackI.volumeLinear = 1.0f;
-        mPlayback2 = AudioPlayback::create(playbackI);
+        AudioPlaybackState playbackS{};
+        playbackS.pan = 0.5f;
+        playbackS.volumeLinear = 0.6f;
+        mPlayback1 = AudioPlayback::create(mPlaybackPA);
+        mPlayback1.store(playbackS);
+        playbackS.pan = 0.5f;
+        playbackS.volumeLinear = 1.0f;
+        mPlayback2 = AudioPlayback::create(mPlaybackPA);
+        mPlayback2.store(playbackS);
 
         mCommands = mMixer.get_command_queue();
         {

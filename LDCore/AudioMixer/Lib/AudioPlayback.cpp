@@ -14,14 +14,16 @@ size_t AudioPlayback::byte_size()
     return sizeof(AudioPlaybackObj);
 }
 
-AudioPlayback AudioPlayback::create(const AudioPlaybackInfo& info)
+AudioPlayback AudioPlayback::create(PoolAllocator pa)
 {
-    PoolAllocator pa = info.playbackPA;
+    AudioPlaybackState state{};
+    state.pan = 0.5f;
+    state.volumeLinear = 1.0f;
+
     auto* obj = (AudioPlaybackObj*)pa.allocate();
     new (obj) AudioPlaybackObj();
     obj->playbackPA = pa;
-    obj->volumeLinear = std::clamp(info.volumeLinear, 0.0f, 1.0f);
-    obj->pan = std::clamp(info.pan, 0.0f, 1.0f);
+    obj->state.store(state);
     obj->next = nullptr;
     obj->buffer = {};
     obj->frameCursor = 0;
@@ -39,41 +41,18 @@ void AudioPlayback::destroy(AudioPlayback playback)
     obj->playbackPA.free(obj);
 }
 
-AudioPlayback::Accessor::Accessor(AudioPlaybackObj* obj)
-    : mObj(obj)
+void AudioPlayback::store(AudioPlaybackState state)
 {
+    auto* obj = (AudioPlaybackObj*)mObj;
+
+    obj->state.store(state);
 }
 
-void AudioPlayback::Accessor::read(AudioPlaybackInfo& info)
+AudioPlaybackState AudioPlayback::load()
 {
-    info.playbackPA = {};
-    info.pan = mObj->pan.load();
-    info.volumeLinear = mObj->volumeLinear.load();
-}
+    auto* obj = (AudioPlaybackObj*)mObj;
 
-void AudioPlayback::Accessor::set_volume_linear(float volume)
-{
-    AudioCommand cmd;
-    cmd.type = AUDIO_COMMAND_SET_PLAYBACK_VOLUME_LINEAR;
-    cmd.setPlaybackVolumeLinear.playback = AudioPlayback(mObj);
-    cmd.setPlaybackVolumeLinear.volumeLinear = volume;
-    mObj->commandQueue.enqueue(cmd);
-}
-
-void AudioPlayback::Accessor::set_pan(float pan)
-{
-    AudioCommand cmd;
-    cmd.type = AUDIO_COMMAND_SET_PLAYBACK_PAN;
-    cmd.setPlaybackPan.playback = AudioPlayback(mObj);
-    cmd.setPlaybackPan.pan = pan;
-    mObj->commandQueue.enqueue(cmd);
-}
-
-AudioPlayback::Accessor AudioPlayback::access()
-{
-    LD_ASSERT(mObj->is_acquired());
-
-    return Accessor((AudioPlaybackObj*)mObj);
+    return obj->state.load();
 }
 
 void AudioPlayback::set_buffer(AudioBuffer buffer)
@@ -135,8 +114,9 @@ uint32_t AudioPlayback::read_frames(float* outFrames, uint32_t frameCount)
     uint32_t framesRead = std::min<uint32_t>(frameCount, bufferFrameCount - obj->frameCursor);
 
     // using sine approximation y = 0.5 x (3 - x * x) as pan law.
-    float panR = obj->pan.load();
-    float volume = obj->volumeLinear.load();
+    AudioPlaybackState state = obj->state.load();
+    float panR = state.pan;
+    float volume = state.volumeLinear;
     float panL = 1.0f - panR;
     float gainL = volume * 0.5f * panL * (3.0f - panL * panL);
     float gainR = volume * 0.5f * panR * (3.0f - panR * panR);

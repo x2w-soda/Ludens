@@ -1,5 +1,6 @@
 #include <Ludens/AudioMixer/AudioEffectInfo.h>
 #include <Ludens/AudioMixer/Effect/AudioEffectHighPassFilter.h>
+#include <Ludens/DSA/TripleBuffer.h>
 #include <Ludens/DSP/BiquadFilterCoeff.h>
 #include <Ludens/Memory/Memory.h>
 #include <atomic>
@@ -12,12 +13,9 @@ struct AudioEffectHighPassFilterObj : AudioEffectObj
     BiquadFilterCoeff coeff;
     BiquadFilterHistory historyL;
     BiquadFilterHistory historyR;
-    std::atomic<float> cutoffFreq;
-    std::atomic<float> sampleRate;
+    TripleBuffer<AudioEffectHighPassFilterState> state;
 
     virtual void process(float* outFrames, const float* inFrames, uint32_t frameCount) override;
-
-    virtual void read(AudioEffectInfo& info) override;
 };
 
 void AudioEffectHighPassFilterObj::process(float* outFrames, const float* inFrames, uint32_t frameCount)
@@ -29,21 +27,15 @@ void AudioEffectHighPassFilterObj::process(float* outFrames, const float* inFram
     }
 }
 
-void AudioEffectHighPassFilterObj::read(AudioEffectInfo& info)
+AudioEffectHighPassFilter AudioEffectHighPassFilter::create()
 {
-    info.type = AUDIO_EFFECT_HIGH_PASS_FILTER;
-    info.highPassFilter.cutoffFreq = cutoffFreq.load();
-    info.highPassFilter.sampleRate = sampleRate.load();
-}
+    AudioEffectHighPassFilterState state{};
 
-AudioEffectHighPassFilter AudioEffectHighPassFilter::create(const AudioEffectHighPassFilterInfo& info)
-{
     auto* obj = heap_new<AudioEffectHighPassFilterObj>(MEMORY_USAGE_AUDIO);
-    obj->cutoffFreq = info.cutoffFreq;
-    obj->sampleRate = info.sampleRate;
+    obj->state.store(state);
 
     const float resonance = 1.0f;
-    obj->coeff.as_high_pass_filter(resonance, info.cutoffFreq, info.sampleRate);
+    obj->coeff.as_high_pass_filter(resonance, state.cutoffFreq, state.sampleRate);
     obj->historyL = {};
     obj->historyR = {};
 

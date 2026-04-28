@@ -28,7 +28,7 @@ public:
 
     AudioBuffer create_buffer(const AudioBufferInfo& bufferI);
     void destroy_buffer(AudioBuffer buffer);
-    AudioPlayback create_playback(AudioBuffer buffer, float pan, float volumeLinear);
+    AudioPlayback create_playback(AudioBuffer buffer);
     void destroy_playback(AudioPlayback playback);
     void start_playback(AudioPlayback playback);
     void stop_playback(AudioPlayback playback);
@@ -133,13 +133,9 @@ void AudioSystemObj::destroy_buffer(AudioBuffer buffer)
     mDeferredBufferDestruction.insert(buffer.unwrap());
 }
 
-AudioPlayback AudioSystemObj::create_playback(AudioBuffer buffer, float pan, float volumeLinear)
+AudioPlayback AudioSystemObj::create_playback(AudioBuffer buffer)
 {
-    AudioPlaybackInfo playbackI{};
-    playbackI.playbackPA = mPlaybackPA;
-    playbackI.pan = pan;
-    playbackI.volumeLinear = volumeLinear;
-    AudioPlayback playback = AudioPlayback::create(playbackI);
+    AudioPlayback playback = AudioPlayback::create(mPlaybackPA);
 
     AudioCommand cmd;
     cmd.type = AUDIO_COMMAND_CREATE_PLAYBACK;
@@ -257,12 +253,12 @@ void AudioSystem::destroy_buffer(AudioBuffer buffer)
     mObj->destroy_buffer(buffer);
 }
 
-AudioPlayback AudioSystem::create_playback(AudioBuffer buffer, float pan, float volumeLinear)
+AudioPlayback AudioSystem::create_playback(AudioBuffer buffer)
 {
     if (!buffer)
         return {};
 
-    return mObj->create_playback(buffer, pan, volumeLinear);
+    return mObj->create_playback(buffer);
 }
 
 void AudioSystem::destroy_playback(AudioPlayback playback)

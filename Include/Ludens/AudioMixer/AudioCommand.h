@@ -17,8 +17,6 @@ enum AudioCommandType
     AUDIO_COMMAND_CREATE_PLAYBACK,
     AUDIO_COMMAND_DESTROY_PLAYBACK,
     AUDIO_COMMAND_SET_PLAYBACK_BUFFER,
-    AUDIO_COMMAND_SET_PLAYBACK_VOLUME_LINEAR,
-    AUDIO_COMMAND_SET_PLAYBACK_PAN,
     AUDIO_COMMAND_CREATE_PLAYBACK_EFFECT,
     AUDIO_COMMAND_DESTROY_PLAYBACK_EFFECT,
     AUDIO_COMMAND_START_PLAYBACK,
@@ -45,18 +43,6 @@ struct AudioCommandSetPlaybackBuffer
     AudioBuffer buffer;
 };
 
-struct AudioCommandSetPlaybackVolumeLinear
-{
-    AudioPlayback playback;
-    float volumeLinear;
-};
-
-struct AudioCommandSetPlaybackPan
-{
-    AudioPlayback playback;
-    float pan;
-};
-
 struct AudioCommandCreatePlaybackEffect
 {
     AudioPlayback playback;
@@ -80,8 +66,6 @@ struct AudioCommand
         AudioCommandCreatePlayback createPlayback;
         AudioCommandDestroyPlayback destroyPlayback;
         AudioCommandSetPlaybackBuffer setPlaybackBuffer;
-        AudioCommandSetPlaybackVolumeLinear setPlaybackVolumeLinear;
-        AudioCommandSetPlaybackPan setPlaybackPan;
         AudioCommandCreatePlaybackEffect createPlaybackEffect;
         AudioCommandDestroyPlaybackEffect destroyPlaybackEffect;
         AudioPlayback startPlayback;

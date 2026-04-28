@@ -1,10 +1,8 @@
 #pragma once
 
 #include <Ludens/AudioMixer/AudioCommand.h>
+#include <Ludens/AudioMixer/AudioMixerDef.h>
 #include <Ludens/Header/Handle.h>
-
-#define AUDIO_MIXER_SAMPLE_RATE 48000
-#define AUDIO_MIXER_CHANNELS 2
 
 namespace LD {
 

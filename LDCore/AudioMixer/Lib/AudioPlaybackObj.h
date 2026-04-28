@@ -3,8 +3,9 @@
 #include <Ludens/AudioBackend/AudioBackend.h>
 #include <Ludens/AudioMixer/AudioBuffer.h>
 #include <Ludens/AudioMixer/AudioCommand.h>
+#include <Ludens/DSA/TripleBuffer.h>
 #include <Ludens/Memory/Allocator.h>
-#include <atomic>
+
 #include <cstdint>
 
 namespace LD {
@@ -18,9 +19,8 @@ struct AudioPlaybackObj : AudioObject
     PoolAllocator playbackPA;
     AudioBuffer buffer;
     AudioCommandQueue commandQueue;
+    TripleBuffer<AudioPlaybackState> state;
     uint32_t frameCursor;
-    std::atomic<float> volumeLinear;
-    std::atomic<float> pan;
     bool isPlaying = false;
 };
 

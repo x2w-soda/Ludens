@@ -28,7 +28,7 @@ struct AudioSystem : Handle<struct AudioSystemObj>
     void destroy_buffer(AudioBuffer);
 
     /// @brief Create playback instance sampling from buffer.
-    AudioPlayback create_playback(AudioBuffer buffer, float pan, float volumeLinear);
+    AudioPlayback create_playback(AudioBuffer buffer);
 
     /// @brief Destroy playback instance.
     void destroy_playback(AudioPlayback playback);

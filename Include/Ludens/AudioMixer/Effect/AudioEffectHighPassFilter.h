@@ -1,18 +1,14 @@
 #pragma once
+
 #include <Ludens/AudioMixer/AudioEffect.h>
+#include <Ludens/AudioMixer/AudioMixerDef.h>
 
 namespace LD {
-
-struct AudioEffectHighPassFilterInfo
-{
-    float cutoffFreq;
-    float sampleRate;
-};
 
 struct AudioEffectHighPassFilter : AudioEffect
 {
     /// @brief Create HPF instance.
-    static AudioEffectHighPassFilter create(const AudioEffectHighPassFilterInfo& info);
+    static AudioEffectHighPassFilter create();
 
     /// @brief Destroy HPF instance.
     static void destroy(AudioEffectHighPassFilter filter);
