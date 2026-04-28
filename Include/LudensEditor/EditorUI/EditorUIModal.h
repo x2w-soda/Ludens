@@ -25,7 +25,7 @@ struct EditorUIModal : Handle<struct EditorUIModalObj>
     void post_update();
 
     /// @brief Show a single window in modal.
-    EditorWindow show_window(EditorWindowType type);
+    EditorWindow show_window(EditorWindowType type, EditorWindowMode modeHint = -1);
 
     /// @brief Hide the modal.
     void hide();

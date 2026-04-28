@@ -1,7 +1,7 @@
 #pragma once
 
-#include <Ludens/System/FileSystem.h>
 #include <Ludens/Header/Math/Vec2.h>
+#include <Ludens/System/FileSystem.h>
 
 namespace LD {
 
@@ -41,6 +41,8 @@ enum EditorWindowType
     EDITOR_WINDOW_VERSION,
     EDITOR_WINDOW_TYPE_ENUM_COUNT,
 };
+
+using EditorWindowMode = int;
 
 enum EditorEventType
 {

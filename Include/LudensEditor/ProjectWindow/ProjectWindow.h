@@ -6,12 +6,12 @@
 
 namespace LD {
 
-enum ProjectWindowMode
+enum ProjectWindowMode : EditorWindowMode
 {
-    PROJECT_WINDOW_SELECT_PROJECT,
-    PROJECT_WINDOW_CREATE_PROJECT,
-    PROJECT_WINDOW_SAVE_PROJECT,
-    PROJECT_WINDOW_CREATE_SCENE,
+    PROJECT_WINDOW_MODE_SELECT_PROJECT,
+    PROJECT_WINDOW_MODE_CREATE_PROJECT,
+    PROJECT_WINDOW_MODE_SAVE_PROJECT,
+    PROJECT_WINDOW_MODE_CREATE_SCENE,
 };
 
 /// @brief Window to create new project or open existing project.
@@ -21,11 +21,12 @@ struct ProjectWindow : Handle<struct ProjectWindowObj>
     ProjectWindow(const EditorWindowObj* obj) { mObj = (ProjectWindowObj*)obj; }
 
     void set_mode(ProjectWindowMode mode);
-    void set_save_project_continuation(EditorWindowType windowType, int modeHint);
+    void set_save_project_continuation(EditorWindowType windowType, EditorWindowMode modeHint);
 
     static EditorWindow create(const EditorWindowInfo& windowI);
     static void destroy(EditorWindow window);
     static void update(EditorWindowObj* obj, const EditorUpdateTick& tick);
+    static void mode_hint(EditorWindowObj* obj, EditorWindowMode modeHint);
 };
 
 } // namespace LD

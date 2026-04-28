@@ -128,7 +128,7 @@ struct EditorRequestShowModalEvent : EditorRequestEvent
     }
 
     EditorWindowType windowType = EDITOR_WINDOW_TYPE_ENUM_COUNT;
-    int windowModeHint = 0;
+    EditorWindowMode windowModeHint = -1;
 };
 
 /// @brief Event signaling a request to hide the modal window.

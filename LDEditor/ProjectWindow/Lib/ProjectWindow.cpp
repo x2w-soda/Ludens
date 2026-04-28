@@ -16,7 +16,7 @@ struct ProjectWindowObj;
 
 struct ProjectWindowObj : EditorWindowObj
 {
-    ProjectWindowMode mode = PROJECT_WINDOW_SELECT_PROJECT;
+    ProjectWindowMode mode = PROJECT_WINDOW_MODE_SELECT_PROJECT;
 
     struct SelectProjectStorage
     {
@@ -45,7 +45,7 @@ struct ProjectWindowObj : EditorWindowObj
     {
         EUIButtonRow<3> buttonRow;
         EditorWindowType nextWindowType = EDITOR_WINDOW_TYPE_ENUM_COUNT;
-        int nextWindowModeHint = 0;
+        EditorWindowMode nextWindowModeHint = -1;
 
         void update(ProjectWindowObj* obj);
     } saveProject;
@@ -284,18 +284,18 @@ void ProjectWindowObj::update()
 
     switch (mode)
     {
-    case PROJECT_WINDOW_CREATE_PROJECT:
+    case PROJECT_WINDOW_MODE_CREATE_PROJECT:
         if (createProject.update(this))
-            mode = PROJECT_WINDOW_SELECT_PROJECT;
+            mode = PROJECT_WINDOW_MODE_SELECT_PROJECT;
         break;
-    case PROJECT_WINDOW_SELECT_PROJECT:
+    case PROJECT_WINDOW_MODE_SELECT_PROJECT:
         if (selectProject.update(this))
-            mode = PROJECT_WINDOW_CREATE_PROJECT;
+            mode = PROJECT_WINDOW_MODE_CREATE_PROJECT;
         break;
-    case PROJECT_WINDOW_SAVE_PROJECT:
+    case PROJECT_WINDOW_MODE_SAVE_PROJECT:
         saveProject.update(this);
         break;
-    case PROJECT_WINDOW_CREATE_SCENE:
+    case PROJECT_WINDOW_MODE_CREATE_SCENE:
         createScene.update(this);
         break;
     default:
@@ -315,16 +315,16 @@ void ProjectWindow::set_mode(ProjectWindowMode mode)
 
     switch (mObj->mode)
     {
-    case PROJECT_WINDOW_CREATE_PROJECT:
+    case PROJECT_WINDOW_MODE_CREATE_PROJECT:
         mObj->createProject = {};
         break;
-    case PROJECT_WINDOW_SELECT_PROJECT:
+    case PROJECT_WINDOW_MODE_SELECT_PROJECT:
         mObj->selectProject = {};
         break;
-    case PROJECT_WINDOW_SAVE_PROJECT:
+    case PROJECT_WINDOW_MODE_SAVE_PROJECT:
         mObj->saveProject = {};
         break;
-    case PROJECT_WINDOW_CREATE_SCENE:
+    case PROJECT_WINDOW_MODE_CREATE_SCENE:
         mObj->createScene = {};
         break;
     default:
@@ -332,7 +332,7 @@ void ProjectWindow::set_mode(ProjectWindowMode mode)
     }
 }
 
-void ProjectWindow::set_save_project_continuation(EditorWindowType windowType, int modeHint)
+void ProjectWindow::set_save_project_continuation(EditorWindowType windowType, EditorWindowMode modeHint)
 {
     mObj->saveProject.nextWindowType = windowType;
     mObj->saveProject.nextWindowModeHint = modeHint;
@@ -359,6 +359,13 @@ void ProjectWindow::update(EditorWindowObj* base, const EditorUpdateTick& tick)
     (void)tick;
 
     obj->update();
+}
+
+void ProjectWindow::mode_hint(EditorWindowObj* base, EditorWindowMode mode)
+{
+    auto* obj = static_cast<ProjectWindowObj*>(base);
+
+    ProjectWindow(obj).set_mode((ProjectWindowMode)mode);
 }
 
 } // namespace LD

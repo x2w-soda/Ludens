@@ -14,18 +14,12 @@
 
 namespace LD {
 
-enum ViewportMode
-{
-    VIEWPORT_MODE_2D,
-    VIEWPORT_MODE_3D
-};
-
 /// @brief Editor viewport window implementation.
 ///        This window is a view into the Scene being edited.
 ///        Uses the Gizmo module to edit the object transforms.
 struct ViewportWindowObj : EditorWindowObj
 {
-    ViewportMode mode = VIEWPORT_MODE_2D;
+    ViewportWindowMode mode = VIEWPORT_WINDOW_MODE_2D;
     Viewport2D viewport2D = {};
     Viewport3D viewport3D = {};
     ViewportState state = {}; /// passed down to Viewport2D or Viewport3D each frame
@@ -184,7 +178,7 @@ void ViewportWindowObj::viewport_editor_imgui()
         }
     }
 
-    if (mode == VIEWPORT_MODE_2D)
+    if (mode == VIEWPORT_WINDOW_MODE_2D)
     {
         viewport2D.imgui(state);
     }
@@ -289,9 +283,16 @@ void ViewportWindow::update(EditorWindowObj* base, const EditorUpdateTick& tick)
     obj->update(tick.delta);
 }
 
+void ViewportWindow::mode_hint(EditorWindowObj* base, EditorWindowMode mode)
+{
+    auto* obj = static_cast<ViewportWindowObj*>(base);
+
+    obj->mode = (ViewportWindowMode)mode;
+}
+
 Camera ViewportWindow::get_editor_camera()
 {
-    if (mObj->mode != VIEWPORT_MODE_3D)
+    if (mObj->mode != VIEWPORT_WINDOW_MODE_3D)
         return {};
 
     return mObj->viewport3D.get_camera();
@@ -299,7 +300,7 @@ Camera ViewportWindow::get_editor_camera()
 
 Camera2D ViewportWindow::get_editor_camera_2d()
 {
-    if (mObj->mode != VIEWPORT_MODE_2D)
+    if (mObj->mode != VIEWPORT_WINDOW_MODE_2D)
         return {};
 
     return mObj->viewport2D.get_camera_2d();
@@ -328,7 +329,7 @@ bool ViewportWindow::get_mouse_pos(Vec2& mousePos)
 
 void ViewportWindow::get_gizmo_3d_state(SceneOverlayGizmo& gizmoType, Vec3& gizmoCenter, float& gizmoScale, RenderSystemSceneGizmoColor& gizmoColor)
 {
-    if (mObj->mode != VIEWPORT_MODE_3D || !mObj->state.gizmoSubjectSUID)
+    if (mObj->mode != VIEWPORT_WINDOW_MODE_3D || !mObj->state.gizmoSubjectSUID)
     {
         gizmoType = SCENE_OVERLAY_GIZMO_NONE;
         return;

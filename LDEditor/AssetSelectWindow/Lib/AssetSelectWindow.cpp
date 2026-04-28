@@ -8,12 +8,6 @@ namespace LD {
 
 struct AssetSelectWindowObj;
 
-enum AssetSelectMode
-{
-    ASSET_SELECT_MODE_DEFAULT,
-    ASSET_SELECT_MODE_NEW_SCRIPT,
-};
-
 class AssetSelectWindowTopBar
 {
 public:
@@ -40,7 +34,7 @@ struct AssetSelectWindowObj : EditorWindowObj
 {
     AssetSelectWindowTopBar topBar;
     AssetSelectWindowBottomBar bottomBar;
-    AssetSelectMode mode = ASSET_SELECT_MODE_DEFAULT;
+    AssetSelectWindowMode mode = ASSET_SELECT_WINDOW_MODE_DEFAULT;
     AssetType filterType = ASSET_TYPE_ENUM_COUNT;
     AssetRegistry assetRegistry = {};
     SUID component = 0;
@@ -89,7 +83,7 @@ void AssetSelectWindowObj::update()
 
     topBar.update(this);
 
-    if (mode == ASSET_SELECT_MODE_DEFAULT)
+    if (mode == ASSET_SELECT_WINDOW_MODE_DEFAULT)
         update_mode_default();
     else
         update_mode_new_script();
@@ -143,14 +137,14 @@ void AssetSelectWindowTopBar::update(AssetSelectWindowObj* obj)
         ui_pop();
         switch (obj->mode)
         {
-        case ASSET_SELECT_MODE_NEW_SCRIPT:
+        case ASSET_SELECT_WINDOW_MODE_NEW_SCRIPT:
             if (mButton.update(EDITOR_ICON_ADD_FOLDER, "Select Existing"))
-                obj->mode = ASSET_SELECT_MODE_DEFAULT;
+                obj->mode = ASSET_SELECT_WINDOW_MODE_DEFAULT;
             break;
-        case ASSET_SELECT_MODE_DEFAULT:
+        case ASSET_SELECT_WINDOW_MODE_DEFAULT:
         default:
             if (mButton.update(EDITOR_ICON_ADD_FOLDER, "New Script"))
-                obj->mode = ASSET_SELECT_MODE_NEW_SCRIPT;
+                obj->mode = ASSET_SELECT_WINDOW_MODE_NEW_SCRIPT;
             break;
         }
     }
@@ -160,7 +154,7 @@ void AssetSelectWindowTopBar::update(AssetSelectWindowObj* obj)
 
 void AssetSelectWindowBottomBar::update(AssetSelectWindowObj* obj)
 {
-    bool isDefaultMode = obj->mode == ASSET_SELECT_MODE_DEFAULT;
+    bool isDefaultMode = obj->mode == ASSET_SELECT_WINDOW_MODE_DEFAULT;
 
     mButtonRow.label[0] = "Cancel";
     mButtonRow.label[1] = isDefaultMode ? "Select" : "Create";
@@ -241,6 +235,13 @@ void AssetSelectWindow::update(EditorWindowObj* base, const EditorUpdateTick& ti
     (void)tick;
 
     obj->update();
+}
+
+void AssetSelectWindow::mode_hint(EditorWindowObj* base, EditorWindowMode modeHint)
+{
+    auto* obj = static_cast<AssetSelectWindowObj*>(base);
+
+    obj->mode = (AssetSelectWindowMode)modeHint;
 }
 
 void AssetSelectWindow::set_filter(AssetType type)

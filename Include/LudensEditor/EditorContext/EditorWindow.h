@@ -25,6 +25,7 @@ struct EditorWindowObj
     EditorContext ctx = {};                                // editor context handle
     EditorTheme theme = {};                                // editor theme handle
     Rect rootRect = {};                                    // editor window rect in screen space
+    EditorWindowMode modeHint = -1;                        // if non-negative hint, that the window should switch modes
     bool shouldClose = false;                              // hint that the editor window should be closed
 
     EditorWindowObj(const EditorWindowInfo& info)
@@ -58,6 +59,8 @@ struct EditorWindow : Handle<struct EditorWindowObj>
 
     inline void set_pos(Vec2 pos) { mObj->rootRect.set_pos(pos.x, pos.y); }
     inline void set_rect(Rect rect) { mObj->rootRect = rect; }
+
+    inline void set_mode(EditorWindowMode modeHint) { mObj->modeHint = modeHint; };
 };
 
 } // namespace LD

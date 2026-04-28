@@ -11,16 +11,18 @@
 
 namespace LD {
 
+enum ViewportWindowMode : EditorWindowMode
+{
+    VIEWPORT_WINDOW_MODE_2D,
+    VIEWPORT_WINDOW_MODE_3D
+};
+
 /// @brief Editor scene viewport window.
 ///        Displays the game scene.
 struct ViewportWindow : Handle<struct ViewportWindowObj>
 {
     ViewportWindow() = default;
     ViewportWindow(const EditorWindowObj* obj) { mObj = (ViewportWindowObj*)obj; }
-
-    static EditorWindow create(const EditorWindowInfo& windowI);
-    static void destroy(EditorWindow viewport);
-    static void update(EditorWindowObj* obj, const EditorUpdateTick& tick);
 
     /// @brief Get the camera for rendering the scene in the viewport window.
     Camera get_editor_camera();
@@ -46,6 +48,11 @@ struct ViewportWindow : Handle<struct ViewportWindowObj>
     /// @param gizmoID If not zero, the gizmo mesh under cursor
     /// @param ruid If not zero, the mesh under cursor
     void hover_id(SceneOverlayGizmoID gizmoID, RUID ruid);
+
+    static EditorWindow create(const EditorWindowInfo& windowI);
+    static void destroy(EditorWindow viewport);
+    static void update(EditorWindowObj* obj, const EditorUpdateTick& tick);
+    static void mode_hint(EditorWindowObj* obj, EditorWindowMode mode);
 };
 
 } // namespace LD

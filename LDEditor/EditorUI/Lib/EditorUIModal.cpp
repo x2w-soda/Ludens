@@ -44,7 +44,7 @@ void EditorUIModalObj::prepare_modal_workspace(EditorWindowType windowType)
         modalW = modalWS.create_window(modalWS.get_root_id(), windowType);
     }
 
-    LD_ASSERT(modalW);
+    LD_ASSERT(modalW && modalW.type() == windowType);
 }
 
 EditorUIModal EditorUIModal::create(const EditorUIModalInfo& modalI)
@@ -128,10 +128,13 @@ void EditorUIModal::post_update()
     }
 }
 
-EditorWindow EditorUIModal::show_window(EditorWindowType type)
+EditorWindow EditorUIModal::show_window(EditorWindowType type, EditorWindowMode modeHint)
 {
     mObj->prepare_modal_workspace(type);
     mObj->isVisible = true;
+
+    if (modeHint >= 0)
+        mObj->modalW.set_mode(modeHint);
 
     return mObj->modalW;
 }
