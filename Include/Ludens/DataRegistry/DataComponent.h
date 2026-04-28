@@ -51,9 +51,8 @@ struct AudioSourceComponent
 {
     ComponentBase* base;
     AudioPlayback playback;
+    AudioPlaybackState playbackState;
     AssetID clipID;
-    float pan;
-    float volumeLinear;
 };
 
 /// @brief A component with only transform data.

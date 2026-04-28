@@ -59,9 +59,9 @@ static_assert(offsetof(AssetObj, manager) == 8);
 
 static_assert(alignof(AudioSourceComponent) == 8);
 static_assert(offsetof(AudioSourceComponent, playback) == 8);
-static_assert(offsetof(AudioSourceComponent, clipID) == 16);
-static_assert(offsetof(AudioSourceComponent, pan) == 20);
-static_assert(offsetof(AudioSourceComponent, volumeLinear) == 24);
+static_assert(offsetof(AudioSourceComponent, playbackState.pan) == 16);
+static_assert(offsetof(AudioSourceComponent, playbackState.volumeLinear) == 20);
+static_assert(offsetof(AudioSourceComponent, clipID) == 24);
 
 static_assert(alignof(Transform2DComponent) == 8);
 static_assert(offsetof(Transform2DComponent, transform) == 8);
@@ -139,9 +139,9 @@ typedef struct MeshComponent {
 typedef struct __attribute__((aligned(8))) AudioSourceComponent {
     void* base;
     void* __private_playback;
-    uint32_t __private_clipAUID;
     float __private_pan;
     float __private_volumeLinear;
+    uint32_t __private_clipAUID;
 } AudioSourceComponent;
 
 void ffi_audio_source_component_play(AudioSourceComponent* comp);
@@ -325,10 +325,8 @@ void ffi_audio_source_component_set_pan(AudioSourceComponent* comp, float pan)
     if (!comp->playback)
         return;
 
-    comp->pan = std::clamp<float>(pan, 0.0f, 1.0f);
-
-    AudioPlayback::Accessor accessor = comp->playback.access();
-    accessor.set_pan(pan);
+    comp->playbackState.pan = std::clamp<float>(pan, 0.0f, 1.0f);
+    comp->playback.store(comp->playbackState);
 }
 
 void ffi_audio_source_component_set_volume_linear(AudioSourceComponent* comp, float volumeLinear)
@@ -336,10 +334,8 @@ void ffi_audio_source_component_set_volume_linear(AudioSourceComponent* comp, fl
     if (!comp->playback)
         return;
 
-    comp->volumeLinear = std::clamp<float>(volumeLinear, 0.0f, 1.0f);
-
-    AudioPlayback::Accessor accessor = comp->playback.access();
-    accessor.set_volume_linear(volumeLinear);
+    comp->playbackState.volumeLinear = std::clamp<float>(volumeLinear, 0.0f, 1.0f);
+    comp->playback.store(comp->playbackState);
 }
 
 Vec2FFI ffi_sprite_2d_component_get_pivot(Sprite2DComponent* comp)

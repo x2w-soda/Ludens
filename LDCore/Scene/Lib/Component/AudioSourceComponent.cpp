@@ -80,12 +80,13 @@ static bool load_audio_playback(SceneObj* scene, AudioSourceComponent* source, f
     if (!buffer)
         return false;
 
-    source->playback = scene->audioSystemCache.create_playback(buffer, pan, volumeLinear);
+    source->playback = scene->audioSystemCache.create_playback(buffer);
     if (!source->playback)
         return false;
 
-    source->pan = pan;
-    source->volumeLinear = volumeLinear;
+    source->playbackState.pan = pan;
+    source->playbackState.volumeLinear = volumeLinear;
+    source->playback.store(source->playbackState);
     return true;
 }
 
@@ -93,9 +94,8 @@ void init_audio_source_component(ComponentBase** dstData)
 {
     AudioSourceComponent* dstAudioSource = (AudioSourceComponent*)dstData;
     dstAudioSource->playback = {};
+    dstAudioSource->playbackState = {};
     dstAudioSource->clipID = (AssetID)0;
-    dstAudioSource->pan = 0.5f;
-    dstAudioSource->volumeLinear = 1.0f;
 }
 
 bool load_audio_source_component(SceneObj* scene, AudioSourceComponent* source, AssetID clipID, float pan, float volumeLinear, std::string& err)
@@ -235,7 +235,7 @@ bool AudioSourceView::set_clip_asset(AssetID clipID)
     if (buffer)
     {
         if (!mAudioSource->playback)
-            mAudioSource->playback = sScene->audioSystemCache.create_playback(buffer, mAudioSource->pan, mAudioSource->volumeLinear);
+            mAudioSource->playback = sScene->audioSystemCache.create_playback(buffer);
         else
             sScene->audioSystemCache.set_playback_buffer(mAudioSource->playback, buffer);
 
@@ -253,18 +253,17 @@ AssetID AudioSourceView::get_clip_asset()
 
 float AudioSourceView::get_volume_linear()
 {
-    return mAudioSource->volumeLinear;
+    return mAudioSource->playbackState.volumeLinear;
 }
 
 bool AudioSourceView::set_volume_linear(float volume)
 {
     volume = std::clamp(volume, 0.0f, 1.0f);
-    mAudioSource->volumeLinear = volume;
+    mAudioSource->playbackState.volumeLinear = volume;
 
     if (mAudioSource->playback)
     {
-        AudioPlayback::Accessor accessor = mAudioSource->playback.access();
-        accessor.set_volume_linear(volume);
+        mAudioSource->playback.store(mAudioSource->playbackState);
     }
 
     return true;
@@ -272,18 +271,17 @@ bool AudioSourceView::set_volume_linear(float volume)
 
 float AudioSourceView::get_pan()
 {
-    return mAudioSource->pan;
+    return mAudioSource->playbackState.pan;
 }
 
 bool AudioSourceView::set_pan(float pan)
 {
     pan = std::clamp(pan, 0.0f, 1.0f);
-    mAudioSource->pan = pan;
+    mAudioSource->playbackState.pan = pan;
 
     if (mAudioSource->playback)
     {
-        AudioPlayback::Accessor accessor = mAudioSource->playback.access();
-        accessor.set_pan(pan);
+        mAudioSource->playback.store(mAudioSource->playbackState);
     }
 
     return true;
