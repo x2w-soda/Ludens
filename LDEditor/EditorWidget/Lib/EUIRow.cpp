@@ -6,6 +6,16 @@
 
 namespace LD {
 
+void eui_row_label(const char* label)
+{
+    EditorTheme theme = eui_get_theme();
+    UILayoutInfo layoutI = theme.make_text_row_layout();
+
+    ui_push_text(nullptr, label);
+    ui_top_layout(layoutI);
+    ui_pop();
+}
+
 bool eui_row_label_text_edit(const char* label, UITextEditData* edit, std::string& outText)
 {
     EditorTheme theme = eui_get_theme();
@@ -113,7 +123,7 @@ int EUIButtonRow<TCount>::update()
     UILayoutInfo layoutI{};
     layoutI.sizeX = UISize::grow();
     layoutI.sizeY = UISize::fixed(textRowHeight);
-    layoutI.childAlignX = UI_ALIGN_END;
+    layoutI.childAlignX = rowAlign;
     layoutI.childGap = theme.get_child_gap_large();
     layoutI.childPadding = UIPadding(theme.get_child_pad());
 

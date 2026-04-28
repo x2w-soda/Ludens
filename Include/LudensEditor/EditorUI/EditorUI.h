@@ -71,6 +71,8 @@ private:
     /// @brief Get region viewports to render screen contents.
     Vector<RenderSystemScreenPass::Region> get_screen_regions();
 
+    bool save_dirty_project_modal(EditorWindowType nextWindow, EditorWindowMode nextMode = -1);
+
 private:
     EditorContext mCtx;
     EditorUITopBar mTopBar;

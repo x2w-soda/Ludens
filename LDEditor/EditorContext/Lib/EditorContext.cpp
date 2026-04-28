@@ -191,6 +191,7 @@ static void editor_action_open_scene_event_handler(const EditorEvent* event, voi
 
     // Opening Scene would clear the EditStack
     obj->editStack.clear();
+    obj->lastSavedEditIndex = 0;
 
     obj->load_project_scene(e->sceneID);
 }

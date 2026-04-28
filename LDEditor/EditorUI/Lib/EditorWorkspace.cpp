@@ -111,7 +111,7 @@ struct EditorWindowMeta
     void (*destroy)(EditorWindow);
     void (*preUpdate)(EditorWindowObj*, const EditorUpdateTick& tick);
     void (*update)(EditorWindowObj*, const EditorUpdateTick& tick);
-    void (*modeHint)(EditorWindowObj*, EditorWindowMode mode);
+    void (*setModeHint)(EditorWindowObj*, EditorWindowMode mode);
     Vec2 (*getSizeHint)(Vec2 screenSize);
     const char* defaultName;
 };
@@ -152,9 +152,9 @@ static void editor_window_pre_update(EditorWindowObj* obj, const EditorUpdateTic
     int type = (int)obj->type;
 
     // Propagate window mode hint right before pre-update
-    if (obj->modeHint >= 0 && sEditorWindow[type].modeHint)
+    if (obj->modeHint >= 0 && sEditorWindow[type].setModeHint)
     {
-        sEditorWindow[type].modeHint(obj, obj->modeHint);
+        sEditorWindow[type].setModeHint(obj, obj->modeHint);
         obj->modeHint = -1;
     }
 

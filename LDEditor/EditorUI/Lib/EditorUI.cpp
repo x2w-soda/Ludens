@@ -284,6 +284,18 @@ Vector<RenderSystemScreenPass::Region> EditorUI::get_screen_regions()
     return {region};
 }
 
+bool EditorUI::save_dirty_project_modal(EditorWindowType nextWindow, EditorWindowMode nextMode)
+{
+    if (!mCtx.is_project_dirty())
+        return false;
+
+    ProjectWindow projectWindow = (ProjectWindow)mModal.show_window(EDITOR_WINDOW_PROJECT, -1);
+    projectWindow.set_mode(PROJECT_WINDOW_MODE_SAVE_PROJECT); // cannot defer changing mode
+    projectWindow.set_save_project_continuation(nextWindow, nextMode);
+
+    return true;
+}
+
 void EditorUI::on_window_event(const WindowEvent* event, void* user)
 {
     EditorUI& self = *(EditorUI*)user;
@@ -299,7 +311,8 @@ void EditorUI::on_editor_event(const EditorEvent* event, void* user)
     EditorUI& self = *(EditorUI*)user;
 
     AssetImportWindow importWindow{};
-    ProjectWindow projectWindow{};
+    EditorWindowType nextWindowType;
+    EditorWindowMode nextWindowMode;
 
     switch (event->type)
     {
@@ -353,48 +366,27 @@ void EditorUI::on_editor_event(const EditorEvent* event, void* user)
         break;
     }
     case EDITOR_EVENT_TYPE_REQUEST_OPEN_SCENE:
-        if (self.mCtx.is_project_dirty())
-        {
-            projectWindow = (ProjectWindow)self.mModal.show_window(EDITOR_WINDOW_PROJECT, PROJECT_WINDOW_MODE_SAVE_PROJECT);
-            projectWindow.set_save_project_continuation(EDITOR_WINDOW_SCENE_SELECT, 0);
-        }
-        else
-        {
-            self.mModal.show_window(EDITOR_WINDOW_SCENE_SELECT);
-        }
+        nextWindowType = EDITOR_WINDOW_SCENE_SELECT;
+        if (!self.save_dirty_project_modal(nextWindowType))
+            self.mModal.show_window(nextWindowType);
         break;
     case EDITOR_EVENT_TYPE_REQUEST_OPEN_PROJECT:
-        if (self.mCtx.is_project_dirty())
-        {
-            projectWindow = (ProjectWindow)self.mModal.show_window(EDITOR_WINDOW_PROJECT, PROJECT_WINDOW_MODE_SAVE_PROJECT);
-            projectWindow.set_save_project_continuation(EDITOR_WINDOW_PROJECT, (int)PROJECT_WINDOW_MODE_SELECT_PROJECT);
-        }
-        else
-        {
-            projectWindow = (ProjectWindow)self.mModal.show_window(EDITOR_WINDOW_PROJECT, PROJECT_WINDOW_MODE_SELECT_PROJECT);
-        }
+        nextWindowType = EDITOR_WINDOW_PROJECT;
+        nextWindowMode = PROJECT_WINDOW_MODE_SELECT_PROJECT;
+        if (!self.save_dirty_project_modal(nextWindowType, nextWindowMode))
+            self.mModal.show_window(nextWindowType, nextWindowMode);
         break;
     case EDITOR_EVENT_TYPE_REQUEST_CREATE_SCENE:
-        if (self.mCtx.is_project_dirty())
-        {
-            projectWindow = (ProjectWindow)self.mModal.show_window(EDITOR_WINDOW_PROJECT, PROJECT_WINDOW_MODE_SAVE_PROJECT);
-            projectWindow.set_save_project_continuation(EDITOR_WINDOW_PROJECT, (int)PROJECT_WINDOW_MODE_CREATE_SCENE);
-        }
-        else
-        {
-            projectWindow = (ProjectWindow)self.mModal.show_window(EDITOR_WINDOW_PROJECT, PROJECT_WINDOW_MODE_CREATE_SCENE);
-        }
+        nextWindowType = EDITOR_WINDOW_PROJECT;
+        nextWindowMode = PROJECT_WINDOW_MODE_CREATE_SCENE;
+        if (!self.save_dirty_project_modal(nextWindowType, nextWindowMode))
+            self.mModal.show_window(nextWindowType, nextWindowMode);
         break;
     case EDITOR_EVENT_TYPE_REQUEST_CREATE_PROJECT:
-        if (self.mCtx.is_project_dirty())
-        {
-            projectWindow = (ProjectWindow)self.mModal.show_window(EDITOR_WINDOW_PROJECT, PROJECT_WINDOW_MODE_SAVE_PROJECT);
-            projectWindow.set_save_project_continuation(EDITOR_WINDOW_PROJECT, (int)PROJECT_WINDOW_MODE_CREATE_PROJECT);
-        }
-        else
-        {
-            projectWindow = (ProjectWindow)self.mModal.show_window(EDITOR_WINDOW_PROJECT, PROJECT_WINDOW_MODE_CREATE_PROJECT);
-        }
+        nextWindowType = EDITOR_WINDOW_PROJECT;
+        nextWindowMode = PROJECT_WINDOW_MODE_CREATE_PROJECT;
+        if (!self.save_dirty_project_modal(nextWindowType, nextWindowMode))
+            self.mModal.show_window(nextWindowType, nextWindowMode);
         break;
     case EDITOR_EVENT_TYPE_REQUEST_CREATE_COMPONENT:
     {

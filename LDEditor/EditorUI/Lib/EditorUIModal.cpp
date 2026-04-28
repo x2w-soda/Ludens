@@ -130,6 +130,8 @@ void EditorUIModal::post_update()
 
 EditorWindow EditorUIModal::show_window(EditorWindowType type, EditorWindowMode modeHint)
 {
+    LD_ASSERT(type != EDITOR_WINDOW_TYPE_ENUM_COUNT);
+
     mObj->prepare_modal_workspace(type);
     mObj->isVisible = true;
 

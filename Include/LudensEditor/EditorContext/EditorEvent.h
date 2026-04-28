@@ -262,9 +262,9 @@ struct EditorActionSaveEvent : EditorActionEvent
     {
     }
 
-    bool saveProjectSchema = false;
-    bool saveSceneSchema = false;
-    bool saveAssetSchema = false;
+    bool saveProjectSchema = true;
+    bool saveSceneSchema = true;
+    bool saveAssetSchema = true;
 };
 
 struct EditorActionUndoEvent : EditorActionEvent

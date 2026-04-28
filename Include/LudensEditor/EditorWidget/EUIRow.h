@@ -9,6 +9,7 @@ struct AssetRegistry;
 struct Project;
 class UITextEditData;
 
+void eui_row_label(const char* label);
 bool eui_row_label_text_edit(const char* label, UITextEditData* edit, std::string& outText);
 void eui_push_row_scroll(UIScrollData* scroll);
 void eui_pop_row_scroll();
@@ -28,6 +29,7 @@ class EUIButtonRow
 public:
     Array<const char*, TCount> label = {};
     Array<bool, TCount> isEnabled;
+    UIAlign rowAlign = UI_ALIGN_END;
 
     EUIButtonRow()
     {

@@ -226,6 +226,9 @@ void ProjectWindowObj::CreateProjectStorage::validate_input()
 
 void ProjectWindowObj::SaveProjectStorage::update(ProjectWindowObj* obj)
 {
+    eui_row_label("There are unsaved changes in the project");
+
+    buttonRow.rowAlign = UI_ALIGN_CENTER;
     buttonRow.label[0] = "Discard";
     buttonRow.label[1] = "Cancel";
     buttonRow.label[2] = "Save";
@@ -233,10 +236,10 @@ void ProjectWindowObj::SaveProjectStorage::update(ProjectWindowObj* obj)
 
     if (btnPressed == 1)
     {
-        // TODO: clear edit stack?
         auto* requestE = (EditorRequestShowModalEvent*)obj->ctx.enqueue_event(EDITOR_EVENT_TYPE_REQUEST_SHOW_MODAL);
         requestE->windowType = nextWindowType;
         requestE->windowModeHint = nextWindowModeHint;
+        LD_ASSERT(requestE->windowType != EDITOR_WINDOW_TYPE_ENUM_COUNT);
     }
     else if (btnPressed == 2)
     {
@@ -244,9 +247,12 @@ void ProjectWindowObj::SaveProjectStorage::update(ProjectWindowObj* obj)
     }
     else if (btnPressed == 3)
     {
+        (void)obj->ctx.enqueue_event(EDITOR_EVENT_TYPE_ACTION_SAVE);
+
         auto* requestE = (EditorRequestShowModalEvent*)obj->ctx.enqueue_event(EDITOR_EVENT_TYPE_REQUEST_SHOW_MODAL);
         requestE->windowType = nextWindowType;
         requestE->windowModeHint = nextWindowModeHint;
+        LD_ASSERT(requestE->windowType != EDITOR_WINDOW_TYPE_ENUM_COUNT);
     }
 }
 
@@ -311,6 +317,9 @@ void ProjectWindowObj::update()
 
 void ProjectWindow::set_mode(ProjectWindowMode mode)
 {
+    if (mObj->mode == mode)
+        return;
+
     mObj->mode = mode;
 
     switch (mObj->mode)
@@ -334,6 +343,8 @@ void ProjectWindow::set_mode(ProjectWindowMode mode)
 
 void ProjectWindow::set_save_project_continuation(EditorWindowType windowType, EditorWindowMode modeHint)
 {
+    LD_ASSERT(mObj->mode == PROJECT_WINDOW_MODE_SAVE_PROJECT);
+
     mObj->saveProject.nextWindowType = windowType;
     mObj->saveProject.nextWindowModeHint = modeHint;
 }
