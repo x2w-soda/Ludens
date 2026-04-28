@@ -7,6 +7,7 @@ set(MODULE_INCLUDE
 	${LUDENS_INCLUDE_DIR}/Ludens/DSA/IDRegistry.h
 	${LUDENS_INCLUDE_DIR}/Ludens/DSA/Buffer.h
 	${LUDENS_INCLUDE_DIR}/Ludens/DSA/GapBuffer.h
+	${LUDENS_INCLUDE_DIR}/Ludens/DSA/TripleBuffer.h
 	${LUDENS_INCLUDE_DIR}/Ludens/DSA/HeapStorage.h
 	${LUDENS_INCLUDE_DIR}/Ludens/DSA/Stack.h
 	${LUDENS_INCLUDE_DIR}/Ludens/DSA/Queue.h
