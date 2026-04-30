@@ -12,6 +12,7 @@ namespace LD {
 struct ComponentBase;
 struct TransformEx;
 struct Transform2D;
+struct PropertyValue;
 struct PropertyMetaTable;
 
 /// @brief Public interface for all components.
@@ -32,6 +33,8 @@ public:
     CUID cuid();
     SUID suid();
     RUID ruid();
+
+    bool load_from_props(const Vector<PropertyValue>& props, std::string& err);
 
     const char* get_name();
     void set_name(const char* cstr);

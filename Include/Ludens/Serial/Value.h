@@ -82,10 +82,13 @@ public:
     explicit Value64(double f64);
     explicit Value64(uint32_t u32);
     explicit Value64(uint64_t u64);
+    explicit Value64(bool b8);
     explicit Value64(Vec2 vec2);
     explicit Value64(Vec3 vec3);
     explicit Value64(Vec4 vec4);
     explicit Value64(Rect rect);
+    explicit Value64(Transform2D transform2D);
+    explicit Value64(TransformEx transformEx);
     ~Value64();
 
     Value64& operator=(const Value64&);

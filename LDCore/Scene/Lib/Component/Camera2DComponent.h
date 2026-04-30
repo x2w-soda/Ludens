@@ -6,11 +6,15 @@ namespace LD {
 
 extern struct PropertyMetaTable gCamera2DPropMetaTable;
 
-void init_camera_2d_component(ComponentBase** dstData);
-bool clone_camera_2d_component(SceneObj* scene, ComponentBase** dstData, ComponentBase** srcData, std::string& err);
-bool load_camera_2d_component(SceneObj* scene, Camera2DComponent* camera, const Camera2DInfo& info, const Rect& viewport, std::string& err);
-bool unload_camera_2d_component(SceneObj* scene, ComponentBase** camera, std::string& err);
-bool startup_camera_2d_component(SceneObj* scene, ComponentBase** data, std::string& err);
-bool cleanup_camera_2d_component(SceneObj* scene, ComponentBase** data, std::string& err);
+struct Camera2DMeta
+{
+    static void init(ComponentBase** dstData);
+    static bool clone(SceneObj* scene, ComponentBase** dstData, ComponentBase** srcData, std::string& err);
+    static bool load(SceneObj* scene, Camera2DComponent* camera, const Camera2DInfo& info, const Rect& viewport, std::string& err);
+    static bool load_from_props(SceneObj* scene, ComponentBase** data, const Vector<PropertyValue>& props, std::string& err);
+    static bool unload(SceneObj* scene, ComponentBase** camera, std::string& err);
+    static bool startup(SceneObj* scene, ComponentBase** data, std::string& err);
+    static bool cleanup(SceneObj* scene, ComponentBase** data, std::string& err);
+};
 
 } // namespace LD

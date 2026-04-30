@@ -10,11 +10,11 @@ namespace LD {
 
 // clang-format off
 static PropertyMeta sSprite2DPropMeta[] = {
-    {"transform", VALUE_TYPE_TRANSFORM_2D, {}},
-    {"texture", VALUE_TYPE_U32, {}, PROPERTY_UI_HINT_ASSET},
-    {"z_depth", VALUE_TYPE_U32, {}},
-    {"pivot", VALUE_TYPE_VEC2, {}},
-    {"region", VALUE_TYPE_RECT, {}},
+    {"transform", VALUE_TYPE_TRANSFORM_2D, Value64(Transform2D::identity())},
+    {"texture",   VALUE_TYPE_U32,          Value64((uint32_t)32), PROPERTY_UI_HINT_ASSET },
+    {"z_depth",   VALUE_TYPE_U32,          Value64((uint32_t)0)},
+    {"pivot",     VALUE_TYPE_VEC2,         Value64(Vec2(INIT_REGION_SIZE / 2.0f))},
+    {"region",    VALUE_TYPE_RECT,         Value64(Rect(0.0f, 0.0f, INIT_REGION_SIZE, INIT_REGION_SIZE))},
 };
 // clang-format on
 
@@ -85,7 +85,7 @@ PropertyMetaTable gSprite2DPropMetaTable{
     .setter = &sprite_2d_prop_setter,
 };
 
-void init_sprite_2d_component(ComponentBase** dstData)
+void Sprite2DMeta::init(ComponentBase** dstData)
 {
     ComponentBase* dstBase = *dstData;
     Sprite2DComponent* dstSprite2D = (Sprite2DComponent*)dstData;
@@ -97,7 +97,7 @@ void init_sprite_2d_component(ComponentBase** dstData)
     dstSprite2D->draw.set_pivot(Vec2(INIT_REGION_SIZE / 2.0f));
 }
 
-bool load_sprite_2d_component_suid(SceneObj* scene, Sprite2DComponent* sprite, SUID layerSUID, AssetID texture2D, std::string& err)
+bool Sprite2DMeta::load_suid(SceneObj* scene, Sprite2DComponent* sprite, SUID layerSUID, AssetID texture2D, std::string& err)
 {
     LD_PROFILE_SCOPE;
 
@@ -110,10 +110,10 @@ bool load_sprite_2d_component_suid(SceneObj* scene, Sprite2DComponent* sprite, S
         return false;
     }
 
-    return load_sprite_2d_component_ruid(scene, sprite, layerRUID, texture2D, err);
+    return load_ruid(scene, sprite, layerRUID, texture2D, err);
 }
 
-bool load_sprite_2d_component_ruid(SceneObj* scene, Sprite2DComponent* sprite, RUID layerRUID, AssetID textureID, std::string& err)
+bool Sprite2DMeta::load_ruid(SceneObj* scene, Sprite2DComponent* sprite, RUID layerRUID, AssetID textureID, std::string& err)
 {
     LD_PROFILE_SCOPE;
 
@@ -133,7 +133,7 @@ bool load_sprite_2d_component_ruid(SceneObj* scene, Sprite2DComponent* sprite, R
     return true;
 }
 
-bool clone_sprite_2d_component(SceneObj* scene, ComponentBase** dstData, ComponentBase** srcData, std::string& err)
+bool Sprite2DMeta::clone(SceneObj* scene, ComponentBase** dstData, ComponentBase** srcData, std::string& err)
 {
     LD_PROFILE_SCOPE;
 
@@ -144,7 +144,7 @@ bool clone_sprite_2d_component(SceneObj* scene, ComponentBase** dstData, Compone
     RUID layerRUID = srcSprite.get_screen_layer_ruid();
     AssetID texture2D = srcSprite.get_texture_2d_asset();
 
-    if (!load_sprite_2d_component_ruid(scene, (Sprite2DComponent*)dstData, layerRUID, texture2D, err))
+    if (!load_ruid(scene, (Sprite2DComponent*)dstData, layerRUID, texture2D, err))
         return false;
 
     dstSprite.set_pivot(srcSprite.get_pivot());
@@ -154,7 +154,7 @@ bool clone_sprite_2d_component(SceneObj* scene, ComponentBase** dstData, Compone
     return true;
 }
 
-bool unload_sprite_2d_component(SceneObj* scene, ComponentBase** data, std::string& err)
+bool Sprite2DMeta::unload(SceneObj* scene, ComponentBase** data, std::string& err)
 {
     Sprite2DComponent* sprite = (Sprite2DComponent*)data;
     ComponentBase* base = sprite->base;
@@ -168,7 +168,7 @@ bool unload_sprite_2d_component(SceneObj* scene, ComponentBase** data, std::stri
     return true;
 }
 
-bool startup_sprite_2d_component(SceneObj* scene, ComponentBase** data, std::string& err)
+bool Sprite2DMeta::startup(SceneObj* scene, ComponentBase** data, std::string& err)
 {
     Sprite2DComponent* sprite = (Sprite2DComponent*)data;
     ComponentBase* base = *data;
@@ -182,12 +182,12 @@ bool startup_sprite_2d_component(SceneObj* scene, ComponentBase** data, std::str
     return true;
 }
 
-bool cleanup_sprite_2d_component(SceneObj* scene, ComponentBase** data, std::string& err)
+bool Sprite2DMeta::cleanup(SceneObj* scene, ComponentBase** data, std::string& err)
 {
     return true;
 }
 
-AssetID sprite_2d_component_get_asset(SceneObj* scene, ComponentBase** data, uint32_t assetSlotIndex)
+AssetID Sprite2DMeta::get_asset(SceneObj* scene, ComponentBase** data, uint32_t assetSlotIndex)
 {
     Sprite2DComponent* sprite = (Sprite2DComponent*)data;
 
@@ -197,7 +197,7 @@ AssetID sprite_2d_component_get_asset(SceneObj* scene, ComponentBase** data, uin
     return sprite->assetID;
 }
 
-bool sprite_2d_component_set_asset(SceneObj* scene, ComponentBase** data, uint32_t assetSlotIndex, AssetID assetID)
+bool Sprite2DMeta::set_asset(SceneObj* scene, ComponentBase** data, uint32_t assetSlotIndex, AssetID assetID)
 {
     Sprite2DComponent* sprite = (Sprite2DComponent*)data;
     Sprite2DView spriteV(sprite);
@@ -209,12 +209,61 @@ bool sprite_2d_component_set_asset(SceneObj* scene, ComponentBase** data, uint32
     return true;
 }
 
-AssetType sprite_2d_component_get_asset_type(SceneObj* scene, uint32_t assetSlotIndex)
+AssetType Sprite2DMeta::get_asset_type(SceneObj* scene, uint32_t assetSlotIndex)
 {
     if (assetSlotIndex != 0)
         return ASSET_TYPE_ENUM_COUNT;
 
     return ASSET_TYPE_TEXTURE_2D;
+}
+
+bool Sprite2DMeta::load_from_props(SceneObj* scene, ComponentBase** data, const Vector<PropertyValue>& props, std::string& err)
+{
+    Transform2D transform2D = Transform2D::identity();
+    SUID layerSUID = {};
+    AssetID textureID = {};
+    uint32_t zDepth = sSprite2DPropMeta[SPRITE_2D_PROP_Z_DEPTH].defaultVal.get_u32();
+    Vec2 pivot = sSprite2DPropMeta[SPRITE_2D_PROP_PIVOT].defaultVal.get_vec2();
+    Rect region = sSprite2DPropMeta[SPRITE_2D_PROP_REGION].defaultVal.get_rect();
+
+    for (const PropertyValue& prop : props)
+    {
+        switch (prop.index)
+        {
+        case SPRITE_2D_PROP_TRANSFORM:
+            transform2D = prop.value.get_transform_2d();
+            break;
+        case SPRITE_2D_PROP_TEXTURE_2D_ASSET:
+            textureID = (AssetID)prop.value.get_u32();
+            break;
+        case SPRITE_2D_PROP_Z_DEPTH:
+            zDepth = prop.value.get_u32();
+            break;
+        case SPRITE_2D_PROP_PIVOT:
+            pivot = prop.value.get_vec2();
+            break;
+        case SPRITE_2D_PROP_REGION:
+            region = prop.value.get_rect();
+            break;
+        case SPRITE_2D_PROP_SCREEN_LAYER:
+            break; // TODO:
+        default:
+            break;
+        }
+    }
+
+    auto* spriteC = (Sprite2DComponent*)data;
+
+    if (!load_suid(sScene, spriteC, layerSUID, textureID, err))
+        return false;
+
+    Sprite2DView spriteV(spriteC);
+    spriteV.set_transform_2d(transform2D);
+    spriteV.set_region(region);
+    spriteV.set_pivot(pivot);
+    spriteV.set_z_depth(zDepth);
+
+    return true;
 }
 
 Sprite2DView::Sprite2DView(ComponentView comp)
@@ -239,7 +288,7 @@ bool Sprite2DView::load(SUID layerSUID, AssetID textureID)
 {
     std::string err;
 
-    return load_sprite_2d_component_suid(sScene, mSprite, layerSUID, textureID, err);
+    return Sprite2DMeta::load_suid(sScene, mSprite, layerSUID, textureID, err);
 }
 
 void Sprite2DView::set_texture_2d_asset(AssetID textureID)

@@ -27,16 +27,16 @@ public:
 
     bool save_scene(Scene scene, std::string& toml, std::string& err);
 
-    static bool save_audio_source_component(SceneSchemaSaver& saver, ComponentView comp);
-    static bool save_transform_2d_component(SceneSchemaSaver& saver, ComponentView comp);
-    static bool save_camera_component(SceneSchemaSaver& saver, ComponentView comp);
-    static bool save_camera_2d_component(SceneSchemaSaver& saver, ComponentView comp);
-    // static bool save_mesh_component(SceneSchemaSaver& saver, ComponentView comp);
-    static bool save_sprite_2d_component(SceneSchemaSaver& saver, ComponentView comp);
-    // static bool save_screen_ui_component(SceneSchemaSaver& saver, ComponentView comp);
+    static bool save_audio_source(SceneSchemaSaver& saver, ComponentView comp);
+    static bool save_transform_2d(SceneSchemaSaver& saver, ComponentView comp);
+    static bool save_camera(SceneSchemaSaver& saver, ComponentView comp);
+    static bool save_camera_2d(SceneSchemaSaver& saver, ComponentView comp);
+    // static bool save_mesh(SceneSchemaSaver& saver, ComponentView comp);
+    static bool save_sprite_2d(SceneSchemaSaver& saver, ComponentView comp);
+    // static bool save_screen_ui(SceneSchemaSaver& saver, ComponentView comp);
 
 private:
-    static void save_component(SceneSchemaSaver& saver, ComponentView comp);
+    static void save(SceneSchemaSaver& saver, ComponentView comp);
 
 private:
     Scene mScene{};
@@ -56,16 +56,16 @@ public:
 
     bool load_scene(Scene scene, SUIDRegistry idReg, const View& toml, std::string& err);
 
-    static ComponentView load_audio_source_component(SceneSchemaLoader& loader, SUID compSUID, const char* compName);
-    static ComponentView load_transform_2d_component(SceneSchemaLoader& loader, SUID compSUID, const char* compName);
-    static ComponentView load_camera_component(SceneSchemaLoader& loader, SUID compSUID, const char* compName);
-    static ComponentView load_camera_2d_component(SceneSchemaLoader& loader, SUID compSUID, const char* compName);
-    // static ComponentView load_mesh_component(SceneSchemaLoader& loader, SUID compSUID, const char* compName);
-    static ComponentView load_sprite_2d_component(SceneSchemaLoader& loader, SUID compSUID, const char* compName);
-    // static ComponentView load_screen_ui_component(SceneSchemaLoader& loader, SUID compSUID, const char* compName);
+    static ComponentView load_audio_source(SceneSchemaLoader& loader, SUID compSUID, const char* compName);
+    static ComponentView load_transform_2d(SceneSchemaLoader& loader, SUID compSUID, const char* compName);
+    static ComponentView load_camera(SceneSchemaLoader& loader, SUID compSUID, const char* compName);
+    static ComponentView load_camera_2d(SceneSchemaLoader& loader, SUID compSUID, const char* compName);
+    // static ComponentView load_mesh(SceneSchemaLoader& loader, SUID compSUID, const char* compName);
+    static ComponentView load_sprite_2d(SceneSchemaLoader& loader, SUID compSUID, const char* compName);
+    // static ComponentView load_screen_ui(SceneSchemaLoader& loader, SUID compSUID, const char* compName);
 
 private:
-    static ComponentView load_component(SceneSchemaLoader& loader, std::string& err);
+    static ComponentView load(SceneSchemaLoader& loader, std::string& err);
 
 private:
     Scene mScene{};
@@ -82,20 +82,20 @@ struct
     bool (*save)(SceneSchemaSaver& saver, ComponentView comp);
 } sSceneSchemaTable[] = {
     {COMPONENT_TYPE_DATA,           "Data",        nullptr,                                           nullptr},
-    {COMPONENT_TYPE_AUDIO_SOURCE,   "AudioSource", &SceneSchemaLoader::load_audio_source_component,   &SceneSchemaSaver::save_audio_source_component},
+    {COMPONENT_TYPE_AUDIO_SOURCE,   "AudioSource", &SceneSchemaLoader::load_audio_source,   &SceneSchemaSaver::save_audio_source},
     {COMPONENT_TYPE_TRANSFORM,      "Transform",   nullptr,                                           nullptr},
-    {COMPONENT_TYPE_TRANSFORM_2D,   "Transform2D", &SceneSchemaLoader::load_transform_2d_component,   &SceneSchemaSaver::save_transform_2d_component},
-    {COMPONENT_TYPE_CAMERA,         "Camera",      &SceneSchemaLoader::load_camera_component,         &SceneSchemaSaver::save_camera_component},
-    {COMPONENT_TYPE_CAMERA_2D,      "Camera2D",    &SceneSchemaLoader::load_camera_2d_component,      &SceneSchemaSaver::save_camera_2d_component},
+    {COMPONENT_TYPE_TRANSFORM_2D,   "Transform2D", &SceneSchemaLoader::load_transform_2d,   &SceneSchemaSaver::save_transform_2d},
+    {COMPONENT_TYPE_CAMERA,         "Camera",      &SceneSchemaLoader::load_camera,         &SceneSchemaSaver::save_camera},
+    {COMPONENT_TYPE_CAMERA_2D,      "Camera2D",    &SceneSchemaLoader::load_camera_2d,      &SceneSchemaSaver::save_camera_2d},
     {COMPONENT_TYPE_MESH,           "Mesh",        nullptr,                                           nullptr},
-    {COMPONENT_TYPE_SPRITE_2D,      "Sprite2D",    &SceneSchemaLoader::load_sprite_2d_component,      &SceneSchemaSaver::save_sprite_2d_component},
+    {COMPONENT_TYPE_SPRITE_2D,      "Sprite2D",    &SceneSchemaLoader::load_sprite_2d,      &SceneSchemaSaver::save_sprite_2d},
     {COMPONENT_TYPE_SCREEN_UI,      "ScreenUI",    nullptr,                                           nullptr},
 };
 // clang-format on
 
 static_assert(sizeof(sSceneSchemaTable) / sizeof(*sSceneSchemaTable) == COMPONENT_TYPE_ENUM_COUNT);
 
-ComponentView SceneSchemaLoader::load_component(SceneSchemaLoader& loader, std::string& err)
+ComponentView SceneSchemaLoader::load(SceneSchemaLoader& loader, std::string& err)
 {
     TOMLReader reader = loader.mReader;
     LD_ASSERT(loader.mScene && reader);
@@ -144,7 +144,7 @@ ComponentView SceneSchemaLoader::load_component(SceneSchemaLoader& loader, std::
     return comp;
 }
 
-ComponentView SceneSchemaLoader::load_audio_source_component(SceneSchemaLoader& loader, SUID compSUID, const char* compName)
+ComponentView SceneSchemaLoader::load_audio_source(SceneSchemaLoader& loader, SUID compSUID, const char* compName)
 {
     Scene scene = loader.mScene;
     TOMLReader reader = loader.mReader;
@@ -169,7 +169,7 @@ ComponentView SceneSchemaLoader::load_audio_source_component(SceneSchemaLoader& 
     return ComponentView(source.data());
 }
 
-ComponentView SceneSchemaLoader::load_transform_2d_component(SceneSchemaLoader& loader, SUID compSUID, const char* compName)
+ComponentView SceneSchemaLoader::load_transform_2d(SceneSchemaLoader& loader, SUID compSUID, const char* compName)
 {
     Scene scene = loader.mScene;
     TOMLReader reader = loader.mReader;
@@ -188,7 +188,7 @@ ComponentView SceneSchemaLoader::load_transform_2d_component(SceneSchemaLoader& 
     return view;
 }
 
-ComponentView SceneSchemaLoader::load_camera_component(SceneSchemaLoader& loader, SUID compSUID, const char* compName)
+ComponentView SceneSchemaLoader::load_camera(SceneSchemaLoader& loader, SUID compSUID, const char* compName)
 {
     Scene scene = loader.mScene;
     TOMLReader reader = loader.mReader;
@@ -262,7 +262,7 @@ ComponentView SceneSchemaLoader::load_camera_component(SceneSchemaLoader& loader
     return ComponentView(camera.data());
 }
 
-ComponentView SceneSchemaLoader::load_camera_2d_component(SceneSchemaLoader& loader, SUID compSUID, const char* compName)
+ComponentView SceneSchemaLoader::load_camera_2d(SceneSchemaLoader& loader, SUID compSUID, const char* compName)
 {
     Scene scene = loader.mScene;
     TOMLReader reader = loader.mReader;
@@ -300,7 +300,7 @@ ComponentView SceneSchemaLoader::load_camera_2d_component(SceneSchemaLoader& loa
 }
 
 #if 0
-ComponentView SceneSchemaLoader::load_mesh_component(SceneSchemaLoader& loader, SUID compSUID, const char* compName)
+ComponentView SceneSchemaLoader::load_mesh(SceneSchemaLoader& loader, SUID compSUID, const char* compName)
 {
     Scene scene = loader.mScene;
     TOMLReader reader = loader.mReader;
@@ -328,7 +328,7 @@ ComponentView SceneSchemaLoader::load_mesh_component(SceneSchemaLoader& loader, 
 }
 #endif
 
-ComponentView SceneSchemaLoader::load_sprite_2d_component(SceneSchemaLoader& loader, SUID compSUID, const char* compName)
+ComponentView SceneSchemaLoader::load_sprite_2d(SceneSchemaLoader& loader, SUID compSUID, const char* compName)
 {
     Scene scene = loader.mScene;
     TOMLReader reader = loader.mReader;
@@ -371,7 +371,7 @@ ComponentView SceneSchemaLoader::load_sprite_2d_component(SceneSchemaLoader& loa
 }
 
 #if 0
-ComponentView SceneSchemaLoader::load_screen_ui_component(SceneSchemaLoader& loader, SUID compSUID, const char* compName)
+ComponentView SceneSchemaLoader::load_screen_ui(SceneSchemaLoader& loader, SUID compSUID, const char* compName)
 {
     Scene scene = loader.mScene;
     TOMLReader reader = loader.mReader;
@@ -416,7 +416,7 @@ bool SceneSchemaSaver::save_scene(Scene scene, std::string& toml, std::string& e
     mScene.get_root_components(roots);
     for (ComponentView root : roots)
     {
-        save_component(*this, root);
+        save(*this, root);
     }
 
     mWriter.end_array_table();
@@ -441,7 +441,7 @@ bool SceneSchemaSaver::save_scene(Scene scene, std::string& toml, std::string& e
     return true;
 }
 
-bool SceneSchemaSaver::save_audio_source_component(SceneSchemaSaver& saver, ComponentView comp)
+bool SceneSchemaSaver::save_audio_source(SceneSchemaSaver& saver, ComponentView comp)
 {
     LD_ASSERT(saver.mScene && saver.mWriter && comp);
 
@@ -457,7 +457,7 @@ bool SceneSchemaSaver::save_audio_source_component(SceneSchemaSaver& saver, Comp
     return true;
 }
 
-bool SceneSchemaSaver::save_transform_2d_component(SceneSchemaSaver& saver, ComponentView comp)
+bool SceneSchemaSaver::save_transform_2d(SceneSchemaSaver& saver, ComponentView comp)
 {
     LD_ASSERT(saver.mScene && saver.mWriter && comp);
 
@@ -472,7 +472,7 @@ bool SceneSchemaSaver::save_transform_2d_component(SceneSchemaSaver& saver, Comp
     return true;
 }
 
-bool SceneSchemaSaver::save_camera_component(SceneSchemaSaver& saver, ComponentView comp)
+bool SceneSchemaSaver::save_camera(SceneSchemaSaver& saver, ComponentView comp)
 {
     LD_ASSERT(saver.mScene && saver.mWriter && comp);
 
@@ -525,7 +525,7 @@ bool SceneSchemaSaver::save_camera_component(SceneSchemaSaver& saver, ComponentV
     return true;
 }
 
-bool SceneSchemaSaver::save_camera_2d_component(SceneSchemaSaver& saver, ComponentView comp)
+bool SceneSchemaSaver::save_camera_2d(SceneSchemaSaver& saver, ComponentView comp)
 {
     LD_ASSERT(saver.mScene && saver.mWriter && comp);
 
@@ -548,7 +548,7 @@ bool SceneSchemaSaver::save_camera_2d_component(SceneSchemaSaver& saver, Compone
 }
 
 #if 0
-bool SceneSchemaSaver::save_mesh_component(SceneSchemaSaver& saver, ComponentView comp)
+bool SceneSchemaSaver::save_mesh(SceneSchemaSaver& saver, ComponentView comp)
 {
     LD_ASSERT(saver.mScene && saver.mWriter && comp);
 
@@ -566,7 +566,7 @@ bool SceneSchemaSaver::save_mesh_component(SceneSchemaSaver& saver, ComponentVie
 }
 #endif
 
-bool SceneSchemaSaver::save_sprite_2d_component(SceneSchemaSaver& saver, ComponentView comp)
+bool SceneSchemaSaver::save_sprite_2d(SceneSchemaSaver& saver, ComponentView comp)
 {
     LD_ASSERT(saver.mScene && saver.mWriter && comp);
 
@@ -590,7 +590,7 @@ bool SceneSchemaSaver::save_sprite_2d_component(SceneSchemaSaver& saver, Compone
 }
 
 #if 0
-bool SceneSchemaSaver::save_screen_ui_component(SceneSchemaSaver& saver, ComponentView comp)
+bool SceneSchemaSaver::save_screen_ui(SceneSchemaSaver& saver, ComponentView comp)
 {
     LD_ASSERT(saver.mScene && saver.mWriter && comp);
 
@@ -605,7 +605,7 @@ bool SceneSchemaSaver::save_screen_ui_component(SceneSchemaSaver& saver, Compone
 }
 #endif
 
-void SceneSchemaSaver::save_component(SceneSchemaSaver& saver, ComponentView root)
+void SceneSchemaSaver::save(SceneSchemaSaver& saver, ComponentView root)
 {
     LD_ASSERT(root);
 
@@ -636,7 +636,7 @@ void SceneSchemaSaver::save_component(SceneSchemaSaver& saver, ComponentView roo
     {
         LD_ASSERT(child);
         saver.mChildMap[root.suid()].push_back(child.suid());
-        save_component(saver, child);
+        save(saver, child);
     }
 }
 
@@ -683,7 +683,7 @@ bool SceneSchemaLoader::load_scene(Scene scene, SUIDRegistry idReg, const View& 
             if (!mReader.enter_table(i))
                 continue;
 
-            ComponentView comp = load_component(*this, err);
+            ComponentView comp = load(*this, err);
             if (!comp)
                 valid = false;
 

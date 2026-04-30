@@ -51,6 +51,7 @@ struct SceneComponentMeta
     const PropertyMetaTable* propMetaTable;
     void (*init)(ComponentBase** dstData);
     bool (*clone)(SceneObj* scene, ComponentBase** dstData, ComponentBase** srcData, std::string& err);
+    bool (*load)(SceneObj* scene, ComponentBase** data, const Vector<PropertyValue>& props, std::string& err);
     bool (*unload)(SceneObj* scene, ComponentBase** data, std::string& err);
     bool (*startup)(SceneObj* scene, ComponentBase** data, std::string& err);
     bool (*cleanup)(SceneObj* scene, ComponentBase** data, std::string& err);
@@ -64,15 +65,15 @@ static bool clone_nop(SceneObj*, ComponentBase**, ComponentBase**, std::string&)
 
 // clang-format off
 static SceneComponentMeta sSceneComponents[] = {
-    {COMPONENT_TYPE_DATA,         nullptr,                    nullptr,                      nullptr,                       nullptr,                        nullptr,                      nullptr,                         nullptr, nullptr},
-    {COMPONENT_TYPE_AUDIO_SOURCE, &gAudioSourcePropMetaTable, &init_audio_source_component, &clone_audio_source_component, &unload_audio_source_component, nullptr,                      &cleanup_audio_source_component, &audio_source_component_get_asset, &audio_source_component_set_asset, &audio_source_component_get_asset_type},
-    {COMPONENT_TYPE_TRANSFORM,    nullptr,                    &init_nop,                    &clone_nop,                    nullptr,                        nullptr,                      nullptr,                         nullptr, nullptr},
-    {COMPONENT_TYPE_TRANSFORM_2D, &gTransform2DPropMetaTable, &init_nop,                    &clone_nop,                    nullptr,                        nullptr,                      nullptr,                         nullptr, nullptr},
-    {COMPONENT_TYPE_CAMERA,       nullptr,                    &init_camera_component,       &clone_camera_component,       &unload_camera_component,       &startup_camera_component,    &cleanup_camera_component,       nullptr, nullptr},
-    {COMPONENT_TYPE_CAMERA_2D,    &gCamera2DPropMetaTable,    &init_camera_2d_component,    &clone_camera_2d_component,    &unload_camera_2d_component,    &startup_camera_2d_component, &cleanup_camera_2d_component,    nullptr, nullptr},
-    {COMPONENT_TYPE_MESH,         nullptr,                    &init_mesh_component,         &clone_mesh_component,         &unload_mesh_component,         nullptr,                      nullptr,                         nullptr, nullptr},
-    {COMPONENT_TYPE_SPRITE_2D,    &gSprite2DPropMetaTable,    &init_sprite_2d_component,    &clone_sprite_2d_component,    &unload_sprite_2d_component,    &startup_sprite_2d_component, &cleanup_sprite_2d_component,    &sprite_2d_component_get_asset, &sprite_2d_component_set_asset, &sprite_2d_component_get_asset_type},
-    {COMPONENT_TYPE_SCREEN_UI,    nullptr,                    &init_screen_ui_component,    &clone_screen_ui_component,    &unload_screen_ui_component,    &startup_screen_ui_component, &cleanup_screen_ui_component,    nullptr, nullptr},
+    {COMPONENT_TYPE_DATA,         nullptr,                    nullptr,                      nullptr,                       nullptr,                           nullptr,                        nullptr,                      nullptr,                         nullptr, nullptr},
+    {COMPONENT_TYPE_AUDIO_SOURCE, &gAudioSourcePropMetaTable, &AudioSourceMeta::init,       &AudioSourceMeta::clone,       &AudioSourceMeta::load_from_props, &AudioSourceMeta::unload,       nullptr,                      &AudioSourceMeta::cleanup,       &AudioSourceMeta::get_asset, &AudioSourceMeta::set_asset, &AudioSourceMeta::get_asset_type},
+    {COMPONENT_TYPE_TRANSFORM,    nullptr,                    &init_nop,                    &clone_nop,                    nullptr,                           nullptr,                        nullptr,                      nullptr,                         nullptr, nullptr},
+    {COMPONENT_TYPE_TRANSFORM_2D, &gTransform2DPropMetaTable, &Transform2DMeta::init,       &Transform2DMeta::clone,       &Transform2DMeta::load_from_props, nullptr,                        nullptr,                      nullptr,                         nullptr, nullptr},
+    {COMPONENT_TYPE_CAMERA,       nullptr,                    &init_camera_component,       &clone_camera_component,       nullptr,                           &unload_camera_component,       &startup_camera_component,    &cleanup_camera_component,       nullptr, nullptr},
+    {COMPONENT_TYPE_CAMERA_2D,    &gCamera2DPropMetaTable,    &Camera2DMeta::init,          &Camera2DMeta::clone,          &Camera2DMeta::load_from_props,    &Camera2DMeta::unload,          &Camera2DMeta::startup,       &Camera2DMeta::cleanup,          nullptr, nullptr},
+    {COMPONENT_TYPE_MESH,         nullptr,                    &init_mesh_component,         &clone_mesh_component,         nullptr,                           &unload_mesh_component,         nullptr,                      nullptr,                         nullptr, nullptr},
+    {COMPONENT_TYPE_SPRITE_2D,    &gSprite2DPropMetaTable,    &Sprite2DMeta::init,          &Sprite2DMeta::clone,          &Sprite2DMeta::load_from_props,    &Sprite2DMeta::unload,          &Sprite2DMeta::startup,       &Sprite2DMeta::cleanup,          &Sprite2DMeta::get_asset, &Sprite2DMeta::set_asset, &Sprite2DMeta::get_asset_type},
+    {COMPONENT_TYPE_SCREEN_UI,    nullptr,                    &init_screen_ui_component,    &clone_screen_ui_component,    nullptr,                           &unload_screen_ui_component,    &startup_screen_ui_component, &cleanup_screen_ui_component,    nullptr, nullptr},
 };
 // clang-format on
 
@@ -958,6 +959,13 @@ SUID ComponentView::suid()
 RUID ComponentView::ruid()
 {
     return sScene->renderSystemCache.get_component_draw_id((*mData)->cuid);
+}
+
+bool ComponentView::load_from_props(const Vector<PropertyValue>& props, std::string& err)
+{
+    int type = (*mData)->type;
+
+    return sSceneComponents[type].load(sScene, mData, props, err);
 }
 
 const char* ComponentView::get_name()

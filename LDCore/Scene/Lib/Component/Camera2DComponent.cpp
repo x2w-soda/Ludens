@@ -7,11 +7,11 @@ namespace LD {
 
 // clang-format off
 static PropertyMeta sCamera2DPropMeta[] = {
-    {"z_depth", VALUE_TYPE_U32},
-    {"viewport", VALUE_TYPE_RECT},
-    {"extent", VALUE_TYPE_VEC2},
-    {"zoom", VALUE_TYPE_F32},
-    {"constraint", VALUE_TYPE_BOOL },
+    {"z_depth",    VALUE_TYPE_U32,  Value64((uint32_t)0) },
+    {"viewport",   VALUE_TYPE_RECT, Value64(Rect()) },
+    {"extent",     VALUE_TYPE_VEC2, Value64(Vec2(500.0f)) },
+    {"zoom",       VALUE_TYPE_F32,  Value64(1.0f) },
+    {"constraint", VALUE_TYPE_BOOL, Value64(true) },
 };
 // clang-format on
 
@@ -81,7 +81,7 @@ static Rect clamp_rect(Rect rect)
     return Rect(std::clamp(rect.x, 0.0f, 1.0f), std::clamp(rect.y, 0.0f, 1.0f), std::clamp(rect.w, 0.0f, 1.0f), std::clamp(rect.h, 0.0f, 1.0f));
 }
 
-void init_camera_2d_component(ComponentBase** dstData)
+void Camera2DMeta::init(ComponentBase** dstData)
 {
     Vec2 extent = sScene->tick.extent;
 
@@ -93,7 +93,7 @@ void init_camera_2d_component(ComponentBase** dstData)
     LD_ASSERT(dstCamera2D->transform);
 }
 
-bool clone_camera_2d_component(SceneObj* scene, ComponentBase** dstData, ComponentBase** srcData, std::string& err)
+bool Camera2DMeta::clone(SceneObj* scene, ComponentBase** dstData, ComponentBase** srcData, std::string& err)
 {
     Camera2DView srcCamera(srcData);
     LD_ASSERT(srcCamera);
@@ -101,14 +101,14 @@ bool clone_camera_2d_component(SceneObj* scene, ComponentBase** dstData, Compone
     Rect viewport = srcCamera.get_viewport();
     Camera2DInfo info = srcCamera.get_info();
     Camera2DComponent* dstCamera2D = (Camera2DComponent*)dstData;
-    if (!load_camera_2d_component(scene, dstCamera2D, info, viewport, err))
+    if (!load(scene, dstCamera2D, info, viewport, err))
         return false;
 
     dstCamera2D->constraint = srcCamera.get_constraint();
     return true;
 }
 
-bool load_camera_2d_component(SceneObj* scene, Camera2DComponent* camera, const Camera2DInfo& info, const Rect& viewport, std::string& err)
+bool Camera2DMeta::load(SceneObj* scene, Camera2DComponent* camera, const Camera2DInfo& info, const Rect& viewport, std::string& err)
 {
     if (camera->camera)
         Camera2D::destroy(camera->camera);
@@ -119,7 +119,48 @@ bool load_camera_2d_component(SceneObj* scene, Camera2DComponent* camera, const 
     return (bool)camera->camera;
 }
 
-bool unload_camera_2d_component(SceneObj* scene, ComponentBase** cameraData, std::string& err)
+bool Camera2DMeta::load_from_props(SceneObj* scene, ComponentBase** data, const Vector<PropertyValue>& props, std::string& err)
+{
+    Transform2D transform = Transform2D::identity();
+    Camera2DInfo info{};
+    Rect viewport{};
+    bool constraint = false;
+
+    for (const PropertyValue& prop : props)
+    {
+        switch (prop.index)
+        {
+        case CAMERA_2D_PROP_TRANSFORM:
+            transform = prop.value.get_transform_2d();
+            break;
+        case CAMERA_2D_PROP_VIEWPORT:
+            viewport = prop.value.get_rect();
+            break;
+        case CAMERA_2D_PROP_EXTENT:
+            info.extent = prop.value.get_vec2();
+            break;
+        case CAMERA_2D_PROP_ZOOM:
+            info.zoom = prop.value.get_f32();
+            break;
+        case CAMERA_2D_PROP_CONSTRAINT:
+            constraint = prop.value.get_bool();
+            break;
+        default:
+            break;
+        }
+    }
+
+    auto* cameraC = (Camera2DComponent*)data;
+    if (!load(sScene, cameraC, info, viewport, err))
+        return false;
+
+    Camera2DView cameraV(cameraC);
+    cameraV.set_constraint((Camera2DConstraint)constraint);
+
+    return true;
+}
+
+bool Camera2DMeta::unload(SceneObj* scene, ComponentBase** cameraData, std::string& err)
 {
     Camera2DComponent* camera = (Camera2DComponent*)cameraData;
 
@@ -132,7 +173,7 @@ bool unload_camera_2d_component(SceneObj* scene, ComponentBase** cameraData, std
     return true;
 }
 
-bool startup_camera_2d_component(SceneObj* scene, ComponentBase** data, std::string& err)
+bool Camera2DMeta::startup(SceneObj* scene, ComponentBase** data, std::string& err)
 {
     Camera2DComponent* camera = (Camera2DComponent*)data;
 
@@ -144,7 +185,7 @@ bool startup_camera_2d_component(SceneObj* scene, ComponentBase** data, std::str
     return (bool)camera->camera;
 }
 
-bool cleanup_camera_2d_component(SceneObj* scene, ComponentBase** data, std::string& err)
+bool Camera2DMeta::cleanup(SceneObj* scene, ComponentBase** data, std::string& err)
 {
     // Camera2D not destroyed until unload.
     return true;
@@ -170,7 +211,7 @@ Camera2DView::Camera2DView(Camera2DComponent* comp)
 
 bool Camera2DView::load(const Camera2DInfo& info, Rect viewport, std::string& err)
 {
-    return load_camera_2d_component(sScene, mCamera, info, viewport, err);
+    return Camera2DMeta::load(sScene, mCamera, info, viewport, err);
 }
 
 Camera2DInfo Camera2DView::get_info()

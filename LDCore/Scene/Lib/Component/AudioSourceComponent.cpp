@@ -47,9 +47,9 @@ static void audio_source_prop_setter(void* data, uint32_t index, const Value64& 
 }
 
 static PropertyMeta sAudioSourcePropMeta[] = {
-    {"clip", VALUE_TYPE_U32, {}, PROPERTY_UI_HINT_ASSET},
-    {"pan", VALUE_TYPE_F32, {}, PROPERTY_UI_HINT_SLIDER},
-    {"volume_linear", VALUE_TYPE_F32, {}, PROPERTY_UI_HINT_SLIDER},
+    {"clip", VALUE_TYPE_U32, Value64(0u), PROPERTY_UI_HINT_ASSET},
+    {"pan", VALUE_TYPE_F32, Value64(0.5f), PROPERTY_UI_HINT_SLIDER},
+    {"volume_linear", VALUE_TYPE_F32, Value64(1.0f), PROPERTY_UI_HINT_SLIDER},
 };
 
 PropertyMetaTable gAudioSourcePropMetaTable{
@@ -90,7 +90,7 @@ static bool load_audio_playback(SceneObj* scene, AudioSourceComponent* source, f
     return true;
 }
 
-void init_audio_source_component(ComponentBase** dstData)
+void AudioSourceMeta::init(ComponentBase** dstData)
 {
     AudioSourceComponent* dstAudioSource = (AudioSourceComponent*)dstData;
     dstAudioSource->playback = {};
@@ -98,7 +98,7 @@ void init_audio_source_component(ComponentBase** dstData)
     dstAudioSource->clipID = (AssetID)0;
 }
 
-bool load_audio_source_component(SceneObj* scene, AudioSourceComponent* source, AssetID clipID, float pan, float volumeLinear, std::string& err)
+bool AudioSourceMeta::load(SceneObj* scene, AudioSourceComponent* source, AssetID clipID, float pan, float volumeLinear, std::string& err)
 {
     LD_PROFILE_SCOPE;
 
@@ -120,7 +120,34 @@ bool load_audio_source_component(SceneObj* scene, AudioSourceComponent* source, 
     return true;
 }
 
-bool clone_audio_source_component(SceneObj* scene, ComponentBase** dstData, ComponentBase** srcData, std::string& err)
+bool AudioSourceMeta::load_from_props(SceneObj* scene, ComponentBase** data, const Vector<PropertyValue>& props, std::string& err)
+{
+    AssetID clipAsset = {};
+    float pan = 0.5f;
+    float volumeLinear = 1.0f;
+
+    for (const PropertyValue& prop : props)
+    {
+        switch (prop.index)
+        {
+        case AUDIO_SOURCE_PROP_CLIP_ASSET:
+            clipAsset = (AssetID)prop.value.get_u32();
+            break;
+        case AUDIO_SOURCE_PROP_PAN:
+            pan = prop.value.get_f32();
+            break;
+        case AUDIO_SOURCE_PROP_VOLUME_LINEAR:
+            volumeLinear = prop.value.get_f32();
+            break;
+        default:
+            break;
+        }
+    }
+
+    return load(sScene, (AudioSourceComponent*)data, clipAsset, pan, volumeLinear, err);
+}
+
+bool AudioSourceMeta::clone(SceneObj* scene, ComponentBase** dstData, ComponentBase** srcData, std::string& err)
 {
     LD_PROFILE_SCOPE;
 
@@ -132,10 +159,10 @@ bool clone_audio_source_component(SceneObj* scene, ComponentBase** dstData, Comp
     float pan = srcSource.get_pan();
     float volume = srcSource.get_volume_linear();
 
-    return load_audio_source_component(scene, (AudioSourceComponent*)dstSource.data(), clipAID, pan, volume, err);
+    return load(scene, (AudioSourceComponent*)dstSource.data(), clipAID, pan, volume, err);
 }
 
-bool unload_audio_source_component(SceneObj* scene, ComponentBase** sourceData, std::string& err)
+bool AudioSourceMeta::unload(SceneObj* scene, ComponentBase** sourceData, std::string& err)
 {
     auto* source = (AudioSourceComponent*)sourceData;
 
@@ -148,7 +175,7 @@ bool unload_audio_source_component(SceneObj* scene, ComponentBase** sourceData, 
     return true;
 }
 
-bool cleanup_audio_source_component(SceneObj* scene, ComponentBase** sourceData, std::string& err)
+bool AudioSourceMeta::cleanup(SceneObj* scene, ComponentBase** sourceData, std::string& err)
 {
     auto* source = (AudioSourceComponent*)sourceData;
 
@@ -158,7 +185,7 @@ bool cleanup_audio_source_component(SceneObj* scene, ComponentBase** sourceData,
     return true;
 }
 
-AssetID audio_source_component_get_asset(SceneObj* scene, ComponentBase** data, uint32_t assetSlotIndex)
+AssetID AudioSourceMeta::get_asset(SceneObj* scene, ComponentBase** data, uint32_t assetSlotIndex)
 {
     if (assetSlotIndex != 0)
         return 0;
@@ -167,7 +194,7 @@ AssetID audio_source_component_get_asset(SceneObj* scene, ComponentBase** data, 
     return source->clipID;
 }
 
-bool audio_source_component_set_asset(SceneObj* scene, ComponentBase** data, uint32_t assetSlotIndex, AssetID id)
+bool AudioSourceMeta::set_asset(SceneObj* scene, ComponentBase** data, uint32_t assetSlotIndex, AssetID id)
 {
     auto* source = (AudioSourceComponent*)data;
     AudioSourceView sourceV(source);
@@ -178,7 +205,7 @@ bool audio_source_component_set_asset(SceneObj* scene, ComponentBase** data, uin
     return sourceV.set_clip_asset(id);
 }
 
-AssetType audio_source_component_get_asset_type(SceneObj* scene, uint32_t assetSlotIndex)
+AssetType AudioSourceMeta::get_asset_type(SceneObj* scene, uint32_t assetSlotIndex)
 {
     if (assetSlotIndex != 0)
         return ASSET_TYPE_ENUM_COUNT;
@@ -208,7 +235,7 @@ bool AudioSourceView::load(AssetID clipAsset, float pan, float volumeLinear)
 {
     std::string err;
 
-    return load_audio_source_component(sScene, mAudioSource, clipAsset, pan, volumeLinear, err);
+    return AudioSourceMeta::load(sScene, mAudioSource, clipAsset, pan, volumeLinear, err);
 }
 
 void AudioSourceView::play()

@@ -40,9 +40,9 @@ struct PropertyMeta
 {
     const char* name;   // unique name within type
     ValueType type;     // property value type
-    PropertyFlagBit flags;
-    PropertyUIHint uiHint;
     Value64 defaultVal; // default property value hint
+    PropertyUIHint uiHint;
+    PropertyFlagBit flags;
 };
 
 struct PropertyMetaTable

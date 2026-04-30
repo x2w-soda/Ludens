@@ -48,18 +48,38 @@ PropertyMetaTable gTransform2DPropMetaTable{
     .setter = &transform_2d_prop_setter,
 };
 
-void init_transform_2d_component(ComponentBase** dstData)
+void Transform2DMeta::init(ComponentBase** dstData)
 {
     ComponentBase* base = *dstData;
     Transform2DComponent* dstTransform2D = (Transform2DComponent*)dstData;
     dstTransform2D->transform = base->transform2D;
 }
 
-bool clone_transform_2d_component(SceneObj* scene, ComponentBase** dstData, ComponentBase** srcData, std::string& err)
+bool Transform2DMeta::clone(SceneObj* scene, ComponentBase** dstData, ComponentBase** srcData, std::string& err)
 {
     Transform2DComponent* dstTransform2D = (Transform2DComponent*)dstData;
     Transform2DComponent* srcTransform2D = (Transform2DComponent*)srcData;
     dstTransform2D->transform = srcTransform2D->transform;
+
+    return true;
+}
+
+bool Transform2DMeta::load_from_props(SceneObj* scene, ComponentBase** data, const Vector<PropertyValue>& props, std::string& err)
+{
+    Transform2D transform2D = Transform2D::identity();
+
+    for (const PropertyValue& prop : props)
+    {
+        switch (prop.index)
+        {
+        case TRANSFORM_2D_PROP_TRANSFORM:
+            transform2D = prop.value.get_transform_2d();
+            break;
+        }
+    }
+
+    auto* dstTransform2D = (Transform2DComponent*)data;
+    *dstTransform2D->transform = transform2D;
 
     return true;
 }

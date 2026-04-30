@@ -95,6 +95,12 @@ Value64::Value64(uint64_t u64)
     v16.u64[0] = u64;
 }
 
+Value64::Value64(bool b8)
+    : type(VALUE_TYPE_BOOL)
+{
+    v16.b8[0] = b8;
+}
+
 Value64::Value64(Vec2 vec2)
     : type(VALUE_TYPE_VEC2)
 {
@@ -123,6 +129,18 @@ Value64::Value64(Rect rect)
     : type(VALUE_TYPE_RECT)
 {
     v16.rect = rect;
+}
+
+Value64::Value64(Transform2D transform2D)
+    : type(VALUE_TYPE_TRANSFORM_2D)
+{
+    this->transform2D = transform2D;
+}
+
+Value64::Value64(TransformEx transformEx)
+    : type(VALUE_TYPE_TRANSFORM)
+{
+    this->transformEx = transformEx;
 }
 
 Value64::~Value64()
