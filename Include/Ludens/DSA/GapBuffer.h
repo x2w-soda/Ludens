@@ -106,7 +106,7 @@ public:
         if (!cstr)
             return;
 
-        insert(pos, View(cstr, strlen(cstr)));
+        insert(pos, View((const byte*)cstr, strlen(cstr)));
     }
 
     /// @brief Inserts a STL string at position.

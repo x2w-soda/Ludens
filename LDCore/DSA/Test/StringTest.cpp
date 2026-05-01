@@ -7,12 +7,9 @@ using namespace LD;
 
 static_assert(LD::IsTrivial<View>);
 
-template <typename T, size_t TLocalSize>
-void test_string_ctor()
+TEST_CASE("String ctor")
 {
-    using Str = TString<T, TLocalSize>;
-
-    Str s;
+    String s;
     CHECK(s.size() == 0);
     CHECK(s.empty());
 
@@ -22,102 +19,72 @@ void test_string_ctor()
 
     s.clear();
     CHECK(s.empty());
-}
 
-TEST_CASE("String ctor")
-{
-    constexpr size_t localSize = 12;
-
-    test_string_ctor<char, localSize>();
-    test_string_ctor<uint16_t, localSize>();
-    test_string_ctor<uint32_t, localSize>();
-
-    const MemoryProfile& profile = get_memory_profile(MEMORY_USAGE_MISC);
-    CHECK(profile.current == 0);
-}
-
-template <typename T, size_t TLocalSize>
-void test_string_copy()
-{
-    using Str = TString<T, TLocalSize>;
-
-    const char* cstr = "hello, world";
-
-    Str s1(cstr);
-    CHECK(s1.size() == 12);
-
-    // copy construct
-    Str s2(s1);
-    CHECK(s2.size() == s1.size());
-    CHECK(s2 == s1);
-
-    // copy assign
-    Str s3;
-    s3 = s1;
-    CHECK(s3.size() == s1.size());
-    CHECK(s3 == s2);
+    CHECK_FALSE(get_memory_leaks(nullptr));
 }
 
 TEST_CASE("String copy")
 {
-    constexpr size_t localSize = 12;
+    const char* cstr = "hello, world";
 
-    test_string_copy<char, localSize>();
-    test_string_copy<uint16_t, localSize>();
-    test_string_copy<uint32_t, localSize>();
+    String s1(cstr);
+    CHECK(s1.size() == 12);
 
-    const MemoryProfile& profile = get_memory_profile(MEMORY_USAGE_MISC);
-    CHECK(profile.current == 0);
-}
+    // copy construct
+    String s2(s1);
+    CHECK(s2.size() == s1.size());
+    CHECK(s2 == s1);
 
-template <typename T, size_t TLocalSize>
-void test_string_move()
-{
-    using Str = TString<T, TLocalSize>;
+    // copy assign
+    String s3;
+    s3 = s1;
+    CHECK(s3.size() == s1.size());
+    CHECK(s3 == s2);
 
-    const char* cstr = "string move";
-    size_t len = strlen(cstr);
-
-    Str s1(cstr);
-    CHECK(s1.size() == len);
-
-    // move construct local string
-    Str s2(std::move(s1));
-    CHECK(s2.size() == len);
-    CHECK(s2 == "string move");
-
-    // move assign local string
-    Str s3;
-    s3 = std::move(s2);
-    CHECK(s3.size() == len);
-    CHECK(s3 == "string move");
-
-    s1 = Str(cstr);
-    s1.resize(TLocalSize * 2);  // move to heap storage
-    s1.resize(len);             // does not revert to local storage
-    CHECK(s1 == "string move"); // content should not be truncated
-
-    // move construct heap string
-    Str s4(std::move(s1));
-    CHECK(s4.size() == len);
-    CHECK(s4 == "string move");
-
-    // move assign heap string
-    s3 = std::move(s4);
-    CHECK(s3.size() == len);
-    CHECK(s3 == "string move");
+    CHECK_FALSE(get_memory_leaks(nullptr));
 }
 
 TEST_CASE("String move")
 {
-    constexpr size_t localSize = 12;
+    const char* cstr = "string move";
+    size_t len = strlen(cstr);
 
-    test_string_move<char, localSize>();
-    test_string_move<uint16_t, localSize>();
-    test_string_move<uint32_t, localSize>();
+    {
+        String s1(cstr);
+        CHECK(s1.size() == len);
 
-    const MemoryProfile& profile = get_memory_profile(MEMORY_USAGE_MISC);
-    CHECK(profile.current == 0);
+        // move construct local string
+        String s2(std::move(s1));
+        CHECK(s2.size() == len);
+        CHECK(s2 == "string move");
+
+        // move assign local string
+        String s3;
+        s3 = std::move(s2);
+        CHECK(s3.size() == len);
+        CHECK(s3 == "string move");
+
+        s1 = String(cstr);
+        s1.resize(STRING_DEFAULT_LOCAL_SIZE * 2); // move from local to heap storage
+        s1.resize(len);                           // does not revert to local storage
+        CHECK(s1 == "string move");               // content should not be truncated
+
+        s1.resize(STRING_DEFAULT_LOCAL_SIZE * 3); // grow heap storage
+        s1.resize(len);                           // does not revert to local storage
+        CHECK(s1 == "string move");               // content should not be truncated
+
+        // move construct heap string
+        String s4(std::move(s1));
+        CHECK(s4.size() == len);
+        CHECK(s4 == "string move");
+
+        // move assign heap string
+        s3 = std::move(s4);
+        CHECK(s3.size() == len);
+        CHECK(s3 == "string move");
+    }
+
+    CHECK_FALSE(get_memory_leaks(nullptr));
 }
 
 TEST_CASE("String methods")
@@ -125,7 +92,7 @@ TEST_CASE("String methods")
     {
         String s;
 
-        CHECK(s.capacity() == STRING_DEFAULT_LOCAL_STORAGE);
+        CHECK(s.capacity() == STRING_DEFAULT_LOCAL_SIZE);
         CHECK(s.empty());
 
         s = "foo";
@@ -141,8 +108,7 @@ TEST_CASE("String methods")
         CHECK(s.size() == 0);
     }
 
-    const MemoryProfile& profile = get_memory_profile(MEMORY_USAGE_MISC);
-    CHECK(profile.current == 0);
+    CHECK_FALSE(get_memory_leaks(nullptr));
 }
 
 TEST_CASE("String replace")
@@ -223,4 +189,6 @@ TEST_CASE("String replace")
         s.replace(0, 0, nullptr, 0);
         CHECK(s == "");
     }
+
+    CHECK_FALSE(get_memory_leaks(nullptr));
 }

@@ -1,134 +1,131 @@
 #pragma once
 
-#include <Ludens/DSA/HeapStorage.h>
 #include <Ludens/Memory/Memory.h>
+
 #include <cstring>
 
-#define STRING_DEFAULT_LOCAL_STORAGE 12
+#define STRING_DEFAULT_LOCAL_SIZE 16
 
 namespace LD {
 
-/// @brief string class with SSO
-/// @tparam T character type
+/// @brief String class with template SSO parameter.
 /// @tparam TLocalSize local storage
 /// @tparam TUsage usage hint
-template <typename T, size_t TLocalSize, MemoryUsage TUsage = MEMORY_USAGE_MISC>
+template <size_t TLocalSize, MemoryUsage TUsage = MEMORY_USAGE_MISC>
 class TString
 {
 public:
     TString()
         : mBase(mLocal)
     {
-        mHeap.cap = TLocalSize;
     }
 
     TString(const char* cstr)
         : mBase(mLocal)
     {
-        mHeap.cap = TLocalSize;
-        size_t len = strlen(cstr);
-        resize(len);
+        if (!cstr)
+        {
+            mSize = 0;
+            return;
+        }
 
-        if constexpr (sizeof(T) == 1)
-        {
-            memcpy(mBase, cstr, len);
-        }
-        else
-        {
-            for (size_t i = 0; i < len; i++)
-                mBase[i] = static_cast<T>(cstr[i]);
-        }
+        resize(strlen(cstr));
+        memcpy(mBase, cstr, mSize);
     }
 
-    TString(const T* str, size_t len)
+    TString(const char8_t* buf, size_t len)
         : mBase(mLocal)
     {
-        mHeap.cap = TLocalSize;
         resize(len);
-        memcpy(mBase, str, len * sizeof(T));
+        memcpy(mBase, buf, len);
+    }
+    
+    TString(const byte* buf, size_t len)
+        : mBase(mLocal)
+    {
+        resize(len);
+        memcpy(mBase, buf, len);
+    }
+
+    TString(const char* str, size_t len)
+        : mBase(mLocal)
+    {
+        resize(len);
+        memcpy(mBase, str, len);
     }
 
     TString(const TString& other)
         : mBase(mLocal)
     {
-        mHeap.cap = TLocalSize;
-        resize(other.mHeap.size);
-        memcpy(mBase, other.mBase, other.mHeap.size * sizeof(T));
+        resize(other.mSize);
+        memcpy(mBase, other.mBase, mSize);
     }
 
-    TString(TString&& other)
-        : mBase(mLocal)
+    TString(TString&& other) noexcept
+        : mBase(mLocal), mSize(other.mSize), mCap(other.mCap)
     {
-        mHeap.size = other.mHeap.size;
-        mHeap.cap = other.mHeap.cap;
-
         if (other.mBase == other.mLocal)
-        {
-            // copy local data over
-            memcpy(mLocal, other.mLocal, other.mHeap.size * sizeof(T));
-        }
+            memcpy(mLocal, other.mLocal, other.mSize);
         else
         {
-            // move container over
-            mHeap = std::move(other.mHeap);
-            mBase = mHeap.data;
+            mBase = other.mBase;
+            other.mBase = other.mLocal;
         }
 
-        other.mHeap.size = 0;
-        other.mHeap.cap = 0;
+        other.mSize = 0;
+        other.mCap = 0;
     }
 
     ~TString()
     {
-        if (mBase == mHeap.data)
-            mHeap.release();
+        if (mBase != mLocal)
+            heap_free(mBase);
     }
 
     TString& operator=(const TString& other)
     {
-        resize(other.mHeap.size);
-        memcpy(mBase, other.mBase, other.mHeap.size * sizeof(T));
+        resize(other.mSize);
+        memcpy(mBase, other.mBase, other.mSize);
 
         return *this;
     }
 
-    TString& operator=(TString&& other)
+    TString& operator=(TString&& other) noexcept
     {
-        mBase = mLocal;
-        mHeap.size = other.mHeap.size;
-        mHeap.cap = other.mHeap.cap;
-
-        if (other.mBase == other.mLocal)
+        if (*this != other)
         {
-            // copy local data over
-            memcpy(mLocal, other.mLocal, other.mHeap.size * sizeof(T));
-        }
-        else
-        {
-            // move container over
-            mHeap = std::move(other.mHeap);
-            mBase = mHeap.data;
+            mBase = mLocal;
+            mSize = other.mSize;
+            mCap = other.mSize;
+
+            if (other.mBase == other.mLocal)
+                memcpy(mLocal, other.mLocal, other.mSize);
+            else
+            {
+                mBase = other.mBase;
+                other.mBase = other.mLocal;
+            }
         }
 
-        other.mHeap.size = 0;
-        other.mHeap.cap = 0;
+        other.mSize = 0;
+        other.mCap = 0;
 
         return *this;
     }
 
-    size_t size() const
+    inline size_t size() const
     {
-        return mHeap.size;
+        return mSize;
     }
 
-    size_t capacity() const
+    inline size_t capacity() const
     {
-        return mHeap.cap;
+        return mCap;
     }
 
-    bool empty() const
+    inline bool empty() const
     {
-        return mHeap.size == 0;
+        return mSize == 0;
     }
 
     void clear()
@@ -136,44 +133,41 @@ public:
         resize(0);
     }
 
-    const T* data() const
+    const char8_t* data() const
     {
         return mBase;
     }
 
-    T* data()
+    char8_t* data()
     {
         return mBase;
     }
 
-    /// @brief adjust string size
+    /// @brief Adjust string size
     /// @param nsize new size
     void resize(size_t nsize)
     {
-        if (nsize <= mHeap.cap)
+        if (nsize <= mCap)
         {
-            mHeap.size = nsize;
+            mSize = nsize;
             return;
         }
 
-        if (mBase == mLocal)
+        if (mBase == mLocal) // migrate to heap storage
         {
-            size_t size = mHeap.size;
-
-            // migrate to heap storage
-            mHeap.cap = 0;
-            mHeap.size = 0;
-            mHeap.resize(nsize);
-
-            memcpy(mHeap.data, mLocal, sizeof(T) * size);
+            mBase = (char8_t*)heap_malloc(nsize, TUsage);
+            memcpy(mBase, mLocal, mSize);
         }
-        else
+        else // resize heap storage
         {
-            // resize heap storage
-            mHeap.resize(nsize);
+            char8_t* nbase = (char8_t*)heap_malloc(nsize, TUsage);
+            memcpy(nbase, mBase, mSize);
+            heap_free(mBase);
+            mBase = nbase;
         }
 
-        mBase = mHeap.data;
+        mSize = nsize;
+        mCap = nsize;
     }
 
     /// @brief replace a portion of string
@@ -181,15 +175,15 @@ public:
     /// @param len the length of the portion to be replaced
     /// @param rep the new string value to replace with
     /// @param rlen the length of the new replacement string
-    void replace(size_t pos, size_t len, const T* rep, size_t rlen)
+    void replace(size_t pos, size_t len, const char* rep, size_t rlen)
     {
         if (rlen >= len)
         {
             size_t shift = rlen - len;
-            resize(mHeap.size + shift);
-            size_t last = mHeap.size - 1;
+            resize(mSize + shift);
+            size_t last = mSize - 1;
 
-            for (size_t i = 0; (pos + rlen + i) < mHeap.size; i++)
+            for (size_t i = 0; (pos + rlen + i) < mSize; i++)
                 mBase[last - i] = mBase[last - shift - i];
 
             for (size_t i = 0; i < rlen; i++)
@@ -200,13 +194,13 @@ public:
             size_t shift = len - rlen;
             size_t first = pos + rlen;
 
-            for (size_t i = 0; (first + shift + i) < mHeap.size; i++)
+            for (size_t i = 0; (first + shift + i) < mSize; i++)
                 mBase[first + i] = mBase[first + shift + i];
 
             for (size_t i = 0; i < rlen; i++)
                 mBase[pos + i] = rep[i];
 
-            resize(mHeap.size - shift);
+            resize(mSize - shift);
         }
     }
 
@@ -223,7 +217,7 @@ public:
     /// @param pos position to insert string
     /// @param str source string to insert
     /// @param len length of source string
-    inline void insert(size_t pos, const T* str, size_t len)
+    inline void insert(size_t pos, const char8_t* str, size_t len)
     {
         replace(pos, 0, str, len);
     }
@@ -231,11 +225,12 @@ public:
     /// @brief append a string at the back
     /// @param str source string to append
     /// @param len length of source string
-    inline void append(const T* str, size_t len)
+    inline void append(const char8_t* str, size_t len)
     {
-        replace(mHeap.size, 0, str, len);
+        replace(mSize, 0, str, len);
     }
 
+    /// @brief Copy from C string.
     void operator=(const char* cstr)
     {
         if (!cstr)
@@ -244,59 +239,35 @@ public:
             return;
         }
 
-        size_t len = strlen(cstr);
-
-        resize(len);
-
-        if constexpr (sizeof(T) == 1)
-        {
-            memcpy(mBase, cstr, len);
-        }
-        else
-        {
-            for (size_t i = 0; i < len; i++)
-                mBase[i] = static_cast<T>(cstr[i]);
-        }
+        resize(strlen(cstr));
+        memcpy(mBase, cstr, mSize);
     }
 
-    /// @brief compare with null terminated c string, one character at a time
+    /// @brief Compare with C string.
     bool operator==(const char* cstr) const
     {
-        size_t len = strlen(cstr);
-        if (mHeap.size != len)
+        if (mSize != strlen(cstr))
             return false;
 
-        for (size_t i = 0; i < len; i++)
-        {
-            if (mBase[i] != (T)cstr[i])
-                return false;
-        }
-
-        return true;
+        return !memcmp(mBase, cstr, mSize);
     }
 
-    /// @brief compare with another string, one character at a time
+    /// @brief Compare with another string.
     bool operator==(const TString& other) const
     {
-        if (mHeap.size != other.mHeap.size)
+        if (mSize != other.mSize)
             return false;
 
-        for (size_t i = 0; i < mHeap.size; i++)
-        {
-            if (mBase[i] != other.mBase[i])
-                return false;
-        }
-
-        return true;
+        return !memcmp(mBase, other.mBase, mSize);
     }
 
 private:
-    T* mBase;
-    T mLocal[TLocalSize];
-    THeapStorage<T, TUsage> mHeap;
+    char8_t* mBase;
+    size_t mSize = 0;
+    size_t mCap = TLocalSize;
+    char8_t mLocal[TLocalSize];
 };
 
-/// @brief String type with single-byte characters.
-using String = TString<char, STRING_DEFAULT_LOCAL_STORAGE, MEMORY_USAGE_MISC>;
+using String = TString<STRING_DEFAULT_LOCAL_SIZE, MEMORY_USAGE_MISC>;
 
 } // namespace LD

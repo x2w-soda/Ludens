@@ -1,9 +1,8 @@
 #pragma once
 
+#include <Ludens/DSA/String.h>
 #include <Ludens/Header/Range.h>
 #include <Ludens/Header/View.h>
-
-#include <string>
 
 namespace LD {
 
@@ -21,8 +20,8 @@ public:
         parse();
     }
 
-    explicit URI(const std::string& str)
-        : mString(str)
+    explicit URI(const String& str)
+        : mString(str.data(), str.size())
     {
         parse();
     }
@@ -35,7 +34,7 @@ public:
 
     inline void clear() { mString.clear(); }
     inline bool empty() const { return mString.empty(); }
-    inline const std::string& string() const { return mString; }
+    inline const String& string() const { return mString; }
     inline View view() const { return View(mString.data(), mString.size()); }
 
     inline View scheme() const { return View(mString.data() + mSchemeRange.offset, mSchemeRange.size); }
@@ -45,13 +44,13 @@ public:
     inline View query() const { return View(mString.data() + mQueryRange.offset, mQueryRange.size); }
     inline View fragment() const { return View(mString.data() + mFragmentRange.offset, mFragmentRange.size); }
 
-    inline std::string path_string() const { return std::string(mString.data() + mPathRange.offset, mPathRange.size); }
-    inline std::string stem_string() const { return std::string(mString.data() + mStemRange.offset, mStemRange.size); }
+    inline std::string path_string() const { return std::string((const char*)mString.data() + mPathRange.offset, mPathRange.size); }
+    inline std::string stem_string() const { return std::string((const char*)mString.data() + mStemRange.offset, mStemRange.size); }
 
 private:
     void parse()
     {
-        std::string_view remaining = mString;
+        std::string_view remaining((const char*)mString.data(), mString.size());
 
         mSchemeRange = {};
         mAuthorityRange = {};
@@ -132,7 +131,7 @@ private:
         mStemRange.size = static_cast<uint32_t>(extOffset - nameOffset);
     }
 
-    std::string mString;
+    String mString;
     Range32 mSchemeRange;
     Range32 mAuthorityRange;
     Range32 mPathRange;
