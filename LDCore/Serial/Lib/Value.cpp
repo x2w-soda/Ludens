@@ -65,6 +65,12 @@ Value64::Value64(Value64&& other) noexcept
     move_from(std::move(other));
 }
 
+Value64::Value64(const char* cstr)
+    : type(VALUE_TYPE_STRING)
+{
+    new (&str) std::string(cstr);
+}
+
 Value64::Value64(const std::string& s)
     : type(VALUE_TYPE_STRING)
 {

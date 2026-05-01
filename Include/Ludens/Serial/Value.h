@@ -77,6 +77,7 @@ public:
     Value64() {}
     Value64(const Value64&);
     Value64(Value64&&) noexcept;
+    explicit Value64(const char* cstr);
     explicit Value64(const std::string& str);
     explicit Value64(float f32);
     explicit Value64(double f64);
