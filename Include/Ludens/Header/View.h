@@ -1,10 +1,11 @@
 #pragma once
 
+#include <Ludens/Header/Types.h>
+
 #include <cstddef>
 #include <cstring>
 #include <format>
 #include <string>
-#include <type_traits>
 
 namespace LD {
 
@@ -22,31 +23,36 @@ struct TView
     {
     }
 
+    TView(const char8_t* buf, size_t size)
+        : data((const T*)buf), size(size)
+    {
+    }
+
     /// @brief View into C string.
     TView(const char* cstr)
-    requires std::is_same_v<T, char> || std::is_same_v<T, const char>
-        : data(cstr)
+    requires(sizeof(T) == 1)
+        : data((const T*)cstr)
     {
         size = cstr ? strlen(cstr) : 0;
     }
 
     /// @brief View into std string, valid before the std string invalidates.
     TView(const std::string& str)
-    requires std::is_same_v<T, char> || std::is_same_v<T, const char>
+    requires(sizeof(T) == 1)
         : data((T*)str.data()), size(str.size())
     {
     }
 
     /// @brief Copy std string_view, valid before the std string_view invalidates.
     TView(const std::string_view& strView)
-    requires std::is_same_v<T, char> || std::is_same_v<T, const char>
-        : data(strView.data()), size(strView.size())
+    requires(sizeof(T) == 1)
+        : data((const T*)strView.data()), size(strView.size())
     {
     }
 
     /// @brief Check if view ends with string.
     bool ends_with(const char* cstr) const
-    requires std::is_same_v<T, char> || std::is_same_v<T, const char>
+    requires(sizeof(T) == 1)
     {
         if (!cstr)
             return false;
@@ -61,7 +67,7 @@ struct TView
     /// @brief A view is equal to a C string iff they have same byte size and contents.
     ///        Returns false if input C string is null.
     bool operator==(const char* cstr) const
-    requires std::is_same_v<T, char> || std::is_same_v<T, const char>
+    requires(sizeof(T) == 1)
     {
         if (!cstr)
             return false;
@@ -81,7 +87,7 @@ struct TView
 
     /// @brief A view is equal to a char iff the view is of size one and the character matches.
     inline bool operator==(char c) const
-    requires std::is_same_v<T, char> || std::is_same_v<T, const char>
+    requires(sizeof(T) == 1)
     {
         return size == 1 && static_cast<char>(data[0]) == c;
     }
@@ -101,10 +107,10 @@ struct TView
 };
 
 /// @brief Const view of a byte sequence.
-using View = TView<const char>;
+using View = TView<const byte>;
 
 /// @brief Mutable view of a byte sequence.
-using MutView = TView<char>;
+using MutView = TView<byte>;
 
 } // namespace LD
 
@@ -118,6 +124,6 @@ struct std::formatter<LD::View, char>
 
     auto format(const LD::View& view, std::format_context& ctx) const
     {
-        return std::format_to(ctx.out(), "{}", std::string(view.data, view.size));
+        return std::format_to(ctx.out(), "{}", std::string((const char*)view.data, view.size));
     }
 };
