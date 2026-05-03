@@ -44,6 +44,7 @@ set(MODULE_TEST
 	Test/SerialTest.cpp
 	Test/ValueTest.cpp
 	Test/PacketTest.cpp
+	Test/PropertyTest.cpp
 	Test/EndiannessTest.cpp
 	Test/CompressionTest.cpp
 )

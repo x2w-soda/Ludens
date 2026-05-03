@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Ludens/DSA/Buffer.h>
+#include <Ludens/DSA/Stack.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Header/Math/Vec4.h>
 #include <Ludens/Memory/Memory.h>
@@ -8,7 +9,6 @@
 
 #include <cstdint>
 #include <cstring>
-#include <stack>
 
 namespace LD {
 
@@ -170,12 +170,12 @@ public:
     /// @brief Get read only view of the underlying buffer.
     inline View view() const
     {
-        return View((const char*)mBuffer.data(), mBuffer.size());
+        return View(mBuffer.data(), mBuffer.size());
     }
 
 private:
     Buffer mBuffer;
-    std::stack<size_t> mChunkStack;
+    Stack<size_t> mChunkStack;
 };
 
 /// @brief Reads data from a read-only serial buffer.

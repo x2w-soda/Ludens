@@ -1,7 +1,8 @@
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Header/Types.h>
 #include <Ludens/Serial/Value.h>
-#include <type_traits>
+
+#include <cstring>
 
 namespace LD {
 

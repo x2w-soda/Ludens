@@ -23,15 +23,15 @@ struct TView
     {
     }
 
-    TView(const char8_t* buf, size_t size)
-        : data((const T*)buf), size(size)
+    TView(const void* buf, size_t size)
+        : data((T*)buf), size(size)
     {
     }
 
     /// @brief View into C string.
     TView(const char* cstr)
     requires(sizeof(T) == 1)
-        : data((const T*)cstr)
+        : data((T*)cstr)
     {
         size = cstr ? strlen(cstr) : 0;
     }

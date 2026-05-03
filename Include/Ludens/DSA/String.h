@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Ludens/Header/Types.h>
 #include <Ludens/Memory/Memory.h>
 
 #include <cstring>
@@ -39,7 +40,7 @@ public:
         resize(len);
         memcpy(mBase, buf, len);
     }
-    
+
     TString(const byte* buf, size_t len)
         : mBase(mLocal)
     {
