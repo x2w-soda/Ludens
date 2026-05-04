@@ -158,7 +158,10 @@ void Viewport2D::mouse_button_down(const ViewportState& state, MouseValue mouseV
     else if (mouseVal.button() == MOUSE_BUTTON_LEFT && mMouseWorldPos)
     {
         const Vec2 mouseWorldPos = mMouseWorldPos.value();
-        ComponentView comp = mCtx.get_scene().get_2d_component_by_position(mouseWorldPos);
+        Scene scene = mCtx.get_scene();
+        ComponentView comp = {};
+        if (scene)
+            comp = scene.get_2d_component_by_position(mouseWorldPos);
         mCtx.set_selected_component(comp ? comp.cuid() : CUID(0));
     }
 }
