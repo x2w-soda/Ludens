@@ -21,6 +21,7 @@ set(MODULE_LIB
     Lib/Scene.cpp
     Lib/SceneSchemaKeys.h
     Lib/SceneSchema.cpp
+    Lib/SceneCommand.cpp
     Lib/ScreenUI.h
     Lib/ScreenUI.cpp
     Lib/UIDriver.h

@@ -7,45 +7,50 @@ namespace LD {
 
 // clang-format off
 static PropertyMeta sTransform2DPropMeta[] = {
-    {"transform", VALUE_TYPE_TRANSFORM_2D},
+    {"transform", nullptr, VALUE_TYPE_TRANSFORM_2D},
 };
 // clang-format on
 
-void transform_2d_prop_getter(void* data, uint32_t index, Value64& val)
+bool transform_2d_prop_getter(void* data, uint32_t propIndex, uint32_t arrayIndex, Value64& val)
 {
     Transform2DView view((ComponentBase**)data);
     Transform2D transform2D;
 
-    switch (index)
+    switch (propIndex)
     {
     case TRANSFORM_2D_PROP_TRANSFORM:
         (void)view.get_transform_2d(transform2D);
         val.set_transform_2d(transform2D);
         break;
     default:
-        break;
+        return false;
     }
+
+    return true;
 }
 
-void transform_2d_prop_setter(void* data, uint32_t index, const Value64& val)
+bool transform_2d_prop_setter(void* data, uint32_t propIndex, uint32_t arrayIndex, const Value64& val)
 {
     Transform2DView view((ComponentBase**)data);
 
-    switch (index)
+    switch (propIndex)
     {
     case TRANSFORM_2D_PROP_TRANSFORM:
         view.set_transform_2d(val.get_transform_2d());
         break;
     default:
-        break;
+        return false;
     }
+
+    return true;
 }
 
-PropertyMetaTable gTransform2DPropMetaTable{
-    .entries = sTransform2DPropMeta,
-    .entryCount = sizeof(sTransform2DPropMeta) / sizeof(*sTransform2DPropMeta),
-    .getter = &transform_2d_prop_getter,
-    .setter = &transform_2d_prop_setter,
+TypeMeta Transform2DMeta::sTypeMeta = {
+    .name = "Transform2DComponent",
+    .props = sTransform2DPropMeta,
+    .propCount = sizeof(sTransform2DPropMeta) / sizeof(*sTransform2DPropMeta),
+    .getLocal = &transform_2d_prop_getter,
+    .setLocal = &transform_2d_prop_setter,
 };
 
 void Transform2DMeta::init(ComponentBase** dstData)
@@ -70,7 +75,7 @@ bool Transform2DMeta::load_from_props(SceneObj* scene, ComponentBase** data, con
 
     for (const PropertyValue& prop : props)
     {
-        switch (prop.index)
+        switch (prop.propIndex)
         {
         case TRANSFORM_2D_PROP_TRANSFORM:
             transform2D = prop.value.get_transform_2d();

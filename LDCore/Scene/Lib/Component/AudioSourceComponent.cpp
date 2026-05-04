@@ -6,11 +6,11 @@
 
 namespace LD {
 
-static void audio_source_prop_getter(void* data, uint32_t index, Value64& val)
+static bool audio_source_prop_getter(void* data, uint32_t propIndex, uint32_t arrayIndex, Value64& val)
 {
     AudioSourceView view((AudioSourceComponent*)data);
 
-    switch (index)
+    switch (propIndex)
     {
     case AUDIO_SOURCE_PROP_CLIP_ASSET:
         val.set_u32((uint32_t)view.get_clip_asset());
@@ -22,15 +22,17 @@ static void audio_source_prop_getter(void* data, uint32_t index, Value64& val)
         val.set_f32(view.get_volume_linear());
         break;
     default:
-        break;
+        return false;
     }
+
+    return true;
 }
 
-static void audio_source_prop_setter(void* data, uint32_t index, const Value64& val)
+static bool audio_source_prop_setter(void* data, uint32_t propIndex, uint32_t arrayIndex, const Value64& val)
 {
     AudioSourceView view((AudioSourceComponent*)data);
 
-    switch (index)
+    switch (propIndex)
     {
     case AUDIO_SOURCE_PROP_CLIP_ASSET:
         view.set_clip_asset((AssetID)val.get_u32());
@@ -42,21 +44,23 @@ static void audio_source_prop_setter(void* data, uint32_t index, const Value64& 
         view.set_volume_linear(val.get_f32());
         break;
     default:
-        break;
+        return false;
     }
+
+    return true;
 }
 
 static PropertyMeta sAudioSourcePropMeta[] = {
-    {"clip", VALUE_TYPE_U32, Value64(0u), PROPERTY_UI_HINT_ASSET},
-    {"pan", VALUE_TYPE_F32, Value64(0.5f), PROPERTY_UI_HINT_SLIDER},
-    {"volume_linear", VALUE_TYPE_F32, Value64(1.0f), PROPERTY_UI_HINT_SLIDER},
+    {"clip", nullptr, VALUE_TYPE_U32, Value64(0u), PROPERTY_UI_HINT_ASSET},
+    {"pan", nullptr, VALUE_TYPE_F32, Value64(0.5f), PROPERTY_UI_HINT_SLIDER},
+    {"volume_linear", nullptr, VALUE_TYPE_F32, Value64(1.0f), PROPERTY_UI_HINT_SLIDER},
 };
 
-PropertyMetaTable gAudioSourcePropMetaTable{
-    .entries = sAudioSourcePropMeta,
-    .entryCount = sizeof(sAudioSourcePropMeta) / sizeof(*sAudioSourcePropMeta),
-    .getter = &audio_source_prop_getter,
-    .setter = &audio_source_prop_setter,
+TypeMeta AudioSourceMeta::sTypeMeta = {
+    .props = sAudioSourcePropMeta,
+    .propCount = sizeof(sAudioSourcePropMeta) / sizeof(*sAudioSourcePropMeta),
+    .getLocal = &audio_source_prop_getter,
+    .setLocal = &audio_source_prop_setter,
 };
 
 static bool load_audio_clip(SceneObj* scene, AudioSourceComponent* source, AssetID clipID)
@@ -128,7 +132,7 @@ bool AudioSourceMeta::load_from_props(SceneObj* scene, ComponentBase** data, con
 
     for (const PropertyValue& prop : props)
     {
-        switch (prop.index)
+        switch (prop.propIndex)
         {
         case AUDIO_SOURCE_PROP_CLIP_ASSET:
             clipAsset = (AssetID)prop.value.get_u32();

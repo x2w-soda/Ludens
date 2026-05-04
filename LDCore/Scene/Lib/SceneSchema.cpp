@@ -1,5 +1,6 @@
 #include <Ludens/DSA/HashMap.h>
 #include <Ludens/DSA/Vector.h>
+#include <Ludens/DSA/ViewUtil.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Header/Version.h>
 #include <Ludens/Media/Format/TOML.h>
@@ -768,8 +769,7 @@ bool SceneSchema::load_scene_from_file(Scene scene, SUIDRegistry idRegistry, con
     if (!FS::read_file_to_vector(tomlPath, toml, err))
         return false;
 
-    View tomlView((const char*)toml.data(), toml.size());
-    return load_scene_from_source(scene, idRegistry, tomlView, err);
+    return load_scene_from_source(scene, idRegistry, view(toml), err);
 }
 
 bool SceneSchema::save_scene(Scene scene, const FS::Path& savePath, std::string& err)
@@ -781,8 +781,7 @@ bool SceneSchema::save_scene(Scene scene, const FS::Path& savePath, std::string&
     if (!saver.save_scene(scene, toml, err))
         return false;
 
-    View tomlView(toml.data(), toml.size());
-    return FS::write_file_and_swap_backup(savePath, tomlView, err);
+    return FS::write_file_and_swap_backup(savePath, view(toml), err);
 }
 
 std::string SceneSchema::create_empty()

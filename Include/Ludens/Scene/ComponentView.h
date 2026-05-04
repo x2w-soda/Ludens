@@ -13,7 +13,7 @@ struct ComponentBase;
 struct TransformEx;
 struct Transform2D;
 struct PropertyValue;
-struct PropertyMetaTable;
+struct TypeMeta;
 
 /// @brief Public interface for all components.
 class ComponentView
@@ -28,7 +28,7 @@ public:
 
     inline ComponentBase* base() { return *mData; }
     inline ComponentBase** data() { return mData; }
-    const PropertyMetaTable* property_meta_table();
+    const TypeMeta* type_meta();
     ComponentType type();
     CUID cuid();
     SUID suid();
@@ -58,6 +58,20 @@ public:
 
 protected:
     ComponentBase** mData = nullptr;
+};
+
+struct ComponentData
+{
+    std::string name;
+    SUID suid = {};
+    ComponentType type;
+    Vector<PropertyValue> props;
+    int32_t parentIndex = -1;
+};
+
+struct ComponentSubtreeData
+{
+    Vector<ComponentData> components;
 };
 
 } // namespace LD

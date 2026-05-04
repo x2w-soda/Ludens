@@ -3,6 +3,7 @@
 #include <Ludens/AudioSystem/AudioSystem.h>
 #include <Ludens/Camera/Camera2D.h>
 #include <Ludens/DSA/Vector.h>
+#include <Ludens/DSA/String.h>
 #include <Ludens/Header/Handle.h>
 #include <Ludens/RenderSystem/RenderSystem.h>
 #include <Ludens/Scene/ComponentView.h>
@@ -54,7 +55,7 @@ public:
     void reset();
 
     /// @brief Load the scene. Creates resources from assets and subsystems.
-    void load(const SceneLoadFn& loadFn);
+    bool load(const SceneLoadFn& loadFn);
 
     /// @brief Unload the scene. Destroys resouorces.
     void unload();
@@ -109,6 +110,10 @@ public:
     /// @return Component interface of the newly created component on success.
     ComponentView create_component_serial(ComponentType type, const char* name, SUIDRegistry suidRegistry, SUID parentSUID, SUID hintSUID);
 
+    /// @brief Try create a subtree from data
+    /// @return Root component view on success.
+    ComponentView create_component_subtree(const ComponentSubtreeData& data);
+
     /// @brief Destroy a component subtree.
     void destroy_component_subtree(CUID compID, SUIDRegistry suidRegistry);
 
@@ -144,7 +149,11 @@ public:
 
     /// @brief Get component from sibling index path.
     /// @note Slower code path intended for editor.
-    ComponentView get_component_by_path(const Vector<int>& path);
+    ComponentView get_component_by_index_path(const Vector<int>& path);
+
+    /// @brief Get component from string name path.
+    /// @note Slower code path intended for testing.
+    ComponentView get_component_by_path(const String& path);
 
     /// @brief Get data component from serial ID and expected type, fails upon type mismatch.
     inline ComponentView get_component_by_suid(SUID compSUID, ComponentType expectedType)

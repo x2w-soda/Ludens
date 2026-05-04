@@ -781,7 +781,7 @@ bool Context::create_lua_script(CUID compID, AssetID scriptAssetID, std::string&
     LD_ASSERT(asset);
 
     View luaSourceV = asset.get_source();
-    std::string luaSource(luaSourceV.data, luaSourceV.size);
+    std::string luaSource((char*)luaSourceV.data, luaSourceV.size);
 
     // this should push the script instance table onto stack
     if (!mL.do_string(luaSource.c_str()))

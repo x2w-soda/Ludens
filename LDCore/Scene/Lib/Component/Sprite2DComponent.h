@@ -4,10 +4,10 @@
 
 namespace LD {
 
-extern struct PropertyMetaTable gSprite2DPropMetaTable;
-
 struct Sprite2DMeta
 {
+    static TypeMeta sTypeMeta;
+
     static void init(ComponentBase** dstData);
     static bool load_suid(SceneObj* scene, Sprite2DComponent* sprite, SUID layerSUID, AssetID texture2D, std::string& err);
     static bool load_ruid(SceneObj* scene, Sprite2DComponent* sprite, RUID layerRUID, AssetID texture2D, std::string& err);

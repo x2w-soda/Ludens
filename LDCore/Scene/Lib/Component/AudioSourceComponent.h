@@ -4,7 +4,6 @@
 
 namespace LD {
 
-extern struct PropertyMetaTable gAudioSourcePropMetaTable;
 
 struct AudioSourceMeta
 {
@@ -17,6 +16,8 @@ struct AudioSourceMeta
     static AssetID get_asset(SceneObj* scene, ComponentBase** source, uint32_t assetSlotIndex);
     static bool set_asset(SceneObj* scene, ComponentBase** source, uint32_t assetSlotIndex, AssetID id);
     static AssetType get_asset_type(SceneObj* scene, uint32_t assetSlotIndex);
+
+    static TypeMeta sTypeMeta;
 };
 
 } // namespace LD

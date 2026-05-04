@@ -9,6 +9,7 @@
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/Scene/Scene.h>
 #include <Ludens/System/Timer.h>
+#include <Ludens/Text/Text.h>
 
 // Scene implementation may know about DataRegistry memory layouts.
 #include <Ludens/DataRegistry/DataComponent.h>
@@ -48,7 +49,7 @@ SceneObj* sScene = nullptr;
 struct SceneComponentMeta
 {
     ComponentType type;
-    const PropertyMetaTable* propMetaTable;
+    const TypeMeta* typeMeta;
     void (*init)(ComponentBase** dstData);
     bool (*clone)(SceneObj* scene, ComponentBase** dstData, ComponentBase** srcData, std::string& err);
     bool (*load)(SceneObj* scene, ComponentBase** data, const Vector<PropertyValue>& props, std::string& err);
@@ -65,15 +66,15 @@ static bool clone_nop(SceneObj*, ComponentBase**, ComponentBase**, std::string&)
 
 // clang-format off
 static SceneComponentMeta sSceneComponents[] = {
-    {COMPONENT_TYPE_DATA,         nullptr,                    nullptr,                      nullptr,                       nullptr,                           nullptr,                        nullptr,                      nullptr,                         nullptr, nullptr},
-    {COMPONENT_TYPE_AUDIO_SOURCE, &gAudioSourcePropMetaTable, &AudioSourceMeta::init,       &AudioSourceMeta::clone,       &AudioSourceMeta::load_from_props, &AudioSourceMeta::unload,       nullptr,                      &AudioSourceMeta::cleanup,       &AudioSourceMeta::get_asset, &AudioSourceMeta::set_asset, &AudioSourceMeta::get_asset_type},
-    {COMPONENT_TYPE_TRANSFORM,    nullptr,                    &init_nop,                    &clone_nop,                    nullptr,                           nullptr,                        nullptr,                      nullptr,                         nullptr, nullptr},
-    {COMPONENT_TYPE_TRANSFORM_2D, &gTransform2DPropMetaTable, &Transform2DMeta::init,       &Transform2DMeta::clone,       &Transform2DMeta::load_from_props, nullptr,                        nullptr,                      nullptr,                         nullptr, nullptr},
-    {COMPONENT_TYPE_CAMERA,       nullptr,                    &init_camera_component,       &clone_camera_component,       nullptr,                           &unload_camera_component,       &startup_camera_component,    &cleanup_camera_component,       nullptr, nullptr},
-    {COMPONENT_TYPE_CAMERA_2D,    &gCamera2DPropMetaTable,    &Camera2DMeta::init,          &Camera2DMeta::clone,          &Camera2DMeta::load_from_props,    &Camera2DMeta::unload,          &Camera2DMeta::startup,       &Camera2DMeta::cleanup,          nullptr, nullptr},
-    {COMPONENT_TYPE_MESH,         nullptr,                    &init_mesh_component,         &clone_mesh_component,         nullptr,                           &unload_mesh_component,         nullptr,                      nullptr,                         nullptr, nullptr},
-    {COMPONENT_TYPE_SPRITE_2D,    &gSprite2DPropMetaTable,    &Sprite2DMeta::init,          &Sprite2DMeta::clone,          &Sprite2DMeta::load_from_props,    &Sprite2DMeta::unload,          &Sprite2DMeta::startup,       &Sprite2DMeta::cleanup,          &Sprite2DMeta::get_asset, &Sprite2DMeta::set_asset, &Sprite2DMeta::get_asset_type},
-    {COMPONENT_TYPE_SCREEN_UI,    nullptr,                    &init_screen_ui_component,    &clone_screen_ui_component,    nullptr,                           &unload_screen_ui_component,    &startup_screen_ui_component, &cleanup_screen_ui_component,    nullptr, nullptr},
+    {COMPONENT_TYPE_DATA,         nullptr,                     nullptr,                      nullptr,                       nullptr,                           nullptr,                        nullptr,                      nullptr,                         nullptr, nullptr},
+    {COMPONENT_TYPE_AUDIO_SOURCE, &AudioSourceMeta::sTypeMeta, &AudioSourceMeta::init,       &AudioSourceMeta::clone,       &AudioSourceMeta::load_from_props, &AudioSourceMeta::unload,       nullptr,                      &AudioSourceMeta::cleanup,       &AudioSourceMeta::get_asset, &AudioSourceMeta::set_asset, &AudioSourceMeta::get_asset_type},
+    {COMPONENT_TYPE_TRANSFORM,    nullptr,                     &init_nop,                    &clone_nop,                    nullptr,                           nullptr,                        nullptr,                      nullptr,                         nullptr, nullptr},
+    {COMPONENT_TYPE_TRANSFORM_2D, &Transform2DMeta::sTypeMeta, &Transform2DMeta::init,       &Transform2DMeta::clone,       &Transform2DMeta::load_from_props, nullptr,                        nullptr,                      nullptr,                         nullptr, nullptr},
+    {COMPONENT_TYPE_CAMERA,       nullptr,                     &init_camera_component,       &clone_camera_component,       nullptr,                           &unload_camera_component,       &startup_camera_component,    &cleanup_camera_component,       nullptr, nullptr},
+    {COMPONENT_TYPE_CAMERA_2D,    &Camera2DMeta::sTypeMeta,    &Camera2DMeta::init,          &Camera2DMeta::clone,          &Camera2DMeta::load_from_props,    &Camera2DMeta::unload,          &Camera2DMeta::startup,       &Camera2DMeta::cleanup,          nullptr, nullptr},
+    {COMPONENT_TYPE_MESH,         nullptr,                     &init_mesh_component,         &clone_mesh_component,         nullptr,                           &unload_mesh_component,         nullptr,                      nullptr,                         nullptr, nullptr},
+    {COMPONENT_TYPE_SPRITE_2D,    &Sprite2DMeta::sTypeMeta,    &Sprite2DMeta::init,          &Sprite2DMeta::clone,          &Sprite2DMeta::load_from_props,    &Sprite2DMeta::unload,          &Sprite2DMeta::startup,       &Sprite2DMeta::cleanup,          &Sprite2DMeta::get_asset, &Sprite2DMeta::set_asset, &Sprite2DMeta::get_asset_type},
+    {COMPONENT_TYPE_SCREEN_UI,    nullptr,                     &init_screen_ui_component,    &clone_screen_ui_component,    nullptr,                           &unload_screen_ui_component,    &startup_screen_ui_component, &cleanup_screen_ui_component,    nullptr, nullptr},
 };
 // clang-format on
 
@@ -570,14 +571,14 @@ void Scene::reset()
     LD_ASSERT(!mObj->backup);
 }
 
-void Scene::load(const SceneLoadFn& loadFn)
+bool Scene::load(const SceneLoadFn& loadFn)
 {
     LD_PROFILE_SCOPE;
 
     if (mObj->state == SCENE_STATE_LOADED)
     {
         LD_UNREACHABLE;
-        return;
+        return false;
     }
 
     LD_ASSERT(!mObj->active);
@@ -588,7 +589,7 @@ void Scene::load(const SceneLoadFn& loadFn)
     {
         // TODO: unwind
         LD_UNREACHABLE;
-        return;
+        return false;
     }
 
     /*
@@ -600,6 +601,7 @@ void Scene::load(const SceneLoadFn& loadFn)
     */
 
     mObj->state = SCENE_STATE_LOADED;
+    return true;
 }
 
 void Scene::unload()
@@ -849,6 +851,66 @@ ComponentView Scene::create_component_serial(ComponentType type, const char* nam
     return ComponentView(data);
 }
 
+ComponentView Scene::create_component_subtree(const ComponentSubtreeData& hierarchyD)
+{
+    LD_PROFILE_SCOPE;
+
+    std::string err;
+    size_t compCount = hierarchyD.components.size();
+    Vector<ComponentView> created(compCount);
+    ComponentView rootV{};
+
+    for (size_t i = 0; i < compCount; i++)
+    {
+        const ComponentData& compD = hierarchyD.components[i];
+        ComponentView compV{};
+
+        if (compD.suid)
+            compV = create_component_serial(compD.type, compD.name.c_str(), mObj->suidRegistry, SUID(0), compD.suid);
+        else
+            compV = create_component(compD.type, compD.name.c_str(), CUID(0));
+
+        if (!compV || !compV.load_from_props(compD.props, err))
+        {
+            rootV = {};
+            break;
+        }
+
+        created[i] = compV;
+
+        if (compD.parentIndex < 0)
+        {
+            if (!rootV)
+                rootV = compV;
+            else // bad input
+            {
+                rootV = {};
+                break;
+            }
+        }
+    }
+
+    // rollback on failure
+    if (!rootV)
+    {
+        for (ComponentView compV : created)
+            destroy_component_subtree(compV.cuid(), mObj->suidRegistry);
+
+        return {};
+    }
+
+    // reparent pass
+    for (size_t i = 0; i < compCount; i++)
+    {
+        int32_t parentI = hierarchyD.components[i].parentIndex;
+
+        if (0 <= parentI && parentI < hierarchyD.components.size())
+            reparent_component_subtree(created[i].cuid(), created[parentI].cuid());
+    }
+
+    return rootV;
+}
+
 void Scene::destroy_component_subtree(CUID compID, SUIDRegistry suidRegistry)
 {
     LD_ASSERT(mObj->state != SCENE_STATE_RUNNING);
@@ -928,17 +990,24 @@ ComponentView Scene::get_component_by_suid(SUID compSUID)
     return ComponentView(mObj->active->registry.get_component_data_by_suid(compSUID, nullptr));
 }
 
-ComponentView Scene::get_component_by_path(const Vector<int>& path)
+ComponentView Scene::get_component_by_index_path(const Vector<int>& path)
 {
-    return ComponentView(mObj->active->registry.get_component_data_by_path(path));
+    return ComponentView(mObj->active->registry.get_component_data_by_index_path(path));
 }
 
-const PropertyMetaTable* ComponentView::property_meta_table()
+ComponentView Scene::get_component_by_path(const String& path)
 {
-    const PropertyMetaTable* table = sSceneComponents[(int)type()].propMetaTable;
+    Vector<View> segments = text_split_views(View((const byte*)path.data(), path.size()), '/');
 
-    LD_ASSERT(table);
-    return table;
+    return ComponentView(mObj->active->registry.get_component_data_by_path(segments));
+}
+
+const TypeMeta* ComponentView::type_meta()
+{
+    const TypeMeta* typeMeta = sSceneComponents[(int)type()].typeMeta;
+
+    LD_ASSERT(typeMeta);
+    return typeMeta;
 }
 
 ComponentType ComponentView::type()

@@ -4,10 +4,10 @@
 
 namespace LD {
 
-extern struct PropertyMetaTable gCamera2DPropMetaTable;
-
 struct Camera2DMeta
 {
+    static TypeMeta sTypeMeta;
+
     static void init(ComponentBase** dstData);
     static bool clone(SceneObj* scene, ComponentBase** dstData, ComponentBase** srcData, std::string& err);
     static bool load(SceneObj* scene, Camera2DComponent* camera, const Camera2DInfo& info, const Rect& viewport, std::string& err);

@@ -10,20 +10,20 @@ namespace LD {
 
 // clang-format off
 static PropertyMeta sSprite2DPropMeta[] = {
-    {"transform", VALUE_TYPE_TRANSFORM_2D, Value64(Transform2D::identity())},
-    {"texture",   VALUE_TYPE_U32,          Value64((uint32_t)32), PROPERTY_UI_HINT_ASSET },
-    {"z_depth",   VALUE_TYPE_U32,          Value64((uint32_t)0)},
-    {"pivot",     VALUE_TYPE_VEC2,         Value64(Vec2(INIT_REGION_SIZE / 2.0f))},
-    {"region",    VALUE_TYPE_RECT,         Value64(Rect(0.0f, 0.0f, INIT_REGION_SIZE, INIT_REGION_SIZE))},
+    {"transform", nullptr, VALUE_TYPE_TRANSFORM_2D, Value64(Transform2D::identity())},
+    {"texture",   nullptr, VALUE_TYPE_U32,          Value64((uint32_t)32), PROPERTY_UI_HINT_ASSET },
+    {"z_depth",   nullptr, VALUE_TYPE_U32,          Value64((uint32_t)0)},
+    {"pivot",     nullptr, VALUE_TYPE_VEC2,         Value64(Vec2(INIT_REGION_SIZE / 2.0f))},
+    {"region",    nullptr, VALUE_TYPE_RECT,         Value64(Rect(0.0f, 0.0f, INIT_REGION_SIZE, INIT_REGION_SIZE))},
 };
 // clang-format on
 
-void sprite_2d_prop_getter(void* data, uint32_t index, Value64& val)
+bool sprite_2d_prop_getter(void* data, uint32_t propIndex, uint32_t, Value64& val)
 {
     Sprite2DView view((Sprite2DComponent*)data);
     Transform2D transform2D;
 
-    switch (index)
+    switch (propIndex)
     {
     case SPRITE_2D_PROP_TRANSFORM:
         (void)view.get_transform_2d(transform2D);
@@ -45,15 +45,17 @@ void sprite_2d_prop_getter(void* data, uint32_t index, Value64& val)
         // TODO:
         break;
     default:
-        break;
+        return false;
     }
+
+    return true;
 }
 
-void sprite_2d_prop_setter(void* data, uint32_t index, const Value64& val)
+bool sprite_2d_prop_setter(void* data, uint32_t propIndex, uint32_t, const Value64& val)
 {
     Sprite2DView view((Sprite2DComponent*)data);
 
-    switch (index)
+    switch (propIndex)
     {
     case SPRITE_2D_PROP_TRANSFORM:
         view.set_transform_2d(val.get_transform_2d());
@@ -74,15 +76,18 @@ void sprite_2d_prop_setter(void* data, uint32_t index, const Value64& val)
         // TODO:
         break;
     default:
-        break;
+        return false;
     }
+
+    return true;
 }
 
-PropertyMetaTable gSprite2DPropMetaTable{
-    .entries = sSprite2DPropMeta,
-    .entryCount = sizeof(sSprite2DPropMeta) / sizeof(*sSprite2DPropMeta),
-    .getter = &sprite_2d_prop_getter,
-    .setter = &sprite_2d_prop_setter,
+TypeMeta Sprite2DMeta::sTypeMeta = {
+    .name = "Sprite2DComponent",
+    .props = sSprite2DPropMeta,
+    .propCount = sizeof(sSprite2DPropMeta) / sizeof(*sSprite2DPropMeta),
+    .getLocal = &sprite_2d_prop_getter,
+    .setLocal = &sprite_2d_prop_setter,
 };
 
 void Sprite2DMeta::init(ComponentBase** dstData)
@@ -222,13 +227,13 @@ bool Sprite2DMeta::load_from_props(SceneObj* scene, ComponentBase** data, const 
     Transform2D transform2D = Transform2D::identity();
     SUID layerSUID = {};
     AssetID textureID = {};
-    uint32_t zDepth = sSprite2DPropMeta[SPRITE_2D_PROP_Z_DEPTH].defaultVal.get_u32();
-    Vec2 pivot = sSprite2DPropMeta[SPRITE_2D_PROP_PIVOT].defaultVal.get_vec2();
-    Rect region = sSprite2DPropMeta[SPRITE_2D_PROP_REGION].defaultVal.get_rect();
+    uint32_t zDepth = sSprite2DPropMeta[SPRITE_2D_PROP_Z_DEPTH].valueDefault.get_u32();
+    Vec2 pivot = sSprite2DPropMeta[SPRITE_2D_PROP_PIVOT].valueDefault.get_vec2();
+    Rect region = sSprite2DPropMeta[SPRITE_2D_PROP_REGION].valueDefault.get_rect();
 
     for (const PropertyValue& prop : props)
     {
-        switch (prop.index)
+        switch (prop.propIndex)
         {
         case SPRITE_2D_PROP_TRANSFORM:
             transform2D = prop.value.get_transform_2d();
