@@ -59,7 +59,7 @@ static std::string document_span_to_text_span(TView<DocumentSpan*> srcSpans, Vec
     for (size_t i = 0; i < srcSpans.size; i++)
     {
         DocumentSpan* srcSpan = srcSpans.data[i];
-        std::string segment = std::string(srcSpan->text.data, srcSpan->text.size);
+        std::string segment = std::string((const char*)srcSpan->text.data, srcSpan->text.size);
 
         dstSpans[i] = {};
         dstSpans[i].text.fgColor = 0xFFFFFFFF;

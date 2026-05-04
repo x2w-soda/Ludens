@@ -183,7 +183,8 @@ void Viewport2D::mouse_button_up(const ViewportState& state, MouseValue mouseVal
             auto* actionE = (EditorActionSetComponentPropsEvent*)mCtx.enqueue_event(EDITOR_EVENT_TYPE_ACTION_SET_COMPONENT_PROPS);
             actionE->compSUID = selectedComp.suid();
             actionE->delta.resize(1);
-            actionE->delta[0].index = COMPONENT_PROP_TRANSFORM;
+            actionE->delta[0].propIndex = COMPONENT_PROP_TRANSFORM;
+            actionE->delta[0].arrayIndex = 0;
             actionE->delta[0].oldValue.set_transform_2d(mDragBeginCompLocalTransform);
             actionE->delta[0].newValue.set_transform_2d(transform);
         }

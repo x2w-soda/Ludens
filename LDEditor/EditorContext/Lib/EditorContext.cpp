@@ -3,6 +3,7 @@
 #include <Ludens/DSA/HashMap.h>
 #include <Ludens/DSA/Observer.h>
 #include <Ludens/DSA/Vector.h>
+#include <Ludens/DSA/ViewUtil.h>
 #include <Ludens/DataRegistry/DataRegistry.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Log/Log.h>
@@ -625,7 +626,7 @@ bool EditorContextObj::prepare_document(const char* uriPath)
 
     DocumentInfo docI{};
     docI.uriPath = uriPath;
-    docI.md = View((const char*)v.data(), v.size());
+    docI.md = view(v);
     docI.copyData = true;
     return docRegistry.add_document(docI, err);
 }

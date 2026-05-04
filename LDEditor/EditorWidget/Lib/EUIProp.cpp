@@ -498,27 +498,27 @@ bool eui_rect_prop(const char* label, Rect* rect, bool normalized)
 Vector<PropertyDelta> eui_component_property_table(ComponentView& view)
 {
     void* obj = view.data();
-    const PropertyMetaTable& table = *view.property_meta_table();
+    const TypeMeta& typeM = *view.type_meta();
     EditorContext ctx = eui_get_context();
     EditorTheme theme = eui_get_theme();
 
-    Vector<PropertyValue> oldProps = table.get_property_snapshot(obj);
+    Vector<PropertyValue> oldProps = typeM.get_property_snapshot(obj);
     Vector<PropertyValue> newProps = oldProps;
 
     for (PropertyValue& prop : newProps)
     {
-        const PropertyMeta& meta = table.entries[prop.index];
+        const PropertyMeta& propM = typeM.props[prop.propIndex];
 
-        switch (meta.type)
+        switch (propM.valueType)
         {
         case VALUE_TYPE_F32:
-            if (meta.uiHint == PROPERTY_UI_HINT_SLIDER)
-                eui_slider_prop(meta.name, prop.value.v16.f32);
+            if (propM.uiHint == PROPERTY_UI_HINT_SLIDER)
+                eui_slider_prop(propM.name, prop.value.v16.f32);
             else
-                eui_f32_prop(meta.name, prop.value.v16.f32);
+                eui_f32_prop(propM.name, prop.value.v16.f32);
             break;
         case VALUE_TYPE_U32:
-            if (meta.uiHint == PROPERTY_UI_HINT_ASSET)
+            if (propM.uiHint == PROPERTY_UI_HINT_ASSET)
             {
                 constexpr uint32_t assetIndex = 0; // TODO:
                 AssetType assetType = view.get_asset_type(assetIndex);
@@ -527,16 +527,16 @@ Vector<PropertyDelta> eui_component_property_table(ComponentView& view)
                     EditorContextUtil::request_component_asset(ctx, view.suid(), assetID, assetType, assetIndex);
             }
             else
-                eui_u32_prop(meta.name, prop.value.v16.u32);
+                eui_u32_prop(propM.name, prop.value.v16.u32);
             break;
         case VALUE_TYPE_BOOL:
-            eui_toggle_prop(meta.name, prop.value.v16.b8);
+            eui_toggle_prop(propM.name, prop.value.v16.b8);
             break;
         case VALUE_TYPE_VEC2:
-            eui_vec2_prop(meta.name, (float*)&prop.value.v16.f32);
+            eui_vec2_prop(propM.name, (float*)&prop.value.v16.f32);
             break;
         case VALUE_TYPE_RECT:
-            eui_rect_prop(meta.name, &prop.value.v16.rect, meta.flags & PROPERTY_FLAG_NORMALIZED_BIT);
+            eui_rect_prop(propM.name, &prop.value.v16.rect, propM.flags & PROPERTY_FLAG_NORMALIZED_BIT);
             break;
         case VALUE_TYPE_TRANSFORM_2D:
         {
@@ -551,7 +551,7 @@ Vector<PropertyDelta> eui_component_property_table(ComponentView& view)
         }
     }
 
-    return table.get_property_delta(obj, oldProps, newProps);
+    return typeM.get_property_delta(obj, oldProps, newProps);
 }
 
 } // namespace LD

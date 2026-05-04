@@ -349,7 +349,7 @@ static void set_component_props_command_redo(EditCommand* baseCmd)
     ComponentView comp = cmd->ctx->scene.get_component_by_suid(cmd->compSUID);
     LD_ASSERT(comp);
 
-    comp.property_meta_table()->apply_new_properties(comp.data(), cmd->delta);
+    comp.type_meta()->apply_new_properties(comp.data(), cmd->delta);
 }
 
 static void set_component_props_command_undo(EditCommand* baseCmd)
@@ -358,7 +358,7 @@ static void set_component_props_command_undo(EditCommand* baseCmd)
     ComponentView comp = cmd->ctx->scene.get_component_by_suid(cmd->compSUID);
     LD_ASSERT(comp);
 
-    comp.property_meta_table()->apply_old_properties(comp.data(), cmd->delta);
+    comp.type_meta()->apply_old_properties(comp.data(), cmd->delta);
 }
 
 static void clone_component_subtree_command_redo(EditCommand* baseCmd)
@@ -366,7 +366,7 @@ static void clone_component_subtree_command_redo(EditCommand* baseCmd)
     auto* cmd = (CloneComponentSubtreeCommand*)baseCmd;
     Scene scene = cmd->ctx->scene;
 
-    ComponentView srcComp = scene.get_component_by_path(cmd->srcPath);
+    ComponentView srcComp = scene.get_component_by_index_path(cmd->srcPath);
     LD_ASSERT(srcComp);
 
     SUIDRegistry suidReg = cmd->ctx->projectCtx.suid_registry();
