@@ -120,6 +120,9 @@ public:
     void set_string(const std::string& str);
     std::string get_string() const;
 
+public: // static methods
+    static bool narrow(ValueType type, Value64& val);
+
 private:
     void destroy();
     void copy_from(const Value64& other);

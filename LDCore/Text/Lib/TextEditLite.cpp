@@ -1,3 +1,4 @@
+#include <Ludens/DSA/ViewUtil.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Memory/Memory.h>
 #include <Ludens/Text/Text.h>
@@ -208,9 +209,8 @@ TextEditLiteResult TextEditLite::key(KeyValue value)
             {
                 // yeah this can definitely be done better
                 std::string str = mObj->buffer.to_string();
-                View view(str.data(), str.size());
 
-                size_t pos = text_find_previous_word(view, mObj->cursor);
+                size_t pos = text_find_previous_word(view(str), mObj->cursor);
                 hasChanged = mObj->remove_range(Range(pos, mObj->cursor - pos));
             }
         }

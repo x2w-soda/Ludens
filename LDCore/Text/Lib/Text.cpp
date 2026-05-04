@@ -12,7 +12,7 @@ Vector<Range> text_split_ranges(View text, char delimiter, bool includeDelimiter
     if (text.size == 0)
         return ranges;
 
-    std::string_view view(text.data, text.size);
+    std::string_view view((const char*)text.data, text.size);
     size_t start = 0;
     size_t end = view.find(delimiter);
 
@@ -30,6 +30,20 @@ Vector<Range> text_split_ranges(View text, char delimiter, bool includeDelimiter
         ranges.emplace_back(start, text.size - start);
 
     return ranges;
+}
+
+Vector<View> text_split_views(View text, char delimiter, bool includeDelimiter)
+{
+    Vector<Range> ranges = text_split_ranges(text, delimiter, includeDelimiter);
+    Vector<View> views(ranges.size());
+
+    for (size_t i = 0; i < views.size(); i++)
+    {
+        views[i].data = text.data + ranges[i].offset;
+        views[i].size = ranges[i].size;
+    }
+
+    return views;
 }
 
 size_t text_find_previous_word(View text, size_t pos)

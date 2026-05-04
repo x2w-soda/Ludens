@@ -196,6 +196,19 @@ void LuaState::get_field(int tIndex, const char* k)
     lua_getfield(mL, tIndex, k);
 }
 
+bool LuaState::get_field_type(int tIndex, const char* k, LuaType expectType)
+{
+    lua_getfield(mL, tIndex, k);
+
+    if (get_type(-1) != expectType)
+    {
+        lua_pop(mL, 1);
+        return false;
+    }
+
+    return true;
+}
+
 void LuaState::set_field(int tIndex, const char* k)
 {
     lua_setfield(mL, tIndex, k);
@@ -224,6 +237,11 @@ LuaType LuaState::get_type(int index)
     sLog.error("unknown native lua type {}", type);
 
     return (LuaType)type;
+}
+
+size_t LuaState::get_objlen(int index)
+{
+    return lua_objlen(mL, index);
 }
 
 int LuaState::get_registry_index()
@@ -276,6 +294,11 @@ void LuaState::remove(int idx)
 void LuaState::insert(int idx)
 {
     lua_insert(mL, idx);
+}
+
+int LuaState::next(int tIndex)
+{
+    return lua_next(mL, tIndex);
 }
 
 void LuaState::push_value(int idx)

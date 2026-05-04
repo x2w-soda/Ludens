@@ -131,6 +131,10 @@ public:
     /// @param k the key value
     void get_field(int tIndex, const char* k);
 
+    /// @brief Only pushes onto the stack the value of t[k] if the field exists and matches expected type.
+    /// @return True if field exists and matches expected type.
+    bool get_field_type(int tIndex, const char* k, LuaType expectType);
+
     /// @brief pops a value v and performs t[k] = v, where t is the table at tIndex
     /// @param tIndex the stack index of the table
     /// @param key the key value
@@ -139,6 +143,10 @@ public:
     /// @brief get the type of a value at stack index
     /// @index stack index of the value to query
     LuaType get_type(int index);
+
+    /// @brief Lua 5.1 lua_objlen, does not push values onto stack.
+    /// @return String length or the size of array-like tables.
+    size_t get_objlen(int index);
 
     /// @brief Get LUA_REGISTRYINDEX
     int get_registry_index();
@@ -180,6 +188,12 @@ public:
     ///        shifting up the elements above this index.
     /// @param idx A valid index, non-pseudo.
     void insert(int idx);
+
+    /// @brief Pops a key from the stack, and pushes a key¡Vvalue pair from the table at the given index.
+    ///        Key is at index -2 and Value is at index -1.
+    /// @param tIndex Index of the table.
+    /// @return Zero if there are no more elements in table (and pushes nothing).
+    int next(int tIndex);
 
     /// @brief Pushes a copy of the element at the given valid index onto the stack.
     /// @param idx Index of the value to copy.

@@ -5,6 +5,7 @@
 namespace LD {
 
 Vector<Range> text_split_ranges(View text, char delimiter, bool includeDelimiter = false);
+Vector<View> text_split_views(View text, char delimiter, bool includeDelimiter = false);
 size_t text_find_previous_word(View text, size_t pos);
 
 } // namespace LD

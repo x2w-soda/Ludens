@@ -70,4 +70,18 @@ void TypeMeta::apply_new_properties(void* obj, const Vector<PropertyDelta>& newP
         (void)setLocal(obj, prop.propIndex, 0, prop.newValue);
 }
 
+const PropertyMeta* TypeMeta::resolve_property(const String& str, uint32_t& outPropIndex) const
+{
+    for (size_t propI = 0; propI < propCount; propI++)
+    {
+        if (props[propI].name == str)
+        {
+            outPropIndex = (uint32_t)propI;
+            return props + propI;
+        }
+    }
+
+    return nullptr;
+}
+
 } // namespace LD

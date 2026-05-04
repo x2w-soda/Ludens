@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Ludens/DSA/String.h>
 #include <Ludens/DSA/Vector.h>
 #include <Ludens/Header/View.h>
 #include <Ludens/Serial/Value.h>
@@ -29,30 +30,10 @@ struct PropertyValue
     Value64 value;
 };
 
-struct PropertyPathValue
-{
-    Vector<uint32_t> path;
-    Value64 value;
-};
-
 struct PropertyDelta
 {
     uint32_t propIndex;
     uint32_t arrayIndex;
-    Value64 oldValue;
-    Value64 newValue;
-};
-
-struct PropertyPathDelta
-{
-    enum VectorEdit : uint32_t
-    {
-        Insert, // path stops at vector index
-        Remove, // path stops at vector index
-        Assign, // path stops at vector element
-    } vectorEdit;
-
-    Vector<uint32_t> path;
     Value64 oldValue;
     Value64 newValue;
 };
@@ -83,6 +64,11 @@ struct TypeMeta
     void apply_properties(void* obj, const Vector<PropertyValue>& props) const;
     void apply_old_properties(void* obj, const Vector<PropertyDelta>& delta) const;
     void apply_new_properties(void* obj, const Vector<PropertyDelta>& delta) const;
+
+    /// @brief Try resolve property from string.
+    /// @param outPropIndex Outputs property index in type upon success.
+    /// @return Property meta upon success.
+    const PropertyMeta* resolve_property(const String& str, uint32_t& outPropIndex) const;
 };
 
 } // namespace LD

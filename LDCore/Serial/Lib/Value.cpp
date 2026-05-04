@@ -453,4 +453,26 @@ void Value64::move_from(Value64&& other)
     other.destroy();
 }
 
+bool Value64::narrow(ValueType type, Value64& val)
+{
+    if (val.type == type)
+        return true;
+
+    switch (type)
+    {
+    case VALUE_TYPE_F32:
+        if (val.type == VALUE_TYPE_F64)
+        {
+            val.set_f32((float)val.get_f64());
+            return true;
+        }
+        break;
+    default:
+        break;
+    }
+
+    LD_DEBUG_BREAK;
+    return false;
+}
+
 } // namespace LD
