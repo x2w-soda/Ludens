@@ -27,6 +27,11 @@ struct LinearAllocator : Handle<struct LinearAllocatorObj>
     /// @param size number of bytes requested
     void* allocate(size_t size);
 
+    /// @brief Allocate bytes with alignment.
+    /// @param size Byte size requested.
+    /// @param alignment Byte alignment.
+    void* allocate_aligned(size_t size, size_t alignment);
+
     /// @brief frees all previous allocate() calls in one go.
     void free();
 

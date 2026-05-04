@@ -37,7 +37,7 @@ default_scene_id = 0x03000002
     std::string err;
     SUIDRegistry idReg = SUIDRegistry::create();
     Project proj = Project::create();
-    CHECK(ProjectSchema::load_project_from_source(proj, idReg, FS::Path("./"), View(schemaTOML, sizeof(schemaTOML) - 1), err));
+    CHECK(ProjectSchema::load_project_from_source(proj, idReg, FS::Path("./"), View((const byte*)schemaTOML, sizeof(schemaTOML) - 1), err));
 
     CHECK(proj.get_name() == "hello world");
 

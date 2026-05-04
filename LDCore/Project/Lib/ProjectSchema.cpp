@@ -326,7 +326,7 @@ bool ProjectSchema::load_project_from_file(Project project, SUIDRegistry idReg, 
     project.set_project_schema_abs_path(FS::absolute(tomlPath));
 
     ProjectSchemaLoader loader;
-    return loader.load_project_schema(project, idReg, View((const char*)toml.data(), toml.size()), err);
+    return loader.load_project_schema(project, idReg, View(toml.data(), toml.size()), err);
 }
 
 bool ProjectSchema::save_project_to_string(Project project, std::string& saveTOML, std::string& err)
@@ -348,7 +348,7 @@ bool ProjectSchema::save_project(Project project, const FS::Path& savePath, std:
     if (!save_project_to_string(project, toml, err))
         return false;
 
-    View tomlView(toml.data(), toml.size());
+    View tomlView((const byte*)toml.data(), toml.size());
     return FS::write_file_and_swap_backup(savePath, tomlView, err);
 }
 

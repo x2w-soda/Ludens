@@ -118,6 +118,34 @@ void* LinearAllocator::allocate(size_t size)
     return nullptr;
 }
 
+void* LinearAllocator::allocate_aligned(size_t size, size_t alignment)
+{
+    if (!mObj->pageList)
+        mObj->allocate_page();
+
+    LinearAllocatorObj::Page* currentPage = mObj->pageList;
+    LD_ASSERT(currentPage);
+
+    uintptr_t now = (uintptr_t)((byte*)currentPage + sizeof(LinearAllocatorObj::Page) + currentPage->used);
+    uintptr_t misalignment = now & (alignment - 1);
+    uintptr_t pad = (misalignment == 0) ? 0 : (alignment - misalignment);
+
+    if (pad + size > mObj->capacity)
+        return nullptr;
+
+    if (pad + size > remain())
+        mObj->allocate_page();
+
+    currentPage = mObj->pageList;
+    LD_ASSERT(currentPage->used + pad + size <= mObj->capacity);
+
+    byte* base = (byte*)currentPage + sizeof(LinearAllocatorObj::Page) + currentPage->used + pad;
+    currentPage->used += pad + size;
+
+    LD_ASSERT(((uintptr_t)base) % alignment == 0);
+    return base;
+}
+
 void LinearAllocator::free()
 {
     mObj->free();
@@ -272,6 +300,7 @@ void PoolAllocator::free(void* block)
 
     // return block to owning page
     blk->next = page->freeBlocks;
+    blk->owner = nullptr;
     page->freeBlocks = blk;
     page->freeBlockCount++;
 }
