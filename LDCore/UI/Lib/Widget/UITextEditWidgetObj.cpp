@@ -1,3 +1,4 @@
+#include <Ludens/DSA/ViewUtil.h>
 #include <Ludens/UI/UIWidget.h>
 
 #include "../UIContextObj.h"
@@ -164,7 +165,7 @@ void UITextEditWidgetObj::cancel_edit()
     {
         data.mEditor.set_string(data.mOriginal);
 
-        View view(data.mOriginal.data(), data.mOriginal.size());
+        View view(data.mOriginal);
         if (data.onChange)
             data.onChange({base}, view, base->user);
     }
@@ -182,7 +183,7 @@ void UITextEditWidgetObj::on_mouse_down_event(const UIEvent& event)
     Rect rect = get_rect();
 
     std::string str = data.mEditor.get_string();
-    int index = atlas.measure_cursor_index(View(str.data(), str.size()), data.fontSize, rect.w, event.mouse.position);
+    int index = atlas.measure_cursor_index(view(str), data.fontSize, rect.w, event.mouse.position);
     if (index < 0)
         index = (int)str.size();
 
@@ -200,7 +201,7 @@ void UITextEditWidgetObj::on_mouse_drag_event(const UIEvent& event)
 
     std::string str = data.mEditor.get_string();
     Vec2 localPos = event.drag.position - rect.get_pos();
-    int index = atlas.measure_cursor_index(View(str.data(), str.size()), data.fontSize, rect.w, localPos);
+    int index = atlas.measure_cursor_index(view(str), data.fontSize, rect.w, localPos);
 
     if (event.drag.begin)
         data.mDragBeginPos = index < 0 ? str.size() : index;
@@ -244,7 +245,7 @@ bool UITextEditWidgetObj::on_key_down_event(const UIEvent& event)
     }
 
     std::string str = data.mEditor.get_string();
-    View strView(str.data(), str.size());
+    View strView = view(str);
 
     if (hasChanged && data.onChange)
         data.onChange({base}, strView, base->user);
@@ -335,7 +336,7 @@ void UITextEditWidgetObj::draw_edit_state(UITextEditDrawInfo& info)
 
     if (!selection) // draw cursor
     {
-        info.atlas.measure_wrap_limit(View(info.str.data(), cursor), info.fontSize, minWidth, maxWidth);
+        info.atlas.measure_wrap_limit(View((const byte*)info.str.data(), cursor), info.fontSize, minWidth, maxWidth);
         float cursorX = maxWidth;
         const float beamWidth = 2.0f; // TODO:
         info.renderer.draw_rect(Rect(rect.x + cursorX, rect.y, beamWidth, rect.h), info.textColor);

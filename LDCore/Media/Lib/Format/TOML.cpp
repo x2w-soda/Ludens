@@ -389,7 +389,7 @@ static bool parse_toml(TOMLDocument dst, const View& view, std::string& error)
 
     // TODO: does toml-11 really not have a parse-from-view API?
     //       this is a redundant clone of the entire input string.
-    std::string source(view.data, view.size);
+    std::string source((const char*)view.data, view.size);
 
     const auto& result = toml::try_parse_str(source, toml::spec::default_version());
 

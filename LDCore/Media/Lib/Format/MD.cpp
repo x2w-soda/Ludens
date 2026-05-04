@@ -36,7 +36,7 @@ static_assert((int)LD::MD_SPAN_TYPE_CODE == (int)::MD_SPAN_CODE);
 
 static inline View view_md_attribute(const MD_ATTRIBUTE& attr)
 {
-    return View((const char*)attr.text, (size_t)attr.size);
+    return View((const byte*)attr.text, (size_t)attr.size);
 }
 
 static inline MDBlockType get_native_block_type(MD_BLOCKTYPE inType)
@@ -78,7 +78,7 @@ static inline bool get_native_block_detail(MDBlockType inType, void* inDetail, M
         outDetail.h.level = static_cast<MD_BLOCK_H_DETAIL*>(inDetail)->level;
         return true;
     case MD_BLOCK_TYPE_CODE:
-        outDetail.code.lang = View(static_cast<MD_BLOCK_CODE_DETAIL*>(inDetail)->lang.text,
+        outDetail.code.lang = View((const byte*)static_cast<MD_BLOCK_CODE_DETAIL*>(inDetail)->lang.text,
                                    static_cast<MD_BLOCK_CODE_DETAIL*>(inDetail)->lang.size);
         outDetail.code.fenceChar = (char)static_cast<MD_BLOCK_CODE_DETAIL*>(inDetail)->fence_char;
         return true;
@@ -194,7 +194,7 @@ private:
             return 0;
 
         MDTextType txtType = get_native_text_type(type);
-        View txt((const char*)text, (size_t)size);
+        View txt((const byte*)text, (size_t)size);
         self.mCallbacks.onText(txtType, txt, self.mUser);
         return 0;
     }
@@ -209,7 +209,7 @@ bool MDParser::parse(const View& file, std::string& error, const MDCallback& cal
 {
     MD4CParser parser(callbacks, user);
 
-    return parser.parse(file.data, file.size) == 0;
+    return parser.parse((const char*)file.data, file.size) == 0;
 }
 
 } // namespace LD

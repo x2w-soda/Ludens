@@ -1,4 +1,5 @@
 #include <Extra/doctest/doctest.h>
+#include <Ludens/DSA/ViewUtil.h>
 #include <Ludens/Header/Math/Transform.h>
 #include <Ludens/Media/Format/JSON.h>
 #include <Ludens/Memory/Memory.h>
@@ -12,7 +13,7 @@ TEST_CASE("JSONReader object")
     // from the rapidjson example
     std::string json = R"({"project":"rapidjson","stars":10})";
     std::string error;
-    JSONReader reader = JSONReader::create(View(json.data(), json.size()), error);
+    JSONReader reader = JSONReader::create(view(json), error);
     CHECK(reader);
     CHECK(reader.enter_root_object());
     CHECK(reader.is_object_scope());
@@ -37,7 +38,7 @@ TEST_CASE("JSONReader array")
     int size;
     std::string json = R"([123, false, true, [ "string" ]])";
     std::string error;
-    JSONReader reader = JSONReader::create(View(json.data(), json.size()), error);
+    JSONReader reader = JSONReader::create(view(json), error);
     CHECK(reader);
     CHECK(reader.enter_root_array(size));
     CHECK(reader.is_array_scope());
@@ -107,7 +108,7 @@ TEST_CASE("JSONUtil Vec2")
     json.push_back('}');
 
     std::string error;
-    JSONReader reader = JSONReader::create(View(json.data(), json.size()), error);
+    JSONReader reader = JSONReader::create(view(json), error);
     CHECK(reader);
     CHECK(reader.enter_root_object());
     {
@@ -158,7 +159,7 @@ TEST_CASE("JSONUtil Vec3")
     json.push_back('}');
 
     std::string error;
-    JSONReader reader = JSONReader::create(View(json.data(), json.size()), error);
+    JSONReader reader = JSONReader::create(view(json), error);
     CHECK(reader);
     CHECK(reader.enter_root_object());
     {
@@ -210,7 +211,7 @@ TEST_CASE("JSONUtil Rect")
     json.push_back('}');
 
     std::string error;
-    JSONReader reader = JSONReader::create(View(json.data(), json.size()), error);
+    JSONReader reader = JSONReader::create(view(json), error);
     CHECK(reader);
     CHECK(reader.enter_root_object());
     {
@@ -262,7 +263,7 @@ TEST_CASE("JSONUtil Transform2D")
     json.push_back('}');
 
     std::string error;
-    JSONReader reader = JSONReader::create(View(json.data(), json.size()), error);
+    JSONReader reader = JSONReader::create(view(json), error);
     CHECK(reader);
     CHECK(reader.enter_root_object());
     {
@@ -311,7 +312,7 @@ TEST_CASE("JSONUtil Transform")
     json.push_back('}');
 
     std::string error;
-    JSONReader reader = JSONReader::create(View(json.data(), json.size()), error);
+    JSONReader reader = JSONReader::create(view(json), error);
     CHECK(reader);
     CHECK(reader.enter_root_object());
     {

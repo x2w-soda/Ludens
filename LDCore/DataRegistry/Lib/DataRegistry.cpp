@@ -76,6 +76,19 @@ const char* get_component_type_name(ComponentType type)
     return sComponentTable[(int)type].typeName;
 }
 
+ComponentType get_component_type(const char* cstr)
+{
+    std::string name(cstr);
+
+    for (int i = 0; i < (int)COMPONENT_TYPE_ENUM_COUNT; i++)
+    {
+        if (name == sComponentTable[i].typeName)
+            return (ComponentType)i;
+    }
+
+    return COMPONENT_TYPE_ENUM_COUNT;
+}
+
 /// @brief Get component local transform.
 inline TransformEx* get_component_transform(ComponentBase** data)
 {
@@ -650,7 +663,7 @@ ComponentBase** DataRegistry::get_component_data_by_suid(SUID compSUID, Componen
     return compData;
 }
 
-ComponentBase** DataRegistry::get_component_data_by_path(const Vector<int>& path)
+ComponentBase** DataRegistry::get_component_data_by_index_path(const Vector<int>& path)
 {
     if (path.empty())
         return nullptr;
@@ -670,6 +683,35 @@ ComponentBase** DataRegistry::get_component_data_by_path(const Vector<int>& path
         }
 
         if (!child) // bad sibling index
+            return nullptr;
+
+        base = child;
+    }
+
+    return mObj->get_data_from_cuid(base->cuid);
+}
+
+ComponentBase** DataRegistry::get_component_data_by_path(const Vector<View>& path)
+{
+    if (path.empty())
+        return nullptr;
+
+    ComponentBase* base = &mObj->root;
+
+    for (View name : path)
+    {
+        ComponentBase* child = base->child;
+
+        while (child)
+        {
+            if (name == child->name)
+            {
+                break;
+            }
+            child = child->next;
+        }
+
+        if (!child) // not found
             return nullptr;
 
         base = child;

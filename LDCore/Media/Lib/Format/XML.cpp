@@ -77,13 +77,13 @@ struct XMLDocumentObj
 
     inline XMLString trim_tail(const XMLString& XMLString)
     {
-        const char* data = XMLString.data;
+        const char* data = (const char*)XMLString.data;
         size_t size = XMLString.size;
 
         while (size > 0 && isspace(data[size - 1]))
             size--;
 
-        return View(data, size);
+        return View((const byte*)data, size);
     }
 };
 
@@ -281,7 +281,7 @@ XMLString XMLDocumentObj::parse_string(const char* delims)
         size++;
     }
 
-    return XMLString(base, size);
+    return XMLString((const byte*)base, size);
 }
 
 #pragma region PublicAPI
@@ -344,7 +344,7 @@ XMLDocument XMLDocument::create_from_file(const std::filesystem::path& path)
     XMLDocumentObj* obj = doc;
 
     obj->fileBuffer = (byte*)heap_malloc(fileSize, MEMORY_USAGE_MEDIA);
-    bool ok = FS::read_file(path, MutView((char*)obj->fileBuffer, fileSize), err);
+    bool ok = FS::read_file(path, MutView((byte*)obj->fileBuffer, fileSize), err);
 
     if (!ok)
     {

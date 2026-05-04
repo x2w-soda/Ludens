@@ -397,7 +397,7 @@ static void on_text_change_handler(UIWidget, View text, void* user)
     UIWidgetState* widgetS = (UIWidgetState*)user;
 
     widgetS->textEdit.isChanged.set(true);
-    widgetS->textEdit.lastChange = std::string(text.data, text.size);
+    widgetS->textEdit.lastChange = std::string((const char*)text.data, text.size);
 }
 
 static void on_text_submit_handler(UIWidget, View text, void* user)
@@ -405,7 +405,7 @@ static void on_text_submit_handler(UIWidget, View text, void* user)
     UIWidgetState* widgetS = (UIWidgetState*)user;
 
     widgetS->textEdit.isSubmitted.set(true);
-    widgetS->textEdit.lastSubmission = std::string(text.data, text.size);
+    widgetS->textEdit.lastSubmission = std::string((const char*)text.data, text.size);
 }
 
 static void destroy_widget_subtree(PoolAllocator statePA, UIWidgetState* widgetS)

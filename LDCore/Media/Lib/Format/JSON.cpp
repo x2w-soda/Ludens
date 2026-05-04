@@ -295,7 +295,7 @@ static bool parse_json(JSONDocument dst, const View& view, std::string& error)
     JSONDocumentObj* docObj = dst.unwrap();
 
     error.clear();
-    rapidjson::ParseResult result = docObj->doc.Parse(view.data, view.size);
+    rapidjson::ParseResult result = docObj->doc.Parse((const char*)view.data, view.size);
 
     if (!result)
     {
@@ -766,7 +766,7 @@ struct RapidJSONEventHandler : public rapidjson::BaseReaderHandler<rapidjson::UT
 
     inline bool String(const char* str, rapidjson::SizeType length, bool copy)
     {
-        return callbacks.onString({str, (size_t)length}, user);
+        return callbacks.onString(View((const byte*)str, (size_t)length), user);
     }
 
     inline bool StartObject()
@@ -781,7 +781,7 @@ struct RapidJSONEventHandler : public rapidjson::BaseReaderHandler<rapidjson::UT
 
     inline bool Key(const char* str, rapidjson::SizeType length, bool copy)
     {
-        return callbacks.onKey({str, (size_t)length}, user);
+        return callbacks.onKey(View((const byte*)str, (size_t)length), user);
     }
 
     inline bool StartArray()
@@ -801,7 +801,7 @@ bool JSONParser::parse(const View& json, std::string& error, const JSONCallback&
     eventHandler.callbacks = callbacks;
     eventHandler.user = user;
 
-    rapidjson::MemoryStream memoryStream(json.data, json.size);
+    rapidjson::MemoryStream memoryStream((const char*)json.data, json.size);
 
     rapidjson::Reader reader;
     rapidjson::ParseResult result = reader.Parse(memoryStream, eventHandler);

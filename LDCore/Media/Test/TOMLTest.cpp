@@ -1,4 +1,5 @@
 #include <Extra/doctest/doctest.h>
+#include <Ludens/DSA/ViewUtil.h>
 #include <Ludens/Header/Math/Math.h>
 #include <Ludens/Header/Math/Transform.h>
 #include <Ludens/Media/Format/TOML.h>
@@ -63,7 +64,7 @@ a1 = [true, -12345]
 a2 = []
 )";
     std::string error;
-    TOMLReader reader = TOMLReader::create(View(toml, sizeof(toml) - 1), error);
+    TOMLReader reader = TOMLReader::create(View((const byte*)toml, sizeof(toml) - 1), error);
     CHECK(reader);
 
     int size;
@@ -131,7 +132,7 @@ TEST_CASE("TOMLUtil Vec2")
     toml += "v4 = [3.0]\n";             // invalid
 
     std::string error;
-    TOMLReader reader = TOMLReader::create(View(toml.data(), toml.size()), error);
+    TOMLReader reader = TOMLReader::create(view(toml), error);
     {
         CHECK(reader);
         Vec2 v;
@@ -175,7 +176,7 @@ TEST_CASE("TOMLUtil Vec3")
     toml += "v5 = [3.0, 4.0]\n";               // invalid
 
     std::string error;
-    TOMLReader reader = TOMLReader::create(View(toml.data(), toml.size()), error);
+    TOMLReader reader = TOMLReader::create(view(toml), error);
     {
         CHECK(reader);
         Vec3 v;
@@ -221,7 +222,7 @@ TEST_CASE("TOMLUtil Rect")
     toml += "r4 = {x = 1.0, y = 2.0}\n";                 // invalid
 
     std::string error;
-    TOMLReader reader = TOMLReader::create(View(toml.data(), toml.size()), error);
+    TOMLReader reader = TOMLReader::create(view(toml), error);
     {
         CHECK(reader);
         Rect rect;
@@ -266,7 +267,7 @@ TEST_CASE("TOMLUtil Transform2D")
     toml += "t3 = {}\n";
 
     std::string error;
-    TOMLReader reader = TOMLReader::create(View(toml.data(), toml.size()), error);
+    TOMLReader reader = TOMLReader::create(view(toml), error);
     {
         CHECK(reader);
         Transform2D tr;
@@ -308,7 +309,7 @@ TEST_CASE("TOMLUtil Transform")
     toml += "t3 = {}\n";
 
     std::string error;
-    TOMLReader reader = TOMLReader::create(View(toml.data(), toml.size()), error);
+    TOMLReader reader = TOMLReader::create(view(toml), error);
     {
         CHECK(reader);
         TransformEx tr;

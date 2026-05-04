@@ -53,7 +53,7 @@ TEST_CASE("UITemplate")
     UITemplate tmpl = UITemplate::create();
 
     UISchema::Status err;
-    bool ok = UISchema::load_ui_template_from_source(tmpl, View(sUIToml, sizeof(sUIToml) - 1), err);
+    bool ok = UISchema::load_ui_template_from_source(tmpl, View((const byte*)sUIToml, sizeof(sUIToml) - 1), err);
     CHECK(ok);
 
     UIWorkspace space = ctx.create_layer("test").create_workspace(Rect(0, 0, 100, 100));

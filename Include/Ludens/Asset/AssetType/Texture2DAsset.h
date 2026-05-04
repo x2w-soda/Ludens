@@ -15,7 +15,7 @@ enum TextureCompression
     TEXTURE_COMPRESSION_LZ4 = 0,
 };
 
-extern struct PropertyMetaTable gTexture2DPropMetaTable;
+extern struct TypeMeta gTexture2DPropMetaTable;
 
 /// @brief Texture2D asset handle.
 struct Texture2DAsset : Asset

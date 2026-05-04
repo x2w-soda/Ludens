@@ -1,4 +1,5 @@
 #include <Ludens/Asset/AssetSchema.h>
+#include <Ludens/DSA/ViewUtil.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Header/Version.h>
 #include <Ludens/Media/Format/TOML.h>
@@ -225,9 +226,8 @@ bool AssetSchema::load_registry_from_file(AssetRegistry registry, SUIDRegistry i
     if (!FS::read_file_to_vector(tomlPath, toml, err))
         return false;
 
-    View tomlView((const char*)toml.data(), toml.size());
     AssetSchemaLoader loader;
-    if (!loader.load_registry(registry, idRegistry, tomlView, err))
+    if (!loader.load_registry(registry, idRegistry, view(toml), err))
         return false;
 
     return true;
@@ -252,7 +252,7 @@ bool AssetSchema::save_registry(AssetRegistry registry, const FS::Path& savePath
     if (!save_registry_to_string(registry, toml, err))
         return false;
 
-    return FS::write_file_and_swap_backup(savePath, View(toml.data(), toml.size()), err);
+    return FS::write_file_and_swap_backup(savePath, view(toml), err);
 }
 
 std::string AssetSchema::create_empty()
@@ -265,6 +265,5 @@ std::string AssetSchema::create_empty()
 
     return toml;
 }
-
 
 } // namespace LD

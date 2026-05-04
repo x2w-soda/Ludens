@@ -65,7 +65,7 @@ void ReadFileAsync::begin(const Path& filePath, const MutView& view)
     {
         size_t toRead = std::min(chunkSize, view.size - offset);
 
-        file.read(view.data + offset, toRead);
+        file.read((char*)view.data + offset, toRead);
         // TODO: check for errors
 
         offset += toRead;
@@ -93,7 +93,7 @@ void ReadFileAsync::begin(const Path& filePath, Vector<byte>& vector)
     }
 
     vector.resize(fileSize);
-    MutView view((char*)vector.data(), vector.size());
+    MutView view((byte*)vector.data(), vector.size());
 
     begin(filePath, view);
 }
@@ -167,7 +167,7 @@ void WriteFileAsync::begin(const Path& filePath, const View& view)
     {
         size_t toWrite = std::min(chunkSize, view.size - offset);
 
-        file.write(view.data + offset, toWrite);
+        file.write((char*)view.data + offset, toWrite);
         // TODO: check for errors
 
         offset += toWrite;

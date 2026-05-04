@@ -328,7 +328,7 @@ void AssetManagerObj::on_asset_modified(const FS::Path& path, SUID id, void* use
         Vector<byte> buf;
         if (FS::read_file_to_vector(path, buf, err))
         {
-            scriptA.set_source(View((const char*)buf.data(), buf.size()));
+            scriptA.set_source(View(buf.data(), buf.size()));
         }
     }
 }

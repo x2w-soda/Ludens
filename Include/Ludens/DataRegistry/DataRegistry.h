@@ -7,6 +7,7 @@
 #include <Ludens/Header/Handle.h>
 #include <Ludens/Header/Hash.h>
 #include <Ludens/Header/Math/Transform.h>
+#include <Ludens/Header/View.h>
 #include <Ludens/Memory/Allocator.h>
 
 #include <cstdint>
@@ -73,7 +74,11 @@ struct DataRegistry : Handle<struct DataRegistryObj>
 
     /// @brief Get component data by sibling index path.
     /// @note Slower code path intended for Editor.
-    ComponentBase** get_component_data_by_path(const Vector<int>& path);
+    ComponentBase** get_component_data_by_index_path(const Vector<int>& path);
+
+    /// @brief Get component data by path name.
+    /// @note Slower code path intended for testing.
+    ComponentBase** get_component_data_by_path(const Vector<View>& path);
 
     /// @brief Get all data components with no parents.
     void get_root_component_data(Vector<ComponentBase**>& rootData);
@@ -120,5 +125,7 @@ size_t get_component_byte_size(ComponentType type);
 
 /// @brief Get a static C string of the component type name.
 const char* get_component_type_name(ComponentType type);
+
+ComponentType get_component_type(const char* name);
 
 } // namespace LD

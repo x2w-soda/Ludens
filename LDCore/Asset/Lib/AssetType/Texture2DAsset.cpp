@@ -18,7 +18,7 @@ bool Texture2DAssetObj::load_from_binary(AssetLoadJob& job, const FS::Path& file
         return false;
 
     serialData.resize(serialSize);
-    if (!job.read_file(filePath, MutView((char*)serialData.data(), serialSize)))
+    if (!job.read_file(filePath, MutView(serialData.data(), serialSize)))
         return false;
 
     Deserializer serial(serialData.data(), serialSize);
@@ -85,7 +85,7 @@ bool Texture2DAssetObj::deserialize(Deserializer& serial, Texture2DAssetObj& obj
         else if (name == "FILE")
         {
             obj.fileView.size = chunkSize;
-            obj.fileView.data = (const char*)chunkData;
+            obj.fileView.data = chunkData;
             serial.advance(chunkSize);
         }
     }

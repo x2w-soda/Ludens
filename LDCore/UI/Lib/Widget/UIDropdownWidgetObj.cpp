@@ -125,7 +125,7 @@ void UIDropdownWidgetObj::on_draw(UIWidgetObj* obj, ScreenRenderComponent render
         RImage image = font.image();
 
         Vec2 pos = rect.get_pos();
-        View textView(opt.data(), opt.size());
+        View textView((const byte*)opt.data(), opt.size());
         renderer.draw_text(atlas, image, data.fontSize, pos, textView, theme.get_on_surface_color(), rect.w);
     }
 }

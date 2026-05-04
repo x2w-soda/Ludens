@@ -176,7 +176,7 @@ uint64_t read_file(const Path& path, MutView view, std::string& err)
     }
 
     file.seekg(0, std::ios::beg);
-    file.read(view.data, fsize);
+    file.read((char*)view.data, fsize);
     file.close();
 
     return (uint64_t)fsize;
@@ -209,7 +209,7 @@ bool read_file_to_vector(const FS::Path& path, Vector<byte>& v, std::string& err
     v.resize(fileSize);
 
     if (fileSize > 0)
-        read_file(path, MutView((char*)v.data(), fileSize), err);
+        read_file(path, MutView((unsigned char*)v.data(), fileSize), err);
 
     return err.empty();
 }
@@ -223,7 +223,7 @@ char* read_file_to_cstr(const FS::Path& path, std::string err)
         return nullptr;
 
     char* cstr = (char*)heap_malloc(fileSize + 1, MEMORY_USAGE_MISC);
-    if (!FS::read_file(path, MutView(cstr, fileSize), err))
+    if (!FS::read_file(path, MutView((unsigned char*)cstr, fileSize), err))
     {
         heap_free(cstr);
         return nullptr;
@@ -252,7 +252,7 @@ bool write_file(const Path& path, View view, std::string& err)
         return false;
     }
 
-    file.write(view.data, view.size);
+    file.write((const char*)view.data, view.size);
     file.close();
 
     return true;

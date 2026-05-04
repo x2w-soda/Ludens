@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Ludens/Asset/AssetManager.h>
+#include <Ludens/DSA/String.h>
 #include <Ludens/JobSystem/JobSystem.h>
 
 #include <atomic>
@@ -57,7 +58,7 @@ struct AssetLoadJob
 
         str.resize(fileSize);
 
-        if (!FS::read_file(path, MutView(str.data(), str.size()), status.str))
+        if (!FS::read_file(path, MutView((byte*)str.data(), str.size()), status.str))
         {
             status.type = ASSET_LOAD_ERROR_FILE_PATH;
             return false;

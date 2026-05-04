@@ -540,7 +540,7 @@ bool UISchema::load_ui_template_from_file(UITemplate tmpl, const FS::Path& tomlP
     if (!FS::read_file_to_vector(tomlPath, toml, err.str))
         return false;
 
-    View tomlView((const char*)toml.data(), toml.size());
+    View tomlView(toml.data(), toml.size());
     return load_ui_template_from_source(tmpl, tomlView, err);
 }
 
@@ -554,7 +554,7 @@ bool UISchema::save_ui_template(UITemplate tmpl, const FS::Path& savePath, Statu
     if (!saver.save_template(tmpl, toml, err))
         return false;
 
-    View tomlView(toml.data(), toml.size());
+    View tomlView((const byte*)toml.data(), toml.size());
     return FS::write_file_and_swap_backup(savePath, tomlView, err.str);
 }
 

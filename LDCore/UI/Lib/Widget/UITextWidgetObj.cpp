@@ -206,7 +206,7 @@ void UITextWidgetObj::on_draw(UIWidgetObj* obj, ScreenRenderComponent renderer)
         FontAtlas atlas = font.font_atlas();
         RImage image = font.image();
 
-        View textView(data.mValue.data() + span.text.range.offset, span.text.range.size);
+        View textView((const byte*)data.mValue.data() + span.text.range.offset, span.text.range.size);
         pos = renderer.draw_text(atlas, image, data.fontSize, pos, textView, span.text.fgColor, wrapWidth);
     }
 }
