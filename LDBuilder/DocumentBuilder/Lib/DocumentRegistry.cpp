@@ -20,7 +20,7 @@ bool DocumentRegistryObj::validate_doc_uris(const DocumentRefs& refs, std::strin
 {
     for (const View& api : refs.luaAPI)
     {
-        docURI = std::string(api.data, api.size);
+        docURI = std::string((const char*)api.data, api.size);
 
         URI uri(docURI);
         std::string path = document_uri_normalized_path(uri);
@@ -31,7 +31,7 @@ bool DocumentRegistryObj::validate_doc_uris(const DocumentRefs& refs, std::strin
 
     for (const View& manual : refs.manual)
     {
-        docURI = std::string(manual.data, manual.size);
+        docURI = std::string((const char*)manual.data, manual.size);
 
         URI uri(docURI);
         std::string path = document_uri_normalized_path(uri);
@@ -49,7 +49,7 @@ bool DocumentRegistryObj::validate_misc_uris(const DocumentRefs& refs, DocumentR
     {
         if (!validator.onMiscURI(misc))
         {
-            validator.missingURI = std::string(misc.data, misc.size);
+            validator.missingURI = std::string((const char*)misc.data, misc.size);
             return false;
         }
     }

@@ -37,7 +37,7 @@ void texture_2d_asset_import(void* user)
     size_t fileDataOffset = serial.write_chunk_begin("FILE");
     byte* fileData = serial.advance(fileSize);
 
-    if (!job.read_src_file(info.srcFile, MutView((char*)fileData, fileSize)))
+    if (!job.read_src_file(info.srcFile, MutView(fileData, fileSize)))
         return;
 
     serial.write_chunk_end();

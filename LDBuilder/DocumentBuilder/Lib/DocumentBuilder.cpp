@@ -100,7 +100,7 @@ DocumentBuilder DocumentBuilder::create(const DocumentBuilderInfo& compilerI)
         if (compoundRefid.size == 0 || compoundType == CPP_ITEM_INVALID)
             continue; // TODO: warn ignored compound
 
-        std::string refidKey(compoundRefid.data, (int)compoundRefid.size);
+        std::string refidKey((char*)compoundRefid.data, (int)compoundRefid.size);
         CppCompound* comp = (CppCompound*)obj->cppCompoundPA.allocate();
         comp->name = {};
         comp->refid = compoundRefid;

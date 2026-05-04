@@ -1,6 +1,7 @@
 #include <Ludens/Asset/AssetRegistry.h>
 #include <Ludens/Asset/AssetSchema.h>
 #include <Ludens/DSA/Diagnostics.h>
+#include <Ludens/DSA/ViewUtil.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Header/Platform.h>
 #include <Ludens/JobSystem/JobSystem.h>
@@ -286,13 +287,13 @@ bool ProjectBuildAsyncObj::begin(const ProjectBuildConfig& cfg, ProjectBuildStat
     //       before firing off jobs.
 
     sLog.debug("Begin copy runtime to [{}]", dstRuntimePath.string());
-    writeRuntimeFileJob.submit(dstRuntimePath, View((const char*)EmbedRuntimeData, EmbedRuntimeSize));
+    writeRuntimeFileJob.submit(dstRuntimePath, View((const byte*)EmbedRuntimeData, EmbedRuntimeSize));
 
     sLog.debug("Begin copy project schema to [{}]", dstProjectSchemaPath.string());
-    writeProjectSchemaJob.submit(dstProjectSchemaPath, View(dstProjectSchemaTOML.data(), dstProjectSchemaTOML.size()));
+    writeProjectSchemaJob.submit(dstProjectSchemaPath, view(dstProjectSchemaTOML));
 
     sLog.debug("Begin copy asset schema to [{}]", dstAssetSchemaPath.string());
-    writeAssetSchemaJob.submit(dstAssetSchemaPath, View(dstAssetSchemaTOML.data(), dstAssetSchemaTOML.size()));
+    writeAssetSchemaJob.submit(dstAssetSchemaPath, view(dstAssetSchemaTOML));
 
     for (CopyFileJob* job : copyAssetJobs)
         job->submit();
@@ -410,17 +411,17 @@ bool create_empty_project(const std::string& projectName, const FS::Path& projec
 
     toml = AssetSchema::create_empty();
     FS::Path assetSchemaPath = projectDir / FS::Path("assets.toml");
-    if (!FS::write_file(assetSchemaPath, View(toml.data(), toml.size()), err))
+    if (!FS::write_file(assetSchemaPath, view(toml), err))
         return false;
 
     toml = ProjectSchema::create_empty(projectName, "assets.toml", "main.toml", "main");
     FS::Path projectSchemaPath = projectDir / FS::Path("project.toml");
-    if (!FS::write_file(projectSchemaPath, View(toml.data(), toml.size()), err))
+    if (!FS::write_file(projectSchemaPath, view(toml), err))
         return false;
 
     toml = SceneSchema::create_empty();
     FS::Path sceneSchemaPath = projectDir / FS::Path("main.toml");
-    if (!FS::write_file(sceneSchemaPath, View(toml.data(), toml.size()), err))
+    if (!FS::write_file(sceneSchemaPath, view(toml), err))
         return false;
 
     return true;
@@ -437,7 +438,7 @@ bool create_empty_scene(const FS::Path& sceneSchemaAbsPath, std::string& err)
     }
 
     std::string toml = SceneSchema::create_empty();
-    if (!FS::write_file(sceneSchemaAbsPath, View(toml.data(), toml.size()), err))
+    if (!FS::write_file(sceneSchemaAbsPath, view(toml), err))
         return false;
 
     return true;

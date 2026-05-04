@@ -80,7 +80,7 @@ bool MeshUtil::extract_mesh_vertex(const std::filesystem::path& path)
     fs::path cppPath = path;
     cppPath += fs::path(".cpp");
 
-    if (!FS::write_file(cppPath, View(cppString.data(), cppString.size()), err))
+    if (!FS::write_file(cppPath, View((const byte*)cppString.data(), cppString.size()), err))
     {
         sLog.warn("{}", err);
         return false;

@@ -225,7 +225,7 @@ void DocumentObj::pop_string_span()
     DocumentSpan* span = parseSpans.top();
     std::string* code = strings.back();
 
-    span->text = View(code->data(), code->size());
+    span->text = View((const byte*)code->data(), code->size());
     parseSpans.pop();
 }
 
@@ -385,7 +385,7 @@ int DocumentObj::on_parser_text(MDTextType type, const View& text, void* user)
     case MD_TEXT_TYPE_CODE:
         if (obj->parseItems.top()->type == DOCUMENT_ITEM_CODE_BLOCK)
         {
-            obj->strings.back()->append(text.data, text.size);
+            obj->strings.back()->append((char*)text.data, text.size);
             return 0;
         }
         break; // inline <code></code> span
@@ -424,7 +424,7 @@ Document Document::create(const DocumentInfo& info, std::string& err)
     {
         obj->copy.resize(info.md.size);
         std::copy(info.md.data, info.md.data + info.md.size, obj->copy.data());
-        view = View(obj->copy.data(), obj->copy.size());
+        view = View((const byte*)obj->copy.data(), obj->copy.size());
     }
 
     const MDCallback callbacks = {

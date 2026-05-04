@@ -2,6 +2,7 @@
 
 #include <Ludens/Asset/Asset.h>
 #include <Ludens/DSA/HashMap.h>
+#include <Ludens/DSA/String.h>
 #include <Ludens/Header/Assert.h>
 #include <LudensBuilder/AssetBuilder/AssetImporter.h>
 
@@ -62,7 +63,7 @@ struct AssetImportJob
 
         str.resize(fileSize);
 
-        if (!FS::read_file(path, MutView(str.data(), str.size()), status.str))
+        if (!FS::read_file(path, MutView((byte*)str.data(), str.size()), status.str))
         {
             status.type = ASSET_IMPORT_ERROR_SRC_FILE;
             return false;

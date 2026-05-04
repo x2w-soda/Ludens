@@ -1,4 +1,5 @@
 #include <Ludens/Asset/AssetType/LuaScriptAssetObj.h>
+#include <Ludens/DSA/ViewUtil.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/Serial/Serial.h>
 #include <LudensBuilder/AssetBuilder/AssetState/LuaScriptAssetState.h>
@@ -36,7 +37,7 @@ void lua_script_asset_import(void* user)
 
     obj->sourcePath = sourcePath.string();
 
-    if (!job.write_dst_file("source", obj->sourcePath, View(obj->source.data(), obj->source.size())))
+    if (!job.write_dst_file("source", obj->sourcePath, view(obj->source)))
         return;
 
     Serializer serial;

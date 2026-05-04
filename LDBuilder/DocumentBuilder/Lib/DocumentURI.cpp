@@ -14,7 +14,7 @@ std::string document_uri_normalized_path(const URI& uri)
         return {};
 
     View pathV = uri.path();
-    std::string pathStr = std::string(pathV.data, pathV.size);
+    std::string pathStr = std::string((const char*)pathV.data, pathV.size);
     if (pathStr.ends_with('/'))
         pathStr.pop_back();
 
