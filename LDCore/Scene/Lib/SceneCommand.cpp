@@ -25,6 +25,9 @@ static void set_props_cmd_apply(SceneCommand* cmd, Scene scene);
 static void get_props_cmd_ctor(void* mem) { new (mem) SceneCommandGetProps(); }
 static void get_props_cmd_dtor(void* mem) { ((SceneCommandGetProps*)mem)->~SceneCommandGetProps(); }
 static void get_props_cmd_apply(SceneCommand* cmd, Scene scene);
+static void create_component_cmd_ctor(void* mem) { new (mem) SceneCommandCreateComponent(); }
+static void create_component_cmd_dtor(void* mem) { ((SceneCommandCreateComponent*)mem)->~SceneCommandCreateComponent(); }
+static void create_component_cmd_apply(SceneCommand* cmd, Scene scene);
 
 static void load_scene_cmd_apply(SceneCommand* base, Scene scene)
 {
@@ -45,23 +48,8 @@ static void set_props_cmd_apply(SceneCommand* base, Scene scene)
     if (!compV)
         return;
 
-    const TypeMeta* compTypeMeta = compV.type_meta();
-
-    // optionally resolve from string paths
-    for (size_t i = 0; i < cmd->propPaths.size(); i++)
-    {
-        PropertyValue& prop = cmd->props[i];
-        prop.arrayIndex = 0;
-
-        const PropertyMeta* propM = compTypeMeta->resolve_property(cmd->propPaths[i], prop.propIndex);
-        if (!propM || !Value64::narrow(propM->valueType, prop.value))
-        {
-            LD_DEBUG_BREAK;
-            return;
-        }
-    }
-
-    compTypeMeta->apply_properties(compV.data(), cmd->props);
+    const TypeMeta* compM = compV.type_meta();
+    compM->apply_properties(compV.data(), compM->resolve(cmd->props));
 }
 
 static void get_props_cmd_apply(SceneCommand* base, Scene scene)
@@ -74,31 +62,68 @@ static void get_props_cmd_apply(SceneCommand* base, Scene scene)
 
     const TypeMeta* compTypeMeta = compV.type_meta();
 
-    if (cmd->propPaths.empty()) // extract all properties
+    if (cmd->props.empty()) // extract all properties
     {
-        cmd->props = compTypeMeta->get_property_snapshot(compV.data());
+        cmd->props = compTypeMeta->get_property_named_snapshot(compV.data());
         return;
     }
 
     // extract for each successfully resolved string path
-    cmd->props.reserve(cmd->propPaths.size());
-    cmd->props.clear();
-
-    for (size_t i = 0; i < cmd->propPaths.size(); i++)
+    for (size_t i = 0; i < cmd->props.size(); i++)
     {
-        PropertyValue prop;
-        prop.arrayIndex = 0;
-
-        if (compTypeMeta->resolve_property(cmd->propPaths[i], prop.propIndex) &&
-            compTypeMeta->getLocal(compV.data(), prop.propIndex, prop.arrayIndex, prop.value))
-            cmd->props.emplace_back(std::move(prop));
+        uint32_t propIndex = 0;
+        if (!compTypeMeta->resolve_property(cmd->props[i].name, propIndex) ||
+            !compTypeMeta->getLocal(compV.data(), propIndex, 0, cmd->props[i].value))
+            cmd->props[i].value = {};
     }
+}
+
+void create_component_cmd_apply(SceneCommand* base, Scene scene)
+{
+    auto* cmd = (SceneCommandCreateComponent*)base;
+    cmd->result.compView = {};
+
+    ComponentView parentV = scene.get_component_by_path(cmd->parentPath);
+    if (!parentV)
+        return;
+
+    ComponentView compV = scene.create_component(cmd->compType, cmd->compName.c_str(), parentV.cuid());
+    if (!compV)
+        return;
+
+    const TypeMeta* compM = compV.type_meta();
+
+    Vector<PropertyValue> props(cmd->props.size());
+    for (size_t i = 0; i < props.size(); i++)
+    {
+        const PropertyMeta* propM = compM->resolve_property(cmd->props[i].name, props[i].propIndex);
+        if (!propM)
+        {
+            LD_DEBUG_BREAK;
+            scene.destroy_component_subtree(compV.cuid());
+            return;
+        }
+
+        props[i].arrayIndex = 0;
+        props[i].value = cmd->props[i].value;
+        if (!Value64::narrow(propM->valueType, props[i].value))
+        {
+            LD_DEBUG_BREAK;
+            scene.destroy_component_subtree(compV.cuid());
+            return;
+        }
+    }
+
+    std::string err;
+    if (compV.load_from_props(props, err))
+        cmd->result.compView = compV;
 }
 
 static SceneCommandMeta sSceneCommandMeta[] = {
     {sizeof(SceneCommandLoadScene), &load_scene_cmd_ctor, &load_scene_cmd_dtor, &load_scene_cmd_apply, "load_scene"},
     {sizeof(SceneCommandSetProps), &set_props_cmd_ctor, &set_props_cmd_dtor, &set_props_cmd_apply, "set_props"},
     {sizeof(SceneCommandGetProps), &get_props_cmd_ctor, &get_props_cmd_dtor, &get_props_cmd_apply, "get_props"},
+    {sizeof(SceneCommandCreateComponent), &create_component_cmd_ctor, &create_component_cmd_dtor, &create_component_cmd_apply, "create_component"},
 };
 
 static_assert(sizeof(sSceneCommandMeta) / sizeof(*sSceneCommandMeta) == SCENE_COMMAND_TYPE_ENUM_COUNT);

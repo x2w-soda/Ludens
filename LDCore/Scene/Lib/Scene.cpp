@@ -894,7 +894,7 @@ ComponentView Scene::create_component_subtree(const ComponentSubtreeData& hierar
     if (!rootV)
     {
         for (ComponentView compV : created)
-            destroy_component_subtree(compV.cuid(), mObj->suidRegistry);
+            destroy_component_subtree(compV.cuid());
 
         return {};
     }
@@ -911,7 +911,7 @@ ComponentView Scene::create_component_subtree(const ComponentSubtreeData& hierar
     return rootV;
 }
 
-void Scene::destroy_component_subtree(CUID compID, SUIDRegistry suidRegistry)
+void Scene::destroy_component_subtree(CUID compID)
 {
     LD_ASSERT(mObj->state != SCENE_STATE_RUNNING);
 
@@ -919,7 +919,7 @@ void Scene::destroy_component_subtree(CUID compID, SUIDRegistry suidRegistry)
     if (!compData)
         return;
 
-    mObj->active->unload_subtree(compData, suidRegistry);
+    mObj->active->unload_subtree(compData, mObj->suidRegistry);
 
     mObj->active->registry.destroy_component_subtree(compID);
 }
@@ -931,9 +931,9 @@ void Scene::reparent_component_subtree(CUID compID, CUID parentID)
     mObj->active->registry.reparent_component_subtree(compID, parentID);
 }
 
-ComponentView Scene::clone_component_subtree(CUID rootID, SUIDRegistry suidRegistry)
+ComponentView Scene::clone_component_subtree(CUID rootID)
 {
-    ComponentBase** dstData = mObj->active->registry.clone_component_subtree(rootID, suidRegistry);
+    ComponentBase** dstData = mObj->active->registry.clone_component_subtree(rootID, mObj->suidRegistry);
     if (!dstData)
         return {};
 

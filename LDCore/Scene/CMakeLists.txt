@@ -68,6 +68,10 @@ target_link_libraries(${MODULE_NAME} PUBLIC
 
 set(MODULE_TEST
     Test/SceneTest.cpp
+    Test/LuaSceneCommand.h
+    Test/LuaSceneCommand.cpp
+    Test/LuaSceneDriver.h
+    Test/LuaSceneDriver.cpp
     Test/SceneSchemaTest.cpp
     Test/SceneLuaScriptFFITest.cpp
 )
@@ -79,4 +83,6 @@ add_ludens_core_module_test(
 
 target_link_libraries(${MODULE_TEST_NAME} PRIVATE
     ${MODULE_NAME}
+    LDLudensLFS
+    LDTestUtil
 )

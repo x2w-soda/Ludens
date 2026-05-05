@@ -17,6 +17,7 @@ enum SceneCommandType
     SCENE_COMMAND_TYPE_LOAD_SCENE,
     SCENE_COMMAND_TYPE_SET_PROPS,
     SCENE_COMMAND_TYPE_GET_PROPS,
+    SCENE_COMMAND_TYPE_CREATE_COMPONENT,
     SCENE_COMMAND_TYPE_ENUM_COUNT
 };
 
@@ -54,8 +55,7 @@ struct SceneCommandLoadScene : SceneCommand
 struct SceneCommandSetProps : SceneCommand
 {
     String compPath;
-    Vector<String> propPaths;
-    Vector<PropertyValue> props;
+    Vector<PropertyNameValue> props;
 
     SceneCommandSetProps()
         : SceneCommand(SCENE_COMMAND_TYPE_SET_PROPS, SCENE_COMMAND_CATEGORY_WRITE)
@@ -66,11 +66,28 @@ struct SceneCommandSetProps : SceneCommand
 struct SceneCommandGetProps : SceneCommand
 {
     String compPath;
-    Vector<String> propPaths;
-    Vector<PropertyValue> props;
+    Vector<PropertyNameValue> props;
 
     SceneCommandGetProps()
         : SceneCommand(SCENE_COMMAND_TYPE_GET_PROPS, SCENE_COMMAND_CATEGORY_READ)
+    {
+    }
+};
+
+struct SceneCommandCreateComponent : SceneCommand
+{
+    String parentPath;                                  // path to parent component
+    String compName;                                    // created component name
+    ComponentType compType = COMPONENT_TYPE_ENUM_COUNT; // created component type
+    Vector<PropertyNameValue> props;                    // properties to create with
+
+    struct Result
+    {
+        ComponentView compView = {};
+    } result;
+
+    SceneCommandCreateComponent()
+        : SceneCommand(SCENE_COMMAND_TYPE_CREATE_COMPONENT, SCENE_COMMAND_CATEGORY_WRITE)
     {
     }
 };

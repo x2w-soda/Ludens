@@ -258,8 +258,7 @@ static void add_component_command_undo(EditCommand* baseCmd)
     ComponentView comp = scene.get_component_by_suid(cmd->compSUID);
     LD_ASSERT(comp); // TODO: recovery
 
-    SUIDRegistry suidReg = cmd->ctx->projectCtx.suid_registry();
-    scene.destroy_component_subtree(comp.cuid(), suidReg);
+    scene.destroy_component_subtree(comp.cuid());
 
     cmd->compSUID = 0;
 }
@@ -369,8 +368,7 @@ static void clone_component_subtree_command_redo(EditCommand* baseCmd)
     ComponentView srcComp = scene.get_component_by_index_path(cmd->srcPath);
     LD_ASSERT(srcComp);
 
-    SUIDRegistry suidReg = cmd->ctx->projectCtx.suid_registry();
-    ComponentView dstComp = scene.clone_component_subtree(srcComp.cuid(), suidReg);
+    ComponentView dstComp = scene.clone_component_subtree(srcComp.cuid());
     LD_ASSERT(dstComp);
 
     Transform2D transform;
@@ -390,8 +388,7 @@ static void clone_component_subtree_command_undo(EditCommand* baseCmd)
     auto* cmd = (CloneComponentSubtreeCommand*)baseCmd;
     Scene scene = cmd->ctx->scene;
 
-    SUIDRegistry suidReg = cmd->ctx->projectCtx.suid_registry();
-    scene.destroy_component_subtree(cmd->dstCUID, suidReg);
+    scene.destroy_component_subtree(cmd->dstCUID);
 
     cmd->dstCUID = 0;
 }
@@ -416,10 +413,9 @@ static void delete_component_subtree_command_redo(EditCommand* baseCmd)
     auto* cmd = (DeleteComponentSubtreeCommand*)baseCmd;
     Scene scene = cmd->ctx->scene;
 
-    SUIDRegistry suidReg = cmd->ctx->projectCtx.suid_registry();
     ComponentView comp = scene.get_component_by_suid(cmd->compSUID);
     LD_ASSERT(comp);
-    scene.destroy_component_subtree(comp.cuid(), suidReg);
+    scene.destroy_component_subtree(comp.cuid());
 }
 
 static void delete_component_subtree_command_undo(EditCommand* baseCmd)

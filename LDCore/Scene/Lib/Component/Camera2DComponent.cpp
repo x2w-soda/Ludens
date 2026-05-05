@@ -7,7 +7,7 @@ namespace LD {
 
 // clang-format off
 static PropertyMeta sCamera2DPropMeta[] = {
-    {"z_depth",    nullptr, VALUE_TYPE_U32,  Value64((uint32_t)0) },
+    {"transform",  nullptr, VALUE_TYPE_TRANSFORM_2D, Value64(Transform2D::identity())},
     {"viewport",   nullptr, VALUE_TYPE_RECT, Value64(Rect()) },
     {"extent",     nullptr, VALUE_TYPE_VEC2, Value64(Vec2(500.0f)) },
     {"zoom",       nullptr, VALUE_TYPE_F32,  Value64(1.0f) },

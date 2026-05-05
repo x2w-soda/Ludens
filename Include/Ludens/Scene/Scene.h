@@ -115,7 +115,7 @@ public:
     ComponentView create_component_subtree(const ComponentSubtreeData& data);
 
     /// @brief Destroy a component subtree.
-    void destroy_component_subtree(CUID compID, SUIDRegistry suidRegistry);
+    void destroy_component_subtree(CUID compID);
 
     /// @brief Reparent a component subtree.
     void reparent_component_subtree(CUID compID, CUID parentID);
@@ -123,7 +123,7 @@ public:
     /// @brief Try clone a component subtree.
     /// @param rootID The subtree root component to clone.
     /// @return Component view of the root component of the cloned subtree on success.
-    ComponentView clone_component_subtree(CUID rootID, SUIDRegistry suidRegistry);
+    ComponentView clone_component_subtree(CUID rootID);
 
     /// @brief Get interfaces for root components in Scene.
     void get_root_components(Vector<ComponentView>& roots);
