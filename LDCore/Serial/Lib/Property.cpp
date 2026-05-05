@@ -12,7 +12,23 @@ Vector<PropertyValue> TypeMeta::get_property_snapshot(void* obj) const
     for (size_t i = 0; i < propCount; i++)
     {
         snapshot[i].propIndex = (uint32_t)i;
-        (void)getLocal(obj, snapshot[i].propIndex, arrayIndex, snapshot[i].value);
+        (void)getLocal(obj, (uint32_t)i, arrayIndex, snapshot[i].value);
+    }
+
+    return snapshot;
+}
+
+Vector<PropertyNameValue> TypeMeta::get_property_named_snapshot(void* obj) const
+{
+    Vector<PropertyNameValue> snapshot(propCount);
+
+    // Array and Vector elements not captured
+    const uint32_t arrayIndex = 0;
+
+    for (size_t i = 0; i < propCount; i++)
+    {
+        snapshot[i].name = String(props[i].name);
+        (void)getLocal(obj, (uint32_t)i, arrayIndex, snapshot[i].value);
     }
 
     return snapshot;
@@ -82,6 +98,31 @@ const PropertyMeta* TypeMeta::resolve_property(const String& str, uint32_t& outP
     }
 
     return nullptr;
+}
+
+Vector<PropertyValue> TypeMeta::resolve(const Vector<PropertyNameValue>& props) const
+{
+    Vector<PropertyValue> resolved;
+
+    resolved.reserve(props.size());
+
+    for (size_t i = 0; i < props.size(); i++)
+    {
+        const PropertyMeta* propM;
+        PropertyValue prop;
+
+        if ((propM = resolve_property(props[i].name, prop.propIndex)))
+        {
+            prop.arrayIndex = 0;
+            prop.value = props[i].value;
+
+            (void)Value64::narrow(propM->valueType, prop.value);
+
+            resolved.emplace_back(std::move(prop));
+        }
+    }
+
+    return resolved;
 }
 
 } // namespace LD

@@ -30,6 +30,12 @@ struct PropertyValue
     Value64 value;
 };
 
+struct PropertyNameValue
+{
+    String name;
+    Value64 value;
+};
+
 struct PropertyDelta
 {
     uint32_t propIndex;
@@ -60,6 +66,7 @@ struct TypeMeta
     int32_t (*getSize)(void* obj, uint32_t propIndex);
 
     Vector<PropertyValue> get_property_snapshot(void* obj) const;
+    Vector<PropertyNameValue> get_property_named_snapshot(void* obj) const;
     Vector<PropertyDelta> get_property_delta(void* obj, const Vector<PropertyValue>& oldProps, const Vector<PropertyValue>& newProps) const;
     void apply_properties(void* obj, const Vector<PropertyValue>& props) const;
     void apply_old_properties(void* obj, const Vector<PropertyDelta>& delta) const;
@@ -69,6 +76,8 @@ struct TypeMeta
     /// @param outPropIndex Outputs property index in type upon success.
     /// @return Property meta upon success.
     const PropertyMeta* resolve_property(const String& str, uint32_t& outPropIndex) const;
+
+    Vector<PropertyValue> resolve(const Vector<PropertyNameValue>& props) const;
 };
 
 } // namespace LD
