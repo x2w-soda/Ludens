@@ -13,7 +13,7 @@
 //       from the LFS submodule at: https://github.com/x2w-soda/LudensLFS.
 //       Run `git submodule init && git submodule update` from the root folder to
 //       fetch the experimental media files in the submodule.
-#include <LudensUtil/LudensLFS.h>
+#include <LudensUtil/LudensLFS/LudensLFS.h>
 
 namespace LD {
 

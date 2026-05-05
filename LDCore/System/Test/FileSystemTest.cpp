@@ -1,7 +1,7 @@
 #include <Extra/doctest/doctest.h>
 #include <Ludens/DSA/Diagnostics.h>
 #include <Ludens/System/FileSystem.h>
-#include <LudensUtil/LudensLFS.h>
+#include <LudensUtil/LudensLFS/LudensLFS.h>
 
 #include <string>
 

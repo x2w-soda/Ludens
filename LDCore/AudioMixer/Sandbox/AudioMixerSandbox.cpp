@@ -14,7 +14,7 @@
 #include <Ludens/WindowRegistry/WindowRegistry.h>
 
 // Using audio samples from the LFS repository.
-#include <LudensUtil/LudensLFS.h>
+#include <LudensUtil/LudensLFS/LudensLFS.h>
 
 namespace LD {
 

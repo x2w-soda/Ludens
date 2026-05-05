@@ -12,7 +12,7 @@
 #include <Ludens/WindowRegistry/Input.h>
 #include <Ludens/WindowRegistry/WindowRegistry.h>
 #include <LudensEditor/EditorContext/EditorIconAtlas.h>
-#include <LudensUtil/LudensLFS.h>
+#include <LudensUtil/LudensLFS/LudensLFS.h>
 
 #include <string>
 

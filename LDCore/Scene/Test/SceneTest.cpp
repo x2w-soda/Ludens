@@ -2,13 +2,14 @@
 #include <Extra/doctest/doctest.h>
 
 #include <Ludens/Memory/Memory.h>
-#include <LudensUtil/LudensLFS.h>
+#include <LudensUtil/LudensLFS/LudensLFS.h>
+#include <LudensUtil/TestUtil/TestUtil.h>
 
 #include "LuaSceneDriver.h"
 
 using namespace LD;
 
-TEST_CASE("SceneTest")
+TEST_CASE("SceneTest" * doctest::skip(!LudensLFS::get_directory_path()))
 {
     RDeviceInfo deviceI{};
     deviceI.backend = RDEVICE_BACKEND_VULKAN;
@@ -17,8 +18,8 @@ TEST_CASE("SceneTest")
     Font font = Font::create_from_path(sLudensLFS.fontPath.string().c_str());
     FontAtlas atlas = FontAtlas::create_bitmap(font, 30.0f);
 
-    FS::Path rootPath;
-    if (!LudensLFS::get_root_directory_path(&rootPath))
+    Vector<FS::Path> testFiles;
+    if (!TestUtil::get_scene_test_files(testFiles))
         return;
 
     RenderSystemInfo renderSI{};
@@ -31,8 +32,8 @@ TEST_CASE("SceneTest")
     {
         LuaSceneDriver driver(renderS, audioS, atlas);
 
-        FS::Path filePath = FS::absolute(rootPath / "LDCore/Scene/Test/Suite/TransformTest.lua");
-        CHECK(driver.run(filePath));
+        for (const FS::Path& file : testFiles)
+            CHECK(driver.run(file));
     }
 
     AudioSystem::destroy(audioS);

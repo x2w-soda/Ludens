@@ -1,5 +1,5 @@
 #include <Extra/doctest/doctest.h>
-#include <LudensUtil/LudensLFS.h>
+#include <LudensUtil/LudensLFS/LudensLFS.h>
 
 #include "UITest.h"
 

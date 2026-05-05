@@ -1,7 +1,7 @@
 #include <Extra/doctest/doctest.h>
 #include <Ludens/AudioBackend/MiniAudio.h>
 #include <Ludens/AudioMixer/AudioMixer.h>
-#include <LudensUtil/LudensLFS.h>
+#include <LudensUtil/LudensLFS/LudensLFS.h>
 #include <array>
 
 #include "AudioMixerTest.h"

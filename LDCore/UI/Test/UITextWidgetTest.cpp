@@ -1,7 +1,7 @@
 #include <Extra/doctest/doctest.h>
 #include <Ludens/Memory/Memory.h>
 #include <Ludens/UI/Widget/UITextWidget.h>
-#include <LudensUtil/LudensLFS.h>
+#include <LudensUtil/LudensLFS/LudensLFS.h>
 
 #include "UITest.h"
 

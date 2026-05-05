@@ -1,11 +1,11 @@
-set(MODULE_NAME LDLudensLFS)
+set(MODULE_NAME LDTestUtil)
 
 set(MODULE_INCLUDE
-	${LUDENS_INCLUDE_DIR}/LudensUtil/LudensLFS/LudensLFS.h
+	${LUDENS_INCLUDE_DIR}/LudensUtil/TestUtil/TestUtil.h
 )
 
 set(MODULE_LIB
-	Lib/LudensLFS.cpp
+	Lib/TestUtil.cpp
 )
 
 add_library(${MODULE_NAME}

@@ -29,7 +29,9 @@
 #include <LudensEditor/EditorContext/EditCommand.h>
 #include <LudensEditor/EditorContext/EditorContext.h>
 #include <LudensEditor/EditorContext/EditorEventQueue.h>
-#include <LudensUtil/LudensLFS.h>
+
+// TODO: development builds only
+#include <LudensUtil/TestUtil/TestUtil.h>
 
 #include <utility>
 
@@ -614,7 +616,7 @@ bool EditorContextObj::prepare_document(const char* uriPath)
         return false;
 
     FS::Path path;
-    if (!LudensLFS::get_root_directory_path(&path))
+    if (!TestUtil::get_root_directory_path(&path))
         return false;
 
     path = FS::absolute(path / "Docs" / relPath);

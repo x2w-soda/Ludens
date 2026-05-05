@@ -30,6 +30,11 @@ add_ludens_editor_module(
     LIB     ${MODULE_LIB}
 )
 
+# TODO: this is for development builds only
+target_link_libraries(${MODULE_NAME} PRIVATE
+	LDTestUtil
+)
+
 set(MODULE_TEST
     Test/EditorContextTest.h
     Test/EditorContextTest.cpp

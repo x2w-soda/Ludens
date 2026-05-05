@@ -2,17 +2,18 @@
 #include <Ludens/Memory/Memory.h>
 #include <Ludens/System/FileSystem.h>
 #include <LudensBuilder/DocumentBuilder/DocumentRegistry.h>
-#include <LudensUtil/LudensLFS.h>
+#include <LudensUtil/LudensLFS/LudensLFS.h>
+#include <LudensUtil/TestUtil/TestUtil.h>
 
 #include "DocumentBuilderTest.h"
 
 using namespace LD;
 
 // Offline total-validation of engine documents.
-TEST_CASE("DocumentRegistry Validation" * doctest::skip(!LudensLFS::get_root_directory_path()))
+TEST_CASE("DocumentRegistry Validation" * doctest::skip(!TestUtil::get_root_directory_path()))
 {
     FS::Path rootDirPath;
-    REQUIRE(LudensLFS::get_root_directory_path(&rootDirPath));
+    REQUIRE(TestUtil::get_root_directory_path(&rootDirPath));
 
     FS::Path docsDirPath = FS::absolute(rootDirPath / "Docs");
     REQUIRE(FS::exists(docsDirPath));

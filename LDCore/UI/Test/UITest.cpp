@@ -4,7 +4,7 @@
 #include <Ludens/Memory/Memory.h>
 #include <Ludens/UI/UIContext.h>
 #include <Ludens/UI/UILayout.h>
-#include <LudensUtil/LudensLFS.h>
+#include <LudensUtil/LudensLFS/LudensLFS.h>
 
 #include "UITest.h"
 

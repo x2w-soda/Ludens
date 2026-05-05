@@ -1,4 +1,4 @@
-#include <LudensUtil/LudensLFS.h>
+#include <LudensUtil/LudensLFS/LudensLFS.h>
 #include <cassert>
 #include <iostream>
 
@@ -68,30 +68,6 @@ bool LudensLFS::get_directory_path(std::filesystem::path* path)
             fs::path lfsDirectory(candidate);
             if (path)
                 *path = lfsDirectory.parent_path();
-            return true;
-        }
-    }
-
-    return false;
-}
-
-bool LudensLFS::get_root_directory_path(std::filesystem::path* path)
-{
-    const char* candidates[] = {
-        "../Ludens/README.md",
-        "../../Ludens/README.md",
-        "../../../Ludens/README.md",
-        "../../../../Ludens/README.md",
-        "../../../../../Ludens/README.md",
-    };
-
-    for (const char* candidate : candidates)
-    {
-        if (fs::exists(candidate))
-        {
-            fs::path rootDirectory(candidate);
-            if (path)
-                *path = rootDirectory.parent_path();
             return true;
         }
     }

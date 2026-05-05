@@ -39,4 +39,5 @@ add_ludens_builder_module_test(
 target_link_libraries(${MODULE_TEST_NAME} PRIVATE
     ${MODULE_NAME}
     LDLudensLFS
+    LDTestUtil
 )
