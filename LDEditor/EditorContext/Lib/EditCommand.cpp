@@ -405,7 +405,16 @@ void CloneComponentSubtreeCommand::configure(SUID compSUID)
 
 void DeleteComponentSubtreeCommand::configure(SUID compSUID)
 {
-    this->compSUID = compSUID;
+    Scene scene = ctx->scene;
+    ComponentView rootV = scene.get_component_by_suid(compSUID);
+    LD_ASSERT(rootV);
+
+    ComponentView parentV = rootV.get_parent();
+
+    this->rootSUID = compSUID;
+    this->parentSUID = parentV ? parentV.suid() : SUID(0);
+
+    rootV.save_subtree(this->subtree);
 }
 
 static void delete_component_subtree_command_redo(EditCommand* baseCmd)
@@ -413,14 +422,23 @@ static void delete_component_subtree_command_redo(EditCommand* baseCmd)
     auto* cmd = (DeleteComponentSubtreeCommand*)baseCmd;
     Scene scene = cmd->ctx->scene;
 
-    ComponentView comp = scene.get_component_by_suid(cmd->compSUID);
-    LD_ASSERT(comp);
-    scene.destroy_component_subtree(comp.cuid());
+    ComponentView rootV = scene.get_component_by_suid(cmd->rootSUID);
+    LD_ASSERT(rootV);
+    scene.destroy_component_subtree(rootV.cuid());
 }
 
 static void delete_component_subtree_command_undo(EditCommand* baseCmd)
 {
-    LD_UNREACHABLE;
+    auto* cmd = (DeleteComponentSubtreeCommand*)baseCmd;
+    Scene scene = cmd->ctx->scene;
+
+    ComponentView rootV = scene.create_component_subtree(cmd->subtree);
+    if (!rootV)
+        return;
+
+    ComponentView parentV = scene.get_component_by_suid(cmd->parentSUID);
+    if (parentV)
+        scene.reparent_component_subtree(rootV.cuid(), parentV.cuid());
 }
 
 } // namespace LD

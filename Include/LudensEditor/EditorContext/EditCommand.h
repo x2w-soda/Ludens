@@ -1,7 +1,8 @@
 #pragma once
 
 #include <Ludens/Asset/AssetManager.h>
-#include <Ludens/DataRegistry/DataRegistry.h>
+#include <Ludens/DataRegistry/DataRegistryDef.h>
+#include <Ludens/Scene/ComponentView.h>
 #include <Ludens/Serial/Property.h>
 
 namespace LD {
@@ -113,7 +114,9 @@ struct CloneComponentSubtreeCommand : EditCommand
 
 struct DeleteComponentSubtreeCommand : EditCommand
 {
-    SUID compSUID = 0;
+    SUID rootSUID = 0;   // root of subtree to delete
+    SUID parentSUID = 0; // parent of subtree
+    ComponentSubtreeEntry subtree;
 
     void configure(SUID compSUID);
 };
