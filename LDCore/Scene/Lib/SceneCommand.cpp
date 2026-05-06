@@ -36,7 +36,7 @@ static void load_scene_cmd_apply(SceneCommand* base, Scene scene)
     cmd->loadSuccess = scene.load([&](SceneObj* sceneObj) -> bool {
         Scene scene(sceneObj);
 
-        return (bool)scene.create_component_subtree(cmd->subtreeData);
+        return (bool)scene.create_component_subtree(cmd->subtree);
     });
 }
 

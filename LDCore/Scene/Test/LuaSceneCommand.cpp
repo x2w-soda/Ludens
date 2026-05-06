@@ -116,7 +116,7 @@ static LuaSceneCommand* load_scene_create(LuaState L, std::string& err)
         return nullptr;
 
     size_t compCount = L.get_objlen(-1);
-    Vector<ComponentData>& components = luaCmd->subtreeData.components;
+    Vector<ComponentEntry>& components = luaCmd->subtree.components;
     components.resize(compCount);
 
     for (size_t i = 0; i < compCount; i++)
@@ -161,7 +161,7 @@ static bool load_scene_execute(LuaSceneCommand* base, SceneCommandQueue cmdQ, Sc
 {
     auto* cmd = (SceneCommandLoadScene*)cmdQ.enqueue(SCENE_COMMAND_TYPE_LOAD_SCENE);
     auto* luaCmd = (LuaSceneCommandLoadScene*)base;
-    cmd->subtreeData = luaCmd->subtreeData; // maybe std::move this?
+    cmd->subtree = luaCmd->subtree; // maybe std::move this?
 
     cmdQ.poll_commands(scene);
     return true;

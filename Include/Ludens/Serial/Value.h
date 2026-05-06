@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Ludens/DSA/String.h>
 #include <Ludens/Header/Math/Rect.h>
 #include <Ludens/Header/Math/Transform.h>
 
@@ -71,7 +72,7 @@ public:
         Value16 v16;
         Transform2D transform2D;
         TransformEx transformEx;
-        std::string str;
+        String str;
     };
 
     Value64() {}
@@ -99,6 +100,8 @@ public:
 
     void set_u32(uint32_t u32);
     uint32_t get_u32() const;
+    void set_u64(uint64_t u64);
+    uint64_t get_u64() const;
     void set_f32(float f32);
     float get_f32() const;
     void set_f64(double f64);
@@ -117,8 +120,8 @@ public:
     Transform2D get_transform_2d() const;
     void set_transform(const TransformEx& transform);
     TransformEx get_transform() const;
-    void set_string(const std::string& str);
-    std::string get_string() const;
+    void set_string(const String& str);
+    String get_string() const;
 
 public: // static methods
     static bool narrow(ValueType type, Value64& val);

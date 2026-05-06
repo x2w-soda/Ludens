@@ -8,6 +8,7 @@
 #include <Ludens/Memory/Memory.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/Scene/Scene.h>
+#include <Ludens/Serial/Property.h>
 #include <Ludens/System/Timer.h>
 #include <Ludens/Text/Text.h>
 
@@ -108,6 +109,31 @@ static AssetType scene_component_get_asset_type(SceneObj* scene, ComponentType t
     return ASSET_TYPE_ENUM_COUNT;
 }
 
+static void scene_component_save_subtree(ComponentSubtreeEntry& outSubtree, ComponentBase** compData, int32_t parentIndex)
+{
+    ComponentBase* compBase = *compData;
+
+    ComponentEntry entry{};
+    entry.type = compBase->type;
+    entry.suid = compBase->suid;
+    entry.name = compBase->name;
+    entry.scriptID = compBase->scriptAssetID;
+    entry.parentIndex = parentIndex;
+
+    const TypeMeta* typeM = sSceneComponents[(int)entry.type].typeMeta;
+    entry.props = typeM->get_property_snapshot(compData);
+
+    parentIndex = (int32_t)outSubtree.components.size();
+    outSubtree.components.push_back(std::move(entry));
+
+    for (ComponentBase* childBase = compBase->child; childBase; childBase = childBase->next)
+    {
+        ComponentBase** childData = sScene->active->registry.get_component_data(childBase->cuid, nullptr);
+
+        scene_component_save_subtree(outSubtree, childData, parentIndex);
+    }
+}
+
 //
 // IMPLEMENTATION
 //
@@ -197,6 +223,22 @@ void SceneContext::update(const SceneUpdateTick& tick)
 
     // update screen space UI
     screenUI.update(tick);
+}
+
+void SceneContext::post_update()
+{
+    for (CUID compID : destructionQueue)
+    {
+        ComponentBase** compData = registry.get_component_data(compID, nullptr);
+        if (!compData)
+            continue;
+
+        cleanup_subtree(compData);
+
+        registry.destroy_component_subtree(compID);
+    }
+
+    destructionQueue.clear();
 }
 
 bool SceneContext::startup_registry()
@@ -357,6 +399,11 @@ bool SceneContext::cleanup_component(ComponentBase** data, std::string& err)
     }
 
     return success;
+}
+
+void SceneContext::queue_component_destruction(CUID compID)
+{
+    destructionQueue.push_back(compID);
 }
 
 void SceneContext::unload_registry(SUIDRegistry suidRegistry)
@@ -737,6 +784,7 @@ void Scene::update(const SceneUpdateTick& tick)
     }
 
     mObj->active->update(mObj->tick);
+    mObj->active->post_update();
 
     // any heap allocations for audio is done on main thread.
     mObj->audioSystemCache.update();
@@ -851,34 +899,36 @@ ComponentView Scene::create_component_serial(ComponentType type, const char* nam
     return ComponentView(data);
 }
 
-ComponentView Scene::create_component_subtree(const ComponentSubtreeData& hierarchyD)
+ComponentView Scene::create_component_subtree(const ComponentSubtreeEntry& subtree)
 {
     LD_PROFILE_SCOPE;
 
     std::string err;
-    size_t compCount = hierarchyD.components.size();
+    size_t compCount = subtree.components.size();
     Vector<ComponentView> created(compCount);
     ComponentView rootV{};
 
     for (size_t i = 0; i < compCount; i++)
     {
-        const ComponentData& compD = hierarchyD.components[i];
+        const ComponentEntry& compE = subtree.components[i];
         ComponentView compV{};
 
-        if (compD.suid)
-            compV = create_component_serial(compD.type, compD.name.c_str(), mObj->suidRegistry, SUID(0), compD.suid);
+        if (compE.suid)
+            compV = create_component_serial(compE.type, compE.name.c_str(), mObj->suidRegistry, SUID(0), compE.suid);
         else
-            compV = create_component(compD.type, compD.name.c_str(), CUID(0));
+            compV = create_component(compE.type, compE.name.c_str(), CUID(0));
 
-        if (!compV || !compV.load_from_props(compD.props, err))
+        if (!compV || !compV.load_from_props(compE.props, err))
         {
             rootV = {};
             break;
         }
 
+        compV.set_script_asset_id(compE.scriptID);
+
         created[i] = compV;
 
-        if (compD.parentIndex < 0)
+        if (compE.parentIndex < 0)
         {
             if (!rootV)
                 rootV = compV;
@@ -902,9 +952,9 @@ ComponentView Scene::create_component_subtree(const ComponentSubtreeData& hierar
     // reparent pass
     for (size_t i = 0; i < compCount; i++)
     {
-        int32_t parentI = hierarchyD.components[i].parentIndex;
+        int32_t parentI = subtree.components[i].parentIndex;
 
-        if (0 <= parentI && parentI < hierarchyD.components.size())
+        if (0 <= parentI && parentI < subtree.components.size())
             reparent_component_subtree(created[i].cuid(), created[parentI].cuid());
     }
 
@@ -985,7 +1035,10 @@ Vector<ComponentView> Scene::get_components(ComponentType type)
 
 ComponentView Scene::get_component_by_suid(SUID compSUID)
 {
-    LD_ASSERT(compSUID && compSUID.type() == SERIAL_TYPE_COMPONENT);
+    if (!compSUID)
+        return {};
+
+    LD_ASSERT(compSUID.type() == SERIAL_TYPE_COMPONENT);
 
     return ComponentView(mObj->active->registry.get_component_data_by_suid(compSUID, nullptr));
 }
@@ -1035,6 +1088,13 @@ bool ComponentView::load_from_props(const Vector<PropertyValue>& props, std::str
     int type = (*mData)->type;
 
     return sSceneComponents[type].load(sScene, mData, props, err);
+}
+
+void ComponentView::save_subtree(ComponentSubtreeEntry& outSubtree)
+{
+    outSubtree = {};
+
+    scene_component_save_subtree(outSubtree, mData, -1);
 }
 
 const char* ComponentView::get_name()

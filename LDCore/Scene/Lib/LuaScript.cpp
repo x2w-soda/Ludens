@@ -43,6 +43,7 @@ static int input_get_mouse(lua_State* l);
 static int get_component(lua_State* l);
 static int get_asset(lua_State* l);
 static int create_child(lua_State* l);
+static int destroy(lua_State* l);
 
 static KeyCode string_to_keycode(const char* cstr)
 {
@@ -441,6 +442,21 @@ static int create_child(lua_State* l)
     return 1;
 }
 
+/// @brief ludens.C.destroy(compID)
+static int destroy(lua_State* l)
+{
+    LuaState L(l);
+
+    LD_ASSERT(L.size() == 1);
+    LD_ASSERT(L.get_type(1) == LUA_TYPE_LIGHTUSERDATA);
+
+    CUID compID(reinterpret_cast<uint64_t>(L.to_userdata(1)));
+
+    sScene->active->queue_component_destruction(compID);
+
+    return 0;
+}
+
 //
 // PUBLIC API
 //
@@ -483,6 +499,7 @@ LuaModule create_ludens_module()
         {.type = LUA_TYPE_FN, .name = "get_component", .fn = &LuaScript::get_component},
         {.type = LUA_TYPE_FN, .name = "get_asset",     .fn = &LuaScript::get_asset},
         {.type = LUA_TYPE_FN, .name = "create_child",  .fn = &LuaScript::create_child},
+        {.type = LUA_TYPE_FN, .name = "destroy",       .fn = &LuaScript::destroy},
     };
     // clang-format on
 
@@ -587,6 +604,9 @@ _G.ludens.ComponentRef = {
     end,
     create_child = function (compRef, compType, params)
         return _G.ludens.C.create_child(compRef.cuid, compType, params)
+    end,
+    destroy = function (compRef)
+        _G.ludens.C.destroy(compRef.cuid)
     end,
     __index = function (compRef, k)
         local method = _G.ludens.ComponentRef[k]

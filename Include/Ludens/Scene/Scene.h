@@ -110,9 +110,9 @@ public:
     /// @return Component interface of the newly created component on success.
     ComponentView create_component_serial(ComponentType type, const char* name, SUIDRegistry suidRegistry, SUID parentSUID, SUID hintSUID);
 
-    /// @brief Try create a subtree from data
+    /// @brief Try create a subtree from serialized entry.
     /// @return Root component view on success.
-    ComponentView create_component_subtree(const ComponentSubtreeData& data);
+    ComponentView create_component_subtree(const ComponentSubtreeEntry& subtree);
 
     /// @brief Destroy a component subtree.
     void destroy_component_subtree(CUID compID);

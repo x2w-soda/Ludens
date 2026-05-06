@@ -22,7 +22,7 @@ struct LuaSceneCommand
 
 struct LuaSceneCommandLoadScene : LuaSceneCommand
 {
-    ComponentSubtreeData subtreeData;
+    ComponentSubtreeEntry subtree;
 
     LuaSceneCommandLoadScene()
         : LuaSceneCommand(SCENE_COMMAND_TYPE_LOAD_SCENE) {}

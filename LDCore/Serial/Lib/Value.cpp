@@ -69,13 +69,13 @@ Value64::Value64(Value64&& other) noexcept
 Value64::Value64(const char* cstr)
     : type(VALUE_TYPE_STRING)
 {
-    new (&str) std::string(cstr);
+    new (&str) String(cstr);
 }
 
 Value64::Value64(const std::string& s)
     : type(VALUE_TYPE_STRING)
 {
-    new (&str) std::string(s);
+    new (&str) String(s.data(), s.size());
 }
 
 Value64::Value64(float f32)
@@ -253,6 +253,20 @@ uint32_t Value64::get_u32() const
     return v16.u32[0];
 }
 
+void Value64::set_u64(uint64_t u64)
+{
+    destroy();
+    type = VALUE_TYPE_U64;
+    v16.u64[0] = u64;
+}
+
+uint64_t Value64::get_u64() const
+{
+    LD_ASSERT(type == VALUE_TYPE_U64);
+
+    return v16.u64[0];
+}
+
 void Value64::set_f32(float f32)
 {
     destroy();
@@ -385,14 +399,14 @@ TransformEx Value64::get_transform() const
     return transformEx;
 }
 
-void Value64::set_string(const std::string& s)
+void Value64::set_string(const String& s)
 {
     destroy();
     type = VALUE_TYPE_STRING;
-    new (&str) std::string(s);
+    new (&str) String(s);
 }
 
-std::string Value64::get_string() const
+String Value64::get_string() const
 {
     LD_ASSERT(type == VALUE_TYPE_STRING);
 
@@ -402,7 +416,7 @@ std::string Value64::get_string() const
 void Value64::destroy()
 {
     if (type == VALUE_TYPE_STRING)
-        str.~basic_string();
+        str.~String();
 
     type = VALUE_TYPE_ENUM_COUNT;
 }
@@ -414,7 +428,7 @@ void Value64::copy_from(const Value64& other)
     switch (other.type)
     {
     case VALUE_TYPE_STRING:
-        new (&str) std::string(other.str);
+        new (&str) String(other.str);
         break;
     case VALUE_TYPE_TRANSFORM_2D:
         transform2D = other.transform2D;
@@ -435,7 +449,7 @@ void Value64::move_from(Value64&& other)
     switch (other.type)
     {
     case VALUE_TYPE_STRING:
-        new (&str) std::string(std::move(other.str));
+        new (&str) String(std::move(other.str));
         break;
     case VALUE_TYPE_TRANSFORM_2D:
         transform2D = std::move(other.transform2D);

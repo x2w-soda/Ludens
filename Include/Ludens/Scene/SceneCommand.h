@@ -43,7 +43,7 @@ struct SceneCommand
 
 struct SceneCommandLoadScene : SceneCommand
 {
-    ComponentSubtreeData subtreeData;
+    ComponentSubtreeEntry subtree;
     bool loadSuccess = false;
 
     SceneCommandLoadScene()

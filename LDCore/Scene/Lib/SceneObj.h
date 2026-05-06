@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Ludens/DSA/Vector.h>
 #include <Ludens/UI/UIContext.h>
 
 #include "AudioSystemCache.h"
@@ -34,6 +35,7 @@ struct SceneContext
     LuaScript::Context lua;
     ScreenUI screenUI;
     DataRegistry registry;
+    Vector<CUID> destructionQueue;
 
     SceneContext() = delete;
     SceneContext(const SceneContextInfo& info);
@@ -47,6 +49,7 @@ struct SceneContext
     void invalidate_cameras(Vec2 extent);
 
     void update(const SceneUpdateTick& tick);
+    void post_update();
 
     bool startup_registry();
     void cleanup_registry();
@@ -61,6 +64,8 @@ struct SceneContext
     void cleanup_subtree(ComponentBase** data);
 
     bool cleanup_component(ComponentBase** data, std::string& err);
+
+    void queue_component_destruction(CUID compID);
 
     /// @brief Unload components recursively, destroying resources from systems/servers.
     void unload_subtree(ComponentBase** data, SUIDRegistry suidRegistry);

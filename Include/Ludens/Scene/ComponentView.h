@@ -10,6 +10,7 @@
 namespace LD {
 
 struct ComponentBase;
+struct ComponentSubtreeEntry;
 struct TransformEx;
 struct Transform2D;
 struct PropertyValue;
@@ -35,6 +36,7 @@ public:
     RUID ruid();
 
     bool load_from_props(const Vector<PropertyValue>& props, std::string& err);
+    void save_subtree(ComponentSubtreeEntry& outSubtree);
 
     const char* get_name();
     void set_name(const char* cstr);
@@ -60,18 +62,19 @@ protected:
     ComponentBase** mData = nullptr;
 };
 
-struct ComponentData
+struct ComponentEntry
 {
     std::string name;
     SUID suid = {};
-    ComponentType type;
+    AssetID scriptID = {};
+    ComponentType type = COMPONENT_TYPE_ENUM_COUNT;
     Vector<PropertyValue> props;
     int32_t parentIndex = -1;
 };
 
-struct ComponentSubtreeData
+struct ComponentSubtreeEntry
 {
-    Vector<ComponentData> components;
+    Vector<ComponentEntry> components;
 };
 
 } // namespace LD
