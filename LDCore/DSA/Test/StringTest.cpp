@@ -97,6 +97,7 @@ TEST_CASE("String methods")
 
         s = "foo";
         CHECK(s == "foo");
+        CHECK(strlen(s.c_str()) == 3);
 
         s.resize(s.capacity() + 1);
         s.resize(3);
@@ -188,6 +189,30 @@ TEST_CASE("String replace")
         s = "";
         s.replace(0, 0, nullptr, 0);
         CHECK(s == "");
+    }
+
+    CHECK_FALSE(get_memory_leaks(nullptr));
+}
+
+TEST_CASE("String erase")
+{
+    {
+        String s("hello");
+
+        s.erase(0, 0);
+        CHECK(s == "hello");
+
+        s.erase(0, 1);
+        CHECK(s == "ello");
+
+        s.erase(4, 0);
+        CHECK(s == "ello");
+
+        s.erase(3, 1);
+        CHECK(s == "ell");
+
+        s.erase(1, 100);
+        CHECK(s == "e");
     }
 
     CHECK_FALSE(get_memory_leaks(nullptr));

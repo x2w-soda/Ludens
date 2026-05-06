@@ -5,7 +5,8 @@
 
 #include <cstring>
 
-#define STRING_DEFAULT_LOCAL_SIZE 16
+// This is a lot of headroom for SSO local storage.
+#define STRING_DEFAULT_LOCAL_SIZE 32
 
 namespace LD {
 
@@ -171,12 +172,22 @@ public:
         mCap = nsize;
     }
 
+    void reserve(size_t cap)
+    {
+        if (cap < mSize)
+            return;
+
+        size_t oldSize = mSize;
+        resize(cap);
+        resize(oldSize);
+    }
+
     /// @brief replace a portion of string
     /// @param pos the starting position of the replacement
     /// @param len the length of the portion to be replaced
     /// @param rep the new string value to replace with
     /// @param rlen the length of the new replacement string
-    void replace(size_t pos, size_t len, const char* rep, size_t rlen)
+    void replace(size_t pos, size_t len, const void* rep, size_t rlen)
     {
         if (rlen >= len)
         {
@@ -188,7 +199,7 @@ public:
                 mBase[last - i] = mBase[last - shift - i];
 
             for (size_t i = 0; i < rlen; i++)
-                mBase[pos + i] = rep[i];
+                mBase[pos + i] = ((const byte*)rep)[i];
         }
         else
         {
@@ -199,7 +210,7 @@ public:
                 mBase[first + i] = mBase[first + shift + i];
 
             for (size_t i = 0; i < rlen; i++)
-                mBase[pos + i] = rep[i];
+                mBase[pos + i] = ((const byte*)rep)[i];
 
             resize(mSize - shift);
         }
@@ -229,6 +240,49 @@ public:
     inline void append(const char8_t* str, size_t len)
     {
         replace(mSize, 0, str, len);
+    }
+
+    void erase(size_t pos, size_t size)
+    {
+        if (pos >= mSize)
+            return;
+
+        size = std::min(size, mSize - pos);
+
+        for (size_t i = pos; i + size < mSize; i++)
+            mBase[i] = mBase[i + size];
+
+        resize(mSize - size);
+    }
+
+    size_t find(const void* data, size_t size)
+    {
+        if (size == 0)
+            return 0; // match at start
+
+        if (size > mSize)
+            return npos;
+
+        for (size_t i = 0; i <= mSize - size; i++)
+        {
+            if (!memcmp(mBase + i, data, size))
+                return i;
+        }
+
+        return npos;
+    }
+
+    inline size_t find(const char* cstr)
+    {
+        return cstr ? find(cstr, strlen(cstr)) : npos;
+    }
+
+    const char* c_str()
+    {
+        reserve(mSize + 1);
+        mBase[mSize] = '\0';
+
+        return (const char*)mBase;
     }
 
     /// @brief Copy from C string.
@@ -261,6 +315,9 @@ public:
 
         return !memcmp(mBase, other.mBase, mSize);
     }
+
+public: // static
+    static constexpr size_t npos{static_cast<size_t>(-1)};
 
 private:
     char8_t* mBase;
