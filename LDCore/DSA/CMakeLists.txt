@@ -14,6 +14,7 @@ set(MODULE_INCLUDE
 	${LUDENS_INCLUDE_DIR}/Ludens/DSA/Array.h
 	${LUDENS_INCLUDE_DIR}/Ludens/DSA/Vector.h
 	${LUDENS_INCLUDE_DIR}/Ludens/DSA/String.h
+	${LUDENS_INCLUDE_DIR}/Ludens/DSA/StringUtil.h
 	${LUDENS_INCLUDE_DIR}/Ludens/DSA/ViewUtil.h
 	${LUDENS_INCLUDE_DIR}/Ludens/DSA/Observer.h
 	${LUDENS_INCLUDE_DIR}/Ludens/DSA/Optional.h

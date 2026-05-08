@@ -1,7 +1,10 @@
 #include <Extra/doctest/doctest.h>
 #include <Ludens/DSA/String.h>
+#include <Ludens/DSA/StringUtil.h>
 #include <Ludens/Header/Types.h>
 #include <Ludens/Header/View.h>
+
+#include <sstream>
 
 using namespace LD;
 
@@ -217,4 +220,15 @@ TEST_CASE("String erase")
     }
 
     CHECK_FALSE(get_memory_leaks(nullptr));
+}
+
+TEST_CASE("StringUtil")
+{
+    std::stringstream ss;
+    String str("Hello World");
+    ss << "Value: " << str;
+    CHECK(ss.str() == "Value: Hello World");
+
+    std::string s = std::format("{}.", str);
+    CHECK(s == "Hello World.");
 }

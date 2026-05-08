@@ -4,6 +4,7 @@
 #include <Ludens/Memory/Memory.h>
 
 #include <cstring>
+#include <algorithm> // std::min
 
 // This is a lot of headroom for SSO local storage.
 #define STRING_DEFAULT_LOCAL_SIZE 32
@@ -274,6 +275,26 @@ public:
     inline size_t find(const char* cstr)
     {
         return cstr ? find(cstr, strlen(cstr)) : npos;
+    }
+
+    inline size_t find(char c)
+    {
+        return find(&c, 1);
+    }
+
+    inline char8_t& back() noexcept
+    {
+        return mBase[mSize - 1];
+    }
+
+    inline char8_t back() const noexcept
+    {
+        return mBase[mSize - 1];
+    }
+
+    inline void pop_back() noexcept
+    {
+        resize(mSize - 1);
     }
 
     inline const char* c_str() const noexcept
