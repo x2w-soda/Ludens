@@ -36,13 +36,16 @@ WindowObj::WindowObj(const WindowInfo& windowI, WindowRegistryObj* reg, WindowID
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API); // TODO: RDEVICE_BACKEND_OPENGL
     glfwWindowHint(GLFW_RESIZABLE, GLFW_TRUE);
 
+    if (windowI.invisible)
+        glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
+
     mHandle = glfwCreateWindow((int)mWidth, (int)mHeight, windowI.name, nullptr, nullptr);
     glfwSetWindowUserPointer(mHandle, this);
-    glfwSetWindowSizeCallback(mHandle, &WindowObj::size_callback);
-    glfwSetKeyCallback(mHandle, &WindowObj::key_callback);
-    glfwSetMouseButtonCallback(mHandle, &WindowObj::mouse_button_callback);
-    glfwSetCursorPosCallback(mHandle, &WindowObj::cursor_pos_callback);
-    glfwSetScrollCallback(mHandle, &WindowObj::scroll_callback);
+    glfwSetWindowSizeCallback(mHandle, &WindowObj::glfw_size_callback);
+    glfwSetKeyCallback(mHandle, &WindowObj::glfw_key_callback);
+    glfwSetMouseButtonCallback(mHandle, &WindowObj::glfw_mouse_button_callback);
+    glfwSetCursorPosCallback(mHandle, &WindowObj::glfw_cursor_pos_callback);
+    glfwSetScrollCallback(mHandle, &WindowObj::glfw_scroll_callback);
 
     if (windowI.hintBorderColor != 0)
         hint_border_color(windowI.hintBorderColor);
@@ -71,18 +74,14 @@ WindowObj::~WindowObj()
     glfwDestroyWindow(mHandle);
 }
 
-void WindowObj::size_callback(GLFWwindow* window, int width, int height)
+void WindowObj::glfw_size_callback(GLFWwindow* window, int width, int height)
 {
     WindowObj* obj = (WindowObj*)glfwGetWindowUserPointer(window);
 
-    obj->mWidth = width;
-    obj->mHeight = height;
-
-    WindowResizeEvent event(obj->mID, width, height);
-    obj->on_event(&event);
+    obj->resize(width, height);
 }
 
-void WindowObj::key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
+void WindowObj::glfw_key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
 {
     auto* obj = (WindowObj*)glfwGetWindowUserPointer(window);
     (void)scancode;
@@ -90,23 +89,15 @@ void WindowObj::key_callback(GLFWwindow* window, int key, int scancode, int acti
     if (action == GLFW_PRESS || action == GLFW_REPEAT)
     {
         bool firstPress = action == GLFW_PRESS;
-
-        if (firstPress)
-            obj->mKeyState[key] |= (PRESSED_BIT | PRESSED_THIS_FRAME_BIT);
-
-        WindowKeyDownEvent event(obj->mID, (KeyCode)key, (KeyMods)mods, !firstPress);
-        obj->on_event(&event);
+        obj->key_down((KeyCode)key, (KeyMods)mods, !firstPress);
     }
     else if (action == GLFW_RELEASE)
     {
-        obj->mKeyState[key] = RELEASED_THIS_FRAME_BIT;
-
-        WindowKeyUpEvent event(obj->mID, (KeyCode)key, (KeyMods)mods);
-        obj->on_event(&event);
+        obj->key_up((KeyCode)key, (KeyMods)mods);
     }
 }
 
-void WindowObj::mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
+void WindowObj::glfw_mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
 {
     auto* obj = (WindowObj*)glfwGetWindowUserPointer(window);
 
@@ -115,32 +106,26 @@ void WindowObj::mouse_button_callback(GLFWwindow* window, int button, int action
 
     if (action == GLFW_PRESS)
     {
-        obj->mMouseState[button] |= (PRESSED_BIT | PRESSED_THIS_FRAME_BIT);
-
-        WindowMouseDownEvent event(obj->mID, (MouseButton)button, (KeyMods)mods);
-        obj->on_event(&event);
+        obj->mouse_down((MouseButton)button, (KeyMods)mods);
     }
     else if (action == GLFW_RELEASE)
     {
-        obj->mMouseState[button] = RELEASED_THIS_FRAME_BIT;
-
-        WindowMouseUpEvent event(obj->mID, (MouseButton)button, (KeyMods)mods);
-        obj->on_event(&event);
+        obj->mouse_up((MouseButton)button, (KeyMods)mods);
     }
 }
 
-void WindowObj::cursor_pos_callback(GLFWwindow* window, double xpos, double ypos)
+void WindowObj::glfw_cursor_pos_callback(GLFWwindow* window, double xpos, double ypos)
 {
     auto* obj = (WindowObj*)glfwGetWindowUserPointer(window);
-    WindowMousePositionEvent event(obj->mID, (float)xpos, (float)ypos);
-    obj->on_event(&event);
+
+    obj->mouse_position((float)xpos, (float)ypos);
 }
 
-void WindowObj::scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
+void WindowObj::glfw_scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
 {
     auto* obj = (WindowObj*)glfwGetWindowUserPointer(window);
-    WindowScrollEvent event(obj->mID, (float)xoffset, (float)yoffset);
-    obj->on_event(&event);
+
+    obj->scroll((float)xoffset, (float)yoffset);
 }
 
 void WindowObj::on_event(const WindowEvent* event)
@@ -236,6 +221,60 @@ void WindowObj::frame_boundary()
     mMouseCursorY = (float)ypos;
 
     mIsAlive = !glfwWindowShouldClose(mHandle);
+}
+
+void WindowObj::resize(int width, int height)
+{
+    mWidth = width;
+    mHeight = height;
+
+    WindowResizeEvent event(mID, width, height);
+    on_event(&event);
+}
+
+void WindowObj::key_down(KeyCode key, KeyMods mods, bool repeat)
+{
+    if (!repeat)
+        mKeyState[key] |= (PRESSED_BIT | PRESSED_THIS_FRAME_BIT);
+
+    WindowKeyDownEvent event(mID, key, mods, repeat);
+    on_event(&event);
+}
+
+void WindowObj::key_up(KeyCode key, KeyMods mods)
+{
+    mKeyState[key] = RELEASED_THIS_FRAME_BIT;
+
+    WindowKeyUpEvent event(mID, key, mods);
+    on_event(&event);
+}
+
+void WindowObj::mouse_down(MouseButton btn, KeyMods mods)
+{
+    mMouseState[btn] |= (PRESSED_BIT | PRESSED_THIS_FRAME_BIT);
+
+    WindowMouseDownEvent event(mID, btn, mods);
+    on_event(&event);
+}
+
+void WindowObj::mouse_up(MouseButton btn, KeyMods mods)
+{
+    mMouseState[btn] = RELEASED_THIS_FRAME_BIT;
+
+    WindowMouseUpEvent event(mID, btn, mods);
+    on_event(&event);
+}
+
+void WindowObj::mouse_position(float xpos, float ypos)
+{
+    WindowMousePositionEvent event(mID, (float)xpos, (float)ypos);
+    on_event(&event);
+}
+
+void WindowObj::scroll(float xoffset, float yoffset)
+{
+    WindowScrollEvent event(mID, xoffset, yoffset);
+    on_event(&event);
 }
 
 bool WindowObj::get_key(KeyCode key)

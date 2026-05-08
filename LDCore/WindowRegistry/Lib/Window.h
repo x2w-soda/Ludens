@@ -101,6 +101,15 @@ public: // decorators and hints
     void hint_title_bar_color(Color color);
     void hint_title_bar_text_color(Color color);
 
+public: // actions
+    void resize(int width, int height);
+    void key_down(KeyCode code, KeyMods mods, bool repeat);
+    void key_up(KeyCode code, KeyMods mods);
+    void mouse_down(MouseButton btn, KeyMods mods);
+    void mouse_up(MouseButton btn, KeyMods mods);
+    void mouse_position(float xpos, float ypos);
+    void scroll(float xoffset, float yoffset);
+
 public: // key and mouse states
     bool get_key(KeyCode key);
     bool get_key_up(KeyCode key);
@@ -114,11 +123,11 @@ public: // key and mouse states
     bool get_mouse_motion(float& dx, float& dy);
 
 private:
-    static void size_callback(GLFWwindow* window, int width, int height);
-    static void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
-    static void mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
-    static void cursor_pos_callback(GLFWwindow* window, double xpos, double ypos);
-    static void scroll_callback(GLFWwindow* handle, double xoffset, double yoffset);
+    static void glfw_size_callback(GLFWwindow* window, int width, int height);
+    static void glfw_key_callback(GLFWwindow* window, int key, int scancode, int action, int mods);
+    static void glfw_mouse_button_callback(GLFWwindow* window, int button, int action, int mods);
+    static void glfw_cursor_pos_callback(GLFWwindow* window, double xpos, double ypos);
+    static void glfw_scroll_callback(GLFWwindow* handle, double xoffset, double yoffset);
 
 private:
     WindowID mID = 0;

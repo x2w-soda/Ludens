@@ -276,6 +276,61 @@ void WindowRegistry::remove_observer(WindowEventFn fn, void* user)
     mObj->remove_observer(fn, user);
 }
 
+void WindowRegistry::inject_event(WindowID id, const WindowEvent* event)
+{
+    WindowObj* obj = mObj->get_window(id);
+    if (!obj)
+        return;
+
+    switch (event->type)
+    {
+    case EVENT_TYPE_WINDOW_RESIZE:
+    {
+        auto* e = (WindowResizeEvent*)event;
+        obj->resize(e->width, e->height);
+        break;
+    }
+    case EVENT_TYPE_WINDOW_KEY_DOWN:
+    {
+        auto* e = (WindowKeyDownEvent*)event;
+        obj->key_down(e->code, e->mods, e->repeat);
+        break;
+    }
+    case EVENT_TYPE_WINDOW_KEY_UP:
+    {
+        auto* e = (WindowKeyUpEvent*)event;
+        obj->key_up(e->code, e->mods);
+        break;
+    }
+    case EVENT_TYPE_WINDOW_MOUSE_POSITION:
+    {
+        auto* e = (WindowMousePositionEvent*)event;
+        obj->mouse_position(e->xpos, e->ypos);
+        break;
+    }
+    case EVENT_TYPE_WINDOW_MOUSE_DOWN:
+    {
+        auto* e = (WindowMouseDownEvent*)event;
+        obj->mouse_down(e->button, e->mods);
+        break;
+    }
+    case EVENT_TYPE_WINDOW_MOUSE_UP:
+    {
+        auto* e = (WindowMouseUpEvent*)event;
+        obj->mouse_up(e->button, e->mods);
+        break;
+    }
+    case EVENT_TYPE_WINDOW_SCROLL:
+    {
+        auto* e = (WindowScrollEvent*)event;
+        obj->scroll(e->xoffset, e->yoffset);
+        break;
+    }
+    default: // ignored
+        break;
+    }
+}
+
 GLFWwindow* WindowRegistry::get_window_glfw_handle(WindowID id)
 {
     WindowObj* obj = mObj->get_window(id);

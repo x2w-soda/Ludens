@@ -28,6 +28,7 @@ struct WindowInfo
     Color hintBorderColor;       /// if not zero, the desired window border color.
     Color hintTitleBarColor;     /// if not zero, the desired window title bar color.
     Color hintTitleBarTextColor; /// if not zero, the desired window title bar text color.
+    bool invisible = false;      /// initial window invisibility
 };
 
 /// @brief Window registry singleton. The root window is created and destroyed along the registry.
@@ -65,6 +66,10 @@ struct WindowRegistry : Handle<class WindowRegistryObj>
 
     /// @brief Remove observer of the registry.
     void remove_observer(WindowEventFn fn, void* user);
+
+    /// @brief Inject a window event into a specific window. Some notification event types are ignored.
+    /// @note Intended for test code paths.
+    void inject_event(WindowID id, const WindowEvent* event);
 
 public: // window getters
     /// @brief Get native GLFW handle.
