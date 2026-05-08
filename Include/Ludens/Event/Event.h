@@ -25,8 +25,8 @@ enum EventCategory : uint16_t
 
 struct Event
 {
-    const EventType type;
-    const EventCategory category;
+    EventType type;
+    EventCategory category;
 
     Event(EventType type, EventCategory category)
         : type(type), category(category) {}

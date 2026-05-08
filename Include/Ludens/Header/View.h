@@ -50,6 +50,62 @@ struct TView
     {
     }
 
+    size_t find(const void* patternData, size_t patternSize, size_t offset = 0)
+    {
+        if (patternSize == 0)
+            return 0; // match at start
+
+        if (offset + patternSize > size)
+            return npos;
+
+        for (size_t i = 0; offset + i <= size - patternSize; i++)
+        {
+            if (!memcmp(data + offset + i, patternData, patternSize))
+                return offset + i;
+        }
+
+        return npos;
+    }
+
+    inline size_t find(const char* cstr)
+    {
+        return cstr ? find(cstr, strlen(cstr)) : npos;
+    }
+
+    size_t find_first_of(const void* setData, size_t setSize, size_t offset = 0)
+    {
+        for (size_t i = offset; i < size; ++i)
+            for (size_t j = 0; j < setSize; ++j)
+            {
+                if (data[i] == ((const byte*)setData)[j])
+                    return i;
+            }
+
+        return npos;
+    }
+
+    size_t find_first_not_of(const void* setData, size_t setSize, size_t offset = 0)
+    {
+        for (size_t i = offset; i < size; ++i)
+        {
+            bool found = false;
+
+            for (size_t j = 0; j < setSize; ++j)
+            {
+                if (data[i] == ((const byte*)setData)[j])
+                {
+                    found = true;
+                    break;
+                }
+            }
+
+            if (!found)
+                return i;
+        }
+
+        return npos;
+    }
+
     /// @brief Check if view ends with string.
     bool ends_with(const char* cstr) const
     requires(sizeof(T) == 1)
@@ -104,6 +160,9 @@ struct TView
 
         return !memcmp(data, other.data, sizeof(T) * size);
     }
+
+public: // static
+    static constexpr size_t npos{static_cast<size_t>(-1)};
 };
 
 /// @brief Const view of a byte sequence.

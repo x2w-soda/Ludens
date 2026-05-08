@@ -1,10 +1,10 @@
 #pragma once
 
-/// This is a heavy header, probably only include this
-/// only from source files.
-#include <Ludens/DSA/Vector.h>
+/// THIS IS A HEAVY HEADER, include this only from source files.
 #include <Ludens/DSA/Buffer.h>
 #include <Ludens/DSA/String.h>
+#include <Ludens/DSA/Vector.h>
+#include <Ludens/Header/KeyCode.h>
 #include <Ludens/Header/View.h>
 
 #include <string>
@@ -30,5 +30,11 @@ inline View view(const Vector<byte>& v)
 {
     return View(v.data(), v.size());
 }
+
+View to_string(KeyCode key);
+bool from_string(View str, KeyCode& key);
+
+View to_string(MouseButton btn);
+bool from_string(View str, MouseButton& btn);
 
 } // namespace LD

@@ -24,7 +24,7 @@ TEST_CASE("View ctor")
     CHECK(v.size == 6);
     CHECK(!memcmp(v.data, "foobar", v.size));
 
-    v = View(nullptr);
+    v = {};
     CHECK(v.data == nullptr);
     CHECK(v.size == 0);
 

@@ -26,6 +26,7 @@ set(MODULE_INCLUDE
 
 set(MODULE_LIB
 	Lib/Buffer.cpp
+	Lib/ViewUtil.cpp
 	Lib/Diagnostics.cpp
 )
 

@@ -20,6 +20,7 @@ public:
     TString()
         : mBase(mLocal)
     {
+        mBase[0] = '\0';
     }
 
     TString(const char* cstr)
@@ -28,6 +29,7 @@ public:
         if (!cstr)
         {
             mSize = 0;
+            mBase[0] = '\0';
             return;
         }
 
@@ -74,6 +76,8 @@ public:
             other.mBase = other.mLocal;
         }
 
+        mBase[mSize] = '\0';
+
         other.mSize = 0;
         other.mCap = 0;
     }
@@ -107,6 +111,8 @@ public:
                 mBase = other.mBase;
                 other.mBase = other.mLocal;
             }
+
+            mBase[mSize] = '\0';
         }
 
         other.mSize = 0;
@@ -149,37 +155,30 @@ public:
     /// @param nsize new size
     void resize(size_t nsize)
     {
-        if (nsize <= mCap)
+        if (nsize + 1 <= mCap)
         {
             mSize = nsize;
+            mBase[mSize] = '\0';
             return;
         }
 
         if (mBase == mLocal) // migrate to heap storage
         {
-            mBase = (char8_t*)heap_malloc(nsize, TUsage);
+            mBase = (char8_t*)heap_malloc(nsize + 1, TUsage);
             memcpy(mBase, mLocal, mSize);
+            mBase[nsize] = '\0';
         }
         else // resize heap storage
         {
-            char8_t* nbase = (char8_t*)heap_malloc(nsize, TUsage);
+            char8_t* nbase = (char8_t*)heap_malloc(nsize + 1, TUsage);
             memcpy(nbase, mBase, mSize);
             heap_free(mBase);
             mBase = nbase;
+            mBase[nsize] = '\0';
         }
 
         mSize = nsize;
         mCap = nsize;
-    }
-
-    void reserve(size_t cap)
-    {
-        if (cap < mSize)
-            return;
-
-        size_t oldSize = mSize;
-        resize(cap);
-        resize(oldSize);
     }
 
     /// @brief replace a portion of string
@@ -277,11 +276,8 @@ public:
         return cstr ? find(cstr, strlen(cstr)) : npos;
     }
 
-    const char* c_str()
+    inline const char* c_str() const noexcept
     {
-        reserve(mSize + 1);
-        mBase[mSize] = '\0';
-
         return (const char*)mBase;
     }
 

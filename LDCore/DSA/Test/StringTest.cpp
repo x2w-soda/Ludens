@@ -107,6 +107,7 @@ TEST_CASE("String methods")
 
         s.clear();
         CHECK(s.size() == 0);
+        CHECK(strlen(s.c_str()) == 0);
     }
 
     CHECK_FALSE(get_memory_leaks(nullptr));

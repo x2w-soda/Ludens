@@ -8,7 +8,7 @@ namespace LD {
 
 struct WindowEvent : Event
 {
-    const WindowID window;
+    WindowID window;
 
     WindowEvent(EventType type, WindowID window)
         : Event(type, EVENT_CATEGORY_WINDOW), window(window) {}
@@ -36,12 +36,15 @@ struct WindowResizeEvent : WindowEvent
 
 struct WindowKeyDownEvent : WindowEvent
 {
-    const KeyCode code;
-    const KeyMods mods;
+    KeyCode code;
+    KeyMods mods;
     bool repeat;
 
     WindowKeyDownEvent(WindowID window, KeyCode code, KeyMods mods = 0, bool repeat = false)
         : WindowEvent(EVENT_TYPE_WINDOW_KEY_DOWN, window), code(code), mods(mods), repeat(repeat) {}
+
+    WindowKeyDownEvent(const WindowKeyDownEvent& other)
+        : WindowEvent(EVENT_TYPE_WINDOW_KEY_DOWN, window), code(other.code), mods(other.mods), repeat(other.repeat) {}
 };
 
 struct WindowKeyUpEvent : WindowEvent
