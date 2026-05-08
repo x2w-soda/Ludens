@@ -3,6 +3,8 @@
 #include <Ludens/Serial/Value.h>
 
 #include <cstring>
+#include <format>
+#include <string_view>
 
 namespace LD {
 
@@ -413,6 +415,14 @@ String Value64::get_string() const
     return str;
 }
 
+String Value64::print() const
+{
+    // TODO: format LD::String directly
+    std::string str = std::format("{}", *this);
+
+    return String(str.data(), str.size());
+}
+
 void Value64::destroy()
 {
     if (type == VALUE_TYPE_STRING)
@@ -490,3 +500,75 @@ bool Value64::narrow(ValueType type, Value64& val)
 }
 
 } // namespace LD
+
+template <>
+struct std::formatter<LD::Value64> : std::formatter<std::string_view>
+{
+    auto format(const LD::Value64& value, std::format_context& ctx) const
+    {
+        switch (value.type)
+        {
+        case LD::VALUE_TYPE_F32:
+            return std::format_to(ctx.out(), "{}", value.v16.f32[0]);
+        case LD::VALUE_TYPE_F64:
+            return std::format_to(ctx.out(), "{}", value.v16.f64[0]);
+        case LD::VALUE_TYPE_I8:
+            return std::format_to(ctx.out(), "{}", value.v16.i8[0]);
+        case LD::VALUE_TYPE_U8:
+            return std::format_to(ctx.out(), "{}", value.v16.u8[0]);
+        case LD::VALUE_TYPE_I16:
+            return std::format_to(ctx.out(), "{}", value.v16.i16[0]);
+        case LD::VALUE_TYPE_U16:
+            return std::format_to(ctx.out(), "{}", value.v16.u16[0]);
+        case LD::VALUE_TYPE_I32:
+            return std::format_to(ctx.out(), "{}", value.v16.i32[0]);
+        case LD::VALUE_TYPE_U32:
+            return std::format_to(ctx.out(), "{}", value.v16.u32[0]);
+        case LD::VALUE_TYPE_I64:
+            return std::format_to(ctx.out(), "{}", value.v16.i64[0]);
+        case LD::VALUE_TYPE_U64:
+            return std::format_to(ctx.out(), "{}", value.v16.u64[0]);
+        case LD::VALUE_TYPE_BOOL:
+            return std::format_to(ctx.out(), "{}", value.v16.b8[0]);
+        case LD::VALUE_TYPE_VEC2:
+            return std::format_to(
+                ctx.out(),
+                "Vec2({}, {})",
+                value.v16.f32[0],
+                value.v16.f32[1]);
+        case LD::VALUE_TYPE_VEC3:
+            return std::format_to(
+                ctx.out(),
+                "Vec3({}, {}, {})",
+                value.v16.f32[0],
+                value.v16.f32[1],
+                value.v16.f32[2]);
+        case LD::VALUE_TYPE_VEC4:
+            return std::format_to(
+                ctx.out(),
+                "Vec4({}, {}, {}, {})",
+                value.v16.f32[0],
+                value.v16.f32[1],
+                value.v16.f32[2],
+                value.v16.f32[3]);
+        case LD::VALUE_TYPE_RECT:
+            return std::format_to(
+                ctx.out(),
+                "Rect({}, {}, {}, {})",
+                value.v16.rect.x,
+                value.v16.rect.y,
+                value.v16.rect.w,
+                value.v16.rect.h);
+        case LD::VALUE_TYPE_STRING:
+            return std::format_to(ctx.out(), "{}", value.str.c_str());
+        case LD::VALUE_TYPE_TRANSFORM_2D:
+            return std::format_to(ctx.out(), "Transform2D(...)");
+        case LD::VALUE_TYPE_TRANSFORM:
+            return std::format_to(ctx.out(), "TransformEx(...)");
+        default:
+            break;
+        }
+
+        return std::format_to(ctx.out(), "<invalid>");
+    }
+};

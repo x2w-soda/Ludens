@@ -53,9 +53,11 @@ union Value16
     bool b8[16];
     float f32[4];
     double f64[2];
+    int8_t i8[16];
     int16_t i16[8];
     int32_t i32[4];
     int64_t i64[2];
+    uint8_t u8[16];
     uint16_t u16[8];
     uint32_t u32[4];
     uint64_t u64[2];
@@ -122,6 +124,8 @@ public:
     TransformEx get_transform() const;
     void set_string(const String& str);
     String get_string() const;
+
+    String print() const;
 
 public: // static methods
     static bool narrow(ValueType type, Value64& val);
