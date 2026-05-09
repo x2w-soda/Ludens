@@ -319,7 +319,7 @@ bool EUITransform2DProp::update(Transform2D* transform2D)
 }
 */
 
-bool eui_u32_prop(const char* label, uint32_t* u32)
+bool eui_u32_prop(View label, uint32_t* u32)
 {
     EditorTheme theme = eui_get_theme();
     String str;
@@ -346,7 +346,7 @@ bool eui_u32_prop(const char* label, uint32_t* u32)
     return hasChanged;
 }
 
-bool eui_f32_prop(const char* label, float* f32)
+bool eui_f32_prop(View label, float* f32)
 {
     EditorTheme theme = eui_get_theme();
     String str;
@@ -368,12 +368,12 @@ bool eui_f32_prop(const char* label, float* f32)
     return hasChanged;
 }
 
-bool eui_vec2_prop(const char* label, Vec2* v)
+bool eui_vec2_prop(View label, Vec2* v)
 {
     return eui_vec2_prop(label, (float*)v);
 }
 
-bool eui_vec2_prop(const char* label, float f32[2])
+bool eui_vec2_prop(View label, float f32[2])
 {
     EditorTheme theme = eui_get_theme();
     String str;
@@ -399,7 +399,7 @@ bool eui_vec2_prop(const char* label, float f32[2])
     return hasChanged;
 }
 
-bool eui_slider_prop(const char* label, float* f32)
+bool eui_slider_prop(View label, float* f32)
 {
     bool isDragged;
     EditorTheme theme = eui_get_theme();
@@ -422,7 +422,7 @@ bool eui_slider_prop(const char* label, float* f32)
     return isDragged;
 }
 
-bool eui_toggle_prop(const char* label, bool* b8)
+bool eui_toggle_prop(View label, bool* b8)
 {
     bool hasChanged = false;
     EditorTheme theme = eui_get_theme();
@@ -450,7 +450,7 @@ bool eui_toggle_prop(const char* label, bool* b8)
     return hasChanged;
 }
 
-bool eui_rect_prop(const char* label, Rect* rect, bool normalized)
+bool eui_rect_prop(View label, Rect* rect, bool normalized)
 {
     EditorTheme theme = eui_get_theme();
     bool hasChanged = false;

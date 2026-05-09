@@ -117,12 +117,12 @@ private:
 };
 */
 
-bool eui_u32_prop(const char* label, uint32_t* u32);
-bool eui_f32_prop(const char* label, float* f32);
-bool eui_vec2_prop(const char* label, Vec2* v);
-bool eui_vec2_prop(const char* label, float f32[2]);
-bool eui_slider_prop(const char* label, float* f32);
-bool eui_toggle_prop(const char* label, bool* b8);
+bool eui_u32_prop(View label, uint32_t* u32);
+bool eui_f32_prop(View label, float* f32);
+bool eui_vec2_prop(View label, Vec2* v);
+bool eui_vec2_prop(View label, float f32[2]);
+bool eui_slider_prop(View label, float* f32);
+bool eui_toggle_prop(View label, bool* b8);
 Vector<PropertyDelta> eui_component_property_table(ComponentView& view);
 
 } // namespace LD
