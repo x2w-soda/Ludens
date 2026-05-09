@@ -25,6 +25,17 @@ FetchContent_Declare(
 FetchContent_MakeAvailable(readerwriterqueue)
 message(STATUS "LUDENS readerwriterqueue SOURCE DIR:     ${readerwriterqueue_SOURCE_DIR}")
 
+## Fetch Asio
+
+FetchContent_Declare(
+  asio
+  GIT_REPOSITORY    https://github.com/chriskohlhoff/asio.git
+  GIT_TAG           asio-1-38-0
+)
+
+FetchContent_MakeAvailable(asio)
+message(STATUS "LUDENS asio SOURCE DIR:     ${asio_SOURCE_DIR}")
+
 ## Fetch ZLib
 
 FetchContent_Declare(
