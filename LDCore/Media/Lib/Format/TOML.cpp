@@ -1070,12 +1070,81 @@ bool TOMLReader::read_suid(int index, SUID& id)
 
 namespace TOMLUtil {
 
-static void write_value(TOMLWriter writer, const Value64& value)
+static void write_value(TOMLWriter writer, const char* key, const Value64& value)
 {
     switch (value.type)
     {
+    case VALUE_TYPE_F32:
+        writer.key(key).write_f32(value.get_f32());
+        break;
+    case VALUE_TYPE_U32:
+        writer.key(key).write_u32(value.get_u32());
+        break;
     case VALUE_TYPE_BOOL:
-        writer.write_bool(value.get_bool());
+        writer.key(key).write_bool(value.get_bool());
+        break;
+    case VALUE_TYPE_VEC2:
+        write_vec2(writer, key, value.get_vec2());
+        break;
+    case VALUE_TYPE_VEC3:
+        write_vec3(writer, key, value.get_vec3());
+        break;
+    case VALUE_TYPE_RECT:
+        write_rect(writer, key, value.get_rect());
+        break;
+    case VALUE_TYPE_STRING:
+        writer.key(key).write_string(value.get_string());
+        break;
+    case VALUE_TYPE_TRANSFORM_2D:
+        write_transform_2d(writer, key, value.get_transform_2d());
+        break;
+    default:
+        LD_DEBUG_BREAK;
+        break;
+    }
+}
+
+static void read_value(TOMLReader reader, const char* key, ValueType valueType, Value64& value)
+{
+    Value64 tmp;
+    Vec2 v2;
+    Vec3 v3;
+
+    value = {};
+
+    switch (valueType)
+    {
+    case VALUE_TYPE_F32:
+        if (reader.read_f32(key, tmp.v16.f32[0]))
+            value.set_f32(tmp.v16.f32[0]);
+        break;
+    case VALUE_TYPE_U32:
+        if (reader.read_u32(key, tmp.v16.u32[0]))
+            value.set_u32(tmp.v16.u32[0]);
+        break;
+    case VALUE_TYPE_BOOL:
+        if (reader.read_bool(key, tmp.v16.b8[0]))
+            value.set_bool(tmp.v16.b8[0]);
+        break;
+    case VALUE_TYPE_VEC2:
+        if (read_vec2(reader, key, v2))
+            value.set_vec2(v2);
+        break;
+    case VALUE_TYPE_VEC3:
+        if (read_vec3(reader, key, v3))
+            value.set_vec3(v3);
+        break;
+    case VALUE_TYPE_RECT:
+        if (read_rect(reader, key, tmp.v16.rect))
+            value.set_rect(tmp.v16.rect);
+        break;
+    case VALUE_TYPE_STRING:
+        if (reader.read_string(key, tmp.str))
+            value.set_string(tmp.str);
+        break;
+    case VALUE_TYPE_TRANSFORM_2D:
+        if (read_transform_2d(reader, key, tmp.transform2D))
+            value.set_transform_2d(tmp.transform2D);
         break;
     default:
         LD_DEBUG_BREAK;
@@ -1094,12 +1163,33 @@ bool write_type_meta(TOMLWriter writer, const TypeMeta* type, void* obj)
 
         if (type->getLocal(obj, propI, 0, value))
         {
-            writer.key(type->props[propI].name);
-            write_value(writer, value);
+            String propName(type->props[propI].name);
+            write_value(writer, propName.c_str(), value);
         }
     }
 
     return true;
+}
+
+bool read_type_meta(TOMLReader reader, const TypeMeta* type, Vector<PropertyValue>& outProps)
+{
+    outProps.clear();
+    outProps.reserve(type->propCount);
+
+    if (!reader || !type)
+        return false;
+
+    for (size_t propI = 0; propI < type->propCount; propI++)
+    {
+        const PropertyMeta& prop = type->props[propI];
+        String propName(prop.name);
+
+        Value64 value;
+        read_value(reader, propName.c_str(), prop.valueType, value);
+
+        if (value.type != VALUE_TYPE_ENUM_COUNT)
+            outProps.emplace_back(propI, 0, std::move(value));
+    }
 }
 
 bool write_transform(TOMLWriter writer, const char* key, const TransformEx& transform)

@@ -6,10 +6,10 @@
 #include <Ludens/Header/Math/Rect.h>
 #include <Ludens/Header/Math/Vec4.h>
 #include <Ludens/Header/View.h>
+#include <Ludens/Serial/Property.h>
 #include <Ludens/System/FileSystem.h>
 
 #include <cstdint>
-#include <string>
 
 namespace LD {
 
@@ -95,7 +95,7 @@ struct TOMLReader : Handle<struct TOMLReaderObj>
 namespace TOMLUtil {
 
 bool write_type_meta(TOMLWriter writer, const TypeMeta* type, void* obj);
-bool read_type_meta(TOMLReader writer, const TypeMeta* type, void* obj);
+bool read_type_meta(TOMLReader writer, const TypeMeta* type, Vector<PropertyValue>& outProps);
 bool write_transform(TOMLWriter writer, const char* key, const TransformEx& transform);
 bool read_transform(TOMLReader reader, const char* key, TransformEx& transform);
 bool write_transform_2d(TOMLWriter writer, const char* key, const Transform2D& transform);
