@@ -1,9 +1,8 @@
 #pragma once
 
+#include <Ludens/DSA/String.h>
 #include <Ludens/Header/Handle.h>
 #include <Ludens/Header/View.h>
-
-#include <string>
 
 namespace LD {
 
@@ -102,12 +101,12 @@ struct MDCallback
     int (*onLeaveBlock)(MDBlockType type, const MDBlockDetail& detail, void* user);
     int (*onEnterSpan)(MDSpanType type, const MDSpanDetail& detail, void* user);
     int (*onLeaveSpan)(MDSpanType type, const MDSpanDetail& detail, void* user);
-    int (*onText)(MDTextType type, const View& text, void* user);
+    int (*onText)(MDTextType type, View text, void* user);
 };
 
 struct MDParser
 {
-    static bool parse(const View& file, std::string& error, const MDCallback& callbacks, void* user);
+    static bool parse(View file, String& error, const MDCallback& callbacks, void* user);
 };
 
 } // namespace LD

@@ -10,8 +10,6 @@
 
 namespace LD {
 
-static_assert(sizeof(UIWidgetUnion) <= 128);
-
 UIWidgetObj::UIWidgetObj(UIWidgetType type, UIContextObj* ctx, UIWidgetLayout* widgetL, UIWidgetUnion* widgetU, UIWidgetObj* parent, UIWindowObj* window, void* data, void* user)
     : type(type), L(widgetL), U(widgetU), window(window), parent(parent), data(data), user(user)
 {
@@ -59,11 +57,11 @@ int UIWidgetObj::get_children_count()
     return count;
 }
 
-UIWidgetObj* UIWidgetObj::get_child_by_name(const std::string& name)
+UIWidgetObj* UIWidgetObj::get_child_by_name(View nameV)
 {
     for (UIWidgetObj* c = child; c; c = c->next)
     {
-        if (c->name == name)
+        if (c->name == nameV)
             return c;
     }
 
@@ -226,12 +224,12 @@ void UIWidget::set_user(void* user)
     mObj->user = user;
 }
 
-void UIWidget::get_name(std::string& name)
+void UIWidget::get_name(String& name)
 {
     name = mObj->name;
 }
 
-void UIWidget::set_name(const std::string& name)
+void UIWidget::set_name(View name)
 {
     mObj->name = name;
 }
@@ -285,7 +283,7 @@ Color UIWidget::get_state_color(Color color)
     return color;
 }
 
-UIWidget UIWidget::get_child_by_name(const std::string& childName)
+UIWidget UIWidget::get_child_by_name(View childName)
 {
     return UIWidget(mObj->get_child_by_name(childName));
 }

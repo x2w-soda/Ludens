@@ -11,8 +11,8 @@ struct AssetCreateMeta
 {
     AssetCreateInfo* (*allocInfo)();
     void (*freeInfo)(AssetCreateInfo*);
-    bool (*createFn)(AssetCreateInfo* createInfo, std::string& err);
-    bool (*prepareImportFn)(const AssetCreateInfo* createInfo, AssetImportInfo* importInfo, std::string& err);
+    bool (*createFn)(AssetCreateInfo* createInfo, String& err);
+    bool (*prepareImportFn)(const AssetCreateInfo* createInfo, AssetImportInfo* importInfo, String& err);
 };
 
 /// @brief Asset polymorphic import by AssetType

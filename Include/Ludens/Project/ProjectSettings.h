@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Ludens/DSA/String.h>
 #include <Ludens/DSA/Vector.h>
 #include <Ludens/Header/Handle.h>
 #include <Ludens/Header/Math/Vec4.h>
@@ -19,8 +20,8 @@ struct ProjectStartupSettings : Handle<struct ProjectSettingsObj>
     uint32_t get_window_height();
     void set_window_height(uint32_t height);
 
-    std::string get_window_name();
-    void set_window_name(const std::string& name);
+    String get_window_name();
+    void set_window_name(View name);
 
     SUID get_default_scene_id();
     void set_default_scene_id(SUID sceneID);
@@ -38,24 +39,24 @@ struct ProjectRenderingSettings : Handle<struct ProjectSettingsObj>
 struct ProjectScreenLayer
 {
     SUID id;
-    std::string name;
+    String name;
 };
 
 /// @brief Settings for 2D screen layers.
 struct ProjectScreenLayerSettings : Handle<struct ProjectSettingsObj>
 {
     /// @brief Create a new screen layer.
-    SUID create_layer(SUIDRegistry idReg, const char* name);
+    SUID create_layer(SUIDRegistry idReg, View name);
 
     /// @brief Create screen layer from known ID.
     /// @return True on success.
-    bool create_layer(SUIDRegistry idReg, SUID id, const char* name);
+    bool create_layer(SUIDRegistry idReg, SUID id, View name);
 
     /// @brief Destroy existing screen layer.
     void destroy_layer(SUIDRegistry idReg, SUID id);
 
     /// @brief Rename an existing screen layer.
-    void rename_layer(SUID id, const char* name);
+    void rename_layer(SUID id, View name);
 
     /// @brief Move layer to index, shifting other layers.
     void rotate_layer(SUID id, int index);

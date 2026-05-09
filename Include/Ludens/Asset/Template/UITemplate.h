@@ -60,7 +60,7 @@ struct UITemplateEntry
 {
     const UIWidgetType type;
     UILayoutInfo layout;
-    std::string name;
+    String name;
 
     union
     {

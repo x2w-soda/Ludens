@@ -3,6 +3,7 @@
 #include <Ludens/Asset/AssetType/MeshAsset.h>
 #include <Ludens/Asset/AssetType/Texture2DAsset.h>
 #include <Ludens/DSA/HashMap.h>
+#include <Ludens/DSA/StringUtil.h>
 #include <Ludens/Header/Types.h>
 #include <Ludens/Log/Log.h>
 #include <Ludens/Memory/Allocator.h>
@@ -324,7 +325,7 @@ void AssetManagerObj::on_asset_modified(const FS::Path& path, SUID id, void* use
     {
         LuaScriptAsset scriptA(assetObj);
 
-        std::string err;
+        String err;
         Vector<byte> buf;
         if (FS::read_file_to_vector(path, buf, err))
         {
@@ -350,7 +351,7 @@ AssetType Asset::get_type()
     return mObj->type;
 }
 
-std::string Asset::get_path()
+String Asset::get_path()
 {
     AssetRegistry AR = mObj->manager->env.registry;
     LD_ASSERT(AR);
@@ -361,7 +362,7 @@ std::string Asset::get_path()
     return entry.get_path();
 }
 
-std::string Asset::get_name()
+String Asset::get_name()
 {
     AssetRegistry AR = mObj->manager->env.registry;
     LD_ASSERT(AR);
@@ -516,7 +517,7 @@ void AssetManager::free_reserved_asset(SUIDRegistry idReg, Asset reservedAsset)
     mObj->free_asset(reservedAsset.unwrap());
 }
 
-AssetEntry AssetManager::resolve_asset(SUIDRegistry idReg, Asset reservedAsset, const std::string& uriPath)
+AssetEntry AssetManager::resolve_asset(SUIDRegistry idReg, Asset reservedAsset, const String& uriPath)
 {
     if (!reservedAsset || !mObj->env.registry)
         return {};

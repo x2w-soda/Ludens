@@ -205,7 +205,7 @@ private:
     void* mUser;
 };
 
-bool MDParser::parse(const View& file, std::string& error, const MDCallback& callbacks, void* user)
+bool MDParser::parse(View file, String& error, const MDCallback& callbacks, void* user)
 {
     MD4CParser parser(callbacks, user);
 

@@ -1,5 +1,6 @@
 #include <Ludens/DSA/HashMap.h>
 #include <Ludens/DSA/Stack.h>
+#include <Ludens/DSA/StringUtil.h>
 #include <Ludens/DSA/Vector.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Header/Hash.h>
@@ -44,8 +45,8 @@ struct UITextState
 
 struct UITextEditState
 {
-    std::string lastChange;
-    std::string lastSubmission;
+    String lastChange;
+    String lastSubmission;
     Impulse isChanged;
     Impulse isSubmitted;
 };
@@ -175,7 +176,7 @@ struct UIWindowState
 struct UIWorkspaceState
 {
     UIWorkspace space;
-    HashMap<std::string, UIWindowState*> imWindows;
+    HashMap<String, UIWindowState*> imWindows;
 
     UIWindowState* get_or_create_window_state(const char* windowName, bool floatingWindow);
     void destroy_window_state(UIWindowState*);
@@ -183,7 +184,7 @@ struct UIWorkspaceState
 
 UIWindowState* UIWorkspaceState::get_or_create_window_state(const char* windowName, bool floatingWindow)
 {
-    std::string key(windowName);
+    String key(windowName);
     UIWindowState* windowS = nullptr;
 
     if (imWindows.contains(key))
@@ -221,7 +222,7 @@ void UIWorkspaceState::destroy_window_state(UIWindowState* windowS)
 struct UILayerState
 {
     UILayer layer;
-    HashMap<std::string, UIWorkspaceState*> imSpaces;
+    HashMap<String, UIWorkspaceState*> imSpaces;
 
     UIWorkspaceState* get_or_create_workspace_state(const char* spaceName, const Rect& area);
     void destroy_workspace_state(UIWorkspaceState* spaceS);
@@ -231,7 +232,7 @@ UIWorkspaceState* UILayerState::get_or_create_workspace_state(const char* spaceN
 {
     UIWorkspaceState* spaceS = nullptr;
 
-    std::string key(spaceName);
+    String key(spaceName);
     if (imSpaces.contains(key))
     {
         spaceS = imSpaces[key];
@@ -257,13 +258,13 @@ void UILayerState::destroy_workspace_state(UIWorkspaceState* spaceS)
 
 struct UIContextState
 {
-    UIContext ctx{};                              // connected external context
-    UILayerState* imLayer = nullptr;              // current layer
-    UIWorkspaceState* imSpace = nullptr;          // current workspace
-    UIWindowState* imWindow = nullptr;            // current window
-    Vector<UIWindowState*> imOverlayWindows;      // overlay window stack
-    HashMap<int, std::string> imOverlayUsers;     // overlay window users this frame
-    HashMap<std::string, UILayerState*> imLayers; // all layers in this context
+    UIContext ctx{};                         // connected external context
+    UILayerState* imLayer = nullptr;         // current layer
+    UIWorkspaceState* imSpace = nullptr;     // current workspace
+    UIWindowState* imWindow = nullptr;       // current window
+    Vector<UIWindowState*> imOverlayWindows; // overlay window stack
+    HashMap<int, String> imOverlayUsers;     // overlay window users this frame
+    HashMap<String, UILayerState*> imLayers; // all layers in this context
     Vec2 screenExtent;
 
     void set_window_state(UIWindowState* windowS);
@@ -310,7 +311,7 @@ UIWindowState* UIContextState::get_or_create_overlay_window_state(int level)
 
 UILayerState* UIContextState::get_or_create_layer_state(const char* layerName)
 {
-    std::string key(layerName);
+    String key(layerName);
     if (imLayers.contains(key))
         return imLayers[key];
 
@@ -331,10 +332,10 @@ void UIContextState::destroy_layer_state(UILayerState* layerS)
     heap_delete<UILayerState>(layerS);
 }
 
-static UIContextState* sImContext = nullptr;              // current ui context
-static UIFont sImFont;                                    // default font
-static UIFont sImFontMono;                                // default font
-static HashMap<std::string, UIContextState*> sImContexts; // all imgui frame contexts
+static UIContextState* sImContext = nullptr;         // current ui context
+static UIFont sImFont;                               // default font
+static UIFont sImFontMono;                           // default font
+static HashMap<String, UIContextState*> sImContexts; // all imgui frame contexts
 
 static void on_ui_context_event(UIWidget widget, const UIEvent& event, void* user)
 {
@@ -355,7 +356,7 @@ static void on_ui_context_event(UIWidget widget, const UIEvent& event, void* use
 static UIContextState* get_or_create_context_state(const char* ctxName, const Vec2& screenExtent)
 {
     UIContextState* ctxS = nullptr;
-    std::string key(ctxName);
+    String key(ctxName);
 
     if (sImContexts.contains(key))
     {
@@ -397,7 +398,7 @@ static void on_text_change_handler(UIWidget, View text, void* user)
     UIWidgetState* widgetS = (UIWidgetState*)user;
 
     widgetS->textEdit.isChanged.set(true);
-    widgetS->textEdit.lastChange = std::string((const char*)text.data, text.size);
+    widgetS->textEdit.lastChange = String((const char*)text.data, text.size);
 }
 
 static void on_text_submit_handler(UIWidget, View text, void* user)
@@ -405,7 +406,7 @@ static void on_text_submit_handler(UIWidget, View text, void* user)
     UIWidgetState* widgetS = (UIWidgetState*)user;
 
     widgetS->textEdit.isSubmitted.set(true);
-    widgetS->textEdit.lastSubmission = std::string((const char*)text.data, text.size);
+    widgetS->textEdit.lastSubmission = String((const char*)text.data, text.size);
 }
 
 static void destroy_widget_subtree(PoolAllocator statePA, UIWidgetState* widgetS)
@@ -700,7 +701,7 @@ void ui_imgui_set_layer_visible(const char* ctxName, const char* layerName, bool
 bool ui_context_input(const char* ctxName, const WindowEvent* event)
 {
     Vec2 screenExtent(0.0f);
-    std::string key(ctxName);
+    String key(ctxName);
 
     if (sImContexts.contains(key))
         screenExtent = sImContexts[key]->screenExtent;
@@ -712,7 +713,7 @@ bool ui_context_input(const char* ctxName, const WindowEvent* event)
 void ui_context_render(const char* ctxName, ScreenRenderComponent renderer)
 {
     Vec2 screenExtent(0.0f);
-    std::string key(ctxName);
+    String key(ctxName);
 
     if (sImContexts.contains(key))
         screenExtent = sImContexts[key]->screenExtent;
@@ -1161,13 +1162,13 @@ UITextWidget ui_push_text(UITextData* data)
     return textW;
 }
 
-UITextWidget ui_push_text(UITextData* data, const char* text)
+UITextWidget ui_push_text(UITextData* data, View text)
 {
     UITextWidget textW = ui_push_text(data);
     data = (UITextData*)textW.get_data();
 
     if (text)
-        data->set_value(std::string(text));
+        data->set_value(text);
     else
         data->clear_value();
 
@@ -1246,7 +1247,7 @@ bool ui_text_edit_is_editing()
     return textW.is_editing();
 }
 
-bool ui_text_edit_changed(std::string& text)
+bool ui_text_edit_changed(String& text)
 {
     LD_ASSERT_UI_TOP_WIDGET_TYPE(UI_WIDGET_TEXT_EDIT);
 
@@ -1262,7 +1263,7 @@ bool ui_text_edit_changed(std::string& text)
     return false;
 }
 
-bool ui_text_edit_submitted(std::string& text)
+bool ui_text_edit_submitted(String& text)
 {
     LD_ASSERT_UI_TOP_WIDGET_TYPE(UI_WIDGET_TEXT_EDIT);
 
@@ -1319,7 +1320,7 @@ void ui_dropdown_overlay(UIDropdownWidget widget)
 
     for (size_t i = 0; i < data->options.size(); i++)
     {
-        const std::string& opt = data->options[i];
+        const String& opt = data->options[i];
         MouseValue mouseVal;
         Vec2 mousePos;
 
@@ -1444,7 +1445,7 @@ UIButtonWidget ui_push_button(UIButtonData* data, const char* text)
     data = (UIButtonData*)btnW.get_data();
 
     if (text)
-        data->text = std::string(text);
+        data->text = String(text);
     else
         data->text.clear();
 

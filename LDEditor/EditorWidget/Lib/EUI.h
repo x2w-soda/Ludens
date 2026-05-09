@@ -10,7 +10,7 @@ void push_prop_hbox();
 void pop_prop_hbox();
 void push_prop_edit_vbox();
 void pop_prop_edit_vbox();
-bool push_text_edit_f32(UITextEditData* edit, float* f32, std::string& str, bool normalized = false);
+bool push_text_edit_f32(UITextEditData* edit, float* f32, String& str, bool normalized = false);
 void pop_text_edit_f32();
 
 EditorTheme eui_get_theme();

@@ -63,7 +63,7 @@ struct EditorNotifyProjectCreationEvent : EditorNotifyEvent
     {
     }
 
-    std::string error = {};      // if not empty, error message of failure
+    String error = {};      // if not empty, error message of failure
     FS::Path projectSchema = {}; // upon success, the schema of created project
 };
 
@@ -252,7 +252,7 @@ struct EditorRequestDocumentEvent : EditorRequestEvent
     }
 
     // TODO: EditorWindowID as soon as we allow multiple DocumentWindow
-    std::string uri;
+    String uri;
 };
 
 struct EditorActionSaveEvent : EditorActionEvent
@@ -310,7 +310,7 @@ struct EditorActionCreateProjectEvent : EditorActionEvent
     {
     }
 
-    std::string projectName;
+    String projectName;
     FS::Path projectSchema;
 };
 
@@ -321,7 +321,7 @@ struct EditorActionCreateSceneEvent : EditorActionEvent
     {
     }
 
-    std::string scenePath;
+    String scenePath;
 };
 
 /// @brief Synchronously import a batch of assets
@@ -354,7 +354,7 @@ struct EditorActionRenameAssetEvent : EditorActionEvent
     }
 
     AssetID assetID = 0;
-    std::string newPath;
+    String newPath;
 };
 
 struct EditorActionRenameSceneEvent : EditorActionEvent
@@ -365,7 +365,7 @@ struct EditorActionRenameSceneEvent : EditorActionEvent
     }
 
     SUID sceneID = 0;
-    std::string newPath;
+    String newPath;
 };
 
 struct EditorActionRenameComponentEvent : EditorActionEvent
@@ -376,7 +376,7 @@ struct EditorActionRenameComponentEvent : EditorActionEvent
     }
 
     SUID compSUID = 0;
-    std::string newName;
+    String newName;
 };
 
 struct EditorActionAddComponentEvent : EditorActionEvent

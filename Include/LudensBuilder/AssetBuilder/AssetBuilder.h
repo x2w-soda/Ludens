@@ -15,10 +15,10 @@ struct AssetBuilder : Handle<struct AssetBuilderObj>
     void free_create_info(AssetCreateInfo* info);
 
     /// @brief Try create asset data from create info.
-    bool create_asset(AssetCreateInfo* info, std::string& err);
+    bool create_asset(AssetCreateInfo* info, String& err);
 
     /// @brief Try fill out import info from create info.
-    bool prepare_import(const AssetCreateInfo* srcInfo, AssetImportInfo* dstInfo, std::string& err);
+    bool prepare_import(const AssetCreateInfo* srcInfo, AssetImportInfo* dstInfo, String& err);
 };
 
 } // namespace LD

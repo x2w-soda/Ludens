@@ -201,9 +201,9 @@ struct RenderSystem : Handle<class RenderSystemObj>
     void destroy_image_cube(ImageCube image);
 #endif
 
-    RUID create_screen_layer(const std::string& name);
+    RUID create_screen_layer(View name);
     void destroy_screen_layer(RUID layer);
-    void set_screen_layer_name(RUID layer, const std::string& name);
+    void set_screen_layer_name(RUID layer, View name);
     void set_screen_layer_order(size_t count, RUID* layers);
     RUID get_top_screen_layer();
     RUID get_screen_layer_item(const Vec2& worldPos, RenderSystemMat4Callback mat4CB, void* user);

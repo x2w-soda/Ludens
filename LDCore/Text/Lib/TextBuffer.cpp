@@ -46,7 +46,7 @@ void TextBuffer::set_string(const char* cstr)
     mObj->gapBuffer.insert(0, cstr);
 }
 
-std::string TextBuffer::to_string()
+String TextBuffer::to_string()
 {
     return mObj->gapBuffer.to_string();
 }

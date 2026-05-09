@@ -9,7 +9,7 @@ namespace LD {
 struct DocumentRegistryValidator
 {
     bool (*onMiscURI)(View uri);
-    std::string missingURI;
+    String missingURI;
 };
 
 struct DocumentRegistry : Handle<struct DocumentRegistryObj>
@@ -21,7 +21,7 @@ struct DocumentRegistry : Handle<struct DocumentRegistryObj>
     static void destroy(DocumentRegistry registry);
 
     /// @brief Try add a document.
-    bool add_document(const DocumentInfo& info, std::string& err);
+    bool add_document(const DocumentInfo& info, String& err);
 
     /// @brief Retrieve document from its URI path.
     Document get_document(const char* uriPath);

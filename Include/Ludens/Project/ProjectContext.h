@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Ludens/Asset/AssetRegistry.h>
+#include <Ludens/DSA/String.h>
 #include <Ludens/DSA/Vector.h>
 #include <Ludens/Project/Project.h>
 #include <Ludens/System/FileSystem.h>
@@ -17,16 +18,16 @@ public:
     ~ProjectContext();
 
     /// @brief Synchronously deserialize Project from its schema.
-    bool load_project_schema(const FS::Path& projectSchemaPath, std::string& err);
+    bool load_project_schema(const FS::Path& projectSchemaPath, String& err);
 
     /// @brief Synchronously deserialize AssetRegistry from its schema.
-    bool load_asset_schema(const FS::Path& assetSchemaPath, std::string& err);
+    bool load_asset_schema(const FS::Path& assetSchemaPath, String& err);
 
     /// @brief Synchronously serialize Project to its schema.
-    bool save_project(std::string err);
+    bool save_project(String& err);
 
     /// @brief Synchronously serialize AssetRegistry to its schema.
-    bool save_asset_registry(std::string err);
+    bool save_asset_registry(String& err);
 
     /// @brief Propagate ProjectScreenLayerSettings to Scene.
     void configure_project_screen_layers();

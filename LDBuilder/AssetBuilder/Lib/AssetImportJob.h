@@ -19,7 +19,7 @@ struct AssetImportJob
     AssetImportStatus status;              // resulting status
     FS::Path assetDir;                     // asset directory to dump destination files
     std::atomic_bool hasCompleted = false; // polled by main thread
-    HashMap<std::string, FS::Path> files;  // destination files written
+    HashMap<String, FS::Path> files;  // destination files written
 
     inline bool has_completed()
     {
@@ -52,7 +52,7 @@ struct AssetImportJob
     }
 
     /// @brief Try reading src path to string, updates status upon failure.
-    inline bool read_src_file_to_string(const FS::Path& path, std::string& str)
+    inline bool read_src_file_to_string(const FS::Path& path, String& str)
     {
         uint64_t fileSize;
         if (!FS::get_file_size(path, fileSize, status.str) || fileSize == 0)
@@ -85,7 +85,7 @@ struct AssetImportJob
     }
 
     /// @brief Try write to destination file, updates status upon failure.
-    inline bool write_dst_file(const std::string& key, const FS::Path& relPath, View view)
+    inline bool write_dst_file(const String& key, const FS::Path& relPath, View view)
     {
         if (!FS::create_directories(assetDir, status.str))
         {

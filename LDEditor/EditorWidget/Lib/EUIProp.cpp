@@ -20,7 +20,7 @@ bool EUIU32Prop::update(const char* label, uint32_t* u32)
 {
     EditorTheme theme = eui_get_theme();
     bool hasChanged = false;
-    std::string str;
+    String str;
 
     push_prop_hbox();
     {
@@ -54,7 +54,7 @@ bool EUIF32Prop::update(const char* label, float* f32)
 {
     bool hasChanged = false;
     EditorTheme theme = eui_get_theme();
-    std::string str;
+    String str;
 
     push_prop_hbox();
     {
@@ -83,7 +83,7 @@ bool EUIVec2Prop::update(const char* label, Vec2* v)
     bool hasChanged = false;
     EditorTheme theme = eui_get_theme();
     UITextEditData* edit;
-    std::string str;
+    String str;
 
     push_prop_hbox();
     {
@@ -119,7 +119,7 @@ bool EUIRectProp::update(const char* label, Rect* rect, bool normalized)
     bool hasChanged = false;
     EditorTheme theme = eui_get_theme();
     UITextEditData* edit;
-    std::string str;
+    String str;
 
     push_prop_hbox();
     {
@@ -171,7 +171,7 @@ bool EUIVec3Prop::update(const char* label, Vec3* v)
     bool hasChanged = false;
     EditorTheme theme = eui_get_theme();
     UITextEditData* edit;
-    std::string str;
+    String str;
 
     push_prop_hbox();
     {
@@ -322,7 +322,7 @@ bool EUITransform2DProp::update(Transform2D* transform2D)
 bool eui_u32_prop(const char* label, uint32_t* u32)
 {
     EditorTheme theme = eui_get_theme();
-    std::string str;
+    String str;
     bool hasChanged = false;
 
     push_prop_hbox();
@@ -338,7 +338,7 @@ bool eui_u32_prop(const char* label, uint32_t* u32)
             edit->set_text(std::format("{}", *u32));
         hasChanged = ui_text_edit_submitted(str);
         if (hasChanged)
-            *u32 = (uint32_t)std::stoul(str);
+            *u32 = (uint32_t)std::stoul(std::string(str.c_str()));
         ui_pop();
     }
     pop_prop_hbox();
@@ -349,7 +349,7 @@ bool eui_u32_prop(const char* label, uint32_t* u32)
 bool eui_f32_prop(const char* label, float* f32)
 {
     EditorTheme theme = eui_get_theme();
-    std::string str;
+    String str;
     bool hasChanged = false;
 
     push_prop_hbox();
@@ -376,7 +376,7 @@ bool eui_vec2_prop(const char* label, Vec2* v)
 bool eui_vec2_prop(const char* label, float f32[2])
 {
     EditorTheme theme = eui_get_theme();
-    std::string str;
+    String str;
     bool hasChanged = false;
 
     push_prop_hbox();
@@ -454,7 +454,7 @@ bool eui_rect_prop(const char* label, Rect* rect, bool normalized)
 {
     EditorTheme theme = eui_get_theme();
     bool hasChanged = false;
-    std::string str;
+    String str;
 
     push_prop_hbox();
     {

@@ -2,6 +2,7 @@
 #include <Ludens/Media/Format/ICO.h>
 #include <Ludens/Media/Format/PNG.h>
 #include <Ludens/Profiler/Profiler.h>
+
 #include <cstddef>
 
 namespace LD {
@@ -31,13 +32,13 @@ static_assert(offsetof(ICONDIRENTRY, dwImageOffset) == 12);
 /// @param outANDmask Outputs ICO AND mask address on success. Address is from original buffer, not from outBMPData.
 /// @param outHasAlpha Outputs whehter BMP has alpha channel, ICO AND mask is used to derive alpha for 3-Channel BMP data.
 /// @return True on success.
-static bool patch_ico_dib(const byte* dibData, uint64_t dibSize, std::vector<byte>& outBMPData, const uint8_t** outANDmask, bool* outHasAlpha)
+static bool patch_ico_dib(const byte* dibData, uint64_t dibSize, Vector<byte>& outBMPData, const uint8_t** outANDmask, bool* outHasAlpha)
 {
     if (!dibData || dibSize < sizeof(BITMAPINFOHEADER))
         return false;
 
     const BITMAPINFOHEADER* srcInfoHeader = (const BITMAPINFOHEADER*)dibData;
-    std::vector<byte> dibCopy(dibData, dibData + dibSize);
+    Vector<byte> dibCopy(dibData, dibData + dibSize);
     BITMAPINFOHEADER* dstInfoHeader = (BITMAPINFOHEADER*)dibCopy.data();
     dstInfoHeader->biHeight /= 2;
 
@@ -102,21 +103,21 @@ static void patch_ico_AND_mask(uint8_t* rgba, int width, int height, const uint8
     }
 }
 
-void ICOData::create_bitmaps_from_file(const FS::Path& icoPath, std::vector<Bitmap>& outBitmaps)
+void ICOData::create_bitmaps_from_file(const FS::Path& icoPath, Vector<Bitmap>& outBitmaps)
 {
     LD_PROFILE_SCOPE;
 
     outBitmaps.clear();
 
-    std::string err;
-    std::vector<byte> icoData;
+    String err;
+    Vector<byte> icoData;
     if (!FS::read_file_to_vector(icoPath, icoData, err))
         return;
 
     create_bitmaps_from_file_data(icoData.data(), icoData.size(), outBitmaps);
 }
 
-void ICOData::create_bitmaps_from_file_data(const void* icoData, size_t icoSize, std::vector<Bitmap>& outBitmaps)
+void ICOData::create_bitmaps_from_file_data(const void* icoData, size_t icoSize, Vector<Bitmap>& outBitmaps)
 {
     LD_PROFILE_SCOPE;
 
@@ -154,7 +155,7 @@ void ICOData::create_bitmaps_from_file_data(const void* icoData, size_t icoSize,
         //       channel. Note that the AND mask is introduced by the ICO container format, not BMP.
         const uint8_t* icoANDMask = nullptr;
         bool bmpHasAlpha = false;
-        std::vector<byte> tmpBmpData;
+        Vector<byte> tmpBmpData;
         if (!patch_ico_dib((const byte*)bitmapData, bitmapSize, tmpBmpData, &icoANDMask, &bmpHasAlpha))
             continue; // bad DIB data
 

@@ -11,13 +11,17 @@ struct TestUtil
 
     /// @brief Statically locate SceneTest directory path.
     /// @note Mostly a static helper for doctest to skip test cases during CRT initialization.
-    static bool get_scene_test_directory_path(std::filesystem::path* path = nullptr);
+    static bool get_scene_test_dir_path(std::filesystem::path* path = nullptr);
     static bool get_scene_test_files(std::vector<std::filesystem::path>& outFiles);
+    static bool get_scene_test_script_files(std::vector<std::filesystem::path>& outFiles);
 
     /// @brief Statically locate root directory path.
     /// @note Mostly a static helper for doctest to skip test cases during CRT initialization.
     static bool get_root_directory_path(std::filesystem::path* path = nullptr);
 
+    static bool get_test_dir_path(std::filesystem::path& path);
+
+    static bool get_runtime_path(std::filesystem::path& path);
 
     std::filesystem::path rootDirPath = {};
 };

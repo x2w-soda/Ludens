@@ -1,4 +1,5 @@
 #include <Ludens/Asset/Template/UISchema.h>
+#include <Ludens/DSA/ViewUtil.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Header/Version.h>
 #include <Ludens/Media/Format/TOML.h>
@@ -20,7 +21,7 @@ public:
     UISchemaSaver& operator=(const UISchemaSaver&) = delete;
 
     /// @brief Save template as TOML schema.
-    bool save_template(UITemplateObj* obj, std::string& toml, UISchema::Status& err);
+    bool save_template(UITemplateObj* obj, String& toml, UISchema::Status& err);
 
     static void save_ui_button(UISchemaSaver& saver, const UITemplateEntry& entry);
     static void save_ui_panel(UISchemaSaver& saver, const UITemplateEntry& entry);
@@ -94,8 +95,8 @@ void UISchemaSaver::save_widget_subtree(uint32_t idx)
 
     mWriter.begin_table();
 
-    std::string typeStr(UIWidget::get_type_cstr(entry->type));
-    mWriter.key("type").write_string(typeStr);
+    String typeStr(UIWidget::get_type_cstr(entry->type));
+    mWriter.key("type").write_string(view(typeStr));
     mWriter.key("name").write_string(entry->name);
     mWriter.key("index").write_u32(idx);
 
@@ -200,7 +201,7 @@ UISchemaSaver::~UISchemaSaver()
         TOMLWriter::destroy(mWriter);
 }
 
-bool UISchemaSaver::save_template(UITemplateObj* obj, std::string& toml, UISchema::Status& err)
+bool UISchemaSaver::save_template(UITemplateObj* obj, String& toml, UISchema::Status& err)
 {
     mTmpl = obj;
 
@@ -222,7 +223,7 @@ bool UISchemaSaver::save_template(UITemplateObj* obj, std::string& toml, UISchem
     for (auto it : mTmpl->hierarchy)
     {
         uint32_t parentIdx = it.first;
-        mWriter.key(std::to_string(parentIdx)).begin_array();
+        mWriter.key(view(std::to_string(parentIdx))).begin_array();
         for (uint32_t childIdx : it.second)
             mWriter.write_u32(childIdx);
         mWriter.end_array();
@@ -295,12 +296,13 @@ bool UISchemaLoader::load_template(UITemplateObj* obj, const View& toml, UISchem
 
     if (mReader.enter_table(SCENE_SCHEMA_TABLE_HIERARCHY))
     {
-        Vector<std::string> keys;
+        Vector<String> keys;
         mReader.get_keys(keys);
 
-        for (const std::string& key : keys)
+        for (const String& key : keys)
         {
-            uint32_t parentIdx = static_cast<uint32_t>(std::stoul(key));
+            uint32_t parentIdx = 0;
+            std::from_chars((const char*)key.data(), (const char*)key.data() + key.size(), parentIdx);
 
             int count = 0;
             if (!mReader.enter_array(key.c_str(), count))
@@ -386,7 +388,7 @@ bool UISchemaLoader::load_widget_toml(UISchema::Status& err)
         return false;
 
     UIWidgetType type;
-    std::string typeStr;
+    String typeStr;
     if (!mReader.read_string("type", typeStr) || !UIWidget::get_type_from_cstr(type, typeStr.c_str()))
         return false;
 
@@ -420,7 +422,7 @@ bool UISchemaLoader::load_layout_toml(UILayoutInfo& layout)
         !load_layout_child_padding_toml(layout.childPadding, "child_padding"))
         return false;
 
-    std::string str;
+    String str;
     if (!mReader.read_string("child_axis", str))
         return false;
 
@@ -438,7 +440,7 @@ bool UISchemaLoader::load_layout_toml(UILayoutInfo& layout)
 
 bool UISchemaLoader::load_layout_size_toml(UISize& size, const char* key)
 {
-    std::string str;
+    String str;
     float f32;
     int32_t i32;
 
@@ -473,7 +475,7 @@ bool UISchemaLoader::load_layout_size_toml(UISize& size, const char* key)
 
 bool UISchemaLoader::load_layout_child_align_toml(UIAlign& align, const char* key)
 {
-    std::string str;
+    String str;
 
     if (!mReader.read_string(key, str))
         return false;
@@ -550,7 +552,7 @@ bool UISchema::save_ui_template(UITemplate tmpl, const FS::Path& savePath, Statu
 
     UISchemaSaver saver;
 
-    std::string toml;
+    String toml;
     if (!saver.save_template(tmpl, toml, err))
         return false;
 

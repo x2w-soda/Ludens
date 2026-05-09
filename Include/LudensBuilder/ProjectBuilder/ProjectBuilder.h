@@ -49,9 +49,9 @@ struct ProjectBuildAsync : Handle<struct ProjectBuildAsyncObj>
 
 /// @brief Tries to create empty project in destination directory.
 ///        This call is synchronous and generates default schema files.
-bool create_empty_project(const std::string& projectName, const FS::Path& projectSchema, std::string& err);
+bool create_empty_project(View projectName, const FS::Path& projectSchema, String& err);
 
 /// @brief Try creating empty scene schema file.
-bool create_empty_scene(const FS::Path& sceneSchemaAbsPath, std::string& err);
+bool create_empty_scene(const FS::Path& sceneSchemaAbsPath, String& err);
 
 } // namespace LD

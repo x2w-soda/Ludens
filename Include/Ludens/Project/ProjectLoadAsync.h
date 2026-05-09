@@ -1,10 +1,9 @@
 #pragma once
 
 #include <Ludens/Asset/AssetRegistry.h>
+#include <Ludens/DSA/String.h>
 #include <Ludens/Header/Handle.h>
 #include <Ludens/Project/Project.h>
-
-#include <string>
 
 namespace LD {
 
@@ -26,7 +25,7 @@ struct ProjectLoadAsync : Handle<struct ProjectLoadAsyncObj>
     static void destroy(ProjectLoadAsync async);
 
     /// @brief Try begin async project loading.
-    bool begin(const FS::Path& projectDir, std::string& err);
+    bool begin(const FS::Path& projectDir, String& err);
 
     /// @brief Non-blocking update.
     ProjectLoadState update();

@@ -1,9 +1,8 @@
 #pragma once
 
+#include <Ludens/DSA/String.h>
 #include <Ludens/UI/UIFont.h>
 #include <Ludens/UI/UIWidget.h>
-
-#include <string>
 
 namespace LD {
 
@@ -14,7 +13,7 @@ class UIButtonData
     friend struct UIButtonWidgetObj;
 
 public:
-    std::string text;
+    String text;
     UIFont font = {};
     bool transparentBG = false;
     bool isEnabled = true;

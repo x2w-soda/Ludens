@@ -82,7 +82,7 @@ AudioData AudioData::create_from_path(const FS::Path& path)
     if (!path.has_extension() || !FS::exists(path))
         return {};
 
-    std::string err; // TODO:
+    String err; // TODO:
     Vector<byte> fileData;
     if (!FS::read_file_to_vector(path, fileData, err))
         return {};

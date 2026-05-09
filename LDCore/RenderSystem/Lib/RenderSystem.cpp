@@ -112,12 +112,12 @@ public:
     void editor_pass(const RenderSystemEditorPass& editorP);
     void editor_dialog_pass(const RenderSystemEditorDialogPass& dialogPass);
 
-    RUID create_screen_layer(const std::string& name);
+    RUID create_screen_layer(View name);
     void destroy_screen_layer(RUID layerID);
     RUID get_top_screen_layer();
     RUID get_screen_layer_item(const Vec2& worldPos, RenderSystemMat4Callback mat4CB, void* user);
     void set_screen_layer_order(size_t count, RUID* layers);
-    void set_screen_layer_name(RUID layer, const std::string& name);
+    void set_screen_layer_name(RUID layer, View name);
 
     RImage create_image_2d(Bitmap bitmap);
     void destroy_image_2d(RImage image);
@@ -712,7 +712,7 @@ void RenderSystemObj::editor_dialog_pass(const RenderSystemEditorDialogPass& edi
     mGraph.connect_swapchain_image(editorSRC.color_attachment(), editorDP.dialogWindow);
 }
 
-RUID RenderSystemObj::create_screen_layer(const std::string& name)
+RUID RenderSystemObj::create_screen_layer(View name)
 {
     RUID layerID = get_ruid();
 
@@ -763,7 +763,7 @@ void RenderSystemObj::set_screen_layer_order(size_t count, RUID* layers)
     mLayers = layerOrder;
 }
 
-void RenderSystemObj::set_screen_layer_name(RUID layer, const std::string& name)
+void RenderSystemObj::set_screen_layer_name(RUID layer, View name)
 {
     ScreenLayerObj* obj = get_layer(layer);
     if (obj)
@@ -1251,7 +1251,7 @@ void RenderSystem::destroy_image_cube(ImageCube image)
 }
 #endif
 
-RUID RenderSystem::create_screen_layer(const std::string& name)
+RUID RenderSystem::create_screen_layer(View name)
 {
     RUID layerID = mObj->create_screen_layer(name);
 
@@ -1271,7 +1271,7 @@ void RenderSystem::set_screen_layer_order(size_t count, RUID* layers)
     mObj->set_screen_layer_order(count, layers);
 }
 
-void RenderSystem::set_screen_layer_name(RUID layer, const std::string& name)
+void RenderSystem::set_screen_layer_name(RUID layer, View name)
 {
     mObj->set_screen_layer_name(layer, name);
 }

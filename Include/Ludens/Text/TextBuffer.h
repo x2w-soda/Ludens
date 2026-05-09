@@ -1,8 +1,7 @@
 #pragma once
 
+#include <Ludens/DSA/String.h>
 #include <Ludens/Header/Handle.h>
-#include <Ludens/Header/View.h>
-#include <string>
 
 namespace LD {
 
@@ -22,10 +21,10 @@ struct TextBuffer : Handle<struct TextBufferObj>
     void set_string(const char* cstr);
 
     /// @brief Set text buffer content
-    inline void set_string(const std::string& str) { set_string(str.c_str()); }
+    inline void set_string(const String& str) { set_string(str.c_str()); }
 
     /// @brief Cast to STL string.
-    std::string to_string();
+    String to_string();
 
     /// @brief Content byte size.
     size_t size();

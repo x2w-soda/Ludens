@@ -30,7 +30,7 @@ struct RuntimeContextObj
     UIFontRegistry fontRegistry;
     UIFont fontDefault;
 
-    bool startup(const RuntimeContextInfo& info, std::string err);
+    bool startup(const RuntimeContextInfo& info, String err);
     void cleanup();
     void render_frame(const Vec2& windowExtent);
 
@@ -40,7 +40,7 @@ struct RuntimeContextObj
     static void on_window_event(const WindowEvent* event, void* user);
 };
 
-bool RuntimeContextObj::startup(const RuntimeContextInfo& info, std::string err)
+bool RuntimeContextObj::startup(const RuntimeContextInfo& info, String err)
 {
     if (!projectCtx.load_project_schema(info.projectSchemaPath, err))
         return false;
@@ -57,7 +57,7 @@ bool RuntimeContextObj::startup(const RuntimeContextInfo& info, std::string err)
         return false;
     }
 
-    const std::string windowName = startupS.get_window_name();
+    const String windowName = startupS.get_window_name();
     const FS::Path projectRootDir = project.get_root_dir_abs_path();
     const FS::Path assetSchemaPath = projectCtx.asset_schema_abs_path();
 
@@ -141,7 +141,7 @@ bool RuntimeContextObj::startup(const RuntimeContextInfo& info, std::string err)
 
     scene.load([&](SceneObj* sceneObj) -> bool {
         // load default scene
-        std::string err;
+        String err;
         return SceneSchema::load_scene_from_file(Scene(sceneObj), projectCtx.suid_registry(), defaultSceneSchemaPath, err);
     });
 
@@ -256,7 +256,7 @@ RuntimeContext RuntimeContext::create(const RuntimeContextInfo& info)
 
     auto* obj = heap_new<RuntimeContextObj>(MEMORY_USAGE_MISC);
 
-    std::string err;
+    String err;
     if (!obj->startup(info, err))
     {
         heap_delete<RuntimeContextObj>(obj);

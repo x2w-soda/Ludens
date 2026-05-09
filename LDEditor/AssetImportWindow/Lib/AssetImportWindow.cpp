@@ -11,7 +11,7 @@ struct AssetImportWindowObj : EditorWindowObj
     AssetImportInfo* importInfo = {};
     EUIAssetPathEditRow uiDstPathRow;
     EUIButtonRow<2> uiButtonRow;
-    std::string dstPath;
+    String dstPath;
 
     AssetImportWindowObj(const EditorWindowInfo& info)
         : EditorWindowObj(info)
@@ -23,7 +23,7 @@ struct AssetImportWindowObj : EditorWindowObj
 
 void AssetImportWindowObj::update()
 {
-    std::string str;
+    String str;
     UILayoutInfo layoutI = theme.make_vbox_layout();
     layoutI.childPadding = UIPadding(theme.get_child_pad_large());
     layoutI.childGap = theme.get_child_gap_large();

@@ -1,5 +1,6 @@
 #include <Ludens/Asset/AssetType/LuaScriptAsset.h>
 #include <Ludens/DSA/Array.h>
+#include <Ludens/DSA/ViewUtil.h>
 #include <Ludens/DataRegistry/DataComponent.h>
 #include <Ludens/Log/Log.h>
 #include <Ludens/Profiler/Profiler.h>
@@ -25,8 +26,6 @@ static Log sLog(LUDENS_LUA_SCRIPT_LOG_CHANNEL);
 
 namespace LuaScript {
 
-static KeyCode string_to_keycode(const char* str);
-static MouseButton string_to_mouse_button(const char* cstr);
 static inline ComponentBase* get_component_base(LuaState& L, DataRegistry* outReg);
 static void get_or_create_component_ref(LuaState& L, CUID cuid);
 static int component_get_id(lua_State* l);
@@ -44,42 +43,6 @@ static int get_component(lua_State* l);
 static int get_asset(lua_State* l);
 static int create_child(lua_State* l);
 static int destroy(lua_State* l);
-
-static KeyCode string_to_keycode(const char* cstr)
-{
-    size_t len = strlen(cstr);
-
-    if (len == 1)
-    {
-        char c = *cstr;
-
-        if ('a' <= c && c <= 'z')
-            return static_cast<KeyCode>(c - 'a' + KEY_CODE_A);
-
-        return KEY_CODE_ENUM_LAST; // failed to resolve
-    }
-
-    std::string str(cstr);
-    if (str == "space")
-    {
-        return KEY_CODE_SPACE;
-    }
-
-    return KEY_CODE_ENUM_LAST; // failed to resolve
-}
-
-static MouseButton string_to_mouse_button(const char* cstr)
-{
-    std::string str(cstr);
-
-    if (str == "lmb")
-        return MOUSE_BUTTON_LEFT;
-
-    if (str == "rmb")
-        return MOUSE_BUTTON_RIGHT;
-
-    return MOUSE_BUTTON_ENUM_LAST; // failed to resolve
-}
 
 static inline ComponentBase* get_component_base(LuaState& L, DataRegistry* outReg)
 {
@@ -233,8 +196,8 @@ static int input_get_key_down(lua_State* l)
         return 1;
     }
 
-    KeyCode key = string_to_keycode(L.to_string(-1));
-    L.push_bool(Input::get_key_down(key));
+    KeyCode key;
+    L.push_bool(from_string(L.to_string(-1), key) && Input::get_key_down(key));
 
     return 1;
 }
@@ -250,8 +213,8 @@ static int input_get_key_up(lua_State* l)
         return 1;
     }
 
-    KeyCode key = string_to_keycode(L.to_string(-1));
-    L.push_bool(Input::get_key_up(key));
+    KeyCode key;
+    L.push_bool(from_string(L.to_string(-1), key) && Input::get_key_up(key));
 
     return 1;
 }
@@ -267,8 +230,8 @@ static int input_get_key(lua_State* l)
         return 1;
     }
 
-    KeyCode key = string_to_keycode(L.to_string(-1));
-    L.push_bool(Input::get_key(key));
+    KeyCode key;
+    L.push_bool(from_string(L.to_string(-1), key) && Input::get_key(key));
 
     return 1;
 }
@@ -284,8 +247,8 @@ static int input_get_mouse_down(lua_State* l)
         return 1;
     }
 
-    MouseButton btn = string_to_mouse_button(L.to_string(-1));
-    L.push_bool(Input::get_mouse_down(btn));
+    MouseButton btn;
+    L.push_bool(from_string(L.to_string(-1), btn) && Input::get_mouse_down(btn));
 
     return 1;
 }
@@ -301,8 +264,8 @@ static int input_get_mouse_up(lua_State* l)
         return 1;
     }
 
-    MouseButton btn = string_to_mouse_button(L.to_string(-1));
-    L.push_bool(Input::get_mouse_up(btn));
+    MouseButton btn;
+    L.push_bool(from_string(L.to_string(-1), btn) && Input::get_mouse_up(btn));
 
     return 1;
 }
@@ -318,8 +281,8 @@ static int input_get_mouse(lua_State* l)
         return 1;
     }
 
-    MouseButton btn = string_to_mouse_button(L.to_string(-1));
-    L.push_bool(Input::get_mouse(btn));
+    MouseButton btn;
+    L.push_bool(from_string(L.to_string(-1), btn) && Input::get_mouse(btn));
 
     return 1;
 }
@@ -343,7 +306,8 @@ static int get_component(lua_State* l)
         return 2;
     }
 
-    std::string ffiType(get_component_type_name(type));
+    View ffiTypeV = get_component_type_name(type);
+    std::string ffiType((const char*)ffiTypeV.data, ffiTypeV.size);
     ffiType.push_back('*');
 
     L.push_string(ffiType.c_str());
@@ -399,10 +363,9 @@ static int create_child(lua_State* l)
     ComponentType compType = COMPONENT_TYPE_ENUM_COUNT;
     for (int i = 0; i < (int)COMPONENT_TYPE_ENUM_COUNT; i++)
     {
-        // a bit annoying that the official type name ends with 'Component'
-        const char* candidate = get_component_type_name((ComponentType)i);
+        View candidate = get_component_brief_type_name((ComponentType)i);
 
-        if (compTypeStr + "Component" == candidate)
+        if (compTypeStr == candidate)
         {
             compType = (ComponentType)i;
             break;

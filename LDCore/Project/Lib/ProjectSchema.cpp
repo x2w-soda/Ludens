@@ -1,3 +1,5 @@
+#include <Ludens/DSA/StringUtil.h>
+#include <Ludens/DSA/ViewUtil.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Header/Version.h>
 #include <Ludens/Media/Format/TOML.h>
@@ -23,7 +25,7 @@ public:
 
     ProjectSchemaSaver& operator=(const ProjectSchemaSaver&) = delete;
 
-    bool save_project(Project project, std::string& toml, std::string& err);
+    bool save_project(Project project, String& toml, String& err);
 
 private:
     void save_project_settings(ProjectSettings settings, TOMLWriter writer);
@@ -45,10 +47,10 @@ public:
 
     ProjectSchemaLoader& operator=(const ProjectSchemaLoader&) = delete;
 
-    bool load_project_schema(Project project, SUIDRegistry idReg, const View& toml, std::string& err);
+    bool load_project_schema(Project project, SUIDRegistry idReg, const View& toml, String& err);
 
 private:
-    bool load_project_settings(ProjectSettings settings, std::string& err);
+    bool load_project_settings(ProjectSettings settings, String& err);
     void load_project_startup_settings(ProjectStartupSettings settings);
     bool load_project_screen_layer_settings(ProjectScreenLayerSettings settings);
 
@@ -64,7 +66,7 @@ ProjectSchemaLoader::~ProjectSchemaLoader()
         TOMLReader::destroy(mReader);
 }
 
-bool ProjectSchemaLoader::load_project_schema(Project project, SUIDRegistry idReg, const View& toml, std::string& err)
+bool ProjectSchemaLoader::load_project_schema(Project project, SUIDRegistry idReg, const View& toml, String& err)
 {
     mReader = TOMLReader::create(toml, err);
     mProject = project;
@@ -85,7 +87,7 @@ bool ProjectSchemaLoader::load_project_schema(Project project, SUIDRegistry idRe
     if (!mReader.read_u32(PROJECT_SCHEMA_KEY_VERSION_PATCH, versionPatch) || versionPatch != LD_VERSION_PATCH)
         return false;
 
-    std::string str;
+    String str;
     if (!mReader.read_string(PROJECT_SCHEMA_KEY_NAME, str))
         return false;
 
@@ -96,11 +98,11 @@ bool ProjectSchemaLoader::load_project_schema(Project project, SUIDRegistry idRe
 
     mReader.exit();
 
-    project.set_asset_schema_rel_path(FS::Path(str));
+    project.set_asset_schema_rel_path(FS::Path(to_std_string_view(str)));
 
     bool isValid = true;
     uint32_t u32;
-    std::string uriPath;
+    String uriPath;
     int sceneCount = 0;
     if (mReader.enter_array(PROJECT_SCHEMA_KEY_SCENE, sceneCount))
     {
@@ -145,7 +147,7 @@ bool ProjectSchemaLoader::load_project_schema(Project project, SUIDRegistry idRe
     return isValid;
 }
 
-bool ProjectSchemaLoader::load_project_settings(ProjectSettings settings, std::string& err)
+bool ProjectSchemaLoader::load_project_settings(ProjectSettings settings, String& err)
 {
     if (mReader.enter_table(PROJECT_SCHEMA_TABLE_STARTUP))
     {
@@ -181,7 +183,7 @@ void ProjectSchemaLoader::load_project_startup_settings(ProjectStartupSettings s
     mReader.read_u32(PROJECT_SCHEMA_KEY_STARTUP_WINDOW_HEIGHT, windowHeight);
     settings.set_window_height(windowHeight);
 
-    std::string windowName = DEFAULT_STARTUP_WINDOW_NAME;
+    String windowName = DEFAULT_STARTUP_WINDOW_NAME;
     mReader.read_string(PROJECT_SCHEMA_KEY_STARTUP_WINDOW_NAME, windowName);
     settings.set_window_name(windowName);
 
@@ -202,7 +204,7 @@ bool ProjectSchemaLoader::load_project_screen_layer_settings(ProjectScreenLayerS
             continue;
 
         SUID suid;
-        std::string str;
+        String str;
         mReader.read_suid(PROJECT_SCHEMA_KEY_SCREEN_LAYER_ID, suid);
         mReader.read_string(PROJECT_SCHEMA_KEY_SCREEN_LAYER_NAME, str);
         mReader.exit();
@@ -222,7 +224,7 @@ ProjectSchemaSaver::~ProjectSchemaSaver()
         TOMLWriter::destroy(mWriter);
 }
 
-bool ProjectSchemaSaver::save_project(Project project, std::string& toml, std::string& err)
+bool ProjectSchemaSaver::save_project(Project project, String& toml, String& err)
 {
     mProject = project;
     mWriter = TOMLWriter::create();
@@ -232,7 +234,7 @@ bool ProjectSchemaSaver::save_project(Project project, std::string& toml, std::s
     mWriter.key(PROJECT_SCHEMA_KEY_VERSION_MAJOR).write_i32(LD_VERSION_MAJOR);
     mWriter.key(PROJECT_SCHEMA_KEY_VERSION_MINOR).write_i32(LD_VERSION_MINOR);
     mWriter.key(PROJECT_SCHEMA_KEY_VERSION_PATCH).write_i32(LD_VERSION_PATCH);
-    mWriter.key(PROJECT_SCHEMA_KEY_ASSETS).write_string(mProject.get_asset_schema_rel_path().string());
+    mWriter.key(PROJECT_SCHEMA_KEY_ASSETS).write_string(view(mProject.get_asset_schema_rel_path().string()));
     mWriter.key(PROJECT_SCHEMA_KEY_NAME).write_string(mProject.get_name());
     mWriter.end_table();
 
@@ -243,7 +245,7 @@ bool ProjectSchemaSaver::save_project(Project project, std::string& toml, std::s
     {
         mWriter.begin_table();
         mWriter.key(PROJECT_SCHEMA_KEY_SCENE_ID).write_u32(scene.id);
-        mWriter.key(PROJECT_SCHEMA_KEY_SCENE_PATH).write_string(scene.path);
+        mWriter.key(PROJECT_SCHEMA_KEY_SCENE_PATH).write_string(view(scene.path));
         mWriter.end_table();
     }
     mWriter.end_array_table();
@@ -301,7 +303,7 @@ void ProjectSchemaSaver::save_project_screen_layer_settings(ProjectScreenLayerSe
 // Public API
 //
 
-bool ProjectSchema::load_project_from_source(Project project, SUIDRegistry idReg, const FS::Path& rootDir, const View& toml, std::string& err)
+bool ProjectSchema::load_project_from_source(Project project, SUIDRegistry idReg, const FS::Path& rootDir, const View& toml, String& err)
 {
     LD_PROFILE_SCOPE;
 
@@ -315,7 +317,7 @@ bool ProjectSchema::load_project_from_source(Project project, SUIDRegistry idReg
     return loader.load_project_schema(project, idReg, toml, err);
 }
 
-bool ProjectSchema::load_project_from_file(Project project, SUIDRegistry idReg, const FS::Path& tomlPath, std::string& err)
+bool ProjectSchema::load_project_from_file(Project project, SUIDRegistry idReg, const FS::Path& tomlPath, String& err)
 {
     LD_PROFILE_SCOPE;
 
@@ -329,7 +331,7 @@ bool ProjectSchema::load_project_from_file(Project project, SUIDRegistry idReg, 
     return loader.load_project_schema(project, idReg, View(toml.data(), toml.size()), err);
 }
 
-bool ProjectSchema::save_project_to_string(Project project, std::string& saveTOML, std::string& err)
+bool ProjectSchema::save_project_to_string(Project project, String& saveTOML, String& err)
 {
     LD_PROFILE_SCOPE;
 
@@ -340,11 +342,11 @@ bool ProjectSchema::save_project_to_string(Project project, std::string& saveTOM
     return true;
 }
 
-bool ProjectSchema::save_project(Project project, const FS::Path& savePath, std::string& err)
+bool ProjectSchema::save_project(Project project, const FS::Path& savePath, String& err)
 {
     LD_PROFILE_SCOPE;
 
-    std::string toml;
+    String toml;
     if (!save_project_to_string(project, toml, err))
         return false;
 
@@ -352,22 +354,22 @@ bool ProjectSchema::save_project(Project project, const FS::Path& savePath, std:
     return FS::write_file_and_swap_backup(savePath, tomlView, err);
 }
 
-std::string ProjectSchema::create_empty(const std::string& projectName, const std::string& assetSchemaRelPath, const std::string& sceneURIPath, const std::string& sceneName)
+String ProjectSchema::create_empty(View projectName, View assetSchemaRelPath, View sceneURIPath, View sceneName)
 {
     SUIDRegistry idReg = SUIDRegistry::create();
     Project project = Project::create();
     project.set_name(projectName);
-    project.set_asset_schema_rel_path(assetSchemaRelPath);
+    project.set_asset_schema_rel_path(FS::Path(to_std_string_view(assetSchemaRelPath)));
     project.settings().startup_settings().set_window_name(projectName);
 
-    std::string err;
+    String err;
     SUID defaultSceneID(SERIAL_TYPE_SCENE, 0);
     bool success = project.register_scene_with_id(idReg, defaultSceneID, sceneURIPath, err);
     LD_ASSERT(success);
 
     project.settings().startup_settings().set_default_scene_id(defaultSceneID);
 
-    std::string toml;
+    String toml;
     success = ProjectSchema::save_project_to_string(project, toml, err);
     LD_ASSERT(success);
 

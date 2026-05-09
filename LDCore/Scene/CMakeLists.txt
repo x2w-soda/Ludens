@@ -68,6 +68,8 @@ target_link_libraries(${MODULE_NAME} PUBLIC
 
 set(MODULE_TEST
     Test/SceneTest.cpp
+    Test/LuaWindowCommand.h
+    Test/LuaWindowCommand.cpp
     Test/LuaSceneCommand.h
     Test/LuaSceneCommand.cpp
     Test/LuaSceneDriver.h
@@ -85,4 +87,5 @@ target_link_libraries(${MODULE_TEST_NAME} PRIVATE
     ${MODULE_NAME}
     LDLudensLFS
     LDTestUtil
+    LDAssetBuilder
 )

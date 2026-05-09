@@ -13,11 +13,15 @@ class Scene;
 struct LuaSceneCommand
 {
     const SceneCommandType type;
-    std::string error;
+    String error;
 
     LuaSceneCommand() = delete;
     LuaSceneCommand(SceneCommandType type)
         : type(type) {}
+
+    static LuaSceneCommand* create(LuaState L, String& err);
+    static void destroy(LuaSceneCommand* cmd);
+    static bool execute(LuaSceneCommand* cmd, SceneCommandQueue cmdQ, Scene& scene, String& err);
 };
 
 struct LuaSceneCommandLoadScene : LuaSceneCommand
@@ -57,9 +61,5 @@ struct LuaSceneCommandCreateComponent : LuaSceneCommand
     LuaSceneCommandCreateComponent()
         : LuaSceneCommand(SCENE_COMMAND_TYPE_CREATE_COMPONENT) {}
 };
-
-bool parse_lua_scene_commands(LuaState L, Vector<LuaSceneCommand*>& steps, std::string& err);
-void free_lua_scene_commands(Vector<LuaSceneCommand*>& steps);
-bool execute_lua_scene_command(LuaSceneCommand* cmd, SceneCommandQueue cmdQ, Scene& scene, std::string& err);
 
 } // namespace LD

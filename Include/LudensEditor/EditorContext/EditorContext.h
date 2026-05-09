@@ -48,7 +48,7 @@ struct EditorContextAssetInterface : Handle<struct EditorContextObj>
 
     /// @brief Blocking call to create and import Asset into project.
     /// @return Asset handle upon success.
-    Asset create_asset(AssetCreateInfo* info, const std::string importDstPath, std::string& err);
+    Asset create_asset(AssetCreateInfo* info, const String& importDstPath, String& err);
 };
 
 /// @brief Shared context among editor windows. Keeps track of

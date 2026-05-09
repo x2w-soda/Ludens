@@ -2,6 +2,7 @@
 #include <Ludens/Asset/AssetSchema.h>
 #include <Ludens/DSA/HashMap.h>
 #include <Ludens/DSA/Observer.h>
+#include <Ludens/DSA/StringUtil.h>
 #include <Ludens/DSA/Vector.h>
 #include <Ludens/DSA/ViewUtil.h>
 #include <Ludens/DataRegistry/DataRegistry.h>
@@ -233,7 +234,7 @@ static void editor_action_create_scene_event_handler(const EditorEvent* event, v
     Project project = obj->projectCtx.project();
     SUIDRegistry suidReg = obj->projectCtx.suid_registry();
 
-    std::string err;
+    String err;
     FS::Path sceneSchemaAbsPath;
     SUID sceneID = project.register_scene(suidReg, e->scenePath, err);
     if (!sceneID || !project.get_scene_schema_abs_path(sceneID, sceneSchemaAbsPath))
@@ -471,7 +472,7 @@ void EditorContextObj::load_project_scene(SUID sceneID)
     // TODO: transactional
     scene.load([&](SceneObj* sceneObj) -> bool {
         // load the scene
-        std::string err;
+        String err;
         return SceneSchema::load_scene_from_file(Scene(sceneObj), projectCtx.suid_registry(), nextSceneSchemaPath, err);
     });
 
@@ -489,7 +490,7 @@ void EditorContextObj::save_scene_schema()
     Timer timer;
     timer.start();
 
-    std::string err;
+    String err;
     if (!SceneSchema::save_scene(scene, sceneSchemaAbsPath, err))
     {
         sLog.error("failed to save scene to [{}]: {}", sceneSchemaAbsPath.string(), err);
@@ -506,8 +507,8 @@ void EditorContextObj::save_asset_schema()
     Timer timer;
     timer.start();
 
-    std::string err;
-    std::string assetSchemaPathStr = projectCtx.asset_schema_abs_path().string();
+    String err;
+    String assetSchemaPathStr = view(projectCtx.asset_schema_abs_path().string());
 
     if (!projectCtx.save_asset_registry(err))
     {
@@ -525,8 +526,8 @@ void EditorContextObj::save_project_schema()
     Timer timer;
     timer.start();
 
-    std::string err;
-    std::string projectSchemaPathStr = projectCtx.asset_schema_abs_path().string();
+    String err;
+    String projectSchemaPathStr = to_string(projectCtx.asset_schema_abs_path().string());
 
     if (!projectCtx.save_project(err))
     {
@@ -543,7 +544,7 @@ void EditorContextObj::begin_project_load_async(const FS::Path& projectSchemaPat
 {
     LD_PROFILE_SCOPE;
 
-    std::string err;
+    String err;
     const FS::Path rootPath = projectSchemaPath.parent_path();
 
     if (projectLoadAsync)
@@ -621,7 +622,7 @@ bool EditorContextObj::prepare_document(const char* uriPath)
 
     path = FS::absolute(path / "Docs" / relPath);
 
-    std::string err;
+    String err;
     Vector<byte> v;
     if (!FS::read_file_to_vector(path, v, err))
         return false;
@@ -766,7 +767,7 @@ void EditorContextAssetInterface::free_asset_create_info(AssetCreateInfo* info)
     mObj->assetBuilder.free_create_info(info);
 }
 
-Asset EditorContextAssetInterface::create_asset(AssetCreateInfo* info, const std::string importDstPath, std::string& err)
+Asset EditorContextAssetInterface::create_asset(AssetCreateInfo* info, const String& importDstPath, String& err)
 {
     LD_PROFILE_SCOPE;
 
@@ -857,7 +858,7 @@ RImage EditorContext::get_editor_icon_atlas()
 {
     if (!mObj->iconAtlas)
     {
-        std::string iconAtlasPath = mObj->iconAtlasPath.string();
+        String iconAtlasPath = to_string(mObj->iconAtlasPath.string());
         Bitmap tmpBitmap = Bitmap::create_from_path(iconAtlasPath.c_str(), false);
         mObj->iconAtlas = mObj->renderSystem.create_image_2d(tmpBitmap);
         Bitmap::destroy(tmpBitmap);

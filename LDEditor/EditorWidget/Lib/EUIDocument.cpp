@@ -246,7 +246,7 @@ void EUIDocument::pop()
     mScroll.pop();
 }
 
-bool EUIDocument::get_request_uri_path(std::string& outPath)
+bool EUIDocument::get_request_uri_path(String& outPath)
 {
     if (!mRequestURIPath.empty())
     {
@@ -258,7 +258,7 @@ bool EUIDocument::get_request_uri_path(std::string& outPath)
     return false;
 }
 
-void EUIDocument::set_request_uri_path(const std::string& path)
+void EUIDocument::set_request_uri_path(const String& path)
 {
     mRequestURIPath = path;
 }

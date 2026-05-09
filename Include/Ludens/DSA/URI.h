@@ -44,8 +44,8 @@ public:
     inline View query() const { return View(mString.data() + mQueryRange.offset, mQueryRange.size); }
     inline View fragment() const { return View(mString.data() + mFragmentRange.offset, mFragmentRange.size); }
 
-    inline std::string path_string() const { return std::string((const char*)mString.data() + mPathRange.offset, mPathRange.size); }
-    inline std::string stem_string() const { return std::string((const char*)mString.data() + mStemRange.offset, mStemRange.size); }
+    inline String path_string() const { return String((const char*)mString.data() + mPathRange.offset, mPathRange.size); }
+    inline String stem_string() const { return String((const char*)mString.data() + mStemRange.offset, mStemRange.size); }
 
 private:
     void parse()

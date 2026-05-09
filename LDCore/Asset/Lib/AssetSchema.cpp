@@ -1,4 +1,5 @@
 #include <Ludens/Asset/AssetSchema.h>
+#include <Ludens/DSA/StringUtil.h>
 #include <Ludens/DSA/ViewUtil.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Header/Version.h>
@@ -21,10 +22,10 @@ public:
 
     AssetSchemaLoader& operator=(const AssetSchemaLoader&) = delete;
 
-    bool load_registry(AssetRegistry reg, SUIDRegistry idReg, const View& toml, std::string& err);
+    bool load_registry(AssetRegistry reg, SUIDRegistry idReg, const View& toml, String& err);
 
 private:
-    bool load_asset_entries(std::string& err);
+    bool load_asset_entries(String& err);
 
 private:
     AssetRegistry mReg{};
@@ -42,10 +43,10 @@ public:
 
     AssetSchemaSaver& operator=(const AssetSchemaSaver&) = delete;
 
-    bool save_registry(AssetRegistry registry, std::string& toml, std::string& err);
+    bool save_registry(AssetRegistry registry, String& toml, String& err);
 
 private:
-    bool save_asset_entries(std::string& err);
+    bool save_asset_entries(String& err);
 
 private:
     AssetRegistry mReg{};
@@ -58,7 +59,7 @@ AssetSchemaLoader::~AssetSchemaLoader()
         TOMLReader::destroy(mReader);
 }
 
-bool AssetSchemaLoader::load_registry(AssetRegistry reg, SUIDRegistry idReg, const View& toml, std::string& err)
+bool AssetSchemaLoader::load_registry(AssetRegistry reg, SUIDRegistry idReg, const View& toml, String& err)
 {
     mReg = reg;
     mReader = TOMLReader::create(toml, err);
@@ -88,7 +89,7 @@ bool AssetSchemaLoader::load_registry(AssetRegistry reg, SUIDRegistry idReg, con
     return true;
 }
 
-bool AssetSchemaLoader::load_asset_entries(std::string& err)
+bool AssetSchemaLoader::load_asset_entries(String& err)
 {
     int count;
     if (!mReader.enter_array(ASSET_SCHEMA_KEY_ENTRY, count))
@@ -97,9 +98,9 @@ bool AssetSchemaLoader::load_asset_entries(std::string& err)
     bool isValid = true;
     AssetType assetType;
     AssetEntry entry{};
-    Vector<std::string> keys;
-    std::string entryPath;
-    std::string entryType;
+    Vector<String> keys;
+    String entryPath;
+    String entryType;
     SUID entryID;
 
     for (int i = 0; isValid && i < count; i++)
@@ -132,7 +133,7 @@ bool AssetSchemaLoader::load_asset_entries(std::string& err)
         {
             mReader.get_keys(keys);
 
-            for (const std::string& key : keys)
+            for (const String& key : keys)
             {
                 if (mReader.read_string(key.c_str(), entryPath))
                     entry.set_file_path(key, entryPath);
@@ -155,7 +156,7 @@ AssetSchemaSaver::~AssetSchemaSaver()
         TOMLWriter::destroy(mWriter);
 }
 
-bool AssetSchemaSaver::save_registry(AssetRegistry registry, std::string& toml, std::string& err)
+bool AssetSchemaSaver::save_registry(AssetRegistry registry, String& toml, String& err)
 {
     mReg = registry;
 
@@ -178,9 +179,9 @@ bool AssetSchemaSaver::save_registry(AssetRegistry registry, std::string& toml, 
     return true;
 }
 
-bool AssetSchemaSaver::save_asset_entries(std::string& err)
+bool AssetSchemaSaver::save_asset_entries(String& err)
 {
-    Vector<std::string> keys;
+    Vector<String> keys;
     Vector<AssetEntry> entries;
     mReg.get_all_entries(entries);
     if (entries.empty())
@@ -201,7 +202,7 @@ bool AssetSchemaSaver::save_asset_entries(std::string& err)
         if (!keys.empty())
         {
             mWriter.begin_table(ASSET_SCHEMA_KEY_ENTRY_FILE_PATHS);
-            for (const std::string& key : keys)
+            for (const String& key : keys)
                 mWriter.key(key).write_string(entry.get_file_path(key));
             mWriter.end_table();
         }
@@ -218,7 +219,7 @@ bool AssetSchemaSaver::save_asset_entries(std::string& err)
 // Public API
 //
 
-bool AssetSchema::load_registry_from_file(AssetRegistry registry, SUIDRegistry idRegistry, const FS::Path& tomlPath, std::string& err)
+bool AssetSchema::load_registry_from_file(AssetRegistry registry, SUIDRegistry idRegistry, const FS::Path& tomlPath, String& err)
 {
     LD_PROFILE_SCOPE;
 
@@ -233,7 +234,7 @@ bool AssetSchema::load_registry_from_file(AssetRegistry registry, SUIDRegistry i
     return true;
 }
 
-bool AssetSchema::save_registry_to_string(AssetRegistry registry, std::string& saveTOML, std::string& err)
+bool AssetSchema::save_registry_to_string(AssetRegistry registry, String& saveTOML, String& err)
 {
     LD_PROFILE_SCOPE;
 
@@ -244,22 +245,22 @@ bool AssetSchema::save_registry_to_string(AssetRegistry registry, std::string& s
     return true;
 }
 
-bool AssetSchema::save_registry(AssetRegistry registry, const FS::Path& savePath, std::string& err)
+bool AssetSchema::save_registry(AssetRegistry registry, const FS::Path& savePath, String& err)
 {
     LD_PROFILE_SCOPE;
 
-    std::string toml;
+    String toml;
     if (!save_registry_to_string(registry, toml, err))
         return false;
 
     return FS::write_file_and_swap_backup(savePath, view(toml), err);
 }
 
-std::string AssetSchema::create_empty()
+String AssetSchema::create_empty()
 {
     AssetRegistry reg = AssetRegistry::create();
 
-    std::string toml, err;
+    String toml, err;
     bool success = AssetSchema::save_registry_to_string(reg, toml, err);
     LD_ASSERT(success);
 

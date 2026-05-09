@@ -1,3 +1,4 @@
+#include <Ludens/DSA/StringUtil.h>
 #include <Ludens/DSA/Vector.h>
 #include <Ludens/Header/Impulse.h>
 #include <Ludens/Header/MouseValue.h>
@@ -10,7 +11,7 @@ namespace LD {
 
 static bool get_directory_contents_with_filter(const FS::Path& directory, Vector<FS::Path>& contents, const char* extFilter)
 {
-    std::string err;
+    String err;
 
     if (!FS::get_directory_content(directory, contents, false, err))
         return false;
@@ -23,7 +24,7 @@ struct FileSelectWindowObj : EditorWindowObj
 {
     RImage editorIconAtlas{};
     EditorTheme theme;
-    std::string extensionFilter;
+    String extensionFilter;
     Vector<FS::Path> directoryContents;
     FS::Path directoryPath;
     FS::Path selectedPath;
@@ -102,7 +103,7 @@ void FileSelectWindowObj::top_bar()
     }
     ui_pop();
 
-    std::string text = "Path: ";
+    String text = "Path: ";
     text += directoryPath.string();
     ui_push_text(nullptr, text.c_str());
     ui_pop();
@@ -174,7 +175,7 @@ bool FileSelectWindowObj::row(int idx)
     imageS->rect = EditorIconAtlas::get_icon_rect(isDirectory ? EDITOR_ICON_FOLDER : EDITOR_ICON_FILE);
     ui_pop();
 
-    std::string fileString = itemPath.filename().string();
+    String fileString = to_string(itemPath.filename().string());
     ui_push_text(nullptr, fileString.c_str());
     if (ui_top_mouse_down(mouseVal, mousePos) && mouseVal.button() == MOUSE_BUTTON_LEFT)
     {
@@ -222,7 +223,7 @@ void FileSelectWindow::show(const FS::Path& directoryPath, const char* extension
 {
     mObj->directoryPath = directoryPath;
     mObj->directoryContents.clear();
-    mObj->extensionFilter = std::string(extensionFilter);
+    mObj->extensionFilter = String(extensionFilter);
     mObj->selectedPath.clear();
     mObj->selectedRowIndex = -1;
 }

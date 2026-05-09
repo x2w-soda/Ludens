@@ -10,20 +10,20 @@ namespace LD {
 
 struct DocumentRegistryObj
 {
-    HashMap<std::string, Document> docs;
+    HashMap<String, Document> docs;
 
-    bool validate_doc_uris(const DocumentRefs& refs, std::string& docURI);
+    bool validate_doc_uris(const DocumentRefs& refs, String& docURI);
     bool validate_misc_uris(const DocumentRefs& refs, DocumentRegistryValidator& validator);
 };
 
-bool DocumentRegistryObj::validate_doc_uris(const DocumentRefs& refs, std::string& docURI)
+bool DocumentRegistryObj::validate_doc_uris(const DocumentRefs& refs, String& docURI)
 {
     for (const View& api : refs.luaAPI)
     {
-        docURI = std::string((const char*)api.data, api.size);
+        docURI = String((const char*)api.data, api.size);
 
         URI uri(docURI);
-        std::string path = document_uri_normalized_path(uri);
+        String path = document_uri_normalized_path(uri);
 
         if (!docs.contains(path))
             return false;
@@ -31,10 +31,10 @@ bool DocumentRegistryObj::validate_doc_uris(const DocumentRefs& refs, std::strin
 
     for (const View& manual : refs.manual)
     {
-        docURI = std::string((const char*)manual.data, manual.size);
+        docURI = String((const char*)manual.data, manual.size);
 
         URI uri(docURI);
-        std::string path = document_uri_normalized_path(uri);
+        String path = document_uri_normalized_path(uri);
 
         if (!docs.contains(path))
             return false;
@@ -49,7 +49,7 @@ bool DocumentRegistryObj::validate_misc_uris(const DocumentRefs& refs, DocumentR
     {
         if (!validator.onMiscURI(misc))
         {
-            validator.missingURI = std::string((const char*)misc.data, misc.size);
+            validator.missingURI = String((const char*)misc.data, misc.size);
             return false;
         }
     }
@@ -74,10 +74,10 @@ void DocumentRegistry::destroy(DocumentRegistry registry)
     heap_delete<DocumentRegistryObj>(obj);
 }
 
-bool DocumentRegistry::add_document(const DocumentInfo& info, std::string& err)
+bool DocumentRegistry::add_document(const DocumentInfo& info, String& err)
 {
     LD_ASSERT(info.uriPath);
-    std::string uriPath = info.uriPath;
+    String uriPath = info.uriPath;
 
     if (uriPath.empty())
     {
@@ -88,7 +88,7 @@ bool DocumentRegistry::add_document(const DocumentInfo& info, std::string& err)
 
     if (mObj->docs.contains(uriPath))
     {
-        err = std::format("document with uri path [{}] already exists", uriPath);
+        err = std::format("document with uri path [{}] already exists", uriPath).c_str();
         return false;
     }
 

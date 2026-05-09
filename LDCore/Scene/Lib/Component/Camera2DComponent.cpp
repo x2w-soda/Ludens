@@ -3,12 +3,14 @@
 
 #include "Camera2DComponent.h"
 
+#define DEFAULT_VIEWPORT Rect(0.0f, 0.0f, 1.0f, 1.0f)
+
 namespace LD {
 
 // clang-format off
 static PropertyMeta sCamera2DPropMeta[] = {
     {"transform",  nullptr, VALUE_TYPE_TRANSFORM_2D, Value64(Transform2D::identity())},
-    {"viewport",   nullptr, VALUE_TYPE_RECT, Value64(Rect()) },
+    {"viewport",   nullptr, VALUE_TYPE_RECT, Value64(DEFAULT_VIEWPORT) },
     {"extent",     nullptr, VALUE_TYPE_VEC2, Value64(Vec2(500.0f)) },
     {"zoom",       nullptr, VALUE_TYPE_F32,  Value64(1.0f) },
     {"constraint", nullptr, VALUE_TYPE_BOOL, Value64(true) },
@@ -128,7 +130,7 @@ bool Camera2DMeta::load_from_props(SceneObj* scene, ComponentBase** data, const 
 {
     Transform2D transform = Transform2D::identity();
     Camera2DInfo info{};
-    Rect viewport{};
+    Rect viewport = DEFAULT_VIEWPORT;
     bool constraint = false;
 
     for (const PropertyValue& prop : props)

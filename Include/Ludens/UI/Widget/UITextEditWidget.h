@@ -30,10 +30,10 @@ public:
 
     UITextEditData& operator=(const UITextEditData& other);
 
-    inline std::string get_text() { return mEditor.get_string(); }
+    inline String get_text() { return mEditor.get_string(); }
 
     /// @brief Set text field value, does not trigger on_change callbacks.
-    void set_text(const std::string& text);
+    void set_text(View text);
 
     /// @brief Domain influences how key input is treated and may change the final text before submission.
     /// @note Upon domain change, text value is reset.
@@ -44,7 +44,7 @@ public:
 private:
     UITextEditDomain mDomain = UI_TEXT_EDIT_DOMAIN_STRING;
     TextEditLite mEditor = {};
-    std::string mOriginal = {}; /// text value before edit
+    String mOriginal = {}; /// text value before edit
     size_t mDragBeginPos = 0;
     size_t mDragPos = 0;
     bool mIsEditing = false;

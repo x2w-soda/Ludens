@@ -38,7 +38,7 @@ struct UITextEditDrawInfo
     Color textColor;
     Color outlineColor;
     float fontSize;
-    std::string str;
+    String str;
 };
 
 UILayoutInfo UITextEditWidgetObj::default_layout()
@@ -125,7 +125,7 @@ void UITextEditWidgetObj::on_draw(UIWidgetObj* obj, ScreenRenderComponent render
     else
     {
         renderer.draw_rect(rect, data.bgColor);
-        renderer.draw_text(info.atlas, info.image, data.fontSize, rect.get_pos(), info.str.c_str(), info.textColor, rect.w);
+        renderer.draw_text(info.atlas, info.image, data.fontSize, rect.get_pos(), view(info.str), info.textColor, rect.w);
     }
 }
 
@@ -160,14 +160,14 @@ void UITextEditWidgetObj::cancel_edit()
     UITextEditData& data = get_data();
     data.mIsEditing = false;
 
-    std::string canceled = data.mEditor.get_string();
+    String canceled = data.mEditor.get_string();
     if (canceled != data.mOriginal)
     {
-        data.mEditor.set_string(data.mOriginal);
+        View original = data.mOriginal;
+        data.mEditor.set_string(original);
 
-        View view(data.mOriginal);
         if (data.onChange)
-            data.onChange({base}, view, base->user);
+            data.onChange({base}, original, base->user);
     }
 
     base->ctx()->requestLooseFocus = base;
@@ -182,7 +182,7 @@ void UITextEditWidgetObj::on_mouse_down_event(const UIEvent& event)
     FontAtlas atlas = data.font.font_atlas();
     Rect rect = get_rect();
 
-    std::string str = data.mEditor.get_string();
+    String str = data.mEditor.get_string();
     int index = atlas.measure_cursor_index(view(str), data.fontSize, rect.w, event.mouse.position);
     if (index < 0)
         index = (int)str.size();
@@ -199,7 +199,7 @@ void UITextEditWidgetObj::on_mouse_drag_event(const UIEvent& event)
     FontAtlas atlas = data.font.font_atlas();
     Rect rect = get_rect();
 
-    std::string str = data.mEditor.get_string();
+    String str = data.mEditor.get_string();
     Vec2 localPos = event.drag.position - rect.get_pos();
     int index = atlas.measure_cursor_index(view(str), data.fontSize, rect.w, localPos);
 
@@ -244,7 +244,7 @@ bool UITextEditWidgetObj::on_key_down_event(const UIEvent& event)
         break;
     }
 
-    std::string str = data.mEditor.get_string();
+    String str = data.mEditor.get_string();
     View strView = view(str);
 
     if (hasChanged && data.onChange)
@@ -322,7 +322,7 @@ void UITextEditWidgetObj::draw_edit_state(UITextEditDrawInfo& info)
     {
         int queries[2] = {selection.offset, selection.offset + selection.size};
         Vec2 positions[2];
-        info.atlas.measure_baseline_positions(View(info.str), info.fontSize, rect.w, 2, queries, positions);
+        info.atlas.measure_baseline_positions(info.str, info.fontSize, rect.w, 2, queries, positions);
 
         float startX = positions[0].x;
         float endX = positions[1].x;
@@ -331,7 +331,7 @@ void UITextEditWidgetObj::draw_edit_state(UITextEditDrawInfo& info)
 
     if (!info.str.empty())
     {
-        info.renderer.draw_text(info.atlas, info.image, data.fontSize, rect.get_pos(), info.str.c_str(), info.textColor, rect.w);
+        info.renderer.draw_text(info.atlas, info.image, data.fontSize, rect.get_pos(), view(info.str), info.textColor, rect.w);
     }
 
     if (!selection) // draw cursor
@@ -373,7 +373,7 @@ UITextEditData& UITextEditData::operator=(const UITextEditData& other)
     return *this;
 }
 
-void UITextEditData::set_text(const std::string& str)
+void UITextEditData::set_text(View str)
 {
     mOriginal = str;
     mEditor.set_string(str);

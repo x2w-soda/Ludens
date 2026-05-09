@@ -25,7 +25,7 @@ public:
 
 private:
     void confirm_select_asset(AssetSelectWindowObj* obj, AssetID id);
-    void confirm_create_script(AssetSelectWindowObj* obj, const std::string& requestPath);
+    void confirm_create_script(AssetSelectWindowObj* obj, const String& requestPath);
 
     EUIButtonRow<2> mButtonRow;
 };
@@ -44,7 +44,7 @@ struct AssetSelectWindowObj : EditorWindowObj
     Vector<AssetEntry> entries;
     EUIAssetPathEditRow uiPathEditRow;
     int selectedRowIndex = -1;
-    std::string assetPath;
+    String assetPath;
 
     AssetSelectWindowObj(const EditorWindowInfo& info)
         : EditorWindowObj(info)
@@ -97,7 +97,7 @@ void AssetSelectWindowObj::update()
 
 void AssetSelectWindowObj::update_mode_default()
 {
-    std::string newPath;
+    String newPath;
 
     eui_push_row_scroll(&uiEntryScroll);
     for (size_t i = 0; i < entries.size(); i++)
@@ -197,13 +197,13 @@ void AssetSelectWindowBottomBar::confirm_select_asset(AssetSelectWindowObj* obj,
         EditorContextUtil::set_component_asset(obj->ctx, obj->component, assetID, obj->componentAssetSlotIndex);
 }
 
-void AssetSelectWindowBottomBar::confirm_create_script(AssetSelectWindowObj* obj, const std::string& requestPath)
+void AssetSelectWindowBottomBar::confirm_create_script(AssetSelectWindowObj* obj, const String& requestPath)
 {
     // TODO: check params again
     if (!obj->assetRegistry)
         return;
 
-    std::string err;
+    String err;
     Asset asset = EditorContextUtil::create_lua_script_asset(obj->ctx, requestPath, err);
 
     if (asset)

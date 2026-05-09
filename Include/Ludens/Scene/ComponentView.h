@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Ludens/Asset/AssetManager.h>
+#include <Ludens/DSA/String.h>
 #include <Ludens/DataRegistry/DataRegistry.h>
 #include <Ludens/RenderBackend/RUID.h>
 #include <Ludens/Serial/SUID.h>
@@ -64,7 +65,7 @@ protected:
 
 struct ComponentEntry
 {
-    std::string name;
+    String name;
     SUID suid = {};
     AssetID scriptID = {};
     ComponentType type = COMPONENT_TYPE_ENUM_COUNT;

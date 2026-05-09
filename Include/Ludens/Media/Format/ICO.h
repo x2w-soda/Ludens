@@ -2,8 +2,8 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <vector>
 
+#include <Ludens/DSA/Vector.h>
 #include <Ludens/Media/Bitmap.h>
 #include <Ludens/System/FileSystem.h>
 
@@ -34,14 +34,14 @@ struct ICOData
     /// @param icoPath Path to an .ico file on disk.
     /// @param outBitmaps Outputs bitmaps found in .ico file.
     /// @warning Caller's responsibility to destroy output Bitmap images.
-    static void create_bitmaps_from_file(const FS::Path& icoPath, std::vector<Bitmap>& outBitmaps);
+    static void create_bitmaps_from_file(const FS::Path& icoPath, Vector<Bitmap>& outBitmaps);
 
     /// @brief Create bitmaps from .ico data in RAM.
     /// @param icoData Data from .ico file.
     /// @param icoSize Byte size of icoData.
     /// @param outBitmaps Outputs bitmaps found in .ico file.
     /// @warning Caller's responsibility to destroy output Bitmap images.
-    static void create_bitmaps_from_file_data(const void* icoData, size_t icoSize, std::vector<Bitmap>& outBitmaps);
+    static void create_bitmaps_from_file_data(const void* icoData, size_t icoSize, Vector<Bitmap>& outBitmaps);
 };
 
 } // namespace LD

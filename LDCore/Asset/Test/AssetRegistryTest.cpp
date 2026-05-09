@@ -11,7 +11,7 @@ TEST_CASE("AssetRegistry path collisions")
     AssetEntry entry = reg.register_asset(idReg, ASSET_TYPE_FONT, "font/f1");
     CHECK(entry);
 
-    std::string str;
+    String str;
     CHECK_FALSE(reg.is_path_valid("font/f1", str));
     CHECK(str == "font/f1");
     entry = reg.register_asset(idReg, ASSET_TYPE_FONT, "font/f1");

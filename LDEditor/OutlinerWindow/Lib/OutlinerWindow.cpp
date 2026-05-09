@@ -231,7 +231,7 @@ void OutlinerRow::update(OutlinerWindowObj* obj, ComponentView comp, int rowIdx,
     }
     if (!editW.is_editing() && compName)
         mLabel.set_text(compName);
-    std::string name;
+    String name;
     if (ui_text_edit_submitted(name) && !name.empty()) // TODO: name validity check
     {
         auto* actionE = (EditorActionRenameComponentEvent*)obj->ctx.enqueue_event(EDITOR_EVENT_TYPE_ACTION_RENAME_COMPONENT);

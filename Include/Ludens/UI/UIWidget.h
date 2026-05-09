@@ -1,8 +1,8 @@
 #pragma once
 
 #include <Ludens/DSA/IDRegistry.h>
+#include <Ludens/DSA/String.h>
 #include <Ludens/Header/Handle.h>
-#include <Ludens/Header/View.h>
 #include <Ludens/Media/Font.h>
 #include <Ludens/RenderBackend/RBackend.h>
 #include <Ludens/RenderComponent/ScreenRenderComponent.h>
@@ -58,10 +58,10 @@ public: // events and state
     void set_consume_scroll_event(bool consumes);
 
 public: // hierarchy and identity
-    void get_name(std::string& name);
-    void set_name(const std::string& name);
+    void get_name(String& name);
+    void set_name(View name);
     UIWidget add_child(UIWidgetType type, const UILayoutInfo& layoutI, void* data, void* user);
-    UIWidget get_child_by_name(const std::string& childName);
+    UIWidget get_child_by_name(View childName);
     void get_children(std::vector<UIWidget>& widgets);
 
     /// @brief Remove self subtree from parent.

@@ -8,8 +8,8 @@ namespace LD {
 /// @brief Info to import lua script data into project.
 struct LuaScriptAssetImportInfo : AssetImportInfo
 {
-    FS::Path srcPath;    /// path to import the lua script file
-    std::string srcCode; /// if not empty, the lua source code is used instead of file path.
+    FS::Path srcPath; /// path to import the lua script file
+    String srcCode;   /// if not empty, the lua source code is used instead of file path.
     LuaScriptDomain domain = LUA_SCRIPT_DOMAIN_COMPONENT;
 
     LuaScriptAssetImportInfo()

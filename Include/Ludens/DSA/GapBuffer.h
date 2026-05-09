@@ -1,13 +1,12 @@
 #pragma once
 
+#include <Ludens/DSA/String.h>
 #include <Ludens/DSA/Vector.h>
 #include <Ludens/Header/Bitwise.h>
-#include <Ludens/Header/View.h>
 
 #include <algorithm>
 #include <cstddef>
 #include <cstring>
-#include <string>
 
 namespace LD {
 
@@ -49,13 +48,13 @@ public:
         return mBuffer.size() - gap_size();
     }
 
-    /// @brief Cast to STL string.
-    std::basic_string<TChar> to_string() const
+    /// @brief Cast to string.
+    String to_string() const
     {
-        std::basic_string<TChar> str;
+        String str;
         str.resize(size());
-        std::copy(mBuffer.begin(), mBuffer.begin() + mGapStart, str.begin());
-        std::copy(mBuffer.begin() + mGapEnd, mBuffer.end(), str.begin() + mGapStart);
+        std::copy(mBuffer.begin(), mBuffer.begin() + mGapStart, str.data());
+        std::copy(mBuffer.begin() + mGapEnd, mBuffer.end(), str.data() + mGapStart);
 
         return str;
     }

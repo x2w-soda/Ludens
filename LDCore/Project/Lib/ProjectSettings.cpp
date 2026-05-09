@@ -1,4 +1,5 @@
 #include <Ludens/DSA/IDCounter.h>
+#include <Ludens/DSA/String.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Memory/Memory.h>
 #include <Ludens/Project/ProjectSettings.h>
@@ -14,7 +15,7 @@ struct ProjectStartupSettingsObj
 {
     uint32_t windowWidth = DEFAULT_STARTUP_WINDOW_WIDTH;
     uint32_t windowHeight = DEFAULT_STARTUP_WINDOW_HEIGHT;
-    std::string windowName = DEFAULT_STARTUP_WINDOW_NAME;
+    String windowName = DEFAULT_STARTUP_WINDOW_NAME;
     SUID defaultSceneID = (SUID)0;
 };
 
@@ -29,7 +30,7 @@ struct ProjectScreenLayerSettingsObj
     struct ProjectScreenLayerObj
     {
         SUID id;
-        std::string name;
+        String name;
     };
 
     Vector<ProjectScreenLayerObj> order;
@@ -67,12 +68,12 @@ void ProjectStartupSettings::set_window_height(uint32_t height)
     mObj->startup.windowHeight = height;
 }
 
-std::string ProjectStartupSettings::get_window_name()
+String ProjectStartupSettings::get_window_name()
 {
     return mObj->startup.windowName;
 }
 
-void ProjectStartupSettings::set_window_name(const std::string& name)
+void ProjectStartupSettings::set_window_name(View name)
 {
     mObj->startup.windowName = name;
 }
@@ -106,21 +107,21 @@ Vec4 ProjectRenderingSettings::get_default_clear_color()
 // Screen Layer Settings
 //
 
-SUID ProjectScreenLayerSettings::create_layer(SUIDRegistry idReg, const char* name)
+SUID ProjectScreenLayerSettings::create_layer(SUIDRegistry idReg, View name)
 {
     SUID id = idReg.get_suid(SERIAL_TYPE_SCREEN_LAYER);
 
-    mObj->screenLayer.order.push_back({.id = id, .name = name});
+    mObj->screenLayer.order.emplace_back(id, String(name));
 
     return id;
 }
 
-bool ProjectScreenLayerSettings::create_layer(SUIDRegistry idReg, SUID id, const char* name)
+bool ProjectScreenLayerSettings::create_layer(SUIDRegistry idReg, SUID id, View name)
 {
     if (id.type() != SERIAL_TYPE_SCREEN_LAYER || !idReg.try_get_suid(id))
         return false;
 
-    mObj->screenLayer.order.push_back({.id = id, .name = name});
+    mObj->screenLayer.order.emplace_back(id, String(name));
 
     return true;
 }
@@ -131,13 +132,13 @@ void ProjectScreenLayerSettings::destroy_layer(SUIDRegistry idReg, SUID id)
     idReg.free_suid(id);
 }
 
-void ProjectScreenLayerSettings::rename_layer(SUID id, const char* name)
+void ProjectScreenLayerSettings::rename_layer(SUID id, View name)
 {
     for (auto& obj : mObj->screenLayer.order)
     {
         if (obj.id == id)
         {
-            obj.name = std::string(name);
+            obj.name = name;
             return;
         }
     }

@@ -1,3 +1,4 @@
+#include <Ludens/DSA/StringUtil.h>
 #include <Ludens/DSA/Vector.h>
 #include <Ludens/Header/Impulse.h>
 #include <Ludens/Header/MouseValue.h>
@@ -33,8 +34,8 @@ struct ProjectWindowObj : EditorWindowObj
         EUIButtonRow<2> buttonRow;
         UITextEditData projectNameEdit;
         UITextEditData projectDirEdit;
-        std::string projectNameErr;
-        std::string projectDirErr;
+        String projectNameErr;
+        String projectDirErr;
 
         bool update(ProjectWindowObj* obj);
         void validate_input();
@@ -54,7 +55,7 @@ struct ProjectWindowObj : EditorWindowObj
     {
         EUIScenePathEditRow pathEditRow;
         EUIButtonRow<2> buttonRow;
-        std::string scenePath;
+        String scenePath;
 
         void update(ProjectWindowObj* obj);
     } createScene;
@@ -105,7 +106,7 @@ bool ProjectWindowObj::CreateProjectStorage::update(ProjectWindowObj* obj)
     const float textRowHeight = theme.get_text_row_height();
     UITextData* text;
     Color errorColor;
-    std::string str;
+    String str;
 
     theme.get_error_color(errorColor);
 
@@ -146,7 +147,7 @@ bool ProjectWindowObj::CreateProjectStorage::update(ProjectWindowObj* obj)
 
         auto* event = (EditorActionCreateProjectEvent*)obj->ctx.enqueue_event(EDITOR_EVENT_TYPE_ACTION_CREATE_PROJECT);
         event->projectName = projectNameEdit.get_text();
-        event->projectSchema = FS::Path(projectDirEdit.get_text()) / FS::Path("project.toml");
+        event->projectSchema = FS::Path(projectDirEdit.get_text().c_str()) / FS::Path("project.toml");
     }
 
     return false;
@@ -156,7 +157,7 @@ bool ProjectWindowObj::SelectProjectStorage::update(ProjectWindowObj* obj)
 {
     EditorTheme theme = obj->ctx.get_theme();
     const float textRowHeight = theme.get_text_row_height();
-    std::string str;
+    String str;
 
     if (ui_row_text_button("Select Project", "Create New", textRowHeight))
         return true;
@@ -208,8 +209,8 @@ void ProjectWindowObj::SelectProjectStorage::ui_project_entry(EditorContext ctx,
 
 void ProjectWindowObj::CreateProjectStorage::validate_input()
 {
-    std::string projectName = projectNameEdit.get_text();
-    FS::Path projectDir(projectDirEdit.get_text());
+    String projectName = projectNameEdit.get_text();
+    FS::Path projectDir(to_std_string_view(projectDirEdit.get_text()));
     bool parentDirExists = FS::is_directory(projectDir.parent_path());
     bool projectDirExists = FS::is_directory(projectDir);
 
@@ -259,7 +260,7 @@ void ProjectWindowObj::SaveProjectStorage::update(ProjectWindowObj* obj)
 void ProjectWindowObj::CreateSceneStorage::update(ProjectWindowObj* obj)
 {
     Project project = obj->ctx.get_project();
-    std::string str;
+    String str;
 
     if (pathEditRow.update(project, scenePath))
         ;

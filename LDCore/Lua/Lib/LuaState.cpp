@@ -429,6 +429,49 @@ void* LuaState::to_userdata(int index)
     return lua_touserdata(mL, index);
 }
 
+bool LuaState::peek_vec2(int index, Vec2& out)
+{
+    index = mObj->negative_index(index);
+    if (get_type(index) != LUA_TYPE_TABLE)
+        return false;
+
+    int len = lua_objlen(mL, index);
+    if (len != 2)
+        return false;
+
+    push_integer(1);
+    get_table(-2);
+    out.x = (float)to_number(-1);
+    pop(1);
+
+    push_integer(2);
+    get_table(-2);
+    out.y = (float)to_number(-1);
+    pop(1);
+
+    return true;
+}
+
+bool LuaState::peek_string_field(int tIndex, const char* field, String& out)
+{
+    out.clear();
+
+    if (get_type(tIndex) != LUA_TYPE_TABLE)
+        return false;
+
+    get_field(tIndex, field);
+
+    if (get_type(-1) != LUA_TYPE_STRING)
+    {
+        pop(1);
+        return false;
+    }
+
+    out = to_string(-1);
+    pop(1);
+    return true;
+}
+
 Vec2 LuaState::to_vec2(int index)
 {
     index = mObj->negative_index(index);

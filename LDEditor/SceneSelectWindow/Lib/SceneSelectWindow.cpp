@@ -53,7 +53,7 @@ void SceneSelectWindowObj::update()
     eui_push_row_scroll(&uiEntryScroll);
     for (size_t i = 0; i < sceneEntries.size(); i++)
     {
-        std::string newPath;
+        String newPath;
         const SUIDEntry& entry = sceneEntries[i];
         if (uiEntryRows[i]->update(entry.path.c_str(), i, i == selectedRowIndex, newPath))
             selectedRowIndex = i;

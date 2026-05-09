@@ -1,10 +1,11 @@
+#include <Ludens/DSA/StringUtil.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Serial/SUIDTable.h>
 #include <Ludens/System/FileSystem.h>
 
 namespace LD {
 
-SUID SUIDTable::find_by_path(const std::string& path)
+SUID SUIDTable::find_by_path(const String& path)
 {
     const auto& it = mPaths.find(path);
 
@@ -14,7 +15,7 @@ SUID SUIDTable::find_by_path(const std::string& path)
     return SUID(0);
 }
 
-SUID SUIDTable::find_by_name(const std::string& name)
+SUID SUIDTable::find_by_name(const String& name)
 {
     const auto& it = mNames.find(name);
 
@@ -24,16 +25,16 @@ SUID SUIDTable::find_by_name(const std::string& name)
     return SUID(0);
 }
 
-bool SUIDTable::register_id(SUID id, const std::string& path)
+bool SUIDTable::register_id(SUID id, const String& path)
 {
-    std::string colliding;
+    String colliding;
     if (!id || mIDs.contains(id) || !is_path_valid(path, colliding))
         return false;
 
     mIDs[id] = path;
     mPaths[path] = id;
 
-    std::string name = FS::Path(path).stem().string();
+    String name = to_string(FS::Path(path.c_str()).stem().string());
     mNames[name] = id;
     return true;
 }
@@ -44,20 +45,20 @@ void SUIDTable::unregister_id(SUID id)
     if (it == mIDs.end())
         return;
 
-    const std::string& path = it->second;
-    std::string name = FS::Path(it->second).stem().string();
+    const String& path = it->second;
+    String name = to_string(FS::Path(it->second.c_str()).stem().string());
 
     mPaths.erase(path);
     mNames.erase(name);
     mIDs.erase(id);
 }
 
-bool SUIDTable::is_path_valid(const std::string& path, std::string& collidingPath)
+bool SUIDTable::is_path_valid(const String& path, String& collidingPath)
 {
     if (path.empty())
         return false;
 
-    std::string name = FS::Path(path).stem().string();
+    String name = FS::Path(path.c_str()).stem().string().c_str();
 
     if (mPaths.contains(path))
     {
@@ -77,15 +78,15 @@ bool SUIDTable::is_path_valid(const std::string& path, std::string& collidingPat
     return true;
 }
 
-bool SUIDTable::is_path_rename_valid(SUID id, const std::string& newPath)
+bool SUIDTable::is_path_rename_valid(SUID id, const String& newPath)
 {
     const auto& it = mIDs.find(id);
     if (it == mIDs.end())
         return false;
 
-    const std::string& oldPath = it->second;
-    std::string oldName = FS::Path(oldPath).stem().string();
-    std::string newName = FS::Path(newPath).stem().string();
+    const String& oldPath = it->second;
+    String oldName(FS::Path(oldPath.c_str()).stem().string().c_str());
+    String newName(FS::Path(newPath.c_str()).stem().string().c_str());
 
     if (newPath == oldPath)
         return true; // this could also be false depending on semantics...
@@ -100,14 +101,14 @@ bool SUIDTable::is_path_rename_valid(SUID id, const std::string& newPath)
     return true;
 }
 
-bool SUIDTable::set_path(SUID id, const std::string& newPath)
+bool SUIDTable::set_path(SUID id, const String& newPath)
 {
     if (!is_path_rename_valid(id, newPath))
         return false;
 
     LD_ASSERT(mIDs.contains(id));
-    std::string oldPath = mIDs[id];
-    std::string oldName = FS::Path(oldPath).stem().string();
+    String oldPath = mIDs[id];
+    String oldName = to_string(FS::Path(oldPath.c_str()).stem().string());
 
     LD_ASSERT(mPaths.contains(oldPath));
     mPaths.erase(oldPath);
@@ -115,7 +116,7 @@ bool SUIDTable::set_path(SUID id, const std::string& newPath)
     LD_ASSERT(mNames.contains(oldName));
     mNames.erase(oldName);
 
-    std::string newName = FS::Path(newPath).stem().string();
+    String newName = FS::Path(newPath.c_str()).stem().string().c_str();
 
     mIDs[id] = newPath;
     mPaths[newPath] = id;
@@ -124,7 +125,7 @@ bool SUIDTable::set_path(SUID id, const std::string& newPath)
     return true;
 }
 
-bool SUIDTable::get_path(SUID id, std::string& outPath)
+bool SUIDTable::get_path(SUID id, String& outPath)
 {
     const auto it = mIDs.find(id);
 
@@ -138,13 +139,13 @@ bool SUIDTable::get_path(SUID id, std::string& outPath)
     return true;
 }
 
-bool SUIDTable::get_name(SUID id, std::string& outName)
+bool SUIDTable::get_name(SUID id, String& outName)
 {
-    std::string str;
+    String str;
     if (!get_path(id, str))
         return false;
 
-    outName = FS::Path(str).stem().string();
+    outName = to_string(FS::Path(str.c_str()).stem().string());
     return true;
 }
 

@@ -150,7 +150,7 @@ bool ui_push_overlay_window(const char* overlayUser);
 
 /// @brief Push UITextWidget.
 UITextWidget ui_push_text(UITextData* data);
-UITextWidget ui_push_text(UITextData* data, const char* text);
+UITextWidget ui_push_text(UITextData* data, View text);
 void ui_text_style(Color color, TextSpanFont font);
 bool ui_text_span_hovered(int index);
 bool ui_text_span_pressed(int index);
@@ -158,8 +158,8 @@ bool ui_text_span_pressed(int index);
 /// @brief Push UITextEditWidget.
 UITextEditWidget ui_push_text_edit(UITextEditData* data);
 bool ui_text_edit_is_editing();
-bool ui_text_edit_changed(std::string& text);
-bool ui_text_edit_submitted(std::string& text);
+bool ui_text_edit_changed(String& text);
+bool ui_text_edit_submitted(String& text);
 
 /// @brief Push UIDropdownWidget.
 UIDropdownWidget ui_push_dropdown(UIDropdownData* data);

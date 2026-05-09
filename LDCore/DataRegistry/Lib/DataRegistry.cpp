@@ -37,7 +37,7 @@ struct ComponentMeta
 {
     ComponentType type;
     size_t byteSize;
-    const char* typeName;
+    View typeName;
     const ComponentTypeFlag typeFlags;
     SUID (*get_asset_id)(void* compData);
 };
@@ -56,7 +56,7 @@ static ComponentMeta sComponentTable[] = {
 };
 // clang-format on
 
-static_assert(sizeof(sComponentTable) / sizeof(*sComponentTable) == COMPONENT_TYPE_ENUM_COUNT);
+static_assert(std::size(sComponentTable) == (size_t)COMPONENT_TYPE_ENUM_COUNT);
 static_assert(LD::IsDataComponent<AudioSourceComponent>);
 static_assert(LD::IsDataComponent<TransformComponent>);
 static_assert(LD::IsDataComponent<Transform2DComponent>);
@@ -71,9 +71,16 @@ size_t get_component_byte_size(ComponentType type)
     return sComponentTable[(int)type].byteSize;
 }
 
-const char* get_component_type_name(ComponentType type)
+View get_component_type_name(ComponentType type)
 {
     return sComponentTable[(int)type].typeName;
+}
+
+View get_component_brief_type_name(ComponentType type)
+{
+    View view = sComponentTable[(int)type].typeName;
+
+    return View(view.data, view.size - 9); // drop "Component" suffix
 }
 
 ComponentType get_component_type(const char* cstr)
@@ -378,6 +385,12 @@ void DataRegistryObj::destroy_component(ComponentBase** compData)
     compBase->suid = 0;
     compBase->scriptAssetID = 0;
 
+    if (compBase->name)
+    {
+        heap_free(compBase->name);
+        compBase->name = nullptr;
+    }
+
     componentBasePA.free(compBase);
 
     sCUIDRegistry.destroy(compCUID);
@@ -488,7 +501,7 @@ DataRegistry DataRegistry::duplicate() const
     return dst;
 }
 
-CUID DataRegistry::create_component(ComponentType type, const char* name, CUID parentID, SUID suid)
+CUID DataRegistry::create_component(ComponentType type, View name, CUID parentID, SUID suid)
 {
     LD_PROFILE_SCOPE;
 
@@ -508,7 +521,7 @@ CUID DataRegistry::create_component(ComponentType type, const char* name, CUID p
     ComponentBase* compBase = (ComponentBase*)mObj->componentBasePA.allocate();
     memset(compBase, 0, sizeof(ComponentBase));
 
-    compBase->name = heap_strdup(name, MEMORY_USAGE_MISC);
+    compBase->name = heap_strdup(name.data, name.size, MEMORY_USAGE_MISC);
     compBase->type = type;
     compBase->suid = suid;                   // serial identity, may be zero for components created at runtime
     compBase->cuid = sCUIDRegistry.create(); // runtime identity
@@ -585,7 +598,11 @@ void DataRegistry::reparent_component_subtree(CUID compID, CUID parentID)
     mObj->detach(childBase);
     mObj->add_child(childBase, parentBase, nullptr, COMPONENT_PLACEMENT_AS_LAST_CHILD);
 
-    mObj->transform2DRegistry.reparent_subtree(compID, parentID, &DataRegistryObj::id_hierarchy, mObj);
+    ComponentTypeFlag childTypeFlags = sComponentTable[(int)childBase->type].typeFlags;
+    ComponentTypeFlag parentTypeFlags = sComponentTable[(int)parentBase->type].typeFlags;
+
+    if ((parentTypeFlags & COMPONENT_TYPE_FLAG_TRANSFORM_2D) && (childTypeFlags & COMPONENT_TYPE_FLAG_TRANSFORM_2D))
+        mObj->transform2DRegistry.reparent_subtree(compID, parentID, &DataRegistryObj::id_hierarchy, mObj);
 }
 
 ComponentBase** DataRegistry::clone_component_subtree(CUID rootID, SUIDRegistry suidRegistry)

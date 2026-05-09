@@ -25,7 +25,7 @@ void ProjectScanAsyncObj::load_project_schema(void* user)
     SUIDRegistry suidReg = SUIDRegistry::create();
     Project project = Project::create();
 
-    std::string err;
+    String err;
     obj->result.isProjectSchemaValid = ProjectSchema::load_project_from_file(project, suidReg, obj->result.projectSchema, err);
     if (obj->result.isProjectSchemaValid)
     {

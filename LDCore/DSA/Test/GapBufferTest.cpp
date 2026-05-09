@@ -6,7 +6,7 @@ using namespace LD;
 TEST_CASE("GapBuffer")
 {
     GapBuffer<char> buf;
-    std::string str = buf.to_string();    
+    String str = buf.to_string();    
 
     CHECK(buf.size() == 0);
     CHECK(str.empty());
@@ -32,7 +32,7 @@ TEST_CASE("GapBuffer")
     CHECK(str == "hello!");
 
     // insert STL string
-    buf.insert(5, std::string(", world"));
+    buf.insert(5, String(", world"));
     str = buf.to_string();
     CHECK(str == "hello, world!");
 

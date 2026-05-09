@@ -6,6 +6,7 @@
 #include <Ludens/Media/Format/TOML.h>
 #include <Ludens/Memory/Allocator.h>
 #include <Ludens/Profiler/Profiler.h>
+#include <Ludens/Serial/Property.h>
 #include <Ludens/Serial/SUID.h>
 
 #include <cstdint>
@@ -71,7 +72,7 @@ struct TOMLValue : Handle<struct TOMLValueObj>
 
     /// @brief Check if value is a TOML string.
     /// @param string Output string upon success.
-    bool get_string(std::string& string) const;
+    bool get_string(String& string) const;
 
     /// @brief Get array size or table size.
     /// @return Non-negative size, or negative value on failure.
@@ -105,7 +106,7 @@ struct TOMLValue : Handle<struct TOMLValueObj>
     }
 
     /// @brief Get all keys in a table.
-    int get_keys(Vector<std::string>& keys);
+    int get_keys(Vector<String>& keys);
 };
 
 /// @brief TOML document handle.
@@ -121,8 +122,8 @@ struct TOMLDocument : Handle<struct TOMLDocumentObj>
     TOMLValue get_root();
 };
 
-static bool parse_toml(TOMLDocument dst, const View& view, std::string& error);
-static bool parse_toml_from_file(TOMLDocument dst, const FS::Path& path, std::string& error);
+static bool parse_toml(TOMLDocument dst, const View& view, String& error);
+static bool parse_toml_from_file(TOMLDocument dst, const FS::Path& path, String& error);
 
 // static paranoia
 static_assert((int)TOML_TYPE_EMPTY == (int)toml::value_t::empty);
@@ -274,7 +275,7 @@ bool TOMLValue::get_f32(float& f32) const
     return false;
 }
 
-bool TOMLValue::get_string(std::string& string) const
+bool TOMLValue::get_string(String& string) const
 {
     if (type() != TOML_TYPE_STRING)
         return false;
@@ -338,7 +339,7 @@ TOMLValue TOMLValue::get_key(const char* key, TOMLType type)
     return val;
 }
 
-int TOMLValue::get_keys(Vector<std::string>& keys)
+int TOMLValue::get_keys(Vector<String>& keys)
 {
     if (!is_table())
         return 0;
@@ -348,7 +349,7 @@ int TOMLValue::get_keys(Vector<std::string>& keys)
 
     for (const auto& ite : mObj->val.as_table())
     {
-        keys[i++] = ite.first;
+        keys[i++] = String(ite.first);
     }
 
     return (int)keys.size();
@@ -381,7 +382,7 @@ TOMLValue TOMLDocument::get_root()
     return TOMLValue(&mObj->root);
 }
 
-static bool parse_toml(TOMLDocument dst, const View& view, std::string& error)
+static bool parse_toml(TOMLDocument dst, const View& view, String& error)
 {
     TOMLDocumentObj* docObj = dst.unwrap();
 
@@ -409,7 +410,7 @@ static bool parse_toml(TOMLDocument dst, const View& view, std::string& error)
     return result.is_ok();
 }
 
-static bool parse_toml_from_file(TOMLDocument dst, const FS::Path& path, std::string& error)
+static bool parse_toml_from_file(TOMLDocument dst, const FS::Path& path, String& error)
 {
     std::vector<byte> file;
     if (!FS::read_file_to_vector(path, file, error))
@@ -430,14 +431,14 @@ struct TOMLWriterScope
 {
     TOMLScopeType type;
     toml::value* value; // pointer to avoid copying nested hashmaps when stack resizes
-    std::string tableName;
+    String tableName;
 };
 
 /// @brief TOML writer implementation.
 struct TOMLWriterObj
 {
     Stack<TOMLWriterScope> scope;
-    std::string key;
+    String key;
 
     inline bool is_array_scope() const
     {
@@ -540,7 +541,7 @@ struct TOMLWriterObj
 
     void pop_scope()
     {
-        std::string popTableName = scope.top().tableName;
+        String popTableName = scope.top().tableName;
         toml::value* popValue = scope.top().value;
 
         scope.pop();
@@ -559,11 +560,11 @@ struct TOMLWriterObj
 
             if (!popTableName.empty())
             {
-                parentTable->as_table()[popTableName] = std::move(*popValue);
+                parentTable->as_table()[popTableName.c_str()] = std::move(*popValue);
             }
             else if (!key.empty())
             {
-                parentTable->as_table()[key] = std::move(*popValue);
+                parentTable->as_table()[key.c_str()] = std::move(*popValue);
                 key.clear();
             }
         }
@@ -590,7 +591,7 @@ struct TOMLWriterObj
         case TOML_SCOPE_INLINE_TABLE:
             if (!key.empty())
             {
-                scopeVal->as_table()[key] = toml::value(value);
+                scopeVal->as_table()[key.c_str()] = toml::value(value);
                 key.clear();
             }
             break;
@@ -645,7 +646,7 @@ TOMLWriter TOMLWriter::begin()
     return TOMLWriter(mObj);
 }
 
-TOMLWriter TOMLWriter::end(std::string& outStr)
+TOMLWriter TOMLWriter::end(String& outStr)
 {
     LD_ASSERT(mObj->scope.size() == 1 && mObj->scope.top().type == TOML_SCOPE_TABLE); // root table scope
 
@@ -736,9 +737,14 @@ TOMLWriter TOMLWriter::key(const char* name)
     return TOMLWriter(mObj);
 }
 
-TOMLWriter TOMLWriter::key(const std::string& str)
+TOMLWriter TOMLWriter::key(const String& str)
 {
     return key(str.c_str());
+}
+
+TOMLWriter TOMLWriter::key(View str)
+{
+    return key(String(str.data, str.size).c_str());
 }
 
 TOMLWriter TOMLWriter::write_bool(bool b)
@@ -808,9 +814,9 @@ TOMLWriter TOMLWriter::write_string(const char* cstr)
     return TOMLWriter(mObj);
 }
 
-TOMLWriter TOMLWriter::write_string(const std::string& str)
+TOMLWriter TOMLWriter::write_string(View str)
 {
-    return write_string(str.c_str());
+    return write_string(String(str.data, str.size).c_str());
 }
 
 /// @brief TOML reader implementation.
@@ -836,7 +842,7 @@ struct TOMLReaderObj
     }
 };
 
-TOMLReader TOMLReader::create(const View& toml, std::string& err)
+TOMLReader TOMLReader::create(const View& toml, String& err)
 {
     TOMLDocument doc = TOMLDocument::create();
 
@@ -933,7 +939,7 @@ void TOMLReader::exit()
     mObj->scope.pop();
 }
 
-void TOMLReader::get_keys(Vector<std::string>& keys)
+void TOMLReader::get_keys(Vector<String>& keys)
 {
     LD_ASSERT(mObj->scope.top().is_table());
 
@@ -1024,14 +1030,14 @@ bool TOMLReader::read_f64(int index, double& f64)
     return value && value.get_f64(f64);
 }
 
-bool TOMLReader::read_string(const char* key, std::string& str)
+bool TOMLReader::read_string(const char* key, String& str)
 {
     TOMLValue value = mObj->get_key(key);
 
     return value && value.get_string(str);
 }
 
-bool TOMLReader::read_string(int index, std::string& str)
+bool TOMLReader::read_string(int index, String& str)
 {
     TOMLValue value = mObj->get_index(index);
 
@@ -1063,6 +1069,38 @@ bool TOMLReader::read_suid(int index, SUID& id)
 }
 
 namespace TOMLUtil {
+
+static void write_value(TOMLWriter writer, const Value64& value)
+{
+    switch (value.type)
+    {
+    case VALUE_TYPE_BOOL:
+        writer.write_bool(value.get_bool());
+        break;
+    default:
+        LD_DEBUG_BREAK;
+        break;
+    }
+}
+
+bool write_type_meta(TOMLWriter writer, const TypeMeta* type, void* obj)
+{
+    if (!writer || !type)
+        return false;
+
+    for (size_t propI = 0; propI < type->propCount; propI++)
+    {
+        Value64 value;
+
+        if (type->getLocal(obj, propI, 0, value))
+        {
+            writer.key(type->props[propI].name);
+            write_value(writer, value);
+        }
+    }
+
+    return true;
+}
 
 bool write_transform(TOMLWriter writer, const char* key, const TransformEx& transform)
 {

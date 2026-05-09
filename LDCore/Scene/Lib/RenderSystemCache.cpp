@@ -88,7 +88,7 @@ SUID RenderSystemCache::get_screen_layer_suid(RUID layerRUID)
     return mScreenLayerToSuid[layerRUID];
 }
 
-void RenderSystemCache::set_screen_layer_name(RUID layerRUID, const std::string& name)
+void RenderSystemCache::set_screen_layer_name(RUID layerRUID, View name)
 {
     mSystem.set_screen_layer_name(layerRUID, name);
 }
@@ -240,7 +240,7 @@ void RenderSystemCache::reserve_sparse_index(CUID compID)
     }
 }
 
-void SceneRenderSystem::configure_screen_layers(size_t count, SUID* ids, std::string* names)
+void SceneRenderSystem::configure_screen_layers(size_t count, SUID* ids, String* names)
 {
     RenderSystemCache& cache = mObj->renderSystemCache;
 

@@ -1,12 +1,11 @@
 #pragma once
 
+#include <Ludens/DSA/String.h>
 #include <Ludens/Header/Handle.h>
 #include <Ludens/Header/KeyValue.h>
 #include <Ludens/Header/Range.h>
-#include <Ludens/Header/View.h>
 
 #include <cstddef>
-#include <string>
 
 namespace LD {
 
@@ -41,8 +40,7 @@ struct TextEditLite : Handle<struct TextEditLiteObj>
 
     void clear();
     void set_string(View str);
-    void set_string(const std::string& str);
-    std::string get_string();
+    String get_string();
 };
 
 } // namespace LD

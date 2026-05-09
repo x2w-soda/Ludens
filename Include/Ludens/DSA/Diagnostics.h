@@ -1,7 +1,7 @@
 #pragma once
 
+#include <Ludens/DSA/String.h>
 #include <Ludens/DSA/Vector.h>
-#include <string>
 
 namespace LD {
 
@@ -12,7 +12,7 @@ class DiagnosticScope
 public:
     DiagnosticScope() = delete;
     DiagnosticScope(Diagnostics& diag, const char* name);
-    DiagnosticScope(Diagnostics& diag, const std::string& name);
+    DiagnosticScope(Diagnostics& diag, const String& name);
     DiagnosticScope(const DiagnosticScope&) = delete;
     DiagnosticScope(DiagnosticScope&&) = delete;
     ~DiagnosticScope();
@@ -20,11 +20,11 @@ public:
     DiagnosticScope& operator=(const DiagnosticScope&) = delete;
     DiagnosticScope& operator=(DiagnosticScope&&) = delete;
 
-    inline std::string name() const { return mName; }
+    inline String name() const { return mName; }
 
 private:
     Diagnostics* mDiag = nullptr;
-    const std::string mName;
+    const String mName;
 };
 
 class Diagnostics
@@ -35,13 +35,13 @@ public:
     int depth() const;
 
     /// @brief Mark an error at the current scope.
-    void mark_error(const std::string& msg);
+    void mark_error(View msg);
 
     /// @brief Query if there are errors, may be called during any scope.
-    bool get_error(Vector<std::string>& errorScopes, std::string& errorMsg);
+    bool get_error(Vector<String>& errorScopes, String& errorMsg);
 
     /// @brief Query if there are errors, concatenates error scopes with newline char.
-    bool get_error(std::string& errorMsg);
+    bool get_error(String& errorMsg);
 
 private:
     void push_scope(DiagnosticScope* scope);
@@ -49,8 +49,8 @@ private:
 
 private:
     Vector<DiagnosticScope*> mScopes;
-    Vector<std::string> mErrorScopes;
-    std::string mErrorMsg;
+    Vector<String> mErrorScopes;
+    String mErrorMsg;
 };
 
 } // namespace LD

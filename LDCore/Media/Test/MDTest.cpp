@@ -84,7 +84,7 @@ struct MDValidator
         return 0;
     }
 
-    static int on_text(MDTextType type, const View& text, void* user)
+    static int on_text(MDTextType type, View text, void* user)
     {
         MDValidator& self = *(MDValidator*)user;
 
@@ -128,7 +128,7 @@ TEST_CASE("MD blocks")
         {.type = MD_EXPECT_TEXT, .textType = MD_TEXT_TYPE_NORMAL, .cstr = "h6"},
     };
 
-    std::string err;
+    String err;
     MDCallback cb;
     cb.onEnterBlock = &MDValidator::on_enter_block;
     cb.onLeaveBlock = &MDValidator::on_leave_block;
@@ -158,7 +158,7 @@ paragraph with `code`
         {.type = MD_EXPECT_TEXT, .textType = MD_TEXT_TYPE_NORMAL, .cstr = "alt text"},
     };
 
-    std::string err;
+    String err;
     MDCallback cb{};
     cb.onEnterBlock = &MDValidator::on_enter_block;
     cb.onLeaveBlock = &MDValidator::on_leave_block;

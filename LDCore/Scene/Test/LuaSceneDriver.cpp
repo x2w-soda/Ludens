@@ -4,6 +4,7 @@
 
 #include "LuaSceneCommand.h"
 #include "LuaSceneDriver.h"
+#include "LuaWindowCommand.h"
 
 namespace LD {
 
@@ -25,6 +26,78 @@ LuaSceneDriver::~LuaSceneDriver()
     LuaState::destroy(mL);
 }
 
+/// Each step in a SceneTest is either a SceneCommand or WindowCommand.
+bool LuaSceneDriver::step(String& err)
+{
+    int oldSize = mL.size();
+
+    if (mL.get_field_type(-1, "scene_command", LUA_TYPE_STRING))
+    {
+        String cmdName = mL.to_string(-1);
+        SceneCommandType cmdType = SceneCommand::get_type(cmdName.c_str());
+        if (cmdType == SCENE_COMMAND_TYPE_ENUM_COUNT)
+        {
+            err = std::format("unknown scene_command type: {}", cmdName.c_str()).c_str();
+            return false;
+        }
+        mL.pop(1);
+
+        LuaSceneCommand* cmd = LuaSceneCommand::create(mL, err);
+        if (!cmd)
+            return false;
+
+        (void)LuaSceneCommand::execute(cmd, mCommandQueue, mScene, err);
+        LuaSceneCommand::destroy(cmd);
+
+        if (!err.empty())
+        {
+            sLog.error("LuaSceneCommand {} failed with:\n{}", SceneCommand::get_name(cmdType), err.c_str());
+            LD_DEBUG_BREAK;
+            return false;
+        }
+    }
+    else if (mL.get_field_type(-1, "window_command", LUA_TYPE_STRING))
+    {
+        String cmdName = mL.to_string(-1);
+        LuaWindowCommandType cmdType = LuaWindowCommand::get_type(cmdName.c_str());
+        if (cmdType == SCENE_COMMAND_TYPE_ENUM_COUNT)
+        {
+            err = std::format("unknown window_command type: {}", cmdName.c_str()).c_str();
+            return false;
+        }
+        mL.pop(1);
+
+        LuaWindowCommand* cmd = LuaWindowCommand::create(mL, err);
+        if (!cmd)
+            return false;
+
+        (void)LuaWindowCommand::execute(cmd, err);
+        LuaWindowCommand::destroy(cmd);
+
+        if (!err.empty())
+        {
+            sLog.error("LuaWindowCommand {} failed with:\n{}", LuaWindowCommand::get_name(cmdType), err.c_str());
+            LD_DEBUG_BREAK;
+            return false;
+        }
+    }
+    else
+    {
+        LD_DEBUG_BREAK;
+        err = "unknown step";
+        return false;
+    }
+
+    mL.resize(oldSize);
+
+    const Vec2 testDriverSceneExtent(1600, 900);
+    SceneUpdateTick tick{};
+    tick.extent = testDriverSceneExtent;
+    mScene.update(tick);
+
+    return true;
+}
+
 bool LuaSceneDriver::run(const FS::Path& luaFile)
 {
     LD_PROFILE_SCOPE;
@@ -39,10 +112,11 @@ bool LuaSceneDriver::run(const FS::Path& luaFile)
         return false;
     }
 
-    std::string err;
-    Vector<LuaSceneCommand*> cmds;
-    if (!parse_lua_scene_commands(mL, cmds, err))
+    if (!mL.get_field_type(-1, "steps", LUA_TYPE_TABLE))
+    {
+        sLog.error("missing steps table");
         return false;
+    }
 
     UIFontRegistry fontReg = UIFontRegistry::create();
     SUIDRegistry suidReg = SUIDRegistry::create();
@@ -52,26 +126,32 @@ bool LuaSceneDriver::run(const FS::Path& luaFile)
     sceneI.suidRegistry = suidReg;
     sceneI.uiFont = fontReg.add_font(mFontAtlas, mRenderSystem.get_font_atlas_image());
     sceneI.uiTheme = UITheme::get_default_theme();
-    Scene scene = Scene::create(sceneI);
-    if (!scene)
+    mScene = Scene::create(sceneI);
+    if (!mScene)
         return false;
 
+    String err;
     bool success = true;
-
-    // execute each command
-    for (auto* cmd : cmds)
+    int stepI = 1;
+    int oldSize = mL.size();
+    mL.push_number(stepI);
+    mL.get_table(-2);
+    while (mL.get_type(-1) == LUA_TYPE_TABLE)
     {
-        (void)execute_lua_scene_command(cmd, mCommandQueue, scene, err);
-
-        if (!err.empty())
+        if (!step(err))
         {
-            sLog.error("command failed with: {}", err);
+            sLog.error("step {} failed with: {}", stepI, err.c_str());
             success = false;
             break;
         }
-    }
 
-    free_lua_scene_commands(cmds);
+        mL.resize(oldSize);
+        mL.push_number(++stepI);
+        mL.get_table(-2);
+    }
+    mL.resize(oldSize);
+
+    mScene.cleanup();
 
     Scene::destroy();
     SUIDRegistry::destroy(suidReg);

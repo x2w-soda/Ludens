@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Ludens/DSA/String.h>
 #include <Ludens/DSA/Vector.h>
 #include <Ludens/Header/Handle.h>
 #include <Ludens/Header/Math/Rect.h>
@@ -15,6 +16,7 @@ namespace LD {
 class SUID;
 struct TransformEx;
 struct Transform2D;
+struct TypeMeta;
 
 struct TOMLWriter : Handle<struct TOMLWriterObj>
 {
@@ -27,7 +29,7 @@ struct TOMLWriter : Handle<struct TOMLWriterObj>
     bool is_array_table_scope();
 
     TOMLWriter begin();
-    TOMLWriter end(std::string& outString);
+    TOMLWriter end(String& outString);
 
     inline TOMLWriter begin_array(const char* name) { return key(name).begin_array(); }
     TOMLWriter begin_array();
@@ -45,7 +47,8 @@ struct TOMLWriter : Handle<struct TOMLWriterObj>
     TOMLWriter end_array_table();
 
     TOMLWriter key(const char* name);
-    TOMLWriter key(const std::string& str);
+    TOMLWriter key(const String& str);
+    TOMLWriter key(View str);
     TOMLWriter write_bool(bool b);
     TOMLWriter write_i32(int32_t i32);
     TOMLWriter write_i64(int64_t i64);
@@ -53,12 +56,12 @@ struct TOMLWriter : Handle<struct TOMLWriterObj>
     TOMLWriter write_f32(float f32);
     TOMLWriter write_f64(double f64);
     TOMLWriter write_string(const char* cstr);
-    TOMLWriter write_string(const std::string& str);
+    TOMLWriter write_string(View str);
 };
 
 struct TOMLReader : Handle<struct TOMLReaderObj>
 {
-    static TOMLReader create(const View& toml, std::string& err);
+    static TOMLReader create(const View& toml, String& err);
     static void destroy(TOMLReader reader);
 
     bool is_array_scope();
@@ -69,7 +72,7 @@ struct TOMLReader : Handle<struct TOMLReaderObj>
     bool enter_table(int index);
     void exit();
 
-    void get_keys(Vector<std::string>& keys);
+    void get_keys(Vector<String>& keys);
 
     bool read_bool(const char* key, bool& b);
     bool read_bool(int index, bool& b);
@@ -83,14 +86,16 @@ struct TOMLReader : Handle<struct TOMLReaderObj>
     bool read_f32(int index, float& f32);
     bool read_f64(const char* key, double& f64);
     bool read_f64(int index, double& f64);
-    bool read_string(const char* key, std::string& str);
-    bool read_string(int index, std::string& str);
+    bool read_string(const char* key, String& str);
+    bool read_string(int index, String& str);
     bool read_suid(const char* key, SUID& id);
     bool read_suid(int index, SUID& id);
 };
 
 namespace TOMLUtil {
 
+bool write_type_meta(TOMLWriter writer, const TypeMeta* type, void* obj);
+bool read_type_meta(TOMLReader writer, const TypeMeta* type, void* obj);
 bool write_transform(TOMLWriter writer, const char* key, const TransformEx& transform);
 bool read_transform(TOMLReader reader, const char* key, TransformEx& transform);
 bool write_transform_2d(TOMLWriter writer, const char* key, const Transform2D& transform);

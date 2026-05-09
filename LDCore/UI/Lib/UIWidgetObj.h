@@ -53,7 +53,7 @@ struct UIWidgetObj
     UIWidgetObj* next = nullptr;   /// sibling widget
     UIWidgetCallback userCB = {};  /// callback function pointer table
     UITheme theme = {};            /// theme handle
-    std::string name;              /// widget debug name
+    String name;                   /// widget debug name
     void* data = nullptr;          /// widget type data
     void* user = nullptr;          /// arbitrary user data
     uint32_t flags = 0;            /// widget bit flags
@@ -71,7 +71,7 @@ struct UIWidgetObj
 
     /// @brief get children count in linear time
     int get_children_count();
-    UIWidgetObj* get_child_by_name(const std::string& name);
+    UIWidgetObj* get_child_by_name(View name);
     Rect get_child_rect_union();
 
     UIContextObj* ctx() const;

@@ -39,7 +39,7 @@ void ProjectLoadAsync::destroy(ProjectLoadAsync async)
     heap_delete<ProjectLoadAsyncObj>(obj);
 }
 
-bool ProjectLoadAsync::begin(const FS::Path& projectDir, std::string& err)
+bool ProjectLoadAsync::begin(const FS::Path& projectDir, String& err)
 {
     // This synchronously reads ProjectSchema and AssetSchema on main thread
     // and submits asset load jobs for all assets in project before returning.

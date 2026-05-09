@@ -47,6 +47,7 @@ void heap_free(void* ptr);
 /// @param usage intended usage
 /// @return a copy of input cstr, must be freed with heap_free
 char* heap_strdup(const char* cstr, MemoryUsage usage);
+char* heap_strdup(const void* data, size_t len, MemoryUsage usage);
 
 /// @brief examine memory profile for a given usage
 const MemoryProfile& get_memory_profile(MemoryUsage usage);

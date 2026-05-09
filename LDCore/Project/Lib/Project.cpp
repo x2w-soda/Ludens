@@ -13,18 +13,18 @@ namespace LD {
 
 struct ProjectObj
 {
-    std::string name;                                                     /// project name, user defined
+    String name;                                                          /// project name, user defined
     FS::Path projectSchemaAbsPath;                                        /// absolute path to project schema file
     FS::Path assetSchemaRelPath;                                          /// relative path to asset schema file
     FS::Path storageDirRelPath = LD_PROJECT_DEFAULT_STORAGE_DIR_REL_PATH; /// relative path to project storage dir
     ProjectSettings settings;                                             /// project-wide settings
     SUIDTable sceneTable;                                                 /// registered scenes in the project
 
-    SUID register_scene(SUIDRegistry idReg, SUID sceneID, const std::string& uriPath, std::string& err);
+    SUID register_scene(SUIDRegistry idReg, SUID sceneID, const String& uriPath, String& err);
     void unregister_scene(SUIDRegistry idReg, SUID sceneID);
 };
 
-SUID ProjectObj::register_scene(SUIDRegistry idReg, SUID sceneID, const std::string& uriPath, std::string& err)
+SUID ProjectObj::register_scene(SUIDRegistry idReg, SUID sceneID, const String& uriPath, String& err)
 {
 #if 0
     for (const ProjectSceneEntry& existingEntry : mObj->scenes)
@@ -98,12 +98,12 @@ void Project::get_version(int& major, int& minor, int& patch)
     patch = LD_VERSION_PATCH;
 }
 
-void Project::set_name(const std::string& name)
+void Project::set_name(View name)
 {
     mObj->name = name;
 }
 
-std::string Project::get_name()
+String Project::get_name()
 {
     return mObj->name;
 }
@@ -153,12 +153,12 @@ FS::Path Project::get_asset_schema_abs_path()
     return FS::absolute(get_root_dir_abs_path() / mObj->assetSchemaRelPath);
 }
 
-SUID Project::register_scene(SUIDRegistry idReg, const std::string& uriPath, std::string& err)
+SUID Project::register_scene(SUIDRegistry idReg, const String& uriPath, String& err)
 {
     return mObj->register_scene(idReg, SUID(0), uriPath, err);
 }
 
-SUID Project::register_scene_with_id(SUIDRegistry idReg, SUID id, const std::string& uriPath, std::string& err)
+SUID Project::register_scene_with_id(SUIDRegistry idReg, SUID id, const String& uriPath, String& err)
 {
     return mObj->register_scene(idReg, id, uriPath, err);
 }
@@ -173,24 +173,24 @@ bool Project::has_scene(SUID sceneID)
     return mObj->sceneTable.contains(sceneID);
 }
 
-bool Project::get_scene_uri_path(SUID sceneID, std::string& outPath)
+bool Project::get_scene_uri_path(SUID sceneID, String& outPath)
 {
     return mObj->sceneTable.get_path(sceneID, outPath);
 }
 
-bool Project::get_default_scene_uri_path(std::string& outPath)
+bool Project::get_default_scene_uri_path(String& outPath)
 {
     SUID defaultSceneID = settings().startup_settings().get_default_scene_id();
 
     return get_scene_uri_path(defaultSceneID, outPath);
 }
 
-bool Project::set_scene_uri_path(SUID sceneID, const std::string& path)
+bool Project::set_scene_uri_path(SUID sceneID, const String& path)
 {
     return mObj->sceneTable.set_path(sceneID, path);
 }
 
-bool Project::is_scene_uri_path_valid(const std::string& path, std::string& collidingPath)
+bool Project::is_scene_uri_path_valid(const String& path, String& collidingPath)
 {
     return mObj->sceneTable.is_path_valid(path, collidingPath);
 }

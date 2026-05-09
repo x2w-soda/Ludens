@@ -117,7 +117,7 @@ void ProjectSettingsWindowObj::section_startup()
     const UILayoutInfo layoutI = make_row_layout();
     UITextEditData* edit = nullptr;
 
-    std::string text;
+    String text;
 
     ui_push_panel(nullptr);
     ui_top_layout(layoutI);
@@ -130,7 +130,7 @@ void ProjectSettingsWindowObj::section_startup()
         // TODO: if (sectionDirty)
         if (ui_text_edit_submitted(text))
         {
-            uint32_t width = (uint32_t)std::stoul(text);
+            uint32_t width = (uint32_t)std::stoul(std::string((const char*)text.data(), text.size()));
             if (width > 0)
                 startupS.set_window_width(width);
         }
@@ -149,7 +149,7 @@ void ProjectSettingsWindowObj::section_startup()
         // TODO: if (sectionDirty)
         if (ui_text_edit_submitted(text))
         {
-            uint32_t height = (uint32_t)std::stoul(text);
+            uint32_t height = (uint32_t)std::stoul(std::string((const char*)text.data(), text.size()));
             if (height > 0)
                 startupS.set_window_height(height);
         }
@@ -160,7 +160,7 @@ void ProjectSettingsWindowObj::section_startup()
     ui_push_panel(nullptr);
     ui_top_layout(layoutI);
     {
-        std::string name = startupS.get_window_name();
+        String name = startupS.get_window_name();
 
         ui_push_text(nullptr, "Window Name");
         ui_top_layout_size(UISize::fixed(propNameWidth), UISize::fixed(rowHeight));
@@ -194,7 +194,7 @@ void ProjectSettingsWindowObj::section_screen_layers()
 
     const UILayoutInfo layoutI = make_row_layout();
 
-    std::string name;
+    String name;
     bool isPressed = false;
     bool isScreenLayerDirty = false;
 

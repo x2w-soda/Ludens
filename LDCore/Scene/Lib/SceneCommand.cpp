@@ -58,7 +58,10 @@ static void get_props_cmd_apply(SceneCommand* base, Scene scene)
 
     ComponentView compV = scene.get_component_by_path(cmd->compPath);
     if (!compV)
+    {
+        cmd->props.clear();
         return;
+    }
 
     const TypeMeta* compTypeMeta = compV.type_meta();
 

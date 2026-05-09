@@ -208,7 +208,7 @@ TextEditLiteResult TextEditLite::key(KeyValue value)
             if (!hasChanged)
             {
                 // yeah this can definitely be done better
-                std::string str = mObj->buffer.to_string();
+                String str = mObj->buffer.to_string();
 
                 size_t pos = text_find_previous_word(view(str), mObj->cursor);
                 hasChanged = mObj->remove_range(Range(pos, mObj->cursor - pos));
@@ -293,12 +293,7 @@ void TextEditLite::set_string(View str)
     mObj->selection = Range(0, 0);
 }
 
-void TextEditLite::set_string(const std::string& str)
-{
-    set_string(View(str));
-}
-
-std::string TextEditLite::get_string()
+String TextEditLite::get_string()
 {
     return mObj->buffer.to_string();
 }

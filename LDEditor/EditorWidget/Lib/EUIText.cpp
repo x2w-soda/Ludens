@@ -66,10 +66,10 @@ void EUITextBreadcrumb::build(const char* cstr)
     mText.set_value(cstr, spans);
 }
 
-std::string EUITextBreadcrumb::update(float height, Color hlColor)
+String EUITextBreadcrumb::update(float height, Color hlColor)
 {
     EditorTheme theme = eui_get_theme();
-    std::string str;
+    String str;
 
     UILayoutInfo layoutI{};
     layoutI.sizeX = UISize::fit();
@@ -85,7 +85,7 @@ std::string EUITextBreadcrumb::update(float height, Color hlColor)
         ui_top_layout(layoutI);
 
         Vector<UITextSpan>& spans = mText.get_spans();
-        const std::string& value = mText.get_value();
+        const String& value = mText.get_value();
 
         for (size_t i = 0; i < spans.size(); i++)
         {

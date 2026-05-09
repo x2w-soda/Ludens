@@ -7,7 +7,7 @@ using namespace LD;
 TEST_CASE("DocumentURI normalized path")
 {
     URI uri("ld://Doc/Manual/");
-    std::string str;
+    String str;
     
     str = document_uri_normalized_path(uri);
     CHECK(str == "Manual");

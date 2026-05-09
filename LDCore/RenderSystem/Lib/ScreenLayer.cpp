@@ -15,7 +15,7 @@ namespace LD {
 static_assert(LD::IsTrivial<Sprite2DDrawObj>);
 static_assert(LD::IsTrivial<ScreenLayerItem>);
 
-ScreenLayerObj::ScreenLayerObj(RUID id, const std::string& name)
+ScreenLayerObj::ScreenLayerObj(RUID id, const String& name)
     : mID(id), mName(name)
 {
     LD_ASSERT(mID && !mName.empty());

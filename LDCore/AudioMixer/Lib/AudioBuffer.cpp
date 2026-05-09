@@ -81,7 +81,7 @@ AudioBuffer AudioBuffer::create_from_wav(const FS::Path& path)
     if (!FS::exists(path))
         return {};
 
-    std::string err; // TODO:
+    String err; // TODO:
     std::vector<byte> bytes;
     if (!FS::read_file_to_vector(path, bytes, err))
         return {};

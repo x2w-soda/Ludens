@@ -8,6 +8,7 @@
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/Scene/ComponentViews.h>
 #include <Ludens/Scene/SceneSchema.h>
+#include <Ludens/Serial/Property.h>
 
 #include <cstdint>
 #include <format>
@@ -26,7 +27,7 @@ public:
 
     SceneSchemaSaver& operator=(const SceneSchemaSaver&) = delete;
 
-    bool save_scene(Scene scene, std::string& toml, std::string& err);
+    bool save_scene(Scene scene, String& toml, String& err);
 
     static bool save_audio_source(SceneSchemaSaver& saver, ComponentView comp);
     static bool save_transform_2d(SceneSchemaSaver& saver, ComponentView comp);
@@ -37,7 +38,7 @@ public:
     // static bool save_screen_ui(SceneSchemaSaver& saver, ComponentView comp);
 
 private:
-    static void save(SceneSchemaSaver& saver, ComponentView comp);
+    static void save_subtree(SceneSchemaSaver& saver, ComponentView compV);
 
 private:
     Scene mScene{};
@@ -55,7 +56,7 @@ public:
 
     SceneSchemaLoader& operator=(const SceneSchemaLoader&) = delete;
 
-    bool load_scene(Scene scene, SUIDRegistry idReg, const View& toml, std::string& err);
+    bool load_scene(Scene scene, SUIDRegistry idReg, const View& toml, String& err);
 
     static ComponentView load_audio_source(SceneSchemaLoader& loader, SUID compSUID, const char* compName);
     static ComponentView load_transform_2d(SceneSchemaLoader& loader, SUID compSUID, const char* compName);
@@ -66,7 +67,7 @@ public:
     // static ComponentView load_screen_ui(SceneSchemaLoader& loader, SUID compSUID, const char* compName);
 
 private:
-    static ComponentView load(SceneSchemaLoader& loader, std::string& err);
+    static ComponentView load(SceneSchemaLoader& loader, String& err);
 
 private:
     Scene mScene{};
@@ -74,6 +75,8 @@ private:
     SUIDRegistry mIDReg{};
 };
 
+/*
+*/
 // clang-format off
 struct
 {
@@ -96,7 +99,7 @@ struct
 
 static_assert(sizeof(sSceneSchemaTable) / sizeof(*sSceneSchemaTable) == COMPONENT_TYPE_ENUM_COUNT);
 
-ComponentView SceneSchemaLoader::load(SceneSchemaLoader& loader, std::string& err)
+ComponentView SceneSchemaLoader::load(SceneSchemaLoader& loader, String& err)
 {
     TOMLReader reader = loader.mReader;
     LD_ASSERT(loader.mScene && reader);
@@ -104,11 +107,11 @@ ComponentView SceneSchemaLoader::load(SceneSchemaLoader& loader, std::string& er
     if (!reader.is_table_scope())
         return {};
 
-    std::string type;
+    String type;
     if (!reader.read_string(SCENE_SCHEMA_KEY_COMPONENT_TYPE, type))
         return {};
 
-    std::string name;
+    String name;
     if (!reader.read_string(SCENE_SCHEMA_KEY_COMPONENT_NAME, name))
         return {};
 
@@ -125,24 +128,24 @@ ComponentView SceneSchemaLoader::load(SceneSchemaLoader& loader, std::string& er
         return {};
     }
 
-    ComponentView comp{};
+    ComponentView compV{};
 
     for (int i = 1; i < (int)COMPONENT_TYPE_ENUM_COUNT; i++)
     {
-        if (type == sSceneSchemaTable[i].compTypeName)
+        if (type == get_component_brief_type_name((ComponentType)i))
         {
             LD_ASSERT(sSceneSchemaTable[i].load);
-            comp = sSceneSchemaTable[i].load(loader, compSUID, name.c_str());
-            LD_ASSERT(comp); // TODO: deserialization error handling.
+            compV = sSceneSchemaTable[i].load(loader, compSUID, name.c_str());
+            LD_ASSERT(compV); // TODO: deserialization error handling.
         }
     }
 
     AssetID scriptID = 0;
     reader.read_suid(SCENE_SCHEMA_KEY_COMPONENT_SCRIPT_ID, scriptID);
 
-    comp.set_script_asset_id(scriptID);
+    compV.set_script_asset_id(scriptID);
 
-    return comp;
+    return compV;
 }
 
 ComponentView SceneSchemaLoader::load_audio_source(SceneSchemaLoader& loader, SUID compSUID, const char* compName)
@@ -397,7 +400,7 @@ SceneSchemaSaver::~SceneSchemaSaver()
         TOMLWriter::destroy(mWriter);
 }
 
-bool SceneSchemaSaver::save_scene(Scene scene, std::string& toml, std::string& err)
+bool SceneSchemaSaver::save_scene(Scene scene, String& toml, String& err)
 {
     mScene = scene;
 
@@ -417,7 +420,7 @@ bool SceneSchemaSaver::save_scene(Scene scene, std::string& toml, std::string& e
     mScene.get_root_components(roots);
     for (ComponentView root : roots)
     {
-        save(*this, root);
+        save_subtree(*this, root);
     }
 
     mWriter.end_array_table();
@@ -606,38 +609,41 @@ bool SceneSchemaSaver::save_screen_ui(SceneSchemaSaver& saver, ComponentView com
 }
 #endif
 
-void SceneSchemaSaver::save(SceneSchemaSaver& saver, ComponentView root)
+void SceneSchemaSaver::save_subtree(SceneSchemaSaver& saver, ComponentView compV)
 {
-    LD_ASSERT(root);
+    LD_ASSERT(compV);
 
     TOMLWriter writer = saver.mWriter;
 
     writer.begin_table();
+    {
+        View typeNameV = get_component_brief_type_name(compV.type());
+        String typeName((const char*)typeNameV.data, typeNameV.size);
 
-    ComponentType type = root.type();
-    std::string compTypeName(sSceneSchemaTable[(int)type].compTypeName);
-    writer.key(SCENE_SCHEMA_KEY_COMPONENT_ID).write_u32(root.suid());
-    writer.key(SCENE_SCHEMA_KEY_COMPONENT_TYPE).write_string(compTypeName);
-    writer.key(SCENE_SCHEMA_KEY_COMPONENT_NAME).write_string(root.get_name());
-    writer.key(SCENE_SCHEMA_KEY_COMPONENT_SCRIPT_ID).write_u32(root.get_script_asset_id());
-
-    // TODO: Transform or Transform2D could be saved here?
-
-    LD_ASSERT(sSceneSchemaTable[(int)type].save);
-    bool ok = sSceneSchemaTable[(int)type].save(saver, root);
-    LD_ASSERT(ok); // TODO: error handling path
-
+        writer.key(SCENE_SCHEMA_KEY_COMPONENT_ID).write_u32(compV.suid());
+        writer.key(SCENE_SCHEMA_KEY_COMPONENT_TYPE).write_string(typeName);
+        writer.key(SCENE_SCHEMA_KEY_COMPONENT_NAME).write_string(compV.get_name());
+        writer.key(SCENE_SCHEMA_KEY_COMPONENT_SCRIPT_ID).write_u32(compV.get_script_asset_id());
+        // TODO: Transform or Transform2D could be saved here?
+        /*
+        LD_ASSERT(sSceneSchemaTable[(int)type].save);
+        bool ok = sSceneSchemaTable[(int)type].save(saver, root);
+        LD_ASSERT(ok); // TODO: error handling path
+        */
+        const TypeMeta* compM = compV.type_meta();
+        TOMLUtil::write_type_meta(writer, compM, compV.data());
+    }
     writer.end_table();
 
     // recursively save entire subtree
     Vector<ComponentView> children;
-    root.get_children(children);
+    compV.get_children(children);
 
     for (ComponentView child : children)
     {
         LD_ASSERT(child);
-        saver.mChildMap[root.suid()].push_back(child.suid());
-        save(saver, child);
+        saver.mChildMap[compV.suid()].push_back(child.suid());
+        save_subtree(saver, child);
     }
 }
 
@@ -647,7 +653,7 @@ SceneSchemaLoader::~SceneSchemaLoader()
         TOMLReader::destroy(mReader);
 }
 
-bool SceneSchemaLoader::load_scene(Scene scene, SUIDRegistry idReg, const View& toml, std::string& err)
+bool SceneSchemaLoader::load_scene(Scene scene, SUIDRegistry idReg, const View& toml, String& err)
 {
     mScene = scene;
     mReader = TOMLReader::create(toml, err);
@@ -696,12 +702,14 @@ bool SceneSchemaLoader::load_scene(Scene scene, SUIDRegistry idReg, const View& 
 
     if (valid && mReader.enter_table(SCENE_SCHEMA_TABLE_HIERARCHY))
     {
-        Vector<std::string> keys;
+        Vector<String> keys;
         mReader.get_keys(keys);
 
-        for (const std::string& key : keys)
+        for (const String& key : keys)
         {
-            SUID parentSUID((uint32_t)std::stoul(key, nullptr, 0));
+            uint32_t u32;
+            std::from_chars((const char*)key.data(), (const char*)key.data() + key.size(), u32);
+            SUID parentSUID(u32);
 
             if (parentSUID.type() != SERIAL_TYPE_COMPONENT)
             {
@@ -750,7 +758,7 @@ bool SceneSchemaLoader::load_scene(Scene scene, SUIDRegistry idReg, const View& 
 // Public API
 //
 
-bool SceneSchema::load_scene_from_source(Scene scene, SUIDRegistry idRegistry, const View& toml, std::string& err)
+bool SceneSchema::load_scene_from_source(Scene scene, SUIDRegistry idRegistry, const View& toml, String& err)
 {
     LD_PROFILE_SCOPE;
 
@@ -761,7 +769,7 @@ bool SceneSchema::load_scene_from_source(Scene scene, SUIDRegistry idRegistry, c
     return true;
 }
 
-bool SceneSchema::load_scene_from_file(Scene scene, SUIDRegistry idRegistry, const FS::Path& tomlPath, std::string& err)
+bool SceneSchema::load_scene_from_file(Scene scene, SUIDRegistry idRegistry, const FS::Path& tomlPath, String& err)
 {
     LD_PROFILE_SCOPE;
 
@@ -772,11 +780,11 @@ bool SceneSchema::load_scene_from_file(Scene scene, SUIDRegistry idRegistry, con
     return load_scene_from_source(scene, idRegistry, view(toml), err);
 }
 
-bool SceneSchema::save_scene(Scene scene, const FS::Path& savePath, std::string& err)
+bool SceneSchema::save_scene(Scene scene, const FS::Path& savePath, String& err)
 {
     LD_PROFILE_SCOPE;
 
-    std::string toml;
+    String toml;
     SceneSchemaSaver saver;
     if (!saver.save_scene(scene, toml, err))
         return false;
@@ -784,7 +792,7 @@ bool SceneSchema::save_scene(Scene scene, const FS::Path& savePath, std::string&
     return FS::write_file_and_swap_backup(savePath, view(toml), err);
 }
 
-std::string SceneSchema::create_empty()
+String SceneSchema::create_empty()
 {
     TOMLWriter writer = TOMLWriter::create();
 
@@ -796,7 +804,7 @@ std::string SceneSchema::create_empty()
     writer.key(SCENE_SCHEMA_KEY_VERSION_PATCH).write_i32(LD_VERSION_PATCH);
     writer.end_table();
 
-    std::string toml;
+    String toml;
     writer.end(toml);
 
     TOMLWriter::destroy(writer);

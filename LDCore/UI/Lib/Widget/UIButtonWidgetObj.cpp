@@ -1,3 +1,4 @@
+#include <Ludens/DSA/ViewUtil.h>
 #include <Ludens/UI/Widget/UIButtonWidget.h>
 
 #include "../UIContextObj.h"
@@ -72,7 +73,7 @@ void UIButtonWidgetObj::on_draw(UIWidgetObj* obj, ScreenRenderComponent renderer
         renderer.draw_rect_rounded(rect, bgColor, data.radius);
 
     if (!data.text.empty())
-        renderer.draw_text_centered(data.font.font_atlas(), data.font.image(), fontSize, rect.get_pos(), data.text.c_str(), fgColor, wrapWidth);
+        renderer.draw_text_centered(data.font.font_atlas(), data.font.image(), fontSize, rect.get_pos(), view(data.text), fgColor, wrapWidth);
 }
 
 void UIButtonWidget::set_on_click(UIButtonOnClick onClick)

@@ -1,10 +1,14 @@
 #pragma once
 
+#include <Ludens/Header/Hash.h>
 #include <Ludens/Header/Types.h>
+#include <Ludens/Header/View.h>
 #include <Ludens/Memory/Memory.h>
 
-#include <cstring>
 #include <algorithm> // std::min
+#include <cstring>
+#include <format>
+#include <ostream>
 
 // This is a lot of headroom for SSO local storage.
 #define STRING_DEFAULT_LOCAL_SIZE 32
@@ -57,6 +61,13 @@ public:
     {
         resize(len);
         memcpy(mBase, str, len);
+    }
+
+    TString(View view)
+        : mBase(mLocal)
+    {
+        resize(view.size);
+        memcpy(mBase, view.data, view.size);
     }
 
     TString(const TString& other)
@@ -242,6 +253,11 @@ public:
         replace(mSize, 0, str, len);
     }
 
+    inline void append(View view)
+    {
+        append((const char8_t*)view.data, view.size);
+    }
+
     void erase(size_t pos, size_t size)
     {
         if (pos >= mSize)
@@ -292,6 +308,12 @@ public:
         return mBase[mSize - 1];
     }
 
+    inline void push_back(char c) noexcept
+    {
+        resize(mSize + 1);
+        mBase[mSize - 1] = (char8_t)c;
+    }
+
     inline void pop_back() noexcept
     {
         resize(mSize - 1);
@@ -300,6 +322,11 @@ public:
     inline const char* c_str() const noexcept
     {
         return (const char*)mBase;
+    }
+
+    inline operator View() const noexcept
+    {
+        return View((const byte*)mBase, mSize);
     }
 
     /// @brief Copy from C string.
@@ -313,6 +340,15 @@ public:
 
         resize(strlen(cstr));
         memcpy(mBase, cstr, mSize);
+    }
+
+    /// @brief Compare with View.
+    bool operator==(View view) const
+    {
+        if (mSize != view.size)
+            return false;
+
+        return !memcmp(mBase, view.data, view.size);
     }
 
     /// @brief Compare with C string.
@@ -333,6 +369,37 @@ public:
         return !memcmp(mBase, other.mBase, mSize);
     }
 
+    inline char8_t operator[](int index) const noexcept
+    {
+        return mBase[index];
+    }
+
+    inline TString& operator=(View view)
+    {
+        resize(view.size);
+        memcpy(mBase, view.data, view.size);
+        return *this;
+    }
+
+    inline TString& operator+=(View view)
+    {
+        append(view);
+        return *this;
+    }
+
+    inline TString& operator+=(const TString& other)
+    {
+        append(other.data(), other.size());
+        return *this;
+    }
+
+    inline TString& operator+=(const char* cstr)
+    {
+        if (cstr)
+            append((const char8_t*)cstr, strlen(cstr));
+        return *this;
+    }
+
 public: // static
     static constexpr size_t npos{static_cast<size_t>(-1)};
 
@@ -346,3 +413,21 @@ private:
 using String = TString<STRING_DEFAULT_LOCAL_SIZE, MEMORY_USAGE_MISC>;
 
 } // namespace LD
+
+template <size_t TLocalSize, LD::MemoryUsage TUsage>
+struct std::formatter<LD::TString<TLocalSize, TUsage>> : std::formatter<std::string_view>
+{
+    auto format(const LD::TString<TLocalSize, TUsage>& str, std::format_context& ctx) const
+    {
+        return std::formatter<std::string_view>::format(std::string_view((const char*)str.data(), str.size()), ctx);
+    }
+};
+
+template <size_t TLocalSize, LD::MemoryUsage TUsage>
+struct std::hash<LD::TString<TLocalSize, TUsage>>
+{
+    size_t operator()(const LD::TString<TLocalSize, TUsage>& str) const noexcept
+    {
+        return (size_t)LD::hash64_FNV_1a((const char*)str.data(), str.size());
+    }
+};

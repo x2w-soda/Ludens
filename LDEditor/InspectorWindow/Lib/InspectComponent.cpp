@@ -1,5 +1,6 @@
 #include <Ludens/Asset/AssetManager.h>
 #include <Ludens/Asset/AssetType/MeshAsset.h>
+#include <Ludens/DSA/StringUtil.h>
 #include <Ludens/Scene/ComponentViews.h>
 #include <Ludens/System/Process.h>
 #include <LudensEditor/EditorContext/EditorContextUtil.h>
@@ -123,7 +124,7 @@ void eui_inspect_component_script(EditorContext& ctx, ComponentView comp)
     btn->isEnabled = (bool)scriptID;
     if (ui_button_is_pressed() && entry)
     {
-        FS::Path sourceFilePath = ctx.get_project().get_storage_dir_abs_path() / scriptID.to_string() / entry.get_file_path("source");
+        FS::Path sourceFilePath = ctx.get_project().get_storage_dir_abs_path() / scriptID.to_string() / to_std_string(entry.get_file_path("source"));
         sourceFilePath = FS::absolute(sourceFilePath);
         if (FS::exists(sourceFilePath))
             shell_open(sourceFilePath);

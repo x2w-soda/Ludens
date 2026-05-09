@@ -25,8 +25,8 @@ struct Project : Handle<struct ProjectObj>
     /// @param patch Patch semantiv version
     void get_version(int& major, int& minor, int& patch);
 
-    void set_name(const std::string& projectName);
-    std::string get_name();
+    void set_name(View projectName);
+    String get_name();
 
     /// @brief Project root directory is the directory containing Project schema.
     FS::Path get_root_dir_abs_path();
@@ -41,16 +41,16 @@ struct Project : Handle<struct ProjectObj>
     FS::Path get_asset_schema_rel_path();
     FS::Path get_asset_schema_abs_path();
 
-    SUID register_scene(SUIDRegistry idReg, const std::string& uriPath, std::string& err);
-    SUID register_scene_with_id(SUIDRegistry idReg, SUID id, const std::string& uriPath, std::string& err);
+    SUID register_scene(SUIDRegistry idReg, const String& uriPath, String& err);
+    SUID register_scene_with_id(SUIDRegistry idReg, SUID id, const String& uriPath, String& err);
     void unregister_scene(SUIDRegistry idReg, SUID id);
     inline SUID get_default_scene_id() { return settings().startup_settings().get_default_scene_id(); }
 
     bool has_scene(SUID sceneID);
-    bool get_scene_uri_path(SUID sceneID, std::string& outPath);
-    bool get_default_scene_uri_path(std::string& outPath);
-    bool set_scene_uri_path(SUID sceneID, const std::string& path);
-    bool is_scene_uri_path_valid(const std::string& path, std::string& collidingPath);
+    bool get_scene_uri_path(SUID sceneID, String& outPath);
+    bool get_default_scene_uri_path(String& outPath);
+    bool set_scene_uri_path(SUID sceneID, const String& path);
+    bool is_scene_uri_path_valid(const String& path, String& collidingPath);
 
     bool get_scene_schema_rel_path(SUID sceneID, FS::Path& outPath);
     bool get_scene_schema_abs_path(SUID sceneID, FS::Path& outPath);

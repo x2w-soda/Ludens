@@ -47,7 +47,7 @@ struct AssetLoadJob
     }
 
     /// @brief Try reading file to std string, updates status upon failure.
-    inline bool read_file_to_str(const FS::Path& path, std::string& str)
+    inline bool read_file_to_str(const FS::Path& path, String& str)
     {
         uint64_t fileSize;
         if (!FS::get_file_size(path, fileSize, status.str) || fileSize == 0)

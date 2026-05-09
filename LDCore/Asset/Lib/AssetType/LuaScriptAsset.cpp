@@ -46,7 +46,7 @@ bool LuaScriptAssetObj::load_from_binary(AssetLoadJob& job, const FS::Path& file
         }
     }
 
-    FS::Path sourcePath = job.assetDirPath / FS::Path(job.assetEntry.get_file_path("source"));
+    FS::Path sourcePath = job.assetDirPath / FS::Path(job.assetEntry.get_file_path("source").c_str());
     if (!job.read_file_to_str(sourcePath, source))
         return false;
 
@@ -95,7 +95,7 @@ FS::Path LuaScriptAsset::get_source_path()
     auto* obj = (LuaScriptAssetObj*)mObj;
     LD_ASSERT(!obj->sourcePath.empty());
 
-    return FS::Path(obj->sourcePath);
+    return FS::Path(obj->sourcePath.c_str());
 }
 
 View LuaScriptAsset::get_source()

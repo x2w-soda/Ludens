@@ -31,7 +31,7 @@ public:
 
     RUID get_or_create_screen_layer(SUID layerSUID);
     SUID get_screen_layer_suid(RUID layerRUID);
-    void set_screen_layer_name(RUID layerRUID, const std::string& name);
+    void set_screen_layer_name(RUID layerRUID, View name);
     void set_screen_layer_order(size_t count, RUID* layers);
 
 #if 0

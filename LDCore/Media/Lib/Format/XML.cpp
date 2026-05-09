@@ -335,7 +335,7 @@ XMLDocument XMLDocument::create()
 
 XMLDocument XMLDocument::create_from_file(const std::filesystem::path& path)
 {
-    std::string err; // TODO:
+    String err; // TODO:
     uint64_t fileSize;
     if (!FS::get_file_size(path, fileSize, err))
         return {};

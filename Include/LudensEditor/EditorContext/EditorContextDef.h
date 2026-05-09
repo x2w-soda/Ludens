@@ -14,7 +14,7 @@ struct EditorUpdateTick
 struct EditorProjectEntry
 {
     FS::Path schemaPath;
-    std::string projectName;
+    String projectName;
 };
 
 enum EditorUIMainLayout

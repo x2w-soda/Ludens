@@ -11,7 +11,7 @@ namespace LD {
 struct AssetImportInfo
 {
     const AssetType type; /// desired import asset type
-    std::string dstPath;  /// requested asset URI path
+    String dstPath;       /// requested asset URI path
 
     AssetImportInfo() = delete;
     AssetImportInfo(AssetType type)

@@ -1,6 +1,7 @@
 #include <Ludens/Asset/AssetRegistry.h>
 #include <Ludens/Asset/AssetSchema.h>
 #include <Ludens/DSA/Diagnostics.h>
+#include <Ludens/DSA/StringUtil.h>
 #include <Ludens/DSA/ViewUtil.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Header/Platform.h>
@@ -110,7 +111,7 @@ private:
     }
 
     JobHeader mJob{};
-    std::string mError;
+    String mError;
     std::atomic_uint32_t mStatus{ASYNC_STATUS_IDLE};
 };
 
@@ -124,8 +125,8 @@ struct ProjectBuildAsyncObj
     WriteFileJob writeAssetSchemaJob;
     Vector<CopyFileJob*> copyAssetJobs;
     Vector<CopyFileJob*> copySceneSchemaJobs;
-    std::string dstAssetSchemaTOML;
-    std::string dstProjectSchemaTOML;
+    String dstAssetSchemaTOML;
+    String dstProjectSchemaTOML;
     bool hasCompleted;
 
     bool load_project_schema(const FS::Path& srcProjectSchema, ProjectBuildStatus& err);
@@ -212,7 +213,7 @@ bool ProjectBuildAsyncObj::configure_dst_asset_schema(ProjectBuildStatus& err)
 
     // temporary AssetRegistry that we can patch safely.
     AssetRegistry assetRegistry = projectCtx.asset_registry();
-    Vector<std::string> keys;
+    Vector<String> keys;
     Vector<AssetEntry> assets;
     assetRegistry.get_all_entries(assets);
     copyAssetJobs.clear();
@@ -228,9 +229,9 @@ bool ProjectBuildAsyncObj::configure_dst_asset_schema(ProjectBuildStatus& err)
     for (AssetEntry entry : assets)
     {
         keys = entry.get_file_path_keys();
-        for (const std::string& key : keys)
+        for (const String& key : keys)
         {
-            FS::Path srcAssetPath = FS::Path(entry.get_file_path(key));
+            FS::Path srcAssetPath = FS::Path(entry.get_file_path(key).c_str());
             FS::Path dstAssetPath = dstAssetDirectory / srcAssetPath.filename();
 
             CopyFileJob* job = heap_new<CopyFileJob>(MEMORY_USAGE_MISC);
@@ -238,7 +239,7 @@ bool ProjectBuildAsyncObj::configure_dst_asset_schema(ProjectBuildStatus& err)
             job->dstPath = config.dstRootDirectory / dstAssetPath;
             copyAssetJobs.push_back(job);
 
-            entry.set_file_path(key, dstAssetPath.string());
+            entry.set_file_path(key, to_string(dstAssetPath.string()));
         }
     }
 
@@ -260,9 +261,9 @@ bool ProjectBuildAsyncObj::begin(const ProjectBuildConfig& cfg, ProjectBuildStat
     if (!load_project_schema(config.srcProjectSchema, err))
         return false;
 
-    std::string projectName = projectCtx.project().get_name();
-    std::replace(projectName.begin(), projectName.end(), ' ', '_');
-    FS::Path projectPath(projectName);
+    String projectName = projectCtx.project().get_name();
+    std::replace(projectName.data(), projectName.data() + projectName.size(), ' ', '_');
+    FS::Path projectPath(projectName.c_str());
 
 #ifdef LD_PLATFORM_WIN32
     projectPath.replace_extension(".exe");
@@ -395,7 +396,7 @@ bool ProjectBuildAsync::get_result(ProjectBuildResult& outResult)
     return true;
 }
 
-bool create_empty_project(const std::string& projectName, const FS::Path& projectSchema, std::string& err)
+bool create_empty_project(View projectName, const FS::Path& projectSchema, String& err)
 {
     LD_PROFILE_SCOPE;
 
@@ -407,7 +408,7 @@ bool create_empty_project(const std::string& projectName, const FS::Path& projec
         return false;
     }
 
-    std::string toml;
+    String toml;
 
     toml = AssetSchema::create_empty();
     FS::Path assetSchemaPath = projectDir / FS::Path("assets.toml");
@@ -427,7 +428,7 @@ bool create_empty_project(const std::string& projectName, const FS::Path& projec
     return true;
 }
 
-bool create_empty_scene(const FS::Path& sceneSchemaAbsPath, std::string& err)
+bool create_empty_scene(const FS::Path& sceneSchemaAbsPath, String& err)
 {
     const FS::Path directory = sceneSchemaAbsPath.parent_path();
 
@@ -437,7 +438,7 @@ bool create_empty_scene(const FS::Path& sceneSchemaAbsPath, std::string& err)
         return false;
     }
 
-    std::string toml = SceneSchema::create_empty();
+    String toml = SceneSchema::create_empty();
     if (!FS::write_file(sceneSchemaAbsPath, view(toml), err))
         return false;
 

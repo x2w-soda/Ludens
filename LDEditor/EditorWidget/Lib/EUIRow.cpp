@@ -1,4 +1,5 @@
 #include <Ludens/Asset/AssetRegistry.h>
+#include <Ludens/DSA/ViewUtil.h>
 #include <Ludens/Header/MouseValue.h>
 #include <LudensEditor/EditorWidget/EUIRow.h>
 
@@ -16,7 +17,7 @@ void eui_row_label(const char* label)
     ui_pop();
 }
 
-bool eui_row_label_text_edit(const char* label, UITextEditData* edit, std::string& outText)
+bool eui_row_label_text_edit(const char* label, UITextEditData* edit, String& outText)
 {
     EditorTheme theme = eui_get_theme();
     UILayoutInfo layoutI = theme.make_text_row_layout();
@@ -52,7 +53,7 @@ void eui_pop_row_scroll()
     ui_pop();
 }
 
-bool EUILabelRow::update(const char* label, int rowIndex, bool isHighlighted, std::string& outNewLabel)
+bool EUILabelRow::update(const char* label, int rowIndex, bool isHighlighted, String& outNewLabel)
 {
     EditorTheme theme = eui_get_theme();
     const float textRowHeight = theme.get_text_row_height();
@@ -146,13 +147,13 @@ int EUIButtonRow<TCount>::update()
 template class EUIButtonRow<2>;
 template class EUIButtonRow<3>;
 
-bool EUIAssetPathEditRow::update(AssetRegistry& assetReg, std::string& path)
+bool EUIAssetPathEditRow::update(AssetRegistry& assetReg, String& path)
 {
     EditorTheme theme = eui_get_theme();
     UILayoutInfo layoutI = theme.make_text_row_layout();
     bool hasChanged = false;
     bool hasSubmitted = false;
-    std::string collidingPath;
+    String collidingPath;
 
     Color fgColor = theme.get_ui_theme().get_on_surface_color();
 
@@ -178,7 +179,7 @@ bool EUIAssetPathEditRow::update(AssetRegistry& assetReg, std::string& path)
         else if (!collidingPath.empty())
         {
             theme.get_error_color(fgColor);
-            mStatus.set_value("Path collision with [" + collidingPath + "]", &fgColor);
+            mStatus.set_value(view(std::format("Path collision with [{}]", collidingPath)), &fgColor);
         }
         else
         {
@@ -195,13 +196,13 @@ bool EUIAssetPathEditRow::update(AssetRegistry& assetReg, std::string& path)
     return hasSubmitted;
 }
 
-bool EUIScenePathEditRow::update(Project& project, std::string& path)
+bool EUIScenePathEditRow::update(Project& project, String& path)
 {
     EditorTheme theme = eui_get_theme();
     UILayoutInfo layoutI = theme.make_text_row_layout();
     bool hasChanged = false;
     bool hasSubmitted = false;
-    std::string collidingPath;
+    String collidingPath;
 
     Color fgColor = theme.get_ui_theme().get_on_surface_color();
 
@@ -227,7 +228,7 @@ bool EUIScenePathEditRow::update(Project& project, std::string& path)
         else if (!collidingPath.empty())
         {
             theme.get_error_color(fgColor);
-            mStatus.set_value("Path collision with [" + collidingPath + "]", &fgColor);
+            mStatus.set_value(view(std::format("Path collision with [{}]", collidingPath)), &fgColor);
         }
         else
         {

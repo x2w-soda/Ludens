@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Ludens/DSA/String.h>
 #include <Ludens/Header/Handle.h>
 #include <Ludens/System/FileSystem.h>
 
@@ -15,7 +16,7 @@ enum ProjectScanStatus
 struct ProjectScanResult
 {
     FS::Path projectSchema;
-    std::string projectName;
+    String projectName;
     bool isProjectSchemaValid;
 };
 

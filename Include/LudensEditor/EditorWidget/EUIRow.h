@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Ludens/DSA/Array.h>
+#include <Ludens/DSA/String.h>
 #include <Ludens/UI/UIImmediate.h>
 
 namespace LD {
@@ -10,14 +11,14 @@ struct Project;
 class UITextEditData;
 
 void eui_row_label(const char* label);
-bool eui_row_label_text_edit(const char* label, UITextEditData* edit, std::string& outText);
+bool eui_row_label_text_edit(const char* label, UITextEditData* edit, String& outText);
 void eui_push_row_scroll(UIScrollData* scroll);
 void eui_pop_row_scroll();
 
 class EUILabelRow
 {
 public:
-    bool update(const char* label, int rowIndex, bool isHighlighted, std::string& outNewLabel);
+    bool update(const char* label, int rowIndex, bool isHighlighted, String& outNewLabel);
 
 private:
     UITextEditData mLabel;
@@ -45,7 +46,7 @@ private:
 class EUIAssetPathEditRow
 {
 public:
-    bool update(AssetRegistry& assetReg, std::string& path);
+    bool update(AssetRegistry& assetReg, String& path);
 
     inline bool is_path_valid() const { return mIsPathValid; }
 
@@ -58,7 +59,7 @@ private:
 class EUIScenePathEditRow
 {
 public:
-    bool update(Project& project, std::string& path);
+    bool update(Project& project, String& path);
 
     inline bool is_path_valid() const { return mIsPathValid; }
 

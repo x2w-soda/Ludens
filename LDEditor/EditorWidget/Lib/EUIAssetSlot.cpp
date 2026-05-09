@@ -14,7 +14,7 @@ bool eui_asset_slot(AssetID assetID, AssetType assetType)
     AssetManager AM = AssetManager::get();
     Asset asset = AM.get_asset(assetID, assetType);
 
-    std::string assetName = "N/A";
+    String assetName = "N/A";
     if (asset)
         assetName = asset.get_name();
 

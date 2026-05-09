@@ -1,10 +1,9 @@
 #pragma once
 
+#include <Ludens/DSA/String.h>
 #include <Ludens/DSA/Vector.h>
 #include <Ludens/UI/UIDef.h>
 #include <Ludens/UI/UIWidget.h>
-
-#include <string>
 
 namespace LD {
 
@@ -16,7 +15,7 @@ class UIDropdownData
 
 public:
     UIDropdownOnOpen onOpen = nullptr;
-    Vector<std::string> options;
+    Vector<String> options;
     int popupLevel = 0;
     float fontSize = UIFont::base_size();
 

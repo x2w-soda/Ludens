@@ -848,7 +848,7 @@ SceneRenderSystem Scene::render_system()
     return SceneRenderSystem(mObj);
 }
 
-ComponentView Scene::create_component(ComponentType type, const char* name, CUID parentCUID)
+ComponentView Scene::create_component(ComponentType type, View name, CUID parentCUID)
 {
     DataRegistry reg{};
     switch (mObj->contextTarget)
@@ -872,7 +872,7 @@ ComponentView Scene::create_component(ComponentType type, const char* name, CUID
     return ComponentView(data);
 }
 
-ComponentView Scene::create_component_serial(ComponentType type, const char* name, SUIDRegistry suidRegistry, SUID parentSUID, SUID hintSUID)
+ComponentView Scene::create_component_serial(ComponentType type, View name, SUIDRegistry suidRegistry, SUID parentSUID, SUID hintSUID)
 {
     ComponentBase** parentData = mObj->active->registry.get_component_data_by_suid(parentSUID, nullptr);
 

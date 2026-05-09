@@ -38,28 +38,28 @@ struct EditCommand
 struct RenameAssetCommand : EditCommand
 {
     AssetID assetID = 0;
-    std::string oldPath;
-    std::string newPath;
+    String oldPath;
+    String newPath;
 
-    void configure(AssetID assetID, const std::string& newPath);
+    void configure(AssetID assetID, const String& newPath);
 };
 
 struct RenameSceneCommand : EditCommand
 {
     SUID sceneID = 0;
-    std::string oldPath;
-    std::string newPath;
+    String oldPath;
+    String newPath;
 
-    void configure(SUID sceneID, const std::string& newPath);
+    void configure(SUID sceneID, const String& newPath);
 };
 
 struct RenameComponentCommand : EditCommand
 {
     SUID compSUID = 0;
-    std::string oldName;
-    std::string newName;
+    String oldName;
+    String newName;
 
-    void configure(SUID compSUID, const std::string& newName);
+    void configure(SUID compSUID, const String& newName);
 };
 
 struct AddComponentCommand : EditCommand

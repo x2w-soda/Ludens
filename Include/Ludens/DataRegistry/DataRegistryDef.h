@@ -18,8 +18,8 @@ enum ComponentType
 
 enum Camera2DConstraint
 {
-    CAMERA_2D_CONSTRAINT_FIXED,
     CAMERA_2D_CONSTRAINT_FREE,
+    CAMERA_2D_CONSTRAINT_FIXED,
 };
 
 } // namespace LD

@@ -1,13 +1,13 @@
 #pragma once
 
-#include <string>
+#include <Ludens/DSA/String.h>
 
 namespace LD {
 
 template <typename TStatusEnum>
 struct TStatus
 {
-    std::string str;
+    String str;
     TStatusEnum type;
 };
 

@@ -52,7 +52,7 @@ bool AudioUtil::resample(const std::filesystem::path& srcFile, const std::filesy
         return false;
     }
 
-    std::string err; // TODO:
+    String err; // TODO:
     Vector<byte> file;
     if (!FS::read_file_to_vector(srcFile, file, err))
     {

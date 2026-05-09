@@ -22,7 +22,7 @@ public:
     /// @brief Build breadcrumb text using '/' as separator
     void build(const char* text);
 
-    std::string update(float height, Color hlColor);
+    String update(float height, Color hlColor);
 
 private:
     UITextData mText;

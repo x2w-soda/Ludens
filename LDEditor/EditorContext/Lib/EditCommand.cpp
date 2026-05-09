@@ -95,7 +95,7 @@ void EditCommand::destroy(EditCommand* cmd)
     sEditCommand[(int)cmd->type].destroy(cmd);
 }
 
-void RenameAssetCommand::configure(AssetID assetID, const std::string& newPath)
+void RenameAssetCommand::configure(AssetID assetID, const String& newPath)
 {
     AssetEntry entry = ctx->projectCtx.asset_registry().get_entry(assetID);
     LD_ASSERT(entry); // TODO: recovery
@@ -105,7 +105,7 @@ void RenameAssetCommand::configure(AssetID assetID, const std::string& newPath)
     this->newPath = newPath;
 }
 
-void RenameSceneCommand::configure(SUID sceneID, const std::string& newPath)
+void RenameSceneCommand::configure(SUID sceneID, const String& newPath)
 {
     this->sceneID = sceneID;
     this->newPath = newPath;
@@ -114,7 +114,7 @@ void RenameSceneCommand::configure(SUID sceneID, const std::string& newPath)
     (void)ctx->projectCtx.project().get_scene_uri_path(sceneID, this->oldPath);
 }
 
-void RenameComponentCommand::configure(SUID compSUID, const std::string& newName)
+void RenameComponentCommand::configure(SUID compSUID, const String& newName)
 {
     ComponentView comp = ctx->scene.get_component_by_suid(compSUID);
     LD_ASSERT(comp); // TODO: recovery
@@ -241,7 +241,7 @@ static void add_component_command_redo(EditCommand* baseCmd)
     Scene scene = cmd->ctx->scene;
 
     // TODO: resolve name collisions
-    const char* name = get_component_type_name(cmd->compType);
+    View name = get_component_type_name(cmd->compType);
 
     SUIDRegistry suidReg = cmd->ctx->projectCtx.suid_registry();
     ComponentView comp = scene.create_component_serial(cmd->compType, name, suidReg, cmd->parentSUID, (SUID)0);

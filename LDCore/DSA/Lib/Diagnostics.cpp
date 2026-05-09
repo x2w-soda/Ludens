@@ -9,7 +9,7 @@ DiagnosticScope::DiagnosticScope(Diagnostics& diag, const char* name)
     mDiag->push_scope(this);
 }
 
-DiagnosticScope::DiagnosticScope(Diagnostics& diag, const std::string& name)
+DiagnosticScope::DiagnosticScope(Diagnostics& diag, const String& name)
     : mDiag(&diag), mName(name)
 {
     mDiag->push_scope(this);
@@ -25,7 +25,7 @@ int Diagnostics::depth() const
     return (int)mScopes.size();
 }
 
-void Diagnostics::mark_error(const std::string& msg)
+void Diagnostics::mark_error(View msg)
 {
     LD_ASSERT(mErrorMsg.empty()); // already in error recovery
 
@@ -35,7 +35,7 @@ void Diagnostics::mark_error(const std::string& msg)
         mErrorScopes[i] = mScopes[i]->name();
 }
 
-bool Diagnostics::get_error(Vector<std::string>& errorScopes, std::string& errorMsg)
+bool Diagnostics::get_error(Vector<String>& errorScopes, String& errorMsg)
 {
     if (mErrorMsg.empty())
         return false;
@@ -45,12 +45,12 @@ bool Diagnostics::get_error(Vector<std::string>& errorScopes, std::string& error
     return true;
 }
 
-bool Diagnostics::get_error(std::string& errorMsg)
+bool Diagnostics::get_error(String& errorMsg)
 {
     errorMsg.clear();
 
-    std::string msg;
-    Vector<std::string> scopes;
+    String msg;
+    Vector<String> scopes;
     if (!get_error(scopes, msg))
         return false;
 

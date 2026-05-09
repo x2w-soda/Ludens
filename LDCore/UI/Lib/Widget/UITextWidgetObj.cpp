@@ -1,3 +1,4 @@
+#include <Ludens/DSA/ViewUtil.h>
 #include <Ludens/UI/Widget/UITextWidget.h>
 
 #include "../UIContextObj.h"
@@ -18,16 +19,16 @@ void UITextData::clear_value()
     mSpans.clear();
 }
 
-void UITextData::set_value(const std::string& newValue, Color* color)
+void UITextData::set_value(View newValue, Color* color)
 {
-    mValue = newValue;
+    mValue = String(newValue.data, newValue.size);
 
     mSpans.resize(1);
     mSpans[0].text.fgColor = color ? *color : Color(0xFFFFFFFF);
     mSpans[0].text.range = Range(0, mValue.size());
 }
 
-void UITextData::set_value(const std::string& newValue, const Vector<UITextSpan>& newSpans)
+void UITextData::set_value(View newValue, const Vector<UITextSpan>& newSpans)
 {
     uint32_t base = 0;
 
@@ -35,7 +36,7 @@ void UITextData::set_value(const std::string& newValue, const Vector<UITextSpan>
     {
         const Range& range = newSpans[i].text.range;
 
-        if (base != range.offset || range.offset + range.size > newValue.size())
+        if (base != range.offset || range.offset + range.size > newValue.size)
         {
             LD_UNREACHABLE;
             return;
@@ -45,7 +46,7 @@ void UITextData::set_value(const std::string& newValue, const Vector<UITextSpan>
     }
 
     mSpans = newSpans;
-    mValue = newValue;
+    mValue = String(newValue.data, newValue.size);
 }
 
 void UITextData::set_fg_color(Color fgColor)
@@ -63,7 +64,7 @@ void UITextData::set_span_on_event(UISpanOnEvent onEvent, void* user)
     }
 }
 
-std::string UITextData::get_substring(int spanIndex)
+String UITextData::get_substring(int spanIndex)
 {
     if (mSpans.empty())
         return {};
@@ -107,7 +108,7 @@ void UITextWidgetObj::update_span_index(Vec2 localPos)
     }
 
     FontGlyphIteration fontIt{};
-    fontIt.text = View(data.mValue);
+    fontIt.text = view(data.mValue);
     fontIt.lineHeight = lineHeight;
     fontIt.spanAtlas = atlas.data();
     fontIt.spanRange = ranges.data();
@@ -224,7 +225,7 @@ void UITextWidgetObj::wrap_limit(UIWidgetObj* obj, float& outMinW, float& outMax
     if (!data.mValue.empty() && spans.size > 0)
     {
         UIFont font = ctx->get_font_from_hint(spans.data[0].text.font);
-        font.font_atlas().measure_wrap_limit(View(data.mValue), data.fontSize, outMinW, outMaxW);
+        font.font_atlas().measure_wrap_limit(view(data.mValue), data.fontSize, outMinW, outMaxW);
     }
 }
 
@@ -236,14 +237,13 @@ float UITextWidgetObj::wrap_size(UIWidgetObj* obj, float limitW)
     UIContextObj* ctx = obj->ctx();
     UITextData& data = self.get_data();
     TView<UITextSpan> spans(data.mSpans.data(), data.mSpans.size());
-    View textView(data.mValue);
     UIFont font = ctx->fontDefault;
 
     // TODO: each span may use a different font.
     if (!data.mValue.empty() && spans.size > 0)
         font = ctx->get_font_from_hint(spans.data[0].text.font);
 
-    return font.font_atlas().measure_wrap_size(View(data.mValue), data.fontSize, limitW);
+    return font.font_atlas().measure_wrap_size(view(data.mValue), data.fontSize, limitW);
 }
 
 void UITextWidget::set_text_style(Color color, TextSpanFont font)

@@ -8,17 +8,16 @@ const char* document_uri_default_page_path()
     return "Manual/GettingStarted";
 }
 
-std::string document_uri_normalized_path(const URI& uri)
+String document_uri_normalized_path(const URI& uri)
 {
     if (!document_uri_is_valid(uri))
         return {};
 
     View pathV = uri.path();
-    std::string pathStr = std::string((const char*)pathV.data, pathV.size);
-    if (pathStr.ends_with('/'))
-        pathStr.pop_back();
+    if (pathV.ends_with("/"))
+        pathV.size--;
 
-    FS::Path path = pathStr;
+    FS::Path path(std::string_view((const char*)pathV.data, pathV.size));
 
     if (path.filename() == "index.md")
         path = path.parent_path();
@@ -29,7 +28,7 @@ std::string document_uri_normalized_path(const URI& uri)
     /*
     if (path.ends_with("/"))
     {
-        std::string pathStr = std::string(path.data, path.size);
+        String pathStr = std::string(path.data, path.size);
         pathStr += "index.md";
         uri = URI("ld://Doc/" + pathStr);
     }
@@ -40,7 +39,9 @@ std::string document_uri_normalized_path(const URI& uri)
         uri = URI("ld://Doc/" + pathStr);
     }
     */
-    return path.string();
+
+    std::string str = path.string();
+    return String(str.data(), str.size());
 }
 
 bool document_uri_is_valid(const char* uriCstr)

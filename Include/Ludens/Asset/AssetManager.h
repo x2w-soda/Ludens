@@ -103,7 +103,7 @@ struct AssetManager : Handle<struct AssetManagerObj>
     ///        Intended for AssetImporter to add an Asset to the project.
     /// @return A valid entry associated with the Asset upon success.
     /// @note Upon failure, the reserved asset should be freed.
-    AssetEntry resolve_asset(SUIDRegistry idReg, Asset reservedAsset, const std::string& uriPath);
+    AssetEntry resolve_asset(SUIDRegistry idReg, Asset reservedAsset, const String& uriPath);
 };
 
 } // namespace LD

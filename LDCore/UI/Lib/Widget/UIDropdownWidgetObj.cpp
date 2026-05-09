@@ -119,7 +119,7 @@ void UIDropdownWidgetObj::on_draw(UIWidgetObj* obj, ScreenRenderComponent render
 
     if (0 <= data.mOptionIndex && data.mOptionIndex < (int)data.options.size())
     {
-        const std::string& opt = data.options[data.mOptionIndex];
+        const String& opt = data.options[data.mOptionIndex];
         UIFont font = ctx->get_font_from_hint(TEXT_SPAN_FONT_REGULAR);
         FontAtlas atlas = font.font_atlas();
         RImage image = font.image();

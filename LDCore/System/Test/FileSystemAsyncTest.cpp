@@ -48,7 +48,7 @@ TEST_CASE("ReadFileAsync empty file" * doctest::skip(!LudensLFS::get_directory_p
 {
     FS::ReadFileAsync task;
     FS::Path path = sLudensLFS.test.emptyFilePath;
-    std::string err;
+    String err;
     uint64_t fileSize;
     REQUIRE(FS::get_file_size(path, fileSize, err));
     REQUIRE(fileSize == 0);
@@ -125,7 +125,7 @@ TEST_CASE("WriteFileAsync" * doctest::skip(!LudensLFS::get_directory_path()))
     FS::Path path = "foo.txt";
     REQUIRE(!FS::exists(path));
 
-    std::string str = "foo";
+    String str = "foo";
     View view(str.data(), str.size());
     
     std::thread worker(&worker_write_file, &task, path, view);

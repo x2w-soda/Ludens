@@ -82,6 +82,15 @@ char* heap_strdup(const char* cstr, MemoryUsage usage)
     return str;
 }
 
+char* heap_strdup(const void* data, size_t len, MemoryUsage usage)
+{
+    char* str = (char*)heap_malloc(len + 1, usage);
+    memcpy(str, data, len);
+    str[len] = '\0';
+
+    return str;
+}
+
 const MemoryProfile& get_memory_profile(MemoryUsage usage)
 {
     return sTable[(int)usage].profile;

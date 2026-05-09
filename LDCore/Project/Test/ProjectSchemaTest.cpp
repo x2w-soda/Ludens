@@ -2,6 +2,7 @@
 #include <Ludens/Memory/Memory.h>
 #include <Ludens/Project/Project.h>
 #include <Ludens/Project/ProjectSchema.h>
+
 #include <cstring>
 
 using namespace LD;
@@ -34,7 +35,7 @@ window_height = 5678
 window_name = 'Foo'
 default_scene_id = 0x03000002
 )";
-    std::string err;
+    String err;
     SUIDRegistry idReg = SUIDRegistry::create();
     Project proj = Project::create();
     CHECK(ProjectSchema::load_project_from_source(proj, idReg, FS::Path("./"), View((const byte*)schemaTOML, sizeof(schemaTOML) - 1), err));

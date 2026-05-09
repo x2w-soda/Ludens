@@ -1,12 +1,12 @@
 #pragma once
 
+#include <Ludens/DSA/String.h>
 #include <Ludens/DSA/Vector.h>
 #include <Ludens/Header/Types.h>
 #include <Ludens/Header/View.h>
 
 #include <cstdint>
 #include <filesystem>
-#include <string>
 
 namespace LD {
 
@@ -36,10 +36,10 @@ Path temp_directory_path();
 /// @param recursive Whether the search is recursive.
 /// @param err Output error message.
 /// @return True on success.
-bool get_directory_content(const Path& directory, Vector<Path>& contents, bool recursive, std::string& err);
+bool get_directory_content(const Path& directory, Vector<Path>& contents, bool recursive, String& err);
 
 /// @brief Get file size in bytes.
-bool get_file_size(const Path& path, uint64_t& size, std::string& err);
+bool get_file_size(const Path& path, uint64_t& size, String& err);
 
 /// @brief Get file size in bytes.
 bool get_file_size(const Path& path, uint64_t& size, Diagnostics& diag);
@@ -49,25 +49,25 @@ bool get_positive_file_size(const Path& path, uint64_t& size, Diagnostics& diag)
 
 /// @brief Copy file from source to destination.
 /// @return True on success.
-bool copy_file(const Path& src, const Path& dst, CopyOptionBits options, std::string& err);
+bool copy_file(const Path& src, const Path& dst, CopyOptionBits options, String& err);
 
 /// @brief Read whole file into user provided view.
 /// @return Number of bytes read on success.
-uint64_t read_file(const Path& path, MutView view, std::string& err);
+uint64_t read_file(const Path& path, MutView view, String& err);
 
 /// @brief Read whole file into user provided view.
 /// @return Number of bytes read on success.
 uint64_t read_file(const Path& path, MutView view, Diagnostics& diag);
 
 /// @brief Read whole file into byte vector.
-bool read_file_to_vector(const FS::Path& path, Vector<byte>& v, std::string& err);
+bool read_file_to_vector(const FS::Path& path, Vector<byte>& v, String& err);
 
 /// @brief Read whole file into null terminated C string.
 /// @warning User needs to heap_free the returned allocation.
-char* read_file_to_cstr(const FS::Path& path, std::string err);
+char* read_file_to_cstr(const FS::Path& path, String& err);
 
 /// @brief Write bytes to a file.
-bool write_file(const Path& path, View view, std::string& err);
+bool write_file(const Path& path, View view, String& err);
 
 /// @brief Write bytes to a file.
 bool write_file(const Path& path, View view, Diagnostics& diag);
@@ -76,7 +76,7 @@ bool write_file(const Path& path, View view, Diagnostics& diag);
 ///        Otherwise, the existing file is renamed as backup, the new contents are written to a tmp file,
 ///        and finally the tmp file is renamed to the save file path.
 /// @return True if all steps of the protocol succeeded.
-bool write_file_and_swap_backup(const Path& path, View view, std::string& err);
+bool write_file_and_swap_backup(const Path& path, View view, String& err);
 
 /// @brief Check if path exists in filesystem.
 bool exists(const Path& path);
@@ -88,10 +88,10 @@ bool is_directory(const Path& path);
 bool is_empty_directory(const Path& path);
 
 /// @brief Create directories along path, does nothing if target directory already exists and returns true.
-bool create_directories(const Path& path, std::string& err);
+bool create_directories(const Path& path, String& err);
 
 /// @brief Try removing file or directory at path.
-bool remove(const FS::Path& path, std::string& err);
+bool remove(const FS::Path& path, String& err);
 
 /// @brief Filter files using extensions.
 /// @param paths Vector of paths, directories are not disturbed.

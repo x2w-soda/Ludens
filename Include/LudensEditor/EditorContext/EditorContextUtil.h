@@ -6,7 +6,7 @@
 namespace LD {
 namespace EditorContextUtil {
 
-inline Asset create_lua_script_asset(EditorContext ctx, const std::string& requestPath, std::string& err)
+inline Asset create_lua_script_asset(EditorContext ctx, const String& requestPath, String& err)
 {
     EditorContextAssetInterface assetI = ctx.asset_interface();
 

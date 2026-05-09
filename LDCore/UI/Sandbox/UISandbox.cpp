@@ -200,7 +200,7 @@ void UISandbox::imgui(const Vec2& windowExtent, float delta)
         }
         ui_pop();
 
-        std::string text;
+        String text;
         ui_push_text_edit(sTextEdit);
         if (ui_text_edit_changed(text))
             sLog.info("Text Changed: [{}]", text);

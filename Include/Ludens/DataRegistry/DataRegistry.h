@@ -40,7 +40,7 @@ struct DataRegistry : Handle<struct DataRegistryObj>
     /// @param parent Parent component, or 0 if creating a root component
     /// @param suid Serial ID of the component.
     /// @return Data component ID
-    CUID create_component(ComponentType type, const char* name, CUID parent, SUID suid);
+    CUID create_component(ComponentType type, View name, CUID parent, SUID suid);
 
     /// @brief Destroy a component subtree.
     /// @param id Data component ID
@@ -124,7 +124,8 @@ struct DataRegistry : Handle<struct DataRegistryObj>
 size_t get_component_byte_size(ComponentType type);
 
 /// @brief Get a static C string of the component type name.
-const char* get_component_type_name(ComponentType type);
+View get_component_type_name(ComponentType type);
+View get_component_brief_type_name(ComponentType type);
 
 ComponentType get_component_type(const char* name);
 

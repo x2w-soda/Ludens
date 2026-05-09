@@ -87,8 +87,8 @@ void FileTest::check_file(const FS::Path& filePath)
         return;
     }
 
-    std::string err;
-    std::vector<byte> fileData;
+    String err;
+    Vector<byte> fileData;
     if (!FS::read_file_to_vector(filePath, fileData, err))
     {
         sLog.info("{}", err);

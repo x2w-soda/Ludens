@@ -1,9 +1,11 @@
 #pragma once
 
+#include <Ludens/DSA/String.h>
 #include <Ludens/Header/Handle.h>
 #include <Ludens/Header/Math/Vec2.h>
 #include <Ludens/Header/Math/Vec3.h>
 #include <Ludens/Header/Math/Vec4.h>
+
 #include <cstdint>
 #include <cstdlib>
 
@@ -279,6 +281,12 @@ public:
     /// @brief get the user data at stack index. If the value is a light user data, returns its pointer.
     /// @return address of the user data
     void* to_userdata(int index);
+
+    /// @brief Try get the Vec2 at stack index
+    bool peek_vec2(int index, Vec2& out);
+
+    /// @brief Try get a string field in table
+    bool peek_string_field(int tIndex, const char* field, String& out);
 
     /// @brief get the Vec2 at stack index
     Vec2 to_vec2(int index);

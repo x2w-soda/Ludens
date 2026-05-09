@@ -1,6 +1,7 @@
 #pragma once
 #pragma once
 
+#include <Ludens/DSA/String.h>
 #include <Ludens/DSA/Vector.h>
 #include <Ludens/Header/Color.h>
 #include <Ludens/Header/Handle.h>
@@ -11,7 +12,6 @@
 #include <Ludens/RenderSystem/RenderSystem.h>
 
 #include <cstdint>
-#include <string>
 
 namespace LD {
 
@@ -39,7 +39,7 @@ class ScreenLayerObj
 {
 public:
     ScreenLayerObj() = delete;
-    ScreenLayerObj(RUID id, const std::string& name);
+    ScreenLayerObj(RUID id, const String& name);
     ScreenLayerObj(const ScreenLayerObj&) = delete;
     ~ScreenLayerObj();
 
@@ -52,8 +52,8 @@ public:
     RUID pick_item(const Vec2& worldPos, RenderSystemMat4Callback mat4CB, void* user);
 
     TView<ScreenLayerItem> get_item_list();
-    inline void set_name(const std::string& name) { mName = name; }
-    inline std::string get_name() { return mName; }
+    inline void set_name(View name) { mName = name; }
+    inline String get_name() { return mName; }
     inline RUID get_id() { return mID; }
 
     /// @brief Create sprite 2d in layer, subsequent modifications can be done through Sprite2DDrawObj directly,
@@ -70,7 +70,7 @@ private:
     RUID mID = 0;
     Vector<ScreenLayerItem> mItemList;
     PoolAllocator mSprite2DDrawPA{};
-    std::string mName;
+    String mName;
 };
 
 } // namespace LD

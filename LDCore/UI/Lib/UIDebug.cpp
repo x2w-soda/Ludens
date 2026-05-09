@@ -2,6 +2,8 @@
 
 #include "UIDebug.h"
 
+#include <Ludens/DSA/StringUtil.h>
+
 #include <format>
 
 #define INDENT_SPACES 2

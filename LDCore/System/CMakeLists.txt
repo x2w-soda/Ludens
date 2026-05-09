@@ -15,6 +15,8 @@ set(MODULE_LIB
 	Lib/Timer.cpp
 	Lib/ProcessWin32.cpp
 	Lib/ProcessLinux.cpp
+	Lib/LineBuffer.h
+	Lib/LineBuffer.cpp
 	Lib/FileSystem.cpp
 	Lib/FileSystemAsync.cpp
 	Lib/FileWatcherWin32.cpp

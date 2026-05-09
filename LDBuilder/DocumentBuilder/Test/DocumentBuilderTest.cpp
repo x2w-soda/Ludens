@@ -15,8 +15,8 @@ using namespace LD;
 
 Document require_document(const char* md, const char* uri)
 {
-    std::string path = document_uri_normalized_path(URI(uri));
-    std::string err;
+    String path = document_uri_normalized_path(URI(uri));
+    String err;
     DocumentInfo info{};
     info.md = View(md, strlen(md));
     info.uriPath = path.c_str();
@@ -28,7 +28,7 @@ Document require_document(const char* md, const char* uri)
 
 bool require_documents(DocumentRegistry reg, HashSet<Vector<byte>*>& storage, const std::filesystem::path& docPath)
 {
-    std::string err;
+    String err;
 
     Vector<FS::Path> mdPaths;
     REQUIRE(FS::get_directory_content(docPath, mdPaths, true, err));
@@ -42,10 +42,11 @@ bool require_documents(DocumentRegistry reg, HashSet<Vector<byte>*>& storage, co
         REQUIRE(FS::read_file_to_vector(mdPath, *mdStorage, err));
         storage.insert(mdStorage);
 
-        std::string uriString = std::filesystem::relative(mdPath, docPath).string();
-        std::replace(uriString.begin(), uriString.end(), '\\', '/');
-        uriString = "ld://Doc/" + uriString;
-        std::string uriPath = document_uri_normalized_path(URI(uriString));
+        String tmp = std::filesystem::relative(mdPath, docPath).string().c_str();
+        std::replace(tmp.data(), tmp.data() + tmp.size(), '\\', '/');
+        String uriString("ld://Doc/");
+        uriString.append(tmp);
+        String uriPath = document_uri_normalized_path(URI(uriString));
 
         DocumentInfo info{};
         info.md = View((const char*)mdStorage->data(), mdStorage->size());

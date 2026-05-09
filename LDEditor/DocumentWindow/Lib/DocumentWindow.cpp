@@ -20,7 +20,7 @@ struct DocumentWindowObj : EditorWindowObj
 {
     EUIDocument document;
     EUITextBreadcrumb breadcrumb;
-    std::string currentURIPath;
+    String currentURIPath;
 
     DocumentWindowObj(const EditorWindowInfo& info)
         : EditorWindowObj(info)
@@ -41,7 +41,7 @@ void DocumentWindowObj::build(Document doc)
     currentURIPath = doc.get_uri_path();
     document.build(doc);
 
-    std::string str = doc.get_uri_path();
+    String str = doc.get_uri_path();
     breadcrumb.build(str.c_str());
 }
 
@@ -50,7 +50,7 @@ void DocumentWindowObj::pre_update()
     if (currentURIPath.empty())
         document.set_request_uri_path(document_uri_default_page_path());
 
-    std::string requestURIPath;
+    String requestURIPath;
     if (document.get_request_uri_path(requestURIPath) && requestURIPath != currentURIPath)
     {
         Document doc = ctx.get_document(requestURIPath.c_str());
@@ -85,7 +85,7 @@ void DocumentWindowObj::top_bar()
     layoutI.sizeX = UISize::grow();
     ui_top_layout(layoutI);
 
-    std::string path = breadcrumb.update(barHeight, 0x20FFFFFF);
+    String path = breadcrumb.update(barHeight, 0x20FFFFFF);
     if (!path.empty())
         document.set_request_uri_path(path);
 

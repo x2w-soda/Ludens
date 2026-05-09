@@ -42,7 +42,7 @@ void AssetBuilder::free_create_info(AssetCreateInfo* info)
     sCreateMeta[(int)info->type].freeInfo(info);
 }
 
-bool AssetBuilder::create_asset(AssetCreateInfo* info, std::string& err)
+bool AssetBuilder::create_asset(AssetCreateInfo* info, String& err)
 {
     if (!info)
     {
@@ -53,7 +53,7 @@ bool AssetBuilder::create_asset(AssetCreateInfo* info, std::string& err)
     return sCreateMeta[(int)info->type].createFn(info, err);
 }
 
-bool AssetBuilder::prepare_import(const AssetCreateInfo* srcInfo, AssetImportInfo* dstInfo, std::string& err)
+bool AssetBuilder::prepare_import(const AssetCreateInfo* srcInfo, AssetImportInfo* dstInfo, String& err)
 {
     return sCreateMeta[(int)srcInfo->type].prepareImportFn(srcInfo, dstInfo, err);
 }

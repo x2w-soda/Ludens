@@ -3,6 +3,7 @@
 #include <Ludens/AudioSystem/AudioSystem.h>
 #include <Ludens/Lua/LuaState.h>
 #include <Ludens/RenderSystem/RenderSystem.h>
+#include <Ludens/Scene/Scene.h>
 #include <Ludens/Scene/SceneCommand.h>
 #include <Ludens/System/FileSystem.h>
 
@@ -21,11 +22,15 @@ public:
     LuaSceneDriver& operator=(const LuaSceneDriver&) = delete;
 
 private:
+    bool step(String& err);
+
+private:
     LuaState mL;
     RenderSystem mRenderSystem;
     AudioSystem mAudioSystem;
     SceneCommandQueue mCommandQueue;
     FontAtlas mFontAtlas;
+    Scene mScene = {};
 };
 
 } // namespace LD

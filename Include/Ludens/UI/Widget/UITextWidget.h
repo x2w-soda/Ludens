@@ -1,11 +1,10 @@
 #pragma once
 
+#include <Ludens/DSA/String.h>
 #include <Ludens/DSA/Vector.h>
 #include <Ludens/Text/TextSpan.h>
 #include <Ludens/UI/UIFont.h>
 #include <Ludens/UI/UIWidget.h>
-
-#include <string>
 
 namespace LD {
 
@@ -29,18 +28,18 @@ public:
     float fontSize = UIFont::base_size(); /// rendered font size
 
     void clear_value();
-    void set_value(const std::string& newValue, Color* color = nullptr);
-    void set_value(const std::string& newValue, const Vector<UITextSpan>& newSpans);
+    void set_value(View newValue, Color* color = nullptr);
+    void set_value(View newValue, const Vector<UITextSpan>& newSpans);
     void set_fg_color(Color fgColor);
     void set_span_on_event(UISpanOnEvent onEvent, void* user);
-    std::string get_substring(int spanIndex);
+    String get_substring(int spanIndex);
     inline int get_span_index() { return mSpanIndex; }
-    inline const std::string& get_value() const { return mValue; }
+    inline const String& get_value() const { return mValue; }
     inline const Vector<UITextSpan>& get_spans() const { return mSpans; }
     inline Vector<UITextSpan>& get_spans() { return mSpans; }
 
 private:
-    std::string mValue;        /// text value to display
+    String mValue;             /// text value to display
     Vector<UITextSpan> mSpans; /// text spans for rendering, must be synched with value
     int mSpanIndex = -1;
 };

@@ -31,7 +31,7 @@ bool Win32Util::patch_icon_resources(const FS::Path& path, const FS::Path& icoPa
 {
     std::string icoPathStr = path.string();
 
-    std::string err; // TODO:
+    String err; // TODO:
     std::vector<byte> icoData;
     if (!FS::read_file_to_vector(icoPath, icoData, err))
     {

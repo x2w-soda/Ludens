@@ -71,6 +71,7 @@ add_subdirectory(${LUDENS_EXTRA_DIR}/stb)
 # - not shipped to end user
 
 add_subdirectory(LDUtil/LudensLFS)
+add_subdirectory(LDUtil/TestUtil)
 
 # Core Modules
 # - strict dependency ordering

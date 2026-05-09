@@ -42,7 +42,7 @@ void pop_prop_edit_vbox()
     ui_pop();
 }
 
-bool push_text_edit_f32(UITextEditData* edit, float* f32, std::string& str, bool normalized)
+bool push_text_edit_f32(UITextEditData* edit, float* f32, String& str, bool normalized)
 {
     bool commit = false;
 
@@ -55,7 +55,7 @@ bool push_text_edit_f32(UITextEditData* edit, float* f32, std::string& str, bool
         edit->set_text(std::format("{:8.3f}", *f32));
     if (ui_text_edit_submitted(str))
     {
-        *f32 = std::stof(str);
+        *f32 = std::stof(std::string(str.c_str()));
         if (normalized)
             *f32 = std::clamp(*f32, 0.0f, 1.0f);
         commit = true;

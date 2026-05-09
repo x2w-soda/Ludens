@@ -7,7 +7,7 @@ namespace LD {
 class URI;
 
 const char* document_uri_default_page_path();
-std::string document_uri_normalized_path(const URI& uri);
+String document_uri_normalized_path(const URI& uri);
 
 /// @brief Check if a URI is a valid path.
 ///        Does not confirm if the uri references a valid document.

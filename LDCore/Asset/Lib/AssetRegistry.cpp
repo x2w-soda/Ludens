@@ -1,5 +1,6 @@
 #include <Ludens/Asset/AssetRegistry.h>
 #include <Ludens/DSA/HashMap.h>
+#include <Ludens/DSA/StringUtil.h>
 #include <Ludens/DSA/URI.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/Memory/Allocator.h>
@@ -16,10 +17,10 @@ struct AssetRegistryObj;
 
 struct AssetEntryObj
 {
-    AssetRegistryObj* registry = nullptr;        // backwards link
-    HashMap<std::string, std::string> filePaths; // physical relative paths to project root
-    AssetType type;                              // asset type determines API
-    SUID id;                                     // stable serial ID to identify the asset in project
+    AssetRegistryObj* registry = nullptr; // backwards link
+    HashMap<String, String> filePaths;    // physical relative paths to project root
+    AssetType type;                       // asset type determines API
+    SUID id;                              // stable serial ID to identify the asset in project
 };
 
 /// @brief Asset registry implementation.
@@ -35,19 +36,19 @@ public:
     AssetEntryObj* allocate_entry(AssetType type);
     void free_entry(AssetEntryObj* entry);
     AssetEntryObj* get_entry(SUID id);
-    AssetEntryObj* get_entry_by_path(const std::string& path);
-    AssetEntryObj* get_entry_by_name(const std::string& name);
+    AssetEntryObj* get_entry_by_path(const String& path);
+    AssetEntryObj* get_entry_by_name(const String& name);
     void get_entries_by_type(Vector<AssetEntry>& outEntries, AssetType type);
     void get_all_entries(Vector<AssetEntry>& outEntries);
-    AssetEntry register_asset(SUIDRegistry idReg, SUID id, AssetType type, const std::string& path);
+    AssetEntry register_asset(SUIDRegistry idReg, SUID id, AssetType type, const String& path);
     void unregister_asset(SUIDRegistry idReg, SUID id);
-    bool set_path(SUID id, const std::string& newPath);
+    bool set_path(SUID id, const String& newPath);
 
-    inline bool is_path_valid(const std::string& path, std::string& collidingPath) { return mTable.is_path_valid(path, collidingPath); }
-    inline bool is_path_rename_valid(SUID id, const std::string& newPath) { return mTable.is_path_rename_valid(id, newPath); }
+    inline bool is_path_valid(const String& path, String& collidingPath) { return mTable.is_path_valid(path, collidingPath); }
+    inline bool is_path_rename_valid(SUID id, const String& newPath) { return mTable.is_path_rename_valid(id, newPath); }
 
-    std::string get_asset_name_by_id(SUID id);
-    std::string get_asset_path_by_id(SUID id);
+    String get_asset_name_by_id(SUID id);
+    String get_asset_path_by_id(SUID id);
 
 public:
     bool isDirty = false;
@@ -108,7 +109,7 @@ AssetEntryObj* AssetRegistryObj::get_entry(SUID id)
     return it->second;
 }
 
-AssetEntryObj* AssetRegistryObj::get_entry_by_path(const std::string& uriPath)
+AssetEntryObj* AssetRegistryObj::get_entry_by_path(const String& uriPath)
 {
     SUID assetID = mTable.find_by_path(uriPath);
     if (!assetID)
@@ -118,7 +119,7 @@ AssetEntryObj* AssetRegistryObj::get_entry_by_path(const std::string& uriPath)
     return mEntries[assetID];
 }
 
-AssetEntryObj* AssetRegistryObj::get_entry_by_name(const std::string& name)
+AssetEntryObj* AssetRegistryObj::get_entry_by_name(const String& name)
 {
     SUID assetID = mTable.find_by_name(name);
     if (!assetID)
@@ -152,10 +153,13 @@ void AssetRegistryObj::get_all_entries(Vector<AssetEntry>& outEntries)
     }
 }
 
-AssetEntry AssetRegistryObj::register_asset(SUIDRegistry idReg, SUID id, AssetType type, const std::string& path)
+AssetEntry AssetRegistryObj::register_asset(SUIDRegistry idReg, SUID id, AssetType type, const String& path)
 {
-    URI uri(LD_ASSET_URI_SCHEME_AUTHORITY + path);
-    std::string name = uri.stem_string();
+    String uriPath(LD_ASSET_URI_SCHEME_AUTHORITY);
+    uriPath.append(path);
+
+    URI uri(uriPath);
+    String name = uri.stem_string();
 
     if (mTable.find_by_path(path) || mTable.find_by_name(name))
         return {};
@@ -195,7 +199,7 @@ void AssetRegistryObj::unregister_asset(SUIDRegistry idReg, SUID id)
     free_entry(entry);
 }
 
-bool AssetRegistryObj::set_path(SUID id, const std::string& newPath)
+bool AssetRegistryObj::set_path(SUID id, const String& newPath)
 {
     if (mTable.set_path(id, newPath))
     {
@@ -206,16 +210,16 @@ bool AssetRegistryObj::set_path(SUID id, const std::string& newPath)
     return false;
 }
 
-std::string AssetRegistryObj::get_asset_name_by_id(SUID id)
+String AssetRegistryObj::get_asset_name_by_id(SUID id)
 {
-    std::string name;
+    String name;
     (void)mTable.get_name(id, name);
     return name;
 }
 
-std::string AssetRegistryObj::get_asset_path_by_id(SUID id)
+String AssetRegistryObj::get_asset_path_by_id(SUID id)
 {
-    std::string path;
+    String path;
     (void)mTable.get_path(id, path);
     return path;
 }
@@ -234,31 +238,31 @@ AssetType AssetEntry::get_type()
     return mObj->type;
 }
 
-std::string AssetEntry::get_name()
+String AssetEntry::get_name()
 {
     return mObj->registry->get_asset_name_by_id(mObj->id);
 }
 
-std::string AssetEntry::get_path()
+String AssetEntry::get_path()
 {
     return mObj->registry->get_asset_path_by_id(mObj->id);
 }
 
-bool AssetEntry::set_path(const std::string& path)
+bool AssetEntry::set_path(const String& path)
 {
     return mObj->registry->set_path(mObj->id, path);
 }
 
-Vector<std::string> AssetEntry::get_file_path_keys()
+Vector<String> AssetEntry::get_file_path_keys()
 {
-    Vector<std::string> keys;
+    Vector<String> keys;
     for (auto it : mObj->filePaths)
         keys.push_back(it.first);
 
     return keys;
 }
 
-std::string AssetEntry::get_file_path(const std::string& key)
+String AssetEntry::get_file_path(const String& key)
 {
     auto it = mObj->filePaths.find(key);
 
@@ -268,7 +272,7 @@ std::string AssetEntry::get_file_path(const std::string& key)
     return it->second;
 }
 
-void AssetEntry::set_file_path(const std::string& key, const std::string& filePath)
+void AssetEntry::set_file_path(const String& key, const String& filePath)
 {
     // override or append
     mObj->filePaths[key] = filePath;
@@ -290,12 +294,12 @@ void AssetRegistry::destroy(AssetRegistry registry)
     heap_delete<AssetRegistryObj>(obj);
 }
 
-AssetEntry AssetRegistry::register_asset_with_id(SUIDRegistry idReg, SUID id, AssetType type, const std::string& uriPath)
+AssetEntry AssetRegistry::register_asset_with_id(SUIDRegistry idReg, SUID id, AssetType type, const String& uriPath)
 {
     return mObj->register_asset(idReg, id, type, uriPath);
 }
 
-AssetEntry AssetRegistry::register_asset(SUIDRegistry idReg, AssetType type, const std::string& uriPath)
+AssetEntry AssetRegistry::register_asset(SUIDRegistry idReg, AssetType type, const String& uriPath)
 {
     return mObj->register_asset(idReg, (SUID)0, type, uriPath);
 }
@@ -305,14 +309,14 @@ void AssetRegistry::unregister_asset(SUIDRegistry idReg, SUID id)
     mObj->unregister_asset(idReg, id);
 }
 
-bool AssetRegistry::is_path_valid(const std::string& path, std::string& collidingPath)
+bool AssetRegistry::is_path_valid(const String& path, String& collidingPath)
 {
     collidingPath.clear();
 
     return mObj->is_path_valid(path, collidingPath);
 }
 
-bool AssetRegistry::is_uri_valid(const URI& uri, std::string& collidingPath)
+bool AssetRegistry::is_uri_valid(const URI& uri, String& collidingPath)
 {
     if (uri.scheme() != LD_ASSET_URI_SCHEME || uri.authority() != LD_ASSET_URI_AUTHORITY)
         return false;
@@ -335,12 +339,12 @@ AssetEntry AssetRegistry::get_entry(SUID id)
     return AssetEntry(mObj->get_entry(id));
 }
 
-AssetEntry AssetRegistry::get_entry_by_path(const std::string& uriPath)
+AssetEntry AssetRegistry::get_entry_by_path(const String& uriPath)
 {
     return AssetEntry(mObj->get_entry_by_path(uriPath));
 }
 
-AssetEntry AssetRegistry::get_entry_by_name(const std::string& name)
+AssetEntry AssetRegistry::get_entry_by_name(const String& name)
 {
     return AssetEntry(mObj->get_entry_by_name(name));
 }

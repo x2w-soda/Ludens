@@ -19,7 +19,7 @@ ProjectContext::~ProjectContext()
     SUIDRegistry::destroy(mSUIDRegistry);
 }
 
-bool ProjectContext::load_project_schema(const FS::Path& projectSchemaPath, std::string& err)
+bool ProjectContext::load_project_schema(const FS::Path& projectSchemaPath, String& err)
 {
     if (!ProjectSchema::load_project_from_file(mProject, mSUIDRegistry, projectSchemaPath, err))
         return false;
@@ -27,7 +27,7 @@ bool ProjectContext::load_project_schema(const FS::Path& projectSchemaPath, std:
     return true;
 }
 
-bool ProjectContext::load_asset_schema(const FS::Path& assetSchemaPath, std::string& err)
+bool ProjectContext::load_asset_schema(const FS::Path& assetSchemaPath, String& err)
 {
     if (!AssetSchema::load_registry_from_file(mAssetRegistry, mSUIDRegistry, assetSchemaPath, err))
         return false;
@@ -35,7 +35,7 @@ bool ProjectContext::load_asset_schema(const FS::Path& assetSchemaPath, std::str
     return true;
 }
 
-bool ProjectContext::save_project(std::string err)
+bool ProjectContext::save_project(String& err)
 {
     if (!ProjectSchema::save_project(mProject, mProject.get_project_schema_abs_path(), err))
         return false;
@@ -43,7 +43,7 @@ bool ProjectContext::save_project(std::string err)
     return true;
 }
 
-bool ProjectContext::save_asset_registry(std::string err)
+bool ProjectContext::save_asset_registry(String& err)
 {
     if (!AssetSchema::save_registry(mAssetRegistry, mProject.get_asset_schema_abs_path(), err))
         return false;
@@ -60,7 +60,7 @@ void ProjectContext::configure_project_screen_layers()
     SceneRenderSystem renderS = scene.render_system();
     Vector<ProjectScreenLayer> layers = mProject.settings().screen_layer_settings().get_layers();
     Vector<SUID> ids(layers.size());
-    Vector<std::string> names(layers.size());
+    Vector<String> names(layers.size());
 
     for (size_t i = 0; i < layers.size(); i++)
     {

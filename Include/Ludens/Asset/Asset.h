@@ -1,6 +1,7 @@
 #pragma once
 
 #include <Ludens/Asset/AssetDef.h>
+#include <Ludens/DSA/String.h>
 #include <Ludens/Header/Handle.h>
 
 #include <cstddef>
@@ -39,10 +40,10 @@ struct Asset : Handle<struct AssetObj>
     AssetType get_type();
 
     /// @brief Get asset path.
-    std::string get_path();
+    String get_path();
 
     /// @brief Get asset name.
-    std::string get_name();
+    String get_name();
 
     /// @brief Get asset serial ID.
     AssetID get_id();
@@ -69,6 +70,6 @@ bool asset_header_read(Deserializer& serial, uint16_t& outMajor, uint16_t& outMi
 
 /// @brief Attempts to read binary header from memory.
 /// @return True if the asset type matches and the asset version matches engine version exactly.
-bool asset_header_read(Deserializer& serial, AssetType expectedType, std::string& err);
+bool asset_header_read(Deserializer& serial, AssetType expectedType, String& err);
 
 } // namespace LD

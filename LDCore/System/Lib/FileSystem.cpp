@@ -1,4 +1,5 @@
 #include <Ludens/DSA/Diagnostics.h>
+#include <Ludens/DSA/StringUtil.h>
 #include <Ludens/Profiler/Profiler.h>
 #include <Ludens/System/FileSystem.h>
 
@@ -37,18 +38,18 @@ Path temp_directory_path()
     return fs::temp_directory_path();
 }
 
-bool get_directory_content(const Path& directory, Vector<Path>& contents, bool recursive, std::string& err)
+bool get_directory_content(const Path& directory, Vector<Path>& contents, bool recursive, String& err)
 {
     if (!fs::exists(directory))
     {
-        err = directory.string();
+        err = to_string(directory.string());
         err += "does not exist.";
         return false;
     }
 
     if (!fs::is_directory(directory))
     {
-        err = directory.string();
+        err = to_string(directory.string());
         err += " is not a directory.";
         return false;
     }
@@ -78,7 +79,7 @@ bool get_directory_content(const Path& directory, Vector<Path>& contents, bool r
     return true;
 }
 
-bool get_file_size(const Path& path, uint64_t& size, std::string& err)
+bool get_file_size(const Path& path, uint64_t& size, String& err)
 {
     err.clear();
 
@@ -98,7 +99,7 @@ bool get_file_size(const Path& path, uint64_t& size, Diagnostics& diag)
 {
     DiagnosticScope scope(diag, "get_file_size");
 
-    std::string err;
+    String err;
     if (!get_file_size(path, size, err))
     {
         diag.mark_error(err);
@@ -117,14 +118,14 @@ bool get_positive_file_size(const Path& path, uint64_t& size, Diagnostics& diag)
 
     if (size == 0)
     {
-        diag.mark_error(std::format("file [{}] is empty", path.string()));
+        diag.mark_error(std::format("file [{}] is empty", path.string()).c_str());
         return false;
     }
 
     return true;
 }
 
-bool copy_file(const Path& src, const Path& dst, CopyOptionBits options, std::string& err)
+bool copy_file(const Path& src, const Path& dst, CopyOptionBits options, String& err)
 {
     bool success = false;
 
@@ -134,14 +135,14 @@ bool copy_file(const Path& src, const Path& dst, CopyOptionBits options, std::st
     }
     catch (const std::filesystem::filesystem_error& e)
     {
-        err = std::format("copy_file failed with: {}", src.string(), dst.string(), e.what());
+        err = std::format("copy_file failed with: {}", src.string(), dst.string(), e.what()).c_str();
         return false;
     }
 
     return success;
 }
 
-uint64_t read_file(const Path& path, MutView view, std::string& err)
+uint64_t read_file(const Path& path, MutView view, String& err)
 {
     LD_PROFILE_SCOPE;
 
@@ -153,7 +154,7 @@ uint64_t read_file(const Path& path, MutView view, std::string& err)
 
     if (!fs::exists(path))
     {
-        err = std::format("file path [{}] does not exist", path.string());
+        err = std::format("file path [{}] does not exist", path.string()).c_str();
         return false;
     }
 
@@ -161,7 +162,7 @@ uint64_t read_file(const Path& path, MutView view, std::string& err)
 
     if (!file.is_open())
     {
-        err = std::format("failed to open file [{}]", path.string());
+        err = std::format("failed to open file [{}]", path.string()).c_str();
         return false;
     }
 
@@ -170,7 +171,7 @@ uint64_t read_file(const Path& path, MutView view, std::string& err)
 
     if (view.size < (uint64_t)fsize)
     {
-        err = std::format("cant write to view of size {}, file size is {}", view.size, fsize);
+        err = std::format("cant write to view of size {}, file size is {}", view.size, fsize).c_str();
         file.close();
         return false;
     }
@@ -184,7 +185,7 @@ uint64_t read_file(const Path& path, MutView view, std::string& err)
 
 uint64_t read_file(const Path& path, MutView view, Diagnostics& diag)
 {
-    std::string err;
+    String err;
     DiagnosticScope scope(diag, __func__);
     uint64_t readSize = read_file(path, view, err);
 
@@ -197,7 +198,7 @@ uint64_t read_file(const Path& path, MutView view, Diagnostics& diag)
     return readSize;
 }
 
-bool read_file_to_vector(const FS::Path& path, Vector<byte>& v, std::string& err)
+bool read_file_to_vector(const FS::Path& path, Vector<byte>& v, String& err)
 {
     LD_PROFILE_SCOPE;
 
@@ -214,7 +215,7 @@ bool read_file_to_vector(const FS::Path& path, Vector<byte>& v, std::string& err
     return err.empty();
 }
 
-char* read_file_to_cstr(const FS::Path& path, std::string err)
+char* read_file_to_cstr(const FS::Path& path, String& err)
 {
     LD_PROFILE_SCOPE;
 
@@ -234,13 +235,13 @@ char* read_file_to_cstr(const FS::Path& path, std::string err)
     return cstr;
 }
 
-bool write_file(const Path& path, View view, std::string& err)
+bool write_file(const Path& path, View view, String& err)
 {
     LD_PROFILE_SCOPE;
 
     if (!view.data || view.size == 0)
     {
-        err = std::format("no data to write to [{}]", path.string());
+        err = std::format("no data to write to [{}]", path.string()).c_str();
         return false;
     }
 
@@ -248,7 +249,7 @@ bool write_file(const Path& path, View view, std::string& err)
 
     if (!file.is_open())
     {
-        err = std::format("failed to open file [{}]", path.string());
+        err = std::format("failed to open file [{}]", path.string()).c_str();
         return false;
     }
 
@@ -260,7 +261,7 @@ bool write_file(const Path& path, View view, std::string& err)
 
 bool write_file(const Path& path, View view, Diagnostics& diag)
 {
-    std::string err;
+    String err;
     DiagnosticScope scope(diag, __func__);
 
     if (!write_file(path, view, err))
@@ -272,7 +273,7 @@ bool write_file(const Path& path, View view, Diagnostics& diag)
     return true;
 }
 
-bool write_file_and_swap_backup(const Path& path, View view, std::string& err)
+bool write_file_and_swap_backup(const Path& path, View view, String& err)
 {
     LD_PROFILE_SCOPE;
 
@@ -290,7 +291,7 @@ bool write_file_and_swap_backup(const Path& path, View view, std::string& err)
     }
     catch (const std::filesystem::filesystem_error& e)
     {
-        err = std::format("failed to rename [{}] to [{}]\nfilesystem_error: {}", path.string(), backupPath.string(), e.what());
+        err = std::format("failed to rename [{}] to [{}]\nfilesystem_error: {}", path.string(), backupPath.string(), e.what()).c_str();
         return false;
     }
 
@@ -309,7 +310,7 @@ bool write_file_and_swap_backup(const Path& path, View view, std::string& err)
     }
     catch (const std::filesystem::filesystem_error& e)
     {
-        err = std::format("failed to rename [{}] to [{}]\nfilesystem_error: {}", tmpPath.string(), path.string(), e.what());
+        err = std::format("failed to rename [{}] to [{}]\nfilesystem_error: {}", tmpPath.string(), path.string(), e.what()).c_str();
         return false;
     }
 
@@ -344,7 +345,7 @@ bool is_empty_directory(const Path& path)
     return isEmpty;
 }
 
-bool create_directories(const Path& path, std::string& err)
+bool create_directories(const Path& path, String& err)
 {
     try
     {
@@ -352,14 +353,14 @@ bool create_directories(const Path& path, std::string& err)
     }
     catch (const std::filesystem::filesystem_error& e)
     {
-        err = std::format("create_directories failed with {}", e.what());
+        err = std::format("create_directories failed with {}", e.what()).c_str();
         return false;
     }
 
     return true;
 }
 
-bool remove(const FS::Path& path, std::string& err)
+bool remove(const FS::Path& path, String& err)
 {
     bool success = false;
 
@@ -369,7 +370,7 @@ bool remove(const FS::Path& path, std::string& err)
     }
     catch (const std::filesystem::filesystem_error& e)
     {
-        err = std::format("failed to remove [{}]\nfilesystem_error: {}", path.string(), e.what());
+        err = std::format("failed to remove [{}]\nfilesystem_error: {}", path.string(), e.what()).c_str();
         return false;
     }
 

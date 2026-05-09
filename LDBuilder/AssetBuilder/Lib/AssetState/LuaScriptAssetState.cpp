@@ -32,12 +32,12 @@ void lua_script_asset_import(void* user)
         obj->source = info.srcCode;
     }
 
-    FS::Path sourcePath(job.asset.get_name());
-    sourcePath.replace_extension(".lua");
+    FS::Path sourceRelPath = FS::Path(info.dstPath.c_str()).stem();
+    sourceRelPath.replace_extension(".lua");
 
-    obj->sourcePath = sourcePath.string();
+    obj->sourcePath = sourceRelPath.string();
 
-    if (!job.write_dst_file("source", obj->sourcePath, view(obj->source)))
+    if (!job.write_dst_file("source", obj->sourcePath.c_str(), view(obj->source)))
         return;
 
     Serializer serial;
@@ -50,7 +50,7 @@ void lua_script_asset_import(void* user)
     (void)job.write_binary_dst_file(serial.view());
 }
 
-bool lua_script_asset_create(AssetCreateInfo* createInfo, std::string& err)
+bool lua_script_asset_create(AssetCreateInfo* createInfo, String& err)
 {
     auto* data = (LuaScriptAssetCreateData*)createInfo;
 
@@ -70,7 +70,7 @@ bool lua_script_asset_create(AssetCreateInfo* createInfo, std::string& err)
     return true;
 }
 
-bool lua_script_asset_prepare_import(const AssetCreateInfo* createInfo, AssetImportInfo* importInfo, std::string& err)
+bool lua_script_asset_prepare_import(const AssetCreateInfo* createInfo, AssetImportInfo* importInfo, String& err)
 {
     const auto* data = (const LuaScriptAssetCreateData*)createInfo;
     auto* importI = (LuaScriptAssetImportInfo*)importInfo;

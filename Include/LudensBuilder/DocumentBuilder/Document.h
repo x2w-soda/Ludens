@@ -104,13 +104,13 @@ struct DocumentInfo
 struct Document : Handle<struct DocumentObj>
 {
     /// @brief Try create Document.
-    static Document create(const DocumentInfo& info, std::string& err);
+    static Document create(const DocumentInfo& info, String& err);
 
     /// @brief Destroy document.
     static void destroy(Document doc);
 
     /// @brief Get document URI path.
-    std::string get_uri_path();
+    String get_uri_path();
 
     /// @brief Get all URI references from this document.
     DocumentRefs get_references();
@@ -119,7 +119,7 @@ struct Document : Handle<struct DocumentObj>
     TView<DocumentItem*> get_items();
 
     /// @brief Debug print to string.
-    std::string print();
+    String print();
 };
 
 } // namespace LD

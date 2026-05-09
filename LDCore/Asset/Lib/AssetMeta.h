@@ -30,9 +30,10 @@
 
 namespace LD {
 
-struct Serializer;
+class Serializer;
 struct AssetManagerInfo;
 struct AssetLoadJob;
+struct AssetObj;
 
 struct AssetMeta
 {

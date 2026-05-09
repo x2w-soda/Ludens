@@ -9,7 +9,7 @@ TEST_CASE("TextBuffer")
 {
     TextBuffer buf = TextBuffer::create();
 
-    std::string str = buf.to_string();
+    String str = buf.to_string();
     CHECK(str.empty());
 
     buf.set_string(View{});
@@ -40,7 +40,7 @@ TEST_CASE("text_find_previous_word")
     const char* str = "this is a sentence";
 
     size_t pos;
-    View v(str);
+    View v(str, strlen(str));
 
     pos = text_find_previous_word({}, 0);
     CHECK(pos == 0);
@@ -62,7 +62,7 @@ TEST_CASE("text_split_ranges without delim")
 {
     std::vector<Range> ranges;
 
-    ranges = text_split_ranges(View(nullptr), '/');
+    ranges = text_split_ranges({}, '/');
     CHECK(ranges.empty());
     ranges = text_split_ranges(View(""), '/');
     CHECK(ranges.empty());
@@ -91,7 +91,7 @@ TEST_CASE("text_split_ranges with delim")
 {
     std::vector<Range> ranges;
 
-    ranges = text_split_ranges(View(nullptr), '/', true);
+    ranges = text_split_ranges({}, '/', true);
     CHECK(ranges.empty());
     ranges = text_split_ranges(View(""), '/', true);
     CHECK(ranges.empty());

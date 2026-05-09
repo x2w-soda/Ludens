@@ -1,6 +1,7 @@
 #include <Ludens/Asset/Asset.h>
 #include <Ludens/Asset/AssetManager.h>
 #include <Ludens/Asset/AssetRegistry.h>
+#include <Ludens/DSA/StringUtil.h>
 #include <Ludens/Header/Assert.h>
 #include <Ludens/JobSystem/JobSystem.h>
 #include <Ludens/Memory/Allocator.h>
@@ -63,7 +64,7 @@ void AssetImporterObj::resolve_asset(AssetImportJob* job)
     else
     {
         for (const auto& it : job->files)
-            entry.set_file_path(it.first, it.second.string());
+            entry.set_file_path(it.first, to_string(it.second.string()));
     }
 }
 

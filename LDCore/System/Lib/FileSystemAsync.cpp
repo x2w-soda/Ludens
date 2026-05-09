@@ -32,7 +32,7 @@ void ReadFileAsync::begin(const Path& filePath, const MutView& view)
 
     if (!file.is_open())
     {
-        mDiag.mark_error(std::format("failed to open [{}]", filePath.string()));
+        mDiag.mark_error(std::format("failed to open [{}]", filePath.string()).c_str());
         mStatus.store(TASK_STATUS_FAILURE);
         return;
     }
@@ -47,7 +47,7 @@ void ReadFileAsync::begin(const Path& filePath, const MutView& view)
     }
     else if (fileSize > view.size)
     {
-        mDiag.mark_error(std::format("cant read file of size {} into view of size {}", fileSize, view.size));
+        mDiag.mark_error(std::format("cant read file of size {} into view of size {}", fileSize, view.size).c_str());
         mStatus.store(TASK_STATUS_FAILURE);
         return;
     }
@@ -83,7 +83,7 @@ void ReadFileAsync::begin(const Path& filePath, Vector<byte>& vector)
     DiagnosticScope scope(mDiag, "ReadFileAsync read file to vector");
     
     uint64_t fileSize;
-    std::string err;
+    String err;
 
     if (!FS::get_file_size(filePath, fileSize, err))
     {

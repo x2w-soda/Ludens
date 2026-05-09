@@ -25,7 +25,7 @@ using SceneLoadFn = std::function<bool(struct SceneObj*)>;
 ///        Main thread only.
 struct SceneRenderSystem : Handle<struct SceneObj>
 {
-    void configure_screen_layers(size_t count, SUID* ids, std::string* names);
+    void configure_screen_layers(size_t count, SUID* ids, String* names);
 };
 
 /// @brief Scene creation info, connects to external asset manager and subsystems.
@@ -99,7 +99,7 @@ public:
     /// @param name Component identifier.
     /// @param parentCUID Parent component ID, or zero if creating a root component.
     /// @return Component interface of the newly created component on success.
-    ComponentView create_component(ComponentType type, const char* name, CUID parentCUID);
+    ComponentView create_component(ComponentType type, View name, CUID parentCUID);
 
     /// @brief Try create a component with serial ID.
     /// @param type Component type.
@@ -108,7 +108,7 @@ public:
     /// @param parentSUID Parent serial ID, or zero if creating a root component.
     /// @param hintSUID If valid, the known serial ID. Otherwise the SUID registry allocates a new one.
     /// @return Component interface of the newly created component on success.
-    ComponentView create_component_serial(ComponentType type, const char* name, SUIDRegistry suidRegistry, SUID parentSUID, SUID hintSUID);
+    ComponentView create_component_serial(ComponentType type, View name, SUIDRegistry suidRegistry, SUID parentSUID, SUID hintSUID);
 
     /// @brief Try create a subtree from serialized entry.
     /// @return Root component view on success.
