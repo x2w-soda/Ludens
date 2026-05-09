@@ -52,18 +52,18 @@ struct SceneComponentMeta
     ComponentType type;
     const TypeMeta* typeMeta;
     void (*init)(ComponentBase** dstData);
-    bool (*clone)(SceneObj* scene, ComponentBase** dstData, ComponentBase** srcData, std::string& err);
-    bool (*load)(SceneObj* scene, ComponentBase** data, const Vector<PropertyValue>& props, std::string& err);
-    bool (*unload)(SceneObj* scene, ComponentBase** data, std::string& err);
-    bool (*startup)(SceneObj* scene, ComponentBase** data, std::string& err);
-    bool (*cleanup)(SceneObj* scene, ComponentBase** data, std::string& err);
+    bool (*clone)(SceneObj* scene, ComponentBase** dstData, ComponentBase** srcData, String& err);
+    bool (*load)(SceneObj* scene, ComponentBase** data, const Vector<PropertyValue>& props, String& err);
+    bool (*unload)(SceneObj* scene, ComponentBase** data, String& err);
+    bool (*startup)(SceneObj* scene, ComponentBase** data, String& err);
+    bool (*cleanup)(SceneObj* scene, ComponentBase** data, String& err);
     AssetID (*getAsset)(SceneObj* scene, ComponentBase** data, uint32_t assetSlotIndex);
     bool (*setAsset)(SceneObj* scene, ComponentBase** data, uint32_t assetSlotIndex, AssetID assetID);
     AssetType (*getAssetType)(SceneObj* scene, uint32_t assetSlotIndex);
 };
 
 static void init_nop(ComponentBase**) {}
-static bool clone_nop(SceneObj*, ComponentBase**, ComponentBase**, std::string&) { return true; }
+static bool clone_nop(SceneObj*, ComponentBase**, ComponentBase**, String&) { return true; }
 
 // clang-format off
 static SceneComponentMeta sSceneComponents[] = {
@@ -211,7 +211,7 @@ void SceneContext::update(const SceneUpdateTick& tick)
     LD_PROFILE_SCOPE;
 
     // update all lua script instances
-    std::string err;
+    String err;
     bool success = lua.update(tick.delta, err);
     if (!success)
         sSceneLog.error("script update failed: {}", err);
@@ -248,25 +248,25 @@ bool SceneContext::startup_registry()
     Timer timer;
     timer.start();
 
-    std::string err;
+    String err;
     Vector<ComponentBase**> startupOrder;
     Vector<ComponentBase**> roots;
     registry.get_root_component_data(roots);
 
     bool success = true;
-    std::string errComponentName;
+    String errComponentName;
 
     for (ComponentBase** rootData : roots)
     {
         if (!startup_subtree(rootData, startupOrder, err))
         {
-            errComponentName = std::string((*rootData)->name);
+            errComponentName = String((*rootData)->name);
             success = false;
             break;
         }
     }
 
-    std::string tmp;
+    String tmp;
     size_t durationUS = timer.stop();
 
     if (success)
@@ -289,7 +289,7 @@ void SceneContext::cleanup_registry()
     Timer timer;
     timer.start();
 
-    std::string err;
+    String err;
     Vector<ComponentBase**> roots;
     registry.get_root_component_data(roots);
 
@@ -301,7 +301,7 @@ void SceneContext::cleanup_registry()
     sSceneLog.info("cleanup complete in {} ms", durationUS / 1000.0f);
 }
 
-bool SceneContext::startup_subtree(ComponentBase** rootData, Vector<ComponentBase**>& startupOrder, std::string& err)
+bool SceneContext::startup_subtree(ComponentBase** rootData, Vector<ComponentBase**>& startupOrder, String& err)
 {
     LD_ASSERT(rootData);
     ComponentBase* rootBase = *rootData;
@@ -322,7 +322,7 @@ bool SceneContext::startup_subtree(ComponentBase** rootData, Vector<ComponentBas
     return true;
 }
 
-bool SceneContext::startup_component(ComponentBase** data, std::string& err)
+bool SceneContext::startup_component(ComponentBase** data, String& err)
 {
     LD_ASSERT(data);
     ComponentBase* base = *data;
@@ -333,7 +333,7 @@ bool SceneContext::startup_component(ComponentBase** data, std::string& err)
             return false;
     }
 
-    std::string tmp;
+    String tmp;
 
     if (base->scriptAssetID)
     {
@@ -373,12 +373,12 @@ void SceneContext::cleanup_subtree(ComponentBase** rootData)
     }
 
     // post-order traversal, all child components of root already have their scripts detached
-    std::string err;
+    String err;
     if (!cleanup_component(rootData, err))
         sSceneLog.error("failed to cleanup component: {}", err);
 }
 
-bool SceneContext::cleanup_component(ComponentBase** data, std::string& err)
+bool SceneContext::cleanup_component(ComponentBase** data, String& err)
 {
     LD_ASSERT(data);
     ComponentBase* base = *data;
@@ -427,7 +427,7 @@ void SceneContext::unload_subtree(ComponentBase** data, SUIDRegistry suidRegistr
     LD_ASSERT(data);
     ComponentBase* base = (*data);
 
-    std::string err;
+    String err;
 
     if (sSceneComponents[(int)base->type].unload)
     {
@@ -457,7 +457,7 @@ bool SceneObj::load_registry_from_backup()
     backup->registry.get_root_component_data(srcRoots);
     LD_ASSERT(dstRoots.size() == srcRoots.size());
 
-    std::string err;
+    String err;
 
     for (size_t i = 0; i < dstRoots.size(); i++)
     {
@@ -472,7 +472,7 @@ bool SceneObj::load_registry_from_backup()
 }
 
 // Given two subtrees with identical hierarchy, create subsystem handles for dst subtree
-bool SceneObj::clone_subtree(ComponentBase** dstData, ComponentBase** srcData, std::string& err)
+bool SceneObj::clone_subtree(ComponentBase** dstData, ComponentBase** srcData, String& err)
 {
     ComponentBase* dstBase = *dstData;
     ComponentBase* srcBase = *srcData;
@@ -508,7 +508,7 @@ bool SceneObj::clone_subtree(ComponentBase** dstData, ComponentBase** srcData, s
 }
 
 // This is basically the editor loading a copy of component subtree from backup data
-bool SceneObj::load_subtree_from_backup(ComponentBase** dstData, ComponentBase** srcData, std::string& err)
+bool SceneObj::load_subtree_from_backup(ComponentBase** dstData, ComponentBase** srcData, String& err)
 {
     LD_PROFILE_SCOPE;
 
@@ -520,7 +520,7 @@ bool SceneObj::load_subtree_from_backup(ComponentBase** dstData, ComponentBase**
     // sanity checks
     LD_ASSERT(srcBase->type == dstBase->type);
     LD_ASSERT(srcBase->suid == dstBase->suid);
-    LD_ASSERT((std::string(dstBase->name) == std::string(srcBase->name)));
+    LD_ASSERT((String(dstBase->name) == String(srcBase->name)));
 
     sSceneComponents[(int)dstBase->type].init(dstData);
     *dstData = dstBase;
@@ -903,7 +903,7 @@ ComponentView Scene::create_component_subtree(const ComponentSubtreeEntry& subtr
 {
     LD_PROFILE_SCOPE;
 
-    std::string err;
+    String err;
     size_t compCount = subtree.components.size();
     Vector<ComponentView> created(compCount);
     ComponentView rootV{};
@@ -992,7 +992,7 @@ ComponentView Scene::clone_component_subtree(CUID rootID)
     ComponentBase** srcData = mObj->active->registry.get_component_data(rootID, nullptr);
     LD_ASSERT(srcData);
 
-    std::string err;
+    String err;
     if (!mObj->clone_subtree(dstData, srcData, err))
     {
         sSceneLog.error("failed to clone component subtree {}", err);
@@ -1083,7 +1083,7 @@ RUID ComponentView::ruid()
     return sScene->renderSystemCache.get_component_draw_id((*mData)->cuid);
 }
 
-bool ComponentView::load_from_props(const Vector<PropertyValue>& props, std::string& err)
+bool ComponentView::load_from_props(const Vector<PropertyValue>& props, String& err)
 {
     int type = (*mData)->type;
 
@@ -1193,6 +1193,11 @@ bool ComponentView::get_world_mat4(Mat4& worldMat4)
     return sScene->active->registry.get_component_world_mat4(base->cuid, worldMat4);
 }
 
+const TypeMeta* ComponentView::type_meta(ComponentType type)
+{
+    return sSceneComponents[(int)type].typeMeta;
+}
+
 ComponentView Scene::get_2d_component_by_position(const Vec2& worldPos)
 {
     CUID compCUID = sScene->renderSystemCache.get_2d_component_by_position(worldPos, [](RUID ruid, Mat4& mat4, void*) -> bool { return Scene(sScene).get_ruid_world_mat4(ruid, mat4); }, nullptr);
@@ -1231,7 +1236,7 @@ void Scene::invalidate(Vec2 extent)
     mObj->active->invalidate(extent);
 }
 
-std::string Scene::print_hierarchy()
+String Scene::print_hierarchy()
 {
     return mObj->active->registry.print_hierarchy();
 }

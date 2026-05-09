@@ -117,7 +117,7 @@ void create_component_cmd_apply(SceneCommand* base, Scene scene)
         }
     }
 
-    std::string err;
+    String err;
     if (compV.load_from_props(props, err))
         cmd->result.compView = compV;
 }

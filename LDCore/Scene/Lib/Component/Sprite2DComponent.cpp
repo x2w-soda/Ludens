@@ -15,6 +15,7 @@ static PropertyMeta sSprite2DPropMeta[] = {
     {"z_depth",   nullptr, VALUE_TYPE_U32,          Value64((uint32_t)0)},
     {"pivot",     nullptr, VALUE_TYPE_VEC2,         Value64(Vec2(INIT_REGION_SIZE / 2.0f))},
     {"region",    nullptr, VALUE_TYPE_RECT,         Value64(Rect(0.0f, 0.0f, INIT_REGION_SIZE, INIT_REGION_SIZE))},
+    {"layer",     nullptr, VALUE_TYPE_U32,          Value64((uint32_t)0)},
 };
 // clang-format on
 
@@ -42,7 +43,7 @@ bool sprite_2d_prop_getter(void* data, uint32_t propIndex, uint32_t, Value64& va
         val.set_rect(view.get_region());
         break;
     case SPRITE_2D_PROP_SCREEN_LAYER:
-        // TODO:
+        val.set_u32(view.get_screen_layer_suid());
         break;
     default:
         return false;
@@ -73,7 +74,7 @@ bool sprite_2d_prop_setter(void* data, uint32_t propIndex, uint32_t, const Value
         view.set_region(val.get_rect());
         break;
     case SPRITE_2D_PROP_SCREEN_LAYER:
-        // TODO:
+        view.set_screen_layer(view.get_screen_layer_suid());
         break;
     default:
         return false;
@@ -102,11 +103,17 @@ void Sprite2DMeta::init(ComponentBase** dstData)
     dstSprite2D->draw.set_pivot(Vec2(INIT_REGION_SIZE / 2.0f));
 }
 
-bool Sprite2DMeta::load_suid(SceneObj* scene, Sprite2DComponent* sprite, SUID layerSUID, AssetID texture2D, std::string& err)
+bool Sprite2DMeta::load_suid(SceneObj* scene, Sprite2DComponent* sprite, SUID layerSUID, AssetID texture2D, String& err)
 {
     LD_PROFILE_SCOPE;
 
     ComponentBase* base = sprite->base;
+
+    if (!layerSUID)
+    {
+        err = "ScreenLayer SUID can not be zero";
+        return false;
+    }
 
     RUID layerRUID = scene->renderSystemCache.get_or_create_screen_layer(layerSUID);
     if (!layerRUID)
@@ -118,7 +125,7 @@ bool Sprite2DMeta::load_suid(SceneObj* scene, Sprite2DComponent* sprite, SUID la
     return load_ruid(scene, sprite, layerRUID, texture2D, err);
 }
 
-bool Sprite2DMeta::load_ruid(SceneObj* scene, Sprite2DComponent* sprite, RUID layerRUID, AssetID textureID, std::string& err)
+bool Sprite2DMeta::load_ruid(SceneObj* scene, Sprite2DComponent* sprite, RUID layerRUID, AssetID textureID, String& err)
 {
     LD_PROFILE_SCOPE;
 
@@ -138,7 +145,7 @@ bool Sprite2DMeta::load_ruid(SceneObj* scene, Sprite2DComponent* sprite, RUID la
     return true;
 }
 
-bool Sprite2DMeta::clone(SceneObj* scene, ComponentBase** dstData, ComponentBase** srcData, std::string& err)
+bool Sprite2DMeta::clone(SceneObj* scene, ComponentBase** dstData, ComponentBase** srcData, String& err)
 {
     LD_PROFILE_SCOPE;
 
@@ -159,7 +166,7 @@ bool Sprite2DMeta::clone(SceneObj* scene, ComponentBase** dstData, ComponentBase
     return true;
 }
 
-bool Sprite2DMeta::unload(SceneObj* scene, ComponentBase** data, std::string& err)
+bool Sprite2DMeta::unload(SceneObj* scene, ComponentBase** data, String& err)
 {
     Sprite2DComponent* sprite = (Sprite2DComponent*)data;
     ComponentBase* base = sprite->base;
@@ -173,7 +180,7 @@ bool Sprite2DMeta::unload(SceneObj* scene, ComponentBase** data, std::string& er
     return true;
 }
 
-bool Sprite2DMeta::startup(SceneObj* scene, ComponentBase** data, std::string& err)
+bool Sprite2DMeta::startup(SceneObj* scene, ComponentBase** data, String& err)
 {
     Sprite2DComponent* sprite = (Sprite2DComponent*)data;
     ComponentBase* base = *data;
@@ -187,7 +194,7 @@ bool Sprite2DMeta::startup(SceneObj* scene, ComponentBase** data, std::string& e
     return true;
 }
 
-bool Sprite2DMeta::cleanup(SceneObj* scene, ComponentBase** data, std::string& err)
+bool Sprite2DMeta::cleanup(SceneObj* scene, ComponentBase** data, String& err)
 {
     return true;
 }
@@ -222,7 +229,7 @@ AssetType Sprite2DMeta::get_asset_type(SceneObj* scene, uint32_t assetSlotIndex)
     return ASSET_TYPE_TEXTURE_2D;
 }
 
-bool Sprite2DMeta::load_from_props(SceneObj* scene, ComponentBase** data, const Vector<PropertyValue>& props, std::string& err)
+bool Sprite2DMeta::load_from_props(SceneObj* scene, ComponentBase** data, const Vector<PropertyValue>& props, String& err)
 {
     Transform2D transform2D = Transform2D::identity();
     SUID layerSUID = {};
@@ -251,7 +258,8 @@ bool Sprite2DMeta::load_from_props(SceneObj* scene, ComponentBase** data, const 
             region = prop.value.get_rect();
             break;
         case SPRITE_2D_PROP_SCREEN_LAYER:
-            break; // TODO:
+            layerSUID = prop.value.get_u32();
+            break;
         default:
             break;
         }
@@ -291,7 +299,7 @@ Sprite2DView::Sprite2DView(Sprite2DComponent* comp)
 
 bool Sprite2DView::load(SUID layerSUID, AssetID textureID)
 {
-    std::string err;
+    String err;
 
     return Sprite2DMeta::load_suid(sScene, mSprite, layerSUID, textureID, err);
 }
@@ -369,6 +377,17 @@ SUID Sprite2DView::get_screen_layer_suid()
     LD_ASSERT(layerSUID);
 
     return layerSUID;
+}
+
+void Sprite2DView::set_screen_layer(SUID layerSUID)
+{
+    LD_ASSERT(mSprite->draw);
+
+    RUID layerRUID = sScene->renderSystemCache.get_or_create_screen_layer(layerSUID);
+    if (mSprite->draw.get_layer_id() == layerRUID)
+        return;
+
+    mSprite->draw = sScene->renderSystemCache.migrate_sprite_2d_draw(mSprite->draw, layerRUID);
 }
 
 Rect Sprite2DView::local_rect()

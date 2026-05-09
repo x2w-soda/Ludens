@@ -37,6 +37,7 @@ public:
     void set_region(Rect region);
     RUID get_screen_layer_ruid();
     SUID get_screen_layer_suid();
+    void set_screen_layer(SUID layerID);
 
     /// @brief Rect(-pivot.x, -pivot.y, region.w, region.h)
     Rect local_rect();

@@ -13,7 +13,7 @@ void init_mesh_component(ComponentBase** dstData)
     dstMesh->assetID = 0;
 }
 
-bool load_mesh_component(SceneObj* scene, MeshComponent* mesh, AssetID meshAID, std::string& err)
+bool load_mesh_component(SceneObj* scene, MeshComponent* mesh, AssetID meshAID, String& err)
 {
     LD_PROFILE_SCOPE;
 
@@ -32,7 +32,7 @@ bool load_mesh_component(SceneObj* scene, MeshComponent* mesh, AssetID meshAID, 
     return true;
 }
 
-bool clone_mesh_component(SceneObj* scene, ComponentBase** dstData, ComponentBase** srcData, std::string& err)
+bool clone_mesh_component(SceneObj* scene, ComponentBase** dstData, ComponentBase** srcData, String& err)
 {
     LD_PROFILE_SCOPE;
 
@@ -45,7 +45,7 @@ bool clone_mesh_component(SceneObj* scene, ComponentBase** dstData, ComponentBas
     return load_mesh_component(scene, (MeshComponent*)dstData, srcMeshAID, err);
 }
 
-bool unload_mesh_component(SceneObj* scene, ComponentBase** data, std::string& err)
+bool unload_mesh_component(SceneObj* scene, ComponentBase** data, String& err)
 {
     MeshComponent* mesh = (MeshComponent*)data;
     ComponentBase* base = mesh->base;
@@ -77,7 +77,7 @@ MeshView::MeshView(MeshComponent* comp)
 
 bool MeshView::load()
 {
-    std::string err;
+    String err;
 
     return load_mesh_component(sScene, mMesh, (AssetID)0, err);
 }
@@ -129,15 +129,15 @@ void init_mesh_component(ComponentBase** dstData)
 {
     LD_UNREACHABLE;
 }
-bool load_mesh_component(SceneObj* scene, MeshComponent* mesh, AssetID meshAID, std::string& err)
+bool load_mesh_component(SceneObj* scene, MeshComponent* mesh, AssetID meshAID, String& err)
 {
     return false;
 }
-bool clone_mesh_component(SceneObj* scene, ComponentBase** dstData, ComponentBase** srcData, std::string& err)
+bool clone_mesh_component(SceneObj* scene, ComponentBase** dstData, ComponentBase** srcData, String& err)
 {
     return false;
 }
-bool unload_mesh_component(SceneObj* scene, ComponentBase** data, std::string& err)
+bool unload_mesh_component(SceneObj* scene, ComponentBase** data, String& err)
 {
     return false;
 }

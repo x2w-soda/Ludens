@@ -183,7 +183,7 @@ public:
     void invalidate(Vec2 extent);
 
     /// @brief Debug print component hierarchy.
-    std::string print_hierarchy();
+    String print_hierarchy();
 };
 
 } // namespace LD

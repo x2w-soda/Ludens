@@ -1,6 +1,7 @@
 #include <Ludens/DSA/HashMap.h>
 #include <Ludens/DSA/HashSet.h>
 #include <Ludens/DSA/Vector.h>
+#include <Ludens/DSA/ViewUtil.h>
 #include <Ludens/DataRegistry/DataComponent.h>
 #include <Ludens/DataRegistry/DataRegistry.h>
 #include <Ludens/DataRegistry/TransformRegistry.h>
@@ -85,7 +86,7 @@ View get_component_brief_type_name(ComponentType type)
 
 ComponentType get_component_type(const char* cstr)
 {
-    std::string name(cstr);
+    String name(cstr);
 
     for (int i = 0; i < (int)COMPONENT_TYPE_ENUM_COUNT; i++)
     {
@@ -177,7 +178,7 @@ struct DataRegistryObj
     void destroy_subtree(ComponentBase** data);
     void destroy_component(ComponentBase** data);
     ComponentBase** clone_subtree(ComponentBase** srcData, SUIDRegistry suidRegistry, ComponentPlacement placement);
-    void print_subtree(ComponentBase** data, std::string& str, int indent);
+    void print_subtree(ComponentBase** data, String& str, int indent);
 
     static void id_hierarchy(ID parent, Vector<ID>& children, void* user);
 };
@@ -417,11 +418,11 @@ ComponentBase** DataRegistryObj::clone_subtree(ComponentBase** srcData, SUIDRegi
     return dstData;
 }
 
-void DataRegistryObj::print_subtree(ComponentBase** data, std::string& str, int indent)
+void DataRegistryObj::print_subtree(ComponentBase** data, String& str, int indent)
 {
     ComponentBase* base = *data;
-    str += std::string(indent, ' ');
-    str += std::format("{:10} [CUID {}], [SUID {}]\n", base->name, base->cuid, base->suid);
+    str += String(indent, ' ');
+    str += view(std::format("{:10} [CUID {}], [SUID {}]\n", base->name, base->cuid, base->suid));
 
     for (ComponentBase* child = base->child; child; child = child->next)
     {
@@ -864,9 +865,9 @@ void DataRegistry::invalidate_transforms()
     mObj->transform2DRegistry.invalidate_transforms();
 }
 
-std::string DataRegistry::print_hierarchy()
+String DataRegistry::print_hierarchy()
 {
-    std::string str;
+    String str;
 
     Vector<ComponentBase**> rootData;
     get_root_component_data(rootData);

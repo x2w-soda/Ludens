@@ -16,7 +16,7 @@ void init_camera_component(ComponentBase** dstData)
     memcpy(dstData, &sDefaultCamera, sizeof(CameraComponent));
 }
 
-bool load_camera_component_perspective(SceneObj* scene, CameraComponent* camera, const CameraPerspectiveInfo& perspectiveI, std::string& err)
+bool load_camera_component_perspective(SceneObj* scene, CameraComponent* camera, const CameraPerspectiveInfo& perspectiveI, String& err)
 {
     LD_PROFILE_SCOPE;
 
@@ -28,7 +28,7 @@ bool load_camera_component_perspective(SceneObj* scene, CameraComponent* camera,
     return true;
 }
 
-bool load_camera_component_orthographic(SceneObj* scene, CameraComponent* camera, const CameraOrthographicInfo& perspectiveI, std::string& err)
+bool load_camera_component_orthographic(SceneObj* scene, CameraComponent* camera, const CameraOrthographicInfo& perspectiveI, String& err)
 {
     LD_PROFILE_SCOPE;
 
@@ -40,7 +40,7 @@ bool load_camera_component_orthographic(SceneObj* scene, CameraComponent* camera
     return true;
 }
 
-bool clone_camera_component(SceneObj* scene, ComponentBase** dstData, ComponentBase** srcData, std::string& err)
+bool clone_camera_component(SceneObj* scene, ComponentBase** dstData, ComponentBase** srcData, String& err)
 {
     LD_PROFILE_SCOPE;
 
@@ -66,7 +66,7 @@ bool clone_camera_component(SceneObj* scene, ComponentBase** dstData, ComponentB
     return true;
 }
 
-bool unload_camera_component(SceneObj* scene, ComponentBase** cameraData, std::string& err)
+bool unload_camera_component(SceneObj* scene, ComponentBase** cameraData, String& err)
 {
     CameraComponent* camera = (CameraComponent*)cameraData;
 
@@ -79,7 +79,7 @@ bool unload_camera_component(SceneObj* scene, ComponentBase** cameraData, std::s
     return true;
 }
 
-bool startup_camera_component(SceneObj* scene, ComponentBase** cameraData, std::string& err)
+bool startup_camera_component(SceneObj* scene, ComponentBase** cameraData, String& err)
 {
     ComponentBase* base = *cameraData;
     auto* camera = (CameraComponent*)cameraData;
@@ -94,7 +94,7 @@ bool startup_camera_component(SceneObj* scene, ComponentBase** cameraData, std::
     return true;
 }
 
-bool cleanup_camera_component(SceneObj* scene, ComponentBase** cameraData, std::string& err)
+bool cleanup_camera_component(SceneObj* scene, ComponentBase** cameraData, String& err)
 {
     /*
     if (scene->mainCameraC == (CameraComponent*)cameraData)
@@ -124,14 +124,14 @@ CameraView::CameraView(CameraComponent* comp)
 
 bool CameraView::load_perspective(const CameraPerspectiveInfo& info)
 {
-    std::string err;
+    String err;
 
     return load_camera_component_perspective(sScene, mCamera, info, err);
 }
 
 bool CameraView::load_orthographic(const CameraOrthographicInfo& info)
 {
-    std::string err;
+    String err;
 
     return load_camera_component_orthographic(sScene, mCamera, info, err);
 }

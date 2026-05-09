@@ -2,12 +2,12 @@
 
 #include <Ludens/Asset/AssetRegistry.h>
 #include <Ludens/DSA/IDRegistry.h>
+#include <Ludens/DSA/String.h>
 #include <Ludens/DSA/Vector.h>
 #include <Ludens/DataRegistry/DataRegistryDef.h>
 #include <Ludens/Header/Handle.h>
 #include <Ludens/Header/Hash.h>
 #include <Ludens/Header/Math/Transform.h>
-#include <Ludens/Header/View.h>
 #include <Ludens/Memory/Allocator.h>
 
 #include <cstdint>
@@ -117,7 +117,7 @@ struct DataRegistry : Handle<struct DataRegistryObj>
 
     void invalidate_transforms();
 
-    std::string print_hierarchy();
+    String print_hierarchy();
 };
 
 /// @brief Get the byte size of a data component.

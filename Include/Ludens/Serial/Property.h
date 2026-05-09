@@ -2,7 +2,6 @@
 
 #include <Ludens/DSA/String.h>
 #include <Ludens/DSA/Vector.h>
-#include <Ludens/Header/View.h>
 #include <Ludens/Serial/Value.h>
 
 namespace LD {
@@ -47,7 +46,7 @@ struct PropertyDelta
 /// @brief A single Property entry in some Type.
 struct PropertyMeta
 {
-    const char* name;      // property name within Type
+    View name;             // property name within Type
     TypeMeta* type;        // if not null, the Type of the property
     ValueType valueType;   // property value type
     Value64 valueDefault;  // property default value hint
@@ -58,7 +57,7 @@ struct PropertyMeta
 /// @brief Type reflection of some object.
 struct TypeMeta
 {
-    const char* name;          // type name
+    View name;                 // type name
     const PropertyMeta* props; // property entries
     size_t propCount;          // property entry count
     bool (*getLocal)(void* obj, uint32_t propIndex, uint32_t arrayIndex, Value64& val);

@@ -28,7 +28,7 @@ void init_screen_ui_component(ComponentBase** dstData)
     dstScreenUI->uiWindow = {};
 }
 
-bool load_screen_ui_component(SceneObj* scene, ScreenUIComponent* ui, AssetID uiTemplateID, std::string& err)
+bool load_screen_ui_component(SceneObj* scene, ScreenUIComponent* ui, AssetID uiTemplateID, String& err)
 {
     LD_PROFILE_SCOPE;
 
@@ -51,7 +51,7 @@ bool load_screen_ui_component(SceneObj* scene, ScreenUIComponent* ui, AssetID ui
     return true;
 }
 
-bool clone_screen_ui_component(SceneObj* scene, ComponentBase** dstData, ComponentBase** srcData, std::string& err)
+bool clone_screen_ui_component(SceneObj* scene, ComponentBase** dstData, ComponentBase** srcData, String& err)
 {
     LD_PROFILE_SCOPE;
 
@@ -64,7 +64,7 @@ bool clone_screen_ui_component(SceneObj* scene, ComponentBase** dstData, Compone
     return load_screen_ui_component(scene, (ScreenUIComponent*)dstData, uiTemplateID, err);
 }
 
-bool unload_screen_ui_component(SceneObj* scene, ComponentBase** data, std::string& err)
+bool unload_screen_ui_component(SceneObj* scene, ComponentBase** data, String& err)
 {
     LD_PROFILE_SCOPE;
 
@@ -79,7 +79,7 @@ bool unload_screen_ui_component(SceneObj* scene, ComponentBase** data, std::stri
     return true;
 }
 
-bool startup_screen_ui_component(SceneObj* scene, ComponentBase** data, std::string& err)
+bool startup_screen_ui_component(SceneObj* scene, ComponentBase** data, String& err)
 {
     LD_PROFILE_SCOPE;
 
@@ -101,7 +101,7 @@ bool startup_screen_ui_component(SceneObj* scene, ComponentBase** data, std::str
     return true;
 }
 
-bool cleanup_screen_ui_component(SceneObj* scene, ComponentBase** data, std::string& err)
+bool cleanup_screen_ui_component(SceneObj* scene, ComponentBase** data, String& err)
 {
     LD_PROFILE_SCOPE;
 
@@ -143,7 +143,7 @@ ScreenUIView::ScreenUIView(ScreenUIComponent* comp)
 
 bool ScreenUIView::load(AssetID uiTemplateID)
 {
-    std::string err;
+    String err;
 
     return load_screen_ui_component(sScene, mUI, uiTemplateID, err);
 }
@@ -176,24 +176,24 @@ void init_screen_ui_component(ComponentBase** dstData)
 {
     LD_UNREACHABLE;
 }
-bool load_screen_ui_component(SceneObj* scene, ScreenUIComponent* ui, AssetID uiTemplateID, std::string& err)
+bool load_screen_ui_component(SceneObj* scene, ScreenUIComponent* ui, AssetID uiTemplateID, String& err)
 {
     return false;
 }
-bool clone_screen_ui_component(SceneObj* scene, ComponentBase** dstData, ComponentBase** srcData, std::string& err)
+bool clone_screen_ui_component(SceneObj* scene, ComponentBase** dstData, ComponentBase** srcData, String& err)
 {
     return false;
 }
-bool unload_screen_ui_component(SceneObj* scene, ComponentBase** data, std::string& err)
+bool unload_screen_ui_component(SceneObj* scene, ComponentBase** data, String& err)
 {
     return false;
 }
-bool startup_screen_ui_component(SceneObj* scene, ComponentBase** data, std::string& err)
+bool startup_screen_ui_component(SceneObj* scene, ComponentBase** data, String& err)
 {
     return false;
 }
 
-bool cleanup_screen_ui_component(SceneObj* scene, ComponentBase** data, std::string& err)
+bool cleanup_screen_ui_component(SceneObj* scene, ComponentBase** data, String& err)
 {
     return false;
 }

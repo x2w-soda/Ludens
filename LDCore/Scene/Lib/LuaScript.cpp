@@ -149,7 +149,7 @@ static int scene_transition(lua_State* l)
         Scene scene(obj);
         ComponentView view = scene.create_component(COMPONENT_TYPE_CAMERA_2D, "dummy", 0);
 
-        std::string err;
+        String err;
         Camera2DInfo info{};
         info.extent = Vec2(500.0f);
         info.position = Vec2(250.0f);
@@ -307,7 +307,7 @@ static int get_component(lua_State* l)
     }
 
     View ffiTypeV = get_component_type_name(type);
-    std::string ffiType((const char*)ffiTypeV.data, ffiTypeV.size);
+    String ffiType((const char*)ffiTypeV.data, ffiTypeV.size);
     ffiType.push_back('*');
 
     L.push_string(ffiType.c_str());
@@ -356,7 +356,7 @@ static int create_child(lua_State* l)
     LD_ASSERT(L.get_type(3) == LUA_TYPE_TABLE);
 
     CUID parentID(reinterpret_cast<uint64_t>(L.to_userdata(1)));
-    std::string compTypeStr(L.to_string(2));
+    String compTypeStr(L.to_string(2));
 
     // TODO: At some point we would use a type table instead of string.
     //       This is kinda lazy.
@@ -378,11 +378,11 @@ static int create_child(lua_State* l)
         return 1;
     }
 
-    std::string compName = compTypeStr;
+    String compName = compTypeStr;
 
     L.get_field(3, "name");
     if (L.get_type(-1) == LUA_TYPE_STRING)
-        compName = std::string(L.to_string(-1));
+        compName = String(L.to_string(-1));
     L.pop(1);
 
     Scene scene(sScene);
@@ -394,7 +394,7 @@ static int create_child(lua_State* l)
     }
 
     // TODO: startup from Scene public API?
-    std::string err;
+    String err;
     if (!sScene->active->startup_component(childV.data(), err))
     {
         L.push_nil();
@@ -524,7 +524,7 @@ void Context::create(Scene scene)
     // - Components are accessed via FFI cdata to avoid state duplication
     // - some functions are visible to FFI to call directly
 
-    std::string cdef = std::format("local ffi = require 'ffi' ffi.cdef [[ {} ]]", LuaScript::get_ffi_cdef());
+    String cdef = std::format("local ffi = require 'ffi' ffi.cdef [[ {} ]]", LuaScript::get_ffi_cdef()).c_str();
     if (!mL.do_string(cdef.c_str()))
     {
         sLog.error("FFI cdef initialization failed: {}", mL.to_string(-1));
@@ -694,7 +694,7 @@ void Context::destroy()
     mScene = {};
 }
 
-bool Context::update(float delta, std::string& err)
+bool Context::update(float delta, String& err)
 {
     LD_PROFILE_SCOPE;
 
@@ -749,7 +749,7 @@ void Context::destroy_component_table(CUID compID)
     mL.resize(oldSize);
 }
 
-bool Context::create_lua_script(CUID compID, AssetID scriptAssetID, std::string& err)
+bool Context::create_lua_script(CUID compID, AssetID scriptAssetID, String& err)
 {
     if (!compID || !scriptAssetID)
         return true; // not an error
@@ -764,7 +764,7 @@ bool Context::create_lua_script(CUID compID, AssetID scriptAssetID, std::string&
     LD_ASSERT(asset);
 
     View luaSourceV = asset.get_source();
-    std::string luaSource((char*)luaSourceV.data, luaSourceV.size);
+    String luaSource((char*)luaSourceV.data, luaSourceV.size);
 
     // this should push the script instance table onto stack
     if (!mL.do_string(luaSource.c_str()))
@@ -795,7 +795,7 @@ void Context::destroy_lua_script(CUID compID)
     mL.resize(oldSize);
 }
 
-bool Context::attach_lua_script(CUID compID, std::string& err)
+bool Context::attach_lua_script(CUID compID, String& err)
 {
     LD_ASSERT(compID);
 
@@ -831,7 +831,7 @@ bool Context::attach_lua_script(CUID compID, std::string& err)
     return true;
 }
 
-bool Context::detach_lua_script(CUID compID, std::string& err)
+bool Context::detach_lua_script(CUID compID, String& err)
 {
     LD_ASSERT(compID);
 

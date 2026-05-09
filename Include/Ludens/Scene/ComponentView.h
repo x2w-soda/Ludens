@@ -36,7 +36,7 @@ public:
     SUID suid();
     RUID ruid();
 
-    bool load_from_props(const Vector<PropertyValue>& props, std::string& err);
+    bool load_from_props(const Vector<PropertyValue>& props, String& err);
     void save_subtree(ComponentSubtreeEntry& outSubtree);
 
     const char* get_name();
@@ -58,6 +58,9 @@ public:
     bool get_world_transform_2d(Transform2D& transform);
 
     bool get_world_mat4(Mat4& worldMat4);
+
+public: // static
+    static const TypeMeta* type_meta(ComponentType type);
 
 protected:
     ComponentBase** mData = nullptr;

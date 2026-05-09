@@ -60,7 +60,7 @@ void Transform2DMeta::init(ComponentBase** dstData)
     dstTransform2D->transform = base->transform2D;
 }
 
-bool Transform2DMeta::clone(SceneObj* scene, ComponentBase** dstData, ComponentBase** srcData, std::string& err)
+bool Transform2DMeta::clone(SceneObj* scene, ComponentBase** dstData, ComponentBase** srcData, String& err)
 {
     Transform2DComponent* dstTransform2D = (Transform2DComponent*)dstData;
     Transform2DComponent* srcTransform2D = (Transform2DComponent*)srcData;
@@ -69,7 +69,7 @@ bool Transform2DMeta::clone(SceneObj* scene, ComponentBase** dstData, ComponentB
     return true;
 }
 
-bool Transform2DMeta::load_from_props(SceneObj* scene, ComponentBase** data, const Vector<PropertyValue>& props, std::string& err)
+bool Transform2DMeta::load_from_props(SceneObj* scene, ComponentBase** data, const Vector<PropertyValue>& props, String& err)
 {
     Transform2D transform2D = Transform2D::identity();
 

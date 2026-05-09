@@ -56,14 +56,14 @@ struct SceneContext
     void unload_registry(SUIDRegistry suidRegistry);
 
     /// @brief Startup a component subtree recursively, attaching scripts to components
-    bool startup_subtree(ComponentBase** data, Vector<ComponentBase**>& startupOrder, std::string& err);
+    bool startup_subtree(ComponentBase** data, Vector<ComponentBase**>& startupOrder, String& err);
 
-    bool startup_component(ComponentBase** data, std::string& err);
+    bool startup_component(ComponentBase** data, String& err);
 
     /// @brief Cleanup a component subtree recursively, detaching scripts from components
     void cleanup_subtree(ComponentBase** data);
 
-    bool cleanup_component(ComponentBase** data, std::string& err);
+    bool cleanup_component(ComponentBase** data, String& err);
 
     void queue_component_destruction(CUID compID);
 
@@ -93,10 +93,10 @@ public:
     } transition;
 
     bool load_registry_from_backup();
-    bool clone_subtree(ComponentBase** dstData, ComponentBase** srcData, std::string& err);
+    bool clone_subtree(ComponentBase** dstData, ComponentBase** srcData, String& err);
 
 private:
-    bool load_subtree_from_backup(ComponentBase** dstData, ComponentBase** srcData, std::string& err);
+    bool load_subtree_from_backup(ComponentBase** dstData, ComponentBase** srcData, String& err);
 };
 
 extern SceneObj* sScene;

@@ -146,10 +146,16 @@ Value64::Value64(const char* cstr)
     new (&str) String(cstr);
 }
 
-Value64::Value64(const std::string& s)
+Value64::Value64(const String& s)
     : type(VALUE_TYPE_STRING)
 {
-    new (&str) String(s.data(), s.size());
+    new (&str) String(s);
+}
+
+Value64::Value64(View s)
+    : type(VALUE_TYPE_STRING)
+{
+    new (&str) String(s.data, s.size);
 }
 
 Value64::Value64(float f32)

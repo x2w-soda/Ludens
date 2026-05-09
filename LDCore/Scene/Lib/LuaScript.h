@@ -20,7 +20,7 @@ public:
 
     /// @brief Call update on all scripts.
     /// @param delta Delta time in seconds.
-    bool update(float delta, std::string& err);
+    bool update(float delta, String& err);
 
     /// @brief Extract internal lua state.
     inline LuaState get_lua_state() { return mL; }
@@ -32,16 +32,16 @@ public:
     void destroy_component_table(CUID compID);
 
     /// @brief Creates lua script associated with component if slot is not null.
-    bool create_lua_script(CUID compID, AssetID scriptAssetID, std::string& err);
+    bool create_lua_script(CUID compID, AssetID scriptAssetID, String& err);
 
     /// @brief Destroy lua script associated with a component
     void destroy_lua_script(CUID compID);
 
     /// @brief Attach lua script to its data component.
-    bool attach_lua_script(CUID compID, std::string& err);
+    bool attach_lua_script(CUID compID, String& err);
 
     /// @brief Detach lua script from its data component.
-    bool detach_lua_script(CUID compID, std::string& err);
+    bool detach_lua_script(CUID compID, String& err);
 
 private:
     LuaState mL{};

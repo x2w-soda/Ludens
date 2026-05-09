@@ -25,7 +25,7 @@ public:
     Camera2DView(ComponentView comp);
     Camera2DView(Camera2DComponent* comp);
 
-    bool load(const Camera2DInfo& info, Rect viewport, std::string& err);
+    bool load(const Camera2DInfo& info, Rect viewport, String& err);
 
     Camera2DInfo get_info();
     Rect get_viewport();

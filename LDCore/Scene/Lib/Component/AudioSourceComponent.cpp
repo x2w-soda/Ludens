@@ -102,7 +102,7 @@ void AudioSourceMeta::init(ComponentBase** dstData)
     dstAudioSource->clipID = (AssetID)0;
 }
 
-bool AudioSourceMeta::load(SceneObj* scene, AudioSourceComponent* source, AssetID clipID, float pan, float volumeLinear, std::string& err)
+bool AudioSourceMeta::load(SceneObj* scene, AudioSourceComponent* source, AssetID clipID, float pan, float volumeLinear, String& err)
 {
     LD_PROFILE_SCOPE;
 
@@ -124,7 +124,7 @@ bool AudioSourceMeta::load(SceneObj* scene, AudioSourceComponent* source, AssetI
     return true;
 }
 
-bool AudioSourceMeta::load_from_props(SceneObj* scene, ComponentBase** data, const Vector<PropertyValue>& props, std::string& err)
+bool AudioSourceMeta::load_from_props(SceneObj* scene, ComponentBase** data, const Vector<PropertyValue>& props, String& err)
 {
     AssetID clipAsset = {};
     float pan = 0.5f;
@@ -151,7 +151,7 @@ bool AudioSourceMeta::load_from_props(SceneObj* scene, ComponentBase** data, con
     return load(sScene, (AudioSourceComponent*)data, clipAsset, pan, volumeLinear, err);
 }
 
-bool AudioSourceMeta::clone(SceneObj* scene, ComponentBase** dstData, ComponentBase** srcData, std::string& err)
+bool AudioSourceMeta::clone(SceneObj* scene, ComponentBase** dstData, ComponentBase** srcData, String& err)
 {
     LD_PROFILE_SCOPE;
 
@@ -166,7 +166,7 @@ bool AudioSourceMeta::clone(SceneObj* scene, ComponentBase** dstData, ComponentB
     return load(scene, (AudioSourceComponent*)dstSource.data(), clipAID, pan, volume, err);
 }
 
-bool AudioSourceMeta::unload(SceneObj* scene, ComponentBase** sourceData, std::string& err)
+bool AudioSourceMeta::unload(SceneObj* scene, ComponentBase** sourceData, String& err)
 {
     auto* source = (AudioSourceComponent*)sourceData;
 
@@ -179,7 +179,7 @@ bool AudioSourceMeta::unload(SceneObj* scene, ComponentBase** sourceData, std::s
     return true;
 }
 
-bool AudioSourceMeta::cleanup(SceneObj* scene, ComponentBase** sourceData, std::string& err)
+bool AudioSourceMeta::cleanup(SceneObj* scene, ComponentBase** sourceData, String& err)
 {
     auto* source = (AudioSourceComponent*)sourceData;
 
@@ -237,7 +237,7 @@ AudioSourceView::AudioSourceView(AudioSourceComponent* comp)
 
 bool AudioSourceView::load(AssetID clipAsset, float pan, float volumeLinear)
 {
-    std::string err;
+    String err;
 
     return AudioSourceMeta::load(sScene, mAudioSource, clipAsset, pan, volumeLinear, err);
 }

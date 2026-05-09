@@ -6,7 +6,6 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <string>
 
 namespace LD {
 
@@ -81,7 +80,8 @@ public:
     Value64(const Value64&);
     Value64(Value64&&) noexcept;
     explicit Value64(const char* cstr);
-    explicit Value64(const std::string& str);
+    explicit Value64(const String& str);
+    explicit Value64(View str);
     explicit Value64(float f32);
     explicit Value64(double f64);
     explicit Value64(uint32_t u32);

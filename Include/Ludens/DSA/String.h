@@ -70,6 +70,13 @@ public:
         memcpy(mBase, view.data, view.size);
     }
 
+    TString(size_t count, char c)
+        : mBase(mLocal)
+    {
+        resize(count);
+        memset(mBase, c, count);
+    }
+
     TString(const TString& other)
         : mBase(mLocal)
     {
